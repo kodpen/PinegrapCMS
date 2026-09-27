@@ -122,6 +122,9 @@ function pg_designer_screen_render($ctx)
             </div>';
     }
 
+    // The design's framework; a style from before 2026.4.5 is Bootstrap 5.
+    $sd_framework = pg_design_framework(isset($style['framework']) ? $style['framework'] : '');
+
     // ── Design payload for the editor ─────────────────────────────────────
     // Trees are decoded and re-encoded with JSON_HEX_TAG: raw JSON straight
     // from the database may contain "</script>" inside a content node and
@@ -168,6 +171,12 @@ function pg_designer_screen_render($ctx)
             'pg_comments_label'     => (string)$p['pg_comments_label'],
             'pg_comments_allow_new' => (int)$p['pg_comments_allow_new'],
             'pg_comments_rating'    => (int)$p['pg_comments_rating'],
+            'pg_comments_auto_publish' => (int)$p['pg_comments_auto_publish'],
+            'pg_comments_show_date'    => (int)$p['pg_comments_show_date'],
+            'pg_comments_login'        => (int)$p['pg_comments_login'],
+            'pg_comments_email_page'    => (int)(isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : 0),
+            'pg_comments_email_subject' => (string)(isset($p['pg_comments_email_subject']) ? $p['pg_comments_email_subject'] : ''),
+            'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
             'tree'                  => $tree,
             'treeLoadWarning'       => $warn,
             // The page's form-level settings (name, notification, confirmation).
@@ -198,6 +207,12 @@ function pg_designer_screen_render($ctx)
             'pg_comments_label'     => '',
             'pg_comments_allow_new' => 1,
             'pg_comments_rating'    => 0,
+            'pg_comments_auto_publish' => 0,
+            'pg_comments_show_date'    => 0,
+            'pg_comments_login'        => 0,
+            'pg_comments_email_page'    => 0,
+            'pg_comments_email_subject' => '',
+            'pg_comments_notify_email'  => '',
             'tree'                  => null,
             'treeLoadWarning'       => false,
             'formSettings'          => array(),
@@ -209,6 +224,9 @@ function pg_designer_screen_render($ctx)
     $found_active = false;
     foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $found_active = true; break; } }
     if (!$found_active) $active_key = $js_pages[0]['key'];
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
+    $sd_ai = pg_design_ai_editor_config($user);
 
     $design_js = json_encode(array(
         'mode'          => $mode,
@@ -243,8 +261,26 @@ function pg_designer_screen_render($ctx)
         // English text and _sdT() falls back to the key.
         'i18n'          => pg_designer_i18n_map(),
         'hiddenPages'   => $hidden_pages,
+        // The assistant panel (assets/js/designer_ai.js): designers only.
+        'ai'            => $sd_ai,
         'autoImport'    => !empty($ctx['auto_import']),
         'autoPasteHtml' => !empty($ctx['auto_paste']),
+        // What the design is built on (pg_design_frameworks()). The editor
+        // loads the framework's files into the canvas and offers the
+        // Bootstrap palette only when the framework is Bootstrap.
+        'framework'     => $sd_framework['key'],
+        'frameworkInfo' => array(
+            'label'     => $sd_framework['label'],
+            'css'       => $sd_framework['css'],
+            'js'        => $sd_framework['js'],
+            'bootstrap' => (bool)$sd_framework['bootstrap'],
+        ),
+        // Add mode from a template: the editor asks for its pages
+        // (designer/template_prepare) behind the "preparing" curtain.
+        'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
+        // Looks and colour palettes (includes/fn/design_themes.php): every
+        // choice with its stylesheet, the saved custom ones included.
+        'themes'        => pg_design_theme_catalog(),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.
@@ -308,10 +344,24 @@ function pg_designer_screen_render($ctx)
                 <input type="hidden" name="pg_comments_label" value="">
                 <input type="hidden" name="pg_comments_allow_new" value="1">
                 <input type="hidden" name="pg_comments_rating" value="0">
+                <input type="hidden" name="pg_comments_auto_publish" value="0">
+                <input type="hidden" name="pg_comments_show_date" value="0">
+                <input type="hidden" name="pg_comments_login" value="0">
+                <input type="hidden" name="pg_comments_email_page" value="0">
+                <input type="hidden" name="pg_comments_email_subject" value="">
+                <input type="hidden" name="pg_comments_notify_email" value="">
                 <!-- Shared design assets — managed by the Assets panel; one set for every page -->
                 <input type="hidden" name="style_custom_css" id="sd-custom-css-field" value="' . h($style['style_custom_css']) . '">
                 <input type="hidden" name="style_custom_js" id="sd-custom-js-field" value="' . h($style['style_custom_js']) . '">
                 <input type="hidden" name="style_custom_fonts" id="sd-custom-fonts-field" value="' . h($style['style_custom_fonts']) . '">
+                <!-- Fixed when the design is created; the save of a new design
+                     writes them, an update leaves the stored ones alone. -->
+                <input type="hidden" name="style_framework" value="' . h($sd_framework['key']) . '">
+                <input type="hidden" name="style_template" value="' . h(isset($style['template']) ? $style['template'] : '') . '">
+                <input type="hidden" name="style_template_version" value="' . h(isset($style['template_version']) ? $style['template_version'] : '') . '">
+                <!-- The look and the colour palette (Settings, Design). -->
+                <input type="hidden" name="style_look" id="sd-style-look" value="' . h(isset($style['look']) ? pg_design_look_key($style['look']) : '') . '">
+                <input type="hidden" name="style_palette" id="sd-style-palette" value="' . h(isset($style['palette']) ? pg_design_palette_key($style['palette']) : '') . '">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -347,9 +397,13 @@ function pg_designer_screen_render($ctx)
                                  operator never sees a feature they are not
                                  using. -->
                             <div class="sd-presence" id="sd-presence"></div>
+                            ' . (!empty($sd_ai['enabled']) ? '<button type="button" id="sd-ai-btn" class="sd-icon-btn sd-ai-btn" title="' . h(lang('Ask the assistant')) . '" aria-expanded="false"><span class="bi bi-stars" aria-hidden="true"></span><span class="sd-ai-btn-txt">' . h(lang('Assistant')) . '</span><span class="sd-ai-btn-dot" aria-hidden="true"></span></button>' : '') . '
                             <button type="button" id="sd-main-undo" class="sd-vb-btn" onclick="StyleDesigner.undo()" title="' . lang('Undo') . ' (Ctrl+Z)" disabled><span class="bi bi-arrow-counterclockwise"></span></button>
                             <button type="button" id="sd-main-redo" class="sd-vb-btn" onclick="StyleDesigner.redo()" title="' . lang('Redo') . ' (Ctrl+Y)" disabled><span class="bi bi-arrow-clockwise"></span></button>
-                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary" title="' . lang('Save') . '"><span class="bi bi-floppy"></span></button>
+                            <!-- The main action puts every page of the design on the
+                                 site, so it says so. The label drops to the icon on
+                                 narrow screens; the title still names it. -->
+                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . lang('Publish') . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
                             <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
                         </div>
                     </div>
@@ -408,6 +462,7 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>
         <script src="assets/js/class_suggestions.js?v=' . pg_designer_asset_stamp('assets/js/class_suggestions.js') . '"></script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
+        ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>
             $(document).ready(function() {
                 StyleDesigner.init({
@@ -473,15 +528,102 @@ function pg_designer_list_designs()
          LEFT JOIN files ON style.theme_id = files.id
          WHERE (style.style_layout = 'visual_designer'$own_tree)
          ORDER BY style.style_timestamp DESC, style.style_name ASC");
-    return is_array($rows) ? $rows : array();
+    $rows = is_array($rows) ? $rows : array();
+    // The framework each design is built on; a design from before the
+    // column is Bootstrap 5.
+    $fw_by_id = array();
+    if ($rows && pg_style_framework_ready()) {
+        $ids = array();
+        foreach ($rows as $r) $ids[] = (int)$r['style_id'];
+        foreach ((array)db_items("SELECT style_id, style_framework FROM style WHERE style_id IN (" . implode(',', $ids) . ")") as $fr) {
+            $fw_by_id[(int)$fr['style_id']] = (string)$fr['style_framework'];
+        }
+    }
+    foreach ($rows as $i => $r) {
+        $fw = pg_design_framework(isset($fw_by_id[(int)$r['style_id']]) ? $fw_by_id[(int)$r['style_id']] : '');
+        $rows[$i]['framework_label'] = $fw['label'];
+        $rows[$i]['framework_bootstrap'] = !empty($fw['bootstrap']);
+        $rows[$i]['template'] = '';
+        $rows[$i]['look'] = '';
+        $rows[$i]['palette'] = '';
+    }
+    // The template a design started from, its look and its palette: the
+    // thumbnail beside the name and the Theme column.
+    if ($rows) {
+        $cols = array();
+        if (pg_style_framework_ready()) $cols[] = 'style_template';
+        if (function_exists('pg_design_look_ready') && pg_design_look_ready()) { $cols[] = 'style_look'; $cols[] = 'style_palette'; }
+        if ($cols) {
+            $by_id = array();
+            foreach ($rows as $i => $r) $by_id[(int)$r['style_id']] = $i;
+            foreach ((array)db_items("SELECT style_id, " . implode(', ', $cols) . " FROM style WHERE style_id IN (" . implode(',', array_keys($by_id)) . ")") as $x) {
+                $i = $by_id[(int)$x['style_id']];
+                if (isset($x['style_template'])) $rows[$i]['template'] = (string)$x['style_template'];
+                if (isset($x['style_look']))     $rows[$i]['look'] = (string)$x['style_look'];
+                if (isset($x['style_palette']))  $rows[$i]['palette'] = (string)$x['style_palette'];
+            }
+        }
+    }
+    return $rows;
+}
+
+/**
+ * The thumbnail beside a design's name: its template's picture in the
+ * design's own look and colours. A design started blank or imported has no
+ * picture of its own; it gets an empty frame so the column stays even.
+ */
+function pg_designer_list_thumb($d)
+{
+    if (!empty($d['template']) && !empty($d['framework_bootstrap']) && function_exists('pg_design_thumb_svg') && pg_design_template($d['template'])) {
+        return '<span class="sd-design-thumb" title="' . h(pg_designer_list_theme_text($d)) . '">'
+             . pg_design_thumb_svg($d['look'], $d['palette'], '', lang(array('string' => 'Preview of {var:1}', 'vars' => $d['style_name'])))
+             . '</span>';
+    }
+    return '<span class="sd-design-thumb-blank" aria-hidden="true"><i class="bi bi-file-earmark"></i></span>';
+}
+
+// "Modern Soft · Ocean" (+ the theme file, when one is chosen).
+function pg_designer_list_theme_text($d)
+{
+    $parts = array();
+    if (!empty($d['framework_bootstrap']) && function_exists('pg_design_look_label')) {
+        $look = pg_design_look_label(isset($d['look']) ? $d['look'] : '');
+        $parts[] = ($look !== '') ? $look : lang('Plain Bootstrap');
+        $pal = pg_design_palette_key(isset($d['palette']) ? $d['palette'] : '');
+        if ($pal !== '') {
+            $fid = pg_design_theme_file_id($pal);
+            if ($fid > 0) {
+                $files = pg_design_theme_files('palette');
+                if (isset($files[$fid])) $parts[] = $files[$fid]['name'];
+            } else {
+                $all = pg_design_palettes();
+                $parts[] = $all[$pal]['name'];
+            }
+        }
+    }
+    if (!empty($d['theme_name'])) $parts[] = (string)$d['theme_name'];
+    return implode(' · ', $parts);
+}
+
+function pg_designer_list_theme_label($d)
+{
+    $text = pg_designer_list_theme_text($d);
+    if ($text === '') return '';
+    $sw = '';
+    if (!empty($d['framework_bootstrap']) && !empty($d['palette']) && function_exists('pg_design_palette_colors')) {
+        $c = pg_design_palette_colors($d['palette']);
+        $sw = '<span class="d-inline-flex rounded-circle overflow-hidden me-2 align-middle" style="width:14px;height:14px;transform:rotate(-45deg);box-shadow:0 0 0 1px var(--bs-border-color)" aria-hidden="true">'
+            . '<i style="flex:1;background:' . h($c['primary']) . '"></i><i style="flex:1;background:' . h($c['secondary']) . '"></i></span>';
+    }
+    return $sw . h($text);
 }
 
 /**
  * The Visual Page Editor home (view_system_styles.php): start a new design
- * blank or from an HTML project, or open one of the designs that exist.
- * "From template" is a placeholder for now. The list is the editor's own
- * designs only — a legacy style opened here would show a blank page and
- * nothing to explain why.
+ * blank (on Bootstrap 5, or custom without a framework), from an HTML
+ * project or from a template, or open one of the designs that exist. The
+ * list is the editor's own designs only — a legacy style opened here would
+ * show a blank page and nothing to explain why.
  */
 function pg_designer_start_screen($ctx)
 {
@@ -498,6 +640,9 @@ function pg_designer_start_screen($ctx)
     require_once(dirname(__FILE__) . '/designer_access.php');
     $can_create = pg_designer_is_full($ctx['user']);
 
+    // The templates this installation ships (includes/design_templates/).
+    $templates = $can_create ? pg_design_templates() : array();
+
     // Rows of the standard admin DataTable (same table as view_styles.php,
     // without the bulk-select column: designs are deleted from the editor's
     // toolbar, one at a time, after their pages).
@@ -512,8 +657,10 @@ function pg_designer_start_screen($ctx)
                 <button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>
             </td>
             <td class="align-middle chart_label" nowrap>' . h($d['style_name']) . ($count == 0 ? ' <span class="badge text-bg-secondary ms-1" title="' . lang('No pages — open it to add one, or delete it from the toolbar') . '">' . lang('Empty') . '</span>' : '') . '</td>
+            <td class="align-middle sd-design-thumb-cell">' . pg_designer_list_thumb($d) . '</td>
+            <td class="align-middle" nowrap>' . h($d['framework_label']) . '</td>
             <td class="align-middle text-center" data-order="' . $count . '">' . pg_format_number($count, 0) . '</td>
-            <td class="align-middle">' . h((string)$d['theme_name']) . '</td>
+            <td class="align-middle">' . pg_designer_list_theme_label($d) . '</td>
             <td class="align-middle" nowrap data-order="' . (int)$d['last_modified_timestamp'] . '">' . get_relative_time(array('timestamp' => (int)$d['last_modified_timestamp'])) . '  ' . h($user_label) . '</td>
         </tr>';
     }
@@ -521,10 +668,16 @@ function pg_designer_start_screen($ctx)
     $card = function ($href, $icon, $title, $text, $opts = array()) {
         $primary  = !empty($opts['primary']);
         $disabled = !empty($opts['disabled']);
+        $modal    = !empty($opts['modal']) ? (string)$opts['modal'] : '';
         $badge    = $disabled ? '<span class="badge text-bg-secondary ms-auto">' . lang('Soon') . '</span>' : '';
-        $tag_open = $disabled
-            ? '<div class="card h-100 sd-start-card sd-start-card-disabled" aria-disabled="true">'
-            : '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">';
+        if ($disabled) {
+            $tag_open = '<div class="card h-100 sd-start-card sd-start-card-disabled" aria-disabled="true">';
+        } elseif ($modal !== '') {
+            // Opens a choice first (framework, template); nothing loads yet.
+            $tag_open = '<a href="#" role="button" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-bs-toggle="modal" data-bs-target="' . h($modal) . '">';
+        } else {
+            $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">';
+        }
         $tag_close = $disabled ? '</div>' : '</a>';
         return
             '<div class="col-12 col-sm-6 col-xl-3">
@@ -548,16 +701,26 @@ function pg_designer_start_screen($ctx)
         )) . '
         <style>
             .sd-start-card-disabled { opacity: .55; cursor: not-allowed; }
+            .pg-design-thumb { display: block; width: 100%; height: auto; }
+            .sd-design-thumb-cell { width: 96px; }
+            .sd-design-thumb { display: block; width: 88px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--bs-border-color); background: var(--bs-body-bg); }
+            .sd-design-thumb-blank { display: flex; align-items: center; justify-content: center; width: 88px; aspect-ratio: 8 / 5; border-radius: 6px; border: 1px dashed var(--bs-border-color); color: var(--bs-secondary-color); }
+            .sd-tpl-thumb { border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+            .sd-tpl-look .btn { --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .8125rem; }
+            .sd-tpl-pal { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
+            .sd-tpl-pal i { flex: 1; }
+            .btn-check:checked + .sd-tpl-pal { border-color: var(--bs-body-bg); box-shadow: 0 0 0 2px var(--bs-emphasis-color); }
+            .btn-check:focus-visible + .sd-tpl-pal { box-shadow: 0 0 0 3px var(--bs-focus-ring-color, rgba(13,110,253,.25)), 0 0 0 1px var(--bs-border-color); }
         </style>
         <main id="content" class="container-fluid">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             ' . ($can_create ? '
             <div class="row g-3 mb-4">
-                ' . $card('add_system_style.php' . $qs, 'bi-file-earmark-plus', lang('Create New'), lang('An empty page on the canvas. Add sections from the palette and build the design up.'), array('primary' => true)) . '
+                ' . $card('#', 'bi-file-earmark-plus', lang('Create New'), lang('An empty page on the canvas, on Bootstrap 5 or as a custom design. Add sections from the palette and build the design up.'), array('primary' => true, 'modal' => '#sdNewDesignModal')) . '
                 ' . $card('add_system_style.php' . $qs_import, 'bi-file-earmark-zip', lang('Import HTML / ZIP'), lang('Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.')) . '
                 ' . $card('add_system_style.php' . $qs_paste, 'bi-clipboard-plus', lang('Paste HTML content'), lang('Paste the markup straight in — from a code editor, from a page you have open. The design starts from what you paste.')) . '
-                ' . $card('#', 'bi-grid-1x2', lang('Choose a Template'), lang('Start from a ready-made design and change what you like.'), array('disabled' => true)) . '
+                ' . $card('#', 'bi-grid-1x2', lang('Choose a Template'), lang('Start from a ready-made design and change what you like.'), $templates ? array('modal' => '#sdTemplateModal') : array('disabled' => true)) . '
             </div>' : '
             <div class="alert alert-secondary py-2 small mb-4">
                 <span class="bi bi-info-circle me-1"></span>' . lang('Open a design to edit its text and the areas marked for you. New designs are created by designers.') . '
@@ -569,6 +732,8 @@ function pg_designer_start_screen($ctx)
                             <tr>
                                 <th class="noVis">' . lang('Action') . '</th>
                                 <th>' . lang('Name') . '</th>
+                                <th class="no-sort">' . lang('Preview') . '</th>
+                                <th>' . lang('Framework') . '</th>
                                 <th class="text-center">' . lang('Pages') . '</th>
                                 <th>' . lang('Theme') . '</th>
                                 <th nowrap>' . lang('Last Modified') . '</th>
@@ -579,6 +744,7 @@ function pg_designer_start_screen($ctx)
                 </div>
             </div>
         </main>
+        ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
         <script>
             // Delete a design from its row: the design goes, its pages go to
             // the recycle bin. api.php reads a JSON body.
@@ -613,6 +779,192 @@ function pg_designer_start_screen($ctx)
         </script>
         ';
     print output_footer();
+}
+
+/**
+ * "Create New": what the design is built on. Asked once, before the editor
+ * opens, because the pages are written against it and it does not change.
+ */
+function pg_designer_new_design_modal($from_pages)
+{
+    $extra = $from_pages ? '&from=pages' : '';
+    $option = function ($framework, $icon, $title, $text, $recommended) use ($extra) {
+        return
+            '<div class="col-12 col-md-6">
+                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card' . ($recommended ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">
+                    <div class="card-body d-flex flex-column align-items-start gap-2">
+                        <div class="d-flex w-100 align-items-start">
+                            <i class="bi ' . h($icon) . ' fs-2 ' . ($recommended ? 'text-primary' : 'text-body-secondary') . '" aria-hidden="true"></i>
+                            ' . ($recommended ? '<span class="badge text-bg-primary ms-auto">' . lang('Recommended') . '</span>' : '') . '
+                        </div>
+                        <span class="h5 mb-0 text-body">' . h($title) . '</span>
+                        <span class="small text-muted">' . h($text) . '</span>
+                    </div>
+                </a>
+            </div>';
+    };
+    return '
+        <div class="modal fade" id="sdNewDesignModal" tabindex="-1" aria-labelledby="sdNewDesignModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="sdNewDesignModalLabel"><i class="bi bi-file-earmark-plus me-2" aria-hidden="true"></i>' . lang('Create New Design') . '</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted mb-3">' . lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.') . '</p>
+                        <div class="row g-3">
+                            ' . $option('bootstrap5', 'bi-bootstrap', lang('Build with Bootstrap 5'),
+                                lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true) . '
+                            ' . $option('custom', 'bi-code-slash', lang('Build a Custom Design'),
+                                lang('No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.'), false) . '
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+}
+
+/**
+ * "Choose a Template": the templates this installation ships. Choosing one
+ * opens the editor with the template's pages as unsaved tabs; nothing is
+ * created until the design is published.
+ */
+function pg_designer_template_modal($templates, $from_pages)
+{
+    $extra = $from_pages ? '&from=pages' : '';
+    $look0 = function_exists('pg_design_default_look') ? pg_design_default_look() : '';
+    $cards = '';
+    foreach ((array)$templates as $tpl) {
+        $s = pg_design_template_summary($tpl);
+        $thumb = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
+            ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name']))) . '</div>'
+            : '';
+        $cards .=
+            '<div class="col-12 col-md-6">
+                <div class="card h-100 overflow-hidden">
+                    ' . $thumb . '
+                    <div class="card-body d-flex flex-column gap-2">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi ' . h($s['icon']) . ' fs-2 text-primary" aria-hidden="true"></i>
+                            <div class="ms-auto d-flex flex-wrap gap-1 justify-content-end">
+                                <span class="badge text-bg-light border">' . h($s['framework_label']) . '</span>
+                                <span class="badge text-bg-light border" title="' . lang('Template version') . '">v' . h($s['version']) . '</span>
+                            </div>
+                        </div>
+                        <span class="h5 mb-0">' . h($s['name']) . '</span>
+                        <span class="small text-muted">' . h($s['description']) . '</span>
+                        <span class="small"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang(array('string' => '{var:1} pages: {var:2}', 'vars' => array(count($s['pages']), h(implode(', ', $s['pages']))))) . '</span>
+                        <div class="mt-auto pt-2">
+                            <a href="add_system_style.php?start=template&template=' . h(rawurlencode($s['id'])) . h($extra) . '" class="btn btn-sm btn-primary rounded-pill px-3 sd-tpl-use" data-href="add_system_style.php?start=template&template=' . h(rawurlencode($s['id'])) . h($extra) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                        </div>
+                    </div>
+                </div>
+            </div>';
+    }
+    return '
+        <div class="modal fade" id="sdTemplateModal" tabindex="-1" aria-labelledby="sdTemplateModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="sdTemplateModalLabel"><i class="bi bi-grid-1x2 me-2" aria-hidden="true"></i>' . lang('Choose a Template') . '</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted mb-3">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
+                        ' . pg_designer_template_theme_picker() . '
+                        <div class="row g-3">' . $cards . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+}
+
+/**
+ * The look and the colour palette a template opens in, above the template
+ * cards. The cards' pictures follow the choice, and "Use This Template"
+ * carries it to the editor (?look=&palette=). Both can be changed later in
+ * the editor, under Settings > Design > Theme.
+ */
+function pg_designer_template_theme_picker()
+{
+    if (!function_exists('pg_design_looks')) return '';
+    $look0 = pg_design_default_look();
+    $looks = array('' => array('name' => lang('Plain Bootstrap'), 'description' => lang('Plain Bootstrap 5.3, as it comes.'),
+                               'preview' => array('radius' => 6, 'btn_radius' => 6, 'shadow' => 'none', 'border' => 1)));
+    $looks = array_merge($looks, pg_design_looks());
+    $look_btns = '';
+    $n = 0;
+    foreach ($looks as $key => $l) {
+        $id = 'sd-tpl-look-' . (++$n);
+        $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === $look0 ? ' checked' : '')
+                    . ' data-preview="' . h(json_encode($l['preview'])) . '" autocomplete="off">'
+                    . '<label class="btn btn-outline-secondary rounded-pill" for="' . $id . '" title="' . h($l['description']) . '">' . h($l['name']) . '</label>';
+    }
+    $bs = pg_design_bootstrap_colors();
+    $palettes = array('' => array('name' => lang('Bootstrap'), 'primary' => $bs['primary'], 'secondary' => $bs['secondary']));
+    $palettes = array_merge($palettes, pg_design_palettes());
+    foreach (pg_design_theme_files('palette') as $f) {
+        if (!isset($f['meta']['primary'], $f['meta']['secondary'])) continue;
+        $palettes['file-' . $f['id']] = array('name' => $f['name'], 'primary' => $f['meta']['primary'], 'secondary' => $f['meta']['secondary']);
+    }
+    $pal_btns = '';
+    $n = 0;
+    foreach ($palettes as $key => $p) {
+        $id = 'sd-tpl-pal-' . (++$n);
+        $pal_btns .= '<input type="radio" class="btn-check" name="sd_tpl_palette" id="' . $id . '" value="' . h($key) . '"' . ($key === '' ? ' checked' : '')
+                   . ' data-primary="' . h($p['primary']) . '" data-secondary="' . h($p['secondary']) . '" data-name="' . h($p['name']) . '" autocomplete="off">'
+                   . '<label class="sd-tpl-pal" for="' . $id . '" title="' . h($p['name']) . '"><i style="background:' . h($p['primary']) . '"></i><i style="background:' . h($p['secondary']) . '"></i>'
+                   . '<span class="visually-hidden">' . h($p['name']) . '</span></label>';
+    }
+    return '
+        <div class="border rounded-3 p-3 mb-3 bg-body-tertiary" id="sd-tpl-theme">
+            <div class="mb-3">
+                <div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal text-muted">— ' . lang('corners, shadows, type and buttons') . '</span></div>
+                <div class="d-flex flex-wrap gap-1 sd-tpl-look" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $look_btns . '</div>
+            </div>
+            <div>
+                <div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal text-muted">— <span id="sd-tpl-pal-name">' . lang('Bootstrap') . '</span></span></div>
+                <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $pal_btns . '</div>
+            </div>
+            <div class="form-text mt-2">' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
+        </div>
+        <script>
+            (function () {
+                var box = document.getElementById("sd-tpl-theme");
+                if (!box) return;
+                var modal = box.closest(".modal");
+                // Twin of pg_design_thumb_vars().
+                function vars(pv, p, s) {
+                    pv = pv || {};
+                    var hex = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(p || "");
+                    var rgb = hex ? [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)].join(", ") : "13, 110, 253";
+                    var sh = { none: "none", soft: "drop-shadow(0 2px 3px rgba(16, 24, 40, 0.16))", crisp: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18))",
+                               glow: "drop-shadow(0 3px 4px rgba(" + rgb + ", 0.35))", hard: "drop-shadow(2px 2px 0 #111827)", deep: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.28))" };
+                    var r = Math.min(+pv.radius || 0, 14) * 0.5, br = (+pv.btn_radius >= 50) ? 5.5 : Math.min(+pv.btn_radius || 0, 14) * 0.5;
+                    return { "--tp": p, "--ts": s, "--tr": r + "px", "--tbr": br + "px", "--tsh": sh[pv.shadow] || "none",
+                             "--tbw": ((+pv.border || 0) * 0.75) + "px", "--tbc": pv.shadow === "hard" ? "#111827" : "#e5e7eb" };
+                }
+                function sync() {
+                    var l = box.querySelector("input[name=sd_tpl_look]:checked");
+                    var p = box.querySelector("input[name=sd_tpl_palette]:checked");
+                    var pv = {};
+                    try { pv = JSON.parse(l ? l.getAttribute("data-preview") : "{}") || {}; } catch (e) {}
+                    var v = vars(pv, p ? p.getAttribute("data-primary") : "#0d6efd", p ? p.getAttribute("data-secondary") : "#6c757d");
+                    modal.querySelectorAll(".sd-tpl-thumb-svg").forEach(function (svg) {
+                        Object.keys(v).forEach(function (k) { svg.style.setProperty(k, v[k]); });
+                    });
+                    var nm = document.getElementById("sd-tpl-pal-name");
+                    if (nm && p) nm.textContent = p.getAttribute("data-name");
+                    var q = "&look=" + encodeURIComponent(l ? l.value : "") + "&palette=" + encodeURIComponent(p ? p.value : "");
+                    modal.querySelectorAll(".sd-tpl-use").forEach(function (a) { a.href = a.getAttribute("data-href") + q; });
+                }
+                box.addEventListener("change", sync);
+                // The cards come after this script in the page.
+                if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync); else sync();
+                if (modal) modal.addEventListener("show.bs.modal", sync);
+            })();
+        </script>';
 }
 
 /**
@@ -675,15 +1027,24 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                                         <label class="form-label small">' . lang('Design Name') . '</label>
                                         ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'sd-style-name', 'class'=>'form-control form-control-sm', 'maxlength'=>'100', 'placeholder'=>lang('Defaults to the first page name'))) . '
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Theme') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'options'=>get_theme_options(), 'class'=>'form-select form-select-sm')) . '
-                                        <small class="form-text">' . lang('Loaded after the stylesheets, so its colours win. Shown in the Styles list and the Themes panel.') . '</small>
-                                    </div>
+                                    ' . pg_designer_settings_framework_rows($ctx) . '
+                                </div>
+
+                                <!-- Look and colour palette: filled by the editor
+                                     (sdDesign.themes), written to style_look /
+                                     style_palette. -->
+                                <div class="sd-settings-group" id="sd-theme-settings">
+                                    <div class="sd-settings-group-title">' . lang('Theme') . '</div>
+                                    <div id="sd-theme-picker"></div>
                                 </div>
 
                                 <div class="sd-settings-group">
                                     <div class="sd-settings-group-title">' . lang('Advanced') . '</div>
+                                    <div class="mb-3">
+                                        <label class="form-label small">' . lang('Theme file') . '</label>
+                                        ' . $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'options'=>get_theme_options(), 'class'=>'form-select form-select-sm')) . '
+                                        <small class="form-text">' . lang('A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.') . '</small>
+                                    </div>
                                     <div class="mb-3">
                                         <label class="form-label small">' . lang('Collection') . '</label>
                                         ' . $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-select form-select-sm')) . '
@@ -776,6 +1137,34 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
 }
 
 /**
+ * The framework the design is built on and the template it started from,
+ * read-only: both are fixed when the design is created.
+ */
+function pg_designer_settings_framework_rows($ctx)
+{
+    $style = isset($ctx['style']) && is_array($ctx['style']) ? $ctx['style'] : array();
+    $fw    = pg_design_framework(isset($style['framework']) ? $style['framework'] : '');
+    $out =
+        '<div class="mb-3">
+            <label class="form-label small" for="sd-style-framework">' . lang('Framework') . '</label>
+            <input type="text" class="form-control form-control-sm" id="sd-style-framework" value="' . h($fw['label']) . '" readonly>
+            <small class="form-text">' . lang('Chosen when the design was created. The pages are built on it, so it does not change.') . '</small>
+        </div>';
+    $tpl_id = isset($style['template']) ? (string)$style['template'] : '';
+    if ($tpl_id !== '') {
+        $tpl  = pg_design_template($tpl_id);
+        $name = $tpl ? (string)$tpl['name'] : $tpl_id;
+        $ver  = isset($style['template_version']) ? (string)$style['template_version'] : '';
+        $out .=
+            '<div class="mb-3">
+                <label class="form-label small" for="sd-style-template">' . lang('Started from') . '</label>
+                <input type="text" class="form-control form-control-sm" id="sd-style-template" value="' . h($name . ($ver !== '' ? ' ' . $ver : '')) . '" readonly>
+            </div>';
+    }
+    return $out;
+}
+
+/**
  * "Select Page" picker — lists every visual-designer page not already on this
  * design. Rows are filled by the editor from api.php (designer/selectable_pages).
  */
@@ -833,7 +1222,7 @@ function pg_designer_import_modal()
                         </div>
                         <div class="alert alert-secondary py-2 small mb-0">
                             <div><span class="bi bi-info-circle me-1"></span>' . lang('Every .html becomes a page (index.html → index). Its head is replaced by the design\'s: stylesheets and scripts arrive as design assets, Google Fonts in the fonts list, Bootstrap and jQuery are dropped in favour of the design\'s own.') . '</div>
-                            <div class="mt-1">' . lang('Pages open as unsaved tabs — review them, then save.') . '</div>
+                            <div class="mt-1">' . lang('Pages open as unsaved tabs — review them, then publish.') . '</div>
                         </div>
                         <div id="sd-import-status" class="small mt-3" style="display:none"></div>
                     </div>
@@ -914,6 +1303,35 @@ function pg_designer_resolve_tab_refs($pages, $tab_ids)
             SET system_region_config = '" . e(json_encode($resolved, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "',
                 updated_at = " . time() . "
             WHERE id = '" . (int)$row['id'] . "' LIMIT 1");
+    }
+}
+
+/**
+ * Page settings that name a page by its tab key - the comment e-mail page.
+ *
+ * pg_designer_save_page() writes such a value as "none" because the page it
+ * names may be saved later in the same loop; once every page has its id the
+ * value is resolved and written here. Pages this session could not write
+ * (held by someone else) are left alone.
+ */
+function pg_designer_resolve_page_tab_refs($pages, $id_map, $tab_ids, $locked_pages = array())
+{
+    $ids_by_key = array();
+    foreach ((array)$id_map as $m) {
+        if ($m['key'] !== '') $ids_by_key[$m['key']] = (int)$m['page_id'];
+    }
+    foreach ((array)$pages as $p) {
+        if (!is_array($p)) continue;
+        $raw = isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : '';
+        if (!is_string($raw) || strncmp($raw, 'tab:', 4) !== 0) continue;
+        if (isset($locked_pages[(int)(isset($p['page_id']) ? $p['page_id'] : 0)])) continue;
+        $key     = isset($p['key']) ? (string)$p['key'] : '';
+        $page_id = isset($ids_by_key[$key]) ? $ids_by_key[$key] : (int)(isset($p['page_id']) ? $p['page_id'] : 0);
+        if ($page_id <= 0) continue;
+        $mail = (int)pg_designer_resolve_tab_values($raw, $tab_ids);
+        db("UPDATE page
+            SET comments_submitter_email_page_id = '$mail', comments_watcher_email_page_id = '$mail'
+            WHERE page_id = '$page_id' LIMIT 1");
     }
 }
 
@@ -1060,6 +1478,14 @@ function pg_designer_screen_post($ctx)
         'style_custom_css'                  => isset($_POST['style_custom_css'])   ? (string)$_POST['style_custom_css']   : '',
         'style_custom_js'                   => isset($_POST['style_custom_js'])    ? (string)$_POST['style_custom_js']    : '',
         'style_custom_fonts'                => isset($_POST['style_custom_fonts']) ? (string)$_POST['style_custom_fonts'] : '',
+        // Written for a new design only (save_system_style()). The template
+        // has to be one this installation ships.
+        'framework'                         => isset($_POST['style_framework']) ? (string)$_POST['style_framework'] : '',
+        'template'                          => (isset($_POST['style_template']) && pg_design_template((string)$_POST['style_template'])) ? (string)$_POST['style_template'] : '',
+        'template_version'                  => isset($_POST['style_template_version']) ? (string)$_POST['style_template_version'] : '',
+        // Hidden inputs of the Theme settings; validated by save_system_style().
+        'look'                              => isset($_POST['style_look']) ? (string)$_POST['style_look'] : '',
+        'palette'                           => isset($_POST['style_palette']) ? (string)$_POST['style_palette'] : '',
     );
     // On an un-migrated database the style still carries the tree; keep the
     // first page's so the old readers see something.
@@ -1171,6 +1597,7 @@ function pg_designer_screen_post($ctx)
         if ($m['key'] !== '' && $m['page_id'] > 0) $tab_ids[$m['key']] = (int)$m['page_id'];
     }
     pg_designer_resolve_tab_refs($pages, $tab_ids);
+    pg_designer_resolve_page_tab_refs($pages, $id_map, $tab_ids, $locked_pages);
     foreach ($cf_jobs as $cf_page_id => $cf_set) {
         $cf_set = pg_designer_resolve_tab_values($cf_set, $tab_ids);
         $cf_res = pg_cf_reconcile_page_form($cf_page_id, $user['id'], $cf_set);

@@ -52,6 +52,23 @@ if (ws_enabled() && function_exists('ws_claude_tick')) {
     ws_claude_tick();
 }
 
+// Requests to Pinegrap AI nobody's screen carried on, and the ones that
+// stopped moving (includes/workspace/ai.php).
+if (ws_enabled() && function_exists('ws_ai_job')) {
+    ws_ai_job();
+}
+
+// Scheduled actions whose time has come (includes/workspace/scheduled.php).
+if (ws_enabled() && function_exists('ws_scheduled_run')) {
+    ws_scheduled_run(20);
+}
+
+// Task reminders by e-mail whose time has come; the general job looks every
+// five minutes as well (includes/workspace/reminders.php).
+if (ws_enabled() && function_exists('ws_task_reminders_run')) {
+    ws_task_reminders_run();
+}
+
 if (function_exists('pg_cron_ran')) {
     pg_cron_ran('workspace_recurring_job');
 }

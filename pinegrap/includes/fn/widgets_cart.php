@@ -1519,6 +1519,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // catalog and express-order widgets. short_description above
                 // is plain text and stays escaped.
                 '__item_description'       => (string)$item['description'],
+                '__item_summary'           => h(pg_sw_item_summary($item['description'])),   // plain one-liner for rows
                 '__item_qty'               => (string)$item['qty'],            // numeric, safe
                 '__item_qty_input'         => $qty_input,                       // editable input (legacy token)
                 // Item price tokens — when discount is active, expand to
@@ -2031,6 +2032,27 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                 db("UPDATE express_order_pages SET next_page_id = '" . (int)$_eo_next_page . "' WHERE page_id = '" . (int)$_eo_page_id . "'");
             }
         }
+
+        // The order receipt e-mail (cfg.order_receipt_email_page_id): a page
+        // sent as HTML to the billing address when the order is placed
+        // (submit_order.php), whose Order View widget draws the order. Only
+        // a widget whose settings say something about it is mirrored: 0
+        // turns the e-mail off, a page turns it on; a widget that never had
+        // the setting leaves what the legacy screen stored.
+        if (array_key_exists('order_receipt_email_page_id', $cfg)) {
+            $_eo_receipt_page = (int)$cfg['order_receipt_email_page_id'];
+            if ($_eo_receipt_page > 0 && !(int)db_value("SELECT page_id FROM page WHERE page_id = '" . $_eo_receipt_page . "' LIMIT 1")) {
+                $_eo_receipt_page = 0;
+            }
+            $_eo_receipt_subject = trim((string)(isset($cfg['order_receipt_email_subject']) ? $cfg['order_receipt_email_subject'] : ''));
+            if ($_eo_receipt_subject === '') $_eo_receipt_subject = (string)lang('Order Receipt #');
+            db("UPDATE express_order_pages SET
+                    order_receipt_email         = '" . ($_eo_receipt_page > 0 ? 1 : 0) . "',
+                    order_receipt_email_page_id = '" . $_eo_receipt_page . "',
+                    order_receipt_email_format  = '" . ($_eo_receipt_page > 0 ? 'html' : 'plain_text') . "',
+                    order_receipt_email_subject = '" . e(mb_substr($_eo_receipt_subject, 0, 255)) . "'
+                WHERE page_id = '" . (int)$_eo_page_id . "'");
+        }
     }
 
     // ── Initialize order state + run pricing / offers / tax pass ─────────────
@@ -2405,6 +2427,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // visibility. Selecting an option fills the billing_* inputs via
         // inline JS (no fetch — addresses are inlined as JSON).
         'address_book'           => _eo_render_address_book_select(),
+        // The same for the shipping address of a single-recipient order:
+        // the member's address book ("My Addresses"), written into the
+        // shipping_<rid>_* fields.
+        'address_book_shipping'  => ($needs_shipping && count($recipients) === 1)
+                                        ? _eo_render_saved_address_select('shipping', (int)$recipients[0]['id']) : '',
         // Promotional sections sourced from view_offers.php: upsell nudges
         // visitors toward higher tiers; applied confirms current discounts.
         'upsell_offers'          => _eo_render_upsell_offers(isset($_eo_offers['upsell_offers']) ? $_eo_offers['upsell_offers'] : array()),
@@ -2454,6 +2481,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                . _pg_qty_stepper_inline_js()
                . _pg_eo_modal_relocate_inline_js()
                . _pg_eo_terms_accept_inline_js()
+               . _pg_eo_address_inline_js()
                . _pg_remove_from_cart_inline_js();
 
     // ── Wrap everything in the form ──────────────────────────────────────────
@@ -2571,6 +2599,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         }
         $_eo_vis_ctx = array(
             'has_shipping'       => (bool)$needs_shipping,
+            // Nothing to ship (a digital order): the billing card is the
+            // first form card, so it carries the "* is required" line.
+            'has_no_shipping'    => !$needs_shipping,
             // The tree's address-fields row is wrapped in this flag — it
             // shows ONLY for single-recipient orders. For multi-recipient
             // orders the row is dropped and the server-rendered shipping
@@ -3636,4 +3667,105 @@ function _pg_qty_stepper_inline_js()
 })();
 </script>
 HTML;
+}
+
+// ============================================================================
+// cart_link — the way to the cart, placed wherever the design wants it
+// ============================================================================
+// A header (beside the login region), a footer, a product page: one link to
+// the visitor's cart, carrying how many products are in it. The count and
+// the subtotal are read on every request, so after an add the next page
+// already says so.
+//
+// Tokens: ^^__cart_url^^ (the cart page; the link drops when the site has
+// none), ^^__cart_count^^ (the quantity in the cart), ^^__cart_count_label^^
+// ("3 products"), ^^__cart_subtotal^^ (price × quantity, in the visitor's
+// currency). Flags: cart_has_items, cart_is_empty.
+// Config: cart_page_id — 0 picks the cart the visitor last saw, else the
+// site's cart page (pg_sw_cart_url()).
+
+/**
+ * Address of the visitor's cart page, '' when the site has none.
+ *
+ * The chosen page first; then the cart (or express order) page this visitor
+ * last saw, as the legacy cart region does; then the site's own.
+ */
+function pg_sw_cart_url($page_id = 0)
+{
+    $page_id = (int)$page_id;
+    if ($page_id > 0) {
+        $url = _pg_member_page_url($page_id);
+        if ($url !== '') return $url;
+    }
+    foreach (array('shopping_cart_page_id', 'express_order_page_id') as $key) {
+        $seen = isset($_SESSION['ecommerce'][$key]) ? (int)$_SESSION['ecommerce'][$key] : 0;
+        if ($seen > 0) {
+            $url = _pg_member_page_url($seen);
+            if ($url !== '') return $url;
+        }
+    }
+    if (function_exists('get_page_type_url')) {
+        foreach (array('shopping cart', 'express order') as $type) {
+            $url = get_page_type_url($type);
+            if ($url) return (string)$url;
+        }
+    }
+    return '';
+}
+
+function _render_system_widget_cart_link($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    static $placement = 0;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    if (!defined('ECOMMERCE') || ECOMMERCE !== true) return '';
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    // A page drawn for the search index or the SEO score belongs to no
+    // visitor's cart.
+    $background = (function_exists('pg_seo_rendering') && pg_seo_rendering())
+               || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true);
+    $order_id = (!$background && isset($_SESSION['ecommerce']['order_id'])) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+
+    $count     = 0;
+    $sub_cents = 0;
+    if ($order_id > 0) {
+        $row = db_item("SELECT SUM(quantity) AS qty, SUM(price * quantity) AS subtotal
+                        FROM order_items WHERE order_id = '" . $order_id . "'");
+        if (is_array($row)) {
+            $count     = (int)$row['qty'];
+            $sub_cents = (int)round((float)$row['subtotal']);
+        }
+    }
+
+    // The symbol may be an HTML entity (prepare_price_for_output()); it is
+    // written as it is, never escaped a second time.
+    $symbol = (!empty($cfg['currency']) && is_string($cfg['currency']))
+        ? $cfg['currency'] : (defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '');
+
+    $links = array(
+        '__cart_url' => pg_sw_cart_url(isset($cfg['cart_page_id']) ? $cfg['cart_page_id'] : 0),
+    );
+    $values = array(
+        '__cart_count'       => (string)$count,
+        '__cart_count_label' => h(lang(array('string' => '{var:1} product{suffix:1}', 'vars' => array($count), 'suffix' => array($count === 1 ? '' : 's')))),
+        '__cart_subtotal'    => pg_visitor_money($sub_cents / 100, $symbol),
+    );
+
+    _eo_apply_visibility_bindings($tree, array(
+        'cart_has_items' => ($count > 0),
+        'cart_is_empty'  => ($count <= 0),
+    ));
+    _pg_member_drop_empty_links($tree, $links);
+    pg_cf_link_labels($tree);
+
+    $split    = _split_widget_tree($tree);
+    $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+    // A header and an offcanvas menu may both carry it.
+    $rendered = pg_sw_uniquify_row_ids($rendered, (int)$widget_id, ++$placement);
+
+    $tokens = $values;
+    foreach ($links as $k => $v) $tokens[$k] = h($v);
+    return _pg_member_apply_tokens($rendered, $tokens);
 }

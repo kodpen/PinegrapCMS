@@ -910,7 +910,36 @@ initialize_device_type();
 // We use this token in so many places (for post and get requests) so that is why we do this here.
 initialize_token();
 
-// If ecommerce is enabled, then check order and prepare currency values.
+// Base currency. Defined whether or not the shop is switched on: the ERP keeps
+// its books in this currency, and settings screens that carry ERP fields (the
+// commerce tab, the account and till forms) print its symbol, so leaving the
+// constants undefined on a site without a shop turned those screens into a
+// fatal "undefined constant" error and made the ERP fall back to USD. The
+// currencies table is small and always present, so this is one cheap read.
+$base_currency = db_item("
+    SELECT
+        id,
+        code,
+        symbol,
+        exchange_rate
+    FROM currencies
+    WHERE base = '1'
+");
+
+if (is_array($base_currency) && isset($base_currency['id']) && $base_currency['id'] !== '') {
+    define('BASE_CURRENCY_ID', $base_currency['id']);
+    define('BASE_CURRENCY_CODE', $base_currency['code']);
+    define('BASE_CURRENCY_SYMBOL', $base_currency['symbol']);
+} else {
+    // No base currency is marked, so fall back to USD.
+    define('BASE_CURRENCY_ID', 0);
+    define('BASE_CURRENCY_CODE', 'USD');
+    define('BASE_CURRENCY_SYMBOL', '$');
+}
+
+define('BASE_CURRENCY_EXCHANGE_RATE', 1);
+
+// If ecommerce is enabled, then check order and prepare the visitor's currency.
 if (ECOMMERCE == true) {
 
     // If there is an order in this visitor's session, then check if order is still an incomplete
@@ -932,31 +961,6 @@ if (ECOMMERCE == true) {
             unset($_SESSION['ecommerce']['order_id']);
         }
     }
-
-    // Get base currency
-    $base_currency = db_item("
-        SELECT
-            id,
-            code,
-            symbol,
-            exchange_rate
-        FROM currencies
-        WHERE base = '1'
-    ");
-
-    // If a base currency was found, then set constants for that currency
-    if (is_array($base_currency) && isset($base_currency['id']) && $base_currency['id'] !== '') {
-        define('BASE_CURRENCY_ID', $base_currency['id']);
-        define('BASE_CURRENCY_CODE', $base_currency['code']);
-        define('BASE_CURRENCY_SYMBOL', $base_currency['symbol']);
-    } else {
-        // Otherwise a base currency was not found, so use USD
-        define('BASE_CURRENCY_ID', 0);
-        define('BASE_CURRENCY_CODE', 'USD');
-        define('BASE_CURRENCY_SYMBOL', '$');
-    }
-
-    define('BASE_CURRENCY_EXCHANGE_RATE', 1);
 
     $visitor_currency = array();
 

@@ -675,10 +675,15 @@ function erp_edoc_account_missing($account)
  * the store's own record of a buyer it already knows, and completing it is
  * bookkeeping, not rewriting. Every correction is logged with what changed.
  *
+ * A refusal names the field it is about in 'field' (a key of
+ * erp_edoc_fix_fields(), empty when it is about none), so the form can mark
+ * that box. Nothing is written when anything is refused.
+ *
  * @param int   $invoice_id
  * @param array $values   field name => value, from the card's own form
  * @param int   $user_id
- * @return array ['success' => bool, 'message' => string, 'error' => string]
+ * @return array ['success' => bool, 'message' => string, 'error' => string,
+ *                'field' => string]
  */
 function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
 {
@@ -735,7 +740,7 @@ function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
             $value = preg_replace('/\D/', '', $value);
 
             if (($value !== '') && (strlen($value) !== 10) && (strlen($value) !== 11)) {
-                return array('success' => false, 'message' => '', 'error' => lang('A VKN is ten digits and a TCKN is eleven.'));
+                return array('success' => false, 'message' => '', 'error' => lang('A VKN is ten digits and a TCKN is eleven.'), 'field' => 'tax_number');
             }
         }
 
@@ -765,7 +770,7 @@ function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
             $value = preg_replace('/\D/', '', $value);
 
             if (($value !== '') && (strlen($value) !== 10) && (strlen($value) !== 11)) {
-                return array('success' => false, 'message' => '', 'error' => lang('A VKN is ten digits and a TCKN is eleven.'));
+                return array('success' => false, 'message' => '', 'error' => lang('A VKN is ten digits and a TCKN is eleven.'), 'field' => 'carrier_vkn');
             }
         }
 
@@ -784,12 +789,19 @@ function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
         $carrier_title = trim((string) (($values['carrier_title'] ?? '') !== '' ? $values['carrier_title'] : ($invoice['carrier_title'] ?? '')));
         $carrier_vkn = preg_replace('/\D/', '', (string) (($values['carrier_vkn'] ?? '') !== '' ? $values['carrier_vkn'] : ($invoice['carrier_vkn'] ?? '')));
 
+        // The final-consumer number is not mistyped, so it gets its own
+        // sentence: it stands in for a buyer without an ID and names nobody
+        // who could have carried the goods.
+        if (($carrier_vkn !== '') && function_exists('erp_edoc_final_consumer_tckn') && ($carrier_vkn === erp_edoc_final_consumer_tckn())) {
+            return array('success' => false, 'message' => '', 'error' => lang(array('string' => '{var:1} stands in for a buyer without an ID and cannot be the carrier\'s number. Enter the cargo company\'s 10-digit VKN, or the courier\'s own TCKN.', 'vars' => $carrier_vkn)), 'field' => 'carrier_vkn');
+        }
+
         if (($carrier_vkn !== '') && function_exists('erp_edoc_tax_number_valid') && !erp_edoc_tax_number_valid($carrier_vkn)) {
-            return array('success' => false, 'message' => '', 'error' => lang('The carrier\'s VKN / TCKN does not pass the check digits; it is probably mistyped.'));
+            return array('success' => false, 'message' => '', 'error' => lang('The carrier\'s VKN / TCKN does not pass the check digits; it is probably mistyped.'), 'field' => 'carrier_vkn');
         }
 
         if ((strlen($carrier_vkn) === 11) && function_exists('erp_edoc_person_name') && (erp_edoc_person_name($carrier_title) === null)) {
-            return array('success' => false, 'message' => '', 'error' => lang('An 11-digit number is a TCKN, so the carrier is a person: write their first name and surname. For a cargo company, enter its 10-digit VKN instead.'));
+            return array('success' => false, 'message' => '', 'error' => lang('An 11-digit number is a TCKN, so the carrier is a person: write their first name and surname. For a cargo company, enter its 10-digit VKN instead.'), 'field' => 'carrier_title');
         }
     }
 

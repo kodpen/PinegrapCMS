@@ -45,6 +45,11 @@ function api_scope_groups() {
 
 		'pages'     => array('label' => 'Pages',      'read' => 'pages:read',     'write' => 'pages:write'),
 
+		// The layout of the Visual Page Editor's pages. Writing means proposing:
+		// a change waits until a designer applies it, so an application never
+		// rewrites a page by itself.
+		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
+
 		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => 'offers:write'),
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
@@ -65,7 +70,13 @@ function api_scope_groups() {
 		// The health report: the score and the checks behind it, for the
 		// operator's own monitoring. Read only, and nothing here is sent
 		// anywhere by the site itself.
-		'system'    => array('label' => 'System',     'read' => 'system:read',    'write' => '')
+		'system'    => array('label' => 'System',     'read' => 'system:read',    'write' => ''),
+
+		// The caller's own account: its notifications, the devices it is signed
+		// in on and its push registration. A device signed in by a person always
+		// holds it; an application only when the operator gives it, because an
+		// integration syncing stock has no business reading its owner's bell.
+		'account'   => array('label' => 'Own account', 'read' => 'account:read', 'write' => 'account:write')
 
 	);
 
@@ -264,6 +275,12 @@ function api_owner_scopes($owner) {
 
 		$scopes[] = 'webhooks:manage';
 
+		// A page's layout is the designers' own work (the editor opens its
+		// structure to roles 0 and 1 only), so only they may let a machine
+		// read it and put changes in front of them.
+		$scopes[] = 'design:read';
+		$scopes[] = 'design:write';
+
 		// The health report names the firewall's state, which jobs stopped
 		// moving, how much disk is gone and which files fail their integrity
 		// check. That is the operator's own diagnostic detail, so the right to
@@ -276,6 +293,10 @@ function api_owner_scopes($owner) {
 	// Site name, currency, tax rate, order status vocabulary. Read-only and
 	// needed by every integration, so every owner may delegate it.
 	$scopes[] = 'meta:read';
+
+	// Everybody's own bell and devices are their own to hand over.
+	$scopes[] = 'account:read';
+	$scopes[] = 'account:write';
 
 	// What the modules allow this owner, asked of them rather than decided
 	// here: the right behind an ERP scope is an ERP right, and this file has

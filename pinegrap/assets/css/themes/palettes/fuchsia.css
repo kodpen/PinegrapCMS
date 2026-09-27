@@ -1,0 +1,53 @@
+/* Pinegrap colour palette: Fuchsia. Generated from #a21caf and #312e81. */
+:root,
+[data-bs-theme=light] {
+    --bs-primary: #a21caf;
+    --bs-primary-rgb: 162, 28, 175;
+    --bs-primary-text-emphasis: #410b46;
+    --bs-primary-bg-subtle: #ecd2ef;
+    --bs-primary-border-subtle: #daa4df;
+    --pg-on-primary: #ffffff;
+    --pg-primary-fg: #a21caf;
+    --pg-primary-fg-rgb: 162, 28, 175;
+    --pg-primary-hover: #8a1895;
+    --pg-primary-hover-rgb: 130, 22, 140;
+    --pg-primary-active: #82168c;
+    --bs-link-color: #a21caf;
+    --bs-link-color-rgb: 162, 28, 175;
+    --bs-link-hover-color: #82168c;
+    --bs-link-hover-color-rgb: 130, 22, 140;
+    --bs-focus-ring-color: rgba(162, 28, 175, 0.25);
+    --pg-primary-focus-border: #d18ed7;
+    --bs-secondary: #312e81;
+    --bs-secondary-rgb: 49, 46, 129;
+    --bs-secondary-text-emphasis: #141234;
+    --bs-secondary-bg-subtle: #d6d5e6;
+    --bs-secondary-border-subtle: #adabcd;
+    --pg-on-secondary: #ffffff;
+    --pg-secondary-fg: #312e81;
+    --pg-secondary-fg-rgb: 49, 46, 129;
+    --pg-secondary-hover: #2a276e;
+    --pg-secondary-hover-rgb: 39, 37, 103;
+    --pg-secondary-active: #272567;
+}
+
+[data-bs-theme=dark] {
+    --bs-primary-text-emphasis: #c777cf;
+    --bs-primary-bg-subtle: #200623;
+    --bs-primary-border-subtle: #611169;
+    --pg-primary-fg: #c470cd;
+    --pg-primary-fg-rgb: 196, 112, 205;
+    --pg-primary-hover-rgb: 208, 141, 215;
+    --bs-link-color: #c470cd;
+    --bs-link-color-rgb: 196, 112, 205;
+    --bs-link-hover-color: #d08dd7;
+    --bs-link-hover-color-rgb: 208, 141, 215;
+    --bs-focus-ring-color: rgba(181, 73, 191, 0.3);
+    --pg-primary-focus-border: #be60c7;
+    --bs-secondary-text-emphasis: #8382b3;
+    --bs-secondary-bg-subtle: #0a091a;
+    --bs-secondary-border-subtle: #1d1c4d;
+    --pg-secondary-fg: #8c8ab8;
+    --pg-secondary-fg-rgb: 140, 138, 184;
+    --pg-secondary-hover-rgb: 163, 161, 199;
+}

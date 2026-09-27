@@ -1,0 +1,59 @@
+/*!
+ * Pinegrap look: Corporate.
+ * Measured corners, crisp small shadows, compact controls and tinted table
+ * headings. Built for pages that carry a lot of information.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, system-ui, sans-serif;
+    --pg-font-size: 0.9375rem;
+    --pg-heading-weight: 600;
+    --pg-heading-tracking: -0.01em;
+    --pg-heading-line-height: 1.25;
+    --pg-display-weight: 600;
+    --pg-lead-weight: 400;
+    --pg-brand-weight: 700;
+    --pg-nav-link-weight: 500;
+
+    --pg-radius-sm: 0.25rem;
+    --pg-radius: 0.375rem;
+    --pg-radius-lg: 0.5rem;
+    --pg-radius-xl: 0.75rem;
+    --pg-radius-xxl: 1rem;
+    --pg-radius-card: 0.5rem;
+    --pg-radius-badge: 0.25rem;
+    --pg-radius-modal: 0.5rem;
+
+    --pg-card-border-color: var(--bs-border-color);
+    --pg-menu-border-color: var(--bs-border-color);
+
+    --pg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --pg-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    --pg-shadow-lg: 0 10px 26px rgba(0, 0, 0, 0.14);
+    --pg-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --pg-card-shadow-hover: var(--pg-shadow);
+    --pg-card-cap-bg: var(--bs-tertiary-bg);
+
+    --pg-btn-weight: 600;
+    --pg-btn-font-size: 0.9375rem;
+    --pg-btn-py: 0.4375rem;
+    --pg-btn-px: 1rem;
+
+    --pg-input-py: 0.4375rem;
+    --pg-input-px: 0.75rem;
+
+    --pg-card-py: 1rem;
+    --pg-card-px: 1.125rem;
+
+    --pg-pagination-joined: 1;
+
+    --pg-alert-accent: 3px;
+    --pg-alert-accent-color: currentColor;
+
+    --pg-badge-weight: 600;
+    --pg-th-weight: 600;
+    --pg-th-size: 0.8125rem;
+    --pg-th-bg: rgba(var(--bs-emphasis-color-rgb), 0.04);
+
+    --pg-progress-height: 0.75rem;
+}

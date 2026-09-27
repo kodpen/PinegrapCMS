@@ -1717,6 +1717,13 @@ function pg_auth_token_revoke_user($user_id, $respect_pin = false)
     }
 
     db($sql);
+
+    // Devices signed in to the external API are sessions of the same person.
+    // A new password or "sign out everywhere" that left a phone signed in
+    // would not be what either of them says.
+    require_once(PG_FUNCTIONS_DIR . '/includes/api/devices.php');
+
+    api_devices_revoke_user($user_id);
 }
 
 // Probabilistic cleanup of expired rows, the same one-in-two-hundred approach
@@ -4085,6 +4092,17 @@ function pg_login_throttle_deny($limits)
     // that keeps arriving at a locked door is what fail2ban is for.
     if (function_exists('waf_text_log') && function_exists('waf_client_ip')) {
         waf_text_log('DENY', waf_client_ip(), array('status' => 429, 'rule' => 'login-lock'));
+    }
+
+    // The external API signs people in from devices through these same
+    // counters. It answers in its own shape and through its own exit, which
+    // also writes the request to its log.
+    if (defined('PG_API_ENTRY') && function_exists('api_fail') && function_exists('api_extra_headers')) {
+        api_extra_headers('Retry-After', (string) (int) $limits['lockout']);
+
+        api_fail(429, 'rate_limited', lang(array(
+            'string' => 'Too many failed sign-in attempts. Please wait {var:1} minutes and try again.',
+            'vars'   => (int) ($limits['lockout'] / 60))));
     }
 
     if (!headers_sent()) {

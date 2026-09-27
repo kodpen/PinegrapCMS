@@ -199,3 +199,46 @@ body.pg-tour-open { overflow: hidden; }
     .pg-tour-bubble,
     .pg-tour-dot { transition: none !important; }
 }
+
+/* A drawing above a step's words (the workspace tour draws one on every
+   step). Plain shapes coloured by the theme, so a drawing reads the same in
+   every language and in the light and the dark appearance. */
+.pg-tour-bubble:has(.pg-tour-art) { width: 360px; }
+
+.pg-tour-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: .15rem 0 .7rem;
+    border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+}
+
+.pg-tour-art .a-panel { fill: var(--bs-body-bg); stroke: var(--bs-border-color-translucent); stroke-width: 1; }
+.pg-tour-art .a-soft { fill: var(--bs-secondary-bg); }
+.pg-tour-art .a-line { fill: var(--bs-border-color); }
+.pg-tour-art .a-ink { fill: var(--bs-secondary-color); opacity: .6; }
+.pg-tour-art .a-white { fill: #fff; }
+.pg-tour-art .a-acc { fill: var(--bs-primary); }
+.pg-tour-art .a-acc-soft { fill: color-mix(in srgb, var(--bs-primary) 22%, transparent); }
+.pg-tour-art .a-ok { fill: var(--bs-success); }
+.pg-tour-art .a-warn { fill: var(--bs-warning); }
+.pg-tour-art .a-bad { fill: var(--bs-danger); }
+.pg-tour-art .a-bad-soft { fill: color-mix(in srgb, var(--bs-danger) 22%, transparent); }
+.pg-tour-art .a-claude { fill: #7c5cf5; }
+.pg-tour-art .a-ai { fill: #0f8a7e; }
+
+.pg-tour-art [class^="a-stroke"] { fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pg-tour-art .a-stroke,
+.pg-tour-art .a-stroke-box { stroke: var(--bs-secondary-color); }
+.pg-tour-art .a-stroke-acc { stroke: var(--bs-primary); }
+.pg-tour-art .a-stroke-ok { stroke: var(--bs-success); }
+.pg-tour-art .a-stroke-bad { stroke: var(--bs-danger); }
+.pg-tour-art .a-stroke-white,
+.pg-tour-art .a-stroke-white-box { stroke: #fff; }
+.pg-tour-art .a-stroke-dash { stroke: var(--bs-primary); stroke-dasharray: 3 5; opacity: .7; }
+
+@media (max-width: 575.98px) {
+
+    .pg-tour-art { max-height: 30vh; }
+}

@@ -421,6 +421,20 @@ if (pg_cron_job_is_enabled('push_job')) {
 
 }
 
+// Workspace task reminders by e-mail (includes/workspace/reminders.php). The
+// look is one indexed read; the workspace is loaded only when one is due, so
+// the general job stays as light as it was on every other tick.
+if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
+
+    require_once(dirname(__FILE__) . '/includes/workspace/reminders.php');
+
+    if (ws_task_reminders_waiting()) {
+        require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
+        ws_task_reminders_run();
+    }
+
+}
+
 // Optional dispatcher: at most one other scheduled job per tick, and only as
 // the very last thing this script does. Several of those scripts call exit()
 // from inside their own control flow, which ends this process too - harmless

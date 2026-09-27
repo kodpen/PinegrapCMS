@@ -13,9 +13,10 @@
 // Every gate is here rather than spread through the handlers, so reading this
 // one function tells you exactly what has been established by the time a handler
 // runs: the surface is switched on, the connection is encrypted, the caller is
-// not banned, the credentials are an application's own, the application is
-// inside its rate ceiling, its scopes cover this endpoint, and every parameter
-// has been checked against its declared type.
+// not banned, the credentials are an application's own or a signed-in device's,
+// the caller is inside its rate ceiling, its scopes cover this endpoint, and
+// every parameter has been checked against its declared type. The only routes
+// that skip the credential steps are the ones that hand a device its tokens.
 
 if (!defined('PG_API_ENTRY')) {
 	exit;
@@ -29,6 +30,7 @@ require_once($pg_api_directory . '/log.php');
 require_once($pg_api_directory . '/keys.php');
 require_once($pg_api_directory . '/scopes.php');
 require_once($pg_api_directory . '/auth.php');
+require_once($pg_api_directory . '/devices.php');
 require_once($pg_api_directory . '/ratelimit.php');
 require_once($pg_api_directory . '/idempotency.php');
 require_once($pg_api_directory . '/dry_run.php');
@@ -52,6 +54,8 @@ require_once($pg_api_directory . '/resources/pages.php');
 require_once($pg_api_directory . '/resources/files.php');
 require_once($pg_api_directory . '/resources/offers.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
+require_once($pg_api_directory . '/resources/design.php');
+require_once($pg_api_directory . '/resources/account.php');
 
 // API settings, read straight from the config row.
 //
@@ -205,6 +209,8 @@ function api_run() {
 
 	}
 
+	api_current_route($route);
+
 	$input = api_request_input();
 
 	// The description of the API is the one thing that can be public, and only
@@ -219,13 +225,25 @@ function api_run() {
 
 	}
 
-	$app = api_authenticate($input);
+	// Signing in and renewing a device's tokens are the calls that establish
+	// who is calling, so they cannot require it. What guards them instead is
+	// the sign-in screen's own throttle on the credentials, and a token that is
+	// long, random and only ever compared as a hash.
+	$public = !empty($route['public']);
 
-	api_rate_limit_check($app);
+	$app = null;
 
-	if ($route['scope'] !== '') {
+	if (!$public) {
 
-		api_require_scope($route['scope']);
+		$app = api_authenticate($input);
+
+		api_rate_limit_check($app);
+
+		if ($route['scope'] !== '') {
+
+			api_require_scope($route['scope']);
+
+		}
 
 	}
 
@@ -252,9 +270,9 @@ function api_run() {
 	// the caller intended, is answered with "nothing was written" and never
 	// runs. The header is validated here so that a malformed one is refused
 	// before the handler starts rather than at the line it happens to check.
-	if ((in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)) && (!api_dry_run_requested())) {
+	if ((!$public) && (in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)) && (!api_dry_run_requested())) {
 
-		$key = api_idempotency_key();
+		$key = api_idempotency_scoped_key($app, api_idempotency_key());
 
 		if ($key !== '') {
 

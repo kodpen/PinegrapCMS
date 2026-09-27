@@ -62,6 +62,13 @@ $style = array(
     'style_custom_fonts'                => isset($row['style_custom_fonts']) ? (string)$row['style_custom_fonts'] : '',
     'last_modified_timestamp'           => $row['style_timestamp'],
     'last_modified_username'            => (string)$row['last_modified_username'],
+    // Absent before 2026.4.5: every design until then was Bootstrap 5.
+    'framework'                         => pg_design_framework_key(isset($row['style_framework']) ? $row['style_framework'] : ''),
+    'template'                          => isset($row['style_template']) ? (string)$row['style_template'] : '',
+    'template_version'                  => isset($row['style_template_version']) ? (string)$row['style_template_version'] : '',
+    // Absent before 2026.4.5 (5.3): plain Bootstrap.
+    'look'                              => pg_design_look_key(isset($row['style_look']) ? $row['style_look'] : ''),
+    'palette'                           => pg_design_palette_key(isset($row['style_palette']) ? $row['style_palette'] : ''),
 );
 
 // Every page on this design, in creation order. Also performs the legacy

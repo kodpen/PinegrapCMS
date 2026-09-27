@@ -53,7 +53,12 @@ function api_openapi_build() {
 			'operationId' => str_replace('.', '_', $route['id']),
 			'summary'     => $route['summary'],
 			'tags'        => array(api_openapi_tag($route['id'])),
-			'security'    => array(array('applicationKey' => array())),
+			// Either credential opens an endpoint: an application's key and
+			// secret, or the token of a person signed in on a device. The two
+			// that hand a device its tokens need neither.
+			'security'    => !empty($route['public'])
+				? array()
+				: array(array('applicationKey' => array()), array('deviceToken' => array())),
 			'responses'   => api_openapi_responses($route)
 		);
 
@@ -108,6 +113,29 @@ function api_openapi_build() {
 			}
 
 			$parameters[] = $entry;
+
+		}
+
+		// Every read can be trimmed and asked conditionally; the response layer
+		// does both for every endpoint, so they are declared here once rather
+		// than on each route. See api_response_fields() and api_etag_matches().
+		if ($route['method'] === 'GET') {
+
+			$parameters[] = array(
+				'name'        => 'fields',
+				'in'          => 'query',
+				'required'    => false,
+				'description' => 'Comma separated top-level fields to keep in each record, for example id,name,price. id is always kept; an unknown name is ignored.',
+				'schema'      => array('type' => 'string')
+			);
+
+			$parameters[] = array(
+				'name'        => 'If-None-Match',
+				'in'          => 'header',
+				'required'    => false,
+				'description' => 'The ETag of an answer you already hold. When nothing has changed the answer is 304 with no body.',
+				'schema'      => array('type' => 'string')
+			);
 
 		}
 
@@ -205,7 +233,9 @@ function api_openapi_build() {
 			'version'     => (string)api_version(),
 			'description' => 'Read and write products, stock, orders and customers. '
 				. 'Money is always a whole number of minor units - 1999 is 19.99. '
-				. 'Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null.'
+				. 'Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. '
+				. 'Every read answers with an ETag and takes If-None-Match (304 when unchanged) and fields= (only the fields named). '
+				. 'An integration authenticates with its application key and secret; a person signed in on a device sends Authorization: Bearer with the token from /auth/login.'
 		),
 		'servers' => array(array('url' => api_openapi_base_url())),
 		'components' => array(
@@ -215,10 +245,15 @@ function api_openapi_build() {
 					'type'        => 'http',
 					'scheme'      => 'basic',
 					'description' => 'HTTP Basic. The user name is the application key, the password is its secret.'
+				),
+				'deviceToken' => array(
+					'type'        => 'http',
+					'scheme'      => 'bearer',
+					'description' => 'The access token of a person signed in on a device (POST /auth/login). Lives an hour; renew it with POST /auth/refresh.'
 				)
 			)
 		),
-		'security' => array(array('applicationKey' => array())),
+		'security' => array(array('applicationKey' => array()), array('deviceToken' => array())),
 		'paths' => $paths
 	);
 
@@ -423,6 +458,14 @@ function api_openapi_objects()
         'SeoIssue'       => 'api_seo_issue_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
+        'DesignPage'     => 'api_design_page_schema',
+        'DesignView'     => 'api_design_view_schema',
+        'DesignOutlineItem' => 'api_design_outline_item_schema',
+        'DesignProposal' => 'api_design_proposal_schema',
+        'AuthSession'    => 'api_auth_session_schema',
+        'Me'             => 'api_auth_me_schema',
+        'Device'         => 'api_device_schema',
+        'Notification'   => 'api_notification_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way
@@ -536,7 +579,7 @@ function api_openapi_responses($route) {
 
 	}
 
-	return array(
+	$responses = array(
 		'200' => $success,
 		'401' => array('description' => 'The key or the secret is wrong, or none was sent.', 'content' => $error_content),
 		'403' => array('description' => 'The application is not allowed to do this.', 'content' => $error_content),
@@ -544,6 +587,14 @@ function api_openapi_responses($route) {
 		'422' => array('description' => 'A parameter is missing or the wrong shape.', 'content' => $error_content),
 		'429' => array('description' => 'Rate limit reached. Retry-After says how long to wait.', 'content' => $error_content)
 	);
+
+	if ($route['method'] === 'GET') {
+
+		$responses['304'] = array('description' => 'Not modified: the ETag sent in If-None-Match still matches. No body.');
+
+	}
+
+	return $responses;
 
 }
 

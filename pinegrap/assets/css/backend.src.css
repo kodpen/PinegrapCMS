@@ -909,6 +909,410 @@ body .design-color {
 html[data-bs-theme="dark"] body .design-color {
   color: var(--design-color-highlight) !important;
 }
+
+/* The Visual Page Editor's menu icon is a neon sign: the frame glows in the
+   module colour, the cursor and spark in cyan. On hover the sign buzzes on,
+   the cursor darts in and clicks the block, the block lights up where it is
+   placed and the spark flares. */
+.pg-neon-icon {
+  flex: 0 0 auto;
+  overflow: visible;
+  vertical-align: -0.3em;
+}
+.pg-neon-icon .pg-neon-accent {
+  color: #0891b2;
+}
+html[data-bs-theme="dark"] .pg-neon-icon .pg-neon-accent {
+  color: #22d3ee;
+}
+/* The cursor turns on its tip, the block and the spark on their centres. */
+.pg-neon-icon .pg-neon-cursor {
+  transform-origin: 14px 11.6px;
+}
+.pg-neon-icon .pg-neon-block,
+.pg-neon-icon .pg-neon-spark {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-neon-icon {
+    animation: pg-neon-flicker 0.45s linear 1;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-neon-icon .pg-neon-cursor {
+    animation: pg-neon-click 0.9s ease-in-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-neon-icon .pg-neon-block {
+    animation: pg-neon-place 0.9s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-neon-icon .pg-neon-spark {
+    animation: pg-neon-flare 0.9s ease-out;
+  }
+}
+@keyframes pg-neon-flicker {
+  0%, 30%, 52%, 100% { opacity: 1; }
+  38%, 46% { opacity: 0.45; }
+}
+@keyframes pg-neon-click {
+  35% { transform: translate(-3px, -0.6px); }
+  48% { transform: translate(-3px, -0.6px) scale(0.78); }
+  60% { transform: translate(-3px, -0.6px) scale(1.05); }
+  72% { transform: translate(-3px, -0.6px); }
+}
+@keyframes pg-neon-place {
+  0%, 46% { transform: none; fill-opacity: 0; }
+  58% { transform: scale(1.35); fill-opacity: 0.7; }
+  74% { transform: scale(0.94); fill-opacity: 0.45; }
+  100% { transform: none; fill-opacity: 0; }
+}
+@keyframes pg-neon-flare {
+  0%, 50% { transform: none; }
+  70% { transform: rotate(90deg) scale(1.8); }
+  100% { transform: rotate(180deg); }
+}
+
+/* ── Main menu icons ───────────────────────────────────────────────────────────
+   Two-colour line icons, drawn by pg_menu_icon() (includes/fn/output.php).
+
+   First colour: the module's. Its colour class (.pages-color and the rest)
+   sets `color` on the <svg>, which draws the outline, and the module's other
+   shade tints the body (.pg-mi-2). The themes swap the two shades: light
+   draws the dark base colour over the pale highlight, dark the highlight
+   over the deep base colour.
+
+   Second colour: one hue per icon (--pg-mi-a), picked to stand apart from
+   the module colour, for the detail the icon is about -- the clock's hands,
+   the tick, the sun, the per cent sign. .pg-mi-a sets it as `color`, so
+   everything inside draws with it; .pg-mi-at tints with it.
+
+   Hovering a row plays one movement per icon, under a second, with a spring
+   at the end. All of it sits in a prefers-reduced-motion: no-preference
+   block, so a device asking for less motion gets none. Moving parts are
+   placed on the icon's own 24-unit grid (the SVG default transform-box,
+   view-box): an origin such as "12px 20px" is a point on that grid. */
+#menu .pg-mi {
+  flex: 0 0 auto;
+  overflow: visible;
+  vertical-align: -0.3em;
+  --pg-mi-2-opacity: 0.55;
+  --pg-mi-at-opacity: 0.35;
+  --pg-mi-spring: cubic-bezier(0.34, 1.8, 0.64, 1);
+  --pg-mi-amber: #d97706;
+  --pg-mi-orange: #ea580c;
+  --pg-mi-rose: #e11d48;
+  --pg-mi-pink: #db2777;
+  --pg-mi-sky: #0284c7;
+  --pg-mi-teal: #0d9488;
+  --pg-mi-lime: #65a30d;
+  --pg-mi-violet: #7c3aed;
+  --pg-mi-yellow: #ca8a04;
+}
+html[data-bs-theme="dark"] #menu .pg-mi {
+  --pg-mi-2-opacity: 0.7;
+  --pg-mi-at-opacity: 0.4;
+  --pg-mi-amber: #fbbf24;
+  --pg-mi-orange: #fb923c;
+  --pg-mi-rose: #fb7185;
+  --pg-mi-pink: #f472b6;
+  --pg-mi-sky: #38bdf8;
+  --pg-mi-teal: #2dd4bf;
+  --pg-mi-lime: #a3e635;
+  --pg-mi-violet: #a78bfa;
+  --pg-mi-yellow: #facc15;
+}
+
+/* The module's second shade. */
+#menu .pg-mi.dashboard-color { --pg-mi-2: var(--dashboard-color-highlight); --pg-mi-2-dark: var(--dashboard-color); }
+#menu .pg-mi.workspace-color { --pg-mi-2: var(--workspace-color-highlight); --pg-mi-2-dark: var(--workspace-color); }
+#menu .pg-mi.folders-color { --pg-mi-2: var(--folders-color-highlight); --pg-mi-2-dark: var(--folders-color); }
+#menu .pg-mi.pages-color { --pg-mi-2: var(--pages-color-highlight); --pg-mi-2-dark: var(--pages-color); }
+#menu .pg-mi.files-color { --pg-mi-2: var(--files-color-highlight); --pg-mi-2-dark: var(--files-color); }
+#menu .pg-mi.calendars-color { --pg-mi-2: var(--calendars-color-highlight); --pg-mi-2-dark: var(--calendars-color); }
+#menu .pg-mi.forms-color { --pg-mi-2: var(--forms-color-highlight); --pg-mi-2-dark: var(--forms-color); }
+#menu .pg-mi.statistics-color { --pg-mi-2: var(--statistics-color-highlight); --pg-mi-2-dark: var(--statistics-color); }
+#menu .pg-mi.contacts-color { --pg-mi-2: var(--contacts-color-highlight); --pg-mi-2-dark: var(--contacts-color); }
+#menu .pg-mi.users-color { --pg-mi-2: var(--users-color-highlight); --pg-mi-2-dark: var(--users-color); }
+#menu .pg-mi.campaigns-color { --pg-mi-2: var(--campaigns-color-highlight); --pg-mi-2-dark: var(--campaigns-color); }
+#menu .pg-mi.erp-color { --pg-mi-2: var(--erp-color-highlight); --pg-mi-2-dark: var(--erp-color); }
+#menu .pg-mi.ecommerce-color { --pg-mi-2: var(--ecommerce-color-highlight); --pg-mi-2-dark: var(--ecommerce-color); }
+#menu .pg-mi.ads-color { --pg-mi-2: var(--ads-color-highlight); --pg-mi-2-dark: var(--ads-color); }
+#menu .pg-mi.design-color { --pg-mi-2: var(--design-color-highlight); --pg-mi-2-dark: var(--design-color); }
+
+/* The second colour of each icon. */
+#menu .pg-mi-dashboard { --pg-mi-a: var(--pg-mi-orange); }
+#menu .pg-mi-workspace { --pg-mi-a: var(--pg-mi-teal); }
+#menu .pg-mi-folders { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-pages { --pg-mi-a: var(--pg-mi-orange); }
+#menu .pg-mi-files { --pg-mi-a: var(--pg-mi-amber); }
+#menu .pg-mi-calendars { --pg-mi-a: var(--pg-mi-rose); }
+#menu .pg-mi-forms { --pg-mi-a: var(--pg-mi-lime); }
+#menu .pg-mi-statistics { --pg-mi-a: var(--pg-mi-pink); }
+#menu .pg-mi-contacts { --pg-mi-a: var(--pg-mi-amber); }
+#menu .pg-mi-users { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-campaigns { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-erp { --pg-mi-a: var(--pg-mi-teal); }
+#menu .pg-mi-orders { --pg-mi-a: var(--pg-mi-orange); }
+#menu .pg-mi-products { --pg-mi-a: var(--pg-mi-amber); }
+#menu .pg-mi-catalog { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-offers { --pg-mi-a: var(--pg-mi-rose); }
+#menu .pg-mi-shipping { --pg-mi-a: var(--pg-mi-amber); }
+#menu .pg-mi-ads { --pg-mi-a: var(--pg-mi-yellow); }
+/* Page Styles: the paint on the palette is every colour but its own. */
+#menu .pg-mi-styles .pg-mi-c1 { color: var(--pg-mi-sky); }
+#menu .pg-mi-styles .pg-mi-c2 { color: var(--pg-mi-amber); }
+#menu .pg-mi-styles .pg-mi-c3 { color: var(--pg-mi-lime); }
+#menu .pg-mi-styles .pg-mi-c4 { color: var(--pg-mi-violet); }
+
+#menu .pg-mi .pg-mi-2 {
+  fill: var(--pg-mi-2, currentColor);
+  fill-opacity: var(--pg-mi-2-opacity);
+}
+html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
+  fill: var(--pg-mi-2-dark, currentColor);
+}
+#menu .pg-mi .pg-mi-a {
+  color: var(--pg-mi-a, currentColor);
+}
+#menu .pg-mi .pg-mi-at {
+  fill: currentColor;
+  fill-opacity: var(--pg-mi-at-opacity);
+}
+#menu .pg-mi .pg-mi-solid {
+  fill-opacity: 0.92;
+}
+#menu .pg-mi .pg-mi-date {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+#menu .pg-mi .pg-mi-check,
+#menu .pg-mi .pg-mi-trend {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+#menu .pg-mi .pg-mi-speed {
+  opacity: 0;
+}
+#menu .pg-mi :is(.pg-mi-bar, .pg-mi-sun, .pg-mi-tip, .pg-mi-spark, .pg-mi-date,
+  .pg-mi-keys circle, .pg-mi-dots circle, .pg-mi-lights circle) {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+#menu .pg-mi .pg-mi-bar {
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Parts that stay moved while the row is hovered spring into place and
+     back. */
+  #menu .pg-mi :is(.pg-mi-flap, .pg-mi-sheet, .pg-mi-back, .pg-mi-front, .pg-mi-sun,
+    .pg-mi-rings, .pg-mi-lid, .pg-mi-l1, .pg-mi-l2, .pg-mi-l3, .pg-mi-truck) {
+    transition: transform 0.45s var(--pg-mi-spring);
+  }
+  #menu .pg-mi .pg-mi-speed {
+    transition: opacity 0.2s ease;
+  }
+
+  /* Dashboard: the dial bounces and the minute hand sweeps twice round,
+     landing where it was, so the clock still tells the time. */
+  #menu .pg-mi-dashboard .pg-mi-face { transform-origin: 12px 12px; }
+  #menu .pg-mi-dashboard .pg-mi-hand-m { transform-origin: 12px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-dashboard .pg-mi-face {
+    animation: pg-mi-bounce 0.6s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-dashboard .pg-mi-hand-m {
+    animation: pg-mi-spin2 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* Workspace: the bubble hops off its tail, then the tick is drawn. */
+  #menu .pg-mi-workspace .pg-mi-bubble { transform-origin: 6.5px 19.8px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-workspace .pg-mi-bubble {
+    animation: pg-mi-hop 0.7s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-workspace .pg-mi-check {
+    animation: pg-mi-draw 0.45s 0.2s ease-out backwards;
+  }
+
+  /* File Manager: the front drops open and the sheet inside comes up. */
+  #menu .pg-mi-folders .pg-mi-flap { transform-origin: 12px 20px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-folders .pg-mi-flap {
+    transform: skewX(-14deg) scaleY(0.8);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-folders .pg-mi-sheet {
+    transform: translateY(-3px);
+  }
+
+  /* Pages: the lights blink in turn and the content scrolls. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-pages .pg-mi-lights circle {
+    animation: pg-mi-blink 0.5s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-pages .pg-mi-lights circle + circle {
+    animation-delay: 0.12s;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-pages .pg-mi-content {
+    animation: pg-mi-scroll 0.75s ease-in-out;
+  }
+
+  /* Files: the two photos fan apart and the sun comes up. */
+  #menu .pg-mi-files .pg-mi-back { transform-origin: 14px 9px; }
+  #menu .pg-mi-files .pg-mi-front { transform-origin: 3px 20px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-files .pg-mi-back {
+    transform: translate(1.2px, -1.2px) rotate(7deg);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-files .pg-mi-front {
+    transform: rotate(-5deg);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-files .pg-mi-sun {
+    transform: translateY(-1.8px) scale(1.25);
+  }
+
+  /* Calendars: the page swings on its rings and the date pops. */
+  #menu .pg-mi-calendars .pg-mi-page { transform-origin: 12px 3px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-calendars .pg-mi-page {
+    animation: pg-mi-hang 0.8s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-calendars .pg-mi-rings {
+    transform: translateY(-1.2px);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-calendars .pg-mi-date {
+    animation: pg-mi-pop 0.5s 0.15s ease-out;
+  }
+
+  /* Forms: the sheet wiggles and the tick is drawn again. */
+  #menu .pg-mi-forms .pg-mi-sheet { transform-origin: 12px 21px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-forms .pg-mi-sheet {
+    animation: pg-mi-wiggle 0.6s ease-in-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-forms .pg-mi-check {
+    animation: pg-mi-draw 0.45s 0.15s ease-out backwards;
+  }
+
+  /* Visitors: the bars shoot up one after the other, then the trend line is
+     drawn to its tip. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-statistics .pg-mi-bar {
+    animation: pg-mi-grow 0.55s ease-out backwards;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-statistics .pg-mi-bar:nth-of-type(2) { animation-delay: 0.08s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-statistics .pg-mi-bar:nth-of-type(3) { animation-delay: 0.16s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-statistics .pg-mi-trend {
+    animation: pg-mi-draw 0.5s 0.15s ease-out backwards;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-statistics .pg-mi-tip {
+    animation: pg-mi-pop 0.4s 0.55s ease-out backwards;
+  }
+
+  /* Contacts: the card flips over. */
+  #menu .pg-mi-contacts .pg-mi-card { transform-origin: 12px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-contacts .pg-mi-card {
+    animation: pg-mi-flip 0.6s ease-in-out;
+  }
+
+  /* Users: the one behind steps up, the one in front bobs. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-users .pg-mi-back {
+    transform: translate(1.2px, -2.4px);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-users .pg-mi-front {
+    animation: pg-mi-bob 0.55s 0.1s ease-out;
+  }
+
+  /* Campaigns: the megaphone kicks back and the sound rolls out twice. */
+  #menu .pg-mi-campaigns .pg-mi-horn { transform-origin: 4px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-campaigns .pg-mi-horn {
+    animation: pg-mi-jolt 0.6s ease-in-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-campaigns .pg-mi-waves path {
+    animation: pg-mi-emit 0.5s ease-out 2;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-campaigns .pg-mi-waves path + path {
+    animation-delay: 0.12s;
+  }
+
+  /* ERP: a wave of key presses runs across the calculator and the screen
+     lights up with the answer. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-erp .pg-mi-keys circle {
+    animation: pg-mi-press 0.35s ease-in-out backwards;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-erp .pg-mi-keys circle:is(:nth-child(2), :nth-child(4)) { animation-delay: 0.06s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-erp .pg-mi-keys circle:is(:nth-child(3), :nth-child(5), :nth-child(7)) { animation-delay: 0.12s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-erp .pg-mi-keys circle:is(:nth-child(6), :nth-child(8)) { animation-delay: 0.18s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-erp .pg-mi-keys circle:nth-child(9) { animation-delay: 0.24s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-erp .pg-mi-screen .pg-mi-at {
+    animation: pg-mi-glow 0.5s 0.35s ease-out;
+  }
+
+  /* Orders: the bag is picked up by its handle and swings. */
+  #menu .pg-mi-orders .pg-mi-bag { transform-origin: 12px 4px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-orders .pg-mi-bag {
+    animation: pg-mi-carry 0.8s ease-out;
+  }
+
+  /* Products: the lid swings open on its left corner. */
+  #menu .pg-mi-products .pg-mi-lid { transform-origin: 4px 7.5px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-products .pg-mi-lid {
+    transform: translateY(-2.2px) rotate(-14deg);
+  }
+
+  /* Catalog Manager: the layers fan apart. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-catalog .pg-mi-l1 { transform: translateY(-3px); }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-catalog .pg-mi-l2 { transform: translateY(-1.4px); }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-catalog .pg-mi-l3 { transform: translateY(0.6px); }
+
+  /* Offers: the tag swings on its hole. */
+  #menu .pg-mi-offers .pg-mi-tag { transform-origin: 7.6px 7.6px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-offers .pg-mi-tag {
+    animation: pg-mi-swing 0.85s ease-out;
+  }
+
+  /* Shipping: the truck pulls forward with speed lines streaming behind. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-shipping .pg-mi-truck {
+    transform: translateX(2.2px);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-shipping .pg-mi-speed {
+    opacity: 0.85;
+    animation: pg-mi-stream 0.35s linear 3;
+  }
+
+  /* Ads: the board shakes and its spark flares. */
+  #menu .pg-mi-ads .pg-mi-board { transform-origin: 12px 15.5px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-ads .pg-mi-board {
+    animation: pg-mi-wiggle 0.5s ease-in-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-ads .pg-mi-spark {
+    animation: pg-mi-flare 0.7s ease-out;
+  }
+
+  /* Page Styles: the palette tips and the paint pops dot by dot. */
+  #menu .pg-mi-styles .pg-mi-palette { transform-origin: 12px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-palette {
+    animation: pg-mi-tip 0.7s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle {
+    animation: pg-mi-pop 0.4s ease-out backwards;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(2) { animation-delay: 0.08s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(3) { animation-delay: 0.16s; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(4) { animation-delay: 0.24s; }
+}
+
+@keyframes pg-mi-spin2 { to { transform: rotate(720deg); } }
+@keyframes pg-mi-bounce { 35% { transform: scale(1.12); } 65% { transform: scale(0.95); } 85% { transform: scale(1.03); } }
+@keyframes pg-mi-hop { 30% { transform: translateY(-2.6px) rotate(-9deg) scale(1.08); } 60% { transform: translateY(0) rotate(5deg); } 80% { transform: rotate(-2deg); } }
+@keyframes pg-mi-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes pg-mi-blink { 40% { opacity: 0.2; transform: scale(1.5); } }
+@keyframes pg-mi-scroll { 35% { transform: translateY(-2.4px); } 70% { transform: translateY(0.7px); } }
+@keyframes pg-mi-hang { 25% { transform: rotate(-10deg); } 50% { transform: rotate(7deg); } 72% { transform: rotate(-3deg); } 88% { transform: rotate(1deg); } }
+@keyframes pg-mi-pop { 45% { transform: scale(1.45); } 75% { transform: scale(0.92); } }
+@keyframes pg-mi-wiggle { 20% { transform: rotate(-7deg); } 45% { transform: rotate(6deg); } 70% { transform: rotate(-3deg); } 88% { transform: rotate(1deg); } }
+@keyframes pg-mi-grow { from { transform: scaleY(0.1); } 60% { transform: scaleY(1.18); } 80% { transform: scaleY(0.94); } }
+@keyframes pg-mi-flip { 45% { transform: scaleX(0.08); } 70% { transform: scaleX(1.06); } }
+@keyframes pg-mi-bob { 40% { transform: translateY(-1.6px); } 70% { transform: translateY(0.4px); } }
+@keyframes pg-mi-jolt { 20% { transform: rotate(-15deg) scale(1.06); } 45% { transform: rotate(9deg); } 70% { transform: rotate(-4deg); } 88% { transform: rotate(1.5deg); } }
+@keyframes pg-mi-emit { 50% { opacity: 0; transform: translateX(2px); } 51% { opacity: 0; transform: translateX(-1.5px); } }
+@keyframes pg-mi-press { 50% { transform: scale(0.35); } }
+@keyframes pg-mi-glow { 40% { fill-opacity: 0.95; } }
+@keyframes pg-mi-carry { 25% { transform: translateY(-2.6px) rotate(-11deg); } 50% { transform: translateY(-2.6px) rotate(8deg); } 72% { transform: translateY(-1.2px) rotate(-4deg); } 90% { transform: rotate(1.5deg); } }
+@keyframes pg-mi-swing { 18% { transform: rotate(-22deg); } 42% { transform: rotate(14deg); } 64% { transform: rotate(-7deg); } 84% { transform: rotate(3deg); } }
+@keyframes pg-mi-stream { from { transform: translateX(1.2px); } to { transform: translateX(-1.2px); } }
+@keyframes pg-mi-flare { 45% { transform: rotate(90deg) scale(1.7); } 75% { transform: rotate(160deg) scale(0.9); } to { transform: rotate(180deg); } }
+@keyframes pg-mi-tip { 30% { transform: rotate(-16deg); } 60% { transform: rotate(8deg); } 82% { transform: rotate(-3deg); } }
 /*ADS*/
 body .ads-color {
   color: var(--ads-color) !important;
@@ -8423,6 +8827,457 @@ body.workspace_settings .ws-shell-main > #button_bar {
 .ws-channel-link.ws-notjoined {
   color: var(--bs-secondary-color);
 }
+/* A channel's own colour on its sign; the rest of the list has a colour per
+   part, so a channel and a screen never look alike. */
+.ws-channel-link .ws-ch-icon {
+  color: var(--bs-secondary-color);
+}
+.ws-channel-link[data-ws-colored] .ws-ch-icon {
+  color: var(--ws-ch);
+}
+.ws-channel-link[data-ws-nav="home"] > .bi,
+.ws-rail-item[data-ws-nav="home"] > .bi { color: #4a7fa8; }
+.ws-channel-link[data-ws-nav="inbox"] > .bi,
+.ws-rail-item[data-ws-nav="inbox"] > .bi { color: #3e8a7a; }
+.ws-channel-link[data-ws-nav="tasks"] > .bi,
+.ws-rail-item[data-ws-nav="tasks"] > .bi { color: #4f8a5b; }
+.ws-channel-link[data-ws-nav="notes"] > .bi,
+.ws-rail-item[data-ws-nav="notes"] > .bi { color: #c2913a; }
+.ws-channel-link[data-ws-nav="board"] > .bi,
+.ws-rail-item[data-ws-nav="board"] > .bi { color: #6b5ca5; }
+.ws-channel-link[data-ws-nav="calendar"] > .bi,
+.ws-rail-item[data-ws-nav="calendar"] > .bi { color: #a5578e; }
+.ws-channel-link[data-ws-nav="scheduled"] > .bi,
+.ws-rail-item[data-ws-nav="scheduled"] > .bi { color: #c9774a; }
+.ws-channel-link[data-ws-nav="timeline"] > .bi,
+.ws-rail-item[data-ws-nav="timeline"] > .bi { color: #5468a8; }
+.ws-channel-link[data-ws-nav="archived"] > .bi,
+.ws-rail-item[data-ws-nav="archived"] > .bi { color: #7a7f87; }
+.ws-channel-link[data-ws-nav="audit"] > .bi,
+.ws-rail-item[data-ws-nav="audit"] > .bi { color: #b5534b; }
+.ws-channel-link[data-ws-nav="settings"] > .bi,
+.ws-rail-item[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
+/* Groups of channels: a heading with its colour, one inside another. */
+.ws-side-group {
+  margin-bottom: .2rem;
+}
+.ws-side-subgroup {
+  margin-left: .6rem;
+  padding-left: .3rem;
+  border-left: 2px solid var(--ws-group, var(--bs-border-color));
+}
+.ws-group-title {
+  justify-content: flex-start;
+  gap: .15rem;
+  padding: 0 .25rem .1rem 0;
+  border-radius: .4rem;
+}
+.ws-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  padding: .2rem .25rem;
+  border-radius: .4rem;
+}
+.ws-group-toggle:hover {
+  background: var(--bs-secondary-bg);
+}
+.ws-group-chevron {
+  font-size: .65rem;
+  opacity: .7;
+}
+.ws-group-icon {
+  color: var(--ws-group, var(--bs-secondary-color));
+  font-size: .85rem;
+}
+.ws-group-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ws-group, var(--bs-secondary-color));
+}
+.ws-group-access {
+  display: inline-flex;
+  align-items: center;
+  gap: .15rem;
+  font-size: .68rem;
+  font-weight: 600;
+  opacity: .75;
+}
+.ws-group-more {
+  opacity: 0;
+  padding: 0 .3rem;
+}
+.ws-group-title:hover .ws-group-more,
+.ws-group-more:focus-visible {
+  opacity: .85;
+}
+.ws-group-new {
+  font-size: .78rem;
+  padding: .1rem .5rem;
+  text-decoration: none;
+}
+.ws-group-empty {
+  padding-top: .15rem;
+  padding-bottom: .25rem;
+  border-radius: .4rem;
+}
+.ws-drop-into {
+  outline: 2px dashed var(--ws-group, var(--ws-accent));
+  outline-offset: -2px;
+}
+.ws-drop-before {
+  box-shadow: inset 0 2px 0 var(--ws-accent);
+}
+.ws-drop-after {
+  box-shadow: inset 0 -2px 0 var(--ws-accent);
+}
+.ws-group-title.ws-dragging {
+  opacity: .45;
+}
+/* The palette: twenty solid, matte colours and none. */
+.ws-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.ws-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: .5rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+}
+.ws-swatch.active {
+  border-color: var(--bs-emphasis-color);
+  box-shadow: inset 0 0 0 2px var(--bs-body-bg);
+}
+.ws-swatch-none {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+}
+/* Scheduled actions: days, follow-ups, counts, the words filled in. */
+.ws-sa-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+.ws-sa-days .btn {
+  min-width: 2.6rem;
+  padding: .15rem .4rem;
+}
+.ws-sa-when-more {
+  display: grid;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 12rem);
+  gap: .5rem;
+  align-items: start;
+  margin-top: .35rem;
+  padding-left: 1.75rem;
+}
+.ws-sa-when-days {
+  margin-top: .35rem;
+  padding-left: 1.75rem;
+}
+.ws-sa-when-trigger {
+  padding: .5rem .65rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: .5rem;
+  margin-bottom: .5rem;
+}
+.ws-sa-follows {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: .35rem;
+}
+.ws-sa-follow {
+  padding: .5rem .6rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--ws-accent);
+  border-radius: .5rem;
+  background: var(--bs-tertiary-bg);
+}
+.ws-sa-follow-head {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin-bottom: .4rem;
+}
+.ws-sa-follow-head .form-select {
+  max-width: 14rem;
+}
+.ws-sa-follow-head .ws-sa-remove {
+  margin-left: auto;
+}
+.ws-sa-metric-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: .1rem .75rem;
+}
+.ws-sa-metric {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.ws-sa-words summary {
+  cursor: pointer;
+}
+.ws-sa-words-list {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .4rem 0 0 .25rem;
+}
+.ws-sa-follow-line.ws-sa-on-failed b {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-sa-follow-line.ws-sa-on-skipped b {
+  color: var(--bs-secondary-color);
+}
+/* The pinned message, under the channel's greeting. */
+.ws-pin-bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: .5rem .75rem 0;
+  padding: .35rem .5rem .35rem .65rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--ws-accent);
+  border-radius: .5rem;
+  background: var(--bs-tertiary-bg);
+  font-size: .85rem;
+}
+.ws-pin-icon {
+  color: var(--ws-accent);
+}
+.ws-pin-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+}
+.ws-pin-by {
+  flex-shrink: 0;
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-msg-pinned {
+  color: var(--ws-accent);
+  font-size: .75rem;
+}
+/* Messages chosen together. */
+.ws-msg-choosable {
+  cursor: pointer;
+  border-radius: .5rem;
+  padding-left: 2rem;
+}
+/* The tick box sits in the padding: .ws-msg is a grid, a pseudo element in
+   it would take a cell of its own. */
+.ws-msg-choosable::before {
+  content: "";
+  position: absolute;
+  left: .5rem;
+  top: .55rem;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--bs-border-color);
+  border-radius: .3rem;
+}
+.ws-msg-selected {
+  background: rgba(var(--ws-accent-rgb), .1);
+}
+.ws-msg-selected::before {
+  border-color: var(--ws-accent);
+  background: var(--ws-accent);
+  box-shadow: inset 0 0 0 2px var(--bs-body-bg);
+}
+.ws-select-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .75rem;
+  border-top: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+}
+.ws-select-count {
+  font-size: .85rem;
+  font-weight: 600;
+  margin-right: .25rem;
+}
+.ws-selecting > :not(.ws-select-bar):not(.ws-jump-end) {
+  display: none !important;
+}
+.ws-pane-selecting .ws-msg-tools {
+  display: none !important;
+}
+.ws-msg-quote-more {
+  margin-top: -.15rem;
+}
+/* A forward: the copies it carries. */
+.ws-fwd-list {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  margin-top: .3rem;
+}
+.ws-fwd {
+  padding: .45rem .6rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--bs-secondary-color);
+  border-radius: .5rem;
+  background: var(--bs-tertiary-bg);
+}
+.ws-fwd-head {
+  display: flex;
+  align-items: center;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+  margin-bottom: .2rem;
+}
+.ws-fwd-who {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .82rem;
+  margin-bottom: .15rem;
+}
+.ws-fwd-who img {
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ws-fwd-body {
+  font-size: .9rem;
+}
+.ws-fwd-preview {
+  max-height: 12rem;
+  overflow: auto;
+  padding: .4rem .6rem;
+  margin-bottom: .75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+  font-size: .82rem;
+}
+.ws-fwd-preview-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The customer of a channel and the records tied to it. */
+.ws-customer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  vertical-align: middle;
+}
+.ws-customer-tie .ws-chip {
+  opacity: .75;
+  font-size: .85em;
+}
+.ws-customer-tie .ws-chip:hover {
+  opacity: 1;
+}
+.ws-customer-links {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  margin-bottom: .6rem;
+}
+.ws-customer-links:empty {
+  display: none;
+}
+.ws-customer-links-title {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--bs-secondary-color);
+}
+.ws-customer-link {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+/* A block with a title, and the list of titled blocks to pull in. */
+.ws-block-titled {
+  margin: .25rem 0;
+}
+.ws-block-title {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--bs-secondary-color);
+  margin-bottom: .2rem;
+}
+.ws-block-title .bi {
+  color: var(--ws-accent);
+}
+.ws-pull-list {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.ws-pull-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  width: 100%;
+  padding: .5rem .6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.ws-pull-item:hover {
+  background: var(--bs-tertiary-bg);
+}
+.ws-pull-icon {
+  color: var(--ws-accent);
+  margin-top: .15rem;
+}
+.ws-pull-words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* Versions of a conversation. */
+.ws-era-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .6rem;
+  margin-bottom: .35rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+}
+.ws-era-current {
+  background: var(--bs-tertiary-bg);
+}
 .ws-count {
   flex-shrink: 0;
   min-width: 1.35rem;
@@ -9263,6 +10118,11 @@ body.workspace_settings .ws-shell-main > #button_bar {
 .ws-desc-field .ws-rich.ws-rich-field {
   min-height: 4.6rem;
 }
+/* The channel summary: a page of its own, its picker below the caret line. */
+.ws-summary-field .ws-rich.ws-rich-field {
+  min-height: 16rem;
+  max-height: 60vh;
+}
 .ws-item-add {
   margin-top: .4rem;
 }
@@ -9287,14 +10147,362 @@ body.workspace_settings .ws-shell-main > #button_bar {
   }
 }
 .ws-msg-quote {
+  display: block;
+  max-width: 100%;
   font-size: .8rem;
   color: var(--bs-secondary-color);
+  border: 0;
   border-left: 2px solid var(--bs-border-color);
-  padding-left: .5rem;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0 0 .5rem;
   margin-bottom: .2rem;
   overflow: hidden;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+.ws-msg-quote:hover {
+  color: var(--bs-body-color);
+  border-left-color: var(--ws-accent);
+}
+/* The overview: the pressing tasks lead, marked by their priority. */
+.ws-home-hot {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--bs-danger-text-emphasis);
+  text-decoration: none;
+}
+.ws-home-hot:hover {
+  text-decoration: underline;
+}
+.ws-home-row.ws-home-row-hot {
+  box-shadow: inset 3px 0 0 var(--bs-warning);
+}
+.ws-home-row.ws-home-row-urgent {
+  box-shadow: inset 3px 0 0 var(--bs-danger);
+}
+.ws-home-hot-icon {
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-home-row-urgent .ws-home-hot-icon {
+  color: var(--bs-danger);
+}
+.ws-home-priority {
+  display: inline-block;
+  margin-left: .35rem;
+  padding: 0 .4rem;
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 700;
+  vertical-align: middle;
+  background: rgba(var(--bs-warning-rgb), .2);
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-home-priority-urgent {
+  background: rgba(var(--bs-danger-rgb), .16);
+  color: var(--bs-danger-text-emphasis);
+}
+/* Scheduled actions: the card (in its channel, its note and the list) and
+   the form. */
+.ws-sa-card {
+  max-width: 40rem;
+  margin: .25rem 0;
+  padding: .6rem .75rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--ws-accent);
+  border-radius: .6rem;
+  background: var(--bs-body-bg);
+  font-size: .85rem;
+}
+.ws-sa-card.ws-sa-paused {
+  border-left-color: var(--bs-warning);
+}
+.ws-sa-card.ws-sa-failed {
+  border-left-color: var(--bs-danger);
+}
+.ws-sa-card.ws-sa-done,
+.ws-sa-card.ws-sa-cancelled {
+  border-left-color: var(--bs-secondary-color);
+  opacity: .85;
+}
+.ws-sa-card-head {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: .3rem;
+}
+.ws-sa-card-icon {
+  color: var(--ws-accent);
+}
+.ws-sa-card-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-sa-state {
+  flex: none;
+  padding: .05rem .5rem;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 600;
+  background: rgba(var(--ws-accent-rgb), .14);
+  color: var(--ws-accent);
+}
+.ws-sa-state-paused {
+  background: rgba(var(--bs-warning-rgb), .18);
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-sa-state-failed {
+  background: rgba(var(--bs-danger-rgb), .14);
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-sa-state-done,
+.ws-sa-state-cancelled {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+}
+.ws-sa-line {
+  display: flex;
+  align-items: baseline;
+  gap: .1rem;
+  margin: .15rem 0;
+  color: var(--bs-body-color);
+}
+.ws-sa-line > .bi {
+  flex: none;
+  color: var(--bs-secondary-color);
+}
+.ws-sa-last-failed {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-sa-last-skipped {
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-sa-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: .3rem;
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-sa-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15rem;
+  margin-top: .35rem;
+}
+.ws-sa-history {
+  margin-top: .35rem;
+  padding-top: .35rem;
+  border-top: 1px dashed var(--bs-border-color);
+}
+.ws-sa-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  font-size: .76rem;
+  margin-bottom: .2rem;
+}
+.ws-sa-strip {
+  margin-bottom: .5rem;
+}
+.ws-sa-view .ws-sa-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-bottom: .5rem;
+}
+.ws-sa-list-item {
+  margin-bottom: .75rem;
+}
+.ws-sa-where {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-sa-offcanvas.offcanvas-end {
+  --bs-offcanvas-width: min(40rem, 100vw);
+}
+.ws-sa-section {
+  margin-top: 1rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-sa-section-title {
+  font-weight: 700;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--bs-secondary-color);
+}
+.ws-sa-when {
+  display: grid;
+  grid-template-columns: auto 1fr 7rem 10rem;
+  gap: .5rem;
+  align-items: end;
+}
+.ws-sa-when-icon {
+  font-size: 1.2rem;
+  color: var(--ws-accent);
+  padding-bottom: .35rem;
+}
+.ws-sa-condition {
+  display: flex;
+  gap: .35rem;
+  align-items: flex-start;
+  margin-top: .5rem;
+  padding: .5rem;
+  border-radius: .5rem;
+  background: var(--bs-tertiary-bg);
+}
+.ws-sa-condition-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: .4rem;
+}
+.ws-sa-field .form-label {
+  color: var(--bs-secondary-color);
+}
+.ws-sa-action-detail {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-top: .5rem;
+}
+.ws-sa-body .ws-rich.ws-rich-field {
+  min-height: 6rem;
+}
+.ws-sa-field-row {
+  display: flex;
+  gap: .35rem;
+  align-items: flex-start;
+  margin-bottom: .35rem;
+}
+.ws-sa-field-row > .form-select {
+  flex: 0 0 11rem;
+}
+.ws-sa-picker {
+  position: relative;
+}
+.ws-sa-picker-list {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  top: calc(100% + .15rem);
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: .25rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+  background: var(--bs-body-bg);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .25);
+}
+.ws-sa-picker-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  width: 100%;
+  padding: .3rem .45rem;
+  border: 0;
+  border-radius: .35rem;
+  background: transparent;
+  font-size: .82rem;
+  text-align: left;
+}
+.ws-sa-picker-item:hover {
+  background: var(--bs-tertiary-bg);
+}
+@media (max-width: 575.98px) {
+  .ws-sa-when {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ws-sa-when-icon {
+    display: none;
+  }
+  .ws-sa-field-row {
+    flex-wrap: wrap;
+  }
+  .ws-sa-field-row > .form-select {
+    flex: 1 1 100%;
+  }
+}
+.ws-delete-scopes .form-check {
+  margin-bottom: .45rem;
+}
+/* Who has seen a message. */
+.ws-seen-list {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  margin: .35rem 0 .6rem;
+}
+.ws-seen-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9rem;
+}
+/* A picture or a name that opens the person's account (edit_user.php). */
+a.ws-person-link {
+  color: inherit;
+  text-decoration: none;
+}
+a.ws-person-link:hover b,
+a.ws-person-link:hover div,
+a.ws-person-link:hover span,
+a.ws-person-link:focus-visible b {
+  text-decoration: underline;
+}
+a.ws-person-link:hover img {
+  box-shadow: 0 0 0 2px var(--bs-primary);
+}
+.ws-seen-row a.ws-person-link {
+  display: inline-flex;
+  min-width: 0;
+}
+.ws-msg-avatar a.ws-person-link {
+  display: block;
+  line-height: 0;
+}
+.ws-seen-row img {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ws-seen-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Changed after it was sent. */
+.ws-msg-edited {
+  display: inline-block;
+  margin-left: .35rem;
+  font-size: .7rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.ws-msg-edited .bi {
+  font-size: .65rem;
+}
+/* The messages a reply answers, lit up for a moment when it is followed. */
+@keyframes ws-msg-flash {
+  0%, 35% { background: rgba(var(--ws-accent-rgb), .28); box-shadow: inset 3px 0 0 var(--ws-accent); }
+  100% { background: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+.ws-msg.ws-msg-flash {
+  animation: ws-msg-flash 2.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-msg.ws-msg-flash {
+    animation: none;
+    background: rgba(var(--ws-accent-rgb), .2);
+  }
 }
 .ws-msg-file {
   margin-top: .35rem;
@@ -9444,7 +10652,86 @@ a.ws-chip:hover {
 .ws-composer-wrap {
   position: relative;
   padding: .5rem 1rem .75rem;
-  border-top: 1px solid var(--bs-border-color);
+}
+/* Back down to the newest line, over the end of the conversation. */
+.ws-jump-end {
+  position: absolute;
+  right: 1.5rem;
+  bottom: calc(100% + .5rem);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  padding: 0 .7rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, .25);
+  font-size: 1rem;
+}
+.ws-jump-end[hidden] {
+  display: none;
+}
+.ws-jump-end:hover {
+  background: var(--bs-tertiary-bg);
+}
+.ws-jump-end.ws-jump-news {
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+}
+.ws-jump-count {
+  min-width: 1.2rem;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  background: var(--ws-accent);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.2rem;
+}
+.ws-jump-count[hidden] {
+  display: none;
+}
+/* A room a guest reads (includes/workspace/guests.php). */
+.ws-guest-bar-text {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+.ws-guest-bar .ws-guest-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
+}
+.ws-guest-online {
+  color: var(--bs-success-text-emphasis);
+  font-weight: 600;
+}
+.ws-guest-online::before {
+  content: "";
+  display: inline-block;
+  width: .5rem;
+  height: .5rem;
+  margin-right: .3rem;
+  border-radius: 50%;
+  background: var(--bs-success);
+  vertical-align: middle;
+}
+.ws-guest-badge {
+  background: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  font-weight: 600;
+  font-size: .7rem;
+}
+.ws-guest-room .ws-composer {
+  border-color: var(--bs-warning-border-subtle);
+}
+.ws-guest-duration {
+  margin: .35rem 0 0 1.5rem;
+  max-width: 14rem;
 }
 .ws-composer {
   border: 1px solid var(--bs-border-color);
@@ -9708,6 +10995,10 @@ a.ws-chip:hover {
   padding: .45rem var(--bs-modal-padding, 1rem);
   border-bottom: 1px solid var(--bs-border-color);
   background: var(--bs-modal-bg, var(--bs-body-bg));
+}
+/* Under the title field the tools start in the flow, not over it. */
+.ws-block-title-field + .ws-table-tools {
+  margin-top: 0;
 }
 .ws-table-tools-gap {
   align-self: stretch;
@@ -10359,8 +11650,9 @@ a.ws-chip:hover {
 .ws-swatch {
   display: inline-block;
   width: 1.5rem;
-  height: .5rem;
+  height: 1.5rem;
   border-radius: 999px;
+  line-height: 1;
 }
 .ws-swatch-ok {
   background: var(--bs-success);
@@ -10888,6 +12180,35 @@ a.ws-chip:hover {
   box-shadow: inset 0 0 0 1px rgba(var(--bs-warning-rgb), .75);
   opacity: .75;
 }
+/* A task that runs across days: one piece a day, the pieces joined over the
+   cell padding and border into one bar; an empty gap keeps the lane's height
+   on a day it has nothing. */
+.ws-cal-day {
+  --ws-cal-pad: .4rem;
+}
+.ws-cal-task.ws-cal-span,
+.ws-cal-lane-gap {
+  height: 1.3rem;
+}
+.ws-cal-lane-gap {
+  margin-bottom: .18rem;
+}
+.ws-cal-task.ws-cal-span-l {
+  width: calc(100% + var(--ws-cal-pad));
+  margin-left: calc(-1 * var(--ws-cal-pad));
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: none;
+}
+.ws-cal-task.ws-cal-span-r {
+  width: calc(100% + var(--ws-cal-pad) + 1px);
+  margin-right: calc(-1 * var(--ws-cal-pad) - 1px);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ws-cal-task.ws-cal-span-l.ws-cal-span-r {
+  width: calc(100% + 2 * var(--ws-cal-pad) + 1px);
+}
 .ws-list-row.ws-row-upcoming .ws-row-title {
   color: var(--bs-secondary-color);
 }
@@ -11345,8 +12666,13 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     display: flex;
   }
   .ws-cal-day {
+    --ws-cal-pad: .2rem;
     min-height: 4.5rem;
     padding: .2rem;
+  }
+  .ws-cal-task.ws-cal-span,
+  .ws-cal-lane-gap {
+    height: 1.1rem;
   }
   .ws-cal-task-title,
   .ws-cal-event,
@@ -11384,8 +12710,16 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 @media (max-width: 575.98px) {
   /* On a phone a day is a tap target: what is in it shows as bars, the day drawer tells the rest. */
   .ws-cal-day {
+    --ws-cal-pad: .15rem;
     min-height: 3.8rem;
     padding: .2rem .15rem;
+  }
+  .ws-cal-task.ws-cal-span,
+  .ws-cal-lane-gap {
+    height: .32rem;
+  }
+  .ws-cal-lane-gap {
+    margin-bottom: .16rem;
   }
   .ws-cal-day-top {
     flex-wrap: wrap;
@@ -11614,6 +12948,56 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   gap: 1rem;
   padding-left: 1.2rem;
 }
+/* The pictures of the steps for connecting Claude (claude_setup.php). */
+.ws-claude-steps .ws-ui {
+  font-weight: 600;
+  color: var(--bs-emphasis-color);
+  white-space: nowrap;
+}
+.ws-claude-shot {
+  max-width: 380px;
+  margin: .1rem 0 .65rem;
+}
+.ws-claude-shot svg,
+.ws-claude-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ws-claude-shot img {
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+}
+.ws-claude-shot svg {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.ws-claude-shot figcaption {
+  margin-top: .25rem;
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-claude-shot .s-frame { fill: var(--bs-body-bg); stroke: var(--bs-border-color); }
+.ws-claude-shot .s-bar { fill: var(--bs-tertiary-bg); }
+.ws-claude-shot .s-dot { fill: var(--bs-border-color); }
+.ws-claude-shot .s-address,
+.ws-claude-shot .s-field,
+.ws-claude-shot .s-dialog { fill: var(--bs-body-bg); stroke: var(--bs-border-color); }
+.ws-claude-shot .s-soft,
+.ws-claude-shot .s-panel { fill: var(--bs-tertiary-bg); stroke: var(--bs-border-color); }
+.ws-claude-shot .s-line,
+.ws-claude-shot .s-chip,
+.ws-claude-shot .s-code { fill: var(--bs-secondary-bg); }
+.ws-claude-shot .s-dim { fill: rgba(0, 0, 0, .16); }
+.ws-claude-shot .s-ink { fill: var(--bs-body-color); }
+.ws-claude-shot .s-mute { fill: var(--bs-secondary-color); }
+.ws-claude-shot .s-white { fill: #fff; }
+.ws-claude-shot .s-acc { fill: var(--bs-primary); }
+.ws-claude-shot .s-acc-soft { fill: rgba(var(--bs-primary-rgb), .14); }
+.ws-claude-shot .s-acc-ink { fill: var(--bs-primary); }
+.ws-claude-shot .s-warn { fill: var(--bs-warning-text-emphasis); }
+.ws-claude-shot .s-bad { fill: var(--bs-danger); }
+.ws-claude-shot .s-claude { fill: #c96442; }
+.ws-claude-shot .s-ring { fill: none; stroke: #f59f00; stroke-width: 2; }
 .ws-claude-status {
   position: sticky;
   top: 1rem;
@@ -11890,6 +13274,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   color: var(--ws-accent);
   font-size: .8rem;
   font-weight: 700;
+}
+.ws-rail-channel[data-ws-colored] .ws-rail-initial {
+  background: var(--ws-ch);
+  color: #fff;
 }
 .ws-rail-badge {
   position: absolute;
@@ -12254,6 +13642,31 @@ button.ws-home-row:hover,
     flex: none;
     font-size: .75rem;
     color: var(--bs-secondary-color);
+}
+/* Changed by somebody else, or answered by Claude, since it was last open. */
+.ws-nb-item-unread .ws-nb-item-name {
+    color: var(--bs-emphasis-color);
+}
+.ws-nb-item-unread .ws-nb-item-time {
+    color: var(--ws-accent);
+    font-weight: 600;
+}
+.ws-nb-item-dot {
+    flex: none;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--ws-accent);
+}
+.ws-nb-item-claude {
+    flex: none;
+    font-size: .72rem;
+    white-space: nowrap;
+    color: var(--bs-secondary-color);
+}
+.ws-nb-item-claude-answered {
+    color: var(--ws-accent);
+    font-weight: 600;
 }
 .ws-nb-item-more {
     flex: none;

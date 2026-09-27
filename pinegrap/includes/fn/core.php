@@ -92,12 +92,23 @@ function db_connect()
     $connect_errno = 0;
     $connect_error = '';
 
-    try {
-        db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
-    } catch (Exception $e) {
-        db::$con = false;
-        $connect_errno = (int) $e->getCode();
-        $connect_error = $e->getMessage();
+    // Through the guard when it is loaded: it retries a momentary refusal
+    // before anything is treated as an outage (see pg_db_guard_connect()).
+    // Scripts that include functions.php without init.php connect directly,
+    // as they always have.
+    if (function_exists('pg_db_guard_connect')) {
+        $connect_attempt = pg_db_guard_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
+        db::$con = $connect_attempt[0];
+        $connect_errno = (int) $connect_attempt[1];
+        $connect_error = (string) $connect_attempt[2];
+    } else {
+        try {
+            db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
+        } catch (Exception $e) {
+            db::$con = false;
+            $connect_errno = (int) $e->getCode();
+            $connect_error = $e->getMessage();
+        }
     }
 
     if (db::$con) {
@@ -136,7 +147,7 @@ function db_connect()
         // message below. Waiting does not fix those, and hiding them behind
         // "try again later" hides them from the one person who can.
         if (function_exists('pg_db_guard_is_overload') && pg_db_guard_is_overload($connect_errno)) {
-            pg_db_guard_trip();
+            pg_db_guard_trip($connect_errno);
             pg_db_guard_log('database unavailable (' . $connect_errno . '): ' . $connect_error);
             pg_db_guard_unavailable();
         }
@@ -662,6 +673,11 @@ function output_error($error_message, $response_code = 0)
         // after this, so this never races a later session_start().
         if (!isset($_SESSION)) {
             $_SESSION = array();
+        }
+        // A designed error page (error_page widget) prints the message and
+        // the code in its own layout rather than the block above.
+        if (function_exists('pg_sw_error_context')) {
+            pg_sw_error_context($error_message, $response_code);
         }
         echo get_error_screen($content);
         exit();
@@ -1879,6 +1895,84 @@ function check_name_availability($properties)
     closedir($handle);
     // If we have gotten here then that means there are no name conflicts, so return true.
     return true;
+}
+
+/**
+ * Can a short link be opened once or until a time, and have a token for its
+ * address instead of a name (2026.4.5, 5.112)?
+ *
+ * @return bool
+ */
+function pg_short_link_modes_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'short_links' AND COLUMN_NAME = 'token_hash'") > 0);
+    }
+
+    return $ready;
+}
+
+/**
+ * A new token for the address of a short link: 32 random bytes, written
+ * URL-safe, 43 characters. Only its SHA-256 is kept.
+ *
+ * @return string
+ */
+function pg_short_link_new_token()
+{
+    return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+}
+
+/**
+ * How long a timed short link can be made for: the choices of the forms.
+ *
+ * @return array seconds => label
+ */
+function pg_short_link_durations()
+{
+    return array(
+        3600    => lang('1 hour'),
+        86400   => lang('1 day'),
+        259200  => lang('3 days'),
+        604800  => lang('1 week'),
+        2592000 => lang('30 days'),
+        7776000 => lang('90 days'),
+    );
+}
+
+/**
+ * Where a short link stands: open, used (a one-time link that was opened) or
+ * expired, with a line that says so.
+ *
+ * @param array $row a short_links row
+ * @return array status, label
+ */
+function pg_short_link_state($row)
+{
+    $mode = (string) ($row['link_mode'] ?? 'permanent');
+    $expires = (int) ($row['expires_at'] ?? 0);
+    $used = (int) ($row['used_at'] ?? 0);
+
+    if (($expires > 0) && ($expires <= time())) {
+        return array('status' => 'expired', 'label' => lang(array('string' => 'Expired on {var:1}', 'vars' => date('d.m.Y H:i', $expires))));
+    }
+
+    if (($mode === 'once') && ($used > 0)) {
+        return array('status' => 'used', 'label' => lang(array('string' => 'Opened on {var:1}; no longer works', 'vars' => date('d.m.Y H:i', $used))));
+    }
+
+    if ($mode === 'once') {
+        return array('status' => 'open', 'label' => lang('One-time: works for the first visit'));
+    }
+
+    if ($expires > 0) {
+        return array('status' => 'open', 'label' => lang(array('string' => 'Valid until {var:1}', 'vars' => date('d.m.Y H:i', $expires))));
+    }
+
+    return array('status' => 'open', 'label' => '');
 }
 // Create a function that is just a shorthand version of a header location call.
 // You can pass in a full URL with the scheme and hostname or one with just the path,

@@ -597,6 +597,7 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',              'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submitted_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only submissions sent at or after this moment.'),
+				array('name' => 'updated_since',   'in' => 'query', 'type' => 'datetime', 'description' => 'Only submissions changed at or after this moment - finished by the visitor or edited in the panel.'),
 				array('name' => 'complete',        'in' => 'query', 'type' => 'bool', 'description' => 'false returns the saved-but-not-sent ones instead.'),
 				array('name' => 'reference_code',  'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The code the visitor was shown after sending.'),
 				array('name' => 'limit',           'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
@@ -849,6 +850,318 @@ function api_schema() {
 				array('name' => 'id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Remove the offer even though it is running today.')
 			)
+		),
+
+		/* ----- Page design (Visual Page Editor pages) --------------------- */
+
+		array(
+			'id'      => 'design.pages.list',
+			'method'  => 'GET',
+			'path'    => '/design/pages',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_pages_list',
+			'returns' => array('list' => 'DesignPage'),
+			'summary' => 'Pages of the visual designs',
+			'description' => 'The pages made with the Visual Page Editor, the only ones whose layout can be read and changed here: their layout is a tree of elements. A page made with a custom style keeps its content as HTML and is not listed. pending_proposals counts the changes waiting for a person to apply them. Cursor paged.',
+			'params'  => array(
+				array('name' => 'design_id',     'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the pages of this design.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the page name or its title.'),
+				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.pages.get',
+			'method'  => 'GET',
+			'path'    => '/design/pages/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_pages_get',
+			'returns' => 'DesignView',
+			'summary' => 'A page as an assistant reads it',
+			'description' => 'The page\'s layout as plain HTML in which every element carries data-pg="ID", the id a change names it by. <pg-keep data-pg="ID" kind="..."> stands for what the page runs rather than shows - a region, a shared component, a system widget, custom code, a Bootstrap component - which a change may move or remove but not rewrite; its data-pg-props are the settings set_props changes. data-pg-bound names what of an element comes from the data. css is the page\'s own CSS block. outline lists every element with its parent, for a page too long to read at once: read one element with node. hash identifies the page as it is now. With request (Claude\'s application only) the page is shown as the editor tab that asked had it, which may not have been saved. 422 for a page that was not made with the Visual Page Editor.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'node',       'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'One element (its data-pg id) and what is inside it; the whole page when left out.'),
+				array('name' => 'format',     'in' => 'query', 'type' => 'enum', 'values' => array('both', 'html', 'outline'), 'default' => 'both'),
+				array('name' => 'request',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A workspace request about this page (Claude\'s application only).'),
+				array('name' => 'max_length', 'in' => 'query', 'type' => 'int', 'min' => 2000, 'max' => 2000000, 'description' => 'Cut the HTML at this many bytes; cut says whether it was.')
+			)
+		),
+
+		array(
+			'id'      => 'design.proposals.create',
+			'method'  => 'POST',
+			'path'    => '/design/pages/{id}/proposals',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_proposals_create',
+			'dry_run' => true,
+			'returns' => 'DesignProposal',
+			'summary' => 'Propose a change of a page',
+			'description' => 'Nothing on the page changes here. The operations are checked against the page - each must find what it names, and the page they make must be valid - and kept as a proposal that a designer previews and applies, in the Visual Page Editor or under the workspace answer it was made for. A failing operation is refused with 422 and its index in field (ops[2]). Operations, in order: update {node, text, classes, add_classes, remove_classes, style, attrs, name}; set_props {node, props} for a <pg-keep> part; replace {node, html}; insert {parent + index, or before / after, html}; remove {node}; move {node, parent + index, or before / after}; page {html} for the whole page; css {css} for the page\'s own CSS block ("" removes it). In html, an element that keeps its data-pg stays that element, with its settings, notes and data; one without is new; a <pg-keep> left out is removed. Script, event handlers, frames, forms and <style> are removed from html, and CSS loses @import, script and outside url() - dropped says what went. removed names the parts the page runs that the change takes away. With request_id (Claude\'s application only) the proposal answers that workspace request: it is shown in the editor that asked, or under the answer in the channel.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'ops',        'in' => 'body', 'type' => 'list', 'max_items' => 40, 'required' => true, 'description' => 'The operations, as objects with "op".'),
+				array('name' => 'summary',    'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'description' => 'One or two sentences on what the change does, for the person who applies it.'),
+				array('name' => 'node',       'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The element the change is about, when there is one.'),
+				array('name' => 'request_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The workspace request this proposal answers.')
+			)
+		),
+
+		array(
+			'id'      => 'design.proposals.list',
+			'method'  => 'GET',
+			'path'    => '/design/pages/{id}/proposals',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_proposals_list',
+			'returns' => array('list' => 'DesignProposal'),
+			'summary' => 'Proposed changes of a page',
+			'description' => 'The latest 50, newest first. status pending is waiting for a person; applied says where (applied_to editor: onto an open tab, saved from there; page: onto the saved page); stale no longer fits the page; reverted was taken back.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'pending', 'applied', 'dismissed', 'stale', 'failed', 'reverted'), 'default' => 'all')
+			)
+		),
+
+		array(
+			'id'      => 'design.proposals.get',
+			'method'  => 'GET',
+			'path'    => '/design/proposals/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_proposals_get',
+			'returns' => 'DesignProposal',
+			'summary' => 'One proposed change',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Signing in from a device ------------------------------------ */
+
+		array(
+			'id'      => 'auth.login',
+			'method'  => 'POST',
+			'path'    => '/auth/login',
+			'scope'   => '',
+			'public'  => true,
+			'handler' => 'api_auth_login',
+			'returns' => 'AuthSession',
+			'summary' => 'Sign a person in on a device',
+			'description' => 'For an app a staff member signs in to with their own panel account, not for an integration: an integration uses its application key and secret. Needs a Team devices application switched on in API settings; client_key names one, and without it the site\'s first active one is used, so a general app only needs the site address. The sign-in screen\'s own limits apply in the same counters - after a few failures the answer is 429 until the wait is over or the person signs in on the website once. Only an account with panel rights can sign in. The answer holds an access token for the Authorization: Bearer header (one hour) and a refresh token for POST /auth/refresh (thirty days, replaced every time it is used). Every call made with the access token acts as this person, capped by the application\'s permissions.',
+			'params'  => array(
+				array('name' => 'username',    'in' => 'body', 'type' => 'string', 'max_length' => 190, 'required' => true, 'description' => 'User name or e-mail address, as on the sign-in screen.'),
+				array('name' => 'password',    'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'required' => true),
+				array('name' => 'device_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'What the person will recognise in their device list, such as "Ayşe\'s phone".'),
+				array('name' => 'platform',    'in' => 'body', 'type' => 'enum', 'values' => array('ios', 'android', 'web', 'desktop', 'other'), 'default' => 'other'),
+				array('name' => 'app_version', 'in' => 'body', 'type' => 'string', 'max_length' => 40),
+				array('name' => 'client_key',  'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The key of the Team devices application to sign in through. Not a secret.')
+			)
+		),
+
+		array(
+			'id'      => 'auth.refresh',
+			'method'  => 'POST',
+			'path'    => '/auth/refresh',
+			'scope'   => '',
+			'public'  => true,
+			'handler' => 'api_auth_refresh',
+			'returns' => 'AuthSession',
+			'summary' => 'Renew a device\'s tokens',
+			'description' => 'Exchanges the refresh token for a new access token and a new refresh token; the old refresh token stops working. Keep the new one before doing anything else. A retry within a minute - the connection dropped before the answer arrived - is answered again; the same old token presented later signs the device out, because by then somebody else holds a copy. A 401 here means sign in again.',
+			'params'  => array(
+				array('name' => 'refresh_token', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'auth.logout',
+			'method'  => 'POST',
+			'path'    => '/auth/logout',
+			'scope'   => '',
+			'public'  => true,
+			'handler' => 'api_auth_logout',
+			'returns' => array('signed_out' => 'boolean'),
+			'summary' => 'Sign this device out',
+			'description' => 'Ends the device the token belongs to, with its push registration. Send the access token in the Authorization header - an expired one still names its device - or the refresh token in the body. Always answers signed_out: true, whether or not the token was still known.',
+			'params'  => array(
+				array('name' => 'refresh_token', 'in' => 'body', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'auth.me',
+			'method'  => 'GET',
+			'path'    => '/auth/me',
+			'scope'   => '',
+			'handler' => 'api_auth_me',
+			'returns' => 'Me',
+			'summary' => 'Who is calling, and what it may do',
+			'description' => 'The person behind the call - for a device the one who signed in, for an application key its owner - with the permissions in force for this call, the modules switched on, and the unread notification count when the account permission is held. An app reads this after signing in to decide which screens to show.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'auth.devices.list',
+			'method'  => 'GET',
+			'path'    => '/auth/devices',
+			'scope'   => 'account:read',
+			'handler' => 'api_auth_devices_list',
+			'returns' => array('list' => 'Device'),
+			'summary' => 'The devices this person is signed in on',
+			'description' => 'Most recently used first, up to a hundred. current marks the device making the call.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'auth.devices.delete',
+			'method'  => 'DELETE',
+			'path'    => '/auth/devices/{id}',
+			'scope'   => 'account:write',
+			'handler' => 'api_auth_devices_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'signed_out' => 'boolean'),
+			'summary' => 'Sign one of this person\'s devices out',
+			'description' => 'Only the caller\'s own devices; another person\'s id is answered 404. A default IIS install answers DELETE itself before PHP is reached: POST /auth/devices/{id}/delete does the same thing.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'auth.devices.delete_post',
+			'method'  => 'POST',
+			'path'    => '/auth/devices/{id}/delete',
+			'scope'   => 'account:write',
+			'handler' => 'api_auth_devices_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'signed_out' => 'boolean'),
+			'summary' => 'Sign one of this person\'s devices out, addressed as a POST',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Notifications ------------------------------------------------ */
+
+		array(
+			'id'      => 'notifications.list',
+			'method'  => 'GET',
+			'path'    => '/notifications',
+			'scope'   => 'account:read',
+			'handler' => 'api_notifications_list',
+			'returns' => array('list' => 'Notification'),
+			'summary' => 'This person\'s notifications',
+			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
+			'params'  => array(
+				array('name' => 'unread', 'in' => 'query', 'type' => 'bool',     'description' => 'Only what this person has not read yet.'),
+				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only notifications created at or after this moment.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 30, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'notifications.count',
+			'method'  => 'GET',
+			'path'    => '/notifications/unread-count',
+			'scope'   => 'account:read',
+			'handler' => 'api_notifications_count',
+			'returns' => array('unread' => 'integer'),
+			'summary' => 'How many notifications are unread',
+			'description' => 'The number on the bell. Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'notifications.read',
+			'method'  => 'POST',
+			'path'    => '/notifications/read',
+			'scope'   => 'account:write',
+			'handler' => 'api_notifications_read',
+			'dry_run' => true,
+			'returns' => array('updated' => 'integer', 'unread' => 'integer'),
+			'summary' => 'Mark notifications read',
+			'description' => 'For this person only - the others\' bells are not touched. Send ids, or all: true for everything unread. An id this person cannot see is skipped rather than refused. unread in the answer is the count afterwards.',
+			'params'  => array(
+				array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'max_items' => 500, 'description' => 'Notification ids.'),
+				array('name' => 'all', 'in' => 'body', 'type' => 'bool', 'description' => 'Everything unread.')
+			)
+		),
+
+		array(
+			'id'      => 'notifications.unread',
+			'method'  => 'POST',
+			'path'    => '/notifications/unread',
+			'scope'   => 'account:write',
+			'handler' => 'api_notifications_unread',
+			'dry_run' => true,
+			'returns' => array('updated' => 'integer', 'unread' => 'integer'),
+			'summary' => 'Mark notifications unread again',
+			'params'  => array(
+				array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'max_items' => 500, 'required' => true, 'description' => 'Notification ids.')
+			)
+		),
+
+		/* ----- Push ---------------------------------------------------------- */
+
+		array(
+			'id'      => 'push.config',
+			'method'  => 'GET',
+			'path'    => '/push/config',
+			'scope'   => 'account:read',
+			'handler' => 'api_push_config',
+			'returns' => array('available' => 'boolean', 'public_key' => 'string?', 'known' => 'boolean'),
+			'summary' => 'What a device needs to register for push',
+			'description' => 'The site\'s VAPID public key for PushManager.subscribe(). Pass endpoint to ask whether this site still holds a registration for it - an operator may have ended it from the sessions screen while the device still thinks it is registered.',
+			'params'  => array(
+				array('name' => 'endpoint', 'in' => 'query', 'type' => 'string', 'max_length' => 500)
+			)
+		),
+
+		array(
+			'id'      => 'push.subscribe',
+			'method'  => 'POST',
+			'path'    => '/push/subscriptions',
+			'scope'   => 'account:write',
+			'handler' => 'api_push_subscribe',
+			'dry_run' => true,
+			'returns' => array('subscribed' => 'boolean'),
+			'summary' => 'Register this device for push',
+			'description' => 'Web push, the same the installed panel uses. Send the subscription\'s endpoint and its two keys. The push carries no text: it wakes the device, which then asks GET /notifications?unread=true what to show, so nothing a notification says passes through the push service. A registration made with a device token ends when the device is signed out.',
+			'params'  => array(
+				array('name' => 'endpoint',     'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'PushSubscription.endpoint, an https address at the push service.'),
+				array('name' => 'p256dh',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'PushSubscription.keys.p256dh'),
+				array('name' => 'auth',         'in' => 'body', 'type' => 'string', 'max_length' => 64,  'required' => true, 'description' => 'PushSubscription.keys.auth'),
+				array('name' => 'old_endpoint', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'The endpoint this one replaces, when the browser rotated it.')
+			)
+		),
+
+		array(
+			'id'      => 'push.unsubscribe',
+			'method'  => 'POST',
+			'path'    => '/push/subscriptions/delete',
+			'scope'   => 'account:write',
+			'handler' => 'api_push_unsubscribe',
+			'dry_run' => true,
+			'returns' => array('subscribed' => 'boolean'),
+			'summary' => 'Stop push to this device',
+			'description' => 'Removes this person\'s registration for the endpoint. Another account\'s registration is left alone.',
+			'params'  => array(
+				array('name' => 'endpoint', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'push.test',
+			'method'  => 'POST',
+			'path'    => '/push/test',
+			'scope'   => 'account:write',
+			'handler' => 'api_push_test',
+			'returns' => array('devices' => 'integer', 'delivered' => 'integer'),
+			'summary' => 'Wake this person\'s devices',
+			'description' => 'Sends a push to every registration this person holds and says how many the push services accepted. Each device then shows whatever its bell holds.',
+			'params'  => array()
 		)
 
 	);
@@ -885,11 +1198,13 @@ function api_error_catalogue() {
 
 		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
 		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),
+		'token_expired'            => array(401, 'The device\'s access token has run out. Renew it with POST /auth/refresh and repeat the call.'),
 
 		'insufficient_scope'       => array(403, 'The application does not hold the permission this endpoint needs.'),
 		'application_disabled'     => array(403, 'The application was switched off in the panel.'),
 		'application_expired'      => array(403, 'The application reached the date it was set to stop working.'),
 		'owner_unavailable'        => array(403, 'The account that owns the application is gone or cannot be used.'),
+		'device_signin_unavailable' => array(403, 'Signing in from a device is not switched on: no active Team devices application.'),
 		'https_required'           => array(403, 'The site refuses API calls over plain HTTP.'),
 		'ip_not_allowed'           => array(403, 'The address the call came from is not on the application allow list.'),
 		'address_blocked'          => array(403, 'The firewall refused the address the call came from.'),

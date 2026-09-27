@@ -2130,6 +2130,9 @@ function pg_short_link_live_filter($recycled = false)
 // so no listing can forget it.
 function pg_short_link_rows($where = '', $recycled = false)
 {
+    // A guest's way into the workspace is made and ended there, never here.
+    $where = ($where == '') ? "WHERE short_links.destination_type <> 'workspace_guest'" : ($where . " AND short_links.destination_type <> 'workspace_guest'");
+
     $live = pg_short_link_live_filter($recycled);
 
     if ($live != '') {
@@ -2150,6 +2153,7 @@ function pg_short_link_rows($where = '', $recycled = false)
             short_links.created_user_id,
             short_links.created_timestamp,
             short_links.last_modified_timestamp,
+            " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at, short_links.use_count, short_links.last_used_at," : "") . "
             page.page_name,
             page.page_folder AS folder_id,
             product_groups.address_name AS product_group_address_name,
@@ -2246,10 +2250,20 @@ function pg_short_link_item($row)
     $timestamp = (int) $row['last_modified_timestamp'];
     $destination = pg_short_link_destination($row);
 
+    // A one-time link has a token for its address, shown once when it was
+    // made and kept nowhere: the list knows it by the first characters.
+    $token = ((string) $row['name'] === '') && ((string) ($row['token_hint'] ?? '') !== '');
+    $state = pg_short_link_state($row);
+
     return array(
         'kind' => 'file',
         'id' => (int) $row['id'],
         'short_link' => true,
+        'token' => $token,
+        'link_mode' => (string) ($row['link_mode'] ?? 'permanent'),
+        'link_state' => $state['status'],
+        'link_note' => $state['label'],
+        'use_count' => (int) ($row['use_count'] ?? 0),
         'destination_type' => (string) $row['destination_type'],
         'destination' => $destination,
         'tracking_code' => (string) $row['tracking_code'],
@@ -2261,13 +2275,13 @@ function pg_short_link_item($row)
         'product_id' => (int) $row['product_id'],
         'file_id' => (int) $row['file_id'],
         'link_url' => (string) $row['url'],
-        'name' => (string) $row['name'],
+        'name' => $token ? ((string) $row['token_hint'] . '…') : (string) $row['name'],
         'folder_id' => 0,
         'folder_name' => '',
         'type' => 'short_link',
         'is_image' => false,
         'size' => 0,
-        'size_label' => $destination,
+        'size_label' => $destination . (($state['label'] !== '') ? ' · ' . $state['label'] : ''),
         'design' => false,
         'optimized' => false,
         'image_width' => 0,
@@ -2280,7 +2294,7 @@ function pg_short_link_item($row)
         'modified' => get_relative_time(array('timestamp' => $timestamp)),
         'username' => (string) $row['last_modified_username'],
         'permissions' => '',
-        'url' => OUTPUT_PATH . encode_url_path((string) $row['name']),
+        'url' => $token ? '' : OUTPUT_PATH . encode_url_path((string) $row['name']),
         'can_edit' => true,
         'edit_url' => 'edit_short_link.php?id=' . (int) $row['id']);
 }
@@ -7630,7 +7644,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail')),
                     'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE)),
                     'product' => pg_short_link_options_list(get_product_options()),
-                    'file' => pg_short_link_options_list(get_file_options(true)))));
+                    'file' => pg_short_link_options_list(get_file_options(true))),
+                // Once or until a time (2026.4.5, 5.112).
+                'modes' => pg_short_link_modes_ready(),
+                'durations' => array_map(function ($seconds, $label) {
+                    return array('v' => (string) $seconds, 't' => $label);
+                }, array_keys(pg_short_link_durations()), array_values(pg_short_link_durations()))));
 
             break;
 
@@ -7652,14 +7671,54 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     'message' => $short_link_read['message']));
             }
 
-            $short_link_name = pg_short_link_free_name(isset($request['name']) ? $request['name'] : '');
+            // How it may be opened: for good, once (a token for its address,
+            // no name, spent by the first visit) or until a time chosen now.
+            $short_link_mode = pg_short_link_modes_ready() ? (string) ($request['link_mode'] ?? 'permanent') : 'permanent';
 
-            if ($short_link_name == '') {
-                respond(array('status' => 'error', 'message' => lang('The name that you entered is already in use, so please enter a different name.')));
+            if (!in_array($short_link_mode, array('permanent', 'once', 'timed'), true)) {
+                $short_link_mode = 'permanent';
+            }
+
+            $short_link_expires = 0;
+            $short_link_token = '';
+
+            if ($short_link_mode === 'timed') {
+
+                $short_link_duration = (int) ($request['duration'] ?? 0);
+
+                if (!isset(pg_short_link_durations()[$short_link_duration])) {
+                    respond(array('status' => 'error', 'field' => 'duration', 'message' => lang('Choose how long the link is valid.')));
+                }
+
+                $short_link_expires = time() + $short_link_duration;
+            }
+
+            if ($short_link_mode === 'once') {
+
+                $short_link_token = pg_short_link_new_token();
+                $short_link_name = '';
+
+            } else {
+
+                $short_link_name = pg_short_link_free_name(isset($request['name']) ? $request['name'] : '');
+
+                if ($short_link_name == '') {
+                    respond(array('status' => 'error', 'message' => lang('The name that you entered is already in use, so please enter a different name.')));
+                }
             }
 
             $short_link_fields = '';
             $short_link_values = '';
+
+            if (pg_short_link_modes_ready()) {
+                $short_link_read['columns']['link_mode'] = $short_link_mode;
+                $short_link_read['columns']['expires_at'] = $short_link_expires;
+
+                if ($short_link_token !== '') {
+                    $short_link_read['columns']['token_hash'] = hash('sha256', $short_link_token);
+                    $short_link_read['columns']['token_hint'] = substr($short_link_token, 0, 6);
+                }
+            }
 
             foreach ($short_link_read['columns'] as $short_link_column => $short_link_value) {
                 $short_link_fields .= $short_link_column . ', ';
@@ -7689,13 +7748,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $short_link_id = (int) mysqli_insert_id(db::$con);
 
-            log_activity(lang(array('string' => 'short link ({var:1}) was created', 'vars' => $short_link_name)), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'short link ({var:1}) was created', 'vars' => ($short_link_token !== '') ? substr($short_link_token, 0, 6) . '…' : $short_link_name)), $_SESSION['sessionusername']);
 
             respond(array(
                 'status' => 'success',
                 'request' => $type,
                 'id' => $short_link_id,
                 'name' => $short_link_name,
+                // The whole address of a one-time link, this once: only its
+                // hash is kept.
+                'token_url' => ($short_link_token !== '') ? URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link_token : '',
                 'message' => lang('The short link has been created.')));
 
             break;
@@ -7707,6 +7769,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             if (!$short_link_row) {
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
+
+            if ((string) $short_link_row['name'] === '') {
+                respond(array('status' => 'error', 'message' => lang('A link with a generated address has no name to change.')));
             }
 
             $short_link_name = pg_short_link_clean_name(isset($request['name']) ? $request['name'] : '');
@@ -7762,7 +7828,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             // must not leave the destination half saved behind it.
             $short_link_sql_name = '';
 
-            if (array_key_exists('name', $request)) {
+            // A link with a token for its address keeps it: it has no name.
+            if (array_key_exists('name', $request) && ((string) $short_link_row['name'] !== '')) {
 
                 $short_link_name = pg_short_link_clean_name($request['name']);
 
@@ -7827,6 +7894,15 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     last_modified_timestamp = UNIX_TIMESTAMP()
                 WHERE id = '" . e($short_link_row['id']) . "'");
 
+            // A timed link given a new time, counted from now.
+            $short_link_renew = (int) ($request['renew'] ?? 0);
+
+            if (($short_link_renew > 0) && pg_short_link_modes_ready() && isset(pg_short_link_durations()[$short_link_renew])
+                && ((string) ($short_link_row['link_mode'] ?? '') === 'timed')) {
+
+                db("UPDATE short_links SET expires_at = '" . (time() + $short_link_renew) . "' WHERE id = '" . e($short_link_row['id']) . "'");
+            }
+
             // The log says what the link is called now, not what it was: the
             // name is the address, and the old one no longer answers.
             $short_link_logged = ($short_link_sql_name != '') ? $short_link_name : $short_link_row['name'];
@@ -7861,6 +7937,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
+                // A one-time link is one address for one visit: a second one
+                // is made new, with an address of its own.
+                if ((string) $short_link_row['name'] === '') {
+                    $short_link_failed[] = lang('A one-time link cannot be copied. Create a new one.');
+                    continue;
+                }
+
                 $short_link_name = pg_short_link_free_name($short_link_row['name']);
 
                 if ($short_link_name == '') {
@@ -7868,14 +7951,17 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
+                // A timed link is copied with its time.
+                $short_link_copy_modes = pg_short_link_modes_ready() ? ', link_mode, expires_at' : '';
+
                 db("INSERT INTO short_links (
                         name, destination_type, page_id, product_group_id, product_id,
-                        url, file_id, tracking_code,
+                        url, file_id, tracking_code" . $short_link_copy_modes . ",
                         created_user_id, created_timestamp,
                         last_modified_user_id, last_modified_timestamp)
                     SELECT
                         '" . e($short_link_name) . "', destination_type, page_id, product_group_id, product_id,
-                        url, file_id, tracking_code,
+                        url, file_id, tracking_code" . $short_link_copy_modes . ",
                         '" . e($user['id']) . "', UNIX_TIMESTAMP(),
                         '" . e($user['id']) . "', UNIX_TIMESTAMP()
                     FROM short_links

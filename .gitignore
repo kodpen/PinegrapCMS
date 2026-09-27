@@ -46,6 +46,8 @@
 /_software_create_hash.php
 /pinegrap/_seed_*.php
 /pinegrap/_probe_*.php
+/_dev_*.php
+/pinegrap/_dev_*.php
 /HATA_RAPORU.md
 /DEVIR_*.md
 

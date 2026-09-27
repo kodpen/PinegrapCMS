@@ -493,3 +493,369 @@ function merge_contacts($contacts)
     }
     return $merged_contacts_counter;
 }
+
+// ── A face for a person without a picture ───────────────────────────────
+//
+// The letters of the name instead of the grey silhouette everybody used to
+// share: the first letters of the contact's first and last name, drawn in a
+// circle, or - for a login that has no contact yet - the first letters of
+// the username in a grey rounded square, so a missing name shows at a
+// glance. The picture is an SVG in a data: address, so every <img> that
+// showed the silhouette takes it as it is, with its own size and shape.
+
+/**
+ * Letters upper-cased for the panel's language: in Turkish "i" is "İ" and
+ * "ı" is "I".
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_initials_upper($text)
+{
+    $text = (string) $text;
+
+    if (strtolower(substr((string) lang(array('info' => '')), 0, 2)) === 'tr') {
+        $text = str_replace(array('i', 'ı'), array('İ', 'I'), $text);
+    }
+
+    return mb_strtoupper($text, 'UTF-8');
+}
+
+/**
+ * The letters a person is shown by.
+ *
+ * @param string $first_name
+ * @param string $last_name
+ * @param string $username used when there is no name
+ * @return string one or two letters, "?" when there is nothing
+ */
+function pg_initials($first_name, $last_name, $username = '')
+{
+    $first = trim((string) $first_name);
+    $last = trim((string) $last_name);
+
+    if (($first !== '') || ($last !== '')) {
+        if ($last === '') {
+            $words = preg_split('/\s+/u', $first, -1, PREG_SPLIT_NO_EMPTY);
+            $letters = mb_substr($words[0], 0, 1) . ((count($words) > 1) ? mb_substr($words[count($words) - 1], 0, 1) : '');
+        } elseif ($first === '') {
+            $letters = mb_substr($last, 0, 1);
+        } else {
+            $letters = mb_substr($first, 0, 1) . mb_substr($last, 0, 1);
+        }
+    } else {
+        $parts = preg_split('/[\s._@+-]+/u', trim((string) $username), -1, PREG_SPLIT_NO_EMPTY);
+        $letters = (count($parts) > 1) ? mb_substr($parts[0], 0, 1) . mb_substr($parts[1], 0, 1) : mb_substr((string) ($parts[0] ?? ''), 0, 2);
+    }
+
+    $letters = pg_initials_upper($letters);
+
+    return ($letters !== '') ? $letters : '?';
+}
+
+/**
+ * The picture of letters, as a data: address an <img> can show.
+ *
+ * @param string $initials
+ * @param string $kind contact (a named person: a coloured circle) | user (a
+ *                     login without a name: a grey rounded square)
+ * @param string $seed what picks the colour, so a person keeps theirs
+ * @return string
+ */
+function pg_initials_avatar_url($initials, $kind = 'contact', $seed = '')
+{
+    static $cache = array();
+
+    $key = $kind . '|' . $initials . '|' . $seed;
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $tones = array('#4f6bed', '#0f8a7e', '#c2410c', '#7c3aed', '#be185d', '#0369a1', '#15803d', '#a16207');
+    $letters = htmlspecialchars((string) $initials, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    $size = (mb_strlen((string) $initials) > 1) ? 25 : 30;
+
+    if ($kind === 'user') {
+        $shape = "<rect x='1' y='1' width='62' height='62' rx='16' fill='#e9ecef' stroke='#adb5bd' stroke-width='2'/>";
+        $ink = '#495057';
+    } else {
+        $tone = $tones[abs(crc32((string) (($seed !== '') ? $seed : $initials))) % count($tones)];
+        $shape = "<circle cx='32' cy='32' r='32' fill='" . $tone . "'/>";
+        $ink = '#ffffff';
+    }
+
+    // A size of its own, so an <img> no stylesheet sizes stays small.
+    $svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>" . $shape
+        . "<text x='32' y='32' dy='.35em' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-size='" . $size . "' font-weight='600' fill='" . $ink . "'>" . $letters . "</text></svg>";
+
+    return $cache[$key] = 'data:image/svg+xml,' . rawurlencode($svg);
+}
+
+/**
+ * The picture of letters for a person, from their name: a coloured circle
+ * when they have one, a grey square from the username when they do not.
+ *
+ * @param string     $first_name
+ * @param string     $last_name
+ * @param string     $username
+ * @param string|int $seed what keeps a person's colour
+ * @return string data: address
+ */
+function pg_avatar_for($first_name, $last_name, $username = '', $seed = '')
+{
+    $named = (trim((string) $first_name) !== '') || (trim((string) $last_name) !== '');
+
+    return pg_initials_avatar_url(pg_initials($first_name, $last_name, $username), $named ? 'contact' : 'user', (string) $seed);
+}
+
+/**
+ * The account menu's quick form: what is missing of the signed-in person's
+ * address-book contact - their first and last name (and, if given, mobile
+ * phone), their picture - written into it. The contact is made, and tied to
+ * the login, when there is none yet, the way the My Account profile makes it.
+ * A name already there is kept when the form does not send one.
+ *
+ * @param int    $user_id
+ * @param string $first_name
+ * @param string $last_name
+ * @param string $mobile_phone empty leaves the one stored
+ * @param string $photo        a picture as a data: address, empty for none
+ * @return array ok, error
+ */
+function pg_contact_quick_save($user_id, $first_name, $last_name, $mobile_phone = '', $photo = '')
+{
+    $user_id = (int) $user_id;
+    $first = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $first_name), 0, 50));
+    $last = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $last_name), 0, 50));
+    $phone = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $mobile_phone), 0, 50));
+    $photo = (string) $photo;
+
+    if ($user_id <= 0) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    $user = db_item("SELECT user_id, user_username, user_email, user_contact FROM user WHERE user_id = '" . $user_id . "'");
+
+    if (!is_array($user)) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    $contact_id = (int) $user['user_contact'];
+    $contact = ($contact_id > 0) ? db_item("SELECT id, first_name, last_name FROM contacts WHERE id = '" . $contact_id . "'") : null;
+
+    if (!is_array($contact)) {
+        $contact_id = 0;
+    }
+
+    $named = is_array($contact) && ((trim((string) $contact['first_name']) !== '') || (trim((string) $contact['last_name']) !== ''));
+    $writes_name = ($first !== '') || ($last !== '');
+
+    // A name is asked for until there is one; after that it is only written
+    // when the form sends it.
+    if ((!$named || $writes_name) && (($first === '') || ($last === ''))) {
+        return array('ok' => false, 'error' => lang('Please enter your first and last name.'));
+    }
+
+    if (!$writes_name && ($photo === '') && ($phone === '')) {
+        return array('ok' => false, 'error' => lang('Choose a picture first.'));
+    }
+
+    // The picture first: a file that is not a picture stops the save before
+    // anything is written.
+    $file_id = 0;
+
+    if ($photo !== '') {
+        $stored = pg_contact_photo_store($user_id, $photo);
+
+        if (!$stored['ok']) {
+            return array('ok' => false, 'error' => $stored['error']);
+        }
+
+        $file_id = (int) $stored['file_id'];
+    }
+
+    if ($contact_id > 0) {
+        $set = array();
+
+        if ($writes_name) {
+            $set[] = "first_name = '" . e($first) . "'";
+            $set[] = "last_name = '" . e($last) . "'";
+        }
+
+        if ($phone !== '') {
+            $set[] = "mobile_phone = '" . e($phone) . "'";
+        }
+
+        if ($file_id > 0) {
+            $set[] = "file_id = '" . $file_id . "'";
+            $set[] = "image = ''";
+        }
+
+        db("UPDATE contacts SET " . implode(', ', $set) . ", timestamp = UNIX_TIMESTAMP() WHERE id = '" . $contact_id . "'");
+    } else {
+        db("INSERT INTO contacts (first_name, last_name, mobile_phone, email_address, file_id, user, timestamp)
+            VALUES ('" . e($first) . "', '" . e($last) . "', '" . e($phone) . "', '" . e((string) $user['user_email']) . "', '" . $file_id . "', '" . $user_id . "', UNIX_TIMESTAMP())");
+
+        $contact_id = (int) mysqli_insert_id(db::$con);
+
+        if ($contact_id <= 0) {
+            return array('ok' => false, 'error' => lang('Your name could not be saved.'));
+        }
+
+        // The group new accounts are put in, as the profile screen does.
+        if (defined('REGISTRATION_CONTACT_GROUP_ID') && ((int) REGISTRATION_CONTACT_GROUP_ID > 0)
+            && ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'") > 0)) {
+            db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $contact_id . "', '" . (int) REGISTRATION_CONTACT_GROUP_ID . "')");
+        }
+
+        db("UPDATE user SET user_contact = '" . $contact_id . "' WHERE user_id = '" . $user_id . "'");
+    }
+
+    if (function_exists('log_activity')) {
+        log_activity(lang(array('string' => 'user ({var:1}) completed their address book details', 'vars' => (string) $user['user_username'])), (string) $user['user_username']);
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The folder profile pictures from the account menu are kept in: "Profile
+ * pictures" under the top folder of the file manager, made on the first one.
+ * Public, as a face shown next to a name is; the file names cannot be
+ * guessed.
+ *
+ * @param int $user_id who is making it, when it is made
+ * @return int 0 when the file manager has no top folder
+ */
+function pg_profile_photo_folder_id($user_id)
+{
+    $top = function_exists('getPublicRootFolderId') ? (int) getPublicRootFolderId() : 0;
+
+    if ($top <= 0) {
+        $top = (int) db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+    }
+
+    if ($top <= 0) {
+        return 0;
+    }
+
+    $names = array_unique(array(lang('Profile pictures'), 'Profile pictures'));
+    $quoted = array();
+
+    foreach ($names as $name) {
+        $quoted[] = "'" . e($name) . "'";
+    }
+
+    $existing = (int) db_value("SELECT folder_id FROM folder WHERE folder_parent = '" . $top . "' AND folder_name IN (" . implode(', ', $quoted) . ") ORDER BY folder_id LIMIT 1");
+
+    if ($existing > 0) {
+        return $existing;
+    }
+
+    $level = (int) db_value("SELECT folder_level FROM folder WHERE folder_id = '" . $top . "'");
+
+    db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_access_control_type, folder_archived, folder_timestamp, folder_user)
+        VALUES ('" . e(lang('Profile pictures')) . "', '" . $top . "', '" . ($level + 1) . "', '0', 'public', '0', UNIX_TIMESTAMP(), '" . (int) $user_id . "')");
+
+    return (int) mysqli_insert_id(db::$con);
+}
+
+/**
+ * A profile picture sent by the account menu, kept as a file: made square,
+ * at most 256 pixels and saved again as JPEG where the server can draw
+ * (which also drops what the camera wrote into it), otherwise kept as it
+ * came if it is a JPEG, PNG or WebP picture of at most 2 MB.
+ *
+ * @param int    $user_id
+ * @param string $data a data: address
+ * @return array ok, error, file_id
+ */
+function pg_contact_photo_store($user_id, $data)
+{
+    $fail = function ($message) {
+        return array('ok' => false, 'error' => $message, 'file_id' => 0);
+    };
+
+    if (!preg_match('#^data:image/(jpeg|png|webp);base64,#i', $data, $match)) {
+        return $fail(lang('The picture has to be a JPEG, PNG or WebP image.'));
+    }
+
+    $binary = base64_decode(str_replace(' ', '+', substr($data, strpos($data, ',') + 1)), true);
+
+    if (($binary === false) || ($binary === '') || (strlen($binary) > 2097152)) {
+        return $fail(lang('The picture could not be read, or it is larger than 2 MB.'));
+    }
+
+    $info = @getimagesizefromstring($binary);
+
+    if (!is_array($info) || !in_array((int) $info[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG, defined('IMAGETYPE_WEBP') ? IMAGETYPE_WEBP : -1), true)) {
+        return $fail(lang('The picture has to be a JPEG, PNG or WebP image.'));
+    }
+
+    $extension = image_type_to_extension((int) $info[2], false);
+    $extension = ($extension === 'jpeg') ? 'jpg' : $extension;
+
+    // Drawn again where the server can: square, small, and nothing but the
+    // pixels.
+    if (function_exists('imagecreatefromstring') && function_exists('imagejpeg')) {
+        $source = @imagecreatefromstring($binary);
+
+        if ($source !== false) {
+            $width = imagesx($source);
+            $height = imagesy($source);
+            $side = min($width, $height);
+            $size = min(256, $side);
+            $canvas = imagecreatetruecolor($size, $size);
+            $white = imagecolorallocate($canvas, 255, 255, 255);
+            imagefill($canvas, 0, 0, $white);
+            imagecopyresampled($canvas, $source, 0, 0, (int) (($width - $side) / 2), (int) (($height - $side) / 2), $size, $size, $side, $side);
+
+            ob_start();
+            imagejpeg($canvas, null, 88);
+            $redrawn = (string) ob_get_clean();
+
+            imagedestroy($canvas);
+            imagedestroy($source);
+
+            if ($redrawn !== '') {
+                $binary = $redrawn;
+                $extension = 'jpg';
+            }
+        }
+    }
+
+    $folder_id = pg_profile_photo_folder_id($user_id);
+
+    if ($folder_id <= 0) {
+        return $fail(lang('The picture could not be saved.'));
+    }
+
+    $name = 'profile-' . (int) $user_id . '-' . bin2hex(random_bytes(6)) . '.' . $extension;
+
+    if (function_exists('get_unique_name')) {
+        $name = get_unique_name(array('name' => $name, 'type' => 'file'));
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (file_exists($path) || (@file_put_contents($path, $binary) === false)) {
+        return $fail(lang('The picture could not be saved.'));
+    }
+
+    $size = @getimagesize($path);
+
+    db("INSERT INTO files (name, folder, type, size, user, description, design, optimized, image_width, image_height, timestamp)
+        VALUES ('" . e($name) . "', '" . (int) $folder_id . "', '" . e($extension) . "', '" . (int) filesize($path) . "', '" . (int) $user_id . "', '',
+            '0', '0', " . (is_array($size) ? (int) $size[0] : 'NULL') . ", " . (is_array($size) ? (int) $size[1] : 'NULL') . ", UNIX_TIMESTAMP())");
+
+    $file_id = (int) mysqli_insert_id(db::$con);
+
+    if ($file_id <= 0) {
+        @unlink($path);
+
+        return $fail(lang('The picture could not be saved.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'file_id' => $file_id);
+}

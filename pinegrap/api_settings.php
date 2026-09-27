@@ -34,6 +34,7 @@ require_once(dirname(__FILE__) . '/includes/api/keys.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+require_once(dirname(__FILE__) . '/includes/api/devices.php');
 
 $liveform = new liveform('api_settings');
 
@@ -91,22 +92,29 @@ if ($_POST) {
 
 		if ($liveform->check_form_errors() == false) {
 
+			// A team devices application is where staff sign in from their own
+			// phones (includes/api/devices.php). It is given no secret at all:
+			// the app it is typed into cannot keep one, and without a secret
+			// the key cannot be used as HTTP Basic credentials either.
+			$kind = (isset($_POST['kind']) && ($_POST['kind'] === 'device')) ? 'device' : 'server';
+
 			$key    = api_generate_key();
-			$secret = api_generate_secret();
+			$secret = ($kind === 'device') ? '' : api_generate_secret();
 
 			db("INSERT INTO api_apps
 				(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
-				 scopes, status, rate_limit_per_min, created_user_id, created_timestamp, updated_timestamp)
+				 scopes, status, rate_limit_per_min, kind, created_user_id, created_timestamp, updated_timestamp)
 				VALUES (
 					'" . escape($liveform->get_field_value('name')) . "',
 					'" . escape(isset($_POST['description']) ? $_POST['description'] : '') . "',
 					'" . escape($key) . "',
-					'" . escape(api_secret_hash($secret)) . "',
-					'" . escape(api_secret_hint($secret)) . "',
+					'" . escape(($secret !== '') ? api_secret_hash($secret) : '') . "',
+					'" . escape(($secret !== '') ? api_secret_hint($secret) : '') . "',
 					'" . (int)$user['id'] . "',
 					'" . escape(json_encode($posted_scopes)) . "',
 					'active',
 					'120',
+					'" . $kind . "',
 					'" . (int)$user['id'] . "',
 					UNIX_TIMESTAMP(),
 					UNIX_TIMESTAMP()
@@ -118,7 +126,8 @@ if ($_POST) {
 			$_SESSION['software']['api_new_credentials'] = array(
 				'name'   => $liveform->get_field_value('name'),
 				'key'    => $key,
-				'secret' => $secret
+				'secret' => $secret,
+				'kind'   => $kind
 			);
 
 			log_activity(lang(array(
@@ -184,7 +193,8 @@ if ($_POST) {
 
 	} elseif ($action === 'rotate' && $app_id > 0) {
 
-		$existing = db_item("SELECT id, name, api_key, api_secret_hash FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
+		$existing = db_item("SELECT id, name, api_key, api_secret_hash FROM api_apps
+			WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
 
 		if ($existing) {
 
@@ -308,6 +318,38 @@ if ($_POST) {
 
 		exit();
 
+	} elseif ($action === 'device_revoke' && $app_id > 0) {
+
+		// Signing one person's device out from here: a lost phone, or someone
+		// who has left. The next call that device makes is refused and it has
+		// to sign in again.
+		$device_id = isset($_POST['device_id']) ? (int)$_POST['device_id'] : 0;
+
+		$device = db_item("SELECT api_devices.id, api_devices.name, user.user_username
+			FROM api_devices
+			LEFT JOIN user ON user.user_id = api_devices.user_id
+			WHERE api_devices.id = '" . $device_id . "' AND api_devices.app_id = '" . $app_id . "' LIMIT 1");
+
+		if ($device) {
+
+			api_device_revoke((int)$device['id']);
+
+			$liveform->add_notice(lang(array(
+				'string' => '{var:1} was signed out on {var:2}.',
+				'vars'   => array($device['user_username'], $device['name'])
+			)));
+
+			log_activity(lang(array(
+				'string' => 'a device of {var:1} was signed out ({var:2})',
+				'vars'   => array($device['user_username'], $device['name'])
+			)), $_SESSION['sessionusername']);
+
+		}
+
+		header('Location: ' . $screen_url);
+
+		exit();
+
 	} elseif ($action === 'delete' && $app_id > 0) {
 
 		$existing = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
@@ -315,6 +357,9 @@ if ($_POST) {
 		if ($existing) {
 
 			db("DELETE FROM api_apps WHERE id = '" . $app_id . "'");
+
+			// The devices signed in through it are signed out with it.
+			api_devices_revoke_app($app_id);
 
 			// The subscriptions and whatever they had queued go with it. A
 			// subscription left behind is one this screen cannot show, because
@@ -442,13 +487,15 @@ function api_settings_group_text($key, $group = array()) {
 		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines; writing status and notes'), 'bi-cart3'),
 		'customers' => array(lang('Customers'),  lang('The people who buy (address book records)'), 'bi-person-lines-fill'),
 		'pages'     => array(lang('Pages'),      lang('Page title and meta fields'), 'bi-file-earmark'),
+		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies'), 'bi-palette'),
 		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means removing one, not creating it'), 'bi-file-earmark-text'),
 		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder'), 'bi-folder'),
 		'forms'     => array(lang('Forms'),      lang('Which forms the site has, and what visitors filled in on them'), 'bi-ui-checks'),
 		'seo'       => array(lang('SEO'),        lang('What the analysis found across the site, as a list to work through'), 'bi-graph-up-arrow'),
 		'webhooks'  => array(lang('Webhooks'),   lang('Registering an address for event notifications'), 'bi-megaphone'),
 		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle'),
-		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring'), 'bi-activity')
+		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring'), 'bi-activity'),
+		'account'   => array(lang('Own account'), lang('Notifications, signed-in devices and push registration of the account the calls act for'), 'bi-person-badge')
 	);
 
 	if (isset($text[$key])) {
@@ -485,6 +532,45 @@ function api_settings_group_choice($granted, $group) {
 	}
 
 	return '';
+
+}
+
+// Who is signed in through each team devices application, for the drawer's
+// Devices tab. One query for the screen, grouped in PHP, like the log above.
+$device_rows = array();
+
+if (api_devices_ready()) {
+
+	$signed_in = db_items("SELECT api_devices.id, api_devices.app_id, api_devices.name, api_devices.platform,
+			api_devices.app_version, api_devices.created_timestamp, api_devices.last_used_timestamp,
+			api_devices.last_used_ip, user.user_username
+		FROM api_devices
+		LEFT JOIN user ON user.user_id = api_devices.user_id
+		ORDER BY GREATEST(api_devices.last_used_timestamp, api_devices.created_timestamp) DESC
+		LIMIT 500");
+
+	if (is_array($signed_in)) {
+
+		foreach ($signed_in as $row) {
+
+			$key = (int)$row['app_id'];
+
+			if (!isset($device_rows[$key])) { $device_rows[$key] = array(); }
+
+			$device_rows[$key][] = array(
+				'id'       => (int)$row['id'],
+				'user'     => (string)$row['user_username'],
+				'name'     => (string)$row['name'],
+				'platform' => (string)$row['platform'],
+				'version'  => (string)$row['app_version'],
+				'since'    => date('d.m.Y', (int)$row['created_timestamp']),
+				'used_text' => api_settings_ago($row['last_used_timestamp']),
+				'ip'       => (string)$row['last_used_ip']
+			);
+
+		}
+
+	}
 
 }
 
@@ -704,13 +790,17 @@ foreach ($apps as $app) {
 
 	$stats = isset($traffic[(int)$app['id']]) ? $traffic[(int)$app['id']] : array('requests' => 0, 'failures' => 0);
 
+	$is_device = (isset($app['kind']) && ($app['kind'] === 'device'));
+
 	$app_rows .= '
 	<div class="api-row" data-app="' . (int)$app['id'] . '" role="button" tabindex="0">
 		<div class="api-name">
-			<i class="bi bi-key"></i>
+			<i class="bi ' . ($is_device ? 'bi-phone' : 'bi-key') . '"></i>
 			<div>
 				<b>' . h($app['name']) . '</b>
-				<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>
+				' . ($is_device
+					? '<code>' . lang('Team devices') . ' &middot; ' . pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0) . ' ' . lang('devices') . '</code>'
+					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>') . '
 			</div>
 		</div>
 		<div class="api-chips">' . $chips . '</div>
@@ -747,6 +837,8 @@ foreach ($apps as $app) {
 		'rate'        => (int)$app['rate_limit_per_min'],
 		'scopes'      => $scope_choices,
 		'has_secret'  => ($app['api_secret_hash'] !== ''),
+		'kind'        => $is_device ? 'device' : 'server',
+		'devices'     => isset($device_rows[(int)$app['id']]) ? $device_rows[(int)$app['id']] : array(),
 		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']] : array(),
 		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array()
 	);
@@ -1145,6 +1237,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		' . get_token_field() . '
 		<input type="hidden" name="api_action" value="update" id="d_action">
 		<input type="hidden" name="webhook_id" value="" id="d_webhook_id">
+		<input type="hidden" name="device_id" value="" id="d_device_id">
 		<input type="hidden" name="app_id" id="d_app_id" value="">
 
 		<div class="offcanvas-header pb-1 d-block">
@@ -1159,7 +1252,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button">' . lang('General') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button">' . lang('Permissions') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button">' . lang('Security') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button">' . lang('Events') . '</button></li>
+			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button">' . lang('Devices') . '</button></li>
+			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button">' . lang('Events') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button">' . lang('Log') . '</button></li>
 		</ul>
 
@@ -1180,7 +1274,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_key">' . lang('Copy') . '</button></div>
 					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
 				</div>
-				<div class="mb-3">
+				<div class="mb-3" id="d_secret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="api-secret-box"><code id="d_hint" class="opacity-50"></code>
 						<button type="submit" class="btn btn-sm btn-outline-warning" name="api_action" value="rotate">
@@ -1188,7 +1282,14 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
-				<div class="mb-3">
+				<div class="mb-3" id="d_device_block">
+					<label class="form-label small">' . lang('Signing in') . '</label>
+					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
+						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_login">' . lang('Copy') . '</button></div>
+					<div class="form-text">'
+						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
+				</div>
+				<div class="mb-3" id="d_auth_block">
 					<label class="form-label small">' . lang('Authentication') . '</label>
 					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
 						. h($api_base_url) . '/meta"</code>
@@ -1247,6 +1348,17 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				</div>
 			</div>
 
+			<div class="tab-pane fade" id="d_devices">
+				<div class="d-flex align-items-center mb-2">
+					<span class="small opacity-75">' . lang('Who is signed in through this application') . '</span>
+				</div>
+				<div id="d_device_rows"></div>
+				<div class="alert alert-primary py-2 px-3 small mt-3 mb-0">
+					<i class="bi bi-info-circle me-1"></i>'
+					. lang('Signing a device out ends it at once; the person has to sign in again. A new password, or signing out everywhere, signs out all of that person\'s devices too.') . '
+				</div>
+			</div>
+
 			<div class="tab-pane fade" id="d_hooks">
 				<div class="d-flex align-items-center mb-2">
 					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . '</span>
@@ -1299,20 +1411,77 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<input type="text" class="form-control form-control-sm" name="name" maxlength="190" required
 						placeholder="' . lang('For example: marketplace sync') . '">
 				</div>
-				<div class="mb-4">
+				<div class="mb-3">
 					<label class="form-label small">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" maxlength="500">
+				</div>
+				<div class="mb-4">
+					<label class="form-label small">' . lang('Who connects') . '</label>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="kind" value="server" id="n_kind_server" checked>
+						<label class="form-check-label small" for="n_kind_server"><b>' . lang('An integration') . '</b><br>
+							<span class="opacity-75">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</span></label>
+					</div>
+					<div class="form-check mt-2">
+						<input class="form-check-input" type="radio" name="kind" value="device" id="n_kind_device">
+						<label class="form-check-label small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
+							<span class="opacity-75">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</span></label>
+					</div>
 				</div>
 				<label class="form-label small">' . lang('Permissions') . '</label>
 				' . api_settings_permission_rows('scope', 'n_scope') . '
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-sm btn-primary">' . lang('Create and show the secret') . '</button>
+				<button type="submit" class="btn btn-sm btn-primary" id="n_submit"
+					data-server="' . h(lang('Create and show the secret')) . '" data-device="' . h(lang('Create')) . '">' . lang('Create and show the secret') . '</button>
 			</div>
 		</form>
 	</div>
 </div>';
+
+/* A team devices application has nothing to reveal once: its key is not a
+   secret and stays readable in the drawer. What the operator needs on the way
+   out of the form is what to hand the app developer. */
+if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'device')) {
+
+	echo '
+<div class="modal fade show" id="api_secret_sheet" tabindex="-1" style="display:block; background:rgba(0,0,0,.6)">
+	<div class="modal-dialog modal-lg modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header border-0 pb-0">
+				<h5 class="modal-title"><i class="bi bi-phone me-2 text-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
+			</div>
+			<div class="modal-body">
+				<p class="mb-3">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
+
+				<label class="form-label small text-uppercase opacity-75">' . lang('Sign-in address') . '</label>
+				<div class="api-secret-box mb-3">
+					<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
+					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_login">' . lang('Copy') . '</button>
+				</div>
+
+				<label class="form-label small text-uppercase opacity-75">client_key</label>
+				<div class="api-secret-box mb-3">
+					<code id="nc_key">' . h($new_credentials['key']) . '</code>
+					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
+				</div>
+
+				<div class="alert alert-primary py-2 px-3 small mb-0">
+					<i class="bi bi-info-circle me-1"></i>'
+					. lang('The app can leave client_key out while this is the only team devices application. Signed-in devices appear on its Devices tab, where each can be signed out.') . '
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-sm btn-success" id="nc_close">' . lang('Close') . '</button>
+			</div>
+		</div>
+	</div>
+</div>';
+
+	$new_credentials = null;
+
+}
 
 /* The one-time reveal. Rendered only on the request that follows the write that
    made the secret, and the session entry it came from is already gone. */
@@ -1466,6 +1635,33 @@ echo '
 		}).join("");
 	}
 
+	// The people signed in through a team devices application, most recently
+	// active first, each with the button that signs that one device out.
+	function renderDevices(devices) {
+		var box = document.getElementById("d_device_rows");
+		if (!devices.length) {
+			box.innerHTML = "<p class=\'small opacity-50 py-3 mb-0\'>" +
+				' . json_encode(lang('Nobody has signed in through this application yet.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
+			return;
+		}
+		box.innerHTML = devices.map(function (d) {
+			var meta = [d.platform, d.version, d.ip].filter(Boolean).map(esc);
+			meta.push(' . json_encode(lang('since'), JSON_UNESCAPED_UNICODE) . ' + " " + esc(d.since));
+			return "<div class=\'api-hook\'>" +
+				"<div class=\'api-hook-top\'>" +
+					"<span class=\'api-hook-url\'><b>" + esc(d.user) + "</b> &middot; " + esc(d.name) + "</span>" +
+					"<span class=\'small opacity-75\'>" + esc(d.used_text) + "</span>" +
+				"</div>" +
+				"<div class=\'api-hook-meta\'>" + meta.join(" &middot; ") + "</div>" +
+				"<div class=\'api-hook-acts\'>" +
+					"<button type=\'button\' class=\'btn btn-sm btn-outline-danger api-device-act\' data-id=\'" + d.id + "\'" +
+						" data-confirm=\'" + esc(' . json_encode(lang('This device will be signed out and will have to sign in again.'), JSON_UNESCAPED_UNICODE) . ') + "\'>" +
+						' . json_encode(lang('Sign out'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
+				"</div>" +
+			"</div>";
+		}).join("");
+	}
+
 	var current = null;
 
 	function openApp(id) {
@@ -1512,6 +1708,19 @@ echo '
 		renderLog(app.log, false);
 
 		renderHooks(app.webhooks || []);
+
+		// A team devices application has no secret to rotate and no curl line
+		// to hand over, and a phone never registers event subscriptions; what it
+		// has instead is the sign-in address and the list of devices.
+		var device = (app.kind === "device");
+		document.getElementById("d_secret_block").classList.toggle("d-none", device);
+		document.getElementById("d_auth_block").classList.toggle("d-none", device);
+		document.getElementById("d_device_block").classList.toggle("d-none", !device);
+		document.getElementById("d_devices_tab").classList.toggle("d-none", !device);
+		document.getElementById("d_hooks_tab").classList.toggle("d-none", device);
+		renderDevices(app.devices || []);
+		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
+		if (firstTab) { bootstrap.Tab.getOrCreateInstance(firstTab).show(); }
 
 		document.getElementById("d_delete_ask").classList.remove("d-none");
 		document.getElementById("d_delete_confirm").classList.add("d-none");
@@ -1565,6 +1774,24 @@ echo '
 	// form inside a form is not valid HTML, and that one already carries the
 	// application id and the token this needs.
 	document.addEventListener("click", function (e) {
+		var button = e.target.closest(".api-device-act");
+		if (!button) { return; }
+		if (!window.confirm(button.dataset.confirm)) { return; }
+		document.getElementById("d_action").value = "device_revoke";
+		document.getElementById("d_device_id").value = button.dataset.id;
+		document.getElementById("d_action").form.submit();
+	});
+
+	// The create button says what happens next: an integration is shown its
+	// secret once, a team devices application has none.
+	document.querySelectorAll("#api_new input[name=\'kind\']").forEach(function (radio) {
+		radio.addEventListener("change", function () {
+			var submit = document.getElementById("n_submit");
+			submit.textContent = (this.value === "device") ? submit.dataset.device : submit.dataset.server;
+		});
+	});
+
+	document.addEventListener("click", function (e) {
 		var button = e.target.closest(".api-hook-act");
 		if (!button) { return; }
 		if (button.dataset.confirm && !window.confirm(button.dataset.confirm)) { return; }
@@ -1595,10 +1822,13 @@ echo '
 	});
 
 	// The one-time sheet closes only once the operator says they have the secret.
+	// The team devices sheet has no secret and so no acknowledgement to wait for.
 	var ack = document.getElementById("nc_ack");
-	if (ack) {
-		var closeButton = document.getElementById("nc_close");
-		ack.addEventListener("change", function () { closeButton.classList.toggle("disabled", !this.checked); });
+	var closeButton = document.getElementById("nc_close");
+	if (closeButton) {
+		if (ack) {
+			ack.addEventListener("change", function () { closeButton.classList.toggle("disabled", !this.checked); });
+		}
 		closeButton.addEventListener("click", function () {
 			if (this.classList.contains("disabled")) { return; }
 			document.getElementById("api_secret_sheet").remove();

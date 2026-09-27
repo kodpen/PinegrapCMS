@@ -16,6 +16,19 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// The second request of an installation made with a design template. It runs as the site does
+// (init.php), which this screen never is, so it is handed over before anything of the installer
+// is defined. See includes/install_design_template.php.
+if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'design_template')) {
+
+	define('PG_INSTALL_DESIGN_TEMPLATE', true);
+
+	require(dirname(__FILE__) . '/../includes/install_design_template.php');
+
+	exit();
+
+}
+
 // If an admin has not specifically requested that error reporting not be set by PineGrap, then
 // set error_reporting to what is generally best for PineGrap. Don't show PHP notices, strict,
 // and deprecated messages. E_DEPRECATED is only available in newer PHP versions.  We allow
@@ -117,7 +130,12 @@ if(
 	&& ($_GET['local'] ==='en'
 	|| $_GET['local'] ==='tr')
 ){
-	define('DEFAULT_SOFTWARE_LANGUAGE', $_GET['local']);
+	// A language in the URL always wins, also over one that config.php defines for a site that
+	// is already installed; defining the constant a second time would only warn and keep that one.
+	if (!defined('DEFAULT_SOFTWARE_LANGUAGE')) {
+		define('DEFAULT_SOFTWARE_LANGUAGE', $_GET['local']);
+	}
+	define('SOFTWARE_LANGUAGE', $_GET['local']);
 }else{
 	
 	//else user is not request we check config defines. if ENFORCEMENT_SOFTWARE_LANGUAGE exits use it
@@ -250,6 +268,53 @@ require (dirname(__FILE__) . '/../includes/migrations/runner.php');
 // screen can tell which of those versions touch the database.
 install_include_legacy();
 
+// The editor's words in the language of a starter site, for the widget layouts that the screen
+// builds with the editor's own code when a design template is chosen. The same lookup lang()
+// makes, read from the language file directly: the language of this screen is fixed by the time
+// this runs, and it need not be the starter site's. A language that config.php enforces wins,
+// as it does in lang() when the template is written.
+if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'designer_i18n')) {
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	header('Cache-Control: no-store');
+
+	$designer_i18n_language = ((isset($_GET['language'])) && (in_array($_GET['language'], array('en', 'tr'), true))) ? $_GET['language'] : 'en';
+
+	if ((defined('ENFORCEMENT_SOFTWARE_LANGUAGE')) && (in_array(ENFORCEMENT_SOFTWARE_LANGUAGE, array('en', 'tr'), true))) {
+
+		$designer_i18n_language = ENFORCEMENT_SOFTWARE_LANGUAGE;
+
+	}
+
+	$designer_i18n = array();
+
+	if ($designer_i18n_language !== 'en') {
+
+		$designer_i18n_file = json_decode((string) @file_get_contents(dirname(__FILE__) . '/../includes/local/' . $designer_i18n_language . '.json'), true);
+
+		if (is_array($designer_i18n_file)) {
+
+			foreach (pg_designer_i18n_keys() as $designer_i18n_key) {
+
+				if ((isset($designer_i18n_file[$designer_i18n_key])) && ($designer_i18n_file[$designer_i18n_key] !== $designer_i18n_key)) {
+
+					$designer_i18n[$designer_i18n_key] = $designer_i18n_file[$designer_i18n_key];
+
+				}
+
+			}
+
+		}
+
+	}
+
+	print json_encode((count($designer_i18n) > 0) ? $designer_i18n : new stdClass(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+	exit();
+
+}
+
 // if this script is not being called from an automated upgrade script, then start session
 if ($automated_upgrade == false) {
 
@@ -334,6 +399,58 @@ define('PATH', $url_path);
 
 // prepare escaped version of path
 define('OUTPUT_PATH', h(PATH));
+
+// One page of a design template, drawn without a site for the preview of the design step
+// (pg_design_template_preview_html()), in the look and the palette chosen there. The page is in
+// the language of the URL (?local=), which the screen sets to the starter site's. Both starter
+// sites ship with the shop switched on, so the template is read as a site with the shop reads it.
+if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'design_preview')) {
+
+	if (!defined('ECOMMERCE')) {
+
+		define('ECOMMERCE', true);
+
+	}
+
+	$design_preview_looks = pg_design_looks();
+
+	$design_preview_palettes = pg_design_palettes();
+
+	$design_preview_template = (isset($_GET['template'])) ? (string) $_GET['template'] : '';
+
+	$design_preview_look = ((isset($_GET['look'])) && (isset($design_preview_looks[(string) $_GET['look']]))) ? (string) $_GET['look'] : '';
+
+	$design_preview_palette = ((isset($_GET['palette'])) && (isset($design_preview_palettes[(string) $_GET['palette']]))) ? (string) $_GET['palette'] : '';
+
+	$design_preview_link = '?' . http_build_query(array(
+		'install_action' => 'design_preview',
+		'template' => $design_preview_template,
+		'look' => $design_preview_look,
+		'palette' => $design_preview_palette,
+		'local' => SOFTWARE_LANGUAGE
+	)) . '&page={page}';
+
+	$design_preview_html = pg_design_template_preview_html($design_preview_template, (isset($_GET['page'])) ? (string) $_GET['page'] : '', $design_preview_look, $design_preview_palette, $design_preview_link);
+
+	header('Content-Type: text/html; charset=utf-8');
+
+	header('Cache-Control: no-store');
+
+	header('X-Robots-Tag: noindex');
+
+	if ($design_preview_html === '') {
+
+		http_response_code(404);
+
+		exit();
+
+	}
+
+	print $design_preview_html;
+
+	exit();
+
+}
 
 // If a config file path is not set, then set it to the default which is a path
 // inside the software directory. A custom config file path is used when
@@ -434,6 +551,92 @@ function get_available_starter_sites() {
 	}
 
 	return $starter_sites;
+
+}
+
+// The language of a starter site folder, or '' when the folder is not a starter site.
+function get_starter_site_language($folder) {
+
+	$starter_sites = get_starter_site_folders();
+
+	return isset($starter_sites[$folder]) ? $starter_sites[$folder]['language'] : '';
+
+}
+
+// The layouts of the widgets a design template leaves to the editor, as the installation screen
+// built them with the editor's own code (StyleDesigner.starterTree()): one tree per kind the
+// template has, each rooted at 'root'. Returns them, or false when one is missing or the value
+// cannot be read.
+function get_install_design_template_starters($template, $json) {
+
+	if ((!is_string($json)) || ($json === '') || (strlen($json) > 8388608)) {
+
+		return false;
+
+	}
+
+	$received = json_decode($json, true);
+
+	if (!is_array($received)) {
+
+		return false;
+
+	}
+
+	$starters = array();
+
+	foreach (pg_design_template_starter_kinds($template, true) as $kind) {
+
+		if ((!isset($received[$kind])) || (!is_array($received[$kind])) || (!isset($received[$kind]['type'])) || ($received[$kind]['type'] !== 'root')) {
+
+			return false;
+
+		}
+
+		$starters[$kind] = $received[$kind];
+
+	}
+
+	return $starters;
+
+}
+
+// Leave the note that the second request of a design template installation works from
+// (includes/install_design_template.php) and return the key that request has to present. Only
+// the hash of the key is written. Returns '' when the note cannot be written.
+function write_install_design_template_note($template_id, $language, $starters, $user_id, $look = '', $palette = '') {
+
+	$path = dirname(__FILE__) . '/../data/temp/install_design_template.json';
+
+	if (!is_dir(dirname($path))) {
+
+		@mkdir(dirname($path), 0755, true);
+
+	}
+
+	// a note an earlier installation left behind is of no use to this one
+	@unlink($path . '.running');
+
+	$key = bin2hex(random_bytes(16));
+
+	$note = array(
+		'key' => hash('sha256', $key),
+		'template' => $template_id,
+		'language' => $language,
+		'user_id' => (int) $user_id,
+		'look' => $look,
+		'palette' => $palette,
+		'starters' => $starters,
+		'created' => time()
+	);
+
+	if (@file_put_contents($path, json_encode($note, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+
+		return '';
+
+	}
+
+	return $key;
 
 }
 
@@ -2147,7 +2350,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		}
 
 		$output_starter_sites .= '
-		<div class="pg-source' . $output_starter_site_selected . '" data-source="starter" data-folder="' . h($starter_site['folder']) . '">
+		<div class="pg-source' . $output_starter_site_selected . '" data-source="starter" data-folder="' . h($starter_site['folder']) . '" data-language="' . h($starter_site['language']) . '">
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
 				<div class="fw-semibold"><i class="bi bi-star me-1 text-primary"></i>' . lang(array('string' => '{var:1} starter site', 'vars' => $starter_site['label'])) . '</div>
@@ -2252,20 +2455,156 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	}
 
+	// prepare the design step: one of the templates of the visual editor, which is what a new
+	// site is offered first, or the starter site as it is. The layouts of the widgets a template
+	// leaves to the editor are built by the editor's own code when the installation starts, so
+	// each template names their kinds, and names the pages its preview can show.
+	// Both starter sites ship with the shop switched on, so the templates are read as a site with
+	// the shop reads them (the order receipt among the e-mail pages), as the preview reads them.
+	if (!defined('ECOMMERCE')) {
+
+		define('ECOMMERCE', true);
+
+	}
+
+	$install_design_templates = pg_design_templates();
+
+	$install_design_selected = (string) $liveform->get_field_value('design_template');
+
+	if (($install_design_selected != 'standard') && (!isset($install_design_templates[$install_design_selected]))) {
+
+		$install_design_selected = (count($install_design_templates) > 0) ? key($install_design_templates) : 'standard';
+
+	}
+
+	$output_designer_script = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/style_designer.js?v=' . (int) @filemtime(dirname(__FILE__) . '/../assets/js/style_designer.js');
+
+	$output_design_choices = '';
+
+	foreach ($install_design_templates as $design_template) {
+
+		$design_template_summary = pg_design_template_summary($design_template);
+
+		$design_template_preview = array();
+
+		foreach (pg_design_template_preview_pages($design_template) as $design_page_key => $design_page_title) {
+
+			$design_template_preview[] = array('key' => $design_page_key, 'title' => $design_page_title, 'email' => false);
+
+		}
+
+		// the e-mails the site sends are pages of the template too
+		foreach (pg_design_template_email_pages($design_template) as $design_page_key => $design_page_title) {
+
+			$design_template_preview[] = array('key' => $design_page_key, 'title' => $design_page_title, 'email' => true);
+
+		}
+
+		$output_design_choices .= '
+		<div class="col-12 col-md-6">
+			<div class="pg-source pg-design pg-design-template h-100 mb-0' . (($install_design_selected == $design_template['id']) ? ' selected' : '') . '" data-design="' . h($design_template['id']) . '" data-kinds="' . h(json_encode(pg_design_template_starter_kinds($design_template, true))) . '" data-preview-pages="' . h(json_encode($design_template_preview)) . '">
+				<span class="pg-radio"></span>
+				<div class="flex-grow-1">
+					<div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+						<span class="badge text-bg-primary"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>
+						<span class="badge text-bg-secondary">' . h($design_template_summary['framework_label']) . '</span>
+						<span class="badge text-bg-secondary">' . lang(array('string' => '{var:1} pages', 'vars' => count($design_template['pages']))) . '</span>
+					</div>
+					<div class="fw-semibold pg-design-name"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 text-primary"></i>' . h($design_template_summary['name']) . '</div>
+					<div class="small text-body-secondary">' . h($design_template_summary['description']) . '</div>
+					<div class="small fw-semibold text-primary mt-2"><i class="bi bi-magic me-1"></i>' . lang('Made to be edited in the Visual Page Editor') . '</div>
+					<ul class="pg-design-points list-unstyled small text-body-secondary mb-0 mt-1">
+						<li><i class="bi bi-check2 text-primary"></i>' . lang('Every page is changed on the page itself: drag blocks, write on the canvas, publish.') . '</li>
+						<li><i class="bi bi-check2 text-primary"></i>' . lang('The look and the colours change with a click, now or later.') . '</li>
+						<li><i class="bi bi-check2 text-primary"></i>' . lang('Fits every screen: phone, tablet and desktop.') . '</li>
+						<li><i class="bi bi-check2 text-primary"></i>' . lang('A blog, a contact form, member pages and a shop come ready.') . '</li>
+						<li><i class="bi bi-check2 text-primary"></i>' . lang('The e-mails the site sends are pages too: the notification, the reply and the order receipt are designed in the same editor.') . '</li>
+					</ul>
+				</div>
+			</div>
+		</div>';
+
+	}
+
+	$output_design_choices .= '
+		<div class="col-12 col-md-6">
+			<div class="pg-source pg-design h-100 mb-0' . (($install_design_selected == 'standard') ? ' selected' : '') . '" id="pg_design_standard" data-design="standard">
+				<span class="pg-radio"></span>
+				<div class="flex-grow-1">
+					<div class="fw-semibold pg-design-name"><i class="bi bi-box-seam me-1 text-primary"></i>' . lang('Standard installation') . '</div>
+					<div class="small text-body-secondary">' . lang('The starter site is installed as it is, with its own pages and page styles.') . '</div>
+					<div class="small text-body-secondary mt-2"><i class="bi bi-info-circle me-1"></i>' . lang('Its pages are classic pages: they are not built with the Visual Page Editor.') . '</div>
+				</div>
+			</div>
+		</div>';
+
+	// The look and the colour palette a template is installed in, the same choices the
+	// template dialog of the editor offers (pg_designer_template_theme_picker()), without the
+	// looks and palettes a site makes of its own: there is no site yet.
+	$install_design_look = (string) $liveform->get_field_value('design_template_look');
+
+	$install_design_palette = (string) $liveform->get_field_value('design_template_palette');
+
+	$install_design_looks = array_merge(array('' => array('name' => lang('Plain Bootstrap'), 'description' => lang('Plain Bootstrap 5.3, as it comes.'))), pg_design_looks());
+
+	$install_design_palettes = array_merge(array('' => array_merge(array('name' => lang('Bootstrap')), pg_design_bootstrap_colors())), pg_design_palettes());
+
+	if (($liveform->field_in_session('design_template_look') == false) || (!isset($install_design_looks[$install_design_look]))) {
+
+		$install_design_look = pg_design_default_look();
+
+	}
+
+	if (!isset($install_design_palettes[$install_design_palette])) {
+
+		$install_design_palette = '';
+
+	}
+
+	$output_design_looks = '';
+
+	$design_theme_number = 0;
+
+	foreach ($install_design_looks as $design_look_key => $design_look) {
+
+		$design_theme_number++;
+
+		$output_design_looks .= '<input type="radio" class="btn-check" name="design_template_look" id="pg_design_look_' . $design_theme_number . '" value="' . h($design_look_key) . '" data-name="' . h($design_look['name']) . '"' . (($design_look_key === $install_design_look) ? ' checked' : '') . ' autocomplete="off">'
+			. '<label class="btn btn-sm btn-outline-secondary rounded-pill" for="pg_design_look_' . $design_theme_number . '" title="' . h($design_look['description']) . '">' . h($design_look['name']) . '</label>';
+
+	}
+
+	$output_design_palettes = '';
+
+	foreach ($install_design_palettes as $design_palette_key => $design_palette) {
+
+		$design_theme_number++;
+
+		$output_design_palettes .= '<input type="radio" class="btn-check" name="design_template_palette" id="pg_design_palette_' . $design_theme_number . '" value="' . h($design_palette_key) . '" data-name="' . h($design_palette['name']) . '"' . (($design_palette_key === $install_design_palette) ? ' checked' : '') . ' autocomplete="off">'
+			. '<label class="pg-design-swatch" for="pg_design_palette_' . $design_theme_number . '" title="' . h($design_palette['name']) . '"><i style="background:' . h($design_palette['primary']) . '"></i><i style="background:' . h($design_palette['secondary']) . '"></i><span class="visually-hidden">' . h($design_palette['name']) . '</span></label>';
+
+	}
+
 	// work out which step holds the first error, so the wizard can open that step
 	$install_error_step = 0;
 
 	if ($liveform->check_form_errors() == true) {
 
-		$install_error_step = 3;
+		$install_error_step = 4;
 
 		if (($liveform->check_field_error('admin_username') == true) || ($liveform->check_field_error('admin_email_address') == true) || ($liveform->check_field_error('admin_confirm_email_address') == true) || ($liveform->check_field_error('admin_password') == true) || ($liveform->check_field_error('admin_confirm_password') == true)) {
+
+			$install_error_step = 5;
+
+		}
+
+		if (($liveform->check_field_error('db_host') == true) || ($liveform->check_field_error('db_username') == true) || ($liveform->check_field_error('db_password') == true) || ($liveform->check_field_error('db_database') == true)) {
 
 			$install_error_step = 4;
 
 		}
 
-		if (($liveform->check_field_error('db_host') == true) || ($liveform->check_field_error('db_username') == true) || ($liveform->check_field_error('db_password') == true) || ($liveform->check_field_error('db_database') == true)) {
+		if ($liveform->check_field_error('design_template') == true) {
 
 			$install_error_step = 3;
 
@@ -2288,7 +2627,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	// the question about replacing an existing site belongs to the last step
 	if ((!empty($_SESSION['software']['install']['reinstall'])) || ($liveform->check_field_error('reinstall_software') == true)) {
 
-		$install_error_step = 5;
+		$install_error_step = 6;
 
 	}
 
@@ -2446,6 +2785,19 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			cursor: pointer;
 		}
 		.pg-source.selected { border-color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .08); }
+		.pg-source.disabled { opacity: .55; cursor: not-allowed; }
+		.pg-design-points li { display: flex; gap: .4rem; margin-top: .2rem; }
+		.pg-design-custom { padding: 1rem; border: 1px solid var(--bs-border-color); border-radius: 1rem; background: var(--bs-tertiary-bg); }
+		.pg-design-swatch { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
+		.pg-design-swatch i { flex: 1; }
+		.btn-check:checked + .pg-design-swatch { border-color: var(--bs-body-bg); box-shadow: 0 0 0 2px var(--bs-emphasis-color); }
+		.btn-check:focus-visible + .pg-design-swatch { box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .35), 0 0 0 1px var(--bs-border-color); }
+		.pg-design-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-body-bg); }
+		.pg-design-frame iframe { position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform-origin: 0 0; background: #fff; }
+		.pg-design-frame.pg-mobile { aspect-ratio: auto; height: 34rem; background: var(--bs-secondary-bg); }
+		.pg-design-frame.pg-mobile iframe { left: 50%; width: 390px; height: 100%; margin-left: -195px; transform: none; box-shadow: 0 0 0 1px var(--bs-border-color); }
+		.pg-design-frame-wait { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(var(--bs-body-bg-rgb), .7); font-size: .875rem; }
+		.pg-design-frame.pg-loading .pg-design-frame-wait { display: flex; }
 		.pg-radio {
 			width: 20px;
 			height: 20px;
@@ -2585,14 +2937,14 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
 					<div class="flex-grow-1" style="min-width:16rem;">
 						<h1 class="h3 mb-1" title="' . lang('Installation') . '">' . lang('Pinegrap installation') . '</h1>
-						<p class="text-body-secondary mb-0">' . lang('Your site will be online in five short steps. If you already have a backup, you can restore it from the same wizard.') . '</p>
+						<p class="text-body-secondary mb-0">' . lang('Your site will be online in six short steps. If you already have a backup, you can restore it from the same wizard.') . '</p>
 					</div>
 					' . $output_unlock_notice . '
 					' . (($upgrade_option == true) ? '<button type="button" class="btn btn-sm btn-outline-secondary" id="pg_back_to_upgrade"><i class="bi bi-arrow-left me-1"></i>' . lang('Software upgrade') . '</button>' : '') . '
 				</div>
 				<div class="d-flex align-items-center gap-3 mb-3" id="pg_progress_row">
-					<span class="small text-body-secondary text-nowrap">' . lang('Step') . ' <b id="pg_step_number">1</b> / 5</span>
-					<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_progress_bar" style="width:20%;"></div></div>
+					<span class="small text-body-secondary text-nowrap">' . lang('Step') . ' <b id="pg_step_number">1</b> / 6</span>
+					<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_progress_bar" style="width:17%;"></div></div>
 					<span class="small text-body-secondary text-nowrap" id="pg_step_title">' . lang('Source') . '</span>
 				</div>
 				<form method="post" enctype="multipart/form-data" id="install_form" style="margin: 0px">
@@ -2618,14 +2970,18 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 								</button>
 								<button type="button" class="pg-step" data-step="3">
 									<span class="pg-step-dot">3</span>
-									<span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small text-body-secondary">' . lang('MySQL connection information') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small text-body-secondary">' . lang('Starter site or a design template') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="4">
 									<span class="pg-step-dot">4</span>
-									<span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small text-body-secondary">' . lang('The first administrator account') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small text-body-secondary">' . lang('MySQL connection information') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="5">
 									<span class="pg-step-dot">5</span>
+									<span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small text-body-secondary">' . lang('The first administrator account') . '</span></span>
+								</button>
+								<button type="button" class="pg-step" data-step="6">
+									<span class="pg-step-dot">6</span>
 									<span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small text-body-secondary">' . lang('Summary and installation') . '</span></span>
 								</button>
 							</nav>
@@ -2683,6 +3039,64 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 							</div>
 
 							<div class="pg-step-panel" data-panel="3">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-palette me-2"></i>' . lang('Site Design') . '
+									</div>
+									<div class="card-body">
+										<p class="text-body-secondary">' . lang('How should the site look after the installation?') . '</p>
+										<div class="alert alert-secondary small d-flex gap-2 d-none" id="pg_design_only_starter">
+											<i class="bi bi-info-circle"></i>
+											<div>' . lang('A design template can be used with a starter site only. A backup or a zip file is restored exactly as it was.') . '</div>
+										</div>
+										' . $liveform->output_field(array(
+										'type' => 'hidden',
+										'id' => 'design_template',
+										'name' => 'design_template'
+										)) . '
+										<input type="hidden" name="design_template_starters" id="design_template_starters" value="">
+										<div class="row g-3">' . $output_design_choices . '</div>
+										<div class="pg-design-custom mt-3 d-none" id="pg_design_custom">
+											<div class="mb-3">
+												<div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal text-body-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
+												<div class="d-flex flex-wrap gap-1" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $output_design_looks . '</div>
+											</div>
+											<div class="mb-3">
+												<div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal text-body-secondary">— <span id="pg_design_palette_name"></span></span></div>
+												<div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $output_design_palettes . '</div>
+											</div>
+											<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+												<span class="small fw-semibold me-1"><i class="bi bi-eye me-1"></i>' . lang('Preview') . '</span>
+												<div class="d-flex flex-wrap gap-1" id="pg_design_pages"></div>
+											</div>
+											<div class="d-flex flex-wrap align-items-center gap-2 mb-2 d-none" id="pg_design_mails_row">
+												<span class="small fw-semibold me-1"><i class="bi bi-envelope me-1"></i>' . lang('E-mails') . '</span>
+												<div class="d-flex flex-wrap gap-1" id="pg_design_mails"></div>
+												<div class="btn-group btn-group-sm ms-auto" role="group" aria-label="' . h(lang('Preview')) . '">
+													<button type="button" class="btn btn-outline-secondary active" id="pg_design_desktop" title="' . lang('Desktop') . '"><i class="bi bi-display"></i><span class="visually-hidden">' . lang('Desktop') . '</span></button>
+													<button type="button" class="btn btn-outline-secondary" id="pg_design_mobile" title="' . lang('Mobile') . '"><i class="bi bi-phone"></i><span class="visually-hidden">' . lang('Mobile') . '</span></button>
+												</div>
+												<a class="btn btn-sm btn-outline-secondary" id="pg_design_open" href="#" target="_blank" rel="noopener" title="' . lang('Open in a new tab') . '"><i class="bi bi-box-arrow-up-right"></i><span class="visually-hidden">' . lang('Open in a new tab') . '</span></a>
+											</div>
+											<div class="pg-design-frame" id="pg_design_frame_box">
+												<iframe id="pg_design_frame" title="' . h(lang('Preview')) . '" sandbox="allow-scripts"></iframe>
+												<div class="pg-design-frame-wait"><span class="spinner-border spinner-border-sm me-2"></span>' . lang('Loading') . '</div>
+											</div>
+											<div class="form-text">' . lang('The pages are drawn with sample content, as a first-time visitor sees them.') . ' ' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
+										</div>
+										<div class="alert alert-primary small d-flex gap-2 mt-3 mb-0">
+											<i class="bi bi-info-circle"></i>
+											<div>' . lang('With a design template the pages and page styles of the starter site are not installed. The template\'s pages are published as a new design of the visual editor and its home page becomes the home page of the site. Products, settings and the rest of the starter content are installed as usual.') . '</div>
+										</div>
+										<div class="d-flex justify-content-between mt-3">
+											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="pg-step-panel" data-panel="4">
 								<div class="card mb-4">
 									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
 										<i class="bi bi-database me-2"></i>' . lang('MySQL Database') . '
@@ -2747,7 +3161,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 								</div>
 							</div>
 
-							<div class="pg-step-panel" data-panel="4">
+							<div class="pg-step-panel" data-panel="5">
 								<div class="card mb-4">
 									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
 										<i class="bi bi-person me-2"></i>' . lang('Administrator User') . '
@@ -2966,7 +3380,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 								</div>
 							</div>
 
-							<div class="pg-step-panel" data-panel="5">
+							<div class="pg-step-panel" data-panel="6">
 								<div class="card mb-4">
 									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
 										<i class="bi bi-lightning-charge me-2"></i>' . lang('Summary and installation') . '
@@ -2976,6 +3390,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										<div class="pg-review small">
 											<div><span class="text-body-secondary">' . lang('Installation Folder') . '</span><b id="pg_review_folder">-</b></div>
 											<div><span class="text-body-secondary">' . lang('Software Language') . '</span><b id="pg_review_language">-</b></div>
+											<div><span class="text-body-secondary">' . lang('Site Design') . '</span><b id="pg_review_design">-</b></div>
 											<div><span class="text-body-secondary">' . lang('MySQL Database') . '</span><b id="pg_review_database">-</b></div>
 											<div><span class="text-body-secondary">' . lang('Administrator User') . '</span><b id="pg_review_admin">-</b></div>
 											<div><span class="text-body-secondary">' . lang('Version') . '</span><b>' . h($software_version) . '</b></div>
@@ -2985,6 +3400,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 											<div>' . lang('The installation resets the Pinegrap tables in the database that you entered. If you are restoring an existing site, it is recommended that you make a backup first.') . '</div>
 										</div>
 										' . $reinstallation_verification . '
+										<div class="d-none" id="pg_design_prepare"></div>
 										<div class="d-flex flex-wrap align-items-center gap-2 mt-3" id="pg_install_actions">
 											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
 										</div>
@@ -3112,6 +3528,74 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			pg_install_finished = true;
 			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
 			$("#pg_run_result").html(html);
+			pg_install_apply_design();
+		}
+
+		var pg_install_started_at = new Date().getTime();
+
+		function pg_install_seconds() {
+			return ((new Date().getTime() - pg_install_started_at) / 1000).toFixed(1);
+		}
+
+		// An installation made with a design template has a second half, which the site runs
+		// itself once the installation is complete (install_action=design_template). Until it
+		// has answered the confirmation waits; when it fails the site is the starter site as it
+		// was installed, and it can be asked again.
+		function pg_install_apply_design() {
+			var holder = $("#pg_run_result #pg_design_apply");
+			if (holder.length === 0) { return; }
+			var done = $("#pg_run_result .pg-install-done");
+			var working = "' . escape_javascript(lang('Installing the design template…')) . '";
+			done.addClass("d-none");
+			holder.removeClass("d-none").html("<div class=\"small text-body-secondary mt-3\"><span class=\"spinner-border spinner-border-sm me-2\"></span>" + working + "</div>");
+			document.getElementById("pg_run_now").textContent = working;
+			$.ajax({
+				url: window.location.pathname + "?install_action=design_template",
+				type: "POST",
+				dataType: "json",
+				timeout: 0,
+				data: { key: holder.attr("data-key") }
+			}).done(function(answer) {
+				if ((answer) && (answer.ok)) {
+					pg_install_stream_step("design_1", pg_install_seconds(), "' . escape_javascript(lang('Installed the design template')) . '",
+						answer.design + (answer.look ? " · " + answer.look : "") + (answer.palette ? " · " + answer.palette : "") + " · " + "' . escape_javascript(lang('{var:1} pages')) . '".replace("{var:1}", answer.pages) + (answer.home ? " · ' . escape_javascript(lang('Home Page')) . ': " + answer.home : ""), "ok", 100);
+					pg_install_stream_step("design_2", pg_install_seconds(), "' . escape_javascript(lang('Removed the pages and page styles of the starter site')) . '",
+						"' . escape_javascript(lang('{var:1} pages, {var:2} page styles')) . '".replace("{var:1}", answer.removed.pages).replace("{var:2}", answer.removed.styles), "ok", 100);
+					holder.addClass("d-none").empty();
+					done.removeClass("d-none");
+					document.getElementById("pg_run_now").textContent = "' . escape_javascript(lang('The installation is complete')) . '";
+					return;
+				}
+				var message = "' . escape_javascript(lang('The design template could not be installed.')) . '";
+				var retry = true;
+				if ((answer) && (answer.error)) { message = answer.error; }
+				if ((answer) && ((answer.code === "key") || (answer.code === "missing") || (answer.code === "expired"))) {
+					message = "' . escape_javascript(lang('The note that the installation left for the design template was not found, or it has expired.')) . '";
+					retry = false;
+				}
+				if ((answer) && (answer.code === "busy")) {
+					message = "' . escape_javascript(lang('The design template is already being installed. Wait a minute, then look at the site.')) . '";
+				}
+				pg_install_design_failed(message, retry);
+			}).fail(function(xhr, status) {
+				pg_install_design_failed("' . escape_javascript(lang('The server did not answer while the design template was being installed.')) . '" + ((xhr) && (xhr.status) ? " (HTTP " + xhr.status + ")" : ""), true);
+			});
+		}
+
+		function pg_install_design_failed(message, retry) {
+			var holder = $("#pg_run_result #pg_design_apply");
+			var safe = document.createElement("div");
+			safe.textContent = message;
+			pg_install_stream_step("design_error_" + new Date().getTime(), pg_install_seconds(), "' . escape_javascript(lang('The design template could not be installed.')) . '", message, "error", 100);
+			holder.html(
+				"<div class=\"alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<b>' . escape_javascript(lang('The design template could not be installed.')) . '</b>" +
+				"<div class=\"small mt-1\">" + safe.innerHTML + "</div>" +
+				"<div class=\"small mt-1\">' . escape_javascript(lang('The site is installed as the starter site, with its own pages and page styles.')) . '</div>" +
+				(retry ? "<div class=\"d-flex gap-2 flex-wrap mt-2\"><button type=\"button\" class=\"btn btn-primary\" onclick=\"pg_install_apply_design();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" : "") +
+				"</div></div>");
+			$("#pg_run_result .pg-install-done").removeClass("d-none");
+			document.getElementById("pg_run_now").textContent = "";
 		}
 
 		// The progress file carries the steps, what the runner is doing right now, the notes of
@@ -3409,9 +3893,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		var pg_install_step_titles = {
 			1: "' . escape_javascript(lang('Source')) . '",
 			2: "' . escape_javascript(lang('Software Language')) . '",
-			3: "' . escape_javascript(lang('Database')) . '",
-			4: "' . escape_javascript(lang('Administrator')) . '",
-			5: "' . escape_javascript(lang('Installation')) . '"
+			3: "' . escape_javascript(lang('Site Design')) . '",
+			4: "' . escape_javascript(lang('Database')) . '",
+			5: "' . escape_javascript(lang('Administrator')) . '",
+			6: "' . escape_javascript(lang('Installation')) . '"
 		};
 
 		// Every step checks its own fields before the wizard moves on, so nobody lands on the
@@ -3433,7 +3918,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				}
 			}
 
-			if (step === 3) {
+			if (step === 4) {
 				var database_fields = {
 					db_host: "' . escape_javascript(lang('Database Hostname is required.')) . '",
 					db_username: "' . escape_javascript(lang('Database Username is required.')) . '",
@@ -3447,7 +3932,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				});
 			}
 
-			if (step === 4) {
+			if (step === 5) {
 				var administrator_fields = {
 					admin_username: "' . escape_javascript(lang('Username is required.')) . '",
 					admin_email_address: "' . escape_javascript(lang('E-mail Address is required.')) . '",
@@ -3507,7 +3992,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		function pg_install_set_step(step) {
 			if (step < 1) { step = 1; }
-			if (step > 5) { step = 5; }
+			if (step > 6) { step = 6; }
 
 			// walk forward one step at a time, so the first step with a problem is the one we stop on
 			if (step > pg_install_step) {
@@ -3521,7 +4006,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					pg_install_show_problems(check, []);
 
 					// leaving the database step, so find out what is in that database
-					if (check === 3) {
+					if (check === 4) {
 						pg_install_check_database_state();
 					}
 				}
@@ -3537,9 +4022,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			});
 			$("#pg_step_number").text(step);
 			$("#pg_step_title").text(pg_install_step_titles[step]);
-			$("#pg_progress_bar").css("width", (step * 20) + "%");
-			$("#install_submit_nav").toggleClass("d-none", step !== 5);
-			if (step === 5) { pg_install_update_review(); }
+			$("#pg_progress_bar").css("width", Math.round(step * 100 / 6) + "%");
+			$("#install_submit_nav").toggleClass("d-none", step !== 6);
+			if (step === 3) { pg_install_update_design(); }
+			if (step === 6) { pg_install_update_review(); }
 			$("html, body").animate({ scrollTop: 0 }, 200);
 		}
 
@@ -3547,6 +4033,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var folder = $("#install_from_folder").val();
 			$("#pg_review_folder").text(folder ? folder : "-");
 			$("#pg_review_language").text($("#default_software_language option:selected").text());
+			var review_design = $.trim($(".pg-design.selected .pg-design-name").first().text()) || "-";
+			if ($(".pg-design.selected").hasClass("pg-design-template")) {
+				review_design += " · " + ($("input[name=design_template_look]:checked").attr("data-name") || "") + " · " + ($("input[name=design_template_palette]:checked").attr("data-name") || "");
+			}
+			$("#pg_review_design").text(review_design);
 			var database = $("#db_database").val();
 			var host = $("#db_host").val();
 			$("#pg_review_database").text(database ? (database + "@" + host) : "-");
@@ -3555,9 +4046,176 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			$("#pg_review_admin").text(administrator ? (administrator + " · " + email) : "-");
 		}
 
+		// A design template can only be used with a starter site: a backup or a zip file is
+		// restored exactly as it was.
+		function pg_install_source_is_starter() {
+			var selected = $(".pg-source.selected").not(".pg-design").first();
+			return (selected.length > 0) && (selected.attr("data-source") === "starter");
+		}
+
+		// Set once the design is chosen by hand: until then a starter site gets the template
+		// the screen offers first, and a backup or a zip file the standard installation.
+		var pg_install_design_chosen = false;
+
+		function pg_install_select_design(element) {
+			if ((!element) || ($(element).hasClass("disabled"))) { return; }
+			$(".pg-design").removeClass("selected");
+			$(element).addClass("selected");
+			$("#design_template").val($(element).attr("data-design"));
+			// layouts built for another choice are built again when the installation starts
+			$("#design_template_starters").val("");
+			pg_install_update_preview();
+		}
+
+		function pg_install_update_design() {
+			var starter = pg_install_source_is_starter();
+			$("#pg_design_only_starter").toggleClass("d-none", starter);
+			$(".pg-design-template").toggleClass("disabled", !starter);
+			if ((!starter) && ($("#design_template").val() !== "standard")) {
+				pg_install_select_design(document.getElementById("pg_design_standard"));
+			} else if ((starter) && (!pg_install_design_chosen) && ($("#design_template").val() === "standard") && ($(".pg-design-template").length > 0)) {
+				pg_install_select_design($(".pg-design-template")[0]);
+			}
+			pg_install_update_preview();
+		}
+
+		// The preview of a template: its pages drawn by the server without a site
+		// (install_action=design_preview), in the look and the palette chosen here and in the
+		// language of the starter site. The frame holds a 1280 pixel wide page scaled down to
+		// the panel, or a phone-wide one; its links open the template\'s other pages in place,
+		// and each page says which it is, so the page buttons follow.
+		var pg_design_preview_page = "";
+
+		// null until the preview is first shown: a narrow screen starts on the phone view
+		var pg_design_preview_mobile = null;
+
+		function pg_install_preview_device(mobile) {
+			pg_design_preview_mobile = mobile;
+			$("#pg_design_desktop").toggleClass("active", !mobile);
+			$("#pg_design_mobile").toggleClass("active", mobile);
+			$("#pg_design_frame_box").toggleClass("pg-mobile", mobile);
+			pg_install_scale_preview();
+		}
+
+		function pg_install_preview_url(page) {
+			return window.location.pathname + "?" + $.param({
+				install_action: "design_preview",
+				template: $(".pg-design.selected").attr("data-design") || "",
+				page: page,
+				look: $("input[name=design_template_look]:checked").val() || "",
+				palette: $("input[name=design_template_palette]:checked").val() || "",
+				local: $(".pg-source.selected").not(".pg-design").first().attr("data-language") || "en"
+			});
+		}
+
+		function pg_install_scale_preview() {
+			var box = document.getElementById("pg_design_frame_box");
+			var frame = document.getElementById("pg_design_frame");
+			if ((!box) || (!frame)) { return; }
+			if (pg_design_preview_mobile) {
+				frame.style.transform = "";
+				frame.style.height = "";
+				return;
+			}
+			var scale = box.clientWidth / 1280;
+			if (!scale) { return; }
+			frame.style.transform = "scale(" + scale + ")";
+			frame.style.height = Math.ceil(box.clientHeight / scale) + "px";
+		}
+
+		function pg_install_mark_preview_page() {
+			$("#pg_design_pages button, #pg_design_mails button").each(function() {
+				$(this).toggleClass("active", $(this).attr("data-page") === pg_design_preview_page);
+			});
+		}
+
+		function pg_install_update_preview() {
+			var card = $(".pg-design.selected");
+			var template = card.hasClass("pg-design-template");
+			$("#pg_design_custom").toggleClass("d-none", !template);
+			$("#pg_design_palette_name").text($("input[name=design_template_palette]:checked").attr("data-name") || "");
+			// drawn only when it can be seen
+			if ((!template) || (!$(".pg-step-panel[data-panel=3]").hasClass("active"))) { return; }
+			var pages = [];
+			try { pages = JSON.parse(card.attr("data-preview-pages") || "[]"); } catch (error) { pages = []; }
+			var keys = $.map(pages, function(page) { return page.key; });
+			if ($.inArray(pg_design_preview_page, keys) === -1) { pg_design_preview_page = (keys.length > 0) ? keys[0] : ""; }
+			var buttons = $("#pg_design_pages").empty();
+			var mails = $("#pg_design_mails").empty();
+			$.each(pages, function(index, page) {
+				$("<button type=\"button\" class=\"btn btn-sm btn-outline-secondary rounded-pill\"></button>").attr("data-page", page.key).text(page.title).appendTo(page.email ? mails : buttons);
+			});
+			$("#pg_design_mails_row").toggleClass("d-none", mails.children().length === 0);
+			pg_install_mark_preview_page();
+			if (pg_design_preview_mobile === null) {
+				pg_install_preview_device($("#pg_design_frame_box").width() < 560);
+			}
+			var url = pg_install_preview_url(pg_design_preview_page);
+			$("#pg_design_open").attr("href", url);
+			var frame = document.getElementById("pg_design_frame");
+			if ((frame) && (frame.getAttribute("data-url") !== url)) {
+				frame.setAttribute("data-url", url);
+				$("#pg_design_frame_box").addClass("pg-loading");
+				frame.src = url;
+			}
+			pg_install_scale_preview();
+		}
+
+		// Whether the installation still has to build the layouts of a template\'s widgets.
+		function pg_install_design_pending() {
+			return ($("#design_template").val() !== "standard") && (pg_install_source_is_starter()) && ($("#design_template_starters").val() === "");
+		}
+
+		// The widgets a template leaves to the editor get the layouts that the editor\'s own code
+		// builds for their kinds, in the language of the starter site, and the layouts travel
+		// with the form. The editor script is only loaded for this.
+		function pg_install_prepare_design() {
+			var card = $(".pg-design.selected");
+			var kinds = [];
+			try { kinds = JSON.parse(card.attr("data-kinds") || "[]"); } catch (error) { kinds = []; }
+			var language = $(".pg-source.selected").not(".pg-design").first().attr("data-language") || "en";
+			var status = $("#pg_design_prepare");
+			var button = $("#submit");
+			var failed = function() {
+				button.prop("disabled", false);
+				status.attr("class", "alert alert-danger small d-flex gap-2 mt-3 mb-0").html("<i class=\"bi bi-exclamation-triangle\"></i><div>' . escape_javascript(lang('The design template could not be prepared in this browser. Choose the standard installation, or try again in another browser.')) . '</div>");
+			};
+			var submit = function(starters) {
+				$("#design_template_starters").val(JSON.stringify(starters));
+				status.attr("class", "d-none").text("");
+				button.prop("disabled", false);
+				document.getElementById("submit").click();
+			};
+			if (kinds.length === 0) { submit({}); return; }
+			button.prop("disabled", true);
+			status.attr("class", "small text-body-secondary mt-3").html("<span class=\"spinner-border spinner-border-sm me-2\"></span>' . escape_javascript(lang('Preparing the design template…')) . '");
+			$.get(window.location.pathname, { install_action: "designer_i18n", language: language }, null, "json").done(function(map) {
+				window.sdDesign = { i18n: ((map) && (typeof map === "object")) ? map : {} };
+				var build = function() {
+					var starters = {};
+					try {
+						for (var index = 0; index < kinds.length; index++) {
+							var tree = StyleDesigner.starterTree(kinds[index]);
+							if (!tree) { failed(); return; }
+							starters[kinds[index]] = tree;
+						}
+					} catch (error) { failed(); return; }
+					submit(starters);
+				};
+				if ((typeof StyleDesigner !== "undefined") && (StyleDesigner.starterTree)) { build(); return; }
+				var script = document.createElement("script");
+				script.src = "' . $output_designer_script . '";
+				script.onload = function() {
+					if ((typeof StyleDesigner !== "undefined") && (StyleDesigner.starterTree)) { build(); } else { failed(); }
+				};
+				script.onerror = failed;
+				document.head.appendChild(script);
+			}).fail(failed);
+		}
+
 		function pg_install_select_source(element) {
 			var source = $(element).attr("data-source");
-			$(".pg-source").removeClass("selected");
+			$(".pg-source").not(".pg-design").removeClass("selected");
 			$(element).addClass("selected");
 			$("#pg_zip_area").toggleClass("d-none", source !== "upload");
 			if (source === "starter") {
@@ -3567,6 +4225,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			} else {
 				$("#install_from_folder").val("");
 			}
+			pg_install_update_design();
 		}
 
 		function pg_install_update_mode() {
@@ -3622,9 +4281,15 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				$("html, body").animate({ scrollTop: 0 }, 200);
 			});
 
-			$(".pg-source").not(".pg-mode-card").on("click", function(event) {
+			$(".pg-source").not(".pg-mode-card, .pg-design").on("click", function(event) {
 				if ($(event.target).is("select, option")) { return; }
 				pg_install_select_source(this);
+			});
+
+			$(".pg-design").on("click", function() {
+				if ($(this).hasClass("disabled")) { return; }
+				pg_install_design_chosen = true;
+				pg_install_select_design(this);
 			});
 
 			$("#pg_backup_select").on("change", function() {
@@ -3757,7 +4422,14 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					return false;
 				}
 
+				if ((!upgrading) && (pg_install_design_pending())) {
+					event.preventDefault();
+					pg_install_prepare_design();
+					return false;
+				}
+
 				pg_install_started = true;
+				pg_install_started_at = new Date().getTime();
 				pg_install_finished = false;
 				pg_install_seen_steps = {};
 				$("#pg_run_console").empty();
@@ -3781,11 +4453,42 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 			// make sure the hidden field matches the source that is selected on screen
 			if (!$("#install_from_folder").val()) {
-				var selected_source = $(".pg-source.selected").first();
+				var selected_source = $(".pg-source.selected").not(".pg-design").first();
 				if (selected_source.length > 0) {
 					pg_install_select_source(selected_source[0]);
 				}
 			}
+
+			if (!$("#design_template").val()) { $("#design_template").val($(".pg-design.selected").attr("data-design") || "standard"); }
+			pg_install_design_chosen = ($("#design_template").val() !== ($(".pg-design").first().attr("data-design") || ""));
+			pg_install_update_design();
+
+			$("input[name=design_template_look], input[name=design_template_palette]").on("change", function() {
+				pg_install_update_preview();
+			});
+
+			$("#pg_design_pages, #pg_design_mails").on("click", "button", function() {
+				pg_design_preview_page = $(this).attr("data-page");
+				pg_install_update_preview();
+			});
+
+			$("#pg_design_desktop, #pg_design_mobile").on("click", function() {
+				pg_install_preview_device(this.id === "pg_design_mobile");
+			});
+
+			$("#pg_design_frame").on("load", function() {
+				$("#pg_design_frame_box").removeClass("pg-loading");
+			});
+
+			// a link inside the preview opened another page of the template
+			window.addEventListener("message", function(event) {
+				var frame = document.getElementById("pg_design_frame");
+				if ((!frame) || (event.source !== frame.contentWindow) || (!event.data) || (typeof event.data.pgDesignPreview !== "string")) { return; }
+				pg_design_preview_page = event.data.pgDesignPreview;
+				pg_install_mark_preview_page();
+			});
+
+			$(window).on("resize", pg_install_scale_preview);
 
 			// If the form came back with an error, then open the step that holds it.
 			var error_step = ' . (int) $install_error_step . ';
@@ -3814,6 +4517,18 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	
 }
 else {
+
+	// The widget layouts of a design template travel with the form but not into the session:
+	// they are large, and nothing but the installation below reads them.
+	$install_design_starters_json = '';
+
+	if ((isset($_POST['design_template_starters'])) && (is_string($_POST['design_template_starters']))) {
+
+		$install_design_starters_json = $_POST['design_template_starters'];
+
+	}
+
+	unset($_POST['design_template_starters'], $_REQUEST['design_template_starters']);
 
 	$liveform->add_fields_to_session();
 
@@ -4131,6 +4846,55 @@ else {
 
 		if ($liveform->get_field_value('install_from_folder') != '') {
 			$install_directory_path = $liveform->get_field_value('install_from_folder');
+		}
+
+		// A design template replaces the pages and page styles of a starter site, so it is only
+		// taken with one, and only with the layouts of its widgets that the screen built.
+		$install_design_template = '';
+
+		$install_design_starters = array();
+
+		$install_design_look = '';
+
+		$install_design_palette = '';
+
+		if (($liveform->get_field_value('design_template') != '') && ($liveform->get_field_value('design_template') != 'standard')) {
+
+			$install_design_template_row = pg_design_template($liveform->get_field_value('design_template'));
+
+			if (get_starter_site_language($liveform->get_field_value('install_from_folder')) == '') {
+
+				$liveform->mark_error('design_template', lang('A design template can only be installed with a starter site.'));
+
+			} elseif (!$install_design_template_row) {
+
+				$liveform->mark_error('design_template', lang('The template could not be found.'));
+
+			} else {
+
+				$install_design_starters = get_install_design_template_starters($install_design_template_row, $install_design_starters_json);
+
+				if ($install_design_starters === false) {
+
+					$liveform->mark_error('design_template', lang('The design template could not be prepared in this browser. Choose the standard installation, or try again in another browser.'));
+
+				} else {
+
+					$install_design_template = $install_design_template_row['id'];
+
+					// Built-in looks and palettes only: a site's own are files it does not have yet.
+					$install_design_looks = pg_design_looks();
+
+					$install_design_palettes = pg_design_palettes();
+
+					$install_design_look = isset($install_design_looks[$liveform->get_field_value('design_template_look')]) ? $liveform->get_field_value('design_template_look') : '';
+
+					$install_design_palette = isset($install_design_palettes[$liveform->get_field_value('design_template_palette')]) ? $liveform->get_field_value('design_template_palette') : '';
+
+				}
+
+			}
+
 		}
 
 		
@@ -5072,6 +5836,26 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 			pg_password_store($user_id, $liveform->get_field_value('admin_password'));
 		}
 
+		// The design template is written by the site itself, in a request of its own that the
+		// screen sends as soon as this one has finished (includes/install_design_template.php).
+		$install_design_key = '';
+
+		if ($install_design_template != '') {
+
+			$install_design_key = write_install_design_template_note($install_design_template, get_starter_site_language($install_directory_path), $install_design_starters, $user_id, $install_design_look, $install_design_palette);
+
+			if ($install_design_key == '') {
+
+				add_install_step(lang('The note for the design template could not be written to data/temp. The site is installed as the starter site.'), '', 'warning');
+
+			} else {
+
+				add_install_step(lang('Prepared the design template'), $install_design_template_row['name']);
+
+			}
+
+		}
+
 		add_install_step(lang('The installation is complete'), $software_version);
 
 		log_activity(lang('The software was installed'), $liveform->get_field_value('admin_username'));
@@ -5168,9 +5952,18 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 
 			finish_install_stream();
 
+			$output_install_design_apply = '';
+
+			if ($install_design_key != '') {
+
+				$output_install_design_apply = '<div class="d-none" id="pg_design_apply" data-key="' . h($install_design_key) . '"></div>';
+
+			}
+
 			print '
 			<div id="pg_stream_result">
-				<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0">
+				' . $output_install_design_apply . '
+				<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0 pg-install-done">
 					<i class="bi bi-check-circle-fill"></i>
 					<div class="flex-grow-1">
 						<b>' . lang('The installation is complete') . '</b> <span class="text-body-secondary">' . h($install_result_details) . '</span>
@@ -7318,6 +8111,8 @@ function get_tables() {
 		'affiliate_sign_up_form_pages',
 		'allow_new_comments_for_items',
 		'api_apps',
+		'api_device_rate',
+		'api_devices',
 		'api_idempotency',
 		'api_rate_bucket',
 		'api_request_log',
@@ -7548,6 +8343,19 @@ function get_tables() {
 		'ws_notes',
 		'ws_note_shares',
 		'ws_file_edits',
+		'ws_message_hides',
+		'ws_scheduled_actions',
+		'ws_scheduled_runs',
+		'ws_channel_eras',
+		'ws_channel_groups',
+		'ws_channel_group_access',
+		'ws_scheduled_queue',
+		'ws_scheduled_notices',
+		'ws_message_quotes',
+		'ws_message_forwards',
+		'ws_blocks',
+		'ws_guests',
+		'ws_guest_sessions',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',
@@ -7558,6 +8366,7 @@ function get_tables() {
 		'local_sale_history_items',
 		'designer_presence',
 		'designer_page_lock',
+		'design_proposals',
 	);
 
 }

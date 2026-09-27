@@ -96,7 +96,7 @@ function ws_js_strings()
         'day_capacity'           => ws_js_template('{var:1} h a day', 1),
         'decision'               => lang('Decision'),
         'delete'                 => lang('Delete'),
-        'delete_confirm'         => lang('Delete this message? The people in the channel will see that a message was deleted.'),
+        'delete_confirm'         => lang('Delete this message? It goes from the conversation without a trace.'),
         'delete_item_confirm'    => lang('Remove this item from the plan?'),
         'delete_note_confirm'    => lang('Delete this note?'),
         'department'             => lang('Department'),
@@ -112,6 +112,7 @@ function ws_js_strings()
         'edit_channel'           => lang('Channel settings'),
         'edit_plan_item'         => lang('Plan item'),
         'edit_summary'           => lang('Edit the summary'),
+        'audit_locked'           => lang('A member of staff is in this private channel. It cannot be opened for inspection.'),
         'edited'                 => lang('(edited)'),
         'editing_message'        => lang('Editing your message. Esc to stop.'),
         'emoji_activity'         => lang('Celebration and activities'),
@@ -165,8 +166,10 @@ function ws_js_strings()
         'list_task_title'        => lang('Checklist'),
         'list_to_task'           => lang('Make the list a task'),
         'loading'                => lang('Loading…'),
+        'make_private'           => lang('Make it private'),
+        'make_private_confirm'   => ws_js_template('Make this channel private? Its {var:1} members keep it; the rest of the team stops seeing it, what was written in it and the notes shared only here. Claude reads a private channel only if it is let in.', 1),
         'make_public'            => lang('Open it to everyone'),
-        'make_public_confirm'    => lang('Open this channel to the whole team? Everything written in it so far becomes readable by everyone, and it cannot be made private again.'),
+        'make_public_confirm'    => lang('Open this channel to the whole team? Everything written in it so far becomes readable by everyone. Staff can make it private again, but what was read stays read.'),
         'mark_all_read'          => lang('Mark everything read'),
         'mark_decision'          => lang('Mark as a decision'),
         'mark_done'              => lang('Mark done'),
@@ -387,7 +390,33 @@ function ws_js_strings()
         'show_day'               => lang('Show the day'),
         'start_work'             => lang('Start work'),
         'task_count'             => ws_js_template('{var:1} tasks', 1),
+        'task_span'              => ws_js_template('From {var:1} to {var:2}', 2),
+        'jump_to_end'            => lang('Go to the newest message'),
+        'all_priorities'         => lang('All priorities'),
+        'priority_hot'           => lang('Urgent and high'),
+        'urgent_soon'            => lang('Pressing, coming up'),
+        'urgent_soon_help'       => lang('Urgent and high priority tasks due within a week, the overdue ones included.'),
+        'home_tasks_hot'         => ws_js_template('{var:1} pressing', 1),
+        'reply_go_to'            => lang('Show the message this answers'),
+        'seen_by'                => lang('Who has seen it'),
+        'delete_which'           => lang('Delete this message?'),
+        'delete_for_me'          => lang('Delete for me'),
+        'delete_for_me_help'     => lang('It goes from your view only; the others still see it.'),
+        'delete_for_me_confirm'  => lang('Delete this message from your view? The others still see it.'),
+        'delete_for_everyone'    => lang('Delete for everyone'),
+        'delete_for_everyone_help' => lang('It goes from the conversation for everyone, without a trace.'),
+        'seen_by_read'           => lang('Seen'),
+        'seen_by_not_yet'        => lang('Not seen yet'),
+        'seen_by_none'           => lang('Nobody has seen it yet.'),
+        'seen_by_everyone'       => lang('Everyone in the channel has seen it.'),
+        'seen_by_help'           => lang('Counted among the members of the channel: seen means the conversation was open on their screen as far as this message.'),
+        'edited_at'              => ws_js_template('Edited {var:1}', 1),
+        'channel_settings'       => lang('Channel settings'),
+        'channel_manage_denied'  => lang('Only the owner of the channel can change it.'),
+        'jump_new_count'         => ws_js_template('{var:1} new messages below', 1),
         'their_board'            => lang('Their week on the board'),
+        'edit_user'              => lang('Edit the user'),
+        'edit_user_title'        => ws_js_template('Open the account of {var:1}', 1),
         'their_calendar'         => lang('Their month'),
         'this_month'             => lang('This month'),
         'unassigned_count'       => ws_js_template('{var:1} tasks have nobody on them.', 1),
@@ -511,6 +540,31 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_claude_js_strings());
     }
 
+    // Asking Pinegrap AI (includes/workspace/ai.php).
+    if (function_exists('ws_ai_js_strings')) {
+        $strings = array_merge($strings, ws_ai_js_strings());
+    }
+
+    // Page changes the assistants propose (includes/designer_ai.php).
+    if (function_exists('ws_design_ai') && ws_design_ai()) {
+        $strings = array_merge($strings, pg_design_ai_ws_strings());
+    }
+
+    // The tour of the channel screen (includes/workspace/tour.php).
+    if (function_exists('ws_tour_js_strings')) {
+        $strings = array_merge($strings, ws_tour_js_strings());
+    }
+
+    // The time and e-mail reminder box of the task drawer (reminders.php).
+    if (function_exists('ws_task_reminders_js_strings')) {
+        $strings = array_merge($strings, ws_task_reminders_js_strings());
+    }
+
+    // Talking with a guest (guests.php).
+    if (function_exists('ws_guests_js_strings')) {
+        $strings = array_merge($strings, ws_guests_js_strings());
+    }
+
     // The decision timeline (includes/workspace/timeline.php).
     if (function_exists('ws_timeline_js_strings')) {
         $strings = array_merge($strings, ws_timeline_js_strings());
@@ -531,11 +585,20 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
+    // Scheduled actions (includes/workspace/scheduled.php).
+    if (function_exists('ws_scheduled_js_strings')) {
+        $strings = array_merge($strings, ws_scheduled_js_strings());
+    }
+
+    // Colours and groups of channels, versions of a conversation.
+    $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
+
     return array_merge(array(
         'mode'         => (string) $mode,
         'api_url'      => $base . 'api.php',
         'token'        => isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '',
         'me'           => (int) $viewer['id'],
+        'me_role'      => (int) $viewer['role'],
         'locale'       => (string) lang(array('info' => '')),
         'today'        => date('Y-m-d'),
         'board_from'   => ws_screen_board_from(),
@@ -551,10 +614,22 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'notes'     => $base . 'workspace_notes.php',
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
+            'edit_user' => $base . 'edit_user.php',
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         'strings'      => $strings,
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),
+        'reminders'    => function_exists('ws_task_reminders_js_config') ? ws_task_reminders_js_config() : array('ready' => false),
+        'scheduled'    => function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null,
+        'palette'      => ws_channel_colors_ready() ? ws_palette_js() : array(),
+        'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
+        'eras'         => ws_eras_ready(),
+        'pins'         => ws_pins_ready(),
+        'blocks'       => ws_blocks_ready(),
+        'customer'     => ws_customer_ready(),
+        'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
+        'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
+        'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
     ), $extra);
 }
 
@@ -594,7 +669,9 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <script type="application/json" id="ws-config">' . $json . '</script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>';
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
+        . (($mode === 'channels') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');
 }
 
 /**

@@ -44,6 +44,51 @@ if (!$_POST) {
     $output_tracking_code_row_style = ' style="display: none"';
     $output_file_row_style = ' style="display: none"';
 
+    // How it opens (2026.4.5, 5.112): for good, once (a generated address, no
+    // name to type) or until a time chosen here.
+    $output_link_mode = '';
+
+    if (pg_short_link_modes_ready()) {
+        $link_mode_options = array(
+            lang('Permanent: an address you name, for good') => 'permanent',
+            lang('One-time: a generated address, for the first visit only') => 'once',
+            lang('Timed: an address you name, until a time you choose') => 'timed');
+
+        $duration_options = array();
+
+        foreach (pg_short_link_durations() as $duration_seconds => $duration_label) {
+            $duration_options[$duration_label] = $duration_seconds;
+        }
+
+        if ($liveform->get_field_value('link_mode') == '') {
+            $liveform->assign_field_value('link_mode', 'permanent');
+            $liveform->assign_field_value('duration', 604800);
+        }
+
+        $output_link_mode = '
+                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="link_mode_row">
+                                                    <label for="link_mode" class="form-label">' . lang('How it opens') . '</label>
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_mode', 'id'=>'link_mode', 'class'=>'form-select', 'options'=>$link_mode_options, 'onchange'=>'change_short_link_mode(this.options[this.selectedIndex].value)')) . '
+                                                </div>
+                                                <div class="col-12 col-md-4 col-lg-3 my-2" id="duration_row" style="display: none">
+                                                    <label for="duration" class="form-label">' . lang('Valid for') . '</label>
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'duration', 'id'=>'duration', 'class'=>'form-select', 'options'=>$duration_options)) . '
+                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                </div>
+                                                <script>
+                                                    // A one-time link has no name: its address is made for it.
+                                                    function change_short_link_mode(mode) {
+                                                        var name = document.getElementById(\'name\');
+                                                        document.getElementById(\'name_row\').style.display = (mode === \'once\') ? \'none\' : \'\';
+                                                        document.getElementById(\'duration_row\').style.display = (mode === \'timed\') ? \'\' : \'none\';
+                                                        if (mode === \'once\') { name.removeAttribute(\'required\'); } else { name.setAttribute(\'required\', \'required\'); }
+                                                    }
+                                                    $(document).ready(function() {
+                                                        change_short_link_mode($("select#link_mode option:selected").val());
+                                                    });
+                                                </script>';
+    }
+
     switch ($liveform->get_field_value('destination_type')) {
         case 'page':
             $output_page_id_row_style = '';
@@ -127,7 +172,7 @@ if (!$_POST) {
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-8 col-lg-6 my-2">
+                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="name_row">
                                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
@@ -135,6 +180,7 @@ if (!$_POST) {
                                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     </div>
                                                 </div>
+                                                ' . $output_link_mode . '
                                             </div>
                                         </div>
                                     </div>
@@ -228,31 +274,55 @@ if (!$_POST) {
         @fclose($handle);
     }
     
-    $liveform->validate_required_field('name', lang('Name is required.'));
+    // How it opens (2026.4.5, 5.112): for good, once (a generated address, no
+    // name) or until a time chosen here.
+    $link_mode = pg_short_link_modes_ready() ? (string) $liveform->get_field_value('link_mode') : 'permanent';
 
-    $name = $liveform->get_field_value('name');
-
-    // Replace spaces with underscores for the name.
-    $name = str_replace(' ', '_', $name);
-
-    // Update name in liveform.
-    $liveform->assign_field_value('name', $name);
-
-    // If there is not already an error for the name field and it contains invalid characters, then add error.
-    if (
-        ($liveform->check_field_error('name') == FALSE)
-        && (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1)
-    ) {
-        $liveform->mark_error('name', lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.'));
+    if (!in_array($link_mode, array('permanent', 'once', 'timed'), true)) {
+        $link_mode = 'permanent';
     }
 
-    // If there is not already an error for the name field,
-    // and the name is already in use, then add error.
-    if (
-        ($liveform->check_field_error('name') == false)
-        && (check_name_availability(array('name' => $name)) == false)
-    ) {
-        $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+    $link_expires = 0;
+
+    if ($link_mode === 'timed') {
+        $link_duration = (int) $liveform->get_field_value('duration');
+
+        if (!isset(pg_short_link_durations()[$link_duration])) {
+            $liveform->mark_error('duration', lang('Choose how long the link is valid.'));
+        } else {
+            $link_expires = time() + $link_duration;
+        }
+    }
+
+    $name = '';
+
+    if ($link_mode !== 'once') {
+        $liveform->validate_required_field('name', lang('Name is required.'));
+
+        $name = $liveform->get_field_value('name');
+
+        // Replace spaces with underscores for the name.
+        $name = str_replace(' ', '_', $name);
+
+        // Update name in liveform.
+        $liveform->assign_field_value('name', $name);
+
+        // If there is not already an error for the name field and it contains invalid characters, then add error.
+        if (
+            ($liveform->check_field_error('name') == FALSE)
+            && (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1)
+        ) {
+            $liveform->mark_error('name', lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.'));
+        }
+
+        // If there is not already an error for the name field,
+        // and the name is already in use, then add error.
+        if (
+            ($liveform->check_field_error('name') == false)
+            && (check_name_availability(array('name' => $name)) == false)
+        ) {
+            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+        }
     }
 
     $liveform->validate_required_field('destination_type', lang('Destination Type is required.'));
@@ -436,6 +506,21 @@ if (!$_POST) {
             break;
     }
     
+    // Once or until a time; a one-time link gets a token for its address,
+    // kept only as its hash.
+    $link_token = '';
+
+    if (pg_short_link_modes_ready()) {
+        $sql_field .= "link_mode, expires_at,";
+        $sql_value .= "'" . escape($link_mode) . "', '" . (int) $link_expires . "',";
+
+        if ($link_mode === 'once') {
+            $link_token = pg_short_link_new_token();
+            $sql_field .= "token_hash, token_hint,";
+            $sql_value .= "'" . hash('sha256', $link_token) . "', '" . escape(substr($link_token, 0, 6)) . "',";
+        }
+    }
+
     // create short link
     $query =
         "INSERT INTO short_links (
@@ -460,11 +545,18 @@ if (!$_POST) {
             UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
-    log_activity(lang(array('string'=>'short link ({var:1}) was created','vars'=>$name)), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'short link ({var:1}) was created','vars'=>($link_token !== '') ? substr($link_token, 0, 6) . '…' : $name)), $_SESSION['sessionusername']);
     $liveform->remove_form();
 
     $liveform_view_short_links = new liveform('view_short_links');
-    $liveform_view_short_links->add_notice(lang('The short link has been created.'));
+
+    // The whole address of a one-time link, this once: only its hash is kept.
+    if ($link_token !== '') {
+        $liveform_view_short_links->add_notice(lang('The one-time link has been created. Its address is shown only now; copy it and send it:')
+            . ' <code class="user-select-all">' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . $link_token) . '</code>');
+    } else {
+        $liveform_view_short_links->add_notice(lang('The short link has been created.'));
+    }
 
     // forward user to view short links screen
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_short_links.php');

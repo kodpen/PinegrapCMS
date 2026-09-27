@@ -49,9 +49,14 @@ function ws_message($message_id)
  */
 function ws_messages_page($channel_id, $before_id = 0, $limit = 50)
 {
+    // The current conversation only: what came before a clear is an earlier
+    // version (includes/workspace/eras.php).
+    $floor = ws_channel_floor($channel_id);
+
     $rows = (array) db_items("SELECT * FROM ws_messages
         WHERE channel_id = '" . (int) $channel_id . "'"
-        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '') . "
+        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '')
+        . (($floor > 0) ? " AND id > '" . $floor . "'" : '') . "
         ORDER BY id DESC
         LIMIT " . max(1, min(200, (int) $limit)));
 
@@ -67,8 +72,10 @@ function ws_messages_page($channel_id, $before_id = 0, $limit = 50)
  */
 function ws_messages_around($channel_id, $message_id)
 {
+    $floor = ws_channel_floor($channel_id);
+
     $before = (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND id <= '" . (int) $message_id . "'
+        WHERE channel_id = '" . (int) $channel_id . "' AND id <= '" . (int) $message_id . "' AND id > '" . $floor . "'
         ORDER BY id DESC LIMIT 30");
 
     $after = (array) db_items("SELECT * FROM ws_messages
@@ -88,7 +95,7 @@ function ws_messages_around($channel_id, $message_id)
 function ws_messages_since($channel_id, $since_id)
 {
     return (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND id > '" . (int) $since_id . "'
+        WHERE channel_id = '" . (int) $channel_id . "' AND id > '" . max((int) $since_id, ws_channel_floor($channel_id)) . "'
         ORDER BY id ASC
         LIMIT 200");
 }
@@ -103,6 +110,15 @@ function ws_messages_since($channel_id, $since_id)
  */
 function ws_message_payloads($viewer, $rows)
 {
+    // The messages the person deleted for themselves stay out of their view.
+    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, (array) $rows));
+
+    if (!empty($hidden)) {
+        $rows = array_values(array_filter((array) $rows, function ($row) use ($hidden) {
+            return !isset($hidden[(int) $row['id']]);
+        }));
+    }
+
     $tokens = array();
     $senders = array();
     $task_ids = array();
@@ -160,6 +176,8 @@ function ws_message_payloads($viewer, $rows)
         'claude'     => function_exists('ws_claude_requests_map') ? ws_claude_requests_map($ids) : array(),
         'drafts'     => function_exists('ws_claude_drafts_map') ? ws_claude_drafts_map($viewer, $ids) : array(),
         'changes'    => function_exists('ws_changes_map') ? ws_changes_map($viewer, $ids) : array(),
+        // Page changes the answers propose (includes/designer_ai.php).
+        'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
         // How many earlier versions an edited file has (file_edits.php).
         'versions'   => function_exists('ws_file_versions_map') ? ws_file_versions_map(array_map(function ($row) {
             return ((int) $row['file_id'] > 0) ? (int) $row['id'] : 0;
@@ -167,6 +185,12 @@ function ws_message_payloads($viewer, $rows)
         'outside'    => array(),
         // Notes shared in the channel, as they are now (notes.php).
         'note_cards' => function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array(),
+        // Scheduled actions written in the channel (scheduled.php).
+        'scheduled'  => function_exists('ws_scheduled_cards_map') ? ws_scheduled_cards_map($viewer, $ids) : array(),
+        // The other messages an answer answers, and the copies a forward
+        // carries (forward.php).
+        'quotes'     => function_exists('ws_message_quotes_map') ? ws_message_quotes_map($viewer, $ids) : array(),
+        'forwards'   => function_exists('ws_message_forwards_map') ? ws_message_forwards_map($viewer, $ids) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -200,12 +224,20 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
 {
     $deleted = ((int) $row['deleted_at'] > 0);
     $id = (int) $row['id'];
-    $can_post = !empty($extra['can_post'][(int) $row['channel_id']]);
+    // A message of an earlier version of the conversation is read as it was
+    // (includes/workspace/eras.php): nothing in it changes any more.
+    $past = ws_message_in_past($row);
+    $can_post = !empty($extra['can_post'][(int) $row['channel_id']]) && !$past;
     $mine = ($row['sender_kind'] === 'user') && ((int) $row['sender_id'] === (int) $viewer['id']);
     $sender = ($row['sender_kind'] === 'user') ? ($people[(int) $row['sender_id']] ?? null) : null;
 
     if ($row['sender_kind'] === 'app') {
         $sender = ws_app_sender((int) $row['sender_id']);
+    }
+
+    // The guest of a room (guests.php).
+    if (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
+        $sender = ws_guest_sender((int) $row['sender_id']);
     }
 
     $labels = array();
@@ -226,11 +258,16 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'sender_kind' => (string) $row['sender_kind'],
         'sender'      => $sender,
         'mine'        => $mine,
-        'html'        => $deleted ? '' : ws_render_body($row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready()),
+        // What a guest wrote is drawn with the few marks a guest may use
+        // (guests.php), here as on their own page: a guest adds no table.
+        'html'        => $deleted ? '' : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
+            ? ws_guest_render($row['body'])
+            : ws_render_body($row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready())),
         'raw'         => ($mine && !$deleted) ? (string) $row['body'] : '',
         'labels'      => ($mine && !$deleted) ? $labels : array(),
         'deleted'     => $deleted,
         'edited'      => ((int) $row['edited_at'] > 0),
+        'edited_time' => ((int) $row['edited_at'] > 0) ? ws_time_label($row['edited_at']) : '',
         'time'        => ws_time_label($row['created_at']),
         'timestamp'   => (int) $row['created_at'],
         'file'        => null,
@@ -242,9 +279,14 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // A locked decision is the trace of a record change: nobody edits it,
         // and only staff may delete it or take its mark off.
         'locked'      => !empty($row['locked']),
-        'can_edit'    => $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true),
-        'can_delete'  => !$deleted && ($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)),
-        'can_mark'    => !$deleted && ($row['sender_kind'] === 'user') && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
+        // A scheduled action's card is changed in its own form.
+        'past'        => $past,
+        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]),
+        'can_delete'  => !$past && !$deleted && ((($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)))
+            || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
+        // Deleted for the person alone, whoever wrote it.
+        'can_hide'    => !$deleted && ($row['kind'] !== 'system') && ws_message_hides_ready(),
+        'can_mark'    => !$past && !$deleted && ($row['sender_kind'] === 'user') && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
         'can_react'   => !$deleted && $can_post && ($row['kind'] !== 'system') && ws_interact_ready(),
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
@@ -254,9 +296,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'claude'      => (!$deleted && isset($extra['claude'][$id])) ? ws_claude_request_state($viewer, $extra['claude'][$id]) : null,
         'drafts'      => $deleted ? array() : ($extra['drafts'][$id] ?? array()),
         'changes'     => $deleted ? array() : ($extra['changes'][$id] ?? array()),
+        'design'      => $deleted ? array() : ($extra['design'][$id] ?? array()),
         // Mentioned, but not in the channel (see ws_message_mention_invite()).
         'invite'      => $deleted ? array() : ($extra['outside'][$id] ?? array()),
         'note_card'   => $deleted ? null : ($extra['note_cards'][$id] ?? null),
+        'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
+        'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),
+        'forwards'    => $deleted ? array() : ($extra['forwards'][$id] ?? array()),
     );
 
     if (!$deleted && ((int) $row['file_id'] > 0)) {
@@ -314,6 +360,23 @@ function ws_app_sender($app_id)
         );
     }
 
+    // The application Pinegrap AI writes through writes as Pinegrap AI
+    // (ai.php).
+    if (!isset($cache[$app_id]) && function_exists('ws_ai_is_app') && ws_ai_is_app($app_id)) {
+        $cache[$app_id] = array(
+            'id'       => 0,
+            'app_id'   => (int) $app_id,
+            'name'     => 'Pinegrap AI',
+            'username' => '',
+            'role'     => 3,
+            'title'    => lang('AI assistant'),
+            'avatar'   => PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
+            'presence' => 'offline',
+            'app'      => true,
+            'ai'       => true,
+        );
+    }
+
     if (!isset($cache[$app_id])) {
         $name = (string) db_value("SELECT name FROM api_apps WHERE id = '" . (int) $app_id . "'");
 
@@ -324,7 +387,9 @@ function ws_app_sender($app_id)
             'username' => '',
             'role'     => 3,
             'title'    => lang('Integration'),
-            'avatar'   => PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
+            'avatar'   => function_exists('pg_initials_avatar_url')
+                ? pg_initials_avatar_url(pg_initials(($name !== '') ? $name : 'App', ''), 'contact', 'app' . (int) $app_id)
+                : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
             'presence' => 'offline',
             'app'      => true,
         );
@@ -392,7 +457,8 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     $body = ws_tokens_normalise(trim((string) $body));
     $file_id = (int) ($options['file_id'] ?? 0);
 
-    if (($body === '') && ($file_id <= 0) && ((int) ($options['task_id'] ?? 0) <= 0)) {
+    // A forward may carry the messages alone, without words of its own.
+    if (($body === '') && ($file_id <= 0) && ((int) ($options['task_id'] ?? 0) <= 0) && ((int) ($options['forwards'] ?? 0) <= 0)) {
         return array('ok' => false, 'error' => lang('The message is empty.'), 'message_id' => 0);
     }
 
@@ -449,6 +515,19 @@ function ws_message_send($viewer, $channel, $body, $options = array())
         return array('ok' => false, 'error' => lang('The message could not be saved.'), 'message_id' => 0);
     }
 
+    // An answer to several: the first is the parent, the others are kept in
+    // their order - messages of the same channel only.
+    if (($parent_id > 0) && !empty($options['quote_ids']) && function_exists('ws_message_quotes_store')) {
+        $quoted = array_map('intval', (array) db_values("SELECT id FROM ws_messages
+            WHERE channel_id = '" . (int) $channel['id'] . "' AND deleted_at = 0
+            AND id IN (" . implode(',', array_merge(array(0), array_slice(array_map('intval', (array) $options['quote_ids']), 0, WS_FORWARD_MAX))) . ")"));
+        $ordered = array_values(array_filter(array_map('intval', (array) $options['quote_ids']), function ($id) use ($quoted, $parent_id) {
+            return ($id !== $parent_id) && in_array($id, $quoted, true);
+        }));
+
+        ws_message_quotes_store($message_id, $ordered);
+    }
+
     db("UPDATE ws_channels SET last_message_id = '" . $message_id . "', last_message_at = '" . $now . "'
         WHERE id = '" . (int) $channel['id'] . "'");
 
@@ -458,6 +537,11 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 
     $tokens = ws_tokens($body);
     ws_refs_store('message', $message_id, $channel['id'], $tokens);
+
+    // Its titled blocks, to be found and pulled elsewhere (blocks.php).
+    if (function_exists('ws_blocks_index') && (strpos($body, ':::') !== false)) {
+        ws_blocks_index('message', $message_id, $body, ($app_id > 0) ? 0 : (int) $viewer['id'], (int) $channel['id']);
+    }
     ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id);
 
     // Announced for public channels only: a webhook receiver is not a member
@@ -490,7 +574,7 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 function ws_channel_can_invite($viewer, $channel)
 {
     return ws_can_post_channel($viewer, $channel)
-        && (($channel['kind'] !== 'private') || (bool) ws_channel_membership($channel['id'], $viewer['id']));
+        && (($channel['kind'] === 'public') || (bool) ws_channel_membership($channel['id'], $viewer['id']));
 }
 
 /**
@@ -695,6 +779,10 @@ function ws_message_edit($viewer, $message, $body)
 
     db("UPDATE ws_messages SET body = '" . e($body) . "', edited_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
 
+    if (function_exists('ws_blocks_index')) {
+        ws_blocks_index('message', (int) $message['id'], $body, (int) $message['sender_id'], (int) $message['channel_id']);
+    }
+
     ws_checks_remap($message['id'], $message['body'], $body);
     ws_message_touch($message['id']);
     ws_checklist_tasks_refresh($message['id']);
@@ -729,7 +817,8 @@ function ws_message_delete($viewer, $message)
 {
     $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
 
-    if (($message['sender_kind'] !== 'user') || (!$mine && ($viewer['role'] >= 3))) {
+    // A guest's message is taken out by staff.
+    if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
         return array('ok' => false, 'error' => lang('You can only delete your own messages.'));
     }
 
@@ -746,14 +835,131 @@ function ws_message_delete($viewer, $message)
 
     db("UPDATE ws_messages SET body = '', file_id = 0, file_name = '', deleted_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
     db("DELETE FROM ws_refs WHERE source_type = 'message' AND source_id = '" . (int) $message['id'] . "'");
+
+    if (function_exists('ws_blocks_index')) {
+        ws_blocks_index('message', (int) $message['id'], '');
+    }
     db("DELETE FROM ws_inbox WHERE message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
     ws_message_touch($message['id']);
 
     if (!$mine) {
-        log_activity(lang(array('string' => 'a workspace message by {var:1} was deleted', 'vars' => ws_person_name($message['sender_id']))), (string) ($_SESSION['sessionusername'] ?? ''));
+        log_activity(lang(array('string' => 'a workspace message by {var:1} was deleted', 'vars' => (($message['sender_kind'] === 'guest') && function_exists('ws_guest_sender'))
+            ? ws_guest_sender((int) $message['sender_id'])['name']
+            : ws_person_name($message['sender_id']))), (string) ($_SESSION['sessionusername'] ?? ''));
     }
 
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Can a message be deleted for one person only (2026.4.5, 5.80)?
+ *
+ * @return bool
+ */
+function ws_message_hides_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ((int) db_value("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_message_hides'") > 0);
+    }
+
+    return $ready;
+}
+
+/**
+ * Of these messages, the ones the person deleted for themselves.
+ *
+ * @param int   $user_id
+ * @param int[] $message_ids
+ * @return array message id => true
+ */
+function ws_message_hidden_ids($user_id, $message_ids)
+{
+    $message_ids = array_values(array_unique(array_filter(array_map('intval', (array) $message_ids))));
+
+    if (empty($message_ids) || !ws_message_hides_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_values("SELECT message_id FROM ws_message_hides
+        WHERE user_id = '" . (int) $user_id . "' AND message_id IN (" . implode(',', $message_ids) . ")") as $id) {
+        $out[(int) $id] = true;
+    }
+
+    return $out;
+}
+
+/**
+ * Deletes a message for the person alone: the others keep it as it is.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error
+ */
+function ws_message_hide($viewer, $message)
+{
+    if (!ws_message_hides_ready()) {
+        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    if (($message['kind'] === 'system') || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        return array('ok' => false, 'error' => lang('That message could not be found.'));
+    }
+
+    db("INSERT IGNORE INTO ws_message_hides (message_id, user_id, hidden_at)
+        VALUES ('" . (int) $message['id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+
+    // A mention in it is no longer waiting for them either.
+    db("UPDATE ws_inbox SET read_at = '" . time() . "' WHERE user_id = '" . (int) $viewer['id'] . "' AND message_id = '" . (int) $message['id'] . "' AND read_at = 0");
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Who of the channel's members has read as far as a message, and who has not
+ * yet. Read is what the channel keeps for each member: the newest message
+ * that was on their screen (ws_channel_members.last_read_id). The one who
+ * wrote it is left out; in a public channel only its members are counted,
+ * a reader passing through leaves no mark.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error, seen, unseen (people)
+ */
+function ws_message_seen_by($viewer, $message)
+{
+    $channel = ws_channel($message['channel_id']);
+
+    if (!$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0)) {
+        return array('ok' => false, 'error' => lang('That message could not be found.'), 'seen' => array(), 'unseen' => array());
+    }
+
+    $sender = ($message['sender_kind'] === 'user') ? (int) $message['sender_id'] : 0;
+    $rows = (array) db_items("SELECT user_id, last_read_id FROM ws_channel_members
+        WHERE channel_id = '" . (int) $channel['id'] . "' ORDER BY joined_at");
+    $people = ws_people(array_map(function ($row) { return (int) $row['user_id']; }, $rows));
+    $seen = array();
+    $unseen = array();
+
+    foreach ($rows as $row) {
+        $user_id = (int) $row['user_id'];
+
+        if (($user_id === $sender) || !isset($people[$user_id])) {
+            continue;
+        }
+
+        if ((int) $row['last_read_id'] >= (int) $message['id']) {
+            $seen[] = $people[$user_id];
+        } else {
+            $unseen[] = $people[$user_id];
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'seen' => $seen, 'unseen' => $unseen);
 }
 
 /**

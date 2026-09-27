@@ -439,6 +439,7 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         '^^__item_name^^'                 => h($title),
         '^^__item_short_description^^'    => h($short_desc),
         '^^__item_description^^'     => $full_desc,    // RAW HTML — full_description is rich text
+        '^^__item_summary^^'         => h(pg_sw_item_summary($full_desc)),   // plain one-liner for rows
         '^^__item_qty^^'                  => (string)$qty,
         '^^__item_price^^'      => $fmt($price),
         '^^__item_total^^' => $fmt($line),
@@ -759,6 +760,7 @@ function _eo_known_input_names()
         'billing_fax_number','custom_field_1','custom_field_2','po_number',
         'special_offer_code','gift_card_code','referral_source','identitynumber',
         'notes','tax_exempt','opt_in','agree_terms','update_contact',
+        'tax_number','tax_office','billing_same_as_shipping',
         'card_number','expiration','card_verification_number',
         // payment_method/installment are NOT pre-filled here — they're set by
         // their own dedicated section renderers (radio/installment selector).
@@ -895,7 +897,7 @@ function _eo_default_designer_tree()
     //               (pg-eo-cc-fields toggler) flips this to real `required`
     //               only when the CC fields are visible. Prevents "An invalid
     //               form control with name=X is not focusable" silent-block.
-    $input = function ($eo_field, $type, $placeholder = '', $cssClass = 'form-control', $required = false, $cc_required = false) use ($sem) {
+    $input = function ($eo_field, $type, $placeholder = '', $cssClass = 'form-control', $required = false, $cc_required = false, $extra_attrs = array()) use ($sem) {
         $attrs = array(
             array('name' => 'type',  'value' => $type),
             array('name' => 'value', 'value' => ''),
@@ -903,11 +905,25 @@ function _eo_default_designer_tree()
         if ($placeholder !== '') $attrs[] = array('name' => 'placeholder',        'value' => $placeholder);
         if ($required)           $attrs[] = array('name' => 'required',           'value' => '');
         if ($cc_required)        $attrs[] = array('name' => 'data-pg-cc-required','value' => '1');
+        foreach ($extra_attrs as $extra_attr) $attrs[] = $extra_attr;
         return $sem('input', $cssClass, null, array('attrs' => $attrs, 'bindings' => array('eo_field' => $eo_field)));
     };
+    // A required field says so before the visitor tries to send the form:
+    // the label carries a red asterisk (its own node, so a designer can
+    // restyle or drop it), and the card opens with a line explaining it.
     $label = function ($for, $text, $required = false) use ($sem) {
-        return $sem('label', 'form-label small fw-semibold', $required ? $text . ' *' : $text,
+        $node = $sem('label', 'form-label small fw-semibold', $text,
             array('attrs' => array(array('name' => 'for', 'value' => $for))));
+        if ($required) {
+            $node['children'][] = $sem('span', 'text-danger ms-1', '*',
+                array('attrs' => array(array('name' => 'aria-hidden', 'value' => 'true'))));
+        }
+        return $node;
+    };
+    $required_note = function ($visible_if = '') use ($sem) {
+        $extra = array('attrs' => array());
+        if ($visible_if !== '') $extra['bindings'] = array('eo_visible_if' => $visible_if);
+        return $sem('p', 'small text-body-secondary mb-3', lang('Fields marked with * are required.'), $extra);
     };
     $field = function ($colClass, $labelText, $eo_field, $type = 'text', $placeholder = '', $required = false, $cc_required = false) use ($sem, $input, $label) {
         // Label still gets the * for CC fields (visual signal to user) even
@@ -1121,7 +1137,7 @@ function _eo_default_designer_tree()
                                                                 // Short description — real <p> with text binding.
                                                                 $sem('p', 'fw-semibold mb-1', lang('Sample Product Name'), array('bindings' => array('text' => '__item_short_description'))),
                                                                 // Full description — real <p> with text binding.
-                                                                $sem('p', 'small text-muted mb-0', lang('A sample product description — short and clear.'), array('bindings' => array('text' => '__item_description'))),
+                                                                $sem('p', 'small text-muted mb-0', lang('A sample product description — short and clear.'), array('bindings' => array('text' => '__item_summary'))),
                                                             )),
                                                         )),
                                                     )),
@@ -1214,42 +1230,111 @@ function _eo_default_designer_tree()
                         )),
                     )),
 
+                    // ┌── CARD: shipping address — visibility-bound at card level (drops
+                    // when no shippable items) AND nested row visibility for
+                    // single-vs-multi recipient. Single-recipient: tree\'s real
+                    // form fields render. Multi-recipient: row dropped, server
+                    // section binding renders the full per-recipient form.
+                    // Comes before billing so "my billing address is the same"
+                    // can refer to an address the visitor has just written.
+                    $sem('div', 'card mb-3 pg-eo-shipping', array(
+                        $sem('div', 'card-header', array(
+                            $sem('h2', 'h6 mb-0 fw-semibold', lang('Shipping Address')),
+                        )),
+                        $sem('div', 'card-body', array(
+                            $required_note(),
+                            // Address fields row — VISIBLE only for single-
+                            // recipient orders. For multi-recipient, this row
+                            // is dropped from the tree before render (the
+                            // server-rendered shipping section below supplies
+                            // a full address form PER recipient).
+                            $sem('div', '', array(
+                                // The member's saved addresses (address book);
+                                // empty for guests, so it can always be here.
+                                $bind('address_book_shipping', 'mb-3'),
+                                $sem('div', 'row', array(
+                                    $field('col-12 col-md-6 mb-3', lang('First Name'),  'shipping_first_name',  'text', '', true),
+                                    $field('col-12 col-md-6 mb-3', lang('Last Name'),   'shipping_last_name',   'text', '', true),
+                                    $field('col-12 col-md-6 mb-3', lang('Phone'),       'shipping_phone_number','tel'),
+                                    $field('col-12 col-md-6 mb-3', lang('Company'),     'shipping_company',     'text'),
+                                    $field('col-12 col-md-6 mb-3', lang('Address 1'),   'shipping_address_1',   'text', '', true),
+                                    $field('col-12 col-md-6 mb-3', lang('Address 2'),   'shipping_address_2',   'text'),
+                                    $field('col-12 col-md-6 mb-3', lang('City'),        'shipping_city',        'text', '', true),
+                                    $sem('div', 'col-12 col-md-6 mb-3', array(
+                                        $label('shipping_country', lang('Country'), true),
+                                        $sem('select', 'form-select', null, array(
+                                            'bindings' => array('eo_field' => 'shipping_country'),
+                                        )),
+                                    )),
+                                    $field('col-12 col-md-6 mb-3', lang('State / Province'), 'shipping_state',     'text', '', true),
+                                    $field('col-12 col-md-6 mb-3', lang('Zip Code'),         'shipping_zip_code',  'text', '', true),
+                                )),
+                            ), array('bindings' => array('eo_visible_if' => 'has_single_recipient'))),
+                            // Arrival date + shipping method picker section.
+                            // Single-recipient: shows ONLY extras (auto-skip
+                            // because tree has real address fields).
+                            // Multi-recipient: shows FULL per-recipient form
+                            // (auto-detection bails out → server includes
+                            // address fields per recipient).
+                            $bind('shipping', 'pg-eo-shipping-extras mt-3'),
+                        )),
+                    ), array('bindings' => array('eo_visible_if' => 'has_shipping'))),
+
                     // ┌── CARD: billing details ("Fatura Bilgileri") ───┐
-                    // Tax-exempt checkbox lives at the bottom of this card
+                    // "Same as the shipping address" hides the name and address
+                    // rows (data-pg-eo-billing-address) and the server takes
+                    // them from the recipient; company, e-mail, phone and the
+                    // tax fields stay, because the shipping card has no
+                    // answer for them. Tax-exempt checkbox lives at the bottom
                     // — wrapped in visibility binding so it disappears when
                     // the site hasn\'t enabled ECOMMERCE_TAX + ECOMMERCE_TAX_EXEMPT.
-                    // The separate "Order Preferences" card was removed
-                    // (opt_in moved to the totals card, tax_exempt moved here).
                     $card(lang('Billing Information'), array(
-                        $sem('div', 'row', array(
-                            $field('col-12 col-md-3 mb-3', lang('Salutation'), 'billing_salutation', 'text', lang('Mr/Ms')),
-                            $sem('div', 'col-md-9'),
-                            $field('col-12 col-md-6 mb-3', lang('First Name'), 'billing_first_name', 'text', '', true),
-                            $field('col-12 col-md-6 mb-3', lang('Last Name'),  'billing_last_name',  'text', '', true),
-                            $field('col-12 col-md-6 mb-3', lang('Company'),    'billing_company',    'text'),
-                            $field('col-12 col-md-6 mb-3', lang('Email'),      'billing_email_address', 'email', '', true),
-                            $field('col-12 col-md-6 mb-3', lang('Address 1'),  'billing_address_1',  'text', '', true),
-                            $field('col-12 col-md-6 mb-3', lang('Address 2'),  'billing_address_2',  'text'),
-                            $field('col-12 col-md-6 mb-3', lang('City'),       'billing_city',       'text', '', true),
-                            $sem('div', 'col-12 col-md-6 mb-3', array(
-                                $label('billing_country', lang('Country'), true),
-                                // Real <select> with eo_field binding — server
-                                // injects the <option> list (240+ countries) at
-                                // render time. Designer can swap to a different
-                                // select element or rebind to billing_state etc.
-                                $sem('select', 'form-select', null, array(
-                                    'bindings' => array('eo_field' => 'billing_country'),
+                        $required_note('has_no_shipping'),
+                        $check_row('billing_same_as_shipping', lang('My billing address is the same as my shipping address'), 'mb-3', 'has_single_recipient'),
+                        $sem('div', '', array(
+                            $bind('address_book', 'mb-3'),
+                            $sem('div', 'row', array(
+                                $field('col-12 col-md-6 mb-3', lang('First Name'), 'billing_first_name', 'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Last Name'),  'billing_last_name',  'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Address 1'),  'billing_address_1',  'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Address 2'),  'billing_address_2',  'text'),
+                                $field('col-12 col-md-6 mb-3', lang('City'),       'billing_city',       'text', '', true),
+                                $sem('div', 'col-12 col-md-6 mb-3', array(
+                                    $label('billing_country', lang('Country'), true),
+                                    // Real <select> with eo_field binding — server
+                                    // injects the <option> list (240+ countries) at
+                                    // render time. Designer can swap to a different
+                                    // select element or rebind to billing_state etc.
+                                    $sem('select', 'form-select', null, array(
+                                        'bindings' => array('eo_field' => 'billing_country'),
+                                    )),
                                 )),
+                                $field('col-12 col-md-6 mb-3', lang('State / Province'), 'billing_state',    'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Zip Code'),         'billing_zip_code', 'text', '', true),
                             )),
-                            $field('col-12 col-md-6 mb-3', lang('State / Province'), 'billing_state',        'text', '', true),
-                            $field('col-12 col-md-6 mb-3', lang('Zip Code'),         'billing_zip_code',     'text', '', true),
-                            $field('col-12 col-md-6 mb-3', lang('Phone'),            'billing_phone_number', 'tel', '', true),
+                        ), array('attrs' => array(array('name' => 'data-pg-eo-billing-address', 'value' => '1')))),
+                        $sem('div', 'row', array(
+                            $field('col-12 col-md-6 mb-3', lang('Email'),   'billing_email_address', 'email', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Phone'),   'billing_phone_number',  'tel', '', true),
+                            $field('col-12 mb-3', lang('Company'), 'billing_company', 'text'),
+                            // Identity / tax number and tax office for the
+                            // invoice — contacts.tax_number / tax_office, what
+                            // the ERP and e-document integrations read.
+                            $sem('div', 'col-12 col-md-6 mb-3', array(
+                                $label('tax_number', lang('ID or Tax Number')),
+                                $input('tax_number', 'text', '', 'form-control', false, false, array(
+                                    array('name' => 'inputmode',    'value' => 'numeric'),
+                                    array('name' => 'maxlength',    'value' => '11'),
+                                    array('name' => 'pattern',      'value' => '[0-9]{10,11}'),
+                                    array('name' => 'autocomplete', 'value' => 'off'),
+                                )),
+                                $sem('div', 'form-text', lang('11 digits for a person, 10 for a company.')),
+                            )),
+                            $field('col-12 col-md-6 mb-3', lang('Tax Office'), 'tax_office', 'text'),
                         )),
                         // Tax-exempt checkbox — wrapped in visibility binding;
                         // only renders when both ECOMMERCE_TAX and
                         // ECOMMERCE_TAX_EXEMPT site settings are enabled.
-                        // Sits right after the address fields so corporate
-                        // buyers can flag the order at the same step.
                         $sem('div', 'pt-2 border-top mt-2', array(
                             $check_row('tax_exempt', lang('I am tax exempt (corporate purchases)'), 'mb-0'),
                         ), array('bindings' => array('eo_visible_if' => 'tax_exempt_allowed'))),
@@ -1265,50 +1350,6 @@ function _eo_default_designer_tree()
                         $sem('div', 'form-text small text-muted',
                              lang('Enter your discount code and click "Apply" — the totals are recalculated.')),
                     )),
-
-                    // ┌── CARD: shipping address — visibility-bound at card level (drops
-                    // when no shippable items) AND nested row visibility for
-                    // single-vs-multi recipient. Single-recipient: tree\'s real
-                    // form fields render. Multi-recipient: row dropped, server
-                    // section binding renders the full per-recipient form.
-                    $sem('div', 'card mb-3 pg-eo-shipping', array(
-                        $sem('div', 'card-header', array(
-                            $sem('h2', 'h6 mb-0 fw-semibold', lang('Shipping Address')),
-                        )),
-                        $sem('div', 'card-body', array(
-                            // Address fields row — VISIBLE only for single-
-                            // recipient orders. For multi-recipient, this row
-                            // is dropped from the tree before render (the
-                            // server-rendered shipping section below supplies
-                            // a full address form PER recipient).
-                            $sem('div', 'row', array(
-                                $field('col-12 col-md-3 mb-3', lang('Salutation'),  'shipping_salutation',  'text', lang('Mr/Ms')),
-                                $sem('div', 'col-md-9'),
-                                $field('col-12 col-md-6 mb-3', lang('First Name'),  'shipping_first_name',  'text', '', true),
-                                $field('col-12 col-md-6 mb-3', lang('Last Name'),   'shipping_last_name',   'text', '', true),
-                                $field('col-12 col-md-6 mb-3', lang('Company'),     'shipping_company',     'text'),
-                                $field('col-12 col-md-6 mb-3', lang('Phone'),       'shipping_phone_number','tel'),
-                                $field('col-12 col-md-6 mb-3', lang('Address 1'),   'shipping_address_1',   'text', '', true),
-                                $field('col-12 col-md-6 mb-3', lang('Address 2'),   'shipping_address_2',   'text'),
-                                $field('col-12 col-md-6 mb-3', lang('City'),        'shipping_city',        'text', '', true),
-                                $sem('div', 'col-12 col-md-6 mb-3', array(
-                                    $label('shipping_country', lang('Country'), true),
-                                    $sem('select', 'form-select', null, array(
-                                        'bindings' => array('eo_field' => 'shipping_country'),
-                                    )),
-                                )),
-                                $field('col-12 col-md-6 mb-3', lang('State / Province'), 'shipping_state',     'text', '', true),
-                                $field('col-12 col-md-6 mb-3', lang('Zip Code'),         'shipping_zip_code',  'text', '', true),
-                            ), array('bindings' => array('eo_visible_if' => 'has_single_recipient'))),
-                            // Arrival date + shipping method picker section.
-                            // Single-recipient: shows ONLY extras (auto-skip
-                            // because tree has real address fields).
-                            // Multi-recipient: shows FULL per-recipient form
-                            // (auto-detection bails out → server includes
-                            // address fields per recipient).
-                            $bind('shipping', 'pg-eo-shipping-extras mt-3'),
-                        )),
-                    ), array('bindings' => array('eo_visible_if' => 'has_shipping'))),
 
                     // ┌── CARD: payment method + card + installments + 2nd submit ┐
                     // Card footer hosts a secondary "Complete Order" button
@@ -2150,119 +2191,186 @@ function _eo_render_saved_cart_link($cart_label)
       . '</div>';
 }
 
-// ── Address-book select (logged-in members) ─────────────────────────────
-// Renders a small `<select>` that lists distinct billing addresses pulled
-// from the visitor's past complete/exported orders. Choosing one fills
-// the EO billing inputs via inline JS — no fetch, the address payload is
-// serialized into the option's data-* attrs.
+// ── Saved addresses (logged-in members) ────────────────────────────────
+// A small <select> of the addresses the member already has: their address
+// book ("My Addresses" — address_book rows, the same ones the shipping step
+// saves under each recipient name) and, on the billing side, the distinct
+// billing addresses of their past complete orders. Choosing one writes its
+// values into the fields named <prefix><field> (`billing_` or
+// `shipping_<rid>_`) through _pg_eo_address_inline_js(): no fetch, each
+// option carries its address as JSON.
 //
-// Returns '' for guests, ghosting operators, or members with no past
-// orders, so the section binding `_bindings.section='address_book'` can
-// be dropped onto a tree unconditionally; an empty string collapses the
-// container at render time without erroring.
-function _eo_render_address_book_select()
+// Returns '' for guests, ghosting operators (the ghosted member's data is
+// already prefilled; their address list belongs to the contact screens)
+// and members with nothing saved, so the section binding can sit in every
+// tree and simply collapses.
+function _eo_render_saved_address_select($target = 'billing', $rid = 0)
 {
-    // Guard: logged-in real visitor only. Operators in ghost mode see the
-    // ghosted member's data already (via the existing contact prefill); we
-    // don't want to expose their order history selector too — that's the
-    // contact view's responsibility.
     if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) return '';
     if (!empty($_SESSION['software']['ghost'])) return '';
+    $user_id = defined('USER_ID') ? (int)USER_ID : 0;
+    if ($user_id <= 0) return '';
+    $rid = (int)$rid;
+    if ($target === 'shipping' && $rid <= 0) return '';
+    $prefix = ($target === 'shipping') ? 'shipping_' . $rid . '_' : 'billing_';
 
-    // Resolve the contact behind the logged-in user. Same pattern that
-    // get_express_order.php / _eo_prefill_billing_fields use.
-    $uname = isset($_SESSION['sessionusername']) ? (string)$_SESSION['sessionusername'] : '';
-    if ($uname === '') return '';
-    $contact_id = (int)db_value(
-        "SELECT contacts.id FROM user
-         LEFT JOIN contacts ON user.user_contact = contacts.id
-         WHERE user.user_username = '" . e($uname) . "' LIMIT 1"
+    // One entry per address, whichever list it came from first.
+    $entries = array();
+    $seen    = array();
+    $add = function ($label, $payload) use (&$entries, &$seen) {
+        $lower = function_exists('mb_strtolower') ? 'mb_strtolower' : 'strtolower';
+        $key = $lower(implode('|', array(
+            $payload['first_name'], $payload['last_name'], $payload['address_1'], $payload['address_2'],
+            $payload['city'], $payload['state'], $payload['zip_code'], $payload['country'],
+        )));
+        if (isset($seen[$key])) return;
+        $seen[$key] = true;
+        $entries[] = array($label, $payload);
+    };
+    $line = function ($parts) {
+        return implode(', ', array_filter(array_map('trim', $parts), 'strlen'));
+    };
+
+    $book = db_items(
+        "SELECT ship_to_name, first_name, last_name, company, address_1, address_2,
+                city, state, zip_code, country, phone_number
+         FROM address_book
+         WHERE user = '" . $user_id . "' AND address_1 <> ''
+         ORDER BY ship_to_name ASC
+         LIMIT 25"
     );
-    if ($contact_id <= 0) return '';
-
-    // Pull the most recent billing addresses, de-duplicated on the
-    // address signature so a customer who places 10 orders to the same
-    // address only sees one entry. LIMIT keeps the inline JSON small.
-    $rows = db_items(
-        "SELECT billing_salutation, billing_first_name, billing_last_name,
-                billing_company, billing_address_1, billing_address_2,
-                billing_city, billing_state, billing_zip_code, billing_country,
-                billing_phone_number, billing_email_address,
-                MAX(order_date) AS last_used
-         FROM orders
-         WHERE contact_id = '" . (int)$contact_id . "'
-           AND status IN ('complete','exported')
-           AND billing_first_name <> ''
-           AND billing_address_1 <> ''
-         GROUP BY billing_first_name, billing_last_name, billing_address_1,
-                  billing_address_2, billing_city, billing_state,
-                  billing_zip_code, billing_country
-         ORDER BY last_used DESC
-         LIMIT 10"
-    );
-    if (!is_array($rows) || count($rows) === 0) return '';
-
-    // Build options. The visible label is "First Last — Address, City".
-    // The full payload rides as data-pgab='{"...":"..."}'; JS reads it on
-    // change and writes the matching billing_* inputs.
-    $opts = '<option value="">' . h(lang('Saved addresses…')) . '</option>';
-    foreach ($rows as $i => $r) {
-        $label_parts = array_filter(array(
-            trim((string)$r['billing_first_name'] . ' ' . (string)$r['billing_last_name']),
-            trim((string)$r['billing_address_1']),
-            trim((string)$r['billing_city']),
-        ));
-        $label = implode(' — ', $label_parts);
-        if ($label === '') $label = (string)lang('Address') . ' #' . ($i + 1);
-        // Build the payload — values are exactly the keys the JS will use
-        // to populate inputs by their `name` attribute.
+    foreach ((array)$book as $r) {
         $payload = array(
-            'billing_salutation'    => (string)$r['billing_salutation'],
-            'billing_first_name'    => (string)$r['billing_first_name'],
-            'billing_last_name'     => (string)$r['billing_last_name'],
-            'billing_company'       => (string)$r['billing_company'],
-            'billing_address_1'     => (string)$r['billing_address_1'],
-            'billing_address_2'     => (string)$r['billing_address_2'],
-            'billing_city'          => (string)$r['billing_city'],
-            'billing_state'         => (string)$r['billing_state'],
-            'billing_zip_code'      => (string)$r['billing_zip_code'],
-            'billing_country'       => (string)$r['billing_country'],
-            'billing_phone_number'  => (string)$r['billing_phone_number'],
-            'billing_email_address' => (string)$r['billing_email_address'],
+            'first_name'   => (string)$r['first_name'],
+            'last_name'    => (string)$r['last_name'],
+            'company'      => (string)$r['company'],
+            'address_1'    => (string)$r['address_1'],
+            'address_2'    => (string)$r['address_2'],
+            'city'         => (string)$r['city'],
+            'state'        => (string)$r['state'],
+            'zip_code'     => (string)$r['zip_code'],
+            'country'      => (string)$r['country'],
+            'phone_number' => (string)$r['phone_number'],
         );
-        $opts .= '<option value="' . (int)$i . '" data-pgab=\''
-              . htmlspecialchars(json_encode($payload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8')
-              . '\'>' . h($label) . '</option>';
+        $who = trim((string)$r['first_name'] . ' ' . (string)$r['last_name']);
+        $label = $line(array((string)$r['ship_to_name'] !== '' ? (string)$r['ship_to_name'] . ':' : '', $who, (string)$r['address_1'], (string)$r['city']));
+        $add(str_replace(':,', ':', $label), $payload);
     }
 
-    // The inline JS is wrapped in a self-registering one-shot so multiple
-    // EO widgets on the same page don't bind twice. It populates inputs
-    // by `name=` attribute, dispatches 'change' so any country-dependent
-    // listener (state/region select) sees the update, and skips when the
-    // visitor picks the empty default option.
-    $js = ''
-        . '<script>(function(){'
-        . 'if(window.__pgEoAddressBookBound)return;window.__pgEoAddressBookBound=true;'
-        . 'document.addEventListener("change",function(e){'
-        . 'var sel=e.target;if(!sel||sel.getAttribute("data-pg-eo-address-book")!=="1")return;'
-        . 'var opt=sel.options[sel.selectedIndex];if(!opt)return;'
-        . 'var raw=opt.getAttribute("data-pgab");if(!raw)return;'
-        . 'var data;try{data=JSON.parse(raw);}catch(_){return;}'
-        . 'var form=sel.form||sel.closest("form");if(!form)return;'
-        . 'Object.keys(data).forEach(function(k){'
-        . 'var el=form.querySelector(\'[name="\'+k+\'"]\');'
-        . 'if(!el)return;'
-        . 'el.value=data[k];'
-        . 'el.dispatchEvent(new Event("change",{bubbles:true}));'
-        . '});'
-        . '});'
-        . '})();</script>';
+    if ($target === 'billing') {
+        $contact_id = defined('USER_CONTACT_ID') ? (int)USER_CONTACT_ID : 0;
+        $rows = ($contact_id > 0) ? db_items(
+            "SELECT billing_first_name, billing_last_name, billing_company,
+                    billing_address_1, billing_address_2, billing_city, billing_state,
+                    billing_zip_code, billing_country, billing_phone_number,
+                    billing_email_address, MAX(order_date) AS last_used
+             FROM orders
+             WHERE contact_id = '" . $contact_id . "'
+               AND status IN ('complete','exported')
+               AND billing_first_name <> ''
+               AND billing_address_1 <> ''
+             GROUP BY billing_first_name, billing_last_name, billing_address_1,
+                      billing_address_2, billing_city, billing_state,
+                      billing_zip_code, billing_country
+             ORDER BY last_used DESC
+             LIMIT 10"
+        ) : array();
+        foreach ((array)$rows as $r) {
+            $payload = array(
+                'first_name'    => (string)$r['billing_first_name'],
+                'last_name'     => (string)$r['billing_last_name'],
+                'company'       => (string)$r['billing_company'],
+                'address_1'     => (string)$r['billing_address_1'],
+                'address_2'     => (string)$r['billing_address_2'],
+                'city'          => (string)$r['billing_city'],
+                'state'         => (string)$r['billing_state'],
+                'zip_code'      => (string)$r['billing_zip_code'],
+                'country'       => (string)$r['billing_country'],
+                'phone_number'  => (string)$r['billing_phone_number'],
+                'email_address' => (string)$r['billing_email_address'],
+            );
+            $add($line(array(trim($payload['first_name'] . ' ' . $payload['last_name']), $payload['address_1'], $payload['city'])), $payload);
+        }
+    }
 
-    return '<div class="pg-eo-address-book mb-2">'
-         . '<label class="form-label small text-muted">' . h(lang('Use a saved address')) . '</label>'
-         . '<select data-pg-eo-address-book="1" class="form-select form-select-sm">' . $opts . '</select>'
-         . '</div>'
-         . $js;
+    if (!$entries) return '';
+
+    $opts = '<option value="">' . h(lang('Saved addresses…')) . '</option>';
+    foreach ($entries as $i => $entry) {
+        list($label, $payload) = $entry;
+        if ($label === '') $label = (string)lang('Address') . ' #' . ($i + 1);
+        $opts .= '<option value="' . (int)$i . '" data-pgab="'
+              . htmlspecialchars(json_encode($payload, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8')
+              . '">' . h($label) . '</option>';
+    }
+
+    $select_id = 'pg_eo_saved_' . ($target === 'shipping' ? 'shipping_' . $rid : 'billing');
+    return '<div class="pg-eo-address-book">'
+         . '<label class="form-label small text-body-secondary" for="' . h($select_id) . '">' . h(lang('Use a saved address')) . '</label>'
+         . '<select id="' . h($select_id) . '" data-pg-eo-address-book="1" data-pg-eo-prefix="' . h($prefix) . '" class="form-select form-select-sm">' . $opts . '</select>'
+         . '</div>';
+}
+
+// The billing side of the above; the name the `address_book` section has
+// always called.
+function _eo_render_address_book_select()
+{
+    return _eo_render_saved_address_select('billing', 0);
+}
+
+// ── Address helpers on the page: the saved-address selects and "my billing
+// address is the same as my shipping address". One script for every
+// express order on the page (guarded), listening at the document so the
+// markup can sit anywhere in a designed tree.
+//   • A saved-address select writes its option's address into the fields
+//     named <data-pg-eo-prefix><key>; the country goes first, since
+//     changing it redraws the state field, and every write fires input and
+//     change so the shipping methods are worked out again.
+//   • The checkbox hides the billing name and address block
+//     ([data-pg-eo-billing-address]) and lifts the `required` of the
+//     fields inside while it is ticked (a hidden required field blocks the
+//     submit without saying why); the server fills them from the recipient.
+function _pg_eo_address_inline_js()
+{
+    static $done = false;
+    if ($done) return '';
+    $done = true;
+    return '<script>(function(){'
+        . 'if(window.__pgEoAddressBound)return;window.__pgEoAddressBound=true;'
+        . 'function fill(sel){'
+        .   'var opt=sel.options[sel.selectedIndex];if(!opt)return;'
+        .   'var raw=opt.getAttribute("data-pgab");if(!raw)return;'
+        .   'var data;try{data=JSON.parse(raw);}catch(_){return;}'
+        .   'var form=sel.form||sel.closest("form");if(!form)return;'
+        .   'var prefix=sel.getAttribute("data-pg-eo-prefix")||"billing_";'
+        .   'var keys=Object.keys(data).sort(function(a,b){return (b==="country")-(a==="country");});'
+        .   'keys.forEach(function(k){'
+        .     'form.querySelectorAll("[name=\""+prefix+k+"\"]").forEach(function(el){'
+        .       'if(el.type==="radio"||el.type==="checkbox"||el.type==="hidden")return;'
+        .       'el.value=data[k];'
+        .       'el.dispatchEvent(new Event("input",{bubbles:true}));'
+        .       'el.dispatchEvent(new Event("change",{bubbles:true}));'
+        .     '});'
+        .   '});'
+        . '}'
+        . 'function same(cb){'
+        .   'var form=cb.form||cb.closest("form");if(!form)return;'
+        .   'form.querySelectorAll("[data-pg-eo-billing-address]").forEach(function(box){'
+        .     'box.hidden=cb.checked;'
+        .     'box.querySelectorAll("input,select,textarea").forEach(function(el){'
+        .       'if(cb.checked){if(el.required){el.required=false;el.setAttribute("data-pg-eo-req","1");}}'
+        .       'else if(el.getAttribute("data-pg-eo-req")==="1"){el.required=true;el.removeAttribute("data-pg-eo-req");}'
+        .     '});'
+        .   '});'
+        . '}'
+        . 'document.addEventListener("change",function(e){'
+        .   'var t=e.target;if(!t)return;'
+        .   'if(t.getAttribute&&t.getAttribute("data-pg-eo-address-book")==="1"){fill(t);return;}'
+        .   'if(t.name==="billing_same_as_shipping")same(t);'
+        . '});'
+        . 'function init(){document.querySelectorAll("input[name=\"billing_same_as_shipping\"]").forEach(same);}'
+        . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();'
+        . '})();</script>';
 }
 
 // ── Terms-of-service section: real <input type=checkbox required> +
@@ -2974,7 +3082,7 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
                     business_address_1, business_address_2, business_city,
                     business_state, business_zip_code, business_country,
                     business_phone, business_fax, email_address,
-                    lead_source, opt_in
+                    lead_source, opt_in, tax_number, tax_office
              FROM contacts WHERE id = '" . (int)USER_CONTACT_ID . "' LIMIT 1"
         );
         if (!is_array($contact)) $contact = array();
@@ -3040,6 +3148,20 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     }
     if (!$lf->field_in_session('tax_exempt')) {
         $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
+    }
+    // Identity / tax number and tax office: kept on the contact, not on the
+    // order, so a member finds them filled in the next time.
+    foreach (array('tax_number', 'tax_office') as $f) {
+        if ($lf->field_in_session($f)) continue;
+        if (!empty($contact[$f])) $lf->assign_field_value($f, (string)$contact[$f]);
+    }
+    // "Billing address is the same as the shipping address" starts ticked on
+    // an order that has no billing address yet: most people have one
+    // address. Only before the visitor's first submit — after it the box
+    // says what they left it at (an unticked box posts nothing, so
+    // field_in_session() cannot tell "unticked" from "never shown").
+    if ($lf->prefill()) {
+        $lf->assign_field_value('billing_same_as_shipping', empty($order['billing_address_1']) ? '1' : '');
     }
     // update_contact: default ON for logged-in users (matches legacy intent).
     if (!$lf->field_in_session('update_contact')) {
@@ -3236,6 +3358,27 @@ function _eo_tree_has_real_shipping_address_fields($tree)
         }
     }
     return false;
+}
+
+// ── "We cannot ship to this address" ─────────────────────────────────────
+// Drawn in a recipient's method box when no method serves the address. A
+// quiet grey line there left visitors wondering why "Complete Order" kept
+// failing; this names the problem and the way out. The reason the shipping
+// code gave (a product that cannot go there, no zone for the country, …)
+// follows it, and staff also get where the setting lives.
+function _eo_no_shipping_notice_html($detail = '')
+{
+    $html = '<div class="alert alert-warning small mb-0 pg-eo-no-shipping" role="alert">'
+          . '<div class="fw-semibold mb-1"><i class="bi bi-truck me-2" aria-hidden="true"></i>' . h(lang('We cannot ship to this address')) . '</div>'
+          . '<div>' . h(lang('No shipping method serves this address yet, so the order cannot be completed. Check the country and the address, or contact us.')) . '</div>'
+          . ((string)$detail !== '' ? '<div class="mt-1">' . h((string)$detail) . '</div>' : '');
+    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ROLE') && (int)USER_ROLE < 3) {
+        $url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
+             . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'pinegrap') . '/view_shipping_methods.php';
+        $html .= '<hr class="my-2"><div>' . h(lang('Only staff see this: enable a shipping method and add this country to one of its zones.'))
+               . ' <a href="' . h($url) . '" class="alert-link">' . h(lang('Shipping Methods')) . '</a></div>';
+    }
+    return $html . '</div>';
 }
 
 // $include_address_fields: when TRUE (default), renders the full address
@@ -3480,6 +3623,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
         // posts through the hidden input, which starts disabled for that
         // reason) and redraws the list whenever the address changes.
         $_eo_status_text = lang('Enter address to see options.');
+        $_eo_status_html = '';   // the "cannot ship here" notice, when that is the answer
         $_eo_server_list = '';
         $_eo_country     = $get('country');
         if ($_eo_country !== '') {
@@ -3521,13 +3665,13 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                         . '<div class="ms-3 fw-semibold">' . (((float)$_m['cost'] == 0) ? h(lang('Free')) : $_m['cost_info']) . '</div>'
                         . '</div>';
                 }
-            } elseif (is_array($_eo_resp) && !empty($_eo_resp['message'])) {
-                $_eo_status_text = (string)$_eo_resp['message'];
+            } else {
+                $_eo_status_html = _eo_no_shipping_notice_html(is_array($_eo_resp) ? (string)($_eo_resp['message'] ?? '') : '');
             }
         }
         $out .= '<div class="pg-eo-shipping-methods mt-3" data-pg-eo-rid="' . $rid . '">'
               . '<label class="form-label small fw-semibold d-block">' . h(lang('Shipping Method')) . '</label>'
-              . '<div class="text-muted small pg-eo-methods-status"' . ($_eo_server_list !== '' ? ' style="display:none"' : '') . '>' . h($_eo_status_text) . '</div>'
+              . '<div class="text-muted small pg-eo-methods-status"' . ($_eo_server_list !== '' ? ' style="display:none"' : '') . '>' . ($_eo_status_html !== '' ? $_eo_status_html : h($_eo_status_text)) . '</div>'
               . '<div class="pg-eo-methods-list mt-2">' . $_eo_server_list . '</div>'
               . '<input type="hidden" name="shipping_' . $rid . '_method" value="' . h($_eo_method_val) . '" class="pg-eo-method-input"'
               .   ($_eo_server_list !== '' ? ' disabled' : '') . '>'
@@ -3580,6 +3724,9 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     $_eo_label_enter_addr   = json_encode((string)lang('Select country to see shipping options.'));
     $_eo_label_calculating  = json_encode((string)lang('Calculating shipping…'));
     $_eo_label_no_methods   = json_encode((string)lang('No shipping methods available for this address.'));
+    // The notice drawn when no method serves the address; the reason the
+    // server gave replaces the placeholder (or the line goes).
+    $_eo_no_ship_tpl        = json_encode(_eo_no_shipping_notice_html('__PG_EO_DETAIL__'));
     $_eo_label_network_err  = json_encode((string)lang('Network error — please retry.'));
     $_eo_label_free         = json_encode((string)lang('Free'));
     $_eo_label_pick_date    = json_encode((string)lang('Please pick an arrival date.'));
@@ -3890,12 +4037,15 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         })
         .then(function (r) { return r.json(); })
         .then(function (json) {
-            if (!json || json.status !== 'success' || !Array.isArray(json.shipping_methods)) {
-                statusEl.textContent = (json && json.message) ? json.message : {$_eo_label_no_methods};
-                return;
-            }
-            if (json.shipping_methods.length === 0) {
-                statusEl.textContent = {$_eo_label_no_methods};
+            if (!json || json.status !== 'success' || !Array.isArray(json.shipping_methods) || json.shipping_methods.length === 0) {
+                // A plain grey line here is easy to miss, and the order then
+                // fails at "Complete Order" with no visible reason: say that
+                // this address cannot be shipped to, and why.
+                var detail = (json && json.message) ? String(json.message) : '';
+                statusEl.innerHTML = {$_eo_no_ship_tpl}.replace('<div class="mt-1">__PG_EO_DETAIL__</div>',
+                    detail ? '<div class="mt-1">' + escapeHtml(detail) + '</div>' : '');
+                var hidNone = form.querySelector('.pg-eo-shipping-methods[data-pg-eo-rid="' + rid + '"] .pg-eo-method-input');
+                if (hidNone) hidNone.value = '';
                 return;
             }
             statusEl.style.display = 'none';

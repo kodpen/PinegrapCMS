@@ -87,6 +87,24 @@ const StyleDesigner = (function () {
     // switching tabs parks them on the page object and pulls the target
     // page's set in. See _pgTabs* near the save pipeline.
     let _design    = null;   // sdDesign payload from the server
+
+    // The framework the design is built on (sdDesign.frameworkInfo, from
+    // pg_design_frameworks()). Fixed when the design is created; a design
+    // from before the choice existed is Bootstrap 5.
+    function _sdFrameworkInfo() {
+        var fi = (_design && _design.frameworkInfo) ? _design.frameworkInfo : null;
+        if (fi && typeof fi === 'object') return fi;
+        return {
+            label: 'Bootstrap 5',
+            css: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css',
+            js:  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js',
+            bootstrap: true
+        };
+    }
+    // Whether the Bootstrap grid, components and blocks belong to this
+    // design. A custom design has no framework: they would write classes
+    // nothing styles.
+    function _sdUsesBootstrap() { return _sdFrameworkInfo().bootstrap !== false; }
     let _pages     = [];     // [{ key, page_id, page_name, …settings, tree, undoStack, redoStack, nodeIdCounter, baseline }]
     let _activeKey = null;   // key of the page currently on the canvas
     let _styleBaseline = null; // JSON of shared fields (name/theme/assets…) at load / last save
@@ -467,7 +485,7 @@ const StyleDesigner = (function () {
         btn.disabled = loading;
         btn.classList.toggle('sd-saving-blocked', loading);
         btn.title = loading
-            ? _sdT('The shared components are loading — wait before saving…')
+            ? _sdT('The shared components are loading — wait before publishing…')
             : (btn.dataset.origTitle || '');
         if (!btn.dataset.origTitle && !loading) btn.dataset.origTitle = btn.title || '';
     }
@@ -4501,6 +4519,15 @@ const StyleDesigner = (function () {
         // html is the scroll container so position:sticky works inside the canvas iframe.
         'html { height:100%; overflow-y:auto; }',
         'body { margin:0; padding:0; min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }',
+        // The editor hides its own wrappers with d-none (a single-screen
+        // widget's loop area); a custom design has no Bootstrap to honour it.
+        '.sd-wrap.d-none, .sd-loop-tr.d-none { display:none !important; }',
+        // A login region element that belongs to the session state the
+        // canvas is not drawing (switched on the widget's band).
+        '.sd-wrap.sd-state-off { display:none !important; }',
+        '.sd-session-chips { display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; pointer-events:auto; }',
+        '.sd-session-chip { font:600 .6rem/1.3 system-ui,-apple-system,sans-serif; letter-spacing:0; text-transform:none; padding:1px 7px; border:1px solid rgba(99,102,241,.45); border-radius:3px; background:#fff; color:#6366f1; cursor:pointer; }',
+        '.sd-session-chip.is-on { background:#6366f1; border-color:#6366f1; color:#fff; }',
         // Responsive position utilities — Bootstrap 5 does not ship these natively.
         '@media (min-width:576px){.position-sm-static{position:static!important}.position-sm-relative{position:relative!important}.position-sm-absolute{position:absolute!important}.position-sm-fixed{position:fixed!important}.position-sm-sticky{position:sticky!important}}',
         '@media (min-width:768px){.position-md-static{position:static!important}.position-md-relative{position:relative!important}.position-md-absolute{position:absolute!important}.position-md-fixed{position:fixed!important}.position-md-sticky{position:sticky!important}}',
@@ -5043,7 +5070,17 @@ const StyleDesigner = (function () {
         '.sd-system-wrap > *:not(.sd-tb) { box-shadow:none !important; outline:none !important; }',
         '.sd-system-placeholder { padding:.75rem 1rem; font-size:.8rem; color:#6366f1; border:2px dashed rgba(99,102,241,.45); border-radius:.35rem; text-align:center; background:rgba(99,102,241,.04); min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; }',
         '.sd-system-tb-name { font-size:.68rem; color:#6366f1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; padding:0 .25rem; pointer-events:none; }',
-        '.sd-system-template-band { font-size:.65rem; font-weight:700; color:#6366f1; background:rgba(99,102,241,.08); border-bottom:1px dashed rgba(99,102,241,.3); padding:2px 6px; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; user-select:none; }',
+        // The widget's name tag hangs above its frame, out of the layout, and
+        // shows only while the widget is hovered or selected: in the flow it
+        // made a small widget (a cart link, a login region in a navbar) many
+        // times taller and wider than the page draws it. sd-band-below (set
+        // after render) hangs it under a widget at the top of the canvas.
+        '.sd-system-template-band { position:absolute; left:-2px; bottom:calc(100% + 2px); z-index:40; display:none; align-items:center; white-space:nowrap; font-size:.62rem; font-weight:700; line-height:1.5; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; padding:1px 7px; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; user-select:none; box-shadow:0 1px 4px rgba(15,23,42,.18); }',
+        '.sd-system-wrap:hover > .sd-shared-inner > .sd-system-template-band, .sd-system-wrap.sd-selected > .sd-shared-inner > .sd-system-template-band { display:inline-flex; }',
+        '.sd-system-wrap.sd-band-below > .sd-shared-inner > .sd-system-template-band { bottom:auto; top:calc(100% + 2px); border-radius:0 0 4px 4px; }',
+        '.sd-system-wrap.sd-band-right > .sd-shared-inner > .sd-system-template-band { left:auto; right:-2px; }',
+        '.sd-system-template-band .sd-session-chip { border-color:rgba(255,255,255,.7); }',
+        '.sd-system-template-band .sd-session-chip.is-on { background:#312e81; border-color:#fff; color:#fff; }',
         // ─── LOOP AREA ────────────────────────────────────────────────────
         // Visually-distinct repetition zone inside a system widget. Pseudo-elements
         // for the label band + empty drop hint keep the JS render path simple.
@@ -5086,6 +5123,13 @@ const StyleDesigner = (function () {
         // The element is canvas-only (data-sd-band="1"), excluded from tree ops.
         '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area { min-height:0; padding:0; border:0; background:none; }',
+        // Ghost records (_sdAppendGhosts): real records drawn after the card
+        // being designed — untouchable, faintly hatched so they read as a
+        // preview of the card, not as more cards to edit.
+        '.sd-ghost { pointer-events:none !important; user-select:none; position:relative; }',
+        '.sd-ghost::after { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(99,102,241,.07) 0 6px, transparent 6px 14px); }',
+        '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) > .sd-ghost { padding-left:.5rem; padding-right:.5rem; }',
+        '.sd-ghost-note { font-weight:400; text-transform:none; letter-spacing:0; opacity:.85; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area > .sd-loop-band { display:none; }',
         '.sd-loop-band .bi { font-size:.85rem; line-height:1; }',
         '.sd-loop-band .sd-loop-band-text { font-size:.65rem; }',
@@ -5129,7 +5173,10 @@ const StyleDesigner = (function () {
         '.sd-loop-area:not(:has(.sd-wrap))::after { content:"' + _sdT('Drag the repeated template here (card, col, heading\\2026)') + '"; display:block; padding:18px 8px 8px; margin-top:18px; text-align:center; color:#6366f1; opacity:.75; font-size:.78rem; }',
         '.sd-loop-area.sd-drop-hl { background:rgba(99,102,241,.14); border-color:#4f46e5; }',
         // The drop area covers the ENTIRE inner space below the band — wide hit target
-        '.sd-system-drop-area { position:relative; min-height:60px; padding:6px; transition:background .15s, box-shadow .15s; }',
+        // Only an empty widget needs room to drop into; one with content is
+        // drawn at the size the page gives it.
+        '.sd-system-drop-area { position:relative; transition:background .15s, box-shadow .15s; }',
+        '.sd-system-drop-area.sd-system-drop-empty { min-height:60px; padding:6px; }',
         '.sd-system-drop-area.sd-drop-hl { background:rgba(99,102,241,.08); box-shadow:inset 0 0 0 2px rgba(99,102,241,.6); border-radius:3px; }',
         // Empty hint sits on top of the drop area but must not block events (pointer-events:none in JS)
         '.sd-system-empty-hint { padding:1.25rem 1rem; text-align:center; color:#6366f1; font-size:.82rem; line-height:1.4; }',
@@ -5352,6 +5399,27 @@ const StyleDesigner = (function () {
             });
         });
 
+        // Phones and small touch tablets hide the width buttons, their label
+        // and the resize handles (same query in style_designer.css): the
+        // canvas already fills the screen there. Landing on such a screen
+        // drops back to full width, or a width picked earlier would stay
+        // with nothing left to undo it.
+        try {
+            var _bpMq = window.matchMedia('(max-width: 767.98px), (hover: none) and (pointer: coarse) and (max-width: 991.98px)');
+            var _bpFit = function () {
+                if (!_bpMq.matches) return;
+                var wr = document.getElementById('sd-iframe-wrap');
+                if (!wr) return;
+                wrapper.querySelectorAll('.sd-bp-btn').forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-w') === '0');
+                });
+                wr.style.maxWidth = '100%'; wr.style.width = '100%'; wr.style.height = '';
+                updateBpLabel();
+            };
+            if (_bpMq.addEventListener) _bpMq.addEventListener('change', _bpFit);
+            else if (_bpMq.addListener) _bpMq.addListener(_bpFit);
+        } catch (e) {}
+
         // Zoom controls
         var zoomOut = document.getElementById('sd-vb-zoom-out');
         var zoomIn  = document.getElementById('sd-vb-zoom-in');
@@ -5430,18 +5498,24 @@ const StyleDesigner = (function () {
         // SecurityError and the panel can only label the source — Bootstrap
         // rules don't drop into the matching list. Same flag below for the
         // <link> tags emitted from sentinels in applyAssetsToIframe().
+        // The framework files are the design's (_sdFrameworkInfo()): a custom
+        // design gets none, so the canvas shows what its visitors will get.
+        var _fwInfo = _sdFrameworkInfo();
         doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-            '<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">' +
+            (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
             '<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
             '<style>' + IFRAME_CSS + '</style></head><body></body></html>');
         doc.close();
         canvasDoc = doc;
 
         // Inject Bootstrap JS bundle so data-bs-toggle/data-bs-dismiss/data-bs-target all work natively
-        var bsScript = canvasDoc.createElement('script');
-        bsScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js';
-        canvasDoc.body.appendChild(bsScript);
+        var bsScript = null;
+        if (_fwInfo.js) {
+            bsScript = canvasDoc.createElement('script');
+            bsScript.src = _fwInfo.js;
+            canvasDoc.body.appendChild(bsScript);
+        }
 
         // Inject any saved custom CSS/JS assets from the assets panel into the canvas iframe,
         // and refresh the HTML tree so saved files appear immediately after page load.
@@ -5684,8 +5758,8 @@ const StyleDesigner = (function () {
                 if (!isDirty()) { goBack(); return; }
                 if (typeof window.pgConfirm === 'function') {
                     window.pgConfirm({
-                        title: _sdT('There are unsaved changes'),
-                        message: _sdT('Are you sure you want to leave? Unsaved changes will be lost.'),
+                        title: _sdT('There are unpublished changes'),
+                        message: _sdT('Are you sure you want to leave? Changes that are not published will be lost.'),
                         confirmText: _sdT('Yes'), cancelText: _sdT('No'), variant: 'danger'
                     }).then(function (ok) { if (ok) goBack(); });
                 } else if (window.confirm(_sdT('Are you sure you want to leave?'))) {
@@ -5713,7 +5787,7 @@ const StyleDesigner = (function () {
             link.onload = function () { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); };
             link.onerror = function () { iframeReady = true; render(); };
         }
-        bsScript.onload = function () { if (!iframeReady) { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); } };
+        if (bsScript) bsScript.onload = function () { if (!iframeReady) { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); } };
         setTimeout(function () { if (!iframeReady) { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); } }, 3000);
 
         // Inject theme stylesheet (CSS only — themes never carry JS) into the canvas iframe
@@ -7514,6 +7588,8 @@ const StyleDesigner = (function () {
     // CDN bundle finishes downloading.
     function _initCanvasTooltips() {
         if (!canvasDoc) return;
+        // No framework script in a custom design: nothing to wait for.
+        if (!_sdFrameworkInfo().js) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
         var bs = win.bootstrap;
@@ -7714,7 +7790,8 @@ const StyleDesigner = (function () {
                        (_lwRt === 'custom_form') ||
                        (_lwRt === 'catalog_item_view') ||
                        (_lwRt === 'calendar_event_view') ||
-                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1);
+                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
+                       (_SW_ONE_SCREEN[_lwRt] === 1);
         }
 
         var isRecipient = (node.type === 'recipient_loop_area');
@@ -7800,6 +7877,63 @@ const StyleDesigner = (function () {
     // Build a canvas element for a shared_ref node.
     // The shared component's tree is rendered as static HTML (no interactive sd-wrap
     // descendants) so the shared_ref wrapper is a single atomic selection unit.
+    // Which of a login region's two states the canvas draws: 'signed_out'
+    // or 'signed_in'. Editor-only; the page keeps both.
+    var _sdSessionPreview = 'signed_out';
+
+    // The state an element of a login region belongs to: the nearest
+    // is_signed_in / is_signed_out flag on the way down to it, '' for an
+    // element both states share (or one outside the tree).
+    function _sdSessionStateOf(root, target) {
+        var found = null;
+        (function walk(n, state) {
+            if (found !== null || !n) return;
+            var f = (n.props && n.props._bindings) ? n.props._bindings.eo_visible_if : '';
+            if (f === 'is_signed_in') state = 'signed_in';
+            else if (f === 'is_signed_out') state = 'signed_out';
+            if (n === target) { found = state; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, state); });
+        })(root, '');
+        return found || '';
+    }
+
+    // Switch the state the canvas draws. A selection inside the state being
+    // hidden moves up to the widget, or the next render would switch back.
+    function _sdSetSessionPreview(state, refNode) {
+        if (state !== 'signed_in' && state !== 'signed_out') return;
+        _sdSessionPreview = state;
+        if (refNode && selectedNode && selectedNode !== refNode) {
+            var sid = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+            var cached = sid ? _sharedCache[sid] : null;
+            var st = cached && cached.tree ? _sdSessionStateOf(cached.tree, selectedNode) : '';
+            if (st && st !== state) { selectedNode = refNode; selectedNodes = []; }
+        }
+        render();
+    }
+
+    // The two-button switch on a login region's band.
+    function _sdSessionChips(doc, refNode) {
+        var wrap = doc.createElement('span');
+        wrap.className = 'sd-session-chips';
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', _sdT('Canvas shows'));
+        [['signed_out', _sdT('Signed out')], ['signed_in', _sdT('Signed in')]].forEach(function (s) {
+            var b = doc.createElement('button');
+            b.type = 'button';
+            b.className = 'sd-session-chip' + (_sdSessionPreview === s[0] ? ' is-on' : '');
+            b.setAttribute('aria-pressed', _sdSessionPreview === s[0] ? 'true' : 'false');
+            b.textContent = s[1];
+            b.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+            b.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdSetSessionPreview(s[0], refNode);
+            });
+            wrap.appendChild(b);
+        });
+        return wrap;
+    }
+
     function buildSharedRefEl(node) {
         var doc    = canvasDoc;
         var sid    = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
@@ -7947,6 +8081,9 @@ const StyleDesigner = (function () {
                     account_profile:      _sdT('Account Profile'),
                     email_preferences:    _sdT('Email Preferences'),
                     address_book:         _sdT('Address Book'),
+                    error_page:           _sdT('Error Page (404)'),
+                    login_region:         _sdT('Login Region'),
+                    cart_link:            _sdT('Cart Link'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -7958,6 +8095,11 @@ const StyleDesigner = (function () {
                 band.innerHTML =
                     '<span class="bi bi-cpu me-1"></span>' + esc(_rtLabel2) +
                     '<span style="opacity:.6;font-weight:400">' + esc(_sdT(' — Data Binding Area')) + '</span>';
+                // A login region is two designs in one; the band says which
+                // one the canvas is drawing and switches it.
+                if (_sysCfg && _sysCfg.regionType === 'login_region') {
+                    band.appendChild(_sdSessionChips(doc, node));
+                }
                 inner.appendChild(band);
             }
             var _hasKids = cached.tree.children && cached.tree.children.length > 0;
@@ -7970,6 +8112,7 @@ const StyleDesigner = (function () {
                 setupDropEvents(inner, cached.tree);
             }
             if (_isSysWidget && !_hasKids) {
+                inner.classList.add('sd-system-drop-empty');
                 // Empty system widget: show a drop-here hint. The hint MUST NOT eat
                 // pointer events — drops fall through to the inner element above.
                 var hint = doc.createElement('div');
@@ -7992,11 +8135,19 @@ const StyleDesigner = (function () {
                 _emptyRootEl.classList.add('sd-system-empty-root');
                 inner.appendChild(_emptyRootEl);
             } else {
+                // An element picked from the layer tree is drawn in the
+                // session state it belongs to.
+                if (_sysCfg && _sysCfg.regionType === 'login_region' && selectedNode) {
+                    var _selState = _sdSessionStateOf(cached.tree, selectedNode);
+                    if (_selState) _sdSessionPreview = _selState;
+                }
                 _sysWidgetRenderCfg = _sysCfg;
                 _sysWidgetRenderTreeRoot = cached.tree;
                 inner.appendChild(buildNodeEl(cached.tree));
                 _sysWidgetRenderCfg = null;
                 _sysWidgetRenderTreeRoot = null;
+                // Real records after the card being designed (canvas only).
+                _sdAppendGhosts(doc, inner, sid, cached, _sysCfg);
             }
             // Stamp every rendered descendant with the widget's sid so that
             // querySelector-based lookups (scrollCanvasToNode, selection highlight)
@@ -8049,6 +8200,31 @@ const StyleDesigner = (function () {
             render();
         });
 
+        // A widget at the very top of the canvas has no room above it for its
+        // name tag: the tag hangs below it instead. Measured once laid out
+        // and again whenever the pointer comes in (the tag shows then; the
+        // layout may have moved since).
+        if (_isSysWidget) {
+            var _bandWin = doc.defaultView;
+            var _bandCheck = function () {
+                if (!wrapper.isConnected) return;
+                var top = wrapper.getBoundingClientRect().top + (_bandWin ? (_bandWin.scrollY || 0) : 0);
+                wrapper.classList.toggle('sd-band-below', top < 24);
+                // Near the right edge the tag runs off the canvas: it is
+                // lined up with the widget's right side instead. Measurable
+                // only while it shows (hovered or selected).
+                var band = wrapper.querySelector(':scope > .sd-shared-inner > .sd-system-template-band');
+                if (band) {
+                    wrapper.classList.remove('sd-band-right');
+                    var br = band.getBoundingClientRect();
+                    if (br.width && br.right > doc.documentElement.clientWidth) wrapper.classList.add('sd-band-right');
+                }
+            };
+            setTimeout(_bandCheck, 50);
+            setTimeout(_bandCheck, 400);
+            wrapper.addEventListener('mouseenter', _bandCheck);
+        }
+
         return wrapper;
     }
 
@@ -8086,7 +8262,7 @@ const StyleDesigner = (function () {
     // fades it. Returns the badge text, or '' when the node stays. A wrapper
     // fades when everything it holds fades, the way the renderer drops an
     // emptied wrapper.
-    var _SD_MEMBER_TYPES = { login_form: 1, forgot_password: 1, registration: 1, membership: 1,
+    var _SD_MEMBER_TYPES = { login_form: 1, login_region: 1, forgot_password: 1, registration: 1, membership: 1,
                              change_password: 1, set_password: 1, address_book: 1 };
     // The node carrying this element id (props.id), or null.
     function _sdFindByPropId(root, id) {
@@ -8231,6 +8407,16 @@ const StyleDesigner = (function () {
             }
         }
 
+        // Login region: the canvas draws one session state at a time; an
+        // element shown only in the other one is left out.
+        if (_sysWidgetRenderCfg && _sysWidgetRenderCfg.regionType === 'login_region') {
+            var _stFlag = (node.props && node.props._bindings) ? node.props._bindings.eo_visible_if : '';
+            if ((_stFlag === 'is_signed_in' && _sdSessionPreview !== 'signed_in') ||
+                (_stFlag === 'is_signed_out' && _sdSessionPreview !== 'signed_out')) {
+                wrapper.classList.add('sd-state-off');
+            }
+        }
+
         // ── loop_area visibility — hide in single-record widget types ─────────
         // In form_item_view (single submitted_form record) and in my_account when
         // show_submissions is off (no list rendered), a loop_area on the canvas is
@@ -8249,7 +8435,8 @@ const StyleDesigner = (function () {
                             (_lwRt === 'custom_form') ||
                             (_lwRt === 'catalog_item_view') ||
                             (_lwRt === 'calendar_event_view') ||
-                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1);
+                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
+                            (_SW_ONE_SCREEN[_lwRt] === 1);
             if (_loopHide) {
                 // A single-record widget renders its loop_area once, so the
                 // "repeated for every record" band would mislead. An empty
@@ -8728,7 +8915,8 @@ const StyleDesigner = (function () {
                     eo_installment:            _sdT('Instalment Picker (Iyzipay BIN lookup — filled once the card number is entered)'),
                     eo_terms:                  _sdT('Terms Acceptance (LEGACY — the new tree uses a real checkbox + a Bootstrap modal)'),
                     eo_saved_cart_link:        _sdT('Saved Cart Link (the visitor can return to the cart with the order #)'),
-                    eo_address_book:           _sdT('Address Book (from the member\'s past orders — hidden when empty)'),
+                    eo_address_book:           _sdT('Saved Addresses for billing (address book and past orders — hidden when empty)'),
+                    eo_address_book_shipping:  _sdT('Saved Addresses for shipping (the member\'s address book — hidden when empty)'),
                     eo_upsell_offers:          _sdT('Upsell Offers (view_offers.php — alert strip, "only $100 to go")'),
                     eo_applied_offers:         _sdT('Applied Offers (derived from orders.discount_offer_id + order_items.offer_id)'),
                     eo_totals:                 _sdT('Order Totals (calculated by the backend — VAT, surcharge, total)'),
@@ -9341,6 +9529,10 @@ const StyleDesigner = (function () {
         '__email_address': 'sample@example.com',
         '__token_error': _sdT('Sorry, the token has expired. Please request a new email.'),
         '__not_logged_in': _sdT('You must be logged in to view this page.'),
+        // Error page
+        '__error_code': '404',
+        '__error_message': _sdT('Sorry, the item could not be found.'),
+        '__requested_url': '/old-page',
         '__group_name': _sdT('Newsletter'),
         '__group_description': _sdT('News and campaigns, once a month.'),
         '__recipient_full_name': _sdT('Jane Doe'),
@@ -9351,6 +9543,7 @@ const StyleDesigner = (function () {
         '__item_name': _sdT('Sample Product Name'),
         '__item_short_description': _sdT('Sample Product Name'),
         '__item_description': _sdT('A sample product description — short and clear.'),
+        '__item_summary': _sdT('A sample product description — short and clear.'),
         '__cart_section_label': _sdT('Cart'),
         '__currency_symbol': _sdCurrencySymbol(),
         '__order_number': 'PG-12345',
@@ -9615,7 +9808,105 @@ const StyleDesigner = (function () {
     }
 
     // Decide preview value for a bound prop based on the prop name + node context.
+    // ── Ghost records ────────────────────────────────────────────────────
+    // A listing widget's repeated part is designed once, on one sample
+    // record. The canvas follows that card with real records the server draws
+    // from the same tree (api.php designer/widget_ghosts), so the design is
+    // judged the way the page will look. Ghosts are canvas-only DOM: inert,
+    // never selectable, never in the tree JSON; they are redrawn with every
+    // render and fetched again whenever the widget's tree or settings change
+    // (the last answer stays on screen meanwhile).
+    var _SD_GHOST_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, catalog_listing: 1 };
+    var _SD_GHOST_LIMIT = 10;
+    var _sdGhostsOn = (function () { try { return localStorage.getItem('pg_sd_ghosts') !== '0'; } catch (e) { return true; } })();
+    var _sdGhostCache = {};    // sid → { key, rows, loading }
+    var _sdGhostTimers = {};
+
+    function _sdGhostKey(sid, cached) {
+        var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        var src = (cached.system_region_config || '') + '|' + JSON.stringify(cached.tree || null);
+        var h = 0;
+        for (var i = 0; i < src.length; i++) h = ((h << 5) - h + src.charCodeAt(i)) | 0;
+        return ((page && page.page_id) ? page.page_id : 0) + ':' + h;
+    }
+
+    function _sdFetchGhosts(sid, cached, key) {
+        var entry = _sdGhostCache[sid] || (_sdGhostCache[sid] = { key: '', rows: [] });
+        entry.pending = key;
+        clearTimeout(_sdGhostTimers[sid]);
+        // Typing into the card changes the tree on every key; ask once it settles.
+        _sdGhostTimers[sid] = setTimeout(function () {
+            var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+            _pgApiPost('widget_ghosts', {
+                page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0,
+                widget:  { id: sid, tree_json: JSON.stringify(cached.tree || null), system_region_config: cached.system_region_config || '' },
+                limit:   _SD_GHOST_LIMIT
+            }).then(function (res) {
+                if (entry.pending !== key) return;   // a newer tree is on its way
+                entry.key  = key;
+                entry.rows = (res && res.status === 'success' && Array.isArray(res.rows)) ? res.rows : [];
+                entry.pending = null;
+                if (typeof renderCanvas === 'function') renderCanvas();
+            }).catch(function () {
+                if (entry.pending === key) { entry.key = key; entry.rows = []; entry.pending = null; }
+            });
+        }, 600);
+    }
+
+    function _sdAppendGhosts(doc, inner, sid, cached, cfg) {
+        if (!_sdGhostsOn || !cfg || !(sid > 0)) return;
+        var type = (typeof cfg.regionType !== 'string') ? 'form_list_view' : cfg.regionType;
+        if (!_SD_GHOST_TYPES[type]) return;
+        var loopEl = inner.querySelector('.sd-loop-area');
+        if (!loopEl || !loopEl.querySelector('.sd-wrap')) return;   // nothing designed yet
+        var loopWrap = loopEl.closest('[data-sd-type="loop_area"]');
+        if (loopWrap && loopWrap.hasAttribute('data-sd-loop-hidden')) return;
+
+        var key   = _sdGhostKey(sid, cached);
+        var entry = _sdGhostCache[sid];
+        if (!entry || (entry.key !== key && entry.pending !== key)) _sdFetchGhosts(sid, cached, key);
+        entry = _sdGhostCache[sid];
+        var rows = (entry && entry.rows) ? entry.rows : [];
+        if (!rows.length) return;
+
+        rows.forEach(function (html) {
+            var tpl = doc.createElement('template');
+            tpl.innerHTML = String(html);
+            tpl.content.querySelectorAll('script, form.d-none').forEach(function (el) { el.remove(); });
+            tpl.content.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+            Array.prototype.slice.call(tpl.content.children).forEach(function (el) {
+                el.classList.add('sd-ghost');
+                el.setAttribute('aria-hidden', 'true');
+                el.setAttribute('inert', '');
+            });
+            loopEl.appendChild(tpl.content);
+        });
+        var band = loopEl.querySelector('.sd-loop-band');
+        if (band && !band.querySelector('.sd-ghost-note')) {
+            var note = doc.createElement('span');
+            note.className = 'sd-ghost-note';
+            note.textContent = '· ' + _sdT('{var} real records after the card', rows.length);
+            band.appendChild(note);
+        }
+    }
+
+    // A person's picture previews as the server draws one who has no photo
+    // (pg_initials_avatar_url()): the sample name's initials on a coloured
+    // circle, sized by the <img> — not the grey 300×200 "Image" card, which
+    // looked nothing like the round avatar the page shows.
+    var _SD_AVATAR_TOKENS = { '__user_avatar_url': 1, 'avatar_url': 1 };
+    function _sdAvatarSample() {
+        var name = String(_sdT('Jane Cooper')).trim().split(/\s+/);
+        var initials = ((name[0] || '').charAt(0) + (name.length > 1 ? name[name.length - 1].charAt(0) : '')).toLocaleUpperCase();
+        var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>" +
+                  "<circle cx='32' cy='32' r='32' fill='#4f6bed'/>" +
+                  "<text x='32' y='32' dy='.35em' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif'" +
+                  " font-size='" + (initials.length > 1 ? 25 : 30) + "' font-weight='600' fill='#ffffff'>" + esc(initials) + "</text></svg>";
+        return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    }
+
     function _displayValueForBinding(prop, fieldName, node) {
+        if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
         if (prop === 'text' || prop === 'alt') {
@@ -9834,6 +10125,32 @@ const StyleDesigner = (function () {
     }
 
     // ========================= INLINE TEXT EDITING & IMAGE PICKER =========================
+    // Designer-only children of an element being edited in place: the
+    // wrappers of its child nodes (each carries a toolbar whose name span
+    // holds the child's label — "Image", "Icon"), the virtual button label,
+    // drop zones and badges. None of it is the element's own text.
+    var _SD_INLINE_CHROME_SEL = ':scope > .sd-wrap, :scope > [data-sd-id], :scope > [data-sd-virtual], ' +
+        ':scope > .sd-tb, :scope > .sd-dz, :scope > .sd-issue-badge, :scope > .sd-persistent-note';
+
+    function _sdInlineChrome(el) {
+        try { return Array.prototype.slice.call(el.querySelectorAll(_SD_INLINE_CHROME_SEL)); }
+        catch (e) { return []; }
+    }
+
+    // The value an inline edit writes back: the element's own text (or
+    // markup, for rich text) with the designer-only children left out.
+    // Reading textContent as-is folded a child's toolbar label into the
+    // text prop: clear the text of a link that holds an image and the
+    // image's label ("Image") came back as the link text on every edit.
+    function _sdInlineEditValue(el, rich) {
+        var src = el;
+        if (_sdInlineChrome(el).length) {
+            src = el.cloneNode(true);
+            _sdInlineChrome(src).forEach(function (n) { n.parentNode.removeChild(n); });
+        }
+        return rich ? src.innerHTML : src.textContent.replace(/\u00a0/g, ' ').trim();
+    }
+
     function setupInlineEditing(wrapper, innerEl, node) {
         // Icon double-click → open the icon picker
         if (node.type === 'content' && node.props.contentType === 'icon') {
@@ -9990,6 +10307,28 @@ const StyleDesigner = (function () {
                 // Don't re-enter editing mode
                 if (item.el.contentEditable === 'true') return;
 
+                // A button/link label drawn as a virtual span beside child
+                // nodes is edited in that span, never across the whole
+                // element — the children would be edited along with it.
+                var _vtLabel = item.el.querySelector(':scope > [data-sd-virtual]');
+                if (_vtLabel) {
+                    _vtLabel.dispatchEvent(new MouseEvent('dblclick', { bubbles: false, cancelable: true }));
+                    return;
+                }
+
+                // Child nodes stay out of the edit: they become read-only
+                // islands and the selection covers only the element's own
+                // text. Restored when the session ends.
+                var _chrome = _sdInlineChrome(item.el);
+                var _chromeCe = _chrome.map(function (n) { return n.getAttribute('contenteditable'); });
+                _chrome.forEach(function (n) { n.setAttribute('contenteditable', 'false'); });
+                var _restoreChrome = function () {
+                    _chrome.forEach(function (n, i) {
+                        if (_chromeCe[i] === null) n.removeAttribute('contenteditable');
+                        else n.setAttribute('contenteditable', _chromeCe[i]);
+                    });
+                };
+
                 // Bug fix: <label for="inputId"> redirects browser clicks to the associated input.
                 // Temporarily remove the 'for' attribute before enabling contentEditable so the
                 // double-click lands on the label itself. Restored in commit/escape.
@@ -10023,7 +10362,27 @@ const StyleDesigner = (function () {
                 // Wait a tick for focus, then select all text
                 setTimeout(function() {
                     var range = canvasDoc.createRange();
-                    range.selectNodeContents(item.el);
+                    if (_chrome.length) {
+                        // First run of the element's own nodes; with none,
+                        // a caret where new text belongs (a link writes its
+                        // text before its children, other elements after).
+                        var _own = null, _ownEnd = null, _runDone = false;
+                        Array.prototype.forEach.call(item.el.childNodes, function (cn) {
+                            if (_chrome.indexOf(cn) !== -1) { if (_own) _runDone = true; return; }
+                            if (_runDone) return;
+                            if (!_own) _own = cn;
+                            _ownEnd = cn;
+                        });
+                        if (_own) {
+                            range.setStartBefore(_own);
+                            range.setEndAfter(_ownEnd);
+                        } else {
+                            range.setStart(item.el, node.type === 'content' ? 0 : item.el.childNodes.length);
+                            range.collapse(true);
+                        }
+                    } else {
+                        range.selectNodeContents(item.el);
+                    }
                     var sel = canvasIframe.contentWindow.getSelection();
                     sel.removeAllRanges();
                     sel.addRange(range);
@@ -10041,9 +10400,7 @@ const StyleDesigner = (function () {
                 var _MutObs = (_iframeWin && _iframeWin.MutationObserver) || MutationObserver;
                 var liveTextObs = new _MutObs(function() {
                     if (!item.el.isConnected) { liveTextObs.disconnect(); return; }
-                    node.props[item.prop] = isRichText
-                        ? item.el.innerHTML
-                        : item.el.textContent.replace(/\u00a0/g, ' ').trim();
+                    node.props[item.prop] = _sdInlineEditValue(item.el, isRichText);
                 });
                 liveTextObs.observe(item.el, { characterData: true, childList: true, subtree: true });
 
@@ -10059,11 +10416,15 @@ const StyleDesigner = (function () {
                     item.el.style.cursor = '';
                     item.el.style.userSelect = '';
                     if (toolbar) toolbar.style.display = 'none';
+                    _restoreChrome();
 
                     // Rich text nodes save innerHTML; plain text nodes save trimmed textContent.
-                    var newText = isRichText
-                        ? item.el.innerHTML
-                        : item.el.textContent.replace(/\u00a0/g, ' ').trim();
+                    var newText = _sdInlineEditValue(item.el, isRichText);
+                    // A child deleted from the DOM while typing is still in
+                    // the tree — redraw so the canvas shows it again.
+                    if (_chrome.some(function (n) { return !n.isConnected; })) {
+                        setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                    }
                     if (newText !== origText) {
                         // liveTextObs already wrote `newText` into node.props
                         // during typing \u2014 the saveState() we took at the
@@ -10101,7 +10462,13 @@ const StyleDesigner = (function () {
                         // pre-emptive saveState so the cancellation doesn't
                         // pollute the undo history.
                         node.props[item.prop] = origText;
-                        if (isRichText) item.el.innerHTML = origText || '';
+                        _restoreChrome();
+                        if (_chrome.length) {
+                            // Writing the text back would wipe the children
+                            // out of the element; redraw it from the tree.
+                            setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                        }
+                        else if (isRichText) item.el.innerHTML = origText || '';
                         else item.el.textContent = origText || '';
                         if (undoStack.length) {
                             undoStack.pop();
@@ -10144,8 +10511,7 @@ const StyleDesigner = (function () {
                                 _ieSel.removeAllRanges();
                                 _ieSel.addRange(_ieRg);
                             } else {
-                                if (isRichText) item.el.innerHTML = (item.el.innerHTML || '') + ' ';
-                                else item.el.textContent = (item.el.textContent || '') + ' ';
+                                item.el.appendChild(_ieDoc.createTextNode(' '));
                             }
                         } else {
                             ke.stopPropagation();
@@ -14803,7 +15169,7 @@ const StyleDesigner = (function () {
         var blockList = document.getElementById('sd-blocks-list');
 
         var categories = [
-            { title: _sdT('Layout'), icon: 'bi-grid', items: [
+            { title: _sdT('Layout'), icon: 'bi-grid', bootstrap: true, items: [
                 { label: _sdT('Container'), type: 'container', icon: 'bi-bounding-box' },
                 { label: _sdT('Container Fluid'), type: 'container-fluid', icon: 'bi-bounding-box-circles' },
                 { label: _sdT('Row'), type: 'row', icon: 'bi-distribute-horizontal' },
@@ -14842,7 +15208,7 @@ const StyleDesigner = (function () {
                                    { value: 'secenek_1', label: _sdT('Option 1') },
                                    { value: 'secenek_2', label: _sdT('Option 2') }] } }
             ]},
-            { title: _sdT('Bootstrap'), icon: 'bi-bootstrap', items: Object.keys(COMPONENTS).map(function (k) {
+            { title: _sdT('Bootstrap'), icon: 'bi-bootstrap', bootstrap: true, items: Object.keys(COMPONENTS).map(function (k) {
                 var c = COMPONENTS[k];
                 return { label: c.label, type: 'component', icon: c.icon, extra: { componentType: k } };
             }).concat([
@@ -14877,6 +15243,19 @@ const StyleDesigner = (function () {
                          legacy: !!SD_LEGACY_REGIONS[k] };
             })}
         ];
+
+        // A custom design is built without a framework: the Bootstrap grid,
+        // the Bootstrap components and the blocks (all written in Bootstrap
+        // classes) are left out. HTML elements, content, forms, regions and
+        // the widgets stay.
+        if (!_sdUsesBootstrap()) {
+            categories = categories.filter(function (cat) { return !cat.bootstrap; });
+            var _blocksTabBtn = compOuter.querySelector('.sd-panel-tab[data-tab="blocks"]');
+            if (_blocksTabBtn) _blocksTabBtn.remove();
+            var _blocksPane = document.getElementById('sd-tab-blocks');
+            if (_blocksPane) _blocksPane.remove();
+            blockList = null;
+        }
 
         compList.innerHTML = _sdPaletteCategoriesHTML(categories);
         if (blockList) blockList.innerHTML = _sdPaletteCategoriesHTML(_sdBlockPaletteGroups());
@@ -15269,6 +15648,8 @@ const StyleDesigner = (function () {
                 var refreshBtn = document.getElementById('sd-shared-refresh');
                 if (refreshBtn) refreshBtn.addEventListener('click', function() { loadSharedTab(); });
                 _bindPaletteGroupToggles(listEl, loadSharedTab);
+                _sharedListItems = items;
+                _bulkDecorate('shared', listEl);
 
                 // Drag + double-click
                 listEl.querySelectorAll('.sd-shared-drag-item').forEach(function (el) {
@@ -15514,6 +15895,7 @@ const StyleDesigner = (function () {
 
             listEl.innerHTML = html;
             _bindPaletteGroupToggles(listEl, loadSystemTab);
+            _bulkDecorate('system', listEl);
 
             // Refresh button
             var refreshBtn = document.getElementById('sd-system-refresh');
@@ -15757,6 +16139,282 @@ const StyleDesigner = (function () {
         // closure (e.g. _wireSystemWidgetProps) can call delete/rename without re-fetching.
         _systemDeleteFn = _deleteSystemWidget;
         _systemRenameFn = _renameSystemWidget;
+
+        // ── Bulk delete ──────────────────────────────────────────────────
+        // Widgets and shared components pile up — one per page a widget was
+        // dropped on, one per template opened — and deleting them one at a
+        // time does not scale. Select mode puts a box on every existing row
+        // of the tab. "Select unused" picks what no page places: saved pages
+        // anywhere on the site (the recycle bin included) and this design's
+        // tabs, unsaved ones included. Deleting asks once and lists what
+        // goes; when anything selected is still in use the operator types the
+        // count to go on, and the server checks the saved pages again.
+        var _bulkSel = { shared: null, system: null };   // null = select mode off, else { sid: true }
+        var _sharedListItems = [];                        // the Shared tab's rows, as loadSharedTab last drew them
+
+        function _bulkRowSelector(kind) {
+            return kind === 'system' ? '.sd-system-existing-item[data-sid]' : '.sd-shared-drag-item[data-sid]';
+        }
+        function _bulkItems(kind) {
+            return kind === 'system' ? (_systemWidgetItems || []) : (_sharedListItems || []);
+        }
+        function _bulkReload(kind) {
+            if (kind === 'system') loadSystemTab(); else loadSharedTab();
+        }
+
+        // Where a row is placed, as the operator reads it: the saved pages of
+        // any design, then this design's tabs that are not saved with it yet.
+        function _bulkUsageLines(sid) {
+            var lines = [];
+            var seen  = {};
+            (_sharedUsage[sid] || []).forEach(function (u) {
+                if (u.page_id) seen[u.page_id] = true;
+                lines.push(_sharedUsageText(u));
+            });
+            _sharedRefUsageInDesign(sid).pages.forEach(function (p) {
+                if (p.page_id && seen[p.page_id]) return;
+                lines.push(p.name);
+            });
+            return lines;
+        }
+
+        // Called after a tab's list is drawn: the select toggle in the
+        // header and, in select mode, the boxes and the action bar.
+        function _bulkDecorate(kind, listEl) {
+            if (!listEl) return;
+            var rows   = listEl.querySelectorAll(_bulkRowSelector(kind));
+            var header = listEl.querySelector('.sd-shared-tab-header');
+            var sel    = _bulkSel[kind];
+
+            if (header && rows.length && !header.querySelector('.sd-bulk-toggle')) {
+                var toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'sd-shared-refresh-btn sd-bulk-toggle bi ' + (sel ? 'bi-x-square' : 'bi-check2-square');
+                toggle.title = sel ? _sdT('Leave select mode') : _sdT('Select several to delete');
+                header.insertBefore(toggle, header.querySelector('.sd-shared-refresh-btn'));
+                toggle.addEventListener('click', function () {
+                    if (_bulkSel[kind]) { _bulkSel[kind] = null; _bulkReload(kind); return; }
+                    _bulkSel[kind] = {};
+                    // Fresh usage first: "unused" must not be an old answer.
+                    _fetchSharedUsage(function () { _bulkReload(kind); });
+                });
+            }
+
+            listEl.classList.toggle('sd-bulk-on', !!sel);
+            if (!sel) return;
+
+            // A selected row that is gone (deleted from another tab) drops out.
+            var present = {};
+            rows.forEach(function (el) { present[el.dataset.sid] = true; });
+            Object.keys(sel).forEach(function (sid) { if (!present[sid]) delete sel[sid]; });
+
+            rows.forEach(function (el) {
+                el.setAttribute('draggable', 'false');
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.className = 'form-check-input sd-bulk-check';
+                box.tabIndex = -1;
+                box.checked = !!sel[el.dataset.sid];
+                box.setAttribute('aria-label', el.dataset.label || '');
+                el.insertBefore(box, el.firstChild);
+                el.classList.toggle('sd-bulk-picked', box.checked);
+                el.classList.toggle('sd-bulk-used', _bulkUsageLines(parseInt(el.dataset.sid, 10)).length > 0);
+            });
+
+            var bar = document.createElement('div');
+            bar.className = 'sd-bulk-bar';
+            bar.innerHTML =
+                '<div class="sd-bulk-bar-row">' +
+                    '<span class="sd-bulk-count"></span>' +
+                    '<button type="button" class="sd-bulk-btn" data-bulk="unused" title="' + esc(_sdT('Select what no page uses; the rest is cleared.')) + '">' + esc(_sdT('Select unused')) + '</button>' +
+                    '<button type="button" class="sd-bulk-btn" data-bulk="all">' + esc(_sdT('Select all')) + '</button>' +
+                    '<button type="button" class="sd-bulk-btn" data-bulk="none">' + esc(_sdT('Clear')) + '</button>' +
+                '</div>' +
+                '<div class="sd-bulk-bar-row">' +
+                    '<button type="button" class="sd-bulk-btn sd-bulk-delete" data-bulk="delete"><span class="bi bi-trash me-1"></span><span class="sd-bulk-delete-label"></span></button>' +
+                    '<button type="button" class="sd-bulk-btn" data-bulk="cancel">' + esc(_sdT('Cancel')) + '</button>' +
+                '</div>';
+            if (header) header.parentNode.insertBefore(bar, header.nextSibling);
+            else listEl.insertBefore(bar, listEl.firstChild);
+
+            var update = function () {
+                var n = Object.keys(sel).length;
+                bar.querySelector('.sd-bulk-count').textContent = _sdT('{var} selected', n);
+                bar.querySelector('.sd-bulk-delete-label').textContent = _sdT('Delete ({var})', n);
+                bar.querySelector('.sd-bulk-delete').disabled = (n === 0);
+            };
+            var pick = function (el, on) {
+                if (on) sel[el.dataset.sid] = true; else delete sel[el.dataset.sid];
+                var box = el.querySelector('.sd-bulk-check');
+                if (box) box.checked = on;
+                el.classList.toggle('sd-bulk-picked', on);
+            };
+            update();
+
+            bar.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-bulk]');
+                if (!b || b.disabled) return;
+                var act = b.dataset.bulk;
+                if (act === 'cancel') { _bulkSel[kind] = null; _bulkReload(kind); return; }
+                if (act === 'delete') { _bulkDelete(kind); return; }
+                var hiddenPick = false;
+                rows.forEach(function (el) {
+                    var on = (act === 'all') ? true
+                           : (act === 'none') ? false
+                           : _bulkUsageLines(parseInt(el.dataset.sid, 10)).length === 0;
+                    pick(el, on);
+                    if (on && el.offsetParent === null) hiddenPick = true;
+                });
+                // Picked rows inside the folded "site-wide" group are shown,
+                // so nothing is deleted that the operator has not seen.
+                if (hiddenPick && !_paletteShowAll[kind]) { _paletteShowAll[kind] = true; _bulkReload(kind); return; }
+                update();
+            });
+
+            listEl._sdBulkPick = function (el) { pick(el, !sel[el.dataset.sid]); update(); };
+            if (!listEl._sdBulkWired) {
+                listEl._sdBulkWired = true;
+                // Capture phase: in select mode a row is a checkbox, not a
+                // palette item — no drag, no double-click insert, no menu.
+                var guard = function (e) {
+                    if (!listEl.classList.contains('sd-bulk-on') || e.target.closest('.sd-bulk-bar')) return;
+                    var row = e.target.closest(_bulkRowSelector(kind));
+                    if (!row || !listEl.contains(row)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.type === 'click' && listEl._sdBulkPick) listEl._sdBulkPick(row);
+                };
+                ['click', 'dblclick', 'dragstart', 'contextmenu'].forEach(function (t) { listEl.addEventListener(t, guard, true); });
+            }
+        }
+
+        // The confirmation: a list of what goes and, when something is still
+        // in use, a box the count must be typed into before Delete wakes up.
+        // Resolves true on Delete, false otherwise.
+        function _bulkConfirm(opts) {
+            return new Promise(function (resolve) {
+                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                    resolve(opts.need ? (window.prompt(opts.text, '') || '').trim() === opts.need : window.confirm(opts.text));
+                    return;
+                }
+                var el = document.createElement('div');
+                el.className = 'modal fade';
+                el.tabIndex = -1;
+                el.innerHTML =
+                    '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
+                        '<div class="modal-header py-2"><h6 class="modal-title mb-0"><span class="bi bi-trash text-danger me-2"></span>' + esc(opts.title) + '</h6>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+                        '<div class="modal-body small">' + opts.html + '</div>' +
+                        '<div class="modal-footer py-2">' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-sm btn-danger" data-bulk-ok' + (opts.need ? ' disabled' : '') + '>' + esc(opts.okLabel) + '</button>' +
+                        '</div>' +
+                    '</div></div>';
+                document.body.appendChild(el);
+                var ok = false;
+                var okBtn = el.querySelector('[data-bulk-ok]');
+                var input = el.querySelector('.sd-bulk-confirm-input');
+                if (input) {
+                    input.addEventListener('input', function () { okBtn.disabled = (input.value.trim() !== opts.need); });
+                    input.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter' && !okBtn.disabled) { e.preventDefault(); okBtn.click(); }
+                    });
+                }
+                okBtn.addEventListener('click', function () {
+                    if (okBtn.disabled) return;
+                    ok = true;
+                    bootstrap.Modal.getOrCreateInstance(el).hide();
+                });
+                el.addEventListener('shown.bs.modal', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
+                el.addEventListener('hidden.bs.modal', function () { el.remove(); resolve(ok); });
+                bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+            });
+        }
+
+        function _bulkDelete(kind) {
+            var sel = _bulkSel[kind];
+            if (!sel) return;
+            var names = {};
+            _bulkItems(kind).forEach(function (it) { names[parseInt(it.id, 10)] = it.name || ('#' + it.id); });
+            var ids = Object.keys(sel).map(function (s) { return parseInt(s, 10); }).filter(function (s) { return s > 0; });
+            if (!ids.length) return;
+
+            // The rows still in use lead the list, where they are read.
+            var used  = 0;
+            var picks = ids.map(function (sid) { return { sid: sid, lines: _bulkUsageLines(sid) }; });
+            picks.sort(function (a, b) { return (b.lines.length ? 1 : 0) - (a.lines.length ? 1 : 0); });
+            var items = picks.map(function (p) {
+                if (p.lines.length) used++;
+                return '<li><span class="fw-semibold">' + esc(names[p.sid] || ('#' + p.sid)) + '</span>' +
+                       (p.lines.length ? '<div class="text-danger">' + esc(_sdT('Used on: ') + p.lines.join(', ')) + '</div>' : '') +
+                       '</li>';
+            }).join('');
+            var need = used ? String(ids.length) : null;
+            var html =
+                '<p class="mb-2">' + esc(kind === 'system'
+                    ? _sdT('{var} system widgets will be deleted for good:', ids.length)
+                    : _sdT('{var} shared components will be deleted for good:', ids.length)) + '</p>' +
+                '<ul class="sd-bulk-confirm-list">' + items + '</ul>';
+            if (used) {
+                html += '<div class="alert alert-danger py-2 px-3 mb-2">' +
+                            esc(_sdT('{var} of them are still in use. They are taken off this design\'s pages; in other designs their places are left empty.', used)) +
+                        '</div>' +
+                        '<label class="form-label mb-1" for="sd-bulk-confirm-input">' + esc(_sdT('Type {var} to confirm.', ids.length)) + '</label>' +
+                        '<input type="text" class="form-control form-control-sm sd-bulk-confirm-input" id="sd-bulk-confirm-input" inputmode="numeric" autocomplete="off">';
+            }
+            html += '<p class="text-muted mt-2 mb-0">' + esc(_sdT('This cannot be undone.')) + '</p>';
+
+            _bulkConfirm({
+                title:   kind === 'system' ? _sdT('Delete system widgets') : _sdT('Delete shared components'),
+                html:    html,
+                text:    _sdT('Type {var} to confirm.', ids.length),
+                need:    need,
+                okLabel: _sdT('Delete ({var})', ids.length)
+            }).then(function (ok) {
+                if (!ok) return;
+                var apiBase = (typeof path !== 'undefined' ? path : '') +
+                              (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+                var token   = (typeof software_token !== 'undefined') ? software_token : '';
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', apiBase, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState !== 4) return;
+                    var resp = null;
+                    try { resp = JSON.parse(xhr.responseText); } catch (e) {}
+                    if (!resp || resp.status !== 'success') {
+                        sdToast((resp && resp.message) ? esc(resp.message) : esc(_sdT('The delete failed.')), 'error');
+                        return;
+                    }
+                    var gone = (resp.deleted || []).map(function (s) { return parseInt(s, 10); });
+                    // Placements on this design's pages go with the rows;
+                    // one undo step brings the pages back as they were.
+                    var removed = 0;
+                    gone.forEach(function (sid) { removed += _sharedRefUsageInDesign(sid).count; });
+                    if (removed) saveState();
+                    gone.forEach(function (sid) {
+                        _removeSharedRefsFromCanvas(sid);
+                        delete _sharedCache[sid];
+                        delete _sharedDirty[sid];
+                        delete _sharedSnapshots[sid];
+                        delete _sharedUsage[sid];
+                    });
+                    if (selectedNode && !_findNodeById(selectedNode._id, tree)) { selectedNode = null; selectedNodes = []; }
+                    _bulkSel[kind] = null;
+                    if (kind === 'system') { if (typeof _refreshSystemTab === 'function') _refreshSystemTab(); }
+                    else loadSharedTab();
+                    render();
+                    if (typeof _pgTabsRefreshDirty === 'function') _pgTabsRefreshDirty();
+                    sdToast(esc(_sdT('{var} deleted.', gone.length)) +
+                            (removed ? ' ' + esc(_sdT('({var} placements removed — remember to save.)', removed)) : ''), 'success');
+                    if (resp.kept && resp.kept.length) {
+                        sdToast(esc(_sdT('{var} kept: a saved page uses them.', resp.kept.length)), 'warning');
+                    }
+                };
+                xhr.onerror = function () { sdToast(esc(_sdT('Network error — the API cannot be reached.')), 'error'); };
+                xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'delete_many', ids: ids, force: used > 0, token: token }));
+            });
+        }
 
         // Helper: hit the server's shared_component list to refresh _systemWidgetItems,
         // then re-render the system tab. Decoupled so the refresh button can call it.
@@ -18553,6 +19211,10 @@ const StyleDesigner = (function () {
         if (usEl && usEl.parentNode === canvasDoc.head && usEl !== canvasDoc.head.lastChild) {
             canvasDoc.head.appendChild(usEl);
         }
+
+        // The look and the palette go back right after Bootstrap, which the
+        // links above may just have moved.
+        _sdThemeApply();
     }
 
     // Renders the HTML tree in the bottom panel — the full page structure
@@ -18588,8 +19250,8 @@ const StyleDesigner = (function () {
                             '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">meta</span>' +
                             '&nbsp;<span class="sd-ht-attr">charset</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"utf-8"</span>' +
                             '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        // Bootstrap CSS
-                        buildHtmlLockedRow(headWrap, d,
+                        // Bootstrap CSS — a custom design has no framework file
+                        if (_sdUsesBootstrap()) buildHtmlLockedRow(headWrap, d,
                             '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
                             '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
                             '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"bootstrap@5.3.8/dist/css/bootstrap.min.css"</span>' +
@@ -19102,6 +19764,10 @@ const StyleDesigner = (function () {
         var nodeIdx  = siblings.indexOf(node);
 
         showCtxMenu(x, y, [
+            // The assistant panel is there only for the designers it serves.
+            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && window.PgDesignerAI && findNodeById(node._id, tree))
+                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { window.PgDesignerAI.open(node._id); } }
+                : null),
             ((!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image'))
                 ? { icon: 'bi-brush', label: _sdT('Edit Image'), handler: function () { _sdOpenImageEditorForNode(node); } }
                 : null),
@@ -20390,10 +21056,20 @@ const StyleDesigner = (function () {
         // Comments block: show interactive settings controls
         var commentsInfo = '';
         if (n.props.regionType === 'comments_block') {
+            if (!_allPagesCache && typeof _fetchAllPages === 'function') _fetchAllPages(function () { renderProperties(); });
             var _cmtEnabled  = _getCmtVal('pg_comments')           === '1';
             var _cmtAllowNew = _getCmtVal('pg_comments_allow_new') !== '0';
             var _cmtRating   = _getCmtVal('pg_comments_rating')    === '1';
             var _cmtLabel    = _getCmtVal('pg_comments_label');
+            var _cmtAuto     = _getCmtVal('pg_comments_auto_publish') === '1';
+            var _cmtDate     = _getCmtVal('pg_comments_show_date')    === '1';
+            var _cmtLogin    = _getCmtVal('pg_comments_login')        === '1';
+            var _cmtSwitch   = function (prop, on) {
+                return '<label class="sd-prop-switch">' +
+                    '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="' + prop + '"' + (on ? ' checked' : '') + '>' +
+                    '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                '</label>';
+            };
             commentsInfo = sect('bi-chat-square-text', _sdT('Comment Settings'),
                 row(_sdT('Comments'),
                     '<label class="sd-prop-switch">' +
@@ -20416,7 +21092,37 @@ const StyleDesigner = (function () {
                         '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments_rating"' + (_cmtRating ? ' checked' : '') + '>' +
                         '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                     '</label>'
-                )
+                ) +
+                row(_sdT('Publish at once'),
+                    _cmtSwitch('pg_comments_auto_publish', _cmtAuto) +
+                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While off, a visitor\'s comment waits for approval; the site staff always see it.')) + '</div>'
+                ) +
+                row(_sdT('Show the date'),
+                    _cmtSwitch('pg_comments_show_date', _cmtDate)
+                ) +
+                row(_sdT('Signed-in visitors only'),
+                    _cmtSwitch('pg_comments_login', _cmtLogin)
+                ) +
+                // E-mails. The page is sent when a comment is published: to
+                // whoever sent the record (on a Form Item View page) and to
+                // the visitors watching the page. Its System region carries
+                // the comment and a "View or Reply" button.
+                row(_sdT('E-mail page'),
+                    '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
+                        _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
+                    '</select>' +
+                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.')) + '</div>'
+                ) +
+                row(_sdT('E-mail subject'),
+                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_email_subject" ' +
+                        'value="' + esc(_getCmtVal('pg_comments_email_subject')) + '" maxlength="255" placeholder="' + esc(_sdT('New comment')) + '">'
+                ) +
+                row(_sdT('Notify the staff'),
+                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_notify_email" ' +
+                        'value="' + esc(_getCmtVal('pg_comments_notify_email')) + '" maxlength="100" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
+                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Every new comment is sent to this address (plain text). Leave it empty and nobody is notified.')) + '</div>'
+                ) +
+                '<div style="font-size:.66rem;color:#888;margin-top:2px">' + esc(_sdT('On a page with a Form Item View widget the comments belong to the record shown, and only visitors who may see that record see them.')) + '</div>'
             );
         }
         // commentsInfo is itself a sect() — append AFTER the Region section, not inside it
@@ -20471,7 +21177,7 @@ const StyleDesigner = (function () {
                 } else if (_laRt === 'catalog_item_view') {
                     _laHidden = true;
                     _laHiddenReason = _sdT('This widget is of type <strong>{var}</strong> — it shows a single record, so the repeat loop does not run. The loop area is hidden on the canvas and left out of the output.', _sdT('Catalog Product Detail'));
-                } else if (_SW_ACCOUNT_SINGLE[_laRt] === 1) {
+                } else if (_SW_ACCOUNT_SINGLE[_laRt] === 1 || _SW_ONE_SCREEN[_laRt] === 1) {
                     _laHidden = true;
                     _laHiddenReason = _sdT('This widget is of type <strong>{var}</strong> — a loop_area is not used. The loop area is hidden on the canvas and left out of the output.', (_swTypeInfo(_laRt) || {}).label || _laRt);
                 }
@@ -20586,6 +21292,9 @@ const StyleDesigner = (function () {
             var _isCalendarView    = (_regionType === 'calendar_view');
             var _isCalendarEventView = (_regionType === 'calendar_event_view');
             var _isAccountWidget   = (_SW_ACCOUNT_TYPES[_regionType] === 1);
+            var _isErrorPage       = (_regionType === 'error_page');
+            var _isLoginRegion     = (_regionType === 'login_region');
+            var _isCartLink        = (_regionType === 'cart_link');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -20622,6 +21331,13 @@ const StyleDesigner = (function () {
                         '</div>' +
                     '</div>';
                 _sourceInfoHtml = _sdT('Choosing a type loads that type\'s ready-made layout and renames the widget after the type instead of <code>{var}</code>.', esc(_swAutoName('')));
+            } else if (_isErrorPage) {
+                // No source: the error arrives with the request.
+                _sourceInfoHtml = _sdT('The first published page carrying this widget becomes the site\'s error page: a page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
+            } else if (_isCartLink) {
+                _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
+            } else if (_isLoginRegion) {
+                _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
                 // No source to pick — the widget reads from the session user automatically.
                 _sourceInfoHtml = _sdT('Design the template on the canvas. Select the elements and bind them to the account fields in the <strong>Bind Data</strong> section. <br><em>When nobody is signed in, the ^^__not_logged_in^^ token arrives filled.</em>');
@@ -20650,12 +21366,20 @@ const StyleDesigner = (function () {
                     _formOptions = '<option>' + esc(_sdT('Loading...')) + '</option>';
                     _fetchCustomForms(function () { renderProperties(); });
                 }
+                // A form on a tab that is not published yet (a template opens
+                // that way): named by the tab, the id comes with Publish.
+                var _formTabRef = /^tab:/.test(String(_cfg.custom_form_page_id || '')) ? String(_cfg.custom_form_page_id) : '';
+                if (_formTabRef) {
+                    var _formTabPage = _pgPageByKey(_formTabRef.slice(4));
+                    _formOptions += '<option value="' + esc(_formTabRef) + '" selected>' +
+                        esc((_formTabPage && _formTabPage.page_name ? _formTabPage.page_name : _sdT('(closed tab)')) + ' (' + _sdT('unsaved') + ')') + '</option>';
+                }
                 var _formSel =
                     '<select class="form-select form-select-sm" id="sd-sw-form-id" data-sw-id="' + sid + '">' +
                     _formOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Form'), _formSel);
-                if (!_curFormId) {
+                if (!_curFormId && !_formTabRef) {
                     _sourceWarningHtml =
                         '<div class="sd-prop-row" style="margin-top:4px">' +
                             '<div style="font-size:.72rem;color:#b45309;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);padding:5px 8px;border-radius:3px;line-height:1.4">' +
@@ -20766,6 +21490,16 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
                             _sdT('<strong>Replaces</strong> the current canvas design with the standard layout prepared for <strong>{var}</strong>. Undo (Ctrl+Z) brings it back.', esc(_regionType)) +
                         '</div>'
+                    )
+                );
+            }
+
+            // ── Canvas preview: real records after the card ──────────────────
+            if (_isFormListView || _isCatalogListing) {
+                systemSection += sect('bi-collection', _sdT('Canvas Preview'),
+                    row(_sdT('Real records'),
+                        '<div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('After the card you design, the canvas shows up to ten real records drawn from it. They cannot be selected and are not saved.')) + '</div>'
                     )
                 );
             }
@@ -21001,6 +21735,12 @@ const StyleDesigner = (function () {
                         '</label>'
                     ) : '')
                 );
+
+                // ── Filters (form_list_view): which records the list shows ──
+                if (_isFormListView) {
+                    systemSection += sect('bi-funnel', _sdT('Filters'),
+                        _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _ff, _fieldsLoading));
+                }
 
                 // ── Phase 2 Catalog-only sections ─────────────────────────
                 // Group navigation (drill-down / page redirect / none)
@@ -21477,6 +22217,58 @@ const StyleDesigner = (function () {
                 );
             }
 
+            // ── cart_link settings ────────────────────────────────────────────
+            if (_isCartLink) {
+                var _clCartOpts = _swPageOptions(_cfg.cart_page_id, _allPagesCache, { types: ['shopping_cart', 'express_order'], none: _sdT('— Automatic (the cart page) —') });
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                systemSection += sect('bi-bag', _sdT('Cart Link Settings'),
+                    row(_sdT('Cart page'),
+                        '<select class="form-select form-select-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the cart page the visitor last saw, else the site\'s cart page. Token: ^^__cart_url^^')) + '</div>'
+                    )
+                );
+            }
+
+            // ── login_region settings ─────────────────────────────────────────
+            if (_isLoginRegion) {
+                // Registration: automatic ('0'), a page, or no link at all.
+                var _lrRegisterCur = (_cfg.show_register_link === false) ? 'none'
+                    : ((parseInt(_cfg.register_page_id || 0, 10) > 0 || /^tab:/.test(String(_cfg.register_page_id || ''))) ? String(_cfg.register_page_id) : '0');
+                var _lrLoginOpts    = _swPageOptions(_cfg.login_page_id, _allPagesCache, { types: ['login_form'], none: _sdT('— Automatic (the sign-in page) —') });
+                var _lrRegisterOpts = _swPageOptions(_lrRegisterCur, _allPagesCache, { types: ['registration'], none: _sdT('— Automatic (the registration page) —') }) +
+                    '<option value="none"' + (_lrRegisterCur === 'none' ? ' selected' : '') + '>' + esc(_sdT('— No link —')) + '</option>';
+                var _lrAccountOpts  = _swPageOptions(_cfg.account_page_id, _allPagesCache, { types: ['my_account'], none: _sdT('— Automatic (the My Account page) —') });
+                var _lrStaffOpts    = _swPageOptions(_cfg.staff_page_id, _allPagesCache, { none: _sdT('— No staff link —') });
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                var _lrStateBtn = function (state, label) {
+                    var on = (_sdSessionPreview === state);
+                    return '<button type="button" class="btn btn-sm ' + (on ? 'btn-primary' : 'btn-outline-secondary') + '" data-sd-session-preview="' + state + '" data-sw-id="' + sid + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
+                };
+
+                systemSection += sect('bi-person-badge', _sdT('Login Region Settings'),
+                    row(_sdT('Canvas shows'),
+                        '<div class="btn-group w-100" role="group">' + _lrStateBtn('signed_out', _sdT('Signed out')) + _lrStateBtn('signed_in', _sdT('Signed in')) + '</div>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only on the canvas. Visitors see the part that fits them.')) + '</div>'
+                    ) +
+                    row(_sdT('Sign-in page'),
+                        '<select class="form-select form-select-sm" id="sd-sw-lr-login-page" data-sw-id="' + sid + '">' + _lrLoginOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The visitor comes back to the page they were on. Token: ^^__login_url^^')) + '</div>'
+                    ) +
+                    row(_sdT('Registration page'),
+                        '<select class="form-select form-select-sm" id="sd-sw-lr-register-page" data-sw-id="' + sid + '">' + _lrRegisterOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Token: ^^__register_url^^ — the link drops when the site has no registration page.')) + '</div>'
+                    ) +
+                    row(_sdT('My account page'),
+                        '<select class="form-select form-select-sm" id="sd-sw-lr-account-page" data-sw-id="' + sid + '">' + _lrAccountOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Token: ^^__my_account_url^^')) + '</div>'
+                    ) +
+                    row(_sdT('Staff page'),
+                        '<select class="form-select form-select-sm" id="sd-sw-lr-staff-page" data-sw-id="' + sid + '">' + _lrStaffOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ^^__staff_url^^ link and the "may open the staff page" condition appear only for visitors the page\'s folder lets in.')) + '</div>'
+                    )
+                );
+            }
+
             // ── forgot_password settings ──────────────────────────────────────
             if (_isForgotPassword) {
                 var _fpPageOpts  = _swPageOptions(_cfg.redirect_page_id, _allPagesCache, { none: _sdT('— Site home page —') });
@@ -21777,7 +22569,8 @@ const StyleDesigner = (function () {
                     eo_installment:            _sdT('Instalment Picker (Iyzipay)'),
                     eo_terms:                  _sdT('Terms Acceptance (LEGACY)'),
                     eo_saved_cart_link:        _sdT('Saved Cart Link (return with the order #)'),
-                    eo_address_book:           _sdT('Address Book (the member\'s past addresses)'),
+                    eo_address_book:           _sdT('Saved Addresses (billing)'),
+                    eo_address_book_shipping:  _sdT('Saved Addresses (shipping)'),
                     eo_upsell_offers:          _sdT('Upsell Offers (alert strip)'),
                     eo_applied_offers:         _sdT('Applied Offers (promotions active in the cart)'),
                     eo_totals:                 _sdT('Order Totals'),
@@ -21842,6 +22635,17 @@ const StyleDesigner = (function () {
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Next Page (once the order is complete)')) + '</label><div class="sd-prop-control">'
                     +   '<select class="form-select form-select-sm" id="sd-sw-eo-next-page" data-sw-id="' + sid + '">' + _eoNextOpts + '</select>'
                     +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The user is sent here once the payment succeeds. A thank-you page holding an Order View (order_view) widget is the usual choice; <code>?order_id=N</code> is appended to the URL automatically.') + '</div>'
+                    + '</div></div>'
+                    // The order receipt e-mail: a page sent to the billing
+                    // address when the order is placed; its Order View widget
+                    // draws the order. Nothing chosen: no receipt e-mail.
+                    + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Order receipt e-mail')) + '</label><div class="sd-prop-control">'
+                    +   '<select class="form-select form-select-sm" id="sd-sw-eo-receipt-page" data-sw-id="' + sid + '">'
+                    +     _swPageOptions(_cfg.order_receipt_email_page_id, _allPagesCache, { none: _sdT('— No receipt e-mail —') })
+                    +   '</select>'
+                    +   '<input type="text" class="form-control form-control-sm mt-1" id="sd-sw-eo-receipt-subject" data-sw-id="' + sid + '" maxlength="200"'
+                    +     ' value="' + esc(_cfg.order_receipt_email_subject || '') + '" placeholder="' + esc(_sdT('Order Receipt #')) + '">'
+                    +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Sent to the billing address once the order is placed; a copy goes to the shop address in the settings. A page with an Order View widget draws the order in it. The order number follows the subject.')) + '</div>'
                     + '</div></div>'
                     + '<div class="sd-prop-row" style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px"><div class="sd-prop-control">'
                     +   '<div style="font-size:.66rem;color:#6b7280;line-height:1.5">'
@@ -22099,15 +22903,27 @@ const StyleDesigner = (function () {
                         row(_sdT('Notification subject'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_subject" value="' + esc(_cfFS.notify_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('New form submission')) + '">'
                         ) +
+                        // A page sent as the e-mail (HTML) instead of the plain
+                        // list of fields; its Form Item View widget of this form
+                        // shows the submission the e-mail is about.
+                        row(_sdT('Notification page'),
+                            '<select class="form-select form-select-sm sd-cf-sn" data-s="notify_page_id">' +
+                                _swPageOptions(_cfFS.notify_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
+                            '</select>'
+                        ) +
                         row(_sdT('Auto-reply to the sender'),
                             '<div class="form-check form-switch">' +
                                 '<input class="form-check-input sd-cf-sb" data-s="confirm_email" type="checkbox" id="sd-sw-cf-confirm-email"' + (_cfFS.confirm_email ? ' checked' : '') + '>' +
                                 '<label class="form-check-label" for="sd-sw-cf-confirm-email" style="font-size:.72rem">' + esc(_sdT('Send a copy to the sender as well')) + '</label>' +
                             '</div>' +
                             (_cfFS.confirm_email
-                                ? '<input type="text" class="form-control form-control-sm mt-1 sd-cf-s" data-s="confirm_subject" value="' + esc(_cfFS.confirm_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('We received your message')) + '">'
+                                ? '<input type="text" class="form-control form-control-sm mt-1 sd-cf-s" data-s="confirm_subject" value="' + esc(_cfFS.confirm_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('We received your message')) + '">' +
+                                  '<select class="form-select form-select-sm mt-1 sd-cf-sn" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '">' +
+                                      _swPageOptions(_cfFS.confirm_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
+                                  '</select>'
                                 : '') +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The recipient is taken from the form\'s email field — the form must have one.')) + '</div>'
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The recipient is taken from the form\'s email field — the form must have one.')) + ' ' +
+                                esc(_sdT('An e-mail page is a page of this design with a Form Item View widget of this form: it is drawn for the submission and sent as it looks.')) + '</div>'
                         ) +
                         row(_sdT('Next page'),
                             '<select class="form-select form-select-sm sd-cf-sn" data-s="confirmation_page_id">' + _cfPageOpts + '</select>' +
@@ -22126,6 +22942,19 @@ const StyleDesigner = (function () {
                             '</select>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Fields bound to a contact create or update the sender\'s contact record, and that record joins this group.')) + '</div>'
                         ) +
+                        // Opening an account and giving a membership are two
+                        // settings: a contact form registers its sender so they
+                        // can follow the conversation, without making them a
+                        // member of anything.
+                        row(_sdT('Visitors without an account'),
+                            '<div class="form-check form-switch">' +
+                                '<input class="form-check-input sd-cf-sb" data-s="auto_registration" type="checkbox" id="sd-sw-cf-autoreg"' + (_cfFS.auto_registration ? ' checked' : '') + '>' +
+                                '<label class="form-check-label" for="sd-sw-cf-autoreg" style="font-size:.72rem">' + esc(_sdT('Open an account for a visitor who has none')) + '</label>' +
+                            '</div>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('The account is opened with the email the form asks for and the visitor is signed in. A next page with a Form Item View widget can show the sign-in details (the "the form just opened an account" condition).')) +
+                            '</div>'
+                        ) +
                         row(_sdT('Membership and quiz'),
                             '<div class="form-check form-switch">' +
                                 '<input class="form-check-input sd-cf-sb" data-s="membership" type="checkbox" id="sd-sw-cf-membership"' + (_cfFS.membership ? ' checked' : '') + '>' +
@@ -22135,13 +22964,10 @@ const StyleDesigner = (function () {
                                 ? '<div class="d-flex gap-1 mt-1">' +
                                       '<input type="number" min="1" class="form-control form-control-sm sd-cf-sn" data-s="membership_days" value="' + (_cfFS.membership_days || '') + '" placeholder="' + esc(_sdT('Day')) + '">' +
                                   '</div>' +
-                                  '<div class="form-check form-switch mt-1">' +
-                                      '<input class="form-check-input sd-cf-sb" data-s="auto_registration" type="checkbox" id="sd-sw-cf-autoreg"' + (_cfFS.auto_registration ? ' checked' : '') + '>' +
-                                      '<label class="form-check-label" for="sd-sw-cf-autoreg" style="font-size:.72rem">' + esc(_sdT('Open an account for a visitor who has none')) + '</label>' +
-                                  '</div>' +
+                                  (_cfFS.auto_registration ? '' :
                                   '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
                                       esc(_sdT('While automatic registration is off, only a signed-in visitor can submit the form.')) +
-                                  '</div>'
+                                  '</div>')
                                 : '') +
                             '<div class="form-check form-switch mt-2">' +
                                 '<input class="form-check-input sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '>' +
@@ -22469,7 +23295,7 @@ const StyleDesigner = (function () {
         if (formSel) formSel.addEventListener('change', function () {
             var sid = parseInt(this.dataset.swId, 10);
             if (!sid) return;
-            var newFormId = parseInt(this.value, 10) || 0;
+            var newFormId = /^tab:/.test(this.value) ? this.value : (parseInt(this.value, 10) || 0);
             var cached = _sharedCache[sid];
             if (!cached) return;
             var _cfgRaw = cached.system_region_config || null;
@@ -22937,6 +23763,69 @@ const StyleDesigner = (function () {
             });
         }
 
+        // ── Form list view filters ─────────────────────────────────────────
+        // The list is rebuilt from the panel on every change, so the saved
+        // order is the order on screen. A new field or dynamic value changes
+        // which inputs the row needs, so those re-render the panel.
+        var _swFilterEls = document.querySelectorAll('.sd-sw-filter');
+        var _swReadFilters = function () {
+            var out = [];
+            document.querySelectorAll('.sd-sw-filter').forEach(function (el) {
+                var q = function (c) { return el.querySelector(c); };
+                var dyn = q('.sd-sw-filter-dyn') ? q('.sd-sw-filter-dyn').value : '';
+                var val = q('.sd-sw-filter-value') ? String(q('.sd-sw-filter-value').value || '') : '';
+                if (q('.sd-sw-filter-value') && q('.sd-sw-filter-value').type === 'datetime-local' && val) val = val.replace('T', ' ');
+                out.push({
+                    field: q('.sd-sw-filter-field') ? q('.sd-sw-filter-field').value : '',
+                    operator: q('.sd-sw-filter-op') ? q('.sd-sw-filter-op').value : 'is equal to',
+                    value: dyn ? '' : val.slice(0, 255),
+                    dynamic_value: dyn,
+                    dynamic_value_attribute: (dyn === 'days ago' && q('.sd-sw-filter-days')) ? (parseInt(q('.sd-sw-filter-days').value, 10) || 0) : ''
+                });
+            });
+            return out;
+        };
+        _swFilterEls.forEach(function (el, idx) {
+            var sid = 0;
+            var any = el.querySelector('[data-sw-id]');
+            if (any) sid = parseInt(any.dataset.swId, 10);
+            if (!sid) return;
+            var save = function (list, rerender) {
+                _patchSysCfg(sid, function (cfg) { cfg.filters = list; },
+                    rerender ? { afterSave: function () { renderProperties(); } } : undefined);
+            };
+            var fieldEl = el.querySelector('.sd-sw-filter-field');
+            if (fieldEl) fieldEl.addEventListener('change', function () {
+                var list = _swReadFilters();
+                // Another field has another type: its value and dynamic
+                // value no longer apply.
+                if (list[idx]) { list[idx].value = ''; list[idx].dynamic_value = ''; list[idx].dynamic_value_attribute = ''; }
+                save(list, true);
+            });
+            var dynEl = el.querySelector('.sd-sw-filter-dyn');
+            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(), true); });
+            ['.sd-sw-filter-op', '.sd-sw-filter-value', '.sd-sw-filter-days'].forEach(function (c) {
+                var inp = el.querySelector(c);
+                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(), false); });
+            });
+            var delEl = el.querySelector('.sd-sw-filter-del');
+            if (delEl) delEl.addEventListener('click', function () {
+                var list = _swReadFilters();
+                list.splice(idx, 1);
+                save(list, true);
+            });
+        });
+        var fAddEl = document.getElementById('sd-sw-filter-add');
+        if (fAddEl) {
+            fAddEl.addEventListener('click', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var list = _swReadFilters();
+                list.push({ field: '', operator: 'is equal to', value: '', dynamic_value: '', dynamic_value_attribute: '' });
+                _patchSysCfg(sid, function (cfg) { cfg.filters = list; }, { afterSave: function () { renderProperties(); } });
+            });
+        }
+
         // ── Phase 2: Catalog group navigation (none / drill_down / page) ──
         var gnEl = document.getElementById('sd-sw-group-nav');
         if (gnEl) {
@@ -23395,6 +24284,61 @@ const StyleDesigner = (function () {
             });
         }
 
+        // ── Canvas preview: real records ─────────────────────────────────────
+
+        var ghostsEl = document.getElementById('sd-sw-ghosts');
+        if (ghostsEl) {
+            ghostsEl.addEventListener('change', function () {
+                _sdGhostsOn = this.checked;
+                try { localStorage.setItem('pg_sd_ghosts', _sdGhostsOn ? '1' : '0'); } catch (e) {}
+                if (typeof renderCanvas === 'function') renderCanvas();
+            });
+        }
+
+        // ── cart_link settings ────────────────────────────────────────────────
+
+        var clCartEl = document.getElementById('sd-sw-cl-cart-page');
+        if (clCartEl) {
+            clCartEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = _swPageVal(this);
+                _patchSysCfg(sid, function (cfg) { cfg.cart_page_id = v; });
+            });
+        }
+
+        // ── login_region settings ─────────────────────────────────────────────
+
+        document.querySelectorAll('#sd-properties [data-sd-session-preview]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                _sdSetSessionPreview(this.getAttribute('data-sd-session-preview'), null);
+            });
+        });
+        [['sd-sw-lr-login-page', 'login_page_id'], ['sd-sw-lr-account-page', 'account_page_id'],
+         ['sd-sw-lr-staff-page', 'staff_page_id']].forEach(function (pair) {
+            var el = document.getElementById(pair[0]);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = _swPageVal(this);
+                _patchSysCfg(sid, function (cfg) { cfg[pair[1]] = v; });
+            });
+        });
+        var lrRegisterEl = document.getElementById('sd-sw-lr-register-page');
+        if (lrRegisterEl) {
+            lrRegisterEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var none = (this.value === 'none');
+                var v = none ? 0 : _swPageVal(this);
+                _patchSysCfg(sid, function (cfg) {
+                    cfg.register_page_id   = v;
+                    cfg.show_register_link = !none;
+                });
+            });
+        }
+
         // ── forgot_password settings ──────────────────────────────────────────
 
         var fpRedEl = document.getElementById('sd-sw-fp-redirect-page');
@@ -23673,6 +24617,27 @@ const StyleDesigner = (function () {
                 if (!sid) return;
                 var pid = _swPageVal(this);
                 _patchSysCfg(sid, function (cfg) { cfg.next_page_id = pid; });
+            });
+        }
+
+        // Order receipt e-mail page + subject (cfg; mirrored into
+        // express_order_pages by the widget render like next_page_id).
+        var eoReceiptPageEl = document.getElementById('sd-sw-eo-receipt-page');
+        if (eoReceiptPageEl) {
+            eoReceiptPageEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var pid = _swPageVal(this);
+                _patchSysCfg(sid, function (cfg) { cfg.order_receipt_email_page_id = pid; });
+            });
+        }
+        var eoReceiptSubjEl = document.getElementById('sd-sw-eo-receipt-subject');
+        if (eoReceiptSubjEl) {
+            eoReceiptSubjEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var subj = String(this.value || '').slice(0, 200);
+                _patchSysCfg(sid, function (cfg) { cfg.order_receipt_email_subject = subj; });
             });
         }
 
@@ -24006,7 +24971,7 @@ const StyleDesigner = (function () {
             el.addEventListener('change', function () {
                 // The next-page picker may name an unsaved tab (`tab:<key>`);
                 // the save turns that into the page id it hands out.
-                _cfPageSettings()[el.dataset.s] = (el.dataset.s === 'confirmation_page_id')
+                _cfPageSettings()[el.dataset.s] = (['confirmation_page_id', 'notify_page_id', 'confirm_page_id'].indexOf(el.dataset.s) !== -1)
                     ? _swPageVal(el) : (parseInt(el.value, 10) || 0);
             });
         });
@@ -24168,7 +25133,8 @@ const StyleDesigner = (function () {
     // a confirmation page tells them how to sign in.
     var SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS = [
         ['__new_account_email',    _sdT('New account email (when the form opened one)')],
-        ['__new_account_password', _sdT('New account password (when the form opened one)')]
+        ['__new_account_password', _sdT('New account password (when the form opened one)')],
+        ['__edit_url',             _sdT('Edit screen address (only for users who may edit the record)')]
     ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
@@ -24356,6 +25322,7 @@ const StyleDesigner = (function () {
             ['username',                 _sdT('User name')],
             ['email_address',            _sdT('Email')],
             ['full_name',                _sdT('Full name (first + last)')],
+            ['__display_name',           _sdT('Name to greet by (full name, else the user name)')],
             ['first_name',               _sdT('First Name')],
             ['last_name',                _sdT('Last Name')],
             ['registered_date_and_time', _sdT('Registration Date & Time'), 'date'],
@@ -24645,7 +25612,65 @@ const StyleDesigner = (function () {
             ['__not_logged_in',          _sdT('Signed-out message')]
         ]}
     ];
+    // error_page token palette — mirrors _render_system_widget_error_page()
+    // in widgets_error.php. One screen, no loop.
+    var SW_ERROR_PAGE_TOKEN_GROUPS = [
+        { label: _sdT('Error'), tokens: [
+            ['__error_code',    _sdT('Error code (404, 403 …; empty when the error has none)')],
+            ['__error_message', _sdT('The error message the software gives')],
+            ['__requested_url', _sdT('The address the visitor asked for')]
+        ]},
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',     _sdT('Site name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__home_url',      _sdT('Home page address')],
+            ['__back_url',      _sdT('The page the visitor came from on this site (the link drops when there is none)')]
+        ]}
+    ];
+
+    // login_region token palette — mirrors _render_system_widget_login_region()
+    // in widgets_account.php. Signed out, the member tokens are empty and
+    // the account links drop; signed in, the sign-in and sign-up links drop.
+    var SW_LOGIN_REGION_TOKEN_GROUPS = [
+        { label: _sdT('Member (signed in)'), tokens: [
+            ['__user_name',       _sdT('Name (full name, else the user name)')],
+            ['__user_first_name', _sdT('First name (else the user name)')],
+            ['__user_initials',   _sdT('Initials')],
+            ['__user_email',      _sdT('Email')],
+            ['__user_avatar_url', _sdT('Picture (their photo, else the picture of their initials)')],
+            ['__user_badge',      _sdT('Badge label')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__login_url',       _sdT('Sign-in page address (signed out; brings the visitor back to this page)')],
+            ['__register_url',    _sdT('Registration page address (signed out; the link drops when there is none)')],
+            ['__my_account_url',  _sdT('My account page address (the link drops when there is none)')],
+            ['__profile_url',     _sdT('Profile page address (the link drops when there is none)')],
+            ['__logout_url',      _sdT('Log out (signs out at once)')],
+            ['__staff_url',       _sdT('Staff page address (only for visitors the page lets in)')],
+            ['__panel_url',       _sdT('Control panel address (only for users with work in the panel)')]
+        ]},
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',       _sdT('Site name')]
+        ]}
+    ];
+
+    // cart_link token palette — mirrors _render_system_widget_cart_link()
+    // in widgets_cart.php.
+    var SW_CART_LINK_TOKEN_GROUPS = [
+        { label: _sdT('Cart'), tokens: [
+            ['__cart_count',       _sdT('Number of products in the cart')],
+            ['__cart_count_label', _sdT('Number of products, in words ("3 products")')],
+            ['__cart_subtotal',    _sdT('Subtotal (currency)')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__cart_url',         _sdT('Cart page address (the link drops when the site has none)')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
+        login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
+        cart_link:         SW_CART_LINK_TOKEN_GROUPS,
         logout:            SW_LOGOUT_TOKEN_GROUPS,
         change_password:   SW_CHANGE_PASSWORD_TOKEN_GROUPS,
         set_password:      SW_SET_PASSWORD_TOKEN_GROUPS,
@@ -24748,6 +25773,7 @@ const StyleDesigner = (function () {
             ['__item_name',              _sdT('Product name (products.name — usually the SKU/code)')],
             ['__item_short_description', _sdT('Short description (display name — recommended for the heading)')],
             ['__item_description',       _sdT('Description (long, products.full_description)')],
+            ['__item_summary',           _sdT('Description summary (one line, plain text)')],
             ['__item_qty',               _sdT('Quantity (numeric)')],
             ['__item_qty_input',         _sdT('Quantity edit input (HTML)')],
             ['__item_price',             _sdT('Unit price (effective — after the discount)')],
@@ -24901,6 +25927,7 @@ const StyleDesigner = (function () {
             ['__item_name',              _sdT('Product name (products.name)')],
             ['__item_short_description', _sdT('Short description (display name)')],
             ['__item_description',       _sdT('Long description')],
+            ['__item_summary',           _sdT('Description summary (one line, plain text)')],
             ['__item_number',            _sdT('Stock code (SKU)')],
             ['__item_qty',               _sdT('Quantity')],
             ['__item_price',             _sdT('Unit price')],
@@ -25022,6 +26049,7 @@ const StyleDesigner = (function () {
             ['__item_name',                       _sdT('Product name')],
             ['__item_short_description',          _sdT('Short description')],
             ['__item_description',                _sdT('Description (long)')],
+            ['__item_summary',                    _sdT('Description summary (one line, plain text)')],
             ['__item_qty',                        _sdT('Quantity')],
             ['__item_price',                      _sdT('Unit price (currency)')],
             ['__item_total',                      _sdT('Row total (currency)')],
@@ -25212,6 +26240,7 @@ const StyleDesigner = (function () {
             if (cfg && cfg.regionType === 'calendar_view')     return 'calendar_view';
             if (cfg && cfg.regionType === 'calendar_event_view') return 'calendar_event_view';
             if (cfg && _SW_ACCOUNT_TYPES[cfg.regionType] === 1) return cfg.regionType;
+            if (cfg && cfg.regionType === 'error_page')        return 'error_page';
             return 'form_list_view';
         } catch (e) { return 'form_list_view'; }
     }
@@ -25392,6 +26421,7 @@ const StyleDesigner = (function () {
             ['has_shipping',         _sdT('The cart has a shippable product')],
             ['has_single_recipient', _sdT('A single recipient')],
             ['is_multi_recipient',   _sdT('Several recipients')],
+            ['has_no_shipping',      _sdT('Nothing to ship (digital order)')],
             ['has_offers',           _sdT('There are offers')],
             ['has_upsell',           _sdT('There are upsell offers')],
             ['has_terms',            _sdT('Terms are shown')],
@@ -25432,7 +26462,11 @@ const StyleDesigner = (function () {
             ['no_orders',  _sdT('The member has no orders')]
         ],
         form_item_view: [
-            ['has_new_account', _sdT('The form just opened an account for the visitor')]
+            ['has_new_account',        _sdT('The form just opened an account for the visitor')],
+            ['record_found',           _sdT('The record is shown')],
+            ['record_not_found',       _sdT('There is no record to show (missing, or not for this visitor)')],
+            ['submitted_this_session', _sdT('The visitor sent this record themselves, in this session')],
+            ['can_edit',               _sdT('The visitor may edit the record')]
         ],
         logout: [
             ['is_signed_in',    _sdT('The visitor is signed in')],
@@ -25468,6 +26502,22 @@ const StyleDesigner = (function () {
             ['no_recipients',  _sdT('There are no saved recipients')],
             ['is_editing',     _sdT('A recipient is being edited (?id=)')],
             ['is_adding',      _sdT('A new recipient is being added')]
+        ],
+        cart_link: [
+            ['cart_has_items',   _sdT('The cart has something in it')],
+            ['cart_is_empty',    _sdT('The cart is empty')]
+        ],
+        login_region: [
+            ['is_signed_in',     _sdT('The visitor is signed in')],
+            ['is_signed_out',    _sdT('The visitor is signed out')],
+            ['has_badge',        _sdT('The member has a badge')],
+            ['is_staff',         _sdT('The visitor may open the staff page')],
+            ['has_panel_access', _sdT('The user has work in the control panel')]
+        ],
+        error_page: [
+            ['is_not_found',   _sdT('The page was not found (404)')],
+            ['is_other_error', _sdT('Another error (not 404)')],
+            ['has_error_code', _sdT('The error carries an HTTP code')]
         ]
     };
 
@@ -26146,6 +27196,41 @@ const StyleDesigner = (function () {
                     _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Calendar View')) + ' ' + _sdT('You can bind it to the static calendar tokens and to the event tokens inside the loop_area.') +
                 '</div>' +
                 rowsHtmlCV
+            );
+        }
+
+        // ── error_page branch — one screen, fixed palette (widgets_error.php)
+        if (regionType === 'error_page') {
+            var epFlat = [];
+            SW_ERROR_PAGE_TOKEN_GROUPS.forEach(function (g) { g.tokens.forEach(function (t) { epFlat.push(t[0]); }); });
+            var rowsHtmlEP = '';
+            bindable.forEach(function (b) {
+                var current = bindings[b.prop] || '';
+                var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
+                SW_ERROR_PAGE_TOKEN_GROUPS.forEach(function (g) {
+                    html += '<optgroup label="' + esc(g.label) + '">';
+                    g.tokens.forEach(function (t) {
+                        html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
+                    });
+                    html += '</optgroup>';
+                });
+                var isCustom = !!(current && epFlat.indexOf(current) === -1);
+                html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
+                rowsHtmlEP += row(b.label,
+                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
+                    ' data-bind-prop="' + esc(b.prop) + '"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
+                    ' value="' + esc(isCustom ? current : '') + '"' +
+                    (isCustom ? '' : ' style="display:none"') + '>');
+            });
+            return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
+                '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
+                    '<span class="bi bi-info-circle me-1"></span>' +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Error Page (404)')) + ' ' +
+                    _sdT('You can bind it to the error and to the links back into the site.') +
+                '</div>' +
+                rowsHtmlEP
             );
         }
 
@@ -31568,6 +32653,13 @@ const StyleDesigner = (function () {
                 _setCmtVal(this.getAttribute('data-cmt-prop'), this.checked ? '1' : '0');
             });
         });
+        // The e-mail page picker may name an unsaved tab (`tab:<key>`); the
+        // save turns that into the page id it hands out.
+        document.querySelectorAll('#sd-properties [data-cmt-page]').forEach(function(el) {
+            el.addEventListener('change', function() {
+                _setCmtVal(this.getAttribute('data-cmt-page'), _swPageVal(this));
+            });
+        });
         document.querySelectorAll('#sd-properties [data-cmt-txt]').forEach(function(el) {
             el.addEventListener('input', function() {
                 _setCmtVal(this.getAttribute('data-cmt-txt'), this.value);
@@ -32587,9 +33679,12 @@ const StyleDesigner = (function () {
         // identifier — the URL itself can be swapped server-side without
         // breaking existing styles. Default ordering: BS → BS Icons → user files
         // (so user CSS overrides Bootstrap by cascade).
-        var BS_CSS_URL   = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css';
+        // The framework rows point at the design's framework files
+        // (_sdFrameworkInfo()); the Bootstrap 5 addresses are what a design
+        // from before the framework choice uses.
+        var BS_CSS_URL   = _sdFrameworkInfo().css || 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css';
         var BS_ICONS_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
-        var BS_JS_URL    = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js';
+        var BS_JS_URL    = _sdFrameworkInfo().js || 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js';
         var JQUERY_URL   = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
 
         function _findIdxByMeta(arr, m) {
@@ -32599,8 +33694,21 @@ const StyleDesigner = (function () {
 
         function _ensureBootstrapSentinels() {
             var changedCss = false, changedJs = false;
+            // A custom design loads no framework: it carries no Bootstrap CSS
+            // or JS row, and one that got in (a page picked from another
+            // design) is taken out. Bootstrap Icons is not the framework and
+            // stays, as a row the operator can switch off.
+            var _bsFramework = _sdUsesBootstrap();
+            if (!_bsFramework) {
+                for (var ci = cssFiles.length - 1; ci >= 0; ci--) {
+                    if (cssFiles[ci].meta === 'bootstrap-css') { cssFiles.splice(ci, 1); changedCss = true; }
+                }
+                for (var ji = jsFiles.length - 1; ji >= 0; ji--) {
+                    if (jsFiles[ji].meta === 'bootstrap-js') { jsFiles.splice(ji, 1); changedJs = true; }
+                }
+            }
             // bootstrap.css — if missing, prepend at index 0
-            if (_findIdxByMeta(cssFiles, 'bootstrap-css') === -1) {
+            if (_bsFramework && _findIdxByMeta(cssFiles, 'bootstrap-css') === -1) {
                 cssFiles.unshift({
                     id: mkId(), name: 'bootstrap.min.css', type: 'external-css',
                     content: BS_CSS_URL, enabled: true, locked: true, meta: 'bootstrap-css'
@@ -32619,7 +33727,7 @@ const StyleDesigner = (function () {
                 changedCss = true;
             }
             // bootstrap bundle JS — prepend at index 0 if missing
-            if (_findIdxByMeta(jsFiles, 'bootstrap-js') === -1) {
+            if (_bsFramework && _findIdxByMeta(jsFiles, 'bootstrap-js') === -1) {
                 jsFiles.unshift({
                     id: mkId(), name: 'bootstrap.bundle.min.js', type: 'external-js',
                     content: BS_JS_URL, enabled: true, locked: true, meta: 'bootstrap-js'
@@ -34227,7 +35335,19 @@ const StyleDesigner = (function () {
             var head = document.getElementById('sd-theme-head');
             if (!head) return;
             var th = _sdActiveTheme();
-            head.innerHTML =
+            // The design's look and palette (Settings > Design > Theme) come
+            // first: they are what the variables below are laid over.
+            var _lk = _sdThemeFind('look', _sdThemeValue('look'));
+            var _pl = _sdThemeFind('palette', _sdThemeValue('palette'));
+            var lookRow = (_sdUsesBootstrap() && _sdThemes())
+                ? '<div class="sd-theme-head-row">' +
+                      '<span class="bi bi-brush sd-theme-head-icon"></span>' +
+                      '<span class="sd-theme-head-txt"><strong>' + esc(_lk ? _lk.name : _sdT('Plain Bootstrap')) + '</strong> · ' + esc(_pl ? _pl.name : _sdT('Bootstrap')) +
+                          '<br><span class="sd-theme-head-hint">' + esc(_sdT('Look and colour palette of the design')) + '</span></span>' +
+                      '<button type="button" class="sd-theme-head-btn" data-act="look" title="' + esc(_sdT('Change the look and the palette')) + '"><span class="bi bi-sliders"></span></button>' +
+                  '</div>'
+                : '';
+            head.innerHTML = lookRow +
                 '<div class="sd-theme-head-row">' +
                     '<span class="bi bi-palette2 sd-theme-head-icon"></span>' +
                     '<span class="sd-theme-head-txt">' +
@@ -34242,6 +35362,12 @@ const StyleDesigner = (function () {
                 '</button>';
             head.querySelector('[data-act="pick"]').addEventListener('click', _sdOpenDesignSettings);
             head.querySelector('[data-act="save"]').addEventListener('click', _sdSaveAsTheme);
+            var lookBtn = head.querySelector('[data-act="look"]');
+            if (lookBtn) lookBtn.addEventListener('click', _sdOpenThemeSettings);
+        }
+        if (!window._sdThemeHeadBound) {
+            window._sdThemeHeadBound = true;
+            document.addEventListener('pg-design-theme-change', function () { _renderThemeHead(); });
         }
 
         // Write the light/dark variable blocks to a new theme file and make
@@ -35824,6 +36950,8 @@ const StyleDesigner = (function () {
         { type: 'catalog_item_view', label: _sdT('Catalog Detail'),                slug: _sdT('product-detail'),      icon: 'bi-box-seam' },
         { type: 'my_account',        label: _sdT('My Account'),                   slug: _sdT('my-account'),         icon: 'bi-person-circle' },
         { type: 'login_form',        label: _sdT('Login'),               slug: _sdT('login'),           icon: 'bi-box-arrow-in-right' },
+        { type: 'login_region',      label: _sdT('Login Region'),        slug: _sdT('login-region'),    icon: 'bi-person-badge' },
+        { type: 'cart_link',         label: _sdT('Cart Link'),           slug: _sdT('cart-link'),       icon: 'bi-bag' },
         { type: 'forgot_password',   label: _sdT('Forgot Password'),           slug: _sdT('forgot-password'), icon: 'bi-key' },
         { type: 'search_results',    label: _sdT('Search Results'),           slug: _sdT('search'),           icon: 'bi-search' },
         { type: 'registration',      label: _sdT('Registration Entrance'),                 slug: _sdT('registration'),       icon: 'bi-person-plus' },
@@ -35839,12 +36967,15 @@ const StyleDesigner = (function () {
         { type: 'set_password',      label: _sdT('Set Password'),      slug: _sdT('set-password'),      icon: 'bi-unlock' },
         { type: 'email_preferences', label: _sdT('Email Preferences'), slug: _sdT('email-preferences'), icon: 'bi-envelope-paper' },
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
-        { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' }
+        { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
+        { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
+    // Other widgets that show one screen and never repeat their loop_area.
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -35926,6 +37057,10 @@ const StyleDesigner = (function () {
             if (cfg.empty_message === undefined) cfg.empty_message = _sdT('No results found.');
         } else if (newType === 'login_form' || newType === 'registration' || newType === 'membership') {
             if (cfg.show_remember_me === undefined) cfg.show_remember_me = true;
+        } else if (newType === 'login_region') {
+            // A sign-up link to the site's registration page, unless the
+            // panel turns it off.
+            if (cfg.show_register_link === undefined) cfg.show_register_link = true;
         } else if (newType === 'custom_form') {
             if (cfg.form_source === undefined) cfg.form_source = 'page';
         } else if (newType === 'form_list_view') {
@@ -36190,6 +37325,136 @@ const StyleDesigner = (function () {
         v = parseInt(v, 10);
         return (v > 0) ? v : 0;
     }
+    // ── Form list view filters ───────────────────────────────────────────
+    // The classic form list view's filters (edit_form_list_view.php), kept in
+    // system_region_config.filters and applied on the server by
+    // pg_sw_form_list_filter_sql(). Standard fields mirror
+    // get_standard_fields_for_view(); the type decides which dynamic values
+    // a filter offers, exactly as the classic screen decides it.
+    var _SW_FILTER_STANDARD = [
+        ['reference_code', _sdT('Reference Code'), ''],
+        ['complete', _sdT('Complete'), ''],
+        ['address_name', _sdT('Address Name'), ''],
+        ['tracking_code', _sdT('Tracking Code'), ''],
+        ['affiliate_code', _sdT('Affiliate Code'), ''],
+        ['referring_url', _sdT('Referring URL'), ''],
+        ['submitter', _sdT('Submitter'), 'username'],
+        ['submitted_date_and_time', _sdT('Submitted Date & Time'), 'date and time'],
+        ['last_modifier', _sdT('Last Modifier'), 'username'],
+        ['last_modified_date_and_time', _sdT('Last Modified Date & Time'), 'date and time'],
+        ['number_of_views', _sdT('Number of Views'), ''],
+        ['number_of_comments', _sdT('Number of Comments'), ''],
+        ['newest_comment_name', _sdT('Newest Comment Name'), ''],
+        ['newest_comment', _sdT('Newest Comment'), ''],
+        ['newest_comment_date_and_time', _sdT('Newest Comment Date & Time'), 'date and time'],
+        ['newest_comment_id', _sdT('Newest Comment ID'), ''],
+        ['newest_activity_date_and_time', _sdT('Newest Activity Date & Time'), 'date and time'],
+        ['comment_attachments', _sdT('Comment Attachments'), '']
+    ];
+    // Labels are written out as _sdT('…') literals: the editor's translation
+    // map is built from the literal calls in this file.
+    var _SW_FILTER_OPERATORS = [
+        ['contains', _sdT('contains')],
+        ['does not contain', _sdT('does not contain')],
+        ['is equal to', _sdT('is equal to')],
+        ['is not equal to', _sdT('is not equal to')],
+        ['is less than', _sdT('is less than')],
+        ['is less than or equal to', _sdT('is less than or equal to')],
+        ['is greater than', _sdT('is greater than')],
+        ['is greater than or equal to', _sdT('is greater than or equal to')]
+    ];
+
+    // Form fields a filter can name: the server resolves them by name, and an
+    // information block holds no data.
+    function _swFilterFormFields(fields) {
+        return (fields || []).filter(function (ff) {
+            return ff && ff.name && String(ff.name).trim() !== '' && ff.type !== 'information';
+        });
+    }
+    function _swFilterFieldType(field, fields) {
+        for (var i = 0; i < _SW_FILTER_STANDARD.length; i++) {
+            if (_SW_FILTER_STANDARD[i][0] === field) return _SW_FILTER_STANDARD[i][2];
+        }
+        var lc = String(field || '').toLowerCase();
+        var ff = _swFilterFormFields(fields).filter(function (f) { return String(f.name).trim().toLowerCase() === lc; })[0];
+        return ff ? String(ff.type || '') : '';
+    }
+    function _swFilterDynamicOptions(type) {
+        var o = [];
+        if (type === 'date') o.push(['current date', _sdT('Current Date')]);
+        if (type === 'date and time') o.push(['current date and time', _sdT('Current Date & Time')]);
+        if (type === 'date' || type === 'date and time') o.push(['days ago', _sdT('Day(s) Ago')]);
+        if (type === 'time') o.push(['current time', _sdT('Current Time')]);
+        if (type === 'username') o.push(['viewer', _sdT('Viewer')]);
+        if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
+        return o;
+    }
+    function _swFormListFiltersHtml(sid, filters, fields, loading) {
+        var formFields = _swFilterFormFields(fields);
+        var html = '';
+        (filters || []).forEach(function (f, i) {
+            f = f || {};
+            var field = String(f.field || '');
+            var type  = _swFilterFieldType(field, fields);
+            var dyn   = String(f.dynamic_value || '');
+            var dynOpts = _swFilterDynamicOptions(type);
+            if (!dynOpts.some(function (d) { return d[0] === dyn; })) dyn = '';
+
+            var fieldOpts = '<option value=""' + (field === '' ? ' selected' : '') + '></option>' +
+                '<optgroup label="' + esc(_sdT('System Fields')) + '">' +
+                _SW_FILTER_STANDARD.map(function (sf) {
+                    return '<option value="' + sf[0] + '"' + (sf[0] === field ? ' selected' : '') + '>' + esc(sf[1]) + '</option>';
+                }).join('') + '</optgroup>';
+            var known = !field || _SW_FILTER_STANDARD.some(function (sf) { return sf[0] === field; });
+            if (formFields.length) {
+                fieldOpts += '<optgroup label="' + esc(_sdT('Form Fields')) + '">' +
+                    formFields.map(function (ff) {
+                        var tok = String(ff.name).trim();
+                        var on = tok.toLowerCase() === field.toLowerCase();
+                        if (on) known = true;
+                        return '<option value="' + esc(tok) + '"' + (on ? ' selected' : '') + '>' + esc(ff.label || tok) + '</option>';
+                    }).join('') + '</optgroup>';
+            }
+            // A field the form no longer has (or not loaded yet) stays visible
+            // so the filter is not rewritten behind the designer's back.
+            if (!known) fieldOpts += '<option value="' + esc(field) + '" selected>' + esc(field) + (loading ? '' : ' ' + esc(_sdT('(incompatible — choose again)'))) + '</option>';
+
+            var op = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === f.operator; }) ? f.operator : 'is equal to';
+            var opOpts = _SW_FILTER_OPERATORS.map(function (o) {
+                return '<option value="' + o[0] + '"' + (o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            }).join('');
+
+            var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
+            var val = dyn ? '' : String(f.value == null ? '' : f.value);
+            if (inputType === 'datetime-local') val = val.replace(' ', 'T').slice(0, 16);
+
+            html +=
+                '<div class="sd-sw-filter" data-idx="' + i + '" style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
+                    '<div style="display:flex;gap:4px">' +
+                        '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
+                    '</div>' +
+                    '<select class="form-select form-select-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
+                    '<input type="' + inputType + '" class="form-control form-control-sm sd-sw-filter-value" data-sw-id="' + sid + '" value="' + esc(val) + '" maxlength="255" placeholder="' + esc(_sdT('Value')) + '"' + (dyn ? ' disabled' : '') + '>' +
+                    (dynOpts.length
+                        ? '<div style="display:flex;gap:4px">' +
+                              '<select class="form-select form-select-sm sd-sw-filter-dyn" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Dynamic Value')) + '">' +
+                                  '<option value="">— ' + esc(_sdT('Dynamic Value')) + ' —</option>' +
+                                  dynOpts.map(function (d) { return '<option value="' + d[0] + '"' + (d[0] === dyn ? ' selected' : '') + '>' + esc(d[1]) + '</option>'; }).join('') +
+                              '</select>' +
+                              (dyn === 'days ago'
+                                  ? '<input type="number" min="0" max="36500" class="form-control form-control-sm sd-sw-filter-days" data-sw-id="' + sid + '" value="' + esc(String(parseInt(f.dynamic_value_attribute, 10) || 0)) + '" style="width:72px" aria-label="' + esc(_sdT('Day(s) Ago')) + '">'
+                                  : '') +
+                          '</div>'
+                        : '') +
+                '</div>';
+        });
+        html +=
+            '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(_sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
+        return html;
+    }
+
     function _swPageOptions(cur, serverPages, o) {
         o = o || {};
         cur = (cur == null) ? '' : String(cur);
@@ -36264,6 +37529,13 @@ const StyleDesigner = (function () {
         });
         ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) {
             if (p.formSettings && typeof p.formSettings === 'object') swap(p.formSettings);
+            // The comment e-mail page, a page field; on the active tab its
+            // hidden input holds it too, and is read back on the next switch.
+            var pv = { pg_comments_email_page: p.pg_comments_email_page };
+            if (swap(pv)) {
+                p.pg_comments_email_page = pv.pg_comments_email_page;
+                if (p.key === _activeKey) _setCmtVal('pg_comments_email_page', String(pv.pg_comments_email_page));
+            }
         });
     }
 
@@ -36375,7 +37647,7 @@ const StyleDesigner = (function () {
         // Real form input — bound via _bindings.eo_field. Server walker
         // injects name/id/value attrs from the binding. Designer can swap
         // <input> for <select> without losing the field wiring.
-        function input(eoField, type, placeholder, required, ccRequired) {
+        function input(eoField, type, placeholder, required, ccRequired, extraAttrs) {
             var attrs = [
                 { name: 'type',  value: type },
                 { name: 'value', value: '' }
@@ -36383,12 +37655,24 @@ const StyleDesigner = (function () {
             if (placeholder) attrs.push({ name: 'placeholder',         value: placeholder });
             if (required)    attrs.push({ name: 'required',            value: '' });
             if (ccRequired)  attrs.push({ name: 'data-pg-cc-required', value: '1' });
+            (extraAttrs || []).forEach(function (a) { attrs.push(a); });
             return sem('input', 'form-control', null, { attrs: attrs, bindings: { eo_field: eoField } });
         }
+        // A required field says so before the visitor sends the form: a red
+        // asterisk of its own (a designer can restyle or drop it), and the
+        // first form card opens with a line explaining it.
         function lbl(forId, text, required) {
-            return sem('label', 'form-label small fw-semibold',
-                required ? (text + ' *') : text,
+            var node = sem('label', 'form-label small fw-semibold', text,
                 { attrs: [{ name: 'for', value: forId }] });
+            if (required) {
+                node.children.push(sem('span', 'text-danger ms-1', '*',
+                    { attrs: [{ name: 'aria-hidden', value: 'true' }] }));
+            }
+            return node;
+        }
+        function requiredNote(visibleIf) {
+            return sem('p', 'small text-body-secondary mb-3', _sdT('Fields marked with * are required.'),
+                visibleIf ? { bindings: { eo_visible_if: visibleIf } } : null);
         }
         function fld(colCss, label, eoField, type, placeholder, required, ccRequired) {
             // ccRequired: emits data-pg-cc-required instead of `required` so
@@ -36547,7 +37831,7 @@ const StyleDesigner = (function () {
                                                         }, []),
                                                         sem('div', 'flex-grow-1 min-width-0', [
                                                             sem('p', 'fw-semibold mb-1', _sdT('Sample Product Name'), { bindings: { text: '__item_short_description' } }),
-                                                            sem('p', 'small text-muted mb-0', _sdT('A sample product description — short and clear.'), { bindings: { text: '__item_description' } })
+                                                            sem('p', 'small text-muted mb-0', _sdT('A sample product description — short and clear.'), { bindings: { text: '__item_summary' } })
                                                         ])
                                                     ])
                                                 ]),
@@ -36638,34 +37922,97 @@ const StyleDesigner = (function () {
                         ])
                     ]),
 
-                    // CARD: Billing Information — tax_exempt checkbox at the
-                    // bottom (visibility-bound to site setting). The separate
-                    // "Order Preferences" card no longer exists: opt_in moved
-                    // to the totals card, tax_exempt moved here.
+                    // CARD: Delivery — card-level visibility (has_shipping)
+                    // + inner row visibility (has_single_recipient). For
+                    // multi-recipient orders the address-fields row drops
+                    // and the section binding emits a full per-recipient
+                    // form via the server-rendered shipping section. Comes
+                    // before billing so "my billing address is the same"
+                    // refers to an address the visitor has just written.
+                    sem('div', 'card mb-3 pg-eo-shipping', [
+                        sem('div', 'card-header', [
+                            sem('h2', 'h6 mb-0 fw-semibold', _sdT('Shipping Address'))
+                        ]),
+                        sem('div', 'card-body', [
+                            requiredNote(),
+                            // Address fields — shown ONLY when single recipient
+                            sem('div', '', [
+                                // The member's saved addresses (address book);
+                                // empty for guests.
+                                bind('address_book_shipping', 'mb-3'),
+                                sem('div', 'row', [
+                                    fld('col-12 col-md-6 mb-3', _sdT('First Name'),   'shipping_first_name',  'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdT('Last Name'),    'shipping_last_name',   'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdT('Phone'),        'shipping_phone_number','tel'),
+                                    fld('col-12 col-md-6 mb-3', _sdT('Company'),      'shipping_company',     'text'),
+                                    fld('col-12 col-md-6 mb-3', _sdT('Address 1'),    'shipping_address_1',   'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdT('Address 2'),    'shipping_address_2',   'text'),
+                                    fld('col-12 col-md-6 mb-3', _sdT('City'),         'shipping_city',        'text', '', true),
+                                    sem('div', 'col-12 col-md-6 mb-3', [
+                                        lbl('shipping_country', _sdT('Country'), true),
+                                        sem('select', 'form-select', null, {
+                                            bindings: { eo_field: 'shipping_country' }
+                                        })
+                                    ]),
+                                    fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'shipping_state',    'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),  'shipping_zip_code', 'text', '', true)
+                                ])
+                            ], { bindings: { eo_visible_if: 'has_single_recipient' } }),
+                            // Arrival date + shipping method picker (+ per-
+                            // recipient full address form for multi-recipient).
+                            bind('shipping', 'pg-eo-shipping-extras mt-3')
+                        ])
+                    ], { bindings: { eo_visible_if: 'has_shipping' } }),
+
+                    // CARD: Billing Information — "same as the shipping
+                    // address" hides the name/address block
+                    // (data-pg-eo-billing-address) and the server takes it
+                    // from the recipient; company, e-mail, phone and the tax
+                    // fields stay. tax_exempt checkbox at the bottom
+                    // (visibility-bound to site setting).
                     card(_sdT('Billing Information'), [
+                        requiredNote('has_no_shipping'),
+                        checkRow('billing_same_as_shipping', _sdT('My billing address is the same as my shipping address'), 'mb-3', 'has_single_recipient'),
+                        sem('div', '', [
+                            bind('address_book', 'mb-3'),
+                            sem('div', 'row', [
+                                fld('col-12 col-md-6 mb-3', _sdT('First Name'), 'billing_first_name', 'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdT('Last Name'),  'billing_last_name',  'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdT('Address 1'),  'billing_address_1',  'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdT('Address 2'),  'billing_address_2',  'text'),
+                                fld('col-12 col-md-6 mb-3', _sdT('City'),       'billing_city',       'text', '', true),
+                                sem('div', 'col-12 col-md-6 mb-3', [
+                                    lbl('billing_country', _sdT('Country'), true),
+                                    // Real <select> bound to billing_country.
+                                    // Server injects <option> list (240+ countries)
+                                    // at render time. Designer can swap to a
+                                    // different element while keeping the binding.
+                                    sem('select', 'form-select', null, {
+                                        bindings: { eo_field: 'billing_country' }
+                                    })
+                                ]),
+                                fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'billing_state',    'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),         'billing_zip_code', 'text', '', true)
+                            ])
+                        ], { attrs: [{ name: 'data-pg-eo-billing-address', value: '1' }] }),
                         sem('div', 'row', [
-                            fld('col-12 col-md-3 mb-3', _sdT('Salutation'), 'billing_salutation', 'text', _sdT('Mr/Ms')),
-                            sem('div', 'col-md-9'),
-                            fld('col-12 col-md-6 mb-3', _sdT('First Name'),     'billing_first_name', 'text', '', true),
-                            fld('col-12 col-md-6 mb-3', _sdT('Last Name'),  'billing_last_name',  'text', '', true),
-                            fld('col-12 col-md-6 mb-3', _sdT('Company'), 'billing_company',    'text'),
-                            fld('col-12 col-md-6 mb-3', _sdT('Email'),'billing_email_address', 'email', '', true),
-                            fld('col-12 col-md-6 mb-3', _sdT('Address 1'),'billing_address_1',  'text', '', true),
-                            fld('col-12 col-md-6 mb-3', _sdT('Address 2'),'billing_address_2',  'text'),
-                            fld('col-12 col-md-6 mb-3', _sdT('City'),  'billing_city',       'text', '', true),
+                            fld('col-12 col-md-6 mb-3', _sdT('Email'),   'billing_email_address', 'email', '', true),
+                            fld('col-12 col-md-6 mb-3', _sdT('Phone'),   'billing_phone_number',  'tel', '', true),
+                            fld('col-12 mb-3', _sdT('Company'), 'billing_company', 'text'),
+                            // Identity / tax number and tax office for the
+                            // invoice — contacts.tax_number / tax_office,
+                            // what the ERP and e-document integrations read.
                             sem('div', 'col-12 col-md-6 mb-3', [
-                                lbl('billing_country', _sdT('Country'), true),
-                                // Real <select> bound to billing_country.
-                                // Server injects <option> list (240+ countries)
-                                // at render time. Designer can swap to a
-                                // different element while keeping the binding.
-                                sem('select', 'form-select', null, {
-                                    bindings: { eo_field: 'billing_country' }
-                                })
+                                lbl('tax_number', _sdT('ID or Tax Number')),
+                                input('tax_number', 'text', '', false, false, [
+                                    { name: 'inputmode',    value: 'numeric' },
+                                    { name: 'maxlength',    value: '11' },
+                                    { name: 'pattern',      value: '[0-9]{10,11}' },
+                                    { name: 'autocomplete', value: 'off' }
+                                ]),
+                                sem('div', 'form-text', _sdT('11 digits for a person, 10 for a company.'))
                             ]),
-                            fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'billing_state',        'text', '', true),
-                            fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),  'billing_zip_code',     'text', '', true),
-                            fld('col-12 col-md-6 mb-3', _sdT('Phone'), 'billing_phone_number', 'tel', '', true)
+                            fld('col-12 col-md-6 mb-3', _sdT('Tax Office'), 'tax_office', 'text')
                         ]),
                         // Tax-exempt: only renders when site has both
                         // ECOMMERCE_TAX and ECOMMERCE_TAX_EXEMPT enabled.
@@ -36684,42 +38031,6 @@ const StyleDesigner = (function () {
                         sem('div', 'form-text small text-muted',
                             _sdT('Enter your discount code and click "Apply" — the totals are recalculated.'))
                     ]),
-
-                    // CARD: Delivery — card-level visibility (has_shipping)
-                    // + inner row visibility (has_single_recipient). For
-                    // multi-recipient orders the address-fields row drops
-                    // and the section binding emits a full per-recipient
-                    // form via the server-rendered shipping section.
-                    sem('div', 'card mb-3 pg-eo-shipping', [
-                        sem('div', 'card-header', [
-                            sem('h2', 'h6 mb-0 fw-semibold', _sdT('Shipping Address'))
-                        ]),
-                        sem('div', 'card-body', [
-                            // Address fields row — shown ONLY when single recipient
-                            sem('div', 'row', [
-                                fld('col-12 col-md-3 mb-3', _sdT('Salutation'),  'shipping_salutation',  'text', _sdT('Mr/Ms')),
-                                sem('div', 'col-md-9'),
-                                fld('col-12 col-md-6 mb-3', _sdT('First Name'),         'shipping_first_name',  'text', '', true),
-                                fld('col-12 col-md-6 mb-3', _sdT('Last Name'),      'shipping_last_name',   'text', '', true),
-                                fld('col-12 col-md-6 mb-3', _sdT('Company'),     'shipping_company',     'text'),
-                                fld('col-12 col-md-6 mb-3', _sdT('Phone'),    'shipping_phone_number','tel'),
-                                fld('col-12 col-md-6 mb-3', _sdT('Address 1'),    'shipping_address_1',   'text', '', true),
-                                fld('col-12 col-md-6 mb-3', _sdT('Address 2'),    'shipping_address_2',   'text'),
-                                fld('col-12 col-md-6 mb-3', _sdT('City'),      'shipping_city',        'text', '', true),
-                                sem('div', 'col-12 col-md-6 mb-3', [
-                                    lbl('shipping_country', _sdT('Country'), true),
-                                    sem('select', 'form-select', null, {
-                                        bindings: { eo_field: 'shipping_country' }
-                                    })
-                                ]),
-                                fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'shipping_state',    'text', '', true),
-                                fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),  'shipping_zip_code', 'text', '', true)
-                            ], { bindings: { eo_visible_if: 'has_single_recipient' } }),
-                            // Arrival date + shipping method picker (+ per-
-                            // recipient full address form for multi-recipient).
-                            bind('shipping', 'pg-eo-shipping-extras mt-3')
-                        ])
-                    ], { bindings: { eo_visible_if: 'has_shipping' } }),
 
 
                     // CARD: Payment Method + Card Fields + Installments + Bottom Submit
@@ -37156,8 +38467,10 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+                // py-4: the pagination the server adds under the cards needs
+                // room before whatever follows (on a page, the footer).
                 return createNode('root', {}, [
-                    createNode('container', { fluid: false, cssClass: '' }, [loopArea])
+                    createNode('container', { fluid: false, cssClass: 'py-4' }, [loopArea])
                 ]);
             }
 
@@ -37219,8 +38532,9 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+                // py-4, as for the form list: room under the pagination.
                 return createNode('root', {}, [
-                    createNode('container', { fluid: false, cssClass: '' }, [
+                    createNode('container', { fluid: false, cssClass: 'py-4' }, [
                         // Breadcrumb — semantic <nav> bound to section=breadcrumb.
                         // Backend keeps the wrapper, replaces children with the
                         // breadcrumb HTML at render time. Designer can re-style
@@ -37669,6 +38983,84 @@ const StyleDesigner = (function () {
                             ])
                         ])
                     ])
+                ]);
+            }
+
+            case 'cart_link': {
+                // The way to the cart, for a header or anywhere else: a bag
+                // button whose badge carries the count while the cart has
+                // something in it. The link drops when the site has no cart
+                // page.
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'a', href: '#', customName: _sdT('Cart Button'),
+                        cssClass: 'btn btn-sm btn-outline-secondary position-relative d-inline-flex align-items-center gap-2',
+                        _bindings: { href: '__cart_url' } }, [
+                        createNode('semantic', { tag: 'i', cssClass: 'bi bi-bag', customName: _sdT('Icon'),
+                            _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                        createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', text: _sdT('Shopping Cart'), customName: _sdT('Label') }),
+                        createNode('semantic', { tag: 'span', text: '3', customName: _sdT('Count'),
+                            cssClass: 'position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger',
+                            _bindings: { text: '__cart_count', eo_visible_if: 'cart_has_items' } })
+                    ]),
+                    createNode('loop_area', {}, [])
+                ]);
+            }
+
+            case 'login_region': {
+                // The header's view of the session: one part for a visitor
+                // who is not signed in, one for a member. The server keeps
+                // the part that applies (is_signed_out / is_signed_in) and
+                // drops a link whose page the site does not have; the canvas
+                // draws one part at a time, switched on the widget's band.
+                var lrItem = function (text, token, flag) {
+                    var p = { tag: 'li', cssClass: '', customName: _sdT('Menu Item') };
+                    if (flag) p._bindings = { eo_visible_if: flag };
+                    return createNode('semantic', p, [
+                        createNode('content', { contentType: 'link', text: text, href: '#', cssClass: 'dropdown-item',
+                            _bindings: { href: token } })
+                    ]);
+                };
+                var lrDivider = function () {
+                    return createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Divider') }, [
+                        createNode('semantic', { tag: 'hr', cssClass: 'dropdown-divider', customName: _sdT('Divider Line') })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2', customName: _sdT('Signed Out'),
+                        _bindings: { eo_visible_if: 'is_signed_out' } }, [
+                        createNode('content', { contentType: 'link', text: _sdT('Log In'), href: '#', cssClass: 'btn btn-sm btn-outline-primary',
+                            _bindings: { href: '__login_url' } }),
+                        createNode('content', { contentType: 'link', text: _sdT('Sign Up'), href: '#', cssClass: 'btn btn-sm btn-primary',
+                            _bindings: { href: '__register_url' } })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'dropdown', customName: _sdT('Signed In'),
+                        _bindings: { eo_visible_if: 'is_signed_in' } }, [
+                        createNode('semantic', { tag: 'a', cssClass: 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle',
+                            href: '#', customName: _sdT('Account Button'),
+                            _attrs: [{ name: 'role', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }] }, [
+                            createNode('content', { contentType: 'image', src: 'https://placehold.co/64x64/4f6bed/ffffff?text=JC', alt: _sdT('Jane Cooper'),
+                                cssClass: 'rounded-circle object-fit-cover', width: '32', height: '32',
+                                _bindings: { src: '__user_avatar_url' } }),
+                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold small', text: _sdT('Jane'), customName: _sdT('First Name'),
+                                _bindings: { text: '__user_first_name' } })
+                        ]),
+                        createNode('semantic', { tag: 'ul', cssClass: 'dropdown-menu dropdown-menu-end shadow-sm', customName: _sdT('Account Menu') }, [
+                            createNode('semantic', { tag: 'li', cssClass: 'px-3 py-2', customName: _sdT('Account Summary') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'd-block fw-semibold', text: _sdT('Jane Cooper'), customName: _sdT('Full Name'),
+                                    _bindings: { text: '__user_name' } }),
+                                createNode('semantic', { tag: 'span', cssClass: 'd-block small text-body-secondary', text: _sdT('jane.cooper@example.com'), customName: _sdT('Email'),
+                                    _bindings: { text: '__user_email' } })
+                            ]),
+                            lrDivider(),
+                            lrItem(_sdT('My Account'), '__my_account_url'),
+                            lrItem(_sdT('Edit my profile'), '__profile_url'),
+                            lrItem(_sdT('Staff area'), '__staff_url', 'is_staff'),
+                            lrItem(_sdT('Control panel'), '__panel_url', 'has_panel_access'),
+                            lrDivider(),
+                            lrItem(_sdT('Log out'), '__logout_url')
+                        ])
+                    ]),
+                    createNode('loop_area', {}, [])
                 ]);
             }
 
@@ -38689,6 +40081,50 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'error_page': {
+                // The site's error screen: one block for "not found", one for
+                // every other error; the server keeps the one that applies.
+                // The home link always stays, "back" drops without a
+                // same-site referrer. Mirrors _render_system_widget_error_page().
+                var errLinks = function () {
+                    return createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-center gap-2', customName: _sdT('Links') }, [
+                        createNode('content', { contentType: 'link', text: _sdT('Go to the Home Page'), href: '#', cssClass: 'btn btn-primary',
+                            _bindings: { href: '__home_url' } }),
+                        createNode('content', { contentType: 'link', text: _sdT('Go Back'), href: '#', cssClass: 'btn btn-outline-secondary',
+                            _bindings: { href: '__back_url' } })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('container', { fluid: false, cssClass: 'py-5' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Not Found'),
+                            _bindings: { eo_visible_if: 'is_not_found' } }, [
+                            createNode('content', { contentType: 'paragraph', text: '404', cssClass: 'display-1 fw-bold text-primary mb-2',
+                                _bindings: { text: '__error_code' } }),
+                            createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Page Not Found'), cssClass: 'h2 mb-3' }),
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('The page you are looking for may have been moved, renamed or removed.'),
+                                cssClass: 'lead text-body-secondary mb-2' }),
+                            createNode('content', { contentType: 'paragraph', text: '/old-page', cssClass: 'small text-body-secondary font-monospace mb-4',
+                                _bindings: { text: '__requested_url' } }),
+                            errLinks()
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Other Error'),
+                            _bindings: { eo_visible_if: 'is_other_error' } }, [
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Error Code'),
+                                _bindings: { eo_visible_if: 'has_error_code' } }, [
+                                createNode('content', { contentType: 'paragraph', text: '500', cssClass: 'display-1 fw-bold text-danger mb-2',
+                                    _bindings: { text: '__error_code' } })
+                            ]),
+                            createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Something Went Wrong'), cssClass: 'h2 mb-3' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Sorry, the item could not be found.'),
+                                cssClass: 'lead text-body-secondary mb-4', _bindings: { text: '__error_message' } }),
+                            errLinks()
+                        ]),
+                        createNode('loop_area', {}, [])
+                    ])
+                ]);
+            }
+
             case 'logout': {
                 // Signed in: the server wraps the card in a form posting to
                 // logout.php with the session token, so the button signs out
@@ -39607,7 +41043,11 @@ const StyleDesigner = (function () {
                     // Expand shared component inline for HTML export / client-side preview.
                     var _prId = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
                     var _prCached = _prId > 0 ? _sharedCache[_prId] : null;
-                    if (_prCached && _prCached.tree) {
+                    if (_prCached && _prCached.system_region_config && _sdPreviewWidgetMarkers) {
+                        // A system widget is drawn by the server; the Preview
+                        // puts its answer here (openPreview()).
+                        h += '<!--pg-sw-preview:' + _prId + '-->';
+                    } else if (_prCached && _prCached.tree) {
                         h += proc(_prCached.tree, indent);
                     }
                     break;
@@ -39673,13 +41113,497 @@ const StyleDesigner = (function () {
         return code;
     }
 
+    // ========================= LOOK & COLOUR PALETTE =========================
+    // Settings > Design > Theme. A design built on Bootstrap wears a look
+    // (corners, shadows, lines, type, how buttons and cards behave) and a
+    // colour palette (a primary and a secondary colour), each a stylesheet
+    // (includes/fn/design_themes.php). Nothing is written into the pages: the
+    // choice lives in two hidden inputs the save posts (style_look,
+    // style_palette), and the canvas and the Preview load the same
+    // stylesheets right after Bootstrap, as the published page does.
+    //
+    // The look builder and the palette builder send choices to the server
+    // and try the stylesheet it answers with on the canvas; saving writes it
+    // to the file manager, where every design can pick it.
+    var _sdThemeTry = { look: '', palette: '' };   // builder output being tried on the canvas
+    var _sdThemeTryTimer = { look: 0, palette: 0 };
+    var _sdThemeTrySeq = { look: 0, palette: 0 };
+
+    function _sdThemes() { return (_design && _design.themes) ? _design.themes : null; }
+    function _thAttr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function _sdThemeInput(kind) { return document.getElementById(kind === 'look' ? 'sd-style-look' : 'sd-style-palette'); }
+    function _sdThemeValue(kind) { var el = _sdThemeInput(kind); return el ? el.value : ''; }
+
+    function _sdThemeFind(kind, key) {
+        var th = _sdThemes();
+        if (!th || !key) return null;
+        var lists = (kind === 'look') ? [th.looks, th.customLooks] : [th.palettes, th.customPalettes];
+        for (var i = 0; i < lists.length; i++) {
+            var l = lists[i] || [];
+            for (var j = 0; j < l.length; j++) if (l[j].key === key) return l[j];
+        }
+        return null;
+    }
+
+    // The stylesheets of the current choice, in load order. Twin of
+    // pg_design_theme_assets(); a builder being tried stands in for the
+    // saved choice.
+    function _sdThemeAssets() {
+        var th = _sdThemes();
+        var out = [];
+        if (!th || !_sdUsesBootstrap()) return out;
+        var look = _sdThemeFind('look', _sdThemeValue('look'));
+        var pal  = _sdThemeFind('palette', _sdThemeValue('palette'));
+        var lookCss = _sdThemeTry.look, palCss = _sdThemeTry.palette;
+        if (!look && !pal && !lookCss && !palCss) return out;
+        out.push({ id: 'pg-theme-bridge', url: th.bridge });
+        if (lookCss || look) {
+            out.push({ id: 'pg-theme-base', url: th.base });
+            out.push(lookCss ? { id: 'pg-theme-look', css: lookCss } : { id: 'pg-theme-look', url: look.url });
+        }
+        if (palCss || pal) {
+            out.push(palCss ? { id: 'pg-theme-palette', css: palCss } : { id: 'pg-theme-palette', url: pal.url });
+        }
+        return out;
+    }
+
+    function _sdThemeHeadHtml(indent) {
+        return _sdThemeAssets().map(function (a) {
+            return (indent || '') + (a.css
+                ? '<style id="' + a.id + '">\n' + a.css + '\n</style>'
+                : '<link rel="stylesheet" id="' + a.id + '" href="' + _thAttr(a.url) + '">');
+        }).join('\n');
+    }
+
+    function _sdIsBootstrapCssHref(href) {
+        return /\/bootstrap(\.rtl)?(\.min)?\.css(\?|#|$)/.test(String(href || ''));
+    }
+
+    // Canvas: the theme stylesheets sit right after the last Bootstrap link,
+    // wherever the assets panel has put it. Called on every change of the
+    // choice and after applyAssetsToIframe(), which re-adds the links.
+    function _sdThemeApply(doc) {
+        doc = doc || canvasDoc;
+        if (!doc || !doc.head) return;
+        var want = _sdThemeAssets();
+        var sig = want.map(function (a) { return a.id + '|' + (a.url || ('css:' + a.css.length + ':' + a.css.slice(-80))); }).join(';');
+        var anchor = null;
+        Array.prototype.forEach.call(doc.head.querySelectorAll('link[rel="stylesheet"]'), function (l) {
+            if (!l.hasAttribute('data-pg-theme') && _sdIsBootstrapCssHref(l.getAttribute('href'))) anchor = l;
+        });
+        var existing = Array.prototype.slice.call(doc.head.querySelectorAll('[data-pg-theme]'));
+        var nodes;
+        if (doc._pgThemeSig === sig && existing.length === want.length) {
+            nodes = existing;   // same sheets: only put them back in place
+        } else {
+            existing.forEach(function (n) { n.parentNode.removeChild(n); });
+            nodes = want.map(function (a) {
+                var n;
+                if (a.css) {
+                    n = doc.createElement('style');
+                    n.textContent = a.css;
+                } else {
+                    n = doc.createElement('link');
+                    n.rel = 'stylesheet';
+                    n.href = a.url;
+                }
+                n.id = a.id;
+                n.setAttribute('data-pg-theme', '1');
+                return n;
+            });
+            doc._pgThemeSig = sig;
+        }
+        if (!nodes.length) return;
+        var ref = anchor ? anchor.nextSibling : doc.head.firstChild;
+        nodes.forEach(function (n) { doc.head.insertBefore(n, ref); });
+    }
+
+    // Choosing: the hidden input, the canvas, the cards.
+    function _sdThemeChoose(kind, key) {
+        var el = _sdThemeInput(kind);
+        if (!el) return;
+        el.value = key || '';
+        _sdThemeTry[kind] = '';
+        _sdThemeApply();
+        _sdThemeRender();
+        document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
+    }
+
+    // A small picture of a look on its card: the corner, the shadow, the
+    // outline, the heading and a button, in the palette of the moment.
+    function _sdThemeLookDemo(pv, colors) {
+        pv = pv || {};
+        var shadows = {
+            none:  'none',
+            soft:  '0 4px 10px -3px rgba(16,24,40,.18)',
+            crisp: '0 1px 3px rgba(0,0,0,.18)',
+            glow:  '0 6px 14px -6px ' + colors.primary,
+            hard:  '3px 3px 0 0 #111',
+            deep:  '0 8px 16px -6px rgba(0,0,0,.35)'
+        };
+        var fonts = {
+            sans:    'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+            serif:   '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif',
+            rounded: '"Nunito", ui-rounded, "SF Pro Rounded", system-ui, sans-serif'
+        };
+        var r  = Math.min(pv.radius || 0, 14), br = Math.min(pv.btn_radius || 0, 99);
+        var bw = pv.border == null ? 1 : pv.border;
+        var style = '--th-r:' + r + 'px;--th-br:' + br + 'px;--th-sh:' + (shadows[pv.shadow] || 'none') + ';' +
+                    '--th-bw:' + bw + 'px;--th-bc:' + (pv.shadow === 'hard' ? '#111' : 'rgba(0,0,0,.14)') + ';' +
+                    '--th-hf:' + (fonts[pv.heading] || fonts.sans) + ';--th-hw:' + (pv.weight || 500) + ';' +
+                    '--th-tt:' + (pv.caps ? 'uppercase' : 'none') + ';--th-p:' + colors.primary + ';--th-s:' + colors.secondary + ';' +
+                    '--th-on:' + (colors.on || '#fff');
+        return '<span class="sd-th-demo" style="' + _thAttr(style) + '" aria-hidden="true">' +
+                   '<span class="sd-th-demo-h">Aa</span>' +
+                   '<span class="sd-th-demo-card">' +
+                       '<span class="sd-th-demo-line"></span><span class="sd-th-demo-line sd-th-demo-line-s"></span>' +
+                       '<span class="sd-th-demo-btns"><span class="sd-th-demo-btn">' + esc(_sdT('Button')) + '</span><span class="sd-th-demo-btn sd-th-demo-btn-o"></span></span>' +
+                   '</span>' +
+               '</span>';
+    }
+
+    // The colours the cards are drawn in: the palette chosen (or tried).
+    function _sdThemeColors() {
+        var th = _sdThemes();
+        var pal = _sdThemeFind('palette', _sdThemeValue('palette'));
+        var c = pal ? { primary: pal.primary, secondary: pal.secondary } : (th && th.bootstrap ? th.bootstrap : { primary: '#0d6efd', secondary: '#6c757d' });
+        if (_sdThemeTry.palette && _sdThemeBuilderState.palette) {
+            c = { primary: _sdThemeBuilderState.palette.primary, secondary: _sdThemeBuilderState.palette.secondary };
+        }
+        // Amber-like colours carry dark text (pg_design_palette_css()).
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c.primary || '');
+        if (m) {
+            var lum = function (v) { v = parseInt(v, 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+            var L = 0.2126 * lum(m[1]) + 0.7152 * lum(m[2]) + 0.0722 * lum(m[3]);
+            var cw = 1.05 / (L + 0.05), ci = (L + 0.05) / (0.0116 + 0.05);
+            c.on = (cw >= 4.5 || cw >= ci) ? '#fff' : '#111827';
+        }
+        return c;
+    }
+
+    // The builders' working state, kept while the settings are redrawn.
+    var _sdThemeBuilderState = { look: null, palette: null };
+
+    function _sdThemeRender() {
+        var host = document.getElementById('sd-theme-picker');
+        if (!host) return;
+        var th = _sdThemes();
+        if (!th) { host.innerHTML = ''; return; }
+        if (!_sdUsesBootstrap()) {
+            host.innerHTML = '<p class="form-text small mb-0">' + esc(_sdT('This design is built without a framework. Looks and colour palettes dress the Bootstrap components, so they are not offered here.')) + '</p>';
+            return;
+        }
+        var look = _sdThemeValue('look'), pal = _sdThemeValue('palette');
+        var colors = _sdThemeColors();
+        var h = '';
+        if (!th.ready) {
+            h += '<div class="sd-th-warn"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                 esc(_sdT('The database has not been updated yet: you can try a look and a palette on the canvas, but the choice is saved once the 2026.4.5 update has run.')) + '</div>';
+        }
+
+        // ── Look ──
+        h += '<div class="sd-th-sec">' +
+                '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Look')) + '</span>' +
+                '<span class="sd-th-sub">' + esc(_sdT('Corners, shadows, lines, type and how buttons and cards behave.')) + '</span></div>' +
+                '<div class="sd-th-looks" role="radiogroup" aria-label="' + _thAttr(_sdT('Look')) + '">';
+        var lookCard = function (key, name, desc, pv, extra) {
+            var on = (look === key) && !_sdThemeTry.look;
+            return '<button type="button" class="sd-th-look' + (on ? ' is-on' : '') + (extra || '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '" data-th-look="' + _thAttr(key) + '">' +
+                       _sdThemeLookDemo(pv, colors) +
+                       '<span class="sd-th-look-name">' + esc(name) + (on ? '<span class="bi bi-check-circle-fill sd-th-check" aria-hidden="true"></span>' : '') + '</span>' +
+                       (desc ? '<span class="sd-th-look-desc">' + esc(desc) + '</span>' : '') +
+                   '</button>';
+        };
+        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500 });
+        (th.looks || []).forEach(function (l) { h += lookCard(l.key, l.name, l.description, l.preview); });
+        (th.customLooks || []).forEach(function (l) {
+            var base = _sdThemeFind('look', l.base);
+            h += lookCard(l.key, l.name, _sdT('Custom look, based on {var}', base ? base.name : '—'), base ? base.preview : null, ' is-custom');
+        });
+        var buildingLook = !!_sdThemeBuilderState.look;
+        h += '<button type="button" class="sd-th-look sd-th-new' + (buildingLook ? ' is-on' : '') + '" data-th-act="look-new">' +
+                 '<span class="sd-th-new-icon bi bi-sliders" aria-hidden="true"></span>' +
+                 '<span class="sd-th-look-name">' + esc(_sdT('Make your own look')) + '</span>' +
+                 '<span class="sd-th-look-desc">' + esc(_sdT('Start from a look and change what you like.')) + '</span>' +
+             '</button>';
+        h += '</div>';
+        if (buildingLook) h += _sdThemeLookBuilderHtml();
+        h += '</div>';
+
+        // ── Palette ──
+        h += '<div class="sd-th-sec">' +
+                '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Colour palette')) + '</span>' +
+                '<span class="sd-th-sub">' + esc(_sdT('A main colour and a second colour, worked out into every shade, in light and dark mode.')) + '</span></div>' +
+                '<div class="sd-th-pals" role="radiogroup" aria-label="' + _thAttr(_sdT('Colour palette')) + '">';
+        var palChip = function (key, name, p, s, extra) {
+            var on = (pal === key) && !_sdThemeTry.palette;
+            return '<button type="button" class="sd-th-pal' + (on ? ' is-on' : '') + (extra || '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '" data-th-pal="' + _thAttr(key) + '" title="' + _thAttr(name + ' · ' + p + ' / ' + s) + '">' +
+                       '<span class="sd-th-sw" aria-hidden="true"><i style="background:' + _thAttr(p) + '"></i><i style="background:' + _thAttr(s) + '"></i></span>' +
+                       '<span class="sd-th-pal-name">' + esc(name) + '</span>' +
+                   '</button>';
+        };
+        h += palChip('', _sdT('Bootstrap'), th.bootstrap.primary, th.bootstrap.secondary);
+        (th.palettes || []).forEach(function (p) { h += palChip(p.key, p.name, p.primary, p.secondary); });
+        (th.customPalettes || []).forEach(function (p) { h += palChip(p.key, p.name, p.primary, p.secondary, ' is-custom'); });
+        var buildingPal = !!_sdThemeBuilderState.palette;
+        h += '<button type="button" class="sd-th-pal sd-th-new' + (buildingPal ? ' is-on' : '') + '" data-th-act="pal-new">' +
+                 '<span class="sd-th-sw sd-th-sw-new bi bi-plus-lg" aria-hidden="true"></span>' +
+                 '<span class="sd-th-pal-name">' + esc(_sdT('Your colours')) + '</span>' +
+             '</button>';
+        h += '</div>';
+        if (buildingPal) h += _sdThemePaletteBuilderHtml();
+        h += '</div>';
+
+        h += '<p class="sd-th-note"><span class="bi bi-info-circle me-1"></span>' +
+             esc(_sdT('The look and the palette apply to every page of the design and never change the pages themselves: switch as often as you like. The site shows the choice after you publish.')) + '</p>';
+        host.innerHTML = h;
+        _sdThemeBind(host);
+    }
+
+    function _sdThemeLookBuilderHtml() {
+        var th = _sdThemes();
+        var st = _sdThemeBuilderState.look;
+        var h = '<div class="sd-th-builder">' +
+                    '<div class="sd-th-builder-title"><span class="bi bi-sliders me-1"></span>' + esc(_sdT('Your own look')) + '</div>' +
+                    '<div class="sd-th-grid">' +
+                        '<label class="sd-th-field"><span>' + esc(_sdT('Start from')) + '</span><select class="form-select form-select-sm" data-th-lb="base">';
+        (th.looks || []).forEach(function (l) {
+            h += '<option value="' + _thAttr(l.key) + '"' + (st.base === l.key ? ' selected' : '') + '>' + esc(l.name) + '</option>';
+        });
+        h += '</select></label>';
+        var ctl = th.lookControls || {};
+        Object.keys(ctl).forEach(function (k) {
+            var def = ctl[k];
+            h += '<label class="sd-th-field"><span>' + esc(def.label) + '</span><select class="form-select form-select-sm" data-th-lb-ctl="' + _thAttr(k) + '">' +
+                     '<option value="">' + esc(_sdT('As in the look')) + '</option>';
+            Object.keys(def.options || {}).forEach(function (o) {
+                h += '<option value="' + _thAttr(o) + '"' + (st.controls[k] === o ? ' selected' : '') + '>' + esc(def.options[o].label) + '</option>';
+            });
+            h += '</select></label>';
+        });
+        h +=        '</div>' +
+                    '<label class="sd-th-field sd-th-field-wide"><span>' + esc(_sdT('Name')) + '</span>' +
+                        '<input type="text" class="form-control form-control-sm" maxlength="60" data-th-lb="name" value="' + _thAttr(st.name) + '" placeholder="' + _thAttr(_sdT('For example: Our look')) + '"></label>' +
+                    '<div class="sd-th-actions">' +
+                        '<span class="sd-th-status" data-th-lb="status">' + esc(_sdT('The canvas shows the look as you change it.')) + '</span>' +
+                        '<button type="button" class="btn btn-sm btn-outline-light" data-th-act="look-cancel">' + esc(_sdT('Cancel')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-primary" data-th-act="look-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the look')) + '</button>' +
+                    '</div>' +
+                '</div>';
+        return h;
+    }
+
+    function _sdThemePaletteBuilderHtml() {
+        var st = _sdThemeBuilderState.palette;
+        var sw = function (key, label) {
+            return '<label class="sd-th-field"><span>' + esc(label) + '</span>' +
+                       '<span class="sd-th-color">' +
+                           '<input type="color" value="' + _thAttr(st[key]) + '" data-th-pb="' + key + '" aria-label="' + _thAttr(label) + '">' +
+                           '<input type="text" class="form-control form-control-sm" maxlength="7" value="' + _thAttr(st[key]) + '" data-th-pb-hex="' + key + '" spellcheck="false">' +
+                       '</span></label>';
+        };
+        return '<div class="sd-th-builder">' +
+                   '<div class="sd-th-builder-title"><span class="bi bi-palette me-1"></span>' + esc(_sdT('Your colours')) + '</div>' +
+                   '<div class="sd-th-grid">' + sw('primary', _sdT('Main colour')) + sw('secondary', _sdT('Second colour')) + '</div>' +
+                   '<p class="sd-th-hint">' + esc(_sdT('Buttons, links and highlights take the main colour; secondary buttons and badges the second. Text on them turns dark by itself where white would not read.')) + '</p>' +
+                   '<label class="sd-th-field sd-th-field-wide"><span>' + esc(_sdT('Name')) + '</span>' +
+                       '<input type="text" class="form-control form-control-sm" maxlength="60" data-th-pb="name" value="' + _thAttr(st.name) + '" placeholder="' + _thAttr(_sdT('For example: Brand colours')) + '"></label>' +
+                   '<div class="sd-th-actions">' +
+                       '<span class="sd-th-status" data-th-pb="status"></span>' +
+                       '<button type="button" class="btn btn-sm btn-outline-light" data-th-act="pal-cancel">' + esc(_sdT('Cancel')) + '</button>' +
+                       '<button type="button" class="btn btn-sm btn-primary" data-th-act="pal-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the palette')) + '</button>' +
+                   '</div>' +
+               '</div>';
+    }
+
+    // Asks the server for the builder's stylesheet and tries it on the canvas.
+    function _sdThemeTryBuilder(kind) {
+        clearTimeout(_sdThemeTryTimer[kind]);
+        _sdThemeTryTimer[kind] = setTimeout(function () {
+            var st = _sdThemeBuilderState[kind];
+            if (!st) return;
+            var seq = ++_sdThemeTrySeq[kind];
+            var req = (kind === 'look')
+                ? _pgApiPost('theme_look_css', { base: st.base, controls: st.controls, name: st.name })
+                : _pgApiPost('theme_palette_css', { primary: st.primary, secondary: st.secondary, name: st.name });
+            req.then(function (res) {
+                if (seq !== _sdThemeTrySeq[kind] || !_sdThemeBuilderState[kind]) return;
+                if (!res || res.status !== 'success') {
+                    var s = document.querySelector('[data-th-' + (kind === 'look' ? 'lb' : 'pb') + '="status"]');
+                    if (s) s.textContent = (res && res.message) ? res.message : _sdT('Network error.');
+                    return;
+                }
+                _sdThemeTry[kind] = res.css || '';
+                _sdThemeApply();
+                if (kind === 'palette') _sdThemeRefreshDemos();
+            }).catch(function () {});
+        }, kind === 'look' ? 300 : 200);
+    }
+
+    // The look cards follow the colours being tried without a full redraw
+    // (a redraw would take the focus out of the colour field).
+    function _sdThemeRefreshDemos() {
+        var c = _sdThemeColors();
+        document.querySelectorAll('#sd-theme-picker .sd-th-demo').forEach(function (d) {
+            d.style.setProperty('--th-p', c.primary);
+            d.style.setProperty('--th-s', c.secondary);
+            d.style.setProperty('--th-on', c.on || '#fff');
+        });
+    }
+
+    function _sdThemeBind(host) {
+        host.querySelectorAll('[data-th-look]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                _sdThemeBuilderState.look = null;
+                _sdThemeChoose('look', b.getAttribute('data-th-look'));
+            });
+        });
+        host.querySelectorAll('[data-th-pal]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                _sdThemeBuilderState.palette = null;
+                _sdThemeChoose('palette', b.getAttribute('data-th-pal'));
+            });
+        });
+        host.querySelectorAll('[data-th-act]').forEach(function (b) {
+            b.addEventListener('click', function () { _sdThemeAction(b.getAttribute('data-th-act'), b); });
+        });
+        // Look builder
+        var lbBase = host.querySelector('[data-th-lb="base"]');
+        if (lbBase) lbBase.addEventListener('change', function () { _sdThemeBuilderState.look.base = lbBase.value; _sdThemeTryBuilder('look'); });
+        host.querySelectorAll('[data-th-lb-ctl]').forEach(function (s) {
+            s.addEventListener('change', function () {
+                var k = s.getAttribute('data-th-lb-ctl');
+                if (s.value) _sdThemeBuilderState.look.controls[k] = s.value;
+                else delete _sdThemeBuilderState.look.controls[k];
+                _sdThemeTryBuilder('look');
+            });
+        });
+        var lbName = host.querySelector('[data-th-lb="name"]');
+        if (lbName) lbName.addEventListener('input', function () { _sdThemeBuilderState.look.name = lbName.value; });
+        // Palette builder
+        ['primary', 'secondary'].forEach(function (k) {
+            var picker = host.querySelector('[data-th-pb="' + k + '"]');
+            var hex = host.querySelector('[data-th-pb-hex="' + k + '"]');
+            if (!picker || !hex) return;
+            picker.addEventListener('input', function () {
+                hex.value = picker.value;
+                _sdThemeBuilderState.palette[k] = picker.value;
+                _sdThemeTryBuilder('palette');
+            });
+            hex.addEventListener('input', function () {
+                var v = hex.value.trim();
+                if (v && v.charAt(0) !== '#') v = '#' + v;
+                if (!/^#[0-9a-f]{6}$/i.test(v)) return;
+                picker.value = v.toLowerCase();
+                _sdThemeBuilderState.palette[k] = v.toLowerCase();
+                _sdThemeTryBuilder('palette');
+            });
+        });
+        var pbName = host.querySelector('[data-th-pb="name"]');
+        if (pbName) pbName.addEventListener('input', function () { _sdThemeBuilderState.palette.name = pbName.value; });
+    }
+
+    function _sdThemeAction(act, btn) {
+        var th = _sdThemes();
+        if (act === 'look-new') {
+            var cur = _sdThemeFind('look', _sdThemeValue('look'));
+            var base = (cur && cur.base) ? cur.base : ((cur && !/^file-/.test(cur.key)) ? cur.key : (th.defaultLook || 'modern-soft'));
+            var controls = (cur && cur.controls && typeof cur.controls === 'object') ? JSON.parse(JSON.stringify(cur.controls)) : {};
+            _sdThemeBuilderState.look = { base: base, controls: controls, name: '' };
+            _sdThemeRender();
+            _sdThemeTryBuilder('look');
+        } else if (act === 'look-cancel') {
+            _sdThemeBuilderState.look = null;
+            _sdThemeTry.look = '';
+            _sdThemeApply();
+            _sdThemeRender();
+        } else if (act === 'look-save') {
+            var st = _sdThemeBuilderState.look;
+            if (!st.name || !st.name.trim()) {
+                sdToast(_sdT('Give the look a name first.'), 'warning', 3500);
+                var n = document.querySelector('[data-th-lb="name"]');
+                if (n) n.focus();
+                return;
+            }
+            btn.disabled = true;
+            _pgApiPost('theme_look_save', { base: st.base, controls: st.controls, name: st.name.trim() }).then(function (res) {
+                btn.disabled = false;
+                if (!res || res.status !== 'success') {
+                    sdToast((res && res.message) ? res.message : _sdT('The look could not be saved.'), 'error', 6000);
+                    return;
+                }
+                th.customLooks = th.customLooks || [];
+                th.customLooks.push({ key: res.key, name: res.name, url: res.url, base: res.base, controls: res.controls || {} });
+                _sdThemeBuilderState.look = null;
+                _sdThemeChoose('look', res.key);
+                sdToast('<strong>' + esc(res.name) + '</strong> ' + esc(_sdT('was saved to the file manager and chosen for this design. Publish to show it on the site.')), 'success', 7000);
+            }).catch(function () { btn.disabled = false; sdToast(_sdT('Network error.'), 'error'); });
+        } else if (act === 'pal-new') {
+            var c = _sdThemeColors();
+            _sdThemeBuilderState.palette = { primary: (c.primary || '#0d6efd').toLowerCase(), secondary: (c.secondary || '#6c757d').toLowerCase(), name: '' };
+            _sdThemeRender();
+            _sdThemeTryBuilder('palette');
+        } else if (act === 'pal-cancel') {
+            _sdThemeBuilderState.palette = null;
+            _sdThemeTry.palette = '';
+            _sdThemeApply();
+            _sdThemeRender();
+        } else if (act === 'pal-save') {
+            var ps = _sdThemeBuilderState.palette;
+            if (!ps.name || !ps.name.trim()) {
+                sdToast(_sdT('Give the palette a name first.'), 'warning', 3500);
+                var pn = document.querySelector('[data-th-pb="name"]');
+                if (pn) pn.focus();
+                return;
+            }
+            btn.disabled = true;
+            _pgApiPost('theme_palette_save', { primary: ps.primary, secondary: ps.secondary, name: ps.name.trim() }).then(function (res) {
+                btn.disabled = false;
+                if (!res || res.status !== 'success') {
+                    sdToast((res && res.message) ? res.message : _sdT('The palette could not be saved.'), 'error', 6000);
+                    return;
+                }
+                th.customPalettes = th.customPalettes || [];
+                th.customPalettes.push({ key: res.key, name: res.name, url: res.url, primary: res.primary, secondary: res.secondary });
+                _sdThemeBuilderState.palette = null;
+                _sdThemeChoose('palette', res.key);
+                sdToast('<strong>' + esc(res.name) + '</strong> ' + esc(_sdT('was saved to the file manager and chosen for this design. Publish to show it on the site.')), 'success', 7000);
+            }).catch(function () { btn.disabled = false; sdToast(_sdT('Network error.'), 'error'); });
+        }
+    }
+
+    // Opens Settings > Design at the Theme group.
+    function _sdOpenThemeSettings() {
+        var modalEl = document.getElementById('styleSettingsModal');
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+        var tabBtn = document.getElementById('tab-style-btn');
+        if (tabBtn && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        setTimeout(function () {
+            var g = document.getElementById('sd-theme-settings');
+            if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }, 350);
+    }
+
     // ========================= PREVIEW =========================
-    function openPreview() {
+    // The Preview is a blob page: it cannot run a system widget, so the
+    // server draws them (api.php designer/preview_widgets) from the trees and
+    // settings the editor holds now, inside the page once it has been saved,
+    // and their HTML takes the place of the markers generateHTML() leaves.
+    var _sdPreviewWidgetMarkers = false;
+
+    function _sdPreviewDocHtml(widgetHtml) {
         var nameEl = document.querySelector('[name="name"]');
         var bcEl   = document.querySelector('[name="additional_body_classes"]');
         var styleName = nameEl ? nameEl.value.trim() : '';
         var addBc     = bcEl   ? bcEl.value.trim()   : '';
-        var html = generateHTML(styleName, addBc);
+        _sdPreviewWidgetMarkers = true;
+        var html;
+        try { html = generateHTML(styleName, addBc); } finally { _sdPreviewWidgetMarkers = false; }
+        if (widgetHtml === undefined) return html;
+        html = html.replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
+            return (widgetHtml && widgetHtml[id] != null) ? String(widgetHtml[id]) : '';
+        });
 
         // Mirror the editor's current canvas theme (light/dark) into the
         // preview window. The user expects "preview shows what I'm seeing
@@ -39722,9 +41646,15 @@ const StyleDesigner = (function () {
         html = html.replace('<meta_tags></meta_tags>', _metaHtml.trim());
 
         // Replace <stylesheet> placeholder with Bootstrap 5 + BI CDN
+        var _pvFw = _sdFrameworkInfo();
+        // The look and the palette follow the last Bootstrap link: the
+        // framework's here, or the assets panel's Bootstrap row below.
+        var _pvTheme = _sdThemeHeadHtml('        ');
+        var _pvThemeDone = false;
         html = html.replace('<stylesheet></stylesheet>',
-            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">\n' +
-            '        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">');
+            (_pvFw.css ? '<link rel="stylesheet" href="' + esc(_pvFw.css) + '">\n        ' : '') +
+            '<!--pg-theme-slot-->' +
+            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">');
 
         // Replace Pinegrap region tags with visible placeholders
         var _rph = function(label) {
@@ -39767,10 +41697,12 @@ const StyleDesigner = (function () {
             }
             if (f.type === 'external-css') {
                 if (f.content && f.content.trim()) _pvExtCss += '    <link rel="stylesheet" href="' + f.content.trim() + '">\n';
+                if (_pvTheme && _sdIsBootstrapCssHref(f.content)) { _pvExtCss += _pvTheme + '\n'; _pvThemeDone = true; }
             } else {
                 if (f.content) _pvInlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + f.content + '\n';
             }
         });
+        html = html.replace('<!--pg-theme-slot-->', (_pvTheme && !_pvThemeDone) ? _pvTheme + '\n        ' : '');
         // No automatic body-overlay for enabled Google Fonts. Loading a
         // font (the <link> emitted above) only makes the typeface
         // available — applying it is the user's call (Options panel font
@@ -39812,19 +41744,64 @@ const StyleDesigner = (function () {
         }
         html = html.replace('</body>',
             _pvJsInject +
-            '    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>\n' +
-            '    <script>document.addEventListener("DOMContentLoaded",function(){' +
-            'document.querySelectorAll(\'[data-bs-toggle="tooltip"]\').forEach(function(el){' +
-            'try{new bootstrap.Tooltip(el);}catch(e){}});' +
-            'document.querySelectorAll(\'[data-bs-toggle="popover"]\').forEach(function(el){' +
-            'try{new bootstrap.Popover(el);}catch(e){}});});</script>\n</body>');
+            (_pvFw.js
+                ? '    <script src="' + esc(_pvFw.js) + '"></script>\n' +
+                  '    <script>document.addEventListener("DOMContentLoaded",function(){' +
+                  'document.querySelectorAll(\'[data-bs-toggle="tooltip"]\').forEach(function(el){' +
+                  'try{new bootstrap.Tooltip(el);}catch(e){}});' +
+                  'document.querySelectorAll(\'[data-bs-toggle="popover"]\').forEach(function(el){' +
+                  'try{new bootstrap.Popover(el);}catch(e){}});});</script>\n'
+                : '') +
+            '</body>');
 
+        return html;
+    }
+
+    function _sdShowPreview(html, w) {
         var blob = new Blob([html], { type: 'text/html' });
         var url  = URL.createObjectURL(blob);
-        var w = window.open(url, 'pinegrap_preview', 'width=1400,height=900,resizable=yes,scrollbars=yes');
+        if (w && !w.closed) {
+            w.location.href = url;
+        } else {
+            w = window.open(url, 'pinegrap_preview', 'width=1400,height=900,resizable=yes,scrollbars=yes');
+        }
         // Revoke blob URL after the window has had time to load it
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
         if (!w) alert(_sdT('A pop-up blocker may be on. Please allow pop-ups for this site.'));
+    }
+
+    function openPreview() {
+        var ids = [];
+        _sdPreviewDocHtml().replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
+            if (ids.indexOf(id) === -1) ids.push(id);
+            return m;
+        });
+        if (!ids.length) { _sdShowPreview(_sdPreviewDocHtml(null)); return; }
+
+        // The window opens now, inside the click - one opened when the
+        // widgets arrive would meet the pop-up blocker - and waits for them.
+        var w = window.open('', 'pinegrap_preview', 'width=1400,height=900,resizable=yes,scrollbars=yes');
+        if (!w) { alert(_sdT('A pop-up blocker may be on. Please allow pop-ups for this site.')); return; }
+        try {
+            w.document.open();
+            w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(_sdT('Preview')) + '</title></head>' +
+                '<body style="margin:0;height:100vh;display:grid;place-items:center;font:14px system-ui,sans-serif;color:#6c757d">' +
+                esc(_sdT('Drawing the system widgets…')) + '</body></html>');
+            w.document.close();
+        } catch (e) {}
+
+        var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        var widgets = ids.map(function (id) {
+            var c = _sharedCache[id] || {};
+            return { id: parseInt(id, 10), tree_json: c.tree ? JSON.stringify(c.tree) : '', system_region_config: c.system_region_config || '' };
+        });
+        _pgApiPost('preview_widgets', { page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0, widgets: widgets })
+            .then(function (res) {
+                _sdShowPreview(_sdPreviewDocHtml((res && res.status === 'success' && res.html) ? res.html : {}), w);
+            })
+            .catch(function () {
+                _sdShowPreview(_sdPreviewDocHtml({}), w);
+            });
     }
 
     // ========================= AUTOSAVE =========================
@@ -40433,7 +42410,7 @@ const StyleDesigner = (function () {
         if (!vr.ok) {
             var errLines = '';
             for (var _ei = 0; _ei < vr.errors.length; _ei++) errLines += '&bull; ' + vr.errors[_ei] + '<br>';
-            sdToast('<strong>' + esc(_sdT('Save blocked:')) + '</strong><br>' + errLines, 'error');
+            sdToast('<strong>' + esc(_sdT('Publishing blocked:')) + '</strong><br>' + errLines, 'error');
             return false; // caller must honour this to prevent form submission
         }
 
@@ -40593,7 +42570,7 @@ const StyleDesigner = (function () {
         .then(function (res) {
             if (btn) { btn.disabled = false; btn.classList.remove('sd-saving'); }
             if (res.data && res.data.status === 'success') {
-                sdToast(esc(_sdT('Saved')) + ' <span class="bi bi-check2"></span>', 'success', 2500);
+                sdToast(esc(_sdT('Published — the changes are live.')) + ' <span class="bi bi-check2"></span>', 'success', 2500);
                 // Update last-modified statusbar label without a full page reload
                 var _lmLabel = document.getElementById('sd-last-modified-label');
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {
@@ -40619,12 +42596,12 @@ const StyleDesigner = (function () {
             }
             var msg = (res.data && res.data.message)
                         ? res.data.message
-                        : (res.ok ? _sdT('The save failed.') : _sdT('Server error ({var}).', res.status));
-            sdToast('<strong>' + esc(_sdT('It could not be saved:')) + '</strong><br>' + esc(msg), 'error', 5000);
+                        : (res.ok ? _sdT('Publishing failed.') : _sdT('Server error ({var}).', res.status));
+            sdToast('<strong>' + esc(_sdT('It could not be published:')) + '</strong><br>' + esc(msg), 'error', 5000);
         })
         .catch(function () {
             if (btn) { btn.disabled = false; btn.classList.remove('sd-saving'); }
-            sdToast(_sdT('Network error — the changes could not be saved.'), 'error', 5000);
+            sdToast(_sdT('Network error — the changes could not be published.'), 'error', 5000);
         });
     }
 
@@ -40644,11 +42621,14 @@ const StyleDesigner = (function () {
         'page_name', 'page_folder', 'page_title', 'page_meta_description',
         'page_search', 'page_search_keywords', 'page_sitemap', 'page_home',
         'page_noindex', 'page_nofollow',
-        'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating'
+        'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
+        'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
+        'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'
     ];
     var _PG_BOOL_FIELDS = {
         page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1,
-        pg_comments: 1, pg_comments_allow_new: 1, pg_comments_rating: 1
+        pg_comments: 1, pg_comments_allow_new: 1, pg_comments_rating: 1,
+        pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1
     };
     var _pgNewTabSeq = 0;
 
@@ -40693,7 +42673,8 @@ const StyleDesigner = (function () {
         if (!f) return '';
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
-                     'style_custom_css', 'style_custom_js', 'style_custom_fonts'];
+                     'style_custom_css', 'style_custom_js', 'style_custom_fonts',
+                     'style_look', 'style_palette'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');
@@ -40722,7 +42703,9 @@ const StyleDesigner = (function () {
             else if (k === 'page_folder') p[k] = parseInt(el.value, 10) || 0;
             else p[k] = el.value;
         });
-        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating'].forEach(function (k) {
+        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
+         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
+         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'].forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             p[k] = _PG_BOOL_FIELDS[k] ? ((el.value === '1') ? 1 : 0) : el.value;
@@ -40753,7 +42736,9 @@ const StyleDesigner = (function () {
                 if (document.body.contains(el)) tagin(el);
             }
         });
-        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating'].forEach(function (k) {
+        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
+         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
+         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'].forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
@@ -41031,7 +43016,7 @@ const StyleDesigner = (function () {
         _pgTabsSwitch(p.key);
         // The name is typed on the tab itself.
         _pgTabsRename(p.key);
-        sdToast(_sdT('New page added — give it a name, then save.'), 'info', 3500);
+        sdToast(_sdT('New page added — give it a name, then publish.'), 'info', 3500);
     }
 
     // Duplicate the ACTIVE PAGE into a new tab of the same design. The
@@ -41061,6 +43046,10 @@ const StyleDesigner = (function () {
             page_noindex: src.page_noindex, page_nofollow: src.page_nofollow,
             pg_comments: src.pg_comments, pg_comments_label: src.pg_comments_label,
             pg_comments_allow_new: src.pg_comments_allow_new, pg_comments_rating: src.pg_comments_rating,
+            pg_comments_auto_publish: src.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: src.pg_comments_show_date ? 1 : 0,
+            pg_comments_login: src.pg_comments_login ? 1 : 0,
+            pg_comments_email_page: src.pg_comments_email_page || 0, pg_comments_email_subject: src.pg_comments_email_subject || '',
+            pg_comments_notify_email: src.pg_comments_notify_email || '',
             tree: cloneTree(_pgTreeOf(src) || createDefaultTree()),
             undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false,
             // The form settings come along. The fields do not need to: they
@@ -42018,7 +44007,7 @@ const StyleDesigner = (function () {
                     '<strong>' + esc(who) + '</strong>' +
                     esc(_sdT('.')) +
                   '</p>' +
-                  '<p class="mb-2">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Save is off for this page.')) + '</p>' +
+                  '<p class="mb-2">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
                   '<p class="mb-0 text-muted">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
         }
         try { bootstrap.Modal.getOrCreateInstance(el).show(); } catch (e) {}
@@ -42095,6 +44084,10 @@ const StyleDesigner = (function () {
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
             pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
             pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
+            pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
+            pg_comments_login: sp.pg_comments_login ? 1 : 0,
+            pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
+            pg_comments_notify_email: sp.pg_comments_notify_email || '',
             tree: sp.tree || createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0,
             baseline: '__attached__',   // never equal → stays dirty until saved
             treeLoadWarning: false,
@@ -42230,10 +44223,262 @@ const StyleDesigner = (function () {
             if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
             if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
             var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)');
-            sdToast('<strong>' + esc(_sdT('Imported:')) + '</strong> ' + esc(summary) + '<br>' + esc(_sdT('Review the tabs, then save.')), 'success', 7000);
+            sdToast('<strong>' + esc(_sdT('Imported:')) + '</strong> ' + esc(summary) + '<br>' + esc(_sdT('Review the tabs, then publish.')), 'success', 7000);
             if (Array.isArray(d.warnings) && d.warnings.length) {
                 sdToast('<strong>' + esc(_sdT('Notes')) + '</strong><br>' + d.warnings.slice(0, 8).map(esc).join('<br>') + (d.warnings.length > 8 ? '<br>…' : ''), 'warning', 12000);
             }
+    }
+
+    /* =====================================================================
+     * TEMPLATES
+     * ---------------------------------------------------------------------
+     * add_system_style.php?start=template&template=<id> opens the editor with
+     * sdDesign.template set. The pages come from designer/template_prepare
+     * (pg_design_template_prepare()): unique names, links between them, and
+     * the rows of the system widgets they place. They open as unsaved tabs;
+     * the design and its pages are created by Publish, like any new design.
+     * ===================================================================== */
+
+    // The "your design is being prepared" curtain. Steps are ticked off as
+    // the work gets done; each step stays on screen long enough to be read,
+    // so a fast server does not turn the curtain into a flash.
+    function _pgTemplateCurtain(tpl) {
+        var labels = [_sdT('Preparing the pages'), _sdT('Setting up the system widgets'), _sdT('Opening the tabs')];
+        var el = document.createElement('div');
+        el.className = 'sd-tpl-prep';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-modal', 'true');
+        el.setAttribute('aria-labelledby', 'sd-tpl-prep-title');
+        el.innerHTML =
+            '<div class="sd-tpl-prep-card">' +
+                '<div class="sd-tpl-prep-icon"><span class="bi bi-magic" aria-hidden="true"></span></div>' +
+                '<h2 class="sd-tpl-prep-title" id="sd-tpl-prep-title">' + esc(_sdT('Preparing your design…')) + '</h2>' +
+                '<p class="sd-tpl-prep-sub">' + esc(tpl.name || '') + (tpl.version ? ' · v' + esc(tpl.version) : '') + '</p>' +
+                '<progress class="sd-tpl-prep-bar" max="' + labels.length + '" value="0" aria-label="' + esc(_sdT('Preparing your design…')) + '"></progress>' +
+                '<ol class="sd-tpl-prep-steps" aria-live="polite">' +
+                    labels.map(function (l, i) {
+                        return '<li data-step="' + i + '"><span class="sd-tpl-prep-mark" aria-hidden="true"></span><span>' + esc(l) + '</span></li>';
+                    }).join('') +
+                '</ol>' +
+                '<div class="sd-tpl-prep-error" hidden></div>' +
+            '</div>';
+        document.body.appendChild(el);
+        var bar = el.querySelector('.sd-tpl-prep-bar');
+        var mark = function (i, state) {
+            var li = el.querySelector('li[data-step="' + i + '"]');
+            if (!li) return;
+            li.classList.remove('is-active', 'is-done');
+            if (state) li.classList.add(state);
+        };
+        mark(0, 'is-active');
+        return {
+            step: function (i) {
+                for (var k = 0; k < labels.length; k++) mark(k, k < i ? 'is-done' : (k === i ? 'is-active' : ''));
+                if (bar) bar.value = i;
+            },
+            done: function () {
+                for (var k = 0; k < labels.length; k++) mark(k, 'is-done');
+                if (bar) bar.value = labels.length;
+                setTimeout(function () {
+                    el.classList.add('is-leaving');
+                    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+                }, 350);
+            },
+            fail: function (message) {
+                el.classList.add('is-failed');
+                var box = el.querySelector('.sd-tpl-prep-error');
+                var back = (_design && _design.exitUrl) ? _design.exitUrl : 'view_system_styles.php';
+                box.innerHTML =
+                    '<p>' + esc(message || _sdT('The template could not be opened.')) + '</p>' +
+                    '<div class="sd-tpl-prep-actions">' +
+                        '<a class="btn btn-sm btn-outline-light" href="' + esc(back) + '">' + esc(_sdT('Back to the designs')) + '</a>' +
+                        '<button type="button" class="btn btn-sm btn-primary" data-sd-tpl-blank>' + esc(_sdT('Start with a blank page')) + '</button>' +
+                    '</div>';
+                box.hidden = false;
+                var blank = box.querySelector('[data-sd-tpl-blank]');
+                if (blank) blank.addEventListener('click', function () { if (el.parentNode) el.parentNode.removeChild(el); });
+                if (blank) blank.focus();
+            }
+        };
+    }
+
+    function _pgTemplateOpen(tpl) {
+        var curtain = _pgTemplateCurtain(tpl);
+        var started = Date.now();
+        var after = function (ms, fn) { setTimeout(fn, Math.max(0, ms)); };
+        // The tabs can only be switched once the canvas exists; the request
+        // usually outlasts its setup, but not always.
+        var whenCanvas = function (fn, tries) {
+            tries = tries || 0;
+            if ((canvasDoc && iframeReady) || tries > 100) { fn(); return; }
+            setTimeout(function () { whenCanvas(fn, tries + 1); }, 60);
+        };
+        _pgApiPost('template_prepare', { template: tpl.id }).then(function (res) {
+            if (!res || res.status !== 'success' || !Array.isArray(res.pages)) {
+                curtain.fail(res && res.message ? res.message : '');
+                return;
+            }
+            after(800 - (Date.now() - started), function () {
+                curtain.step(1);
+                after(450, function () {
+                    curtain.step(2);
+                    whenCanvas(function () {
+                        try {
+                            _pgTemplateApply(res);
+                        } catch (e) {
+                            console.error('[pg-template]', e);
+                            curtain.fail('');
+                            return;
+                        }
+                        after(350, function () {
+                            curtain.done();
+                            sdToast('<strong>' + esc(_sdT('“{var}” is ready.', res.template && res.template.name ? res.template.name : (tpl.name || ''))) + '</strong><br>' +
+                                    esc(_sdT('Its pages are open as tabs. Change what you like, then press Publish — nothing is created on the site until then.')),
+                                    'success', 9000);
+                        });
+                    });
+                });
+            });
+        }).catch(function () {
+            curtain.fail(_sdT('Network error.'));
+        });
+    }
+
+    // The rows a template made for this editor (its widgets and shared
+    // components). While the design has never been published, leaving the
+    // editor asks the server to discard them (designer/template_discard);
+    // the server keeps any a page places. `pagehide` only: `beforeunload`
+    // also fires when the operator then chooses to stay. A page going into
+    // the back-forward cache discards them too - it may never come back, and
+    // no second pagehide would follow - and if it does come back it reloads,
+    // which opens the template afresh with new rows.
+    var _pgTemplateRowIds = [];
+    var _pgTemplateDiscarded = false;
+    function _pgTemplateTrackRows(res) {
+        if (!_pgTemplateRowIds) _pgTemplateRowIds = [];
+        (res.widgets || []).concat(res.shared || []).forEach(function (r) {
+            var sid = parseInt(r.id, 10);
+            if (sid > 0 && _pgTemplateRowIds.indexOf(sid) === -1) _pgTemplateRowIds.push(sid);
+        });
+        if (window._pgTemplateDiscardBound) return;
+        window._pgTemplateDiscardBound = true;
+        window.addEventListener('pageshow', function (e) {
+            // Its rows are gone: nothing on these tabs can be published.
+            if (e && e.persisted && _pgTemplateDiscarded) {
+                if (typeof _suppressUnloadWarn !== 'undefined') _suppressUnloadWarn = true;
+                location.reload();
+            }
+        });
+        window.addEventListener('pagehide', function () {
+            if (!_pgTemplateRowIds.length) return;
+            if (_design && _design.styleId > 0) return;   // published: the rows are the design's now
+            _pgTemplateDiscarded = true;
+            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+            var body = JSON.stringify({ action: 'designer', sub_action: 'template_discard',
+                                        ids: _pgTemplateRowIds, token: _pgToken() });
+            try {
+                if (navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) return;
+            } catch (err) {}
+            try { fetch(url, { method: 'POST', body: body, keepalive: true, credentials: 'same-origin',
+                               headers: { 'Content-Type': 'application/json' } }); } catch (err2) {}
+        });
+    }
+
+    function _pgTemplateApply(res) {
+        // The widget rows, straight into the cache the way a prefetch would
+        // have put them, so the canvas draws the pages at once.
+        (res.widgets || []).forEach(function (w) {
+            var sid = parseInt(w.id, 10);
+            if (!(sid > 0)) return;
+            var wt = w.tree || null;
+            // A widget the template leaves to the editor opens with the
+            // layout its kind gets from the palette; Publish writes it.
+            if (w.starter) {
+                var wcfg = null;
+                try { wcfg = JSON.parse(w.system_region_config || 'null'); } catch (e) {}
+                if (wcfg && _swIsType(wcfg.regionType)) {
+                    wt = _buildStarterTree(wcfg.regionType);
+                    _sharedDirty[sid] = true;
+                    // The row on the server still holds the empty placeholder.
+                    // Taking that as the snapshot keeps the save from
+                    // skipping the widget as "unchanged" when a click on the
+                    // canvas snapshots the starter before anything is edited.
+                    _sharedSnapshots[sid] = JSON.stringify({ type: 'root', props: {}, children: [{ type: 'loop_area', props: {}, children: [] }] });
+                }
+            }
+            if (wt) { _sdTreeObjects(wt); _backfillIds(wt); _stripToggleableShowState(wt); }
+            _sharedCache[sid] = {
+                name:                 w.name || '',
+                tree:                 wt,
+                system_region_config: w.system_region_config || null,
+                autoNamed:            _swIsAutoName(w.name || '')
+            };
+        });
+        // The shared components (header, footer, the bands several pages
+        // carry): rows the server wrote with the template's layout, drawn
+        // from the cache like any other shared component.
+        (res.shared || []).forEach(function (sc) {
+            var sid = parseInt(sc.id, 10);
+            if (!(sid > 0)) return;
+            var st = sc.tree || null;
+            if (st) { _sdTreeObjects(st); _backfillIds(st); _stripToggleableShowState(st); }
+            _sharedCache[sid] = { name: sc.name || '', tree: st, system_region_config: null, autoNamed: false };
+        });
+        // Leaving without publishing throws these rows away again, so
+        // opening a template over and over does not fill the palette.
+        _pgTemplateTrackRows(res);
+        // The template's folders, made when it was opened: listed in the page
+        // settings so every tab shows where it will be published.
+        var folderSel = document.getElementById('pg_page_folder');
+        if (folderSel && Array.isArray(res.folders)) {
+            res.folders.forEach(function (f) {
+                var fid = String(parseInt(f.folder_id, 10) || 0);
+                if (fid === '0' || folderSel.querySelector('option[value="' + fid + '"]')) return;
+                var opt = document.createElement('option');
+                opt.value = fid;
+                opt.textContent = f.label || fid;
+                folderSel.appendChild(opt);
+            });
+        }
+        // The design's name, unless the operator has typed one.
+        var nameEl = document.getElementById('sd-style-name');
+        if (nameEl && !nameEl.value && res.style_name) nameEl.value = res.style_name;
+        // The blank tab a new design opens with makes room for the pages.
+        _pgTabsPersistActive();
+        _pages = _pages.filter(function (p) {
+            var pt = _pgTreeOf(p);
+            return !(p.page_id === 0 && !p.page_name && (!pt || !pt.children || !pt.children.length));
+        });
+        var firstKey = null;
+        res.pages.forEach(function (sp) {
+            _pgNewTabSeq++;
+            var pt = sp.tree || createDefaultTree();
+            _backfillIds(pt);
+            _stripToggleableShowState(pt);
+            // The key the server chose: widget settings name the page by it
+            // (`tab:<key>`) until Publish gives the page its id.
+            var tabKey = (sp.tab_key && !_pgPageByKey(sp.tab_key)) ? sp.tab_key : ('new' + Date.now() + '_' + _pgNewTabSeq);
+            var p = {
+                key: tabKey,
+                page_id: 0, page_name: sp.page_name || '', page_folder: parseInt(sp.page_folder, 10) || 0,
+                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
+                page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
+                page_home: 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
+                pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
+                pg_comments_allow_new: (sp.pg_comments_allow_new === 0) ? 0 : 1, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
+                pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
+                pg_comments_login: sp.pg_comments_login ? 1 : 0,
+                pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
+                pg_comments_notify_email: sp.pg_comments_notify_email || '',
+                tree: pt, undoStack: [], redoStack: [], nodeIdCounter: reindex(pt),
+                baseline: null, treeLoadWarning: false,
+                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+            };
+            _pages.push(p);
+            if (!firstKey) firstKey = p.key;
+        });
+        if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
+        if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
     }
 
     /**
@@ -42300,7 +44545,7 @@ const StyleDesigner = (function () {
             if (!vr.ok) {
                 var lines = '';
                 for (var e = 0; e < vr.errors.length; e++) lines += '&bull; ' + vr.errors[e] + '<br>';
-                sdToast('<strong>' + esc(_sdT('Save blocked')) + '</strong> (' + esc(p.page_name || _sdT('new page')) + '):<br>' + lines, 'error');
+                sdToast('<strong>' + esc(_sdT('Publishing blocked')) + '</strong> (' + esc(p.page_name || _sdT('new page')) + '):<br>' + lines, 'error');
                 return null;
             }
             _sanitizeDynamicPlaceholders(t);
@@ -42414,11 +44659,11 @@ const StyleDesigner = (function () {
         if (!isDirty()) { go(); return; }
         if (typeof window.pgConfirm === 'function') {
             window.pgConfirm({
-                title: _sdT('There are unsaved changes'),
-                message: _sdT('Are you sure you want to leave? Unsaved changes will be lost.'),
+                title: _sdT('There are unpublished changes'),
+                message: _sdT('Are you sure you want to leave? Changes that are not published will be lost.'),
                 confirmText: _sdT('Yes'), cancelText: _sdT('No'), variant: 'danger'
             }).then(function (ok) { if (ok) go(); });
-        } else if (window.confirm(_sdT('Are you sure you want to leave? Unsaved changes will be lost.'))) {
+        } else if (window.confirm(_sdT('Are you sure you want to leave? Changes that are not published will be lost.'))) {
             go();
         }
     }
@@ -42437,6 +44682,10 @@ const StyleDesigner = (function () {
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
                 pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
                 pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
+                pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
+                pg_comments_login: sp.pg_comments_login ? 1 : 0,
+                pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
+                pg_comments_notify_email: sp.pg_comments_notify_email || '',
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
@@ -42471,6 +44720,8 @@ const StyleDesigner = (function () {
         _pgTabsRender();
         _pgTabsBind();
         _styleBaseline = _pgStyleJSON();
+        _sdThemeRender();
+        document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
 
         // Announce this tab and find out whether anybody else is already on
         // the page it opened. Everything about the feature is server-driven,
@@ -42512,6 +44763,13 @@ const StyleDesigner = (function () {
             setTimeout(_sdApplyContentChrome, 1200);
         }
 
+        // "Choose a Template": the template's own curtain goes up before the
+        // shared one comes down, so the operator never sees the blank tab
+        // the template is about to replace.
+        if (design && design.template && design.template.id) {
+            _pgTemplateOpen(design.template);
+        }
+
         // The editor has laid itself out and the canvas has painted: the
         // curtain has nothing left to hide.
         _sdPreloaderDone();
@@ -42546,6 +44804,25 @@ const StyleDesigner = (function () {
     function _protectMainForm() {
         var form = document.getElementById('style_designer_form');
         if (!form) return;
+        // Ctrl+S / Cmd+S publishes from anywhere in the editor. The panel-wide
+        // shortcut (backend.js) submits the form around the focused element,
+        // or the page's first form when there is none; outside the editor's
+        // own form (the layer tree, the assistant panel, the page itself) that
+        // is a header form, and the editor navigated away with the tab
+        // unsaved. Inside the editor's form the shortcut already clicks
+        // Publish, so it is left to it there.
+        if (!window._sdSaveShortcutBound) {
+            window._sdSaveShortcutBound = true;
+            window.addEventListener('keydown', function (e) {
+                if (!(e.ctrlKey || e.metaKey) || e.altKey || String(e.key || '').toLowerCase() !== 's') return;
+                var ae = document.activeElement;
+                if (ae && ae.closest && ae.closest('#style_designer_form')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var publish = document.getElementById('sd-ajax-save');
+                if (publish && !publish.disabled) publish.click();
+            }, true);
+        }
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -43065,7 +45342,7 @@ const StyleDesigner = (function () {
                 if (_tc.length) clipboardNodes = _tc.map(function(n) { return cloneTree(n); });
             }},
             // ── Save / Preview / Snapshot ───────────────────────────
-            { id: 'act_save', label: _sdT('Save'), icon: 'bi-floppy', hint: 'Ctrl+S', action: function() {
+            { id: 'act_save', label: _sdT('Publish'), icon: 'bi-rocket-takeoff', hint: 'Ctrl+S', action: function() {
                 var b = document.getElementById('sd-ajax-save'); if (b) b.click();
             }},
             { id: 'act_preview', label: _sdT('Preview'), icon: 'bi-box-arrow-up-right', hint: 'Ctrl+Alt+P', action: function() { openPreview(); } },
@@ -43111,11 +45388,11 @@ const StyleDesigner = (function () {
                 if (!entry) return name + ' (' + _sdT('none') + ')';
                 return name + ' — ' + (entry.enabled === false ? _sdT('Activate') : _sdT('Deactivate'));
             }
-            items.push({ id: 'act_tg_bs_css',   label: _stateLabel('Bootstrap CSS',    states.bsCss),    icon: 'bi-bootstrap',
+            if (_sdUsesBootstrap()) items.push({ id: 'act_tg_bs_css',   label: _stateLabel('Bootstrap CSS',    states.bsCss),    icon: 'bi-bootstrap',
                 action: function() { _assetsApi.toggleSentinel('bootstrap-css');   } });
             items.push({ id: 'act_tg_bs_icons', label: _stateLabel('Bootstrap Icons',  states.bsIcons),  icon: 'bi-emoji-smile',
                 action: function() { _assetsApi.toggleSentinel('bootstrap-icons'); } });
-            items.push({ id: 'act_tg_bs_js',    label: _stateLabel('Bootstrap JS',     states.bsJs),     icon: 'bi-bootstrap-fill',
+            if (_sdUsesBootstrap()) items.push({ id: 'act_tg_bs_js',    label: _stateLabel('Bootstrap JS',     states.bsJs),     icon: 'bi-bootstrap-fill',
                 action: function() { _assetsApi.toggleSentinel('bootstrap-js');    } });
             items.push({ id: 'act_tg_jquery',   label: _stateLabel('jQuery',           states.jquery),   icon: 'bi-code-slash',
                 action: function() { _assetsApi.toggleSentinel('jquery-js');       } });
@@ -43126,7 +45403,8 @@ const StyleDesigner = (function () {
 
     function _getCpPaletteItems() {
         var items = [];
-        Object.keys(COMPONENTS).forEach(function(k) {
+        var _bsPalette = _sdUsesBootstrap();
+        if (_bsPalette) Object.keys(COMPONENTS).forEach(function(k) {
             var c = COMPONENTS[k];
             items.push({ id: 'add_comp_' + k, label: _sdT('Add: {var}', c.label), icon: c.icon || 'bi-plus',
                 action: function() { _paletteInsert('component', { componentType: k }); } });
@@ -43139,7 +45417,7 @@ const StyleDesigner = (function () {
             items.push({ id: 'add_content_' + k, label: _sdT('Add: {var}', c.label), icon: c.icon || 'bi-plus',
                 action: function() { _paletteInsert('content', { contentType: k }); } });
         });
-        [['Container', 'container'], ['Row', 'row'], ['Column', 'col']].forEach(function(a) {
+        if (_bsPalette) [['Container', 'container'], ['Row', 'row'], ['Column', 'col']].forEach(function(a) {
             items.push({ id: 'add_layout_' + a[1], label: _sdT('Add: {var}', a[0]), icon: 'bi-layout-split',
                 action: function() { _paletteInsert(a[1], {}); } });
         });
@@ -43635,6 +45913,13 @@ const StyleDesigner = (function () {
 
     function _renderRecentCompSection(compList) {
         var recent = _getRecentComps();
+        // The list is kept per browser, across designs: a custom design does
+        // not offer the Bootstrap items another design put there.
+        if (!_sdUsesBootstrap()) {
+            recent = recent.filter(function (it) {
+                return ['component', 'container', 'container-fluid', 'row', 'col'].indexOf(it && it.type) === -1;
+            });
+        }
         var old = compList.querySelector('#sd-recent-comps-section');
         if (old) old.remove();
         if (!recent.length) return;
@@ -44712,6 +46997,40 @@ const StyleDesigner = (function () {
     saveState         = _sdPerfWrap('saveState',         saveState);
 
 
+    // What the assistant panel (assets/js/designer_ai.js) reads and does in
+    // the editor: the active tab's tree, page and selection, and one way to
+    // put a proposed tree in place of the tab's own - as a single undo step,
+    // so Ctrl+Z takes the whole proposal back and nothing is saved until the
+    // page is published.
+    function _sdAiBridge() {
+        return {
+            tree: function () { return tree; },
+            treeJSON: function () { return JSON.stringify(tree); },
+            selected: function () { return (selectedNode && selectedNode.type !== 'root' && findNodeById(selectedNode._id, tree)) ? selectedNode : null; },
+            page: function () {
+                var p = _pgActivePage();
+                return p ? { key: p.key, page_id: p.page_id || 0, page_name: p.page_name || '' } : null;
+            },
+            mayEdit: function () { return !!_collab.mayEdit; },
+            full: function () { return _sdAccess() === 'full'; },
+            label: function (node) { return node ? getNodeLabel(node) : ''; },
+            select: function (id) {
+                var n = id ? findNodeById(id, tree) : null;
+                selectedNode = n;
+                selectedNodes = [];
+                renderSelectionOnly();
+                renderProperties();
+            },
+            apply: function (newTree, selectId) {
+                saveState();
+                _replaceTreeWithPrefetch(newTree, { selectedNodeId: selectId || null });
+            },
+            post: _pgApiPost,
+            toast: sdToast,
+            esc: esc
+        };
+    }
+
     return {
         init: function (cfg) {
             // Before anything is built: the curtain is already in the markup,
@@ -44781,6 +47100,16 @@ const StyleDesigner = (function () {
         undo: undo,
         redo: redo,
         saveAjax: saveAjax,
-        perf: _sdPerfReport
+        aiBridge: _sdAiBridge,
+        perf: _sdPerfReport,
+        // The layout a system widget of this kind opens with, the same one the
+        // palette gives it (messages area included), or null for a kind the
+        // editor does not know. Needs nothing but sdDesign.i18n and does not
+        // touch the page, so a screen other than the editor can load this
+        // file to build a design template's widgets: the installer does, for
+        // an installation made with a template (install/index.php).
+        starterTree: function (regionType) {
+            return _swIsType(regionType) ? _buildStarterTree(regionType) : null;
+        }
     };
 })();

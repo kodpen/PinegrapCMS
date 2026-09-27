@@ -55,7 +55,7 @@ function ws_channels_for($viewer, $archived = false)
     foreach ((array) db_items("SELECT msg.channel_id, COUNT(*) AS unread
         FROM ws_messages msg
         INNER JOIN ws_channel_members m ON m.channel_id = msg.channel_id AND m.user_id = '" . $me . "'
-        WHERE msg.id > m.last_read_id AND msg.sender_id <> '" . $me . "' AND msg.deleted_at = 0 AND msg.sender_kind <> 'system'
+        WHERE msg.id > m.last_read_id AND NOT (msg.sender_kind = 'user' AND msg.sender_id = '" . $me . "') AND msg.deleted_at = 0 AND msg.sender_kind <> 'system'
         GROUP BY msg.channel_id") as $row) {
         $unread[(int) $row['channel_id']] = (int) $row['unread'];
     }
@@ -97,6 +97,9 @@ function ws_channel_brief($row, $unread = 0, $mentions = 0)
         'notify'     => (string) ($row['my_notify'] ?? 'all'),
         'owner'      => ((string) ($row['my_role'] ?? '') === 'owner'),
         'contact_id' => (int) $row['contact_id'],
+        'customer_type' => (string) ($row['customer_type'] ?? ''),
+        'customer_id' => (int) ($row['customer_id'] ?? 0),
+        'icon'       => ws_channel_icon($row),
         'department_id' => (int) $row['department_id'],
         'archived'   => ((int) $row['archived_at'] > 0),
         'unread'     => (int) $unread,
@@ -104,6 +107,9 @@ function ws_channel_brief($row, $unread = 0, $mentions = 0)
         'pinned'     => !empty($row['my_pinned']),
         'sort'       => (int) ($row['my_sort'] ?? 0),
         'last_message_at' => (int) $row['last_message_at'],
+        'color'      => (int) ($row['color'] ?? 0),
+        'hex'        => ws_palette_hex($row['color'] ?? 0),
+        'group_id'   => (int) ($row['group_id'] ?? 0),
     );
 }
 
@@ -131,10 +137,41 @@ function ws_channel_detail($viewer, $channel)
     $brief['owner_name'] = ws_person_name($channel['owner_user_id']);
     $brief['can_post'] = ws_can_post_channel($viewer, $channel);
     $brief['can_manage'] = ws_can_manage_channel($viewer, $channel);
+    $brief['can_change_kind'] = ws_can_change_channel_kind($viewer, $channel);
+    $brief['can_clear'] = ws_can_clear_channel($viewer, $channel);
+    $brief['can_pin'] = ws_can_pin($viewer, $channel);
+    $brief['pin'] = ws_channel_pin_present($viewer, $channel, $membership);
+    $brief['can_group'] = ws_can_move_channel_group($viewer, $channel);
+    $brief['eras'] = ws_eras_ready() ? (int) db_value("SELECT COUNT(*) FROM ws_channel_eras WHERE channel_id = '" . (int) $channel['id'] . "'") : 0;
     $brief['claude'] = function_exists('ws_claude_channel_state') ? ws_claude_channel_state($channel) : null;
+    $brief['ai'] = function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null;
+
+    // A room with a guest in it (guests.php): who, where their link stands,
+    // what the reader may do. The assistants are never asked there.
+    $brief['guest'] = function_exists('ws_guest_channel_state') ? ws_guest_channel_state($viewer, $channel) : null;
+
+    if ($brief['guest'] !== null) {
+        $brief['claude'] = null;
+        $brief['ai'] = null;
+    }
     $brief['audit'] = !$membership && ($channel['kind'] === 'private');
     $brief['summary'] = (string) $channel['summary'];
-    $brief['summary_html'] = ws_render_body((string) $channel['summary'], ws_refs_resolve($viewer, ws_tokens($channel['summary'])));
+    $summary_tokens = ws_tokens($channel['summary']);
+    $summary_refs = ws_refs_resolve($viewer, $summary_tokens);
+    $brief['summary_html'] = ws_render_body((string) $channel['summary'], $summary_refs);
+
+    // The names of the tags in the summary, for the formatted box to show
+    // them as chips again when it is edited.
+    $brief['summary_labels'] = array();
+
+    foreach ($summary_tokens as $token) {
+        $key = $token['type'] . ':' . $token['id'];
+
+        if (isset($summary_refs[$key])) {
+            $brief['summary_labels']['<' . $token['sigil'] . $key . '>'] = $summary_refs[$key]['label'];
+        }
+    }
+
     $brief['summary_updated'] = ((int) $channel['summary_updated_at'] > 0)
         ? lang(array('string' => 'Updated by {var:1}, {var:2}', 'vars' => array(ws_person_name($channel['summary_updated_by']), ws_time_label($channel['summary_updated_at']))))
         : '';
@@ -148,6 +185,10 @@ function ws_channel_detail($viewer, $channel)
             $brief['contact'] = array('id' => $contact['id'], 'label' => $contact['label'], 'url' => $contact['url'], 'html' => ws_chip_html($contact));
         }
     }
+
+    // The customer as it was chosen - a contact, a user or a current account -
+    // with the records tied to it.
+    $brief['customer'] = ws_channel_customer_present($viewer, $channel);
 
     $brief['department'] = null;
 
@@ -212,6 +253,11 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
             continue;
         }
 
+        // A room with a guest in it has staff in it and nobody else.
+        if (((string) $channel['kind'] === 'guest') && ((int) (ws_rights_for_id($user_id)['role'] ?? 3) > 2)) {
+            continue;
+        }
+
         db("INSERT IGNORE INTO ws_channel_members (channel_id, user_id, role, last_read_id, joined_at)
             VALUES ('" . (int) $channel['id'] . "', '" . $user_id . "', 'member', '" . (int) $channel['last_message_id'] . "', '" . $now . "')");
 
@@ -268,12 +314,14 @@ function ws_channel_create($viewer, $data)
     }
 
     $kind = (($data['kind'] ?? 'public') === 'private') ? 'private' : 'public';
-    $contact_id = max(0, (int) ($data['contact_id'] ?? 0));
+    $customer = ws_customer_input($viewer, $data);
     $department_id = max(0, (int) ($data['department_id'] ?? 0));
 
-    if (($contact_id > 0) && ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $contact_id . "'") === 0)) {
-        return array('ok' => false, 'error' => lang('That contact could not be found.'), 'field' => 'contact_id', 'channel_id' => 0);
+    if (is_array($customer) && !$customer['ok']) {
+        return array('ok' => false, 'error' => $customer['error'], 'field' => $customer['field'], 'channel_id' => 0);
     }
+
+    $contact_id = is_array($customer) ? (int) $customer['contact_id'] : 0;
 
     if (($department_id > 0) && !ws_department($department_id)) {
         $department_id = 0;
@@ -304,6 +352,10 @@ function ws_channel_create($viewer, $data)
 
     ws_channel_membership_forget();
 
+    if (is_array($customer) && ($customer['type'] !== '') && ws_customer_ready()) {
+        db("UPDATE ws_channels SET " . implode(', ', ws_customer_set($customer)) . " WHERE id = '" . $channel_id . "'");
+    }
+
     $channel = ws_channel($channel_id);
 
     ws_message_system($channel_id, lang(array(
@@ -312,6 +364,18 @@ function ws_channel_create($viewer, $data)
     )));
 
     ws_channel_add_members($viewer, ws_channel($channel_id), (array) ($data['members'] ?? array()), false);
+
+    if (ws_channel_colors_ready() && (ws_palette_place($data['color'] ?? 0) > 0)) {
+        db("UPDATE ws_channels SET color = '" . ws_palette_place($data['color']) . "' WHERE id = '" . $channel_id . "'");
+    }
+
+    // Made inside a group (staff): the access given on it lets its people in.
+    $group_id = (int) ($data['group_id'] ?? 0);
+
+    if (($group_id > 0) && ws_can_manage_groups($viewer) && ws_group($group_id)) {
+        db("UPDATE ws_channels SET group_id = '" . $group_id . "' WHERE id = '" . $channel_id . "'");
+        ws_group_sync_channel($viewer, ws_channel($channel_id), $group_id);
+    }
 
     log_activity(lang(array('string' => 'workspace channel ({var:1}) was created', 'vars' => $name)), (string) ($_SESSION['sessionusername'] ?? ''));
 
@@ -352,19 +416,23 @@ function ws_channel_update($viewer, $channel, $data)
         $set[] = "topic = '" . e(mb_substr(trim((string) $data['topic']), 0, 255)) . "'";
     }
 
-    if (array_key_exists('contact_id', $data)) {
-        $contact_id = max(0, (int) $data['contact_id']);
+    $customer = ws_customer_input($viewer, $data, $channel);
 
-        if (($contact_id > 0) && ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $contact_id . "'") === 0)) {
-            return array('ok' => false, 'error' => lang('That contact could not be found.'), 'field' => 'contact_id');
+    if (is_array($customer)) {
+        if (!$customer['ok']) {
+            return array('ok' => false, 'error' => $customer['error'], 'field' => $customer['field']);
         }
 
-        $set[] = "contact_id = '" . $contact_id . "'";
+        $set = array_merge($set, ws_customer_set($customer));
     }
 
     if (array_key_exists('department_id', $data)) {
         $department_id = max(0, (int) $data['department_id']);
         $set[] = "department_id = '" . ((($department_id > 0) && ws_department($department_id)) ? $department_id : 0) . "'";
+    }
+
+    if (array_key_exists('color', $data) && ws_channel_colors_ready()) {
+        $set[] = "color = '" . ws_palette_place($data['color']) . "'";
     }
 
     if (!empty($set)) {
@@ -392,14 +460,14 @@ function ws_channel_make_public($viewer, $channel)
         return array('ok' => true, 'error' => '');
     }
 
-    $is_owner = ((int) $channel['owner_user_id'] === (int) $viewer['id']);
-    $staff_member = ($viewer['role'] < 3) && ws_channel_membership($channel['id'], $viewer['id']);
-
-    if (!$is_owner && !$staff_member) {
-        return array('ok' => false, 'error' => lang('Only the owner of the channel can open it to the team.'));
+    if (!ws_can_change_channel_kind($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('Only staff who are in the channel can make it public or private.'));
     }
 
     db("UPDATE ws_channels SET kind = 'public' WHERE id = '" . (int) $channel['id'] . "'");
+
+    // The notes shared here follow: the whole team reads them now.
+    ws_channel_folder_access($channel, array(), true);
 
     ws_message_system($channel['id'], lang(array(
         'string' => '{var:1} opened this channel to the whole team. Everything written in it can now be read by every team member.',
@@ -407,6 +475,59 @@ function ws_channel_make_public($viewer, $channel)
     )));
 
     log_activity(lang(array('string' => 'workspace channel ({var:1}) was opened to the team', 'vars' => $channel['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * May this person make the channel public or private? Staff only (Erdal,
+ * 2026-09-26), and only from inside it: a private channel is changed by a
+ * member of it, and the one who closes a public channel stays in it.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return bool
+ */
+function ws_can_change_channel_kind($viewer, $channel)
+{
+    return is_array($channel) && $viewer['member'] && ($viewer['role'] < 3)
+        && ((int) $channel['archived_at'] === 0)
+        && ((string) $channel['kind'] !== 'guest')
+        && (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
+ * Closes a public channel: from now on only its members read it. Who is in
+ * it stays in it; the others stop seeing it, what was written in it and the
+ * notes shared only there. Files of the channel's folder were given to its
+ * members all along, so the folder needs nothing.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return array ok, error
+ */
+function ws_channel_make_private($viewer, $channel)
+{
+    if ($channel['kind'] !== 'public') {
+        return array('ok' => true, 'error' => '');
+    }
+
+    if (!ws_can_change_channel_kind($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('Only staff who are in the channel can make it public or private.'));
+    }
+
+    db("UPDATE ws_channels SET kind = 'private' WHERE id = '" . (int) $channel['id'] . "'");
+
+    ws_channel_folder_access($channel, array(), true);
+
+    $members = (int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'");
+
+    ws_message_system($channel['id'], lang(array(
+        'string' => '{var:1} made this channel private. From now on only its {var:2} members read it; the rest of the team no longer sees it.',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', $members),
+    )));
+
+    log_activity(lang(array('string' => 'workspace channel ({var:1}) was made private', 'vars' => $channel['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return array('ok' => true, 'error' => '');
 }
@@ -499,12 +620,12 @@ function ws_channel_leave($viewer, $channel, $user_id = 0)
         if ($next > 0) {
             db("UPDATE ws_channels SET owner_user_id = '" . $next . "' WHERE id = '" . (int) $channel['id'] . "'");
             db("UPDATE ws_channel_members SET role = 'owner' WHERE channel_id = '" . (int) $channel['id'] . "' AND user_id = '" . $next . "'");
-        } elseif ($channel['kind'] === 'private') {
+        } elseif ($channel['kind'] !== 'public') {
             db("UPDATE ws_channels SET archived_at = '" . time() . "' WHERE id = '" . (int) $channel['id'] . "'");
         }
     }
 
-    if ($channel['kind'] === 'private') {
+    if ($channel['kind'] !== 'public') {
         $vars = array('<@user:' . (int) $viewer['id'] . '>', '<@user:' . $user_id . '>');
 
         ws_message_system($channel['id'], ($user_id === (int) $viewer['id'])
@@ -535,6 +656,10 @@ function ws_channel_audit_open($viewer, $channel)
         return array('ok' => true, 'error' => '');
     }
 
+    if (!ws_can_audit_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('A member of staff is in this private channel. It cannot be opened for inspection.'));
+    }
+
     $_SESSION['software']['ws_audit'][(int) $channel['id']] = time();
 
     ws_message_system($channel['id'], lang(array(
@@ -560,7 +685,7 @@ function ws_private_channels_for_audit($viewer)
         return array();
     }
 
-    $rows = (array) db_items("SELECT c.id, c.name, c.owner_user_id, c.archived_at,
+    $rows = (array) db_items("SELECT c.id, c.name, c.topic, c.owner_user_id, c.archived_at,
             (SELECT COUNT(*) FROM ws_channel_members m WHERE m.channel_id = c.id) AS member_count
         FROM ws_channels c
         LEFT JOIN ws_channel_members me ON me.channel_id = c.id AND me.user_id = '" . (int) $viewer['id'] . "'
@@ -573,10 +698,13 @@ function ws_private_channels_for_audit($viewer)
         $out[] = array(
             'id'       => (int) $row['id'],
             'name'     => (string) $row['name'],
+            'topic'    => (string) $row['topic'],
             'owner'    => ws_person_name($row['owner_user_id']),
             'members'  => (int) $row['member_count'],
             'archived' => ((int) $row['archived_at'] > 0),
             'opened'   => ws_audit_open($row['id']),
+            // A member of staff is in it: listed, never opened.
+            'locked'   => ws_channel_has_staff($row['id']),
         );
     }
 
@@ -659,7 +787,7 @@ function ws_channel_mark_read($channel_id, $user_id, $message_id)
 
     db("UPDATE ws_inbox SET read_at = '" . time() . "'
         WHERE user_id = '" . (int) $user_id . "' AND channel_id = '" . (int) $channel_id . "'
-        AND read_at = 0 AND kind = 'mention' AND message_id <= '" . $message_id . "'");
+        AND read_at = 0 AND ((kind = 'mention' AND message_id <= '" . $message_id . "') OR kind = 'guest_message')");
 
     if (mysqli_affected_rows(db::$con) > 0) {
         ws_bell_sync_read($user_id);

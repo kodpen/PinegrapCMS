@@ -620,6 +620,13 @@ function send_comment_email_to_watchers($comment_id)
     $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
     $comments_watcher_email_subject = $row['comments_watcher_email_subject'];
     $email_page_id = $row['email_page_id'];
+    // A page built in the visual editor shows a record with its Form Item
+    // View widget and its comments belong to that record, as on a form item
+    // view page (add_comment.php decides the same): the link carries ?r=
+    // and the subject may name the record's fields.
+    if (($page_type != 'form item view') && ($item_type == 'submitted_form')) {
+        $page_type = 'form item view';
+    }
     // if the page to be e-mailed still exists, then continue to e-mail watchers
     if ($email_page_id != '') {
         // get all watchers for this page and etc.
@@ -1295,6 +1302,80 @@ function replace_variables($properties)
 // global class. Any catch or type hint below that means the global one must spell it
 // "\Exception" explicitly.
 
+/**
+ * The name outgoing mail introduces itself with: the Message-ID domain and the
+ * EHLO greeting.
+ *
+ * PHPMailer takes it from the web request when there is one. A scheduled job
+ * has no request, so it falls back to the machine name ("WIN-4F2...") or to
+ * localhost.localdomain, and receiving filters score both against the
+ * message. The site's configured hostname is the name that belongs there.
+ *
+ * @return string A dotted host name, or '' to leave PHPMailer's own choice.
+ */
+function pg_mail_hostname()
+{
+    $host = defined('HOSTNAME_SETTING') ? strtolower(trim((string) HOSTNAME_SETTING)) : '';
+
+    // A configured "example.com:8080" names the host, not the port.
+    $host = preg_replace('/:\d+$/', '', $host);
+
+    if (
+        ($host === '')
+        || (strpos($host, '.') === false)
+        || filter_var($host, FILTER_VALIDATE_IP)
+        || !preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $host)
+        || preg_match('/\.(localhost|local|localdomain|test|invalid)$/', $host)
+    ) {
+        return '';
+    }
+
+    return $host;
+}
+
+/**
+ * The envelope sender (Return-Path) for a message.
+ *
+ * Normally the From address. The exception is an authenticated SMTP account
+ * whose login is an address on a different domain from the one in From: the
+ * receiving server checks SPF against the envelope domain, and the server that
+ * actually hands the message over is the one the SMTP account belongs to, so
+ * an envelope on the From domain fails SPF whenever that domain does not list
+ * the account's server. Many submission servers also refuse an envelope the
+ * account does not own. The login address passes both checks and is where
+ * bounces belong. Domains that are the same or one inside the other are left
+ * alone, since they already align.
+ *
+ * @param PHPMailer $mail               Configured for its transport already.
+ * @param string    $from_email_address
+ * @return string
+ */
+function pg_mail_envelope_sender($mail, $from_email_address)
+{
+    if (($mail->Mailer !== 'smtp') || !$mail->SMTPAuth) {
+        return $from_email_address;
+    }
+
+    $login = trim((string) $mail->Username);
+
+    if (!filter_var($login, FILTER_VALIDATE_EMAIL) || !filter_var($from_email_address, FILTER_VALIDATE_EMAIL)) {
+        return $from_email_address;
+    }
+
+    $login_domain = strtolower(substr(strrchr($login, '@'), 1));
+    $from_domain = strtolower(substr(strrchr($from_email_address, '@'), 1));
+
+    if (
+        ($login_domain === $from_domain)
+        || (substr($login_domain, -strlen('.' . $from_domain)) === '.' . $from_domain)
+        || (substr($from_domain, -strlen('.' . $login_domain)) === '.' . $login_domain)
+    ) {
+        return $from_email_address;
+    }
+
+    return $login;
+}
+
 function email($properties)
 {
     $to = isset($properties['to']) ? $properties['to'] : '';
@@ -1345,6 +1426,20 @@ function email($properties)
             return false;
         }
 
+        // Port 465 is implicit TLS: the handshake comes before the greeting.
+        // Without this PHPMailer speaks plain text into a TLS socket and the
+        // connection times out. 587 and 25 need nothing here, PHPMailer
+        // upgrades those with STARTTLS whenever the server offers it.
+        if (($mail->Mailer === 'smtp') && ((int) $mail->Port === 465)) {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        }
+
+        $mail_hostname = pg_mail_hostname();
+
+        if ($mail_hostname !== '') {
+            $mail->Hostname = $mail_hostname;
+        }
+
         // Recipients
         if (is_array($to)) {
             foreach ($to as $addr) {
@@ -1363,7 +1458,7 @@ function email($properties)
         }
 
         $mail->setFrom($from_email_address, $from_name);
-        $mail->Sender = $from_email_address;
+        $mail->Sender = pg_mail_envelope_sender($mail, $from_email_address);
         if (!empty($reply_to)) {
             $mail->addReplyTo($reply_to);
         }
@@ -1398,6 +1493,14 @@ function email($properties)
             $mail->DKIM_domain = (defined('DKIM_DOMAIN') && DKIM_DOMAIN) ? DKIM_DOMAIN : substr(strrchr(EMAIL_ADDRESS, '@'), 1);
             $mail->DKIM_private = FILE_DIRECTORY_PATH . '/dkim.key';
             $mail->DKIM_selector = (defined('DKIM_SELECTOR') && DKIM_SELECTOR) ? DKIM_SELECTOR : 'pinegrap';
+
+            // The signature covers the body byte for byte: PHPMailer signs with
+            // "simple" body canonicalisation. An 8bit body is exactly what a
+            // relay without 8BITMIME rewrites into quoted-printable on the way,
+            // and the receiving server then finds a body that no longer matches
+            // its signature. Encoding the parts before signing leaves a relay
+            // nothing to convert (RFC 6376, section 5.3).
+            $mail->Encoding = PHPMailer::ENCODING_QUOTED_PRINTABLE;
         }
 
         return $mail->send();

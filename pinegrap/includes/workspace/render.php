@@ -258,7 +258,7 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
     $body = (string) $body;
 
     // Running text only - nearly every message - is drawn in one piece.
-    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```)/m', $body)) {
+    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body)) {
         return ws_render_text($body, $refs);
     }
 
@@ -279,8 +279,28 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
         }
     };
 
+    // A title right above a block ("::: Title", includes/workspace/blocks.php)
+    // is drawn as its caption.
+    $title = '';
+    $titled = function ($block) use (&$title) {
+        if ($title === '') {
+            return $block;
+        }
+
+        $out = '<div class="ws-block-titled"><div class="ws-block-title"><i class="bi bi-bookmark" aria-hidden="true"></i><span>' . h($title) . '</span></div>' . $block . '</div>';
+        $title = '';
+
+        return $out;
+    };
+
     for ($i = 0; $i < $count; $i++) {
         $line = $lines[$i];
+
+        if (function_exists('ws_block_title_line') && (($heading = ws_block_title_line($line)) !== null) && ws_block_starts($lines, $i + 1)) {
+            $flush();
+            $title = $heading;
+            continue;
+        }
 
         // A block of code: every line up to the closing fence, as written.
         $language = ws_code_fence_open($line);
@@ -297,9 +317,9 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
             }
 
             // A hesap block is worked out, not shown as code.
-            $html .= (function_exists('ws_calc_block_language') && ws_calc_block_language($language))
+            $html .= $titled((function_exists('ws_calc_block_language') && ws_calc_block_language($language))
                 ? ws_calc_block_html($code)
-                : ws_code_block_html(implode("\n", $code), $language);
+                : ws_code_block_html(implode("\n", $code), $language));
             $i = $j;
             continue;
         }
@@ -360,7 +380,7 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
                 $table .= '</tr>';
             }
 
-            $html .= $table . '</tbody></table></div>';
+            $html .= $titled($table . '</tbody></table></div>');
             $i = $j - 1;
             continue;
         }
@@ -385,7 +405,7 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
             }
 
             $i--;
-            $html .= '<ul class="ws-checklist">' . $list . '</ul>';
+            $html .= $titled('<ul class="ws-checklist">' . $list . '</ul>');
             continue;
         }
 
@@ -430,6 +450,7 @@ function ws_plain_text($viewer, $body, $refs = null)
     $text = preg_replace('/^\s*[-*]\s\[[xX]\]\s+/mu', '☑ ', $text);
     $text = preg_replace('/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/m', '', $text);
     $text = preg_replace('/^\s*```.*$/m', '', $text);
+    $text = preg_replace('/^\s*:::\s+(.+)$/mu', '$1:', $text);
     $text = preg_replace('#\[([^\]\n]{1,300})\]\(((?:https?://|mailto:)[^\s()<>"]{1,1000})\)#i', '$1', $text);
     $text = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '$1', $text);
 

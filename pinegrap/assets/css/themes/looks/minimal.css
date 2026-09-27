@@ -1,0 +1,69 @@
+/*!
+ * Pinegrap look: Minimal.
+ * Hairlines, small corners, no shadows at rest and plenty of air between
+ * lines. The content is the design.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    --pg-line-height: 1.7;
+    --pg-heading-weight: 500;
+    --pg-heading-tracking: -0.01em;
+    --pg-heading-line-height: 1.25;
+    --pg-display-weight: 400;
+    --pg-lead-weight: 400;
+    --pg-brand-weight: 600;
+
+    --pg-link-underline-offset: 0.25em;
+    --pg-link-thickness: 1px;
+
+    --pg-radius-sm: 0.25rem;
+    --pg-radius: 0.375rem;
+    --pg-radius-lg: 0.5rem;
+    --pg-radius-xl: 0.75rem;
+    --pg-radius-xxl: 1rem;
+    --pg-radius-btn: 0.375rem;
+    --pg-radius-input: 0.375rem;
+    --pg-radius-card: 0.5rem;
+    --pg-radius-badge: 0.25rem;
+    --pg-radius-menu: 0.5rem;
+    --pg-radius-modal: 0.75rem;
+    --pg-radius-progress: 50rem;
+
+    --pg-card-border-color: var(--bs-border-color);
+    --pg-menu-border-color: var(--bs-border-color);
+    --pg-hr-opacity: 0.12;
+
+    --pg-shadow-sm: none;
+    --pg-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    --pg-shadow-lg: 0 14px 34px rgba(0, 0, 0, 0.08);
+    --pg-card-shadow: none;
+    --pg-card-hover-border-color: rgba(var(--bs-emphasis-color-rgb), 0.35);
+    --pg-menu-shadow: var(--pg-shadow);
+
+    --pg-btn-weight: 500;
+    --pg-btn-py: 0.5rem;
+    --pg-btn-px: 1rem;
+
+    --pg-input-py: 0.5rem;
+    --pg-input-px: 0.75rem;
+    --pg-focus-ring-width: 0.1875rem;
+
+    --pg-card-py: 1.25rem;
+    --pg-card-px: 1.25rem;
+    --pg-card-cap-bg: transparent;
+
+    --pg-tabs-underline: 1px;
+    --pg-tabs-active-border-color: transparent;
+
+    --pg-pagination-joined: 0;
+    --pg-pagination-gap: 0.25rem;
+    --pg-pagination-border-width: 0px;
+
+    --pg-alert-border-width: 0px;
+
+    --pg-badge-weight: 500;
+    --pg-th-weight: 500;
+
+    --pg-progress-height: 0.375rem;
+}

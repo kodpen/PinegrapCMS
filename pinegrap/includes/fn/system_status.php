@@ -64,75 +64,474 @@ function pg_integrity_reference_files($reference)
 }
 
 /**
- * Verifies SHA-256 hashes of the shipped source files - those directly in the
- * software directory and everything under the subdirectories the reference lists,
- * includes/ among them - against data/temp/hash_reference.json to detect tampering
- * or missing files. Ignores server-generated files like error_log, .htaccess, etc.
+ * Files the integrity check never looks at, by name, wherever they appear:
+ * server-generated or per-host files that differ from the release by design.
+ * Shared with the reference generator so the two cannot disagree.
+ */
+function pg_integrity_ignored_files()
+{
+    return ['error_log', '.htaccess', '.user.ini', '.DS_Store', 'Thumbs.db'];
+}
+
+/**
+ * The subdirectories of the software directory the check covers in full,
+ * besides the files directly in it. Shared with the reference generator.
  *
- * The reference is one of two things, and the two are treated differently:
+ * includes/ holds the code that decides who may do what - authentication, the
+ * external API's credential check, the payment libraries - and nothing writes
+ * into it at runtime. data/ is absent because the configuration, the caches and
+ * the backups change on a live site by design; install/ because operators
+ * delete it after setup and a missing file would read as tampering.
+ */
+function pg_integrity_scope_directories()
+{
+    return ['includes'];
+}
+
+// Whether a path relative to the software directory, with forward slashes, is
+// one the check covers.
+function pg_integrity_in_scope($relative_path, $ignored_files)
+{
+    $relative_path = (string) $relative_path;
+
+    if ($relative_path === '' || in_array(basename($relative_path), $ignored_files, true)) {
+        return false;
+    }
+
+    $slash = strpos($relative_path, '/');
+
+    if ($slash === false) {
+        return true;
+    }
+
+    return in_array(substr($relative_path, 0, $slash), pg_integrity_scope_directories(), true);
+}
+
+/**
+ * Reads a file with its line endings rewritten - 'lf': every CRLF as LF,
+ * 'crlf': every line ending as CRLF - feeding the result to a hash context when
+ * one is given. Returns the length of the rewritten content, or false when the
+ * file cannot be read.
  *
- *   - Generated on THIS installation for THIS version by _software_create_hash.php,
- *     which stamps it ("_generated": host, version, time). That is the ground truth
- *     here: the files are compared against it hourly and it is never replaced from
- *     the network. Before this rule the development machine could not be silenced -
- *     every regenerated reference was fetched over by the copy on kodpen.com within
- *     the same request, and the new files it listed came back as "extra".
- *   - Fetched from kodpen.com for the running version (a customer site, or a copy of
- *     the generated file that travelled in the package - the stamp names another
- *     host). Compared hourly; every 12 hours compared with kodpen.com again and
- *     replaced by that copy, so a reference an intruder rewrote to match their files
- *     is caught by the copy they cannot rewrite.
+ * Only a CR directly before an LF is touched, so nothing that changes what the
+ * code does can hide behind the rewrite. Streamed in 1 MB chunks so no file has
+ * to fit in memory; a CR that ends a chunk is held back until the next one
+ * shows whether an LF follows it.
+ */
+function pg_integrity_read_line_endings($path, $line_endings, $context)
+{
+    $handle = @fopen($path, 'rb');
+
+    if (!$handle) {
+        return false;
+    }
+
+    $length = 0;
+    $carry = '';
+
+    while (!feof($handle)) {
+        $chunk = fread($handle, 1048576);
+
+        if ($chunk === false) {
+            fclose($handle);
+            return false;
+        }
+
+        $chunk = $carry . $chunk;
+        $carry = '';
+
+        if ($chunk !== '' && substr($chunk, -1) === "\r" && !feof($handle)) {
+            $carry = "\r";
+            $chunk = substr($chunk, 0, -1);
+        }
+
+        $chunk = str_replace("\r\n", "\n", $chunk);
+
+        if ($line_endings === 'crlf') {
+            $chunk = str_replace("\n", "\r\n", $chunk);
+        }
+
+        $length += strlen($chunk);
+
+        if ($context !== null) {
+            hash_update($context, $chunk);
+        }
+    }
+
+    fclose($handle);
+
+    if ($carry !== '') {
+        $length += strlen($carry);
+
+        if ($context !== null) {
+            hash_update($context, $carry);
+        }
+    }
+
+    return $length;
+}
+
+/**
+ * SHA-256 of a file with every CRLF read as LF: the digest a reference made by
+ * _software_create_hash.php is built from.
  *
- * The check's own bookkeeping - when it last ran, what it found, when it last asked
- * kodpen.com - lives in data/temp/hash_reference_state.json, NOT in the reference.
- * Earlier versions wrote it into the reference itself; a reference then uploaded to
- * kodpen.com carried "last_local_check" and "last_local_result" as if they were
- * files, and every site reported them missing. What counts as a file is decided
- * by shape now (pg_integrity_reference_files()), so a reference carrying anything
- * else is read for its files and the rest is ignored.
+ * The same source file does not have the same bytes everywhere it lives. Git
+ * on Windows checks text files out with CRLF (core.autocrlf), the release
+ * package carries them with LF, and an FTP client in ASCII mode converts them
+ * again on the way to a server. A reference hashed byte for byte on the machine
+ * that generated it therefore disagreed with every installation that got its
+ * files any other way: in 2026.4.4, 764 of 1916 files were reported as tampered
+ * with on every Linux site while the development machine reported a healthy
+ * installation.
  *
- * Returns 'success', 'missing_or_tampered_files', 'unable_to_fetch_reference',
+ * Binary files go through the same function: they are not converted in
+ * transit, both sides read the same bytes and arrive at the same digest.
+ *
+ * Returns the hex digest, or false when the file cannot be read.
+ */
+function pg_integrity_hash_file($path)
+{
+    $context = hash_init('sha256');
+
+    if (pg_integrity_read_line_endings($path, 'lf', $context) === false) {
+        return false;
+    }
+
+    return hash_final($context);
+}
+
+/**
+ * The git blob SHA-1 of a file read with the given line endings: 'raw' as it
+ * is on disk, 'lf' or 'crlf' as pg_integrity_read_line_endings() rewrites it.
+ * False when the file cannot be read.
+ *
+ * Git names a file by SHA-1("blob <length>\0<content>"). The length comes
+ * first, so a rewritten file is read twice: once to measure, once to hash.
+ */
+function pg_integrity_git_blob_sha($path, $line_endings)
+{
+    if ($line_endings === 'raw') {
+        $length = @filesize($path);
+
+        if ($length === false) {
+            return false;
+        }
+
+        $handle = @fopen($path, 'rb');
+
+        if (!$handle) {
+            return false;
+        }
+
+        $context = hash_init('sha1');
+        hash_update($context, 'blob ' . $length . "\0");
+
+        while (!feof($handle)) {
+            $chunk = fread($handle, 1048576);
+
+            if ($chunk === false) {
+                fclose($handle);
+                return false;
+            }
+
+            hash_update($context, $chunk);
+        }
+
+        fclose($handle);
+
+        return hash_final($context);
+    }
+
+    $length = pg_integrity_read_line_endings($path, $line_endings, null);
+
+    if ($length === false) {
+        return false;
+    }
+
+    $context = hash_init('sha1');
+    hash_update($context, 'blob ' . $length . "\0");
+
+    if (pg_integrity_read_line_endings($path, $line_endings, $context) === false) {
+        return false;
+    }
+
+    return hash_final($context);
+}
+
+/**
+ * Whether a file on disk is the blob a git tree lists for it.
+ *
+ * The blob is the file as it sits in the repository, which is not always the
+ * file as it sits on disk: Git for Windows checks LF files out with CRLF, and an
+ * FTP client in ASCII mode turns a file committed with CRLF into LF. The file
+ * matches when it is the blob as it is, with CRLF read as LF, or with every
+ * line ending as CRLF. The rewritten forms are only read when the file as it is
+ * does not match.
+ */
+function pg_integrity_git_blob_matches($path, $blob_sha)
+{
+    foreach (['raw', 'lf', 'crlf'] as $line_endings) {
+        $sha = pg_integrity_git_blob_sha($path, $line_endings);
+
+        if ($sha === false) {
+            return false;
+        }
+
+        if ($sha === $blob_sha) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// The public repository every release is tagged in, and the directory the
+// software lives under inside it (whatever the installation calls its own).
+function pg_integrity_github_repository()
+{
+    return 'kodpen/PinegrapCMS';
+}
+
+function pg_integrity_github_software_path()
+{
+    return 'pinegrap/';
+}
+
+// The tags a version can be released under, the update channel's own first:
+// a stable release is tagged v<version>, a beta build v<version>-beta.
+function pg_integrity_release_tags($version)
+{
+    $stable = 'v' . $version;
+    $beta = 'v' . $version . '-beta';
+
+    if (function_exists('pg_update_channel') && pg_update_channel() === 'beta') {
+        return [$beta, $stable];
+    }
+
+    return [$stable, $beta];
+}
+
+/**
+ * GET over https for the integrity check. Returns ['status' => int, 'body' =>
+ * string], or false when no answer arrived at all (no route, TLS failure,
+ * timeout).
+ *
+ * Whoever answers this request decides which files count as genuine, so it is
+ * made with the same certificate verification as an update download
+ * (pg_curl_tls()) and never falls back to an unverified connection. The
+ * timeouts are short because the System Status widget waits for the answer.
+ */
+function pg_integrity_http_get($url, $headers)
+{
+    $user_agent = function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap';
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_MAXFILESIZE, 16 * 1024 * 1024);
+        // The tree of a release is over a megabyte of JSON; compressed it is a
+        // quarter of that.
+        curl_setopt($ch, CURLOPT_ENCODING, '');
+
+        if (function_exists('pg_curl_tls')) {
+            pg_curl_tls($ch);
+        } else {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        }
+
+        if (defined('PROXY_ADDRESS') && (PROXY_ADDRESS != '')) {
+            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
+            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+            curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
+        }
+
+        $body = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($body === false) {
+            return false;
+        }
+
+        return ['status' => $status, 'body' => (string) $body];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 10,
+            'ignore_errors' => true,
+            'header' => implode("\r\n", array_merge($headers, ['User-Agent: ' . $user_agent])),
+        ],
+    ]);
+
+    $body = @file_get_contents($url, false, $context);
+
+    if ($body === false || empty($http_response_header)) {
+        return false;
+    }
+
+    // The last status line is the answer after any redirect.
+    $status = 0;
+
+    foreach ($http_response_header as $line) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $match)) {
+            $status = (int) $match[1];
+        }
+    }
+
+    return ['status' => $status, 'body' => (string) $body];
+}
+
+/**
+ * The files of a release as its tag on GitHub lists them.
+ *
+ * The tag's tree is the reference: it names every file by its git blob SHA-1,
+ * and it is exactly what GitHub hands out for that release - a clone, a source
+ * archive, a package built from the tag. Nothing has to be generated or
+ * uploaded for it, and nothing on a development machine can leak into it.
+ *
+ * Returns ['version', 'tag', 'sha', 'fetched', 'files' => [relative path =>
+ * blob SHA-1]] for the files in scope; 'not_released' when none of the
+ * version's tags exists (a build between two releases, a branch, a fork); false
+ * when GitHub could not be asked or its answer cannot be used (no route, rate
+ * limit, TLS failure, a truncated or unreadable tree).
+ */
+function pg_integrity_github_reference($version, $ignored_files)
+{
+    $software_path = pg_integrity_github_software_path();
+
+    foreach (pg_integrity_release_tags($version) as $tag) {
+        $response = pg_integrity_http_get(
+            'https://api.github.com/repos/' . pg_integrity_github_repository() . '/git/trees/' . rawurlencode($tag) . '?recursive=1',
+            ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28']
+        );
+
+        if ($response === false) {
+            return false;
+        }
+
+        if ($response['status'] === 404) {
+            continue;
+        }
+
+        if ($response['status'] !== 200) {
+            return false;
+        }
+
+        $tree = json_decode($response['body'], true);
+
+        // A truncated tree lists only part of the release; the rest would go
+        // unchecked without anything saying so.
+        if (!is_array($tree) || !isset($tree['tree']) || !is_array($tree['tree']) || !empty($tree['truncated'])) {
+            return false;
+        }
+
+        $files = [];
+
+        foreach ($tree['tree'] as $entry) {
+            // Blobs only: directories, submodules and symbolic links (mode
+            // 120000) are not files that can be hashed on disk.
+            if (
+                !is_array($entry) ||
+                !isset($entry['type'], $entry['path'], $entry['sha'], $entry['mode']) ||
+                $entry['type'] !== 'blob' ||
+                $entry['mode'] === '120000' ||
+                strpos((string) $entry['path'], $software_path) !== 0 ||
+                !preg_match('/^[0-9a-f]{40}$/', (string) $entry['sha'])
+            ) {
+                continue;
+            }
+
+            $relative_path = substr((string) $entry['path'], strlen($software_path));
+
+            if (pg_integrity_in_scope($relative_path, $ignored_files)) {
+                $files[$relative_path] = (string) $entry['sha'];
+            }
+        }
+
+        if (empty($files)) {
+            return false;
+        }
+
+        ksort($files);
+
+        return [
+            'version' => (string) $version,
+            'tag' => $tag,
+            'sha' => isset($tree['sha']) ? (string) $tree['sha'] : '',
+            'fetched' => time(),
+            'files' => $files,
+        ];
+    }
+
+    return 'not_released';
+}
+
+/**
+ * Verifies the shipped source files - those directly in the software directory
+ * and everything under pg_integrity_scope_directories() - against a reference,
+ * to detect tampered or missing files. Ignores server-generated files like
+ * error_log, .htaccess, etc.
+ *
+ * The reference is one of two things:
+ *
+ *   - Generated on THIS installation for THIS version by _software_create_hash.php
+ *     (data/temp/hash_reference.json, stamped "_generated": host, version, time).
+ *     That is the ground truth on the development machine, which runs code no
+ *     release has been tagged for yet. Compared hourly, SHA-256 of the file as it
+ *     is and then with CRLF read as LF.
+ *   - Everywhere else, the release's tag on GitHub (pg_integrity_github_reference()):
+ *     the tree of v<version>, cached in data/temp/hash_reference_github.json and
+ *     fetched again every 12 hours, so a cache an intruder rewrote to match their
+ *     files is replaced by the copy they cannot rewrite. The files are compared
+ *     hourly by git blob SHA-1 (pg_integrity_git_blob_matches()).
+ *
+ * The reference used to be a file generated on the development machine and
+ * published on kodpen.com. It was hashed from the development working tree, so
+ * it listed files that were never pushed, files still being edited and local
+ * leftovers, and every installation made from GitHub reported them as missing
+ * or tampered with. The tag cannot carry any of that.
+ *
+ * The check's own bookkeeping - when it last ran, what it found, when it last
+ * asked GitHub - lives in data/temp/hash_reference_state.json.
+ *
+ * Returns 'success', 'missing_or_tampered_files', 'unable_to_fetch_reference'
+ * (no reference for this version: not tagged yet, or GitHub not reachable),
  * 'unable_to_resolve_directory' or 'version_not_defined'.
  */
 function check_directory_file_integrity()
 {
-    // Path to the local reference file, and to the bookkeeping beside it
     $reference_file = 'data/temp/hash_reference.json';
+    $github_file = 'data/temp/hash_reference_github.json';
     $state_file = 'data/temp/hash_reference_state.json';
 
-    // Files that should be ignored during the integrity check, by name, wherever
-    // they appear in the tree
-    $ignored_files = ['error_log', '.htaccess', '.user.ini', '.DS_Store', 'Thumbs.db'];
+    $ignored_files = pg_integrity_ignored_files();
 
     // Get current software version (must be defined as a constant)
-    $current_version = defined('VERSION') ? VERSION : null;
+    $current_version = defined('VERSION') ? (string) VERSION : null;
     if ($current_version === null) {
         log_activity(lang('VERSION constant not defined.'), 'SYSTEM');
         return 'version_not_defined';
     }
 
-    // The copy on kodpen.com for this version, decoded and stripped of anything
-    // that is not a file; false when it cannot be fetched or is not JSON.
-    $fetch_remote = function () use ($current_version) {
-        $remote_url = 'https://kodpen.com/pinegrap_hash_referance[' . $current_version . '].json';
-        $remote_context = stream_context_create(['http' => ['timeout' => 3]]);
-        $remote_data = @file_get_contents($remote_url, false, $remote_context);
-
-        if ($remote_data === false) {
-            return false;
-        }
-
-        $remote_hashes = json_decode($remote_data, true);
-
-        if (!is_array($remote_hashes)) {
-            return false;
-        }
-
-        return pg_integrity_reference_files($remote_hashes);
-    };
-
     // The bookkeeping
-    $state = ['last_hash_check' => 0, 'last_local_check' => 0, 'last_local_result' => null, 'reference_stamp' => ''];
+    $state = [
+        'last_local_check' => 0,
+        'last_local_result' => null,
+        'reference_stamp' => '',
+        'github_attempt' => 0,
+        'github_attempt_version' => '',
+    ];
 
     if (is_file($state_file)) {
         $saved_state = json_decode((string) @file_get_contents($state_file), true);
@@ -142,68 +541,116 @@ function check_directory_file_integrity()
         }
     }
 
-    // If reference file does not exist, fetch it from remote server
-    if (!file_exists($reference_file)) {
-        $remote_hashes = $fetch_remote();
-
-        if ($remote_hashes === false) {
-            log_activity(lang("Unable to fetch remote hash reference."), 'SYSTEM');
-            return 'unable_to_fetch_reference';
+    $save_state = function () use (&$state, $state_file) {
+        if (!is_dir(dirname($state_file))) {
+            @mkdir(dirname($state_file), 0755, true);
         }
 
-        if (!is_dir(dirname($reference_file))) {
-            mkdir(dirname($reference_file), 0755, true);
-        }
+        @file_put_contents($state_file, json_encode($state, JSON_PRETTY_PRINT));
+    };
 
-        file_put_contents($reference_file, json_encode($remote_hashes, JSON_PRETTY_PRINT));
-
-        $state['last_hash_check'] = time();
-    }
-
-    // Get the current working directory
     $base_path = getcwd();
     if ($base_path === false) {
         log_activity(lang('Unable to resolve current working directory.'), 'SYSTEM');
         return 'unable_to_resolve_directory';
     }
 
-    // Read and decode the reference file
-    $stored_hashes = json_decode(file_get_contents($reference_file), true);
-    if (!is_array($stored_hashes) || empty($stored_hashes)) {
-        log_activity(lang('Hash reference file is corrupted, unreadable, or empty.'), 'SYSTEM');
-        return 'unable_to_resolve_directory';
-    }
-
-    // Bookkeeping an older version wrote into the reference: taken over once, when
-    // there is no state file yet, and ignored as files from here on.
-    if (!is_file($state_file)) {
-        foreach (['last_hash_check', 'last_local_check'] as $legacy_key) {
-            if (isset($stored_hashes[$legacy_key])) {
-                $state[$legacy_key] = (int) $stored_hashes[$legacy_key];
-            }
-        }
-    }
-
-    $generated = (isset($stored_hashes['_generated']) && is_array($stored_hashes['_generated'])) ? $stored_hashes['_generated'] : null;
-
-    $stored_hashes = pg_integrity_reference_files($stored_hashes);
-
-    // A reference with no file in it cannot answer the question it exists for.
-    if (empty($stored_hashes)) {
-        log_activity(lang('Hash reference file is corrupted, unreadable, or empty.'), 'SYSTEM');
-        return 'unable_to_resolve_directory';
-    }
-
     // A reference generated on this host for this version is the truth here.
+    $local_reference = is_file($reference_file) ? json_decode((string) @file_get_contents($reference_file), true) : null;
+    $generated = (is_array($local_reference) && isset($local_reference['_generated']) && is_array($local_reference['_generated'])) ? $local_reference['_generated'] : null;
+
     $authoritative = ($generated !== null)
         && isset($generated['version'], $generated['host'])
-        && ((string) $generated['version'] === (string) $current_version)
+        && ((string) $generated['version'] === $current_version)
         && (strtolower((string) $generated['host']) === pg_integrity_host());
 
-    // A regenerated or replaced reference must not be answered from the cached result
-    // of the previous one.
-    $reference_stamp = md5(@filemtime($reference_file) . '|' . @filesize($reference_file) . '|' . json_encode($generated));
+    if ($authoritative) {
+        $expected = pg_integrity_reference_files($local_reference);
 
+        if (empty($expected)) {
+            log_activity(lang('Hash reference file is corrupted, unreadable, or empty.'), 'SYSTEM');
+            return 'unable_to_resolve_directory';
+        }
+
+        $reference_stamp = md5('local|' . @filemtime($reference_file) . '|' . @filesize($reference_file) . '|' . json_encode($generated));
+    } else {
+        $github = is_file($github_file) ? json_decode((string) @file_get_contents($github_file), true) : null;
+
+        $usable = is_array($github)
+            && isset($github['version'], $github['files'], $github['fetched'])
+            && ((string) $github['version'] === $current_version)
+            && is_array($github['files'])
+            && !empty($github['files']);
+
+        $now = time();
+
+        // Fetched again every 12 hours. A failed attempt is not repeated within
+        // the hour for the same version, so an unreachable GitHub or a spent rate
+        // limit is not asked on every request; a new version is asked at once.
+        $due = !$usable || (($now - (int) $github['fetched']) >= 43200);
+        $may_ask = ((string) $state['github_attempt_version'] !== $current_version)
+            || (($now - (int) $state['github_attempt']) >= 3600);
+
+        if ($due && $may_ask) {
+            $state['github_attempt'] = $now;
+            $state['github_attempt_version'] = $current_version;
+
+            $fetched = pg_integrity_github_reference($current_version, $ignored_files);
+
+            // Logged when the reference goes missing, not on every hourly retry.
+            $was_unavailable = ($state['last_local_result'] === 'unable_to_fetch_reference');
+
+            if (is_array($fetched)) {
+                if (!is_dir(dirname($github_file))) {
+                    @mkdir(dirname($github_file), 0755, true);
+                }
+
+                @file_put_contents($github_file, json_encode($fetched, JSON_PRETTY_PRINT));
+
+                $github = $fetched;
+                $usable = true;
+            } elseif ($fetched === 'not_released') {
+                // No tag for this version: a cached tree cannot be right either.
+                $usable = false;
+
+                if (!$was_unavailable) {
+                    log_activity(
+                        lang([
+                            'string' => 'Version {var:1} is not tagged on GitHub, so its files cannot be verified until it is released.',
+                            'vars' => [$current_version],
+                        ]),
+                        'SYSTEM'
+                    );
+                }
+            } else {
+                // GitHub could not be asked; a cached tree of this version stays in use.
+                if (!$usable && !$was_unavailable) {
+                    log_activity(lang('Unable to fetch remote hash reference.'), 'SYSTEM');
+                }
+            }
+        }
+
+        if (!$usable) {
+            $state['last_local_check'] = $now;
+            $state['last_local_result'] = 'unable_to_fetch_reference';
+            $save_state();
+
+            return 'unable_to_fetch_reference';
+        }
+
+        $expected = [];
+
+        foreach ($github['files'] as $relative_path => $blob_sha) {
+            if (is_string($blob_sha) && preg_match('/^[0-9a-f]{40}$/', $blob_sha)) {
+                $expected[$relative_path] = $blob_sha;
+            }
+        }
+
+        $reference_stamp = md5('github|' . (isset($github['tag']) ? $github['tag'] : '') . '|' . (isset($github['sha']) ? $github['sha'] : '') . '|' . (int) $github['fetched']);
+    }
+
+    // A regenerated, fetched or replaced reference must not be answered from the
+    // cached result of the previous one.
     if ($state['reference_stamp'] !== $reference_stamp) {
         $state['last_local_check'] = 0;
         $state['last_local_result'] = null;
@@ -218,18 +665,13 @@ function check_directory_file_integrity()
     // Array to collect tampered or missing files
     $tampered_files = [];
 
-    // Compare each stored hash with the current file hash.
+    // Compare each expected hash with the file on disk.
     //
-    // Entries in subdirectories used to be skipped outright, which meant the
-    // whole of includes/ went unchecked - the authentication code, the external
-    // API's credential check and the payment libraries among it. They are
-    // checked now; the reference file lists them with forward slashes.
-    //
-    // The reference can arrive over the network, so a path out of it is treated
-    // as untrusted input: anything absolute, anything with a drive letter and
+    // The reference arrives over the network, so a path out of it is treated as
+    // untrusted input: anything absolute, anything with a drive letter and
     // anything containing a .. segment is refused rather than resolved. Only
     // files inside the software directory are ever hashed.
-    foreach ($stored_hashes as $relative_path => $stored_hash) {
+    foreach ($expected as $relative_path => $expected_hash) {
         $relative_path = str_replace('\\', '/', (string) $relative_path);
 
         if (
@@ -244,66 +686,33 @@ function check_directory_file_integrity()
 
         $full_path = $base_path . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
 
-        if (file_exists($full_path)) {
-            $current_hash = hash_file('sha256', $full_path);
-            if ($current_hash !== $stored_hash) {
-                $tampered_files[] = $relative_path;
-            }
-        } else {
+        if (!file_exists($full_path)) {
             $tampered_files[] = $relative_path . ' (missing)';
-        }
-    }
-
-    // --- Remote vs Local comparison every 12 hours ---
-    //
-    // Only for a reference that did not come from here. The generated one is
-    // compared with nothing and replaced by nothing: it IS the reference, and the
-    // copy on kodpen.com is uploaded from it, not the other way round.
-    $now = time();
-
-    if (!$authoritative && (($now - (int) $state['last_hash_check']) >= 43200)) { // 12 hours
-        $remote_hashes = $fetch_remote();
-
-        if ($remote_hashes !== false) {
-            // Find differences
-            $missing_in_local = array_diff_key($remote_hashes, $stored_hashes);
-            $extra_in_local = array_diff_key($stored_hashes, $remote_hashes);
-
-            foreach ($missing_in_local as $file => $hash) {
-                $tampered_files[] = $file . ' (missing in local reference)';
-            }
-            foreach ($extra_in_local as $file => $hash) {
-                $tampered_files[] = $file . ' (extra in local reference)';
-            }
-            foreach ($remote_hashes as $file => $hash) {
-                if (isset($stored_hashes[$file]) && $stored_hashes[$file] !== $hash) {
-                    $tampered_files[] = $file . ' (hash mismatch with remote)';
-                }
-            }
-
-            // The copy on kodpen.com replaces the local reference
-            file_put_contents($reference_file, json_encode($remote_hashes, JSON_PRETTY_PRINT));
-            $stored_hashes = $remote_hashes;
+            continue;
         }
 
-        // Reached or not, the next attempt is 12 hours away; an unreachable server
-        // must not be asked on every request.
-        $state['last_hash_check'] = $now;
+        if ($authoritative) {
+            // Byte for byte first: what a reference made before
+            // pg_integrity_hash_file() holds, and what every file whose line
+            // endings were never converted matches.
+            $intact = (hash_file('sha256', $full_path) === $expected_hash)
+                || (pg_integrity_hash_file($full_path) === $expected_hash);
+        } else {
+            $intact = pg_integrity_git_blob_matches($full_path, $expected_hash);
+        }
+
+        if (!$intact) {
+            $tampered_files[] = $relative_path;
+        }
     }
-    // --- END Remote vs Local comparison ---
 
     $local_result = empty($tampered_files) ? 'success' : 'missing_or_tampered_files';
 
-    // Persist the result beside the reference so the next request within 1 hour can
-    // skip the per-file hashing entirely. The stamp is taken again because the
-    // reference may just have been replaced.
-    clearstatcache(true, $reference_file);
-
+    // Persist the result so the next request within 1 hour can skip the
+    // per-file hashing entirely.
     $state['last_local_check'] = time();
     $state['last_local_result'] = $local_result;
-    $state['reference_stamp'] = md5(@filemtime($reference_file) . '|' . @filesize($reference_file) . '|' . json_encode($generated));
-
-    @file_put_contents($state_file, json_encode($state, JSON_PRETTY_PRINT));
+    $save_state();
 
     // If tampered or missing files are found, log them
     if ($local_result === 'missing_or_tampered_files') {
@@ -1275,6 +1684,17 @@ function get_system_status_checks()
                 $score -= $weights['file_integrity'] * 0.5;
                 break;
             case 'unable_to_fetch_reference':
+                // Nothing to compare with is not evidence of tampering: the
+                // version is not tagged on GitHub yet, or GitHub cannot be
+                // reached from this server.
+                $output .= $makeIcon(
+                    'bi-file-earmark-minus-fill',
+                    'text-warning',
+                    'Directory File Integrity',
+                    'The integrity reference for this version could not be retrieved from GitHub. The version may not be released yet, or GitHub may be unreachable from this server.'
+                );
+                $score -= $weights['file_integrity'] * 0.5;
+                break;
             case 'missing_or_tampered_files':
                 $output .= $makeIcon(
                     'bi-file-earmark-x-fill',

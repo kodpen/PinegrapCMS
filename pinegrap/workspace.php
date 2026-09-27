@@ -32,6 +32,7 @@ pg_page_shell([
         'heading' => lang('Channels'),
         'heading_description' => lang('Conversations about customers and work, with the tasks that come out of them.'),
         'cancel' => false,
+        'tour' => function_exists('ws_tour_key') ? ws_tour_key() : '',
     ]) . '
 <main id="content" class="container-fluid p-0">
     <div id="ws-root" class="ws-app">

@@ -9,8 +9,9 @@
  */
 
 // A module of functions.php: the account system widgets - logout, change
-// password, set password, profile, email preferences and address book - and
-// the designed pages that stand in for the legacy page types.
+// password, set password, profile, email preferences and address book - the
+// designed pages that stand in for the legacy page types, and the login
+// region a site header carries.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -73,6 +74,39 @@ function pg_sw_page_type_widget_url($page_type)
     $pages = pg_sw_widget_pages($map[$page_type]);
     if (!$pages) return '';
     return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$pages[0]['page_name']);
+}
+
+// Where a visitor who has to sign in before a page opens is sent: the
+// site's designed sign-in page (one carrying the login widget), with the
+// page as send_to. A site that keeps a legacy page of $legacy_type ('login',
+// 'registration entrance') is served by the legacy screen, which shows that
+// page - unless the page asked for is itself a visual design page
+// ($designed_first): its visitor is on the designed site, and the sample
+// content every installation starts with carries the legacy pages. A site
+// with no designed sign-in page gets the legacy screen too. $fallback is the
+// legacy screen's own address.
+function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designed_first = false)
+{
+    if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $fallback;
+    if (!$designed_first && (int)db_value("SELECT COUNT(*) FROM page WHERE page_type = '" . e($legacy_type) . "'") > 0) return $fallback;
+    // Only a sign-in page the visitor may open: one in a folder that itself
+    // asks for a sign-in would send them round in a circle.
+    foreach (pg_sw_widget_pages('login_form') as $p) {
+        $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
+        if ($folder === null || $folder === '' || !check_view_access($folder)) continue;
+        $url = (defined('PATH') ? PATH : '/') . encode_url_path((string)$p['page_name']);
+        return $url . '?send_to=' . urlencode((string)$send_to);
+    }
+    return $fallback;
+}
+
+// Whether a page belongs to a visual design (its own tree, or a design made
+// in the visual editor) - what pg_sw_sign_in_url() is told as $designed_first.
+function pg_sw_page_is_visual($page_id)
+{
+    if (!function_exists('pg_page_edit_row')) return false;
+    $row = pg_page_edit_row($page_id);
+    return is_array($row) && pg_page_is_visual_design($row);
 }
 
 // The address one of the account widgets links to: the page its config
@@ -987,4 +1021,237 @@ function _pg_my_account_extras($logged_in)
         }
     }
     return $out;
+}
+
+// ============================================================================
+// login_region: the part of a site header that follows the session
+// ============================================================================
+
+// A link from the login region to the sign-in or sign-up page, carrying
+// ?send_to= the page the visitor is on, so they come back where they were.
+// On that page itself the send_to it was reached with is passed on instead:
+// a sign-in page never sends the visitor back to the sign-in page.
+function _pg_login_region_return_link($url, $page_url)
+{
+    if ($url === '') return '';
+    $target = explode('?', $url, 2);
+    $here   = explode('?', (string)$page_url, 2);
+    $send   = (rtrim($target[0], '/') === rtrim($here[0], '/')) ? _pg_member_query_path('send_to') : (string)$page_url;
+    if ($send === '') return $url;
+    return $url . (strpos($url, '?') === false ? '?' : '&') . 'send_to=' . urlencode($send);
+}
+
+// Whether the signed-in person has work in the control panel: the test
+// send_user_to_login_home() makes before it opens the panel for them
+// instead of the site.
+function _pg_login_region_panel_access()
+{
+    if (!defined('USER_ID') || (int)USER_ID <= 0) return false;
+    if (defined('USER_ROLE') && (int)USER_ROLE < 3) return true;
+    $u = db_item("SELECT * FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1");
+    if (!is_array($u)) return false;
+    foreach (array('user_manage_contacts', 'user_manage_visitors', 'user_manage_ecommerce',
+                   'user_manage_forms', 'user_manage_calendars', 'user_manage_emails') as $k) {
+        if (isset($u[$k]) && (string)$u[$k] === 'yes') return true;
+    }
+    foreach (array('manage_ecommerce_reports', 'manage_erp', 'manage_workspace') as $k) {
+        if (!empty($u[$k])) return true;
+    }
+    return function_exists('no_acl_check') && no_acl_check((int)USER_ID);
+}
+
+// Render a 'login_region' system widget: what a site header shows about the
+// session. The designer draws both states in one tree - the part for a
+// visitor who is not signed in (sign-in and sign-up links, or a compact
+// sign-in form) and the part for a signed-in member (their name, initials or
+// picture, the links of their account) - and the visibility flags keep the
+// one that applies. Being a widget, one row placed in the header of every
+// page is edited once.
+//
+// Flags: is_signed_in, is_signed_out, has_badge, is_staff (the visitor may
+// open the configured staff page), has_panel_access (has work in the
+// control panel). Tokens: ^^__site_name^^, ^^__user_name^^,
+// ^^__user_first_name^^, ^^__user_initials^^, ^^__user_email^^,
+// ^^__user_avatar_url^^ (their picture, else the picture of their
+// initials), ^^__user_badge^^, and the links ^^__login_url^^,
+// ^^__register_url^^, ^^__my_account_url^^, ^^__profile_url^^,
+// ^^__logout_url^^, ^^__staff_url^^, ^^__panel_url^^. A link with nowhere
+// to go leaves with its node.
+//
+// A signed-out part holding controls named email and password is a compact
+// sign-in form: it is wrapped in the <form> index.php reads, and a refused
+// attempt goes on to the sign-in page, which prints the error.
+//
+// cfg: login_page_id, register_page_id, show_register_link (default on),
+// account_page_id, staff_page_id. The sign-in, sign-up and account links
+// fall back to a designed page carrying the matching widget, then to the
+// legacy page type.
+function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    static $placement = 0;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    // A page drawn for the search index or the SEO score is drawn inside
+    // somebody else's request, and must not carry their name.
+    $background = (function_exists('pg_seo_rendering') && pg_seo_rendering())
+               || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true);
+    $signed_in  = !$background && _pg_acct_signed_in() && defined('USER_ID') && (int)USER_ID > 0;
+    $page_url   = (!$background && function_exists('get_request_uri')) ? (string)get_request_uri() : '';
+    $software   = _pg_acct_software_path();
+    $output     = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+
+    $values = array(
+        '__site_name'       => h(_pg_member_site_name()),
+        '__user_name'       => '',
+        '__user_first_name' => '',
+        '__user_initials'   => '',
+        '__user_email'      => '',
+        '__user_avatar_url' => '',
+        '__user_badge'      => '',
+    );
+    $links = array(
+        '__login_url'      => '',
+        '__register_url'   => '',
+        '__my_account_url' => '',
+        '__profile_url'    => '',
+        '__logout_url'     => '',
+        '__staff_url'      => '',
+        '__panel_url'      => '',
+    );
+    $flags = array(
+        'is_signed_in'     => $signed_in,
+        'is_signed_out'    => !$signed_in,
+        'has_badge'        => false,
+        'is_staff'         => false,
+        'has_panel_access' => false,
+    );
+
+    if ($signed_in) {
+        $row = db_item(
+            "SELECT user.user_username, user.user_email, user.user_badge, user.user_badge_label,
+                    contacts.first_name, contacts.last_name, contacts.image,
+                    contacts.file_id AS image_file_id, files.name AS image_file_name
+             FROM user
+             LEFT JOIN contacts ON contacts.id = user.user_contact
+             LEFT JOIN files ON files.id = contacts.file_id
+             WHERE user.user_id = '" . (int)USER_ID . "'
+             LIMIT 1");
+        if (!is_array($row)) $row = array();
+        $username = isset($row['user_username']) ? (string)$row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : '');
+        $first    = trim(isset($row['first_name']) ? (string)$row['first_name'] : '');
+        $last     = trim(isset($row['last_name']) ? (string)$row['last_name'] : '');
+        $full     = trim($first . ' ' . $last);
+
+        // The picture: the member's own, else the letters of their name, the
+        // way the panel draws people (includes/fn/contacts.php).
+        $avatar = '';
+        if (!empty($row['image_file_id']) && (string)$row['image_file_name'] !== '') {
+            $avatar = $output . $row['image_file_name'];
+        } elseif (!empty($row['image'])) {
+            $image  = (string)$row['image'];
+            $avatar = preg_match('#^(https?:)?/#i', $image) ? $image : $output . $image;
+        } elseif (function_exists('pg_avatar_for')) {
+            $avatar = pg_avatar_for($first, $last, $username, (string)USER_ID);
+        }
+
+        $badge = '';
+        if (isset($row['user_badge']) && (int)$row['user_badge'] === 1) {
+            $badge = (string)$row['user_badge_label'];
+            if ($badge === '' && defined('BADGE_LABEL')) $badge = (string)BADGE_LABEL;
+        }
+
+        $values['__user_name']       = h($full !== '' ? $full : $username);
+        $values['__user_first_name'] = h($first !== '' ? $first : ($full !== '' ? $full : $username));
+        $values['__user_initials']   = h(function_exists('pg_initials') ? pg_initials($first, $last, $username) : mb_strtoupper(mb_substr($username, 0, 2)));
+        $values['__user_email']      = h(isset($row['user_email']) ? (string)$row['user_email'] : '');
+        $values['__user_avatar_url'] = h($avatar);
+        $values['__user_badge']      = h($badge);
+        $flags['has_badge']          = ($badge !== '');
+
+        $links['__my_account_url'] = _pg_acct_page_url(isset($cfg['account_page_id']) ? $cfg['account_page_id'] : 0, 'my account');
+        $links['__profile_url']    = _pg_acct_page_url(0, 'my account profile');
+
+        // Signed out at once: the token is what lets logout.php skip its
+        // question. Without a send_to it goes on to the site's logout page
+        // ("you have logged out"); a site with none goes back home.
+        $token = isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '';
+        $has_logout_page = (pg_sw_page_type_widget_url('logout') !== '')
+                        || ((int)db_value("SELECT COUNT(*) FROM page WHERE page_type = 'logout'") > 0);
+        $links['__logout_url'] = $software . '/logout.php?token=' . urlencode($token)
+                               . ($has_logout_page ? '' : '&send_to=' . urlencode(defined('PATH') ? PATH : '/'));
+
+        // The staff link only for those the staff page lets in - the folder
+        // access decides, the same rule get_page.php applies on arrival.
+        $staff_page_id = isset($cfg['staff_page_id']) ? (int)$cfg['staff_page_id'] : 0;
+        if ($staff_page_id > 0) {
+            $staff = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $staff_page_id . "' LIMIT 1");
+            $binned = (is_array($staff) && function_exists('pg_recycle_bin_folder_ids'))
+                ? in_array((int)$staff['page_folder'], array_map('intval', (array)pg_recycle_bin_folder_ids()), true) : false;
+            if (is_array($staff) && (string)$staff['page_name'] !== '' && !$binned && check_view_access($staff['page_folder'])) {
+                $links['__staff_url'] = $output . encode_url_path((string)$staff['page_name']);
+                $flags['is_staff']    = true;
+            }
+        }
+
+        if (_pg_login_region_panel_access()) {
+            $links['__panel_url']      = $software . '/welcome.php';
+            $flags['has_panel_access'] = true;
+        }
+    } else {
+        $login = _pg_acct_page_url(isset($cfg['login_page_id']) ? $cfg['login_page_id'] : 0, 'login');
+        if ($login === '') $login = $software . '/index.php';
+        $links['__login_url'] = _pg_login_region_return_link($login, $page_url);
+
+        // Sign-up: the chosen page; otherwise, unless switched off, the site's
+        // registration page (a designed one first).
+        $show_register = !(isset($cfg['show_register_link'])
+            && ($cfg['show_register_link'] === false || $cfg['show_register_link'] === 0 || $cfg['show_register_link'] === '0'));
+        $register = '';
+        if ($show_register) {
+            if (!empty($cfg['register_page_id'])) $register = _pg_member_page_url($cfg['register_page_id']);
+            if ($register === '') $register = _pg_acct_page_url(0, 'registration entrance');
+        }
+        $links['__register_url'] = _pg_login_region_return_link($register, $page_url);
+    }
+
+    _eo_apply_visibility_bindings($tree, $flags);
+    _pg_member_drop_empty_links($tree, $links);
+
+    // A compact sign-in form in the signed-out part.
+    $controls = array();
+    foreach (_pg_member_controls($tree) as $c) $controls[$c['name']] = true;
+    $sign_in_form = !$signed_in && isset($controls['email']) && isset($controls['password']);
+    if ($sign_in_form && !(defined('REMEMBER_ME') && REMEMBER_ME)) {
+        _pg_member_drop_control($tree, 'remember_me');
+    }
+
+    pg_cf_link_labels($tree);
+    // Stamped with a form name nothing posts to: a Messages block placed in
+    // a header must not print the alerts that belong to the page's own form.
+    _pg_inject_messages_node($tree, 'login_region');
+
+    $split    = _split_widget_tree($tree);
+    $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+
+    // The same region may sit in a page twice (a header and an offcanvas
+    // menu): every id gets the placement's own suffix.
+    $rendered = pg_sw_uniquify_row_ids($rendered, (int)$widget_id, ++$placement);
+
+    if ($sign_in_form) {
+        // display:contents - the form must not become a box of its own
+        // between a navbar and its items.
+        $rendered = '<form action="' . h($software . '/index.php') . '" method="post" class="pg-login-region-form" style="display:contents">'
+                  . get_token_field()
+                  . '<input type="hidden" name="send_to" value="' . h($page_url) . '">'
+                  . '<input type="hidden" name="return_to" value="' . h($links['__login_url']) . '">'
+                  . '<input type="hidden" name="require_cookies" value="true">'
+                  . $rendered . '</form>';
+    }
+
+    $tokens = $values;
+    foreach ($links as $k => $v) $tokens[$k] = h($v);
+    return _pg_member_apply_tokens($rendered, $tokens);
 }

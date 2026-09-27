@@ -283,6 +283,7 @@ function ws_notes_present($viewer, $rows, $full = false)
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $out = array();
+    $news = ws_note_news_map($viewer, array_map(function ($row) { return (int) $row['id']; }, $rows));
 
     foreach ($rows as $row) {
         $id = (int) $row['id'];
@@ -361,6 +362,10 @@ function ws_notes_present($viewer, $rows, $full = false)
             'source'     => $source,
             'with'       => $with,
             'in'         => $in,
+            // Changed by somebody else, or answered by Claude, since the
+            // person last had it open; Claude's state: waiting | answered.
+            'unread'     => !empty($news[$id]['unread']),
+            'claude_state' => (string) ($news[$id]['claude'] ?? ''),
             'channel'    => $made ? array('id' => (int) $made['id'], 'name' => (string) $made['name'], 'url' => $base . 'workspace.php?channel=' . (int) $made['id']) : null,
         );
 
@@ -514,6 +519,10 @@ function ws_note_save($viewer, $data)
 
         $note_id = (int) mysqli_insert_id(db::$con);
 
+        if (($note_id > 0) && function_exists('ws_blocks_index')) {
+            ws_blocks_index('note', $note_id, $sets['body'], (int) $viewer['id']);
+        }
+
         return ($note_id > 0) ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false) : $fail(lang('The note could not be saved.'));
     }
 
@@ -534,6 +543,23 @@ function ws_note_save($viewer, $data)
 
     if (!empty($parts)) {
         db("UPDATE ws_notes SET " . implode(', ', $parts) . " WHERE id = '" . $note_id . "'");
+    }
+
+    if (isset($sets['body']) && function_exists('ws_blocks_index')) {
+        ws_blocks_index('note', $note_id, $sets['body'], (int) $note['user_id']);
+    }
+
+    // The others who keep it are told it changed - once, until they look.
+    $changed = false;
+
+    foreach ($sets as $field => $value) {
+        if ((string) $value !== (string) $note[$field]) {
+            $changed = true;
+        }
+    }
+
+    if ($changed) {
+        ws_note_notify_change($viewer, $note);
     }
 
     return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false);
@@ -565,6 +591,10 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+
+    if (function_exists('ws_blocks_index')) {
+        ws_blocks_index('note', $id, '');
+    }
 
     if (ws_notes_inbox_ready()) {
         db("DELETE FROM ws_inbox WHERE note_id = '" . $id . "'");
@@ -1164,11 +1194,18 @@ function ws_note_claude_ask($viewer, $note, $text)
 {
     $text = trim(mb_substr(str_replace(array("\r", "\n"), ' ', (string) $text), 0, 2000));
 
-    if (!ws_note_claude_ready() || !ws_claude_asked($text)) {
+    // Pinegrap AI (ai.php) is asked the same way, with its own tag.
+    $agent = (function_exists('ws_ai_asked') && ws_ai_schema_ready() && ws_ai_asked($text) && !ws_claude_asked($text)) ? 'ai' : 'claude';
+
+    if (!ws_note_claude_ready() || (($agent === 'claude') && !ws_claude_asked($text))) {
         return array('ok' => false, 'error' => lang('Invalid request.'), 'request_id' => 0);
     }
 
-    if (!ws_claude_ready()) {
+    if (($agent === 'ai') && !ws_ai_ready()) {
+        return array('ok' => false, 'error' => ws_plain_text($viewer, ws_ai_setup_hint()), 'request_id' => 0);
+    }
+
+    if (($agent === 'claude') && !ws_claude_ready()) {
         return array('ok' => false, 'error' => ws_plain_text($viewer, ws_claude_setup_hint()), 'request_id' => 0);
     }
 
@@ -1181,14 +1218,21 @@ function ws_note_claude_ask($viewer, $note, $text)
     }
 
     $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')");
+        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')"
+        . (function_exists('ws_ai_agent_where') ? ws_ai_agent_where($agent) : ''));
 
-    if ($waiting >= WS_CLAUDE_PER_PERSON) {
+    if (($agent === 'ai') && ($waiting >= WS_AI_PER_PERSON)) {
+        return array('ok' => false, 'error' => lang(array('string' => 'Pinegrap AI already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => WS_AI_PER_PERSON)), 'request_id' => 0);
+    }
+
+    if (($agent === 'claude') && ($waiting >= WS_CLAUDE_PER_PERSON)) {
         return array('ok' => false, 'error' => lang(array('string' => 'Claude already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => WS_CLAUDE_PER_PERSON)), 'request_id' => 0);
     }
 
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_id, note_text, requested_by, status, created_at)
-        VALUES ('0', '0', '" . (int) $note['id'] . "', '" . e($text) . "', '" . (int) $viewer['id'] . "', 'queued', '" . time() . "')");
+    // Written with its assistant in one go: a request to Pinegrap AI must
+    // never sit in the table as Claude's, where Claude's run would take it.
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_id, note_text, requested_by, status, " . (($agent === 'ai') ? 'agent, ' : '') . "created_at)
+        VALUES ('0', '0', '" . (int) $note['id'] . "', '" . e($text) . "', '" . (int) $viewer['id'] . "', 'queued', " . (($agent === 'ai') ? "'ai', " : '') . "'" . time() . "')");
 
     $request_id = (int) mysqli_insert_id(db::$con);
 
@@ -1211,7 +1255,7 @@ function ws_note_claude_state($viewer, $note_id)
 
     $out = array();
 
-    foreach ((array) db_items("SELECT id, status, note_text, error FROM ws_ai_requests
+    foreach ((array) db_items("SELECT * FROM ws_ai_requests
         WHERE note_id = '" . (int) $note_id . "' AND note_done = 0 AND status IN ('queued', 'sent', 'running', 'answered', 'failed')
         ORDER BY id") as $row) {
         $out[] = array(
@@ -1219,6 +1263,7 @@ function ws_note_claude_state($viewer, $note_id)
             'status' => (string) $row['status'],
             'text'   => ws_plain_text($viewer, (string) $row['note_text']),
             'error'  => (string) $row['error'],
+            'agent'  => (string) ($row['agent'] ?? 'claude'),
         );
     }
 
@@ -1257,7 +1302,7 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
 
     $note = ws_note($note['id']);
     $lines = explode("\n", (string) $note['body']);
-    $block = array_merge(array('**Claude:**'), explode("\n", $answer), array(''));
+    $block = array_merge(array(((string) ($row['agent'] ?? 'claude') === 'ai') ? '**Pinegrap AI:**' : '**Claude:**'), explode("\n", $answer), array(''));
     $at = count($lines);
 
     foreach ($lines as $index => $line) {
@@ -1274,7 +1319,127 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
     db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'
         WHERE id = '" . (int) $note['id'] . "'");
 
+    ws_note_notify_change($viewer, $note, (int) $row['requested_by']);
+
     return true;
+}
+
+/**
+ * The inbox kinds that are about a note.
+ *
+ * @return string[]
+ */
+function ws_note_inbox_kinds()
+{
+    return array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai');
+}
+
+/**
+ * Tells the people a note is kept by - its owner and the people it is shared
+ * with - that somebody else changed it. One unread line per person and note:
+ * a note being written in is saved every few seconds, and the line only moves
+ * up to the latest change until it is read. Members of a channel it is shared
+ * in are not told; the card in the channel shows the note as it is. No device
+ * banner: a change to a note is not a call for attention the way a mention is.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @param int   $skip  somebody else not to tell (the one Claude answered, who hears that instead)
+ */
+function ws_note_notify_change($viewer, $note, $skip = 0)
+{
+    if (!ws_notes_inbox_ready()) {
+        return;
+    }
+
+    $people = array((int) $note['user_id']);
+
+    foreach ((array) db_values("SELECT user_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id > 0") as $user_id) {
+        $people[] = (int) $user_id;
+    }
+
+    $now = time();
+
+    foreach (array_unique($people) as $user_id) {
+        if (($user_id <= 0) || ($user_id === (int) $viewer['id']) || ($user_id === (int) $skip)) {
+            continue;
+        }
+
+        $existing = (int) db_value("SELECT id FROM ws_inbox
+            WHERE user_id = '" . $user_id . "' AND kind = 'note_updated' AND note_id = '" . (int) $note['id'] . "' AND read_at = 0
+            LIMIT 1");
+
+        if ($existing > 0) {
+            db("UPDATE ws_inbox SET actor_id = '" . (int) $viewer['id'] . "', created_at = '" . $now . "' WHERE id = '" . $existing . "'");
+            continue;
+        }
+
+        ws_notify($user_id, 'note_updated', array('note_id' => (int) $note['id'], 'actor_id' => (int) $viewer['id'], 'quiet' => true));
+    }
+}
+
+/**
+ * The person has the note in front of them: what the inbox said about it is
+ * read.
+ *
+ * @param array $viewer
+ * @param int   $note_id
+ */
+function ws_note_mark_seen($viewer, $note_id)
+{
+    if (!ws_notes_inbox_ready()) {
+        return;
+    }
+
+    $ids = array_map('intval', (array) db_values("SELECT id FROM ws_inbox
+        WHERE user_id = '" . (int) $viewer['id'] . "' AND note_id = '" . (int) $note_id . "' AND read_at = 0
+        AND kind IN ('" . implode("', '", ws_note_inbox_kinds()) . "')"));
+
+    if (!empty($ids)) {
+        ws_inbox_mark_read($viewer['id'], $ids);
+    }
+}
+
+/**
+ * What is new about a set of notes for this person: an unread inbox line
+ * about it, and where Claude stands with a line asked in it - still working,
+ * or answered with the answer not yet written in (it is written when
+ * somebody who may change the note has it open).
+ *
+ * @param array $viewer
+ * @param int[] $note_ids
+ * @return array note id => [unread => bool, claude => waiting|answered|'']
+ */
+function ws_note_news_map($viewer, $note_ids)
+{
+    $note_ids = array_values(array_unique(array_filter(array_map('intval', (array) $note_ids))));
+    $out = array();
+
+    if (empty($note_ids)) {
+        return $out;
+    }
+
+    if (ws_notes_inbox_ready()) {
+        foreach ((array) db_values("SELECT DISTINCT note_id FROM ws_inbox
+            WHERE user_id = '" . (int) $viewer['id'] . "' AND read_at = 0 AND note_id IN (" . implode(',', $note_ids) . ")
+            AND kind IN ('" . implode("', '", ws_note_inbox_kinds()) . "')") as $note_id) {
+            $out[(int) $note_id]['unread'] = true;
+        }
+    }
+
+    if (ws_note_claude_ready()) {
+        foreach ((array) db_items("SELECT note_id, status FROM ws_ai_requests
+            WHERE note_id IN (" . implode(',', $note_ids) . ") AND note_done = 0
+            AND status IN ('queued', 'sent', 'running', 'answered')") as $row) {
+            $state = ($row['status'] === 'answered') ? 'answered' : 'waiting';
+
+            if (($out[(int) $row['note_id']]['claude'] ?? '') !== 'answered') {
+                $out[(int) $row['note_id']]['claude'] = $state;
+            }
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -1290,6 +1455,9 @@ function ws_notes_js_strings()
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
         'notes_new'             => lang('New note'),
+        'notes_news'            => lang('Changed since you last opened it'),
+        'notes_claude_answered' => lang('Claude answered'),
+        'notes_claude_working'  => lang('Claude is on it'),
         'notes_search'          => lang('Search the notes'),
         'notes_empty'           => lang('No note yet.'),
         'notes_empty_shared'    => lang('Nothing is shared with you yet.'),

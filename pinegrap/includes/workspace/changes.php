@@ -82,8 +82,13 @@ function ws_changes_ready()
  * bool, int (with a range), enum (with its values), email, ids (a list of
  * record ids of the kind named), role (a user role by name, of the ones
  * listed), date (YYYY-MM-DD), datetime (YYYY-MM-DD HH:MM), keywords (a list
- * of words kept comma-separated). "key" is the table's id column when it is
- * not id.
+ * of words kept comma-separated), decimal ([min, max, decimals, may be
+ * empty]; kept as text such as "1.25", "" for empty), code (letters of the
+ * length given, upper case: a country or a currency), lines (a list of short
+ * lines: [at most, longest]), answers (the answers of a submitted form by
+ * field name: [at most, longest]; only the ones given change). A column
+ * starting with "__" is read by ws_change_record() rather than from the
+ * table. "key" is the table's id column when it is not id.
  *
  * @return array
  */
@@ -104,20 +109,45 @@ function ws_change_types()
             'actions'  => array('update', 'create', 'delete'),
             'required' => array('name'),
             'names'    => array('short_description', 'name'),
+            // Limits are the columns' own.
             'fields'   => array(
-                'name'              => array('text', 255, lang('Name'), 'name'),
-                'title'             => array('text', 255, lang('Title'), 'title'),
-                'short_description' => array('long', 2000, lang('Short description'), 'short_description'),
-                'full_description'  => array('long', 60000, lang('Full description'), 'full_description'),
-                'meta_description'  => array('text', 500, lang('Meta description'), 'meta_description'),
-                'meta_keywords'     => array('text', 500, lang('Meta keywords'), 'meta_keywords'),
-                'keywords'          => array('text', 500, lang('Search keywords'), 'keywords'),
-                'brand'             => array('text', 190, lang('Brand'), 'brand'),
-                'gtin'              => array('text', 100, lang('GTIN'), 'gtin'),
-                'mpn'               => array('text', 100, lang('MPN'), 'mpn'),
-                'price'             => array('money', 0, lang('Price'), 'price'),
-                'enabled'           => array('bool', 0, lang('On sale'), 'enabled'),
-                'notes'             => array('long', 2000, lang('Notes'), 'notes'),
+                'name'                    => array('text', 100, lang('Name'), 'name'),
+                'title'                   => array('text', 255, lang('Title'), 'title'),
+                'short_description'       => array('long', 100, lang('Short description'), 'short_description'),
+                'full_description'        => array('long', 60000, lang('Full description'), 'full_description'),
+                'details'                 => array('long', 60000, lang('Details'), 'details'),
+                'meta_description'        => array('text', 255, lang('Meta description'), 'meta_description'),
+                'meta_keywords'           => array('text', 2000, lang('Meta keywords'), 'meta_keywords'),
+                'keywords'                => array('text', 255, lang('Search keywords'), 'keywords'),
+                'brand'                   => array('text', 100, lang('Brand'), 'brand'),
+                'gtin'                    => array('text', 50, lang('GTIN'), 'gtin'),
+                'mpn'                     => array('text', 50, lang('MPN'), 'mpn'),
+                'google_product_category' => array('text', 255, lang('Google Product Category'), 'google_product_category'),
+                'price'                   => array('money', 0, lang('Price'), 'price'),
+                'enabled'                 => array('bool', 0, lang('On sale'), 'enabled'),
+                'taxable'                 => array('bool', 0, lang('Taxable'), 'taxable'),
+                // Empty follows the tax zone.
+                'tax_rate'                => array('decimal', array(0, 100, 3, true), lang('Tax rate'), 'tax_rate'),
+                'vat_exemption_code'      => array('text', 10, lang('VAT exemption code'), 'vat_exemption_code'),
+                'shippable'               => array('bool', 0, lang('Shippable'), 'shippable'),
+                'free_shipping'           => array('bool', 0, lang('Free Shipping'), 'free_shipping'),
+                'extra_shipping_cost'     => array('money', 0, lang('Extra Shipping Cost'), 'extra_shipping_cost'),
+                'weight'                  => array('decimal', array(0, 99999999, 4, false), lang('Weight'), 'weight'),
+                'length'                  => array('decimal', array(0, 99999999, 4, false), lang('Length'), 'length'),
+                'width'                   => array('decimal', array(0, 99999999, 4, false), lang('Width'), 'width'),
+                'height'                  => array('decimal', array(0, 99999999, 4, false), lang('Height'), 'height'),
+                'track_stock'             => array('bool', 0, lang('Track Inventory'), 'inventory'),
+                'backorder'               => array('bool', 0, lang('Backorder'), 'backorder'),
+                'out_of_stock_message'    => array('long', 2000, lang('Out of stock message'), 'out_of_stock_message'),
+                'minimum_quantity'        => array('int', array(0, 1000000), lang('Minimum quantity'), 'minimum_quantity'),
+                'maximum_quantity'        => array('int', array(0, 1000000), lang('Maximum quantity'), 'maximum_quantity'),
+                'reward_points'           => array('int', array(0, 1000000), lang('Reward points'), 'reward_points'),
+                'order_receipt_message'   => array('long', 5000, lang('Order Receipt Message'), 'order_receipt_message'),
+                'custom_field_1'          => array('text', 255, lang('Custom field 1'), 'custom_field_1'),
+                'custom_field_2'          => array('text', 255, lang('Custom field 2'), 'custom_field_2'),
+                'custom_field_3'          => array('text', 255, lang('Custom field 3'), 'custom_field_3'),
+                'custom_field_4'          => array('text', 255, lang('Custom field 4'), 'custom_field_4'),
+                'notes'                   => array('long', 2000, lang('Notes'), 'notes'),
             ),
             'create'   => array(
                 'quantity'  => array('int', array(0, 1000000), lang('Quantity in stock'), ''),
@@ -148,6 +178,13 @@ function ws_change_types()
                 // Goes with a cancellation; the order keeps it, nothing is
                 // compared against it.
                 'cancellation_reason' => array('long', 500, lang('Reason for cancelling'), ''),
+                'po_number'           => array('text', 50, lang('PO Number'), 'po_number'),
+                'custom_field_1'      => array('text', 255, lang('Custom field 1'), 'custom_field_1'),
+                'custom_field_2'      => array('text', 255, lang('Custom field 2'), 'custom_field_2'),
+                // The whole list of the order's one shipping address, as the
+                // order screen and the API's shipment write it; the customer
+                // is not mailed from here.
+                'tracking_numbers'    => array('lines', array(20, 100), lang('Tracking Numbers'), '__tracking_numbers'),
             ),
         ),
         'contact' => array(
@@ -159,20 +196,43 @@ function ws_change_types()
             'required' => array('first_name', 'last_name', 'company', 'email'),
             'names'    => array('first_name', 'last_name', 'company', 'email_address'),
             'fields'   => array(
-                'salutation'  => array('text', 50, lang('Salutation'), 'salutation'),
-                'first_name'  => array('text', 50, lang('First name'), 'first_name'),
-                'last_name'   => array('text', 50, lang('Last name'), 'last_name'),
-                'company'     => array('text', 50, lang('Company'), 'company'),
-                'title'       => array('text', 50, lang('Title'), 'title'),
-                'email'       => array('email', 100, lang('E-mail'), 'email_address'),
-                'phone'       => array('text', 50, lang('Mobile phone'), 'mobile_phone'),
-                'address_1'   => array('text', 50, lang('Address'), 'business_address_1'),
-                'address_2'   => array('text', 50, lang('Address (line 2)'), 'business_address_2'),
-                'city'        => array('text', 50, lang('City'), 'business_city'),
-                'state'       => array('text', 50, lang('State'), 'business_state'),
-                'zip'         => array('text', 50, lang('Zip code'), 'business_zip_code'),
-                'country'     => array('text', 50, lang('Country'), 'business_country'),
-                'description' => array('long', 2000, lang('Description'), 'description'),
+                'salutation'      => array('text', 50, lang('Salutation'), 'salutation'),
+                'first_name'      => array('text', 50, lang('First name'), 'first_name'),
+                'last_name'       => array('text', 50, lang('Last name'), 'last_name'),
+                'suffix'          => array('text', 50, lang('Suffix'), 'suffix'),
+                'nickname'        => array('text', 50, lang('Nickname'), 'nickname'),
+                'company'         => array('text', 50, lang('Company'), 'company'),
+                'title'           => array('text', 50, lang('Title'), 'title'),
+                'department'      => array('text', 50, lang('Department'), 'department'),
+                'office_location' => array('text', 50, lang('Office Location'), 'office_location'),
+                'email'           => array('email', 100, lang('E-mail'), 'email_address'),
+                'opt_in'          => array('bool', 0, lang('Opt-In'), 'opt_in'),
+                'phone'           => array('text', 50, lang('Mobile phone'), 'mobile_phone'),
+                'business_phone'  => array('text', 50, lang('Business Phone'), 'business_phone'),
+                'business_fax'    => array('text', 50, lang('Business Fax'), 'business_fax'),
+                'website'         => array('text', 255, lang('Website'), 'website'),
+                'address_1'       => array('text', 50, lang('Address'), 'business_address_1'),
+                'address_2'       => array('text', 50, lang('Address (line 2)'), 'business_address_2'),
+                'city'            => array('text', 50, lang('City'), 'business_city'),
+                'state'           => array('text', 50, lang('State'), 'business_state'),
+                'zip'             => array('text', 10, lang('Zip code'), 'business_zip_code'),
+                'country'         => array('text', 50, lang('Country'), 'business_country'),
+                'home_address_1'  => array('text', 50, lang('Home Address'), 'home_address_1'),
+                'home_address_2'  => array('text', 50, lang('Home address (line 2)'), 'home_address_2'),
+                'home_city'       => array('text', 50, lang('Home City'), 'home_city'),
+                'home_state'      => array('text', 50, lang('Home State'), 'home_state'),
+                'home_zip'        => array('text', 10, lang('Home Zip Code'), 'home_zip_code'),
+                'home_country'    => array('text', 50, lang('Home Country'), 'home_country'),
+                'home_phone'      => array('text', 50, lang('Home Phone'), 'home_phone'),
+                'home_fax'        => array('text', 50, lang('Home Fax'), 'home_fax'),
+                'lead_source'     => array('text', 50, lang('Lead Source'), 'lead_source'),
+                'tax_number'      => array('text', 20, lang('Tax number'), 'tax_number'),
+                'tax_office'      => array('text', 100, lang('Tax office'), 'tax_office'),
+                'description'     => array('long', 2000, lang('Description'), 'description'),
+                // The membership the contact holds (the "member ID" of the
+                // membership pages); emptied, the membership ends.
+                'member_id'       => array('text', 50, (defined('MEMBER_ID_LABEL') && (MEMBER_ID_LABEL !== '')) ? MEMBER_ID_LABEL : lang('Member ID'), 'member_id'),
+                'expiration_date' => array('date', 0, lang('Expiration Date'), 'expiration_date'),
             ),
         ),
         'erp_account' => array(
@@ -197,6 +257,13 @@ function ws_change_types()
                 'payment_days' => array('int', array(0, 3650), lang('Payment term (days)'), 'payment_days'),
                 'status'       => array('enum', array('active', 'passive'), lang('Status'), 'status'),
                 'notes'        => array('long', 2000, lang('Notes'), 'notes'),
+                'country_code' => array('code', 2, lang('Country code'), 'country_code'),
+                'currency'     => array('code', 3, lang('Currency'), 'currency'),
+                'credit_limit' => array('money', 0, lang('Credit limit'), 'credit_limit'),
+                'invoice_email' => array('email', 255, lang('Invoice e-mail'), 'invoice_email'),
+                'invoice_mail' => array('bool', 0, lang('E-mails its invoices on their own'), 'invoice_mail'),
+                'overdue_notify_days'     => array('int', array(0, 3650), lang('Overdue reminder after (days)'), 'overdue_notify_days'),
+                'overdue_notify_customer' => array('bool', 0, lang('Reminds the customer of overdue invoices'), 'overdue_notify_customer'),
             ),
             'create'   => array(
                 'kind'      => array('enum', array('customer', 'supplier', 'both'), lang('Kind'), ''),
@@ -253,7 +320,9 @@ function ws_change_types()
             'actions' => array('update'),
             'names'   => array('user_username'),
             'fields'  => array(
-                'role' => array('role', array('manager', 'user'), lang('Role'), 'user_role'),
+                'role'  => array('role', array('manager', 'user'), lang('Role'), 'user_role'),
+                // The address the person signs in and is written to with.
+                'email' => array('email', 100, lang('E-mail'), 'user_email'),
             ),
         ),
         // A page's details, as the page screen and the external API write
@@ -274,6 +343,11 @@ function ws_change_types()
                 'search_keywords'  => array('keywords', 1000, lang('Search keywords'), 'page_search_keywords'),
                 'sitemap'          => array('bool', 0, lang('In the site map'), 'sitemap'),
                 'noindex'          => array('bool', 0, lang('Closed to search engines'), 'noindex'),
+                'meta_keywords'    => array('long', 2000, lang('Meta keywords'), 'page_meta_keywords'),
+                'comments'         => array('bool', 0, lang('Comments'), 'comments'),
+                'comments_open'    => array('bool', 0, lang('Allow New Comments'), 'comments_allow_new_comments'),
+                'comments_publish' => array('bool', 0, lang('Automatically Publish Comments'), 'comments_automatic_publish'),
+                'comments_login'   => array('bool', 0, lang('Require Login to Comment'), 'comments_require_login_to_comment'),
             ),
         ),
         // A file in the file manager: its description, its folder and, for a
@@ -306,6 +380,22 @@ function ws_change_types()
                 'description' => array('text', 255, lang('Description'), 'description'),
                 'start_date'  => array('date', 0, lang('Start date'), 'start_date'),
                 'end_date'    => array('date', 0, lang('End date'), 'end_date'),
+            ),
+        ),
+        // A submitted form: complete or not, and the answers of its text
+        // fields (text box, text area, e-mail address), as the screen that
+        // edits a submitted form writes them. Uploads and lists of choices
+        // stay on that screen.
+        'form' => array(
+            'label'   => lang('Form'),
+            'right'   => 'forms',
+            'tag'     => 'form',
+            'table'   => 'forms',
+            'actions' => array('update'),
+            'names'   => array('reference_code'),
+            'fields'  => array(
+                'complete' => array('bool', 0, lang('Complete'), 'complete'),
+                'answers'  => array('answers', array(50, 10000), lang('Answers'), '__answers'),
             ),
         ),
         // An event of the site's calendars; repeats and reservations stay on
@@ -350,6 +440,30 @@ function ws_change_types()
 
     if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
         unset($types['erp_account']);
+    }
+
+    // ERP account fields that came with later upgrades, where they were taken.
+    if (isset($types['erp_account']) && function_exists('waf_table_has_column')) {
+        foreach (array('invoice_email' => 'invoice_email', 'invoice_mail' => 'invoice_mail', 'credit_limit' => 'credit_limit',
+            'overdue_notify_days' => 'overdue_notify_days', 'overdue_notify_customer' => 'overdue_notify_customer') as $name => $column) {
+            if (!waf_table_has_column('erp_accounts', $column)) {
+                unset($types['erp_account']['fields'][$name]);
+            }
+        }
+    }
+
+    // The same for products.
+    if (isset($types['product']) && function_exists('waf_table_has_column')) {
+        foreach (array('tax_rate', 'vat_exemption_code') as $name) {
+            if (!waf_table_has_column('products', $name)) {
+                unset($types['product']['fields'][$name]);
+            }
+        }
+    }
+
+    // A contact's tax details came with the ERP module's upgrade.
+    if (function_exists('waf_table_has_column') && !waf_table_has_column('contacts', 'tax_number')) {
+        unset($types['contact']['fields']['tax_number'], $types['contact']['fields']['tax_office']);
     }
 
     // Orders keep notes only on installations that took the upgrade that
@@ -450,6 +564,93 @@ function ws_change_value($field, $value)
 
         case 'enum':
             return in_array((string) $value, $field[1], true) ? (string) $value : null;
+
+        case 'decimal':
+            // [min, max, decimals, may be empty]. Kept as text, so that what
+            // was read and what is proposed compare as they are.
+            if ((($value === '') || ($value === null)) && !empty($field[1][3])) {
+                return '';
+            }
+
+            if (is_string($value)) {
+                $value = str_replace(',', '.', trim($value));
+            }
+
+            if (!is_numeric($value)) {
+                return null;
+            }
+
+            $number = round((float) $value, (int) $field[1][2]);
+
+            if (($number < $field[1][0]) || ($number > $field[1][1])) {
+                return null;
+            }
+
+            return ws_change_decimal_text($number, (int) $field[1][2]);
+
+        case 'code':
+            if (!is_string($value) || !preg_match('/^[A-Za-z]{' . (int) $field[1] . '}$/', trim($value))) {
+                return null;
+            }
+
+            return strtoupper(trim($value));
+
+        case 'lines':
+            // [at most, longest]. A list, or lines in one text; the empty list
+            // takes them all away.
+            if (is_object($value) || (!is_array($value) && !is_scalar($value) && ($value !== null))) {
+                return null;
+            }
+
+            $lines = array();
+
+            foreach ((is_array($value) ? $value : preg_split('/[\r\n,]+/', (string) $value)) as $line) {
+                if (!is_scalar($line)) {
+                    return null;
+                }
+
+                $line = trim(preg_replace('/\s+/u', ' ', (string) $line));
+
+                if ($line === '') {
+                    continue;
+                }
+
+                if (mb_strlen($line) > (int) $field[1][1]) {
+                    return null;
+                }
+
+                if (!in_array($line, $lines, true)) {
+                    $lines[] = $line;
+                }
+            }
+
+            return (count($lines) > (int) $field[1][0]) ? null : $lines;
+
+        case 'answers':
+            // [at most, longest]: an object of field name => answer.
+            if (!is_array($value) || empty($value) || (count($value) > (int) $field[1][0])) {
+                return null;
+            }
+
+            $answers = array();
+
+            foreach ($value as $name => $answer) {
+                $name = trim((string) $name);
+
+                if (($name === '') || is_numeric($name) || (mb_strlen($name) > 100) || (!is_scalar($answer) && ($answer !== null))) {
+                    return null;
+                }
+
+                $answer = trim(str_replace("\r\n", "\n", (string) $answer));
+
+                if (mb_strlen($answer) > (int) $field[1][1]) {
+                    return null;
+                }
+
+                $answers[$name] = $answer;
+            }
+
+            return $answers;
 
         case 'role':
             // By name (manager, user) or by number; only the ones listed.
@@ -566,9 +767,57 @@ function ws_change_current_value($field, $row)
         case 'long':
             return trim(str_replace("\r\n", "\n", (string) $raw));
 
+        case 'decimal':
+            return (($raw === null) || ($raw === '')) ? '' : ws_change_decimal_text((float) $raw, (int) $field[1][2]);
+
+        case 'code':
+            return strtoupper(trim((string) $raw));
+
+        case 'lines':
+            return array_values(array_map('strval', (array) $raw));
+
+        case 'answers':
+            return array_map('strval', (array) $raw);
+
         default:
             return trim((string) $raw);
     }
+}
+
+/**
+ * A number as a decimal field keeps it: no trailing zeros ("1.25", "3", "0").
+ *
+ * @param float $number
+ * @param int   $decimals
+ * @return string
+ */
+function ws_change_decimal_text($number, $decimals)
+{
+    $text = number_format((float) $number, max(0, (int) $decimals), '.', '');
+
+    if (strpos($text, '.') !== false) {
+        $text = rtrim(rtrim($text, '0'), '.');
+    }
+
+    return (($text === '-0') || ($text === '')) ? '0' : $text;
+}
+
+/**
+ * The tracking numbers of an order, in the order they were given.
+ *
+ * @param int $order_id
+ * @return string[]
+ */
+function ws_change_order_tracking($order_id)
+{
+    $numbers = array();
+
+    foreach ((array) db_values("SELECT number FROM shipping_tracking_numbers
+        WHERE order_id = '" . (int) $order_id . "' AND TRIM(number) <> '' ORDER BY id") as $number) {
+        $numbers[] = trim((string) $number);
+    }
+
+    return $numbers;
 }
 
 /**
@@ -594,6 +843,27 @@ function ws_change_record($type, $id)
     }
 
     $row['id'] = (int) $row[$key];
+
+    if ($type === 'order') {
+        $row['__tracking_numbers'] = ws_change_order_tracking($row['id']);
+    }
+
+    // A form's text answers by field name, and the kind of each field.
+    if ($type === 'form') {
+        $row['__answers'] = array();
+        $row['__answer_kinds'] = array();
+
+        foreach ((array) db_items("SELECT ff.id, ff.name, ff.type, fd.data
+            FROM form_fields ff
+            LEFT JOIN form_data fd ON fd.form_field_id = ff.id AND fd.form_id = '" . (int) $row['id'] . "'
+            WHERE ff.page_id = '" . (int) $row['page_id'] . "' AND ff.type IN ('text box', 'text area', 'email address') AND ff.name <> ''
+            ORDER BY ff.sort_order, ff.id") as $answer) {
+            if (!isset($row['__answers'][$answer['name']])) {
+                $row['__answers'][$answer['name']] = trim(str_replace("\r\n", "\n", (string) $answer['data']));
+                $row['__answer_kinds'][$answer['name']] = array('id' => (int) $answer['id'], 'type' => (string) $answer['type']);
+            }
+        }
+    }
 
     // A text file's words, for a change to them to be laid against.
     if ($type === 'file') {
@@ -785,6 +1055,13 @@ function ws_change_allowed($viewer, $type, $record_id = 0)
             && (((int) $file['design'] !== 1) || ((int) $viewer['role'] <= 1));
     }
 
+    // A submitted form: whoever may edit the folder of the form's page.
+    if (($type === 'form') && ($record_id > 0)) {
+        $folder = db_value("SELECT p.page_folder FROM forms f JOIN page p ON p.page_id = f.page_id WHERE f.id = '" . (int) $record_id . "'");
+
+        return ($folder !== null) && ($folder !== false) && pg_folder_edit_access($folder, $viewer['id'], $viewer['role']);
+    }
+
     // An event: in one of the person's calendars.
     if (($type === 'calendar_event') && ($record_id > 0) && ((int) $viewer['role'] >= 3)) {
         foreach ((array) db_values("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int) $record_id . "'") as $calendar_id) {
@@ -816,15 +1093,60 @@ function ws_change_check($viewer, $type, $action, $record, $values)
 
         case 'user':
             if ((int) $viewer['role'] !== 0) {
-                return lang('Only an administrator can change a role.');
+                return array_key_exists('role', $values) ? lang('Only an administrator can change a role.') : lang('Only an administrator can change a user.');
             }
 
-            if ((int) $record['user_role'] === 0) {
-                return lang('The role of an administrator is not changed from here.');
+            if (array_key_exists('role', $values)) {
+                if ((int) $record['user_role'] === 0) {
+                    return lang('The role of an administrator is not changed from here.');
+                }
+
+                if ((int) $record['id'] === (int) $viewer['id']) {
+                    return lang('Nobody changes their own role.');
+                }
             }
 
-            if ((int) $record['id'] === (int) $viewer['id']) {
-                return lang('Nobody changes their own role.');
+            // Another user signing in with the same address would make both
+            // accounts unreachable by it.
+            if (array_key_exists('email', $values)) {
+                if ((string) $values['email'] === '') {
+                    return lang('A user needs an e-mail address.');
+                }
+
+                if ((int) db_value("SELECT COUNT(*) FROM user WHERE user_email = '" . e($values['email']) . "' AND user_id <> '" . (int) $record['id'] . "'") > 0) {
+                    return lang('Another user already has this e-mail address.');
+                }
+            }
+
+            return '';
+
+        case 'form':
+            // Only the answers that are proposed are laid against the form.
+            foreach ((array) ($values['answers'] ?? array()) as $name => $answer) {
+                $kind = $record['__answer_kinds'][$name]['type'] ?? '';
+
+                if (($kind === 'email address') && ($answer !== '') && function_exists('validate_email_address') && !validate_email_address($answer)) {
+                    return lang(array('string' => '{var:1} takes an e-mail address.', 'vars' => $name));
+                }
+            }
+
+            return '';
+
+        case 'order':
+            if (array_key_exists('tracking_numbers', $values)) {
+                if ((string) $record['status'] === 'cancelled') {
+                    return lang('A cancelled order does not ship.');
+                }
+
+                $addresses = (int) db_value("SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . (int) $record['id'] . "'");
+
+                if ($addresses === 0) {
+                    return lang('This order has no shipping address to put tracking numbers on.');
+                }
+
+                if ($addresses > 1) {
+                    return lang('This order ships to more than one address: its tracking numbers are set on the order screen.');
+                }
             }
 
             return '';
@@ -1216,6 +1538,19 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0)
 
                 $from = ws_change_current_value($field, $record);
 
+                // A form's answers: only fields it has, laid over the ones it
+                // keeps, so that what is stored reads the whole set as it
+                // will be.
+                if ($field[0] === 'answers') {
+                    $unknown = array_diff(array_keys($to), array_keys($from));
+
+                    if (!empty($unknown)) {
+                        return $refuse(lang(array('string' => 'The form has no text field named {var:1}. Its text fields are: {var:2}.', 'vars' => array(implode(', ', $unknown), implode(', ', array_keys($from))))));
+                    }
+
+                    $to = array_merge($from, $to);
+                }
+
                 // What the record already holds is not a change.
                 if (($field[3] !== '') && ($from === $to)) {
                     continue;
@@ -1411,6 +1746,25 @@ function ws_change_show($type, $name, $value, $limit = 300)
 
         case 'datetime':
             return mb_substr((string) $value, 0, 16);
+
+        case 'decimal':
+            return ((string) $value === '') ? lang('(empty)') : (string) $value;
+
+        case 'lines':
+            $lines = array_filter(array_map('strval', (array) $value), 'strlen');
+
+            return empty($lines) ? lang('(empty)') : implode(', ', $lines);
+
+        case 'answers':
+            $pairs = array();
+
+            foreach ((array) $value as $name => $answer) {
+                $pairs[] = $name . ': ' . ((trim((string) $answer) === '') ? '—' : trim(preg_replace('/\s+/u', ' ', strip_tags((string) $answer))));
+            }
+
+            $text = implode(' · ', $pairs);
+
+            return ($text === '') ? lang('(empty)') : ((mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text);
 
         case 'enum':
             $labels = array(
@@ -1670,8 +2024,16 @@ function ws_change_apply($viewer, $change_id)
         return $fail(lang('Somebody has already decided about this proposal.'));
     }
 
+    // Proposed by Claude or by Pinegrap AI (ai.php): the sentences written
+    // while it is applied name the one that proposed it.
+    $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
+
+    if (function_exists('ws_ai_voice_change')) {
+        ws_ai_voice_change($change);
+    }
+
     if ((int) $change['requested_by'] !== (int) $viewer['id']) {
-        return $fail(lang('Only the person who asked Claude can apply this change.'));
+        return $fail($by_ai ? lang('Only the person who asked Pinegrap AI can apply this change.') : lang('Only the person who asked Claude can apply this change.'));
     }
 
     $types = ws_change_types();
@@ -1741,7 +2103,9 @@ function ws_change_apply($viewer, $change_id)
         if ($moved) {
             $release('stale');
 
-            return $fail(lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
+            return $fail($by_ai
+                ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
+                : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
         }
 
         $values[$item['name']] = $item['to'];
@@ -1832,6 +2196,10 @@ function ws_change_apply($viewer, $change_id)
     }
 
     $body = lang(array('string' => $sentence, 'vars' => array($tag, implode(' · ', $lines))));
+
+    if (function_exists('ws_ai_voice')) {
+        $body = ws_ai_voice($body, $change);
+    }
     $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision', 'parent_id' => (int) $change['message_id']));
     $decision_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
 
@@ -1872,7 +2240,9 @@ function ws_change_dismiss($viewer, $change_id)
     }
 
     if (((int) $change['requested_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => lang('Only the person who asked Claude can set this change aside.'));
+        return array('ok' => false, 'error' => (function_exists('ws_ai_proposed') && ws_ai_proposed($change))
+            ? lang('Only the person who asked Pinegrap AI can set this change aside.')
+            : lang('Only the person who asked Claude can set this change aside.'));
     }
 
     if (!ws_can_post_channel($viewer, ws_channel($change['channel_id']))) {
@@ -1894,6 +2264,15 @@ function ws_change_dismiss($viewer, $change_id)
  */
 function ws_change_log($what)
 {
+    // A scheduled action writes its own line (scheduled.php).
+    if (!empty($GLOBALS['ws_change_log_quiet'])) {
+        return;
+    }
+
+    if (function_exists('ws_ai_voice')) {
+        $what = ws_ai_voice($what);
+    }
+
     log_activity($what, (string) ($_SESSION['sessionusername'] ?? ''));
 }
 
@@ -1977,8 +2356,10 @@ function ws_change_write_product($viewer, $action, $record, $values)
 
             if ($fields[$name][0] === 'bool') {
                 $product[$fields[$name][3]] = $value ? '1' : '0';
-            } elseif ($fields[$name][0] === 'money') {
+            } elseif (($fields[$name][0] === 'money') || ($fields[$name][0] === 'int')) {
                 $product[$fields[$name][3]] = (int) $value;
+            } elseif ($fields[$name][0] === 'decimal') {
+                $product[$fields[$name][3]] = ((string) $value === '') ? (empty($fields[$name][1][3]) ? 0 : null) : (float) $value;
             } else {
                 $product[$fields[$name][3]] = $value;
             }
@@ -2052,7 +2433,13 @@ function ws_change_write_product($viewer, $action, $record, $values)
                 break;
 
             case 'money':
+            case 'int':
                 $set[] = $column . " = '" . (int) $value . "'";
+                break;
+
+            case 'decimal':
+                // An empty tax rate follows the tax zone again.
+                $set[] = ((string) $value === '') ? $column . (empty($fields[$name][1][3]) ? " = '0'" : ' = NULL') : $column . " = '" . e((string) $value) . "'";
                 break;
 
             default:
@@ -2155,7 +2542,7 @@ function ws_change_write_order($viewer, $action, $record, $values)
         }
 
         $reason = trim((string) ($values['cancellation_reason'] ?? ''));
-        $outcome = process_order_cancellation((int) $record['id'], ($reason !== '') ? $reason : lang('Cancelled in the Workspace, on Claude\'s proposal.'), true, (int) $viewer['id']);
+        $outcome = process_order_cancellation((int) $record['id'], ($reason !== '') ? $reason : (function_exists('ws_ai_voice') ? ws_ai_voice(lang('Cancelled in the Workspace, on Claude\'s proposal.')) : lang('Cancelled in the Workspace, on Claude\'s proposal.')), true, (int) $viewer['id']);
 
         if (!in_array($outcome['status'], array('ok', 'success', 'cancelled', 'already'), true)) {
             return array('ok' => false, 'error' => (string) ($outcome['message'] ?? lang('The order could not be cancelled.')), 'id' => 0);
@@ -2171,8 +2558,44 @@ function ws_change_write_order($viewer, $action, $record, $values)
         ));
     }
 
-    if (array_key_exists('notes', $values)) {
-        db("UPDATE orders SET notes = '" . e($values['notes']) . "' WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
+    $set = array();
+
+    foreach (array('notes', 'po_number', 'custom_field_1', 'custom_field_2') as $name) {
+        if (array_key_exists($name, $values)) {
+            $set[] = $name . " = '" . e($values[$name]) . "'";
+        }
+    }
+
+    if (!empty($set)) {
+        db("UPDATE orders SET " . implode(', ', $set) . ", last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
+    }
+
+    // Through the order screen's own save: new numbers are announced to
+    // integrations; the customer is not mailed from here.
+    if (array_key_exists('tracking_numbers', $values)) {
+        $ship_to_id = (int) db_value("SELECT id FROM ship_tos WHERE order_id = '" . (int) $record['id'] . "' ORDER BY id LIMIT 1");
+
+        if ($ship_to_id <= 0) {
+            return array('ok' => false, 'error' => lang('This order has no shipping address to put tracking numbers on.'), 'id' => 0);
+        }
+
+        if (!function_exists('update_order')) {
+            require_once(PG_FUNCTIONS_DIR . '/update_order.php');
+        }
+
+        $outcome = update_order(array('order' => array(
+            'id'         => (int) $record['id'],
+            'recipients' => array(array(
+                'id'               => $ship_to_id,
+                'shipped'          => false,
+                'tracking_numbers' => array_values((array) $values['tracking_numbers']),
+                'items'            => array(),
+            )),
+        )));
+
+        if (!is_array($outcome) || (($outcome['status'] ?? '') !== 'success')) {
+            return array('ok' => false, 'error' => lang('The tracking numbers could not be saved.'), 'id' => 0);
+        }
     }
 
     ws_change_log(lang(array('string' => 'Order ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => $record['order_number'])));
@@ -2206,7 +2629,7 @@ function ws_change_write_contact($viewer, $action, $record, $values)
 
     foreach ($values as $name => $value) {
         if (isset($fields[$name])) {
-            $set[] = $fields[$name][3] . " = '" . e($value) . "'";
+            $set[] = $fields[$name][3] . " = '" . (is_bool($value) ? ($value ? '1' : '0') : e($value)) . "'";
         }
     }
 
@@ -2554,17 +2977,75 @@ function ws_change_write_channel($viewer, $action, $record, $values)
  */
 function ws_change_write_user($viewer, $action, $record, $values)
 {
-    $role = (int) $values['role'];
+    if (array_key_exists('role', $values)) {
+        $role = (int) $values['role'];
 
-    db("UPDATE user SET user_role = '" . $role . "', user_user = '" . (int) $viewer['id'] . "', user_timestamp = UNIX_TIMESTAMP()
-        WHERE user_id = '" . (int) $record['id'] . "' AND user_role <> '0' LIMIT 1");
+        db("UPDATE user SET user_role = '" . $role . "', user_user = '" . (int) $viewer['id'] . "', user_timestamp = UNIX_TIMESTAMP()
+            WHERE user_id = '" . (int) $record['id'] . "' AND user_role <> '0' LIMIT 1");
 
-    ws_change_log(lang(array(
-        'string' => 'User ({var:1}) was given the role {var:2} in the Workspace, on Claude\'s proposal.',
-        'vars'   => array((string) $record['user_username'], pg_user_role_name($role)),
-    )));
+        ws_change_log(lang(array(
+            'string' => 'User ({var:1}) was given the role {var:2} in the Workspace, on Claude\'s proposal.',
+            'vars'   => array((string) $record['user_username'], pg_user_role_name($role)),
+        )));
+    }
+
+    if (array_key_exists('email', $values)) {
+        db("UPDATE user SET user_email = '" . e($values['email']) . "', user_user = '" . (int) $viewer['id'] . "', user_timestamp = UNIX_TIMESTAMP()
+            WHERE user_id = '" . (int) $record['id'] . "' LIMIT 1");
+
+        ws_change_log(lang(array(
+            'string' => 'The e-mail address of user ({var:1}) was changed in the Workspace, on Claude\'s proposal.',
+            'vars'   => array((string) $record['user_username']),
+        )));
+    }
 
     return array('ok' => true, 'error' => '', 'id' => (int) $record['id']);
+}
+
+/**
+ * A submitted form, as the screen that edits one writes it: complete or not,
+ * and the answers of its text fields.
+ *
+ * @param array      $viewer
+ * @param string     $action
+ * @param array|null $record
+ * @param array      $values
+ * @return array ok, error, id
+ */
+function ws_change_write_form($viewer, $action, $record, $values)
+{
+    $id = (int) $record['id'];
+    $set = array();
+
+    if (array_key_exists('complete', $values)) {
+        $set[] = "complete = '" . ($values['complete'] ? '1' : '0') . "'";
+    }
+
+    foreach ((array) ($values['answers'] ?? array()) as $name => $answer) {
+        $field = $record['__answer_kinds'][$name] ?? null;
+
+        if (!$field || ((string) ($record['__answers'][$name] ?? '') === (string) $answer)) {
+            continue;
+        }
+
+        $kept = (int) db_value("SELECT id FROM form_data WHERE form_id = '" . $id . "' AND form_field_id = '" . (int) $field['id'] . "' ORDER BY id LIMIT 1");
+
+        if ($kept > 0) {
+            db("UPDATE form_data SET data = '" . e($answer) . "' WHERE id = '" . $kept . "' LIMIT 1");
+        } else {
+            db("INSERT INTO form_data (form_id, form_field_id, data, name, type)
+                VALUES ('" . $id . "', '" . (int) $field['id'] . "', '" . e($answer) . "', '" . e($name) . "', 'standard')");
+        }
+    }
+
+    $set[] = "last_modified_user_id = '" . (int) $viewer['id'] . "'";
+    $set[] = "last_modified_timestamp = UNIX_TIMESTAMP()";
+
+    db("UPDATE forms SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+
+    ws_change_log(lang(array('string' => 'The submitted form ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['reference_code'])));
+
+    return array('ok' => true, 'error' => '', 'id' => $id);
 }
 
 /**

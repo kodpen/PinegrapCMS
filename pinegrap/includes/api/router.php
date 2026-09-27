@@ -268,6 +268,23 @@ function api_request_input() {
 
 }
 
+// The route this request matched, once it has been. The response layer reads
+// it to know whether the answer is a record it may trim to the fields asked for
+// (see api_response_fields()), which the description documents are not.
+function api_current_route($route = null) {
+
+	static $current = null;
+
+	if ($route !== null) {
+
+		$current = $route;
+
+	}
+
+	return $current;
+
+}
+
 // All routes: the ones that need credentials and the ones that do not.
 function api_all_routes() {
 

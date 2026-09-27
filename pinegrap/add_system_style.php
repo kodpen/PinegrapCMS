@@ -36,6 +36,30 @@ $from_pages = (isset($_GET['from']) && $_GET['from'] === 'pages')
 // view_system_styles.php.
 $start = isset($_GET['start']) ? (string)$_GET['start'] : '';
 
+// The framework the new design is built on (view_system_styles.php asks), or
+// the template it starts from - a template brings its own framework. An
+// import or a paste starts on Bootstrap 5, the framework the importer
+// converts to.
+$template = null;
+if ($start === 'template') {
+    $template = pg_design_template(isset($_GET['template']) ? $_GET['template'] : '');
+    if (!$template) {
+        $lf_view = new liveform('view_system_styles');
+        $lf_view->add_error(lang('The template could not be found.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_system_styles.php');
+        exit();
+    }
+}
+$framework = $template ? $template['framework']
+                       : pg_design_framework_key(isset($_GET['framework']) ? $_GET['framework'] : '');
+
+// The look and the palette chosen with the template (the template dialog
+// sends them; ?look= may be empty for plain Bootstrap). A template opened
+// without a choice wears the default look; a blank design starts plain.
+$look = isset($_GET['look']) ? pg_design_look_key($_GET['look'])
+                             : ($template ? pg_design_default_look() : '');
+$palette = isset($_GET['palette']) ? pg_design_palette_key($_GET['palette']) : '';
+
 if (!$_POST) {
     if (isset($_SESSION['software']['liveforms']['add_system_style'][0]) == FALSE) {
         $liveform->add_fields_to_session();
@@ -65,6 +89,11 @@ if (!$_POST) {
             'style_custom_fonts'                => '',
             'last_modified_timestamp'           => 0,
             'last_modified_username'            => '',
+            'framework'                         => $framework,
+            'template'                          => $template ? $template['id'] : '',
+            'template_version'                  => $template ? $template['version'] : '',
+            'look'                              => $look,
+            'palette'                           => $palette,
         ),
         'pages'          => array(),
         'active_page_id' => 0,
@@ -75,6 +104,7 @@ if (!$_POST) {
         'delete_button'  => '',
         'auto_import'    => ($start === 'import'),
         'auto_paste'     => ($start === 'paste'),
+        'template'       => $template ? pg_design_template_summary($template) : null,
     ));
 
     $liveform->remove_form();

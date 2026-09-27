@@ -1512,8 +1512,44 @@
     }
 
     // A person: write to them, give them work, plan their day.
+    // A person's account in the panel (edit_user.php), for staff who may
+    // change it: an administrator anyone, a designer or manager somebody of
+    // a lower role - the rule that screen applies. '' for anybody else, and
+    // for a guest, an application or somebody no longer here.
+    function personEditUrl(person) {
+        var mine = parseInt(CFG.me_role, 10);
+
+        if (!person || !person.id || person.guest || person.gone || !CFG.urls.edit_user || isNaN(mine) || (mine > 2)) {
+            return '';
+        }
+
+        if ((mine !== 0) && !(mine < parseInt(person.role, 10))) {
+            return '';
+        }
+
+        return CFG.urls.edit_user + '?id=' + person.id;
+    }
+
+    // A picture or a name that opens the person's account, where the reader
+    // may open it; left as it is otherwise.
+    function personLink(node, person) {
+        var url = personEditUrl(person);
+
+        if (!url) {
+            return node;
+        }
+
+        var link = el('a', 'ws-person-link');
+        link.href = url;
+        link.title = t('edit_user_title', person.name);
+        link.appendChild(node);
+
+        return link;
+    }
+
     function personMenu(member, extra) {
         var items = [{ header: member.name + (member.title ? ' · ' + member.title : '') }];
+        var account = personEditUrl(member);
 
         if (member.id !== BOOT.me.id) {
             items.push({ icon: 'bi-chat-dots', label: t('direct_message'), action: function () { directMessage(member.id); } });
@@ -1524,6 +1560,10 @@
         items.push('-');
         items.push({ icon: 'bi-calendar3', label: t('their_calendar'), action: function () { window.location.href = CFG.urls.calendar + '?person=' + member.id; } });
         items.push({ icon: 'bi-calendar-week', label: t('their_board'), action: function () { window.location.href = CFG.urls.board + '?person=' + member.id; } });
+
+        if (account) {
+            items.push({ icon: 'bi-person-gear', label: t('edit_user'), action: function () { window.location.href = account; } });
+        }
 
         (extra || []).forEach(function (item) { items.push(item); });
 
@@ -1644,6 +1684,12 @@
             img.style.height = size;
         }
 
+        // A login without a name has a square of letters, not a circle
+        // (includes/workspace/people.php).
+        if (personData && personData.avatar_kind === 'user') {
+            img.style.borderRadius = '28%';
+        }
+
         return img;
     }
 
@@ -1702,6 +1748,173 @@
         if (instance) {
             instance.hide();
         }
+    }
+
+    // The time on a task's due date and its e-mail reminder, a box of the task
+    // drawer (includes/workspace/reminders.php). The number is read in the
+    // unit beside it and sent as minutes; an empty number is no reminder. A
+    // repeating task asks whether every copy is reminded; an earlier copy of
+    // a series does not, since its repeat is set on the newest one.
+    function reminderField(task, dueInput, repeatField) {
+        var conf = CFG.reminders || {};
+        var info = task || {};
+        var dayTime = conf.day_time || '09:00';
+        var wrap = el('div', 'ws-when ws-remind mb-3');
+        var head = el('div', 'ws-when-head');
+
+        head.appendChild(icon('bi-bell'));
+        head.appendChild(document.createTextNode(t('remind_head')));
+        wrap.appendChild(head);
+
+        var time = el('input', 'form-control form-control-sm');
+        time.type = 'time';
+        time.id = nextId('ws-task-time-');
+        time.value = info.due_time || '';
+
+        var amount = el('input', 'form-control form-control-sm');
+        amount.type = 'number';
+        amount.min = '0';
+        amount.step = '1';
+        amount.id = nextId('ws-task-remind-');
+        amount.setAttribute('inputmode', 'numeric');
+
+        var unit = select([['1', t('remind_unit_minutes')], ['60', t('remind_unit_hours')], ['1440', t('remind_unit_days')]], '60');
+        unit.setAttribute('aria-label', t('remind_before'));
+
+        var start = (info.remind_minutes === null || info.remind_minutes === undefined) ? null : parseInt(info.remind_minutes, 10);
+
+        if (start !== null && !isNaN(start)) {
+            var size = (start > 0 && start % 1440 === 0) ? 1440 : ((start > 0 && start % 60 === 0) ? 60 : 1);
+            unit.value = String(size);
+            amount.value = String(start / size);
+        } else {
+            start = null;
+        }
+
+        var group = el('div', 'input-group input-group-sm');
+        group.appendChild(amount);
+        group.appendChild(unit);
+
+        var row = el('div', 'row g-2');
+        [[formRow(t('remind_time'), time), 'col-5'], [formRow(t('remind_before'), group), 'col-7']].forEach(function (pair) {
+            var cell = el('div', pair[1]);
+            pair[0].classList.remove('mb-3');
+            pair[0].classList.add('mb-2');
+            cell.appendChild(pair[0]);
+            row.appendChild(cell);
+        });
+        row.querySelectorAll('label')[1].htmlFor = amount.id;
+        wrap.appendChild(row);
+
+        var eachWrap = el('div', 'form-check mb-1 d-none');
+        var each = el('input', 'form-check-input');
+        each.type = 'checkbox';
+        each.id = nextId('ws-task-remind-each-');
+        each.checked = (task && task.recurring) ? !!info.remind_each : true;
+        var eachLabel = el('label', 'form-check-label small', t('remind_each'));
+        eachLabel.htmlFor = each.id;
+        eachWrap.appendChild(each);
+        eachWrap.appendChild(eachLabel);
+        wrap.appendChild(eachWrap);
+
+        var note = el('div', 'ws-when-summary');
+        note.setAttribute('aria-live', 'polite');
+        wrap.appendChild(note);
+
+        function minutes() {
+            var raw = String(amount.value).trim();
+            var count = parseInt(raw, 10);
+
+            if (raw === '' || isNaN(count) || count < 0) {
+                return null;
+            }
+
+            return count * parseInt(unit.value, 10);
+        }
+
+        function repeating() {
+            var rule = repeatField ? repeatField.value() : null;
+
+            return !!(rule && rule.frequency && rule.frequency !== 'none');
+        }
+
+        function pad(number) {
+            return (number < 10 ? '0' : '') + number;
+        }
+
+        function draw() {
+            var wanted = minutes();
+
+            eachWrap.classList.toggle('d-none', wanted === null || !repeating());
+            clear(note);
+            note.classList.remove('ws-when-warn');
+
+            if (wanted === null) {
+                note.appendChild(document.createTextNode(t('remind_none')));
+                return;
+            }
+
+            if (!dueInput.value) {
+                note.classList.add('ws-when-warn');
+                note.appendChild(document.createTextNode(t('remind_needs_due')));
+                return;
+            }
+
+            // Sent already, and nothing it depends on changed since.
+            if (task && info.reminded && wanted === start && (time.value || '') === (info.due_time || '') && dueInput.value === (task.due_date || '')) {
+                note.appendChild(document.createTextNode(t('remind_sent', info.reminded_label)));
+                return;
+            }
+
+            var day = dueInput.value.split('-');
+            var clock = (time.value || dayTime).split(':');
+            var due = new Date(+day[0], +day[1] - 1, +day[2], +clock[0], +clock[1], 0);
+            var at = new Date(due.getTime() - wanted * 60000);
+            var now = Date.now();
+
+            if (due.getTime() <= now) {
+                note.classList.add('ws-when-warn');
+                note.appendChild(document.createTextNode(t('remind_past')));
+                return;
+            }
+
+            note.appendChild(document.createTextNode(at.getTime() <= now
+                ? t('remind_goes_now')
+                : t('remind_goes_at', pad(at.getDate()) + '.' + pad(at.getMonth() + 1) + '.' + at.getFullYear() + ' ' + pad(at.getHours()) + ':' + pad(at.getMinutes()))));
+
+            if (!time.value) {
+                note.appendChild(el('div', 'text-body-secondary', t('remind_day_time', dayTime)));
+            }
+        }
+
+        [time, amount, unit, dueInput].forEach(function (input) {
+            input.addEventListener('change', draw);
+            input.addEventListener('input', draw);
+        });
+
+        // The repeat box switches itself on and off from several controls.
+        if (repeatField && repeatField.node) {
+            repeatField.node.addEventListener('change', draw);
+            repeatField.node.addEventListener('click', function () {
+                window.setTimeout(draw, 0);
+            });
+        }
+
+        draw();
+
+        return {
+            node: wrap,
+            value: function () {
+                var wanted = minutes();
+                var out = { due_time: time.value || '', remind_minutes: (wanted === null) ? '' : wanted };
+
+                if (repeating()) {
+                    out.remind_each = each.checked ? 1 : 0;
+                }
+
+                return out;
+            }
+        };
     }
 
     function formRow(label, control, help) {
@@ -1806,6 +2019,67 @@
     // tables are cards, the text is kept as a message's markup. value()
     // gives the markup, set() puts a stored one back, dirty() says whether it
     // was changed since. null without the formatted box.
+    function blockIcon(kind) {
+        return { table: 'bi-table', checklist: 'bi-ui-checks', code: 'bi-code-slash', calc: 'bi-calculator' }[kind] || 'bi-bookmark';
+    }
+
+    // "From elsewhere": the titled blocks the person can read, by their
+    // title; the one chosen comes back as markup (includes/workspace/blocks.php).
+    function blockPuller(onPick) {
+        var node = offcanvas('ws-block-pull', t('pull_title'));
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var search = el('input', 'form-control form-control-sm mb-2');
+        var list = el('div', 'ws-pull-list');
+        var serial = 0;
+
+        node.querySelector('.offcanvas-footer').classList.add('d-none');
+        search.type = 'search';
+        search.placeholder = t('pull_search');
+        search.setAttribute('aria-label', search.placeholder);
+        body.appendChild(el('p', 'small text-body-secondary', t('pull_help')));
+        body.appendChild(search);
+        body.appendChild(list);
+
+        function load() {
+            var asked = ++serial;
+
+            api('ws_block_search', { q: search.value }).then(function (data) {
+                if (asked !== serial) {
+                    return;
+                }
+
+                clear(list);
+
+                if (!data.items.length) {
+                    list.appendChild(el('div', 'ws-empty', t('pull_none')));
+                }
+
+                data.items.forEach(function (item) {
+                    var row = el('button', 'ws-pull-item');
+                    var words = el('span', 'ws-pull-words');
+
+                    row.type = 'button';
+                    row.appendChild(icon(blockIcon(item.kind), 'ws-pull-icon'));
+                    words.appendChild(el('b', '', item.title));
+                    words.appendChild(el('span', 'small text-body-secondary', t('pull_kind_' + item.kind) + ' · ' + item.where + ' · ' + item.author + ' · ' + item.time));
+                    row.appendChild(words);
+                    row.addEventListener('click', function () {
+                        api('ws_block_pull', { id: item.id }).then(function (pulled) {
+                            hideOffcanvas(node);
+                            onPick(pulled);
+                        }).catch(fail);
+                    });
+                    list.appendChild(row);
+                });
+            }).catch(fail);
+        }
+
+        search.addEventListener('input', debounce(load, 250));
+        showOffcanvas(node);
+        load();
+        setTimeout(function () { search.focus(); }, 250);
+    }
+
     function richField(wrap, options) {
         if (!window.PGWsEditor) {
             return null;
@@ -1891,7 +2165,7 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
             field[name] = app[name];
         });
 
@@ -2010,7 +2284,14 @@
                 return;
             }
 
-            api('ws_ref_search', { type: typeSelect.value, q: query }).then(function (data) {
+            var ask = { type: typeSelect.value, q: query };
+
+            // "All" among the kinds this field offers, not every kind.
+            if (typeSelect.value === 'all') {
+                ask.types = Object.keys(types);
+            }
+
+            api('ws_ref_search', ask).then(function (data) {
                 closeList();
                 list = el('div', 'ws-picker');
                 var inner = el('div', 'ws-picker-list');
@@ -2310,6 +2591,20 @@
                 col(dateRows.dueRow);
             }
 
+            // The time on the due date and the e-mail reminder, under the
+            // dates (includes/workspace/reminders.php).
+            var remindLater = null;
+
+            if (CFG.reminders && CFG.reminders.ready) {
+                f.remind = reminderField(task, f.due, f.repeat || null);
+
+                if (f.repeat) {
+                    body.appendChild(f.remind.node);
+                } else {
+                    remindLater = f.remind.node;
+                }
+            }
+
             f.estimate = el('input', 'form-control form-control-sm');
             f.estimate.type = 'number';
             f.estimate.min = '0';
@@ -2339,6 +2634,10 @@
             }
 
             body.appendChild(grid);
+
+            if (remindLater) {
+                body.appendChild(remindLater);
+            }
 
             // Who is on it. Somebody without the assign right sees only the
             // people they may hand work to: themselves and their departments.
@@ -2447,6 +2746,14 @@
 
             if (f.channel) {
                 data.channel_id = parseInt(f.channel.value, 10) || 0;
+            }
+
+            if (f.remind) {
+                var remind = f.remind.value();
+
+                Object.keys(remind).forEach(function (key) {
+                    data[key] = remind[key];
+                });
             }
 
             // Nothing to send from an earlier copy of a series: its repeat
@@ -2955,6 +3262,147 @@
 
     // ── The channel form (create and edit) ─────────────────────────────
 
+    // A colour from the palette (includes/workspace/groups.php), or none.
+    function colorPicker(value) {
+        var box = el('div', 'ws-swatches');
+        var current = parseInt(value, 10) || 0;
+        var swatches = [];
+
+        box.setAttribute('role', 'radiogroup');
+
+        [{ id: 0, hex: '', name: t('color_none') }].concat(CFG.palette || []).forEach(function (color) {
+            var swatch = el('button', 'ws-swatch' + (color.id ? '' : ' ws-swatch-none'));
+            swatch.type = 'button';
+            swatch.title = color.name;
+            swatch.setAttribute('role', 'radio');
+            swatch.setAttribute('aria-label', color.name);
+
+            if (color.hex) {
+                swatch.style.background = color.hex;
+            } else {
+                swatch.appendChild(icon('bi-slash-circle'));
+            }
+
+            swatch.addEventListener('click', function () {
+                current = color.id;
+                mark();
+            });
+
+            swatches.push({ node: swatch, id: color.id });
+            box.appendChild(swatch);
+        });
+
+        function mark() {
+            swatches.forEach(function (item) {
+                item.node.classList.toggle('active', item.id === current);
+                item.node.setAttribute('aria-checked', item.id === current ? 'true' : 'false');
+            });
+        }
+
+        mark();
+
+        box.value = function () {
+            return current;
+        };
+
+        return box;
+    }
+
+    // The versions of a channel's conversation (includes/workspace/eras.php):
+    // the current one, the earlier ones to read, and clearing it for staff.
+    function eraSection(channel, node) {
+        var box = el('div', 'mb-3 ws-era-section');
+        var list = el('div', 'ws-era-list');
+
+        box.appendChild(el('div', 'form-label', t('era_list')));
+        list.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        box.appendChild(list);
+
+        function draw(data) {
+            clear(list);
+
+            var current = el('div', 'ws-era-row ws-era-current');
+            var currentText = el('div', 'flex-grow-1 min-w-0');
+            current.appendChild(icon('bi-chat-square-text', 'text-body-secondary'));
+            currentText.appendChild(el('div', 'fw-semibold', t('era_current')));
+
+            if (data.since_text) {
+                currentText.appendChild(el('div', 'small text-body-secondary', t('era_current_since', data.since_text)));
+            }
+
+            current.appendChild(currentText);
+            list.appendChild(current);
+
+            if (!data.eras.length) {
+                list.appendChild(el('div', 'small text-body-secondary mb-2', t('era_none')));
+            }
+
+            data.eras.forEach(function (era) {
+                var row = el('div', 'ws-era-row');
+                var info = el('div', 'flex-grow-1 min-w-0');
+
+                row.appendChild(icon('bi-clock-history', 'text-body-secondary'));
+                info.appendChild(el('div', 'fw-semibold text-truncate', era.label));
+                info.appendChild(el('div', 'small text-body-secondary', t('era_meta', era.from_text, era.to_text, era.count, era.cleared_by || '—')));
+                row.appendChild(info);
+
+                if (data.can_clear) {
+                    var rename = button('btn btn-sm btn-ghost', '', 'bi-pencil', t('era_rename'));
+                    rename.addEventListener('click', function () {
+                        var input = el('input', 'form-control form-control-sm');
+                        input.maxLength = 160;
+                        input.value = era.title || '';
+                        input.placeholder = t('era_title');
+
+                        ask(t('era_rename') + ': ' + era.label, t('save'), false, input).then(function (yes) {
+                            if (yes) {
+                                api('ws_channel_era_rename', { channel_id: channel.id, era_id: era.id, title: input.value }).then(load).catch(fail);
+                            }
+                        });
+                    });
+                    row.appendChild(rename);
+                }
+
+                var read = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('era_open'), 'bi-book');
+                read.addEventListener('click', function () {
+                    if (node) {
+                        hideOffcanvas(node);
+                    }
+
+                    app.open(channel.id, 0, era.id);
+                });
+                row.appendChild(read);
+                list.appendChild(row);
+            });
+
+            if (data.can_clear) {
+                var clearBox = el('div', 'mt-2');
+                var clearButton = button('btn btn-sm btn-outline-warning rounded-pill px-3', t('era_clear'), 'bi-eraser');
+                clearButton.addEventListener('click', function () {
+                    app.clearConversation(channel, function () {
+                        if (node) {
+                            hideOffcanvas(node);
+                        }
+                    });
+                });
+                clearBox.appendChild(clearButton);
+                clearBox.appendChild(el('div', 'form-text', t('era_clear_help')));
+                list.appendChild(clearBox);
+            }
+        }
+
+        function load() {
+            api('ws_channel_eras', { channel_id: channel.id }).then(draw).catch(function (error) {
+                clear(list);
+                list.appendChild(el('div', 'small text-danger', error.message));
+            });
+        }
+
+        load();
+
+        return box;
+    }
+
     function channelForm(channel, defaults, onDone) {
         var node = offcanvas('ws-channel-form', '');
         var body = clear(node.querySelector('.offcanvas-body'));
@@ -2993,6 +3441,21 @@
             });
 
             body.appendChild(kind);
+
+            // A conversation with somebody who has no account is a room of
+            // its own, made by its own form.
+            if ((CFG.guests || {}).can_host && !defaults.note_id) {
+                var toGuest = button('btn btn-link btn-sm p-0 mb-3 text-decoration-none', t('guest_start'), 'bi-door-open');
+
+                toGuest.addEventListener('click', function () {
+                    node.addEventListener('hidden.bs.offcanvas', function once() {
+                        node.removeEventListener('hidden.bs.offcanvas', once);
+                        guestForm(onDone);
+                    });
+                    hideOffcanvas(node);
+                });
+                body.appendChild(toGuest);
+            }
         }
 
         var topic = el('input', 'form-control');
@@ -3001,52 +3464,142 @@
         topic.value = channel ? channel.topic : (defaults.topic || '');
         body.appendChild(formRow(t('channel_topic'), topic));
 
-        // The customer the channel is about, from the address book.
-        var contactId = channel && channel.contact ? channel.contact.id : (defaults.contact_id || 0);
-        var contactLabel = channel && channel.contact ? channel.contact.label : (defaults.contact_label || '');
+        // The customer the channel is about: a contact, a user or a current
+        // account, with the records tied to it through its contact.
+        var shownCustomer = channel && channel.customer ? channel.customer.customer : null;
+        var customerType = shownCustomer ? shownCustomer.type : (defaults.customer_type || (defaults.contact_id ? 'contact' : ''));
+        var customerId = shownCustomer ? shownCustomer.id : (defaults.customer_id || defaults.contact_id || 0);
+        var customerRef = shownCustomer || (customerId ? {
+            type: customerType,
+            id: customerId,
+            label: defaults.customer_label || defaults.contact_label || '',
+            icon: (BOOT.ref_types[customerType] || {}).icon || 'bi-person-vcard'
+        } : null);
+        var customerLinks = channel && channel.customer ? channel.customer.links : null;
         var contactBox = el('div', 'mb-3');
         contactBox.appendChild(el('label', 'form-label', t('customer')));
         var contactShown = el('div', 'ws-refs-field mb-2');
+        var linksShown = el('div', 'ws-customer-links');
         contactBox.appendChild(contactShown);
+        contactBox.appendChild(linksShown);
+
+        function drawLinks() {
+            clear(linksShown);
+
+            if (!customerId || !customerLinks) {
+                return;
+            }
+
+            linksShown.appendChild(el('div', 'ws-customer-links-title', t('cust_links')));
+
+            if (!customerLinks.length) {
+                linksShown.appendChild(el('div', 'small text-body-secondary', t('cust_links_none')));
+                return;
+            }
+
+            customerLinks.forEach(function (link) {
+                var row = el('div', 'ws-customer-link');
+                var chip = row.appendChild(chipNode(link));
+
+                // The form stays open: the record opens beside it.
+                if (link.url) {
+                    chip.target = '_blank';
+                    chip.rel = 'noopener';
+                }
+
+                row.appendChild(el('span', 'small text-body-secondary', link.kind));
+                linksShown.appendChild(row);
+            });
+        }
 
         function drawContact() {
             clear(contactShown);
 
-            if (contactId) {
-                contactShown.appendChild(chipNode({ type: 'contact', label: contactLabel, icon: 'bi-person-vcard' }, function () {
-                    contactId = 0;
-                    contactLabel = '';
+            if (customerId && customerRef) {
+                contactShown.appendChild(chipNode({ type: customerRef.type, label: customerRef.label, icon: customerRef.icon }, function () {
+                    customerType = '';
+                    customerId = 0;
+                    customerRef = null;
+                    customerLinks = null;
                     drawContact();
                 }));
             } else {
                 contactShown.appendChild(el('span', 'small text-body-secondary', t('no_customer')));
             }
+
+            drawLinks();
+        }
+
+        function loadLinks() {
+            if (!CFG.customer || !customerId) {
+                return;
+            }
+
+            var asked = customerType + ':' + customerId;
+
+            api('ws_customer_links', { type: customerType, id: customerId }).then(function (data) {
+                if (asked === customerType + ':' + customerId) {
+                    customerLinks = data.customer ? data.customer.links : [];
+                    drawLinks();
+                }
+            }).catch(function () {});
         }
 
         drawContact();
 
-        if (BOOT.ref_types.contact) {
-            var only = {};
-            only.contact = BOOT.ref_types.contact;
-            contactBox.appendChild(refSearchField(only, function (item) {
-                contactId = item.id;
-                contactLabel = item.label;
-                drawContact();
-            }, t('search_contacts')));
+        // Opened from a record's screen: its ties are asked for.
+        if (!customerLinks && customerId) {
+            loadLinks();
         }
 
-        contactBox.appendChild(el('div', 'form-text', t('customer_help')));
+        var customerKinds = {};
+
+        (CFG.customer ? ['contact', 'user_account', 'erp_account'] : ['contact']).forEach(function (type) {
+            if (BOOT.ref_types[type]) {
+                customerKinds[type] = BOOT.ref_types[type];
+            }
+        });
+
+        if (Object.keys(customerKinds).length) {
+            contactBox.appendChild(refSearchField(customerKinds, function (item) {
+                customerType = item.type;
+                customerId = item.id;
+                customerRef = { type: item.type, id: item.id, label: item.label, icon: item.icon };
+                customerLinks = null;
+                drawContact();
+                loadLinks();
+            }, (Object.keys(customerKinds).length > 1) ? t('cust_search') : t('search_contacts')));
+        }
+
+        contactBox.appendChild(el('div', 'form-text', CFG.customer ? t('cust_help') : t('customer_help')));
         body.appendChild(contactBox);
 
         var dept = select(departmentOptions(), channel && channel.department ? channel.department.id : (defaults.department_id || 0));
         dept.id = nextId('ws-ch-dept-');
         body.appendChild(formRow(t('department'), dept));
 
+        // The channel's colour in the list, the same for everybody.
+        var colors = null;
+
+        if ((CFG.palette || []).length) {
+            colors = colorPicker(channel ? channel.color : (defaults.color || 0));
+            body.appendChild(formRow(t('color'), colors, t('color_help')));
+        }
+
         var members = null;
 
         if (!channel) {
             members = peoplePicker(defaults.members || []);
             body.appendChild(formRow(t('invite_people'), members));
+        }
+
+        // Made from a group's menu: it goes into that group.
+        if (!channel && defaults.group_id && app.findGroup(defaults.group_id)) {
+            body.insertBefore(el('div', 'alert alert-secondary small py-2', t('grp_new_channel_in', app.findGroup(defaults.group_id).name)), body.firstChild);
+        }
+
+        if (channel && CFG.eras) {
+            body.appendChild(eraSection(channel, node));
         }
 
         // Opened from a note, the note is its first message.
@@ -3064,9 +3617,23 @@
             var data = {
                 name: name.value,
                 topic: topic.value,
-                contact_id: contactId,
                 department_id: parseInt(dept.value, 10) || 0
             };
+
+            if (CFG.customer) {
+                data.customer_type = customerType;
+                data.customer_id = customerId;
+            } else {
+                data.contact_id = (customerType === 'contact') ? customerId : 0;
+            }
+
+            if (colors) {
+                data.color = colors.value();
+            }
+
+            if (!channel && defaults.group_id) {
+                data.group_id = defaults.group_id;
+            }
 
             var request;
 
@@ -3102,6 +3669,176 @@
                 fail(error);
 
                 if (error.field === 'name') {
+                    name.focus();
+                }
+            });
+        });
+
+        showOffcanvas(node);
+        setTimeout(function () { name.focus(); }, 300);
+    }
+
+    // ── Talking with a guest (includes/workspace/guests.php) ────────────
+    //
+    // A room of its own for a conversation with somebody who has no account.
+    // The guest comes in by a link the staff member sends them; its address
+    // is shown once, when it is made.
+
+    // How the guest's link opens: once, or until a time chosen here.
+    function guestLinkFields(durations) {
+        var box = el('div', 'mb-1');
+        var group = nextId('ws_guest_mode_');
+        var mode = 'once';
+
+        box.appendChild(el('div', 'form-label', t('guest_mode')));
+
+        var duration = select((durations || []).map(function (option) { return [option.v, option.t]; }), '604800');
+        duration.id = nextId('ws-guest-duration-');
+
+        var durationRow = el('div', 'ws-guest-duration d-none');
+        var durationLabel = el('label', 'form-label small mb-1', t('guest_duration'));
+        durationLabel.htmlFor = duration.id;
+        durationRow.appendChild(durationLabel);
+        durationRow.appendChild(duration);
+
+        [['once', t('guest_mode_once')], ['timed', t('guest_mode_timed')]].forEach(function (option, index) {
+            var wrap = el('div', 'form-check');
+            var radio = el('input', 'form-check-input');
+            radio.type = 'radio';
+            radio.name = group;
+            radio.value = option[0];
+            radio.id = nextId('ws-guest-mode-');
+            radio.checked = (index === 0);
+            radio.addEventListener('change', function () {
+                mode = radio.value;
+                durationRow.classList.toggle('d-none', mode !== 'timed');
+            });
+
+            var label = el('label', 'form-check-label', option[1]);
+            label.htmlFor = radio.id;
+            wrap.appendChild(radio);
+            wrap.appendChild(label);
+            box.appendChild(wrap);
+        });
+
+        box.appendChild(durationRow);
+
+        box.value = function () {
+            return { mode: mode, duration: (mode === 'timed') ? (parseInt(duration.value, 10) || 0) : 0 };
+        };
+
+        return box;
+    }
+
+    // The address of a new link, this once, with a way to copy it.
+    function guestLinkShow(url) {
+        var shown = document.getElementById('ws-ask');
+
+        // The question before it is still on its way out.
+        if (shown && (shown.style.display === 'block')) {
+            shown.addEventListener('hidden.bs.modal', function once() {
+                shown.removeEventListener('hidden.bs.modal', once);
+                guestLinkShow(url);
+            });
+            return;
+        }
+
+        var group = el('div', 'input-group');
+        var field = el('input', 'form-control font-monospace');
+        field.type = 'text';
+        field.readOnly = true;
+        field.value = url;
+        field.setAttribute('aria-label', t('guest_link_help'));
+        field.addEventListener('focus', function () { field.select(); });
+
+        var copy = button('btn btn-outline-primary', t('guest_copy'), 'bi-clipboard');
+        copy.addEventListener('click', function () {
+            var done = function () {
+                clear(copy);
+                copy.appendChild(icon('bi-check2', 'me-1'));
+                copy.appendChild(document.createTextNode(t('guest_copied')));
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(done, function () { field.select(); });
+            } else {
+                field.select();
+            }
+        });
+
+        group.appendChild(field);
+        group.appendChild(copy);
+
+        ask(t('guest_link_help'), t('guest_link_done'), false, group);
+    }
+
+    function guestForm(onDone) {
+        var conf = CFG.guests || {};
+        var node = offcanvas('ws-guest-form', '');
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var footer = clear(node.querySelector('.offcanvas-footer'));
+
+        footer.classList.remove('d-none');
+        node.querySelector('.offcanvas-title').textContent = t('guest_start');
+
+        body.appendChild(el('div', 'alert alert-info small py-2', t('guest_start_help')));
+
+        var name = el('input', 'form-control');
+        name.id = nextId('ws-guest-name-');
+        name.maxLength = 60;
+        name.autocomplete = 'off';
+        body.appendChild(formRow(t('guest_name'), name));
+
+        var topic = el('input', 'form-control');
+        topic.id = nextId('ws-guest-topic-');
+        topic.maxLength = 120;
+        body.appendChild(formRow(t('guest_topic'), topic));
+
+        var link = guestLinkFields(conf.durations);
+        link.classList.add('mb-3');
+        body.appendChild(link);
+
+        // Staff only; the one who starts it is in it anyway.
+        var staff = ((BOOT && BOOT.people) || []).filter(function (member) {
+            return (parseInt(member.role, 10) <= 2) && (member.id !== CFG.me);
+        }).map(function (member) { return member.id; });
+        var members = peoplePicker([], staff);
+
+        if (staff.length) {
+            body.appendChild(formRow(t('guest_staff'), members));
+        }
+
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', t('guest_create'), 'bi-door-open');
+        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+        footer.appendChild(cancel);
+        footer.appendChild(save);
+
+        save.addEventListener('click', function () {
+            var chosen = link.value();
+
+            save.disabled = true;
+
+            api('ws_guest_start', {
+                guest_name: name.value,
+                topic: topic.value,
+                mode: chosen.mode,
+                duration: chosen.duration,
+                members: staff.length ? members.value() : []
+            }).then(function (result) {
+                save.disabled = false;
+                hideOffcanvas(node);
+
+                if (onDone) {
+                    onDone(result.channel_id);
+                }
+
+                guestLinkShow(result.url);
+            }).catch(function (error) {
+                save.disabled = false;
+                fail(error);
+
+                if (error.field === 'guest_name') {
                     name.focus();
                 }
             });
@@ -3212,6 +3949,9 @@
         pending: null,
         timer: null,
         busy: false,
+        // An earlier version of the conversation open on the screen
+        // (includes/workspace/eras.php), or null for the current one.
+        era: null,
         fit: function () {},
 
         start: function (root) {
@@ -3235,13 +3975,15 @@
 
             // Straight into the first pinned channel; without one, or when it
             // is asked for, the overview.
-            if (!target && query.view !== 'home') {
+            if (!target && query.view !== 'home' && query.view !== 'scheduled') {
                 var pinned = BOOT.channels.filter(function (channel) { return channel.joined && channel.pinned; });
                 target = pinned.length ? pinned[0].id : 0;
             }
 
             if (target) {
-                self.open(target, parseInt(query.message || 0, 10));
+                self.open(target, parseInt(query.message || 0, 10), parseInt(query.era || 0, 10));
+            } else if ((query.view === 'scheduled') && CFG.scheduled) {
+                self.showScheduled(false);
             } else {
                 self.showHome(false);
             }
@@ -3313,15 +4055,39 @@
             add.addEventListener('click', function () {
                 channelForm(null, {}, function (id) { self.reloadChannels(id); });
             });
+
+            // The workspace's own tour (includes/workspace/tour.php), played
+            // again from here.
+            if (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) {
+                var tour = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-signpost-split', t('tour_start'));
+
+                tour.setAttribute('data-ws-tour', '1');
+                tour.addEventListener('click', function () { window.PgTour.start(window.PG_TOUR.key); });
+                head.appendChild(tour);
+            }
+
             head.appendChild(add);
             side.appendChild(head);
 
             var scroll = el('div', 'ws-side-scroll');
             side.appendChild(scroll);
 
+            // Each part of the workspace has its own colour in the list; the
+            // channels take theirs.
+            var navKeys = {
+                'bi-house': 'home', 'bi-inbox': 'inbox', 'bi-check2-square': 'tasks', 'bi-journal-text': 'notes',
+                'bi-calendar-week': 'board', 'bi-calendar3': 'calendar', 'bi-alarm': 'scheduled', 'bi-clock-history': 'timeline',
+                'bi-archive': 'archived', 'bi-shield-lock': 'audit', 'bi-sliders': 'settings'
+            };
+
             function link(box, label, iconName, handler, badge, active) {
                 var item = el('button', 'ws-channel-link' + (active ? ' active' : ''));
                 item.type = 'button';
+
+                if (navKeys[iconName]) {
+                    item.setAttribute('data-ws-nav', navKeys[iconName]);
+                }
+
                 item.appendChild(icon(iconName));
                 item.appendChild(el('span', 'ws-channel-name', label));
 
@@ -3353,12 +4119,91 @@
                 openInbox(function () { self.sync(); });
             }, BOOT.inbox || 0);
 
+            // Groups of channels (includes/workspace/groups.php): a channel in
+            // a group is listed under it, one group inside another; a pinned
+            // channel stays pinned.
+            var groups = BOOT.groups || [];
+            var groupKnown = {};
+            var manage = !!(CFG.groups && CFG.groups.manage);
+
+            groups.forEach(function (group) { groupKnown[group.id] = group; });
+
+            function inGroup(channel) {
+                return !channel.pinned && channel.group_id && groupKnown[channel.group_id];
+            }
+
             var joined = BOOT.channels.filter(function (channel) { return channel.joined; });
             var pinned = joined.filter(function (channel) { return channel.pinned; });
-            var mine = joined.filter(function (channel) { return !channel.pinned; });
-            var others = BOOT.channels.filter(function (channel) { return !channel.joined; });
+            var mine = joined.filter(function (channel) { return !channel.pinned && !inGroup(channel); });
+            var others = BOOT.channels.filter(function (channel) { return !channel.joined && !inGroup(channel); });
+            var byGroup = {};
 
-            function section(title, list, sortable, iconName) {
+            BOOT.channels.forEach(function (channel) {
+                if (inGroup(channel)) {
+                    (byGroup[channel.group_id] = byGroup[channel.group_id] || []).push(channel);
+                }
+            });
+
+            function channelLink(channel, box, sortable) {
+                var link = el('button', 'ws-channel-link'
+                    + ((self.channel && self.channel.id === channel.id) ? ' active' : '')
+                    + (channel.unread ? ' ws-unread' : '')
+                    + (channel.joined ? '' : ' ws-notjoined'));
+                link.type = 'button';
+                link.setAttribute('data-ws-channel', channel.id);
+
+                // The channel's own colour on its sign.
+                if (channel.hex) {
+                    link.style.setProperty('--ws-ch', channel.hex);
+                    link.setAttribute('data-ws-colored', '1');
+                }
+
+                if (sortable) {
+                    self.makeSortable(link, box, channel);
+                } else if (manage) {
+                    // Not in the person's own order, but staff can still drag
+                    // it into a group.
+                    self.makeDraggable(link, channel);
+                }
+
+                link.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash')), 'ws-ch-icon'));
+                link.appendChild(el('span', 'ws-channel-name', channel.name));
+
+                if (channel.notify === 'none') {
+                    link.appendChild(icon('bi-bell-slash', 'text-body-secondary'));
+                }
+
+                if (channel.mentions) {
+                    link.appendChild(el('span', 'ws-count ws-count-mention', channel.mentions));
+                } else if (channel.unread && channel.notify !== 'none') {
+                    link.appendChild(el('span', 'ws-count', channel.unread > 99 ? '99+' : channel.unread));
+                }
+
+                // A pin at the end of the line, shown on hover (and always
+                // on a pinned channel).
+                if (channel.joined) {
+                    var pin = el('span', 'ws-pin' + (channel.pinned ? ' ws-pinned' : ''));
+                    pin.setAttribute('role', 'button');
+                    pin.title = channel.pinned ? t('unpin') : t('pin');
+                    pin.appendChild(icon(channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
+                    pin.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        self.pinChannel(channel, !channel.pinned);
+                    });
+                    link.appendChild(pin);
+                }
+
+                link.addEventListener('click', function () {
+                    self.root.classList.remove('ws-show-side');
+                    self.open(channel.id, 0);
+                });
+
+                onContext(link, function () { return self.channelActions(channel); });
+
+                return link;
+            }
+
+            function section(title, list, sortable, iconName, dropOut) {
                 var box = el('div', 'ws-side-section' + (sortable ? ' ws-sortable' : ''));
                 var head = el('div', 'ws-side-title');
                 var label = el('span');
@@ -3371,50 +4216,13 @@
                 head.appendChild(label);
                 box.appendChild(head);
 
+                // A channel dropped on the heading comes out of its group.
+                if (dropOut && manage) {
+                    self.dropTarget(head, 0, null);
+                }
+
                 list.forEach(function (channel) {
-                    var link = el('button', 'ws-channel-link'
-                        + ((self.channel && self.channel.id === channel.id) ? ' active' : '')
-                        + (channel.unread ? ' ws-unread' : '')
-                        + (channel.joined ? '' : ' ws-notjoined'));
-                    link.type = 'button';
-                    link.setAttribute('data-ws-channel', channel.id);
-
-                    if (sortable) {
-                        self.makeSortable(link, box, channel);
-                    }
-                    link.appendChild(icon(channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash')));
-                    link.appendChild(el('span', 'ws-channel-name', channel.name));
-
-                    if (channel.notify === 'none') {
-                        link.appendChild(icon('bi-bell-slash', 'text-body-secondary'));
-                    }
-
-                    if (channel.mentions) {
-                        link.appendChild(el('span', 'ws-count ws-count-mention', channel.mentions));
-                    } else if (channel.unread && channel.notify !== 'none') {
-                        link.appendChild(el('span', 'ws-count', channel.unread > 99 ? '99+' : channel.unread));
-                    }
-
-                    // A pin at the end of the line, shown on hover (and always
-                    // on a pinned channel).
-                    var pin = el('span', 'ws-pin' + (channel.pinned ? ' ws-pinned' : ''));
-                    pin.setAttribute('role', 'button');
-                    pin.title = channel.pinned ? t('unpin') : t('pin');
-                    pin.appendChild(icon(channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
-                    pin.addEventListener('click', function (event) {
-                        event.stopPropagation();
-                        self.pinChannel(channel, !channel.pinned);
-                    });
-                    link.appendChild(pin);
-
-                    link.addEventListener('click', function () {
-                        self.root.classList.remove('ws-show-side');
-                        self.open(channel.id, 0);
-                    });
-
-                    onContext(link, function () { return self.channelActions(channel); });
-
-                    box.appendChild(link);
+                    box.appendChild(channelLink(channel, box, sortable));
                 });
 
                 if (!list.length) {
@@ -3424,14 +4232,117 @@
                 scroll.appendChild(box);
             }
 
+            var closed = self.closedGroups();
+            var children = self.groupTree();
+
+            function groupBox(group, parent, depth) {
+                var box = el('div', 'ws-side-group' + (depth ? ' ws-side-subgroup' : ''));
+                var head = el('div', 'ws-side-title ws-group-title');
+                var inner = el('div', 'ws-group-inner ws-sortable');
+                var shut = !!closed[group.id];
+                var toggleButton = el('button', 'ws-group-toggle');
+                var channels = byGroup[group.id] || [];
+                var kids = children[group.id] || [];
+
+                box.setAttribute('data-ws-group-box', group.id);
+
+                if (group.hex) {
+                    box.style.setProperty('--ws-group', group.hex);
+                }
+
+                toggleButton.type = 'button';
+                toggleButton.setAttribute('aria-expanded', shut ? 'false' : 'true');
+                toggleButton.title = shut ? t('grp_expand') : t('grp_collapse');
+                toggleButton.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
+                toggleButton.appendChild(icon(shut ? 'bi-folder2' : 'bi-folder2-open', 'ws-group-icon'));
+                toggleButton.appendChild(el('span', 'ws-group-name', group.name));
+
+                // Closed, a group still says there is something new inside.
+                var unread = self.groupUnread(group.id);
+
+                if (shut && unread) {
+                    toggleButton.appendChild(el('span', 'ws-count', unread > 99 ? '99+' : unread));
+                }
+
+                if (manage && group.access) {
+                    var key = el('span', 'ws-group-access');
+                    key.title = t('grp_access');
+                    key.appendChild(icon('bi-key'));
+                    key.appendChild(document.createTextNode(String(group.access)));
+                    toggleButton.appendChild(key);
+                }
+
+                toggleButton.addEventListener('click', function () {
+                    self.closeGroup(group.id, !shut);
+                    self.drawSide();
+                });
+                head.appendChild(toggleButton);
+                head.setAttribute('data-ws-group', group.id);
+
+                if (manage) {
+                    var more = button('btn btn-sm btn-ghost ws-group-more', '', 'bi-three-dots', t('more'));
+                    more.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        var rect = more.getBoundingClientRect();
+                        ctxMenu(rect.left, rect.bottom, self.groupActions(group));
+                    });
+                    head.appendChild(more);
+                    onContext(head, function () { return self.groupActions(group); });
+                    self.makeGroupDraggable(head, group);
+                    self.dropTarget(head, group.id, group);
+                }
+
+                box.appendChild(head);
+
+                if (!shut) {
+                    channels.forEach(function (channel) {
+                        inner.appendChild(channelLink(channel, inner, channel.joined));
+                    });
+
+                    kids.forEach(function (child) {
+                        groupBox(child, inner, depth + 1);
+                    });
+
+                    if (!channels.length && !kids.length) {
+                        var empty = el('div', 'small text-body-secondary px-2 ws-group-empty', manage ? t('grp_empty') : t('no_channels'));
+
+                        if (manage) {
+                            self.dropTarget(empty, group.id, null);
+                        }
+
+                        inner.appendChild(empty);
+                    }
+
+                    box.appendChild(inner);
+                }
+
+                parent.appendChild(box);
+            }
+
             if (pinned.length) {
                 section(t('pinned'), pinned, true, 'bi-pin-angle');
             }
 
-            section(t('my_channels'), mine, true);
+            if ((children[0] || []).length || manage) {
+                var groupSection = el('div', 'ws-side-section ws-side-groups');
+
+                (children[0] || []).forEach(function (group) {
+                    groupBox(group, groupSection, 0);
+                });
+
+                if (manage) {
+                    var newGroup = button('btn btn-sm btn-link link-secondary ws-group-new', t('grp_new'), 'bi-folder-plus');
+                    newGroup.addEventListener('click', function () { self.groupForm(null, {}); });
+                    groupSection.appendChild(newGroup);
+                }
+
+                scroll.appendChild(groupSection);
+            }
+
+            section(t('my_channels'), mine, true, '', true);
 
             if (others.length) {
-                section(t('other_channels'), others, false);
+                section(t('other_channels'), others, false, '', true);
             }
 
             var work = group(t('nav_work'));
@@ -3442,6 +4353,10 @@
             }
             link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
             link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
+
+            if (CFG.scheduled) {
+                link(work, t('sa_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
+            }
 
             var records = group(t('nav_records'));
             link(records, t('nav_timeline'), 'bi-clock-history', function () { window.location.href = CFG.urls.timeline; });
@@ -3470,11 +4385,1040 @@
             }
         },
 
+        // ── The pinned message (includes/workspace/pins.php) ──
+
+        pinClosedHere: function (pin) {
+            try {
+                return !!window.localStorage.getItem('ws-pin-closed:' + this.channel.id + ':' + pin.id);
+            } catch (error) {
+                return false;
+            }
+        },
+
+        drawPinBar: function () {
+            var self = this;
+            var holder = self.pinHolder;
+            var pin = self.channel ? self.channel.pin : null;
+
+            if (!holder) {
+                return;
+            }
+
+            clear(holder);
+
+            if (!pin || pin.hidden || self.era || self.pinClosedHere(pin)) {
+                return;
+            }
+
+            var bar = el('div', 'ws-pin-bar');
+            var text = el('button', 'ws-pin-text');
+
+            text.type = 'button';
+            text.title = t('pin_go');
+            bar.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
+            text.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
+            text.appendChild(document.createTextNode(pin.text));
+            text.addEventListener('click', function () { self.jumpTo(pin.id, true); });
+            bar.appendChild(text);
+
+            if (pin.pinned_by) {
+                bar.appendChild(el('span', 'ws-pin-by', t('pin_by', pin.pinned_by)));
+            }
+
+            var close = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('pin_close'));
+            close.addEventListener('click', function () {
+                if (self.channel.joined) {
+                    api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
+                    pin.hidden = true;
+                } else {
+                    try {
+                        window.localStorage.setItem('ws-pin-closed:' + self.channel.id + ':' + pin.id, '1');
+                    } catch (error) {
+                        // Not kept: it shows again next time.
+                    }
+                }
+
+                clear(holder);
+            });
+            bar.appendChild(close);
+            holder.appendChild(bar);
+        },
+
+        // message null takes the pin off.
+        pinMessage: function (message) {
+            var self = this;
+            var channel = self.channel;
+            var run = function () {
+                api('ws_pin', { channel_id: channel.id, message_id: message ? message.id : 0 }).then(function (data) {
+                    channel.pin = data.pin;
+                    self.drawPinBar();
+                    self.sync();
+                }).catch(fail);
+            };
+
+            if (message && channel.pin && channel.pin.id !== message.id) {
+                ask(t('pin_replace'), t('pin_message')).then(function (yes) {
+                    if (yes) {
+                        run();
+                    }
+                });
+                return;
+            }
+
+            run();
+        },
+
+        // ── Messages chosen together (includes/workspace/forward.php) ──
+
+        // Only messages written by people or applications are chosen.
+        selectable: function (message) {
+            return !!message && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app' || message.sender_kind === 'guest')
+                && ['message', 'note', 'decision'].indexOf(message.kind) !== -1;
+        },
+
+        // The conversation as it is drawn gets its marks; it is not drawn
+        // again, so the reader stays where they were.
+        markSelectable: function () {
+            var self = this;
+
+            if (!self.pane) {
+                return;
+            }
+
+            self.pane.classList.toggle('ws-pane-selecting', !!self.selecting);
+
+            Array.prototype.forEach.call(self.pane.querySelectorAll('.ws-msg[data-ws-message]'), function (node) {
+                var message = self.findMessage(parseInt(node.getAttribute('data-ws-message'), 10));
+                var on = !!self.selecting && self.selectable(message);
+
+                node.classList.toggle('ws-msg-choosable', on);
+                node.classList.toggle('ws-msg-selected', on && self.selecting.ids.indexOf(message.id) !== -1);
+            });
+        },
+
+        startSelect: function (message) {
+            this.selecting = { ids: (message && this.selectable(message)) ? [message.id] : [] };
+            this.markSelectable();
+            this.drawSelectBar();
+        },
+
+        endSelect: function () {
+            this.selecting = null;
+            this.markSelectable();
+            this.drawSelectBar();
+        },
+
+        toggleSelect: function (message, node) {
+            var ids = this.selecting.ids;
+            var at = ids.indexOf(message.id);
+
+            if (!this.selectable(message)) {
+                return;
+            }
+
+            if (at !== -1) {
+                ids.splice(at, 1);
+            } else if (ids.length >= ((CFG.forwards && CFG.forwards.max) || 20)) {
+                toast(t('sel_max', (CFG.forwards && CFG.forwards.max) || 20), 'warning');
+                return;
+            } else {
+                ids.push(message.id);
+            }
+
+            node.classList.toggle('ws-msg-selected', at === -1);
+            this.drawSelectBar();
+        },
+
+        selectedMessages: function () {
+            var self = this;
+
+            return (self.selecting ? self.selecting.ids : []).map(function (id) { return self.findMessage(id); }).filter(Boolean).sort(function (a, b) { return a.id - b.id; });
+        },
+
+        drawSelectBar: function () {
+            var self = this;
+            var wrap = self.composerWrap;
+
+            if (!wrap) {
+                return;
+            }
+
+            if (self.selBar && self.selBar.parentNode) {
+                self.selBar.parentNode.removeChild(self.selBar);
+            }
+
+            wrap.classList.toggle('ws-selecting', !!self.selecting);
+
+            if (!self.selecting) {
+                return;
+            }
+
+            var count = self.selecting.ids.length;
+            var bar = el('div', 'ws-select-bar');
+            var none = (count === 0);
+
+            bar.appendChild(el('span', 'ws-select-count', count ? t('sel_count', count) : t('sel_help')));
+
+            if (self.channel.can_post && !self.era) {
+                var reply = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_reply'), 'bi-reply');
+                reply.disabled = none;
+                reply.addEventListener('click', function () { self.replyToSelected(); });
+                bar.appendChild(reply);
+            }
+
+            var forward = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_forward'), 'bi-forward');
+            forward.disabled = none;
+            forward.addEventListener('click', function () { self.forwardForm(self.selectedMessages()); });
+            bar.appendChild(forward);
+
+            if (CFG.notes) {
+                var note = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_to_note'), 'bi-journal-plus');
+                note.disabled = none;
+                note.addEventListener('click', function () { self.noteForwardForm(self.selectedMessages()); });
+                bar.appendChild(note);
+            }
+
+            var done = button('btn btn-sm btn-ghost ms-auto', t('sel_cancel'), 'bi-x-lg');
+            done.addEventListener('click', function () { self.endSelect(); });
+            bar.appendChild(done);
+
+            self.selBar = bar;
+            wrap.insertBefore(bar, wrap.firstChild);
+        },
+
+        replyToSelected: function () {
+            var chosen = this.selectedMessages();
+
+            if (!chosen.length) {
+                return;
+            }
+
+            this.reply = chosen[0];
+            this.replyMore = chosen.slice(1);
+            this.editing = null;
+            this.selecting = null;
+            this.markSelectable();
+            this.drawSelectBar();
+            this.drawReplyBar();
+
+            if (this.input) {
+                this.input.focus();
+            }
+        },
+
+        forwardForm: function (messages) {
+            var self = this;
+            var node = offcanvas('ws-forward', t('fwd_title'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+            var source = self.channel;
+
+            footer.classList.remove('d-none');
+
+            // Never into a room a guest reads.
+            var channels = (BOOT.channels || []).filter(function (item) {
+                return !item.archived && (item.joined || item.kind === 'public') && (item.kind !== 'guest');
+            }).map(function (item) {
+                return [item.id, (item.kind === 'private' ? '🔒 ' : '#') + item.name];
+            });
+            var target = select(channels, (source && source.kind !== 'guest') ? source.id : (channels[0] || [0])[0]);
+            var comment = el('textarea', 'form-control form-control-sm');
+
+            target.id = nextId('ws-fwd-to-');
+            comment.rows = 3;
+            comment.maxLength = 2000;
+
+            var list = el('div', 'ws-fwd-preview');
+
+            messages.forEach(function (message) {
+                var line = el('div', 'ws-fwd-preview-line');
+                line.appendChild(el('b', 'me-1', (message.sender ? message.sender.name : '') + ':'));
+                line.appendChild(document.createTextNode(self.plain(message.html) || (message.file ? message.file.name : '')));
+                list.appendChild(line);
+            });
+
+            body.appendChild(list);
+            body.appendChild(formRow(t('fwd_to'), target));
+            body.appendChild(formRow(t('fwd_comment'), comment));
+
+            if (source && source.kind === 'private') {
+                body.appendChild(el('div', 'alert alert-warning small py-2', t('fwd_private')));
+            }
+
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var send = button('btn btn-sm btn-primary rounded-pill px-3', t('sel_forward'), 'bi-forward');
+
+            cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+            footer.appendChild(cancel);
+            footer.appendChild(send);
+
+            send.addEventListener('click', function () {
+                send.disabled = true;
+
+                api('ws_forward', {
+                    target: 'channel',
+                    channel_id: parseInt(target.value, 10) || 0,
+                    message_ids: messages.map(function (message) { return message.id; }),
+                    comment: comment.value
+                }).then(function (data) {
+                    hideOffcanvas(node);
+                    toast(t('fwd_sent'), 'success');
+                    self.endSelect();
+
+                    if (self.channel && data.channel_id === self.channel.id) {
+                        self.sync(true);
+                    } else {
+                        self.reloadChannels(0);
+                    }
+                }).catch(function (error) {
+                    send.disabled = false;
+                    fail(error);
+                });
+            });
+
+            showOffcanvas(node);
+        },
+
+        noteForwardForm: function (messages) {
+            var self = this;
+            var node = offcanvas('ws-forward-note', t('fwd_note_title'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+            var slot = el('div');
+            var comment = el('textarea', 'form-control form-control-sm');
+            var picker = null;
+
+            footer.classList.remove('d-none');
+            comment.rows = 3;
+            slot.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            body.appendChild(formRow(t('fwd_note_pick'), slot));
+            body.appendChild(formRow(t('fwd_comment'), comment));
+
+            api('ws_notes').then(function (data) {
+                var options = [[0, t('fwd_note_new')]];
+
+                (data.mine || []).concat((data.shared || []).filter(function (note) { return note.access === 'edit'; })).forEach(function (note) {
+                    options.push([note.id, note.name]);
+                });
+
+                clear(slot);
+                picker = select(options, 0);
+                slot.appendChild(picker);
+            }).catch(function (error) {
+                clear(slot);
+                slot.appendChild(el('div', 'small text-danger', error.message));
+            });
+
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var save = button('btn btn-sm btn-primary rounded-pill px-3', t('sel_to_note'), 'bi-journal-plus');
+
+            cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+            footer.appendChild(cancel);
+            footer.appendChild(save);
+
+            save.addEventListener('click', function () {
+                save.disabled = true;
+
+                api('ws_forward', {
+                    target: 'note',
+                    note_id: picker ? (parseInt(picker.value, 10) || 0) : 0,
+                    message_ids: messages.map(function (message) { return message.id; }),
+                    comment: comment.value
+                }).then(function (data) {
+                    hideOffcanvas(node);
+                    self.endSelect();
+
+                    toast(t('fwd_note_done'), 'success', { href: CFG.urls.notes + '?note=' + data.note_id, label: t('fwd_open_note') });
+                }).catch(function (error) {
+                    save.disabled = false;
+                    fail(error);
+                });
+            });
+
+            showOffcanvas(node);
+        },
+
+        // The copies a forward carries: where from, who, when, the words.
+        forwardsNode: function (message) {
+            var self = this;
+            var list = el('div', 'ws-fwd-list');
+
+            message.forwards.forEach(function (card) {
+                var box = el('div', 'ws-fwd');
+                var head = el('div', 'ws-fwd-head');
+
+                head.appendChild(icon('bi-forward', 'me-1'));
+                head.appendChild(document.createTextNode(card.channel ? t('fwd_from', card.channel.name) : t('fwd_from_hidden')));
+
+                if (card.can_open) {
+                    var open = button('btn btn-sm btn-link py-0 ms-auto', t('fwd_open'), 'bi-box-arrow-up-right');
+                    open.addEventListener('click', function (event) {
+                        event.stopPropagation();
+
+                        if (self.channel && card.channel.id === self.channel.id) {
+                            self.jumpTo(card.source_id, true);
+                        } else {
+                            self.flashAfterOpen = [card.source_id];
+                            self.open(card.channel.id, card.source_id);
+                        }
+                    });
+                    head.appendChild(open);
+                }
+
+                box.appendChild(head);
+
+                var who = el('div', 'ws-fwd-who');
+                who.appendChild(avatar(card.sender || { name: '?' }, '1.4rem'));
+                who.appendChild(el('b', '', card.sender ? card.sender.name : ''));
+                who.appendChild(el('span', 'text-body-secondary', card.time));
+                box.appendChild(who);
+
+                var words = el('div', 'ws-fwd-body');
+                setHtml(words, card.html);
+                chipMenus(words);
+                box.appendChild(words);
+
+                if (card.file_name) {
+                    var file = el('div', 'ws-fwd-file small text-body-secondary');
+                    file.appendChild(icon('bi-paperclip', 'me-1'));
+                    file.appendChild(document.createTextNode(card.file_name + ' · ' + t('fwd_file')));
+                    box.appendChild(file);
+                }
+
+                list.appendChild(box);
+            });
+
+            return list;
+        },
+
+        // ── Groups of channels (includes/workspace/groups.php) ──
+
+        groupTree: function () {
+            var children = {};
+
+            (BOOT.groups || []).forEach(function (group) {
+                (children[group.parent_id] = children[group.parent_id] || []).push(group);
+            });
+
+            Object.keys(children).forEach(function (key) {
+                children[key].sort(function (a, b) { return (a.sort - b.sort) || a.name.localeCompare(b.name); });
+            });
+
+            return children;
+        },
+
+        findGroup: function (id) {
+            return (BOOT.groups || []).filter(function (group) { return group.id === id; })[0] || null;
+        },
+
+        groupSiblings: function (group) {
+            return (this.groupTree()[group.parent_id] || []);
+        },
+
+        groupTreeIds: function (id) {
+            var children = this.groupTree();
+            var out = [];
+            var queue = [id];
+
+            while (queue.length) {
+                var next = queue.shift();
+
+                if (out.indexOf(next) === -1) {
+                    out.push(next);
+                    (children[next] || []).forEach(function (child) { queue.push(child.id); });
+                }
+            }
+
+            return out;
+        },
+
+        groupDepth: function (id) {
+            var depth = 0;
+            var group = this.findGroup(id);
+
+            while (group && depth < 50) {
+                depth += 1;
+                group = this.findGroup(group.parent_id);
+            }
+
+            return depth;
+        },
+
+        groupStats: function (id) {
+            var tree = this.groupTreeIds(id);
+
+            return {
+                groups: Math.max(0, tree.length - 1),
+                channels: (BOOT.channels || []).filter(function (channel) { return tree.indexOf(channel.group_id) !== -1; }).length
+            };
+        },
+
+        groupUnread: function (id) {
+            var tree = this.groupTreeIds(id);
+
+            return (BOOT.channels || []).reduce(function (sum, channel) {
+                return sum + ((tree.indexOf(channel.group_id) !== -1 && !channel.pinned && channel.joined && channel.notify !== 'none') ? (channel.unread || 0) : 0);
+            }, 0);
+        },
+
+        // Tree options for a select, indented; one group and what is inside
+        // it left out (a group cannot go inside itself).
+        groupOptions: function (skipId) {
+            var children = this.groupTree();
+            var out = [];
+
+            (function walk(parent, depth) {
+                (children[parent] || []).forEach(function (group) {
+                    if (group.id === skipId) {
+                        return;
+                    }
+
+                    out.push([group.id, new Array(depth + 1).join('   ') + group.name]);
+                    walk(group.id, depth + 1);
+                });
+            })(0, 0);
+
+            return out;
+        },
+
+        // Which groups are closed in the list: this person's, on this browser.
+        closedGroups: function () {
+            try {
+                return JSON.parse(window.localStorage.getItem('ws-groups-closed') || '{}') || {};
+            } catch (error) {
+                return {};
+            }
+        },
+
+        closeGroup: function (id, shut) {
+            var closed = this.closedGroups();
+
+            if (shut) {
+                closed[id] = 1;
+            } else {
+                delete closed[id];
+            }
+
+            try {
+                window.localStorage.setItem('ws-groups-closed', JSON.stringify(closed));
+            } catch (error) {
+                // Not kept: the group opens again next time.
+            }
+        },
+
+        groupActions: function (group) {
+            var self = this;
+            var items = [{ header: group.name }];
+
+            if (!CFG.groups || !CFG.groups.manage) {
+                return items;
+            }
+
+            items.push({ icon: 'bi-pencil', label: t('grp_edit'), action: function () { self.groupForm(group); } });
+            items.push({ icon: 'bi-key', label: t('grp_access') + (group.access ? ' (' + group.access + ')' : ''), action: function () { self.groupAccess(group); } });
+            items.push('-');
+            items.push({ icon: 'bi-plus-lg', label: t('new_channel'), action: function () {
+                channelForm(null, { group_id: group.id }, function (id) { self.reloadChannels(id); });
+            } });
+
+            if (self.groupDepth(group.id) < CFG.groups.depth) {
+                items.push({ icon: 'bi-folder-plus', label: t('grp_new_inside'), action: function () { self.groupForm(null, { parent_id: group.id }); } });
+            }
+
+            items.push('-');
+
+            var siblings = self.groupSiblings(group);
+            var at = siblings.indexOf(group);
+
+            if (at > 0) {
+                items.push({ icon: 'bi-arrow-up', label: t('grp_move_up'), action: function () { self.moveGroup(group, group.parent_id, siblings[at - 1].id, true); } });
+            }
+
+            if (at !== -1 && at < siblings.length - 1) {
+                items.push({ icon: 'bi-arrow-down', label: t('grp_move_down'), action: function () { self.moveGroup(group, group.parent_id, siblings[at + 2] ? siblings[at + 2].id : 0, true); } });
+            }
+
+            if (group.parent_id) {
+                items.push({ icon: 'bi-box-arrow-up-left', label: t('grp_move_top'), action: function () { self.moveGroup(group, 0, 0); } });
+            }
+
+            items.push('-');
+            items.push({ icon: 'bi-folder-x', label: t('grp_remove'), danger: true, action: function () {
+                ask(t('grp_remove_confirm', group.name), t('grp_remove'), true).then(function (yes) {
+                    if (yes) {
+                        api('ws_group_remove', { group_id: group.id }).then(function (data) {
+                            BOOT.groups = data.groups;
+                            BOOT.channels = data.channels;
+                            self.drawSide();
+                        }).catch(fail);
+                    }
+                });
+            } });
+
+            return items;
+        },
+
+        groupForm: function (group, defaults) {
+            var self = this;
+            var node = offcanvas('ws-group-form', group ? t('grp_edit') : t('grp_new'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+
+            defaults = defaults || {};
+            footer.classList.remove('d-none');
+
+            var name = el('input', 'form-control');
+            name.id = nextId('ws-grp-name-');
+            name.maxLength = 80;
+            name.value = group ? group.name : '';
+            body.appendChild(formRow(t('grp_name'), name));
+
+            var colors = colorPicker(group ? group.color : (defaults.color || 0));
+            body.appendChild(formRow(t('color'), colors));
+
+            var parent = select([[0, t('grp_top')]].concat(self.groupOptions(group ? group.id : -1)), group ? group.parent_id : (defaults.parent_id || 0));
+            parent.id = nextId('ws-grp-parent-');
+            body.appendChild(formRow(t('grp_parent'), parent, t('grp_levels', CFG.groups.depth)));
+
+            var save = button('btn btn-sm btn-primary rounded-pill px-3', t('save'), 'bi-check2');
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+            footer.appendChild(cancel);
+            footer.appendChild(save);
+
+            save.addEventListener('click', function () {
+                var parentId = parseInt(parent.value, 10) || 0;
+                var run = function () {
+                    api('ws_group_save', { id: group ? group.id : 0, name: name.value, color: colors.value(), parent_id: parentId }).then(function (data) {
+                        hideOffcanvas(node);
+                        toast(t('grp_saved'), 'success');
+                        BOOT.groups = data.groups;
+                        self.reloadChannels(0);
+                    }).catch(function (error) {
+                        fail(error);
+
+                        if (error.field === 'name') {
+                            name.focus();
+                        }
+                    });
+                };
+
+                // Into another group: say what goes with it first.
+                if (group && parentId !== group.parent_id) {
+                    var target = self.findGroup(parentId);
+                    var stats = self.groupStats(group.id);
+
+                    ask(target ? t('grp_into', group.name, target.name, stats.groups, stats.channels) : t('grp_to_top', group.name), t('save')).then(function (yes) {
+                        if (yes) {
+                            run();
+                        }
+                    });
+                    return;
+                }
+
+                run();
+            });
+
+            showOffcanvas(node);
+            setTimeout(function () { name.focus(); }, 300);
+        },
+
+        groupAccess: function (group) {
+            var self = this;
+            var node = offcanvas('ws-group-access', t('grp_access'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+
+            node.querySelector('.offcanvas-footer').classList.add('d-none');
+            body.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            showOffcanvas(node);
+
+            function personName(id) {
+                var person = (BOOT.people || []).filter(function (item) { return item.id === id; })[0];
+                return person ? person.name : '';
+            }
+
+            function load() {
+                api('ws_group_access', { group_id: group.id }).then(draw).catch(fail);
+            }
+
+            function draw(data) {
+                clear(body);
+
+                var head = el('div', 'ws-record-title mb-1');
+                head.appendChild(icon('bi-folder2', 'me-1'));
+                head.appendChild(document.createTextNode(data.path));
+                body.appendChild(head);
+                body.appendChild(el('p', 'small text-body-secondary mb-2', t('grp_access_help')));
+                body.appendChild(el('div', 'small mb-3', t('grp_reach', data.reach.groups, data.reach.channels, data.reach.private)));
+
+                var list = el('div', 'mb-3');
+
+                if (!data.people.length) {
+                    list.appendChild(el('div', 'small text-body-secondary', t('grp_access_none')));
+                }
+
+                data.people.forEach(function (person) {
+                    var row = el('div', 'd-flex align-items-center gap-2 py-1');
+                    var text = el('div', 'flex-grow-1 min-w-0');
+                    var member = (BOOT.people || []).filter(function (item) { return item.id === person.id; })[0];
+
+                    row.appendChild(avatar(member || { name: person.name }));
+                    text.appendChild(el('div', 'text-truncate', person.name));
+
+                    if (person.granted_by) {
+                        text.appendChild(el('div', 'small text-body-secondary', t('grp_access_given_by', person.granted_by)));
+                    }
+
+                    row.appendChild(text);
+
+                    var take = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('grp_access_take'));
+                    take.addEventListener('click', function () {
+                        ask(t('grp_access_take_confirm', data.path, person.name), t('grp_access_take'), true).then(function (yes) {
+                            if (yes) {
+                                api('ws_group_access_revoke', { group_id: group.id, user_ids: [person.id] }).then(function (result) {
+                                    toast(t('grp_access_taken', result.removed), 'success');
+                                    BOOT.groups = result.groups;
+                                    load();
+                                    self.reloadChannels(0);
+                                }).catch(fail);
+                            }
+                        });
+                    });
+                    row.appendChild(take);
+                    list.appendChild(row);
+                });
+
+                body.appendChild(list);
+
+                if (data.above.length) {
+                    body.appendChild(el('div', 'small text-body-secondary mb-1', t('grp_access_above')));
+                    var above = el('div', 'mb-3 small');
+
+                    data.above.forEach(function (person) {
+                        above.appendChild(el('div', '', person.name + ' · ' + person.group));
+                    });
+
+                    body.appendChild(above);
+                }
+
+                var holding = data.people.map(function (person) { return person.id; });
+                var allowed = (BOOT.people || []).map(function (person) { return person.id; }).filter(function (id) { return holding.indexOf(id) === -1; });
+                var picker = peoplePicker([], allowed);
+                body.appendChild(formRow(t('grp_access_give'), picker));
+
+                var give = button('btn btn-sm btn-primary rounded-pill px-3', t('grp_access_give'), 'bi-key');
+                give.addEventListener('click', function () {
+                    var ids = picker.value();
+
+                    if (!ids.length) {
+                        toast(t('grp_access_pick'), 'warning');
+                        return;
+                    }
+
+                    // The counts come from the server: the private channels a
+                    // member of staff does not see are in them too.
+                    api('ws_group_access', { group_id: group.id, user_ids: ids }).then(function (preview) {
+                        var names = ids.map(personName).filter(Boolean).join(', ');
+
+                        return ask(t('grp_access_confirm', names, preview.path, preview.reach.groups, preview.reach.channels, preview.reach.private, preview.joining), t('grp_access_give')).then(function (yes) {
+                            if (!yes) {
+                                return null;
+                            }
+
+                            return api('ws_group_access_grant', { group_id: group.id, user_ids: ids }).then(function (result) {
+                                toast(t('grp_access_done', result.added), 'success');
+                                BOOT.groups = result.groups;
+                                load();
+                                self.reloadChannels(0);
+                            });
+                        });
+                    }).catch(fail);
+                });
+                body.appendChild(give);
+            }
+
+            load();
+        },
+
+        // simple: moved up or down from the menu, with nothing to explain.
+        moveGroup: function (group, parentId, beforeId, simple) {
+            var self = this;
+            var run = function () {
+                api('ws_group_move', { group_id: group.id, parent_id: parentId, before_id: beforeId || 0 }).then(function (data) {
+                    BOOT.groups = data.groups;
+                    BOOT.channels = data.channels;
+                    self.drawSide();
+                }).catch(fail);
+            };
+
+            if (simple || parentId === group.parent_id) {
+                run();
+                return;
+            }
+
+            var target = self.findGroup(parentId);
+            var stats = self.groupStats(group.id);
+
+            ask(target ? t('grp_into', group.name, target.name, stats.groups, stats.channels) : t('grp_to_top', group.name), t('ok')).then(function (yes) {
+                if (yes) {
+                    run();
+                }
+            });
+        },
+
+        drawMovePreview: function (box, data) {
+            clear(box);
+
+            if (data.private && data.path) {
+                box.appendChild(el('div', 'mb-1', t('grp_channel_private')));
+            }
+
+            if (data.joining.length) {
+                box.appendChild(el('div', 'mb-1', t('grp_channel_joining', data.joining.join(', '))));
+            }
+
+            if (data.leaving.length) {
+                box.appendChild(el('div', 'mb-1', t('grp_channel_leaving', data.leaving.join(', '))));
+            }
+        },
+
+        // asked: the person has already said yes (in the picker's question).
+        moveChannelGroup: function (channel, groupId, asked) {
+            var self = this;
+            var run = function () {
+                api('ws_channel_group', { channel_id: channel.id, group_id: groupId }).then(function () {
+                    self.reloadChannels(0);
+                }).catch(fail);
+            };
+
+            if (asked) {
+                run();
+                return;
+            }
+
+            var group = self.findGroup(groupId);
+            var from = self.findGroup(channel.group_id || 0);
+
+            api('ws_channel_group', { channel_id: channel.id, group_id: groupId, preview: 1 }).then(function (data) {
+                var details = el('div', 'small text-body-secondary');
+                self.drawMovePreview(details, data);
+
+                ask(group ? t('grp_channel_into', channel.name, data.path || group.name) : t('grp_channel_out', channel.name, from ? from.name : ''), t('grp_move_channel'), false, details).then(function (yes) {
+                    if (yes) {
+                        run();
+                    }
+                });
+            }).catch(fail);
+        },
+
+        pickGroupFor: function (channel) {
+            var self = this;
+            var picker = select([[0, t('grp_no_group')]].concat(self.groupOptions(-1)), channel.group_id || 0);
+            var info = el('div', 'small text-body-secondary mt-2');
+            var details = el('div');
+            var serial = 0;
+
+            details.appendChild(picker);
+            details.appendChild(info);
+
+            function preview() {
+                var asked = ++serial;
+
+                clear(info);
+                api('ws_channel_group', { channel_id: channel.id, group_id: parseInt(picker.value, 10) || 0, preview: 1 }).then(function (data) {
+                    if (asked === serial) {
+                        self.drawMovePreview(info, data);
+                    }
+                }).catch(function (error) {
+                    info.textContent = error.message;
+                });
+            }
+
+            picker.addEventListener('change', preview);
+            preview();
+
+            ask(t('grp_move_channel') + ': #' + channel.name, t('grp_move_channel'), false, details).then(function (yes) {
+                var target = parseInt(picker.value, 10) || 0;
+
+                if (yes && target !== (channel.group_id || 0)) {
+                    self.moveChannelGroup(channel, target, true);
+                }
+            });
+        },
+
+        // A channel that is not in the person's own order: staff can still
+        // drag it into a group.
+        makeDraggable: function (link, channel) {
+            var self = this;
+
+            link.draggable = true;
+
+            link.addEventListener('dragstart', function (event) {
+                self.dragging = { id: channel.id, box: null, channel: channel };
+                link.classList.add('ws-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', 'ws-channel:' + channel.id);
+            });
+
+            link.addEventListener('dragend', function () {
+                link.classList.remove('ws-dragging');
+                self.dragging = null;
+                self.clearDropMarks();
+            });
+        },
+
+        makeGroupDraggable: function (head, group) {
+            var self = this;
+
+            head.draggable = true;
+
+            head.addEventListener('dragstart', function (event) {
+                if (self.dragging) {
+                    return;
+                }
+
+                self.draggingGroup = group;
+                head.classList.add('ws-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', 'ws-group:' + group.id);
+                event.stopPropagation();
+            });
+
+            head.addEventListener('dragend', function () {
+                head.classList.remove('ws-dragging');
+                self.draggingGroup = null;
+                self.clearDropMarks();
+            });
+        },
+
+        clearDropMarks: function () {
+            Array.prototype.forEach.call(this.side.querySelectorAll('.ws-drop-into, .ws-drop-before, .ws-drop-after'), function (node) {
+                node.classList.remove('ws-drop-into', 'ws-drop-before', 'ws-drop-after');
+            });
+        },
+
+        // Something dropped here: a channel goes into the group (0: out of
+        // its group), a group goes above, below or inside this one. Every
+        // move into a group asks first, saying what goes where.
+        dropTarget: function (node, groupId, group) {
+            var self = this;
+
+            function place(event) {
+                if (!self.draggingGroup || !group) {
+                    return 'into';
+                }
+
+                var rect = node.getBoundingClientRect();
+                var y = (event.clientY - rect.top) / Math.max(1, rect.height);
+
+                return (y < 0.3) ? 'before' : ((y > 0.7) ? 'after' : 'into');
+            }
+
+            function allowed() {
+                if (self.dragging && self.dragging.channel) {
+                    return (self.dragging.channel.group_id || 0) !== groupId && !(groupId === 0 && !self.dragging.channel.group_id);
+                }
+
+                if (self.draggingGroup && group) {
+                    return self.draggingGroup.id !== group.id && self.groupTreeIds(self.draggingGroup.id).indexOf(group.id) === -1;
+                }
+
+                return false;
+            }
+
+            node.addEventListener('dragover', function (event) {
+                if (!allowed()) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = 'move';
+                self.clearDropMarks();
+                node.classList.add('ws-drop-' + place(event));
+            });
+
+            node.addEventListener('dragleave', function () {
+                node.classList.remove('ws-drop-into', 'ws-drop-before', 'ws-drop-after');
+            });
+
+            node.addEventListener('drop', function (event) {
+                if (!allowed()) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                var where = place(event);
+                self.clearDropMarks();
+
+                if (self.dragging && self.dragging.channel) {
+                    var channel = self.dragging.channel;
+
+                    // No reordering on dragend: the list is drawn again.
+                    self.dragging = null;
+                    self.moveChannelGroup(channel, groupId, false);
+                    return;
+                }
+
+                var moving = self.draggingGroup;
+                self.draggingGroup = null;
+
+                if (where === 'into') {
+                    self.moveGroup(moving, group.id, 0);
+                    return;
+                }
+
+                var siblings = self.groupSiblings(group).filter(function (item) { return item.id !== moving.id; });
+                var at = siblings.indexOf(group);
+                var before = (where === 'before') ? group.id : (siblings[at + 1] ? siblings[at + 1].id : 0);
+
+                self.moveGroup(moving, group.parent_id, before);
+            });
+        },
+
+        clearConversation: function (channel, after) {
+            var self = this;
+            var title = el('input', 'form-control form-control-sm');
+            var details = el('div');
+
+            title.id = nextId('ws-era-title-');
+            title.maxLength = 160;
+            details.appendChild(formRow(t('era_title'), title, t('era_title_help')));
+
+            ask(t('era_clear_confirm'), t('era_clear'), true, details).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_channel_clear', { channel_id: channel.id, title: title.value }).then(function () {
+                    toast(t('era_cleared'), 'success');
+
+                    if (after) {
+                        after();
+                    }
+
+                    self.open(channel.id, 0);
+                }).catch(fail);
+            });
+        },
+
+        showEras: function (channel) {
+            var node = offcanvas('ws-eras', t('era_list'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+
+            node.querySelector('.offcanvas-footer').classList.add('d-none');
+            body.appendChild(eraSection(channel, node));
+            showOffcanvas(node);
+        },
+
         reloadChannels: function (openId) {
             var self = this;
 
             api('ws_channels').then(function (data) {
                 BOOT.channels = data.channels;
+                BOOT.groups = data.groups || [];
                 self.drawSide();
 
                 if (openId) {
@@ -3526,9 +5470,30 @@
                     var row = el('div', 'd-flex align-items-center gap-2 py-2 border-bottom');
                     var text = el('div', 'flex-grow-1');
                     text.appendChild(el('div', 'fw-semibold', channel.name));
+
+                    if (channel.topic) {
+                        text.appendChild(el('div', 'small', channel.topic));
+                    }
+
                     text.appendChild(el('small', 'text-body-secondary', t('audit_row', channel.owner, channel.members)));
-                    row.appendChild(icon('bi-lock'));
+                    row.appendChild(icon(channel.locked ? 'bi-lock-fill' : 'bi-lock'));
                     row.appendChild(text);
+
+                    // A member of staff is in it: it is listed, its button
+                    // stays greyed out.
+                    if (channel.locked) {
+                        var lockedButton = button('btn btn-sm btn-outline-secondary', t('open_for_audit'), 'bi-eye-slash');
+                        lockedButton.disabled = true;
+                        lockedButton.title = t('audit_locked');
+
+                        var lockedWrap = el('span', 'd-inline-block');
+                        lockedWrap.tabIndex = 0;
+                        lockedWrap.title = t('audit_locked');
+                        lockedWrap.appendChild(lockedButton);
+                        row.appendChild(lockedWrap);
+                        body.appendChild(row);
+                        return;
+                    }
 
                     var openButton = button('btn btn-sm ' + (channel.opened ? 'btn-ghost' : 'btn-outline-warning'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
                     openButton.addEventListener('click', function () {
@@ -3557,6 +5522,102 @@
         },
 
         // ── The overview ──
+
+        // Every scheduled action, for staff: the ones still to run first.
+        showScheduled: function (asked) {
+            var self = this;
+
+            self.stop();
+            self.channel = null;
+            self.view = 'scheduled';
+            self.drawSide();
+
+            var center = clear(self.center);
+            var head = el('div', 'ws-head');
+            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
+            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
+            head.appendChild(toggle);
+
+            var title = el('div', 'ws-head-title');
+            var h = el('h2');
+            h.appendChild(icon('bi-alarm', 'me-1 text-body-secondary'));
+            h.appendChild(document.createTextNode(t('sa_title')));
+            title.appendChild(h);
+            head.appendChild(title);
+
+            var add = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_new_long'), 'bi-plus-lg');
+            add.addEventListener('click', function () {
+                scheduledForm({}, null, function () { load(); });
+            });
+            head.appendChild(add);
+            center.appendChild(head);
+
+            var body = el('div', 'ws-pane ws-sa-view');
+            var filters = el('div', 'ws-sa-filters');
+            var list = el('div', 'ws-sa-list');
+            var status = '';
+
+            [['', t('sa_all')], ['active', t('sa_state_active')], ['paused', t('sa_state_paused')], ['done', t('sa_state_done')], ['failed', t('sa_state_failed')], ['cancelled', t('sa_state_cancelled')]].forEach(function (option) {
+                var chip = button('btn btn-sm rounded-pill ' + (option[0] === status ? 'btn-secondary' : 'btn-outline-secondary'), option[1]);
+                chip.addEventListener('click', function () {
+                    status = option[0];
+                    Array.prototype.forEach.call(filters.children, function (node) {
+                        node.className = 'btn btn-sm rounded-pill ' + (node === chip ? 'btn-secondary' : 'btn-outline-secondary');
+                    });
+                    load();
+                });
+                filters.appendChild(chip);
+            });
+
+            body.appendChild(filters);
+            body.appendChild(el('p', 'small text-body-secondary', t('sa_help')));
+            body.appendChild(list);
+            center.appendChild(body);
+
+            if (asked && window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', CFG.urls.workspace + '?view=scheduled');
+            }
+
+            function load() {
+                api('ws_scheduled_list', { status: status }).then(function (data) {
+                    if (self.view !== 'scheduled') {
+                        return;
+                    }
+
+                    clear(list);
+
+                    if (!data.items.length) {
+                        var empty = el('div', 'ws-empty');
+                        empty.appendChild(icon('bi-alarm'));
+                        empty.appendChild(document.createTextNode(t('sa_empty')));
+                        list.appendChild(empty);
+                    }
+
+                    data.items.forEach(function (item) {
+                        var wrap = el('div', 'ws-sa-list-item');
+                        var where = el('div', 'ws-sa-where');
+
+                        if (item.channel) {
+                            var go = el('a', '', '#' + item.channel.name);
+                            go.href = CFG.urls.workspace + '?channel=' + item.channel.id + (item.message_id ? '&message=' + item.message_id : '');
+                            where.appendChild(document.createTextNode(t('sa_in_channel') + ' '));
+                            where.appendChild(go);
+                        } else if (item.note) {
+                            var note = el('a', '', item.note.name);
+                            note.href = CFG.urls.notes + '?note=' + item.note.id;
+                            where.appendChild(document.createTextNode(t('sa_in_note') + ' '));
+                            where.appendChild(note);
+                        }
+
+                        wrap.appendChild(where);
+                        wrap.appendChild(scheduledCard(item, function () { load(); }));
+                        list.appendChild(wrap);
+                    });
+                }).catch(fail);
+            }
+
+            load();
+        },
 
         showHome: function (asked) {
             var self = this;
@@ -3637,6 +5698,15 @@
                     counts.appendChild(el('span', 'text-danger', t('home_tasks_overdue', data.tasks_overdue)));
                 }
 
+                // The pressing ones lead the list; a link opens all of them.
+                if (data.tasks_hot) {
+                    var hotLink = el('a', 'ws-home-hot');
+                    hotLink.href = CFG.urls.tasks + '?urgent=1';
+                    hotLink.appendChild(icon('bi-fire', 'me-1'));
+                    hotLink.appendChild(document.createTextNode(t('home_tasks_hot', data.tasks_hot)));
+                    counts.appendChild(hotLink);
+                }
+
                 tasks.body.appendChild(counts);
             }
 
@@ -3645,11 +5715,18 @@
             }
 
             data.tasks.forEach(function (task) {
-                var row = button('ws-home-row');
-                row.appendChild(icon(task.overdue ? 'bi-exclamation-circle' : 'bi-circle', task.overdue ? 'text-danger' : 'text-body-secondary'));
+                var hot = (task.priority === 'urgent' || task.priority === 'high');
+                var row = button('ws-home-row' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
+                row.appendChild(icon(task.overdue ? 'bi-exclamation-circle' : (hot ? 'bi-fire' : 'bi-circle'), task.overdue ? 'text-danger' : (hot ? 'ws-home-hot-icon' : 'text-body-secondary')));
 
                 var text = el('span', 'ws-home-row-text');
-                text.appendChild(el('span', 'ws-home-row-title', task.title));
+                var titleLine = el('span', 'ws-home-row-title', task.title);
+
+                if (hot) {
+                    titleLine.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                }
+
+                text.appendChild(titleLine);
                 text.appendChild(el('small', task.overdue ? 'text-danger' : 'text-body-secondary', task.number + ' · ' + task.due_label));
                 row.appendChild(text);
                 row.addEventListener('click', function () {
@@ -3712,6 +5789,10 @@
                 tileList.push(['bi-stars', 'Claude', t('home_about_claude')]);
             }
 
+            if (data.ai) {
+                tileList.push(['bi-cpu', 'Pinegrap AI', t('home_about_ai')]);
+            }
+
             tileList.forEach(function (tile) {
                 var col = el('div', 'col-sm-6');
                 var box = el('div', 'ws-home-tile');
@@ -3740,6 +5821,12 @@
             var privateButton = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('home_new_private'), 'bi-lock');
             privateButton.addEventListener('click', function () { channelForm(null, { kind: 'private' }, created); });
             start.appendChild(privateButton);
+
+            if ((CFG.guests || {}).can_host) {
+                var guestButton = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('guest_start'), 'bi-door-open');
+                guestButton.addEventListener('click', function () { guestForm(created); });
+                start.appendChild(guestButton);
+            }
             main.appendChild(start);
 
             // Beside it: the latest decisions, unfiltered.
@@ -3821,25 +5908,29 @@
 
         // ── One channel ──
 
-        open: function (channelId, messageId) {
+        open: function (channelId, messageId, eraId) {
             var self = this;
 
             self.stop();
             self.pending = null;
             self.reply = null;
+            self.replyMore = null;
+            self.selecting = null;
             self.editing = null;
             self.labels = [];
 
-            api('ws_channel_open', { channel_id: channelId, message_id: messageId || 0 }).then(function (data) {
+            api('ws_channel_open', { channel_id: channelId, message_id: messageId || 0, era_id: eraId || 0 }).then(function (data) {
                 self.view = 'channel';
                 self.channel = data.channel;
+                self.era = data.era || null;
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
 
                 // Opening a channel reads it; the sidebar says so at once
-                // rather than on the next sync.
+                // rather than on the next sync. (An earlier version of its
+                // conversation marks nothing read.)
                 (BOOT.channels || []).forEach(function (item) {
-                    if (item.id === channelId) {
+                    if (item.id === channelId && !self.era) {
                         item.unread = 0;
                         item.mentions = 0;
                     }
@@ -3856,21 +5947,105 @@
                     var target = self.center.querySelector('[data-ws-message="' + messageId + '"]');
 
                     if (target) {
-                        target.classList.add('ws-msg-highlight');
+                        if (self.flashAfterOpen) {
+                            self.flash(self.flashAfterOpen);
+                        } else {
+                            target.classList.add('ws-msg-highlight');
+                        }
+
                         target.scrollIntoView({ block: 'center' });
                     }
                 } else {
                     self.scrollToEnd();
                 }
 
+                self.flashAfterOpen = null;
+
                 if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId);
+                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : ''));
                 }
 
                 self.schedule();
             }).catch(function (error) {
                 fail(error);
                 self.drawEmptyCenter();
+            });
+        },
+
+        guestBar: function (channel) {
+            var self = this;
+            var info = channel.guest;
+            var bar = el('div', 'alert rounded-0 m-0 py-2 small d-flex flex-wrap align-items-center gap-2 ws-guest-bar ' + (info.ended ? 'alert-secondary' : 'alert-warning'));
+
+            bar.appendChild(icon('bi-door-open', 'fs-5'));
+
+            var text = el('div', 'flex-grow-1 ws-guest-bar-text');
+            text.appendChild(el('div', 'fw-semibold', info.ended ? t('guest_ended', info.name) : t('guest_banner', info.name)));
+
+            var state = el('div', 'ws-guest-state');
+
+            if (info.online && !info.ended) {
+                state.appendChild(el('span', 'ws-guest-online', t('guest_online')));
+            }
+
+            state.appendChild(el('span', '', info.label));
+
+            if (info.seen && !info.online) {
+                state.appendChild(el('span', '', t('guest_seen', info.seen)));
+            }
+
+            text.appendChild(state);
+
+            if (!info.ended) {
+                text.appendChild(el('div', 'text-body-secondary', t('guest_hidden')));
+            }
+
+            bar.appendChild(text);
+
+            if (info.can_host) {
+                var tools = el('div', 'd-flex flex-wrap gap-2');
+                var relink = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('guest_relink'), 'bi-link-45deg');
+                relink.addEventListener('click', function () { self.guestRelink(channel); });
+                tools.appendChild(relink);
+                bar.appendChild(tools);
+
+                if (!info.ended) {
+                    var end = button('btn btn-sm btn-outline-danger rounded-pill px-3', t('guest_end'), 'bi-door-closed');
+
+                    end.addEventListener('click', function () {
+                        ask(t('guest_end_confirm'), t('guest_end'), true).then(function (yes) {
+                            if (!yes) {
+                                return;
+                            }
+
+                            api('ws_guest_end', { channel_id: channel.id }).then(function () {
+                                toast(t('guest_ended_toast'), 'success');
+                                self.reloadChannels(channel.id);
+                            }).catch(fail);
+                        });
+                    });
+                    tools.appendChild(end);
+                }
+            }
+
+            return bar;
+        },
+
+        guestRelink: function (channel) {
+            var self = this;
+            var fields = guestLinkFields(channel.guest.durations);
+
+            ask(t('guest_relink_help'), t('guest_relink_make'), false, fields).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                var chosen = fields.value();
+
+                api('ws_guest_relink', { channel_id: channel.id, mode: chosen.mode, duration: chosen.duration }).then(function (result) {
+                    self.reloadChannels(channel.id);
+                    guestLinkShow(result.url);
+                }).catch(fail);
             });
         },
 
@@ -3887,13 +6062,29 @@
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
-            h.appendChild(icon(channel.kind === 'private' ? 'bi-lock' : 'bi-hash', 'me-1 text-body-secondary'));
+            h.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : 'bi-hash'), 'me-1 text-body-secondary'));
             h.appendChild(document.createTextNode(channel.name));
             title.appendChild(h);
 
             var topic = el('div', 'ws-topic');
 
-            if (channel.contact) {
+            // The customer, and beside it the records tied to it.
+            if (channel.customer) {
+                var who = el('span', 'ws-customer');
+
+                setHtml(who, channel.customer.customer.html);
+
+                channel.customer.links.forEach(function (link) {
+                    var tie = el('span', 'ws-customer-tie');
+
+                    setHtml(tie, link.html);
+                    tie.title = link.kind;
+                    who.appendChild(tie);
+                });
+
+                topic.appendChild(who);
+                topic.appendChild(document.createTextNode(' '));
+            } else if (channel.contact) {
                 setHtml(topic, channel.contact.html);
                 topic.appendChild(document.createTextNode(' '));
             }
@@ -3918,7 +6109,12 @@
 
             var addTask = button('btn btn-sm btn-ghost', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () {
-                taskDrawer.open(0, { channel_id: channel.id, department_id: channel.department ? channel.department.id : 0, refs: channel.contact ? [{ type: 'contact', id: channel.contact.id, label: channel.contact.label, icon: 'bi-person-vcard', token: '<#contact:' + channel.contact.id + '>' }] : [] }, function () { self.sync(); });
+                var about = channel.customer ? channel.customer.customer : null;
+                var refs = about
+                    ? [{ type: about.type, id: about.id, label: about.label, icon: about.icon, token: '<#' + about.type + ':' + about.id + '>' }]
+                    : (channel.contact ? [{ type: 'contact', id: channel.contact.id, label: channel.contact.label, icon: 'bi-person-vcard', token: '<#contact:' + channel.contact.id + '>' }] : []);
+
+                taskDrawer.open(0, { channel_id: channel.id, department_id: channel.department ? channel.department.id : 0, refs: refs }, function () { self.sync(); });
             });
             actions.appendChild(addTask);
 
@@ -3931,7 +6127,7 @@
                 auditBar.appendChild(icon('bi-shield-lock', 'me-1'));
                 auditBar.appendChild(document.createTextNode(t('audit_bar')));
                 center.appendChild(auditBar);
-            } else if (!channel.joined && channel.kind === 'public') {
+            } else if (!channel.joined && channel.kind === 'public' && !self.era) {
                 var joinBar = el('div', 'alert alert-info rounded-0 m-0 py-2 small d-flex align-items-center gap-2');
                 joinBar.appendChild(el('span', 'flex-grow-1', t('not_joined')));
                 var join = button('btn btn-sm btn-primary rounded-pill px-3', t('join'));
@@ -3940,6 +6136,26 @@
                 });
                 joinBar.appendChild(join);
                 center.appendChild(joinBar);
+            }
+
+            // A room a guest reads: who, where their link stands, and the
+            // staff's ways to give a new one or end the conversation.
+            center.classList.toggle('ws-guest-room', !!channel.guest && !channel.guest.ended);
+
+            if (channel.guest) {
+                center.appendChild(self.guestBar(channel));
+            }
+
+            // An earlier version of the conversation: read as it was, with
+            // the way back to the current one.
+            if (self.era) {
+                var eraBar = el('div', 'alert alert-secondary rounded-0 m-0 py-2 small d-flex align-items-center gap-2 ws-era-bar');
+                eraBar.appendChild(icon('bi-clock-history'));
+                eraBar.appendChild(el('span', 'flex-grow-1', t('era_bar', self.era.label, self.era.from_text, self.era.to_text)));
+                var eraBack = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('era_back'), 'bi-arrow-return-left');
+                eraBack.addEventListener('click', function () { self.open(channel.id, 0); });
+                eraBar.appendChild(eraBack);
+                center.appendChild(eraBar);
             }
 
             var tabs = el('div', 'ws-tabs');
@@ -3975,6 +6191,11 @@
                 if (brief) {
                     center.appendChild(brief);
                 }
+
+                // The pinned message, under the greeting.
+                self.pinHolder = el('div', 'ws-pin-holder');
+                center.appendChild(self.pinHolder);
+                self.drawPinBar();
             }
 
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
@@ -3985,8 +6206,10 @@
             // it out of view; whoever was reading at the end stays there.
             // (The conversation is no longer pulled down on every look.)
             self.atEnd = true;
+            self.unseenBelow = 0;
             pane.addEventListener('scroll', function () {
                 self.atEnd = self.nearEnd();
+                self.drawJump();
             }, { passive: true });
             pane.addEventListener('load', function (event) {
                 if (self.atEnd && event.target && (event.target.tagName === 'IMG')) {
@@ -3997,6 +6220,8 @@
             if (self.tab === 'messages') {
                 self.drawMessages();
                 center.appendChild(self.composer());
+                self.composerWrap.appendChild(self.jumpButton());
+                self.drawSelectBar();
                 self.fit();
             } else if (self.tab === 'decisions') {
                 self.loadList('ws_channel_decisions', t('no_decisions'));
@@ -4062,7 +6287,31 @@
                 divider();
             }
 
-            if (channel.kind === 'private' && channel.can_manage) {
+            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
+                item(t('ai_allow') + (channel.ai.allowed ? ' ✓' : ''), 'bi-cpu', function () {
+                    var allow = !channel.ai.allowed;
+                    var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
+
+                    asked.then(function (yes) {
+                        if (yes) {
+                            api('ws_channel_ai', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
+                        }
+                    });
+                });
+                divider();
+            }
+
+            if (channel.kind === 'public' && channel.can_change_kind) {
+                item(t('make_private'), 'bi-lock', function () {
+                    ask(t('make_private_confirm', (channel.members || []).length), t('make_private'), true).then(function (yes) {
+                        if (yes) {
+                            api('ws_channel_make_private', { channel_id: channel.id }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
+                        }
+                    });
+                });
+            }
+
+            if (channel.kind === 'private' && channel.can_change_kind) {
                 item(t('make_public'), 'bi-unlock', function () {
                     ask(t('make_public_confirm'), t('make_public'), true).then(function (yes) {
                         if (yes) {
@@ -4070,6 +6319,18 @@
                         }
                     });
                 });
+            }
+
+            if (channel.can_group) {
+                item(t('grp_move_channel'), 'bi-folder-symlink', function () { self.pickGroupFor(channel); });
+            }
+
+            if (CFG.eras && channel.eras) {
+                item(t('era_list') + ' (' + channel.eras + ')', 'bi-clock-history', function () { self.showEras(channel); });
+            }
+
+            if (channel.can_clear && !self.era) {
+                item(t('era_clear'), 'bi-eraser', function () { self.clearConversation(channel); });
             }
 
             if (channel.can_manage) {
@@ -4117,12 +6378,28 @@
                 body.appendChild(claudeRow);
             }
 
+            if (BOOT.ai && channel.ai && channel.ai.available) {
+                var aiRow = el('div', 'd-flex align-items-center gap-2 py-2 border-bottom');
+                var aiFace = avatar({ avatar: BOOT.ai.avatar }, '2rem');
+
+                aiFace.style.borderRadius = '50%';
+                aiRow.appendChild(aiFace);
+
+                var aiText = el('div', 'flex-grow-1');
+                aiText.appendChild(el('div', 'fw-semibold', BOOT.ai.name));
+                aiText.appendChild(el('small', 'text-body-secondary', t('ai_member')));
+                aiRow.appendChild(aiText);
+                body.appendChild(aiRow);
+            }
+
             channel.members.forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-2 py-2 border-bottom');
                 onContext(row, function () { return personMenu(member); });
-                row.appendChild(avatar(member, '2rem')).style.borderRadius = '50%';
+                var memberFace = avatar(member, '2rem');
+                memberFace.style.borderRadius = '50%';
+                row.appendChild(personLink(memberFace, member));
                 var text = el('div', 'flex-grow-1');
-                text.appendChild(el('div', 'fw-semibold', member.name));
+                text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
                 text.appendChild(el('small', 'text-body-secondary', (member.id === channel.owner_id ? t('owner') + ' · ' : '') + (member.title || '')));
                 row.appendChild(text);
                 row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'text-bg-success' : 'text-bg-secondary'), t('presence_' + member.presence)));
@@ -4192,10 +6469,85 @@
 
             var previous = null;
 
+            // A message deleted leaves no trace in the conversation.
             self.messages.forEach(function (message) {
+                if (message.deleted) {
+                    return;
+                }
+
                 self.appendMessage(message, previous, pane);
                 previous = message;
             });
+        },
+
+        // The newest message still on the screen.
+        lastShown: function () {
+            for (var i = this.messages.length - 1; i >= 0; i--) {
+                if (!this.messages[i].deleted) {
+                    return this.messages[i];
+                }
+            }
+
+            return null;
+        },
+
+        // Takes a message off the screen without a trace, and draws the one
+        // after it again: it gets its name and time back if it followed on.
+        removeMessageNode: function (messageId) {
+            var node = this.center ? this.center.querySelector('[data-ws-message="' + messageId + '"]') : null;
+            var index = -1;
+            var i;
+
+            if (!node) {
+                return;
+            }
+
+            var before = node.previousElementSibling;
+            var after = node.nextElementSibling;
+
+            node.remove();
+
+            // A day line with nothing left under it goes as well.
+            if (before && before.classList.contains('ws-day') && (!after || after.classList.contains('ws-day'))) {
+                before.remove();
+            }
+
+            for (i = 0; i < this.messages.length; i++) {
+                if (this.messages[i].id === messageId) {
+                    index = i;
+                }
+            }
+
+            var next = null;
+            var previous = null;
+
+            for (i = index + 1; i < this.messages.length; i++) {
+                if (!this.messages[i].deleted) {
+                    next = this.messages[i];
+                    break;
+                }
+            }
+
+            for (i = index - 1; i >= 0; i--) {
+                if (!this.messages[i].deleted) {
+                    previous = this.messages[i];
+                    break;
+                }
+            }
+
+            if (!next) {
+                return;
+            }
+
+            if (previous && (this.dayKey(previous) !== this.dayKey(next))) {
+                previous = null;
+            }
+
+            var nextNode = this.center.querySelector('[data-ws-message="' + next.id + '"]');
+
+            if (nextNode) {
+                nextNode.parentNode.replaceChild(this.messageNode(next, previous), nextNode);
+            }
         },
 
         dayKey: function (message) {
@@ -4239,17 +6591,19 @@
             node.setAttribute('data-ws-message', message.id);
 
             var face = el('div', 'ws-msg-avatar');
-            face.appendChild(avatar(message.sender));
+            var person = (message.sender_kind === 'user') ? message.sender : null;
+            face.appendChild(personLink(avatar(message.sender), person));
             node.appendChild(face);
 
             var main = el('div', 'ws-msg-main');
             var meta = el('div', 'ws-msg-meta');
-            meta.appendChild(el('b', '', message.sender ? message.sender.name : ''));
-            meta.appendChild(el('span', '', message.time));
+            meta.appendChild(personLink(el('b', '', message.sender ? message.sender.name : ''), person));
 
-            if (message.edited) {
-                meta.appendChild(el('span', '', t('edited')));
+            if (message.sender_kind === 'guest') {
+                meta.appendChild(el('span', 'badge rounded-pill ws-guest-badge', t('guest_badge')));
             }
+
+            meta.appendChild(el('span', '', message.time));
 
             if (message.kind === 'decision' || message.kind === 'note') {
                 var flag = el('span', 'ws-msg-flag ws-flag-' + message.kind);
@@ -4266,15 +6620,54 @@
                 meta.appendChild(flag);
             }
 
+            // The message pinned to the top of the channel.
+            if (self.channel && self.channel.pin && self.channel.pin.id === message.id) {
+                var pinned = icon('bi-pin-angle-fill', 'ws-msg-pinned');
+                pinned.title = t('pin_title');
+                meta.appendChild(pinned);
+            }
+
             main.appendChild(meta);
 
             if (message.parent_id) {
                 var parent = self.findMessage(message.parent_id);
-                var quote = el('div', 'ws-msg-quote');
+                var quote = el('button', 'ws-msg-quote');
+                quote.type = 'button';
+                quote.title = t('reply_go_to');
                 quote.appendChild(icon('bi-reply', 'me-1'));
-                quote.appendChild(document.createTextNode(parent ? ((parent.sender ? parent.sender.name + ': ' : '') + self.plain(parent.html)) : t('earlier_message')));
+                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.plain(parent.html)) : t('earlier_message')));
+
+                // The message answered: brought into view and lit up for a
+                // moment, so which one it was is plain. One deleted since is
+                // nowhere to go.
+                quote.addEventListener('click', function (event) {
+                    var answered = self.findMessage(message.parent_id);
+
+                    event.stopPropagation();
+
+                    if (!answered || !answered.deleted) {
+                        self.jumpTo(message.parent_id, true);
+                    }
+                });
                 main.appendChild(quote);
             }
+
+            // An answer to several: the others it answers, in their order.
+            (message.quotes || []).forEach(function (other) {
+                var more = el('button', 'ws-msg-quote ws-msg-quote-more');
+                more.type = 'button';
+                more.title = t('reply_go_to');
+                more.appendChild(icon('bi-reply', 'me-1'));
+                more.appendChild(document.createTextNode(other.deleted ? t('earlier_message') : ((other.sender ? other.sender + ': ' : '') + other.text)));
+                more.addEventListener('click', function (event) {
+                    event.stopPropagation();
+
+                    if (!other.deleted) {
+                        self.jumpTo(other.id, true);
+                    }
+                });
+                main.appendChild(more);
+            });
 
             var body = el('div', 'ws-msg-body');
 
@@ -4282,13 +6675,40 @@
                 body.textContent = t('message_deleted');
             } else if (message.note_card) {
                 body.appendChild(self.noteCardNode(message.note_card));
+            } else if (message.scheduled) {
+                // A scheduled action written here: its card, as it is now.
+                body.appendChild(scheduledCard(message.scheduled, function (fresh) {
+                    message.scheduled = fresh;
+                    self.replaceMessage(message);
+                }));
             } else {
                 setHtml(body, message.html);
                 chipMenus(body);
                 self.bindChecks(body, message);
             }
 
+            // Changed after it was sent: said at its end, where it shows
+            // also under a run of messages that hides the name and time.
+            if (message.edited && !message.deleted) {
+                var edited = el('span', 'ws-msg-edited');
+                edited.appendChild(icon('bi-pencil'));
+                edited.appendChild(document.createTextNode(' ' + t('edited')));
+                edited.title = message.edited_time ? t('edited_at', message.edited_time) : t('edited');
+
+                var last = body.lastElementChild;
+
+                if (last && /^(P|DIV|LI)$/.test(last.tagName) && !last.querySelector('table, pre, .ws-block')) {
+                    last.appendChild(edited);
+                } else {
+                    body.appendChild(edited);
+                }
+            }
+
             main.appendChild(body);
+
+            if (message.forwards && message.forwards.length) {
+                main.appendChild(self.forwardsNode(message));
+            }
 
             if (message.poll) {
                 main.appendChild(self.pollNode(message));
@@ -4329,6 +6749,10 @@
                 main.appendChild(self.changesNode(message));
             }
 
+            if (message.design && message.design.length) {
+                main.appendChild(self.designNode(message));
+            }
+
             if (message.reactions && message.reactions.length) {
                 main.appendChild(self.reactionRow(message));
             }
@@ -4349,8 +6773,23 @@
                 node.appendChild(self.messageTools(message));
                 onContext(node, function (event) { return self.messageActions(message, event); });
 
+                // Choosing messages: a tap chooses or lets go.
+                if (self.selecting && self.selectable(message)) {
+                    node.classList.toggle('ws-msg-selected', self.selecting.ids.indexOf(message.id) !== -1);
+                    node.classList.add('ws-msg-choosable');
+                }
+
                 // No hover on a phone: a tap on the message shows its tools.
                 node.addEventListener('click', function (event) {
+                    if (self.selecting) {
+                        if (!event.target.closest('a')) {
+                            event.preventDefault();
+                            self.toggleSelect(message, node);
+                        }
+
+                        return;
+                    }
+
                     if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll')) {
                         return;
                     }
@@ -4461,6 +6900,22 @@
                 } });
             }
 
+            // Pinned to the top of the channel, one message at a time.
+            if (self.channel.can_pin && !message.past && !message.deleted && !self.era) {
+                var isPinned = !!(self.channel.pin && self.channel.pin.id === message.id);
+
+                items.push({ icon: isPinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', label: isPinned ? t('unpin_message') : t('pin_message'), action: function () {
+                    self.pinMessage(isPinned ? null : message);
+                } });
+            }
+
+            // Several messages at once: answered together, forwarded, kept in
+            // a note.
+            if (CFG.forwards && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app' || message.sender_kind === 'guest')
+                && ['message', 'note', 'decision'].indexOf(message.kind) !== -1) {
+                items.push({ icon: 'bi-check2-all', label: t('sel_start'), action: function () { self.startSelect(message); } });
+            }
+
             items.push('-');
             items.push({ icon: 'bi-clipboard', label: t('copy_text'), action: function () {
                 copyText(self.plain(message.html, true));
@@ -4468,6 +6923,10 @@
             items.push({ icon: 'bi-link-45deg', label: t('copy_link'), action: function () {
                 copyText(absoluteUrl(CFG.urls.workspace + '?channel=' + self.channel.id + '&message=' + message.id));
             } });
+
+            if (!message.deleted && message.kind !== 'system') {
+                items.push({ icon: 'bi-eye', label: t('seen_by'), action: function () { self.seenBy(message); } });
+            }
 
             if (message.file) {
                 items.push({ icon: message.file.image ? 'bi-arrows-fullscreen' : 'bi-box-arrow-up-right', label: message.file.image ? t('view_image') : t('open_file'), action: function () {
@@ -4489,7 +6948,7 @@
                 }
             }
 
-            if (message.can_edit || message.can_delete) {
+            if (message.can_edit || message.can_delete || message.can_hide) {
                 items.push('-');
             }
 
@@ -4497,24 +6956,74 @@
                 items.push({ icon: 'bi-pencil', label: t('edit'), tool: true, action: function () { self.editMessage(message); } });
             }
 
-            if (message.can_delete) {
-                items.push({ icon: 'bi-trash', label: t('delete'), tool: true, danger: true, action: function () {
-                    ask(t('delete_confirm'), t('delete'), true).then(function (yes) {
-                        if (!yes) {
-                            return;
-                        }
-
-                        api('ws_delete', { message_id: message.id }).then(function () {
-                            message.deleted = true;
-                            message.html = '';
-                            message.file = null;
-                            self.replaceMessage(message);
-                        }).catch(fail);
-                    });
-                } });
+            if (message.can_delete || message.can_hide) {
+                items.push({ icon: 'bi-trash', label: t('delete'), tool: true, danger: true, action: function () { self.deleteMessage(message); } });
             }
 
             return items;
+        },
+
+        // Deleting: in a private channel of one's own there is nobody else,
+        // so the message simply goes; elsewhere for oneself only, or - one's
+        // own, or as staff - for everyone. Either way it leaves no trace.
+        deleteMessage: function (message) {
+            var self = this;
+            var alone = self.channel.kind === 'private' && (self.channel.members || []).length <= 1;
+            var scopes = [];
+
+            if (message.can_hide && !alone) {
+                scopes.push(['me', t('delete_for_me'), t('delete_for_me_help')]);
+            }
+
+            if (message.can_delete) {
+                scopes.push(['everyone', alone ? t('delete') : t('delete_for_everyone'), alone ? '' : t('delete_for_everyone_help')]);
+            }
+
+            if (!scopes.length) {
+                return;
+            }
+
+            var chosen = scopes[scopes.length - 1][0];
+            var details = null;
+
+            if (scopes.length > 1) {
+                details = el('div', 'ws-delete-scopes');
+
+                scopes.forEach(function (scope) {
+                    var id = nextId('ws-del-');
+                    var row = el('div', 'form-check');
+                    var radio = el('input', 'form-check-input');
+                    radio.type = 'radio';
+                    radio.name = 'ws-delete-scope';
+                    radio.id = id;
+                    radio.checked = (scope[0] === chosen);
+                    radio.addEventListener('change', function () { chosen = scope[0]; });
+
+                    var label = el('label', 'form-check-label', scope[1]);
+                    label.htmlFor = id;
+                    row.appendChild(radio);
+                    row.appendChild(label);
+
+                    if (scope[2]) {
+                        row.appendChild(el('div', 'small text-body-secondary', scope[2]));
+                    }
+
+                    details.appendChild(row);
+                });
+            }
+
+            ask(scopes.length > 1 ? t('delete_which') : (chosen === 'me' ? t('delete_for_me_confirm') : t('delete_confirm')), t('delete'), true, details).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_delete', { message_id: message.id, scope: chosen }).then(function () {
+                    message.deleted = true;
+                    message.html = '';
+                    message.file = null;
+                    self.replaceMessage(message);
+                }).catch(fail);
+            });
         },
 
         messageTools: function (message) {
@@ -5035,8 +7544,21 @@
             for (var i = 0; i < this.messages.length; i++) {
                 if (this.messages[i].id === message.id) {
                     this.messages[i] = message;
-                    previous = (i > 0) ? this.messages[i - 1] : null;
+                    previous = null;
+
+                    for (var k = i - 1; k >= 0; k--) {
+                        if (!this.messages[k].deleted) {
+                            previous = this.messages[k];
+                            break;
+                        }
+                    }
                 }
+            }
+
+            // Deleted: it goes from the conversation without a trace.
+            if (message.deleted) {
+                this.removeMessageNode(message.id);
+                return;
             }
 
             // The message under a day line starts its group again.
@@ -5054,15 +7576,80 @@
 
         // Where a message is: in view it is highlighted, otherwise the
         // channel opens there.
-        jumpTo: function (messageId) {
+        jumpTo: function (messageId, flash) {
             var target = this.center.querySelector('[data-ws-message="' + messageId + '"]');
 
             if (target) {
-                target.classList.add('ws-msg-highlight');
+                if (flash) {
+                    this.flash([messageId]);
+                } else {
+                    target.classList.add('ws-msg-highlight');
+                }
+
                 target.scrollIntoView({ block: 'center', behavior: 'smooth' });
             } else {
+                if (flash) {
+                    this.flashAfterOpen = [messageId];
+                }
+
                 this.open(this.channel.id, messageId);
             }
+        },
+
+        // Who of the channel has read as far as the message, and who not yet.
+        seenBy: function (message) {
+            api('ws_message_seen', { message_id: message.id }).then(function (data) {
+                var node = offcanvas('ws-seen', t('seen_by'));
+                var body = clear(node.querySelector('.offcanvas-body'));
+
+                node.querySelector('.offcanvas-footer').classList.add('d-none');
+
+                function group(title, people, iconName, emptyText) {
+                    var head = el('div', 'ws-record-title mt-2');
+                    head.appendChild(icon(iconName, 'me-1'));
+                    head.appendChild(document.createTextNode(title + ' · ' + people.length));
+                    body.appendChild(head);
+
+                    if (!people.length) {
+                        body.appendChild(el('div', 'small text-body-secondary mb-2', emptyText));
+                        return;
+                    }
+
+                    var list = el('div', 'ws-seen-list');
+
+                    people.forEach(function (member) {
+                        var row = el('div', 'ws-seen-row');
+                        row.appendChild(personLink(avatar(member, '1.6rem'), member));
+                        row.appendChild(personLink(el('span', '', member.name), member));
+                        list.appendChild(row);
+                    });
+
+                    body.appendChild(list);
+                }
+
+                group(t('seen_by_read'), data.seen || [], 'bi-check2-all', t('seen_by_none'));
+                group(t('seen_by_not_yet'), data.unseen || [], 'bi-clock', t('seen_by_everyone'));
+                body.appendChild(el('div', 'small text-body-secondary mt-3', t('seen_by_help')));
+                showOffcanvas(node);
+            }).catch(fail);
+        },
+
+        // Lights messages up for a moment: the ones a reply answers.
+        flash: function (ids) {
+            var self = this;
+
+            (ids || []).forEach(function (id) {
+                var node = self.center.querySelector('[data-ws-message="' + id + '"]');
+
+                if (!node) {
+                    return;
+                }
+
+                node.classList.remove('ws-msg-flash');
+                void node.offsetWidth;
+                node.classList.add('ws-msg-flash');
+                window.setTimeout(function () { node.classList.remove('ws-msg-flash'); }, 2600);
+            });
         },
 
         // ── Reactions ──
@@ -5172,13 +7759,34 @@
             return line;
         },
 
+        // Pinegrap AI answers one model call at a time, carried on by the
+        // screens waiting for it (includes/workspace/ai.php): one call per
+        // screen at a time, and not more often than every few seconds.
+        kickAi: function (now) {
+            var self = this;
+
+            if (self.aiKicking || (!now && (Date.now() - (self.aiKickAt || 0)) < 4000)) {
+                return;
+            }
+
+            self.aiKicking = true;
+            self.aiKickAt = Date.now();
+
+            api('ws_ai_kick').then(function () {
+                self.aiKicking = false;
+                self.sync();
+            }).catch(function () {
+                self.aiKicking = false;
+            });
+        },
+
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
         changesNode: function (message) {
             var self = this;
             var box = el('div', 'ws-drafts ws-changes');
 
-            box.appendChild(el('div', 'ws-drafts-title', t('claude_changes')));
+            box.appendChild(el('div', 'ws-drafts-title', t((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')));
 
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
@@ -5321,9 +7929,121 @@
                 } else if (change.status === 'dismissed') {
                     card.appendChild(el('div', 'ws-draft-done', t('change_dismissed', change.decided_by)));
                 } else if (change.status === 'stale') {
-                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', t('change_stale')));
+                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', t((message.sender && message.sender.ai) ? 'ai_change_stale' : 'change_stale')));
                 } else if (change.status === 'failed') {
                     card.appendChild(el('div', 'ws-draft-done text-danger-emphasis', t('change_failed', change.error)));
+                }
+
+                box.appendChild(card);
+            });
+
+            return box;
+        },
+
+        // Page changes an answer proposes (includes/designer_ai.php): what they
+        // do in a line or two, a preview in the editor, and - for the person
+        // who asked - applying it to the saved page or taking it back.
+        designNode: function (message) {
+            var self = this;
+            var box = el('div', 'ws-drafts ws-changes ws-design');
+
+            box.appendChild(el('div', 'ws-drafts-title', t((message.sender && message.sender.ai) ? 'design_title_ai' : 'design_title_claude')));
+
+            message.design.forEach(function (proposal) {
+                var card = el('div', 'ws-draft ws-change ws-change-' + proposal.status);
+                var head = el('div', 'ws-draft-head');
+
+                head.appendChild(icon(proposal.status === 'applied' ? 'bi-check2-circle' : 'bi-palette'));
+                head.appendChild(el('b', 'ws-change-record', proposal.page_name || ('#' + proposal.page_id)));
+                head.appendChild(el('span', 'ws-change-type', t('design_changes', proposal.ops_count) + (proposal.whole_page ? ' · ' + t('design_whole') : '')));
+                card.appendChild(head);
+
+                if (proposal.summary) {
+                    card.appendChild(el('div', 'ws-draft-text', proposal.summary));
+                }
+
+                if (proposal.removed && proposal.removed.length) {
+                    var removed = el('div', 'ws-change-warning');
+                    removed.appendChild(icon('bi-exclamation-triangle', 'me-1'));
+                    removed.appendChild(document.createTextNode(t('design_removes', proposal.removed.join(', '))));
+                    card.appendChild(removed);
+                }
+
+                if (proposal.dropped && proposal.dropped.length) {
+                    card.appendChild(el('div', 'ws-draft-meta', t('design_dropped', proposal.dropped.join(', '))));
+                }
+
+                var actions = el('div', 'ws-draft-actions');
+
+                if (proposal.can_open && proposal.edit_url) {
+                    var preview = el('a', 'btn btn-sm btn-ghost', '');
+                    preview.href = proposal.edit_url;
+                    preview.target = '_blank';
+                    preview.rel = 'noopener';
+                    preview.appendChild(icon('bi-eye', 'me-1'));
+                    preview.appendChild(document.createTextNode(t('design_open')));
+                    actions.appendChild(preview);
+                }
+
+                var buttons = [];
+                var act = function (label, iconName, name, question, done) {
+                    var b = button(name === 'apply' ? 'btn btn-sm btn-primary rounded-pill px-3' : 'btn btn-sm btn-ghost', label, iconName);
+
+                    b.addEventListener('click', function () {
+                        var go = question ? ask(question, label, name !== 'dismiss') : Promise.resolve(true);
+
+                        go.then(function (yes) {
+                            if (!yes) {
+                                return;
+                            }
+
+                            buttons.forEach(function (other) { other.disabled = true; });
+
+                            api('ws_ai_design_' + name, { proposal_id: proposal.id }).then(function () {
+                                if (done) {
+                                    toast(done, 'success');
+                                }
+
+                                self.sync();
+                            }).catch(function (error) {
+                                fail(error);
+                                self.sync();
+                            });
+                        });
+                    });
+
+                    buttons.push(b);
+                    actions.appendChild(b);
+                };
+
+                if (proposal.can_apply) {
+                    act(t('design_apply'), 'bi-check2', 'apply', t('design_apply_ask'), t('design_done'));
+                }
+
+                if (proposal.can_revert) {
+                    act(t('design_revert'), 'bi-arrow-counterclockwise', 'revert', '', t('design_undone'));
+                }
+
+                if (proposal.can_dismiss) {
+                    act(t('design_dismiss'), 'bi-x-lg', 'dismiss', '', '');
+                }
+
+                if (actions.childNodes.length) {
+                    card.appendChild(actions);
+                }
+
+                if (proposal.gone) {
+                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', t('design_gone')));
+                } else if (proposal.status === 'pending' && !proposal.can_apply) {
+                    card.appendChild(el('div', 'ws-draft-done', t('design_waiting', proposal.asker)));
+                } else if (proposal.status === 'applied') {
+                    card.appendChild(el('div', 'ws-draft-done', t(proposal.applied_to === 'page' ? 'design_applied_page' : 'design_applied_editor', proposal.decider)));
+                } else if (proposal.status === 'reverted') {
+                    card.appendChild(el('div', 'ws-draft-done', t('design_reverted', proposal.decider)));
+                } else if (proposal.status === 'dismissed') {
+                    card.appendChild(el('div', 'ws-draft-done', t('design_dismissed', proposal.decider)));
+                } else if (proposal.status === 'stale') {
+                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', t('design_stale')));
                 }
 
                 box.appendChild(card);
@@ -5336,7 +8056,7 @@
             var self = this;
             var box = el('div', 'ws-drafts');
 
-            box.appendChild(el('div', 'ws-drafts-title', t('claude_drafts')));
+            box.appendChild(el('div', 'ws-drafts-title', t((message.sender && message.sender.ai) ? 'ai_drafts' : 'claude_drafts')));
 
             message.drafts.forEach(function (draft) {
                 var card = el('div', 'ws-draft ws-draft-' + draft.status);
@@ -5833,6 +8553,23 @@
 
         // ── Writing tables, checklists and emoji into the composer ──
 
+        // A titled block pulled from elsewhere: the block, and where it came
+        // from under it.
+        insertPulled: function (data) {
+            var from = '_' + String(data.from || '').replace(/_/g, ' ') + '_';
+
+            if (this.rich) {
+                this.rich.insertBlock(data.kind, data.markup);
+                this.rich.insertText(from);
+            } else if (this.insertBlock) {
+                this.insertBlock(data.markup + '\n' + from, 0, 0);
+            }
+
+            if (this.autosize) {
+                this.autosize();
+            }
+        },
+
         insertText: function (text) {
             if (this.rich) {
                 this.rich.insertText(text);
@@ -6060,7 +8797,7 @@
             link.draggable = true;
 
             link.addEventListener('dragstart', function (event) {
-                self.dragging = { id: channel.id, box: box };
+                self.dragging = { id: channel.id, box: box, channel: channel };
                 link.classList.add('ws-dragging');
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', 'ws-channel:' + channel.id);
@@ -6073,6 +8810,8 @@
                     self.dragging = null;
                     self.saveOrder();
                 }
+
+                self.clearDropMarks();
             });
 
             link.addEventListener('dragover', function (event) {
@@ -6130,6 +8869,27 @@
             var mayManage = channel.owner || BOOT.me.rights.staff;
 
             items.push({ icon: 'bi-box-arrow-in-right', label: t('open_channel'), action: function () { self.open(channel.id, 0); } });
+
+            // The channel's settings, from where it is listed.
+            if (mayManage && !channel.archived) {
+                items.push({ icon: 'bi-gear', label: t('channel_settings'), action: function () {
+                    var shown = (self.channel && self.channel.id === channel.id) ? Promise.resolve({ channel: self.channel }) : api('ws_channel_get', { channel_id: channel.id });
+
+                    shown.then(function (data) {
+                        if (!data.channel.can_manage) {
+                            toast(t('channel_manage_denied'), 'warning');
+                            return;
+                        }
+
+                        channelForm(data.channel, {}, function (id) { self.reloadChannels(self.channel ? self.channel.id : id); });
+                    }).catch(fail);
+                } });
+            }
+
+            if (CFG.groups && CFG.groups.manage && !channel.archived) {
+                items.push({ icon: 'bi-folder-symlink', label: t('grp_move_channel'), action: function () { self.pickGroupFor(channel); } });
+            }
+
             items.push({ icon: channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', label: channel.pinned ? t('unpin') : t('pin'), action: function () { self.pinChannel(channel, !channel.pinned); } });
             items.push({ icon: 'bi-window-stack', label: t('open_in_new_tab'), action: function () { window.open(CFG.urls.workspace + '?channel=' + channel.id, '_blank', 'noopener'); } });
 
@@ -6188,7 +8948,7 @@
             var self = this;
             var first = self.messages.length ? self.messages[0].id : 0;
 
-            api('ws_messages_before', { channel_id: self.channel.id, before_id: first }).then(function (data) {
+            api('ws_messages_before', { channel_id: self.channel.id, before_id: first, era_id: self.era ? self.era.id : 0 }).then(function (data) {
                 var height = self.pane.scrollHeight;
 
                 self.messages = data.messages.concat(self.messages);
@@ -6210,6 +8970,46 @@
             return !this.pane || ((this.pane.scrollHeight - this.pane.scrollTop - this.pane.clientHeight) < 120);
         },
 
+        // Scrolled up from the newest line: an arrow back down, and beside
+        // it how many lines came in meanwhile.
+        jumpButton: function () {
+            var self = this;
+            var jump = el('button', 'ws-jump-end');
+            jump.type = 'button';
+            jump.hidden = true;
+            jump.title = t('jump_to_end');
+            jump.setAttribute('aria-label', t('jump_to_end'));
+            jump.appendChild(icon('bi-arrow-down'));
+            self.jumpCount = el('span', 'ws-jump-count');
+            self.jumpCount.hidden = true;
+            jump.appendChild(self.jumpCount);
+            jump.addEventListener('click', function () {
+                self.unseenBelow = 0;
+                self.scrollToEnd();
+                self.atEnd = true;
+                self.drawJump();
+            });
+            self.jump = jump;
+
+            return jump;
+        },
+
+        drawJump: function () {
+            if (!this.jump) {
+                return;
+            }
+
+            if (this.atEnd) {
+                this.unseenBelow = 0;
+            }
+
+            this.jump.hidden = !!this.atEnd;
+            this.jumpCount.hidden = !this.unseenBelow;
+            this.jumpCount.textContent = this.unseenBelow > 99 ? '99+' : String(this.unseenBelow || '');
+            this.jump.classList.toggle('ws-jump-news', this.unseenBelow > 0);
+            this.jump.title = this.unseenBelow ? t('jump_new_count', this.unseenBelow) : t('jump_to_end');
+        },
+
         // ── Composer ──
 
         composer: function () {
@@ -6218,7 +9018,7 @@
             self.composerWrap = wrap;
 
             if (!self.channel.can_post) {
-                wrap.appendChild(el('div', 'small text-body-secondary text-center py-2', self.channel.audit ? t('audit_readonly') : (self.channel.archived ? t('archived_readonly') : t('cannot_post'))));
+                wrap.appendChild(el('div', 'small text-body-secondary text-center py-2', self.era ? t('era_readonly') : (self.channel.audit ? t('audit_readonly') : (self.channel.archived ? t('archived_readonly') : t('cannot_post')))));
                 return wrap;
             }
 
@@ -6309,7 +9109,13 @@
                     { icon: 'bi-calculator', label: t('insert_calc'), action: function () { self.insertCalc(); } },
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
                     self.rich ? { icon: 'bi-code-slash', label: t('insert_code'), action: function () { self.insertCode(); } } : null,
-                    BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null
+                    BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null,
+                    CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
+                        blockPuller(function (data) { self.insertPulled(data); });
+                    } } : null,
+                    CFG.scheduled ? { icon: 'bi-alarm', label: t('sa_new'), action: function () {
+                        scheduledForm({ channel_id: self.channel.id }, null, function () { self.sync(true); });
+                    } } : null
                 ], true);
             });
             tools.appendChild(insert);
@@ -6508,11 +9314,14 @@
 
             var row = el('div', 'ws-reply-bar');
             row.appendChild(icon(self.editing ? 'bi-pencil' : 'bi-reply'));
-            row.appendChild(el('span', '', self.editing ? t('editing_message') : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.plain(self.reply.html))));
+            row.appendChild(el('span', '', self.editing ? t('editing_message')
+                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.plain(self.reply.html)))));
 
             // An answer to Claude goes to Claude.
             if (!self.editing && self.reply.sender && self.reply.sender.claude && self.channel.claude && self.channel.claude.available) {
                 row.appendChild(el('span', 'text-body-secondary ms-1', t('claude_reply_hint')));
+            } else if (!self.editing && self.reply.sender && self.reply.sender.ai && self.channel.ai && self.channel.ai.available) {
+                row.appendChild(el('span', 'text-body-secondary ms-1', t('ai_reply_hint')));
             }
             var cancel = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
             cancel.addEventListener('click', function () { self.cancelCompose(); });
@@ -6531,6 +9340,7 @@
             }
 
             this.reply = null;
+            this.replyMore = null;
             this.editing = null;
             this.pending = null;
 
@@ -6631,6 +9441,10 @@
 
             var data = { channel_id: self.channel.id, body: body, parent_id: self.reply ? self.reply.id : 0 };
 
+            if (self.reply && self.replyMore && self.replyMore.length) {
+                data.quote_ids = self.replyMore.map(function (item) { return item.id; });
+            }
+
             Object.keys(options || {}).forEach(function (key) { data[key] = options[key]; });
 
             api('ws_send', data).then(function (result) {
@@ -6666,6 +9480,7 @@
 
                 self.clearInput();
                 self.reply = null;
+                self.replyMore = null;
                 self.pending = null;
                 clear(self.previewBox);
                 self.drawReplyBar();
@@ -6677,6 +9492,10 @@
                 // opens, or the hourly job, starts it.
                 if (result.claude) {
                     api('ws_claude_kick').then(function () { self.sync(); }).catch(function () {});
+                }
+
+                if (result.ai) {
+                    self.kickAi(true);
                 }
             }).catch(function (error) {
                 self.busy = false;
@@ -7120,6 +9939,12 @@
                             : { label: 'Claude', meta: t('claude_not_ready'), icon: 'bi-stars', insert: '@Claude ' });
                     }
 
+                    if (BOOT.ai && (!needle || 'ai'.indexOf(needle) === 0 || 'pinegrap'.indexOf(needle) === 0)) {
+                        items.push(BOOT.ai.token
+                            ? { label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle }
+                            : { label: BOOT.ai.name, meta: t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
+                    }
+
                     self.drawPicker(items);
                     return;
                 }
@@ -7132,6 +9957,15 @@
                         items.push({ label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' });
                     } else {
                         items.push({ label: 'Claude', meta: BOOT.claude.ready ? t('claude_closed_here') : t('claude_not_ready'), icon: 'bi-stars', insert: '@Claude ' });
+                    }
+                }
+
+                // Pinegrap AI the same way, with @ai.
+                if (BOOT.ai && self.channel && (!needle || 'ai'.indexOf(needle) === 0 || 'pinegrap'.indexOf(needle) === 0)) {
+                    if (BOOT.ai.token && self.channel.ai && self.channel.ai.available) {
+                        items.push({ label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle });
+                    } else {
+                        items.push({ label: BOOT.ai.name, meta: BOOT.ai.ready ? t('ai_closed_here') : t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
                     }
                 }
 
@@ -7194,14 +10028,23 @@
             self.pickerTimer = setTimeout(function () {
                 var asked = search;
 
-                api('ws_ref_search', { type: type, q: search }).then(function (data) {
+                // Titled blocks come with every kind of record, after them
+                // (includes/workspace/blocks.php).
+                var blocks = (CFG.blocks && (type === 'all')) ? api('ws_block_search', { q: search }).catch(function () { return { items: [] }; }) : Promise.resolve({ items: [] });
+
+                Promise.all([api('ws_ref_search', { type: type, q: search }), blocks]).then(function (results) {
                     if (!self.picker || self.pickerMode !== 'record' || asked !== search) {
                         return;
                     }
 
-                    self.drawPicker(people.concat(data.items.map(function (item) {
+                    var records = results[0].items.map(function (item) {
                         return { label: item.label, meta: item.meta, icon: item.icon, token: item.token, shown: shownLabel('#', item.label) };
-                    })));
+                    });
+                    var titled = (results[1].items || []).slice(0, 5).map(function (item) {
+                        return { label: item.title, meta: t('pull_kind_' + item.kind) + ' · ' + item.where + ' · ' + item.author, icon: blockIcon(item.kind), block: item.id };
+                    });
+
+                    self.drawPicker(people.concat(records, titled));
                 }).catch(function () {});
             }, 220);
         },
@@ -7243,7 +10086,7 @@
                 list.appendChild(el('div', 'ws-picker-empty', t('searching')));
                 self.pickerItems = [];
 
-                if (self.notesMode) {
+                if (self.notesMode || self.caretPicker) {
                     self.placePicker();
                 }
 
@@ -7283,7 +10126,7 @@
                 list.appendChild(row);
             });
 
-            if (self.notesMode) {
+            if (self.notesMode || self.caretPicker) {
                 self.placePicker();
             }
         },
@@ -7353,6 +10196,26 @@
         },
 
         pick: function (item) {
+            // A titled block: what was typed goes, the block comes in its place.
+            if (item.block) {
+                var self = this;
+
+                if (this.rich) {
+                    this.rich.replaceTyped(Math.max(0, this.beforeCaret().length - this.pickerStart), { text: '' });
+                } else {
+                    var typed = this.input;
+                    var at = typed.selectionStart;
+
+                    typed.value = typed.value.slice(0, this.pickerStart) + typed.value.slice(at);
+                    typed.selectionStart = typed.selectionEnd = this.pickerStart;
+                }
+
+                this.closePicker();
+
+                api('ws_block_pull', { id: item.block }).then(function (data) { self.insertPulled(data); }).catch(fail);
+                return;
+            }
+
             // The rich box: what was typed becomes a chip, or the command's text.
             if (this.rich) {
                 var count = Math.max(0, this.beforeCaret().length - this.pickerStart);
@@ -7639,16 +10502,32 @@
                 var edit = button('btn btn-sm btn-outline-secondary mt-3', t('edit_summary'), 'bi-pencil');
                 edit.addEventListener('click', function () {
                     clear(pane);
-                    var area = el('textarea', 'form-control');
-                    area.rows = 14;
-                    area.value = channel.summary || '';
                     pane.appendChild(el('p', 'small text-body-secondary', t('summary_help')));
-                    pane.appendChild(area);
+
+                    // The formatted box the notes use: @ and # open the
+                    // pickers, tags are chips, lists and tables are cards.
+                    var wrap = el('div', 'ws-note-compose ws-summary-field');
+                    var rich = richField(wrap, { placeholder: t('summary_help'), previews: true });
+                    var area = null;
+
+                    if (rich) {
+                        rich.caretPicker = true;
+                        rich.set(channel.summary || '', channel.summary_labels || {});
+                        wrap.appendChild(rich.input);
+                        wrap.appendChild(rich.tools(true));
+                    } else {
+                        area = el('textarea', 'form-control');
+                        area.rows = 14;
+                        area.value = channel.summary || '';
+                        wrap.appendChild(area);
+                    }
+
+                    pane.appendChild(wrap);
 
                     var actions = el('div', 'd-flex gap-2 mt-2');
                     var save = button('btn btn-sm btn-primary rounded-pill px-3', t('save'), 'bi-check2');
                     save.addEventListener('click', function () {
-                        api('ws_channel_summary', { channel_id: channel.id, summary: area.value }).then(function (data) {
+                        api('ws_channel_summary', { channel_id: channel.id, summary: rich ? rich.value() : area.value }).then(function (data) {
                             self.channel = data.channel;
                             self.drawCenter();
                             toast(t('summary_saved'), 'success');
@@ -7659,7 +10538,7 @@
                     actions.appendChild(save);
                     actions.appendChild(cancel);
                     pane.appendChild(actions);
-                    area.focus();
+                    (rich ? rich.input : area).focus();
                 });
                 pane.appendChild(edit);
             }
@@ -7719,6 +10598,13 @@
                 return message.claude && /^(queued|sent|running)$/.test(message.claude.status);
             });
 
+            // Pinegrap AI works only while somebody carries it on.
+            if (waiting && (self.messages || []).some(function (message) {
+                return message.claude && message.claude.agent === 'ai' && /^(queued|sent|running)$/.test(message.claude.status);
+            })) {
+                self.kickAi();
+            }
+
             self.timer = setTimeout(function () {
                 self.sync();
             }, (waiting ? Math.min(2, every) : every) * 1000);
@@ -7753,7 +10639,8 @@
                 channel_id: self.channel.id,
                 since_id: self.lastId,
                 since_ts: self.sinceTs,
-                read: document.hasFocus() ? 1 : 0
+                era_id: self.era ? self.era.id : 0,
+                read: (document.hasFocus() && !self.era) ? 1 : 0
             }).then(function (data) {
                 self.syncing = false;
 
@@ -7767,6 +10654,7 @@
 
                 var stick = scroll || self.nearEnd();
                 var grew = false;
+                var arrived = 0;
 
                 if (self.tab === 'messages' && data.messages.length) {
                     var empty = self.pane.querySelector('.ws-empty');
@@ -7780,10 +10668,19 @@
                             return;
                         }
 
-                        var previous = self.messages.length ? self.messages[self.messages.length - 1] : null;
+                        var previous = self.lastShown();
                         self.messages.push(message);
+
+                        if (message.deleted) {
+                            return;
+                        }
+
                         self.appendMessage(message, previous);
                         grew = true;
+
+                        if (!message.mine && message.kind !== 'system') {
+                            arrived++;
+                        }
                     });
                 }
 
@@ -7808,13 +10705,37 @@
                 });
 
                 self.sinceTs = data.now;
+
+                // The pinned message, as somebody may have changed it.
+                if (data.pin !== undefined && self.channel && (JSON.stringify(data.pin) !== JSON.stringify(self.channel.pin || null))) {
+                    self.channel.pin = data.pin;
+                    self.drawPinBar();
+                }
+
+                // A guest's link and whether they are here, as they change.
+                if (data.guest && self.channel && self.channel.guest && (JSON.stringify(data.guest) !== JSON.stringify(self.channel.guest))) {
+                    var guestWas = self.center.querySelector('.ws-guest-bar');
+
+                    self.channel.guest = data.guest;
+
+                    if (guestWas) {
+                        guestWas.replaceWith(self.guestBar(self.channel));
+                    }
+                }
+
                 BOOT.channels = data.channels;
+                BOOT.groups = data.groups || [];
                 BOOT.inbox = data.inbox;
+
+                // A scheduled action's time has come: the screen starts the run.
+                if (data.scheduled_due) {
+                    scheduledTick();
+                }
 
                 // The channel list is drawn again only when it changed: every
                 // few seconds from scratch it dropped a half-typed search, the
                 // list's scroll and the pointer's hover.
-                var sideKey = JSON.stringify([data.channels, data.inbox, self.channel ? self.channel.id : 0]);
+                var sideKey = JSON.stringify([data.channels, data.groups || [], data.inbox, self.channel ? self.channel.id : 0]);
 
                 if (!self.dragging && (sideKey !== self.sideKey)) {
                     self.sideKey = sideKey;
@@ -7825,6 +10746,10 @@
                 // after sending): someone reading a little above it stays put.
                 if (stick && self.tab === 'messages' && (scroll || grew)) {
                     self.scrollToEnd();
+                } else if (self.tab === 'messages' && arrived) {
+                    self.unseenBelow = (self.unseenBelow || 0) + arrived;
+                    self.atEnd = false;
+                    self.drawJump();
                 }
 
                 self.afterSync();
@@ -7851,6 +10776,1545 @@
             self.schedule();
         }
     };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Scheduled actions (includes/workspace/scheduled.php): staff only
+    // ═══════════════════════════════════════════════════════════════════
+
+    // A search box for one record of one kind (#-tags' search): the id and
+    // the name it is shown with.
+    function saRecordPicker(tag, id, label) {
+        var box = el('div', 'ws-sa-picker');
+        var input = el('input', 'form-control form-control-sm');
+        var list = el('div', 'ws-sa-picker-list');
+        var chosen = { id: id || 0, label: label || '' };
+
+        input.type = 'search';
+        input.placeholder = t('sa_record_search');
+        input.value = chosen.label;
+        list.hidden = true;
+        box.appendChild(input);
+        box.appendChild(list);
+
+        var search = debounce(function () {
+            var query = input.value.trim();
+
+            api('ws_ref_search', { type: box.tag, q: query }).then(function (data) {
+                clear(list);
+                list.hidden = !(data.items || []).length;
+
+                (data.items || []).forEach(function (item) {
+                    var row = button('ws-sa-picker-item', item.label, item.icon || 'bi-dot');
+
+                    if (item.meta) {
+                        row.appendChild(el('small', 'text-body-secondary ms-auto', item.meta));
+                    }
+
+                    row.addEventListener('mousedown', function (event) {
+                        event.preventDefault();
+                        chosen = { id: item.id, label: item.label };
+                        input.value = item.label;
+                        list.hidden = true;
+                        box.dispatchEvent(new Event('change'));
+                    });
+                    list.appendChild(row);
+                });
+            }).catch(function () {});
+        }, 250);
+
+        box.tag = tag;
+        input.addEventListener('input', function () {
+            chosen = { id: 0, label: '' };
+            search();
+        });
+        input.addEventListener('focus', search);
+        input.addEventListener('blur', function () {
+            setTimeout(function () { list.hidden = true; }, 150);
+        });
+
+        box.value = function () { return chosen.id; };
+        box.setTag = function (next) {
+            if (next !== box.tag) {
+                box.tag = next;
+                chosen = { id: 0, label: '' };
+                input.value = '';
+            }
+        };
+
+        return box;
+    }
+
+    // A value of a field, by the kind of value the field holds.
+    function saValueInput(meta, value) {
+        var input;
+
+        meta = meta || { kind: 'text', values: [] };
+
+        if (meta.kind === 'enum') {
+            var labels = (meta.values || []).map(function (item) {
+                return [item, (meta.labels && meta.labels[item]) ? meta.labels[item] : item];
+            });
+            input = select(labels, value || (meta.values || [''])[0]);
+        } else if (meta.kind === 'bool') {
+            input = select([['1', t('sa_yes')], ['0', t('sa_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
+        } else if (meta.kind === 'long') {
+            input = el('textarea', 'form-control form-control-sm');
+            input.rows = 3;
+            input.value = value || '';
+        } else {
+            input = el('input', 'form-control form-control-sm');
+            input.type = (meta.kind === 'date') ? 'date' : ((meta.kind === 'int' || meta.kind === 'money') ? 'number' : 'text');
+
+            if (meta.kind === 'money') {
+                input.step = '0.01';
+                input.placeholder = t('sa_money_help');
+                input.value = (value !== undefined && value !== null && value !== '') ? (parseInt(value, 10) / 100).toFixed(2) : '';
+            } else {
+                input.value = (value === undefined || value === null) ? '' : String(value);
+            }
+        }
+
+        input.classList.add('ws-sa-value');
+        input.read = function () {
+            if (meta.kind === 'money') {
+                return input.value === '' ? '' : Math.round(parseFloat(String(input.value).replace(',', '.')) * 100);
+            }
+
+            if (meta.kind === 'bool') {
+                return input.value === '1';
+            }
+
+            if (meta.kind === 'int') {
+                return input.value === '' ? '' : parseInt(input.value, 10);
+            }
+
+            return input.value;
+        };
+
+        return input;
+    }
+
+    function saLabelled(label, node, help) {
+        var wrap = el('div', 'ws-sa-field');
+        wrap.appendChild(el('label', 'form-label small mb-1', label));
+        wrap.appendChild(node);
+
+        if (help) {
+            wrap.appendChild(el('div', 'form-text mt-0', help));
+        }
+
+        return wrap;
+    }
+
+    // Days of the week as toggles, Monday first.
+    function saDayPicker(days) {
+        var box = el('div', 'ws-sa-days');
+        var names = (CFG.recurrence && CFG.recurrence.weekdays) || {};
+        var chosen = {};
+
+        (days || []).forEach(function (day) { chosen[day] = true; });
+
+        [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+            var toggle = button('btn btn-sm ' + (chosen[day] ? 'btn-secondary' : 'btn-outline-secondary'), names[day] || String(day));
+            toggle.setAttribute('aria-pressed', chosen[day] ? 'true' : 'false');
+            toggle.addEventListener('click', function () {
+                chosen[day] = !chosen[day];
+                toggle.className = 'btn btn-sm ' + (chosen[day] ? 'btn-secondary' : 'btn-outline-secondary');
+                toggle.setAttribute('aria-pressed', chosen[day] ? 'true' : 'false');
+            });
+            box.appendChild(toggle);
+        });
+
+        box.value = function () {
+            return [1, 2, 3, 4, 5, 6, 7].filter(function (day) { return chosen[day]; });
+        };
+
+        return box;
+    }
+
+    // A channel to write in; "none" first when it may be left out.
+    function saChannelSelect(value, noneLabel) {
+        var channels = (BOOT.channels || []).filter(function (item) { return !item.archived; }).map(function (item) {
+            return [item.id, (item.kind === 'private' ? '🔒 ' : '#') + item.name];
+        });
+
+        if (noneLabel) {
+            channels.unshift([0, noneLabel]);
+        }
+
+        var fallback = noneLabel ? 0 : ((app.channel && app.channel.id) || (channels[0] || [0])[0]);
+
+        return select(channels, (value !== undefined && value !== null && value !== '') ? value : fallback);
+    }
+
+    function saNumber(value, min, max, placeholder) {
+        var input = el('input', 'form-control form-control-sm');
+
+        input.type = 'number';
+        input.min = String(min);
+
+        if (max !== undefined && max !== null) {
+            input.max = String(max);
+        }
+
+        input.value = (value === undefined || value === null) ? '' : String(value);
+
+        if (placeholder) {
+            input.placeholder = placeholder;
+        }
+
+        return input;
+    }
+
+    function saText(value, placeholder, maxLength) {
+        var input = el('input', 'form-control form-control-sm');
+
+        input.type = 'text';
+        input.value = value || '';
+
+        if (placeholder) {
+            input.placeholder = placeholder;
+        }
+
+        if (maxLength) {
+            input.maxLength = maxLength;
+        }
+
+        return input;
+    }
+
+    function saArea(value, rows, placeholder) {
+        var area = el('textarea', 'form-control form-control-sm');
+
+        area.rows = rows || 3;
+        area.value = value || '';
+
+        if (placeholder) {
+            area.placeholder = placeholder;
+        }
+
+        return area;
+    }
+
+    // A count, and what it is counted for: one channel's tasks, or a limit.
+    function saMetricPicker(key, param) {
+        var metrics = (CFG.scheduled || {}).metrics || {};
+        var keys = Object.keys(metrics);
+        var wrap = el('div', 'ws-sa-metric');
+        var which = select(keys.map(function (item) { return [item, metrics[item].label]; }), key || keys[0]);
+        var scopeBox = el('div');
+        var scope = null;
+
+        function draw() {
+            var info = metrics[which.value] || {};
+
+            clear(scopeBox);
+            scope = null;
+
+            if (info.scope === 'channel') {
+                scope = saChannelSelect((which.value === key) ? (param || 0) : 0, t('sa_metric_all'));
+                scopeBox.appendChild(saLabelled(t('sa_metric_channel'), scope));
+            } else if (info.scope === 'threshold') {
+                scope = saNumber((which.value === key && param !== undefined) ? param : 5, 0, 1000000);
+                scopeBox.appendChild(saLabelled(t('sa_metric_threshold'), scope));
+            }
+        }
+
+        which.addEventListener('change', function () {
+            draw();
+            wrap.dispatchEvent(new Event('change'));
+        });
+
+        wrap.appendChild(which);
+        wrap.appendChild(scopeBox);
+        draw();
+
+        wrap.value = function () {
+            return { key: which.value, param: scope ? (parseInt(scope.value, 10) || 0) : 0 };
+        };
+
+        wrap.kind = function () {
+            return (metrics[which.value] || {}).kind || 'count';
+        };
+
+        return wrap;
+    }
+
+    // One condition: a record's value, a count, a working day, some days of
+    // the week, some hours of the day.
+    function saConditionRow(rule, onRemove) {
+        var row = el('div', 'ws-sa-condition');
+        var config = CFG.scheduled || {};
+        var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
+
+        removeButton.addEventListener('click', function () {
+            row.remove();
+
+            if (onRemove) {
+                onRemove();
+            }
+        });
+
+        if (rule.type === 'workday') {
+            row.appendChild(icon('bi-briefcase', 'me-1'));
+            row.appendChild(el('span', 'flex-grow-1', t('sa_rule_workday')));
+            row.appendChild(removeButton);
+            row.read = function () { return { type: 'workday' }; };
+
+            return row;
+        }
+
+        if (rule.type === 'weekdays') {
+            var days = saDayPicker(rule.days || [1, 2, 3, 4, 5]);
+            var dayGrid = el('div', 'flex-grow-1');
+
+            dayGrid.appendChild(saLabelled(t('sa_rule_weekdays'), days));
+            row.appendChild(icon('bi-calendar-week', 'me-1 mt-4'));
+            row.appendChild(dayGrid);
+            row.appendChild(removeButton);
+            row.read = function () { return { type: 'weekdays', days: days.value() }; };
+
+            return row;
+        }
+
+        if (rule.type === 'hours') {
+            var from = el('input', 'form-control form-control-sm');
+            var to = el('input', 'form-control form-control-sm');
+            var hourGrid = el('div', 'ws-sa-condition-grid');
+
+            from.type = 'time';
+            to.type = 'time';
+            from.value = rule.from || '09:00';
+            to.value = rule.to || '18:00';
+            hourGrid.appendChild(saLabelled(t('sa_from'), from));
+            hourGrid.appendChild(saLabelled(t('sa_to_time'), to));
+            row.appendChild(icon('bi-clock', 'me-1 mt-4'));
+            row.appendChild(hourGrid);
+            row.appendChild(removeButton);
+            row.read = function () { return { type: 'hours', from: from.value, to: to.value }; };
+
+            return row;
+        }
+
+        if (rule.type === 'metric') {
+            var picker = saMetricPicker(rule.metric, rule.param);
+            var ops = select((config.counts || ['gt']).map(function (key) { return [key, (config.operators || {})[key] || key]; }), rule.op || 'gt');
+            var money = function () { return picker.kind() === 'money'; };
+            var amount = saNumber('', 0, null);
+            var metricGrid = el('div', 'ws-sa-condition-grid');
+
+            amount.step = 'any';
+
+            if (rule.value !== undefined) {
+                amount.value = ((config.metrics || {})[rule.metric] || {}).kind === 'money' ? (rule.value / 100).toFixed(2) : String(rule.value);
+            } else {
+                amount.value = '0';
+            }
+
+            metricGrid.appendChild(saLabelled(t('sa_metric'), picker));
+            metricGrid.appendChild(saLabelled(t('sa_operator'), ops));
+            metricGrid.appendChild(saLabelled(t('sa_value'), amount, money() ? t('sa_money_help') : ''));
+            row.appendChild(icon('bi-123', 'me-1 mt-4'));
+            row.appendChild(metricGrid);
+            row.appendChild(removeButton);
+
+            row.read = function () {
+                var pick = picker.value();
+
+                return { type: 'metric', metric: pick.key, param: pick.param, op: ops.value, value: String(amount.value).replace(',', '.') };
+            };
+
+            return row;
+        }
+
+        var kinds = Object.keys(config.records || {}).map(function (key) { return [key, config.records[key].label]; });
+        var kind = select(kinds, rule.record || (kinds[0] || [''])[0]);
+        var recordPicker = saRecordPicker('', rule.id || 0, rule.label || '');
+        var fieldBox = el('div');
+        var operator = select(Object.keys(config.operators || {}).map(function (key) { return [key, config.operators[key]]; }), rule.op || 'eq');
+        var valueBox = el('div');
+        var value = null;
+        var fieldSelect = null;
+
+        function fields() {
+            var info = (config.records || {})[kind.value] || { fields: {} };
+
+            return Object.keys(info.fields).filter(function (name) { return info.fields[name].column; }).map(function (name) {
+                return [name, info.fields[name].label];
+            });
+        }
+
+        function drawValue() {
+            var info = (config.records || {})[kind.value] || { fields: {} };
+            var meta = info.fields[fieldSelect.value];
+            var same = (rule.field === fieldSelect.value) && (rule.op === operator.value);
+
+            clear(valueBox);
+
+            // "Within the next days" takes a number of days.
+            if (operator.value === 'within') {
+                value = saNumber(same ? rule.value : 7, 0, 3650);
+                value.read = function () { return value.value; };
+                valueBox.appendChild(value);
+                valueBox.appendChild(el('div', 'form-text mt-0', t('sa_days_value')));
+            } else {
+                value = saValueInput(meta, (rule.field === fieldSelect.value) ? rule.value : '');
+                valueBox.appendChild(value);
+            }
+
+            valueBox.hidden = (['empty', 'not_empty', 'overdue'].indexOf(operator.value) !== -1);
+        }
+
+        function drawFields() {
+            var info = (config.records || {})[kind.value];
+
+            recordPicker.setTag(info ? info.tag : '');
+            clear(fieldBox);
+            fieldSelect = select(fields(), rule.field || '');
+            fieldSelect.addEventListener('change', drawValue);
+            fieldBox.appendChild(fieldSelect);
+            drawValue();
+        }
+
+        kind.addEventListener('change', drawFields);
+        operator.addEventListener('change', drawValue);
+
+        var grid = el('div', 'ws-sa-condition-grid');
+        grid.appendChild(saLabelled(t('sa_record_kind'), kind));
+        grid.appendChild(saLabelled(t('sa_record'), recordPicker));
+        grid.appendChild(saLabelled(t('sa_field'), fieldBox));
+        grid.appendChild(saLabelled(t('sa_operator'), operator));
+        grid.appendChild(saLabelled(t('sa_value'), valueBox));
+
+        row.appendChild(grid);
+        row.appendChild(removeButton);
+        recordPicker.tag = ((config.records || {})[kind.value] || {}).tag || '';
+        drawFields();
+
+        row.read = function () {
+            return {
+                type: 'record',
+                record: kind.value,
+                id: recordPicker.value(),
+                field: fieldSelect ? fieldSelect.value : '',
+                op: operator.value,
+                value: (value && !valueBox.hidden) ? value.read() : ''
+            };
+        };
+
+        return row;
+    }
+
+    // The kinds of action, grouped as the form lists them.
+    function saActionTypes(allowNone) {
+        var config = CFG.scheduled || {};
+        var chains = !!config.chains;
+        var groups = [
+            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')]] : [])],
+            [t('sa_group_records'), Object.keys(config.changes || {}).length ? [['change', t('sa_do_change')]] : []],
+            [t('sa_group_web'), chains ? [['report', t('sa_do_report')], ['web_check', t('sa_do_web_check')], ['webhook', t('sa_do_webhook')]] : []],
+            [t('sa_group_chain'), chains ? [['trigger', t('sa_do_trigger')]] : []]
+        ];
+        var node = el('select', 'form-select form-select-sm');
+
+        if (allowNone) {
+            var none = el('option', '', t('sa_do_nothing'));
+            none.value = 'none';
+            node.appendChild(none);
+        }
+
+        groups.forEach(function (group) {
+            if (!group[1].length) {
+                return;
+            }
+
+            var box = el('optgroup');
+            box.label = group[0];
+
+            group[1].forEach(function (item) {
+                var option = el('option', '', item[1]);
+                option.value = item[0];
+                box.appendChild(option);
+            });
+
+            node.appendChild(box);
+        });
+
+        return node;
+    }
+
+    // What is done: in the team, to a record, on the web, or the next step of
+    // a chain. selfId: the action being changed, so it can start itself again.
+    function saActionEditor(action, allowNone, selfId) {
+        var config = CFG.scheduled || {};
+        var box = el('div', 'ws-sa-action');
+
+        action = action || null;
+
+        var type = saActionTypes(allowNone);
+        var detail = el('div', 'ws-sa-action-detail');
+        var reader = function () { return null; };
+
+        type.value = action ? action.type : (allowNone ? 'none' : 'post');
+
+        if (!type.value) {
+            type.value = 'post';
+        }
+
+        box.appendChild(type);
+        box.appendChild(detail);
+
+        function given(kind, fallback) {
+            return (action && action.type === kind) ? action : fallback;
+        }
+
+        function post() {
+            var data = given('post', { channel_id: null, body: '' });
+            var channel = saChannelSelect(data.channel_id, '');
+            var wrap = el('div', 'ws-note-compose ws-sa-body');
+            var rich = richField(wrap, { placeholder: t('sa_message'), previews: true });
+            var area = null;
+
+            detail.appendChild(saLabelled(t('sa_channel'), channel));
+
+            if (rich) {
+                rich.caretPicker = true;
+                rich.set(data.body || '', {});
+                wrap.appendChild(rich.input);
+                wrap.appendChild(rich.tools(true));
+            } else {
+                area = saArea(data.body, 4);
+                wrap.appendChild(area);
+            }
+
+            detail.appendChild(saLabelled(t('sa_message'), wrap));
+
+            reader = function () {
+                return { type: 'post', channel_id: parseInt(channel.value, 10) || 0, body: rich ? rich.value() : area.value };
+            };
+        }
+
+        function email() {
+            var data = given('email', { to: [], subject: '', body: '', page_id: 0 });
+            var to = saText((data.to || []).join(', '));
+            var subject = saText(data.subject, '', 250);
+            var body = saArea(data.body, 5);
+            var modes = el('div', 'btn-group btn-group-sm ws-sa-modes');
+            var mode = data.page_id ? 'page' : 'text';
+            var textBox = el('div');
+            var pageBox = el('div');
+            var page = saRecordPicker('page', data.page_id || 0, data.page_label || (data.page_id ? '#' + data.page_id : ''));
+
+            [['text', t('sa_email_text')], ['page', t('sa_email_page')]].forEach(function (item) {
+                var toggle = button('btn btn-outline-secondary' + (mode === item[0] ? ' active' : ''), item[1]);
+                toggle.addEventListener('click', function () {
+                    mode = item[0];
+                    Array.prototype.forEach.call(modes.children, function (node) { node.classList.toggle('active', node === toggle); });
+                    textBox.hidden = (mode !== 'text');
+                    pageBox.hidden = (mode !== 'page');
+                });
+                modes.appendChild(toggle);
+            });
+
+            detail.appendChild(saLabelled(t('sa_to'), to, t('sa_to_help')));
+            detail.appendChild(saLabelled(t('sa_subject'), subject));
+            detail.appendChild(modes);
+            textBox.appendChild(saLabelled(t('sa_email_text'), body));
+            pageBox.appendChild(saLabelled(t('sa_page'), page, t('sa_page_help')));
+            textBox.hidden = (mode !== 'text');
+            pageBox.hidden = (mode !== 'page');
+            detail.appendChild(textBox);
+            detail.appendChild(pageBox);
+
+            reader = function () {
+                return {
+                    type: 'email',
+                    to: to.value,
+                    subject: subject.value,
+                    body: (mode === 'text') ? body.value : '',
+                    page_id: (mode === 'page') ? page.value() : 0
+                };
+            };
+        }
+
+        function notify() {
+            var data = given('notify', { user_ids: [BOOT.me.id], text: '' });
+            var people = peoplePicker(data.user_ids || []);
+            var text = saArea(data.text, 2);
+
+            text.maxLength = 500;
+            detail.appendChild(saLabelled(t('sa_people'), people));
+            detail.appendChild(saLabelled(t('sa_notice'), text));
+
+            reader = function () {
+                return { type: 'notify', user_ids: people.value(), text: text.value };
+            };
+        }
+
+        function task() {
+            var data = given('task', { title: '', description: '', priority: 'normal', assignees: [BOOT.me.id], channel_id: 0, due_in: '' });
+            var title = saText(data.title, '', 200);
+            var description = saArea(data.description, 3);
+            var people = peoplePicker(data.assignees || []);
+            var priority = select(Object.keys(BOOT.priorities || {}).map(function (key) { return [key, BOOT.priorities[key]]; }), data.priority || 'normal');
+            var due = saNumber(data.due_in, 0, 3650);
+            var channel = saChannelSelect(data.channel_id || 0, t('sa_no_channel'));
+            var grid = el('div', 'ws-sa-condition-grid');
+
+            detail.appendChild(saLabelled(t('sa_task_title'), title));
+            detail.appendChild(saLabelled(t('sa_task_text'), description));
+            detail.appendChild(saLabelled(t('sa_task_people'), people));
+            grid.appendChild(saLabelled(t('sa_task_priority'), priority));
+            grid.appendChild(saLabelled(t('sa_task_due'), due, t('sa_task_due_help')));
+            grid.appendChild(saLabelled(t('sa_task_channel'), channel));
+            detail.appendChild(grid);
+
+            reader = function () {
+                return {
+                    type: 'task',
+                    title: title.value,
+                    description: description.value,
+                    assignees: people.value(),
+                    priority: priority.value,
+                    due_in: due.value,
+                    channel_id: parseInt(channel.value, 10) || 0
+                };
+            };
+        }
+
+        function webhook() {
+            var data = given('webhook', { url: '', format: 'text', text: '{{name}}: {{result}}' });
+            var url = saText(data.url, 'https://hooks.slack.com/services/…', 2000);
+            var format = select(Object.keys(config.formats || {}).map(function (key) { return [key, config.formats[key]]; }), data.format || 'text');
+            var text = saArea(data.text, 3);
+
+            url.type = 'url';
+            detail.appendChild(saLabelled(t('sa_url'), url, t('sa_webhook_help')));
+            detail.appendChild(saLabelled(t('sa_format'), format));
+            detail.appendChild(saLabelled(t('sa_webhook_text'), text));
+
+            reader = function () {
+                return { type: 'webhook', url: url.value.trim(), format: format.value, text: text.value };
+            };
+        }
+
+        function webCheck() {
+            var data = given('web_check', { url: config.site || 'https://', mode: 'status', redirect: false, contains: '', max_ms: '', days: 14 });
+            var url = saText(data.url, 'https://', 2000);
+            var mode = select([['status', t('sa_check_status')], ['ssl', t('sa_check_ssl')]], data.mode || 'status');
+            var statusBox = el('div');
+            var sslBox = el('div');
+            var redirectWrap = el('div', 'form-check mb-2');
+            var redirect = el('input', 'form-check-input');
+            var redirectLabel = el('label', 'form-check-label small', t('sa_check_redirect'));
+            var contains = saText(data.contains, '', 200);
+            var maxMs = saNumber(data.max_ms || '', 0, 60000);
+            var days = saNumber(data.days || 14, 1, 365);
+
+            url.type = 'url';
+            redirect.type = 'checkbox';
+            redirect.id = nextId('ws-sa-redirect-');
+            redirect.checked = !!data.redirect;
+            redirectLabel.htmlFor = redirect.id;
+            redirectWrap.appendChild(redirect);
+            redirectWrap.appendChild(redirectLabel);
+
+            detail.appendChild(saLabelled(t('sa_url'), url));
+            detail.appendChild(saLabelled(t('sa_check_mode'), mode));
+            statusBox.appendChild(redirectWrap);
+            statusBox.appendChild(saLabelled(t('sa_check_contains'), contains));
+            statusBox.appendChild(saLabelled(t('sa_check_max_ms'), maxMs, t('sa_check_max_help')));
+            sslBox.appendChild(saLabelled(t('sa_check_days'), days));
+            detail.appendChild(statusBox);
+            detail.appendChild(sslBox);
+            detail.appendChild(el('div', 'form-text', t('sa_check_help')));
+
+            function show() {
+                statusBox.hidden = (mode.value !== 'status');
+                sslBox.hidden = (mode.value !== 'ssl');
+            }
+
+            mode.addEventListener('change', show);
+            show();
+
+            reader = function () {
+                return {
+                    type: 'web_check',
+                    url: url.value.trim(),
+                    mode: mode.value,
+                    redirect: redirect.checked ? 1 : 0,
+                    contains: contains.value,
+                    max_ms: maxMs.value,
+                    days: days.value
+                };
+            };
+        }
+
+        function report() {
+            var metrics = config.metrics || {};
+            var data = given('report', { title: '', metrics: [], channel_id: null, to: [] });
+            var chosen = {};
+            var scopeChannel = 0;
+            var threshold = 5;
+
+            (data.metrics || []).forEach(function (item) {
+                chosen[item.key] = true;
+
+                if ((metrics[item.key] || {}).scope === 'channel') {
+                    scopeChannel = item.param || 0;
+                }
+
+                if ((metrics[item.key] || {}).scope === 'threshold') {
+                    threshold = item.param || 0;
+                }
+            });
+
+            var title = saText(data.title, t('sa_tpl_digest_title'), 160);
+            var list = el('div', 'ws-sa-metric-list');
+            var boxes = {};
+
+            Object.keys(metrics).forEach(function (key) {
+                var wrap = el('div', 'form-check');
+                var check = el('input', 'form-check-input');
+                var label = el('label', 'form-check-label small', metrics[key].label);
+
+                check.type = 'checkbox';
+                check.id = nextId('ws-sa-metric-');
+                check.checked = !!chosen[key];
+                label.htmlFor = check.id;
+                wrap.appendChild(check);
+                wrap.appendChild(label);
+                list.appendChild(wrap);
+                boxes[key] = check;
+            });
+
+            var tasksOf = saChannelSelect(scopeChannel, t('sa_metric_all'));
+            var limit = saNumber(threshold, 0, 1000000);
+            var channel = saChannelSelect(data.channel_id, t('sa_no_channel'));
+            var to = saText((data.to || []).join(', '));
+            var grid = el('div', 'ws-sa-condition-grid');
+
+            if (data.channel_id === null && app.channel) {
+                channel.value = String(app.channel.id);
+            }
+
+            detail.appendChild(saLabelled(t('sa_report_title'), title));
+            detail.appendChild(saLabelled(t('sa_report_metrics'), list));
+            grid.appendChild(saLabelled(t('sa_metric_channel'), tasksOf));
+
+            if (Object.keys(metrics).some(function (key) { return metrics[key].scope === 'threshold'; })) {
+                grid.appendChild(saLabelled(t('sa_metric_threshold'), limit));
+            }
+
+            detail.appendChild(grid);
+            detail.appendChild(saLabelled(t('sa_channel'), channel));
+            detail.appendChild(saLabelled(t('sa_report_to'), to, t('sa_to_help')));
+
+            reader = function () {
+                var picked = Object.keys(boxes).filter(function (key) { return boxes[key].checked; }).map(function (key) {
+                    var scope = metrics[key].scope;
+
+                    return { key: key, param: scope === 'channel' ? (parseInt(tasksOf.value, 10) || 0) : (scope === 'threshold' ? (parseInt(limit.value, 10) || 0) : 0) };
+                });
+
+                return { type: 'report', title: title.value, metrics: picked, channel_id: parseInt(channel.value, 10) || 0, to: to.value };
+            };
+        }
+
+        function trigger() {
+            var data = given('trigger', { target_id: 0, delay: 0 });
+            var slot = el('div');
+            var delay = saNumber(data.delay || 0, 0, 10080);
+            var target = null;
+
+            slot.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            detail.appendChild(saLabelled(t('sa_target'), slot));
+            detail.appendChild(saLabelled(t('sa_delay'), delay, t('sa_delay_help')));
+            detail.appendChild(el('div', 'form-text', t('sa_chain_help', config.depth || 8)));
+
+            api('ws_scheduled_targets').then(function (result) {
+                var items = (result.items || []).map(function (item) {
+                    return [item.id, item.name + (item.id === selfId ? ' ↺' : '') + (item.status !== 'active' ? ' · ' + t('sa_state_' + item.status) : '')];
+                });
+
+                clear(slot);
+
+                if (!items.length) {
+                    slot.appendChild(el('div', 'small text-body-secondary', t('sa_target_none')));
+                    return;
+                }
+
+                target = select(items, data.target_id || items[0][0]);
+                slot.appendChild(target);
+            }).catch(function (error) {
+                clear(slot);
+                slot.appendChild(el('div', 'small text-danger', error.message));
+            });
+
+            reader = function () {
+                return { type: 'trigger', target_id: target ? (parseInt(target.value, 10) || 0) : 0, delay: delay.value };
+            };
+        }
+
+        function change() {
+            var data = given('change', { record: '', action: 'update', id: 0, fields: {} });
+            var kinds = Object.keys(config.changes).map(function (key) { return [key, config.changes[key].label]; });
+            var kind = select(kinds, data.record || (kinds[0] || [''])[0]);
+            var picker = saRecordPicker((config.changes[kind.value] || {}).tag || '', data.id || 0, data.label || (data.id ? '#' + data.id : ''));
+            var verbBox = el('div');
+            var verb = null;
+            var fieldsBox = el('div', 'ws-sa-fields');
+            var addField = button('btn btn-sm btn-ghost', t('sa_add_field'), 'bi-plus-lg');
+            var rows = [];
+
+            function info() {
+                return config.changes[kind.value] || { fields: {}, actions: ['update'] };
+            }
+
+            function fieldRow(name, value) {
+                var fields = Object.keys(info().fields).filter(function (key) { return info().fields[key].column || key === 'cancellation_reason'; });
+                var row = el('div', 'ws-sa-field-row');
+                var which = select(fields.map(function (key) { return [key, info().fields[key].label]; }), name || fields[0]);
+                var slot = el('div', 'flex-grow-1');
+                var input = null;
+                var remove = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('delete'));
+                var entry = { row: row };
+
+                function draw() {
+                    clear(slot);
+                    input = saValueInput(info().fields[which.value], (which.value === name) ? value : '');
+                    slot.appendChild(input);
+                }
+
+                which.addEventListener('change', draw);
+                remove.addEventListener('click', function () {
+                    row.remove();
+                    rows = rows.filter(function (item) { return item !== entry; });
+                });
+
+                row.appendChild(which);
+                row.appendChild(slot);
+                row.appendChild(remove);
+                draw();
+
+                entry.read = function () { return [which.value, input.read()]; };
+                rows.push(entry);
+                fieldsBox.appendChild(row);
+            }
+
+            function drawVerb() {
+                clear(verbBox);
+                verb = select(info().actions.map(function (key) { return [key, key === 'delete' ? t('sa_verb_delete') : t('sa_verb_update')]; }), data.action || 'update');
+                verb.addEventListener('change', function () {
+                    fieldsBox.hidden = addField.hidden = (verb.value === 'delete');
+                });
+                verbBox.appendChild(verb);
+                fieldsBox.hidden = addField.hidden = (verb.value === 'delete');
+            }
+
+            function reset() {
+                picker.setTag(info().tag);
+                clear(fieldsBox);
+                rows = [];
+                drawVerb();
+            }
+
+            kind.addEventListener('change', function () {
+                data = { record: kind.value, action: 'update', id: 0, fields: {} };
+                reset();
+                fieldRow('', '');
+            });
+            addField.addEventListener('click', function () { fieldRow('', ''); });
+
+            detail.appendChild(saLabelled(t('sa_record_kind'), kind));
+            detail.appendChild(saLabelled(t('sa_record'), picker));
+            detail.appendChild(saLabelled(t('sa_change_verb'), verbBox));
+            detail.appendChild(fieldsBox);
+            detail.appendChild(addField);
+            drawVerb();
+
+            var names = Object.keys(data.fields || {});
+
+            if (names.length) {
+                names.forEach(function (key) { fieldRow(key, data.fields[key]); });
+            } else {
+                fieldRow('', '');
+            }
+
+            reader = function () {
+                var fields = {};
+
+                if (verb.value !== 'delete') {
+                    rows.forEach(function (entry) {
+                        var pair = entry.read();
+
+                        if (pair[0]) {
+                            fields[pair[0]] = pair[1];
+                        }
+                    });
+                }
+
+                return { type: 'change', record: kind.value, action: verb.value, id: picker.value(), fields: fields };
+            };
+        }
+
+        var editors = { post: post, email: email, notify: notify, task: task, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change };
+
+        function draw() {
+            clear(detail);
+            reader = function () { return null; };
+
+            if (editors[type.value]) {
+                editors[type.value]();
+            }
+        }
+
+        // The first drawing fills in what was there; a choice of another
+        // kind starts from nothing.
+        type.addEventListener('change', function () {
+            action = null;
+            draw();
+        });
+        draw();
+
+        box.read = function () { return reader(); };
+
+        return box;
+    }
+
+    // One follow-up: when it is done, and what.
+    function saFollowRow(item, selfId, onRemove) {
+        var config = CFG.scheduled || {};
+        var row = el('div', 'ws-sa-follow');
+        var head = el('div', 'ws-sa-follow-head');
+        var on = select(Object.keys(config.outcomes || {}).map(function (key) { return [key, config.outcomes[key]]; }), (item && item.on) || 'done');
+        var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
+        var editor = saActionEditor(item ? item.do : null, false, selfId);
+
+        head.appendChild(icon('bi-arrow-return-right', 'me-1'));
+        head.appendChild(on);
+        head.appendChild(removeButton);
+        row.appendChild(head);
+        row.appendChild(editor);
+
+        removeButton.addEventListener('click', function () {
+            row.remove();
+
+            if (onRemove) {
+                onRemove();
+            }
+        });
+
+        row.read = function () {
+            return { on: on.value, do: editor.read() };
+        };
+
+        return row;
+    }
+
+    // Ready-made actions that fill the form: the usual needs of a team and a
+    // site, from the counts the site keeps.
+    function saTemplates(context) {
+        var config = CFG.scheduled || {};
+        var metrics = config.metrics || {};
+        var out = [];
+
+        if (!config.chains) {
+            return out;
+        }
+
+        var has = function (key) { return !!metrics[key]; };
+        var channelId = (context && context.channel_id) || (app.channel && app.channel.id) || 0;
+        var me = BOOT.me ? BOOT.me.id : 0;
+        var today = CFG.today;
+        var tomorrow = addDays(CFG.today, 1);
+        var monday = (function () {
+            var day = new Date(tomorrow + 'T12:00:00');
+
+            while (day.getDay() !== 1) {
+                day.setDate(day.getDate() + 1);
+            }
+
+            return day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
+        })();
+        var firstOfMonth = (function () {
+            var day = new Date(today + 'T12:00:00');
+
+            day.setMonth(day.getMonth() + 1, 1);
+
+            return day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-01';
+        })();
+
+        // Where a text goes: the channel it is written in, or the person.
+        var tell = function (text) {
+            return channelId ? { type: 'post', channel_id: channelId, body: text } : { type: 'notify', user_ids: [me], text: text };
+        };
+
+        var digest = ['tasks_open', 'tasks_overdue', 'tasks_due_today', 'orders_today', 'sales_today', 'forms_new', 'comments_pending', 'visitors_yesterday']
+            .filter(has).map(function (key) { return { key: key, param: 0 }; });
+
+        out.push({ key: 'digest', label: t('sa_tpl_digest'), data: {
+            name: t('sa_tpl_digest'),
+            rules: [{ type: 'at', date: tomorrow, time: '09:00', repeat: 'workdays' }],
+            action: { type: 'report', title: t('sa_tpl_digest_title'), metrics: digest, channel_id: channelId, to: [] },
+            follow: []
+        } });
+
+        var down = [{ on: 'failed', do: { type: 'notify', user_ids: [me], text: t('sa_tpl_uptime_down') } }];
+
+        if (config.email) {
+            down.push({ on: 'failed', do: { type: 'email', to: [config.email], subject: t('sa_tpl_uptime_down'), body: '{{result}}\n{{date}} {{time}}' } });
+        }
+
+        out.push({ key: 'uptime', label: t('sa_tpl_uptime'), data: {
+            name: t('sa_tpl_uptime'),
+            rules: [{ type: 'at', date: today, time: '00:00', repeat: 'minutes', every: 15 }],
+            action: { type: 'web_check', url: config.site || 'https://', mode: 'status', redirect: 1, contains: '', max_ms: 5000 },
+            follow: down
+        } });
+
+        out.push({ key: 'ssl', label: t('sa_tpl_ssl'), data: {
+            name: t('sa_tpl_ssl'),
+            rules: [{ type: 'at', date: monday, time: '09:00', repeat: 'weekly', every: 1, days: [1] }],
+            action: { type: 'web_check', url: config.site || 'https://', mode: 'ssl', days: 21 },
+            follow: [{ on: 'failed', do: tell(t('sa_tpl_ssl_warn')) }]
+        } });
+
+        out.push({ key: 'overdue', label: t('sa_tpl_overdue'), data: {
+            name: t('sa_tpl_overdue'),
+            rules: [{ type: 'at', date: tomorrow, time: '10:00', repeat: 'workdays' }, { type: 'metric', metric: 'tasks_overdue', param: 0, op: 'gt', value: 0 }],
+            action: tell(t('sa_tpl_overdue_text')),
+            follow: []
+        } });
+
+        if (has('forms_new')) {
+            out.push({ key: 'forms', label: t('sa_tpl_forms'), data: {
+                name: t('sa_tpl_forms'),
+                rules: [{ type: 'at', date: today, time: '00:00', repeat: 'hourly', every: 1 }, { type: 'metric', metric: 'forms_new', param: 0, op: 'gt', value: 0 }, { type: 'hours', from: '08:00', to: '20:00' }],
+                action: tell(t('sa_tpl_forms_text')),
+                follow: []
+            } });
+        }
+
+        if (has('stock_low')) {
+            out.push({ key: 'stock', label: t('sa_tpl_stock'), data: {
+                name: t('sa_tpl_stock'),
+                rules: [{ type: 'at', date: tomorrow, time: '08:30', repeat: 'daily', every: 1 }, { type: 'metric', metric: 'stock_low', param: 5, op: 'gt', value: 0 }],
+                action: { type: 'notify', user_ids: [me], text: t('sa_tpl_stock_text') },
+                follow: []
+            } });
+        }
+
+        if (has('orders_new')) {
+            out.push({ key: 'orders', label: t('sa_tpl_orders'), data: {
+                name: t('sa_tpl_orders'),
+                rules: [{ type: 'at', date: today, time: '00:00', repeat: 'hourly', every: 1 }, { type: 'metric', metric: 'orders_new', param: 0, op: 'gt', value: 0 }],
+                action: { type: 'webhook', url: '', format: 'text', text: t('sa_tpl_orders_text') },
+                follow: []
+            } });
+        }
+
+        if (has('invoices_overdue')) {
+            out.push({ key: 'invoices', label: t('sa_tpl_invoices'), data: {
+                name: t('sa_tpl_invoices'),
+                rules: [{ type: 'at', date: monday, time: '09:30', repeat: 'weekly', every: 1, days: [1] }, { type: 'metric', metric: 'invoices_overdue', param: 0, op: 'gt', value: 0 }],
+                action: tell(t('sa_tpl_invoices_text')),
+                follow: []
+            } });
+        }
+
+        out.push({ key: 'monthly', label: t('sa_tpl_monthly'), data: {
+            name: t('sa_tpl_monthly'),
+            rules: [{ type: 'at', date: firstOfMonth, time: '09:00', repeat: 'monthly', every: 1 }],
+            action: { type: 'task', title: t('sa_tpl_monthly_task'), description: '', priority: 'high', assignees: [me], channel_id: channelId, due_in: 5 },
+            follow: []
+        } });
+
+        out.push({ key: 'chain', label: t('sa_tpl_chain'), data: {
+            name: t('sa_tpl_chain'),
+            rules: [{ type: 'trigger' }],
+            action: tell(t('sa_tpl_chain_text')),
+            follow: []
+        } });
+
+        return out;
+    }
+
+    // The form: a new action (context: channel_id or note_id) or one being
+    // changed (item from the server); preset fills a new one from a ready
+    // one (saTemplates()).
+    function scheduledForm(context, item, onDone, preset) {
+        var config = CFG.scheduled;
+
+        if (!config) {
+            return;
+        }
+
+        var data = item ? item.data : ((preset && preset.data) || { name: '', rules: [], action: null, follow: [] });
+        var selfId = item ? item.id : 0;
+        var node = offcanvas('ws-sa-form', '');
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var footer = clear(node.querySelector('.offcanvas-footer'));
+
+        node.classList.add('ws-sa-offcanvas');
+        node.querySelector('.offcanvas-title').textContent = item ? t('sa_edit') : t('sa_new_long');
+        footer.classList.remove('d-none');
+
+        // ── a ready one ──
+
+        var templates = item ? [] : saTemplates(context);
+
+        if (templates.length) {
+            var picker = select([['', t('sa_template_none')]].concat(templates.map(function (template) { return [template.key, template.label]; })), preset ? preset.key : '');
+            picker.addEventListener('change', function () {
+                var chosen = templates.filter(function (template) { return template.key === picker.value; })[0] || null;
+
+                scheduledForm(context, null, onDone, chosen);
+            });
+            body.appendChild(formRow(t('sa_templates'), picker));
+        }
+
+        var name = el('input', 'form-control');
+        name.maxLength = 160;
+        name.value = data.name || '';
+        body.appendChild(formRow(t('sa_name'), name, t('sa_name_help')));
+
+        // ── when ──
+
+        var time = null;
+        var triggered = false;
+
+        (data.rules || []).forEach(function (rule) {
+            if (rule.type === 'at') {
+                time = rule;
+            }
+
+            if (rule.type === 'trigger') {
+                triggered = true;
+            }
+        });
+
+        var tomorrow = addDays(CFG.today, 1);
+        var rules = el('div', 'ws-sa-section');
+        rules.appendChild(el('div', 'ws-sa-section-title', t('sa_rules')));
+        rules.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_rules_help')));
+
+        var whenMode = triggered ? 'trigger' : 'time';
+        var modes = el('div', 'btn-group btn-group-sm ws-sa-modes mb-2');
+        var timeBox = el('div');
+        var triggerBox = el('div', 'ws-sa-when-trigger small text-body-secondary', t('sa_when_trigger_help'));
+
+        if (config.chains) {
+            [['time', t('sa_when_time'), 'bi-alarm'], ['trigger', t('sa_when_trigger'), 'bi-diagram-3']].forEach(function (option) {
+                var toggle = button('btn btn-outline-secondary' + (whenMode === option[0] ? ' active' : ''), option[1], option[2]);
+                toggle.addEventListener('click', function () {
+                    whenMode = option[0];
+                    Array.prototype.forEach.call(modes.children, function (other) { other.classList.toggle('active', other === toggle); });
+                    showWhen();
+                });
+                modes.appendChild(toggle);
+            });
+            rules.appendChild(modes);
+        }
+
+        var whenRow = el('div', 'ws-sa-when');
+        var date = el('input', 'form-control form-control-sm');
+        var clock = el('input', 'form-control form-control-sm');
+        var repeat = select(Object.keys(config.repeats).filter(function (key) {
+            return config.chains || ['none', 'daily', 'workdays', 'weekly', 'monthly'].indexOf(key) !== -1;
+        }).map(function (key) { return [key, config.repeats[key]]; }), time ? time.repeat : 'none');
+        var every = saNumber(time && time.every ? time.every : 1, 1, 720);
+        var everyUnit = el('span', 'small text-body-secondary ms-1');
+        var everyWrap = el('div', 'd-flex align-items-center');
+        var everyBox = saLabelled(t('sa_every'), everyWrap);
+        var days = saDayPicker(time && time.days ? time.days : []);
+        var daysBox = saLabelled(t('sa_on_days'), days);
+        var until = el('input', 'form-control form-control-sm');
+        var untilBox = saLabelled(t('sa_until'), until, t('sa_until_help'));
+
+        date.type = 'date';
+        date.value = time ? time.date : tomorrow;
+        clock.type = 'time';
+        clock.value = time ? time.time : '09:00';
+        until.type = 'date';
+        until.value = (time && time.until) || '';
+        every.style.maxWidth = '6rem';
+        everyWrap.appendChild(every);
+        everyWrap.appendChild(everyUnit);
+
+        whenRow.appendChild(icon('bi-alarm', 'ws-sa-when-icon'));
+        whenRow.appendChild(saLabelled(t('sa_date'), date));
+        whenRow.appendChild(saLabelled(t('sa_time'), clock));
+        whenRow.appendChild(saLabelled(t('sa_repeat'), repeat));
+        timeBox.appendChild(whenRow);
+
+        var repeatRow = el('div', 'ws-sa-when-more');
+        repeatRow.appendChild(everyBox);
+        repeatRow.appendChild(untilBox);
+        timeBox.appendChild(repeatRow);
+        daysBox.classList.add('ws-sa-when-days');
+        timeBox.appendChild(daysBox);
+        rules.appendChild(timeBox);
+        rules.appendChild(triggerBox);
+
+        var units = { minutes: 'sa_every_minutes', hourly: 'sa_every_hours', daily: 'sa_every_days', weekly: 'sa_every_weeks', monthly: 'sa_every_months', yearly: 'sa_every_years' };
+
+        function showWhen() {
+            var value = repeat.value;
+
+            timeBox.hidden = (whenMode !== 'time');
+            triggerBox.hidden = (whenMode !== 'trigger');
+            repeatRow.hidden = (value === 'none');
+            everyBox.hidden = !units[value];
+            everyUnit.textContent = units[value] ? t(units[value]) : '';
+            daysBox.hidden = (value !== 'weekly');
+            every.min = (value === 'minutes') ? String(config.min_minutes || 5) : '1';
+
+            if (value === 'minutes' && (parseInt(every.value, 10) || 0) < (config.min_minutes || 5)) {
+                every.value = String(config.min_minutes || 5);
+            }
+        }
+
+        repeat.addEventListener('change', showWhen);
+        showWhen();
+
+        // ── conditions ──
+
+        var conditions = el('div', 'ws-sa-conditions');
+        rules.appendChild(conditions);
+
+        (data.rules || []).forEach(function (rule) {
+            if (rule.type !== 'at' && rule.type !== 'trigger') {
+                conditions.appendChild(saConditionRow(rule));
+            }
+        });
+
+        var addRule = button('btn btn-sm btn-ghost', t('sa_add_rule'), 'bi-plus-lg');
+        addRule.addEventListener('click', function (event) {
+            var box = addRule.getBoundingClientRect();
+            var add = function (rule) { return function () { conditions.appendChild(saConditionRow(rule)); }; };
+
+            event.stopPropagation();
+            ctxMenu(box.left, box.bottom + 4, [
+                Object.keys(config.records || {}).length ? { icon: 'bi-database-check', label: t('sa_rule_record'), action: add({ type: 'record' }) } : null,
+                (config.chains && Object.keys(config.metrics || {}).length) ? { icon: 'bi-123', label: t('sa_rule_metric'), action: add({ type: 'metric' }) } : null,
+                { icon: 'bi-briefcase', label: t('sa_rule_workday'), action: add({ type: 'workday' }) },
+                config.chains ? { icon: 'bi-calendar-week', label: t('sa_rule_weekdays'), action: add({ type: 'weekdays' }) } : null,
+                config.chains ? { icon: 'bi-clock', label: t('sa_rule_hours'), action: add({ type: 'hours' }) } : null
+            ]);
+        });
+        rules.appendChild(addRule);
+        body.appendChild(rules);
+
+        // ── the action ──
+
+        var actionSection = el('div', 'ws-sa-section');
+        actionSection.appendChild(el('div', 'ws-sa-section-title', t('sa_action')));
+        actionSection.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_action_help')));
+        var actionEditor = saActionEditor(data.action, false, selfId);
+        actionSection.appendChild(actionEditor);
+        body.appendChild(actionSection);
+
+        // ── afterwards ──
+
+        var followSection = el('div', 'ws-sa-section');
+        var follows = el('div', 'ws-sa-follows');
+        var thenEditor = null;
+
+        if (config.chains) {
+            var addFollow = button('btn btn-sm btn-ghost', t('sa_add_follow'), 'bi-plus-lg');
+            var countFollow = function () {
+                addFollow.hidden = (follows.children.length >= (config.max_follow || 5));
+            };
+
+            followSection.appendChild(el('div', 'ws-sa-section-title', t('sa_follow')));
+            followSection.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_follow_help')));
+            followSection.appendChild(follows);
+
+            (data.follow || []).forEach(function (follow) {
+                follows.appendChild(saFollowRow(follow, selfId, countFollow));
+            });
+
+            addFollow.addEventListener('click', function () {
+                follows.appendChild(saFollowRow(null, selfId, countFollow));
+                countFollow();
+            });
+            followSection.appendChild(addFollow);
+            countFollow();
+        } else {
+            followSection.appendChild(el('div', 'ws-sa-section-title', t('sa_then')));
+            followSection.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_then_help')));
+            thenEditor = saActionEditor((data.follow && data.follow[0]) ? data.follow[0].do : null, true, selfId);
+            followSection.appendChild(thenEditor);
+        }
+
+        body.appendChild(followSection);
+
+        // ── the words filled in when it runs ──
+
+        if (config.placeholders) {
+            var words = el('details', 'ws-sa-words small mt-3');
+            var summary = el('summary', 'text-body-secondary', t('sa_placeholders'));
+            var table = el('div', 'ws-sa-words-list');
+
+            words.appendChild(summary);
+            Object.keys(config.placeholders).forEach(function (key) {
+                var line = el('div');
+                line.appendChild(el('code', '', key));
+                line.appendChild(document.createTextNode(' ' + config.placeholders[key]));
+                table.appendChild(line);
+            });
+
+            var keys = el('div', 'text-body-secondary mt-1', Object.keys(config.metrics || {}).join(', '));
+            table.appendChild(keys);
+            words.appendChild(table);
+            body.appendChild(words);
+        }
+
+        body.appendChild(el('div', 'small text-body-secondary mt-3', t('sa_help')));
+
+        // ── saving ──
+
+        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+        footer.appendChild(cancel);
+
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', item ? t('save') : t('sa_save'), item ? 'bi-check2' : 'bi-alarm');
+        save.addEventListener('click', function () {
+            var list = [];
+
+            if (whenMode === 'trigger') {
+                list.push({ type: 'trigger' });
+            } else {
+                var at = { type: 'at', date: date.value, time: clock.value, repeat: repeat.value };
+
+                if (repeat.value !== 'none') {
+                    at.every = parseInt(every.value, 10) || 1;
+                    at.until = until.value;
+
+                    if (repeat.value === 'weekly') {
+                        at.days = days.value();
+                    }
+                }
+
+                list.push(at);
+            }
+
+            Array.prototype.forEach.call(conditions.children, function (row) {
+                if (row.read) {
+                    list.push(row.read());
+                }
+            });
+
+            var request = {
+                id: item ? item.id : 0,
+                name: name.value,
+                rules: list,
+                main_action: actionEditor.read(),
+                channel_id: (context && context.channel_id) || 0,
+                note_id: (context && context.note_id) || 0
+            };
+
+            if (config.chains) {
+                request.follow = Array.prototype.map.call(follows.children, function (row) { return row.read(); }).filter(function (follow) { return follow.do; });
+            } else {
+                request.then_action = thenEditor ? thenEditor.read() : null;
+            }
+
+            save.disabled = true;
+
+            api('ws_scheduled_save', request).then(function (result) {
+                hideOffcanvas(node);
+                toast(t('sa_saved'), 'success');
+
+                if (onDone) {
+                    onDone(result.item);
+                }
+            }).catch(function (error) {
+                save.disabled = false;
+                fail(error);
+            });
+        });
+        footer.appendChild(save);
+
+        showOffcanvas(node);
+
+        if (!touchScreen() && !item && !preset) {
+            setTimeout(function () { name.focus(); }, 250);
+        }
+    }
+
+    // The card of one scheduled action: in its channel, in its note and in
+    // the list. onChange(item) is told of the new state after a button.
+    function scheduledCard(item, onChange) {
+        var card = el('div', 'ws-sa-card ws-sa-' + item.status);
+        var head = el('div', 'ws-sa-card-head');
+
+        head.appendChild(icon(item.trigger_only ? 'bi-diagram-3' : 'bi-alarm', 'ws-sa-card-icon'));
+        head.appendChild(el('b', 'ws-sa-card-name', item.name));
+        head.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
+        card.appendChild(head);
+
+        var when = el('div', 'ws-sa-line');
+        when.appendChild(icon(item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event'), 'me-1'));
+        when.appendChild(document.createTextNode(item.when + (item.next ? ' · ' + t('sa_next') + ': ' + item.next : '')));
+        card.appendChild(when);
+
+        if (item.staff) {
+            (item.conditions || []).forEach(function (text) {
+                var line = el('div', 'ws-sa-line');
+                line.appendChild(icon('bi-funnel', 'me-1'));
+                line.appendChild(document.createTextNode(text));
+                card.appendChild(line);
+            });
+
+            var doLine = el('div', 'ws-sa-line ws-sa-do');
+            doLine.appendChild(icon('bi-lightning-charge', 'me-1'));
+            doLine.appendChild(document.createTextNode(item.action_text));
+            card.appendChild(doLine);
+
+            // What follows, by how the action went.
+            (item.follow || []).forEach(function (follow) {
+                var line = el('div', 'ws-sa-line ws-sa-do ws-sa-follow-line ws-sa-on-' + follow.on);
+                line.appendChild(icon(follow.target ? 'bi-diagram-3' : 'bi-arrow-return-right', 'me-1'));
+                line.appendChild(el('b', 'me-1', follow.label + ':'));
+                line.appendChild(document.createTextNode(follow.text));
+                card.appendChild(line);
+            });
+
+            // Which actions start this one.
+            if ((item.starters || []).length) {
+                var startLine = el('div', 'ws-sa-line text-body-secondary');
+                startLine.appendChild(icon('bi-diagram-3', 'me-1'));
+                startLine.appendChild(document.createTextNode(t('sa_started_by') + ': ' + item.starters.map(function (starter) { return starter.name; }).join(', ')));
+                card.appendChild(startLine);
+            }
+        } else {
+            card.appendChild(el('div', 'ws-sa-line text-body-secondary', t('sa_staff_only')));
+        }
+
+        if (item.last) {
+            var last = el('div', 'ws-sa-line ws-sa-last ws-sa-last-' + item.last.status);
+            last.appendChild(icon(item.last.status === 'done' ? 'bi-check2-circle' : (item.last.status === 'skipped' ? 'bi-skip-forward' : 'bi-exclamation-triangle'), 'me-1'));
+            last.appendChild(document.createTextNode(t('sa_last') + ': ' + item.last.label + ' · ' + item.last.time + (item.last.text ? ' · ' + item.last.text : '')));
+            card.appendChild(last);
+        }
+
+        if (!item.staff) {
+            return card;
+        }
+
+        var meta = el('div', 'ws-sa-meta');
+
+        if (item.creator) {
+            meta.appendChild(el('span', '', t('sa_by') + ' ' + item.creator.name + ' · ' + item.created));
+        }
+
+        if (item.runs) {
+            meta.appendChild(el('span', '', t('sa_runs') + ': ' + item.runs));
+        }
+
+        card.appendChild(meta);
+
+        var tools = el('div', 'ws-sa-tools');
+        var refresh = function (data) {
+            if (onChange) {
+                onChange(data.item);
+            }
+        };
+
+        if (item.can_edit) {
+            var edit = button('btn btn-sm btn-ghost', t('edit'), 'bi-pencil');
+            edit.addEventListener('click', function () {
+                scheduledForm(null, item, function (fresh) { refresh({ item: fresh }); });
+            });
+            tools.appendChild(edit);
+        }
+
+        if (item.status === 'active' || item.status === 'paused') {
+            var pause = button('btn btn-sm btn-ghost', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
+            pause.addEventListener('click', function () {
+                api('ws_scheduled_status', { id: item.id, status: item.status === 'active' ? 'paused' : 'active' }).then(refresh).catch(fail);
+            });
+            tools.appendChild(pause);
+        }
+
+        if (item.can_edit) {
+            var run = button('btn btn-sm btn-ghost', t('sa_run_now'), 'bi-lightning');
+            run.addEventListener('click', function () {
+                ask(t('sa_run_now_confirm'), t('sa_run_now')).then(function (yes) {
+                    if (yes) {
+                        run.disabled = true;
+                        api('ws_scheduled_run_now', { id: item.id }).then(refresh).catch(function (error) {
+                            run.disabled = false;
+                            fail(error);
+                        });
+                    }
+                });
+            });
+            tools.appendChild(run);
+        }
+
+        var history = button('btn btn-sm btn-ghost', t('sa_history'), 'bi-clock-history');
+        var historyBox = el('div', 'ws-sa-history');
+        historyBox.hidden = true;
+        history.addEventListener('click', function () {
+            if (!historyBox.hidden) {
+                historyBox.hidden = true;
+                return;
+            }
+
+            api('ws_scheduled_get', { id: item.id }).then(function (data) {
+                clear(historyBox);
+                historyBox.hidden = false;
+
+                if (!(data.item.history || []).length) {
+                    historyBox.appendChild(el('div', 'small text-body-secondary', t('sa_no_history')));
+                }
+
+                (data.item.history || []).forEach(function (run) {
+                    var line = el('div', 'ws-sa-history-row ws-sa-last-' + run.status);
+                    line.appendChild(el('b', '', run.label));
+                    line.appendChild(el('span', 'text-body-secondary', run.time + (run.by_hand ? ' · ' + t('sa_by_hand') : '') + (run.source ? ' · ' + t('sa_started_by') + ' ' + run.source : '')));
+                    line.appendChild(el('span', '', run.text));
+                    historyBox.appendChild(line);
+                });
+            }).catch(fail);
+        });
+        tools.appendChild(history);
+
+        if (item.status === 'active' || item.status === 'paused' || item.status === 'failed') {
+            var cancelButton = button('btn btn-sm btn-ghost text-danger', t('sa_cancel'), 'bi-x-circle');
+            cancelButton.addEventListener('click', function () {
+                ask(t('sa_cancel_confirm'), t('sa_cancel'), true).then(function (yes) {
+                    if (yes) {
+                        api('ws_scheduled_status', { id: item.id, status: 'cancelled' }).then(refresh).catch(fail);
+                    }
+                });
+            });
+            tools.appendChild(cancelButton);
+        }
+
+        card.appendChild(tools);
+        card.appendChild(historyBox);
+
+        return card;
+    }
+
+    // The screen's run: started when ws_sync says something is due, not
+    // more than once in twenty seconds.
+    var scheduledTickAt = 0;
+
+    function scheduledTick() {
+        var now = Date.now();
+
+        if (now - scheduledTickAt < 20000) {
+            return;
+        }
+
+        scheduledTickAt = now;
+        api('ws_tick').catch(function () {});
+    }
 
     // ── Task rows (the tasks screen, a channel's task tab, drawers) ────
 
@@ -7959,10 +12423,38 @@
     // Tasks screen
     // ═══════════════════════════════════════════════════════════════════
 
+    // How pressing a task is, as the screens filter by it: every one, urgent
+    // and high together, or one priority.
+    function priorityFilter(value, onChange) {
+        var labels = BOOT.priorities || {};
+        var options = [['', t('all_priorities')], ['hot', t('priority_hot')]];
+
+        ['urgent', 'high', 'normal', 'low'].forEach(function (key) {
+            options.push([key, labels[key] || key]);
+        });
+
+        var node = select(options, value || '');
+        node.classList.add('w-auto');
+        node.setAttribute('aria-label', t('priority'));
+        node.addEventListener('change', function () { onChange(node.value); });
+
+        return node;
+    }
+
+    function priorityMatch(filter, priority) {
+        if (!filter) {
+            return true;
+        }
+
+        priority = priority || 'normal';
+
+        return (filter === 'hot') ? (priority === 'urgent' || priority === 'high') : (priority === filter);
+    }
+
     function startTasks(root) {
         clear(root);
 
-        var state = { scope: 'mine', status: 'open', search: '', department_id: 0 };
+        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0 };
         var bar = el('nav', 'pg-toolbar navigation mb-3');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
@@ -8016,6 +12508,31 @@
         });
         bar.appendChild(dept);
 
+        var priority = priorityFilter('', function (value) {
+            state.priority = value;
+            load();
+        });
+        bar.appendChild(priority);
+
+        // At a glance: the urgent and high ones due within a week, overdue
+        // included.
+        var soon = button('btn btn-sm btn-outline-danger rounded-pill', t('urgent_soon'), 'bi-fire');
+        soon.setAttribute('aria-pressed', 'false');
+        soon.title = t('urgent_soon_help');
+        soon.addEventListener('click', function () {
+            var on = !state.soon;
+
+            state.soon = on ? 7 : 0;
+            state.priority = on ? 'hot' : '';
+            state.status = on ? 'open' : state.status;
+            priority.value = state.priority;
+            status.value = state.status;
+            soon.classList.toggle('active', on);
+            soon.setAttribute('aria-pressed', on ? 'true' : 'false');
+            load();
+        });
+        bar.appendChild(soon);
+
         var grow = el('div', 'pg-toolbar-grow');
         bar.appendChild(grow);
 
@@ -8031,9 +12548,17 @@
         searchGroup.appendChild(search);
         bar.appendChild(searchGroup);
 
+        // Only the answer to the latest question is drawn: a filter changed
+        // quickly would otherwise let an earlier, slower answer win.
+        var serial = 0;
+
         function load() {
+            var mine = ++serial;
+
             api('ws_tasks', state).then(function (data) {
-                taskRows(listBody, data.tasks, load);
+                if (mine === serial) {
+                    taskRows(listBody, data.tasks, load);
+                }
             }).catch(fail);
         }
 
@@ -8046,6 +12571,11 @@
         } else if (query['new']) {
             taskDrawer.open(0, {}, load);
         }
+
+        // Linked from the overview: the pressing ones straight away.
+        if (query.urgent) {
+            soon.click();
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -8055,7 +12585,8 @@
     function startBoard(root) {
         clear(root);
 
-        var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0 };
+        var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0, priority: '' };
+        var lastData = null;
         var bar = el('nav', 'pg-toolbar navigation mb-3');
         var wrap = el('div', 'ws-board-wrap');
         var legend = el('div', 'd-flex flex-wrap gap-3 small text-body-secondary mt-2');
@@ -8136,6 +12667,16 @@
         meWrap.appendChild(meLabel);
         bar.appendChild(meWrap);
 
+        // Only the tasks of a priority on the board; the day's load still
+        // counts all of them.
+        bar.appendChild(priorityFilter('', function (value) {
+            state.priority = value;
+
+            if (lastData) {
+                draw(lastData);
+            }
+        }));
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var conflicts = button('btn btn-sm btn-outline-secondary', t('conflicts'), 'bi-exclamation-triangle');
@@ -8152,7 +12693,10 @@
         var dragged = null;
 
         function load() {
-            api('ws_board', state).then(draw).catch(fail);
+            api('ws_board', state).then(function (data) {
+                lastData = data;
+                draw(data);
+            }).catch(fail);
         }
 
         function draw(data) {
@@ -8218,6 +12762,10 @@
                     });
 
                     cell.tasks.forEach(function (task) {
+                        if (!priorityMatch(state.priority, task.priority)) {
+                            return;
+                        }
+
                         // A copy of a repeating task that is not handed out
                         // yet: shown where it will run, not moved from here.
                         if (task.upcoming) {
@@ -8484,9 +13032,28 @@
             month: /^\d{4}-\d{2}$/.test(query.month || '') ? query.month : '',
             person_id: parseInt(query.person || 0, 10) || 0,
             department_id: 0,
-            show: { tasks: true, talk: true, events: true }
+            show: { tasks: true, talk: true, events: true },
+            priority: '',
+            status: 'all'
         };
         var data = null;
+
+        // The tasks the filters let through: priority and open / closed.
+        function taskShown(task) {
+            if (!priorityMatch(state.priority, task.priority)) {
+                return false;
+            }
+
+            if (state.status === 'open') {
+                return !!task.open;
+            }
+
+            if (state.status === 'closed') {
+                return !task.open;
+            }
+
+            return true;
+        }
 
         var bar = el('nav', 'pg-toolbar navigation mb-3 ws-cal-toolbar');
         var layout = el('div', 'row g-4');
@@ -8536,6 +13103,19 @@
             load();
         });
         bar.appendChild(dept);
+
+        bar.appendChild(priorityFilter('', function (value) {
+            state.priority = value;
+            draw();
+        }));
+
+        var statusFilter = select([['all', t('all_tasks')], ['open', t('open_tasks')], ['closed', t('closed_tasks')]], 'all');
+        statusFilter.classList.add('w-auto');
+        statusFilter.addEventListener('change', function () {
+            state.status = statusFilter.value;
+            draw();
+        });
+        bar.appendChild(statusFilter);
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
@@ -8587,26 +13167,38 @@
                 + (task.waits_for ? ' · ' + t('upcoming_waits', task.waits_for) : '');
         }
 
-        function taskChip(task) {
-            var chip = el('button', 'ws-cal-task' + (task.upcoming ? ' ws-cal-upcoming' : '') + (task.waits_for ? ' ws-cal-waits' : '') + (task.overdue ? ' ws-cal-late' : '') + (task.open ? '' : ' ws-cal-closed') + ((task.priority === 'urgent' || task.priority === 'high') ? ' ws-cal-hot' : ''));
+        // seg: one day of a task that covers several - whether it goes on
+        // into the day before and the day after in the same row, and whether
+        // this piece carries the title (the first day, and the first day of
+        // every week row it reaches).
+        function taskChip(task, seg) {
+            var chip = el('button', 'ws-cal-task' + (task.upcoming ? ' ws-cal-upcoming' : '') + (task.waits_for ? ' ws-cal-waits' : '') + (task.overdue ? ' ws-cal-late' : '') + (task.open ? '' : ' ws-cal-closed') + ((task.priority === 'urgent' || task.priority === 'high') ? ' ws-cal-hot' : '')
+                + (seg ? ' ws-cal-span' + (seg.left ? ' ws-cal-span-l' : '') + (seg.right ? ' ws-cal-span-r' : '') + (seg.label ? '' : ' ws-cal-span-rest') : ''));
             chip.type = 'button';
-            chip.appendChild(task.upcoming ? icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status));
-            chip.appendChild(el('span', 'ws-cal-task-title', task.title));
 
-            var faces = el('span', 'ws-avatars ws-avatars-sm');
+            if (seg && !seg.label) {
+                chip.appendChild(el('span', 'ws-cal-task-title visually-hidden', task.title));
+            } else {
+                chip.appendChild(task.upcoming ? icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status));
+                chip.appendChild(el('span', 'ws-cal-task-title', task.title));
 
-            (task.people || []).slice(0, 3).forEach(function (id) {
-                var member = person(id);
+                var faces = el('span', 'ws-avatars ws-avatars-sm');
 
-                if (member) {
-                    faces.appendChild(avatar(member));
-                }
-            });
+                (task.people || []).slice(0, 3).forEach(function (id) {
+                    var member = person(id);
 
-            chip.appendChild(faces);
+                    if (member) {
+                        faces.appendChild(avatar(member));
+                    }
+                });
+
+                chip.appendChild(faces);
+            }
+
             chip.title = task.upcoming
                 ? comingText(task) + ' · ' + task.title + (task.people && task.people.length ? ' · ' + peopleNames(task.people) : '') + '\n' + t('upcoming_hint')
-                : task.number + ' · ' + task.title + (task.people && task.people.length ? ' · ' + peopleNames(task.people) : '') + ' · ' + BOOT.statuses[task.status];
+                : task.number + ' · ' + task.title + (task.people && task.people.length ? ' · ' + peopleNames(task.people) : '') + ' · ' + BOOT.statuses[task.status]
+                    + (task.span_start ? '\n' + t('task_span', dmy(task.span_start), dmy(task.span_end)) : '');
             chip.addEventListener('click', function (event) {
                 event.stopPropagation();
                 taskDrawer.open(task.id, null, load);
@@ -8648,7 +13240,35 @@
             var grid = el('div', 'ws-cal-grid');
 
             data.weeks.forEach(function (week) {
-                week.forEach(function (day) {
+                // The tasks that run across days, each given a lane of its
+                // own for the week so its pieces line up into one bar.
+                var weekFrom = week[0].date;
+                var weekTo = week[week.length - 1].date;
+                var lanes = [];
+
+                if (state.show.tasks) {
+                    (data.spans || []).filter(function (task) {
+                        return task.span_start <= weekTo && task.span_end >= weekFrom && taskShown(task);
+                    }).sort(function (a, b) {
+                        return a.span_start < b.span_start ? -1 : (a.span_start > b.span_start ? 1 : (a.span_end > b.span_end ? -1 : (a.span_end < b.span_end ? 1 : a.id - b.id)));
+                    }).forEach(function (task) {
+                        var from = task.span_start < weekFrom ? weekFrom : task.span_start;
+                        var lane = 0;
+
+                        while (lane < lanes.length && lanes[lane].end >= from) {
+                            lane++;
+                        }
+
+                        if (lane === lanes.length) {
+                            lanes.push({ end: '', tasks: [] });
+                        }
+
+                        lanes[lane].end = task.span_end;
+                        lanes[lane].tasks.push(task);
+                    });
+                }
+
+                week.forEach(function (day, column) {
                     var cell = el('div', 'ws-cal-day' + (day.in_month ? '' : ' ws-cal-out') + (day.today ? ' ws-cal-today' : '') + (day.weekend ? ' ws-cal-weekend' : ''));
                     cell.tabIndex = 0;
                     cell.setAttribute('role', 'button');
@@ -8671,6 +13291,46 @@
                     var limit = 4;
                     var hidden = 0;
 
+                    // Lanes first, an empty gap where a lane has nothing on
+                    // this day, so a bar keeps its height across the row.
+                    var used = 0;
+
+                    lanes.forEach(function (lane, index) {
+                        if (lane.tasks.some(function (task) { return task.span_start <= day.date && task.span_end >= day.date; })) {
+                            used = index + 1;
+                        }
+                    });
+
+                    lanes.slice(0, used).forEach(function (lane) {
+                        var task = null;
+
+                        lane.tasks.forEach(function (item) {
+                            if (item.span_start <= day.date && item.span_end >= day.date) {
+                                task = item;
+                            }
+                        });
+
+                        if (shown >= limit) {
+                            if (task) {
+                                hidden++;
+                            }
+
+                            return;
+                        }
+
+                        if (task) {
+                            cell.appendChild(taskChip(task, {
+                                left: column > 0 && task.span_start < day.date,
+                                right: column < week.length - 1 && task.span_end > day.date,
+                                label: task.span_start === day.date || column === 0
+                            }));
+                        } else {
+                            cell.appendChild(el('div', 'ws-cal-lane-gap'));
+                        }
+
+                        shown++;
+                    });
+
                     if (state.show.events) {
                         day.events.forEach(function (event) {
                             if (shown >= limit) {
@@ -8686,7 +13346,7 @@
                     }
 
                     if (state.show.tasks) {
-                        day.tasks.forEach(function (task) {
+                        day.tasks.filter(taskShown).forEach(function (task) {
                             if (shown >= limit) {
                                 hidden++;
                                 return;
@@ -8789,13 +13449,16 @@
                 return box;
             }
 
-            var tasks = section(t('tasks') + ' · ' + day.tasks.length, 'bi-check2-square');
+            var dayTasks = (data.spans || []).filter(function (task) {
+                return task.span_start <= day.date && task.span_end >= day.date;
+            }).concat(day.tasks).filter(taskShown);
+            var tasks = section(t('tasks') + ' · ' + dayTasks.length, 'bi-check2-square');
 
-            if (!day.tasks.length) {
+            if (!dayTasks.length) {
                 tasks.appendChild(el('div', 'small text-body-secondary', t('no_tasks')));
             }
 
-            day.tasks.forEach(function (task) {
+            dayTasks.forEach(function (task) {
                 var row = el('div', 'ws-list-row' + (task.open ? '' : ' ws-row-done') + (task.upcoming ? ' ws-row-upcoming' : ''));
                 row.appendChild(task.upcoming ? icon('bi-arrow-repeat', 'text-body-secondary') : el('span', 'ws-status-dot ws-s-' + task.status));
 
@@ -8808,7 +13471,7 @@
 
                 line.appendChild(document.createTextNode(task.title));
                 main.appendChild(line);
-                main.appendChild(el('div', 'ws-row-sub' + (task.overdue ? ' text-danger' : ''), (task.upcoming ? comingText(task) : BOOT.statuses[task.status]) + (task.people.length ? ' · ' + peopleNames(task.people) : '')));
+                main.appendChild(el('div', 'ws-row-sub' + (task.overdue ? ' text-danger' : ''), (task.upcoming ? comingText(task) : BOOT.statuses[task.status]) + (task.span_start ? ' · ' + t('task_span', dmy(task.span_start), dmy(task.span_end)) : '') + (task.people.length ? ' · ' + peopleNames(task.people) : '')));
                 row.appendChild(main);
 
                 row.addEventListener('click', function () {
@@ -9216,11 +13879,21 @@
         });
         footer.appendChild(newTask);
 
-        if (type === 'contact') {
+        // A contact, a user or a current account can be the customer of a
+        // channel of its own.
+        if ((type === 'contact') || (CFG.customer && ((type === 'user_account') || (type === 'erp_account')))) {
             var newChannel = button('btn btn-sm btn-outline-secondary', t('customer_channel'), 'bi-hash');
             newChannel.addEventListener('click', function () {
                 hideOffcanvas(node);
-                channelForm(null, { name: label || '', contact_id: id, contact_label: label || '', kind: 'public' }, function (channelId) {
+                channelForm(null, {
+                    name: label || '',
+                    customer_type: type,
+                    customer_id: id,
+                    customer_label: label || '',
+                    contact_id: (type === 'contact') ? id : 0,
+                    contact_label: (type === 'contact') ? (label || '') : '',
+                    kind: 'public'
+                }, function (channelId) {
                     window.location.href = CFG.urls.workspace + '?channel=' + channelId;
                 });
             });
@@ -9610,8 +14283,18 @@
                 row.appendChild(name);
                 row.appendChild(el('span', 'text-body-secondary', t('tl_hidden_row', channel.count, channel.owner)));
 
-                var open = button('btn btn-sm btn-outline-warning ms-auto', t('open_for_audit'), 'bi-eye');
+                var open = button('btn btn-sm ' + (channel.locked ? 'btn-outline-secondary' : 'btn-outline-warning') + ' ms-auto', t('open_for_audit'), channel.locked ? 'bi-eye-slash' : 'bi-eye');
+
+                if (channel.locked) {
+                    open.disabled = true;
+                    open.title = t('audit_locked');
+                }
+
                 open.addEventListener('click', function () {
+                    if (channel.locked) {
+                        return;
+                    }
+
                     ask(t('audit_confirm', channel.name), t('open_for_audit'), true).then(function (yes) {
                         if (!yes) {
                             return;
@@ -9680,7 +14363,7 @@
             if (item.claude) {
                 var proposal = el('span', 'ws-tl-ai');
                 proposal.appendChild(icon('bi-stars'));
-                proposal.appendChild(document.createTextNode(t('tl_claude') + ' · ' + item.claude.type_label));
+                proposal.appendChild(document.createTextNode(t(item.claude.agent === 'ai' ? 'tl_ai' : 'tl_claude') + ' · ' + item.claude.type_label));
                 head.appendChild(proposal);
             }
 
@@ -9932,6 +14615,8 @@
         var search = '';
         var pollTimer = 0;
         var claudeWaiting = false;
+        var aiKicking = false;
+        var aiKickAt = 0;
 
         var bar = el('nav', 'pg-toolbar navigation mb-3');
         var layout = el('div', 'row g-4 ws-nb');
@@ -10011,13 +14696,24 @@
             }
 
             notes.forEach(function (note) {
-                var item = el('div', 'ws-nb-item' + (current && current.id === note.id ? ' active' : ''));
+                // What is new is new until the note is opened; the open one
+                // is being read.
+                var open = current && current.id === note.id;
+                var unread = !open && !!note.unread;
+                var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
                 item.tabIndex = 0;
                 item.setAttribute('role', 'button');
 
                 var top = el('div', 'ws-nb-item-head');
                 top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
                 top.appendChild(el('span', 'ws-nb-item-name', note.name));
+
+                if (unread) {
+                    var dot = el('span', 'ws-nb-item-dot');
+                    dot.title = t('notes_news');
+                    dot.setAttribute('aria-label', t('notes_news'));
+                    top.appendChild(dot);
+                }
 
                 if (note.pinned) {
                     var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
@@ -10051,6 +14747,15 @@
                     meta.appendChild(el('span', 'text-truncate', t('notes_owner', note.owner.name)));
                 } else if (note.source && note.source.channel) {
                     meta.appendChild(el('span', 'text-truncate', '#' + note.source.channel.name));
+                }
+
+                // Claude: still on a line asked in it, or its answer waiting
+                // to be written in when the note is opened.
+                if (note.claude_state === 'answered' || note.claude_state === 'waiting') {
+                    var claudeTag = el('span', 'ws-nb-item-claude ws-nb-item-claude-' + note.claude_state);
+                    claudeTag.appendChild(icon('bi-stars'));
+                    claudeTag.appendChild(document.createTextNode(' ' + t(note.claude_state === 'answered' ? 'notes_claude_answered' : 'notes_claude_working')));
+                    meta.appendChild(claudeTag);
                 }
 
                 if (meta.childNodes.length) {
@@ -10288,7 +14993,7 @@
 
             var note = current;
 
-            api('ws_note_get', { note_id: note.id }).then(function (data) {
+            api('ws_note_get', { note_id: note.id, seen: 1 }).then(function (data) {
                 if (note !== current || dirty || saving) {
                     return;
                 }
@@ -10314,15 +15019,40 @@
 
         // ── Claude in the note ──
 
+        // The tags that ask an assistant in a note: Claude's and Pinegrap
+        // AI's, whichever are connected.
+        function assistantTokens() {
+            return [BOOT.claude && BOOT.claude.token, BOOT.ai && BOOT.ai.token].filter(function (token) { return !!token; });
+        }
+
+        // Pinegrap AI answers only while a screen carries its work on.
+        function kickAiFromNote() {
+            if (aiKicking || (Date.now() - aiKickAt) < 4000) {
+                return;
+            }
+
+            aiKicking = true;
+            aiKickAt = Date.now();
+
+            api('ws_ai_kick').then(function () {
+                aiKicking = false;
+                poll();
+            }).catch(function () {
+                aiKicking = false;
+            });
+        }
+
         // The lines that ask Claude are sent when one of them is finished with
         // Enter; the same line is never asked twice.
         function askClaude() {
-            if (!current || !field || !BOOT.claude || !BOOT.claude.token) {
+            var tokens = assistantTokens();
+
+            if (!current || !field || !tokens.length) {
                 return;
             }
 
             var lines = field.value().split('\n').filter(function (line) {
-                return line.indexOf(BOOT.claude.token) !== -1;
+                return tokens.some(function (token) { return line.indexOf(token) !== -1; });
             });
 
             if (!lines.length) {
@@ -10350,8 +15080,21 @@
 
             claudeWaiting = waiting.length > 0;
 
+            var aiWaiting = waiting.filter(function (request) { return request.agent === 'ai'; });
+
+            if (aiWaiting.length) {
+                kickAiFromNote();
+            }
+
             if (line) {
                 line.classList.toggle('d-none', !claudeWaiting);
+
+                // Only Pinegrap AI on it: its own words on the line.
+                var words = line.querySelector('.ws-nb-claude-words');
+
+                if (words) {
+                    words.textContent = (aiWaiting.length && aiWaiting.length === waiting.length) ? t('notes_ai_waiting') : t('notes_claude_waiting');
+                }
             }
 
             if (claudeWaiting) {
@@ -10568,6 +15311,36 @@
             }).catch(fail);
         }
 
+        var scheduledStrip = null;
+
+        function drawScheduled(items) {
+            if (!scheduledStrip) {
+                return;
+            }
+
+            clear(scheduledStrip);
+            scheduledStrip.hidden = !items.length;
+
+            items.forEach(function (item) {
+                scheduledStrip.appendChild(scheduledCard(item, function () { refreshScheduled(); }));
+            });
+        }
+
+        function refreshScheduled() {
+            if (!current || !current.id) {
+                return;
+            }
+
+            var note = current;
+
+            api('ws_note_get', { note_id: note.id }).then(function (data) {
+                if (note === current) {
+                    current.scheduled = data.note.scheduled || [];
+                    drawScheduled(current.scheduled);
+                }
+            }).catch(fail);
+        }
+
         function toolbar() {
             var tools = el('div', 'ws-nb-tools');
             var rich = field.rich;
@@ -10611,11 +15384,24 @@
             tool(blocks, 'bi-calculator', t('notes_calc'), block('code', function (done) { window.PGWsEditor.openCalc('', done, { insertLabel: t('insert_to_note') }); }));
             tool(blocks, 'bi-code-slash', t('notes_code'), block('code', function (done) { window.PGWsEditor.openCode('', done); }));
 
+            if (CFG.blocks) {
+                tool(blocks, 'bi-box-arrow-in-down', t('pull_title'), function () {
+                    blockPuller(function (data) { field.insertPulled(data); });
+                });
+            }
+
             var tags = group();
             tool(tags, 'bi-hash', t('notes_tag'), function () { field.insertTrigger('#'); });
 
-            if (BOOT.claude) {
-                tool(tags, 'bi-stars', t('notes_claude'), function () { field.insertTrigger('@'); });
+            if (BOOT.claude || BOOT.ai) {
+                tool(tags, BOOT.claude ? 'bi-stars' : 'bi-cpu', t(BOOT.claude ? 'notes_claude' : 'notes_ai'), function () { field.insertTrigger('@'); });
+            }
+
+            // A scheduled action written in the note (staff).
+            if (CFG.scheduled && current && current.id && editable()) {
+                tool(tags, 'bi-alarm', t('sa_new'), function () {
+                    scheduledForm({ note_id: current.id }, null, function () { refreshScheduled(); });
+                });
             }
 
             var extras = group();
@@ -10700,9 +15486,9 @@
                 placeholder: t('notes_text'),
                 previews: true,
                 onKeydown: function (event) {
-                    if (event.key === 'Enter' && !event.shiftKey && BOOT.claude && BOOT.claude.token) {
+                    if (event.key === 'Enter' && !event.shiftKey && assistantTokens().length) {
                         setTimeout(function () {
-                            if (field && field.value().indexOf(BOOT.claude.token) !== -1) {
+                            if (field && assistantTokens().some(function (token) { return field.value().indexOf(token) !== -1; })) {
                                 askClaude();
                             }
                         }, 0);
@@ -10724,12 +15510,20 @@
             });
 
             body.appendChild(toolbar());
+
+            // The scheduled actions written in this note, above its text.
+            if (CFG.scheduled) {
+                scheduledStrip = el('div', 'ws-sa-strip');
+                body.appendChild(scheduledStrip);
+                drawScheduled(current.scheduled || []);
+            }
+
             wrap.appendChild(field.rich.node);
             body.appendChild(wrap);
 
             var claudeLine = el('div', 'ws-nb-claude small text-body-secondary d-none');
             claudeLine.appendChild(el('span', 'spinner-border spinner-border-sm me-2'));
-            claudeLine.appendChild(document.createTextNode(t('notes_claude_waiting')));
+            claudeLine.appendChild(el('span', 'ws-nb-claude-words', t('notes_claude_waiting')));
             body.appendChild(claudeLine);
 
             field.set(current.body || '', current.labels || {});
@@ -10767,11 +15561,13 @@
 
         function openNote(noteId, fresh) {
             (fresh ? Promise.resolve() : save()).then(function () {
-                return api('ws_note_get', { note_id: noteId });
+                return api('ws_note_get', { note_id: noteId, seen: 1 });
             }).then(function (data) {
                 current = data.note;
+                current.unread = false;
                 dirty = false;
                 remember(current.id);
+                listed(current);
                 drawList();
                 drawNote();
                 poll();
@@ -10980,8 +15776,17 @@
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
                 poll();
+                loadList();
             }
         });
+
+        // The list shows what changed in the other notes - somebody wrote in
+        // one, Claude answered in one - without the page being reloaded.
+        window.setInterval(function () {
+            if (!document.hidden) {
+                loadList();
+            }
+        }, 30000);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -10989,6 +15794,29 @@
     // ═══════════════════════════════════════════════════════════════════
 
     function start() {
+        // The inbox links of the rail and its drawer are drawn with the page,
+        // so they are taken over at once rather than once the screen has
+        // loaded: a click before that would leave for the channels screen
+        // and open the inbox there, which is the long way round. The inbox
+        // needs nothing the start-up brings.
+        document.addEventListener('click', function (event) {
+            var inboxLink = event.target.closest('[data-ws-inbox]');
+
+            if (!inboxLink) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var drawer = document.getElementById('ws-nav-drawer');
+
+            if (drawer && window.bootstrap && drawer.classList.contains('show')) {
+                window.bootstrap.Offcanvas.getOrCreateInstance(drawer).hide();
+            }
+
+            openInbox(function () {});
+        });
+
         api('ws_bootstrap').then(function (data) {
             BOOT = data;
 
@@ -11013,25 +15841,6 @@
             window.setTimeout(function () {
                 api('ws_tick').catch(function () {});
             }, 1500);
-
-            // The inbox links of the rail and its drawer, drawn with the page.
-            document.addEventListener('click', function (event) {
-                var inboxLink = event.target.closest('[data-ws-inbox]');
-
-                if (!inboxLink) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                var drawer = document.getElementById('ws-nav-drawer');
-
-                if (drawer && window.bootstrap && drawer.classList.contains('show')) {
-                    window.bootstrap.Offcanvas.getOrCreateInstance(drawer).hide();
-                }
-
-                openInbox(function () {});
-            });
 
             document.addEventListener('click', function (event) {
                 var trigger = event.target.closest('[data-ws-record]');

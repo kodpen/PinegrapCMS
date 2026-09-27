@@ -387,7 +387,10 @@ function pg_sw_hide_empty_fields($html)
                 return $m[0];
             }
             $text = trim(html_entity_decode(strip_tags($v[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            if ($text === '' && !preg_match('#<(img|video|iframe|a)\b#i', $v[2])) return '';
+            // An image counts once it has an address: a file field left empty
+            // comes out as <img src="">.
+            $media = preg_match('#<(video|iframe|a)\b#i', $v[2]) || preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', $v[2]);
+            if ($text === '' && !$media) return '';
             return $m[0];
         },
         $html
@@ -592,6 +595,119 @@ function _pg_sw_current_page_id()
     return $page_id;
 }
 
+// The filters a form_list_view widget applies to its records: the classic
+// form list view's filters (edit_form_list_view.php, form_list_view_filters),
+// kept in the widget's system_region_config as `filters`, a list of
+//   { field, operator, value, dynamic_value, dynamic_value_attribute }
+//
+// `field` is a standard field (reference_code, submitter, submitted_date_and_time
+// …, see pg_sw_standard_fields()) or the name of one of the form's own fields.
+// A filter with a value compares against that value. One without compares
+// against its dynamic value, worked out on every request the way the classic
+// screen does it (get_dynamic_value()): today, N days ago, the signed-in
+// viewer, the viewer's e-mail address. Which dynamic values a field offers
+// depends on its type, so the editor lists only those that fit.
+//
+// A filter naming a field the form no longer has, or an operator outside the
+// classic list, is skipped rather than failing the query. Every filter must
+// match (AND), as on the classic screen.
+//
+// Returns the SQL to add to the listing's WHERE, and the standard fields it
+// reads (name => true) so the caller joins the tables they live in.
+function pg_sw_form_list_filter_sql($custom_form_page_id, $filters)
+{
+    $out = array('where' => '', 'tokens' => array());
+    if (!is_array($filters) || !$filters) return $out;
+
+    $operators = array(
+        'contains', 'does not contain', 'is equal to', 'is not equal to',
+        'is less than', 'is less than or equal to', 'is greater than', 'is greater than or equal to',
+    );
+    $dynamic_values = array(
+        'current date', 'current date and time', 'current time', 'days ago',
+        'viewer', 'viewers email address',
+    );
+    $standard = pg_sw_standard_fields();
+    $custom   = null;
+
+    foreach (array_slice(array_values($filters), 0, 50) as $filter) {
+        if (!is_array($filter)) continue;
+        $field    = isset($filter['field'])    ? trim((string)$filter['field']) : '';
+        $operator = isset($filter['operator']) ? (string)$filter['operator']    : '';
+        if ($field === '' || !in_array($operator, $operators, true)) continue;
+
+        $value    = isset($filter['value']) ? (string)$filter['value'] : '';
+        $dynamic  = isset($filter['dynamic_value']) ? (string)$filter['dynamic_value'] : '';
+        if (!in_array($dynamic, $dynamic_values, true)) $dynamic = '';
+        $dynamic_attribute = isset($filter['dynamic_value_attribute']) ? (int)$filter['dynamic_value_attribute'] : 0;
+
+        if (isset($standard[$field]) && $standard[$field]['sql'] !== '') {
+            $operand_1 = $standard[$field]['sql'];
+            $type      = $standard[$field]['type'];
+            $out['tokens'][$field] = true;
+        } else {
+            if ($custom === null) {
+                $custom = array();
+                $rows = db_items(
+                    "SELECT id, name, type, multiple
+                     FROM form_fields
+                     WHERE page_id = '" . (int)$custom_form_page_id . "'
+                       AND type != 'information'
+                       AND name != ''"
+                );
+                foreach ((array)$rows as $row) {
+                    $custom[mb_strtolower((string)$row['name'], 'UTF-8')] = $row;
+                }
+            }
+            $key = mb_strtolower($field, 'UTF-8');
+            if (!isset($custom[$key])) continue;
+
+            $field_id = (int)$custom[$key]['id'];
+            $type     = (string)$custom[$key]['type'];
+
+            // A multi-select pick list or a check box keeps one row per
+            // chosen value, so "is (not) equal to" counts the matching rows
+            // and every other operator reads the values joined together —
+            // the classic screen's own treatment.
+            if (($type === 'pick list' && (int)$custom[$key]['multiple'] === 1) || $type === 'check box') {
+                if ($operator === 'is equal to' || $operator === 'is not equal to') {
+                    $operand_1 = "(SELECT COUNT(*) FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id') AND (form_data.data = '" . e($value) . "'))";
+                    $operator  = ($operator === 'is equal to') ? 'is greater than' : 'is equal to';
+                    $value     = '0';
+                    $dynamic   = '';
+                } else {
+                    $operand_1 = "(SELECT GROUP_CONCAT(form_data.data ORDER BY form_data.id ASC SEPARATOR ', ') FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id'))";
+                }
+            } elseif ($type === 'file upload') {
+                $operand_1 = "(SELECT files.name FROM form_data LEFT JOIN files ON form_data.file_id = files.id WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id') LIMIT 1)";
+            } else {
+                $operand_1 = "(SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id') LIMIT 1)";
+            }
+        }
+
+        if ($value !== '') {
+            // Dates are compared as stored (YYYY-MM-DD, YYYY-MM-DD HH:MM:SS).
+            // The editor's date inputs already write that; a value typed in
+            // the site's own date format is converted the classic way.
+            if ($type === 'date' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) && preg_match('/^\d{1,2}[-\/.]\d{1,2}[-\/.]\d{4}$/', $value)) {
+                $value = prepare_form_data_for_input(str_replace('.', '-', $value), 'date');
+            } elseif ($type === 'date and time') {
+                $value = str_replace('T', ' ', $value);
+                if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $value)) $value .= ':00';
+            }
+            $operand_2 = $value;
+        } elseif ($dynamic !== '') {
+            $operand_2 = (string)get_dynamic_value($dynamic, $dynamic_attribute);
+        } else {
+            $operand_2 = '';
+        }
+
+        $out['where'] .= ' AND (' . prepare_sql_operation($operator, $operand_1, $operand_2) . ')';
+    }
+
+    return $out;
+}
+
 // Render a system widget's form_list_view. Loop-area aware:
 //
 //   1. _split_widget_tree pulls the loop_area out of the tree (replaced by a marker).
@@ -624,6 +740,8 @@ function _pg_sw_current_page_id()
 //   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
 //   order_by_field      string  submitted_date_and_time | submitted_form_id | form_fields.name
 //   order_by_direction  ASC | DESC (default DESC)
+//   filters             list  the classic form list view's filters, see
+//                             pg_sw_form_list_filter_sql()
 //
 // URL parameters (shared across the page — if multiple system widgets render on
 // the same page they share `page_number` / `query` state; cleaner URLs at the
@@ -880,6 +998,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         }
     }
 
+    // ── Filters the designer set (every record must match all of them) ────
+    $filter_sql   = pg_sw_form_list_filter_sql($custom_form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array());
+    $filter_where = $filter_sql['where'];
+    $filter_join  = ($filter_where !== '' && $filter_sql['tokens'])
+        ? pg_sw_standard_sql($filter_sql['tokens'], isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, array('reference_code'))
+        : array('select' => '', 'join' => '');
+
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
     if ($search_active) {
@@ -933,8 +1058,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // ── Count total matching rows (for pagination) ────────────────────────
     $total_records = (int)db_value(
         "SELECT COUNT(*) FROM forms
+         {$filter_join['join']}
          WHERE forms.page_id = '$custom_form_page_id'
            AND forms.complete = 1
+           $filter_where
            $search_where
            $sql_viewer_filter"
     );
@@ -1015,7 +1142,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // listing query reads: a template that never mentions a commenter never
     // joins the comments table.
     $template_tokens = pg_sw_template_tokens($loop_template);
-    $standard_sql    = pg_sw_standard_sql($template_tokens, $detail_page_id, array('reference_code'));
+    // A filter on a standard field needs that field's table joined too.
+    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, array('reference_code'));
 
     // 1. Pull submitted form rows (the `forms` table) for this custom form,
     //    applying ordering + search + pagination.
@@ -1028,6 +1156,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
          {$standard_sql['join']}
          WHERE forms.page_id = '$custom_form_page_id'
            AND forms.complete = 1
+           $filter_where
            $search_where
            $sql_viewer_filter
          ORDER BY $order_by_sql
@@ -1110,6 +1239,11 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // across multiple instances of the same widget on the same page.
         $rendered = pg_sw_uniquify_row_ids($rendered, $widget_id, $fid);
 
+        // The pencil for whoever may edit the submissions of this form.
+        if (pg_sw_can_edit_submitted_forms($custom_form_page_id)) {
+            $rendered = pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_submitted_form.php', $fid), lang('Edit the record'), 'forms');
+        }
+
         $loop_output .= $rendered;
     }
 
@@ -1130,6 +1264,118 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // would read, and form_item_view and my_account both sweep theirs.
     $static_html = pg_sw_sweep_tokens($static_html);
     return str_replace('<!--pg-loop-slot-->', $body, $static_html);
+}
+
+/**
+ * May the visitor see this submitted form on a detail page?
+ *
+ * $access_control is the form_item_view widget's setting. 'public' lets
+ * everybody in, 'logged_in' every signed-in visitor, and 'submitter_only'
+ * applies the legacy form item view's submitter security rule for rule
+ * (get_page_content.php, add_comment.php): the visitor who submitted it in
+ * this browser session; signed in, anybody who may edit the custom form, its
+ * form editor, its submitter, the owner of the address in its
+ * connect-to-contact email field, and a watcher of the record on this
+ * detail page.
+ *
+ * $form carries id, page_id (the custom form), reference_code, user_id and
+ * form_editor_user_id.
+ */
+function pg_sw_submitted_form_visible($form, $access_control, $detail_page_id = 0)
+{
+    if (!is_array($form) || empty($form['id'])) return false;
+    $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN === true;
+    if ($access_control === 'logged_in') return $signed_in;
+    if ($access_control !== 'submitter_only') return true;
+
+    $codes = (isset($_SESSION['software']['submitted_form_reference_codes'])
+              && is_array($_SESSION['software']['submitted_form_reference_codes']))
+        ? $_SESSION['software']['submitted_form_reference_codes'] : array();
+    if (in_array((string)$form['reference_code'], $codes, true)) return true;
+    if (!$signed_in) return false;
+
+    $user_id = defined('USER_ID') ? (int)USER_ID : 0;
+    if ($user_id > 0 && ((int)$form['user_id'] === $user_id || (int)$form['form_editor_user_id'] === $user_id)) return true;
+
+    $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$form['page_id'] . "' LIMIT 1");
+    if ($folder !== null && $folder !== '' && check_edit_access($folder)) return true;
+
+    $email = defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : '';
+    if ($email === '') return false;
+    $submitter_email = db_value(
+        "SELECT form_data.data FROM form_data
+         LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
+         WHERE form_data.form_id = '" . (int)$form['id'] . "'
+           AND form_fields.contact_field = 'email_address'
+         LIMIT 1");
+    if ($submitter_email !== null && mb_strtolower((string)$submitter_email) === mb_strtolower($email)) return true;
+
+    return (int)$detail_page_id > 0 && (int)db_value(
+        "SELECT COUNT(*) FROM watchers
+         WHERE (user_id = '" . $user_id . "' OR email_address = '" . e($email) . "')
+           AND page_id = '" . (int)$detail_page_id . "'
+           AND item_id = '" . (int)$form['id'] . "'
+           AND item_type = 'submitted_form'") > 0;
+}
+
+/**
+ * The record a designed page's comments belong to.
+ *
+ * A page built in the visual editor shows a submitted form through its
+ * form_item_view widget, not through a page type, so the comment code asks
+ * here what a legacy form item view page answers through its page type: the
+ * submitted form the page shows - by id when a comment names one, else by
+ * ?r= - taken from the widget's own custom form only, and whether the
+ * visitor may see it under the widget's access setting.
+ *
+ * Returns null when the page carries no such widget, otherwise
+ * array('custom_form_page_id', 'access_control', 'form' => row or null,
+ * 'visible' => bool). The row carries id, page_id, reference_code, user_id,
+ * form_editor_user_id, form_editor_username and form_editor_email_address.
+ */
+function pg_sw_record_comment_context($page_id, $form_id = 0)
+{
+    static $cache = array();
+    $page_id = (int)$page_id;
+    $form_id = (int)$form_id;
+    if ($page_id <= 0) return null;
+    $key = $page_id . ':' . $form_id;
+    if (array_key_exists($key, $cache)) return $cache[$key];
+    $cache[$key] = null;
+
+    $widget = pg_sw_page_widget($page_id, 'form_item_view');
+    if (!$widget) return null;
+    $cfg = $widget['cfg'];
+    $custom_form_page_id = (int)(!empty($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id']
+                               : (!empty($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+    $access = (isset($cfg['access_control']) && in_array($cfg['access_control'], array('public', 'submitter_only', 'logged_in'), true))
+        ? $cfg['access_control'] : 'public';
+
+    $where = '';
+    if ($form_id > 0) {
+        $where = "forms.id = '" . $form_id . "'";
+    } else {
+        $reference = (isset($_GET['r']) && is_scalar($_GET['r'])) ? trim((string)$_GET['r']) : '';
+        if ($reference !== '' && strlen($reference) <= 100) $where = "forms.reference_code = '" . e($reference) . "'";
+    }
+    $form = null;
+    if ($custom_form_page_id > 0 && $where !== '') {
+        $form = db_item(
+            "SELECT forms.id, forms.page_id, forms.reference_code, forms.user_id, forms.form_editor_user_id,
+                    user.user_username AS form_editor_username, user.user_email AS form_editor_email_address
+             FROM forms
+             LEFT JOIN user ON forms.form_editor_user_id = user.user_id
+             WHERE forms.page_id = '" . $custom_form_page_id . "' AND " . $where . "
+             LIMIT 1");
+        if (!is_array($form) || empty($form['id'])) $form = null;
+    }
+
+    return $cache[$key] = array(
+        'custom_form_page_id' => $custom_form_page_id,
+        'access_control'      => $access,
+        'form'                => $form,
+        'visible'             => ($form !== null) && pg_sw_submitted_form_visible($form, $access, $page_id),
+    );
 }
 
 // ============================================================================
@@ -1228,8 +1474,24 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     $standard_sql    = pg_sw_standard_sql($template_tokens, _pg_sw_current_page_id(), array('reference_code', 'address_name'));
 
     $reference_code = isset($_GET['r']) ? trim((string)$_GET['r']) : '';
+    // An e-mail page (a form's confirmation or notification) is drawn for
+    // the record just submitted: its id comes with the call, not the URL.
+    $sw_ctx          = pg_sw_render_context();
+    $email_record_id = (!empty($sw_ctx['email']) && !empty($sw_ctx['form_id'])) ? (int)$sw_ctx['form_id'] : 0;
     $form_row = null;
-    if ($reference_code !== '' && strlen($reference_code) <= 100) {
+    if ($email_record_id > 0) {
+        $form_row = db_item(
+            "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
+                    forms.reference_code, forms.submitted_timestamp, forms.address_name,
+                    forms.tracking_code, forms.complete
+                    {$standard_sql['select']}
+             FROM forms
+             {$standard_sql['join']}
+             WHERE forms.page_id = '" . (int)$custom_form_page_id . "'
+               AND forms.id      = '" . $email_record_id . "'
+             LIMIT 1"
+        );
+    } elseif ($reference_code !== '' && strlen($reference_code) <= 100) {
         $form_row = db_item(
             "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
                     forms.reference_code, forms.submitted_timestamp, forms.address_name,
@@ -1255,23 +1517,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // Translates the cfg.access_control enum into a single allowed/denied bit.
     // We treat denied as a "not found" state — same UX as missing record so
     // the page never leaks the existence of a record the visitor can't see.
-    $allowed = true;
-    if ($form_row) {
-        if ($access_control === 'logged_in') {
-            $allowed = (defined('USER_LOGGED_IN') && USER_LOGGED_IN === true);
-        } elseif ($access_control === 'submitter_only') {
-            $is_session_submitter = (
-                isset($_SESSION['software']['submitted_form_reference_codes'])
-                && is_array($_SESSION['software']['submitted_form_reference_codes'])
-                && in_array($form_row['reference_code'], $_SESSION['software']['submitted_form_reference_codes'], true)
-            );
-            $is_user_submitter = (
-                defined('USER_LOGGED_IN') && USER_LOGGED_IN === true &&
-                defined('USER_ID') && (int)USER_ID === (int)$form_row['user_id'] && (int)$form_row['user_id'] > 0
-            );
-            $allowed = $is_session_submitter || $is_user_submitter;
-        }
-    }
+    // 'submitter_only' is the legacy submitter security: see
+    // pg_sw_submitted_form_visible().
+    // The e-mail's recipient was chosen by the server (the sender, the
+    // form's administrators), not by whoever holds the session.
+    $allowed = !$form_row || ($email_record_id > 0)
+        || pg_sw_submitted_form_visible($form_row, $access_control, _pg_sw_current_page_id());
     $found_and_allowed = ($form_row && $allowed);
 
     // Helper: build current page URL with `?r=<code>` for the ^^form_item_view^^ token.
@@ -1306,6 +1557,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'not_found'              => $not_found_message,
             '__new_account_email'    => '',
             '__new_account_password' => '',
+            '__edit_url'             => '',
         );
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
@@ -1344,6 +1596,10 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'not_found'              => '',  // empty when found — the not_found region renders empty
             '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
             '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
+            // The record's edit screen, for whoever may edit this form's
+            // submissions (the legacy form item view's Edit button).
+            '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)
+                                            ? h(pg_sw_backend_edit_url('edit_submitted_form.php', (int)$form_row['id'])) : '',
         );
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
@@ -1363,7 +1619,22 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $static = pg_sw_hide_empty_fields(pg_sw_sweep_tokens(pg_sw_apply_tokens($static, $form_row, $custom, $extra)));
     }
 
-    $flags = array('has_new_account' => $found_and_allowed && $extra['__new_account_email'] !== '');
+    // Sent from this browser session: the page a form hands its visitor to
+    // after they submit (a thank-you, the first message of a conversation).
+    $own_codes = (isset($_SESSION['software']['submitted_form_reference_codes']) && is_array($_SESSION['software']['submitted_form_reference_codes']))
+        ? $_SESSION['software']['submitted_form_reference_codes'] : array();
+    $flags = array(
+        'has_new_account'        => $found_and_allowed && $extra['__new_account_email'] !== '',
+        'record_found'           => (bool)$found_and_allowed,
+        'record_not_found'       => !$found_and_allowed,
+        'submitted_this_session' => $found_and_allowed && in_array((string)$form_row['reference_code'], array_map('strval', $own_codes), true),
+        'can_edit'               => $found_and_allowed && $extra['__edit_url'] !== '',
+    );
+    // The pencil on the record itself, for a design that places no Edit
+    // button of its own.
+    if ($flags['can_edit'] && strpos($loop_template . $static_html, '^^__edit_url^^') === false) {
+        $rendered = pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_submitted_form.php', (int)$form_row['id']), lang('Edit the record'), 'forms');
+    }
     if ($static === '') return _pg_sw_resolve_visibility($rendered, $flags);
     return _pg_sw_resolve_visibility(str_replace('<!--pg-loop-slot-->', $rendered, $static), $flags);
 }
@@ -1501,6 +1772,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
             'member_id'                => '',
             'member'                   => '0',
             'not_logged_in'            => $not_logged_in_message,
+            '__display_name'           => '',
         ) + $link_values;
         // The list rows belong to a signed-in member: none for a visitor.
         $rendered = ($static_html !== '') ? '' : pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, array(), array(), $values));
@@ -1569,6 +1841,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         'avatar_url'    => h($avatar_url),
         'member_id'     => h(($user_row && !empty($user_row['member_id'])) ? (string)$user_row['member_id'] : ''),
         'member'        => (defined('USER_MEMBER') && USER_MEMBER === true) ? '1' : '0',
+        // The name to greet the member by: their full name, else their user name.
+        '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
 
@@ -3134,6 +3408,61 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     ));
 }
 
+/**
+ * What the page is being drawn for, as the system widgets need to know it.
+ *
+ * get_page_content() sets it around the widget pass: 'email' when the page is
+ * the body of an e-mail, plus the dynamic properties the sender passed with
+ * it - 'form_id' for a form's confirmation or notification, 'order_id' for an
+ * order receipt. A widget on an e-mail page has no address to read ?r= or
+ * ?order_id= from, and the recipient is chosen by the server, so the checks
+ * that keep a visitor to their own records do not apply there. Pass an array
+ * to set (the previous context comes back, for restoring); pass nothing to
+ * read.
+ *
+ * @param array|null $set
+ * @return array
+ */
+function pg_sw_render_context($set = null)
+{
+    static $ctx = array();
+    if (is_array($set)) {
+        $old = $ctx;
+        $ctx = $set;
+        return $old;
+    }
+    return $ctx;
+}
+
+/**
+ * A one-line, plain-text summary of a product's rich description, for order
+ * lines (cart, express order, order view). products.full_description is the
+ * operator's page-sized HTML — headings, galleries, embedded styles — and
+ * does not belong under a product name in a table row. Style and script
+ * bodies are dropped, tags stripped, entities decoded, whitespace collapsed
+ * and the result cut at a word boundary. Returns plain text: escape it.
+ *
+ * @param string $html Rich description
+ * @param int    $max  Maximum length in characters, ellipsis included
+ * @return string
+ */
+function pg_sw_item_summary($html, $max = 140)
+{
+    $text = (string) $html;
+    if ($text === '') return '';
+    $text = preg_replace('~<(style|script|noscript|template)\b[^>]*>.*?</\1\s*>~is', ' ', $text);
+    $text = preg_replace('~<(br|/p|/div|/li|/h[1-6]|/tr)\b[^>]*>~i', ' ', (string) $text);
+    $text = html_entity_decode(strip_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = trim((string) preg_replace('~[\s\x{00A0}]+~u', ' ', $text));
+    if ($text === '') return '';
+    $len = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+    if ($len <= $max) return $text;
+    $cut = function_exists('mb_substr') ? mb_substr($text, 0, $max - 1, 'UTF-8') : substr($text, 0, $max - 1);
+    $space = strrpos($cut, ' ');
+    if ($space !== false && $space > strlen($cut) * 0.6) $cut = substr($cut, 0, $space);
+    return rtrim($cut, " ,.;:-") . "\u{2026}";
+}
+
 // Render an 'order_view' system widget. Reads a single completed order via
 // $_GET['order_id'] (or ?oid=) and iterates order_items in loop_area.
 // Security: order must belong to the currently logged-in user (orders.user).
@@ -3209,9 +3538,10 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
 // ── ITEM LOOP TOKENS (per order_items row) ────────────────────────────────
 //   ^^__item_id^^               order_items.id
 //   ^^__item_name^^             oi.product_name
-//   ^^__item_number^^           oi.item_number (SKU)
+//   ^^__item_number^^           oi.product_name (products.name = Product ID / SKU)
 //   ^^__item_short_description^^ products.short_description (preferred display name)
 //   ^^__item_description^^      products.full_description
+//   ^^__item_summary^^          plain one-line summary of full_description
 //   ^^__item_image^^            absolute image URL
 //   ^^__item_image_alt^^        alt text (short_description ?: name)
 //   ^^__item_qty^^              quantity
@@ -3268,9 +3598,14 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $not_found_message = (!empty($cfg['not_found_message']) && is_string($cfg['not_found_message']))
                              ? $cfg['not_found_message'] : lang('The order could not be found.');
 
-    // Get order ID from URL — support both ?order_id= and ?oid=
+    // Get order ID from URL — support both ?order_id= and ?oid=. An order
+    // receipt e-mail names its order in the call (pg_sw_render_context()).
     $order_id = 0;
-    if (!empty($_GET['order_id']) && is_numeric($_GET['order_id'])) {
+    $sw_ctx         = pg_sw_render_context();
+    $email_order_id = (!empty($sw_ctx['email']) && !empty($sw_ctx['order_id'])) ? (int)$sw_ctx['order_id'] : 0;
+    if ($email_order_id > 0) {
+        $order_id = $email_order_id;
+    } elseif (!empty($_GET['order_id']) && is_numeric($_GET['order_id'])) {
         $order_id = (int)$_GET['order_id'];
     } elseif (!empty($_GET['oid']) && is_numeric($_GET['oid'])) {
         $order_id = (int)$_GET['oid'];
@@ -3343,7 +3678,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // redirects to the thank-you page with ?order_id=N), may see it.
     $is_owner = ($current_user_id > 0 && (int)$order['user_id'] === $current_user_id);
     $just_completed = ((int)($_SESSION['ecommerce']['completed_order_id'] ?? 0) === (int)$order['id']);
-    if (!$is_owner && !$just_completed) {
+    // The receipt e-mail goes to the order's own billing address.
+    $is_receipt_mail = ($email_order_id > 0 && $email_order_id === (int)$order['id']);
+    if (!$is_owner && !$just_completed && !$is_receipt_mail) {
         // No logged-in owner and not the order this session just placed:
         // the same answer as a missing order, so ids cannot be probed.
         return $render_not_found();
@@ -3525,13 +3862,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 
     // Fetch order items — much richer column set. address_name lets designers
     // link to the product detail page; short/full description give them a
-    // choice of display name; products.code (longtext free field) surfaces
-    // the SKU; ship_to_id resolves via JOIN for per-item shipping address.
+    // choice of display name; ship_to_id resolves via JOIN for per-item
+    // shipping address.
     //
-    // Note: order_items has NO item_number / sku column in the legacy schema
-    // (see data/backups/turkish_default/sql.sql line 4206). The SKU lives on
-    // products.code (or .gtin / .mpn for trade IDs). We expose .code as
-    // __item_number so the token name stays familiar to designers.
+    // Note: order_items has NO item_number / sku column. The SKU is the
+    // product's "Product ID / SKU" (products.name), copied into
+    // order_items.product_name when the order is placed; __item_number
+    // carries it so the token name stays familiar to designers.
+    // products.code is the product's image-slider template (HTML), never
+    // an identifier, so it is not selected here.
     // p.form / p.form_name / p.form_quantity_type / p.gift_card drive the
     // per-row READ-ONLY blocks below: a product carrying an order form shows
     // what the visitor typed at checkout, a gift card shows the recipient
@@ -3540,7 +3879,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         "SELECT oi.id AS item_id, oi.product_name,
                 oi.quantity, oi.price, oi.ship_to_id,
                 p.id AS product_id, p.address_name, p.image_name,
-                p.short_description, p.full_description, p.code AS item_code,
+                p.short_description, p.full_description,
                 p.form AS product_has_form, p.form_name, p.form_quantity_type,
                 p.gift_card AS product_is_gift_card,
                 st.first_name AS st_first_name, st.last_name AS st_last_name,
@@ -3615,7 +3954,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'name'              => (string)$r['product_name'],
                 'form_data_html'    => $item_form_html,
                 'gift_card_html'    => $item_gift_card_html,
-                'item_number'       => (string)($r['item_code'] ?? ''),  // products.code as SKU
+                'item_number'       => (string)$r['product_name'],  // Product ID / SKU
                 'short_description' => (string)($r['short_description'] ?? ''),
                 'full_description'  => (string)($r['full_description'] ?? ''),
                 'qty'               => $qty,
@@ -3973,6 +4312,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_short_description' => h($item['short_description']),
                 // RAW HTML — rich text, same as the cart and catalog widgets.
                 '__item_description'       => (string)$item['full_description'],
+                '__item_summary'           => h(pg_sw_item_summary($item['full_description'])),
                 // The image alt text follows the same precedence as cart:
                 // prefer the readable short_description, fall back to name.
                 '__item_image_alt'         => h($item['short_description'] !== '' ? $item['short_description'] : $item['name']),
@@ -4429,6 +4769,14 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // names nothing can be pointed at the control beside it.
     pg_cf_link_labels($tree_decoded);
 
+    // Filled in on someone else's behalf: said on the form, as the legacy
+    // screen says it. The messages node below prints and consumes it.
+    $cf_contact_off = function_exists('pg_cf_connect_to_contact_off') && pg_cf_connect_to_contact_off();
+    if ($cf_contact_off && $cf_liveform && $mode !== 'background') {
+        $cf_off_notice = lang('The connect to contact feature has been disabled for this visit to this form, so your contact information will not be prefilled and will not be updated.');
+        if (!in_array($cf_off_notice, $cf_liveform->get_notices(), true)) $cf_liveform->add_notice($cf_off_notice);
+    }
+
     // Validation errors come back on the liveform, not in $_SESSION['form_error']
     // - custom_form.php marks the offending field and redirects to send_to. The
     // messages node is what prints them, scoped to THIS form so a second form
@@ -4477,6 +4825,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
                      (function_exists('get_token_field') ? get_token_field() : '') .
                      '<input type="hidden" name="page_id" value="' . $form_page_id . '">' .
                      '<input type="hidden" name="send_to" value="' . h($cf_send_to) . '">' .
+                     ($cf_contact_off ? '<input type="hidden" name="connect_to_contact" value="false">' : '') .
                      ($cf_staff ? '<input type="hidden" name="office_use_only" value="true">' : '');
 
         $rendered = $form_open . $rendered . pg_cf_validation_script() . '</form>';
@@ -5031,4 +5380,129 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
     $html = trim(_render_tree_node($tree, 0, 0));
     $values = pg_sw_escape_token_values($values, array('__event_description', '__event_notes'));
     return str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
+}
+
+// ============================================================================
+// Edit chips — the pencil an editor sees on what they may edit
+// ============================================================================
+// The legacy edit mode drew a pencil on every region, product and comment
+// once a switch in the toolbar was on. A designed page has no such switch:
+// the page itself is edited in the visual editor, and what its widgets show
+// - a product, a product group, a submitted form, a comment - is edited in
+// the panel. So the pencil is simply there for a user who may edit that
+// record, in the record's top-left corner (the top-right is where a comment
+// keeps its share button), and it opens the record's edit screen, which
+// brings them back here.
+
+/**
+ * Whether this request draws edit chips: a signed-in user, and not a page
+ * drawn for the search index or the SEO score inside their request.
+ */
+function pg_sw_edit_chips_on()
+{
+    if ((function_exists('pg_seo_rendering') && pg_seo_rendering())
+        || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
+        return false;
+    }
+    return defined('USER_LOGGED_IN') && USER_LOGGED_IN === true && defined('USER_ID') && (int)USER_ID > 0;
+}
+
+/** Products and product groups: the rule the legacy catalog pencil used. */
+function pg_sw_can_edit_products()
+{
+    return pg_sw_edit_chips_on()
+        && ((defined('USER_ROLE') && (int)USER_ROLE < 3) || (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE === true));
+}
+
+/**
+ * Submitted forms of one custom form: the rule edit_submitted_form.php lets
+ * in without a form item view page - a manager, or a user who manages forms
+ * and may edit the form's folder.
+ */
+function pg_sw_can_edit_submitted_forms($custom_form_page_id)
+{
+    static $folder_ok = array();
+    if (!pg_sw_edit_chips_on()) return false;
+    if (defined('USER_ROLE') && (int)USER_ROLE <= 2) return true;
+    if (!(defined('USER_MANAGE_FORMS') && USER_MANAGE_FORMS === true)) return false;
+    $pid = (int)$custom_form_page_id;
+    if (!isset($folder_ok[$pid])) {
+        $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . $pid . "' LIMIT 1");
+        $folder_ok[$pid] = function_exists('check_edit_access') && (check_edit_access($folder) === true);
+    }
+    return $folder_ok[$pid];
+}
+
+/** A control-panel edit screen for one record, returning to this page. */
+function pg_sw_backend_edit_url($script, $id)
+{
+    $back = function_exists('get_request_uri') ? (string)get_request_uri() : '';
+    return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
+         . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
+         . '/' . $script . '?id=' . (int)$id
+         . ($back !== '' ? '&send_to=' . urlencode($back) : '');
+}
+
+/** The chips' stylesheet, written once per page with the first chip. */
+function pg_sw_edit_chip_css()
+{
+    return '<style>'
+        . '.pg-edit-host{position:relative}'
+        . '.pg-edit-chip{position:absolute;top:.5rem;left:.5rem;z-index:6;display:inline-flex;align-items:center;justify-content:center;'
+        .   'width:1.9rem;height:1.9rem;border-radius:50%;background:rgba(25,118,210,.92);color:#fff!important;text-decoration:none!important;'
+        .   'box-shadow:0 2px 6px rgba(0,0,0,.28);opacity:.55;transition:opacity .15s,transform .15s}'
+        . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1}'
+        . '.pg-edit-chip:hover{transform:scale(1.08)}'
+        . '.pg-edit-chip:focus-visible{outline:2px solid #fff;outline-offset:2px}'
+        . '.pg-edit-chip svg{width:.9rem;height:.9rem;pointer-events:none}'
+        . '.pg-edit-chip-ecommerce{background:rgba(85,139,47,.94)}'
+        . '.pg-edit-chip-forms{background:rgba(128,95,167,.94)}'
+        . '.pg-edit-chip-calendar{background:rgba(93,64,55,.94)}'
+        . '@media (hover:none){.pg-edit-chip{opacity:.9}}'
+        . '@media print{.pg-edit-chip{display:none}}'
+        . '</style>';
+}
+
+/**
+ * Put an edit chip in the first element of a rendered record and make that
+ * element its positioning box. A record whose first element cannot hold one
+ * - a void element, a table row, a link or button (a link in a link is not
+ * HTML) - is left as it is; its detail page carries the chip instead.
+ *
+ * @param string $html  one record's markup
+ * @param string $url   the edit screen
+ * @param string $title what the chip says to a screen reader and on hover
+ * @param string $tone  page | ecommerce | forms | calendar
+ */
+function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
+{
+    static $css_written = false;
+    if ($url === '' || !preg_match('/^(\s*(?:<!--.*?-->\s*)*)<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>/s', (string)$html, $m)) {
+        return $html;
+    }
+    $tag = strtolower($m[2]);
+    if (in_array($tag, array('a', 'button', 'img', 'input', 'br', 'hr', 'source', 'meta', 'link', 'area', 'col', 'embed',
+                             'wbr', 'track', 'param', 'form', 'script', 'style', 'template', 'tr', 'td', 'th',
+                             'thead', 'tbody', 'tfoot', 'select', 'textarea', 'svg', 'picture', 'video', 'iframe'), true)) {
+        return $html;
+    }
+    $attrs = $m[3];
+    if (preg_match('/\sclass\s*=\s*"[^"]*"/i', $attrs)) {
+        $attrs = preg_replace('/(\sclass\s*=\s*")([^"]*)"/i', '$1$2 pg-edit-host"', $attrs, 1);
+    } elseif (preg_match("/\\sclass\\s*=\\s*'[^']*'/i", $attrs)) {
+        $attrs = preg_replace("/(\\sclass\\s*=\\s*')([^']*)'/i", "\$1\$2 pg-edit-host'", $attrs, 1);
+    } else {
+        $attrs = rtrim($attrs, " \t\n\r/") . ' class="pg-edit-host"';
+    }
+    $tone = in_array($tone, array('page', 'ecommerce', 'forms', 'calendar'), true) ? $tone : 'page';
+    $chip = '<a class="pg-edit-chip pg-edit-chip-' . $tone . '" href="' . h($url) . '" title="' . h($title) . '" aria-label="' . h($title) . '" rel="nofollow">'
+          . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">'
+          . '<path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>'
+          . '</svg></a>';
+    $out = $m[1] . '<' . $m[2] . $attrs . '>' . $chip . substr((string)$html, strlen($m[0]));
+    if (!$css_written) {
+        $css_written = true;
+        $out = pg_sw_edit_chip_css() . $out;
+    }
+    return $out;
 }

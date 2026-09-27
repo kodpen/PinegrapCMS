@@ -57,7 +57,29 @@ function ws_avatar_url($row)
         return (string) $row['image'];
     }
 
+    // No picture: the letters of the name (includes/fn/contacts.php).
+    if (function_exists('pg_initials_avatar_url')) {
+        return pg_initials_avatar_url(pg_initials($row['first_name'] ?? '', $row['last_name'] ?? '', $row['username'] ?? ''), ws_avatar_kind($row), (string) ($row['id'] ?? ''));
+    }
+
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png';
+}
+
+/**
+ * What a person's picture is: their own (photo), the letters of their name
+ * in the address book (contact), or the letters of a login that has no name
+ * yet (user) - drawn as a square, so the missing name shows.
+ *
+ * @param array $row image, image_file_id, image_file_name, first_name, last_name
+ * @return string photo | contact | user
+ */
+function ws_avatar_kind($row)
+{
+    if ((((int) ($row['image_file_id'] ?? 0) > 0) && ((string) ($row['image_file_name'] ?? '') !== '')) || ((string) ($row['image'] ?? '') !== '')) {
+        return 'photo';
+    }
+
+    return ((trim((string) ($row['first_name'] ?? '')) !== '') || (trim((string) ($row['last_name'] ?? '')) !== '')) ? 'contact' : 'user';
 }
 
 /**
@@ -125,8 +147,30 @@ function ws_person_brief($row)
         'role'     => (int) $row['role'],
         'title'    => (string) ($row['title'] ?? ''),
         'avatar'   => ws_avatar_url($row),
+        'avatar_kind' => ws_avatar_kind($row),
         'presence' => ws_presence($row['online_timestamp'] ?? 0),
     );
+}
+
+/**
+ * The panel's screen for changing this person's account, for a reader who
+ * may change it - the rule edit_user.php applies: an administrator anyone, a
+ * designer or manager only somebody of a lower role. '' for everybody else.
+ *
+ * @param array $viewer
+ * @param array $person a brief
+ * @return string
+ */
+function ws_person_edit_url($viewer, $person)
+{
+    $mine = (int) ($viewer['role'] ?? 3);
+    $theirs = (int) ($person['role'] ?? 3);
+
+    if (($mine > 2) || ((int) ($person['id'] ?? 0) <= 0) || !empty($person['gone']) || (($mine > 0) && ($mine >= $theirs))) {
+        return '';
+    }
+
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_user.php?id=' . (int) $person['id'];
 }
 
 /**
@@ -217,8 +261,11 @@ function ws_people($user_ids)
                     'username' => '',
                     'role'     => 3,
                     'title'    => '',
-                    'avatar'   => PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
+                    'avatar'   => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url('?', 'user') : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
+                    'avatar_kind' => 'user',
                     'presence' => 'offline',
+                    // No account behind it any more: nothing to open.
+                    'gone'     => true,
                 );
             }
         }

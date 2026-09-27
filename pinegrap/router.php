@@ -73,21 +73,15 @@ mysqli_report(MYSQLI_REPORT_OFF);
 $router_connect_errno = 0;
 $router_connect_error = '';
 
-// if php version is bigger than 7 than try connect else use old methods
-if (defined('PHP_MAJOR_VERSION') && PHP_MAJOR_VERSION >= 7) {
-    try {
-        db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
-    } catch( Exception $e ) {
-        // Record and fall through. Reporting the error from inside the catch
-        // skipped the overload check below, which is what turned a transient
-        // "too many connections" into a hard error page on every request.
-        db::$con = false;
-        $router_connect_errno = (int) $e->getCode();
-        $router_connect_error = $e->getMessage();
-    }
-}else{
-    db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
-}
+// The guard retries a momentary refusal before anything is treated as an
+// outage, and hands the error back instead of reporting it from inside a
+// catch - that skipped the overload check below, which is what once turned a
+// transient "too many connections" into a hard error page on every request.
+// See pg_db_guard_connect().
+$router_connect = pg_db_guard_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
+db::$con = $router_connect[0];
+$router_connect_errno = (int) $router_connect[1];
+$router_connect_error = (string) $router_connect[2];
 
 // if the connection or selection of the database failed, then output error
 
@@ -106,7 +100,7 @@ if (!db::$con) {
     // as a broken site. Credentials and missing databases fall through to the
     // message below, because waiting does not fix those.
     if (pg_db_guard_is_overload($router_connect_errno)) {
-        pg_db_guard_trip();
+        pg_db_guard_trip($router_connect_errno);
         pg_db_guard_log('database unavailable (' . $router_connect_errno . '): ' . $router_connect_error);
         pg_db_guard_unavailable();
     }
@@ -332,29 +326,44 @@ if (mysqli_num_rows($result) > 0) {
     exit();
 }
 
-// Check if item is a short link.
-$query =
+// Check if item is a short link: by its name, or - a link that has a token
+// for its address (2026.4.5, 5.112) - by the SHA-256 of the token. The whole
+// row is read, so what that step added comes along where it exists and the
+// query is the same before it.
+$short_link_select =
     "SELECT
-        short_links.destination_type,
-        short_links.url,
-        short_links.tracking_code,
-        short_links.file_id,
+        short_links.*,
         page.page_name,
         product_groups.address_name AS product_group_address_name,
         products.address_name AS product_address_name
     FROM short_links
     LEFT JOIN page ON short_links.page_id = page.page_id
     LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
-    LEFT JOIN products ON short_links.product_id = products.id
+    LEFT JOIN products ON short_links.product_id = products.id";
+
+$query = $short_link_select . "
     WHERE short_links.name = '" . router_escape($item_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
 
+// Before that step there is no token_hash to look in and the query fails:
+// the name was all there was.
+if ((mysqli_num_rows($result) == 0) && (preg_match('/^[A-Za-z0-9_-]{43}$/', $item_name) == 1)) {
+    $token_result = mysqli_query(db::$con, $short_link_select . "
+        WHERE short_links.token_hash = '" . hash('sha256', $item_name) . "' AND short_links.name = ''");
 
+    if ($token_result) {
+        $result = $token_result;
+    }
+}
 
 // If short link was found, then process it.
 if (mysqli_num_rows($result) > 0) {
     
     $short_link = mysqli_fetch_assoc($result);
+
+    // Opened once, until a time, or a guest's way into the workspace: here it
+    // is decided whether this visit goes on to where the link leads.
+    router_short_link_gate($short_link, $item_name);
 
     // Prepare destination differently based on the destination type.
     switch ($short_link['destination_type']) {
@@ -454,7 +463,11 @@ if (mysqli_num_rows($result) > 0) {
                 $url .= '#' . $url_parts['fragment'];
             }
 
-            header('Location: ' . $url, true, 301);
+            // A link that closes is not remembered by the browser as a
+            // permanent move: the next visit has to ask again.
+            $permanent = ((($short_link['link_mode'] ?? 'permanent') === 'permanent') && ((int) ($short_link['expires_at'] ?? 0) === 0));
+
+            header('Location: ' . $url, true, $permanent ? 301 : 302);
             exit();
             break;
     }
@@ -469,6 +482,86 @@ exit();
 
 function router_escape($string) {
     return mysqli_real_escape_string(db::$con, $string);
+}
+
+/**
+ * A short link that is not simply there for good: opened once, until a time,
+ * or a guest's way into the workspace. Returns when the visit may go on to
+ * where the link leads; otherwise answers and ends the request.
+ *
+ * @param array  $short_link the row
+ * @param string $token      what was asked for: the token, for a link that has one
+ */
+function router_short_link_gate($short_link, $token)
+{
+    $mode = (string) ($short_link['link_mode'] ?? 'permanent');
+    $expires = (int) ($short_link['expires_at'] ?? 0);
+
+    if (($mode === 'permanent') && ($expires === 0) && ((string) $short_link['destination_type'] !== 'workspace_guest')) {
+        return;
+    }
+
+    $now = time();
+
+    // Nothing of such a link is kept by a browser or a proxy, indexed, or
+    // passed on to the next site as the referrer.
+    header('Cache-Control: no-store, private');
+    header('X-Robots-Tag: noindex, nofollow');
+    header('Referrer-Policy: no-referrer');
+
+    // A guest's way in: the page takes the token from behind the "#" and
+    // claims it with a request of its own, so a preview that fetches this
+    // address spends nothing and the token is in no later address or log.
+    if ((string) $short_link['destination_type'] === 'workspace_guest') {
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/workspace_guest.php#t=' . $token, true, 302);
+        exit();
+    }
+
+    if (($expires > 0) && ($expires <= $now)) {
+        router_short_link_gone('expired');
+    }
+
+    if ($mode === 'once') {
+
+        if ((int) ($short_link['used_at'] ?? 0) > 0) {
+            router_short_link_gone('used');
+        }
+
+        // A messenger drawing a preview of the link, a crawler or a HEAD
+        // request is answered without spending it: the first person to open
+        // the link is the one it is for.
+        $client = function_exists('waf_classify_bot') ? waf_classify_bot((string) ($_SERVER['HTTP_USER_AGENT'] ?? '')) : array('class' => 'human');
+
+        if ((($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') || ($client['class'] !== 'human')) {
+            header('Content-Type: text/html; charset=utf-8');
+            echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><title></title></head><body></body></html>';
+            exit();
+        }
+
+        // Spent by the first request that gets here: one UPDATE on the row
+        // that still has no used_at, so of two at once only one changes it.
+        mysqli_query(db::$con, "UPDATE short_links SET used_at = '" . $now . "', use_count = use_count + 1, last_used_at = '" . $now . "'
+            WHERE id = '" . (int) $short_link['id'] . "' AND used_at = 0");
+
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            router_short_link_gone('used');
+        }
+
+        return;
+    }
+
+    mysqli_query(db::$con, "UPDATE short_links SET use_count = use_count + 1, last_used_at = '" . $now . "' WHERE id = '" . (int) $short_link['id'] . "'");
+}
+
+/**
+ * A short link that no longer opens: to the page that says so.
+ *
+ * @param string $why used | expired
+ */
+function router_short_link_gone($why)
+{
+    header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/short_link_gone.php?r=' . (($why === 'used') ? 'used' : 'expired'), true, 302);
+    exit();
 }
 
 function router_get_request_url()

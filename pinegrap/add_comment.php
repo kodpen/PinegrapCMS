@@ -82,6 +82,18 @@ $comments_administrator_email_conditional_administrators = $row['comments_admini
 $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
 $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 
+// A page built in the visual editor shows a submitted form through its
+// form_item_view widget rather than a page type. For the checks below it is
+// a form item view page, and the widget's access setting is its submitter
+// security (see pg_sw_record_comment_context()).
+$comment_record = null;
+if (($page_type != 'form item view') && ($item_type == 'submitted_form') && function_exists('pg_sw_record_comment_context')) {
+    $comment_record = pg_sw_record_comment_context($page_id, $item_id);
+    if ($comment_record !== null) {
+        $page_type = 'form item view';
+    }
+}
+
 $comment_label = get_comment_label(array('label' => $comments_label));
 $output_comment_label = h($comment_label);
 $comment_label_lowercase = mb_strtolower($comment_label);
@@ -247,13 +259,23 @@ if ($item_type == 'submitted_form') {
         output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the submitted form could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
-    // Get submitter security for form item view.
-    $form_item_view = db_item(
-        "SELECT submitter_security
-        FROM form_item_view_pages
-        WHERE
-            (page_id = '" . escape($page_id) . "')
-            AND (collection = 'a')");
+    // Get submitter security for form item view. A designed page answers
+    // through its widget, by the same rule: the record has to be one the
+    // widget shows, to a visitor its access setting lets in.
+    if ($comment_record !== null) {
+        if ($comment_record['visible'] == false) {
+            log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$submitted_form['reference_code'] ))), $_SESSION['sessionusername']);
+            output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+        $form_item_view = array('submitter_security' => 0);
+    } else {
+        $form_item_view = db_item(
+            "SELECT submitter_security
+            FROM form_item_view_pages
+            WHERE
+                (page_id = '" . escape($page_id) . "')
+                AND (collection = 'a')");
+    }
 
     // If submitter security is enabled for the form item view,
     // then check if the viewer is authorized to view the submitted form.
@@ -845,7 +867,11 @@ if (count($administrator_email_addresses) > 0) {
 
 // if comment is published, and if this is a form item view, and if there is a page to send
 // then send e-mail to submitter letting them know a comment has been added
-if (($published == '1') && ($page_type == 'form item view') && ($comments_submitter_email_page_id != '0')) {
+// (not when the one writing is the submitter: nobody needs an e-mail about
+// their own reply)
+if (($published == '1') && ($page_type == 'form item view') && ($comments_submitter_email_page_id != '0')
+    && !(USER_LOGGED_IN && isset($submitted_form['submitter_user_id']) && ((int)$submitted_form['submitter_user_id'] > 0)
+         && ((int)USER_ID === (int)$submitted_form['submitter_user_id']))) {
     send_comment_email_to_custom_form_submitter($comment_id);
 }
 

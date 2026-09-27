@@ -30,8 +30,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * marked read by that, and the queued banner is dropped unsent.
  *
  * @param int    $user_id
- * @param string $kind     mention | assigned | completed | invited | note | note_shared
- * @param array  $data     channel_id, message_id, task_id, note_id, actor_id
+ * @param string $kind     mention | assigned | completed | invited | note | note_shared | note_updated | note_answer
+ * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner
  * @return int the inbox row
  */
 function ws_notify($user_id, $kind, $data)
@@ -72,7 +72,7 @@ function ws_notify($user_id, $kind, $data)
         ws_bell_add($user_id, $inbox_id);
     }
 
-    if ($inbox_id > 0) {
+    if (($inbox_id > 0) && empty($data['quiet'])) {
         include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
 
         if (function_exists('pg_push_enqueue')) {
@@ -84,7 +84,7 @@ function ws_notify($user_id, $kind, $data)
             // the queue is worked right here instead of waiting for the
             // scheduled job, which not every site runs every minute.
             $looking = ws_seen_recently($user_id);
-            $delay = (($kind === 'mention') && $looking) ? pg_push_chat_delay() : 0;
+            $delay = (in_array($kind, array('mention', 'guest_message'), true) && $looking) ? pg_push_chat_delay() : 0;
 
             pg_push_enqueue($user_id, 'ws', $inbox_id, $delay);
 
@@ -245,6 +245,73 @@ function ws_inbox_describe($viewer, $row)
                 'url'   => $base . 'workspace_notes.php' . ($note ? '?note=' . (int) $note['id'] : ''),
                 'icon'  => 'bi-journal-arrow-down',
             );
+
+        case 'note_updated':
+            $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} changed a note', 'vars' => $actor)),
+                'body'  => $note ? ws_note_title($viewer, $note) : '',
+                'url'   => $base . 'workspace_notes.php' . ($note ? '?note=' . (int) $note['id'] : ''),
+                'icon'  => 'bi-journal-text',
+            );
+
+        // A scheduled action letting people know (scheduled.php): its words sit
+        // beside the inbox row.
+        case 'scheduled_notice':
+            $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
+            $readable = $notice && ((int) $notice['channel_id'] > 0) && ((int) $notice['message_id'] > 0) && ws_can_read_channel($viewer, ws_channel((int) $notice['channel_id']));
+
+            return array(
+                'title' => $notice ? (string) $notice['name'] : lang('Scheduled action'),
+                'body'  => $notice ? (string) $notice['text'] : '',
+                'url'   => $base . ($readable ? 'workspace.php?channel=' . (int) $notice['channel_id'] . '&message=' . (int) $notice['message_id'] : 'workspace.php'),
+                'icon'  => 'bi-alarm',
+            );
+
+        case 'scheduled_failed':
+            return array(
+                'title' => lang('A scheduled action you wrote failed'),
+                'body'  => $channel_name,
+                'url'   => $base . (((int) $row['message_id'] > 0) ? 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'] : 'workspace.php?view=scheduled'),
+                'icon'  => 'bi-alarm',
+            );
+
+        case 'note_answer':
+            $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang('Claude answered in your note'),
+                'body'  => $note ? ws_note_title($viewer, $note) : '',
+                'url'   => $base . 'workspace_notes.php' . ($note ? '?note=' . (int) $note['id'] : ''),
+                'icon'  => 'bi-stars',
+            );
+
+        // The guest of a room wrote (guests.php): one line until the room is
+        // read, with the last of what they wrote.
+        case 'guest_message':
+            $guest = function_exists('ws_guest_for_channel') ? ws_guest_for_channel((int) $row['channel_id']) : null;
+            $last = (int) db_value("SELECT id FROM ws_messages
+                WHERE channel_id = '" . (int) $row['channel_id'] . "' AND sender_kind = 'guest' AND deleted_at = 0
+                ORDER BY id DESC LIMIT 1");
+            $message = ($last > 0) ? ws_message($last) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} wrote in {var:2}', 'vars' => array($guest ? (string) $guest['name'] : lang('Guest'), $channel_name))),
+                'body'  => $message ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $message['body'])), 0, 140) : '',
+                'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . (($last > 0) ? '&message=' . $last : ''),
+                'icon'  => 'bi-door-open',
+            );
+
+        case 'note_answer_ai':
+            $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang('Pinegrap AI answered in your note'),
+                'body'  => $note ? ws_note_title($viewer, $note) : '',
+                'url'   => $base . 'workspace_notes.php' . ($note ? '?note=' . (int) $note['id'] : ''),
+                'icon'  => 'bi-cpu',
+            );
     }
 
     return array('title' => lang('Workspace'), 'body' => '', 'url' => $base . 'workspace.php', 'icon' => 'bi-bell');
@@ -323,8 +390,8 @@ function ws_inbox_row_visible($viewer, $row)
         }
     }
 
-    // A note shared is there as long as it is shared with the person.
-    if ($row['kind'] === 'note_shared') {
+    // A line about a note is there as long as the person may read the note.
+    if (in_array($row['kind'], array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai'), true)) {
         $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
 
         if (!$note || (ws_note_access($viewer, $note) === '')) {

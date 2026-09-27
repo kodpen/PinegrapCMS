@@ -116,12 +116,24 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         );
     }
 
-    // ── Tasks: on their due day, or their start day when they have none ──
+    // ── Tasks: every day they cover ──
+    //
+    // A task covers its planned window (ws_task_window(): start to due, the
+    // one day it has when only one is set, its creation day when it has
+    // neither). One that is still open once that window is behind it runs on
+    // to today; a closed one ends on the day it was closed. A task covering a
+    // single day sits in that day's list; a longer one is sent once, in
+    // `spans`, and the screen lays it across its days. The month's figures
+    // still count each task once, on the day it is filed under: due, else
+    // start, else creation.
 
     $rows = (array) db_items("SELECT * FROM ws_tasks
         WHERE (due_date BETWEEN '" . e($from) . "' AND '" . e($to) . "')
-        OR (due_date IS NULL AND start_date BETWEEN '" . e($from) . "' AND '" . e($to) . "')
+        OR (start_date BETWEEN '" . e($from) . "' AND '" . e($to) . "')
         OR (due_date IS NULL AND start_date IS NULL AND created_at BETWEEN '" . (int) $from_ts . "' AND '" . (int) $to_ts . "')
+        OR (start_date <= '" . e($to) . "' AND due_date >= '" . e($from) . "')
+        OR ((COALESCE(start_date, due_date) <= '" . e($to) . "' OR (start_date IS NULL AND due_date IS NULL AND created_at <= '" . (int) $to_ts . "'))
+            AND ((status IN ('todo', 'doing', 'waiting') AND '" . e($today) . "' >= '" . e($from) . "') OR completed_at >= '" . (int) $from_ts . "'))
         ORDER BY FIELD(priority, 'urgent', 'high', 'normal', 'low'), id
         LIMIT 3000");
 
@@ -134,6 +146,8 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
     $assignees = ws_task_assignees_map($ids);
     $department_people = ((int) $department_id > 0) ? ws_department_member_ids($department_id) : array();
     $month_tasks = array();
+    $spans = array();
+    $filed = array();
 
     foreach ($rows as $row) {
         $task_id = (int) $row['id'];
@@ -153,30 +167,53 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
 
         $due = (string) ($row['due_date'] ?? '');
         $start = (string) ($row['start_date'] ?? '');
-        $date = ($due !== '' && $due !== '0000-00-00') ? $due
-            : (($start !== '' && $start !== '0000-00-00') ? $start : date('Y-m-d', (int) $row['created_at']));
+        $due = ($due === '0000-00-00') ? '' : $due;
+        $start = ($start === '0000-00-00') ? '' : $start;
+        $created = date('Y-m-d', (int) $row['created_at']);
+        $date = ($due !== '') ? $due : (($start !== '') ? $start : $created);
+        $open = ws_task_is_open($row['status']);
 
-        if (!isset($days[$date])) {
+        $window = ws_task_window($row);
+        $first = $window ? $window[0] : $created;
+        $last = $window ? $window[1] : $first;
+
+        if ($open) {
+            if (($last < $today) && ($first <= $today)) {
+                $last = $today;
+            }
+        } elseif ((int) $row['completed_at'] > 0) {
+            $last = max($first, date('Y-m-d', (int) $row['completed_at']));
+        }
+
+        if (isset($days[$date])) {
+            $filed[$date] = ($filed[$date] ?? 0) + 1;
+
+            if (substr($date, 0, 7) === $month) {
+                $month_tasks[] = array('row' => $row, 'people' => $people, 'date' => $date, 'open' => $open);
+            }
+        }
+
+        if (($first > $to) || ($last < $from)) {
             continue;
         }
 
-        $open = ws_task_is_open($row['status']);
-
-        $days[$date]['tasks'][] = array(
+        $item = array(
             'id'       => $task_id,
             'number'   => ws_task_number($task_id),
             'title'    => (string) $row['title'],
             'status'   => (string) $row['status'],
             'priority' => (string) $row['priority'],
             'open'     => $open,
-            'overdue'  => $open && ($date < $today) && ($due !== ''),
-            'dated'    => ($due !== '' && $due !== '0000-00-00'),
-            'due_date' => ($due !== '' && $due !== '0000-00-00') ? $due : '',
+            'overdue'  => $open && ($due !== '') && ($due < $today),
+            'dated'    => ($due !== ''),
+            'due_date' => $due,
             'people'   => array_values($people),
         );
 
-        if (substr($date, 0, 7) === $month) {
-            $month_tasks[] = array('row' => $row, 'people' => $people, 'date' => $date, 'open' => $open);
+        if ($first === $last) {
+            $days[$first]['tasks'][] = $item;
+        } else {
+            $spans[] = $item + array('span_start' => $first, 'span_end' => $last);
         }
     }
 
@@ -412,9 +449,7 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         $totals['channels'] += count($day['channels']);
         $totals['messages'] += $day['messages'];
 
-        $existing = count(array_filter($day['tasks'], function ($task) {
-            return empty($task['upcoming']);
-        }));
+        $existing = (int) ($filed[$date] ?? 0);
         $weight = $existing + $day['messages'];
 
         if (($weight > 0) && (($busiest === null) || ($weight > $busiest['weight']))) {
@@ -453,6 +488,7 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         'next'         => date('Y-m', strtotime($first . ' 12:00:00 +1 month')),
         'this_month'   => date('Y-m'),
         'weeks'        => $weeks,
+        'spans'        => $spans,
         'weekdays'     => array_values(ws_weekday_short_names()),
         'people'       => $people,
         'most'         => $most,
