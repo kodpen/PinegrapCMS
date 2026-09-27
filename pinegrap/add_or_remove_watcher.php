@@ -63,6 +63,17 @@ $comments = $row['comments'];
 $comments_label = $row['comments_label'];
 $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 
+// A page built in the visual editor shows a submitted form through its
+// form_item_view widget rather than a page type: it is a form item view page
+// here, and the widget's access setting is its submitter security.
+$watcher_record = null;
+if (($page_type != 'form item view') && ($item_type == 'submitted_form') && function_exists('pg_sw_record_comment_context')) {
+    $watcher_record = pg_sw_record_comment_context($page_id, $item_id);
+    if ($watcher_record !== null) {
+        $page_type = 'form item view';
+    }
+}
+
 // if comments are disabled for the page, log and output error
 if ($comments == 0) {
     log_activity(lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because comments are disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
@@ -344,13 +355,18 @@ if ($management == TRUE) {
                 output_error(lang('Sorry, we could not add you as a watcher, because the submitted form could not be found. <a href="javascript:history.go(-1);">Go back</a>.'));
             }
 
-            // Get submitter security for form item view.
-            $form_item_view = db_item(
-                "SELECT submitter_security
-                FROM form_item_view_pages
-                WHERE
-                    (page_id = '" . escape($page_id) . "')
-                    AND (collection = 'a')");
+            // Get submitter security for form item view. A designed page
+            // answers through its widget, by the same rule.
+            if ($watcher_record !== null) {
+                $form_item_view = array('submitter_security' => ($watcher_record['visible'] ? 0 : 1));
+            } else {
+                $form_item_view = db_item(
+                    "SELECT submitter_security
+                    FROM form_item_view_pages
+                    WHERE
+                        (page_id = '" . escape($page_id) . "')
+                        AND (collection = 'a')");
+            }
 
             // If submitter security is enabled for the form item view,
             // then check if the viewer is authorized to view the submitted form.

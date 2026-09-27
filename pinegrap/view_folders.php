@@ -413,6 +413,22 @@ $explorer_lang = array(
     'short_link_named' => lang('The short link has been created. Now give it the name people will type.'),
     'short_link_name_note' => lang('What people type after the address of the site. Renaming it changes the link; the old one stops working.'),
     'short_link_delete_confirm' => lang('{var:1} short link(s) will be deleted for good. Short links have no recycle bin.'),
+    'link_mode' => lang('How it opens'),
+    'link_mode_permanent' => lang('Permanent: an address you name, for good'),
+    'link_mode_once' => lang('One-time: a generated address, for the first visit only'),
+    'link_mode_timed' => lang('Timed: an address you name, until a time you choose'),
+    'link_duration' => lang('Valid for'),
+    'link_renew' => lang('New validity'),
+    'link_renew_keep' => lang('Leave as it is'),
+    'link_state' => lang('Status'),
+    'link_uses' => lang('Times opened'),
+    'link_once_title' => lang('One-time link'),
+    'link_once_note' => lang('This address is shown only now. Copy it and send it; the first visit spends it.'),
+    'link_copy' => lang('Copy'),
+    'link_copied' => lang('Copied'),
+    'link_done' => lang('Close'),
+    'link_no_rename' => lang('A link with a generated address has no name to change.'),
+    'link_no_visit' => lang('The address of a one-time link is shown only when it is made.'),
     'select_one' => lang('Select'),
     'create_backup' => lang('Create Backup'),
     'backing_up' => lang('Backing up'),
@@ -1282,11 +1298,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   background: color-mix(in srgb, var(--bs-body-bg) 92%, #000); }
 #explorer_quicklook.d-none { display: none !important; }
 #explorer_quicklook .ql-bar { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
-  border-bottom: 1px solid var(--bs-border-color-translucent); }
+  border-bottom: 1px solid var(--bs-border-color-translucent); position: relative; z-index: 3; }
 #explorer_quicklook .ql-name { font-weight: 600; }
 #explorer_quicklook .ql-meta { color: var(--bs-secondary-color); font-size: .8rem; }
 #explorer_quicklook .ql-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
-  padding: 1rem; position: relative; }
+  padding: 1rem; position: relative; overflow: hidden; }
+/* The media box takes the whole stage. Sized by its content it left a page or
+   PDF frame at the iframe default (300 x 150) and gave a large picture no
+   height to be fitted into, so it spilled over the bar and its buttons. */
+#quicklook_media { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 #explorer_quicklook .ql-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: .5rem; }
 #explorer_quicklook .ql-stage iframe { width: 100%; height: 100%; border: 0; border-radius: .5rem; background: #fff; }
 #explorer_quicklook .ql-stage video { max-width: 100%; max-height: 100%; border-radius: .5rem; }
@@ -1967,7 +1987,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     </div>
     <div class="ql-stage" id="quicklook_stage">
         <button type="button" class="ql-nav ql-prev" id="quicklook_prev" title="<?php echo lang('Previous'); ?>"><i class="bi bi-chevron-left"></i></button>
-        <div id="quicklook_media" class="d-flex align-items-center justify-content-center" style="max-width:100%;max-height:100%;"></div>
+        <div id="quicklook_media" class="d-flex align-items-center justify-content-center"></div>
         <button type="button" class="ql-nav ql-next" id="quicklook_next" title="<?php echo lang('Next'); ?>"><i class="bi bi-chevron-right"></i></button>
     </div>
     <div class="ql-hint"><?php echo lang('Space closes, the arrow keys walk the folder'); ?></div>
@@ -6443,12 +6463,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<tr><th>' + esc(L.destination_type) + '</th><td>' + esc(shortLinkTypeLabel(item.destination_type)) + '</td></tr>' +
                 '<tr><th>' + esc(L.destination) + '</th><td class="text-break">' + esc(item.destination || '') + '</td></tr>' +
                 (item.tracking_code ? ('<tr><th>' + esc(L.tracking_code) + '</th><td><code>' + esc(item.tracking_code) + '</code></td></tr>') : '') +
+                (item.link_note ? ('<tr><th>' + esc(L.link_state) + '</th><td>' + esc(item.link_note) + '</td></tr>') : '') +
+                ((item.link_mode && item.link_mode !== 'permanent') ? ('<tr><th>' + esc(L.link_uses) + '</th><td>' + esc(String(item.use_count || 0)) + '</td></tr>') : '') +
                 (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>') : '');
 
             pane.innerHTML =
                 '<div class="text-center my-3">' + shortLinkIconHtml(item, true) + '</div>' +
-                '<div class="text-center mb-3"><a class="btn btn-sm btn-outline-primary" href="' + esc(item.url) + '" target="_blank" rel="noopener">' +
-                    '<span class="bi bi-box-arrow-up-right me-1"></span>' + esc(L.visit) + '</a> ' +
+                '<div class="text-center mb-3">' + (item.url ? ('<a class="btn btn-sm btn-outline-primary" href="' + esc(item.url) + '" target="_blank" rel="noopener">' +
+                    '<span class="bi bi-box-arrow-up-right me-1"></span>' + esc(L.visit) + '</a> ') : '') +
                     '<button type="button" class="btn btn-sm btn-outline-secondary" data-role="short-link-edit">' +
                     '<span class="bi bi-pencil me-1"></span>' + esc(L.edit) + '</button></div>' +
                 '<table class="table table-sm"><tbody>' + shortLinkRows + '</tbody></table>';
@@ -7645,7 +7667,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 openBulkProductsPanel(catalogTargets(item).filter(function (each) { return each.kind === 'product'; }));
                 break;
             case 'new_short_link': openShortLinkWizard(); break;
-            case 'short_link_visit': if (item) { window.open(item.url, '_blank'); } break;
+            // A one-time link's address was shown once, when it was made.
+            case 'short_link_visit': if (item && item.url) { window.open(item.url, '_blank'); } else if (item) { toast(L.link_no_visit, false); } break;
             case 'short_link_edit': if (item) { openShortLinkWizard(item); } break;
             // catalogTargets() is "the selection, or the row that was clicked":
             // the same rule the store uses. Written out longhand here it read
@@ -8655,6 +8678,57 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // than to make one. Null means it is making a new link.
     var shortLinkEditing = null;
 
+    // The window is showing the address of the one-time link just made.
+    var shortLinkResult = false;
+
+    // The address of a one-time link is shown once, when it is made: the
+    // server keeps only its hash. Copied from here, or lost.
+    function showShortLinkAddress(address) {
+
+        var body = document.getElementById('short_link_modal_body');
+
+        body.innerHTML =
+            '<p class="mb-2">' + esc(L.link_once_note) + '</p>' +
+            '<div class="input-group">' +
+                '<input type="text" class="form-control font-monospace" id="sl_address" readonly value="' + esc(address) + '" />' +
+                '<button type="button" class="btn btn-outline-primary" id="sl_address_copy"><span class="bi bi-clipboard me-1"></span>' + esc(L.link_copy) + '</button>' +
+            '</div>';
+
+        document.getElementById('short_link_modal_label').innerHTML =
+            '<span class="bi bi-link-45deg me-2"></span>' + esc(L.link_once_title);
+
+        document.getElementById('short_link_create_button').innerHTML =
+            '<span class="bi bi-check-lg me-1"></span>' + esc(L.link_done);
+
+        shortLinkResult = true;
+
+        var field = document.getElementById('sl_address');
+
+        field.addEventListener('focus', function () { field.select(); });
+
+        document.getElementById('sl_address_copy').addEventListener('click', function () {
+
+            var button = this;
+            var done = function () {
+                button.innerHTML = '<span class="bi bi-check2 me-1"></span>' + esc(L.link_copied);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(address).then(done, function () { field.select(); });
+            } else {
+                field.select();
+            }
+        });
+
+        // Back on the list once the window closes, with the new link in it.
+        document.getElementById('short_link_modal').addEventListener('hidden.bs.modal', function once() {
+            this.removeEventListener('hidden.bs.modal', once);
+            shortLinkResult = false;
+
+            if (insideShortLinks()) { reload(); } else { enterShortLinks(); }
+        });
+    }
+
     function shortLinkIds(items) {
         return (items || [])
             .filter(function (entry) { return (entry && entry.short_link); })
@@ -8742,6 +8816,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function beginShortLinkRename(item) {
+
+        if (item.token) { toast(L.link_no_rename, false); return; }
 
         var element = document.querySelector('#explorer_content .explorer-item[data-kind="' + item.kind + '"][data-id="' + item.id + '"] [data-role="name"]');
 
@@ -8918,7 +8994,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // the other way round: its name is the first thing about it, and
             // an operator looking for "rename" opens this window before
             // reaching for the right button.
-            var nameHtml = shortLinkEditing
+            var nameHtml = (shortLinkEditing && !shortLinkEditing.token)
                 ? ('<div class="mb-3">' +
                         '<label class="form-label" for="sl_name">' + esc(L.name) + '</label>' +
                         '<input type="text" class="form-control" id="sl_name" maxlength="100" value="' + esc(shortLinkEditing.name || '') + '" />' +
@@ -8926,9 +9002,45 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '</div>')
                 : '';
 
+            // How it may be opened (2026.4.5, 5.112): chosen when it is
+            // made; a timed one can be given a new time later.
+            var modesHtml = '';
+            var durationOptions = (shortLinkOptions.durations || []).map(function (option) {
+                return '<option value="' + esc(option.v) + '">' + esc(option.t) + '</option>';
+            }).join('');
+
+            if (!shortLinkEditing && shortLinkOptions.modes) {
+                modesHtml =
+                    '<div class="mb-3">' +
+                        '<label class="form-label" for="sl_mode">' + esc(L.link_mode) + '</label>' +
+                        '<select class="form-select" id="sl_mode">' +
+                            '<option value="permanent">' + esc(L.link_mode_permanent) + '</option>' +
+                            '<option value="once">' + esc(L.link_mode_once) + '</option>' +
+                            '<option value="timed">' + esc(L.link_mode_timed) + '</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="mb-3 d-none" id="sl_duration_wrap">' +
+                        '<label class="form-label" for="sl_duration">' + esc(L.link_duration) + '</label>' +
+                        '<select class="form-select" id="sl_duration">' + durationOptions + '</select>' +
+                    '</div>';
+            } else if (shortLinkEditing && (shortLinkEditing.link_mode && shortLinkEditing.link_mode !== 'permanent')) {
+                modesHtml =
+                    '<div class="alert alert-light border small py-2 mb-3">' +
+                        '<span class="bi ' + ((shortLinkEditing.link_state === 'open') ? 'bi-hourglass-split' : 'bi-slash-circle') + ' me-1"></span>' +
+                        esc(shortLinkEditing.link_note || '') +
+                    '</div>' +
+                    ((shortLinkEditing.link_mode === 'timed')
+                        ? ('<div class="mb-3">' +
+                                '<label class="form-label" for="sl_renew">' + esc(L.link_renew) + '</label>' +
+                                '<select class="form-select" id="sl_renew"><option value="">' + esc(L.link_renew_keep) + '</option>' + durationOptions + '</select>' +
+                            '</div>')
+                        : '');
+            }
+
             body.innerHTML =
                 '<p class="form-text mt-0">' + esc(L.short_links_note) + '</p>' +
                 nameHtml +
+                modesHtml +
                 '<div class="mb-3">' +
                     '<label class="form-label" for="sl_type">' + esc(L.destination_type) + '</label>' +
                     '<select class="form-select" id="sl_type">' +
@@ -8950,9 +9062,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             document.getElementById('sl_type').addEventListener('change', renderShortLinkFields);
 
+            var modePick = document.getElementById('sl_mode');
+
+            if (modePick) {
+                modePick.addEventListener('change', function () {
+                    document.getElementById('sl_duration_wrap').classList.toggle('d-none', modePick.value !== 'timed');
+                });
+            }
+
             document.getElementById('short_link_modal_label').innerHTML =
                 '<span class="bi bi-link-45deg me-2"></span>' +
                 esc(shortLinkEditing ? (L.edit + ' — ' + shortLinkEditing.name) : L.short_link);
+
+            shortLinkResult = false;
 
             document.getElementById('short_link_create_button').innerHTML =
                 shortLinkEditing
@@ -8998,11 +9120,22 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (response.status !== 'success') { toast(response.message || L.request_failed, false); return; }
 
             shortLinkOptions = response.options || {};
+
+            // Once or until a time (2026.4.5, 5.112), when the site has them.
+            shortLinkOptions.modes = !!response.modes;
+            shortLinkOptions.durations = response.durations || [];
             draw();
         });
     }
 
     function submitShortLinkWizard() {
+
+        // The window is showing the address of a new one-time link: the
+        // button closes it.
+        if (shortLinkResult) {
+            hideModal(shortLinkModal, 'short_link_modal');
+            return;
+        }
 
         if (shortLinkSaving) { return; }
 
@@ -9022,6 +9155,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             tracking_code: value('sl_tracking'),
             name: shortLinkEditing ? value('sl_name') : ''
         };
+
+        if (shortLinkEditing && shortLinkEditing.token) { delete payload.name; }
+
+        if (!shortLinkEditing && document.getElementById('sl_mode')) {
+            payload.link_mode = value('sl_mode');
+            payload.duration = value('sl_duration');
+        }
+
+        if (shortLinkEditing && document.getElementById('sl_renew')) {
+            payload.renew = value('sl_renew');
+        }
 
         // Only what this type actually uses. Sending every field on every save
         // meant a value left in a list the chosen type does not read could
@@ -9080,6 +9224,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     product_id: 'sl_product',
                     url: 'sl_url',
                     file_id: 'sl_file',
+                    duration: 'sl_duration',
                     destination_type: 'sl_type'
                 };
 
@@ -9091,6 +9236,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             error.classList.add('d-none');
+
+            // A one-time link: its address, this once, in the same window.
+            if (response.token_url) {
+                showShortLinkAddress(response.token_url);
+                return;
+            }
 
             hideModal(shortLinkModal, 'short_link_modal');
 

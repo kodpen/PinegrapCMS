@@ -16,9 +16,10 @@
  * this one stays a table, the way schema.php is a table.
  *
  * Two permissions, mirroring the panel: 'erp' is the ledger - accounts,
- * invoices, delivery notes, expenses - and 'erp_cash' is the money - receipts,
- * payments and the tills - because in the panel the till is a separate right
- * and an application must not hold more than its owner could delegate. An
+ * invoices, delivery notes, expenses, quotes, stock and the reports - and
+ * 'erp_cash' is the money - receipts, payments, the tills and the cheques and
+ * notes - because in the panel the till is a separate right and an
+ * application must not hold more than its owner could delegate. An
  * expense is recorded with the first; paying it, or cancelling one that was
  * paid, moves a till and needs the second as well.
  *
@@ -147,6 +148,14 @@ function erp_openapi_objects()
         'ErpDocument' => 'erp_api_document_schema',
         'ErpExpense' => 'erp_api_expense_schema',
         'ErpExpenseCategory' => 'erp_api_expense_category_schema',
+        'ErpQuote' => 'erp_api_quote_schema',
+        'ErpCheque' => 'erp_api_cheque_schema',
+        'ErpStockLevel' => 'erp_api_stock_level_schema',
+        'ErpStockMove' => 'erp_api_stock_move_schema',
+        'ErpStockCount' => 'erp_api_stock_count_schema',
+        'ErpStockCountItem' => 'erp_api_stock_count_item_schema',
+        'ErpAgingReport' => 'erp_api_aging_report_schema',
+        'ErpVatReport' => 'erp_api_vat_report_schema',
     );
 }
 
@@ -662,6 +671,173 @@ function erp_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'required' => true, 'description' => 'The file itself, base64 encoded.'),
                 array('name' => 'replace', 'in' => 'body', 'type' => 'bool', 'description' => 'Take this file in place of the one kept. Off by default.'),
+            ),
+        ),
+
+        /* ----- Quotes ------------------------------------------------------ */
+
+        array(
+            'id' => 'erp.quotes.list',
+            'method' => 'GET',
+            'path' => '/erp/quotes',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_quotes_list',
+            'returns' => array('list' => 'ErpQuote'),
+            'summary' => 'List quotes',
+            'description' => 'Priced offers to customers, with their lines and totals. A quote moves no money, no stock and no tax; once the customer says yes it becomes an invoice draft, and invoice_id then names it. status is what is stored; state is what the quote is today: an open quote past valid_until is expired, and an invoiced one whose draft was deleted reads as accepted again. The status filter works on state. Cursor paged by the moment the record last changed.',
+            'params' => array_merge(array(
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'expired', 'accepted', 'rejected', 'invoiced', 'cancelled'), 'description' => 'The state as the panel shows it: open means still running, expired means open but past valid_until.'),
+                array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+                array('name' => 'number', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Exact match on the full quote number.'),
+                array('name' => 'issued_from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Quote date on or after this day.'),
+                array('name' => 'issued_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Quote date on or before this day.'),
+                array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only quotes changed at or after this moment.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.quotes.get',
+            'method' => 'GET',
+            'path' => '/erp/quotes/{id}',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_quotes_get',
+            'returns' => 'ErpQuote',
+            'summary' => 'One quote',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        /* ----- Cheques and notes ------------------------------------------- */
+
+        array(
+            'id' => 'erp.cheques.list',
+            'method' => 'GET',
+            'path' => '/erp/cheques',
+            'scope' => 'erp_cash:read',
+            'handler' => 'erp_api_cheques_list',
+            'returns' => array('list' => 'ErpCheque'),
+            'summary' => 'List cheques and promissory notes',
+            'description' => 'Cheques and notes taken from customers (direction received) and given to suppliers (direction given), with where each one is now: in the portfolio, at the bank, collected, passed on, bounced, given or paid. The money of every step is a till movement of its own; open_cash_id is the receipt or payment that recorded the cheque, close_cash_id the movement that closed it. Cursor paged by the moment the record last changed.',
+            'params' => array_merge(array(
+                array('name' => 'direction', 'in' => 'query', 'type' => 'enum', 'values' => array('received', 'given')),
+                array('name' => 'kind', 'in' => 'query', 'type' => 'enum', 'values' => array('cheque', 'note')),
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'portfolio', 'deposited', 'collected', 'endorsed', 'bounced', 'given', 'paid'), 'description' => 'open means still waiting: in the portfolio, at the bank, or given and not yet paid.'),
+                array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+                array('name' => 'due_from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Due on or after this day.'),
+                array('name' => 'due_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Due on or before this day.'),
+                array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only cheques and notes changed at or after this moment.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.cheques.get',
+            'method' => 'GET',
+            'path' => '/erp/cheques/{id}',
+            'scope' => 'erp_cash:read',
+            'handler' => 'erp_api_cheques_get',
+            'returns' => 'ErpCheque',
+            'summary' => 'One cheque or promissory note',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        /* ----- Stock ------------------------------------------------------- */
+
+        array(
+            'id' => 'erp.stock.levels',
+            'method' => 'GET',
+            'path' => '/erp/stock/levels',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_stock_levels',
+            'returns' => array('list' => 'ErpStockLevel'),
+            'summary' => 'Stock levels against their minimum',
+            'description' => 'The products that track stock, with the count the store sells from and the minimum set for each in the ERP. low is true when a minimum is set and the count is at or below it. A product without a minimum has minimum 0 and is never low. Cursor paged by product id.',
+            'params' => array_merge(array(
+                array('name' => 'low', 'in' => 'query', 'type' => 'bool', 'description' => 'Only products at or below their minimum.'),
+                array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the product code or its name.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.stock.moves',
+            'method' => 'GET',
+            'path' => '/erp/stock/moves',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_stock_moves',
+            'returns' => array('list' => 'ErpStockMove'),
+            'summary' => 'Stock movements from documents',
+            'description' => 'What purchase invoices, typed sales invoices, their returns and their cancellations did to stock and cost: one row per document line. unit_cost and cost_total are in the store currency. A sales invoice written from an order carries a movement for its cost only - the order already took the goods out - and says so with stock_effect none. Stock counts are not movements and do not appear here; see /erp/stock-counts. Cursor paged by id, oldest first.',
+            'params' => array_merge(array(
+                array('name' => 'product_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+                array('name' => 'invoice_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+                array('name' => 'kind', 'in' => 'query', 'type' => 'enum', 'values' => array('purchase', 'sale', 'purchase_return', 'sales_return', 'cancel')),
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Document date on or after this day.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Document date on or before this day.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.stock_counts.list',
+            'method' => 'GET',
+            'path' => '/erp/stock-counts',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_stock_counts_list',
+            'returns' => array('list' => 'ErpStockCount'),
+            'summary' => 'List stock counts',
+            'description' => 'The shelf counts taken in the ERP: open while counting, applied once the store\'s stock was set to what was counted, or cancelled. items is null in the list, which carries line_count; read one count for its lines. Cursor paged by the moment the record last changed.',
+            'params' => array_merge(array(
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'applied', 'cancelled')),
+                array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only counts changed at or after this moment.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.stock_counts.get',
+            'method' => 'GET',
+            'path' => '/erp/stock-counts/{id}',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_stock_counts_get',
+            'returns' => 'ErpStockCount',
+            'summary' => 'One stock count with its lines',
+            'description' => 'The count and every product on it. stock_before is what the store had when the count was applied and difference is counted less that; both are null until the count is applied. stock_now is the product\'s count today.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        /* ----- Reports ----------------------------------------------------- */
+
+        array(
+            'id' => 'erp.reports.aging',
+            'method' => 'GET',
+            'path' => '/erp/reports/aging',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_reports_aging',
+            'returns' => 'ErpAgingReport',
+            'summary' => 'Receivables or payables by age',
+            'description' => 'The open invoices as they stood on as_of, added up by how far past their due date they were: not yet due, 1-30, 31-60, 61-90 and over 90 days. Only the payments and returns dated on or before as_of are taken off, so a month end asked for later gives that month end\'s position. Amounts are in the store currency at the booked rates, the figures the account balances are made of; accounts are listed largest claim first. The same figures as the panel\'s aging report.',
+            'params' => array(
+                array('name' => 'direction', 'in' => 'query', 'type' => 'enum', 'values' => array('sales', 'purchase'), 'default' => 'sales', 'description' => 'sales for what customers owe, purchase for what the store owes suppliers.'),
+                array('name' => 'as_of', 'in' => 'query', 'type' => 'datetime', 'description' => 'The day the position is taken on. Today when left out.'),
+                array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One account only.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.reports.vat',
+            'method' => 'GET',
+            'path' => '/erp/reports/vat',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_reports_vat',
+            'returns' => 'ErpVatReport',
+            'summary' => 'The VAT report of a period',
+            'description' => 'The tax the sales of a period carried less the sales returns (calculated), the tax of the purchases less the returns to suppliers plus the tax on expenses that is taken back (deductible), and the difference - the same figures as the panel\'s tax report and the accountant\'s pack. Broken down by kind of document, by rate, by withholding code and by month. Everything is in the store currency; drafts and cancelled documents count for nothing, and cancelled says how many were left out. Name a month, or from and to; the current month when neither is sent. A period covers at most two years.',
+            'params' => array(
+                array('name' => 'month', 'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'YYYY-MM.'),
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period, with to.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
             ),
         ),
 

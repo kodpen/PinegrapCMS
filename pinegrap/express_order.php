@@ -69,6 +69,50 @@ if (!$is_gateway_return) {
     if (method_exists($liveform, 'unmark_errors')) {
         $liveform->unmark_errors();
     }
+
+    // "My billing address is the same as my shipping address": the billing
+    // name and address are taken from the recipient's fields, which the form
+    // shows while the billing ones are hidden. Only for an order with one
+    // recipient (with more there is no one address to take) and only when
+    // the recipient's fields came with the submit. Company, e-mail, phone
+    // and the tax fields stay the visitor's own billing answers. The copied
+    // values are what the required-field checks, the order's billing columns
+    // and the contact record read, so submit_order() must not read the
+    // request again over them (it skips that for an express order).
+    if ((string) $liveform->get_field_value('billing_same_as_shipping') === '1') {
+        $pg_same_copied = false;
+        $pg_same_recipients = db_items(
+            "SELECT id FROM ship_tos WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'");
+        if (is_array($pg_same_recipients) && (count($pg_same_recipients) === 1)) {
+            $pg_same_prefix = 'shipping_' . (int) $pg_same_recipients[0]['id'] . '_';
+            if ($liveform->field_in_session($pg_same_prefix . 'address_1')) {
+                foreach (array('first_name', 'last_name', 'address_1', 'address_2', 'city', 'state', 'zip_code', 'country') as $pg_same_field) {
+                    $liveform->set('billing_' . $pg_same_field, (string) $liveform->get_field_value($pg_same_prefix . $pg_same_field));
+                }
+                $pg_same_copied = true;
+            }
+        }
+        // No single recipient address to take (several recipients, or a
+        // designed form without the recipient's fields): untick the box, so
+        // the form comes back with the billing fields shown next to their
+        // required-field errors instead of errors on fields that are hidden.
+        if (!$pg_same_copied) {
+            $liveform->set('billing_same_as_shipping', '');
+        }
+    }
+
+    // Identity / tax number for the invoice (contacts.tax_number, read by the
+    // ERP and the e-document integrations): optional, but when a Turkish
+    // billing address carries one it has to be a real one, 10 digits for a
+    // company, 11 for a person. Spaces and dots typed as separators go.
+    if ($liveform->field_in_session('tax_number')) {
+        $pg_tax_number = preg_replace('/[\s.\-]+/', '', (string) $liveform->get_field_value('tax_number'));
+        $liveform->set('tax_number', $pg_tax_number);
+        if (($pg_tax_number !== '') && (strtoupper((string) $liveform->get_field_value('billing_country')) === 'TR')
+            && !preg_match('/^[0-9]{10,11}$/', $pg_tax_number)) {
+            $liveform->mark_error('tax_number', lang('The tax number is 10 digits, the identity number 11.'));
+        }
+    }
 }
 
 $liveform->clear_notices();
@@ -913,6 +957,14 @@ if ($order_submitted == false) {
             if ($liveform->field_in_session('billing_fax_number')) {
                 $sql_fax = "business_fax = '" . e($liveform->get('billing_fax_number')) . "', ";
             }
+
+            // The tax fields only when the form had them: a layout without
+            // them must not clear what the contact already carries.
+            $sql_tax = '';
+            if ($liveform->field_in_session('tax_number') || $liveform->field_in_session('tax_office')) {
+                $sql_tax = "tax_number = '" . e(trim((string) $liveform->get_field_value('tax_number'))) . "', " .
+                           "tax_office = '" . e(trim((string) $liveform->get_field_value('tax_office'))) . "', ";
+            }
             
             $query = "UPDATE contacts " .
                      "SET " .
@@ -928,6 +980,7 @@ if ($order_submitted == false) {
                          "business_country = '" . escape($liveform->get_field_value('billing_country')) . "', " .
                          "business_phone = '" . escape($liveform->get_field_value('billing_phone_number')) . "', " .
                          $sql_fax .
+                         $sql_tax .
                          "email_address = '" . escape($liveform->get_field_value('billing_email_address')) . "', " .
                          "lead_source = '" . escape($liveform->get_field_value('referral_source')) . "', " .
                          "opt_in = '$opt_in', " .
@@ -1640,9 +1693,34 @@ if (ECOMMERCE_SHIPPING) {
 
         // If the order has been submitted then require shipping method
         if ($order_submitted) {
-            $liveform->validate_required_field(
-                $prefix . 'method',
-                lang('Please select a shipping method.') . $output_message_ship_to_name);
+
+            // Nothing picked because nothing could be: no enabled method
+            // serves this address. "Please select a shipping method" sends
+            // the visitor looking for a choice that is not on the page, so
+            // say what is wrong and what they can do about it.
+            if (((string) $liveform->get($prefix . 'method') === '') && ($country != '')) {
+                $pg_offer = get_shipping_methods(array(
+                    'ship_to_id' => $recipient['id'],
+                    'address_1' => $liveform->get($prefix . 'address_1'),
+                    'state' => $state,
+                    'zip_code' => $zip_code,
+                    'country' => $country,
+                    // Any method at all, whatever the date: an arrival date
+                    // no method can meet has its own message.
+                    'arrival_date_id' => '',
+                    'arrival_date' => ''));
+                if (!is_array($pg_offer) || (($pg_offer['status'] ?? '') !== 'success') || empty($pg_offer['shipping_methods'])) {
+                    $liveform->mark_error(
+                        $prefix . 'method',
+                        lang('The order could not be completed: no shipping method can deliver to this address. Check the country and address, or contact us.') . $output_message_ship_to_name);
+                }
+            }
+
+            if (!$liveform->check_field_error($prefix . 'method')) {
+                $liveform->validate_required_field(
+                    $prefix . 'method',
+                    lang('Please select a shipping method.') . $output_message_ship_to_name);
+            }
         }
 
         $shipping_method_id = $liveform->get($prefix . 'method');

@@ -403,7 +403,16 @@ function submit_order($type) {
     
     // if the mode is not paypal_express_checkout_return, then add field values to session and validate data
     if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
-        $liveform->add_fields_to_session();
+        // An express order's fields are in the session already: express_order.php
+        // added this post before its own checks and then adjusted some values
+        // (the billing name and address taken from the recipient when the
+        // billing address is the same as the shipping address, the tax number
+        // without separators, sanitized rich-text answers, cleared codes).
+        // Reading the request again here put the raw post back over them: the
+        // hidden, empty billing fields failed the required checks below.
+        if ($type != 'express order') {
+            $liveform->add_fields_to_session();
+        }
 
         // Clear stale field errors from a PREVIOUS submit before re-validating.
         // Without this, a payment_gateway error from a prior Iyzipay/PayPal
@@ -618,6 +627,15 @@ function submit_order($type) {
                 if ($liveform->field_in_session('billing_fax_number')) {
                     $sql_fax = "business_fax = '" . e($liveform->get('billing_fax_number')) . "',";
                 }
+
+                // Identity / tax number and tax office for the invoice, only
+                // when the form had them: a layout without them must not
+                // clear what the contact already carries.
+                $sql_tax = '';
+                if ($liveform->field_in_session('tax_number') || $liveform->field_in_session('tax_office')) {
+                    $sql_tax = "tax_number = '" . e(trim((string) $liveform->get_field_value('tax_number'))) . "', "
+                             . "tax_office = '" . e(trim((string) $liveform->get_field_value('tax_office'))) . "',";
+                }
                 
                 $query =
                     "UPDATE contacts
@@ -634,6 +652,7 @@ function submit_order($type) {
                         business_country = '" . escape($liveform->get_field_value('billing_country')) . "',
                         business_phone = '" . escape($liveform->get_field_value('billing_phone_number')) . "',
                         $sql_fax
+                        $sql_tax
                         email_address = '" . escape($liveform->get_field_value('billing_email_address')) . "',
                         lead_source = '" . escape($liveform->get_field_value('referral_source')) . "',
                         opt_in = '$opt_in',
@@ -5700,8 +5719,11 @@ function submit_order($type) {
 
             require_once(dirname(__FILE__) . '/get_page_content.php');
 
-            // get order receipt page HTML for e-mail
-            $body = get_page_content($order_receipt_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true);
+            // get order receipt page HTML for e-mail; a page built in the
+            // visual editor draws the order with its order view widget, which
+            // is told the order here (there is no ?order_id= in an e-mail)
+            $body = get_page_content($order_receipt_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true,
+                array('order_id' => (int)($_SESSION['ecommerce']['order_id'] ?? 0)));
             
         }
         

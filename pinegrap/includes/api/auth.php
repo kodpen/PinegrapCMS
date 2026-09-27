@@ -154,9 +154,38 @@ function api_offence() {
 
 }
 
+// A device's access token, from Authorization: Bearer. Only the header is read:
+// a token in a query string ends up in access logs exactly like a secret would.
+function api_read_bearer() {
+
+	$authorization = api_header('Authorization');
+
+	if (($authorization !== '') && (stripos($authorization, 'bearer ') === 0)) {
+
+		return trim(substr($authorization, 7));
+
+	}
+
+	return '';
+
+}
+
 // Authenticate, or answer and exit. Returns the application row with its
 // effective scopes already worked out.
+//
+// A Bearer token is a person signed in on a device (includes/api/devices.php);
+// anything else is an application's key and secret. The two never mix: a
+// device application carries no secret, so its key cannot be used as HTTP
+// Basic credentials.
 function api_authenticate($input) {
+
+	$bearer = api_read_bearer();
+
+	if ($bearer !== '') {
+
+		return api_device_authenticate($bearer);
+
+	}
 
 	$credentials = api_read_credentials($input);
 
@@ -325,13 +354,25 @@ function api_load_owner($user_id) {
 
 	}
 
+	// The three rights are 'yes' or 'no' in the table, and every reader of the
+	// owner compares them loosely, the way the panel compares its own booleans.
+	// A non-empty string is true under that comparison - 'no' included - so the
+	// raw column would grant every one of them to every account. They are
+	// turned into booleans here, once, the way validate_user() turns them for
+	// the panel; '1' is accepted as well because some releases wrote that.
+	$flag = function ($value) {
+
+		return in_array(strtolower(trim((string)$value)), array('yes', '1', 'true'), true);
+
+	};
+
 	$owner = array(
 		'id'               => (int)$row['user_id'],
 		'username'         => $row['user_username'],
 		'role'             => (int)$row['user_role'],
-		'manage_ecommerce' => $row['user_manage_ecommerce'],
-		'manage_contacts'  => $row['user_manage_contacts'],
-		'manage_forms'     => $row['user_manage_forms']
+		'manage_ecommerce' => $flag($row['user_manage_ecommerce']),
+		'manage_contacts'  => $flag($row['user_manage_contacts']),
+		'manage_forms'     => $flag($row['user_manage_forms'])
 	);
 
 	// Every other right on the account, whoever defined it.

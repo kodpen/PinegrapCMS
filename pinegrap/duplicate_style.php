@@ -95,6 +95,25 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $new_style_id = mysqli_insert_id(db::$con);
 
+// A copy is built on the same framework, and started from the same template.
+if (pg_style_framework_ready()) {
+    db("UPDATE style dst, style src
+        SET dst.style_framework        = src.style_framework,
+            dst.style_template         = src.style_template,
+            dst.style_template_version = src.style_template_version
+        WHERE dst.style_id = '" . (int)$new_style_id . "'
+          AND src.style_id = '" . (int)$_GET['id'] . "'");
+}
+
+// ...and wears the same look and colour palette.
+if (function_exists('pg_design_look_ready') && pg_design_look_ready()) {
+    db("UPDATE style dst, style src
+        SET dst.style_look    = src.style_look,
+            dst.style_palette = src.style_palette
+        WHERE dst.style_id = '" . (int)$new_style_id . "'
+          AND src.style_id = '" . (int)$_GET['id'] . "'");
+}
+
 // Multi-page visual design: the shared assets sit on the style and every
 // attached page owns its layout. Copy both halves — a duplicated design with
 // no pages would open as an empty editor, and a duplicate that left the

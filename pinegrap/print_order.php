@@ -120,7 +120,7 @@ if($contact_file_id == 0){
     }else{
         $output_contact_image = '
         <div class="col-auto overflow-hidden d-print-none rounded-circle bg-body-tertiary" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="assets/images/person1.png" />
+            <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '') : 'assets/images/person1.png') . '" />
         </div>';
     }
    

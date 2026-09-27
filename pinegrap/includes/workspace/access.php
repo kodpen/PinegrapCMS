@@ -249,12 +249,62 @@ function ws_channel_membership_forget()
  * activity log (ws_channel_audit_open()); the session then remembers it for
  * as long as it lasts.
  *
+ * A channel a member of staff is in is never open to inspection by another:
+ * staff read the private rooms of the people they are responsible for, not
+ * each other's. The answer follows the membership as it is now, so a room
+ * opened for inspection closes again when a member of staff joins it.
+ *
  * @param int $channel_id
  * @return bool
  */
 function ws_audit_open($channel_id)
 {
-    return !empty($_SESSION['software']['ws_audit'][(int) $channel_id]);
+    return !empty($_SESSION['software']['ws_audit'][(int) $channel_id]) && !ws_channel_has_staff($channel_id);
+}
+
+/**
+ * Is a member of staff (roles 0-2) in the channel?
+ *
+ * @param int $channel_id
+ * @return bool
+ */
+function ws_channel_has_staff($channel_id)
+{
+    static $cache = array();
+
+    $channel_id = (int) $channel_id;
+    $generation = $GLOBALS['ws_membership_generation'] ?? 0;
+
+    if (!isset($cache[$channel_id]) || ($cache[$channel_id][0] !== $generation)) {
+        $count = (int) db_value("SELECT COUNT(*) FROM ws_channel_members m
+            JOIN user u ON u.user_id = m.user_id
+            WHERE m.channel_id = '" . $channel_id . "' AND u.user_role < 3");
+
+        $cache[$channel_id] = array($generation, $count > 0);
+    }
+
+    return $cache[$channel_id][1];
+}
+
+/**
+ * May this person open the private channel for inspection? Staff only, a
+ * channel they are not in, and one no other member of staff is in.
+ *
+ * @param array $rights
+ * @param array $channel
+ * @return bool
+ */
+function ws_can_audit_channel($rights, $channel)
+{
+    if (!$rights['member'] || ($rights['role'] >= 3) || !is_array($channel) || ($channel['kind'] !== 'private')) {
+        return false;
+    }
+
+    if (ws_channel_membership($channel['id'], $rights['id'])) {
+        return false;
+    }
+
+    return !ws_channel_has_staff($channel['id']);
 }
 
 /**

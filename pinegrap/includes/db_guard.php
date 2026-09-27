@@ -28,7 +28,8 @@
 //
 // This file is deliberately standalone: no database, no functions.php, no
 // session. router.php loads it without functions.php at all, which is the same
-// constraint waf.php and get_file.php work under.
+// constraint waf.php and get_file.php work under. It opens the connection
+// itself (pg_db_guard_connect()) but never depends on one being open.
 
 if (!defined('PG_DB_GUARD_LOADED')) {
 
@@ -97,14 +98,81 @@ if (!defined('PG_DB_GUARD_LOADED')) {
     }
 
     /**
+     * How often, while the breaker is open, one request is let through to
+     * test the database, in seconds.
+     *
+     * Without it a single failed connection held every visitor on the 503
+     * page for the whole window, even when the database was answering again
+     * a moment later. One connection attempt every few seconds is nothing a
+     * saturated server would notice, and after a transient failure it brings
+     * the site back within seconds instead of at the end of the window.
+     * Never longer than the window itself.
+     */
+    function pg_db_guard_probe_interval()
+    {
+        return min(3, pg_db_guard_window());
+    }
+
+    /**
+     * When the current outage began and the error that opened it, as
+     * array(start, errno), or false when the breaker is not set.
+     *
+     * The breaker file's mtime is the LAST failure: the window is measured
+     * from it, and every failed probe moves it forward. The start of the
+     * outage is written inside the file instead, so the reference on the 503
+     * page and the duration in the recovery row cover the whole outage
+     * rather than the few seconds since the last probe.
+     *
+     * Only read while the breaker is set, so a healthy request never opens
+     * the file. A file without readable content - left by an older copy of
+     * this code, or by a write that failed - falls back to its mtime.
+     */
+    function pg_db_guard_outage($recheck = false)
+    {
+        static $cached = null;
+
+        if ($cached !== null && !$recheck) {
+            return $cached;
+        }
+
+        $cached = false;
+        $tripped = pg_db_guard_tripped_at();
+
+        if ($tripped === false) {
+            return $cached;
+        }
+
+        $start = $tripped;
+        $errno = 0;
+        $raw = @file_get_contents(pg_db_guard_dir() . '/db_unavailable');
+
+        // The trailing newline is part of the pattern on purpose: it is the
+        // last byte written, so a read that raced the write cannot match.
+        if (is_string($raw) && preg_match('/^(\d+) (\d+)\n/', $raw, $match)) {
+
+            // A start later than the last failure is not believable.
+            if ((int) $match[1] > 0 && (int) $match[1] <= $tripped) {
+                $start = (int) $match[1];
+            }
+
+            $errno = (int) $match[2];
+        }
+
+        $cached = array($start, $errno);
+
+        return $cached;
+    }
+
+    /**
      * A reference an operator can quote, the same one for the whole outage.
      *
-     * Anchored to the trip time rather than the request, so every 503 served
-     * during one window carries the same code and pg_db_guard_log_recovery()
-     * can stamp that same code on the firewall row it writes when the site
-     * comes back. That is the whole point: the person who saw the page and the
-     * operator reading the log are looking at one string. Twelve hex digits to
-     * match the firewall's own reference shape.
+     * Anchored to the start of the outage rather than the request (see
+     * pg_db_guard_outage()), so every 503 served during one outage carries
+     * the same code and pg_db_guard_log_recovery() can stamp that same code
+     * on the firewall row it writes when the site comes back. That is the
+     * whole point: the person who saw the page and the operator reading the
+     * log are looking at one string. Twelve hex digits to match the
+     * firewall's own reference shape.
      *
      * Falls back to a window-sized time bucket when there is no trip file (the
      * page should never be blank of a reference), which still groups the burst
@@ -113,7 +181,8 @@ if (!defined('PG_DB_GUARD_LOADED')) {
     function pg_db_guard_reference($tripped = null)
     {
         if ($tripped === null) {
-            $tripped = pg_db_guard_tripped_at();
+            $outage = pg_db_guard_outage();
+            $tripped = $outage ? $outage[0] : false;
         }
 
         if (!$tripped) {
@@ -151,7 +220,7 @@ if (!defined('PG_DB_GUARD_LOADED')) {
      * does not engage and the request behaves as it did before this file
      * existed. A guard that could itself throw would be worse than no guard.
      */
-    function pg_db_guard_trip()
+    function pg_db_guard_trip($errno = 0)
     {
         $dir = pg_db_guard_dir();
 
@@ -159,8 +228,34 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             @mkdir($dir, 0755, true);
         }
 
-        @touch($dir . '/db_unavailable');
+        $start = time();
+        $errno = (int) $errno;
+
+        // A failed probe re-trips a breaker that is already open. That is the
+        // same outage continuing, so it keeps its start and the error that
+        // opened it; only a trip on a closed or expired breaker begins a new
+        // one.
+        if (pg_db_guard_is_open()) {
+            $outage = pg_db_guard_outage();
+
+            if ($outage) {
+                $start = $outage[0];
+                $errno = $outage[1] ? $outage[1] : $errno;
+            }
+        }
+
+        $file = $dir . '/db_unavailable';
+
+        // The mtime this write sets is what the window is measured from; the
+        // content only feeds the reference and the recovery row. If the write
+        // fails, touch() still opens the breaker, which is the part that
+        // matters.
+        if (@file_put_contents($file, $start . ' ' . $errno . "\n") === false) {
+            @touch($file);
+        }
+
         pg_db_guard_tripped_at(true);
+        pg_db_guard_outage(true);
     }
 
     /**
@@ -177,14 +272,19 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             return;
         }
 
+        // Read before the file goes: the outage's start and error live in it.
+        $outage = pg_db_guard_outage();
+
         @unlink(pg_db_guard_dir() . '/db_unavailable');
+        @unlink(pg_db_guard_dir() . '/db_unavailable_probe');
         pg_db_guard_tripped_at(true);
+        pg_db_guard_outage(true);
 
         // Leave a mark for the recovery notice below. The breaker itself runs
         // where nothing can be written to the database - by definition - so
         // the only moment an outage can be recorded is the first request that
         // gets a connection back.
-        $GLOBALS['pg_db_guard_recovered_from'] = $tripped;
+        $GLOBALS['pg_db_guard_recovered_from'] = $outage ? $outage : array($tripped, 0);
     }
 
     /**
@@ -204,12 +304,15 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             return;
         }
 
-        $tripped = (int) $GLOBALS['pg_db_guard_recovered_from'];
+        $recovered = (array) $GLOBALS['pg_db_guard_recovered_from'];
         unset($GLOBALS['pg_db_guard_recovered_from']);
 
         if (!function_exists('waf_log_event')) {
             return;
         }
+
+        $tripped = isset($recovered[0]) ? (int) $recovered[0] : time();
+        $errno = isset($recovered[1]) ? (int) $recovered[1] : 0;
 
         $seconds = max(1, time() - $tripped);
 
@@ -221,7 +324,37 @@ if (!defined('PG_DB_GUARD_LOADED')) {
         // wrong here, and scoring it would let a database outage auto-ban the
         // first person who happened to arrive as the site came back.
         waf_log_event('log', 'db-unavailable', 'system', 0, 'database',
-            'connections exhausted, ' . $seconds . 's [ref: ' . $reference . ']');
+            pg_db_guard_error_label($errno) . ', ' . $seconds . 's [ref: ' . $reference . ']');
+    }
+
+    /**
+     * A short description of the error that opened the breaker, for the log.
+     *
+     * The row used to read "connections exhausted" whatever had happened, so
+     * a server that refused a single TCP connection was reported as a
+     * database out of capacity. The error number is the only thing that
+     * tells a full pool (1040, 1203) from a server that was restarting or not
+     * listening (2002, 2003).
+     */
+    function pg_db_guard_error_label($errno)
+    {
+        $labels = array(
+            1040 => 'too many connections',
+            1203 => 'max_user_connections reached',
+            1226 => 'user resource limit reached',
+            2002 => 'could not connect',
+            2003 => 'host unreachable',
+            2006 => 'server gone away',
+            2013 => 'connection lost',
+        );
+
+        $errno = (int) $errno;
+
+        if (isset($labels[$errno])) {
+            return 'error ' . $errno . ' (' . $labels[$errno] . ')';
+        }
+
+        return ($errno > 0) ? ('error ' . $errno) : 'connection failed';
     }
 
     /**
@@ -244,6 +377,140 @@ if (!defined('PG_DB_GUARD_LOADED')) {
     function pg_db_guard_is_overload($errno)
     {
         return in_array((int) $errno, array(1040, 1203, 1226, 2002, 2003, 2006, 2013), true);
+    }
+
+    /**
+     * Open the database connection, riding out a momentary refusal.
+     *
+     * One failed attempt used to open the breaker, which then served the 503
+     * page to every visitor for the whole window. Under a burst - a page
+     * reloaded a handful of times, each load fanning out into several
+     * requests - a server can turn one connection away while its pool or its
+     * listen queue is full for a few milliseconds, and the very next attempt
+     * succeeds. Tripping on that turned a blip nobody would have noticed into
+     * half a minute of downtime for the entire site.
+     *
+     * So an overload error is retried twice, after short pauses, before the
+     * caller treats it as an outage. Only FAST failures are retried: an
+     * attempt that took a second or more to fail means the server is not
+     * answering at all - mysqlnd reports a timeout as the same 2002 as a
+     * refusal - and retrying would only multiply how long each request hangs.
+     * Credentials and missing databases are not retried either; waiting does
+     * not fix them.
+     *
+     * The try/catch is load-bearing: since PHP 8.1 mysqli throws by default,
+     * and @ suppresses diagnostics but not exceptions.
+     *
+     * Returns array(connection or false, errno, error).
+     */
+    function pg_db_guard_connect($host, $username, $password, $database)
+    {
+        // Microseconds to wait before each attempt: at most ~0.55 s in all.
+        $pauses = array(0, 150000, 400000);
+        $errno = 0;
+        $error = '';
+
+        foreach ($pauses as $pause) {
+            if ($pause > 0) {
+                usleep($pause);
+            }
+
+            $errno = 0;
+            $error = '';
+            $started = microtime(true);
+
+            try {
+                $con = @mysqli_connect($host, $username, $password, $database);
+            } catch (Exception $e) {
+                $con = false;
+                $errno = (int) $e->getCode();
+                $error = $e->getMessage();
+            }
+
+            if ($con) {
+                return array($con, 0, '');
+            }
+
+            if ($errno === 0 && function_exists('mysqli_connect_errno')) {
+                $errno = (int) mysqli_connect_errno();
+            }
+
+            if ($error === '' && function_exists('mysqli_connect_error')) {
+                $error = (string) mysqli_connect_error();
+            }
+
+            if (!pg_db_guard_is_overload($errno) || (microtime(true) - $started) >= 1.0) {
+                break;
+            }
+        }
+
+        return array(false, $errno, $error);
+    }
+
+    /**
+     * Claim this request as the one that tests the database while the
+     * breaker is open, or report that it is not its turn.
+     *
+     * At most one request per probe interval gets through, however many
+     * arrive. It either finds the database back - db_connect() then closes
+     * the breaker and everyone after it is served normally - or fails and
+     * re-trips it, which keeps the outage going with one connection attempt
+     * every few seconds instead of none.
+     *
+     * The claim is a timestamp inside a file held with a non-blocking lock,
+     * so no request ever waits on another. It is the file's content, not its
+     * mtime: a window measured from an mtime that every writer moves is the
+     * fault that sank the removed siege counter.
+     *
+     * Every failure of the mechanism itself answers false, and the breaker
+     * then stays shut until its window ends - exactly how it behaved before
+     * probing existed. It must never answer true on error, or a lock that
+     * cannot be taken would let the whole flood through.
+     */
+    function pg_db_guard_claim_probe()
+    {
+        $tripped = pg_db_guard_tripped_at();
+
+        if ($tripped === false) {
+            return false;
+        }
+
+        $now = time();
+        $interval = pg_db_guard_probe_interval();
+
+        // Too soon after the last failure for the answer to have changed.
+        if (($now - $tripped) < $interval) {
+            return false;
+        }
+
+        $handle = @fopen(pg_db_guard_dir() . '/db_unavailable_probe', 'c+');
+
+        if (!$handle) {
+            return false;
+        }
+
+        if (!@flock($handle, LOCK_EX | LOCK_NB)) {
+            @fclose($handle);
+            return false;
+        }
+
+        $last = (int) trim((string) @stream_get_contents($handle));
+
+        // A timestamp in the future means the clock moved back; it must not
+        // hold probing off until the clock catches up with it.
+        $claimed = ($last > $now) || (($now - $last) >= $interval);
+
+        if ($claimed) {
+            @ftruncate($handle, 0);
+            @rewind($handle);
+            @fwrite($handle, (string) $now);
+            @fflush($handle);
+        }
+
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
+
+        return $claimed;
     }
 
     /**
@@ -755,7 +1022,10 @@ if (!defined('PG_DB_GUARD_LOADED')) {
 
         $done = true;
 
-        if (pg_db_guard_is_open()) {
+        // While the breaker is open, one request every few seconds goes on to
+        // connect as a probe (pg_db_guard_claim_probe()); everyone else gets
+        // the 503 without touching the database.
+        if (pg_db_guard_is_open() && !pg_db_guard_claim_probe()) {
             pg_db_guard_unavailable();
         }
 

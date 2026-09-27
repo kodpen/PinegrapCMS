@@ -209,11 +209,20 @@ if ($_POST) {
 
         if ($result['success']) {
             $liveform->add_notice($result['message']);
-        } else {
-            $liveform->mark_error('_error', $result['error']);
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        // A refused save writes nothing, so the form comes back with what was
+        // typed rather than with the saved values, the refused box marked.
+        foreach (array_keys(erp_edoc_fix_fields()) as $fix_field) {
+            if (isset($_POST['fix_' . $fix_field]) && is_string($_POST['fix_' . $fix_field])) {
+                $liveform->assign_field_value('fix_' . $fix_field, trim($_POST['fix_' . $fix_field]));
+            }
+        }
+
+        $liveform->mark_error(((string) ($result['field'] ?? '') !== '') ? 'fix_' . $result['field'] : '_error', $result['error']);
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#edoc_fix');
     }
 
     if (($_POST['erp_action'] ?? '') === 'edoc_poll') {
@@ -950,7 +959,7 @@ if (((string) $invoice['direction'] === 'sales')
 
         // One box: its short name, the value known so far, and - under it -
         // the provider's reason when the reason says more than the name.
-        $edoc_fix_box = function ($name, $reason, $width = 'col-12 col-sm-6 col-xl-4') use ($edoc_fix_names, $edoc_fix_party, $edoc_fix_card, $edoc_fix_order) {
+        $edoc_fix_box = function ($name, $reason, $width = 'col-12 col-sm-6 col-xl-4') use ($edoc_fix_names, $edoc_fix_party, $edoc_fix_card, $edoc_fix_order, $liveform) {
             $label = isset($edoc_fix_names[$name]) ? $edoc_fix_names[$name]['label'] : $reason;
             $value = '';
             foreach (array($edoc_fix_party, $edoc_fix_card, $edoc_fix_order) as $source) {
@@ -958,6 +967,16 @@ if (((string) $invoice['direction'] === 'sales')
                     $value = (string) $source[$name];
                     break;
                 }
+            }
+
+            // Right after a refused save the box holds what was typed. The
+            // provider's reason was about the saved value, so it gives way to
+            // the refusal: only the box the save was refused for stays marked.
+            $typed = $liveform->get_field_value('fix_' . $name);
+
+            if (is_string($typed) && ($typed !== '')) {
+                $value = $typed;
+                $reason = $liveform->check_field_error('fix_' . $name) ? (string) $liveform->get('fix_' . $name, 'error_message') : '';
             }
 
             return '

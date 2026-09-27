@@ -1126,6 +1126,12 @@ function ws_recurrence_spawn($series, $date)
         . ((function_exists('ws_workdays_ready') && ws_workdays_ready()) ? ", recurrence_date = '" . e($date) . "'" : '') . "
         WHERE id = '" . $task_id . "'");
 
+    // The newest copy's time on the due date, and its reminder when the
+    // series reminds every copy (reminders.php).
+    if (function_exists('ws_task_reminder_copy')) {
+        ws_task_reminder_copy($series, $template, $task_id);
+    }
+
     // The channel the task belongs to gets its card, the way a task made
     // there by hand does.
     if ($channel_id > 0) {

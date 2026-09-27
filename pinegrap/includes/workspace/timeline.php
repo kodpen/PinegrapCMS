@@ -279,6 +279,7 @@ function ws_timeline_hidden($viewer, $filters)
             'owner'    => ws_person_name($channel['owner_user_id']),
             'count'    => (int) $row['n'],
             'archived' => ((int) $channel['archived_at'] > 0),
+            'locked'   => ws_channel_has_staff($channel['id']),
         );
     }
 
@@ -307,14 +308,19 @@ function ws_timeline_claude_changes($message_ids)
     $types = ws_change_types();
     $out = array();
 
-    foreach ((array) db_items("SELECT decision_message_id, record_type, action, record_id FROM ws_ai_changes
-        WHERE decision_message_id IN (" . implode(',', $message_ids) . ") AND status = 'applied'") as $row) {
+    // Which assistant proposed it (ai.php), when the requests say.
+    $agent = (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready());
+
+    foreach ((array) db_items("SELECT c.decision_message_id, c.record_type, c.action, c.record_id" . ($agent ? ", r.agent" : '') . " FROM ws_ai_changes c
+        " . ($agent ? "LEFT JOIN ws_ai_requests r ON r.id = c.request_id" : '') . "
+        WHERE c.decision_message_id IN (" . implode(',', $message_ids) . ") AND c.status = 'applied'") as $row) {
 
         $out[(int) $row['decision_message_id']] = array(
             'type'       => (string) $row['record_type'],
             'type_label' => (string) ($types[$row['record_type']]['label'] ?? $row['record_type']),
             'action'     => (string) ($row['action'] ?? 'update'),
             'record_id'  => ((int) $row['record_id'] > 0) ? (int) $row['record_id'] : null,
+            'agent'      => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
         );
     }
 

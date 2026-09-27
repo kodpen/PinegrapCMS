@@ -82,6 +82,8 @@ function ws_api_channel_present($brief)
         'topic'         => (string) $brief['topic'],
         'joined'        => (bool) $brief['joined'],
         'contact_id'    => ((int) $brief['contact_id'] > 0) ? (int) $brief['contact_id'] : null,
+        'customer_type' => (($brief['customer_type'] ?? '') !== '') ? (string) $brief['customer_type'] : null,
+        'customer_id'   => ((int) ($brief['customer_id'] ?? 0) > 0) ? (int) $brief['customer_id'] : null,
         'department_id' => ((int) $brief['department_id'] > 0) ? (int) $brief['department_id'] : null,
         'archived'      => (bool) $brief['archived'],
         'unread'        => (int) $brief['unread'],
@@ -99,6 +101,8 @@ function ws_api_channel_schema()
         'topic'           => 'string',
         'joined'          => 'boolean',
         'contact_id'      => 'integer?',
+        'customer_type'   => 'string?',
+        'customer_id'     => 'integer?',
         'department_id'   => 'integer?',
         'archived'        => 'boolean',
         'unread'          => 'integer',
@@ -116,6 +120,10 @@ function ws_api_channels_list($params)
             continue;
         }
 
+        if (isset($params['active_since']) && ((int) $brief['last_message_at'] < (int) $params['active_since'])) {
+            continue;
+        }
+
         if (ws_api_is_claude() && !ws_claude_channel_allowed(ws_channel($brief['id']))) {
             continue;
         }
@@ -124,6 +132,335 @@ function ws_api_channels_list($params)
     }
 
     api_ok_list($out, count($out));
+}
+
+/**
+ * A channel as the owner's sidebar lists it, unread count included. A channel
+ * the owner no longer lists - a private one they just left - is built from
+ * its row, with nothing unread.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return array ws_channel_brief()
+ */
+function ws_api_channel_brief($viewer, $channel)
+{
+    foreach (ws_channels_for($viewer, ((int) $channel['archived_at'] > 0)) as $brief) {
+        if ((int) $brief['id'] === (int) $channel['id']) {
+            return $brief;
+        }
+    }
+
+    $membership = ws_channel_membership($channel['id'], $viewer['id']);
+
+    return ws_channel_brief(array_merge($channel, array(
+        'my_member' => $membership ? 1 : 0,
+        'my_notify' => $membership['notify'] ?? 'all',
+        'my_role'   => $membership['role'] ?? '',
+    )));
+}
+
+/**
+ * The user ids of a body list, once each, or a 422 naming the list when an
+ * item is not an id.
+ *
+ * @param mixed  $list
+ * @param string $field
+ * @return int[]
+ */
+function ws_api_user_ids($list, $field)
+{
+    $ids = array();
+
+    foreach ((array) $list as $item) {
+        $valid = (is_int($item) || (is_string($item) && ctype_digit($item))) && ((int) $item > 0);
+
+        if (!$valid) {
+            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a user id.', 'vars' => $field)), $field);
+        }
+
+        $ids[(int) $item] = (int) $item;
+    }
+
+    return array_values($ids);
+}
+
+/**
+ * Answers a refusal of the module's channel functions with the status that
+ * fits it: 409 for a name another open channel holds, 403 for a missing
+ * right, 422 for the rest.
+ *
+ * @param array $result ok, error, field
+ */
+function ws_api_channel_refused($result)
+{
+    $error = (string) $result['error'];
+
+    if ($error === lang('There is already a channel with this name.')) {
+        api_fail(409, 'name_taken', $error, 'name');
+    }
+
+    if (in_array($error, array(lang('Only the owner of the channel can change it.'), lang('Access denied.')), true)) {
+        api_fail(403, 'forbidden', $error);
+    }
+
+    api_fail_validation($error, (($result['field'] ?? '') !== '') ? $result['field'] : null);
+}
+
+function ws_api_channels_create($params)
+{
+    $viewer = ws_api_viewer();
+
+    // The checks ws_channel_create() makes, made first so that a dry run
+    // meets the same refusals.
+    $name = ws_channel_clean_name($params['name'] ?? '');
+
+    if ($name === '') {
+        api_fail_validation(lang('A channel needs a name.'), 'name');
+    }
+
+    if (ws_channel_name_taken($name)) {
+        api_fail(409, 'name_taken', lang('There is already a channel with this name.'), 'name');
+    }
+
+    $department_id = (int) ($params['department_id'] ?? 0);
+
+    // The panel offers only the departments that exist; an id that is not
+    // one would be dropped without a word.
+    if (($department_id > 0) && !ws_department($department_id)) {
+        api_fail_validation(lang('That department could not be found.'), 'department_id');
+    }
+
+    $members = ws_api_user_ids($params['members'] ?? array(), 'members');
+    $kind = ((string) ($params['kind'] ?? 'public') === 'private') ? 'private' : 'public';
+
+    api_dry_run_stop('created', 'workspace_channel', array('name' => $name, 'kind' => $kind, 'members' => count($members)));
+
+    $result = ws_channel_create($viewer, array(
+        'name'          => (string) $params['name'],
+        'kind'          => $kind,
+        'topic'         => (string) ($params['topic'] ?? ''),
+        'department_id' => $department_id,
+        'members'       => $members,
+    ));
+
+    if (!$result['ok']) {
+        ws_api_channel_refused($result);
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($result['channel_id']))), 201);
+}
+
+function ws_api_channels_update($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_manage_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
+    }
+
+    $data = array();
+
+    foreach (array('name', 'topic', 'department_id') as $field) {
+        if (array_key_exists($field, $params)) {
+            $data[$field] = $params[$field];
+        }
+    }
+
+    $archive = array_key_exists('archived', $params) ? !empty($params['archived']) : null;
+    $archived = ((int) $channel['archived_at'] > 0);
+    $name = array_key_exists('name', $data) ? ws_channel_clean_name($data['name']) : (string) $channel['name'];
+
+    if (array_key_exists('name', $data) && ($name === '')) {
+        api_fail_validation(lang('A channel needs a name.'), 'name');
+    }
+
+    // A rename (ws_channel_update()) and a channel brought back
+    // (ws_channel_archive()) both need the name free among the open channels.
+    if ((array_key_exists('name', $data) || (($archive === false) && $archived)) && ws_channel_name_taken($name, $channel['id'])) {
+        api_fail(409, 'name_taken', lang('There is already a channel with this name.'), 'name');
+    }
+
+    if (!empty($data['department_id']) && !ws_department((int) $data['department_id'])) {
+        api_fail_validation(lang('That department could not be found.'), 'department_id');
+    }
+
+    $changes = array_keys($data);
+
+    if (($archive !== null) && ($archive !== $archived)) {
+        $changes[] = 'archived';
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => $changes));
+
+    if (!empty($data)) {
+        $result = ws_channel_update($viewer, $channel, $data);
+
+        if (!$result['ok']) {
+            ws_api_channel_refused($result);
+        }
+    }
+
+    // Archiving writes a line in the channel, so it is only done when the
+    // state really changes.
+    if (($archive !== null) && ($archive !== $archived)) {
+        $result = ws_channel_archive($viewer, ws_channel($channel['id']), $archive);
+
+        if (!$result['ok']) {
+            ws_api_channel_refused($result);
+        }
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/* ---------------------------------------------------------------------------
+   Channel members
+   --------------------------------------------------------------------------- */
+
+function ws_api_channel_member_present($row, $people)
+{
+    $person = $people[(int) $row['user_id']] ?? null;
+
+    return array(
+        'user_id'   => (int) $row['user_id'],
+        'name'      => $person ? (string) $person['name'] : '',
+        'username'  => $person ? (string) $person['username'] : '',
+        'role'      => ((string) $row['role'] === 'owner') ? 'owner' : 'member',
+        'joined_at' => api_time($row['joined_at']),
+    );
+}
+
+// What ws_api_channel_member_present() returns.
+function ws_api_channel_member_schema()
+{
+    return array(
+        'user_id'   => 'integer',
+        'name'      => 'string',
+        'username'  => 'string',
+        'role'      => 'string',
+        'joined_at' => 'string?',
+    );
+}
+
+/**
+ * The people in a channel, its owner first, the way the channel's settings
+ * list them (ws_channel_detail()).
+ *
+ * @param int $channel_id
+ * @return array[]
+ */
+function ws_api_channel_members_of($channel_id)
+{
+    $rows = (array) db_items("SELECT user_id, role, joined_at FROM ws_channel_members
+        WHERE channel_id = '" . (int) $channel_id . "' ORDER BY role = 'owner' DESC, joined_at, user_id");
+
+    $ids = array();
+
+    foreach ($rows as $row) {
+        $ids[] = (int) $row['user_id'];
+    }
+
+    $people = ws_people($ids);
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = ws_api_channel_member_present($row, $people);
+    }
+
+    return $out;
+}
+
+/**
+ * What a change to a channel's people answers with. The members are listed
+ * only while the owner may still read the channel.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @param int[] $added
+ * @param int[] $removed
+ * @return array
+ */
+function ws_api_channel_members_present($viewer, $channel_id, $added, $removed)
+{
+    $channel = ws_channel($channel_id);
+
+    return array(
+        'channel_id' => (int) $channel_id,
+        'added'      => array_values(array_map('intval', (array) $added)),
+        'removed'    => array_values(array_map('intval', (array) $removed)),
+        'members'    => ($channel && ws_can_read_channel($viewer, $channel)) ? ws_api_channel_members_of($channel['id']) : array(),
+    );
+}
+
+// What ws_api_channel_members_present() returns.
+function ws_api_channel_members_schema()
+{
+    return array(
+        'channel_id' => 'integer',
+        'added'      => 'integer[]',
+        'removed'    => 'integer[]',
+        'members'    => 'WorkspaceChannelMember[]',
+    );
+}
+
+function ws_api_channel_members_list($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+    $out = ws_api_channel_members_of($channel['id']);
+
+    api_ok_list($out, count($out));
+}
+
+function ws_api_channel_members_add($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    // As in the panel: anyone in a private channel may bring a colleague in,
+    // nobody outside it can.
+    if (($channel['kind'] !== 'public') && !ws_channel_membership($channel['id'], $viewer['id'])) {
+        api_fail(403, 'forbidden', lang('Only a member of a private channel can add people to it.'));
+    }
+
+    $user_ids = ws_api_user_ids($params['user_ids'] ?? array(), 'user_ids');
+
+    api_dry_run_stop('added', 'workspace_channel_member', array('channel_id' => (int) $channel['id'], 'user_ids' => $user_ids));
+
+    $added = ws_channel_add_members($viewer, $channel, $user_ids);
+
+    api_ok(ws_api_channel_members_present($viewer, $channel['id'], $added, array()));
+}
+
+function ws_api_channel_members_remove($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+    $user_id = (int) $params['user_id'];
+
+    // Leaving is anybody's own; taking somebody else out needs the right to
+    // manage the channel (ws_channel_leave()).
+    if (($user_id !== (int) $viewer['id']) && !ws_can_manage_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
+    }
+
+    $member = (bool) ws_channel_membership($channel['id'], $user_id);
+
+    api_dry_run_stop('removed', 'workspace_channel_member', array('channel_id' => (int) $channel['id'], 'user_id' => $user_id, 'member' => $member));
+
+    $result = ws_channel_leave($viewer, $channel, $user_id);
+
+    if (!$result['ok']) {
+        ws_api_channel_refused($result);
+    }
+
+    api_ok(ws_api_channel_members_present($viewer, $channel['id'], array(), $member ? array($user_id) : array()));
 }
 
 /* ---------------------------------------------------------------------------
@@ -150,6 +487,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null)
     } elseif ($row['sender_kind'] === 'app') {
         $app = ws_app_sender((int) $row['sender_id']);
         $sender = array('user_id' => null, 'name' => $app['name']);
+    } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
+        $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
     }
 
     $deleted = ((int) $row['deleted_at'] > 0);
@@ -909,6 +1248,8 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
     } elseif ($row['sender_kind'] === 'app') {
         $app = ws_app_sender((int) $row['sender_id']);
         $sender = array('user_id' => null, 'name' => $app['name']);
+    } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
+        $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
     }
 
     $marked_by = null;
@@ -1056,4 +1397,659 @@ function ws_api_decisions_list($params)
     }
 
     api_ok_list($out, $limit, ($result['next'] !== null) ? api_cursor_encode($result['next']['v'], $result['next']['i']) : null);
+}
+
+/* ---------------------------------------------------------------------------
+   What the assistants were asked and proposed (claude.php, ai.php, changes.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The cursor a listing was given, or a 400 for one that cannot be read.
+ *
+ * @param array $params
+ * @return array|null v, i
+ */
+function ws_api_cursor($params)
+{
+    if (!isset($params['cursor']) || ($params['cursor'] === '')) {
+        return null;
+    }
+
+    $cursor = api_cursor_decode($params['cursor']);
+
+    if ($cursor === null) {
+        api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+    }
+
+    return $cursor;
+}
+
+/**
+ * The ids of the channels the owner may read, archived ones included, as the
+ * timeline counts them; for the application Claude works through, only those
+ * Claude may be asked in.
+ *
+ * @param array $viewer
+ * @return int[]
+ */
+function ws_api_readable_channel_ids($viewer)
+{
+    $claude = ws_api_is_claude();
+    $ids = array();
+
+    foreach (ws_timeline_channels($viewer) as $id => $row) {
+        if ($claude && !ws_claude_channel_allowed(ws_channel($id))) {
+            continue;
+        }
+
+        $ids[] = (int) $id;
+    }
+
+    return $ids;
+}
+
+/**
+ * A person a row names, as {user_id, name}, or null when it names nobody.
+ *
+ * @param int   $user_id
+ * @param array $people ws_people()
+ * @return array|null
+ */
+function ws_api_person_ref($user_id, $people = array())
+{
+    $user_id = (int) $user_id;
+
+    if ($user_id <= 0) {
+        return null;
+    }
+
+    return array('user_id' => $user_id, 'name' => (string) ($people[$user_id]['name'] ?? ws_person_name($user_id)));
+}
+
+/**
+ * A person as ws_people() briefs them, as {user_id, name}, or null.
+ *
+ * @param array|null $person
+ * @return array|null
+ */
+function ws_api_person_brief_ref($person)
+{
+    if (!is_array($person)) {
+        return null;
+    }
+
+    return ws_api_person_ref($person['id'] ?? 0, array((int) ($person['id'] ?? 0) => $person));
+}
+
+/**
+ * One field of a proposed change, as the card prints it.
+ *
+ * @param string $type
+ * @param string $name
+ * @param array  $field ws_change_field()
+ * @param string $action
+ * @param array  $item  the stored {name, from, to}
+ * @return array
+ */
+function ws_api_change_field_present($type, $name, $field, $action, $item)
+{
+    // Only an update of a field with a column, or a deletion, has a value
+    // the record held; a deletion has nothing it would get.
+    $from = ((($action === 'update') && ($field[3] !== '')) || ($action === 'delete'));
+
+    return array(
+        'name'       => $name,
+        'label'      => (string) $field[2],
+        'from_shown' => $from ? ws_change_show($type, $name, $item['from'] ?? '') : null,
+        'to_shown'   => ($action === 'delete') ? null : ws_change_show($type, $name, $item['to'] ?? ''),
+    );
+}
+
+/**
+ * The fields of a proposed change the card shows: a field the kind of record
+ * no longer has is left out, and so are the empty fields of a deleted record.
+ *
+ * @param array  $row ws_ai_changes
+ * @param string $action
+ * @return array[]
+ */
+function ws_api_change_fields_present($row, $action)
+{
+    $types = ws_change_types();
+    $type = (string) $row['record_type'];
+    $fields = json_decode((string) $row['fields'], true);
+    $fields = is_array($fields) ? $fields : array();
+    $out = array();
+
+    foreach ($fields as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $name = (string) ($item['name'] ?? '');
+        $field = ws_change_field($types[$type], $name);
+
+        if (($field === null) || (($action === 'delete') && in_array($item['from'] ?? null, array('', null), true))) {
+            continue;
+        }
+
+        $out[] = ws_api_change_field_present($type, $name, $field, $action, $item);
+    }
+
+    return $out;
+}
+
+/**
+ * The record a proposed change is about.
+ *
+ * @param array $row   ws_ai_changes
+ * @param array $entry ws_changes_map()
+ * @return array
+ */
+function ws_api_change_record_present($row, $entry)
+{
+    $types = ws_change_types();
+    $type = (string) $row['record_type'];
+    $id = (int) $row['record_id'];
+
+    // A record deleted by the change is gone: no tag points at it any more.
+    $tagged = ($id > 0) && !(($entry['action'] === 'delete') && ($row['status'] === 'applied'));
+
+    return array(
+        'type'       => $type,
+        'type_label' => (string) $entry['type_label'],
+        'id'         => ($id > 0) ? $id : null,
+        'tag'        => $tagged ? '<#' . $types[$type]['tag'] . ':' . $id . '>' : null,
+        'name'       => (string) $entry['record_label'],
+    );
+}
+
+/**
+ * One proposed record change as the API shows it. What the reader may see of
+ * it - its values and its reason - is what the card in the channel shows them
+ * (ws_changes_map()).
+ *
+ * @param array $row    ws_ai_changes, with agent when the requests carry it
+ * @param array $entry  ws_changes_map() for this change
+ * @param array $people ws_people()
+ * @return array
+ */
+function ws_api_change_present($row, $entry, $people)
+{
+    return array(
+        'id'                  => (int) $row['id'],
+        'status'              => (string) $row['status'],
+        'agent'               => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
+        'request_id'          => ((int) $row['request_id'] > 0) ? (int) $row['request_id'] : null,
+        'channel_id'          => (int) $row['channel_id'],
+        'message_id'          => (int) $row['message_id'],
+        'action'              => (string) $entry['action'],
+        'record'              => ws_api_change_record_present($row, $entry),
+        'hidden'              => !empty($entry['hidden']),
+        'fields'              => !empty($entry['hidden']) ? array() : ws_api_change_fields_present($row, (string) $entry['action']),
+        'reason'              => (string) $entry['reason'],
+        'error'               => (string) $row['error'],
+        'requested_by'        => ws_api_person_ref($row['requested_by'], $people),
+        'decided_by'          => ws_api_person_ref($row['decided_by'], $people),
+        'decided_at'          => api_time($row['decided_at']),
+        'decision_message_id' => ((int) $row['decision_message_id'] > 0) ? (int) $row['decision_message_id'] : null,
+        'created_at'          => api_time($row['created_at']),
+    );
+}
+
+// What ws_api_change_present() returns.
+function ws_api_change_schema()
+{
+    return array(
+        'id'                  => 'integer',
+        'status'              => 'string',
+        'agent'               => 'string',
+        'request_id'          => 'integer?',
+        'channel_id'          => 'integer',
+        'message_id'          => 'integer',
+        'action'              => 'string',
+        'record'              => array('type' => 'string', 'type_label' => 'string', 'id' => 'integer?', 'tag' => 'string?', 'name' => 'string'),
+        'hidden'              => 'boolean',
+        'fields'              => array(array('name' => 'string', 'label' => 'string', 'from_shown' => 'string?', 'to_shown' => 'string?')),
+        'reason'              => 'string',
+        'error'               => 'string',
+        'requested_by'        => array('user_id' => 'integer', 'name' => 'string'),
+        'decided_by'          => array('user_id' => 'integer', 'name' => 'string'),
+        'decided_at'          => 'string?',
+        'decision_message_id' => 'integer?',
+        'created_at'          => 'string?',
+    );
+}
+
+function ws_api_changes_list($params)
+{
+    $viewer = ws_api_viewer();
+    $limit = (int) ($params['limit'] ?? 50);
+    $cursor = ws_api_cursor($params);
+
+    if (!function_exists('ws_changes_ready') || !ws_changes_ready()) {
+        api_ok_list(array(), $limit);
+    }
+
+    $types = ws_change_types();
+    $type = (string) ($params['type'] ?? '');
+
+    if (($type !== '') && !isset($types[$type])) {
+        api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('type', implode(', ', array_keys($types))))), 'type');
+    }
+
+    $channel_ids = !empty($params['channel_id'])
+        ? array((int) ws_api_channel_or_404($viewer, $params['channel_id'])['id'])
+        : ws_api_readable_channel_ids($viewer);
+
+    if (empty($channel_ids)) {
+        api_ok_list(array(), $limit);
+    }
+
+    $where = array("c.channel_id IN (" . implode(',', $channel_ids) . ")");
+
+    if (!empty($params['status'])) {
+        $where[] = "c.status = '" . e($params['status']) . "'";
+    }
+
+    if ($type !== '') {
+        $where[] = "c.record_type = '" . e($type) . "'";
+    }
+
+    if ($cursor !== null) {
+        $where[] = "c.id < '" . (int) $cursor['i'] . "'";
+    }
+
+    // Which assistant proposed it, when the requests say (ai.php).
+    $agent = function_exists('ws_ai_schema_ready') && ws_ai_schema_ready();
+
+    $rows = (array) db_items("SELECT c.*" . ($agent ? ", r.agent" : '') . "
+        FROM ws_ai_changes c
+        " . ($agent ? "LEFT JOIN ws_ai_requests r ON r.id = c.request_id" : '') . "
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY c.id DESC
+        LIMIT " . ($limit + 1));
+
+    $next = null;
+
+    if (count($rows) > $limit) {
+        $rows = array_slice($rows, 0, $limit);
+        $last = end($rows);
+        $next = api_cursor_encode($last['id'], $last['id']);
+    }
+
+    $message_ids = array();
+    $people_ids = array();
+
+    foreach ($rows as $row) {
+        $message_ids[] = (int) $row['message_id'];
+        $people_ids[] = (int) $row['requested_by'];
+        $people_ids[] = (int) $row['decided_by'];
+    }
+
+    // The cards of those answers, drawn for this reader.
+    $entries = array();
+
+    foreach (ws_changes_map($viewer, array_unique($message_ids)) as $list) {
+        foreach ($list as $entry) {
+            $entries[(int) $entry['id']] = $entry;
+        }
+    }
+
+    $people = ws_people(array_unique(array_filter($people_ids)));
+    $out = array();
+
+    foreach ($rows as $row) {
+        // A kind of record the site no longer runs has no card either.
+        if (isset($entries[(int) $row['id']])) {
+            $out[] = ws_api_change_present($row, $entries[(int) $row['id']], $people);
+        }
+    }
+
+    api_ok_list($out, $limit, $next);
+}
+
+/**
+ * Where a request was asked: in a channel, in a note, or in the Visual Page
+ * Editor.
+ *
+ * @param array $row ws_ai_requests
+ * @return string
+ */
+function ws_api_assistant_request_origin($row)
+{
+    if ((int) $row['channel_id'] > 0) {
+        return 'channel';
+    }
+
+    if ((int) ($row['note_id'] ?? 0) > 0) {
+        return 'note';
+    }
+
+    return ((int) ($row['page_id'] ?? 0) > 0) ? 'editor' : '';
+}
+
+function ws_api_assistant_request_present($row, $people)
+{
+    $note_id = (int) ($row['note_id'] ?? 0);
+    $page_id = (int) ($row['page_id'] ?? 0);
+
+    return array(
+        'id'               => (int) $row['id'],
+        'agent'            => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
+        'status'           => (string) $row['status'],
+        'origin'           => ws_api_assistant_request_origin($row),
+        'channel_id'       => ((int) $row['channel_id'] > 0) ? (int) $row['channel_id'] : null,
+        'message_id'       => ((int) $row['message_id'] > 0) ? (int) $row['message_id'] : null,
+        'note_id'          => ($note_id > 0) ? $note_id : null,
+        'page_id'          => ($page_id > 0) ? $page_id : null,
+        'node_id'          => (($page_id > 0) && ((string) ($row['node_id'] ?? '') !== '')) ? (string) $row['node_id'] : null,
+        'requested_by'     => ws_api_person_ref($row['requested_by'], $people),
+        'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
+        'error'            => (string) $row['error'],
+        'created_at'       => api_time($row['created_at']),
+        'sent_at'          => api_time($row['sent_at']),
+        'claimed_at'       => api_time($row['claimed_at']),
+        'answered_at'      => api_time($row['answered_at']),
+    );
+}
+
+// What ws_api_assistant_request_present() returns.
+function ws_api_assistant_request_schema()
+{
+    return array(
+        'id'               => 'integer',
+        'agent'            => 'string',
+        'status'           => 'string',
+        'origin'           => 'string',
+        'channel_id'       => 'integer?',
+        'message_id'       => 'integer?',
+        'note_id'          => 'integer?',
+        'page_id'          => 'integer?',
+        'node_id'          => 'string?',
+        'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
+        'reply_message_id' => 'integer?',
+        'error'            => 'string',
+        'created_at'       => 'string?',
+        'sent_at'          => 'string?',
+        'claimed_at'       => 'string?',
+        'answered_at'      => 'string?',
+    );
+}
+
+function ws_api_assistant_requests_list($params)
+{
+    $viewer = ws_api_viewer();
+    $limit = (int) ($params['limit'] ?? 50);
+    $cursor = ws_api_cursor($params);
+
+    if (!function_exists('ws_claude_schema_ready') || !ws_claude_schema_ready()) {
+        api_ok_list(array(), $limit);
+    }
+
+    // Asked in a channel the owner reads, or by the owner where no channel
+    // is: in a note or in the page editor.
+    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer['id'] . "')");
+    $channel_ids = ws_api_readable_channel_ids($viewer);
+
+    if (!empty($channel_ids)) {
+        $reach[] = "channel_id IN (" . implode(',', $channel_ids) . ")";
+    }
+
+    $where = "(" . implode(' OR ', $reach) . ")";
+
+    if (!empty($params['status'])) {
+        $where .= " AND status = '" . e($params['status']) . "'";
+    }
+
+    if (!empty($params['agent']) && function_exists('ws_ai_agent_where')) {
+        $where .= ws_ai_agent_where((string) $params['agent']);
+    }
+
+    if ($cursor !== null) {
+        $where .= " AND id < '" . (int) $cursor['i'] . "'";
+    }
+
+    // The columns later steps added are read only where they exist; the
+    // conversation and page trees kept on the row are never read here.
+    $columns = array('id', 'channel_id', 'message_id', 'requested_by', 'status', 'reply_message_id', 'error', 'created_at', 'sent_at', 'claimed_at', 'answered_at');
+
+    foreach (array('agent', 'note_id', 'page_id', 'node_id') as $column) {
+        if (function_exists('waf_table_has_column') && waf_table_has_column('ws_ai_requests', $column)) {
+            $columns[] = $column;
+        }
+    }
+
+    $rows = (array) db_items("SELECT " . implode(', ', $columns) . " FROM ws_ai_requests
+        WHERE " . $where . "
+        ORDER BY id DESC
+        LIMIT " . ($limit + 1));
+
+    $next = null;
+
+    if (count($rows) > $limit) {
+        $rows = array_slice($rows, 0, $limit);
+        $last = end($rows);
+        $next = api_cursor_encode($last['id'], $last['id']);
+    }
+
+    $people_ids = array();
+
+    foreach ($rows as $row) {
+        $people_ids[] = (int) $row['requested_by'];
+    }
+
+    $people = ws_people(array_unique(array_filter($people_ids)));
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = ws_api_assistant_request_present($row, $people);
+    }
+
+    api_ok_list($out, $limit, $next);
+}
+
+/* ---------------------------------------------------------------------------
+   Notes (includes/workspace/notes.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * A note the owner may read, or a 404. The application Claude works through
+ * reads a note that reached the owner only through a channel just where
+ * Claude may be asked, as it reads the channel itself.
+ *
+ * @param array $viewer
+ * @param int   $note_id
+ * @return array the row, with access
+ */
+function ws_api_note_or_404($viewer, $note_id)
+{
+    $note = ws_note_for($viewer, (int) $note_id, 'view');
+
+    if (!$note) {
+        api_fail_not_found(lang('Note'));
+    }
+
+    if (ws_api_is_claude() && ($note['access'] === 'view')) {
+        $reached = false;
+
+        foreach ((array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
+            if ((int) $share['user_id'] === (int) $viewer['id']) {
+                $reached = true;
+            } elseif ((int) $share['channel_id'] > 0) {
+                $channel = ws_channel($share['channel_id']);
+                $reached = $reached || ($channel && ws_can_read_channel($viewer, $channel) && ws_claude_channel_allowed($channel));
+            }
+        }
+
+        if (!$reached) {
+            api_fail_not_found(lang('Note'));
+        }
+    }
+
+    return $note;
+}
+
+/**
+ * Where a note was taken from, when it was taken from a message.
+ *
+ * @param array|null $source ws_notes_present()
+ * @return array|null
+ */
+function ws_api_note_source_present($source)
+{
+    if (!is_array($source)) {
+        return null;
+    }
+
+    $channel = $source['channel'] ?? null;
+
+    return array(
+        'channel_id'   => is_array($channel) ? (int) $channel['id'] : null,
+        'channel_name' => is_array($channel) ? (string) $channel['name'] : '',
+        'author'       => is_array($source['sender'] ?? null) ? (string) ($source['sender']['name'] ?? '') : '',
+    );
+}
+
+/**
+ * The people a note is shared with.
+ *
+ * @param array[] $with ws_notes_present()
+ * @return array[]
+ */
+function ws_api_note_people_present($with)
+{
+    $out = array();
+
+    foreach ((array) $with as $share) {
+        $out[] = ws_api_note_person_share_present($share);
+    }
+
+    return $out;
+}
+
+function ws_api_note_person_share_present($share)
+{
+    return array(
+        'user_id'  => (int) $share['person']['id'],
+        'name'     => (string) $share['person']['name'],
+        'can_edit' => !empty($share['can_edit']),
+    );
+}
+
+/**
+ * The channels a note is shared in.
+ *
+ * @param array[] $in ws_notes_present()
+ * @return array[]
+ */
+function ws_api_note_channels_present($in)
+{
+    $out = array();
+
+    foreach ((array) $in as $share) {
+        $out[] = ws_api_note_channel_share_present($share);
+    }
+
+    return $out;
+}
+
+function ws_api_note_channel_share_present($share)
+{
+    return array(
+        'channel_id' => (int) $share['id'],
+        'name'       => (string) $share['name'],
+    );
+}
+
+/**
+ * One note as the API shows it, from what the notes screen makes of it for
+ * this reader (ws_notes_present()); text and body only when it was made with
+ * them.
+ *
+ * @param array $viewer
+ * @param array $note ws_notes_present()
+ * @return array
+ */
+function ws_api_note_present($viewer, $note)
+{
+    $full = array_key_exists('body', $note);
+
+    return array(
+        'id'          => (int) $note['id'],
+        'title'       => (string) $note['title'],
+        'name'        => (string) $note['name'],
+        'excerpt'     => (string) $note['excerpt'],
+        'access'      => (string) $note['access'],
+        'pinned'      => !empty($note['pinned']),
+        'unread'      => !empty($note['unread']),
+        'owner'       => ws_api_person_brief_ref($note['owner'] ?? null),
+        'updated_by'  => ws_api_person_brief_ref($note['updated_by'] ?? null),
+        'source'      => ws_api_note_source_present($note['source'] ?? null),
+        'shared_with' => ws_api_note_people_present($note['with'] ?? array()),
+        'shared_in'   => ws_api_note_channels_present($note['in'] ?? array()),
+        'channel_id'  => is_array($note['channel'] ?? null) ? (int) $note['channel']['id'] : null,
+        'text'        => $full ? ws_plain_text($viewer, (string) $note['body']) : null,
+        'body'        => $full ? (string) $note['body'] : null,
+        'updated_at'  => api_time($note['updated_at']),
+    );
+}
+
+// What ws_api_note_present() returns.
+function ws_api_note_schema()
+{
+    return array(
+        'id'          => 'integer',
+        'title'       => 'string',
+        'name'        => 'string',
+        'excerpt'     => 'string',
+        'access'      => 'string',
+        'pinned'      => 'boolean',
+        'unread'      => 'boolean',
+        'owner'       => array('user_id' => 'integer', 'name' => 'string'),
+        'updated_by'  => array('user_id' => 'integer', 'name' => 'string'),
+        'source'      => array('channel_id' => 'integer?', 'channel_name' => 'string', 'author' => 'string'),
+        'shared_with' => array(array('user_id' => 'integer', 'name' => 'string', 'can_edit' => 'boolean')),
+        'shared_in'   => array(array('channel_id' => 'integer', 'name' => 'string')),
+        'channel_id'  => 'integer?',
+        'text'        => 'string?',
+        'body'        => 'string?',
+        'updated_at'  => 'string?',
+    );
+}
+
+function ws_api_notes_list($params)
+{
+    $viewer = ws_api_viewer();
+    $scope = (string) ($params['scope'] ?? 'all');
+    $lists = ws_notes_list($viewer, (string) ($params['search'] ?? ''));
+    $notes = array();
+
+    if ($scope !== 'shared') {
+        $notes = array_merge($notes, $lists['mine']);
+    }
+
+    if ($scope !== 'mine') {
+        $notes = array_merge($notes, $lists['shared']);
+    }
+
+    $out = array();
+
+    foreach ($notes as $note) {
+        if (isset($params['updated_since']) && ((int) $note['updated_at'] < (int) $params['updated_since'])) {
+            continue;
+        }
+
+        $out[] = ws_api_note_present($viewer, $note);
+    }
+
+    api_ok_list($out, count($out));
+}
+
+function ws_api_notes_get($params)
+{
+    $viewer = ws_api_viewer();
+    $note = ws_api_note_or_404($viewer, $params['id']);
+
+    api_ok(ws_api_note_present($viewer, ws_note_present($viewer, $note)));
 }

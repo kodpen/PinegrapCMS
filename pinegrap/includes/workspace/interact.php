@@ -192,6 +192,8 @@ function ws_reactions_map($message_ids, $viewer)
             if ((int) $row['sender_id'] === (int) $viewer['id']) {
                 $out[$message_id][$emoji]['mine'] = true;
             }
+        } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
+            $out[$message_id][$emoji]['who'][] = ws_guest_sender((int) $row['sender_id'])['name'];
         } else {
             $out[$message_id][$emoji]['who'][] = ws_app_sender((int) $row['sender_id'])['name'];
         }
@@ -264,10 +266,13 @@ function ws_checks_map($message_ids)
     $out = array();
 
     foreach ($rows as $row) {
+        // Ticked by the guest of the room (guests.php).
+        $guest = ((int) ($row['guest_id'] ?? 0) > 0) && function_exists('ws_guest_sender');
+
         $out[(int) $row['message_id']][(int) $row['item']] = array(
             'checked' => ((int) $row['checked'] === 1),
             'user_id' => (int) $row['user_id'],
-            'name'    => $people[(int) $row['user_id']]['name'] ?? ws_person_name($row['user_id']),
+            'name'    => $guest ? ws_guest_sender((int) $row['guest_id'])['name'] : ($people[(int) $row['user_id']]['name'] ?? ws_person_name($row['user_id'])),
             'at'      => ws_time_label($row['updated_at']),
         );
     }
@@ -302,9 +307,12 @@ function ws_check_set($viewer, $message, $item, $checked)
         return array('ok' => false, 'error' => lang('That item is no longer in the list.'));
     }
 
+    // A tick a guest gave before is the person's now.
+    $guest_column = function_exists('ws_guest_votes_ready') && ws_guest_votes_ready();
+
     db("INSERT INTO ws_checks (message_id, item, checked, user_id, updated_at)
         VALUES ('" . (int) $message['id'] . "', '" . $item . "', '" . ($checked ? 1 : 0) . "', '" . (int) $viewer['id'] . "', '" . time() . "')
-        ON DUPLICATE KEY UPDATE checked = VALUES(checked), user_id = VALUES(user_id), updated_at = VALUES(updated_at)");
+        ON DUPLICATE KEY UPDATE checked = VALUES(checked), user_id = VALUES(user_id), updated_at = VALUES(updated_at)" . ($guest_column ? ", guest_id = 0" : ''));
 
     ws_message_touch($message['id']);
     ws_checklist_tasks_refresh($message['id']);
@@ -654,7 +662,13 @@ function ws_polls_map($message_ids, $viewer)
     $votes = array();
     $user_ids = array();
 
-    foreach ((array) db_items("SELECT poll_id, option_id, user_id FROM ws_poll_votes WHERE poll_id IN (" . implode(',', $poll_ids) . ") ORDER BY created_at") as $row) {
+    // A guest of the room votes too (guests.php): a user's vote has guest_id
+    // 0, a guest's user_id 0. The reader is a guest when $viewer carries
+    // guest_id.
+    $guest_votes = function_exists('ws_guest_votes_ready') && ws_guest_votes_ready();
+    $guest_reader = (int) ($viewer['guest_id'] ?? 0);
+
+    foreach ((array) db_items("SELECT poll_id, option_id, user_id" . ($guest_votes ? ', guest_id' : ', 0 AS guest_id') . " FROM ws_poll_votes WHERE poll_id IN (" . implode(',', $poll_ids) . ") ORDER BY created_at") as $row) {
         $votes[(int) $row['poll_id']][] = $row;
         $user_ids[] = (int) $row['user_id'];
     }
@@ -673,15 +687,19 @@ function ws_polls_map($message_ids, $viewer)
 
         foreach ($votes[$poll_id] ?? array() as $vote) {
             $option_id = (int) $vote['option_id'];
+            $voter_guest = (int) $vote['guest_id'];
             $counts[$option_id] = ($counts[$option_id] ?? 0) + 1;
-            $people_voted[(int) $vote['user_id']] = true;
+            $people_voted[($voter_guest > 0) ? 'g' . $voter_guest : (int) $vote['user_id']] = true;
 
-            if (!$anonymous) {
+            if (!$anonymous && ($voter_guest > 0) && function_exists('ws_guest_sender')) {
+                $voter = ws_guest_sender($voter_guest);
+                $voters[$option_id][] = array('id' => 0, 'name' => (string) $voter['name'], 'avatar' => (string) $voter['avatar'], 'guest' => true);
+            } elseif (!$anonymous) {
                 $voters[$option_id][] = array('id' => (int) $vote['user_id'], 'name' => $people[(int) $vote['user_id']]['name'] ?? ws_person_name($vote['user_id']),
                     'avatar' => $people[(int) $vote['user_id']]['avatar'] ?? '');
             }
 
-            if ((int) $vote['user_id'] === (int) $viewer['id']) {
+            if (($guest_reader > 0) ? ($voter_guest === $guest_reader) : (($voter_guest === 0) && ((int) $vote['user_id'] === (int) $viewer['id']))) {
                 $mine[] = $option_id;
             }
         }

@@ -1,0 +1,84 @@
+/*!
+ * Pinegrap look: Elegant.
+ * Serif headings over a clean sans-serif, fine lines, almost square
+ * corners and widely spaced capitals on the buttons.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: "Avenir Next", Avenir, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --pg-font-heading: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+    --pg-line-height: 1.65;
+    --pg-heading-weight: 400;
+    --pg-heading-tracking: -0.005em;
+    --pg-heading-line-height: 1.2;
+    --pg-display-weight: 400;
+    --pg-lead-weight: 300;
+    --pg-brand-weight: 400;
+    --pg-nav-link-weight: 400;
+    --pg-quote-font: var(--pg-font-heading);
+    --pg-quote-style: italic;
+
+    --pg-link-underline-offset: 0.25em;
+    --pg-link-thickness: 1px;
+
+    --pg-radius-sm: 0;
+    --pg-radius: 0.125rem;
+    --pg-radius-lg: 0.25rem;
+    --pg-radius-xl: 0.375rem;
+    --pg-radius-xxl: 0.5rem;
+    --pg-radius-btn: 0;
+    --pg-radius-btn-sm: 0;
+    --pg-radius-btn-lg: 0;
+    --pg-radius-input: 0.125rem;
+    --pg-radius-card: 0.25rem;
+    --pg-radius-badge: 0;
+    --pg-radius-menu: 0.25rem;
+    --pg-radius-modal: 0.375rem;
+    --pg-radius-progress: 0;
+
+    --pg-card-border-color: var(--bs-border-color);
+    --pg-menu-border-color: var(--bs-border-color);
+    --pg-hr-opacity: 0.15;
+
+    --pg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --pg-shadow: 0 12px 30px -14px rgba(0, 0, 0, 0.2);
+    --pg-shadow-lg: 0 30px 60px -24px rgba(0, 0, 0, 0.28);
+    --pg-card-shadow: none;
+    --pg-card-shadow-hover: var(--pg-shadow);
+    --pg-card-hover-transform: translateY(-2px);
+
+    --pg-btn-weight: 500;
+    --pg-btn-transform: uppercase;
+    --pg-btn-tracking: 0.14em;
+    --pg-btn-font-size: 0.75rem;
+    --pg-btn-py: 0.9rem;
+    --pg-btn-px: 1.9rem;
+
+    --pg-input-py: 0.625rem;
+    --pg-input-px: 0.875rem;
+    --pg-focus-ring-width: 0.1875rem;
+
+    --pg-card-py: 1.75rem;
+    --pg-card-px: 1.75rem;
+    --pg-card-cap-bg: transparent;
+
+    --pg-tabs-underline: 1px;
+    --pg-tabs-active-border-color: transparent;
+
+    --pg-pagination-joined: 0;
+    --pg-pagination-gap: 0.5rem;
+    --pg-pagination-border-width: 0px;
+
+    --pg-badge-weight: 500;
+    --pg-badge-transform: uppercase;
+    --pg-badge-tracking: 0.1em;
+    --pg-th-weight: 500;
+    --pg-th-transform: uppercase;
+    --pg-th-tracking: 0.12em;
+    --pg-th-size: 0.75rem;
+
+    --pg-progress-height: 0.25rem;
+
+    --pg-duration: 0.3s;
+    --pg-ease: ease;
+}

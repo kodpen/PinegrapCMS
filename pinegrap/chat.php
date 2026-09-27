@@ -628,9 +628,10 @@ function pg_chat_role_label($role)
 }
 
 // Avatar source uses the same priority as the dashboard's Whois Online
-// widget: contacts.file_id > contacts.image > default image. The files name
-// comes from the LEFT JOIN in the query, so there is no extra query per row.
-function pg_chat_avatar_src($image, $image_file_id, $image_file_name)
+// widget: contacts.file_id > contacts.image > the letters of the name
+// (includes/fn/contacts.php). The files name comes from the LEFT JOIN in the
+// query, so there is no extra query per row.
+function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name = '', $last_name = '', $username = '', $seed = '')
 {
     if (((int) $image_file_id > 0) && ($image_file_name != '')) {
         return PATH . $image_file_name;
@@ -638,6 +639,10 @@ function pg_chat_avatar_src($image, $image_file_id, $image_file_name)
 
     if ($image != '') {
         return $image;
+    }
+
+    if (function_exists('pg_avatar_for')) {
+        return pg_avatar_for($first_name, $last_name, $username, $seed);
     }
 
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png';
@@ -695,7 +700,7 @@ function pg_chat_user_brief($row)
         'username' => $row['username'],
         'role' => (int) $row['role'],
         'role_label' => pg_chat_role_label($row['role']),
-        'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name),
+        'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name, $last_name, $row['username'], $row['id']),
         'presence' => pg_chat_presence(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
         // "Last seen" for away/offline users (empty for online); the exact
         // timestamp feeds the hover tooltip.
@@ -1329,7 +1334,11 @@ function pg_chat_conversation_list()
                 'avatar' => pg_chat_avatar_src(
                     isset($row['image']) ? $row['image'] : '',
                     isset($row['image_file_id']) ? $row['image_file_id'] : 0,
-                    isset($row['image_file_name']) ? $row['image_file_name'] : ''
+                    isset($row['image_file_name']) ? $row['image_file_name'] : '',
+                    $first_name,
+                    $last_name,
+                    $row['peer_username'],
+                    $row['peer_id']
                 ),
                 'presence' => pg_chat_presence($row['peer_online_timestamp']),
                 'last_seen' => pg_chat_last_seen_label($row['peer_online_timestamp']),

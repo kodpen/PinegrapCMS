@@ -29,6 +29,7 @@ function api_status_text($code) {
 		200 => 'OK',
 		201 => 'Created',
 		204 => 'No Content',
+		304 => 'Not Modified',
 		400 => 'Bad Request',
 		401 => 'Unauthorized',
 		403 => 'Forbidden',
@@ -72,6 +73,34 @@ function api_send($status_code, $body, $error_code = '') {
 
 	}
 
+	// A read may ask for part of each record (?fields=) and may already hold
+	// the answer (If-None-Match). Both are settled on the finished body, so
+	// every endpoint gets them without a line of its own - see the two helpers
+	// below.
+	$read = (($status_code === 200) && (api_request_method() === 'GET'));
+
+	if ($read) {
+
+		$body = api_response_fields($body);
+
+	}
+
+	$json = ($status_code !== 204) ? json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+
+	if ($read) {
+
+		$etag = 'W/"' . substr(sha1((string)$json), 0, 32) . '"';
+
+		api_extra_headers('ETag', $etag);
+
+		if (api_etag_matches($etag)) {
+
+			$status_code = 304;
+
+		}
+
+	}
+
 	if (!headers_sent()) {
 
 		header('Content-Type: application/json; charset=utf-8');
@@ -106,13 +135,119 @@ function api_send($status_code, $body, $error_code = '') {
 
 	api_log_request($status_code, $error_code);
 
-	if ($status_code !== 204) {
+	if (($status_code !== 204) && ($status_code !== 304)) {
 
-		echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		echo $json;
 
 	}
 
 	exit();
+
+}
+
+// The fields a read asked for, applied to its answer.
+//
+// ?fields=id,name,price keeps those top-level fields of each record - of every
+// row of a listing, or of the one record a single read returns - and drops the
+// rest before the answer is encoded. It is how a phone on a slow connection
+// asks a listing for the three columns its screen draws rather than the forty
+// the record has. id is always kept, because a row without it cannot be told
+// apart from the others. A name the record does not have is not an error: it
+// is simply not there, which is also what an older site answers for a field a
+// newer one added.
+//
+// The descriptions of the API are left whole; they are documents, not records.
+function api_response_fields($body) {
+
+	$route = api_current_route();
+
+	if (!is_array($body) || !is_array($route) || in_array($route['id'], array('openapi', 'docs.endpoints'), true)) {
+
+		return $body;
+
+	}
+
+	$raw = isset($_GET['fields']) ? $_GET['fields'] : '';
+
+	if (!is_string($raw) || (trim($raw) === '')) {
+
+		return $body;
+
+	}
+
+	$keep = array('id' => true);
+
+	foreach (explode(',', $raw) as $name) {
+
+		$name = trim($name);
+
+		if ($name !== '') {
+
+			$keep[$name] = true;
+
+		}
+
+	}
+
+	$trim = function ($record) use ($keep) {
+
+		return is_array($record) ? array_intersect_key($record, $keep) : $record;
+
+	};
+
+	if (isset($body['data']) && is_array($body['data']) && array_key_exists('page', $body)) {
+
+		$body['data'] = array_map($trim, $body['data']);
+
+		return $body;
+
+	}
+
+	return $trim($body);
+
+}
+
+// Whether the caller already holds this answer.
+//
+// The ETag is a digest of the exact bytes that would be sent, so it changes when
+// anything in the answer changes and not otherwise. A client that sends it back
+// in If-None-Match is answered 304 with no body when nothing has changed -
+// polling the unread count or re-reading a list on every screen open then costs
+// a status line instead of the list. The comparison is the weak one (RFC 9110
+// 8.8.3.2): the W/ marker is ignored on both sides, since a proxy may add or
+// drop it.
+//
+// Nothing is cached on the server, and Cache-Control stays no-store: the
+// saving is the transfer, and the copy the client keeps is its own.
+function api_etag_matches($etag) {
+
+	$header = api_header('If-None-Match');
+
+	if ($header === '') {
+
+		return false;
+
+	}
+
+	if (trim($header) === '*') {
+
+		return true;
+
+	}
+
+	$bare = preg_replace('#^W/#', '', $etag);
+
+	foreach (explode(',', $header) as $candidate) {
+
+		if (preg_replace('#^W/#', '', trim($candidate)) === $bare) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
 
 }
 

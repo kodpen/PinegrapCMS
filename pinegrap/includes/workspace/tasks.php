@@ -152,6 +152,11 @@ function ws_task_due_label($task)
         $label = ws_day_label($due);
     }
 
+    // The time on the due date, where the task has one (reminders.php).
+    if ((string) ($task['due_time'] ?? '') !== '') {
+        $label .= ' ' . substr((string) $task['due_time'], 0, 5);
+    }
+
     if (($due < $today) && ws_task_is_open($task['status'] ?? 'todo')) {
         $label = lang(array('string' => '{var:1} (overdue)', 'vars' => $label));
     }
@@ -262,6 +267,11 @@ function ws_task_detail($viewer, $task)
     $detail['checklist'] = ws_task_checklist_detail($viewer, $task, $detail['can_edit']);
     $detail['notes'] = ws_task_notes($viewer, $task);
     $detail['recurrence'] = function_exists('ws_recurrence_detail') ? ws_recurrence_detail($task) : null;
+
+    // The time on the due date and the e-mail reminder (reminders.php).
+    if (function_exists('ws_task_reminder_detail')) {
+        $detail = array_merge($detail, ws_task_reminder_detail($task));
+    }
 
     return $detail;
 }
@@ -404,6 +414,17 @@ function ws_task_validate($viewer, $data, $current = null)
         $clean['assignees'] = array_values($assignees);
     }
 
+    // The time on the due date and the e-mail reminder (reminders.php).
+    if (function_exists('ws_task_reminder_validate')) {
+        $remind = ws_task_reminder_validate($data, $current, $due);
+
+        if (!$remind['ok']) {
+            return $fail($remind['error'], $remind['field']);
+        }
+
+        $clean = array_merge($clean, $remind['clean']);
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'clean' => $clean);
 }
 
@@ -473,6 +494,14 @@ function ws_task_create($viewer, $data)
     }
 
     ws_task_set_assignees($viewer, $task_id, $assignees, true);
+
+    // The time on the due date and the e-mail reminder (reminders.php).
+    $remind_set = function_exists('ws_task_reminder_set') ? ws_task_reminder_set($clean) : array();
+
+    if (!empty($remind_set)) {
+        db("UPDATE ws_tasks SET " . implode(', ', $remind_set) . " WHERE id = '" . $task_id . "'");
+        ws_task_reminder_sync($task_id);
+    }
 
     $tokens = array_merge(ws_tokens($clean['description'] ?? ''), ws_task_ref_tokens($data['refs'] ?? array()));
     ws_refs_store('task', $task_id, (int) ($clean['channel_id'] ?? 0), $tokens);
@@ -596,6 +625,10 @@ function ws_task_update($viewer, $task, $data)
         }
     }
 
+    if (function_exists('ws_task_reminder_set')) {
+        $set = array_merge($set, ws_task_reminder_set($clean));
+    }
+
     $added = array();
 
     if (array_key_exists('assignees', $clean)) {
@@ -612,6 +645,12 @@ function ws_task_update($viewer, $task, $data)
         db("UPDATE ws_tasks SET " . implode(', ', $set) . ", updated_at = '" . time() . "' WHERE id = '" . (int) $task['id'] . "'");
     } elseif (!empty($added) || array_key_exists('assignees', $clean)) {
         db("UPDATE ws_tasks SET updated_at = '" . time() . "' WHERE id = '" . (int) $task['id'] . "'");
+    }
+
+    // A new date, time or reminder: the reminder goes when they say.
+    if (function_exists('ws_task_reminder_sync')
+        && (array_key_exists('due_date', $clean) || array_key_exists('due_time', $clean) || array_key_exists('remind_minutes', $clean))) {
+        ws_task_reminder_sync($task['id']);
     }
 
     // The ticks of the description's checklist follow their items.
@@ -801,6 +840,21 @@ function ws_tasks_list($viewer, $filters)
 
     if (!empty($filters['search'])) {
         $where[] = "t.title LIKE '%" . e(escape_like((string) $filters['search'])) . "%'";
+    }
+
+    // How pressing: one priority, or "hot" for urgent and high together.
+    $priority = (string) ($filters['priority'] ?? '');
+
+    if ($priority === 'hot') {
+        $where[] = "t.priority IN ('urgent', 'high')";
+    } elseif (isset(ws_task_priorities()[$priority])) {
+        $where[] = "t.priority = '" . e($priority) . "'";
+    }
+
+    // Coming up: due within so many days from today, the overdue ones with
+    // them.
+    if ((int) ($filters['soon'] ?? 0) > 0) {
+        $where[] = "t.due_date IS NOT NULL AND t.due_date > '0000-00-00' AND t.due_date <= '" . e(date('Y-m-d', strtotime('+' . (int) $filters['soon'] . ' days'))) . "'";
     }
 
     $limit = max(1, min(500, (int) ($filters['limit'] ?? 200)));

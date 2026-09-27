@@ -255,8 +255,17 @@ if ($erp_document === false) {
                     $ws_in = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members
                         WHERE channel_id = '" . $ws_channel_id . "' AND user_id = '" . (int) $ws_user['id'] . "'");
 
-                    $ws_allowed = (($ws_in !== false) && (mysqli_num_rows($ws_in) > 0))
-                        || (($ws_role < 3) && !empty($_SESSION['software']['ws_audit'][$ws_channel_id]));
+                    $ws_allowed = (($ws_in !== false) && (mysqli_num_rows($ws_in) > 0));
+
+                    // Opened for inspection, and no member of staff in it:
+                    // staff do not inspect each other's private channels.
+                    if (!$ws_allowed && ($ws_role < 3) && !empty($_SESSION['software']['ws_audit'][$ws_channel_id])) {
+                        $ws_staff = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members m
+                            JOIN user u ON u.user_id = m.user_id
+                            WHERE m.channel_id = '" . $ws_channel_id . "' AND u.user_role < 3 LIMIT 1");
+
+                        $ws_allowed = ($ws_staff !== false) && (mysqli_num_rows($ws_staff) === 0);
+                    }
                 }
             }
 

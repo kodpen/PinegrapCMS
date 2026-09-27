@@ -253,6 +253,58 @@
 
     var CHECK = /^\s*[-*]\s\[( |x|X)\]\s+(.+)$/;
 
+    // A block may carry a title: a line "::: Title" right above it
+    // (includes/workspace/blocks.php). The title goes with the block's card.
+    var TITLE = /^\s*:::\s+(\S.*)$/;
+
+    function startsBlock(lines, index) {
+        var line = lines[index];
+
+        if (line === undefined) {
+            return false;
+        }
+
+        return (fenceOpen(line) !== null) || (tableRow(line) && (index + 1) < lines.length && !!tableAlignments(lines[index + 1])) || CHECK.test(line);
+    }
+
+    function titleSplit(markup) {
+        var text = String(markup || '');
+        var lines = text.split('\n');
+        var match = TITLE.exec(lines[0] || '');
+
+        return (match && lines.length > 1) ? { title: match[1].trim(), markup: lines.slice(1).join('\n') } : { title: '', markup: text };
+    }
+
+    // The title field at the head of a block's window, and the answer that
+    // puts the title back above the block.
+    function titled(markup, done) {
+        var parts = (typeof markup === 'string') ? titleSplit(markup) : { title: '', markup: markup };
+        var field = null;
+
+        return {
+            markup: parts.markup,
+            attach: function (win) {
+                var wrap = el('div', 'ws-block-title-field mb-2');
+                var label = el('label', 'form-label small mb-1', t('block_title'));
+
+                field = el('input', 'form-control form-control-sm');
+                field.maxLength = 160;
+                field.value = parts.title;
+                field.placeholder = t('block_title_help');
+                field.id = 'ws-block-title-' + Date.now();
+                label.htmlFor = field.id;
+                wrap.appendChild(label);
+                wrap.appendChild(field);
+                win.body.insertBefore(wrap, win.body.firstChild);
+            },
+            done: function (result) {
+                var title = field ? field.value.replace(/\s+/g, ' ').trim() : parts.title;
+
+                done((result === '' || !title) ? result : '::: ' + title + '\n' + result);
+            }
+        };
+    }
+
     // A text split into lines of words and the blocks among them.
     function parseBlocks(markup) {
         var lines = String(markup || '').replace(/\r\n?/g, '\n').split('\n');
@@ -260,6 +312,15 @@
 
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i];
+            var heading = '';
+
+            // A title right above a block goes with it.
+            if (TITLE.test(line) && startsBlock(lines, i + 1)) {
+                heading = line.trim() + '\n';
+                i++;
+                line = lines[i];
+            }
+
             var language = fenceOpen(line);
 
             if (language !== null) {
@@ -271,7 +332,7 @@
                     j++;
                 }
 
-                out.push({ kind: 'code', markup: '```' + language + '\n' + code.join('\n') + '\n```' });
+                out.push({ kind: 'code', markup: heading + '```' + language + '\n' + code.join('\n') + '\n```' });
                 i = j;
                 continue;
             }
@@ -285,7 +346,7 @@
                     k++;
                 }
 
-                out.push({ kind: 'table', markup: rows.join('\n') });
+                out.push({ kind: 'table', markup: heading + rows.join('\n') });
                 i = k - 1;
                 continue;
             }
@@ -299,7 +360,7 @@
                 }
 
                 i--;
-                out.push({ kind: 'checklist', markup: items.join('\n') });
+                out.push({ kind: 'checklist', markup: heading + items.join('\n') });
                 continue;
             }
 
@@ -459,6 +520,17 @@
     // ── Cards for tables, checklists and code ─────────────────────────
 
     function blockSummary(kind, markup) {
+        var parts = titleSplit(markup);
+        var summary = blockSummaryOf(kind, parts.markup);
+
+        if (parts.title) {
+            summary.label = parts.title + ' · ' + summary.label;
+        }
+
+        return summary;
+    }
+
+    function blockSummaryOf(kind, markup) {
         if (kind === 'table') {
             var lines = markup.split('\n');
             var columns = tableCells(lines[0] || '').length;
@@ -487,7 +559,7 @@
 
     // A ```hesap block: lines of "Name = expression", worked out.
     function isCalcBlock(markup) {
-        var language = (fenceOpen(String(markup || '').split('\n')[0]) || '').toLowerCase();
+        var language = (fenceOpen(titleSplit(markup).markup.split('\n')[0]) || '').toLowerCase();
 
         return ['hesap', 'calc', 'math'].indexOf(language) !== -1;
     }
@@ -1571,6 +1643,11 @@
     function openTable(markup, done, options) {
         options = options || {};
 
+        var titling = titled(markup, done);
+
+        markup = titling.markup;
+        done = titling.done;
+
         var MAX_COLUMNS = 12;
         var MAX_ROWS = 200;
         var model = { head: [], rows: [], align: [] };
@@ -1609,6 +1686,8 @@
         }
 
         var win = modal(t('designer_table'), 'modal-xl');
+
+        titling.attach(win);
         var tools = el('div', 'ws-table-tools');
         var sheetBar = el('div', 'ws-sheet-bar');
         var refBox = el('span', 'ws-sheet-ref', 'A1');
@@ -2097,6 +2176,10 @@
 
     function openChecklist(markup, done) {
         var items = [];
+        var titling = titled(markup, done);
+
+        markup = titling.markup;
+        done = titling.done;
 
         if (markup) {
             markup.split('\n').forEach(function (line) {
@@ -2113,6 +2196,8 @@
         }
 
         var win = modal(t('designer_checklist'), 'modal-lg');
+
+        titling.attach(win);
         var list = el('div', 'ws-check-edit');
 
         win.body.appendChild(list);
@@ -2256,6 +2341,10 @@
     function openCode(markup, done) {
         var language = '';
         var code = '';
+        var titling = titled(markup, done);
+
+        markup = titling.markup;
+        done = titling.done;
 
         if (markup) {
             var lines = markup.split('\n');
@@ -2264,6 +2353,8 @@
         }
 
         var win = modal(t('designer_code'), 'modal-lg');
+
+        titling.attach(win);
         var row = el('div', 'd-flex align-items-center gap-2 mb-2');
         var label = el('label', 'form-label mb-0 small', t('code_language'));
         var input = el('input', 'form-control form-control-sm ws-code-language');
@@ -2333,6 +2424,10 @@
         options = options || {};
 
         var code = '';
+        var titling = titled(markup, done);
+
+        markup = titling.markup;
+        done = titling.done;
 
         if (markup) {
             var lines = markup.split('\n');
@@ -2340,6 +2435,8 @@
         }
 
         var win = modal(t('designer_calc'), 'modal-lg');
+
+        titling.attach(win);
         var area = el('textarea', 'form-control ws-code-edit ws-calc-edit');
         var shown = el('div', 'ws-calc-preview');
         var serial = 0;

@@ -1,0 +1,77 @@
+/*!
+ * Pinegrap look: Modern Soft.
+ * Rounded corners, light layered shadows, a confident sans-serif and roomy
+ * controls. The default look of the templates.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: "Inter", "Segoe UI Variable Text", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    --pg-heading-weight: 700;
+    --pg-heading-tracking: -0.02em;
+    --pg-heading-line-height: 1.2;
+    --pg-display-weight: 800;
+    --pg-lead-weight: 400;
+    --pg-brand-weight: 800;
+    --pg-nav-link-weight: 500;
+
+    --pg-link-underline-offset: 0.2em;
+
+    --pg-radius-sm: 0.5rem;
+    --pg-radius: 0.75rem;
+    --pg-radius-lg: 1rem;
+    --pg-radius-xl: 1.5rem;
+    --pg-radius-xxl: 2rem;
+    --pg-radius-btn: 0.75rem;
+    --pg-radius-btn-sm: 0.5rem;
+    --pg-radius-btn-lg: 0.875rem;
+    --pg-radius-input: 0.625rem;
+    --pg-radius-card: 1rem;
+    --pg-radius-badge: 0.5rem;
+    --pg-radius-menu: 0.875rem;
+    --pg-radius-modal: 1.25rem;
+    --pg-radius-progress: 50rem;
+    --pg-radius-check: 0.375em;
+
+    --pg-card-border-color: rgba(var(--bs-emphasis-color-rgb), 0.08);
+    --pg-menu-border-color: rgba(var(--bs-emphasis-color-rgb), 0.08);
+    --pg-hr-opacity: 0.12;
+
+    --pg-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07);
+    --pg-shadow: 0 4px 10px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05);
+    --pg-shadow-lg: 0 20px 36px -10px rgba(16, 24, 40, 0.16), 0 8px 14px -6px rgba(16, 24, 40, 0.06);
+    --pg-card-shadow: var(--pg-shadow-sm);
+    --pg-card-shadow-hover: var(--pg-shadow-lg);
+    --pg-card-hover-transform: translateY(-3px);
+    --pg-menu-shadow: var(--pg-shadow-lg);
+    --pg-menu-padding: 0.375rem;
+    --pg-menu-item-radius: 0.5rem;
+    --pg-list-shadow: var(--pg-shadow-sm);
+
+    --pg-btn-weight: 600;
+    --pg-btn-py: 0.5625rem;
+    --pg-btn-px: 1.125rem;
+    --pg-btn-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+    --pg-btn-shadow-hover: 0 6px 14px -4px rgba(16, 24, 40, 0.2);
+    --pg-btn-hover-transform: translateY(-1px);
+
+    --pg-input-py: 0.5625rem;
+    --pg-input-px: 0.875rem;
+
+    --pg-card-py: 1.25rem;
+    --pg-card-px: 1.25rem;
+    --pg-card-cap-bg: transparent;
+
+    --pg-pagination-joined: 0;
+    --pg-pagination-gap: 0.375rem;
+
+    --pg-alert-border-width: 0px;
+
+    --pg-badge-weight: 600;
+    --pg-th-weight: 600;
+    --pg-th-size: 0.875rem;
+
+    --pg-progress-height: 0.625rem;
+
+    --pg-duration: 0.2s;
+    --pg-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}

@@ -1225,6 +1225,8 @@ function output_header($properties = false)
     $user_image_row = db_item(
         "SELECT contacts.file_id AS contact_file_id,
                 contacts.image    AS contact_image,
+                contacts.first_name AS contact_first_name,
+                contacts.last_name  AS contact_last_name,
                 files.name        AS file_name
             FROM user
             LEFT JOIN contacts ON contacts.id = user.user_contact
@@ -1235,6 +1237,173 @@ function output_header($properties = false)
         $output_user_image_url = PATH . $user_image_row['file_name'];
     } elseif (!empty($user_image_row['contact_image'])) {
         $output_user_image_url = h($user_image_row['contact_image']);
+    }
+
+    // No picture: the letters of the name, or of the username in a grey
+    // square while there is no name in the address book
+    // (includes/fn/contacts.php). What is missing of the two - the name, the
+    // picture - is asked for at the top of the account menu.
+    $output_user_named = is_array($user_image_row)
+        && ((trim((string) ($user_image_row['contact_first_name'] ?? '')) !== '') || (trim((string) ($user_image_row['contact_last_name'] ?? '')) !== ''));
+    $output_user_has_photo = ($output_user_image_url !== 'assets/images/person1.png');
+
+    if (!$output_user_has_photo && function_exists('pg_initials_avatar_url')) {
+        $output_user_image_url = h(pg_initials_avatar_url(
+            pg_initials($user_image_row['contact_first_name'] ?? '', $user_image_row['contact_last_name'] ?? '', (string) ($_SESSION['sessionusername'] ?? '')),
+            $output_user_named ? 'contact' : 'user',
+            (string) USER_ID
+        ));
+    }
+
+    $output_contact_quick = '';
+
+    if ((!$output_user_named || !$output_user_has_photo) && function_exists('pg_contact_quick_save') && (USER_ID > 0)) {
+        $output_quick_photo_only = $output_user_named;
+
+        $output_contact_quick = '
+                            <li class="px-3 py-2 border-bottom" id="pg_contact_quick"' . ($output_quick_photo_only ? ' data-photo-only' : '') . '>
+                                <form data-pg-contact-quick novalidate>
+                                    <div class="fw-semibold small mb-1"><i class="bi ' . ($output_quick_photo_only ? 'bi-person-bounding-box' : 'bi-person-exclamation') . ' me-1" aria-hidden="true"></i>' . ($output_quick_photo_only ? lang('Add a profile picture') : lang('Complete your address book details')) . '</div>
+                                    <div class="small text-body-secondary mb-2">' . ($output_quick_photo_only ? lang('Your colleagues then see your face next to your name instead of its initials.') : lang('Your colleagues then see you by your name and its initials instead of your username.')) . '</div>'
+                                    . ($output_quick_photo_only ? '' : '
+                                    <div class="d-flex gap-2 mb-2">
+                                        <input type="text" class="form-control form-control-sm" name="first_name" maxlength="50" autocomplete="given-name" placeholder="' . h(lang('First name')) . '" aria-label="' . h(lang('First name')) . '">
+                                        <input type="text" class="form-control form-control-sm" name="last_name" maxlength="50" autocomplete="family-name" placeholder="' . h(lang('Last name')) . '" aria-label="' . h(lang('Last name')) . '">
+                                    </div>
+                                    <input type="tel" class="form-control form-control-sm mb-2" name="mobile_phone" maxlength="50" autocomplete="tel" placeholder="' . h(lang('Mobile phone (optional)')) . '" aria-label="' . h(lang('Mobile phone (optional)')) . '">') . '
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <img src="' . $output_user_image_url . '" alt="" width="40" height="40" class="rounded-circle object-fit-cover flex-shrink-0" data-pg-contact-preview style="width:40px;height:40px">
+                                        <label class="btn btn-sm btn-outline-secondary rounded-pill mb-0 text-nowrap">
+                                            <i class="bi bi-image me-1" aria-hidden="true"></i>' . ($output_user_has_photo ? lang('Change the picture') : lang('Choose a picture')) . '
+                                            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="visually-hidden">
+                                        </label>'
+                                        . ($output_quick_photo_only ? '' : '<span class="small text-body-secondary text-nowrap">' . lang('Optional') . '</span>') . '
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . lang('Save') . '</button>'
+                                        . ($output_quick_photo_only ? '<button type="button" class="btn btn-sm btn-link text-body-secondary px-1" data-pg-contact-later>' . lang('Not now') . '</button>' : '') . '
+                                        <span class="small text-danger" data-pg-contact-error role="alert"></span>
+                                    </div>
+                                </form>
+                                <script>
+                                (function () {
+                                    var item = document.getElementById("pg_contact_quick");
+                                    var form = item ? item.querySelector("[data-pg-contact-quick]") : null;
+                                    var LATER = "pg_contact_photo_later";
+
+                                    if (!form) { return; }
+
+                                    // "Not now" on the picture keeps it out of the menu for a month.
+                                    if (item.hasAttribute("data-photo-only")) {
+                                        try {
+                                            if ((parseInt(window.localStorage.getItem(LATER), 10) || 0) > Date.now()) {
+                                                item.hidden = true;
+                                                return;
+                                            }
+                                        } catch (error) {}
+                                    }
+
+                                    var later = form.querySelector("[data-pg-contact-later]");
+
+                                    if (later) {
+                                        later.addEventListener("click", function () {
+                                            try { window.localStorage.setItem(LATER, String(Date.now() + 30 * 86400000)); } catch (error) {}
+                                            item.hidden = true;
+                                        });
+                                    }
+
+                                    var photo = "";
+                                    var file = form.elements.photo;
+                                    var preview = form.querySelector("[data-pg-contact-preview]");
+                                    var error = form.querySelector("[data-pg-contact-error]");
+
+                                    // Cut square and made small in the browser: the upload stays
+                                    // light and carries nothing but the picture.
+                                    file.addEventListener("change", function () {
+                                        var chosen = file.files && file.files[0];
+
+                                        photo = "";
+                                        error.textContent = "";
+
+                                        if (!chosen) { return; }
+
+                                        var reader = new FileReader();
+
+                                        reader.onload = function () {
+                                            var image = new Image();
+
+                                            image.onload = function () {
+                                                var side = Math.min(image.naturalWidth, image.naturalHeight);
+                                                var size = Math.min(256, side);
+                                                var canvas = document.createElement("canvas");
+
+                                                canvas.width = size;
+                                                canvas.height = size;
+
+                                                var context = canvas.getContext("2d");
+                                                context.fillStyle = "#fff";
+                                                context.fillRect(0, 0, size, size);
+                                                context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+
+                                                try {
+                                                    photo = canvas.toDataURL("image/jpeg", 0.88);
+                                                } catch (drawError) {
+                                                    photo = String(reader.result || "");
+                                                }
+
+                                                preview.src = photo;
+                                            };
+
+                                            image.onerror = function () {
+                                                error.textContent = ' . json_encode(lang('The picture has to be a JPEG, PNG or WebP image.')) . ';
+                                            };
+
+                                            image.src = String(reader.result || "");
+                                        };
+
+                                        reader.readAsDataURL(chosen);
+                                    });
+
+                                    form.addEventListener("submit", function (event) {
+                                        event.preventDefault();
+
+                                        var button = form.querySelector("button[type=submit]");
+                                        var body = {
+                                            action: "contact_quick_save",
+                                            token: ' . json_encode(isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '') . ',
+                                            photo: photo
+                                        };
+
+                                        ["first_name", "last_name", "mobile_phone"].forEach(function (name) {
+                                            if (form.elements[name]) { body[name] = form.elements[name].value; }
+                                        });
+
+                                        button.disabled = true;
+                                        error.textContent = "";
+
+                                        fetch(' . json_encode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php') . ', {
+                                            method: "POST",
+                                            credentials: "same-origin",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify(body)
+                                        }).then(function (response) {
+                                            return response.json();
+                                        }).then(function (json) {
+                                            if (json && json.status === "success") {
+                                                window.location.reload();
+                                                return;
+                                            }
+
+                                            error.textContent = (json && json.message) ? json.message : ' . json_encode(lang('Your details could not be saved.')) . ';
+                                            button.disabled = false;
+                                        }).catch(function () {
+                                            error.textContent = ' . json_encode(lang('Your details could not be saved.')) . ';
+                                            button.disabled = false;
+                                        });
+                                    });
+                                })();
+                                </script>
+                            </li>';
     }
 
 
@@ -1511,6 +1680,7 @@ function output_header($properties = false)
                          </button>
                          <ul id="user_menu" class="dropdown-menu shadow pt-0 dropdown-menu-end pb-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu pg-usermenu" aria-labelledby="user_menu-toggle"> 
                             <li>' . $output_user_identity . '</li>
+                            ' . $output_contact_quick . '
                             ' . license_check(array('output' => 'bar')) . '
                             <li class="pg-um-theme">
                                 <span class="pg-um-section">' . lang('Appearance') . '</span>
@@ -1712,6 +1882,295 @@ function output_footer_secure($properties = false)
     return $output;
 }
 
+// pg_menu_icon()
+// The icons of the panel's main menu, drawn on a 24-unit grid in two
+// colours. The module colour (the .X-color class on the <svg>) draws the
+// outline and, as a tint (.pg-mi-2), the body. A second hue picked per icon
+// in backend.src.css (--pg-mi-a) draws the one detail the icon is about --
+// the clock's hands, the tick, the sun, the per cent sign -- as an outline
+// (.pg-mi-a) and a tint (.pg-mi-at). The fill-opacity attributes are the
+// fallback for a page that has not loaded the stylesheet yet.
+//
+// Parts that move on hover carry a class of their own (.pg-mi-lid,
+// .pg-mi-check, ...); the movements live in backend.src.css under
+// "Main menu icons".
+//
+// Dashboard: a clock set to the site's time. The hands are placed here, from
+// the site's time zone, and backend.src.js keeps them turning from the time
+// the page has been open, so a browser in another zone does not move them.
+// Calendars: today's day of the month, which the same script rolls over at
+// midnight.
+function pg_menu_icon($name, $color_class = '')
+{
+    // Module tint, accent tint and solid fill attribute sets. A tint drawn
+    // at full strength (.pg-mi-solid) is opaque enough to hide what is
+    // behind it, as the front of the folder hides the sheet inside.
+    $tint = ' fill="currentColor" fill-opacity=".3" stroke="none"';
+    $d = ' class="pg-mi-2"' . $tint;
+    $a = ' class="pg-mi-at"' . $tint;
+    $f = ' fill="currentColor" stroke="none"';
+
+    $extra = '';
+
+    switch ($name) {
+        case 'dashboard':
+            $seconds = ((int) date('G') * 3600) + ((int) date('i') * 60) + (int) date('s');
+            $hour = round(($seconds % 43200) / 120, 2);
+            $minute = round(($seconds % 3600) / 10, 2);
+            $extra = ' data-pg-clock="' . $seconds . '" data-pg-clock-date="' . date('Y-m-d') . '"';
+            $body =
+                '<g class="pg-mi-face">' .
+                '<circle' . $d . ' cx="12" cy="12" r="9"/>' .
+                '<circle cx="12" cy="12" r="9"/>' .
+                '<path d="M12 4.9v1.2M19.1 12h-1.2M12 19.1v-1.2M4.9 12h1.2" stroke-width="1.4"/>' .
+                '</g>' .
+                '<g class="pg-mi-a">' .
+                '<g class="pg-mi-hand-h"><path class="pg-mi-hour" d="M12 12V8.3" stroke-width="2.1" transform="rotate(' . $hour . ' 12 12)"/></g>' .
+                '<g class="pg-mi-hand-m"><path class="pg-mi-minute" d="M12 12V6.1" stroke-width="1.8" transform="rotate(' . $minute . ' 12 12)"/></g>' .
+                '<circle' . $f . ' cx="12" cy="12" r="1.4"/>' .
+                '</g>';
+            break;
+
+        case 'workspace':
+            $bubble = 'M6.5 4h11A2.5 2.5 0 0 1 20 6.5V14a2.5 2.5 0 0 1-2.5 2.5h-7l-4 3.3v-3.3A2.5 2.5 0 0 1 4 14V6.5A2.5 2.5 0 0 1 6.5 4z';
+            $body =
+                '<g class="pg-mi-bubble">' .
+                '<path' . $d . ' d="' . $bubble . '"/>' .
+                '<path d="' . $bubble . '"/>' .
+                '<path class="pg-mi-a pg-mi-check" pathLength="1" d="M8.6 10.3l2.3 2.3 4.5-4.6" stroke-width="2"/>' .
+                '</g>';
+            break;
+
+        case 'folders':
+            $flap = 'M3 17.5v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
+            $body =
+                '<path' . $d . ' d="M3 17.5v-11A2.5 2.5 0 0 1 5.5 4h3.6a2 2 0 0 1 1.5.7L12 6.3h6.5A2.5 2.5 0 0 1 21 8.8v8.7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>' .
+                '<path d="M3 17.5v-11A2.5 2.5 0 0 1 5.5 4h3.6a2 2 0 0 1 1.5.7L12 6.3h6.5A2.5 2.5 0 0 1 21 8.8v.7"/>' .
+                '<g class="pg-mi-a pg-mi-sheet">' .
+                '<path' . $a . ' d="M6.5 15V8.2a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V15z"/>' .
+                '<path d="M6.5 15V8.2a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V15" stroke-width="1.5"/>' .
+                '</g>' .
+                '<g class="pg-mi-flap">' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $flap . '"/>' .
+                '<path d="' . $flap . '"/>' .
+                '</g>';
+            break;
+
+        case 'pages':
+            $body =
+                '<path' . $d . ' d="M3.5 9V6.5A2.5 2.5 0 0 1 6 4h12a2.5 2.5 0 0 1 2.5 2.5V9z"/>' .
+                '<rect x="3.5" y="4" width="17" height="16" rx="2.5"/>' .
+                '<path d="M3.5 9h17"/>' .
+                '<g class="pg-mi-a pg-mi-lights">' .
+                '<circle' . $f . ' cx="6.6" cy="6.5" r=".95"/>' .
+                '<circle' . $f . ' cx="9.2" cy="6.5" r=".95"/>' .
+                '</g>' .
+                '<g class="pg-mi-content">' .
+                '<g class="pg-mi-a">' .
+                '<rect' . $a . ' x="6.5" y="11.6" width="4.6" height="5.6" rx="1"/>' .
+                '<rect x="6.5" y="11.6" width="4.6" height="5.6" rx="1" stroke-width="1.4"/>' .
+                '</g>' .
+                '<path d="M13.6 12.5h3.9M13.6 14.9h3.9M13.6 17.3h2.4" stroke-width="1.5"/>' .
+                '</g>';
+            break;
+
+        case 'files':
+            $body =
+                '<g class="pg-mi-a pg-mi-back">' .
+                '<path' . $a . ' d="M7 6.8V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-.7V8.8a2 2 0 0 0-2-2z"/>' .
+                '<path d="M7 6.8V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-.7" stroke-width="1.5"/>' .
+                '</g>' .
+                '<g class="pg-mi-front">' .
+                '<rect' . $d . ' x="3" y="8" width="14" height="12" rx="2"/>' .
+                '<rect x="3" y="8" width="14" height="12" rx="2"/>' .
+                '<path d="M3.4 18.2l4.3-4.3a1 1 0 0 1 1.4 0l3.9 3.9M12 16.8l1.3-1.3a1 1 0 0 1 1.4 0l2 2" stroke-width="1.5"/>' .
+                '<circle' . $f . ' class="pg-mi-a pg-mi-sun" cx="13.1" cy="11.5" r="1.5"/>' .
+                '</g>';
+            break;
+
+        case 'calendars':
+            $extra = ' data-pg-day="1"';
+            $body =
+                '<g class="pg-mi-page">' .
+                '<path class="pg-mi-a pg-mi-at pg-mi-solid"' . $tint . ' d="M3.5 10V7A2.5 2.5 0 0 1 6 4.5h12A2.5 2.5 0 0 1 20.5 7v3z"/>' .
+                '<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/>' .
+                '<text class="pg-mi-date" x="12" y="18.2" text-anchor="middle" font-size="8" font-weight="700"' . $f . '>' . date('j') . '</text>' .
+                '</g>' .
+                '<path class="pg-mi-rings" d="M8 2.9v3.3M16 2.9v3.3"/>';
+            break;
+
+        case 'forms':
+            $body =
+                '<g class="pg-mi-sheet">' .
+                '<rect x="4.5" y="3" width="15" height="18" rx="2.5"/>' .
+                '<rect' . $d . ' x="7.5" y="6.4" width="9" height="2.8" rx="1"/>' .
+                '<rect' . $d . ' x="7.5" y="10.8" width="9" height="2.8" rx="1"/>' .
+                '</g>' .
+                '<path class="pg-mi-a pg-mi-check" pathLength="1" d="M8 16.9l2 2 3.9-4.1" stroke-width="2"/>';
+            break;
+
+        case 'statistics':
+            $body =
+                '<rect class="pg-mi-2 pg-mi-bar"' . $tint . ' x="4.2" y="13" width="3.6" height="7" rx="1"/>' .
+                '<rect class="pg-mi-2 pg-mi-bar"' . $tint . ' x="10.2" y="9.8" width="3.6" height="10.2" rx="1"/>' .
+                '<rect class="pg-mi-2 pg-mi-bar"' . $tint . ' x="16.2" y="12" width="3.6" height="8" rx="1"/>' .
+                '<g class="pg-mi-a">' .
+                '<path class="pg-mi-trend" pathLength="1" d="M4.5 9.8l5.5-4.4 4 3 5.2-4.7" stroke-width="1.9"/>' .
+                '<circle' . $f . ' class="pg-mi-tip" cx="19.4" cy="3.7" r="1.4"/>' .
+                '</g>';
+            break;
+
+        case 'contacts':
+            $body =
+                '<g class="pg-mi-card">' .
+                '<rect' . $d . ' x="2.5" y="4.5" width="19" height="15" rx="2.5"/>' .
+                '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/>' .
+                '<g class="pg-mi-a">' .
+                '<circle cx="8.5" cy="10.3" r="2.2"/>' .
+                '<path d="M5.1 16.1a3.6 3.6 0 0 1 6.8 0"/>' .
+                '</g>' .
+                '<path d="M14.5 10h4M14.5 13.6h2.8" stroke-width="1.5"/>' .
+                '</g>';
+            break;
+
+        case 'users':
+            $body =
+                '<g class="pg-mi-a pg-mi-back">' .
+                '<circle' . $a . ' cx="16.4" cy="8.2" r="3"/>' .
+                '<path' . $a . ' d="M12.2 19.8a4.6 4.6 0 0 1 9.2 0z"/>' .
+                '<circle cx="16.4" cy="8.2" r="3" stroke-width="1.4"/>' .
+                '</g>' .
+                '<g class="pg-mi-front">' .
+                '<circle cx="9" cy="8.5" r="3.3"/>' .
+                '<path d="M3 19.8v-.3A5.5 5.5 0 0 1 8.5 14h1a5.5 5.5 0 0 1 5.5 5.5v.3"/>' .
+                '</g>';
+            break;
+
+        case 'campaigns':
+            $horn = 'M4 9h3l8.5-4.5v15L7 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z';
+            $body =
+                '<g class="pg-mi-horn">' .
+                '<path' . $d . ' d="' . $horn . '"/>' .
+                '<path d="' . $horn . 'M7 9v6"/>' .
+                '<path d="M7.6 15l1.2 4.2a1 1 0 0 0 1 .7h.5a.8.8 0 0 0 .8-1l-.8-3" stroke-width="1.5"/>' .
+                '</g>' .
+                '<g class="pg-mi-a pg-mi-waves" stroke-width="1.7">' .
+                '<path d="M18.4 9.6a3.3 3.3 0 0 1 0 4.8"/>' .
+                '<path d="M20.4 7.4a6 6 0 0 1 0 9.2"/>' .
+                '</g>';
+            break;
+
+        case 'erp':
+            $keys = '';
+            foreach (array(12.6, 15.4, 18.2) as $y) {
+                foreach (array(8.8, 12, 15.2) as $x) {
+                    $keys .= '<circle' . $f . ' cx="' . $x . '" cy="' . $y . '" r=".95"/>';
+                }
+            }
+            $body =
+                '<rect' . $d . ' x="5" y="2.8" width="14" height="18.4" rx="2.6"/>' .
+                '<rect x="5" y="2.8" width="14" height="18.4" rx="2.6"/>' .
+                '<g class="pg-mi-a pg-mi-screen">' .
+                '<rect' . $a . ' x="8" y="5.8" width="8" height="3.4" rx=".9"/>' .
+                '<rect x="8" y="5.8" width="8" height="3.4" rx=".9" stroke-width="1.4"/>' .
+                '</g>' .
+                '<g class="pg-mi-keys">' . $keys . '</g>';
+            break;
+
+        case 'orders':
+            $bag = 'M5.4 8h13.2l-.9 11a2 2 0 0 1-2 1.8H8.3a2 2 0 0 1-2-1.8z';
+            $body =
+                '<g class="pg-mi-bag">' .
+                '<path' . $d . ' d="' . $bag . '"/>' .
+                '<path d="' . $bag . '"/>' .
+                '<path class="pg-mi-a" d="M9 10.5V7a3 3 0 0 1 6 0v3.5" stroke-width="1.9"/>' .
+                '</g>';
+            break;
+
+        case 'products':
+            $lid = 'M12 3l8 4.5-8 4.5-8-4.5z';
+            $body =
+                '<path' . $d . ' d="M4 7.5v9l8 4.5 8-4.5v-9l-8 4.5z"/>' .
+                '<path d="M4 7.5v9l8 4.5 8-4.5v-9M4 7.5l8 4.5 8-4.5M12 12v9"/>' .
+                '<g class="pg-mi-a pg-mi-lid">' .
+                '<path' . $a . ' d="' . $lid . '"/>' .
+                '<path d="' . $lid . '"/>' .
+                '</g>';
+            break;
+
+        case 'catalog':
+            $top = 'M12 3.5l8.5 4.3-8.5 4.3-8.5-4.3z';
+            $body =
+                '<path class="pg-mi-l3" d="M3.5 16.2l8.5 4.3 8.5-4.3"/>' .
+                '<path class="pg-mi-l2" d="M3.5 12.2l8.5 4.3 8.5-4.3"/>' .
+                '<g class="pg-mi-a pg-mi-l1">' .
+                '<path' . $a . ' d="' . $top . '"/>' .
+                '<path d="' . $top . '"/>' .
+                '</g>';
+            break;
+
+        case 'offers':
+            $tag = 'M3.5 11.6V5.5a2 2 0 0 1 2-2h6.1a2 2 0 0 1 1.4.6l7.4 7.4a2 2 0 0 1 0 2.8l-6.1 6.1a2 2 0 0 1-2.8 0L4.1 13a2 2 0 0 1-.6-1.4z';
+            $body =
+                '<g class="pg-mi-tag">' .
+                '<path' . $d . ' d="' . $tag . '"/>' .
+                '<path d="' . $tag . '"/>' .
+                '<circle cx="7.6" cy="7.6" r="1.3" stroke-width="1.5"/>' .
+                '<g class="pg-mi-a">' .
+                '<path d="M10.8 15.4l4.6-4.6" stroke-width="1.7"/>' .
+                '<circle' . $f . ' cx="11.3" cy="11.3" r="1.05"/>' .
+                '<circle' . $f . ' cx="14.9" cy="14.9" r="1.05"/>' .
+                '</g>' .
+                '</g>';
+            break;
+
+        case 'shipping':
+            $body =
+                '<path class="pg-mi-speed" d="M.2 9.2h1.4M-.4 12.2h2" stroke-width="1.4"/>' .
+                '<g class="pg-mi-truck">' .
+                '<g class="pg-mi-a">' .
+                '<path' . $a . ' d="M3.5 6H13a1 1 0 0 1 1 1v9H3.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/>' .
+                '<path d="M4.9 16H3.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1H13a1 1 0 0 1 1 1v9"/>' .
+                '</g>' .
+                '<path' . $d . ' d="M14 9h3.8a1 1 0 0 1 .8.4l2.3 3.2a1 1 0 0 1 .2.6V15a1 1 0 0 1-1 1H14z"/>' .
+                '<path d="M9.1 16h5.8M19.1 16h1.4a1 1 0 0 0 1-1v-2.6a1 1 0 0 0-.2-.6l-2.3-3.2a1 1 0 0 0-.8-.4H14"/>' .
+                '<circle class="pg-mi-wheel" cx="7" cy="16.6" r="2.1"/>' .
+                '<circle class="pg-mi-wheel" cx="17" cy="16.6" r="2.1"/>' .
+                '</g>';
+            break;
+
+        case 'ads':
+            $body =
+                '<g class="pg-mi-board">' .
+                '<rect' . $d . ' x="3" y="4" width="18" height="11.5" rx="2"/>' .
+                '<rect x="3" y="4" width="18" height="11.5" rx="2"/>' .
+                '</g>' .
+                '<path d="M8 15.5v5M16 15.5v5"/>' .
+                '<path' . $f . ' class="pg-mi-a pg-mi-spark" d="M12 5.9l1.1 2.75 2.75 1.1-2.75 1.1L12 13.6l-1.1-2.75-2.75-1.1 2.75-1.1z"/>';
+            break;
+
+        case 'styles':
+            $palette = 'M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.45-.17-.86-.45-1.16a1.6 1.6 0 0 1-.43-1.1c0-.94.76-1.7 1.7-1.7h2A4.5 4.5 0 0 0 21 10.8C21 6.5 17 3 12 3z';
+            $body =
+                '<g class="pg-mi-palette">' .
+                '<path' . $d . ' d="' . $palette . '"/>' .
+                '<path d="' . $palette . '"/>' .
+                '<g class="pg-mi-dots">' .
+                '<circle' . $f . ' class="pg-mi-c1" cx="7.5" cy="11.6" r="1.45"/>' .
+                '<circle' . $f . ' class="pg-mi-c2" cx="9.2" cy="7.4" r="1.45"/>' .
+                '<circle' . $f . ' class="pg-mi-c3" cx="14" cy="6.7" r="1.45"/>' .
+                '<circle' . $f . ' class="pg-mi-c4" cx="17.4" cy="9.7" r="1.45"/>' .
+                '</g>' .
+                '</g>';
+            break;
+
+        default:
+            return '';
+    }
+
+    return '<svg class="pg-mi pg-mi-' . $name . ' me-2' . ($color_class !== '' ? ' ' . $color_class : '') . '"' . $extra . ' width="1.3rem" height="1.3rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' . $body . '</svg>';
+}
+
 function output_menu($properties = false)
 {
     // get user informations.
@@ -1730,7 +2189,7 @@ function output_menu($properties = false)
     //WELCOME
     $menu_items[0]['id'] = 0;
     $menu_items[0]['href'] = 'welcome.php';
-    $menu_items[0]['icon'] = 'bi-speedometer2';
+    $menu_items[0]['menu_icon'] = 'dashboard';
     $menu_items[0]['color_class'] = 'dashboard-color';
     $menu_items[0]['title'] = 'Dashboard';
     $menu_items[0]['context'] = true;
@@ -1851,7 +2310,7 @@ function output_menu($properties = false)
         //FOLDERS
         $menu_items[1]['id'] = 1;
         $menu_items[1]['href'] = 'view_folders.php';
-        $menu_items[1]['icon'] = 'bi-folder';
+        $menu_items[1]['menu_icon'] = 'folders';
         $menu_items[1]['color_class'] = 'folders-color';
         $menu_items[1]['title'] = 'File Manager';
         $menu_items[1]['context'] = true;
@@ -1860,7 +2319,7 @@ function output_menu($properties = false)
         // PAGES
         $menu_items[2]['id'] = 2;
         $menu_items[2]['href'] = 'view_pages.php';
-        $menu_items[2]['icon'] = 'bi-window';
+        $menu_items[2]['menu_icon'] = 'pages';
         $menu_items[2]['color_class'] = 'pages-color';
         $menu_items[2]['title'] = 'Pages';
         $menu_items[2]['context'] = true;
@@ -1894,7 +2353,7 @@ function output_menu($properties = false)
         // view_files.php, add_file.php and create_file.php are no longer
         // linked from here.
         $menu_items[3]['href'] = 'view_folders.php?view=files';
-        $menu_items[3]['icon'] = 'bi-images';
+        $menu_items[3]['menu_icon'] = 'files';
         $menu_items[3]['color_class'] = 'files-color';
         $menu_items[3]['title'] = 'Files';
         $menu_items[3]['context'] = true;
@@ -1910,9 +2369,8 @@ function output_menu($properties = false)
         // CALENDARS
         $menu_items[4]['id'] = 4;
         $menu_items[4]['href'] = 'view_calendars.php';
-        $menu_items[4]['icon'] = '';
+        $menu_items[4]['menu_icon'] = 'calendars';
         $menu_items[4]['color_class'] = 'calendars-color';
-        $menu_items[4]['svg'] = '<svg style=\'font-size:10px\' width=\'1.3rem\' height=\'1.3rem\' class=\'me-2 calendars-color\' data-name=\'calendar icon\' fill=\'currentcolor\' xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\'><path d=\'M3.6.18c.27,0,.49.22.49.49v.49h7.82v-.49c0-.27.22-.49.49-.49s.49.22.49.49v.49h.98c1.08,0,1.96.88,1.96,1.96v10.76c0,1.08-.88,1.96-1.96,1.96H2.13c-1.08,0-1.96-.88-1.96-1.96V3.11c0-1.08.88-1.96,1.96-1.96h.98v-.49c0-.27.22-.49.49-.49M1.16,4.09v9.78c0,.54.44.98.98.98h11.73c.54,0,.98-.44.98-.98V4.09H1.16Z\'/><text class=\'b\' transform=\'translate(2.55 12.73)\'><tspan x=\'0\' y=\'0\'>' . date('d') . '</tspan></text></svg>';
         $menu_items[4]['title'] = 'Calendars';
         $menu_items[4]['context'] = true;
         $menu_items[4]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate\'><svg style=\'font-size:10px\' width=\'16px\' height=\'16px\' class=\'me-2\' data-name=\'calendar icon\' fill=\'currentcolor\' xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\'><path d=\'M3.6.18c.27,0,.49.22.49.49v.49h7.82v-.49c0-.27.22-.49.49-.49s.49.22.49.49v.49h.98c1.08,0,1.96.88,1.96,1.96v10.76c0,1.08-.88,1.96-1.96,1.96H2.13c-1.08,0-1.96-.88-1.96-1.96V3.11c0-1.08.88-1.96,1.96-1.96h.98v-.49c0-.27.22-.49.49-.49M1.16,4.09v9.78c0,.54.44.98.98.98h11.73c.54,0,.98-.44.98-.98V4.09H1.16Z\'/><text class=\'b\' transform=\'translate(2.55 12.73)\'><tspan x=\'0\' y=\'0\'>' . date('d') . '</tspan></text></svg>' . lang('Calendars') . '</a>';
@@ -1930,7 +2388,7 @@ function output_menu($properties = false)
         // FORMS
         $menu_items[5]['id'] = 5;
         $menu_items[5]['href'] = 'view_submitted_forms.php';
-        $menu_items[5]['icon'] = 'bi-ui-checks';
+        $menu_items[5]['menu_icon'] = 'forms';
         $menu_items[5]['color_class'] = 'forms-color';
         $menu_items[5]['title'] = 'Forms';
         $menu_items[5]['context'] = true;
@@ -1941,7 +2399,7 @@ function output_menu($properties = false)
         // VISITORS
         $menu_items[6]['id'] = 6;
         $menu_items[6]['href'] = 'view_visitor_reports.php';
-        $menu_items[6]['icon'] = 'bi-clipboard2-data';
+        $menu_items[6]['menu_icon'] = 'statistics';
         $menu_items[6]['color_class'] = 'statistics-color';
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
@@ -1971,7 +2429,7 @@ function output_menu($properties = false)
         // CONTACTS
         $menu_items[7]['id'] = 7;
         $menu_items[7]['href'] = 'view_contacts.php';
-        $menu_items[7]['icon'] = 'bi-person-vcard';
+        $menu_items[7]['menu_icon'] = 'contacts';
         $menu_items[7]['color_class'] = 'contacts-color';
         $menu_items[7]['title'] = 'Contacts';
         $menu_items[7]['context'] = true;
@@ -1987,7 +2445,7 @@ function output_menu($properties = false)
         // USERS
         $menu_items[8]['id'] = 8;
         $menu_items[8]['href'] = 'view_users.php';
-        $menu_items[8]['icon'] = 'bi-people';
+        $menu_items[8]['menu_icon'] = 'users';
         $menu_items[8]['color_class'] = 'users-color';
         $menu_items[8]['title'] = 'Users';
         $menu_items[8]['context'] = true;
@@ -2001,7 +2459,7 @@ function output_menu($properties = false)
         // CAMPAIGNS
         $menu_items[9]['id'] = 9;
         $menu_items[9]['href'] = 'view_email_campaigns.php';
-        $menu_items[9]['icon'] = 'bi-megaphone';
+        $menu_items[9]['menu_icon'] = 'campaigns';
         $menu_items[9]['color_class'] = 'campaigns-color';
         $menu_items[9]['title'] = 'My Campaigns';
         $menu_items[9]['context'] = true;
@@ -2021,7 +2479,7 @@ function output_menu($properties = false)
             // ECOMMERCE > Orders
             $menu_items[10]['id'] = 10;
             $menu_items[10]['href'] = 'view_orders.php';
-            $menu_items[10]['icon'] = 'bi-shop';
+            $menu_items[10]['menu_icon'] = 'orders';
             $menu_items[10]['color_class'] = 'ecommerce-color';
             $menu_items[10]['title'] = 'All Orders';
             $menu_items[10]['context'] = true;
@@ -2054,7 +2512,7 @@ function output_menu($properties = false)
             // ECOMMERCE > Products
             $menu_items[11]['id'] = 11;
             $menu_items[11]['href'] = 'view_products.php';
-            $menu_items[11]['icon'] = 'bi-box2-heart';
+            $menu_items[11]['menu_icon'] = 'products';
             $menu_items[11]['color_class'] = 'ecommerce-color';
             $menu_items[11]['title'] = 'All Products';
             $menu_items[11]['context'] = true;
@@ -2080,7 +2538,7 @@ function output_menu($properties = false)
             // ECOMMERCE > Product Groups
             $menu_items[12]['id'] = 12;
             $menu_items[12]['href'] = 'view_product_groups.php';
-            $menu_items[12]['icon'] = 'bi-boxes';
+            $menu_items[12]['menu_icon'] = 'catalog';
             $menu_items[12]['color_class'] = 'ecommerce-color neon';
             // Named for what the screen is rather than for one of the things
             // in it. It stopped being a list of product groups when it became
@@ -2102,7 +2560,7 @@ function output_menu($properties = false)
             // ECOMMERCE > Offers
             $menu_items[14]['id'] = 14;
             $menu_items[14]['href'] = 'view_offers.php';
-            $menu_items[14]['icon'] = 'bi-percent';
+            $menu_items[14]['menu_icon'] = 'offers';
             $menu_items[14]['color_class'] = 'ecommerce-color';
             $menu_items[14]['title'] = 'All Offers';
             $menu_items[14]['context'] = true;
@@ -2130,7 +2588,7 @@ function output_menu($properties = false)
         // ECOMMERCE > Shipping
         $menu_items[15]['id'] = 15;
         $menu_items[15]['href'] = 'view_shipping_methods.php';
-        $menu_items[15]['icon'] = 'bi-truck';
+        $menu_items[15]['menu_icon'] = 'shipping';
         $menu_items[15]['color_class'] = 'ecommerce-color';
         $menu_items[15]['title'] = 'All Shipping Methods';
         $menu_items[15]['context'] = true;
@@ -2189,7 +2647,7 @@ function output_menu($properties = false)
         // ADS
         $menu_items[16]['id'] = 16;
         $menu_items[16]['href'] = 'view_ads.php';
-        $menu_items[16]['icon'] = 'bi-badge-ad';
+        $menu_items[16]['menu_icon'] = 'ads';
         $menu_items[16]['color_class'] = 'ads-color';
         $menu_items[16]['title'] = 'Ads';
         $menu_items[16]['context'] = true;
@@ -2201,7 +2659,7 @@ function output_menu($properties = false)
         // DESIGN
         $menu_items[17]['id'] = 17;
         $menu_items[17]['href'] = 'view_styles.php';
-        $menu_items[17]['icon'] = 'bi-palette';
+        $menu_items[17]['menu_icon'] = 'styles';
         $menu_items[17]['color_class'] = 'design-color';
         $menu_items[17]['title'] = 'Page Styles';
         $menu_items[17]['context'] = true;
@@ -2238,7 +2696,10 @@ function output_menu($properties = false)
         // entry: the Page Styles list is the legacy HTML-template screen.
         $menu_items[21]['id'] = 21;
         $menu_items[21]['href'] = 'view_system_styles.php';
-        $menu_items[21]['icon'] = 'bi-magic';
+        // A neon sign of its own: a page frame in the module colour, a cyan
+        // cursor and spark, both glowing (backend.src.css: .pg-neon-icon).
+        $menu_items[21]['icon'] = '';
+        $menu_items[21]['svg'] = '<svg class="me-2 design-color pg-neon-icon" width="1.3rem" height="1.3rem" viewBox="1.6 -0.5 22 22" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><defs><filter id="pg-neon-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="wide"/><feGaussianBlur in="SourceGraphic" stdDeviation=".5" result="near"/><feMerge><feMergeNode in="wide"/><feMergeNode in="near"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#pg-neon-glow)"><g stroke="currentColor"><rect x="2.6" y="4.4" width="15.6" height="12.8" rx="2.6" stroke-width="1.7"/><path d="M2.6 8.3h15.6" stroke-width="1.3"/><rect class="pg-neon-block" x="5.5" y="11" width="5.4" height="3.4" rx="1" stroke-width="1.3" fill="currentColor" fill-opacity="0"/></g><g class="pg-neon-accent"><path class="pg-neon-cursor" d="M14 11.6l7.2 3-3.1 1.2-1.2 3.2z" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity=".25"/><path class="pg-neon-spark" d="M20.6 1.6l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z" fill="currentColor"/></g></g><g stroke="#fff" stroke-opacity=".5" stroke-width=".45"><rect x="2.6" y="4.4" width="15.6" height="12.8" rx="2.6"/><path class="pg-neon-cursor" d="M14 11.6l7.2 3-3.1 1.2-1.2 3.2z"/></g></svg>';
         $menu_items[21]['color_class'] = 'design-color';
         $menu_items[21]['title'] = 'Visual Page Editor';
         $menu_items[21]['context'] = true;
@@ -2246,47 +2707,43 @@ function output_menu($properties = false)
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
 
-        // DESIGN > Menu
-        $menu_items[18]['id'] = 18;
-        $menu_items[18]['href'] = 'view_menus.php';
-        $menu_items[18]['icon'] = 'bi-menu-button';
-        $menu_items[18]['color_class'] = 'design-color';
-        $menu_items[18]['title'] = 'All Menus';
-        $menu_items[18]['context'] = true;
-        $menu_items[18]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-menu-button bi-me-2\'>' . lang('All Menus') . '</a>';
-        $menu_items[18]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_menu.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Menu'))) . '</a>';
+        // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
+        // both are reached from the right-click menu of Page Styles, below.
+        // Slots 18 and 19 stay unused, under the never-reused rule of the ERP's
+        // 22.
+        $design_menus_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-menu-button bi-me-2\'>' . lang('All Menus') . '</a>';
+        $design_menus_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_menu.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Menu'))) . '</a>';
 
-        // DESIGN > Regions
-        $menu_items[19]['id'] = 19;
-        $menu_items[19]['href'] = 'view_regions.php?filter=all_common_regions';
-        $menu_items[19]['icon'] = 'bi-window-stack';
-        $menu_items[19]['color_class'] = 'design-color';
-        $menu_items[19]['title'] = 'All Regions';
-        $menu_items[19]['context'] = true;
         // DESIGN > Common Regions
-        $menu_items[19]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_common_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-layout-text-window-reverse bi-me-2\'>' . lang('All Common Regions') . '</a>';
-        $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_common_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Common Region'))) . '</a>';
+        $design_regions_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_common_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-layout-text-window-reverse bi-me-2\'>' . lang('All Common Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_common_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Common Region'))) . '</a>';
         // DESIGN > Designer Regions
-        $menu_items[19]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-dock bi-me-2\'>' . lang('All Designer Regions') . '</a>';
-        $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_designer_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Designer Region'))) . '</a>';
+        $design_regions_content .= '<hr class=\'divider my-2\' />';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-dock bi-me-2\'>' . lang('All Designer Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_designer_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Designer Region'))) . '</a>';
         // DESIGN > Login Regions
-        $menu_items[19]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-up bi-me-2\'>' . lang('All Login Regions') . '</a>';
-        $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_login_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Login Region'))) . '</a>';
+        $design_regions_content .= '<hr class=\'divider my-2\' />';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-up bi-me-2\'>' . lang('All Login Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_login_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Login Region'))) . '</a>';
         if (ADS === true) {
             // DESIGN > Ad Regions
-            $menu_items[19]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-desktop bi-me-2\'>' . lang('All Ad Regions') . '</a>';
-            $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad Region'))) . '</a>';
+            $design_regions_content .= '<hr class=\'divider my-2\' />';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-desktop bi-me-2\'>' . lang('All Ad Regions') . '</a>';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad Region'))) . '</a>';
         }
         // if the user is an administrator and dynamic regions are enabled, then prepare to output dynamic regions link
         if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REGIONS == true))) {
             // DESIGN > Dynamic Regions
-            $menu_items[19]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-filetype-php bi-me-2\'>' . lang('All Dynamic Regions') . '</a>';
-            $menu_items[19]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_dynamic_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Dynamic Region'))) . '</a>';
+            $design_regions_content .= '<hr class=\'divider my-2\' />';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-filetype-php bi-me-2\'>' . lang('All Dynamic Regions') . '</a>';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_dynamic_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Dynamic Region'))) . '</a>';
         }
+
+        // Page Styles' right-click menu is where menus and regions are
+        // reached: the three make up the classic template screens, and a
+        // designer working in one needs the others at hand.
+        $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />' . $design_menus_content
+            . '<hr class=\'divider my-2\' />' . $design_regions_content;
 
     }
 
@@ -2297,7 +2754,7 @@ function output_menu($properties = false)
 
         $menu_items[22]['id'] = 22;
         $menu_items[22]['href'] = 'erp_dashboard.php';
-        $menu_items[22]['icon'] = 'bi-safe2-fill';
+        $menu_items[22]['menu_icon'] = 'erp';
         $menu_items[22]['color_class'] = 'erp-color';
         $menu_items[22]['title'] = 'Resource planning (ERP)';
         $menu_items[22]['context'] = true;
@@ -2360,7 +2817,7 @@ function output_menu($properties = false)
 
             $menu_items[23]['id'] = 23;
             $menu_items[23]['href'] = 'workspace.php';
-            $menu_items[23]['icon'] = 'bi-clipboard2-check';
+            $menu_items[23]['menu_icon'] = 'workspace';
             $menu_items[23]['color_class'] = 'workspace-color';
             $menu_items[23]['title'] = 'Workspace';
             $menu_items[23]['context'] = true;
@@ -2654,7 +3111,9 @@ function output_menu($properties = false)
         case 'view_menu_items.php':
         case 'add_menu_item.php':
         case 'edit_menu_item.php':
-            $active_menu = 18;
+            // Menus and regions have no row of their own; they are reached
+            // through Page Styles.
+            $active_menu = 17;
             break;
         case 'view_regions.php':
         case 'add_common_region.php':
@@ -2667,7 +3126,7 @@ function output_menu($properties = false)
         case 'edit_dynamic_region.php':
         case 'add_login_region.php':
         case 'edit_login_region.php':
-            $active_menu = 19;
+            $active_menu = 17;
             break;
 
         case 'view_fields.php':
@@ -2745,8 +3204,11 @@ function output_menu($properties = false)
         }
 
         $output_menu_item_icon = '';
-        //if icon is set
-        if (isset($options['icon']) && $options['icon'] != '') {
+        // The drawn two-tone icon (pg_menu_icon()), then a Bootstrap icon,
+        // then a hand-made svg, then a letter in a circle.
+        if (isset($options['menu_icon']) && (($menu_icon_svg = pg_menu_icon($options['menu_icon'], $options['color_class'])) !== '')) {
+            $output_menu_item_icon = $menu_icon_svg;
+        } else if (isset($options['icon']) && $options['icon'] != '') {
             $output_menu_item_icon = '<i class="me-2 bi ' . $options['color_class'] . ' ' . $options['icon'] . '"></i>';
 
         } else if (isset($options['svg']) && $options['svg'] != '') {

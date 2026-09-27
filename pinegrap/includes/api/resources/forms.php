@@ -124,6 +124,9 @@ function api_form_submission_present($row, $values) {
 		'quiz_score'        => ((int)$row['quiz_score'] > 0) ? (int)$row['quiz_score'] : null,
 		'submitted_at'      => api_time($row['submitted_timestamp']),
 		'submitted_at_unix' => (int)$row['submitted_timestamp'],
+		// Last changed, by the visitor finishing it or by staff editing it in
+		// the panel - what updated_since filters on.
+		'updated_at'        => api_time(isset($row['last_modified_timestamp']) ? $row['last_modified_timestamp'] : 0),
 		'values'            => $values
 	);
 
@@ -332,6 +335,12 @@ function api_form_submissions($params) {
 
 	}
 
+	if (isset($params['updated_since'])) {
+
+		$where[] = "forms.last_modified_timestamp >= '" . (int)$params['updated_since'] . "'";
+
+	}
+
 	if (isset($params['reference_code']) && $params['reference_code'] !== '') {
 
 		$where[] = "forms.reference_code = '" . escape($params['reference_code']) . "'";
@@ -355,7 +364,7 @@ function api_form_submissions($params) {
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
 	$rows = api_rows("SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
-			forms.contact_id, forms.quiz_score, forms.submitted_timestamp
+			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
 		FROM forms
 		WHERE " . implode(' AND ', $where) . "
 		ORDER BY forms.id ASC
@@ -489,6 +498,7 @@ function api_form_submission_schema() {
 		'quiz_score'        => 'integer?',
 		'submitted_at'      => 'string?',
 		'submitted_at_unix' => 'integer',
+		'updated_at'        => 'string?',
 		'values'            => array(array(
 			'field_id' => 'integer',
 			'name'     => 'string',

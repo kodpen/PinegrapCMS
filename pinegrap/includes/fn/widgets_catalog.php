@@ -1398,6 +1398,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // fields. Mirrors the legacy `^^__add_to_cart_button^^` token's
         // mini-form, but lets the designer style the button via the
         // standard Button options panel.
+        // The pencil for whoever may edit products — before the add-to-cart
+        // form is put in front of the card, so it lands in the card.
+        if (pg_sw_can_edit_products()) {
+            $rendered = pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_product.php', $pid), lang('Edit the product'), 'ecommerce');
+        }
+
         if (strpos($rendered, 'data-pg-catalog-atc="1"') !== false) {
             $_pg_atc_form_id = 'pgAtcForm_pgw' . $widget_id . 'r' . $pid;
             $_pg_atc_hidden = (function_exists('get_token_field') ? get_token_field() : '')
@@ -2045,6 +2051,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 // the id it matches on.
                 $g_rendered = pg_sw_uniquify_row_ids($g_rendered, $widget_id, (int)$cg['id']);
 
+                if (pg_sw_can_edit_products()) {
+                    $g_rendered = pg_sw_add_edit_chip($g_rendered, pg_sw_backend_edit_url('edit_product_group.php', (int)$cg['id']), lang('Edit the product group'), 'ecommerce');
+                }
+
                 $g_rows .= $g_rendered;
             }
             $child_groups_html = $g_rows;
@@ -2290,31 +2300,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Bootstrap 5 Toast if available, otherwise a minimal inline fallback.
     // After firing, the cart_added param is stripped from the URL via
     // history.replaceState so a refresh doesn't re-fire the toast.
-    $toast_html = '';
-    if ($atc_stay) {
-        $_atc_toast_msg = (string)(isset($cfg['add_to_cart_toast_message'])
-            ? $cfg['add_to_cart_toast_message']
-            : lang('Product added to cart.'));
-        $toast_html = '<script>(function(){'
-            . 'if(window.__pgCartToastInit)return;window.__pgCartToastInit=1;'
-            . 'document.addEventListener("DOMContentLoaded",function(){'
-            .   'try{'
-            .     'var u=new URL(window.location.href);'
-            .     'var added=u.searchParams.get("cart_added");'
-            .     'if(!added)return;'
-            .     'u.searchParams.delete("cart_added");'
-            .     'history.replaceState({},"",u.pathname+(u.search?u.search:"")+u.hash);'
-            .     'var msg=' . json_encode($_atc_toast_msg) . ';'
-            .     'var c=document.createElement("div");'
-            .     'c.style.cssText="position:fixed;top:1rem;right:1rem;z-index:2147483600;min-width:240px;max-width:360px";'
-            .     'c.innerHTML=\'<div class="toast align-items-center text-bg-success border-0 show" role="alert"><div class="d-flex"><div class="toast-body"><i class="bi bi-cart-check me-2"></i>\'+msg+\'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>\';'
-            .     'document.body.appendChild(c);'
-            .     'setTimeout(function(){c.remove();},4500);'
-            .     'try{var bsT=window.bootstrap&&window.bootstrap.Toast?new window.bootstrap.Toast(c.querySelector(".toast"),{delay:4500}):null;if(bsT)bsT.show();}catch(_){}'
-            .   '}catch(_){}'
-            . '});'
-            . '})();</script>';
-    }
+    $toast_html = $atc_stay
+        ? pg_sw_cart_toast_script(isset($cfg['add_to_cart_toast_message']) ? $cfg['add_to_cart_toast_message'] : '',
+                                  function_exists('pg_sw_cart_url') ? pg_sw_cart_url($atc_next_pid) : '')
+        : '';
 
     // $chips_html is the legacy all-filters chip block (cat + sort + price +
     // stock + attr with "Tümünü Temizle"). It's kept as the canonical chip
@@ -3938,10 +3927,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $not_found_message = (isset($cfg['not_found_message']) && is_string($cfg['not_found_message']) && $cfg['not_found_message'] !== '')
                             ? $cfg['not_found_message'] : (string)lang('No products found.');
     // next_page_id: where to redirect after a successful add-to-cart submit.
-    // 0 / empty → stay on the current product page (catalog_detail.php uses
-    // the `current_url` hidden field as the redirect target). Legacy alias
-    // `cart_page_id` accepted for forward-compat with any saved configs that
-    // used the older name.
+    // 0 / empty → back to this product page with ?cart_added (the form's
+    // next_url), where pg_sw_cart_toast_script() says it worked and links to
+    // the cart. Legacy alias `cart_page_id` accepted for forward-compat with
+    // any saved configs that used the older name.
     $next_page_id = 0;
     if (isset($cfg['next_page_id']) && (int)$cfg['next_page_id'] > 0) {
         $next_page_id = (int)$cfg['next_page_id'];
@@ -5112,6 +5101,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $rendered = pg_sw_sweep_tokens($rendered);
     if ($static !== '') $static = pg_sw_sweep_tokens($static);
 
+    // The pencil on the product (or, on a variant group's page, the group).
+    if ($p && pg_sw_can_edit_products()) {
+        $rendered = ($is_select_group && $select_group_id > 0)
+            ? pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_product_group.php', $select_group_id), lang('Edit the product group'), 'ecommerce')
+            : pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_product.php', (int)$p['id']), lang('Edit the product'), 'ecommerce');
+    }
     $_civ_html = ($static === '') ? $rendered : str_replace('<!--pg-loop-slot-->', $rendered, $static);
 
     // ── Resolve breadcrumb content-type marker ───────────────────────────
@@ -5195,7 +5190,15 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // catalog_detail_pages table lookup) so a system-layout product page
         // can pick its own post-add destination without needing a
         // catalog_detail_pages row.
-        . ($next_page_id > 0 ? '<input type="hidden" name="next_page_id" value="' . (int)$next_page_id . '">' : '');
+        . ($next_page_id > 0 ? '<input type="hidden" name="next_page_id" value="' . (int)$next_page_id . '">' : '')
+        // No next page chosen: back to this product, where a notice with a
+        // link to the cart says the add worked. (catalog_detail.php would
+        // otherwise fall back to a catalog_detail_pages row a designed
+        // product page does not have, and land the visitor on the home page.)
+        . ($next_page_id > 0 ? '' : '<input type="hidden" name="next_url" value="' . h(_pg_sw_append_query($_civ_current_url, 'cart_added', (string)$_civ_pid_for_form)) . '">');
+    $_civ_toast = ($next_page_id > 0) ? ''
+        : pg_sw_cart_toast_script(isset($cfg['add_to_cart_toast_message']) ? $cfg['add_to_cart_toast_message'] : '',
+                                  function_exists('pg_sw_cart_url') ? pg_sw_cart_url(0) : '');
 
     // ── Variant chooser script + data payload ────────────────────────────
     // Only emitted when the URL slug pointed at a select-type product group
@@ -5229,7 +5232,45 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
          . $_civ_hidden
          . $_civ_html
          . $_civ_variant_script
-         . '</form>';
+         . '</form>'
+         . $_civ_toast;
+}
+
+/**
+ * The notice a page shows after an add to cart that stayed on it: the
+ * message and, when the site has a cart page, a link to it. Fires when the
+ * page loads with ?cart_added=<id> (the add form's next_url), then drops the
+ * parameter so a refresh does not repeat it. Emitted once per page however
+ * many widgets ask; the message is set as text, never as markup.
+ */
+function pg_sw_cart_toast_script($message, $cart_url)
+{
+    static $emitted = false;
+    if ($emitted) return '';
+    $emitted = true;
+    $message = trim((string)$message);
+    $data = array(
+        'msg'   => ($message !== '') ? $message : lang('Product added to cart.'),
+        'url'   => (string)$cart_url,
+        'label' => lang('Go to cart'),
+        'close' => lang('Close'),
+    );
+    return '<script>(function(){'
+        . 'document.addEventListener("DOMContentLoaded",function(){try{'
+        .   'var u=new URL(window.location.href);if(!u.searchParams.get("cart_added"))return;'
+        .   'u.searchParams.delete("cart_added");history.replaceState({},"",u.pathname+u.search+u.hash);'
+        .   'var d=' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';'
+        .   'var c=document.createElement("div");c.className="pg-cart-toast";'
+        .   'c.style.cssText="position:fixed;top:1rem;right:1rem;z-index:2147483600;min-width:260px;max-width:380px";'
+        .   'c.innerHTML=\'<div class="toast align-items-center text-bg-success border-0 show" role="status" aria-live="polite"><div class="d-flex align-items-center"><div class="toast-body d-flex flex-wrap align-items-center gap-2 flex-grow-1"><i class="bi bi-cart-check" aria-hidden="true"></i><span class="pg-cart-toast-msg"></span></div><button type="button" class="btn-close btn-close-white me-2"></button></div></div>\';'
+        .   'c.querySelector(".pg-cart-toast-msg").textContent=d.msg;'
+        .   'if(d.url){var a=document.createElement("a");a.href=d.url;a.className="btn btn-sm btn-light ms-auto";a.textContent=d.label;c.querySelector(".toast-body").appendChild(a);}'
+        .   'var x=c.querySelector(".btn-close");x.setAttribute("aria-label",d.close);x.addEventListener("click",function(){c.remove();});'
+        .   'document.body.appendChild(c);'
+        .   'var t=setTimeout(function(){c.remove();},6000);'
+        .   'c.addEventListener("mouseenter",function(){clearTimeout(t);});'
+        . '}catch(_){}});'
+        . '})();</script>';
 }
 
 // ============================================================================

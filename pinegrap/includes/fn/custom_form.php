@@ -343,8 +343,8 @@ function pg_cf_load_page_form_settings($page_id)
     $page_id  = (int)$page_id;
     $defaults = array(
         'exists' => false, 'orphan' => false, 'form_name' => '', 'enabled' => 1, 'quiz' => 0,
-        'notify_email' => '', 'notify_subject' => '',
-        'confirm_email' => 0, 'confirm_subject' => '',
+        'notify_email' => '', 'notify_subject' => '', 'notify_page_id' => 0,
+        'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
     );
@@ -353,7 +353,8 @@ function pg_cf_load_page_form_settings($page_id)
     $row = db_item(
         "SELECT form_name, enabled, quiz, save, auto_registration,
                 administrator_email, administrator_email_to_email_address, administrator_email_subject,
-                submitter_email, submitter_email_subject,
+                administrator_email_format, administrator_email_page_id,
+                submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
                 membership, membership_days
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
@@ -370,8 +371,13 @@ function pg_cf_load_page_form_settings($page_id)
         'notify_email'         => ((int)$row['administrator_email'] === 1)
                                       ? (string)$row['administrator_email_to_email_address'] : '',
         'notify_subject'       => (string)$row['administrator_email_subject'],
+        // A page sent as the e-mail (HTML); zero is the plain field list.
+        'notify_page_id'       => ((string)$row['administrator_email_format'] === 'html')
+                                      ? (int)$row['administrator_email_page_id'] : 0,
         'confirm_email'        => (int)$row['submitter_email'] === 1 ? 1 : 0,
         'confirm_subject'      => (string)$row['submitter_email_subject'],
+        'confirm_page_id'      => ((string)$row['submitter_email_format'] === 'html')
+                                      ? (int)$row['submitter_email_page_id'] : 0,
         'confirmation_message' => (string)$row['confirmation_message'],
         // "Next page": where the visitor lands after submitting. Zero means
         // the message above is shown instead.
@@ -562,6 +568,17 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     }
     if (array_key_exists('confirm_subject', $settings)) {
         $set['submitter_email_subject'] = mb_substr(trim((string)$settings['confirm_subject']), 0, 255);
+    }
+    // A page to send as the e-mail instead of the plain list of fields: the
+    // page is drawn for the submission (its Form Item View widget shows the
+    // record just sent). Zero, or a page that no longer exists, goes back to
+    // the plain text body.
+    foreach (array('notify_page_id' => 'administrator', 'confirm_page_id' => 'submitter') as $key => $who) {
+        if (!array_key_exists($key, $settings)) continue;
+        $mail_page = (int)$settings[$key];
+        if ($mail_page > 0 && !db_value("SELECT COUNT(*) FROM page WHERE page_id = '$mail_page'")) $mail_page = 0;
+        $set[$who . '_email_page_id'] = $mail_page;
+        $set[$who . '_email_format']  = ($mail_page > 0) ? 'html' : 'plain_text';
     }
     if (array_key_exists('contact_group_id', $settings)) {
         $set['contact_group_id'] = (int)$settings['contact_group_id'];
@@ -932,6 +949,7 @@ function pg_cf_submitter_contact()
     static $contact = null;
     if ($contact !== null) return $contact;
     $contact = array();
+    if (pg_cf_connect_to_contact_off()) return $contact;
     if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) {
         $row = db_item(
             "SELECT contacts.*
@@ -941,6 +959,18 @@ function pg_cf_submitter_contact()
         if (is_array($row)) $contact = $row;
     }
     return $contact;
+}
+
+/**
+ * ?connect_to_contact=false - the legacy switch for filling a form in on
+ * someone else's behalf. Nothing is pre-filled from the signed-in visitor's
+ * contact, and the form carries the flag to custom_form.php so nothing is
+ * written back to it either.
+ */
+function pg_cf_connect_to_contact_off()
+{
+    return isset($_GET['connect_to_contact'])
+        && trim(mb_strtolower((string)$_GET['connect_to_contact'], 'UTF-8')) === 'false';
 }
 
 /**
@@ -1798,6 +1828,10 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
         if ($form_name === '') $form_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1");
     }
 
+    // Whether this save is the one that creates the form (sample records go
+    // only into a form made just now).
+    $had_form = (bool)db_value("SELECT id FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
+
     $res = pg_cf_sync_page_form($page_id, array_values($wanted), $form_name, (int)$user_id,
                                 is_array($settings) ? $settings : array());
     $res['synced'] = true;
@@ -1810,7 +1844,125 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
     }
     foreach ($widgets as $w) _pg_cf_stamp_ids($w, $page_id, $ids_by_name);
 
+    // A design template's form can ask for sample records (the setting
+    // `sample_records`), so the pages listing it do not open empty. Only
+    // into the form this save created.
+    if (!$had_form && is_array($settings) && !empty($settings['sample_records'])) {
+        $res['seeded'] = pg_cf_seed_sample_records($page_id, (string)$settings['sample_records'], (int)$user_id);
+    }
+
     return $res;
+}
+
+/**
+ * Copy sample records into a new form from the site's own sample data.
+ *
+ * 'blog': the posts of the sample blog (the form the sample data names
+ * BLOG) become posts of this form - title, a short summary, the body as
+ * plain text with its paragraphs, and a cover: the post's own picture when
+ * it has one in the file manager, otherwise a sample photo. The newest six,
+ * dated over the last weeks and signed by the operator who published the
+ * page, so the blog looks alive on the first visit and every post can be
+ * edited or deleted like any other. Nothing happens when the form already
+ * has records or the site has no sample blog. Returns the number copied.
+ */
+function pg_cf_seed_sample_records($page_id, $source, $user_id)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || $source !== 'blog') return 0;
+    if ((int)db_value("SELECT COUNT(*) FROM forms WHERE page_id = '$page_id'") > 0) return 0;
+
+    $src_page = (int)db_value(
+        "SELECT page_id FROM custom_form_pages
+         WHERE UPPER(form_name) = 'BLOG' AND page_id <> '$page_id'
+         ORDER BY page_id ASC LIMIT 1");
+    if ($src_page <= 0) return 0;
+
+    $fields_of = function ($pid) {
+        $out = array();
+        foreach ((array)db_items("SELECT id, name, type FROM form_fields WHERE page_id = '" . (int)$pid . "'") as $f) {
+            $out[mb_strtolower((string)$f['name'], 'UTF-8')] = $f;
+        }
+        return $out;
+    };
+    $src = $fields_of($src_page);
+    $dst = $fields_of($page_id);
+    if (!isset($src['title']) || !isset($dst['title'])) return 0;
+
+    // Rich text to the plain text the template's fields hold: paragraphs
+    // kept as blank lines, everything else flattened.
+    $plain = function ($html) {
+        $text = preg_replace('~<(script|style|iframe)\b[^>]*>.*?</\1\s*>~is', ' ', (string)$html);
+        $text = preg_replace('~<\s*br\s*/?>~i', "\n", (string)$text);
+        $text = preg_replace('~</(p|div|li|h[1-6]|blockquote)\s*>~i', "\n\n", (string)$text);
+        $text = html_entity_decode(strip_tags((string)$text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('~[ \t\x{00A0}]+~u', ' ', (string)$text);
+        $text = preg_replace('~ *\n *~', "\n", (string)$text);
+        return trim((string)preg_replace('~\n{3,}~', "\n\n", (string)$text));
+    };
+    $short = function ($text, $max) {
+        $text = trim(preg_replace('~\s+~u', ' ', (string)$text));
+        if (mb_strlen($text, 'UTF-8') <= $max) return $text;
+        $cut = mb_substr($text, 0, $max - 1, 'UTF-8');
+        $space = mb_strrpos($cut, ' ', 0, 'UTF-8');
+        if ($space !== false && $space > $max * 0.6) $cut = mb_substr($cut, 0, $space, 'UTF-8');
+        return rtrim($cut, " ,.;:-") . "\u{2026}";
+    };
+
+    $records = db_items(
+        "SELECT id FROM forms
+         WHERE page_id = '$src_page' AND complete = '1'
+         ORDER BY submitted_timestamp DESC, id DESC
+         LIMIT 6");
+    if (!$records) return 0;
+
+    $pretty = (bool)db_value("SELECT pretty_urls FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
+    $now = time();
+    $copied = 0;
+    foreach ($records as $i => $record) {
+        $values = array();
+        foreach ((array)db_items("SELECT form_field_id, data FROM form_data WHERE form_id = '" . (int)$record['id'] . "'") as $d) {
+            foreach ($src as $name => $f) {
+                if ((int)$f['id'] === (int)$d['form_field_id']) { $values[$name] = (string)$d['data']; break; }
+            }
+        }
+        $title = trim($plain(isset($values['title']) ? $values['title'] : ''));
+        if ($title === '') continue;
+        $summary = $plain(isset($values['summary']) && trim(strip_tags($values['summary'])) !== '' ? $values['summary'] : (isset($values['description']) ? $values['description'] : ''));
+        $body = $plain(isset($values['details']) ? $values['details'] : (isset($values['content']) ? $values['content'] : ''));
+
+        // The cover: a picture of the post's media that is in the file
+        // manager ("{path}name.jpg" in the sample data), else a sample photo.
+        $cover_data = '';
+        $cover_file = 0;
+        if (isset($values['media']) && preg_match('~<img\b[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']~i', $values['media'], $im)) {
+            $src_url = html_entity_decode($im[1], ENT_QUOTES, 'UTF-8');
+            $file_name = basename(preg_replace('~^\{path\}~', '', $src_url));
+            $cover_file = (int)db_value("SELECT id FROM files WHERE name = '" . e($file_name) . "' LIMIT 1");
+            if ($cover_file > 0) $cover_data = $file_name;
+        }
+        if ($cover_file <= 0) $cover_data = 'https://picsum.photos/seed/pinegrap-post-' . ($i + 1) . '/1200/675';
+
+        $when = $now - ($i * 4 + 1) * 86400;
+        db("INSERT INTO forms (page_id, complete, user_id, reference_code, submitted_timestamp, last_modified_user_id, last_modified_timestamp)
+            VALUES ('$page_id', '1', '" . (int)$user_id . "', '" . e(generate_form_reference_code()) . "', '$when', '" . (int)$user_id . "', '$when')");
+        $form_id = (int)mysqli_insert_id(db::$con);
+        if ($form_id <= 0) continue;
+
+        $put = function ($name, $data, $file_id = 0) use ($dst, $form_id) {
+            if (!isset($dst[$name])) return;
+            db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
+                VALUES ('$form_id', '" . (int)$dst[$name]['id'] . "', '" . (int)$file_id . "', '" . e($data) . "', '" . e($dst[$name]['name']) . "', 'standard')");
+        };
+        $put('title', $title);
+        $put('summary', $short($summary, 220));
+        $put('content', $body);
+        $put('cover_image', $cover_data, $cover_file);
+
+        if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
+        $copied++;
+    }
+    return $copied;
 }
 // Prepares custom shipping & billing form fields for custom layouts on express order, shipping
 // address, and billing info pages.  It prefills data, sets attributes for fields, and returns

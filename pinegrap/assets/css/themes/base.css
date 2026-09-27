@@ -1,0 +1,598 @@
+/*!
+ * Pinegrap look engine.
+ *
+ * A look is a set of --pg-* tokens (looks/<name>.css, or a custom look saved
+ * from the editor). This file turns those tokens into Bootstrap 5.3: the root
+ * variables every utility reads (radius, shadow, border, type) and the
+ * component variables Bootstrap compiles to literal values. No colour is
+ * decided here - colours come from Bootstrap and the colour palette - so a
+ * look and a palette combine freely, in light and dark mode alike.
+ *
+ * Tokens are declared on `:root, [data-bs-theme]` (here and in every look),
+ * so a token that refers to a colour is worked out again inside a section
+ * that switches to dark mode.
+ *
+ * Load order: bootstrap.css, bridge.css, base.css, the look, the palette.
+ */
+
+/* ── Tokens: defaults, equal to plain Bootstrap ─────────────────────────── */
+
+:root,
+[data-bs-theme] {
+    /* Type */
+    --pg-font-body: var(--bs-font-sans-serif);
+    --pg-font-heading: var(--pg-font-body);
+    --pg-font-size: 1rem;
+    --pg-line-height: 1.5;
+    --pg-heading-weight: 500;
+    --pg-heading-tracking: normal;
+    --pg-heading-transform: none;
+    --pg-heading-line-height: 1.2;
+    --pg-display-weight: 300;
+    --pg-lead-weight: 300;
+    --pg-brand-weight: inherit;
+    --pg-nav-link-weight: inherit;
+    --pg-quote-font: inherit;
+    --pg-quote-style: normal;
+
+    /* Links */
+    --pg-link-decoration: underline;
+    --pg-link-underline-offset: auto;
+    --pg-link-thickness: auto;
+
+    /* Corners */
+    --pg-radius-sm: 0.25rem;
+    --pg-radius: 0.375rem;
+    --pg-radius-lg: 0.5rem;
+    --pg-radius-xl: 1rem;
+    --pg-radius-xxl: 2rem;
+    --pg-radius-btn: var(--pg-radius);
+    --pg-radius-btn-sm: var(--pg-radius-sm);
+    --pg-radius-btn-lg: var(--pg-radius-lg);
+    --pg-radius-input: var(--pg-radius);
+    --pg-radius-card: var(--pg-radius);
+    --pg-radius-badge: var(--pg-radius);
+    --pg-radius-menu: var(--pg-radius);
+    --pg-radius-modal: var(--pg-radius-lg);
+    --pg-radius-progress: var(--pg-radius);
+    --pg-radius-check: 0.25em;
+
+    /* Lines */
+    --pg-border-width: 1px;
+    --pg-control-border-width: var(--pg-border-width);
+    --pg-control-border-color: var(--bs-border-color);
+    --pg-card-border-width: var(--pg-border-width);
+    --pg-card-border-color: var(--bs-border-color-translucent);
+    --pg-card-hover-border-color: var(--pg-card-border-color);
+    --pg-menu-border-color: var(--bs-border-color-translucent);
+    --pg-hr-opacity: 0.25;
+
+    /* Depth */
+    --pg-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --pg-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --pg-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    --pg-card-shadow: none;
+    --pg-card-shadow-hover: var(--pg-card-shadow);
+    --pg-card-hover-transform: none;
+    --pg-menu-shadow: var(--pg-shadow);
+    --pg-list-shadow: none;
+
+    /* Buttons */
+    --pg-btn-weight: 400;
+    --pg-btn-transform: none;
+    --pg-btn-tracking: normal;
+    --pg-btn-font-size: 1rem;
+    --pg-btn-py: 0.375rem;
+    --pg-btn-px: 0.75rem;
+    --pg-btn-shadow: none;
+    --pg-btn-shadow-hover: var(--pg-btn-shadow);
+    --pg-btn-shadow-active: var(--pg-btn-shadow);
+    --pg-btn-hover-transform: none;
+    --pg-btn-active-transform: none;
+
+    /* Form controls */
+    --pg-input-py: 0.375rem;
+    --pg-input-px: 0.75rem;
+    --pg-focus-ring-width: 0.25rem;
+
+    /* Cards and panels */
+    --pg-card-py: 1rem;
+    --pg-card-px: 1rem;
+    --pg-card-cap-bg: rgba(var(--bs-body-color-rgb), 0.03);
+
+    /* Navigation */
+    --pg-tabs-underline: 0px;
+    --pg-tabs-border-color: var(--bs-border-color);
+    --pg-tabs-active-border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg);
+    --pg-pagination-joined: 1;
+    --pg-pagination-gap: 0.375rem;
+    --pg-pagination-border-width: var(--pg-control-border-width);
+
+    /* Messages */
+    --pg-alert-border-width: var(--pg-border-width);
+    --pg-alert-accent: 0px;
+
+    /* Badges and tables */
+    --pg-badge-weight: 700;
+    --pg-badge-transform: none;
+    --pg-badge-tracking: normal;
+    --pg-th-weight: 700;
+    --pg-th-transform: none;
+    --pg-th-tracking: normal;
+    --pg-th-size: inherit;
+    --pg-th-bg: transparent;
+
+    /* Progress */
+    --pg-progress-height: 1rem;
+
+    /* Motion */
+    --pg-duration: 0.15s;
+    --pg-ease: ease-in-out;
+}
+
+/* ── Bootstrap root variables ────────────────────────────────────────────── */
+
+:root,
+[data-bs-theme] {
+    --bs-body-font-family: var(--pg-font-body);
+    --bs-body-font-size: var(--pg-font-size);
+    --bs-body-line-height: var(--pg-line-height);
+    --bs-border-width: var(--pg-border-width);
+    --bs-border-radius-sm: var(--pg-radius-sm);
+    --bs-border-radius: var(--pg-radius);
+    --bs-border-radius-lg: var(--pg-radius-lg);
+    --bs-border-radius-xl: var(--pg-radius-xl);
+    --bs-border-radius-xxl: var(--pg-radius-xxl);
+    --bs-box-shadow-sm: var(--pg-shadow-sm);
+    --bs-box-shadow: var(--pg-shadow);
+    --bs-box-shadow-lg: var(--pg-shadow-lg);
+    --bs-focus-ring-width: var(--pg-focus-ring-width);
+}
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    font-family: var(--pg-font-heading);
+    font-weight: var(--pg-heading-weight);
+    letter-spacing: var(--pg-heading-tracking);
+    text-transform: var(--pg-heading-transform);
+    line-height: var(--pg-heading-line-height);
+}
+
+.display-1, .display-2, .display-3,
+.display-4, .display-5, .display-6 {
+    font-family: var(--pg-font-heading);
+    font-weight: var(--pg-display-weight);
+    letter-spacing: var(--pg-heading-tracking);
+    line-height: var(--pg-heading-line-height);
+}
+
+.lead {
+    font-weight: var(--pg-lead-weight);
+}
+
+.blockquote {
+    font-family: var(--pg-quote-font);
+    font-style: var(--pg-quote-style);
+}
+
+a {
+    text-decoration: var(--pg-link-decoration);
+    text-underline-offset: var(--pg-link-underline-offset);
+    text-decoration-thickness: var(--pg-link-thickness);
+}
+
+hr {
+    opacity: var(--pg-hr-opacity);
+}
+
+.navbar-brand {
+    font-family: var(--pg-font-heading);
+    font-weight: var(--pg-brand-weight);
+    letter-spacing: var(--pg-heading-tracking);
+}
+
+.navbar .nav-link {
+    font-weight: var(--pg-nav-link-weight);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+    --bs-btn-padding-y: var(--pg-btn-py);
+    --bs-btn-padding-x: var(--pg-btn-px);
+    --bs-btn-font-size: var(--pg-btn-font-size);
+    --bs-btn-font-weight: var(--pg-btn-weight);
+    --bs-btn-border-width: var(--pg-control-border-width);
+    --bs-btn-border-radius: var(--pg-radius-btn);
+    letter-spacing: var(--pg-btn-tracking);
+    text-transform: var(--pg-btn-transform);
+    transition: color var(--pg-duration) var(--pg-ease),
+                background-color var(--pg-duration) var(--pg-ease),
+                border-color var(--pg-duration) var(--pg-ease),
+                box-shadow var(--pg-duration) var(--pg-ease),
+                transform var(--pg-duration) var(--pg-ease);
+}
+
+/* Bootstrap declares the size variables on .btn-sm / .btn-lg before this
+   file loads; they are declared again so the sizes still apply. */
+.btn-sm,
+.btn-group-sm > .btn {
+    --bs-btn-padding-y: calc(var(--pg-btn-py) * 0.66);
+    --bs-btn-padding-x: calc(var(--pg-btn-px) * 0.7);
+    --bs-btn-font-size: calc(var(--pg-btn-font-size) * 0.875);
+    --bs-btn-border-radius: var(--pg-radius-btn-sm);
+}
+
+.btn-lg,
+.btn-group-lg > .btn {
+    --bs-btn-padding-y: calc(var(--pg-btn-py) * 1.35);
+    --bs-btn-padding-x: calc(var(--pg-btn-px) * 1.35);
+    --bs-btn-font-size: calc(var(--pg-btn-font-size) * 1.125);
+    --bs-btn-border-radius: var(--pg-radius-btn-lg);
+}
+
+/* A link styled as a button stays a link. */
+.btn-link {
+    --bs-btn-font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.btn:where(:not(.btn-link)) {
+    box-shadow: var(--pg-btn-shadow);
+}
+
+.btn:where(:not(.btn-link, :disabled, .disabled)):hover {
+    box-shadow: var(--pg-btn-shadow-hover);
+    transform: var(--pg-btn-hover-transform);
+}
+
+.btn:where(:not(.btn-link, :disabled, .disabled)):active {
+    box-shadow: var(--pg-btn-shadow-active);
+    transform: var(--pg-btn-active-transform);
+}
+
+.btn:where(:not(.btn-link)):focus-visible {
+    box-shadow: var(--bs-btn-focus-box-shadow);
+}
+
+.btn {
+    --bs-btn-focus-box-shadow: 0 0 0 var(--pg-focus-ring-width) rgba(var(--bs-btn-focus-shadow-rgb), 0.5);
+}
+
+/* ── Form controls ───────────────────────────────────────────────────────── */
+
+.form-control,
+.form-select {
+    padding-top: var(--pg-input-py);
+    padding-bottom: var(--pg-input-py);
+    padding-left: var(--pg-input-px);
+    border-width: var(--pg-control-border-width);
+    border-color: var(--pg-control-border-color);
+    border-radius: var(--pg-radius-input);
+    transition: border-color var(--pg-duration) var(--pg-ease), box-shadow var(--pg-duration) var(--pg-ease);
+}
+
+.form-control {
+    padding-right: var(--pg-input-px);
+}
+
+.form-select {
+    padding-right: calc(var(--pg-input-px) + 1.75rem);
+    background-position: right var(--pg-input-px) center;
+}
+
+.form-control::file-selector-button {
+    padding: var(--pg-input-py) var(--pg-input-px);
+    margin: calc(-1 * var(--pg-input-py)) calc(-1 * var(--pg-input-px));
+    margin-inline-end: var(--pg-input-px);
+}
+
+.form-control-sm,
+.form-select-sm {
+    padding-top: calc(var(--pg-input-py) * 0.66);
+    padding-bottom: calc(var(--pg-input-py) * 0.66);
+    padding-left: calc(var(--pg-input-px) * 0.7);
+    border-radius: var(--pg-radius-btn-sm);
+}
+
+.form-control-sm {
+    padding-right: calc(var(--pg-input-px) * 0.7);
+}
+
+.form-control-lg,
+.form-select-lg {
+    padding-top: calc(var(--pg-input-py) * 1.35);
+    padding-bottom: calc(var(--pg-input-py) * 1.35);
+    padding-left: calc(var(--pg-input-px) * 1.3);
+    border-radius: var(--pg-radius-btn-lg);
+}
+
+.form-control-lg {
+    padding-right: calc(var(--pg-input-px) * 1.3);
+}
+
+.form-control-plaintext {
+    padding-top: var(--pg-input-py);
+    padding-bottom: var(--pg-input-py);
+}
+
+.input-group-text {
+    padding: var(--pg-input-py) var(--pg-input-px);
+    border-width: var(--pg-control-border-width);
+    border-color: var(--pg-control-border-color);
+    border-radius: var(--pg-radius-input);
+}
+
+.input-group-sm > .form-control,
+.input-group-sm > .form-select,
+.input-group-sm > .input-group-text,
+.input-group-sm > .btn {
+    border-radius: var(--pg-radius-btn-sm);
+}
+
+.input-group-lg > .form-control,
+.input-group-lg > .form-select,
+.input-group-lg > .input-group-text,
+.input-group-lg > .btn {
+    border-radius: var(--pg-radius-btn-lg);
+}
+
+.form-check-input {
+    border-width: var(--pg-control-border-width);
+    border-color: var(--pg-control-border-color);
+}
+
+.form-check-input[type=checkbox] {
+    border-radius: var(--pg-radius-check);
+}
+
+.form-floating > label {
+    padding-left: var(--pg-input-px);
+    padding-right: var(--pg-input-px);
+}
+
+/* ── Cards, list groups, accordions ──────────────────────────────────────── */
+
+.card {
+    --bs-card-spacer-y: var(--pg-card-py);
+    --bs-card-spacer-x: var(--pg-card-px);
+    --bs-card-cap-padding-x: var(--pg-card-px);
+    --bs-card-cap-padding-y: calc(var(--pg-card-py) * 0.5);
+    --bs-card-border-width: var(--pg-card-border-width);
+    --bs-card-border-color: var(--pg-card-border-color);
+    --bs-card-border-radius: var(--pg-radius-card);
+    --bs-card-inner-border-radius: calc(var(--pg-radius-card) - var(--pg-card-border-width));
+    --bs-card-cap-bg: var(--pg-card-cap-bg);
+    --bs-card-img-overlay-padding: var(--pg-card-px);
+    box-shadow: var(--pg-card-shadow);
+    transition: box-shadow var(--pg-duration) var(--pg-ease),
+                transform var(--pg-duration) var(--pg-ease),
+                border-color var(--pg-duration) var(--pg-ease);
+}
+
+/* A card that is a link, or holds one stretched over it, answers the
+   pointer. */
+a.card:hover,
+a:hover > .card,
+.card:has(.stretched-link):hover {
+    box-shadow: var(--pg-card-shadow-hover);
+    transform: var(--pg-card-hover-transform);
+    border-color: var(--pg-card-hover-border-color);
+}
+
+.list-group {
+    --bs-list-group-border-radius: var(--pg-radius-card);
+    --bs-list-group-border-width: var(--pg-border-width);
+    --bs-list-group-border-color: var(--pg-card-border-color);
+    --bs-list-group-item-padding-x: var(--pg-card-px);
+    --bs-list-group-item-padding-y: calc(var(--pg-card-py) * 0.5);
+}
+
+.list-group:not(.list-group-flush, .list-group-horizontal) {
+    box-shadow: var(--pg-list-shadow);
+}
+
+.accordion {
+    --bs-accordion-border-radius: var(--pg-radius-card);
+    --bs-accordion-inner-border-radius: calc(var(--pg-radius-card) - var(--pg-border-width));
+    --bs-accordion-border-width: var(--pg-border-width);
+    --bs-accordion-border-color: var(--pg-card-border-color);
+    --bs-accordion-btn-padding-x: var(--pg-card-px);
+    --bs-accordion-btn-padding-y: var(--pg-card-py);
+    --bs-accordion-body-padding-x: var(--pg-card-px);
+    --bs-accordion-body-padding-y: var(--pg-card-py);
+}
+
+.accordion-button {
+    font-family: var(--pg-font-heading);
+    font-weight: var(--pg-heading-weight);
+    letter-spacing: var(--pg-heading-tracking);
+}
+
+.img-thumbnail {
+    border-width: var(--pg-border-width);
+    border-radius: var(--pg-radius-card);
+}
+
+/* ── Menus and overlays ──────────────────────────────────────────────────── */
+
+.dropdown-menu {
+    --bs-dropdown-border-radius: var(--pg-radius-menu);
+    --bs-dropdown-inner-border-radius: calc(var(--pg-radius-menu) - var(--pg-card-border-width));
+    --bs-dropdown-border-width: var(--pg-card-border-width);
+    --bs-dropdown-border-color: var(--pg-menu-border-color);
+    --bs-dropdown-box-shadow: var(--pg-menu-shadow);
+    --bs-dropdown-padding-x: var(--pg-menu-padding, 0);
+    --bs-dropdown-item-border-radius: var(--pg-menu-item-radius, 0);
+    box-shadow: var(--bs-dropdown-box-shadow);
+}
+
+.modal {
+    --bs-modal-border-radius: var(--pg-radius-modal);
+    --bs-modal-inner-border-radius: calc(var(--pg-radius-modal) - var(--pg-card-border-width));
+    --bs-modal-border-width: var(--pg-card-border-width);
+    --bs-modal-border-color: var(--pg-card-border-color);
+    --bs-modal-box-shadow: var(--pg-shadow-lg);
+    --bs-modal-padding: var(--pg-card-px);
+    --bs-modal-header-padding: var(--pg-card-py) var(--pg-card-px);
+}
+
+.modal-content {
+    box-shadow: var(--bs-modal-box-shadow);
+}
+
+.offcanvas,
+.offcanvas-sm, .offcanvas-md, .offcanvas-lg, .offcanvas-xl, .offcanvas-xxl {
+    --bs-offcanvas-box-shadow: var(--pg-shadow-lg);
+    --bs-offcanvas-border-width: var(--pg-card-border-width);
+    --bs-offcanvas-border-color: var(--pg-card-border-color);
+}
+
+.toast {
+    --bs-toast-border-radius: var(--pg-radius-card);
+    --bs-toast-border-width: var(--pg-card-border-width);
+    --bs-toast-border-color: var(--pg-card-border-color);
+    --bs-toast-box-shadow: var(--pg-shadow);
+}
+
+.popover {
+    --bs-popover-border-radius: var(--pg-radius-card);
+    --bs-popover-inner-border-radius: calc(var(--pg-radius-card) - var(--pg-card-border-width));
+    --bs-popover-border-width: var(--pg-card-border-width);
+    --bs-popover-border-color: var(--pg-card-border-color);
+    --bs-popover-box-shadow: var(--pg-shadow);
+    box-shadow: var(--bs-popover-box-shadow);
+}
+
+.tooltip {
+    --bs-tooltip-border-radius: var(--pg-radius-sm);
+}
+
+/* ── Navigation ──────────────────────────────────────────────────────────── */
+
+.navbar {
+    --bs-navbar-toggler-border-radius: var(--pg-radius-btn);
+}
+
+.nav-pills {
+    --bs-nav-pills-border-radius: var(--pg-radius-btn);
+}
+
+.nav-tabs {
+    --bs-nav-tabs-border-width: var(--pg-border-width);
+    --bs-nav-tabs-border-color: var(--pg-tabs-border-color);
+    --bs-nav-tabs-border-radius: var(--pg-radius);
+    --bs-nav-tabs-link-active-border-color: var(--pg-tabs-active-border-color);
+}
+
+/* Underlined tabs (looks that set --pg-tabs-underline): a bar in the
+   primary colour under the active tab. */
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+    box-shadow: inset 0 calc(-1 * var(--pg-tabs-underline)) 0 var(--bs-primary);
+}
+
+.nav-underline {
+    --bs-nav-underline-border-width: max(var(--pg-tabs-underline), 0.125rem);
+}
+
+.pagination {
+    --bs-pagination-padding-x: calc(var(--pg-btn-px) * 0.85);
+    --bs-pagination-padding-y: var(--pg-btn-py);
+    --bs-pagination-border-width: var(--pg-pagination-border-width);
+    --bs-pagination-border-radius: var(--pg-radius-btn);
+    gap: calc(var(--pg-pagination-gap) * (1 - var(--pg-pagination-joined)));
+}
+
+.pagination-sm {
+    --bs-pagination-padding-x: calc(var(--pg-btn-px) * 0.6);
+    --bs-pagination-padding-y: calc(var(--pg-btn-py) * 0.66);
+    --bs-pagination-border-radius: var(--pg-radius-btn-sm);
+}
+
+.pagination-lg {
+    --bs-pagination-padding-x: calc(var(--pg-btn-px) * 1.35);
+    --bs-pagination-padding-y: calc(var(--pg-btn-py) * 1.35);
+    --bs-pagination-border-radius: var(--pg-radius-btn-lg);
+}
+
+/* Joined (the Bootstrap way) or apart: with --pg-pagination-joined: 0 every
+   page link is a rounded button of its own. */
+.page-link {
+    border-radius: calc(var(--bs-pagination-border-radius) * (1 - var(--pg-pagination-joined)));
+}
+
+.pagination .page-item:not(:first-child) .page-link {
+    margin-left: calc(-1 * var(--bs-pagination-border-width) * var(--pg-pagination-joined));
+}
+
+.pagination .page-item:first-child .page-link {
+    border-top-left-radius: var(--bs-pagination-border-radius);
+    border-bottom-left-radius: var(--bs-pagination-border-radius);
+}
+
+.pagination .page-item:last-child .page-link {
+    border-top-right-radius: var(--bs-pagination-border-radius);
+    border-bottom-right-radius: var(--bs-pagination-border-radius);
+}
+
+.breadcrumb {
+    --bs-breadcrumb-border-radius: var(--pg-radius);
+}
+
+/* ── Messages, badges, progress ──────────────────────────────────────────── */
+
+.alert {
+    --bs-alert-border-radius: var(--pg-radius-card);
+    --bs-alert-border: var(--pg-alert-border-width) solid var(--bs-alert-border-color);
+    --bs-alert-padding-x: var(--pg-card-px);
+    --bs-alert-padding-y: var(--pg-card-py);
+    border-inline-start-width: max(var(--pg-alert-border-width), var(--pg-alert-accent));
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--pg-alert-accent-color, var(--bs-alert-border-color));
+}
+
+.badge {
+    --bs-badge-border-radius: var(--pg-radius-badge);
+    --bs-badge-font-weight: var(--pg-badge-weight);
+    text-transform: var(--pg-badge-transform);
+    letter-spacing: var(--pg-badge-tracking);
+}
+
+.progress,
+.progress-stacked {
+    --bs-progress-height: var(--pg-progress-height);
+    --bs-progress-border-radius: var(--pg-radius-progress);
+}
+
+.placeholder {
+    border-radius: var(--pg-radius-sm);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+
+.table > thead th {
+    font-weight: var(--pg-th-weight);
+    text-transform: var(--pg-th-transform);
+    letter-spacing: var(--pg-th-tracking);
+    font-size: var(--pg-th-size);
+    --bs-table-accent-bg: var(--pg-th-bg);
+}
+
+/* ── Motion preferences ──────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    .card,
+    a.card:hover,
+    a:hover > .card,
+    .card:has(.stretched-link):hover,
+    .btn:where(:not(.btn-link, :disabled, .disabled)):hover,
+    .btn:where(:not(.btn-link, :disabled, .disabled)):active {
+        transform: none;
+        transition: none;
+    }
+}

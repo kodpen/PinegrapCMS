@@ -748,6 +748,7 @@ $(document).ready(function () {
     initMenuToggle();                 // Rail toggle (lg and up) plus drawer toggle
     initMenuDrawer();                 // Navbar button, scrim, Escape, outside click
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
+    initMenuClock();                  // Dashboard clock and Calendars day keep running
 
     function isMenuDrawerMode() {
         return window.innerWidth < MENU_DRAWER_BREAKPOINT;
@@ -887,6 +888,59 @@ $(document).ready(function () {
         $('#menu, .software-container').removeClass('expanded');
         $('#menu_toggle').removeClass('active');
         setCookie('softwaremenustatus', 'collapsed', 1);
+    }
+
+    // The Dashboard entry's icon is a clock and the Calendars entry's icon
+    // shows the day of the month (pg_menu_icon()). The server sets both from
+    // the site's time zone; from there they are moved on by how long this page
+    // has been open, not by the browser's clock, which may be in another zone.
+    function initMenuClock() {
+        var clock = document.querySelector('#menu svg[data-pg-clock]');
+        if (!clock) {
+            return;
+        }
+
+        var hour = clock.querySelector('.pg-mi-hour');
+        var minute = clock.querySelector('.pg-mi-minute');
+        var day = document.querySelector('#menu svg[data-pg-day] .pg-mi-date');
+        var start = parseInt(clock.getAttribute('data-pg-clock'), 10) || 0;
+        var date = (clock.getAttribute('data-pg-clock-date') || '').split('-');
+        var opened = Date.now();
+
+        function draw() {
+            // Seconds since the site's midnight on the day the page was drawn.
+            var now = start + Math.floor((Date.now() - opened) / 1000);
+            var seconds = now % 86400;
+
+            if (hour) {
+                hour.setAttribute('transform', 'rotate(' + ((seconds % 43200) / 120).toFixed(2) + ' 12 12)');
+            }
+            if (minute) {
+                minute.setAttribute('transform', 'rotate(' + ((seconds % 3600) / 10).toFixed(2) + ' 12 12)');
+            }
+
+            // Past midnight the calendar's day moves on with the clock. UTC
+            // arithmetic, so a daylight-saving switch cannot shift the date.
+            if (day && (date.length === 3)) {
+                var text = String(new Date(Date.UTC(+date[0], +date[1] - 1, +date[2] + Math.floor(now / 86400))).getUTCDate());
+
+                if (day.textContent !== text) {
+                    day.textContent = text;
+                }
+            }
+        }
+
+        draw();
+
+        // The minute hand turns a degree every ten seconds.
+        window.setInterval(draw, 10000);
+
+        // Timers are throttled in a background tab; catch up on return.
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) {
+                draw();
+            }
+        });
     }
 
 

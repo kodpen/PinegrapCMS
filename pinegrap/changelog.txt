@@ -19,6 +19,789 @@
 
 
 
+  2026.4.5
+  ==========================================================
+
+  ÇALIŞMA ALANI
+  --------------------------------------------------------
+
+  [YENİ] Misafirle görüşme: siteye üye olmayan biriyle
+         (müşteri, tedarikçi) Çalışma Alanı'nda konuşmak için
+         ona ayrı bir oda açılır. Misafir, yöneticinin
+         gönderdiği tek seferlik ya da süreli bağlantıyla
+         girer; kendi odasını personel gibi görür (tablo,
+         resim, dosya, oylama), yazar, yanıtlar, ifade bırakır,
+         oy verir, listeyi işaretler; ama bunları ekleyemez.
+         Görüşme bitirilince oda
+         arşivde kayıt olarak kalır; yeni bağlantı odayı
+         yeniden açar.
+
+  [YENİ] Bir kişinin resmine ya da adına tıklayan yönetici,
+         yetkisi yetiyorsa o kullanıcının düzenleme ekranına
+         gider.
+
+  [YENİ] İş Takvimi'nde birden çok güne yayılan görev her
+         gününde, günleri birleştiren bir çubuk olarak
+         görünür: başlangıcından bitişine. Açık kalıp bitişini
+         geçen görev bugüne kadar uzar, kapanan görev kapandığı
+         günde biter. Günün penceresi o güne değen bütün
+         görevleri listeler.
+
+  [YENİ] Kanal özeti, notlardaki yazı kutusuyla düzenlenir:
+         @ ile kişi, # ile kayıt seçilir, etiketler çip olarak
+         görünür, kontrol listesi eklenebilir.
+
+  [YENİ] Yönetici, içinde başka bir yöneticinin bulunduğu
+         özel kanalı inceleme için açamaz: kanal "Özel
+         kanallar" listesinde açıklamasıyla görünür, düğmesi
+         soluk kalır. Kullanıcıların özel kanalları eskisi gibi
+         açılabilir.
+
+  [YENİ] Görevlerim, Plan Panosu, İş Takvimi ve Notlarım'daki
+         Gelen kutusu, ekran yüklenirken tıklansa da o ekranda
+         hemen açılır.
+
+  [YENİ] Notlarım: başkası bir notu değiştirdiğinde ya da
+         Claude notta yanıt verdiğinde not listede işaretlenir
+         ("Claude yanıtladı"), gelen kutusuna ve zile bir satır
+         düşer. Not açılınca işaret kalkar; liste kendini
+         yeniler.
+
+  [YENİ] Kanalda yukarı kaydırınca en yeni mesaja inen bir ok
+         çıkar; o sırada gelen mesajların sayısı okun yanında
+         görünür. Soldaki listede kanalın menüsünde "Kanal
+         ayarları".
+
+  [YENİ] Düzenlenen mesajın sonunda "(düzenlendi)" etiketi;
+         üzerine gelince ne zaman düzenlendiği görünür.
+         Mesajın menüsünde "Kimler gördü". Yanıttaki alıntıya
+         tıklayınca yanıtlanan mesaja gidilir ve mesaj bir an
+         renklenir.
+
+  [YENİ] [ŞEMA] Mesaj silme: çok kişili kanalda "Benden sil"
+         (yalnız sizin görünümünüzden kalkar) ve "Herkesten
+         sil". Herkesten silinen mesaj konuşmadan iz bırakmadan
+         kalkar; "Bu mesaj silindi" yazısı kalmaz. Yalnız sizin
+         olduğunuz özel kanalda doğrudan silinir.
+
+  [YENİ] Plan Panosu ve İş Takvimi'nde öncelik süzgeci
+         (acil ve yüksek birlikte ya da tek öncelik); takvimde
+         açık / kapalı süzgeci de. Görevlerim'de öncelik
+         seçici ve "Yaklaşan acil" düğmesi: bir hafta içinde
+         bitmesi gereken ya da geciken acil ve yüksek görevler.
+         Genel Bakış'ta bu görevler listenin başında, öncelik
+         rozetiyle; "N acil" bağlantısı hepsini açar.
+
+  [YENİ] [ŞEMA] Programlanmış işlem: yöneticiler bir işi
+         zamanına bırakır. Adı, kuralları (zamanı - bir kez,
+         her gün, her iş günü, her hafta, her ay - ve istenirse
+         bir kaydın değeri ya da "yalnız iş günü" koşulu), tek
+         bir eylemi ve başarılı olursa bir de sonrası olur.
+         Eylemler: bir kanala mesaj yazmak, bir adrese e-posta
+         ya da bir sayfa göndermek, bir kaydı değiştirmek
+         (sipariş iptali, kişinin üye numarasını boşaltmak
+         gibi). Kanalda yazı kutusunun + menüsünden ya da notun
+         araç çubuğundan yazılır; kanalda kartı durur, çalışınca
+         sonucu kanala düşer. Hepsi "Programlanmış işler"
+         ekranında; düzenlenir, duraklatılır, elle çalıştırılır,
+         iptal edilir, geçmişi görülür. Eylem, yazanın o anki
+         yetkisiyle çalışır. Kimse Çalışma Alanı'nı açık
+         tutmazken dakikasında çalışması için sitenin
+         zamanlanmış görevi dakikada bir çalışmalıdır.
+
+  [YENİ] [ŞEMA] Programlanmış işlemler genişledi.
+         Zaman: birkaç dakikada bir (en az 5), her saat, her
+         yıl, "her N gün / hafta / ay", haftanın seçilen
+         günleri ve isteğe bağlı bir son gün.
+         Koşullar: bir sayaç (geciken görevler, yeni form
+         kayıtları, yeni siparişler, stoğu azalan ürünler,
+         onay bekleyen yorumlar, vadesi geçmiş faturalar,
+         dünkü ziyaretçiler...), haftanın günleri, saat
+         aralığı, bir tarihin "önümüzdeki N gün içinde" ya
+         da "geçmiş" olması.
+         Yeni eylemler: kişilere haber (gelen kutusu, zil,
+         telefon), görev açma, sayaç özeti (kanala ve / veya
+         e-postayla), web adresi kontrolü (yanıt, sayfadaki
+         metin, yanıt süresi) ve sertifika süresi kontrolü,
+         webhook (Slack, Teams, Google Chat, Discord, n8n,
+         Zapier, Make). Metinlerde {{date}}, {{result}},
+         {{count:orders_new}} gibi sözcükler çalışınca
+         doldurulur. Formda hazır şablonlar var.
+
+  [YENİ] [ŞEMA] Programlanmış işlem zinciri. Bir işlemin
+         sonuna, sonucuna göre çalışan en fazla beş sonraki
+         adım eklenir: başarılı olursa, başarısız olursa,
+         atlanırsa, her durumda. Sonraki adım herhangi bir
+         eylem olabilir, bir başka programlanmış işlemi de
+         hemen ya da birkaç dakika sonra başlatabilir. Kendi
+         zamanı olmayan, yalnız başka bir işlemin
+         başlattığı işlemler yazılabilir. Bir zincirde en
+         fazla 8 işlem art arda çalışır; bir işlem saatte en
+         fazla 60 kez başlatılır. Tekrarlayan bir kontrol
+         kanala yalnız sonucu değiştiğinde yazar.
+
+  [YENİ] [ŞEMA] Kanal yönetimi. Yöneticiler, içinde
+         oldukları bir kanalı genelden özele ya da özelden
+         genele çevirebilir; özele çevrilen kanalda üyeler
+         kalır. Kanalın ve soldaki listenin her bölümünün
+         kendi rengi var (20 mat renk). Konuşma temizlenebilir:
+         önceki konuşma silinmez, "önceki sürüm" olarak kanal
+         ayarlarında listelenir ve olduğu gibi okunur.
+
+  [YENİ] [ŞEMA] Kanal grupları. Yöneticiler kanalları
+         renkli, iç içe gruplara toplar; gruplar ve kanallar
+         sürüklenerek taşınır, taşımadan önce ne nereye
+         gidiyor sorulur. Bir grupta yetki verilen kişi
+         gruptaki ve alt gruplarındaki her kanala (özel
+         olanlar da) üye olur; yetki verilmeden önce kaç alt
+         grup ve kanalın etkileneceği söylenir. Yetki geri
+         alınınca yalnız bu yetkinin açtığı üyelikler kapanır.
+
+  [YENİ] [ŞEMA] Sabit mesaj. Kanalda yazabilen herkes bir
+         mesajı kanalın en üstüne sabitleyebilir; mesaj
+         karşılamanın altında, kimin sabitlediğiyle durur.
+         Kapatan için kapanır, başka bir mesaj sabitlenince
+         yeniden görünür.
+
+  [YENİ] [ŞEMA] Birden çok mesaj seçilir: hepsine birden
+         yanıt verilir (yanıtın üstünde her biri alıntı
+         olarak görünür), başka bir kanala ya da yeni veya
+         var olan bir nota iletilir. İletilen mesaj o anki
+         hâliyle gider: kimin yazdığı, ne zaman ve nerede
+         yazıldığıyla. Asıl mesaja dönüş bağlantısını yalnız
+         onu okuyabilen görür.
+
+  [YENİ] [ŞEMA] Başlıklı bloklar. Tablo, kontrol listesi, kod
+         ve hesap bloğuna bir başlık verilebilir; başlık
+         bloğun üstünde görünür. Başlıklı bir blok, yazı
+         kutusunun + menüsündeki ya da notun araç çubuğundaki
+         "Başka yerden çek" ile (ya da # ile) başka bir
+         konuşmaya veya nota kopyalanır; üstünde nereden
+         geldiği yazar. Yalnız okuyabildiğiniz kanal ve
+         notlardaki bloklar listelenir.
+
+  [YENİ] [ŞEMA] Kanalın müşterisi adres defterindeki bir
+         kişi, sitedeki bir kullanıcı ya da ERP'deki bir cari
+         olabilir. Kanal ayarlarında üçü tek alandan aranır.
+         Seçilen kaydın yanında ona bağlı kayıtlar da görünür
+         (kullanıcı ve cari, müşteriye kişi kaydı üzerinden
+         bağlanır); kanal başlığında hepsi kendi ekranına
+         giden birer bağlantıdır. Kullanıcı ve cari
+         ekranlarındaki Çalışma Alanı düğmesinden de müşteri
+         kanalı açılır.
+
+  [YENİ] [ŞEMA] Pinegrap AI: kanallarda ve notlarda @ai
+         yazarak Kodpen'in modeli (ai.pinegrap.com) çağrılır.
+         Claude gibi konuşmayı okur ve yanıtlar; görev ve kayıt
+         değişikliği önerir, soran kişi tek tıkla uygular. Soran
+         kişinin göremediği hiçbir şeyi okuyamaz. Lisans anahtarı
+         zorunludur; Çalışma Alanı Ayarları > Kanallarda Pinegrap
+         AI kartından girilir. Özel kanallar yalnız yöneticisi
+         izin verirse açılır.
+
+  [YENİ] Çalışma Alanı'nın görselli tanıtım turu: kanallar,
+         yazı kutusu, görevler, Plan Panosu, İş Takvimi, notlar,
+         kararlar ve asistanlar, her adımda küçük bir çizimle.
+         İlk girişte bir kez açılır; kanal listesinin üstündeki
+         tabela düğmesinden yeniden izlenir.
+
+  [YENİ] Claude'u kanallara bağlama adımları resimli: her
+         adımda claude.ai ekranının çizimi ve basılacak yer.
+         claude.ai'daki düğme ve alan adları, orada göründüğü
+         gibi İngilizce yazılır.
+
+  [YENİ] [ŞEMA] Görevlere bitiş saati ve e-posta hatırlatması
+         eklenebilir: "30 dakika önce", "2 saat önce", "1 gün
+         önce" gibi. E-posta görevdeki kişilere gider. Tekrarlayan
+         görevde her tekrarın hatırlatılıp hatırlatılmayacağını
+         siz seçersiniz. Zamanlanmış işler açıksa hatırlatma
+         zamanından en geç birkaç dakika sonra gider.
+
+  [YENİ] Fotoğrafı olmayan kişiler adlarının baş harfleriyle
+         görünür: adı girilmiş kişi renkli bir dairede, adı
+         girilmemiş giriş gri bir karede. Adınız henüz
+         girilmemişse adınızı, soyadınızı ve cep telefonunuzu
+         sağ üst köşedeki menüden hemen girebilirsiniz.
+
+  [YENİ] Kanalda bir sayfa (#sayfa) anılarak Claude'dan ya da
+         Pinegrap AI'dan sayfa tasarımı değişikliği istenebilir.
+         Yanıtın altında öneri kartı çıkar: "Editörde önizle"
+         öneriyi görsel sayfa editöründe açar; "Uygula" kayıtlı
+         sayfaya yazar (sayfa o an başka birinin editöründe
+         açıksa uygulanmaz), "Geri al" önceki hâline döndürür.
+         Uygulamayı yalnız isteyen kişi yapar.
+
+  [YENİ] Asistanların önerebildiği kayıt değişiklikleri
+         genişledi. Ürün: ayrıntılar, Google ürün kategorisi,
+         vergi oranı, KDV istisna kodu, vergilendirme, kargo
+         (kargolanır, ücretsiz kargo, ek kargo ücreti, ağırlık
+         ve ölçüler), stok takibi, stokta yokken satış ve
+         mesajı, en az / en çok adet, ödül puanı, sipariş
+         makbuzu mesajı, özel alanlar. Sipariş: PO numarası,
+         özel alanlar ve kargo takip numaraları (tek adrese
+         giden siparişte; müşteriye e-posta gitmez). Kişi: ev
+         adresi ve telefonları, iş telefonu ve faksı, web
+         sitesi, departman, ofis, takma ad, unvan eki, kaynak,
+         e-posta izni, üyelik bitiş tarihi, vergi numarası ve
+         dairesi. ERP carisi: ülke, para birimi, kredi limiti,
+         fatura e-postası ve faturaların kendiliğinden
+         gönderilmesi, gecikme hatırlatması. Kullanıcı: e-posta
+         adresi (yalnız yönetici uygular). Sayfa: meta anahtar
+         kelimeler ve yorum ayarları. Gönderilmiş form (yeni):
+         tamamlandı durumu ve metin alanlarının yanıtları.
+         Ürün adı, kısa açıklama gibi alanların sınırı
+         veritabanındaki sütun boyuna göre düzeltildi.
+
+  KISA BAĞLANTILAR
+  --------------------------------------------------------
+
+  [YENİ] Kısa bağlantı tek seferlik olabilir: adresi
+         otomatik üretilir, ilk ziyaretten sonra çalışmaz.
+         Mesajlaşma uygulamalarının önizlemesi bağlantıyı
+         harcamaz.
+
+  [YENİ] Kısa bağlantı süreli olabilir: süresi oluştururken
+         seçilir (1 saat – 90 gün), sonra uzatılabilir.
+
+  [ŞEMA] Kısa bağlantılara açılma şekli ve süre, Çalışma
+         Alanı'na misafir odaları eklenir.
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Hata sayfası sistem widget'ı. Bu widget'ı taşıyan
+         sayfa, bulunamayan adresler ve diğer site hataları
+         için eski hata sayfasının yerine gösterilir; "Sayfa
+         bulunamadı" ve "Diğer hata" blokları hatanın türüne
+         göre görünür. Sayfa doğrudan açıldığında 404 döner.
+
+  [YENİ] [ŞEMA] Yeni tasarım oluştururken çatı seçilir:
+         "Bootstrap 5 ile oluştur" ya da "Özel (Custom)
+         oluştur". Özel tasarımda bootstrap.css ve
+         bootstrap.js yüklenmez; paletteki ızgara, Bootstrap
+         bileşenleri ve Bloklar sekmesi gizlenir. Tasarımın
+         çatısı kaydedilir; Tasarım ayarlarında ve tasarım
+         listesinde görünür. Mevcut tasarımlar Bootstrap 5
+         sayılır.
+
+  [YENİ] Şablondan başlama. İlk şablon "Pinegrap'a merhaba
+         deyin" (2.4.0) eksiksiz bir başlangıç sitesi kurar:
+         ana sayfa, hakkımızda, hizmetlerimiz, blog ve yazı
+         sayfası, mesajları görüşmeye dönüşen iletişim sayfası,
+         giriş, kayıt ve şifre sayfaları, gelen kutusu ve
+         personel rehberi bağlantılı Hesabım, personel alanı
+         (blog yazısı ve rehber kaydı ekleme sayfalarıyla) ve
+         hata sayfası; mağaza açıksa ürünler, ürün, sepet,
+         ödeme ve sipariş özeti de gelir. Sayfalar
+         pinegrap_hello klasörünün altındaki üç klasöre
+         yerleşir: public (herkes), registration (oturum açmış
+         ziyaretçiler), private (personel ve erişim verilen
+         kullanıcılar); klasörler şablon açılırken oluşturulur.
+         İletişim formu gönderilince ziyaretçi görüşme
+         sayfasına gider; hesabı yoksa onun için hesap açılır
+         ve giriş bilgileri o sayfada gösterilir. İletişim
+         formundaki ad, soyad, e-posta, telefon ve şirket
+         alanları rehbere bağlıdır: oturum açmış ziyaretçi
+         onları dolu bulur. Mağaza açıksa
+         menüde sepet bağlantısı da yer alır. Şablon
+         seçildiğinde sayfalar adlarıyla birlikte editörde
+         kaydedilmemiş sekmeler olarak hazırlanır; Yayınla'ya
+         basılmadıkça sitede sayfa oluşturulmaz. Tasarım hangi
+         şablonun hangi sürümünden başladığını kaydeder.
+
+  [YENİ] Şablonda her sayfada tekrarlanan parçalar ortak
+         bileşendir: üst menü, alt bilgi, iletişim çağrısı
+         bandı ve personel çubuğu bir kez düzenlenir, bütün
+         sayfalarda değişir. Menü o an açık sayfanın
+         bağlantısını kendisi işaretler. Giriş Bölgesi ve
+         sepet bağlantısı menünün üstündeki ince hesap
+         çubuğundadır. Blog, sitenin örnek blog yazılarıyla
+         açılır: yazılar yayınlanınca şablonun blog formuna
+         kopyalanır, istenirse düzenlenir ya da silinir.
+
+  [YENİ] Şablonun gönderdiği e-postalar da şablondadır:
+         iletişim formunun personele giden bildirimi ve
+         gönderene giden "mesajınız bize ulaştı" yanıtı,
+         görüşmeye ya da blog yazısına yazılan yeni yanıtın
+         e-postası ve sipariş fişi. Hepsi görsel editörde
+         düzenlenen sayfalardır (özel klasörde); üst ve alt
+         kısımları ortak bileşendir. İletişim formu, yorumlu
+         sayfalar ve ödeme bunları gönderecek şekilde kurulur;
+         bildirimler sitenin e-posta adresine gider.
+
+  [YENİ] Şablonda blogda arama; mağazada arama, sıralama ve
+         tarama vardır: kategoriler yerinde açılır, fiyat,
+         stok ve ürün özelliklerine göre filtreler "Filtreler"
+         düğmesinin açtığı yan panelde durur. Hakkımızda
+         sayfasındaki ekip personel rehberinden gelir: rehbere
+         eklenen kişi adı, unvanı ve fotoğrafıyla orada
+         görünür; e-posta ve telefonu yalnız rehberde kalır.
+         Rehber fotoğrafları bu yüzden herkese açık klasöre
+         yüklenir.
+
+  [YENİ] Görsel editörde e-posta sayfaları. Form ayarlarında
+         bildirim ve gönderene yanıt için bir e-posta sayfası
+         seçilir (seçilmezse eskisi gibi alanların düz metin
+         listesi gider); sayfanın Form Öğesi Görünümü widget'ı
+         o an gönderilen kaydı gösterir. Yorum ayarlarında
+         e-posta sayfası, konusu ve personele bildirim adresi
+         vardır: yorum yayınlanınca kaydı gönderene ve sayfayı
+         takip edenlere gider. Ödeme widget'ında sipariş fişi
+         e-postası seçilir; Sipariş Görünümü widget'ı siparişi
+         e-postada çizer. Yorum e-postasındaki "Görüntüle veya
+         Yanıtla" bağlantısı kaydın kendisini açar; kaydı
+         gönderen kişi kendi yazdığı yanıt için e-posta almaz.
+
+  [YENİ] Şablon açılıp yayınlamadan editörden çıkılırsa,
+         şablonun o açılış için oluşturduğu sistem widget'ları
+         ve ortak bileşenler silinir (hiçbir sayfa
+         kullanmıyorsa). Şablonu tekrar tekrar açmak palette
+         birikme yapmaz.
+
+  [YENİ] [ŞEMA] Tema: görünüm ve renk paleti. Görsel editörde
+         Bootstrap 5 ile yapılmış her tasarım bir görünüm
+         (köşeler, gölgeler, çizgiler, yazı, düğme ve kart
+         davranışı) ve bir renk paleti (ana renk ve ikinci
+         renk) giyer; ikisi birbirinden bağımsız seçilir ve
+         Ayarlar > Tasarım > Tema altından istenildiği zaman
+         değiştirilir. Hazır görünümler: Modern Yumuşak,
+         Modern Keskin, Minimal, Kurumsal, Zarif, Canlı,
+         Cesur; "Tema yok" seçilirse Bootstrap 5.3 olduğu gibi
+         kalır. 14 hazır palet vardır (Klasik Mavi, Okyanus,
+         Zümrüt, Orman, Gün Batımı, Mercan, Lavanta, Gece
+         Mavisi, Bordo, Kehribar, Gökyüzü, Fuşya, Grafit,
+         Kuzey Işığı); açık ve koyu modda bütün tonlar
+         hesaplanır, beyaz yazının okunmadığı renklerde yazı
+         kendiliğinden koyulaşır. Temalar düğmeden forma,
+         karttan sekmelere, uyarıdan tabloya bütün Bootstrap
+         bileşenlerine uygulanır ve sayfalara hiçbir şey
+         yazmaz: yalnız stil dosyalarıdır. "Kendi görünümünüzü
+         yapın" bir görünümden başlayıp yazı tipi, köşe,
+         düğme biçimi, gölge, çizgi ve boşluk seçtirir;
+         "Kendi renkleriniz" iki renkten palet yapar. İkisi
+         de tuvalde canlı denenir ve dosya yöneticisine
+         kaydedilip başka tasarımlarda da seçilebilir. Mevcut
+         tasarımların görünümü değişmez.
+
+  [YENİ] Şablon seçerken görünüm ve renk paleti seçilir
+         (varsayılan Modern Yumuşak). Şablon kartında,
+         seçimle birlikte değişen bir ana sayfa görseli
+         vardır; tasarım listesinde şablondan yapılmış her
+         tasarımın adının yanında kendi görünümü ve
+         renkleriyle küçük bir resmi, Tema sütununda da
+         görünümü ve paleti görünür.
+
+  [YENİ] "Pinegrap'a merhaba deyin" şablonunda ana sayfa ve
+         Hakkımızda zenginleşti: iki sütunlu karşılama,
+         görselli tanıtım ve onay listesi, rakam şeridi,
+         müşteri yorumu alanları, sık sorulan sorular,
+         hikâye, değerler, yıl yıl zaman çizelgesi ve ekip
+         kartları.
+
+  [YENİ] Giriş Bölgesi sistem widget'ı: sayfaların üst
+         kısmına konan oturum alanı. Oturum açmamış ziyaretçi
+         Giriş Yap ve Kayıt Ol düğmelerini, üye ise resmini ve
+         adını taşıyan bir menüyü görür (Hesabım, Profilimi
+         düzenle, personel alanı, yönetim paneli, Çıkış yap).
+         Tuvalde iki hâl arasında widget'ın şeridinden geçilir.
+         Sitede sayfası olmayan bağlantı gösterilmez; personel
+         alanı yalnız o sayfayı açabilenlere, yönetim paneli
+         yalnız panelde işi olanlara görünür. İstenirse e-posta
+         ve şifre alanlarıyla küçük bir giriş formu da taşır.
+
+  [YENİ] Form Öğesi Görünümü widget'ı olan sayfada yorumlar
+         gösterilen kayda aittir: her form kaydının kendi
+         yorumları olur, onları yalnız o kaydı görebilenler
+         görür ve yazar. İletişim formundan gelen bir mesaj
+         böylece üyeyle personel arasında karşılıklı bir
+         görüşmeye döner.
+
+  [YENİ] Sayfa ayarlarındaki yorumlara üç seçenek eklendi:
+         yorum onay beklemeden yayınlansın, yorumun tarihi
+         görünsün, yalnız oturum açmış ziyaretçiler yazsın.
+
+  [YENİ] Giriş sayfası görsel editörde yapılmış sitelerde,
+         özel ya da kayıtlı ziyaretçilere açık bir klasördeki
+         sayfayı açmak isteyen konuk bu giriş sayfasına gider
+         ve girişten sonra açmak istediği sayfaya döner. Sitede
+         eski tip bir giriş sayfası da varsa, görsel editörde
+         yapılmış sayfalar yine yeni giriş sayfasını kullanır;
+         eski sayfalar eski giriş ekranında kalır.
+
+  [YENİ] Sistem widget'larını ve ortak bileşenleri toplu silme.
+         Paletin Sistem ve Ortak sekmelerinde seçim moduna
+         geçilir; "Kullanılmayanları seç" hiçbir sayfanın
+         kullanmadıklarını işaretler. Silmeden önce silinecekler
+         listelenir; hâlâ kullanılan bir şey seçiliyse onay için
+         seçilen sayı yazılır. Kayıtlı bir sayfanın kullandığı
+         widget, bu onay verilmedikçe sunucuda da silinmez.
+
+  [YENİ] Sepet Bağlantısı sistem widget'ı: sepete giden
+         bağlantı, sepetteki ürün sayısıyla; üst kısım, alt
+         bilgi ya da bir ürün sayfası, istenen yere konur.
+         Sepete ekleyince sayfada kalınan durumlarda çıkan
+         bildirimde "Sepete git" bağlantısı vardır.
+
+  [DÜZELTME] Görsel editörde yapılmış ürün sayfasında
+         "Sonraki sayfa" seçilmemişse sepete ekleyen ziyaretçi
+         ana sayfaya gidiyordu. Artık ürün sayfasında kalır ve
+         sepete giden bağlantılı bir bildirim görür.
+
+  [YENİ] Düzenleme yetkisi olan kullanıcı, görsel editörde
+         yapılmış sayfalarda ürünlerin, ürün gruplarının, form
+         kayıtlarının ve yorumların sol üst köşesinde bir
+         kalem düğmesi görür; düğme kaydın düzenleme ekranını
+         açar ve kaydettikten sonra sayfaya döner. Düzenleme
+         modunu açmak gerekmez.
+
+  [YENİ] Form Öğesi Görünümü widget'ına Düzenle düğmesi
+         (yalnız kaydı düzenleyebilenlere görünür) ve "kaydı bu
+         ziyaretçi az önce gönderdi" koşulu eklendi; teşekkür
+         ve giriş bilgisi blokları buna bağlanabilir.
+
+  [YENİ] Bootstrap 5 ile yapılmış görsel tasarımlarda yorumlar
+         Bootstrap'in kendi görünümüyle çıkar: kartlar, form
+         alanları, düğmeler. Yorum için giriş istenirken
+         bağlantı, sitede görsel editörde yapılmış giriş sayfası
+         varsa oraya gider.
+
+  [DÜZELTME] Görsel editörde yapılmış formlarda çok satırlı
+         metin alanı boşken içinde boşluklarla geliyordu: zorunlu
+         alan boş gönderilebiliyor, yer tutucu yazısı
+         görünmüyordu; rehberden dolan alanın sonuna da boşluk
+         ekleniyordu. Kod blokları da girintisiz yazılır.
+
+  [YENİ] Formun adresine ?connect_to_contact=false eklenince
+         görsel editörde yapılmış formlar da rehberden
+         doldurulmaz ve gönderim rehber kaydını güncellemez
+         (başkası adına form doldurmak için; eski formlarda
+         olduğu gibi).
+
+  [DÜZELTME] Klasik bir sayfada açılan düzenleme modu, görsel
+         editörde yapılmış sayfalarda eski kesikli çerçeveleri
+         ve düzenleme kutularını çiziyordu. Bu sayfalarda
+         düzenleme modu artık yok sayılır.
+
+  [YENİ] Editördeki Önizleme sistem widget'larını da gösterir:
+         widget'lar sunucuda, editördeki son hâlleriyle çizilir;
+         sayfa bir kez kaydedildiyse o sayfanın içinde.
+
+  [YENİ] Tuvalde gerçek kayıtlar: ürün kataloğu ve form listesi
+         widget'larında tasarlanan kartın ardından on gerçek
+         kayıt, aynı tasarımla gösterilir. Bunlar seçilemez ve
+         kaydedilmez; widget ayarlarından kapatılabilir.
+
+  [YENİ] Panel menüsünde Görsel Sayfa Editörü'nün kendine ait
+         neon bir simgesi var.
+
+  [YENİ] Sayfa tasarımcısının ana düğmesi artık "Yayınla":
+         bildirimler ve kısayol (Ctrl+S) da bu adı kullanır.
+
+  [YENİ] Ödeme (Hızlı Sipariş) widget'ının yeni düzeninde
+         zorunlu alanlar baştan kırmızı yıldızla işaretlidir
+         ve formun başında bunu açıklayan bir satır vardır.
+         Kargo adresi faturadan önce gelir; Selamlama alanı
+         yoktur (istenirse eklenir).
+
+  [YENİ] Ödeme ekranında T.C. Kimlik No / Vergi No ve Vergi
+         Dairesi alanları. Müşteri kaydına yazılır; ERP ve
+         e-belge (Paraşüt dahil) buradan okur. Türkiye
+         adresinde numara 10 (vergi no) ya da 11 (T.C. kimlik
+         no) hane olmalıdır; üyede bir sonraki siparişte dolu
+         gelir.
+
+  [YENİ] "Fatura adresim kargo adresimle aynı": işaretliyken
+         fatura adı ve adresi gizlenir ve kargo adresinden
+         alınır; e-posta, telefon, şirket ve vergi alanları
+         görünür kalır. Tek alıcılı yeni siparişte işaretli
+         gelir.
+
+  [YENİ] Üyeler ödeme ekranında "Kayıtlı bir adresi kullan"
+         listesinden seçer: kargo adresi için Adreslerim'deki
+         adresler, fatura için onlar ve geçmiş siparişlerin
+         fatura adresleri. Seçilen adres alanlara yazılır,
+         kargo yöntemleri yeniden hesaplanır.
+
+  [YENİ] Bir adrese gönderim yapan kargo yöntemi yoksa kargo
+         bölümünde bunu açıkça söyleyen bir uyarı çıkar ve
+         nedeni yazılır; yetkililer ayrıca ayarın yerini
+         (Kargo Yöntemleri bağlantısı) görür. Siparişi
+         tamamlamaya çalışınca çıkan hata da "kargo yöntemi
+         seçin" yerine nedeni söyler.
+
+  [YENİ] Sepet, ödeme ve sipariş özeti widget'larında ürün
+         açıklamasının tek satırlık düz metin özeti
+         (__item_summary). Yeni sepet ve ödeme düzenleri ürün
+         adının altında uzun zengin açıklama yerine bunu
+         gösterir.
+
+  [DÜZELTME] Sipariş özeti ve sipariş fişinde ürün adının
+         altında stok kodu yerine ürünün resim kaydırıcı kodu
+         (HTML) görünüyordu. Artık ürünün Ürün Kodu / SKU'su
+         çıkar. Yazdırılabilir faturada da Ürün sütunu kısa
+         açıklamayı, SKU sütunu ürün kodunu gösterir.
+
+  [DÜZELTME] İki alan aynı nedenle reddedildiğinde hata
+         listesinde aynı cümle iki kez yazılıyordu; artık bir
+         kez yazılır.
+
+  [YENİ] [ŞEMA] Asistanla sayfa tasarımı. Görsel sayfa
+         editöründe "Asistan" düğmesi ve tuvaldeki bir öğenin
+         sağ tık menüsünde "Asistana sor": seçili öğenin ya da
+         bütün sayfanın nasıl değişeceğini yazarsınız, Claude
+         ya da Pinegrap AI bir öneri hazırlar (@claude / @ai ile
+         başlayan istek o asistana gider). Öneri sayfaya
+         yazılmaz: Uygula'ya basınca açık sekmedeki tuvale
+         gelir, Ctrl+Z ile geri alınır, Yayınla'ya basana kadar
+         siteye çıkmaz. Menüler, ortak bileşenler, widget'lar ve
+         veri bağlı alanlar korunur; görünüm için gerekirse
+         yalnız o sayfaya özel, süzülmüş bir CSS bloğu eklenir
+         ("AI styles"). Yalnız görsel tasarımcı sayfalarında ve
+         tasarımcı rolündekilere açıktır. Claude ya da Pinegrap
+         AI Çalışma Alanı'nda kurulu değilse düğme ve menü
+         görünmez.
+
+  [DÜZELTME] Görsel sayfa editöründe Ctrl+S, odak editörün
+         kendi formunun dışındayken (katman ağacı, sayfanın
+         kendisi) editörden çıkarıp "Sayfa bulunamadı"
+         ekranına götürüyordu; kaydedilmemiş değişiklik
+         kaybolabiliyordu. Ctrl+S artık editörün her yerinde
+         Yayınla'ya basar.
+
+  [YENİ] Veri bağlama alanları (sepet bağlantısı, giriş
+         bölgesi gibi sistem widget'ları) tuvalde sayfadaki
+         boyutlarıyla çizilir. Ad etiketi artık yerleşimin
+         içinde durup menüyü sıkıştırmaz; öğenin üzerine
+         gelince ya da seçince çerçevenin üstünde (sayfanın en
+         üstündeyse altında) görünür. Bırakma payı yalnız içi
+         boş widget'ta kalır.
+
+  [YENİ] Form Listesi Görünümü widget'ında filtreler. Klasik
+         form liste görünümündeki gibi kayıtlar bir alana (form
+         alanı ya da gönderen, gönderim tarihi, yorum sayısı
+         gibi sistem alanları) ve bir koşula göre süzülür.
+         Değer yerine alanın tipine uyan dinamik bir değer
+         seçilebilir: bugün, birkaç gün önce, oturum açmış
+         ziyaretçi, ziyaretçinin e-posta adresi; her ziyarette
+         yeniden hesaplanır. Liste yalnız bütün filtrelere uyan
+         kayıtları gösterir; tuvaldeki gerçek kayıt önizlemesi
+         de filtreli gelir.
+
+  [DÜZELTME] Görsel sayfa editöründe bir bağlantının ya da
+         düğmenin içine konan resim veya simge ortak bileşende
+         (ör. üst menüdeki logo) ve sistem widget'ında canlı
+         sayfada çıkmıyordu; editörde ve önizlemede
+         görünüyordu. Rozet bileşeni bu yerlerde hiç
+         çizilmiyordu.
+
+  [DÜZELTME] Görsel sayfa editöründe içine resim konmuş bir
+         bağlantının yazısı silinince yerine "Görsel" yazısı
+         geliyor, her silişte yeniden geliyordu. Bağlantının
+         yazısı artık yalnız kendi metnidir; içindeki resim ya
+         da simge yerinde kalır.
+
+  [DÜZELTME] Görsel sayfa editöründe telefonda ve dokunmatik
+         tablette tuval genişliği düğmeleri (telefon, tablet,
+         dizüstü, masaüstü, tam genişlik), piksel etiketi ve
+         boyutlandırma tutamakları gizlenir; tuval ekranı
+         zaten doldurduğu için orada işe yaramıyorlardı.
+
+  PANEL MENÜSÜ
+  --------------------------------------------------------
+
+  [YENİ] Menünün simgeleri yenilendi. Her simge iki renkli:
+         bölümün kendi rengi ve simgenin konusunu öne çıkaran
+         ikinci bir renk (saatin ibreleri, formun tiki,
+         etiketteki yüzde işareti gibi). Üzerine gelince her
+         simge kısa bir hareket yapar (klasör açılır, kutunun
+         kapağı kalkar, kamyon ilerler, etiket sallanır...);
+         Görsel Sayfa Editörü'nün neon simgesinde imleç gelip
+         bloğa tıklar. Cihazda hareket azaltma tercihi açıksa
+         simgeler hareket etmez.
+
+  [YENİ] Pano simgesi sitenin saatini gösteren bir saat,
+         Takvimler simgesi bugünün tarihi. İkisi de sayfa açık
+         kaldıkça ilerler; gece yarısı tarih kendiliğinden
+         değişir.
+
+  [YENİ] Tüm Menüler ve Tüm Bölgeler menüde ayrı satır
+         olarak yer almıyor: ikisi de Sayfa Stilleri'ne sağ
+         tıklayınca açılan menüde. Menü ve bölge ekranları
+         açıkken menüde Sayfa Stilleri seçili görünür.
+
+  DOSYA YÖNETİCİSİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Hızlı bakış penceresi (Boşluk tuşu; Dosya
+         Yöneticisi, Katalog ve aynı arayüzü kullanan öteki
+         listeler): sayfalar ve PDF belgeleri pencerenin
+         ortasında 300 x 150 piksellik küçük bir çerçevede
+         açılıyor, büyük resimler ekrana taşıp üst çubuktaki
+         düğmeleri (kapat, düzenle, indir) tıklanamaz
+         bırakıyordu. Sayfa ve PDF artık pencerenin tamamını
+         kaplar, resim pencereye sığdırılır; üst çubuk her
+         zaman üstte ve tıklanabilir kalır.
+
+  SİTE AYARLARI
+  --------------------------------------------------------
+
+  [DÜZELTME] [ŞEMA] Ayarlar > Genel > Cron işleri: bütün
+         işler birlikte açılıp kaydedilince listenin sonundaki
+         işler (Stok azalma bildirimleri, Tekrarlayan giderler,
+         Tekrarlayan görevler) kaydettikten sonra kapanıyordu.
+         Seçim artık kesilmeden saklanır. Kapanmış olanları
+         güncellemeden sonra bir kez açıp kaydedin.
+
+  [DÜZELTME] E-ticaret kapalı sitelerde Ayarlar'ın Ticaret
+         sekmesi "Undefined constant BASE_CURRENCY_SYMBOL"
+         hatasıyla açılmıyordu. Aynı hata ERP'de cari ve kasa
+         ekleme formlarında da vardı. Ana para birimi artık
+         mağaza kapalıyken de okunur; ERP bu durumda ana para
+         birimi yerine USD varsaymaz.
+
+  E-POSTA
+  --------------------------------------------------------
+
+  [DÜZELTME] SMTP ayarlarında 465 portu (SSL) çalışıyor.
+         Önceden bağlantı zaman aşımına düşüyor, e-posta
+         gönderilemiyordu.
+
+  [YENİ] Gmail gibi alıcılar için giden e-postada üç
+         iyileştirme. DKIM ile imzalanan e-postanın gövdesi yolda
+         dönüştürülmeyecek biçimde kodlanır; önceden araya giren
+         bir sunucu gövdeyi çevirdiğinde imza bozuluyordu. İleti
+         kimliği ve sunucu selamı, zamanlanmış işlerden
+         gönderilenlerde de makinenin adını değil, sitenizin alan
+         adını taşır. Gönderen adres SMTP hesabınızdan farklı
+         bir alan adındaysa geri dönüş adresi SMTP hesabınız
+         olur; SPF denetimi böylece geçer ve geri dönen iletiler
+         o hesaba gelir. Gelen kutusuna düşmenin asıl şartı yine
+         gönderen alan adının SPF, DKIM ve DMARC kayıtlarıdır.
+
+  ERP (ÖN MUHASEBE)
+  --------------------------------------------------------
+
+  [DÜZELTME] Faturadaki "Tamamla ve kaydet" formu bir alan
+         yüzünden reddedildiğinde yazdıklarınız kaybolmuyor:
+         form yazdığınız değerlerle geri gelir, yalnız hatalı
+         kutu kırmızı olur ve nedeni altında yazar; sayfa
+         doğrudan forma döner. Taşıyıcı numarasına 11111111111
+         yazılırsa "yanlış yazılmış" yerine asıl neden
+         söylenir: bu numara kimliksiz alıcının yerine geçer,
+         taşıyıcıya yazılamaz.
+
+  DIŞ API
+  --------------------------------------------------------
+
+  [YENİ] Sayfa tasarımı izni (design:read / design:write).
+         Görsel tasarımcı sayfalarının ağacı okunur (seçili
+         öğe, ana hat, sayfanın CSS'i) ve değişiklik önerisi
+         bırakılır; öneri sayfaya yazılmaz, tasarımcı uygular.
+         Custom style ile eklenen sayfalar kapsam dışıdır.
+
+  [YENİ] ERP uçları: teklifler, çek ve senetler, stok
+         seviyeleri ve hareketleri, stok sayımları, alacak /
+         borç yaşlandırma ve KDV raporu okunabilir. Çek ve
+         senetler kasa iznini ister.
+
+  [YENİ] Çalışma Alanı uçları: kanal oluşturma, güncelleme ve
+         arşivleme, üye listesi, üye ekleme ve çıkarma (prova
+         destekli); asistanların önerdiği kayıt değişiklikleri,
+         asistan istekleri ve notlar okunabilir. Claude için
+         iki yeni okuma: bir isteğin hangi kayıtlarda hangi
+         alanları değiştirebileceği ve bir kaydın o alanlardaki
+         güncel değerleri.
+
+  [YENİ] Ekip cihazları: ekip üyeleri bir mobil uygulamada
+         kendi panel hesabıyla oturum açabilir. API Ayarları'nda
+         "Ekip cihazları" türünde bir uygulama açılır; gizli
+         anahtarı yoktur, izinleri cihazların ulaşabileceği
+         en fazla alandır ve her kişi en fazla kendi hesabının
+         yapabildiğini yapar. Giriş ekranının deneme sınırları
+         aynen geçerlidir. Oturum açan cihazlar uygulamanın
+         Cihazlar sekmesinde listelenir, tek tek kapatılabilir;
+         parola değişince ya da "her yerden çık" denince o
+         kişinin cihazları da kapanır.
+
+  [YENİ] Bildirim ve anlık bildirim uçları: bir kişi panel
+         zilindeki bildirimlerini okuyabilir, okundu / okunmadı
+         işaretleyebilir, okunmamış sayısını alabilir ve cihazını
+         web push için kaydedebilir. Uygulamalar için yeni
+         "Kendi hesabı" izni gerekir; cihaz oturumlarında hep
+         vardır.
+
+  [YENİ] Tüm okuma uçları ETag döndürür; If-None-Match ile
+         sorulan ve değişmemiş cevap 304 olarak, gövdesiz gelir.
+         fields= ile yalnız istenen alanlar döner
+         (?fields=id,name,price).
+
+  [YENİ] Form gönderimleri updated_since ile (panelde
+         düzenlenenler dahil), Çalışma Alanı kanalları
+         active_since ile, notlar updated_since ile süzülebilir.
+
+  [ŞEMA] Cihaz oturumları için api_devices ve api_device_rate
+         tabloları ile api_apps.kind sütunu eklenir.
+
+  [GÜVENLİK] Bir API uygulamasının sahibinin e-ticaret, kişi
+         ve form yetkisi "hayır" iken bile açık sayılıyordu;
+         rolü Kullanıcı olan bir hesabın sahibi olduğu
+         uygulama bu alanların izinlerini alabiliyordu.
+         Yetkiler artık panelin okuduğu gibi okunuyor.
+
+  SİSTEM DURUMU
+  --------------------------------------------------------
+
+  [DÜZELTME] Dosya bütünlüğü denetimi yazılımın GitHub'daki
+         sürüm etiketiyle karşılaştırılıyor. GitHub'dan
+         indirilen, Windows'ta klonlanan ya da FTP ile
+         yüklenen sitelerde değişmemiş dosyalar artık
+         "değiştirilmiş" diye raporlanmıyor; satır sonu
+         farkları (Windows'ta CRLF, sunucuda LF) sayılmaz.
+
+  [DÜZELTME] Sürümün bütünlük referansı henüz yayımlanmamışsa
+         ya da sunucu GitHub'a erişemiyorsa Sistem Durumu
+         kırmızı "eksik veya değiştirilmiş dosya" uyarısı
+         yerine sarı "doğrulanamadı" durumunu gösterir.
+
+  KURULUM VE YÜKSELTME
+  --------------------------------------------------------
+
+  [YENİ] Kurulum sihirbazına "Site Tasarımı" adımı geldi (Yazılım
+         Dili'nden sonra, sihirbaz artık altı adım). Türkçe ya da
+         English başlangıç sitesiyle kurarken görsel sayfa
+         editöründeki hazır şablonlar "Önerilen" olarak ilk sırada
+         ve seçili gelir; kartı, şablonun Görsel Sayfa Editörü ile
+         düzenlenmek için tasarlandığını ve neden seçilmesi
+         gerektiğini anlatır. Şablonun görünümü (köşe, gölge, yazı,
+         düğme) ve renk paleti burada seçilir; seçim canlı
+         önizlemede hemen görünür: şablonun sayfaları örnek
+         içerikle, masaüstü ya da telefon genişliğinde, yeni sekmede
+         de açılabilir. Sitenin gönderdiği e-postalar da şablonun
+         sayfalarıdır: iletişim formunun yöneticiye giden bildirimi
+         ve gönderene giden "mesajınız alındı" yanıtı, blog
+         yorumlarının ve görüşmelerin yanıt e-postası, siparişin
+         fişi. Önizlemedeki "E-postalar" satırından örnek içerikle
+         açılır; kurulumda forma, yorumlara ve ödeme adımına bağlı
+         gelir, bildirim sitenin e-posta adresine gider. Şablonla
+         kurulumda başlangıç sitesinin sayfaları ve sayfa stilleri
+         kurulmaz: şablonun sayfaları seçilen görünüm ve renklerle
+         yeni bir görsel editör tasarımı olarak yayınlanır, ana
+         sayfası (anasayfa / home) sitenin ana sayfası olur, kök
+         klasör bu tasarımı kullanır ve yöneticinin açılış sayfası
+         Personel Alanı olur. Ürünler, kargo, vergi, kişiler,
+         menüler, ortak bölgeler, klasörler ve dosyalar her zamanki
+         gibi kurulur; yalnız eski sayfalara ait kayıtlar (sayfa
+         bölgeleri, sayfa türü ayarları, o sayfaların form alanları
+         ve örnek gönderimleri) gelmez. Blogun örnek yazıları
+         şablonun bloguna aktarılır. Şablonun metinleri başlangıç
+         sitesinin dilindedir. Tasarım yazılamazsa site sıradan
+         başlangıç sitesi olarak kalır ve sihirbaz "Tekrar dene"
+         sunar. Standart kurulum (başlangıç sitesi olduğu gibi)
+         seçilebilir kalır; yedekten ya da zip dosyasından kurulumda
+         bu adım seçim sunmaz.
+
+
+
   2026.4.4
   ==========================================================
 

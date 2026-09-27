@@ -2305,3 +2305,1125 @@ function erp_api_expenses_receipt_put($params)
 
     api_ok(erp_api_expense_present(erp_api_expense_row((int) $row['id'])));
 }
+
+/* ---------------------------------------------------------------------------
+   Quotes
+   --------------------------------------------------------------------------- */
+
+/**
+ * A 503 for a store that has not run the update that brings the quote table
+ * (4.92).
+ */
+function erp_api_quotes_ready()
+{
+    if (!erp_quotes_ready()) {
+        api_fail(503, 'service_unavailable', lang('Quotes come with the software update; run the update to use them.'));
+    }
+}
+
+/**
+ * The quote rows with the columns erp_quote() gives the presenter. form_data
+ * stays out: it is the form as it was typed, kept for the invoice draft, and
+ * a page of it is a lot of text nobody reads.
+ *
+ * @return string  SELECT ... FROM ... JOIN ..., for erp_api_page()
+ */
+function erp_api_quote_select()
+{
+    return "SELECT q.id, q.full_number, q.account_id, q.issue_date, q.valid_until, q.currency, q.exchange_rate,
+            q.subtotal, q.discount_total, q.tax_total, q.tax2_total, q.withholding_total, q.grand_total, q.grand_total_base,
+            q.status, q.invoice_id, q.line_data, q.notes, q.decided_at, q.created_at, q.updated_at, q.updated_at AS _sort,
+            a.title AS account_title, i.status AS invoice_status, i.full_number AS invoice_number
+        FROM erp_quotes q
+        LEFT JOIN erp_accounts a ON a.id = q.account_id
+        LEFT JOIN erp_invoices i ON i.id = q.invoice_id";
+}
+
+/**
+ * The lines of a page of quotes, keyed by quote, with the product codes read
+ * in one query.
+ *
+ * @param array $rows  Quote rows carrying line_data
+ * @return array  quote_id => lines
+ */
+function erp_api_quote_lines($rows)
+{
+    $decoded = array();
+    $product_ids = array();
+
+    foreach ((array) $rows as $row) {
+        $decoded[(int) $row['id']] = erp_quote_lines($row);
+
+        foreach ($decoded[(int) $row['id']] as $line) {
+            if ((int) ($line['product_id'] ?? 0) > 0) {
+                $product_ids[] = (int) $line['product_id'];
+            }
+        }
+    }
+
+    $skus = array();
+
+    if (!empty($product_ids)) {
+        foreach ((array) db_items("SELECT id, name FROM products WHERE id IN (" . implode(',', array_unique($product_ids)) . ")") as $product) {
+            $skus[(int) $product['id']] = (string) $product['name'];
+        }
+    }
+
+    $lines = array();
+
+    foreach ($decoded as $quote_id => $quote_lines) {
+        $lines[$quote_id] = array();
+
+        foreach ($quote_lines as $index => $line) {
+            $lines[$quote_id][] = erp_api_quote_line_present($line, $index + 1, $skus[(int) ($line['product_id'] ?? 0)] ?? '');
+        }
+    }
+
+    return $lines;
+}
+
+/**
+ * One quote line. The lines are kept on the quote as they were worked out,
+ * shaped like erp_invoice_items rows but without an id of their own.
+ *
+ * @param array  $line
+ * @param int    $position  The line's place, for a line saved without line_no
+ * @param string $sku
+ * @return array
+ */
+function erp_api_quote_line_present($line, $position, $sku)
+{
+    return array(
+        'line_no' => (int) ($line['line_no'] ?? $position),
+        'product_id' => (int) ($line['product_id'] ?? 0),
+        'sku' => (string) $sku,
+        'description' => (string) ($line['description'] ?? ''),
+        'quantity' => (float) ($line['quantity'] ?? 0),
+        'unit' => (string) ($line['unit_code'] ?? ''),
+        'unit_price' => api_money($line['unit_price'] ?? 0),
+        'discount_rate' => (float) ($line['discount_rate'] ?? 0),
+        'offer_id' => (int) ($line['offer_id'] ?? 0),
+        'offer_discount_rate' => (float) ($line['offer_discount_rate'] ?? 0),
+        'discount_amount' => api_money($line['discount_amount'] ?? 0),
+        'tax_rate' => (float) ($line['tax_rate'] ?? 0),
+        'tax_total' => api_money($line['tax_total'] ?? 0),
+        'tax2_rate' => (float) ($line['tax2_rate'] ?? 0),
+        'tax2_amount' => api_money($line['tax2_amount'] ?? 0),
+        'withholding_rate' => (float) ($line['withholding_rate'] ?? 0),
+        'withholding_code' => (string) ($line['withholding_code'] ?? ''),
+        'withholding_amount' => api_money($line['withholding_amount'] ?? 0),
+        'line_total' => api_money($line['line_total'] ?? 0),
+    );
+}
+
+function erp_api_quote_present($row, $lines)
+{
+    // An invoiced quote whose draft was deleted names no invoice any more;
+    // erp_quote_state() reads it as accepted again.
+    $invoiced = ((string) ($row['invoice_status'] ?? '') !== '');
+
+    return array(
+        'id' => (int) $row['id'],
+        'number' => (string) $row['full_number'],
+        'status' => (string) $row['status'],
+        'state' => erp_quote_state($row),
+        'account_id' => (int) $row['account_id'],
+        'account_title' => (string) ($row['account_title'] ?? ''),
+        'issue_date' => erp_api_date($row['issue_date']),
+        'valid_until' => erp_api_date($row['valid_until']),
+        'currency' => (string) $row['currency'],
+        'exchange_rate' => (float) $row['exchange_rate'],
+        'totals' => array(
+            'subtotal' => api_money($row['subtotal']),
+            'discount' => api_money($row['discount_total']),
+            'tax' => api_money($row['tax_total']),
+            'tax2' => api_money($row['tax2_total']),
+            'withholding' => api_money($row['withholding_total']),
+            'grand_total' => api_money($row['grand_total']),
+            'grand_total_base' => api_money($row['grand_total_base']),
+        ),
+        'invoice_id' => $invoiced ? (int) $row['invoice_id'] : 0,
+        'invoice_number' => $invoiced ? (string) ($row['invoice_number'] ?? '') : '',
+        'invoice_status' => $invoiced ? (string) $row['invoice_status'] : '',
+        'notes' => (string) $row['notes'],
+        'lines' => $lines,
+        'decided_at' => api_time($row['decided_at']),
+        'created_at' => api_time($row['created_at']),
+        'updated_at' => api_time($row['updated_at']),
+    );
+}
+
+// What erp_api_quote_present() returns, declared for the OpenAPI document.
+function erp_api_quote_schema()
+{
+    return array(
+        'id' => 'integer',
+        'number' => 'string',
+        'status' => 'string',
+        'state' => 'string',
+        'account_id' => 'integer',
+        'account_title' => 'string',
+        'issue_date' => 'string?',
+        'valid_until' => 'string?',
+        'currency' => 'string',
+        'exchange_rate' => 'number',
+        'totals' => array(
+            'subtotal' => 'integer',
+            'discount' => 'integer',
+            'tax' => 'integer',
+            'tax2' => 'integer',
+            'withholding' => 'integer',
+            'grand_total' => 'integer',
+            'grand_total_base' => 'integer',
+        ),
+        'invoice_id' => 'integer',
+        'invoice_number' => 'string',
+        'invoice_status' => 'string',
+        'notes' => 'string',
+        'lines' => array(array(
+            'line_no' => 'integer',
+            'product_id' => 'integer',
+            'sku' => 'string',
+            'description' => 'string',
+            'quantity' => 'number',
+            'unit' => 'string',
+            'unit_price' => 'integer',
+            'discount_rate' => 'number',
+            'offer_id' => 'integer',
+            'offer_discount_rate' => 'number',
+            'discount_amount' => 'integer',
+            'tax_rate' => 'number',
+            'tax_total' => 'integer',
+            'tax2_rate' => 'number',
+            'tax2_amount' => 'integer',
+            'withholding_rate' => 'number',
+            'withholding_code' => 'string',
+            'withholding_amount' => 'integer',
+            'line_total' => 'integer',
+        )),
+        'decided_at' => 'string?',
+        'created_at' => 'string?',
+        'updated_at' => 'string?',
+    );
+}
+
+function erp_api_quotes_list($params)
+{
+    erp_api_quotes_ready();
+
+    $where = array();
+    $today = escape(date('Y-m-d'));
+
+    // The states erp_quote_rows() filters the panel list by, worked out the
+    // way erp_quote_state() names them, so the filter and the state field
+    // agree on every row.
+    switch ((string) ($params['status'] ?? '')) {
+        case 'open':
+            $where[] = "q.status = 'open' AND (q.valid_until = '0000-00-00' OR q.valid_until >= '" . $today . "')";
+            break;
+        case 'expired':
+            $where[] = "q.status = 'open' AND q.valid_until > '0000-00-00' AND q.valid_until < '" . $today . "'";
+            break;
+        case 'accepted':
+            $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND i.id IS NULL))";
+            break;
+        case 'invoiced':
+            $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL";
+            break;
+        case 'rejected':
+        case 'cancelled':
+            $where[] = "q.status = '" . escape($params['status']) . "'";
+            break;
+    }
+
+    if (isset($params['account_id'])) {
+        $where[] = "q.account_id = '" . (int) $params['account_id'] . "'";
+    }
+
+    if (isset($params['number']) && ($params['number'] !== '')) {
+        $where[] = "q.full_number = '" . escape($params['number']) . "'";
+    }
+
+    if (isset($params['issued_from'])) {
+        $where[] = "q.issue_date >= '" . escape(erp_api_day($params['issued_from'])) . "'";
+    }
+
+    if (isset($params['issued_to'])) {
+        $where[] = "q.issue_date <= '" . escape(erp_api_day($params['issued_to'])) . "'";
+    }
+
+    if (isset($params['updated_since'])) {
+        $where[] = "q.updated_at >= '" . (int) $params['updated_since'] . "'";
+    }
+
+    $page = erp_api_page(erp_api_quote_select(), $where, 'q.updated_at', 'q.id', $params,
+        "FROM erp_quotes q LEFT JOIN erp_invoices i ON i.id = q.invoice_id");
+
+    $lines = erp_api_quote_lines($page['rows']);
+
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = erp_api_quote_present($row, $lines[(int) $row['id']] ?? array());
+    }
+
+    api_ok_list($out, $page['limit'], $page['next_cursor'], $page['total']);
+}
+
+function erp_api_quotes_get($params)
+{
+    erp_api_quotes_ready();
+
+    $quote = erp_quote((int) $params['id']);
+
+    if ($quote === null) {
+        api_fail_not_found(lang('Sales quote'));
+    }
+
+    $lines = erp_api_quote_lines(array($quote));
+
+    api_ok(erp_api_quote_present($quote, $lines[(int) $quote['id']] ?? array()));
+}
+
+/* ---------------------------------------------------------------------------
+   Cheques and promissory notes
+   --------------------------------------------------------------------------- */
+
+/**
+ * A 503 for a store that has not run the update that brings the cheque table
+ * (4.101).
+ */
+function erp_api_cheques_ready()
+{
+    if (!erp_cheques_ready()) {
+        api_fail(503, 'service_unavailable', lang('Cheques and notes come with the software update; run the update to use them.'));
+    }
+}
+
+/**
+ * The cheque rows with the account and till names erp_cheque() joins.
+ *
+ * @return string  SELECT ... FROM ... JOIN ..., for erp_api_page()
+ */
+function erp_api_cheque_select()
+{
+    return "SELECT c.*, c.updated_at AS _sort, a.title AS account_title, e.title AS endorsed_title,
+            p.name AS portfolio_name, b.name AS bank_till_name
+        FROM erp_cheques c
+        LEFT JOIN erp_accounts a ON a.id = c.account_id
+        LEFT JOIN erp_accounts e ON e.id = c.endorsed_account_id
+        LEFT JOIN erp_cash_accounts p ON p.id = c.portfolio_till_id
+        LEFT JOIN erp_cash_accounts b ON b.id = c.bank_till_id";
+}
+
+function erp_api_cheque_present($row)
+{
+    return array(
+        'id' => (int) $row['id'],
+        'kind' => (string) $row['kind'],
+        'direction' => (string) $row['direction'],
+        'status' => (string) $row['status'],
+        'account_id' => (int) $row['account_id'],
+        'account_title' => (string) ($row['account_title'] ?? ''),
+        'amount' => api_money($row['amount']),
+        'currency' => (string) $row['currency'],
+        'amount_base' => api_money($row['amount_base']),
+        'date' => erp_api_date($row['doc_date']),
+        'due_date' => erp_api_date($row['due_date']),
+        'serial_no' => (string) $row['serial_no'],
+        'bank_name' => (string) $row['bank_name'],
+        'branch' => (string) $row['branch'],
+        'drawer' => (string) $row['drawer'],
+        'portfolio_cash_account_id' => (int) $row['portfolio_till_id'],
+        'portfolio_cash_account_name' => (string) ($row['portfolio_name'] ?? ''),
+        'bank_cash_account_id' => (int) $row['bank_till_id'],
+        'bank_cash_account_name' => (string) ($row['bank_till_name'] ?? ''),
+        'endorsed_account_id' => (int) $row['endorsed_account_id'],
+        'endorsed_account_title' => (string) ($row['endorsed_title'] ?? ''),
+        'open_cash_id' => (int) $row['open_cash_id'],
+        'close_cash_id' => (int) $row['close_cash_id'],
+        'closed_date' => erp_api_date($row['closed_date']),
+        'notes' => (string) $row['notes'],
+        'created_at' => api_time($row['created_at']),
+        'updated_at' => api_time($row['updated_at']),
+    );
+}
+
+// What erp_api_cheque_present() returns, declared for the OpenAPI document.
+function erp_api_cheque_schema()
+{
+    return array(
+        'id' => 'integer',
+        'kind' => 'string',
+        'direction' => 'string',
+        'status' => 'string',
+        'account_id' => 'integer',
+        'account_title' => 'string',
+        'amount' => 'integer',
+        'currency' => 'string',
+        'amount_base' => 'integer',
+        'date' => 'string?',
+        'due_date' => 'string?',
+        'serial_no' => 'string',
+        'bank_name' => 'string',
+        'branch' => 'string',
+        'drawer' => 'string',
+        'portfolio_cash_account_id' => 'integer',
+        'portfolio_cash_account_name' => 'string',
+        'bank_cash_account_id' => 'integer',
+        'bank_cash_account_name' => 'string',
+        'endorsed_account_id' => 'integer',
+        'endorsed_account_title' => 'string',
+        'open_cash_id' => 'integer',
+        'close_cash_id' => 'integer',
+        'closed_date' => 'string?',
+        'notes' => 'string',
+        'created_at' => 'string?',
+        'updated_at' => 'string?',
+    );
+}
+
+function erp_api_cheques_list($params)
+{
+    erp_api_cheques_ready();
+
+    $where = array();
+
+    if (isset($params['direction'])) {
+        $where[] = "c.direction = '" . escape($params['direction']) . "'";
+    }
+
+    if (isset($params['kind'])) {
+        $where[] = "c.kind = '" . escape($params['kind']) . "'";
+    }
+
+    // open is the register's own grouping (erp_cheque_rows()): still waiting
+    // in the portfolio, at the bank, or given and not yet paid.
+    if (isset($params['status'])) {
+        $where[] = ($params['status'] === 'open')
+            ? "c.status IN ('portfolio', 'deposited', 'given')"
+            : "c.status = '" . escape($params['status']) . "'";
+    }
+
+    if (isset($params['account_id'])) {
+        $where[] = "c.account_id = '" . (int) $params['account_id'] . "'";
+    }
+
+    if (isset($params['due_from'])) {
+        $where[] = "c.due_date >= '" . escape(erp_api_day($params['due_from'])) . "'";
+    }
+
+    if (isset($params['due_to'])) {
+        $where[] = "c.due_date <= '" . escape(erp_api_day($params['due_to'])) . "'";
+    }
+
+    if (isset($params['updated_since'])) {
+        $where[] = "c.updated_at >= '" . (int) $params['updated_since'] . "'";
+    }
+
+    $page = erp_api_page(erp_api_cheque_select(), $where, 'c.updated_at', 'c.id', $params, "FROM erp_cheques c");
+
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = erp_api_cheque_present($row);
+    }
+
+    api_ok_list($out, $page['limit'], $page['next_cursor'], $page['total']);
+}
+
+function erp_api_cheques_get($params)
+{
+    erp_api_cheques_ready();
+
+    $cheque = erp_cheque((int) $params['id']);
+
+    if ($cheque === null) {
+        api_fail(404, 'not_found', lang('The cheque or note could not be found.'));
+    }
+
+    api_ok(erp_api_cheque_present($cheque));
+}
+
+/* ---------------------------------------------------------------------------
+   Stock
+   --------------------------------------------------------------------------- */
+
+/**
+ * A 503 for a store that has not run the update that brings the minimum
+ * stock table (4.99).
+ */
+function erp_api_stock_minimums_ready()
+{
+    if (!erp_stock_minimums_ready()) {
+        api_fail(503, 'service_unavailable', lang('Minimum stock comes with the software update; run the update to use it.'));
+    }
+}
+
+/**
+ * A 503 for a store that has not run the update that brings the stock
+ * movements (4.77).
+ */
+function erp_api_stock_moves_ready()
+{
+    if (!erp_stock_ready()) {
+        api_fail(503, 'service_unavailable', lang('Stock and cost come with the software update; run the update to use them.'));
+    }
+}
+
+function erp_api_stock_level_present($row)
+{
+    $quantity = (int) $row['inventory_quantity'];
+    $minimum = (int) $row['min_quantity'];
+
+    return array(
+        'product_id' => (int) $row['id'],
+        'sku' => (string) $row['product_sku'],
+        'name' => erp_stock_product_label($row),
+        'enabled' => ((int) $row['enabled'] === 1),
+        'quantity' => $quantity,
+        'minimum' => $minimum,
+        // The rule of erp_stock_minimum_rows() and the low stock notice.
+        'low' => ($minimum > 0) && ($quantity <= $minimum),
+    );
+}
+
+// What erp_api_stock_level_present() returns.
+function erp_api_stock_level_schema()
+{
+    return array(
+        'product_id' => 'integer',
+        'sku' => 'string',
+        'name' => 'string',
+        'enabled' => 'boolean',
+        'quantity' => 'integer',
+        'minimum' => 'integer',
+        'low' => 'boolean',
+    );
+}
+
+function erp_api_stock_levels($params)
+{
+    erp_api_stock_minimums_ready();
+
+    // The products erp_stock_minimum_rows() lists: the ones that track stock.
+    $where = array("p.inventory = '1'");
+
+    if (!empty($params['low'])) {
+        $where[] = "m.min_quantity > 0 AND p.inventory_quantity <= m.min_quantity";
+    }
+
+    if (isset($params['search']) && ($params['search'] !== '')) {
+        $search = escape(escape_like($params['search']));
+        $where[] = "(p.name LIKE '%" . $search . "%' OR p.short_description LIKE '%" . $search . "%')";
+    }
+
+    $from = "FROM products p LEFT JOIN erp_stock_minimums m ON m.product_id = p.id";
+
+    $page = erp_api_page("SELECT p.id, p.name AS product_sku, p.short_description AS product_name,
+            p.inventory_quantity, p.enabled, COALESCE(m.min_quantity, 0) AS min_quantity " . $from,
+        $where, '', 'p.id', $params, $from);
+
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = erp_api_stock_level_present($row);
+    }
+
+    api_ok_list($out, $page['limit'], $page['next_cursor'], $page['total']);
+}
+
+/**
+ * What a movement did to the count, as a word: none (a cost record only, or
+ * counting switched off), waiting (written, applied once the document's
+ * transaction committed), applied, or untracked (the product stopped tracking
+ * stock before it was applied). The states erp_stock_effect_text() words.
+ *
+ * @param array $row  erp_stock_moves row
+ * @return string
+ */
+function erp_api_stock_effect($row)
+{
+    if ((int) $row['stock_wanted'] !== 1) {
+        return 'none';
+    }
+
+    switch ((int) $row['stock_applied']) {
+        case 1:
+            return 'applied';
+        case 2:
+            return 'untracked';
+    }
+
+    return 'waiting';
+}
+
+function erp_api_stock_move_present($row)
+{
+    $effect = erp_api_stock_effect($row);
+
+    return array(
+        'id' => (int) $row['id'],
+        'date' => erp_api_date($row['doc_date']),
+        'product_id' => (int) $row['product_id'],
+        'sku' => (string) ($row['product_sku'] ?? ''),
+        'product_name' => erp_stock_product_label($row),
+        'kind' => (string) $row['kind'],
+        'direction' => (string) $row['direction'],
+        'quantity' => (float) $row['quantity'],
+        'unit_cost' => api_money($row['unit_cost']),
+        'cost_total' => api_money($row['cost_total']),
+        'stock_effect' => $effect,
+        'stock_after' => ($effect === 'applied') ? (int) $row['stock_after'] : null,
+        'invoice_id' => (int) $row['invoice_id'],
+        'invoice_number' => (string) ($row['full_number'] ?? ''),
+        'invoice_direction' => (string) ($row['document_direction'] ?? ''),
+        'invoice_doc_type' => (string) ($row['document_type'] ?? ''),
+        'reverses_id' => (int) $row['reverses_id'],
+        'created_at' => api_time($row['created_at']),
+    );
+}
+
+// What erp_api_stock_move_present() returns.
+function erp_api_stock_move_schema()
+{
+    return array(
+        'id' => 'integer',
+        'date' => 'string?',
+        'product_id' => 'integer',
+        'sku' => 'string',
+        'product_name' => 'string',
+        'kind' => 'string',
+        'direction' => 'string',
+        'quantity' => 'number',
+        'unit_cost' => 'integer',
+        'cost_total' => 'integer',
+        'stock_effect' => 'string',
+        'stock_after' => 'integer?',
+        'invoice_id' => 'integer',
+        'invoice_number' => 'string',
+        'invoice_direction' => 'string',
+        'invoice_doc_type' => 'string',
+        'reverses_id' => 'integer',
+        'created_at' => 'string?',
+    );
+}
+
+function erp_api_stock_moves($params)
+{
+    erp_api_stock_moves_ready();
+
+    $where = array();
+
+    if (isset($params['product_id'])) {
+        $where[] = "m.product_id = '" . (int) $params['product_id'] . "'";
+    }
+
+    if (isset($params['invoice_id'])) {
+        $where[] = "m.invoice_id = '" . (int) $params['invoice_id'] . "'";
+    }
+
+    if (isset($params['kind'])) {
+        $where[] = "m.kind = '" . escape($params['kind']) . "'";
+    }
+
+    if (isset($params['from'])) {
+        $where[] = "m.doc_date >= '" . escape(erp_api_day($params['from'])) . "'";
+    }
+
+    if (isset($params['to'])) {
+        $where[] = "m.doc_date <= '" . escape(erp_api_day($params['to'])) . "'";
+    }
+
+    // The joins erp_stock_recent_moves() reads, walked by id: a movement is
+    // written once and never rewritten, so the id order is the order they
+    // happened in.
+    $page = erp_api_page("SELECT m.*, p.name AS product_sku, p.short_description AS product_name,
+            i.full_number, i.direction AS document_direction, i.doc_type AS document_type
+        FROM erp_stock_moves m
+        LEFT JOIN products p ON p.id = m.product_id
+        LEFT JOIN erp_invoices i ON i.id = m.invoice_id",
+        $where, '', 'm.id', $params, "FROM erp_stock_moves m");
+
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = erp_api_stock_move_present($row);
+    }
+
+    api_ok_list($out, $page['limit'], $page['next_cursor'], $page['total']);
+}
+
+/* ---------------------------------------------------------------------------
+   Stock counts
+   --------------------------------------------------------------------------- */
+
+/**
+ * A 503 for a store that has not run the update that brings the stock count
+ * tables (4.100).
+ */
+function erp_api_stock_counts_ready()
+{
+    if (!erp_stock_counts_ready()) {
+        api_fail(503, 'service_unavailable', lang('Stock counts come with the software update; run the update to use them.'));
+    }
+}
+
+/**
+ * One line of a count. What the store had before is written when the count
+ * is applied; until then system_before is the column's default and says
+ * nothing, so it goes out as null.
+ *
+ * @param array $row      erp_stock_count_items() row
+ * @param bool  $applied  Whether the count has been applied
+ * @return array
+ */
+function erp_api_stock_count_item_present($row, $applied)
+{
+    return array(
+        'product_id' => (int) $row['product_id'],
+        'sku' => (string) ($row['product_sku'] ?? ''),
+        'name' => erp_stock_product_label($row),
+        'counted' => (int) $row['counted'],
+        'stock_before' => $applied ? (int) $row['system_before'] : null,
+        'stock_now' => (int) $row['inventory_quantity'],
+        'difference' => $applied ? ((int) $row['counted'] - (int) $row['system_before']) : null,
+    );
+}
+
+// What erp_api_stock_count_item_present() returns.
+function erp_api_stock_count_item_schema()
+{
+    return array(
+        'product_id' => 'integer',
+        'sku' => 'string',
+        'name' => 'string',
+        'counted' => 'integer',
+        'stock_before' => 'integer?',
+        'stock_now' => 'integer',
+        'difference' => 'integer?',
+    );
+}
+
+/**
+ * @param array      $row         erp_stock_counts row
+ * @param int        $line_count
+ * @param array|null $items       Presented lines, or null in a listing
+ * @return array
+ */
+function erp_api_stock_count_present($row, $line_count, $items)
+{
+    return array(
+        'id' => (int) $row['id'],
+        'title' => (string) $row['title'],
+        'status' => (string) $row['status'],
+        'line_count' => (int) $line_count,
+        'items' => $items,
+        'created_at' => api_time($row['created_at']),
+        'applied_at' => api_time($row['applied_at']),
+        'updated_at' => api_time($row['updated_at']),
+    );
+}
+
+// What erp_api_stock_count_present() returns, declared for the OpenAPI document.
+function erp_api_stock_count_schema()
+{
+    return array(
+        'id' => 'integer',
+        'title' => 'string',
+        'status' => 'string',
+        'line_count' => 'integer',
+        'items' => 'ErpStockCountItem[]?',
+        'created_at' => 'string?',
+        'applied_at' => 'string?',
+        'updated_at' => 'string?',
+    );
+}
+
+function erp_api_stock_counts_list($params)
+{
+    erp_api_stock_counts_ready();
+
+    $where = array();
+
+    if (isset($params['status'])) {
+        $where[] = "c.status = '" . escape($params['status']) . "'";
+    }
+
+    if (isset($params['updated_since'])) {
+        $where[] = "c.updated_at >= '" . (int) $params['updated_since'] . "'";
+    }
+
+    // The lines are left to the single read: a count of the whole shop is
+    // thousands of them, and a page of counts would carry every one.
+    $page = erp_api_page("SELECT c.*, c.updated_at AS _sort,
+            (SELECT COUNT(*) FROM erp_stock_count_items i WHERE i.count_id = c.id) AS line_count
+        FROM erp_stock_counts c",
+        $where, 'c.updated_at', 'c.id', $params, "FROM erp_stock_counts c");
+
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = erp_api_stock_count_present($row, (int) $row['line_count'], null);
+    }
+
+    api_ok_list($out, $page['limit'], $page['next_cursor'], $page['total']);
+}
+
+function erp_api_stock_counts_get($params)
+{
+    erp_api_stock_counts_ready();
+
+    $count = erp_stock_count((int) $params['id']);
+
+    if ($count === null) {
+        api_fail_not_found(lang('Stock count'));
+    }
+
+    $applied = ((string) $count['status'] === 'applied');
+    $items = array();
+
+    foreach (erp_stock_count_items((int) $count['id']) as $row) {
+        $items[] = erp_api_stock_count_item_present($row, $applied);
+    }
+
+    api_ok(erp_api_stock_count_present($count, count($items), $items));
+}
+
+/* ---------------------------------------------------------------------------
+   Reports
+   --------------------------------------------------------------------------- */
+
+// The age buckets of erp_aging_buckets(), one field each.
+function erp_api_aging_buckets_schema()
+{
+    return array(
+        'current' => 'integer',
+        'd1_30' => 'integer',
+        'd31_60' => 'integer',
+        'd61_90' => 'integer',
+        'd90p' => 'integer',
+    );
+}
+
+/**
+ * @param array $buckets  bucket key => kurus, from erp_aging_by_account()
+ * @return array
+ */
+function erp_api_aging_buckets_present($buckets)
+{
+    return array(
+        'current' => api_money($buckets['current'] ?? 0),
+        'd1_30' => api_money($buckets['d1_30'] ?? 0),
+        'd31_60' => api_money($buckets['d31_60'] ?? 0),
+        'd61_90' => api_money($buckets['d61_90'] ?? 0),
+        'd90p' => api_money($buckets['d90p'] ?? 0),
+    );
+}
+
+/**
+ * One account line of the aging report.
+ *
+ * @param array $account  erp_aging_by_account()['accounts'] entry
+ * @return array
+ */
+function erp_api_aging_account_present($account)
+{
+    return array(
+        'account_id' => (int) $account['id'],
+        'title' => (string) $account['title'],
+        'count' => (int) $account['count'],
+        'oldest_days' => (int) $account['oldest_days'],
+        'total' => api_money($account['total']),
+        'buckets' => erp_api_aging_buckets_present($account['buckets']),
+    );
+}
+
+/**
+ * @param string $direction  sales | purchase
+ * @param string $as_of      Y-m-d
+ * @param array  $folded     erp_aging_by_account()
+ * @return array
+ */
+function erp_api_aging_report_present($direction, $as_of, $folded)
+{
+    return array(
+        'direction' => (string) $direction,
+        'as_of' => (string) $as_of,
+        'currency' => erp_base_currency(),
+        'count' => (int) $folded['totals']['count'],
+        'total' => api_money($folded['totals']['total']),
+        'buckets' => erp_api_aging_buckets_present($folded['totals']['buckets']),
+        'accounts' => array_values(array_map('erp_api_aging_account_present', $folded['accounts'])),
+    );
+}
+
+// What erp_api_aging_report_present() returns, declared for the OpenAPI document.
+function erp_api_aging_report_schema()
+{
+    return array(
+        'direction' => 'string',
+        'as_of' => 'string',
+        'currency' => 'string',
+        'count' => 'integer',
+        'total' => 'integer',
+        'buckets' => erp_api_aging_buckets_schema(),
+        'accounts' => array(array(
+            'account_id' => 'integer',
+            'title' => 'string',
+            'count' => 'integer',
+            'oldest_days' => 'integer',
+            'total' => 'integer',
+            'buckets' => erp_api_aging_buckets_schema(),
+        )),
+    );
+}
+
+function erp_api_reports_aging($params)
+{
+    $direction = (string) ($params['direction'] ?? 'sales');
+    $as_of = erp_aging_as_of(isset($params['as_of']) ? erp_api_day($params['as_of']) : '');
+
+    $filters = array();
+
+    if (isset($params['account_id'])) {
+        $filters['account_id'] = (int) $params['account_id'];
+    }
+
+    // The aging screen's own reading: the invoices open on the day, folded
+    // into one line per account.
+    $folded = erp_aging_by_account(erp_aging_invoices($direction, $as_of, $filters));
+
+    api_ok(erp_api_aging_report_present($direction, $as_of, $folded));
+}
+
+// The figures of one kind of document in the VAT report, one field each.
+function erp_api_vat_kind_schema()
+{
+    return array(
+        'count' => 'integer',
+        'net' => 'integer',
+        'vat' => 'integer',
+        'tax2' => 'integer',
+        'withholding' => 'integer',
+        'total' => 'integer',
+    );
+}
+
+/**
+ * @param array $figures  erp_vat_report()['kinds'] entry
+ * @return array
+ */
+function erp_api_vat_kind_present($figures)
+{
+    return array(
+        'count' => (int) ($figures['count'] ?? 0),
+        'net' => api_money($figures['net'] ?? 0),
+        'vat' => api_money($figures['vat'] ?? 0),
+        'tax2' => api_money($figures['tax2'] ?? 0),
+        'withholding' => api_money($figures['withholding'] ?? 0),
+        'total' => api_money($figures['total'] ?? 0),
+    );
+}
+
+/**
+ * One rate line: the tax (vat, or tax2 for the second tax) of one kind of
+ * document at one rate.
+ *
+ * @param array $item  erp_vat_report()['rates'] entry
+ * @return array
+ */
+function erp_api_vat_rate_present($item)
+{
+    return array(
+        'kind' => (string) $item['key'],
+        'tax' => (string) $item['tax'],
+        'rate' => (float) $item['rate'],
+        'net' => api_money($item['net']),
+        'tax_amount' => api_money($item['tax_amount']),
+        'documents' => (int) $item['documents'],
+    );
+}
+
+/**
+ * One withholding line: one kind of document, one code, one rate.
+ *
+ * @param array $item  erp_vat_report()['withholding'] entry
+ * @return array
+ */
+function erp_api_vat_withholding_present($item)
+{
+    return array(
+        'kind' => (string) $item['key'],
+        'code' => (string) $item['code'],
+        'rate' => (float) $item['rate'],
+        'net' => api_money($item['net']),
+        'tax_amount' => api_money($item['tax_amount']),
+        'amount' => api_money($item['amount']),
+        'documents' => (int) $item['documents'],
+    );
+}
+
+/**
+ * One month of the period.
+ *
+ * @param string $month    Y-m
+ * @param array  $figures  erp_vat_report()['months'] entry
+ * @return array
+ */
+function erp_api_vat_month_present($month, $figures)
+{
+    return array(
+        'month' => (string) $month,
+        'calculated' => api_money($figures['calculated']),
+        'withheld_sales' => api_money($figures['withheld_sales']),
+        'deductible_purchases' => api_money($figures['deductible_purchases']),
+        'deductible_expenses' => api_money($figures['deductible_expenses']),
+        'difference' => api_money($figures['difference']),
+    );
+}
+
+/**
+ * The VAT report on the wire. The document list the screen prints under the
+ * figures stays out: the documents are on /erp/invoices and /erp/expenses.
+ *
+ * @param array $report  erp_vat_report()
+ * @return array
+ */
+function erp_api_vat_report_present($report)
+{
+    $totals = $report['totals'];
+    $kinds = $report['kinds'];
+
+    return array(
+        'from' => (string) $report['from'],
+        'to' => (string) $report['to'],
+        'currency' => erp_base_currency(),
+        'net_withholding' => !empty($report['net_withholding']),
+        'has_tax2' => !empty($report['has_tax2']),
+        'totals' => array(
+            'calculated' => api_money($totals['calculated']),
+            'deductible_purchases' => api_money($totals['deductible_purchases']),
+            'deductible_expenses' => api_money($totals['deductible_expenses']),
+            'deductible' => api_money($totals['deductible']),
+            'difference' => api_money($totals['difference']),
+            'withheld_sales' => api_money($totals['withheld_sales']),
+            'withheld_purchases' => api_money($totals['withheld_purchases']),
+            'tax2_calculated' => api_money($totals['tax2_calculated']),
+            'tax2_deductible' => api_money($totals['tax2_deductible']),
+            'expense_not_deductible' => api_money($totals['expense_not_deductible']),
+        ),
+        'kinds' => array(
+            'sales' => erp_api_vat_kind_present($kinds['sales'] ?? array()),
+            'sales_return' => erp_api_vat_kind_present($kinds['sales_return'] ?? array()),
+            'purchase' => erp_api_vat_kind_present($kinds['purchase'] ?? array()),
+            'purchase_return' => erp_api_vat_kind_present($kinds['purchase_return'] ?? array()),
+            'expense' => erp_api_vat_kind_present($kinds['expense'] ?? array()),
+        ),
+        'rates' => array_values(array_map('erp_api_vat_rate_present', $report['rates'])),
+        'withholding' => array_values(array_map('erp_api_vat_withholding_present', $report['withholding'])),
+        'months' => array_values(array_map('erp_api_vat_month_present', array_keys($report['months']), array_values($report['months']))),
+        'cancelled' => (int) $report['cancelled'],
+        'uninvoiced_orders' => array(
+            'count' => (int) $report['orders']['count'],
+            'tax' => api_money($report['orders']['tax']),
+        ),
+    );
+}
+
+// What erp_api_vat_report_present() returns, declared for the OpenAPI document.
+function erp_api_vat_report_schema()
+{
+    return array(
+        'from' => 'string',
+        'to' => 'string',
+        'currency' => 'string',
+        'net_withholding' => 'boolean',
+        'has_tax2' => 'boolean',
+        'totals' => array(
+            'calculated' => 'integer',
+            'deductible_purchases' => 'integer',
+            'deductible_expenses' => 'integer',
+            'deductible' => 'integer',
+            'difference' => 'integer',
+            'withheld_sales' => 'integer',
+            'withheld_purchases' => 'integer',
+            'tax2_calculated' => 'integer',
+            'tax2_deductible' => 'integer',
+            'expense_not_deductible' => 'integer',
+        ),
+        'kinds' => array(
+            'sales' => erp_api_vat_kind_schema(),
+            'sales_return' => erp_api_vat_kind_schema(),
+            'purchase' => erp_api_vat_kind_schema(),
+            'purchase_return' => erp_api_vat_kind_schema(),
+            'expense' => erp_api_vat_kind_schema(),
+        ),
+        'rates' => array(array(
+            'kind' => 'string',
+            'tax' => 'string',
+            'rate' => 'number',
+            'net' => 'integer',
+            'tax_amount' => 'integer',
+            'documents' => 'integer',
+        )),
+        'withholding' => array(array(
+            'kind' => 'string',
+            'code' => 'string',
+            'rate' => 'number',
+            'net' => 'integer',
+            'tax_amount' => 'integer',
+            'amount' => 'integer',
+            'documents' => 'integer',
+        )),
+        'months' => array(array(
+            'month' => 'string',
+            'calculated' => 'integer',
+            'withheld_sales' => 'integer',
+            'deductible_purchases' => 'integer',
+            'deductible_expenses' => 'integer',
+            'difference' => 'integer',
+        )),
+        'cancelled' => 'integer',
+        'uninvoiced_orders' => array(
+            'count' => 'integer',
+            'tax' => 'integer',
+        ),
+    );
+}
+
+function erp_api_reports_vat($params)
+{
+    $month = trim((string) ($params['month'] ?? ''));
+    $from = isset($params['from']) ? erp_api_day($params['from']) : '';
+    $to = isset($params['to']) ? erp_api_day($params['to']) : '';
+
+    // One way of naming the period at a time: a month, or both ends.
+    if (($month !== '') && (($from !== '') || ($to !== ''))) {
+        api_fail_validation(lang('Choose a month, or a start date on or before the end date.'), 'month');
+    }
+
+    if ($month !== '') {
+        if ((preg_match('/^(\d{4})-(\d{2})$/', $month, $parts) !== 1) || !checkdate((int) $parts[2], 1, (int) $parts[1])) {
+            api_fail_validation(lang('Choose a month, or a start date on or before the end date.'), 'month');
+        }
+
+        $period = erp_profit_period(array('range' => 'month', 'month' => $month));
+    } elseif (($from !== '') || ($to !== '')) {
+        if (($from === '') || ($to === '') || ($from > $to)) {
+            api_fail_validation(lang('Choose a month, or a start date on or before the end date.'), ($from === '') ? 'from' : 'to');
+        }
+
+        // The screen brings a longer period's end forward; a caller is told
+        // instead, so the figures never cover less than was asked for.
+        if ($to > date('Y-m-d', strtotime($from . ' +2 year -1 day'))) {
+            api_fail_validation(lang('The report covers at most two years at a time.'), 'to');
+        }
+
+        $period = erp_profit_period(array('range' => 'dates', 'from' => $from, 'to' => $to));
+    } else {
+        $period = erp_profit_period(array('range' => 'month', 'month' => date('Y-m')));
+    }
+
+    api_ok(erp_api_vat_report_present(erp_vat_report($period['from'], $period['to'])));
+}

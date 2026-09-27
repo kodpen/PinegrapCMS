@@ -318,7 +318,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['user'])) {
         foreach (ws_people($ids['user']) as $id => $person) {
-            $put('user', $id, '@' . $person['name'], '', $person['title'], '', true, 'bi-person');
+            $put('user', $id, '@' . $person['name'], ws_person_edit_url($viewer, $person), $person['title'], '', true, 'bi-person');
         }
     }
 
@@ -333,6 +333,13 @@ function ws_refs_resolve($viewer, $tokens)
     // application or was switched off.
     if (!empty($ids['app'])) {
         foreach ($ids['app'] as $id) {
+            // Pinegrap AI is asked with @ai (ai.php); any other application
+            // that can be asked is Claude.
+            if (function_exists('ws_ai_is_app') && ws_ai_is_app($id)) {
+                $put('app', $id, '@ai', '', lang('Pinegrap AI'), '', true, 'bi-cpu');
+                continue;
+            }
+
             $put('app', $id, '@Claude', '', lang('AI assistant'), '', true, 'bi-stars');
         }
     }
@@ -706,7 +713,7 @@ function ws_refs_resolve($viewer, $tokens)
  * @param int    $limit
  * @return array[] token, type, id, label, meta, icon
  */
-function ws_ref_search($viewer, $type, $query, $limit = 8)
+function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
 {
     $query = trim((string) $query);
     $like = e(escape_like($query));
@@ -754,6 +761,12 @@ function ws_ref_search($viewer, $type, $query, $limit = 8)
         $limit = max($limit, 12);
 
         foreach ($types as $key => $info) {
+            // A field that takes only some kinds (a channel's customer) asks
+            // among those.
+            if (is_array($only) && !in_array($key, $only, true)) {
+                continue;
+            }
+
             foreach (ws_ref_search($viewer, $key, $query, 2) as $item) {
                 $item['meta'] = trim($info['label'] . ' · ' . $item['meta'], ' ·');
                 $out[] = $item;
@@ -1023,8 +1036,9 @@ function ws_record_refs($viewer, $type, $id, $limit = 20)
         }
     }
 
-    if ($type === 'contact') {
-        foreach ((array) db_items("SELECT * FROM ws_channels WHERE contact_id = '" . $id . "' AND archived_at = 0 ORDER BY last_message_at DESC") as $channel) {
+    // The channels about the customer this record is, or is tied to.
+    if (in_array($type, ws_customer_types(), true)) {
+        foreach (ws_customer_channels($type, $id) as $channel) {
             if (ws_can_read_channel($viewer, $channel)) {
                 $out['channels'][] = array(
                     'id'      => (int) $channel['id'],

@@ -75,6 +75,29 @@ function api_maintenance_purge() {
 
 	db("DELETE FROM api_idempotency WHERE created_timestamp < '" . (time() - 86400) . "'");
 
+	// Signed-in devices: counters that can never be the current minute again,
+	// devices whose refresh token ran out (they can only sign in afresh), and
+	// devices whose application was deleted. Asked for first, because the
+	// tables arrive with a later upgrade than the rest.
+	if (@mysqli_query(db::$con, "SELECT 1 FROM api_devices LIMIT 1")) {
+
+		require_once(dirname(__FILE__) . '/devices.php');
+
+		db("DELETE FROM api_device_rate WHERE window_start < '" . (time() - 3600) . "'");
+
+		$ended = db_values("SELECT api_devices.id FROM api_devices
+			LEFT JOIN api_apps ON api_apps.id = api_devices.app_id
+			WHERE api_devices.refresh_expires < '" . time() . "' OR api_apps.id IS NULL
+			LIMIT 5000");
+
+		foreach ($ended as $device_id) {
+
+			api_device_revoke((int)$device_id);
+
+		}
+
+	}
+
 	// The documentation screen's temporary credentials. They stop working when
 	// they expire, but there is no reason to keep the rows.
 	db("DELETE FROM api_apps

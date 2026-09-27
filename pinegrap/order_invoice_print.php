@@ -93,11 +93,12 @@ if (!$is_admin) {
     }
 }
 
-// Items — same JOIN as the widget so SKU/short-description surface.
+// Items: the display name is the short description (falling back to the
+// Product ID), the SKU column is the Product ID (order_items.product_name).
 $items = db_items(
     "SELECT oi.id AS item_id, oi.product_name,
             oi.quantity, oi.price,
-            p.code AS item_code, p.short_description
+            p.short_description
      FROM order_items oi
      LEFT JOIN products p ON oi.product_id = p.id
      WHERE oi.order_id = '" . e($order_id) . "'
@@ -259,8 +260,8 @@ header('Content-Type: text/html; charset=utf-8');
                 $line = $unit * $qty;
             ?>
                 <tr>
+                    <td><?= h(trim((string)($it['short_description'] ?? '')) !== '' ? (string)$it['short_description'] : (string)$it['product_name']) ?></td>
                     <td><?= h((string)$it['product_name']) ?></td>
-                    <td><?= h((string)($it['item_code'] ?? '')) ?></td>
                     <td class="num"><?= h((string)$qty) ?></td>
                     <td class="num"><?= h($fmt($unit)) ?></td>
                     <td class="num"><?= h($fmt($line)) ?></td>

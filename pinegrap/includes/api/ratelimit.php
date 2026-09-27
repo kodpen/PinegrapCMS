@@ -30,16 +30,31 @@ function api_rate_limit_check($app) {
 
 	}
 
-	$app_id = (int)$app['id'];
+	// A signed-in device is counted on its own, against its application's
+	// ceiling. Sharing the application's bucket would let one busy phone use up
+	// the allowance of every other person signed in through the same app.
+	if (!empty($app['device']['id'])) {
 
-	$window = time() - (time() % 60);
+		$counted = api_device_rate_hits((int)$app['device']['id']);
 
-	api_exec("INSERT INTO api_rate_bucket (app_id, window_start, hits)
-		VALUES ('" . $app_id . "', '" . $window . "', 1)
-		ON DUPLICATE KEY UPDATE hits = hits + 1");
+		$window = $counted['window'];
 
-	$hits = (int)api_value("SELECT hits FROM api_rate_bucket
-		WHERE app_id = '" . $app_id . "' AND window_start = '" . $window . "'");
+		$hits = $counted['hits'];
+
+	} else {
+
+		$app_id = (int)$app['id'];
+
+		$window = time() - (time() % 60);
+
+		api_exec("INSERT INTO api_rate_bucket (app_id, window_start, hits)
+			VALUES ('" . $app_id . "', '" . $window . "', 1)
+			ON DUPLICATE KEY UPDATE hits = hits + 1");
+
+		$hits = (int)api_value("SELECT hits FROM api_rate_bucket
+			WHERE app_id = '" . $app_id . "' AND window_start = '" . $window . "'");
+
+	}
 
 	$remaining = $limit - $hits;
 

@@ -50,10 +50,27 @@ function ws_home($viewer)
     // for; the others see it folded.
     $written = (int) db_value("SELECT id FROM ws_messages WHERE sender_kind = 'user' AND sender_id = '" . $me . "' LIMIT 1");
 
+    // Coming up, the pressing first: urgent and high tasks due within a week
+    // (or overdue) lead, the rest follow by their due date.
+    $hot = ws_tasks_list($viewer, array('scope' => 'mine', 'status' => 'open', 'priority' => 'hot', 'soon' => 7, 'limit' => 5));
+    $tasks = $hot;
+    $shown = array();
+
+    foreach ($hot as $task) {
+        $shown[(int) $task['id']] = true;
+    }
+
+    foreach (ws_tasks_list($viewer, array('scope' => 'mine', 'status' => 'open', 'limit' => 10)) as $task) {
+        if ((count($tasks) < 5) && !isset($shown[(int) $task['id']])) {
+            $tasks[] = $task;
+        }
+    }
+
     return array(
         'name'          => (string) ($person[$me]['name'] ?? ''),
         'date'          => ws_home_date_label($today),
-        'tasks'         => ws_tasks_list($viewer, array('scope' => 'mine', 'status' => 'open', 'limit' => 5)),
+        'tasks'         => $tasks,
+        'tasks_hot'     => count($hot),
         'tasks_open'    => (int) ($counts['open_count'] ?? 0),
         'tasks_overdue' => (int) ($counts['overdue_count'] ?? 0),
         'talk'          => ws_home_talk($viewer, 5),
@@ -61,6 +78,7 @@ function ws_home($viewer)
         'join'          => ws_home_joinable($viewer, 5),
         'newcomer'      => ($written === 0),
         'claude'        => function_exists('ws_claude_ready') && ws_claude_ready(),
+        'ai'            => function_exists('ws_ai_ready') && ws_ai_ready(),
     );
 }
 
@@ -188,6 +206,8 @@ function ws_home_talk($viewer, $limit = 5)
             $sender = $people[(int) $row['sender_id']] ?? null;
         } elseif ($row['sender_kind'] === 'app') {
             $sender = ws_app_sender((int) $row['sender_id']);
+        } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
+            $sender = ws_guest_sender((int) $row['sender_id']);
         }
 
         $text = ws_plain_text($viewer, $row['body'], $refs);

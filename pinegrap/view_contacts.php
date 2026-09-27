@@ -1595,7 +1595,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h($contact['image']) . '" /></td>';
                 }else{
                     // output no image
-                    $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="assets/images/person1.png" /></td>';
+                    $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['company'] ?? '', $contact['id'] ?? '') : 'assets/images/person1.png') . '" /></td>';
                 }
             }else{
                 //check file

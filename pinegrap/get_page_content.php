@@ -166,6 +166,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $collection = $row['collection'] ?? '';
     $layout_type = $row['layout_type'] ?? '';
     $style_layout = $row['style_layout'] ?? '';
+    // The framework a visual-editor design is built on (2026.4.5). A custom
+    // design loads no framework files; a design from before the column, or
+    // a style that is not a visual design, reads as Bootstrap 5.
+    $pg_design_fw = pg_design_framework($row['style_framework'] ?? '');
+    // The design's look and colour palette (2026.4.5): stylesheets loaded
+    // right after the framework's, so everything the design adds still wins.
+    $pg_theme_links = ($style_layout === 'visual_designer' && function_exists('pg_design_theme_links'))
+        ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '')
+        : '';
     $style_theme_id = $row['theme_id'] ?? '';
     $style_theme_name = $row['style_theme_name'] ?? '';
 
@@ -247,9 +256,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // meta=bootstrap-* are emitted from these URLs (not their stored
         // `content`) so a server-side bump applies to every existing style
         // without a re-save.
-        $_bs_css_url   = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css';
+        // The framework URLs come from the design's framework
+        // (pg_design_frameworks()); a custom design has none, and its
+        // sentinel rows, should it carry any, emit nothing.
+        $_bs_css_url   = $pg_design_fw['css'];
         $_bs_icons_url = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
-        $_bs_js_url    = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js';
+        $_bs_js_url    = $pg_design_fw['js'];
         $_jquery_url   = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
 
         // These flags signal to the legacy hardcoded Bootstrap injection block
@@ -276,7 +288,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $_meta  = isset($_cf['meta']) ? $_cf['meta'] : '';
 
                     if ($_meta === 'bootstrap-css') {
-                        $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_bs_css_url,   ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                        if ($_bs_css_url !== '') {
+                            $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_bs_css_url,   ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                            $_css_links .= $pg_theme_links !== '' ? $pg_theme_links . "\n" : '';
+                        }
                         $pg_has_bs_css_sentinel = true;
                         continue;
                     }
@@ -359,7 +374,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $_meta  = isset($_jf['meta']) ? $_jf['meta'] : '';
 
                     if ($_meta === 'bootstrap-js') {
-                        $_js_srcs .= '<script src="' . htmlspecialchars($_bs_js_url, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
+                        if ($_bs_js_url !== '') {
+                            $_js_srcs .= '<script src="' . htmlspecialchars($_bs_js_url, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
+                        }
                         $pg_has_bs_js_sentinel = true;
                         continue;
                     }
@@ -430,8 +447,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // here — after shared-ref expansion (so a widget nested inside a shared component
     // also gets processed) but before region replacement (so widget output can contain
     // <cregion>, <dregion>, etc. that the pipeline below will process normally).
+    // The widgets are told what the page is drawn for: an e-mail, and the
+    // record the sender passed with it (a form's confirmation: form_id; an
+    // order receipt: order_id), which on an e-mail page no URL carries.
     if (strpos($content, '<!--pg-system-widget:') !== false) {
+        $pg_sw_prev_ctx = function_exists('pg_sw_render_context')
+            ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
+            : null;
         $content = _expand_system_widgets($content, $mode, $email);
+        if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
 
     // ── Custom PHP marker expansion ─────────────────────────────────────────────
@@ -448,7 +472,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // `<!--pg-messages-placeholder-->`. Replace with live session messages.
     if (strpos($content, '<!--pg-messages-placeholder-->') !== false) {
         $pg_messages_html = '';
-        if (!empty($_SESSION['software']['liveforms']) && is_array($_SESSION['software']['liveforms'])) {
+        // An e-mail body never shows (or uses up) the visitor's messages.
+        if (!$email && !empty($_SESSION['software']['liveforms']) && is_array($_SESSION['software']['liveforms'])) {
             // Manual render with the EXACT same CSS classes liveform's own
             // output_errors() / output_notices() emit (software_error +
             // alert alert-danger / software_notice + alert alert-success
@@ -3454,8 +3479,39 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $system_output .= '<div class="software_rss_link" style="margin-top: .5em; margin-bottom: .5em"><a href="' . $output_rss_url . '"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_rss.png" width="27" height="20" alt="RSS" title="' . lang('Subscribe to RSS feed') . '" border="0" /></a></div>';
             }
             
+            // A page built in the visual editor shows a submitted form through its
+            // form_item_view widget rather than a page type. Its comments belong
+            // to that record, as on a legacy form item view page, and the widget's
+            // access setting stands in for the page type's submitter security: a
+            // record the visitor may not see gets no comments at all.
+            $comments_page_type = $system_region_properties['page_type'];
+            $comments_record = null;
+            if (
+                ($system_region_properties['comments'] == '1')
+                && ($comments_page_type != 'form item view')
+                && function_exists('pg_sw_record_comment_context')
+            ) {
+                $comments_record = pg_sw_record_comment_context($system_region_properties['page_id']);
+                if ($comments_record !== null) {
+                    $comments_page_type = 'form item view';
+                }
+            }
+
+            // A page of a visual design on Bootstrap gets its comments in
+            // Bootstrap's markup - cards, form controls, buttons - and an
+            // editor gets the pencil on each comment without an edit mode. A
+            // legacy theme keeps the classes its stylesheet was written for.
+            $cm_bs = (($style_layout == 'visual_designer') || ($page_tree_code !== ''))
+                  && !empty($pg_design_fw['bootstrap']);
+            $cm_text     = 'software_input_text' . ($cm_bs ? ' form-control' : '');
+            $cm_select   = 'software_select' . ($cm_bs ? ' form-select' : '');
+            $cm_textarea = 'software_textarea' . ($cm_bs ? ' form-control' : '');
+            $cm_file     = 'software_input_file' . ($cm_bs ? ' form-control' : '');
+            $cm_check    = 'software_input_checkbox' . ($cm_bs ? ' form-check-input' : '');
+            $cm_btn_secondary = $cm_bs ? ' btn btn-sm btn-outline-secondary' : '';
+
             // if comments are turned on for this page then output comments, add comment form, and watch comments area
-            if ($system_region_properties['comments'] == '1') {
+            if (($system_region_properties['comments'] == '1') && (($comments_record === null) || $comments_record['visible'])) {
                 $item_id = '0';
                 $item_type = '';
                 $sql_where = '';
@@ -3474,9 +3530,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     ($system_region_properties['page_type'] == 'catalog')
                     || ($system_region_properties['page_type'] == 'catalog detail')
                     || ($system_region_properties['page_type'] == 'calendar event view')
-                    || ($system_region_properties['page_type'] == 'form item view')
+                    || ($comments_page_type == 'form item view')
                 ) {
-                    switch($system_region_properties['page_type']) {
+                    switch($comments_page_type) {
                         case 'catalog':
                             // if there is a forward slash in the page name then get the items id
                             if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
@@ -3553,6 +3609,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $form_submitter_user_id = $submitted_form['user_id'];
                                 $item_type = 'submitted_form';
 
+                            // A designed detail page: the record its widget shows (?r= of
+                            // the widget's own custom form), already read above.
+                            } else if ($comments_record !== null) {
+                                $item_id = $comments_record['form']['id'];
+                                $form_editor_user_id = $comments_record['form']['form_editor_user_id'];
+                                $form_editor_username = $comments_record['form']['form_editor_username'];
+                                $form_editor_email_address = $comments_record['form']['form_editor_email_address'];
+                                $form_submitter_user_id = $comments_record['form']['user_id'];
+
+                                $item_type = 'submitted_form';
+
                             // Otherwise if a reference code was passed through the URL, then get submitted form info in a different way.
                             } else if ($_GET['r']) {
                                 $query =
@@ -3590,7 +3657,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 // We will need the form submitter email address in various areas below,
                 // so get that now if necessary.
                 if (
-                    ($system_region_properties['page_type'] == 'form item view')
+                    ($comments_page_type == 'form item view')
                     and $system_region_properties['comments_watcher_email_page_id']
                 ) {
                     $form_submitter_email_address = get_submitter_email_address($item_id);
@@ -3600,7 +3667,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                 // If the visitor is the form editor, then remember that for later.
                 if (
-                    ($system_region_properties['page_type'] == 'form item view')
+                    ($comments_page_type == 'form item view')
                     && ($form_editor_username != '')
                     && (USER_LOGGED_IN)
                     && (USER_ID == $form_editor_user_id)
@@ -3815,16 +3882,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 					$software_add_comment_link_label ='';
                     $software_add_comment_link_label = lang(array('string'=>'Add {var:1}','vars'=>$output_comment_label));
 					
-                    $output_comments =
-                        '<a name="software_comments"></a>
-                        <div class="comments_heading">
-                            <table width="100%" border="0">
-                                <tr>
-                                    <td class="title mobile_left mobile_width">' . $output_title . '</td>
-                                    <td class="links mobile_left" style="text-align: right">' . $output_switch . '<a href="#software_add_comment" class="add_comment">'.$software_add_comment_link_label.'</a></td>
-                                </tr>
-                            </table>
-                        </div>';
+                    if ($cm_bs) {
+                        $output_comments =
+                            '<a name="software_comments"></a>
+                            <div class="comments_heading d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <h2 class="title h5 mb-0">' . $output_title . '</h2>
+                                <div class="links d-flex flex-wrap align-items-center gap-3 small">' . str_replace(' &nbsp; &nbsp; ', '', $output_switch) . '<a href="#software_add_comment" class="add_comment">' . $software_add_comment_link_label . '</a></div>
+                            </div>';
+                    } else {
+                        $output_comments =
+                            '<a name="software_comments"></a>
+                            <div class="comments_heading">
+                                <table width="100%" border="0">
+                                    <tr>
+                                        <td class="title mobile_left mobile_width">' . $output_title . '</td>
+                                        <td class="links mobile_left" style="text-align: right">' . $output_switch . '<a href="#software_add_comment" class="add_comment">'.$software_add_comment_link_label.'</a></td>
+                                    </tr>
+                                </table>
+                            </div>';
+                    }
                     
                     $count = 0;
                     
@@ -3844,7 +3920,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                         // If the visitor has edit access to this page and edit mode is on,
                         // then output grids.
-                        if (($edit_access) && ($mode == 'edit')) {
+                        if (($edit_access) && ($mode == 'edit') && !$cm_bs) {
                             $output_edit_container_start = '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment['id'] . '&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button page" title="' . lang('Comment') . ': #' . pg_format_number($count, 0) . '">' . $edit_label . '</a><div style="padding: 2em 0 0 0">';
                             $output_edit_container_end = '</div></div>';
                         }
@@ -3989,7 +4065,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // if there is a file attachment, then output it
                         if ($comment['file_name'] != '') {
                             // we are using a separate link for the image and the file name because we don't want an underline on the image and we don't want to have to update all themes with new CSS
-                            $output_file_attachment = '<div class="software_attachment" style="margin-top: 1.5em"><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank" style="background: none; padding: 0"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_attachment.png" width="16" height="16" alt="attachment" title="" border="0" style="padding-right: .5em; vertical-align: middle" /></a><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank">' . h($comment['file_name']) . '</a> (' . convert_bytes_to_string($comment['file_size']) . ')</div>';
+                            $output_file_attachment = $cm_bs
+                                ? '<div class="software_attachment small mt-3 d-flex align-items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 0V5a.5.5 0 0 1 1 0v7a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0z"/></svg><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank">' . h($comment['file_name']) . '</a> <span class="text-body-secondary">(' . convert_bytes_to_string($comment['file_size']) . ')</span></div>'
+                                : '<div class="software_attachment" style="margin-top: 1.5em"><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank" style="background: none; padding: 0"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_attachment.png" width="16" height="16" alt="attachment" title="" border="0" style="padding-right: .5em; vertical-align: middle" /></a><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank">' . h($comment['file_name']) . '</a> (' . convert_bytes_to_string($comment['file_size']) . ')</div>';
                         }
                         
                         //command rating
@@ -4020,7 +4098,32 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // software_comment_123 in the name attribute for backwards
                         // compatibility reasons.  Should remove sometime in the future.
 
-						$output_comments .=
+						if ($cm_bs) {
+						    $cm_comment =
+						        '<div class="comment card mb-3' . $output_featured_class . ($output_featured_class !== '' ? ' border-primary' : '') . '">
+						            <a id="c-' . $comment['id'] . '" name="software_comment_' . $comment['id'] . '"></a>
+						            <div class="card-body' . (($edit_access && function_exists('pg_sw_add_edit_chip')) ? ' ps-5' : '') . '">
+						                ' . ($output_published_notices !== '' ? '<div class="notice small text-danger mb-2">' . $output_published_notices . '</div>' : '') . '
+						                ' . ($output_comment_rating !== '' ? str_replace('class="rating"', 'class="rating text-warning mb-1"', $output_comment_rating) : '') . '
+						                <div class="name_line d-flex flex-wrap align-items-center gap-1 pe-4">
+						                    <span class="name fw-semibold">' . h($comment['name']) . '</span>' . $output_submitter_name
+						                    . str_replace('class="software_badge ', 'class="software_badge badge rounded-pill text-bg-secondary ms-1 ', $output_badge) . '
+						                </div>
+						                ' . str_replace('class="date_and_time"', 'class="date_and_time small text-body-secondary"', $output_submitted_date_and_time) . '
+						                <div class="message mt-2">' . convert_text_to_html($comment['message']) . '</div>
+						                ' . $output_file_attachment . '
+						            </div>
+						            <a href="javascript:void(0)" class="share btn btn-link btn-sm text-body-secondary position-absolute top-0 end-0 m-2 p-1 lh-1" title="' . lang('Share') . ': ' . $output_comment_label . '" aria-label="' . lang('Share') . '" data-id="' . $comment['id'] . '">
+						                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.5 2.5 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5m-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"/></svg>
+						            </a>
+						        </div>';
+						    // The pencil for an editor of this page, without an edit mode.
+						    if ($edit_access && function_exists('pg_sw_add_edit_chip') && pg_sw_edit_chips_on()) {
+						        $cm_comment = pg_sw_add_edit_chip($cm_comment, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . (int)$comment['id'] . '&send_to=' . urlencode(get_request_uri()), lang('Edit the comment'), 'page');
+						    }
+						    $output_comments .= $cm_comment;
+						} else {
+						    $output_comments .=
                             $output_edit_container_start . '
                             <div class="comment row_' . ($count % 2) . $output_featured_class . '" style="position: relative">
                                 <a id="c-' . $comment['id'] . '" name="software_comment_' . $comment['id'] . '"></a>
@@ -4039,6 +4142,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 </a>
                             </div>
                             ' . $output_edit_container_end;
+						}
                     }
                 }
                 
@@ -4107,7 +4211,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             ' . $liveform_allow_or_disallow_new_comments->output_field(array('type'=>'hidden', 'name'=>'item_id', 'value'=>$item_id)) . '
                             ' . $liveform_allow_or_disallow_new_comments->output_field(array('type'=>'hidden', 'name'=>'item_type', 'value'=>$item_type)) . '
                             ' . $liveform_allow_or_disallow_new_comments->output_field(array('type'=>'hidden', 'name'=>'action', 'value'=>$action)) . '
-                            <input type="submit" name="submit" value="' . $output_allow_new_comments_button_label_prefix . '" class="software_input_submit_secondary new_comments_button" />
+                            <input type="submit" name="submit" value="' . $output_allow_new_comments_button_label_prefix . '" class="software_input_submit_secondary new_comments_button' . $cm_btn_secondary . '" />
                         </form>';
                 }
 
@@ -4148,8 +4252,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $add_comment_heading =lang(array('string'=>'Add {var:1}','vars'=>$output_comment_label));
 
 
-                    $output_comment_form =
-                        '<a name="software_add_comment"></a>
+                    $output_comment_form = $cm_bs
+                        ? '<a name="software_add_comment"></a>
+                        ' . $liveform->output_errors() . '
+                        <h3 class="add_comment_heading h6 mt-4 mb-2">' . $add_comment_heading . '</h3>
+                        ' . ($system_region_properties['comments_message'] !== '' ? '<p class="add_comment_message small text-body-secondary mb-2">' . h($system_region_properties['comments_message']) . '</p>' : '')
+                        : '<a name="software_add_comment"></a>
                         ' . $liveform->output_errors() . '
                         <div class="add_comment_heading">'.$add_comment_heading.':</div>
                         <div class="add_comment_message">' . h($system_region_properties['comments_message']) . '</div>';
@@ -4169,9 +4277,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             // set the link url
                             $link_url = OUTPUT_PATH . h(get_page_name($row['page_id'])) . '?send_to=' . h(urlencode(get_request_uri() . '#software_add_comment'));
                             
-                        // else there is not a registration entrance page, so use default screen
+                        // else there is not a registration entrance page, so use the
+                        // designed sign-in page when the site has one, else the default screen
                         } else {
                             $link_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . h(urlencode(get_request_uri() . '#software_add_comment'));
+                            if (function_exists('pg_sw_sign_in_url')) {
+                                $link_url = h(pg_sw_sign_in_url(get_request_uri() . '#software_add_comment', html_entity_decode($link_url, ENT_QUOTES, 'UTF-8'), 'registration entrance', $cm_bs));
+                            }
                         }
                         
                         $output_link = '';
@@ -4208,7 +4320,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $add_comment_login_message_shown = true;
                         
                         // output the link
-                        $output_comment_form .= '<div class="text-box-notice" style="display: inline-block; margin-bottom: 1em;">' . $output_link . '</div>';
+                        $output_comment_form .= $cm_bs
+                            ? '<div class="text-box-notice alert alert-secondary">' . $output_link . '</div>'
+                            : '<div class="text-box-notice" style="display: inline-block; margin-bottom: 1em;">' . $output_link . '</div>';
                         
                     // else prepare and output the comment form
                     } else {
@@ -4282,7 +4396,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             }
                             
                             // output the name input field
-                            $output_comment_name_field = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'maxlength'=>'50', 'size'=>'32', 'class'=>'software_input_text'));
+                            $output_comment_name_field = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'comment_name', 'maxlength'=>'50', 'size'=>'32', 'class'=>$cm_text));
                         
                         // else the user is logged in and does not have edit rights to the page, so output the name in a different way
                         } else {
@@ -4333,7 +4447,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 // prepare option for Anonymous
                                 $name_options[lang('Anonymous')] = 'anonymous';
                                 
-                                $output_comment_name_field .= $liveform->output_field(array('type'=>'select', 'name'=>'name_type', 'options'=>$name_options, 'class'=>'software_select'));
+                                $output_comment_name_field .= $liveform->output_field(array('type'=>'select', 'name'=>'name_type', 'id'=>'comment_name', 'options'=>$name_options, 'class'=>$cm_select));
                                 
                             // else the user is not allowed to select name, so just output the username
                             } else {
@@ -4345,7 +4459,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         
                         // if file attachments are allowed for comments, then output file attachment field
                         if ($system_region_properties['comments_allow_file_attachments'] == 1) {
-                            $output_file_attachment_field = '<div style="margin-bottom: 1em"><span class="file_upload_label">' . lang('Attach a File') . ': </span>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'class'=>'software_input_file')) . '</div>';
+                            $output_file_attachment_field = $cm_bs
+                                ? '<div class="mb-3"><label class="file_upload_label form-label" for="comment_file">' . lang('Attach a File') . '</label>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'id'=>'comment_file', 'class'=>$cm_file)) . '</div>'
+                                : '<div style="margin-bottom: 1em"><span class="file_upload_label">' . lang('Attach a File') . ': </span>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'class'=>'software_input_file')) . '</div>';
 						}
                         
                         $output_publish = '';
@@ -4395,7 +4511,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         'id' => 'publish',
                                         'name' => 'publish',
                                         'options' => $publish_options,
-                                        'class' => 'software_select')) . '
+                                        'class' => $cm_select . ($cm_bs ? ' form-select-sm d-inline-block w-auto' : ''))) . '
 
                                     <span class="publish_schedule" style="display: none"> ' .
                                         $liveform->output_field(array(
@@ -4404,7 +4520,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                             'name' => 'publish_date_and_time',
                                             'maxlength' => '19',
                                             'size' => '21',
-                                            'class' => 'software_input_text')) . ' &nbsp; ' .
+                                            'class' => $cm_text . ($cm_bs ? ' form-control-sm d-inline-block w-auto' : ''))) . ' &nbsp; ' .
 
                                         $liveform->output_field(array(
                                             'type' => 'checkbox',
@@ -4449,13 +4565,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             // then check other features where a user might be notified.
                             if (
                                 ($user_is_notified_already == FALSE)
-                                && ($system_region_properties['page_type'] == 'form item view')
+                                && ($comments_page_type == 'form item view')
                             ) {
                                 // If e-mailing conditional administrators is enabled, then check that feature.
                                 if ($system_region_properties['comments_administrator_email_conditional_administrators'] == 1) {
 
-                                    // Get the custom form for this form item view.
-                                    $custom_form_page_id = db("
+                                    // Get the custom form for this form item view (a designed
+                                    // page names it in its widget).
+                                    $custom_form_page_id = ($comments_record !== null)
+                                        ? (int)$comments_record['custom_form_page_id']
+                                        : db("
                                         SELECT custom_form_page_id FROM form_item_view_pages
                                         WHERE
                                             (page_id = '" . e($system_region_properties['page_id']) . "')
@@ -4504,7 +4623,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 if (!$liveform->field_in_session('page_id')) {
                                     $liveform->assign_field_value('watcher', '1');
                                 }
-								$output_watcher_check_box = '<div style="margin-bottom: 1em">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'watcher', 'id'=>'watcher', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="watcher"> ' . lang(array('string'=>'Notify me when a {var:1} is added.','vars'=>$output_comment_label_lowercase)) . '</label></div>';
+								$output_watcher_check_box = '<div ' . ($cm_bs ? 'class="form-check mb-3"' : 'style="margin-bottom: 1em"') . '>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'watcher', 'id'=>'watcher', 'value'=>'1', 'class'=>$cm_check)) . '<label for="watcher"' . ($cm_bs ? ' class="form-check-label"' : '') . '> ' . lang(array('string'=>'Notify me when a {var:1} is added.','vars'=>$output_comment_label_lowercase)) . '</label></div>';
                             }
                         }
                         
@@ -4517,7 +4636,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             
                             // if there are captcha fields to be displayed, then output them in a container
                             if ($output_captcha_fields != '') {
-                                $output_captcha_fields = '<div style="margin-bottom: 1em">' . $output_captcha_fields . '</div>';
+                                $output_captcha_fields = '<div ' . ($cm_bs ? 'class="mb-3"' : 'style="margin-bottom: 1em"') . '>' . $output_captcha_fields . '</div>';
                             }
                         }
                         
@@ -4553,31 +4672,57 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         }
 
 
-                        $output_comment_form .= 
-                            '<form' . $enctype . ' action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php" method="post" onsubmit="document.getElementById(\'submit_add_comment\').disabled = true; return true" class="add_comment_form">
-                                ' . get_token_field() . '
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>get_request_uri())) . '
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'page_id', 'value'=>$system_region_properties['page_id'])) . '
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'item_id', 'value'=>$item_id)) . '
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'item_type', 'value'=>$item_type)) . '
+                        if ($cm_bs) {
+                            $output_comment_form .=
+                                '<form' . $enctype . ' action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php" method="post" onsubmit="document.getElementById(\'submit_add_comment\').disabled = true; return true" class="add_comment_form card card-body mb-4">
+                                    ' . get_token_field() . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>get_request_uri())) . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'page_id', 'value'=>$system_region_properties['page_id'])) . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'item_id', 'value'=>$item_id)) . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'item_type', 'value'=>$item_type)) . '
+                                    <div class="mb-3">
+                                        <label class="form-label visually-hidden" for="comment_message">' . $add_comment_heading . '</label>
+                                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'comment_message', 'rows'=>'5', 'class'=>$cm_textarea)) . '
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="comment_name">' . $added_form_by_label . $output_name_optional_label . '</label>
+                                        <div>' . $output_comment_name_field . '</div>
+                                    </div>
+                                    ' . ($output_rating_field !== '' ? '<div class="mb-3">' . $output_rating_field . '</div>' : '') . '
+                                    ' . $output_file_attachment_field . '
+                                    ' . str_replace('<div style="margin-bottom: 1em">', '<div class="mb-3 small">', $output_publish) . '
+                                    ' . $output_watcher_check_box . '
+                                    ' . $output_captcha_fields . '
+                                    <div><input type="submit" id="submit_add_comment" name="submit" value="' . $comment_add_button_value . '" class="software_input_submit_primary add_comment_button btn btn-primary" /></div>
+                                </form>
+                                <script>software.init_add_comment({comment_label: \'' . escape_javascript($comment_label_lowercase) . '\'})</script>';
+                        } else {
+                            $output_comment_form .= 
+                                '<form' . $enctype . ' action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php" method="post" onsubmit="document.getElementById(\'submit_add_comment\').disabled = true; return true" class="add_comment_form">
+                                    ' . get_token_field() . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>get_request_uri())) . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'page_id', 'value'=>$system_region_properties['page_id'])) . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'item_id', 'value'=>$item_id)) . '
+                                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'item_type', 'value'=>$item_type)) . '
 
-                                
-                                <div style="margin-bottom: 1em">' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'cols'=>'46', 'rows'=>'8', 'class'=>'software_textarea')) . '</div>
-                                <div style="margin-bottom: 1em">'. $added_form_by_label . $output_name_optional_label . ': ' . $output_comment_name_field . '</div>
-                                ' . $output_rating_field . '
+                                    
+                                    <div style="margin-bottom: 1em">' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'cols'=>'46', 'rows'=>'8', 'class'=>'software_textarea')) . '</div>
+                                    <div style="margin-bottom: 1em">'. $added_form_by_label . $output_name_optional_label . ': ' . $output_comment_name_field . '</div>
+                                    ' . $output_rating_field . '
 
-                                ' . $output_file_attachment_field . '
-                                ' . $output_publish . '
-                                ' . $output_watcher_check_box . '
-                                ' . $output_captcha_fields . '
-                                <input type="submit" id="submit_add_comment" name="submit" value="'.$comment_add_button_value.'" class="software_input_submit_primary add_comment_button" />
-                            </form>
-                            <script>software.init_add_comment({comment_label: \'' . escape_javascript($comment_label_lowercase) . '\'})</script>';
+                                    ' . $output_file_attachment_field . '
+                                    ' . $output_publish . '
+                                    ' . $output_watcher_check_box . '
+                                    ' . $output_captcha_fields . '
+                                    <input type="submit" id="submit_add_comment" name="submit" value="'.$comment_add_button_value.'" class="software_input_submit_primary add_comment_button" />
+                                </form>
+                                <script>software.init_add_comment({comment_label: \'' . escape_javascript($comment_label_lowercase) . '\'})</script>';
+                        }
                     }
                     
                 // else new comments are not allowed, so if there is a disallow new comment message, then output it
                 } else if ($system_region_properties['comments_disallow_new_comment_message'] != '') {
-                    $output_disallow_new_comment_message = '<div>' . h($system_region_properties['comments_disallow_new_comment_message']) . '</div>';
+                    $output_disallow_new_comment_message = '<div' . ($cm_bs ? ' class="alert alert-secondary"' : '') . '>' . h($system_region_properties['comments_disallow_new_comment_message']) . '</div>';
                 }
 
                 $output_watcher_container = '';
@@ -4600,7 +4745,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     // in order to know if we should increase watcher count here and
                     // later include form editor in watcher list.
                     if (
-                        ($system_region_properties['page_type'] == 'form item view')
+                        ($comments_page_type == 'form item view')
                         && ($form_editor_username != '')
                     ) {
                         // Assume that user does not have access to view form editor in watcher list
@@ -4626,7 +4771,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     // If this page is a form item view and it is set to notify the form submitter,
                     // and there is a form submitter, then increase the number of watchers by 1.
                     if (
-                        ($system_region_properties['page_type'] == 'form item view')
+                        ($comments_page_type == 'form item view')
                         and $system_region_properties['comments_submitter_email_page_id']
                         and $form_submitter_email_address
                     ) {
@@ -4654,7 +4799,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $watcher_management_access = TRUE;
 
                         // Otherwise, if this page is a form item view, then check if user has access in a different way
-                        } else if ($system_region_properties['page_type'] == 'form item view') {
+                        } else if ($comments_page_type == 'form item view') {
                             // If this user is the form editor for this submitted form,
                             // then the user has access to manage watchers.
                             if (USER_ID == $form_editor_user_id) {
@@ -4684,7 +4829,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // and this visitor has access to view the form editor, then add
                         // form editor to list of watchers.  It will not be removeable.
                         if (
-                            ($system_region_properties['page_type'] == 'form item view')
+                            ($comments_page_type == 'form item view')
                             && ($form_editor_username != '')
                             && ($form_editor_view_access == true)
                         ) {
@@ -4757,14 +4902,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         ' . $liveform_add_or_remove_watcher->output_field(array('type'=>'hidden', 'name'=>'item_id', 'value'=>$item_id)) . '
                                         ' . $liveform_add_or_remove_watcher->output_field(array('type'=>'hidden', 'name'=>'item_type', 'value'=>$item_type)) . '
                                         ' . $liveform_add_or_remove_watcher->output_field(array('type'=>'hidden', 'name'=>'action', 'value'=>'remove')) . '
-                                        <input type="submit" name="submit" value="x" class="software_input_submit_tiny_secondary" />
+                                        <input type="submit" name="submit" value="x" class="software_input_submit_tiny_secondary' . ($cm_bs ? ' btn btn-sm btn-link text-danger p-0 ms-1' : '') . '" />
                                     </form>
                                 </div>';
                         }
-						$output_watcher_input = $liveform_add_or_remove_watcher->output_field(array('type'=>'text', 'name'=>'username_or_email_address', 'maxlength'=>'100', 'size'=>'30', 'class'=>'software_input_text mobile_text_width', 'onblur'=> 'if ( this.value == \'\' ) { this.value = \'' . lang('username or email address') . '\'; }', 'onfocus'=> 'if ( this.value == \'' . lang('username or email address') . '\' ) { this.value = \'\'; }', 'value'=>lang('username or email address') ));
-						$output_watcher_input_button ='<input type="submit" name="submit" value="' . lang('Add Watcher') . '" class="software_input_submit_small_secondary" />';
+						$output_watcher_input = $liveform_add_or_remove_watcher->output_field(array('type'=>'text', 'name'=>'username_or_email_address', 'maxlength'=>'100', 'size'=>'30', 'class'=>'software_input_text mobile_text_width' . ($cm_bs ? ' form-control form-control-sm d-inline-block w-auto me-2' : ''), 'onblur'=> 'if ( this.value == \'\' ) { this.value = \'' . lang('username or email address') . '\'; }', 'onfocus'=> 'if ( this.value == \'' . lang('username or email address') . '\' ) { this.value = \'\'; }', 'value'=>lang('username or email address') ));
+						$output_watcher_input_button ='<input type="submit" name="submit" value="' . lang('Add Watcher') . '" class="software_input_submit_small_secondary' . $cm_btn_secondary . '" />';
                         $output_watcher_container =
-                            '<div class="watcher_container">
+                            '<div class="watcher_container' . ($cm_bs ? ' small border-top pt-3 mt-4' : '') . '">
                                 <a name="software_watcher"></a>
                                 ' . $liveform_add_or_remove_watcher->output_errors() . '
                                 ' . $liveform_add_or_remove_watcher->output_notices() . '
@@ -4845,7 +4990,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                             ' . $liveform_add_or_remove_watcher->output_field(array('type'=>'hidden', 'name'=>'item_id', 'value'=>$item_id)) . '
                                             ' . $liveform_add_or_remove_watcher->output_field(array('type'=>'hidden', 'name'=>'item_type', 'value'=>$item_type)) . '
                                             ' . $liveform_add_or_remove_watcher->output_field(array('type'=>'hidden', 'name'=>'action', 'value'=>$action)) . '
-                                            <input type="submit" name="submit" value="' . $output_add_or_remove_button_label . '" class="software_input_submit_secondary watcher_button" /> (' . h(USER_EMAIL_ADDRESS) . ')
+                                            <input type="submit" name="submit" value="' . $output_add_or_remove_button_label . '" class="software_input_submit_secondary watcher_button' . $cm_btn_secondary . '" /> <span' . ($cm_bs ? ' class="text-body-secondary"' : '') . '>(' . h(USER_EMAIL_ADDRESS) . ')</span>
                                         </form>
                                     </div>';
                                 
@@ -4860,7 +5005,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         }
                         
                         $output_watcher_container =
-                            '<div class="watcher_container">
+                            '<div class="watcher_container' . ($cm_bs ? ' small border-top pt-3 mt-4 d-flex flex-column gap-2' : '') . '">
                                 <a name="software_watcher"></a>
                                 ' . $liveform_add_or_remove_watcher->output_notices() . '
                                 ' . $output_watcher_count . '
@@ -4877,7 +5022,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 // HTML there so it renders at the designer-chosen position rather than
                 // being appended to the system region output.
                 $_comments_html = '
-                    <div class="software_comments">
+                    <div class="software_comments' . ($cm_bs ? ' pg-comments' : '') . '">
                         ' . $output_comments . '
                         <script>software.init_share_comment({comment_label: \'' . escape_javascript($comment_label) . '\'})</script>
                         ' . $output_allow_new_comments_form . '
@@ -5663,9 +5808,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // bootstrap-icons sentinels — that path emits the same <link>s at the
     // user-chosen position in the head and double injection would both
     // load Bootstrap twice and undo the chosen ordering.
-    if ($style_layout == 'visual_designer' && empty($pg_has_bs_css_sentinel)) {
+    // A custom design has no framework to fall back to: it always carries its
+    // own asset rows, and a missing Bootstrap row there is the point.
+    if ($style_layout == 'visual_designer' && empty($pg_has_bs_css_sentinel) && $pg_design_fw['css'] !== '') {
         $stylesheet =
-            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">'
+            '<link rel="stylesheet" href="' . htmlspecialchars($pg_design_fw['css'], ENT_QUOTES, 'UTF-8') . '">'
+            . $pg_theme_links
             . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">'
             . $stylesheet;
     }
@@ -5818,8 +5966,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // Placed after all other software JS so Bootstrap is available to components.
     // Same sentinel guard as the CSS path: skip when bootstrap-js already
     // appears in the page's custom-JS JSON.
-    if ($style_layout == 'visual_designer' && !$email && empty($pg_has_bs_js_sentinel)) {
-        $bs_bundle = '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>';
+    if ($style_layout == 'visual_designer' && !$email && empty($pg_has_bs_js_sentinel) && $pg_design_fw['js'] !== '') {
+        $bs_bundle = '<script src="' . htmlspecialchars($pg_design_fw['js'], ENT_QUOTES, 'UTF-8') . '"></script>';
         if (stripos($content, '</body>') !== false) {
             $content = str_ireplace('</body>', $bs_bundle . '</body>', $content);
         } else {

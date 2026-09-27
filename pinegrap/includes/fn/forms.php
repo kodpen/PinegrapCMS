@@ -1354,8 +1354,23 @@ function get_update_address_book_screen()
 }
 function get_error_screen($content)
 {
+    // Set while the designed error page renders: an error inside that render
+    // falls back to the legacy screens below instead of trying it again.
+    static $designed_rendering = false;
+
     // if the connection to the database was successful
     if (defined('DB_CONNECTED') and DB_CONNECTED == true) {
+        // A designed page carrying the error page widget comes first. The
+        // starter sites ship a legacy error page, so the other order would
+        // never show the one an operator built in the editor.
+        if (!$designed_rendering && function_exists('pg_sw_error_page_id')) {
+            $designed_page_id = pg_sw_error_page_id();
+            if ($designed_page_id > 0) {
+                $designed_rendering = true;
+                require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+                return get_page_content($designed_page_id, $content, '', 'preview', false, array(), false, ($_SESSION['software']['device_type'] ?? ''));
+            }
+        }
         // find if there is an error page
         $query = "SELECT page_id FROM page WHERE page_type = 'error'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));

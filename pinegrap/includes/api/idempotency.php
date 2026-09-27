@@ -48,6 +48,26 @@ function api_idempotency_key() {
 
 }
 
+// The key as it is stored, for this caller.
+//
+// Keys are chosen by the client and stored per application. Every device signed
+// in through a device application shares that application's id, so its key is
+// kept under a name of its own: two people's phones that happened to pick the
+// same key must never be answered with each other's stored response. Hashed
+// rather than prefixed so that the stored value still fits the column whatever
+// length the client chose.
+function api_idempotency_scoped_key($app, $key) {
+
+	if (($key === '') || !is_array($app) || empty($app['device']['id'])) {
+
+		return $key;
+
+	}
+
+	return hash('sha256', 'device:' . (int)$app['device']['id'] . ':' . $key);
+
+}
+
 // Called before a write runs. Answers the stored response and exits when this
 // exact request has already been carried out; returns quietly when it has not.
 function api_idempotency_replay($app_id, $key, $body_hash) {

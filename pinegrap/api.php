@@ -184,6 +184,10 @@ if (
     // leave a basic user watching the same tour on every visit.
     and ($action != 'tour_seen')
 
+    // The account menu's quick form for one's own name: every role, the case
+    // block checks the session and the token.
+    and ($action != 'contact_quick_save')
+
     and ($action != 'backend_search')
 
     and ($action != 'sort_menu_items')
@@ -320,6 +324,14 @@ switch ($action) {
     case 'ws_bootstrap':
     case 'ws_channels':
     case 'ws_channel_open':
+    case 'ws_channel_get':
+    case 'ws_message_seen':
+    case 'ws_scheduled_list':
+    case 'ws_scheduled_get':
+    case 'ws_scheduled_targets':
+    case 'ws_scheduled_save':
+    case 'ws_scheduled_status':
+    case 'ws_scheduled_run_now':
     case 'ws_sync':
     case 'ws_messages_before':
     case 'ws_send':
@@ -329,12 +341,29 @@ switch ($action) {
     case 'ws_attach':
     case 'ws_channel_create':
     case 'ws_channel_update':
+    case 'ws_customer_links':
     case 'ws_channel_members_add':
     case 'ws_mention_invite':
     case 'ws_channel_member_remove':
     case 'ws_channel_join':
     case 'ws_channel_leave':
     case 'ws_channel_make_public':
+    case 'ws_channel_make_private':
+    case 'ws_channel_eras':
+    case 'ws_pin':
+    case 'ws_pin_hide':
+    case 'ws_forward':
+    case 'ws_block_search':
+    case 'ws_block_pull':
+    case 'ws_channel_clear':
+    case 'ws_channel_era_rename':
+    case 'ws_group_save':
+    case 'ws_group_move':
+    case 'ws_group_remove':
+    case 'ws_group_access':
+    case 'ws_group_access_grant':
+    case 'ws_group_access_revoke':
+    case 'ws_channel_group':
     case 'ws_channel_archive':
     case 'ws_channel_audit':
     case 'ws_audit_list':
@@ -397,7 +426,15 @@ switch ($action) {
     case 'ws_ai_draft_dismiss':
     case 'ws_ai_change_apply':
     case 'ws_ai_change_dismiss':
+    case 'ws_ai_design_apply':
+    case 'ws_ai_design_revert':
+    case 'ws_ai_design_dismiss':
     case 'ws_claude_kick':
+    case 'ws_ai_kick':
+    case 'ws_channel_ai':
+    case 'ws_guest_start':
+    case 'ws_guest_relink':
+    case 'ws_guest_end':
 
         if (!USER_LOGGED_IN) {
             respond(array(
@@ -4023,6 +4060,7 @@ switch ($action) {
                     FROM short_links
                     LEFT JOIN user ON short_links.last_modified_user_id = user.user_id
                     LEFT JOIN page ON short_links.page_id = page.page_id
+                    WHERE short_links.name <> ''
                     ORDER BY short_links.last_modified_timestamp DESC";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $short_links = mysqli_fetch_items($result);
@@ -10878,7 +10916,7 @@ switch ($action) {
             $rows = db_items(
                 "SELECT id, name, destination_type
                  FROM short_links
-                 WHERE name LIKE '$s'
+                 WHERE name LIKE '$s' AND name <> ''
                  LIMIT $per_limit"
             );
             foreach ($rows as $r) {
@@ -11718,6 +11756,19 @@ switch ($action) {
         pg_tour_mark($user['id'], (isset($request['key']) ? (string) $request['key'] : ''));
 
         respond(array('status' => 'success'));
+
+        break;
+
+    // The account menu's quick form: the signed-in person's own first and
+    // last name, into their address-book contact (includes/fn/contacts.php).
+    case 'contact_quick_save':
+
+        $user = validate_user();
+        validate_token();
+
+        $result = pg_contact_quick_save($user['id'], (string) ($request['first_name'] ?? ''), (string) ($request['last_name'] ?? ''), (string) ($request['mobile_phone'] ?? ''), (string) ($request['photo'] ?? ''));
+
+        respond($result['ok'] ? array('status' => 'success') : array('status' => 'error', 'message' => $result['error']));
 
         break;
 
@@ -12962,7 +13013,7 @@ switch ($action) {
         if (!pg_designer_is_full($user)) {
             $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
                                 'page_load', 'seo_check', 'import_fragment',
-                                'form_fields');
+                                'form_fields', 'preview_widgets', 'widget_ghosts');
             if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
                 || !in_array($sub, $content_ok, true)) {
                 respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -12973,6 +13024,14 @@ switch ($action) {
         // are resolved once rather than in each branch.
         if (in_array($sub, array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch'), true)) {
             require_once(dirname(__FILE__) . '/includes/designer_collab.php');
+        }
+
+        // Page changes proposed by an assistant (includes/designer_ai.php):
+        // asking, waiting, applying onto the tab. Designers only - the list
+        // above does not open them to a content-level operator.
+        if (in_array($sub, array('ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'), true)) {
+            require_once(dirname(__FILE__) . '/includes/designer_ai.php');
+            respond(pg_design_ai_panel($sub, $request, $user));
         }
 
         switch ($sub) {
@@ -13211,6 +13270,11 @@ switch ($action) {
                     'style_custom_css'                  => isset($src['style_custom_css'])   ? $src['style_custom_css']   : '',
                     'style_custom_js'                   => isset($src['style_custom_js'])    ? $src['style_custom_js']    : '',
                     'style_custom_fonts'                => isset($src['style_custom_fonts']) ? $src['style_custom_fonts'] : '',
+                    // The page was drawn on the design's framework, in its
+                    // look and colours.
+                    'framework'                         => isset($src['style_framework']) ? $src['style_framework'] : '',
+                    'look'                              => isset($src['style_look']) ? $src['style_look'] : '',
+                    'palette'                           => isset($src['style_palette']) ? $src['style_palette'] : '',
                 ));
                 if ($new_style_id <= 0) {
                     respond(array('status' => 'error', 'message' => lang('The style could not be created.')));
@@ -13449,6 +13513,56 @@ switch ($action) {
             // to the recycle bin (each keeps its own tree, so it can be
             // restored and attached to another design with "Select Page"),
             // pages already in the bin stay there, then the style row goes.
+            // A template opened in the editor (add_system_style.php?start=template):
+            // its pages as unsaved tabs, with unique names, and the rows of
+            // the system widgets they place. No page is written here - see
+            // pg_design_template_prepare().
+            // The editor's Preview: the system widgets its blob page cannot
+            // draw, rendered from the editor's own trees and settings, inside
+            // the page once it has been saved (pg_designer_preview_widgets()).
+            // The canvas's real records: a listing widget's repeated part for
+            // up to ten records, drawn after the card being designed
+            // (pg_designer_widget_ghosts()).
+            case 'widget_ghosts':
+                respond(array(
+                    'status' => 'success',
+                    'rows'   => pg_designer_widget_ghosts(
+                        isset($request['page_id']) ? (int)$request['page_id'] : 0,
+                        (isset($request['widget']) && is_array($request['widget'])) ? $request['widget'] : array(),
+                        isset($request['limit']) ? (int)$request['limit'] : 10
+                    ),
+                ));
+                break;
+
+            case 'preview_widgets':
+                respond(array(
+                    'status' => 'success',
+                    'html'   => pg_designer_preview_widgets(
+                        isset($request['page_id']) ? (int)$request['page_id'] : 0,
+                        (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array()
+                    ),
+                ));
+                break;
+
+            case 'template_prepare':
+                $tp = pg_design_template_prepare(isset($request['template']) ? (string)$request['template'] : '', $user);
+                if (empty($tp['ok'])) {
+                    respond(array('status' => 'error', 'message' => isset($tp['error']) ? $tp['error'] : lang('An error occurred')));
+                }
+                unset($tp['ok']);
+                $tp['status'] = 'success';
+                respond($tp);
+                break;
+
+            // Leaving the editor without publishing a template's tabs: the
+            // widgets and shared components it made for them go, unless a
+            // page places them (pg_design_template_discard()). Sent as a
+            // beacon from `pagehide`, so nobody reads the answer.
+            case 'template_discard':
+                $td_deleted = pg_design_template_discard(isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array());
+                respond(array('status' => 'success', 'deleted' => $td_deleted));
+                break;
+
             case 'design_delete':
                 $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
                 $style = $style_id > 0 ? db_item("SELECT style_id, style_name, style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
@@ -13528,6 +13642,61 @@ switch ($action) {
                 respond(array('status' => 'success', 'id' => $theme_id, 'name' => $file_name));
                 break;
 
+            // The look builder and the palette builder of Settings > Design >
+            // Theme (includes/fn/design_themes.php). They send choices - a
+            // base look and a few picks, or two colours - never CSS; the
+            // stylesheet is written here. *_css answers with the stylesheet
+            // for the canvas to try on; *_save writes it to the file manager
+            // as a design CSS file every design can wear.
+            case 'theme_look_css':
+            case 'theme_look_save':
+                $base     = isset($request['base']) ? (string)$request['base'] : '';
+                $controls = (isset($request['controls']) && is_array($request['controls'])) ? $request['controls'] : array();
+                $name     = isset($request['name']) ? trim((string)$request['name']) : '';
+                $looks    = pg_design_looks();
+                if (!isset($looks[$base])) {
+                    respond(array('status' => 'error', 'message' => lang('Choose the look to start from.')));
+                }
+                $css = pg_design_custom_look_css($base, $controls, $name !== '' ? $name : $looks[$base]['name']);
+                if ($css === false) {
+                    respond(array('status' => 'error', 'message' => lang('The look could not be made.')));
+                }
+                if ($sub === 'theme_look_css') {
+                    respond(array('status' => 'success', 'css' => $css));
+                }
+                $saved = pg_design_theme_save_file('look', $name, $css, $user['id']);
+                if (!is_array($saved)) {
+                    respond(array('status' => 'error', 'message' => $saved));
+                }
+                log_activity(lang(array('string' => 'theme ({var:1}) was created', 'vars' => $saved['file'])), $_SESSION['sessionusername']);
+                respond(array('status' => 'success', 'key' => 'file-' . $saved['id'], 'name' => $saved['name'], 'url' => $saved['url'],
+                    'base' => $base, 'controls' => $controls));
+                break;
+
+            case 'theme_palette_css':
+            case 'theme_palette_save':
+                $primary   = isset($request['primary'])   ? trim((string)$request['primary'])   : '';
+                $secondary = isset($request['secondary']) ? trim((string)$request['secondary']) : '';
+                $name      = isset($request['name']) ? trim((string)$request['name']) : '';
+                $css = pg_design_palette_css($primary, $secondary, $name);
+                if ($css === false) {
+                    respond(array('status' => 'error', 'message' => lang('Enter both colours as #RRGGBB.')));
+                }
+                if ($sub === 'theme_palette_css') {
+                    respond(array('status' => 'success', 'css' => $css));
+                }
+                $p = _pg_theme_hex(_pg_theme_rgb($primary));
+                $s = _pg_theme_hex(_pg_theme_rgb($secondary));
+                $css = pg_design_theme_header(array('kind' => 'palette', 'name' => $name, 'primary' => $p, 'secondary' => $s)) . "\n" . $css;
+                $saved = pg_design_theme_save_file('palette', $name, $css, $user['id']);
+                if (!is_array($saved)) {
+                    respond(array('status' => 'error', 'message' => $saved));
+                }
+                log_activity(lang(array('string' => 'theme ({var:1}) was created', 'vars' => $saved['file'])), $_SESSION['sessionusername']);
+                respond(array('status' => 'success', 'key' => 'file-' . $saved['id'], 'name' => $saved['name'], 'url' => $saved['url'],
+                    'primary' => $p, 'secondary' => $s));
+                break;
+
             default:
                 respond(array('status' => 'error', 'message' => lang('Unknown action.')));
         }
@@ -13592,71 +13761,7 @@ switch ($action) {
             // referencing style names. Used by the "Ortak" palette tab to show
             // a "N stilde" badge + pre-populate the delete confirmation.
             case 'usage_all':
-                $sc_rows = db_items("SELECT id FROM shared_components");
-                $sc_ids  = array();
-                if (is_array($sc_rows)) {
-                    foreach ($sc_rows as $r) { $sc_ids[] = (int)$r['id']; }
-                }
-                $usage_map = array();
-                foreach ($sc_ids as $sid) { $usage_map[$sid] = array(); }
-
-                // Scan every non-empty tree once; for each shared id found,
-                // append the owning page — and the design it belongs to — to
-                // its usage list.
-                //
-                // Trees live on the PAGE since the multi-page designer (one
-                // style, several pages, each with its own layout). One row per
-                // page with a tree; the style's own tree is the fallback for
-                // pages saved before the swap. Both ids travel: the page name
-                // is what the operator sees in tabs, the style id is how the
-                // editor tells "used in this design" from "used elsewhere on
-                // the site". On an un-migrated database this collapses to the
-                // old per-style scan and page_id is 0.
-                if (pg_multi_page_design_ready()) {
-                    $style_rows = db_items(
-                        "SELECT page.page_id, page.page_name, style.style_id, style.style_name,
-                                " . pg_page_tree_sql_expr() . " AS style_tree_json
-                         FROM page
-                         INNER JOIN style ON page.page_style = style.style_id
-                         WHERE page.layout_type = 'system'
-                         HAVING style_tree_json IS NOT NULL AND style_tree_json != ''"
-                    );
-                } else {
-                    $style_rows = db_items(
-                        "SELECT 0 AS page_id, style_name AS page_name, style_id, style_name, style_tree_json
-                         FROM style
-                         WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
-                    );
-                }
-                if (is_array($style_rows)) {
-                    foreach ($style_rows as $sr) {
-                        $json = $sr['style_tree_json'];
-                        if (strpos($json, '"sharedId"') === false) continue;
-                        foreach ($sc_ids as $sid) {
-                            // Match the exact JSON literal `"sharedId":<id>` — id
-                            // is numeric so value is never quoted in our writer.
-                            $needle = '"sharedId":' . $sid;
-                            // Guard against substring collisions (e.g. sid=1 matching
-                            // sid=10) by checking the next char is not a digit.
-                            $pos = 0;
-                            $found = false;
-                            while (($pos = strpos($json, $needle, $pos)) !== false) {
-                                $next = substr($json, $pos + strlen($needle), 1);
-                                if ($next === '' || !ctype_digit($next)) { $found = true; break; }
-                                $pos += strlen($needle);
-                            }
-                            if ($found) {
-                                $usage_map[$sid][] = array(
-                                    'page_id'    => (int)$sr['page_id'],
-                                    'page_name'  => (string)$sr['page_name'],
-                                    'style_id'   => (int)$sr['style_id'],
-                                    'style_name' => (string)$sr['style_name'],
-                                );
-                            }
-                        }
-                    }
-                }
-                respond(array('status' => 'success', 'usage' => $usage_map));
+                respond(array('status' => 'success', 'usage' => pg_shared_component_usage(null)));
                 break;
 
             // ── PREFETCH ─────────────────────────────────────────────────────
@@ -13803,6 +13908,51 @@ switch ($action) {
                 }
                 db("DELETE FROM shared_components WHERE id = '$sc_id' LIMIT 1");
                 respond(array('status' => 'success'));
+                break;
+
+            // ── DELETE MANY ──────────────────────────────────────────────────
+            // The palette's bulk delete. A row a saved page still places is
+            // kept unless the request says `force` — the editor asks for that
+            // only after the operator typed the confirmation — so a page saved
+            // from another tab since the palette loaded is never broken by
+            // accident. Answers with what went and what stayed.
+            case 'delete_many':
+                $sc_ids = array();
+                foreach ((array)(isset($request['ids']) ? $request['ids'] : array()) as $sc_raw) {
+                    $sc_one = (int)$sc_raw;
+                    if ($sc_one > 0) $sc_ids[$sc_one] = $sc_one;
+                }
+                if (empty($sc_ids)) {
+                    respond(array('status' => 'error', 'message' => lang('Nothing is selected.')));
+                }
+                if (count($sc_ids) > 500) {
+                    respond(array('status' => 'error', 'message' => lang('Select at most 500 at a time.')));
+                }
+                $sc_force = !empty($request['force']);
+                $sc_usage = pg_shared_component_usage(array_values($sc_ids));
+                $sc_names = array();
+                $sc_rows  = db_items("SELECT id, name FROM shared_components WHERE id IN (" . implode(',', $sc_ids) . ")");
+                foreach ((is_array($sc_rows) ? $sc_rows : array()) as $sc_row) $sc_names[(int)$sc_row['id']] = (string)$sc_row['name'];
+                $sc_deleted = array();
+                $sc_kept    = array();
+                foreach ($sc_ids as $sc_one) {
+                    if (!isset($sc_names[$sc_one])) continue;   // already gone
+                    if (!$sc_force && !empty($sc_usage[$sc_one])) {
+                        $sc_kept[] = array('id' => $sc_one, 'name' => $sc_names[$sc_one], 'usage' => $sc_usage[$sc_one]);
+                        continue;
+                    }
+                    $sc_deleted[] = $sc_one;
+                }
+                if (!empty($sc_deleted)) {
+                    db("DELETE FROM shared_components WHERE id IN (" . implode(',', $sc_deleted) . ")");
+                    $sc_list = array();
+                    foreach ($sc_deleted as $sc_one) $sc_list[] = $sc_names[$sc_one];
+                    log_activity(lang(array(
+                        'string' => '{var:1} shared components and system widgets were deleted: {var:2}',
+                        'vars'   => array(count($sc_deleted), implode(', ', $sc_list)),
+                    )), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+                }
+                respond(array('status' => 'success', 'deleted' => $sc_deleted, 'kept' => $sc_kept));
                 break;
 
             // ── LIST CUSTOM FORMS ───────────────────────────────────────────

@@ -49,6 +49,18 @@ if ($short_link === null) {
     output_error(lang('Invalid request.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// A link with a token for its address has no name for this screen to edit:
+// the File Manager shows it for what it is. A guest's way into the workspace
+// is the workspace's own.
+if ((string) $short_link['name'] === '') {
+    if ((string) $short_link['destination_type'] === 'workspace_guest') {
+        output_error(lang('Invalid request.'));
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=short_links&edit=' . (int) $short_link['id']);
+    exit();
+}
+
 $short_link_file_id = $short_link['file_id'];
 
 // If the form was not just submitted then output form.

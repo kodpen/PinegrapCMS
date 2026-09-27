@@ -952,6 +952,9 @@ class liveform {
                 }
             }
             
+            // The same sentence from two fields is read once (see get_errors()).
+            $error_messages = array_values(array_unique($error_messages));
+
             $output = '';
             
             // if there is at least one error, then output message
@@ -1098,7 +1101,10 @@ class liveform {
             $messages[] = lang('An error occurred');
         }
 
-        return $messages;
+        // Two fields can fail for the same reason and say so in the same
+        // words (the billing and the shipping first name when one is taken
+        // from the other): the visitor reads the sentence once.
+        return array_values(array_unique($messages));
     }
 
     /**

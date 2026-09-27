@@ -324,6 +324,16 @@ if ($_POST) {
             ws_claude_settings_post($viewer, $action, $liveform);
             $anchor = '#ws-claude';
             break;
+
+        // Pinegrap AI in the channels (includes/workspace/ai.php).
+        case 'ai':
+        case 'ai_test':
+            if (function_exists('ws_ai_settings_post')) {
+                ws_ai_settings_post($viewer, $action, $liveform);
+            }
+
+            $anchor = '#ws-ai';
+            break;
     }
 
     go($self_url . $anchor);
@@ -554,6 +564,8 @@ pg_page_shell([
             ' . ws_holidays_settings_card($self_url) . '
 
             ' . ws_claude_settings_card($self_url, $viewer) . '
+
+            ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
         </div>
 
         <div class="col-xl-4">

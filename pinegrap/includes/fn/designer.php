@@ -732,6 +732,17 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             $configs[(int)$r['id']] = $cfg;
         }
     }
+    // The editor's Preview renders the trees and settings it holds now,
+    // saved or not (pg_designer_preview_widgets()).
+    foreach (pg_sw_preview_overrides() as $ov_sid => $ov) {
+        if (!in_array((int)$ov_sid, $ids, true)) continue;
+        $ov_cfg = is_array($ov['cfg']) ? $ov['cfg'] : (isset($configs[$ov_sid]) ? $configs[$ov_sid] : null);
+        if (!is_array($ov_cfg)) continue;
+        $ov_cfg['_name']      = isset($configs[$ov_sid]['_name']) ? $configs[$ov_sid]['_name'] : '';
+        $ov_cfg['_tree_json'] = ($ov['tree_json'] !== '') ? $ov['tree_json']
+                              : (isset($configs[$ov_sid]['_tree_json']) ? $configs[$ov_sid]['_tree_json'] : '');
+        $configs[(int)$ov_sid] = $ov_cfg;
+    }
 
     return preg_replace_callback(
         '/<!--pg-system-widget:(\d+)-->/',
@@ -917,18 +928,29 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             }
 
             // The account widgets (widgets_account.php): each posts to the
-            // processor of the legacy page type it stands in for.
+            // processor of the legacy page type it stands in for. The login
+            // region is the header's view of the session; the cart link
+            // (widgets_cart.php) sits beside it.
             $account_renderers = array(
+                'login_region'      => '_render_system_widget_login_region',
                 'logout'            => '_render_system_widget_logout',
                 'change_password'   => '_render_system_widget_change_password',
                 'set_password'      => '_render_system_widget_set_password',
                 'account_profile'   => '_render_system_widget_account_profile',
                 'email_preferences' => '_render_system_widget_email_preferences',
                 'address_book'      => '_render_system_widget_address_book',
+                'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
                 return call_user_func($account_renderers[$region_type], $tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'error_page' — the site's error screen (widgets_error.php):
+            // get_error_screen() renders the page that carries it.
+            if ($region_type === 'error_page') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_error_page($tree_json, $sid, $cfg, $mode);
             }
 
             // Future region types handled here.
@@ -1338,6 +1360,34 @@ function save_system_style($data)
         $sql_tree_set = "style_code = '" . escape($style_code) . "', style_tree_json = '" . escape($tree_json) . "',";
     }
 
+    // The framework and the template a design starts from are fixed when the
+    // row is created (pg_design_frameworks()): the pages are written against
+    // that framework, so an update never changes it.
+    $sql_fw_field = '';
+    $sql_fw_value = '';
+    if ($style_id <= 0 && pg_style_framework_ready()) {
+        $fw_key  = pg_design_framework_key(isset($data['framework']) ? $data['framework'] : '');
+        $tpl_id  = (isset($data['template']) && preg_match('/^[a-z0-9-]{1,64}$/', (string)$data['template'])) ? (string)$data['template'] : '';
+        $tpl_ver = ($tpl_id !== '' && isset($data['template_version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$data['template_version'])) ? (string)$data['template_version'] : '';
+        $sql_fw_field = 'style_framework, style_template, style_template_version,';
+        $sql_fw_value = "'" . escape($fw_key) . "', '" . escape($tpl_id) . "', '" . escape($tpl_ver) . "',";
+    }
+
+    // The look and the colour palette (includes/fn/design_themes.php):
+    // written when the columns exist and the caller supplied them, so an
+    // older caller leaves the stored choice alone.
+    $sql_theme_set   = '';
+    $sql_theme_field = '';
+    $sql_theme_value = '';
+    if (function_exists('pg_design_look_ready') && pg_design_look_ready()
+        && (array_key_exists('look', $data) || array_key_exists('palette', $data))) {
+        $_look    = e(pg_design_look_key(isset($data['look']) ? $data['look'] : ''));
+        $_palette = e(pg_design_palette_key(isset($data['palette']) ? $data['palette'] : ''));
+        $sql_theme_set   = "style_look = '$_look', style_palette = '$_palette',";
+        $sql_theme_field = 'style_look, style_palette,';
+        $sql_theme_value = "'$_look', '$_palette',";
+    }
+
     $sql_social_set   = '';
     $sql_social_field = '';
     $sql_social_value = '';
@@ -1358,6 +1408,7 @@ function save_system_style($data)
                 style_empty_cell_width_percentage= '" . escape($empty_cell_pct) . "',
                 $sql_social_set
                 $sql_assets_set
+                $sql_theme_set
                 theme_id                         = '" . escape($theme_id) . "',
                 additional_body_classes          = '" . escape($abc) . "',
                 collection                       = '" . escape($collection) . "',
@@ -1376,6 +1427,8 @@ function save_system_style($data)
                 style_tree_json,
                 $sql_social_field
                 $sql_assets_field
+                $sql_fw_field
+                $sql_theme_field
                 theme_id,
                 additional_body_classes,
                 collection,
@@ -1391,6 +1444,8 @@ function save_system_style($data)
                 '" . escape($tree_json) . "',
                 $sql_social_value
                 $sql_assets_value
+                $sql_fw_value
+                $sql_theme_value
                 '" . escape($theme_id) . "',
                 '" . escape($abc) . "',
                 '" . escape($collection) . "',
@@ -1631,6 +1686,10 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.sitemap, page.page_home,
              " . ($noindex_ready ? "page.noindex, page.nofollow," : "'0' AS noindex, '0' AS nofollow,") . "
              page.comments, page.comments_label, page.comments_allow_new_comments, page.comments_rating,
+             page.comments_automatic_publish, page.comments_show_submitted_date_and_time,
+             page.comments_require_login_to_comment,
+             page.comments_watcher_email_page_id, page.comments_watcher_email_subject,
+             page.comments_administrator_email_to_email_address,
              page.page_timestamp,
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
@@ -1680,6 +1739,14 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'pg_comments_label'     => (string)$r['comments_label'],
             'pg_comments_allow_new' => !empty($r['comments_allow_new_comments']) ? 1 : 0,
             'pg_comments_rating'    => !empty($r['comments_rating']) ? 1 : 0,
+            'pg_comments_auto_publish' => !empty($r['comments_automatic_publish']) ? 1 : 0,
+            'pg_comments_show_date'    => !empty($r['comments_show_submitted_date_and_time']) ? 1 : 0,
+            'pg_comments_login'        => !empty($r['comments_require_login_to_comment']) ? 1 : 0,
+            // The comment e-mails: one page (sent to the record's sender and
+            // to the watchers), its subject, the staff address notified.
+            'pg_comments_email_page'    => (int)$r['comments_watcher_email_page_id'],
+            'pg_comments_email_subject' => (string)$r['comments_watcher_email_subject'],
+            'pg_comments_notify_email'  => (string)$r['comments_administrator_email_to_email_address'],
             'page_timestamp'        => (int)$r['page_timestamp'],
             'tree_json'             => (string)$r['tree_json'],
         );
@@ -1907,6 +1974,42 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     $c_allow     = $flag('pg_comments_allow_new', 1);
     $c_rating    = $flag('pg_comments_rating');
     $c_label     = trim((string)(isset($page['pg_comments_label']) ? $page['pg_comments_label'] : ''));
+    // The comment settings the page settings panel added later: written when
+    // the editor sends them, left as stored when it does not.
+    $c_extra = array();
+    foreach (array('pg_comments_auto_publish' => 'comments_automatic_publish',
+                   'pg_comments_show_date'    => 'comments_show_submitted_date_and_time',
+                   'pg_comments_login'        => 'comments_require_login_to_comment') as $c_key => $c_col) {
+        if (array_key_exists($c_key, $page)) $c_extra[$c_col] = $flag($c_key);
+    }
+    // The comment e-mails. One page serves both e-mails the legacy screen
+    // sets apart (to the record's sender, to the watchers), and so does the
+    // subject. A page picked from a tab saved in this same save arrives as
+    // `tab:<key>` and is written once the ids are known
+    // (pg_designer_resolve_page_tab_refs()); until then it counts as none.
+    if (array_key_exists('pg_comments_email_page', $page)) {
+        $c_mail_raw  = $page['pg_comments_email_page'];
+        $c_mail_page = (is_string($c_mail_raw) && strncmp($c_mail_raw, 'tab:', 4) === 0) ? 0 : (int)$c_mail_raw;
+        if ($c_mail_page > 0 && (int)db_value("SELECT COUNT(*) FROM page WHERE page_id = '$c_mail_page'") === 0) $c_mail_page = 0;
+        $c_extra['comments_submitter_email_page_id'] = $c_mail_page;
+        $c_extra['comments_watcher_email_page_id']   = $c_mail_page;
+    }
+    if (array_key_exists('pg_comments_email_subject', $page)) {
+        $c_mail_subject = e(mb_substr(trim((string)$page['pg_comments_email_subject']), 0, 255));
+        $c_extra['comments_submitter_email_subject'] = $c_mail_subject;
+        $c_extra['comments_watcher_email_subject']   = $c_mail_subject;
+    }
+    if (array_key_exists('pg_comments_notify_email', $page)) {
+        $c_extra['comments_administrator_email_to_email_address'] = e(mb_substr(trim((string)$page['pg_comments_notify_email']), 0, 100));
+    }
+    $sql_c_extra_set  = '';
+    $sql_c_extra_cols = '';
+    $sql_c_extra_vals = '';
+    foreach ($c_extra as $c_col => $c_val) {
+        $sql_c_extra_set  .= "$c_col = '$c_val',\n";
+        $sql_c_extra_cols .= "$c_col, ";
+        $sql_c_extra_vals .= "'$c_val', ";
+    }
 
     $multi_ready = pg_multi_page_design_ready();
     $sql_tree_set = $multi_ready
@@ -1935,6 +2038,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 comments_label              = '" . e($c_label) . "',
                 comments_allow_new_comments = '$c_allow',
                 comments_rating             = '$c_rating',
+                $sql_c_extra_set
                 page_timestamp              = UNIX_TIMESTAMP(),
                 page_user                   = '" . (int)$user['id'] . "'
             WHERE page_id = '$page_id'");
@@ -1954,6 +2058,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 page_meta_description, comments_disallow_new_comment_message, sitemap,
                 $sql_noindex_cols
                 $sql_tree_cols
+                $sql_c_extra_cols
                 comments, comments_label, comments_allow_new_comments, comments_rating)
             VALUES (
                 '" . e($name) . "', '$folder', 'standard', 'system', '" . e($home_str) . "', '$search',
@@ -1961,6 +2066,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 '" . e($meta_desc) . "', '', '$sitemap',
                 $sql_noindex_vals
                 $sql_tree_vals
+                $sql_c_extra_vals
                 '$c_on', '" . e($c_label) . "', '$c_allow', '$c_rating')");
         $page_id = (int)mysqli_insert_id(db::$con);
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
@@ -2557,8 +2663,19 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             }
             if (!empty($sem_style_parts)) $attrs .= ' style="' . h(implode(';', $sem_style_parts)) . '"';
             $void_tags = array('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr');
+            // Whitespace is content in these: the pretty-printer's newline and
+            // indent would become spaces in a textarea's value (an "empty"
+            // required field that passes, a pre-filled one with a tail) and
+            // indentation in a code sample. Written on one line, unpadded -
+            // the editor's exporter does the same.
+            $ws_tags = array('pre', 'textarea', 'code');
             if (in_array($tag_lc, $void_tags)) {
                 $html .= $pad . '<' . $tag . $attrs . '>' . "\n";
+            } elseif (in_array($tag_lc, $ws_tags)) {
+                $ws_inner = '';
+                foreach ($children as $child) { $ws_inner .= rtrim(_render_tree_node($child, 0, $depth), "\n"); }
+                if (isset($props['text']) && $props['text'] !== '') $ws_inner .= h($props['text']);
+                $html .= $pad . '<' . $tag . $attrs . '>' . $ws_inner . '</' . $tag . '>' . "\n";
             } else {
                 $inner_text = isset($props['text']) && $props['text'] !== '' ? h($props['text']) : '';
                 $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . "\n";
@@ -2572,11 +2689,17 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             break;
 
         case 'component':
-            $html .= _render_component_html($props, $pad);
-            break;
-
         case 'content':
-            $html .= _render_content_html($props, $pad);
+            // A link, button or badge can hold child nodes (an image or an
+            // icon inside the label) — the editor allows it and its exporter
+            // writes them out. Rendered here too, or a shared component or
+            // a widget drops them on the live page while the canvas and the
+            // preview show them.
+            $kids = '';
+            foreach ($children as $child) { $kids .= _render_tree_node($child, $indent + 1, $depth); }
+            $html .= $type === 'component'
+                ? _render_component_html($props, $pad, $kids)
+                : _render_content_html($props, $pad, $kids);
             break;
 
         case 'shared_ref':
@@ -2753,7 +2876,7 @@ function _compose_inline_style($props, $extra = '')
     return ' style="' . h(implode(';', $parts)) . '"';
 }
 
-function _render_component_html($props, $pad)
+function _render_component_html($props, $pad, $kids = '')
 {
     // Apply data bindings — components inside a system widget can have text/href bound
     $props = _apply_bindings($props);
@@ -2944,9 +3067,17 @@ function _render_component_html($props, $pad)
             // / coupon / cart_update buttons → POSTs arrived with empty
             // submit_update_cart= and the cart action handler's
             // !empty($_POST['submit_update_cart']) check failed.
+            // Child icons sit before the label by default ('end'), after it
+            // with textPosition 'start' — the editor's exporter does the same.
+            $btn_inner = $text;
+            if ($kids !== '') {
+                $btn_inner = (isset($props['textPosition']) && $props['textPosition'] === 'start')
+                    ? $text . "\n" . $kids . $pad
+                    : "\n" . $kids . $pad . $text;
+            }
             if ($tag === 'a') {
                 $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
-                $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $text . '</a>' . "\n";
+                $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</a>' . "\n";
             } elseif ($tag === 'input') {
                 // <input> uses the button label as its `value` attr — skip
                 // any user-supplied 'value' in _attrs so the explicit one wins.
@@ -2957,8 +3088,17 @@ function _render_component_html($props, $pad)
                 // <button> — keep `value` in _attrs (required for form submit).
                 $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
                 $btn_type  = isset($props['btnType']) ? h($props['btnType']) : 'button';
-                $html .= $pad . '<button type="' . $btn_type . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $text . '</button>' . "\n";
+                $html .= $pad . '<button type="' . $btn_type . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</button>' . "\n";
             }
+            break;
+
+        case 'badge':
+            $badge_cls = 'badge bg-' . h(isset($props['bg']) && $props['bg'] !== '' ? $props['bg'] : 'primary')
+                . (!empty($props['rounded']) ? ' rounded-pill' : '')
+                . (!empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '');
+            $html .= $pad . '<span class="' . $badge_cls . '"' . _compose_inline_style($props) . _render_extra_attrs($props) . '>'
+                . h(isset($props['text']) ? $props['text'] : '')
+                . ($kids !== '' ? "\n" . $kids . $pad : '') . '</span>' . "\n";
             break;
     }
 
@@ -3024,7 +3164,7 @@ function _apply_bindings($props)
 }
 
 // Render a content node as HTML
-function _render_content_html($props, $pad)
+function _render_content_html($props, $pad, $kids = '')
 {
     // Apply data bindings first — system widget feed tokens override literal values
     $props = _apply_bindings($props);
@@ -3054,7 +3194,8 @@ function _render_content_html($props, $pad)
             $style_attr  = _compose_inline_style($props);
             $extra_attrs = _render_extra_attrs($props, array('href', 'target'));
             $html  .= $pad . '<a href="' . $href . '"' . $cls . $target
-                . $style_attr . $extra_attrs . '>' . $text . '</a>' . "\n";
+                . $style_attr . $extra_attrs . '>' . $text
+                . ($kids !== '' ? "\n" . $kids . $pad : '') . '</a>' . "\n";
             break;
 
         case 'icon':
@@ -3254,6 +3395,12 @@ function _render_content_html($props, $pad)
             //
             // Markup mirrors liveform::output_errors() so theme CSS (software_error /
             // software_notice / software_warning + alert + alert-dismissible) applies.
+            // An e-mail page never shows (or uses up) the visitor's pending
+            // messages: they belong to the page the visitor sees next.
+            if (function_exists('pg_sw_render_context')) {
+                $msg_ctx = pg_sw_render_context();
+                if (!empty($msg_ctx['email'])) break;
+            }
             $msg_form  = !empty($props['formName']) ? $props['formName'] : '';
             $msg_cls   = !empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '';
             $msg_parts = array();
@@ -3274,10 +3421,13 @@ function _render_content_html($props, $pad)
                         $rendered_anything = false;
                         // Errors — field-level
                         $err_lines = '';
+                        $err_seen  = array();   // the same sentence from two fields is read once
                         foreach ($lf_data as $_lf_key => $_lf_field) {
                             if (!is_array($_lf_field)) continue;
                             if (isset($_lf_field['error']) && $_lf_field['error'] == TRUE
-                                && !empty($_lf_field['error_message'])) {
+                                && !empty($_lf_field['error_message'])
+                                && !isset($err_seen[(string)$_lf_field['error_message']])) {
+                                $err_seen[(string)$_lf_field['error_message']] = true;
                                 $err_lines .= '<p class="error">' . $_lf_field['error_message'] . '</p>';
                             }
                         }
@@ -4435,4 +4585,1373 @@ function _pg_smart_active_fragment($html, $target)
     }
 
     return $html;
+}
+
+
+// ========================= DESIGN FRAMEWORKS =====================================================
+//
+// The page framework a visual-editor design is built on. A design picks one
+// when it is created and keeps it: style.style_framework (2026.4.5). The key
+// decides which framework files the front end and the canvas load and which
+// palette the editor offers. A design from before the column is Bootstrap 5,
+// which is what every design was until then.
+//
+// A later framework (Bootstrap 6) is one more entry here: its files, and
+// whether the Bootstrap palette applies to it.
+
+function pg_design_frameworks()
+{
+    return array(
+        'bootstrap5' => array(
+            'label'     => 'Bootstrap 5',
+            'css'       => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css',
+            'js'        => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js',
+            // The grid, the Bootstrap components and the blocks are written
+            // against this version.
+            'bootstrap' => true,
+        ),
+        'custom' => array(
+            'label'     => lang('Custom'),
+            'css'       => '',
+            'js'        => '',
+            'bootstrap' => false,
+        ),
+    );
+}
+
+// A framework key the registry knows; anything else (an empty column, a key
+// from a newer release) reads as Bootstrap 5.
+function pg_design_framework_key($value)
+{
+    $value = is_scalar($value) ? strtolower(trim((string)$value)) : '';
+    $all = pg_design_frameworks();
+    return isset($all[$value]) ? $value : 'bootstrap5';
+}
+
+// The registry entry for a key, with the key itself.
+function pg_design_framework($key)
+{
+    $key = pg_design_framework_key($key);
+    $all = pg_design_frameworks();
+    return array('key' => $key) + $all[$key];
+}
+
+// The framework columns (style_framework, style_template,
+// style_template_version) exist - 2026.4.5.
+function pg_style_framework_ready($recheck = false)
+{
+    static $cached = null;
+    if ($cached !== null && !$recheck) return $cached;
+    $cached = false;
+    if (!isset(db::$con) || !db::$con) return false;
+    $result = @mysqli_query(db::$con,
+        "SHOW COLUMNS FROM style WHERE Field IN ('style_framework', 'style_template', 'style_template_version')");
+    $cached = ($result && @mysqli_num_rows($result) == 3);
+    return $cached;
+}
+
+// ========================= DESIGN TEMPLATES ======================================================
+//
+// Ready-made designs the editor can start from. Each template is one file in
+// includes/design_templates/, returning its description and its pages. They
+// ship with the software, so a template changes only with an update; its
+// version is recorded on the design made from it (style_template_version) so
+// a later release can tell which edition a design started from.
+//
+// A template is only a starting point: choosing one opens its pages as
+// unsaved tabs. Nothing is written until the operator publishes, except the
+// system widgets and shared components the pages place (the header, the
+// footer, a band several pages carry) - each is a row of its own that the
+// canvas draws from, the same as one dropped from the palette. Leaving the
+// editor without publishing discards them (pg_design_template_discard());
+// one left behind anyway (a closed browser) is used again the next time the
+// same template is opened, instead of piling up.
+
+// Every template, keyed by id, in the order they are offered.
+function pg_design_templates()
+{
+    static $templates = null;
+    if ($templates !== null) return $templates;
+    $templates = array();
+    $files = glob(PG_FUNCTIONS_DIR . '/includes/design_templates/*.php');
+    if (!$files) return $templates;
+    sort($files);
+    foreach ($files as $file) {
+        $id = basename($file, '.php');
+        if (!preg_match('/^[a-z0-9-]{1,64}$/', $id)) continue;
+        $tpl = include $file;
+        if (!is_array($tpl) || empty($tpl['pages']) || !is_array($tpl['pages'])) continue;
+        $tpl['id']        = $id;
+        $tpl['version']   = (isset($tpl['version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$tpl['version'])) ? (string)$tpl['version'] : '1.0.0';
+        $tpl['framework'] = pg_design_framework_key(isset($tpl['framework']) ? $tpl['framework'] : '');
+        $templates[$id] = $tpl;
+    }
+    uasort($templates, function ($a, $b) {
+        return (isset($a['order']) ? (int)$a['order'] : 100) - (isset($b['order']) ? (int)$b['order'] : 100);
+    });
+    return $templates;
+}
+
+// One template, or null.
+function pg_design_template($id)
+{
+    $all = pg_design_templates();
+    $id  = is_scalar($id) ? (string)$id : '';
+    return isset($all[$id]) ? $all[$id] : null;
+}
+
+// What the gallery shows of a template - no trees.
+function pg_design_template_summary($tpl)
+{
+    $pages = array();
+    foreach ($tpl['pages'] as $p) {
+        if (!_pg_tpl_requirement_met(isset($p['requires']) ? $p['requires'] : '')) continue;
+        $pages[] = isset($p['title']) ? (string)$p['title'] : '';
+    }
+    $fw = pg_design_framework($tpl['framework']);
+    return array(
+        'id'          => $tpl['id'],
+        'name'        => isset($tpl['name']) ? (string)$tpl['name'] : $tpl['id'],
+        'version'     => $tpl['version'],
+        'framework'   => $fw['key'],
+        'framework_label' => $fw['label'],
+        'description' => isset($tpl['description']) ? (string)$tpl['description'] : '',
+        'icon'        => isset($tpl['icon']) ? (string)$tpl['icon'] : 'bi-grid-1x2',
+        'pages'       => $pages,
+    );
+}
+
+// A page name nobody uses yet: the template's own, else with -2, -3 … A
+// bracketed suffix (get_unique_name()) would be part of the address.
+function _pg_tpl_unique_page_name($base, $taken)
+{
+    $base = trim((string)$base);
+    if ($base === '') $base = 'page';
+    for ($n = 1; $n < 500; $n++) {
+        $name = ($n === 1) ? $base : $base . '-' . $n;
+        $lower = mb_strtolower($name, 'UTF-8');
+        if (isset($taken[$lower])) continue;
+        if (!check_name_availability(array('name' => $name))) continue;
+        return $name;
+    }
+    return $base . '-' . time();
+}
+
+// Replace the template's placeholders in every string of a tree or a
+// setting: {{page:<key>}} the address of that template page, {{tab:<key>}}
+// the page as a page picker names a tab that has no id yet (resolved to the
+// page id when it is published, pg_designer_resolve_tab_refs()),
+// {{folder:<key>}} the id of that template folder, {{site_name}}, {{year}}.
+// Walks props, _attrs and children.
+function _pg_tpl_fill($node, $vars)
+{
+    if (is_array($node)) {
+        foreach ($node as $k => $v) $node[$k] = _pg_tpl_fill($v, $vars);
+        return $node;
+    }
+    if (!is_string($node) || strpos($node, '{{') === false) return $node;
+    // A value that is a folder and nothing else becomes the folder's id as a
+    // number, the way the settings that hold one store it.
+    if (preg_match('/^\{\{folder:([a-z0-9_-]+)\}\}$/', $node, $fm)) {
+        return isset($vars['folders'][$fm[1]]) ? (int)$vars['folders'][$fm[1]] : 0;
+    }
+    return preg_replace_callback('/\{\{([a-z_]+)(?::([a-z0-9_-]+))?\}\}/', function ($m) use ($vars) {
+        $key = isset($m[2]) ? $m[2] : '';
+        if ($m[1] === 'page') {
+            return isset($vars['pages'][$key]) ? $vars['pages'][$key] : '#';
+        }
+        if ($m[1] === 'tab') {
+            return isset($vars['tabs'][$key]) ? 'tab:' . $vars['tabs'][$key] : '0';
+        }
+        if ($m[1] === 'folder') {
+            return isset($vars['folders'][$key]) ? (string)(int)$vars['folders'][$key] : '0';
+        }
+        return isset($vars[$m[1]]) ? $vars[$m[1]] : $m[0];
+    }, $node);
+}
+
+// Whether a template part that names a requirement belongs on this site:
+// 'ecommerce' - the shop is switched on. A part that names none always does.
+function _pg_tpl_requirement_met($requirement)
+{
+    if ($requirement === '' || $requirement === null) return true;
+    if ($requirement === 'ecommerce') return defined('ECOMMERCE') && ECOMMERCE;
+    return false;
+}
+
+// The template's folders, under the site's root folder: array(key => id).
+//
+// A folder the pages go into has to exist before they are published, and the
+// page settings list it as soon as the tabs open, so the folders are made
+// when the template is opened - like its widgets. A top folder made when the
+// same template was opened before and never published into (nothing in it or
+// under it) is taken again rather than making another beside it; one that
+// holds a published copy is left alone and the next is numbered like a page
+// name (pinegrap_hello-2). Access is the template's: 'public', 'private'
+// (users given access to the folder, and the site staff) or 'registration'
+// (any signed-in visitor).
+function _pg_tpl_folders($tpl, $user_id)
+{
+    $out  = array();
+    $defs = (isset($tpl['folders']) && is_array($tpl['folders'])) ? $tpl['folders'] : array();
+    if (!$defs) return $out;
+    $root = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+    if ($root <= 0) return $out;
+
+    $subtree = function ($folder_id) {
+        $ids = array((int)$folder_id);
+        for ($i = 0; $i < count($ids) && $i < 500; $i++) {
+            foreach ((array)db_values("SELECT folder_id FROM folder WHERE folder_parent = '" . (int)$ids[$i] . "'") as $child) {
+                $ids[] = (int)$child;
+            }
+        }
+        return $ids;
+    };
+    $is_empty = function ($folder_id) use ($subtree) {
+        $in = implode(',', $subtree($folder_id));
+        return (int)db_value("SELECT COUNT(*) FROM page WHERE page_folder IN ($in)") === 0
+            && (int)db_value("SELECT COUNT(*) FROM files WHERE folder IN ($in)") === 0;
+    };
+    $make = function ($name, $parent, $access) use ($user_id) {
+        $level = (int)db_value("SELECT folder_level FROM folder WHERE folder_id = '" . (int)$parent . "' LIMIT 1") + 1;
+        db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_access_control_type, folder_archived, folder_timestamp, folder_user)
+            VALUES ('" . e(mb_substr($name, 0, 100)) . "', '" . (int)$parent . "', '$level', '0', '" . e($access) . "', '0', UNIX_TIMESTAMP(), '" . (int)$user_id . "')");
+        return (int)mysqli_insert_id(db::$con);
+    };
+
+    foreach ($defs as $key => $d) {
+        $key    = (string)$key;
+        $name   = trim((string)(isset($d['name']) ? $d['name'] : $key));
+        $access = (isset($d['access']) && in_array($d['access'], array('public', 'private', 'registration'), true)) ? $d['access'] : 'public';
+        $parent_key = isset($d['parent']) ? (string)$d['parent'] : '';
+        if ($name === '') continue;
+        $id = 0;
+        if ($parent_key !== '') {
+            // Inside a folder of this template, taken or made just above: its
+            // subfolder of this name is the one.
+            if (!isset($out[$parent_key])) continue;
+            $parent = (int)$out[$parent_key];
+            $id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '$parent' AND folder_name = '" . e($name) . "' ORDER BY folder_id LIMIT 1");
+            if ($id > 0) {
+                db("UPDATE folder SET folder_access_control_type = '" . e($access) . "' WHERE folder_id = '$id'");
+            } else {
+                $id = $make($name, $parent, $access);
+            }
+        } else {
+            for ($n = 1; $n < 100; $n++) {
+                $try   = ($n === 1) ? $name : $name . '-' . $n;
+                $found = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '$root' AND folder_name = '" . e($try) . "' ORDER BY folder_id LIMIT 1");
+                if ($found <= 0) { $id = $make($try, $root, $access); break; }
+                if ($is_empty($found)) {
+                    db("UPDATE folder SET folder_access_control_type = '" . e($access) . "' WHERE folder_id = '$found'");
+                    $id = $found;
+                    break;
+                }
+            }
+        }
+        if ($id > 0) $out[$key] = $id;
+    }
+    return $out;
+}
+
+// Give every node of a widget tree its editor id. A page tree gets its ids in
+// the editor when the tab opens; a widget tree is stored first and read back
+// later by the prefetch, which takes the ids as they are.
+function _pg_tpl_assign_ids(&$node, $prefix, &$n)
+{
+    if (!is_array($node)) return;
+    if (empty($node['_id'])) $node['_id'] = $prefix . (++$n);
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) _pg_tpl_assign_ids($child, $prefix, $n);
+        unset($child);
+    }
+}
+
+// Point every shared_ref that names a template widget (props.templateWidget)
+// or a template shared component (props.templateShared) at the row made for
+// it.
+function _pg_tpl_link_widgets($node, $widgets, $shared = array())
+{
+    if (!is_array($node)) return $node;
+    if (isset($node['type']) && $node['type'] === 'shared_ref'
+        && (isset($node['props']['templateWidget']) || isset($node['props']['templateShared']))) {
+        $row = null;
+        if (isset($node['props']['templateWidget'])) {
+            $key = (string)$node['props']['templateWidget'];
+            if (isset($widgets[$key])) $row = $widgets[$key];
+        } else {
+            $key = (string)$node['props']['templateShared'];
+            if (isset($shared[$key])) $row = $shared[$key];
+        }
+        if ($row) {
+            $node['props'] = array('sharedId' => (int)$row['id'], 'sharedName' => (string)$row['name']);
+            $node['children'] = array();
+        }
+        return $node;
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) $node['children'][$i] = _pg_tpl_link_widgets($child, $widgets, $shared);
+    }
+    return $node;
+}
+
+// A row made for a template is taken again only once it has sat unused for a
+// while: a template open in another tab right now holds rows of its own, and
+// leaving that tab discards them (pg_design_template_discard()).
+function _pg_tpl_reuse_cutoff()
+{
+    return time() - 12 * 3600;
+}
+
+// Whether a shared_components row is placed on any page, the recycle bin
+// included (a page brought back from the bin must find it where it left it).
+function _pg_tpl_row_in_use($sid)
+{
+    $sid = (int)$sid;
+    return (int)db_value(
+        "SELECT COUNT(*) FROM page
+         LEFT JOIN style ON page.page_style = style.style_id
+         WHERE " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . ",%'
+            OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'") > 0;
+}
+
+// The row for one template shared component (a header, a footer, a band
+// several pages carry): an unused one made for the same template earlier,
+// brought back to the template's layout, else a new one. A plain shared
+// component has no system_region_config, so where it came from is kept in
+// `category` ("template:<template>/<key>"), which nothing else writes for
+// these rows. Returns array(id, name) or null.
+function _pg_tpl_shared_row($origin, $name, $tree, $user_id)
+{
+    $tree_json = pg_designer_tree_encode($tree);
+    if ($tree_json === '') return null;
+    $marker = mb_substr('template:' . $origin, 0, 100);
+    $now = time();
+    $candidates = db_items(
+        "SELECT id, name FROM shared_components
+         WHERE category = '" . e($marker) . "'
+           AND (system_region_config IS NULL OR system_region_config = '')
+           AND updated_at < '" . (int)_pg_tpl_reuse_cutoff() . "'
+         ORDER BY id ASC");
+    foreach ((array)$candidates as $row) {
+        $sid = (int)$row['id'];
+        if (_pg_tpl_row_in_use($sid)) continue;
+        db("UPDATE shared_components SET tree_json = '" . e($tree_json) . "', updated_at = '$now' WHERE id = '$sid' LIMIT 1");
+        return array('id' => $sid, 'name' => (string)$row['name']);
+    }
+    $unique = $name;
+    for ($i = 1; (int)db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($unique) . "'") > 0 && $i < 1000; $i++) {
+        $unique = $name . ' [' . $i . ']';
+    }
+    db("INSERT INTO shared_components (name, description, tree_json, category, created_by, created_at, updated_at)
+        VALUES ('" . e($unique) . "', '', '" . e($tree_json) . "', '" . e($marker) . "', '" . (int)$user_id . "', '$now', '$now')");
+    $sid = (int)mysqli_insert_id(db::$con);
+    if ($sid <= 0) return null;
+    return array('id' => $sid, 'name' => $unique);
+}
+
+/**
+ * Throw away the rows a template made for tabs that were never published.
+ *
+ * Opening a template writes its system widgets and shared components at
+ * once, because the canvas draws them from their rows. When the operator
+ * leaves without publishing, the editor sends the ids it was given; each is
+ * deleted if it is one a template made (a widget whose config names its
+ * template_origin, a shared component whose category says "template:") and
+ * no page places it. Anything published, or made any other way, stays.
+ *
+ * Returns the number of rows deleted.
+ */
+function pg_design_template_discard($ids)
+{
+    $clean = array();
+    foreach ((array)$ids as $raw) {
+        $sid = (int)$raw;
+        if ($sid > 0) $clean[$sid] = $sid;
+        if (count($clean) >= 100) break;
+    }
+    if (!$clean) return 0;
+    $rows = db_items("SELECT id, category, system_region_config FROM shared_components WHERE id IN (" . implode(',', $clean) . ")");
+    $deleted = 0;
+    foreach ((array)$rows as $row) {
+        $sid = (int)$row['id'];
+        $made = (strpos((string)$row['category'], 'template:') === 0);
+        if (!$made && (string)$row['system_region_config'] !== '') {
+            $cfg = json_decode((string)$row['system_region_config'], true);
+            $made = is_array($cfg) && !empty($cfg['template_origin']);
+        }
+        if (!$made || _pg_tpl_row_in_use($sid)) continue;
+        db("DELETE FROM shared_components WHERE id = '$sid' LIMIT 1");
+        $deleted++;
+    }
+    return $deleted;
+}
+
+// The row for one template widget: an unused one made for the same template
+// earlier (brought back to the template's layout), else a new one.
+// Returns array(id, name, tree_json, system_region_config) or null.
+function _pg_tpl_widget_row($origin, $name, $tree, $cfg, $user_id)
+{
+    $tree_json = pg_designer_tree_encode($tree);
+    $cfg_json  = json_encode($cfg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($tree_json === '' || $cfg_json === false) return null;
+
+    $now = time();
+    $candidates = db_items(
+        "SELECT id, name, system_region_config FROM shared_components
+         WHERE system_region_config LIKE '%\"template_origin\":\"" . e($origin) . "\"%'
+           AND updated_at < '" . (int)_pg_tpl_reuse_cutoff() . "'
+         ORDER BY id ASC");
+    foreach ((array)$candidates as $row) {
+        $row_cfg = json_decode((string)$row['system_region_config'], true);
+        if (!is_array($row_cfg) || !isset($row_cfg['template_origin']) || $row_cfg['template_origin'] !== $origin) continue;
+        $sid = (int)$row['id'];
+        if (_pg_tpl_row_in_use($sid)) continue;
+        db("UPDATE shared_components
+            SET tree_json = '" . e($tree_json) . "', system_region_config = '" . e($cfg_json) . "', updated_at = '$now'
+            WHERE id = '$sid' LIMIT 1");
+        return array('id' => $sid, 'name' => (string)$row['name'], 'tree_json' => $tree_json, 'system_region_config' => $cfg_json);
+    }
+
+    // Same uniqueness rule as the editor's own create (api.php).
+    $unique = $name;
+    for ($i = 1; (int)db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($unique) . "'") > 0 && $i < 1000; $i++) {
+        $unique = $name . ' [' . $i . ']';
+    }
+    db("INSERT INTO shared_components (name, description, tree_json, system_region_config, created_by, created_at, updated_at)
+        VALUES ('" . e($unique) . "', '', '" . e($tree_json) . "', '" . e($cfg_json) . "', '" . (int)$user_id . "', '$now', '$now')");
+    $sid = (int)mysqli_insert_id(db::$con);
+    if ($sid <= 0) return null;
+    return array('id' => $sid, 'name' => $unique, 'tree_json' => $tree_json, 'system_region_config' => $cfg_json);
+}
+
+/**
+ * Everything the editor needs to open a template as unsaved tabs.
+ *
+ * Page names are made unique against the site, the links between the
+ * template's pages point at those names, each system widget the pages place
+ * gets its row (_pg_tpl_widget_row()) and the template's folders are made or
+ * found again (_pg_tpl_folders()). The design name is unique too, so
+ * publishing does not stop on "the name is already in use".
+ *
+ * Each page gets the key its tab opens under, so that a widget setting can
+ * name a page before it exists ({{tab:<key>}}); the save turns those into
+ * page ids. A widget whose tree is 'starter' opens with the layout the
+ * editor gives a widget of its kind dropped from the palette - the editor
+ * builds it, and publishing writes it.
+ *
+ * Returns array('ok' => true, ...payload) or array('ok' => false, 'error' => text).
+ */
+function pg_design_template_prepare($template_id, $user)
+{
+    $tpl = pg_design_template($template_id);
+    if (!$tpl) return array('ok' => false, 'error' => lang('The template could not be found.'));
+    if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) {
+        return array('ok' => false, 'error' => lang('The database has not been upgraded yet. Run the software update first.'));
+    }
+
+    // The parts this site has: a page for a feature it does not use (the shop
+    // pages without the shop) is left out, and a widget goes with its page.
+    $tpl_pages = array();
+    foreach ($tpl['pages'] as $p) {
+        if (_pg_tpl_requirement_met(isset($p['requires']) ? $p['requires'] : '')) $tpl_pages[] = $p;
+    }
+    $page_keys = array();
+    foreach ($tpl_pages as $p) $page_keys[(string)$p['key']] = true;
+    $tpl_widgets = array();
+    foreach ((isset($tpl['widgets']) && is_array($tpl['widgets'])) ? $tpl['widgets'] : array() as $wkey => $w) {
+        if (!_pg_tpl_requirement_met(isset($w['requires']) ? $w['requires'] : '')) continue;
+        $wpage = isset($w['page']) ? (string)$w['page'] : '';
+        if ($wpage !== '' && !isset($page_keys[$wpage])) continue;
+        $tpl_widgets[$wkey] = $w;
+    }
+
+    // Page names, then the addresses the links use and the keys the tabs
+    // open under.
+    $taken = array();
+    $names = array();
+    foreach ($tpl_pages as $p) {
+        $key  = (string)$p['key'];
+        $name = _pg_tpl_unique_page_name(isset($p['name']) ? $p['name'] : $key, $taken);
+        $taken[mb_strtolower($name, 'UTF-8')] = true;
+        $names[$key] = $name;
+    }
+    $site_name = (defined('ORGANIZATION_NAME') && trim((string)ORGANIZATION_NAME) !== '') ? (string)ORGANIZATION_NAME : lang('My Site');
+    $tab_prefix = 'tpl' . substr(md5(uniqid('', true)), 0, 6) . '_';
+    $vars = array(
+        'site_name' => $site_name,
+        // The site's own address (Settings → e-mail), for the notification
+        // settings a template fills in.
+        'site_email' => defined('EMAIL_ADDRESS') ? (string)EMAIL_ADDRESS : '',
+        'year'      => date('Y'),
+        'pages'     => array(),
+        'tabs'      => array(),
+        'folders'   => _pg_tpl_folders($tpl, (int)$user['id']),
+    );
+    foreach ($names as $key => $name) {
+        $vars['pages'][$key] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($name);
+        $vars['tabs'][$key]  = $tab_prefix . preg_replace('/[^a-z0-9_-]/', '', strtolower($key));
+    }
+
+    // System widgets, named after the page that places them (a widget of no
+    // one page, like the header's login region, after the template).
+    $widgets = array();
+    $widget_out = array();
+    foreach ($tpl_widgets as $wkey => $w) {
+        $page_key  = isset($w['page']) ? (string)$w['page'] : '';
+        $page_name = isset($names[$page_key]) ? $names[$page_key] : $tpl['id'];
+        $slug      = isset($w['slug']) ? (string)$w['slug'] : 'widget';
+        $cfg       = _pg_tpl_fill((isset($w['config']) && is_array($w['config'])) ? $w['config'] : array(), $vars);
+        $cfg['template_origin'] = $tpl['id'] . '/' . $wkey;
+        $starter   = (isset($w['tree']) && $w['tree'] === 'starter');
+        $tree = $starter
+            ? array('type' => 'root', 'props' => array(), 'children' => array(array('type' => 'loop_area', 'props' => array(), 'children' => array())))
+            : _pg_tpl_fill((isset($w['tree']) && is_array($w['tree'])) ? $w['tree'] : array('type' => 'root', 'props' => array(), 'children' => array()), $vars);
+        $id_count = 0;
+        _pg_tpl_assign_ids($tree, 'tpl_' . substr(md5(uniqid('', true)), 0, 6) . '_', $id_count);
+        // <page>-<kind>-widget, the name the editor gives a dropped widget
+        // (_swAutoName), so the editor still treats it as one it named.
+        $wname = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(pg_ascii_file_name($page_name . '-' . $slug))), '-') . '-widget';
+        $row  = _pg_tpl_widget_row($cfg['template_origin'], $wname, $tree, $cfg, (int)$user['id']);
+        if (!$row) return array('ok' => false, 'error' => lang('The template\'s widgets could not be created.'));
+        $widgets[$wkey] = $row;
+        pg_designer_tree_objects($tree);
+        $widget_out[] = array(
+            'id'                   => (int)$row['id'],
+            'name'                 => $row['name'],
+            'tree'                 => $starter ? null : $tree,
+            'starter'              => $starter,
+            'system_region_config' => $row['system_region_config'],
+        );
+    }
+
+    // Shared components: the parts several pages carry, one row each, so an
+    // edit to the header or the footer is made once for every page. Only
+    // the ones some page of this site places are made (the shop's pages are
+    // not there without the shop).
+    $shared = array();
+    $shared_out = array();
+    $shared_used = array();
+    $collect_shared = function ($node) use (&$collect_shared, &$shared_used) {
+        if (!is_array($node)) return;
+        if (isset($node['type']) && $node['type'] === 'shared_ref' && isset($node['props']['templateShared'])) {
+            $shared_used[(string)$node['props']['templateShared']] = true;
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $child) $collect_shared($child);
+        }
+    };
+    foreach ($tpl_pages as $p) $collect_shared($p['tree']);
+    foreach ((isset($tpl['shared']) && is_array($tpl['shared'])) ? $tpl['shared'] : array() as $skey => $sdef) {
+        if (!isset($shared_used[$skey]) || empty($sdef['tree']) || !is_array($sdef['tree'])) continue;
+        $stree = _pg_tpl_fill($sdef['tree'], $vars);
+        $id_count = 0;
+        _pg_tpl_assign_ids($stree, 'tpl_' . substr(md5(uniqid('', true)), 0, 6) . '_', $id_count);
+        $sname = trim((string)(isset($sdef['name']) ? $sdef['name'] : $skey));
+        $row = _pg_tpl_shared_row($tpl['id'] . '/' . $skey, $sname !== '' ? $sname : $skey, $stree, (int)$user['id']);
+        if (!$row) return array('ok' => false, 'error' => lang('The template\'s shared components could not be created.'));
+        $shared[$skey] = $row;
+        pg_designer_tree_objects($stree);
+        $shared_out[] = array('id' => (int)$row['id'], 'name' => $row['name'], 'tree' => $stree);
+    }
+
+    $pages = array();
+    foreach ($tpl_pages as $p) {
+        $key  = (string)$p['key'];
+        $tree = _pg_tpl_link_widgets(_pg_tpl_fill($p['tree'], $vars), $widgets, $shared);
+        pg_designer_tree_objects($tree);
+        $folder_key = isset($p['folder']) ? (string)$p['folder'] : '';
+        $c = (isset($p['comments']) && is_array($p['comments'])) ? $p['comments'] : array();
+        $pages[] = array(
+            'key'                   => $key,
+            'tab_key'               => $vars['tabs'][$key],
+            'page_name'             => $names[$key],
+            'page_folder'           => isset($vars['folders'][$folder_key]) ? (int)$vars['folders'][$folder_key] : 0,
+            'page_title'            => isset($p['title']) ? (string)$p['title'] : '',
+            'page_meta_description' => isset($p['meta_description']) ? (string)$p['meta_description'] : '',
+            'page_search'           => isset($p['search']) ? (int)(bool)$p['search'] : 1,
+            'page_sitemap'          => isset($p['sitemap']) ? (int)(bool)$p['sitemap'] : 1,
+            'page_noindex'          => !empty($p['noindex']) ? 1 : 0,
+            'pg_comments'              => !empty($c) ? 1 : 0,
+            'pg_comments_label'        => isset($c['label']) ? (string)$c['label'] : '',
+            'pg_comments_allow_new'    => isset($c['allow_new']) ? (int)(bool)$c['allow_new'] : 1,
+            'pg_comments_rating'       => !empty($c['rating']) ? 1 : 0,
+            'pg_comments_auto_publish' => !empty($c['auto_publish']) ? 1 : 0,
+            'pg_comments_show_date'    => !empty($c['show_date']) ? 1 : 0,
+            'pg_comments_login'        => !empty($c['login']) ? 1 : 0,
+            // The comment e-mails: a page of the template ({{tab:<key>}}),
+            // its subject, the staff address ({{site_email}}).
+            'pg_comments_email_page'    => isset($c['email_page']) ? _pg_tpl_fill((string)$c['email_page'], $vars) : 0,
+            'pg_comments_email_subject' => isset($c['email_subject']) ? (string)$c['email_subject'] : '',
+            'pg_comments_notify_email'  => isset($c['notify_email']) ? _pg_tpl_fill((string)$c['notify_email'], $vars) : '',
+            'formSettings'          => (isset($p['form']) && is_array($p['form'])) ? _pg_tpl_fill($p['form'], $vars) : null,
+            'tree'                  => $tree,
+        );
+    }
+
+    // The folders, for the page settings' folder list.
+    $folders = array();
+    $folder_names = array();
+    foreach ($vars['folders'] as $fkey => $fid) {
+        $row = db_item("SELECT folder_name, folder_parent FROM folder WHERE folder_id = '" . (int)$fid . "' LIMIT 1");
+        if (!is_array($row)) continue;
+        $folder_names[(int)$fid] = (string)$row['folder_name'];
+        $label = isset($folder_names[(int)$row['folder_parent']])
+            ? $folder_names[(int)$row['folder_parent']] . ' › ' . $row['folder_name'] : (string)$row['folder_name'];
+        $folders[] = array('key' => (string)$fkey, 'folder_id' => (int)$fid, 'label' => $label);
+    }
+
+    $style_name = isset($tpl['name']) ? (string)$tpl['name'] : $tpl['id'];
+    $base = $style_name;
+    for ($n = 2; (int)db_value("SELECT COUNT(*) FROM style WHERE style_name = '" . e($style_name) . "'") > 0 && $n < 1000; $n++) {
+        $style_name = $base . ' [' . $n . ']';
+    }
+
+    return array(
+        'ok'         => true,
+        'template'   => array('id' => $tpl['id'], 'name' => $base, 'version' => $tpl['version'], 'framework' => $tpl['framework']),
+        'style_name' => $style_name,
+        'pages'      => $pages,
+        'widgets'    => $widget_out,
+        'shared'     => $shared_out,
+        'folders'    => $folders,
+    );
+}
+
+// The kinds of system widget a template leaves to the editor ('tree' =>
+// 'starter'). Their layouts are built by the editor's JavaScript
+// (StyleDesigner.starterTree()), so writing the template anywhere else needs
+// them handed in. $all: every such widget of the template; otherwise only
+// the ones this site gets (a shop widget without the shop is left out, the
+// way pg_design_template_prepare() leaves it out).
+function pg_design_template_starter_kinds($tpl, $all = false)
+{
+    $kinds = array();
+    if (!is_array($tpl)) return $kinds;
+    $page_keys = array();
+    foreach ((isset($tpl['pages']) && is_array($tpl['pages'])) ? $tpl['pages'] : array() as $p) {
+        if ($all || _pg_tpl_requirement_met(isset($p['requires']) ? $p['requires'] : '')) {
+            $page_keys[(string)$p['key']] = true;
+        }
+    }
+    foreach ((isset($tpl['widgets']) && is_array($tpl['widgets'])) ? $tpl['widgets'] : array() as $w) {
+        if (!isset($w['tree']) || $w['tree'] !== 'starter') continue;
+        if (!$all) {
+            if (!_pg_tpl_requirement_met(isset($w['requires']) ? $w['requires'] : '')) continue;
+            $wpage = isset($w['page']) ? (string)$w['page'] : '';
+            if ($wpage !== '' && !isset($page_keys[$wpage])) continue;
+        }
+        $kind = isset($w['config']['regionType']) ? (string)$w['config']['regionType'] : '';
+        if (preg_match('/^[a-z0-9_]{1,64}$/', $kind)) $kinds[$kind] = $kind;
+    }
+    return array_values($kinds);
+}
+
+// A widget layout that did not come from the template file: an array rooted
+// at 'root', every node of a type a widget tree carries, no deeper than the
+// validator lets a page be, with no shared component and no PHP node in it
+// (a widget row never holds the first, and the second is eval()ed on every
+// render). Returns the tree with fresh ids under $prefix, or null.
+function _pg_tpl_clean_starter($tree, $prefix)
+{
+    if (!is_array($tree) || !isset($tree['type']) || $tree['type'] !== 'root') return null;
+    $types = array('root', 'container', 'area', 'row', 'col', 'component', 'content', 'region', 'semantic', 'loop_area');
+    $ok = true;
+    $walk = function (&$node, $depth) use (&$walk, &$ok, $types) {
+        if (!$ok) return;
+        if (!is_array($node) || $depth > 60
+            || !isset($node['type']) || !in_array($node['type'], $types, true)
+            || (isset($node['props']) && !is_array($node['props']))
+            || (isset($node['children']) && !is_array($node['children']))
+            || ($node['type'] === 'content' && isset($node['props']['contentType']) && $node['props']['contentType'] === 'custom_php')) {
+            $ok = false;
+            return;
+        }
+        unset($node['_id']);
+        if (!empty($node['children'])) {
+            foreach ($node['children'] as &$child) $walk($child, $depth + 1);
+            unset($child);
+        }
+    };
+    $walk($tree, 0);
+    if (!$ok) return null;
+    $n = 0;
+    _pg_tpl_assign_ids($tree, $prefix, $n);
+    return $tree;
+}
+
+/**
+ * Publish a template as a new design, with no editor open.
+ *
+ * The server half of what the editor does when a template is opened and
+ * published: pg_design_template_prepare() makes the folders and the rows of
+ * the widgets and shared components, the design and every page are written
+ * the way the editor's save writes them (save_system_style(),
+ * pg_designer_save_page()), the pages the widget settings name before they
+ * exist become ids (pg_designer_resolve_tab_refs()) and each page's form is
+ * made from its form widget (pg_cf_reconcile_page_form()), sample records
+ * included.
+ *
+ * A widget the template leaves to the editor ('tree' => 'starter') gets the
+ * layout the editor's own code builds for its kind; that code is JavaScript,
+ * so the caller hands the layouts in (StyleDesigner.starterTree()). A
+ * template that needs one the caller did not hand in is refused before
+ * anything is written.
+ *
+ * $opts:
+ *   starters  array  regionType => tree, for the widgets left to the editor
+ *   home      bool   make the template's home page - the page keyed 'home',
+ *                    else its first page - the site's home page
+ *   look      string the design's look (pg_design_looks()); left out: none
+ *   palette   string its colour palette (pg_design_palettes()); left out: none
+ *   seo       bool   score the pages now, as the editor's save does (default).
+ *                    Scoring renders each page, the cart widget included,
+ *                    which opens an order for whoever is asking; a caller
+ *                    with no visitor behind it leaves the pages to the SEO
+ *                    job, which scores every page not scored yet.
+ *
+ * The pages are validated before anything is written, and a write that
+ * fails after that takes back what this call wrote: the pages, the design,
+ * the widget and shared component rows and the template's folders that are
+ * still empty.
+ *
+ * Returns array('ok' => true, 'style_id', 'style_name', 'pages' => array(key => page_id),
+ * 'home_page_id', 'warnings') or array('ok' => false, 'error' => text).
+ */
+function pg_design_template_install($template_id, $user, $opts = array())
+{
+    $tpl = pg_design_template($template_id);
+    if (!$tpl) return array('ok' => false, 'error' => lang('The template could not be found.'));
+    if (!is_array($user) || empty($user['id']) || !isset($user['role']) || (int)$user['role'] > 1) {
+        return array('ok' => false, 'error' => lang('You do not have access to add a design.'));
+    }
+    $starters = (isset($opts['starters']) && is_array($opts['starters'])) ? $opts['starters'] : array();
+    foreach (pg_design_template_starter_kinds($tpl) as $kind) {
+        if (!isset($starters[$kind]) || !is_array($starters[$kind])) {
+            return array('ok' => false, 'error' => lang(array('string' => 'The layout of the "{var:1}" widget is missing.', 'vars' => $kind)));
+        }
+    }
+
+    $tp = pg_design_template_prepare($template_id, $user);
+    if (empty($tp['ok'])) {
+        return array('ok' => false, 'error' => isset($tp['error']) ? $tp['error'] : lang('An error occurred'));
+    }
+
+    $row_ids = array();
+    foreach (array_merge($tp['widgets'], $tp['shared']) as $r) $row_ids[] = (int)$r['id'];
+    $written_pages = array();
+    $style_id = 0;
+    // Takes back what this call wrote. The folders go only while nothing is
+    // in them, deepest first (a template lists a folder after its parent).
+    $undo = function () use (&$written_pages, &$style_id, $row_ids, $tp) {
+        foreach ($written_pages as $pid) {
+            db("DELETE FROM page WHERE page_id = '" . (int)$pid . "' LIMIT 1");
+            if (function_exists('pg_cf_page_form_ready') && pg_cf_page_form_ready()) {
+                db("DELETE FROM custom_form_pages WHERE page_id = '" . (int)$pid . "'");
+                db("DELETE FROM form_fields WHERE page_id = '" . (int)$pid . "'");
+            }
+        }
+        if ($style_id > 0) db("DELETE FROM style WHERE style_id = '" . (int)$style_id . "' LIMIT 1");
+        pg_design_template_discard($row_ids);
+        foreach (array_reverse($tp['folders']) as $f) {
+            $fid = (int)$f['folder_id'];
+            if ($fid <= 0) continue;
+            if ((int)db_value("SELECT COUNT(*) FROM folder WHERE folder_parent = '$fid'") > 0) continue;
+            if ((int)db_value("SELECT COUNT(*) FROM page WHERE page_folder = '$fid'") > 0) continue;
+            if ((int)db_value("SELECT COUNT(*) FROM files WHERE folder = '$fid'") > 0) continue;
+            db("DELETE FROM folder WHERE folder_id = '$fid' LIMIT 1");
+        }
+    };
+
+    // The widgets left to the editor: the layouts handed in, written to the
+    // rows prepare made with an empty placeholder.
+    foreach ($tp['widgets'] as $w) {
+        if (empty($w['starter'])) continue;
+        $cfg  = json_decode((string)$w['system_region_config'], true);
+        $kind = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
+        $tree = ($kind !== '' && isset($starters[$kind]))
+            ? _pg_tpl_clean_starter($starters[$kind], 'tpl_' . substr(md5(uniqid('', true)), 0, 6) . '_')
+            : null;
+        $json = is_array($tree) ? pg_designer_tree_encode($tree) : '';
+        if ($json === '') {
+            $undo();
+            return array('ok' => false, 'error' => lang(array('string' => 'The layout of the "{var:1}" widget is missing.', 'vars' => $kind)));
+        }
+        db("UPDATE shared_components SET tree_json = '" . e($json) . "', updated_at = '" . time() . "' WHERE id = '" . (int)$w['id'] . "' LIMIT 1");
+    }
+
+    $home_key = '';
+    if (!empty($opts['home'])) {
+        foreach ($tp['pages'] as $p) {
+            if ($p['key'] === 'home') { $home_key = 'home'; break; }
+        }
+        if ($home_key === '' && !empty($tp['pages'])) $home_key = (string)$tp['pages'][0]['key'];
+    }
+
+    // The pages, shaped the way the editor sends them. Their trees get the
+    // ids the editor would give them when the tabs open.
+    $pages = array();
+    foreach ($tp['pages'] as $p) {
+        $tree = $p['tree'];
+        $n = 0;
+        _pg_tpl_assign_ids($tree, 'sd_', $n);
+        $pages[] = array(
+            'key'                      => (string)$p['tab_key'],
+            'template_key'             => (string)$p['key'],
+            'page_id'                  => 0,
+            'page_name'                => (string)$p['page_name'],
+            'page_folder'              => (int)$p['page_folder'],
+            'page_title'               => (string)$p['page_title'],
+            'page_meta_description'    => (string)$p['page_meta_description'],
+            'page_search'              => (int)$p['page_search'],
+            'page_search_keywords'     => '',
+            'page_sitemap'             => (int)$p['page_sitemap'],
+            'page_noindex'             => (int)$p['page_noindex'],
+            'page_nofollow'            => 0,
+            'page_home'                => ($home_key !== '' && $p['key'] === $home_key) ? 1 : 0,
+            'pg_comments'              => (int)$p['pg_comments'],
+            'pg_comments_label'        => (string)$p['pg_comments_label'],
+            'pg_comments_allow_new'    => (int)$p['pg_comments_allow_new'],
+            'pg_comments_rating'       => (int)$p['pg_comments_rating'],
+            'pg_comments_auto_publish' => (int)$p['pg_comments_auto_publish'],
+            'pg_comments_show_date'    => (int)$p['pg_comments_show_date'],
+            'pg_comments_login'        => (int)$p['pg_comments_login'],
+            // The comment e-mails; a page named by tab key is written below,
+            // once the ids are known (pg_designer_resolve_page_tab_refs()).
+            'pg_comments_email_page'    => isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : 0,
+            'pg_comments_email_subject' => isset($p['pg_comments_email_subject']) ? (string)$p['pg_comments_email_subject'] : '',
+            'pg_comments_notify_email'  => isset($p['pg_comments_notify_email']) ? (string)$p['pg_comments_notify_email'] : '',
+            'form_settings'            => is_array($p['formSettings']) ? $p['formSettings'] : array(),
+            'tree_json'                => pg_designer_tree_encode($tree),
+        );
+    }
+
+    $errors = array();
+    $warnings = array();
+    foreach ($pages as $p) {
+        $r = pg_designer_save_page(0, $p, $user, true);
+        foreach ($r['errors'] as $err) $errors[] = $err;
+    }
+    if ($errors) {
+        $undo();
+        return array('ok' => false, 'error' => implode(' ', $errors));
+    }
+
+    $style_data = array(
+        'style_id'                          => 0,
+        'name'                              => (string)$tp['style_name'],
+        'theme_id'                          => 0,
+        'additional_body_classes'           => '',
+        'collection'                        => 'a',
+        'social_networking_position'        => (defined('SOCIAL_NETWORKING') && SOCIAL_NETWORKING == TRUE) ? 'bottom_left' : '',
+        'style_head'                        => '',
+        'style_empty_cell_width_percentage' => '',
+        'user_id'                           => (int)$user['id'],
+        'framework'                         => $tp['template']['framework'],
+        'template'                          => $tp['template']['id'],
+        'template_version'                  => $tp['template']['version'],
+    );
+    // Written only when asked for, the way the editor's save writes them
+    // (save_system_style() checks the keys).
+    foreach (array('look', 'palette') as $theme_key) {
+        if (array_key_exists($theme_key, $opts)) $style_data[$theme_key] = (string)$opts[$theme_key];
+    }
+    $style_id = (int)save_system_style($style_data);
+    if ($style_id <= 0) {
+        $style_id = 0;
+        $undo();
+        return array('ok' => false, 'error' => lang('The design could not be saved. Please try again.'));
+    }
+
+    $tab_ids = array();
+    $id_map  = array();
+    foreach ($pages as $p) {
+        $r = pg_designer_save_page($style_id, $p, $user, false);
+        if (empty($r['ok']) || (int)$r['page_id'] <= 0) {
+            $undo();
+            return array('ok' => false, 'error' => implode(' ', (array)$r['errors']));
+        }
+        $written_pages[] = (int)$r['page_id'];
+        $tab_ids[$p['key']] = (int)$r['page_id'];
+        $id_map[$p['template_key']] = (int)$r['page_id'];
+        foreach ($r['warnings'] as $wn) $warnings[] = $wn;
+    }
+
+    // Widget settings that named a page before it had an id, then the forms,
+    // in the order the editor's save runs them: a form's "next page" may be
+    // a page written after it.
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+    pg_designer_resolve_tab_refs($pages, $tab_ids);
+    $tab_id_map = array();
+    foreach ($tab_ids as $tab_key => $tab_page_id) $tab_id_map[] = array('key' => (string)$tab_key, 'page_id' => (int)$tab_page_id);
+    pg_designer_resolve_page_tab_refs($pages, $tab_id_map, $tab_ids);
+    if (function_exists('pg_cf_reconcile_page_form')) {
+        foreach ($pages as $p) {
+            $settings = pg_designer_resolve_tab_values($p['form_settings'], $tab_ids);
+            if (trim((string)(isset($settings['form_name']) ? $settings['form_name'] : '')) === '') unset($settings['form_name']);
+            pg_cf_reconcile_page_form($tab_ids[$p['key']], (int)$user['id'], $settings);
+        }
+    }
+
+    // One home page: the one just marked.
+    $home_page_id = ($home_key !== '' && isset($id_map[$home_key])) ? (int)$id_map[$home_key] : 0;
+    if ($home_page_id > 0) {
+        db("UPDATE page SET page_home = '' WHERE page_home = 'yes' AND page_id <> '$home_page_id'");
+    }
+
+    // The scores the pages list shows, as the editor's save leaves them.
+    if ((!isset($opts['seo']) || $opts['seo']) && is_file(PG_FUNCTIONS_DIR . '/seo.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/seo.php');
+        if (function_exists('pg_seo_schema_ready') && pg_seo_schema_ready() && is_file(PG_FUNCTIONS_DIR . '/seo_structure.php')) {
+            require_once(PG_FUNCTIONS_DIR . '/seo_structure.php');
+            foreach ($written_pages as $pid) {
+                try { pg_seo_analyze_record('page', $pid); } catch (Throwable $t) { /* the score is advisory */ }
+            }
+            try { pg_seo_recalculate('page', $written_pages); } catch (Throwable $t) {}
+        }
+    }
+
+    log_activity(lang(array('string' => 'style ({var:1}) was created', 'vars' => array($tp['style_name']))), isset($user['username']) ? (string)$user['username'] : '');
+
+    return array(
+        'ok'           => true,
+        'style_id'     => $style_id,
+        'style_name'   => (string)$tp['style_name'],
+        'pages'        => $id_map,
+        'home_page_id' => $home_page_id,
+        'warnings'     => $warnings,
+    );
+}
+
+// The flags a template widget shows a part for, as a first-time visitor sees
+// the page: signed out, looking at a record that exists. Every other flag
+// (signed in, has orders, just submitted...) is off in a preview.
+function _pg_tpl_preview_flag_on($flag)
+{
+    return in_array((string)$flag, array('is_signed_out', 'record_found'), true);
+}
+
+// A template tree made drawable without a site: every shared component the
+// tree names is put in its place, every widget is drawn from its own layout
+// with the words and pictures the canvas shows (its data bindings dropped),
+// a listing repeats its card three times, and a widget whose layout the
+// editor builds ('starter') is left out.
+function _pg_tpl_preview_tree($node, $tpl, $depth = 0)
+{
+    if (!is_array($node) || $depth > 60) return null;
+    if (isset($node['type']) && $node['type'] === 'shared_ref') {
+        if (isset($node['props']['templateShared'])) {
+            $key = (string)$node['props']['templateShared'];
+            return (isset($tpl['shared'][$key]['tree']) && is_array($tpl['shared'][$key]['tree']))
+                ? _pg_tpl_preview_tree($tpl['shared'][$key]['tree'], $tpl, $depth + 1) : null;
+        }
+        if (isset($node['props']['templateWidget'])) {
+            $key = (string)$node['props']['templateWidget'];
+            $w = isset($tpl['widgets'][$key]) ? $tpl['widgets'][$key] : null;
+            if (!$w || !isset($w['tree']) || !is_array($w['tree'])) return null;
+            if (!_pg_tpl_requirement_met(isset($w['requires']) ? $w['requires'] : '')) return null;
+            $wrap = array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => ''),
+                          'children' => isset($w['tree']['children']) ? $w['tree']['children'] : array());
+            return _pg_tpl_preview_tree($wrap, $tpl, $depth + 1);
+        }
+        return null;
+    }
+    if (isset($node['props']['_bindings']['eo_visible_if'])
+        && !_pg_tpl_preview_flag_on($node['props']['_bindings']['eo_visible_if'])) {
+        return null;
+    }
+    if (isset($node['props']) && is_array($node['props'])) unset($node['props']['_bindings']);
+    $children = array();
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+        if (is_array($child) && isset($child['type']) && $child['type'] === 'loop_area') {
+            // The repeated part: three sample records.
+            $inner = array();
+            foreach ((isset($child['children']) && is_array($child['children'])) ? $child['children'] : array() as $c) {
+                $r = _pg_tpl_preview_tree($c, $tpl, $depth + 1);
+                if ($r !== null) $inner[] = $r;
+            }
+            for ($i = 0; $i < 3; $i++) {
+                foreach ($inner as $r) $children[] = $r;
+            }
+            continue;
+        }
+        $r = _pg_tpl_preview_tree($child, $tpl, $depth + 1);
+        if ($r !== null) $children[] = $r;
+    }
+    $node['children'] = $children;
+    return $node;
+}
+
+// The pages of a template a preview can show: the public ones a visitor
+// finds from the menu, drawn from their own layouts - none with a widget
+// whose layout only the editor builds. array(key => title), in the
+// template's order. $any_folder: every page drawn from its own layouts,
+// wherever it is (pg_design_template_email_pages() picks from those).
+function pg_design_template_preview_pages($tpl, $any_folder = false)
+{
+    $out = array();
+    if (!is_array($tpl) || empty($tpl['pages'])) return $out;
+    $starter = function ($node) use (&$starter, $tpl) {
+        if (!is_array($node)) return false;
+        if (isset($node['type']) && $node['type'] === 'shared_ref' && isset($node['props']['templateWidget'])) {
+            $key = (string)$node['props']['templateWidget'];
+            $w = isset($tpl['widgets'][$key]) ? $tpl['widgets'][$key] : null;
+            // A widget of no one page (the cart link on every page) is left
+            // out of the picture, not the page with it.
+            if ($w && isset($w['tree']) && $w['tree'] === 'starter' && (string)(isset($w['page']) ? $w['page'] : '') !== '') return true;
+        }
+        foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+            if ($starter($child)) return true;
+        }
+        return false;
+    };
+    foreach ($tpl['pages'] as $p) {
+        if (!_pg_tpl_requirement_met(isset($p['requires']) ? $p['requires'] : '')) continue;
+        if (!$any_folder) {
+            if ((isset($p['folder']) ? (string)$p['folder'] : '') !== 'public') continue;
+            if (!empty($p['noindex']) || (isset($p['sitemap']) && !$p['sitemap'])) continue;
+        }
+        if ($starter($p['tree'])) continue;
+        $out[(string)$p['key']] = isset($p['title']) ? (string)$p['title'] : (string)$p['key'];
+    }
+    return $out;
+}
+
+// The pages a template sends as e-mails: the ones its own settings name as
+// an e-mail page - a form's notification or reply ('notify_page_id',
+// 'confirm_page_id'), a page's comment e-mail ('email_page'), a widget's
+// e-mail page (a setting ending in '_email_page_id'). Those drawn from their
+// own layouts, as pg_design_template_preview_pages() takes them, in the
+// template's order: array(key => title).
+function pg_design_template_email_pages($tpl)
+{
+    $out = array();
+    if (!is_array($tpl) || empty($tpl['pages'])) return $out;
+    $named = array();
+    $take = function ($value) use (&$named) {
+        if (is_string($value) && preg_match('/^\{\{tab:([a-z0-9_-]+)\}\}$/', $value, $m)) $named[$m[1]] = true;
+    };
+    foreach ($tpl['pages'] as $p) {
+        foreach (array('notify_page_id', 'confirm_page_id') as $k) {
+            if (isset($p['form'][$k])) $take($p['form'][$k]);
+        }
+        if (isset($p['comments']['email_page'])) $take($p['comments']['email_page']);
+    }
+    foreach ((isset($tpl['widgets']) && is_array($tpl['widgets'])) ? $tpl['widgets'] : array() as $w) {
+        foreach ((isset($w['config']) && is_array($w['config'])) ? $w['config'] : array() as $k => $v) {
+            if (substr((string)$k, -14) === '_email_page_id') $take($v);
+        }
+    }
+    foreach (pg_design_template_preview_pages($tpl, true) as $key => $title) {
+        if (isset($named[$key])) $out[$key] = $title;
+    }
+    return $out;
+}
+
+/**
+ * One page of a template as a visitor would see it, drawn without a site.
+ *
+ * Nothing is read from or written to a database: the page's tree, the
+ * shared components and the widget layouts all come from the template file
+ * (_pg_tpl_preview_tree()), and the framework's and the chosen look's and
+ * palette's stylesheets are linked the way a published design links them.
+ * For the installer, which offers a template before a site exists.
+ *
+ * $link: the address a link to another page of the template gets, with
+ * {page} for the page's key; '#' by default. The page tells the frame it is
+ * in which page it shows (postMessage {pgDesignPreview: key}).
+ *
+ * Returns the whole HTML document, or '' when the template or the page is
+ * not one a preview can show (pg_design_template_preview_pages(),
+ * pg_design_template_email_pages()).
+ */
+function pg_design_template_preview_html($template_id, $page_key, $look = '', $palette = '', $link = '#')
+{
+    $tpl = pg_design_template($template_id);
+    if (!$tpl) return '';
+    $pages = pg_design_template_preview_pages($tpl) + pg_design_template_email_pages($tpl);
+    if (!isset($pages[$page_key])) return '';
+    $page = null;
+    foreach ($tpl['pages'] as $p) {
+        if ((string)$p['key'] === (string)$page_key) { $page = $p; break; }
+    }
+    if (!$page) return '';
+
+    $vars = array(
+        'site_name'  => (defined('ORGANIZATION_NAME') && trim((string)ORGANIZATION_NAME) !== '') ? (string)ORGANIZATION_NAME : lang('My Site'),
+        'site_email' => (defined('EMAIL_ADDRESS') && trim((string)EMAIL_ADDRESS) !== '') ? (string)EMAIL_ADDRESS : 'hello@example.com',
+        'year'       => date('Y'),
+        'pages'      => array(),
+        'tabs'       => array(),
+        'folders'    => array(),
+    );
+    foreach ($tpl['pages'] as $p) {
+        $key = (string)$p['key'];
+        $vars['pages'][$key] = isset($pages[$key]) ? str_replace('{page}', rawurlencode($key), (string)$link) : '#';
+    }
+    $tree = _pg_tpl_fill(_pg_tpl_preview_tree($page['tree'], $tpl), $vars);
+    if (!is_array($tree)) return '';
+    $html = generate_style_code_from_tree($tree, (string)$page_key, '');
+    if ($html === '') return '';
+
+    $fw = pg_design_framework($tpl['framework']);
+    $head = '';
+    if ($fw['css'] !== '') $head .= '<link rel="stylesheet" href="' . h($fw['css']) . '">';
+    if (!empty($fw['bootstrap'])) $head .= '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">';
+    if (function_exists('pg_design_theme_links')) $head .= pg_design_theme_links($look, $palette, $tpl['framework']);
+    // A preview is looked at, not used: nothing on it is submitted.
+    $head .= '<style>form{pointer-events:none}</style>';
+    $foot = ($fw['js'] !== '') ? '<script src="' . h($fw['js']) . '"></script>' : '';
+    $foot .= '<script>try{parent.postMessage({pgDesignPreview:' . json_encode((string)$page_key) . '},"*")}catch(e){}</script>';
+
+    $html = preg_replace('~<!--pg-active:(?:begin|end)-->~', '', $html);
+    $html = preg_replace('~<html lang="[^"]*">~', '<html lang="' . h(lang(array('info' => true))) . '">', $html, 1);
+    $html = str_replace('<title></title>', '<title>' . h(isset($page['title']) ? (string)$page['title'] : '') . '</title>', $html);
+    $html = str_replace('<meta_tags></meta_tags>', $head, $html);
+    $html = str_replace('</body>', $foot . '</body>', $html);
+    return $html;
+}
+
+/**
+ * Where shared components and system widgets are placed.
+ *
+ * sid → the pages whose tree references it, each with the design it belongs
+ * to ({page_id, page_name, style_id, style_name}). Every page counts, the
+ * recycle bin included: a page brought back from the bin must find its
+ * widget where it left it. Trees live on the page since the multi-page
+ * designer; an un-migrated database falls back to the per-style scan and
+ * page_id is 0. $ids limits the answer to those rows (null = every row).
+ */
+function pg_shared_component_usage($ids = null)
+{
+    if ($ids === null) {
+        $ids  = array();
+        $rows = db_items("SELECT id FROM shared_components");
+        foreach ((is_array($rows) ? $rows : array()) as $r) $ids[] = (int)$r['id'];
+    }
+    $usage = array();
+    foreach ((array)$ids as $sid) {
+        $sid = (int)$sid;
+        if ($sid > 0) $usage[$sid] = array();
+    }
+    if (empty($usage)) return $usage;
+
+    if (pg_multi_page_design_ready()) {
+        $trees = db_items(
+            "SELECT page.page_id, page.page_name, style.style_id, style.style_name,
+                    " . pg_page_tree_sql_expr() . " AS tree_json
+             FROM page
+             INNER JOIN style ON page.page_style = style.style_id
+             WHERE page.layout_type = 'system'
+             HAVING tree_json IS NOT NULL AND tree_json != ''"
+        );
+    } else {
+        $trees = db_items(
+            "SELECT 0 AS page_id, style_name AS page_name, style_id, style_name, style_tree_json AS tree_json
+             FROM style
+             WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
+        );
+    }
+    foreach ((is_array($trees) ? $trees : array()) as $row) {
+        $json = (string)$row['tree_json'];
+        if (strpos($json, '"sharedId"') === false) continue;
+        // The whole digit run, so id 1 never matches a reference to 10.
+        if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
+        foreach (array_unique($m[1]) as $sid) {
+            $sid = (int)$sid;
+            if (!isset($usage[$sid])) continue;
+            $usage[$sid][] = array(
+                'page_id'    => (int)$row['page_id'],
+                'page_name'  => (string)$row['page_name'],
+                'style_id'   => (int)$row['style_id'],
+                'style_name' => (string)$row['style_name'],
+            );
+        }
+    }
+    return $usage;
+}
+
+/**
+ * Widget trees and settings the current request renders in place of the
+ * saved ones: sid => {tree_json, cfg}. Set only by the editor's Preview.
+ */
+function pg_sw_preview_overrides($set = null)
+{
+    static $overrides = array();
+    if ($set !== null) $overrides = is_array($set) ? $set : array();
+    return $overrides;
+}
+
+// A page an unsaved tab stands for has no id yet: a `tab:<key>` setting is
+// "nothing chosen" in a preview.
+function _pg_preview_drop_tab_refs($value)
+{
+    if (is_array($value)) {
+        foreach ($value as $k => $v) $value[$k] = _pg_preview_drop_tab_refs($v);
+        return $value;
+    }
+    return (is_string($value) && strncmp($value, 'tab:', 4) === 0) ? 0 : $value;
+}
+
+/**
+ * The editor's Preview: the system widgets on a page, rendered by the server,
+ * which the blob page the editor opens cannot do.
+ *
+ * Each widget renders from the tree and settings the editor holds now, saved
+ * or not, and inside the page once it has been saved: the address the
+ * widgets read ($_GET['page']) is that page's. A widget that shows one
+ * record gets a real one - the newest submission of its form, the first
+ * product of its group - the way the SEO pass picks one
+ * (pg_seo_render_context()); the renderer's own access rules still decide
+ * whether the editor may see it. The render is a background one:
+ * output_error() throws, no status code is written, nobody is redirected,
+ * and it is drawn as a visitor who is not signed in would see it.
+ *
+ * @param int   $page_id the page, 0 when it has not been saved
+ * @param array $widgets [{id, tree_json, system_region_config}]
+ * @return array sid => html
+ */
+function pg_designer_preview_widgets($page_id, $widgets)
+{
+    $page_id   = (int)$page_id;
+    $overrides = array();
+    foreach ((array)$widgets as $w) {
+        if (!is_array($w) || count($overrides) >= 40) continue;
+        $sid = isset($w['id']) ? (int)$w['id'] : 0;
+        if ($sid <= 0) continue;
+        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
+        $overrides[$sid] = array(
+            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
+            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+        );
+    }
+    if (empty($overrides)) return array();
+
+    $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';
+
+    $saved_get   = $_GET;
+    $saved_seo   = pg_seo_rendering();
+    $saved_throw = pg_error_throws();
+    pg_seo_rendering(true);
+    pg_error_throws(true);
+    pg_sw_preview_overrides($overrides);
+
+    $out = array();
+    try {
+        foreach ($overrides as $sid => $ov) {
+            $_GET = array();
+            if ($page_name !== '') $_GET['page'] = $page_name;
+
+            $cfg = $ov['cfg'];
+            if (!is_array($cfg)) {
+                $cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
+            }
+            $type = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
+
+            if ($type === 'form_item_view') {
+                $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+                $code = ($form_pid > 0) ? (string)db_value("SELECT reference_code FROM forms WHERE page_id = '" . $form_pid . "' ORDER BY id DESC LIMIT 1") : '';
+                if ($code !== '') $_GET['r'] = $code;
+            } elseif ($type === 'catalog_item_view' && $page_name !== '') {
+                $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);
+                $address = ($group > 0)
+                    ? (string)db_value("SELECT products.address_name FROM products
+                                        INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
+                                        WHERE products_groups_xref.product_group = '" . $group . "'
+                                          AND products.enabled = '1' AND products.address_name != ''
+                                        ORDER BY products.id ASC LIMIT 1")
+                    : (string)db_value("SELECT address_name FROM products WHERE enabled = '1' AND address_name != '' ORDER BY id ASC LIMIT 1");
+                if ($address !== '') $_GET['page'] = $page_name . '/' . $address;
+            }
+
+            ob_start();
+            try {
+                $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
+            } catch (Throwable $t) {
+                $html = '';
+            }
+            ob_end_clean();
+            $out[(int)$sid] = (string)$html;
+        }
+    } finally {
+        $_GET = $saved_get;
+        pg_seo_rendering($saved_seo);
+        pg_error_throws($saved_throw);
+        pg_sw_preview_overrides(array());
+    }
+    return $out;
+}
+
+/**
+ * Real records for the canvas: a listing widget's repeated part rendered by
+ * the server for up to $limit records, one HTML string each.
+ *
+ * The widget renders from the editor's tree and settings (saved or not) with
+ * a marker around every repetition of its loop area, and the repetitions are
+ * cut out of the answer; whatever the widget draws once - search box,
+ * pagination, headings - is left behind. Same background render as the
+ * Preview (pg_designer_preview_widgets()): what a visitor who is not signed
+ * in would see.
+ *
+ * @param int   $page_id the page, 0 when it has not been saved
+ * @param array $widget  {id, tree_json, system_region_config}
+ * @param int   $limit   1..24
+ * @return string[]
+ */
+function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
+{
+    if (!is_array($widget)) return array();
+    $sid   = isset($widget['id']) ? (int)$widget['id'] : 0;
+    $limit = max(1, min(24, (int)$limit));
+    $tree  = isset($widget['tree_json']) ? json_decode((string)$widget['tree_json'], true) : null;
+    if ($sid <= 0 || !is_array($tree)) return array();
+
+    $cfg = isset($widget['system_region_config']) ? json_decode((string)$widget['system_region_config'], true) : null;
+    if (!is_array($cfg)) {
+        $cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . $sid . "' LIMIT 1"), true);
+    }
+    if (!is_array($cfg)) return array();
+    $type = isset($cfg['regionType']) ? (string)$cfg['regionType'] : 'form_list_view';
+    if (in_array($type, array('submitted_forms_list', 'form_list', 'blog_list'), true)) $type = 'form_list_view';
+    if (!in_array($type, array('form_list_view', 'catalog_listing'), true)) return array();
+
+    // Mark every repetition of the first loop area.
+    $marked = false;
+    $mark = function (&$node) use (&$mark, &$marked) {
+        if ($marked || !is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
+        foreach ($node['children'] as $i => $child) {
+            if (is_array($child) && isset($child['type']) && $child['type'] === 'loop_area') {
+                $kids = (isset($child['children']) && is_array($child['children'])) ? $child['children'] : array();
+                if (empty($kids)) return;
+                array_unshift($kids, array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--pg-ghost-start-->'), 'children' => array()));
+                $kids[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--pg-ghost-end-->'), 'children' => array());
+                $node['children'][$i]['children'] = $kids;
+                $marked = true;
+                return;
+            }
+            $mark($node['children'][$i]);
+            if ($marked) return;
+        }
+    };
+    $mark($tree);
+    if (!$marked) return array();
+
+    $cfg['items_per_page'] = $limit;
+    unset($cfg['max_results']);
+
+    $html = pg_designer_preview_widgets($page_id, array(array(
+        'id'                   => $sid,
+        'tree_json'            => json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'system_region_config' => json_encode($cfg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    )));
+    $html = isset($html[$sid]) ? (string)$html[$sid] : '';
+    if ($html === '' || !preg_match_all('/<!--pg-ghost-start-->(.*?)<!--pg-ghost-end-->/s', $html, $m)) return array();
+
+    $rows = array();
+    foreach ($m[1] as $row) {
+        $row = trim(preg_replace('/<!--pg-custom-php:[^>]*-->/', '', $row));
+        if ($row !== '') $rows[] = $row;
+        if (count($rows) >= $limit) break;
+    }
+    return $rows;
 }

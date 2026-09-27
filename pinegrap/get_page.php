@@ -346,10 +346,11 @@ $access_control_type = get_access_control_type($folder_id);
 switch ($access_control_type)
 {
 case 'private':
-	// if user is not logged in then send user to login screen
+	// if user is not logged in then send user to login screen (the site's
+	// designed sign-in page when it has one, see pg_sw_sign_in_url())
 	if (USER_LOGGED_IN == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL), 'login', pg_sw_page_is_visual($page_id)));
 		exit();
 		// else user is logged in
 	}
@@ -382,9 +383,10 @@ case 'guest':
 	break;
 case 'registration':
 	// if user is not logged in or has an invalid login, then forward user to Registration Entrance page
+	// (the site's designed sign-in page, which links to sign-up, when it has one)
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id)));
 		exit();
 	}
 	break;
@@ -2648,7 +2650,22 @@ else
 	// (e.g. body preview in create e-mail campaign, preview style, preview theme)
 	// and the user has edit access to this page,
 	// then leave view page mode set to edit.
-	if (isset($_SESSION['software']['view_page_mode']) && ($_SESSION['software']['view_page_mode'] == 'edit') && ($get_access_cp != 'no') && ($edit_access == true))
+	// A page built in the visual editor has no edit mode: its layout is
+	// edited in the editor and its records by the pencils its widgets draw.
+	// A session left in edit mode by a legacy page must not draw the legacy
+	// dashed boxes on it.
+	$pg_mode_visual = false;
+	if (isset($_SESSION['software']['view_page_mode']) && ($_SESSION['software']['view_page_mode'] == 'edit') && function_exists('pg_page_is_visual_design'))
+	{
+		$_pg_mv_cols = function_exists('pg_multi_page_design_ready') && pg_multi_page_design_ready();
+		$_pg_mv_row  = db_item("SELECT page_style" . ($_pg_mv_cols ? ", (page_tree_json <> '') AS has_tree" : ", 0 AS has_tree") . "
+		                       FROM page WHERE page_id = '" . e((int)$page_id) . "' LIMIT 1");
+		$pg_mode_visual = is_array($_pg_mv_row) && pg_page_is_visual_design(array(
+			'page_style' => (int)$_pg_mv_row['page_style'],
+			'has_tree'   => (int)$_pg_mv_row['has_tree'],
+		));
+	}
+	if (isset($_SESSION['software']['view_page_mode']) && ($_SESSION['software']['view_page_mode'] == 'edit') && ($get_access_cp != 'no') && ($edit_access == true) && !$pg_mode_visual)
 	{
 		$view_page_mode = 'edit';
 		// Otherwise use preview mode.

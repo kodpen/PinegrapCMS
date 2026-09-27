@@ -150,7 +150,7 @@ if (!$_POST) {
                 <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                     <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link link-danger bi bi-x-lg p-0 opacity-0"></button></div>
                     <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
-                        <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="assets/images/person1.png" />
+                        <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($row['first_name'] ?? '', $row['last_name'] ?? '', $row['company'] ?? '', $_REQUEST['id'] ?? '') : 'assets/images/person1.png') . '" />
                     </div>
                 </div>
             </div>';

@@ -78,7 +78,7 @@ if (!isset($_SESSION['software']['view_short_links']['order'])) {
 $all_short_links = 0;
 
 // get the total number of short links
-$query = "SELECT COUNT(*) FROM short_links";
+$query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_short_links = $row[0];
@@ -91,6 +91,7 @@ $query =
         short_links.id,
         short_links.name,
         short_links.destination_type,
+        " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at," : "") . "
         page.page_name,
         page.page_folder AS folder_id,
         product_groups.address_name AS product_group_address_name,
@@ -107,6 +108,7 @@ $query =
     LEFT JOIN products ON short_links.product_id = products.id
     LEFT JOIN user AS created_user ON short_links.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON short_links.last_modified_user_id = last_modified_user.user_id
+    WHERE short_links.destination_type <> 'workspace_guest'
     ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_short_links']['order'] ?? '');
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);
@@ -177,13 +179,24 @@ if ($short_links) {
             $last_modified_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($short_link['last_modified_username']) ) ) );
         }
 
+        // A one-time link has a generated address, shown once when it was
+        // made: it is known here by its first characters, and has no address
+        // to visit. Opened once or until a time, it says where it stands.
+        $short_link_token = ((string) $short_link['name'] === '');
+        $short_link_state = pg_short_link_state($short_link);
+        $output_name = $short_link_token ? h((string) ($short_link['token_hint'] ?? '')) . '…' : h($short_link['name']);
+
+        if ($short_link_state['label'] !== '') {
+            $output_name .= '<div class="small text-body-secondary">' . h($short_link_state['label']) . '</div>';
+        }
+
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
                     <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    <a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>
+                    ' . ($short_link_token ? '' : '<a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
                 </td>
-                <td class="align-middle chart_label">' . h($short_link['name']) . '</td>
+                <td class="align-middle chart_label">' . $output_name . '</td>
                 <td class="align-middle">' . $output_destination_type . '</td>
                 <td class="align-middle">' . $output_destination . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $short_link['created_timestamp'])) . $created_username . '</td>

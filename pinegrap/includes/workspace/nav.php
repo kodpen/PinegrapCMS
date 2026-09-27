@@ -53,6 +53,11 @@ function ws_nav_groups($viewer)
         $groups['records'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit', 'rail' => false);
     }
 
+    // Scheduled actions are staff's (scheduled.php).
+    if (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
+        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+    }
+
     if ($viewer['settings']) {
         $groups['foot'][] = array('key' => 'settings', 'label' => lang('Workspace Settings'), 'icon' => 'bi-sliders', 'url' => $base . 'workspace_settings.php');
     }
@@ -96,6 +101,7 @@ function ws_screen_rail($viewer, $current)
         $count = $badge($link);
 
         return '<a class="ws-rail-item' . (($link['key'] === $current) ? ' active' : '') . '" href="' . h($link['url']) . '" title="' . h($link['label']) . '" aria-label="' . h($link['label']) . '"'
+            . ' data-ws-nav="' . h($link['key']) . '"'
             . (!empty($link['inbox']) ? ' data-ws-inbox="1"' : '')
             . (($link['key'] === $current) ? ' aria-current="page"' : '') . '>'
             . '<i class="bi ' . h($link['icon']) . '" aria-hidden="true"></i>'
@@ -107,6 +113,7 @@ function ws_screen_rail($viewer, $current)
         $count = $badge($link);
 
         return '<a class="ws-channel-link' . (($link['key'] === $current) ? ' active' : '') . '" href="' . h($link['url']) . '"'
+            . ' data-ws-nav="' . h($link['key']) . '"'
             . (!empty($link['inbox']) ? ' data-ws-inbox="1"' : '') . '>'
             . '<i class="bi ' . h($link['icon']) . '" aria-hidden="true"></i>'
             . '<span class="ws-channel-name">' . h($link['label']) . '</span>'
@@ -115,7 +122,7 @@ function ws_screen_rail($viewer, $current)
     };
 
     $channel_link = function ($channel) use ($base) {
-        $icon = ($channel['kind'] === 'private') ? 'bi-lock' : (((int) $channel['contact_id'] > 0) ? 'bi-person-vcard' : 'bi-hash');
+        $icon = ws_channel_icon($channel);
         $count = '';
 
         if ($channel['mentions']) {
@@ -124,8 +131,9 @@ function ws_screen_rail($viewer, $current)
             $count = '<span class="ws-count">' . (($channel['unread'] > 99) ? '99+' : (int) $channel['unread']) . '</span>';
         }
 
-        return '<a class="ws-channel-link' . ($channel['unread'] ? ' ws-unread' : '') . ($channel['joined'] ? '' : ' ws-notjoined') . '" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '">'
-            . '<i class="bi ' . $icon . '" aria-hidden="true"></i>'
+        return '<a class="ws-channel-link' . ($channel['unread'] ? ' ws-unread' : '') . ($channel['joined'] ? '' : ' ws-notjoined') . '" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '"'
+            . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'
+            . '<i class="bi ' . $icon . ' ws-ch-icon" aria-hidden="true"></i>'
             . '<span class="ws-channel-name">' . h($channel['name']) . '</span>' . $count . '</a>';
     };
 
@@ -133,7 +141,22 @@ function ws_screen_rail($viewer, $current)
     $mine = array();
     $others = array();
 
+    // Channels in a group are listed under it (pinned ones stay pinned).
+    $group_rows = ws_groups_for($viewer);
+    $known_groups = array();
+
+    foreach ($group_rows as $group) {
+        $known_groups[$group['id']] = true;
+    }
+
+    $in_group = array();
+
     foreach ($channels as $channel) {
+        if (!$channel['pinned'] && ($channel['group_id'] > 0) && isset($known_groups[$channel['group_id']])) {
+            $in_group[$channel['group_id']][] = $channel;
+            continue;
+        }
+
         if (!$channel['joined']) {
             $others[] = $channel;
         } elseif ($channel['pinned']) {
@@ -160,7 +183,8 @@ function ws_screen_rail($viewer, $current)
     foreach (array_slice($pinned, 0, 8) as $channel) {
         $initial = mb_strtoupper(mb_substr(ltrim((string) $channel['name'], '#'), 0, 1));
 
-        $rail .= '<a class="ws-rail-item ws-rail-channel" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '" title="#' . h($channel['name']) . '" aria-label="#' . h($channel['name']) . '">'
+        $rail .= '<a class="ws-rail-item ws-rail-channel" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '" title="#' . h($channel['name']) . '" aria-label="#' . h($channel['name']) . '"'
+            . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'
             . '<span class="ws-rail-initial">' . h($initial) . '</span>'
             . (($channel['unread'] || $channel['mentions']) ? '<span class="ws-rail-dot' . ($channel['mentions'] ? ' ws-rail-dot-mention' : '') . '"></span>' : '')
             . '</a>';
@@ -202,6 +226,38 @@ function ws_screen_rail($viewer, $current)
 
     if (!empty($pinned)) {
         $list .= $section(lang('Pinned'), implode('', array_map($channel_link, $pinned)));
+    }
+
+    // The groups, one inside another, each with its channels; a group with
+    // nothing to show in it is left out here.
+    $children = array();
+
+    foreach ($group_rows as $group) {
+        $children[$group['parent_id']][] = $group;
+    }
+
+    $draw_group = function ($group, $depth) use (&$draw_group, $children, $in_group, $channel_link) {
+        $inner = implode('', array_map($channel_link, $in_group[$group['id']] ?? array()));
+
+        foreach ($children[$group['id']] ?? array() as $child) {
+            $inner .= $draw_group($child, $depth + 1);
+        }
+
+        if ($inner === '') {
+            return '';
+        }
+
+        return '<div class="ws-side-group' . (($depth > 0) ? ' ws-side-subgroup' : '') . '"' . (($group['hex'] !== '') ? ' style="--ws-group: ' . h($group['hex']) . '"' : '') . '>'
+            . '<div class="ws-side-title ws-group-title"><span><i class="bi bi-folder2 me-1 ws-group-icon" aria-hidden="true"></i>' . h($group['name']) . '</span></div>'
+            . $inner . '</div>';
+    };
+
+    foreach ($children[0] ?? array() as $group) {
+        $drawn = $draw_group($group, 0);
+
+        if ($drawn !== '') {
+            $list .= '<div class="ws-side-section">' . $drawn . '</div>';
+        }
     }
 
     $list .= $section(lang('My channels'), empty($mine) ? '<div class="small text-body-secondary px-2">' . h(lang('No channels yet.')) . '</div>' : implode('', array_map($channel_link, $mine)));
