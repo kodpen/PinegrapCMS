@@ -19,6 +19,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 /**
  * Has the database the versions of a conversation (2026.4.5, 5.83)?
  *

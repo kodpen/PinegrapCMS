@@ -26,6 +26,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 // How deep groups go: a group at the top and three levels inside it.
 define('WS_GROUP_DEPTH', 4);
 
