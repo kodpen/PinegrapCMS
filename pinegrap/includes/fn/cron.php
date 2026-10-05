@@ -124,7 +124,7 @@ function pg_cron_jobs()
         'job' => array(
             'label'       => lang('General job'),
             'script'      => 'job.php',
-            'interval'    => 300,
+            'interval'    => 60,
             'stale_after' => 21600,
             'dispatch'    => false,
         ),
@@ -299,13 +299,30 @@ function pg_cron_jobs()
             'stale_after' => 172800,
             'dispatch'    => true,
         ),
-        // Repeating workspace tasks. Hourly, so a copy due today is handed out
-        // within the first hour of the day wherever the rotation stands; a run
-        // with nothing due is one indexed read.
+        // Repeating workspace tasks, and the requests to Claude and Pinegrap AI
+        // that waited. Every five minutes, so a copy due today is handed out in
+        // the first minutes of the day and a request held back by a failed call
+        // is tried again soon after; a run with nothing due is one indexed read.
+        //
+        // Scheduled actions are not left to this turn. They are set for a
+        // minute, and a turn in the rotation can come late behind a long job,
+        // so job.php runs them itself on every tick.
         'workspace_recurring_job' => array(
             'label'       => lang('Repeating tasks'),
             'script'      => 'workspace_recurring_job.php',
-            'interval'    => 3600,
+            'interval'    => 300,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        // "Update translations" jobs the server engines work (Google Cloud
+        // Translation), and the ones left open for a day to close. Every five
+        // minutes: a job started from the panel gets twenty seconds there and
+        // the rest is finished here; a run with nothing open is one indexed
+        // read.
+        'translation_job' => array(
+            'label'       => lang('Translations'),
+            'script'      => 'translation_job.php',
+            'interval'    => 300,
             'stale_after' => 172800,
             'dispatch'    => true,
         ),
@@ -525,9 +542,10 @@ function pg_waf_refresh_ai_ranges($force = false)
 /**
  * Human wording for a dispatch interval, for the settings screen.
  *
- * Only the three cadences the shipped jobs actually use get a sentence of
- * their own; anything else an operator configures falls back to hours, which
- * is accurate without needing a phrase per value.
+ * A minute, five minutes, a day and a week get a sentence of their own.
+ * Anything else shorter than an hour is said in minutes and the rest in
+ * hours: rounded to hours, a job that runs every minute was once shown as
+ * running once an hour.
  *
  * @param int $seconds
  * @return string
@@ -536,8 +554,19 @@ function pg_cron_interval_label($seconds)
 {
     $seconds = (int) $seconds;
 
+    if ($seconds <= 60) {
+        return lang('every minute');
+    }
+
     if ($seconds == 300) {
         return lang('every 5 minutes');
+    }
+
+    if ($seconds < 3600) {
+        return lang(array(
+            'string' => 'every {var:1} minutes',
+            'vars'   => (int) round($seconds / 60),
+        ));
     }
 
     if ($seconds == 86400) {
@@ -696,9 +725,9 @@ function pg_cron_dispatch_next()
     }
 
     // One dispatched job at a time for the whole site. The general job runs
-    // every five minutes and several of these take longer than that, so
-    // without a lock a slow campaign send or a large backup would be started
-    // again while the first one is still running.
+    // every minute or every few minutes and several of these take longer than
+    // that, so without a lock a slow campaign send or a large backup would be
+    // started again while the first one is still running.
     //
     // The lock expires on its own. pg_cron_dispatch_finished() releases it at
     // the end of a normal run and after a fatal error, but a process killed

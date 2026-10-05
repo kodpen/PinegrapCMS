@@ -246,6 +246,39 @@ waf_run('router');
 
 $request_url_without_path = mb_substr(REQUEST_URL, mb_strlen(PATH));
 
+// ── Language directory ───────────────────────────────────────────────────
+// /en/about is the page "about" drawn in English (includes/translate/). The
+// first segment is compared with the prefixes the languages settings wrote to
+// config.translation_prefixes; a match is cut off here and the rest of the
+// request is routed as before, with FRONTEND_LANGUAGE saying which language
+// the page is drawn in. PATH is left alone on purpose: the software's assets
+// and its AJAX addresses are built from it and have to stay where they are;
+// LANGUAGE_PATH is the base for links to pages. REQUEST_URL keeps the prefix,
+// so a redirect back to the page lands in the same language.
+if (preg_match('#^([a-z]{2,8}(?:-[a-z]{2,4})?)(/|\?|$)#', $request_url_without_path, $router_language_match)) {
+
+    $router_prefixes = router_translation_prefixes();
+    $router_prefix = $router_language_match[1];
+
+    if (isset($router_prefixes[$router_prefix])) {
+
+        define('FRONTEND_LANGUAGE', $router_prefixes[$router_prefix]);
+        define('LANGUAGE_PREFIX', $router_prefix);
+        define('LANGUAGE_PATH', PATH . $router_prefix . '/');
+
+        $request_url_without_path = mb_substr($request_url_without_path, mb_strlen($router_prefix));
+
+        if (mb_substr($request_url_without_path, 0, 1) == '/') {
+            $request_url_without_path = mb_substr($request_url_without_path, 1);
+        }
+
+        // A file has one address. A relative src="logo.png" on a translated
+        // page asks for /en/logo.png; it is sent to /logo.png for good, so
+        // the file is served and cached from one place.
+        router_language_file_redirect($request_url_without_path);
+    }
+}
+
 // Get first 6 characters so that we can test if visitor used old address format.
 $first_6_characters = mb_strtolower(mb_substr($request_url_without_path, 0, 6));
 
@@ -482,6 +515,97 @@ exit();
 
 function router_escape($string) {
     return mysqli_real_escape_string(db::$con, $string);
+}
+
+/**
+ * The language prefixes the site serves, prefix => language code, from
+ * config.translation_prefixes ("en=en,de=de"). Empty before the 2026.4.6
+ * upgrade, when the column does not exist and the query fails: nothing is
+ * routed differently then.
+ *
+ * @return array
+ */
+function router_translation_prefixes()
+{
+    $result = @mysqli_query(db::$con, "SELECT translation_prefixes FROM config");
+
+    if (!$result) {
+        return array();
+    }
+
+    $row = mysqli_fetch_assoc($result);
+    $map = array();
+
+    if (!is_array($row) || (($row['translation_prefixes'] ?? '') === '')) {
+        return $map;
+    }
+
+    foreach (explode(',', (string) $row['translation_prefixes']) as $pair) {
+        $pair = trim($pair);
+
+        if ($pair === '') {
+            continue;
+        }
+
+        $parts = explode('=', $pair, 2);
+        $prefix = trim($parts[0]);
+
+        if ($prefix !== '') {
+            $map[$prefix] = isset($parts[1]) ? trim($parts[1]) : $prefix;
+        }
+    }
+
+    return $map;
+}
+
+/**
+ * A file asked for under a language prefix is redirected to its one address
+ * at the root: a row of the files table, a physical file or directory under
+ * the web root (the software directory included), robots.txt or sitemap.xml.
+ * Anything else is a page and is routed in the language.
+ *
+ * @param string $rest the request without PATH and without the prefix
+ */
+function router_language_file_redirect($rest)
+{
+    $name = $rest;
+    $query_position = mb_strpos($name, '?');
+
+    if ($query_position !== false) {
+        $name = mb_substr($name, 0, $query_position);
+    }
+
+    $name = rawurldecode($name);
+
+    if ($name === '') {
+        return;
+    }
+
+    $lower = mb_strtolower($name);
+    $software = mb_strtolower(SOFTWARE_DIRECTORY);
+    $is_file = false;
+
+    if (($lower == 'robots.txt') || ($lower == 'sitemap.xml') || ($lower === $software) || (mb_strpos($lower, $software . '/') === 0)) {
+        $is_file = true;
+    } elseif ((mb_strpos($name, '..') === false) && (strpos($name, "\0") === false) && file_exists(dirname(dirname(__FILE__)) . '/' . $name)) {
+        $is_file = true;
+    } else {
+        $result = mysqli_query(db::$con, "SELECT id FROM files WHERE name = '" . router_escape($name) . "'");
+
+        if ($result && (mysqli_num_rows($result) > 0)) {
+            $is_file = true;
+        }
+    }
+
+    if (!$is_file) {
+        return;
+    }
+
+    $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
+    $config = mysqli_fetch_assoc($result);
+
+    header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . $rest, true, 301);
+    exit();
 }
 
 /**

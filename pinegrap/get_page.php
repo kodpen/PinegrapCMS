@@ -3184,6 +3184,14 @@ else
 // the version is a property of the response, not of the page. Nothing to
 // maintain, and no stale version left behind in the database when a file is
 // replaced.
+// Languages: the alternates of the page, and on a page drawn in another
+// language the language attributes and the directory prefix on every link
+// to a page (includes/fn/translate.php). Before the asset stamp, so a link
+// it rewrites is stamped like any other.
+if (function_exists('pg_tr_finalize')) {
+	$content = pg_tr_finalize($content);
+}
+
 if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
 }

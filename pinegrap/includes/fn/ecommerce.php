@@ -4544,6 +4544,10 @@ function pg_number_separators()
     if ($separators === null) {
         $separators = array('decimal' => '.', 'thousands' => ',');
         $sample = function_exists('lang') ? (string) lang('1,234.56') : '1,234.56';
+        // A page served in another language writes figures that language's
+        // way (Settings > Languages and Translation).
+        $locale = function_exists('pg_tr_locale') ? pg_tr_locale('number') : '';
+        if ($locale !== '') $sample = $locale;
         // "1<thousands>234<decimal>56"; the thousands separator may be empty
         // ("1234,56") or a space.
         if (preg_match('/^1(\D?)234(\D)56$/u', $sample, $m) && ($m[1] !== $m[2])) {
@@ -7355,4 +7359,369 @@ function pg_erp_provider_offers($screen)
     }
 
     return $answers[$screen];
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Variant price rules
+ * ------------------------------------------------------------------ */
+
+/*
+ * A variant set can be priced from its options instead of one row at a time:
+ * an option sets the price (pack A = 160.00), multiplies it (pack A = x8 of a
+ * per-pair price), or adds an amount or a percentage (white +20 %, leather
+ * +50 %). The rules are applied when the set is created and the result goes
+ * into every variant's own products.price, which stays the only price the
+ * cart, the orders, the API and the marketplace feeds read.
+ *
+ * One order, whatever order the attributes are shown in:
+ *
+ *   base   = the amount of the option that sets the price, else the product's price
+ *   price  = (base x every multiplier + every amount) x (1 + p1/100) x (1 + p2/100) ...
+ *   result = max(0, price rounded to the cent)
+ *
+ * Percentages compound rather than add up. "Leather is 50 % more than patent"
+ * then holds for every combination: white leather is 50 % more than white
+ * patent, which a sum (+20 % +50 % = +70 %) would turn into 41.7 %. Amounts go
+ * in before the percentages for the same reason, and after the multipliers,
+ * so "+20.00 for white" is per pack rather than per pair.
+ *
+ * Canonical shape, posted by the product screen and kept on the set:
+ *
+ *   {
+ *     "version": 1,
+ *     "base": 2000,                       // cents; only in the stored copy
+ *     "attributes": [
+ *       {"attribute_id": 3, "mode": "set",      "options": [{"option_id": 12, "amount": 16000}]},
+ *       {"attribute_id": 4, "mode": "multiply", "options": [{"option_id": 15, "factor": 8}]},
+ *       {"attribute_id": 5, "mode": "adjust",   "options": [{"option_id": 20, "percent": 20},
+ *                                                           {"option_id": 21, "amount": -500}]}
+ *     ]
+ *   }
+ *
+ * The browser does the locale parsing ("1.234,50", "-%10") and sends plain
+ * numbers; this side only checks them. pgPriceRuleCompute() in
+ * assets/js/product_builder.js is the preview twin of
+ * pg_variant_price_compute() and has to stay the same arithmetic, in the same
+ * order: the server recomputes every row that was not typed by hand and
+ * writes its own result.
+ */
+
+/**
+ * Is the column that keeps a set's rules there (2026.4.6, 6.1)?
+ *
+ * The rules still price the variants without it; only keeping them on the set
+ * waits for the upgrade. Asked by exact name: in SHOW COLUMNS ... LIKE the
+ * underscore is a wildcard.
+ *
+ * @return bool
+ */
+function pg_variant_price_rules_ready()
+{
+    static $ready = NULL;
+
+    if ($ready !== NULL) {
+        return $ready;
+    }
+
+    $ready = (bool) db_item("SHOW COLUMNS FROM product_groups WHERE Field = 'variant_price_rules'");
+
+    return $ready;
+}
+
+
+/**
+ * Check and normalise a rule set.
+ *
+ * Returns NULL when there is nothing to apply or when the set cannot be
+ * applied as a whole: two attributes that both set the price, an attribute
+ * listed twice, an unknown mode. The product screen prevents all three, so
+ * reaching them means a tampered or stale form; the save then keeps the prices
+ * the rows carry rather than guessing which half of the rules was meant.
+ *
+ * An option without a usable value is dropped (blank means "no effect"), and
+ * so is an attribute left without options.
+ *
+ * @param mixed $rules decoded JSON
+ * @return array|NULL canonical rules, without "base"
+ */
+function pg_variant_price_rules_normalize($rules)
+{
+    if (!is_array($rules) || empty($rules['attributes']) || !is_array($rules['attributes'])) {
+        return NULL;
+    }
+
+    $attributes    = array();
+    $seen          = array();
+    $sets_the_base = 0;
+
+    foreach ($rules['attributes'] as $attribute) {
+
+        if (!is_array($attribute)) {
+            return NULL;
+        }
+
+        $attribute_id = isset($attribute['attribute_id']) ? (int) $attribute['attribute_id'] : 0;
+        $mode         = isset($attribute['mode']) ? (string) $attribute['mode'] : '';
+
+        if (($attribute_id <= 0) || !in_array($mode, array('set', 'multiply', 'adjust'), TRUE)) {
+            return NULL;
+        }
+
+        if (isset($seen[$attribute_id])) {
+            return NULL;
+        }
+
+        $seen[$attribute_id] = TRUE;
+
+        $options = array();
+
+        if (!empty($attribute['options']) && is_array($attribute['options'])) {
+
+            foreach ($attribute['options'] as $option) {
+
+                $option_id = (is_array($option) && isset($option['option_id'])) ? (int) $option['option_id'] : 0;
+
+                if ($option_id <= 0) {
+                    continue;
+                }
+
+                $value = pg_variant_price_rule_value($mode, $option);
+
+                if ($value === NULL) {
+                    continue;
+                }
+
+                // One value per option; a second entry for the same option
+                // replaces the first instead of stacking on it.
+                $options[$option_id] = array('option_id' => $option_id) + $value;
+            }
+        }
+
+        if (!$options) {
+            continue;
+        }
+
+        if ($mode === 'set') {
+            $sets_the_base++;
+        }
+
+        $attributes[] = array(
+            'attribute_id' => $attribute_id,
+            'mode'         => $mode,
+            'options'      => array_values($options),
+        );
+    }
+
+    // Two bases for one price contradict each other.
+    if (!$attributes || ($sets_the_base > 1)) {
+        return NULL;
+    }
+
+    return array(
+        'version'    => 1,
+        'attributes' => $attributes,
+    );
+}
+
+
+/**
+ * The one value an option carries for its attribute's mode, checked.
+ *
+ * @param string $mode   set | multiply | adjust
+ * @param array  $option posted option entry
+ * @return array|NULL array('amount' => int) | array('factor' => float) |
+ *                    array('percent' => float); NULL when unusable
+ */
+function pg_variant_price_rule_value($mode, $option)
+{
+    // Prices are INT cents in a signed column; anything past that is not a
+    // price, it is a typo.
+    $limit = 2000000000;
+
+    if ($mode === 'set') {
+        if (!isset($option['amount']) || !is_numeric($option['amount'])) {
+            return NULL;
+        }
+        $amount = (int) round((float) $option['amount']);
+        return (($amount >= 0) && ($amount <= $limit)) ? array('amount' => $amount) : NULL;
+    }
+
+    if ($mode === 'multiply') {
+        if (!isset($option['factor']) || !is_numeric($option['factor'])) {
+            return NULL;
+        }
+        $factor = (float) $option['factor'];
+        return (($factor > 0) && ($factor <= 100000)) ? array('factor' => $factor) : NULL;
+    }
+
+    // adjust: an amount or a percentage, never both.
+    if (isset($option['percent']) && is_numeric($option['percent'])) {
+        $percent = (float) $option['percent'];
+        return (($percent >= -100) && ($percent <= 100000)) ? array('percent' => $percent) : NULL;
+    }
+
+    if (isset($option['amount']) && is_numeric($option['amount'])) {
+        $amount = (int) round((float) $option['amount']);
+        return (abs($amount) <= $limit) ? array('amount' => $amount) : NULL;
+    }
+
+    return NULL;
+}
+
+
+/**
+ * Do the rules name only options of their own attributes?
+ *
+ * The rules are matched against a variant through its attribute/option pairs,
+ * so an option filed under the wrong attribute would never match, and an id
+ * that is not an option at all would match nothing. Either means the form is
+ * not describing this store.
+ *
+ * @param array $rules canonical rules
+ * @return bool
+ */
+function pg_variant_price_rules_owned($rules)
+{
+    $expected = array();
+
+    foreach ($rules['attributes'] as $attribute) {
+        foreach ($attribute['options'] as $option) {
+
+            $option_id = (int) $option['option_id'];
+
+            // An option belongs to one attribute; listed under two, one of the
+            // entries is wrong whichever attribute owns it.
+            if (isset($expected[$option_id])) {
+                return FALSE;
+            }
+
+            $expected[$option_id] = (int) $attribute['attribute_id'];
+        }
+    }
+
+    if (!$expected) {
+        return FALSE;
+    }
+
+    $rows = db_items(
+        "SELECT id, product_attribute_id
+        FROM product_attribute_options
+        WHERE id IN (" . implode(',', array_keys($expected)) . ")");
+
+    if (!is_array($rows) || (count($rows) !== count($expected))) {
+        return FALSE;
+    }
+
+    foreach ($rows as $row) {
+        if ($expected[(int) $row['id']] !== (int) $row['product_attribute_id']) {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+
+/**
+ * Price one variant from the rules.
+ *
+ * @param int   $base_cents the product's price, used unless an option sets it
+ * @param array $rules      canonical rules
+ * @param array $selection  attribute_id => option_id of the variant
+ * @return array 'cents' => int, 'clamped' => bool (the rules went below zero)
+ */
+function pg_variant_price_compute($base_cents, $rules, $selection)
+{
+    $base     = (float) $base_cents;
+    $multiply = 1.0;
+    $add      = 0.0;
+    $percents = array();
+
+    foreach ($rules['attributes'] as $attribute) {
+
+        $attribute_id = (int) $attribute['attribute_id'];
+
+        if (!isset($selection[$attribute_id])) {
+            continue;
+        }
+
+        $option_id = (int) $selection[$attribute_id];
+
+        foreach ($attribute['options'] as $option) {
+
+            if ((int) $option['option_id'] !== $option_id) {
+                continue;
+            }
+
+            if ($attribute['mode'] === 'set') {
+                $base = (float) $option['amount'];
+            } elseif ($attribute['mode'] === 'multiply') {
+                $multiply *= (float) $option['factor'];
+            } elseif (isset($option['percent'])) {
+                $percents[] = (float) $option['percent'];
+            } else {
+                $add += (float) $option['amount'];
+            }
+
+            break;
+        }
+    }
+
+    $price = ($base * $multiply) + $add;
+
+    // One factor at a time, in rule order, exactly as the browser does it:
+    // multiplying the factors together first gives the same number on paper
+    // and a different last bit in floating point.
+    foreach ($percents as $percent) {
+        $price *= (1 + ($percent / 100));
+    }
+
+    // The inner round() strips floating-point noise before the cent is
+    // decided (0.1 * 3 is 0.30000000000000004); the browser does the same
+    // with toFixed(6).
+    $cents = (int) round(round($price, 6));
+
+    if ($cents < 0) {
+        return array('cents' => 0, 'clamped' => TRUE);
+    }
+
+    return array('cents' => $cents, 'clamped' => FALSE);
+}
+
+
+/**
+ * Keep the rules a set was created with, together with the base they were
+ * applied to.
+ *
+ * Nothing reads them back yet. They are kept because they cannot be worked
+ * out from the prices afterwards: with the rules and the base, a variant whose
+ * price no longer equals what the rules give is one somebody changed by hand.
+ *
+ * @param int   $group_id
+ * @param array $rules      canonical rules
+ * @param int   $base_cents
+ * @return bool FALSE when the column is not there yet
+ */
+function pg_variant_price_rules_store($group_id, $rules, $base_cents)
+{
+    $group_id = (int) $group_id;
+
+    if (!$group_id || !pg_variant_price_rules_ready()) {
+        return FALSE;
+    }
+
+    $rules = array(
+        'version'    => 1,
+        'base'       => (int) $base_cents,
+        'attributes' => $rules['attributes'],
+    );
+
+    // Not through db(): that ends the request on a failed query, and this runs
+    // after the variants have been written. Losing the copy of the rules is
+    // better than a half-finished save page.
+    return (bool) @mysqli_query(db::$con,
+        "UPDATE product_groups
+        SET variant_price_rules = '" . e(encode_json($rules)) . "'
+        WHERE id = '$group_id'");
 }

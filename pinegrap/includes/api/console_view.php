@@ -60,7 +60,17 @@ function api_console_endpoints_html($try_hint = '') {
 		'system'         => lang('System'),
 		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),
-		'webhooks'       => lang('Webhooks')
+		'webhooks'       => lang('Webhooks'),
+		// The groups the later resources and the modules add (includes/api/
+		// modules.php); without a line here they showed the bare route prefix.
+		'design'         => lang('Visual Page Editor'),
+		'auth'           => lang('Sign-in'),
+		'devices'        => lang('Devices'),
+		'notifications'  => lang('Notifications'),
+		'push'           => lang('Push notifications'),
+		'erp'            => lang('ERP'),
+		'workspace'      => lang('Workspace'),
+		'translations'   => lang('Translations')
 	);
 
 	$nav = '';

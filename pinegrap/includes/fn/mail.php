@@ -1390,6 +1390,13 @@ function email($properties)
     $type = isset($properties['type']) ? $properties['type'] : 'system';
     $notify_sender = isset($properties['notify_sender']) ? $properties['notify_sender'] : true;
 
+    // Anyone can sign in to a demonstration site, so it sends nothing: the
+    // server it shares with other sites is not turned into a mail relay.
+    if (pg_demo()) {
+        log_activity(lang('An e-mail was not sent because this is a demonstration site.'));
+        return true;
+    }
+
     $mail = new PHPMailer(true);
 
     // Language setting

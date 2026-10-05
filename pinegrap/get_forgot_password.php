@@ -18,7 +18,8 @@
 
 function get_forgot_password($properties = array()) {
 
-    $page_id = $properties['page_id'];
+    // The default screen (a site without a forgot password page) passes no page.
+    $page_id = isset($properties['page_id']) ? $properties['page_id'] : 0;
 
     $form = new liveform('forgot_password');
 

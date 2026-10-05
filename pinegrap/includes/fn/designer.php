@@ -953,6 +953,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_error_page($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'language_switcher' — the site's languages, each linking to this
+            // page in that language (widgets_language.php).
+            if ($region_type === 'language_switcher') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_language_switcher($tree_json, $sid, $cfg, $mode);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';
@@ -1093,6 +1100,12 @@ function _pg_sw_append_query($url, $key, $value)
 function _expand_custom_php($html)
 {
     if (strpos($html, '<!--pg-custom-php:') === false) return $html;
+
+    // A hosted site runs no PHP written in the designer: the markers leave
+    // the output without being executed.
+    if (pg_hosted()) {
+        return preg_replace('/<!--pg-custom-php:[A-Za-z0-9+\/=]*-->/', '', $html);
+    }
 
     return preg_replace_callback(
         '/<!--pg-custom-php:([A-Za-z0-9+\/=]*)-->/',
@@ -1855,6 +1868,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         if ($dup > 0) {
             $errors[] = lang(array('string' => 'The page name "{var:1}" is already in use.', 'vars' => $name));
         }
+        // A language directory (/en/...) would shadow a page of the same name.
+        if (pg_tr_is_reserved_name($name)) {
+            $errors[] = lang(array('string' => 'The page name "{var:1}" is reserved for a site language.', 'vars' => $name));
+        }
     }
 
     // Tree — a brand-new tab that was never touched arrives with no tree.
@@ -2078,6 +2095,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     if (!$multi_ready) {
         db("UPDATE style SET style_tree_json = '" . e($tree_json) . "', style_code = '" . e($tree_code) . "'
             WHERE style_id = '$style_id'");
+    }
+
+    // The languages set to translate on save get the page's new and changed
+    // texts as a job for their engine (includes/translate/).
+    if (function_exists('pg_tr_auto_update_page') && $multi_ready) {
+        pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
     return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings);
@@ -2498,6 +2521,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     $type = $node['type'];
     $props = isset($node['props']) ? $node['props'] : array();
     $children = isset($node['children']) ? $node['children'] : array();
+
+    // A page drawn in another language reads its texts here, before the data
+    // bindings below replace a bound prop with its token. Every tree - the page
+    // body, a shared component, a system widget - passes through this one
+    // door, so one hook covers them all (includes/fn/translate.php).
+    if (defined('FRONTEND_LANGUAGE')) {
+        $props = pg_tr_props($props, $type);
+    }
 
     // Bootstrap's `.stretched-link` only stretches to the nearest *positioned*
     // ancestor — without `position: relative` on a parent it expands to <body>
@@ -3163,6 +3194,38 @@ function _apply_bindings($props)
     return $props;
 }
 
+/**
+ * The markup of an inline SVG drawing, safe to put in a page: the first
+ * <svg> element of $raw (to its last closing tag), without <script>,
+ * <foreignObject>, frames, event handler attributes and script URLs; a data:
+ * URL is kept only for an image. The editor's twin is _sdSvgElement() in
+ * style_designer.js. '' when $raw holds no <svg>.
+ */
+function pg_designer_svg_markup($raw)
+{
+    $raw = (string)$raw;
+    $start = stripos($raw, '<svg');
+    $end   = strripos($raw, '</svg');
+    if ($start === false || $end === false || $end < $start) return '';
+    $close = strpos($raw, '>', $end);
+    if ($close === false) return '';
+    $svg = substr($raw, $start, $close - $start + 1);
+
+    $svg = preg_replace('~<(script|foreignObject|iframe|object|embed)\b[^>]*>.*?</\1\s*>~is', '', $svg);
+    $svg = preg_replace('~<(script|foreignObject|iframe|object|embed)\b[^>]*/?>~is', '', $svg);
+    // Event handlers, quoted or not.
+    $svg = preg_replace('~\s+on[a-z0-9_:.-]*\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $svg);
+    // Any attribute that names a script URL, entities and spaces folded first.
+    $svg = preg_replace_callback('~\s+([a-z_:][a-z0-9_:.-]*)\s*=\s*("[^"]*"|\'[^\']*\')~i', function ($m) {
+        $name  = strtolower($m[1]);
+        $value = strtolower(preg_replace('~[\s\x00-\x1f]+~', '', html_entity_decode(substr($m[2], 1, -1), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        if (strpos($value, 'javascript:') !== false || strpos($value, 'vbscript:') !== false) return '';
+        if (($name === 'href' || $name === 'xlink:href') && strpos($value, 'data:') === 0 && strpos($value, 'data:image/') !== 0) return '';
+        return $m[0];
+    }, $svg);
+    return is_string($svg) ? $svg : '';
+}
+
 // Render a content node as HTML
 function _render_content_html($props, $pad, $kids = '')
 {
@@ -3343,6 +3406,32 @@ function _render_content_html($props, $pad, $kids = '')
         case 'custom_html':
             $rawHtml = isset($props['html']) ? $props['html'] : '';
             $html .= $pad . $rawHtml . "\n";
+            break;
+
+        case 'svg':
+            // The drawing's own <svg>, cleaned; the node's classes join the
+            // drawing's, its style and attributes go on the <svg> tag.
+            $svg = pg_designer_svg_markup(isset($props['html']) ? $props['html'] : '');
+            if ($svg === '') break;
+            if (preg_match('~^<svg\b([^>]*?)(/?)>~is', $svg, $open)) {
+                $attrs = $open[1];
+                $own_class = '';
+                if (preg_match('~\sclass\s*=\s*("([^"]*)"|\'([^\']*)\')~i', $attrs, $cm)) {
+                    $own_class = isset($cm[3]) && $cm[3] !== '' ? $cm[3] : $cm[2];
+                    $attrs = str_replace($cm[0], '', $attrs);
+                }
+                $own_style = '';
+                if (preg_match('~\sstyle\s*=\s*("([^"]*)"|\'([^\']*)\')~i', $attrs, $sm)) {
+                    $own_style = isset($sm[3]) && $sm[3] !== '' ? $sm[3] : $sm[2];
+                    $attrs = str_replace($sm[0], '', $attrs);
+                }
+                $cls = trim(html_entity_decode($own_class, ENT_QUOTES, 'UTF-8') . ' ' . (isset($props['cssClass']) ? (string)$props['cssClass'] : ''));
+                $style_attr = _compose_inline_style($props, html_entity_decode($own_style, ENT_QUOTES, 'UTF-8'));
+                $extra_attrs = _render_extra_attrs($props);
+                $svg = '<svg' . ($cls !== '' ? ' class="' . h($cls) . '"' : '') . $style_attr . $attrs . $extra_attrs . $open[2] . '>'
+                     . substr($svg, strlen($open[0]));
+            }
+            $html .= $pad . $svg . "\n";
             break;
 
         case 'custom_php':
@@ -4147,7 +4236,7 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
             $page_names_in_menu_sequence[] = $menu_item['link_page_name'];
             // add the menu item to the array
             $menu_sequence[] = array(
-                'name' => $menu_item['name'],
+                'name' => defined('FRONTEND_LANGUAGE') ? pg_tr_text($menu_item['name'], 'text') : $menu_item['name'],
                 'link_page_name' => $menu_item['link_page_name']
             );
         }
@@ -4227,6 +4316,15 @@ function _pg_smart_active_target($ctx)
         $raw_path = '/' . $raw_path;
     }
     $base = defined('PATH') ? (string) PATH : '/';
+
+    // On a translated page the request carries the language directory
+    // (/en/about) while the links of the tree, compared below, do not yet:
+    // the prefix is added to them on the way out (pg_tr_finalize()).
+    if (defined('LANGUAGE_PATH') && (strpos($raw_path, (string) LANGUAGE_PATH) === 0)) {
+        $raw_path = $base . substr($raw_path, strlen((string) LANGUAGE_PATH));
+    } elseif (defined('LANGUAGE_PATH') && (rtrim($raw_path, '/') === rtrim((string) LANGUAGE_PATH, '/'))) {
+        $raw_path = $base;
+    }
 
     $current = _pg_smart_active_path($raw_path);
     $root    = _pg_smart_active_path($base);
@@ -4681,6 +4779,9 @@ function pg_design_templates()
         if (!preg_match('/^[a-z0-9-]{1,64}$/', $id)) continue;
         $tpl = include $file;
         if (!is_array($tpl) || empty($tpl['pages']) || !is_array($tpl['pages'])) continue;
+        // A template made for a feature the site does not use (a store
+        // without the shop) is not offered at all.
+        if (!_pg_tpl_requirement_met(isset($tpl['requires']) ? $tpl['requires'] : '')) continue;
         $tpl['id']        = $id;
         $tpl['version']   = (isset($tpl['version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$tpl['version'])) ? (string)$tpl['version'] : '1.0.0';
         $tpl['framework'] = pg_design_framework_key(isset($tpl['framework']) ? $tpl['framework'] : '');
@@ -4709,6 +4810,7 @@ function pg_design_template_summary($tpl)
         $pages[] = isset($p['title']) ? (string)$p['title'] : '';
     }
     $fw = pg_design_framework($tpl['framework']);
+    $theme = pg_design_template_theme($tpl);
     return array(
         'id'          => $tpl['id'],
         'name'        => isset($tpl['name']) ? (string)$tpl['name'] : $tpl['id'],
@@ -4718,7 +4820,29 @@ function pg_design_template_summary($tpl)
         'description' => isset($tpl['description']) ? (string)$tpl['description'] : '',
         'icon'        => isset($tpl['icon']) ? (string)$tpl['icon'] : 'bi-grid-1x2',
         'pages'       => $pages,
+        'look'        => $theme['look'],
+        'palette'     => $theme['palette'],
+        'highlights'  => (isset($tpl['highlights']) && is_array($tpl['highlights'])) ? array_values(array_map('strval', $tpl['highlights'])) : array(),
     );
+}
+
+// The look and the colour palette a template is made for ('look' and
+// 'palette' in the template file), each checked against the built-in ones.
+// null where the template names none, or one this installation does not
+// have: the pickers then keep their own default.
+function pg_design_template_theme($tpl)
+{
+    $out = array('look' => null, 'palette' => null);
+    if (!is_array($tpl) || !function_exists('pg_design_looks')) return $out;
+    if (isset($tpl['look']) && is_string($tpl['look'])) {
+        $looks = pg_design_looks();
+        if ($tpl['look'] === '' || isset($looks[$tpl['look']])) $out['look'] = $tpl['look'];
+    }
+    if (isset($tpl['palette']) && is_string($tpl['palette'])) {
+        $palettes = pg_design_palettes();
+        if ($tpl['palette'] === '' || isset($palettes[$tpl['palette']])) $out['palette'] = $tpl['palette'];
+    }
+    return $out;
 }
 
 // A page name nobody uses yet: the template's own, else with -2, -3 … A
@@ -4741,7 +4865,12 @@ function _pg_tpl_unique_page_name($base, $taken)
 // setting: {{page:<key>}} the address of that template page, {{tab:<key>}}
 // the page as a page picker names a tab that has no id yet (resolved to the
 // page id when it is published, pg_designer_resolve_tab_refs()),
-// {{folder:<key>}} the id of that template folder, {{site_name}}, {{year}}.
+// {{folder:<key>}} the id of that template folder, {{product_group:root}}
+// the id of the site's top product group (or of a group of the template's
+// own catalog, by its key), {{product_group_path:<key>}} that group's
+// address on a catalog page, {{product_group_image:<key>}} its picture,
+// {{contact_group:<key>}} the id of a contact group the template made,
+// {{site_name}}, {{year}}.
 // Walks props, _attrs and children.
 function _pg_tpl_fill($node, $vars)
 {
@@ -4755,6 +4884,15 @@ function _pg_tpl_fill($node, $vars)
     if (preg_match('/^\{\{folder:([a-z0-9_-]+)\}\}$/', $node, $fm)) {
         return isset($vars['folders'][$fm[1]]) ? (int)$vars['folders'][$fm[1]] : 0;
     }
+    // A product group the same way: a catalog widget stores the group it
+    // lists as a number. 0 when the site has no such group.
+    if (preg_match('/^\{\{product_group:([a-z0-9_-]+)\}\}$/', $node, $gm)) {
+        return isset($vars['product_groups'][$gm[1]]) ? (int)$vars['product_groups'][$gm[1]] : 0;
+    }
+    // A contact group too: a form's "add to contact group" setting.
+    if (preg_match('/^\{\{contact_group:([a-z0-9_-]+)\}\}$/', $node, $cm)) {
+        return isset($vars['contact_groups'][$cm[1]]) ? (int)$vars['contact_groups'][$cm[1]] : 0;
+    }
     return preg_replace_callback('/\{\{([a-z_]+)(?::([a-z0-9_-]+))?\}\}/', function ($m) use ($vars) {
         $key = isset($m[2]) ? $m[2] : '';
         if ($m[1] === 'page') {
@@ -4766,8 +4904,228 @@ function _pg_tpl_fill($node, $vars)
         if ($m[1] === 'folder') {
             return isset($vars['folders'][$key]) ? (string)(int)$vars['folders'][$key] : '0';
         }
+        if ($m[1] === 'product_group') {
+            return isset($vars['product_groups'][$key]) ? (string)(int)$vars['product_groups'][$key] : '0';
+        }
+        // The group's address on a catalog page (/<catalog page>/<address>).
+        if ($m[1] === 'product_group_path') {
+            return isset($vars['product_group_paths'][$key]) ? rawurlencode((string)$vars['product_group_paths'][$key]) : '';
+        }
+        // The group's picture; a sample photo where the site has none (the
+        // installer's preview, a site without the shop).
+        if ($m[1] === 'product_group_image') {
+            return isset($vars['product_group_images'][$key]) && $vars['product_group_images'][$key] !== ''
+                ? (string)$vars['product_group_images'][$key]
+                : 'https://picsum.photos/seed/pinegrap-' . $key . '/800/600';
+        }
+        if ($m[1] === 'contact_group') {
+            return isset($vars['contact_groups'][$key]) ? (string)(int)$vars['contact_groups'][$key] : '0';
+        }
         return isset($vars[$m[1]]) ? $vars[$m[1]] : $m[0];
     }, $node);
+}
+
+// The catalog's top product group, for {{product_group:root}}: the group
+// without a parent that the others descend from ("All Product Groups" on a
+// fresh site). A catalog widget set to it lists the categories and the
+// variant sets as cards; set to 0 it lists every product flat, each variant
+// on a card of its own. A variant set saved without a parent sits at the top
+// too, so the category with the most groups under it is taken, not simply
+// the first. 0 without the shop or without groups.
+function _pg_tpl_root_product_group()
+{
+    if (!defined('ECOMMERCE') || !ECOMMERCE) return 0;
+    return (int)db_value(
+        "SELECT g.id FROM product_groups g
+         WHERE g.parent_id = 0
+         ORDER BY (g.display_type = 'browse') DESC,
+                  (SELECT COUNT(*) FROM product_groups c WHERE c.parent_id = g.id) DESC,
+                  g.sort_order, g.id
+         LIMIT 1");
+}
+
+// A picture shipped with a template (includes/design_templates/<id>/), put in
+// the file manager: the file of that name already there is used again,
+// otherwise the picture is copied in under that name (numbered if the name
+// is taken by another file) into $folder_id. Returns the file name, or ''.
+function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
+{
+    if (!defined('FILE_DIRECTORY_PATH') || !preg_match('/^[a-z0-9-]{1,64}$/', (string)$tpl_id)) return '';
+    $source = basename((string)$source);
+    if (!preg_match('/^[a-z0-9_-]+\.(jpg|jpeg|png|webp)$/', $source)) return '';
+    $path = PG_FUNCTIONS_DIR . '/includes/design_templates/' . $tpl_id . '/' . $source;
+    if (!is_file($path)) return '';
+
+    $name = 'store-' . $source;
+    $found = (string)db_value("SELECT name FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+    if ($found !== '' && is_file(FILE_DIRECTORY_PATH . '/' . $found)) return $found;
+
+    if (function_exists('get_unique_name')) $name = get_unique_name(array('name' => $name, 'type' => 'file'));
+    $target = FILE_DIRECTORY_PATH . '/' . $name;
+    if (file_exists($target) || !@copy($path, $target)) return '';
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    db("INSERT INTO files (name, folder, description, type, size, user, design, timestamp)
+        VALUES ('" . e($name) . "', '" . (int)$folder_id . "', '', '" . e($ext) . "', '" . (int)@filesize($target) . "', '" . (int)$user_id . "', '0', UNIX_TIMESTAMP())");
+    if ((int)mysqli_insert_id(db::$con) <= 0) {
+        @unlink($target);
+        return '';
+    }
+    return $name;
+}
+
+/**
+ * The template's own catalog ('catalog' in the template file): its product
+ * groups and products, made when the template is opened so that the pages
+ * listing them show them on the canvas, as the folders and the widgets are.
+ *
+ * Opening the same template again makes nothing twice: a group is known by
+ * its name ('title', in the language the template is opened in) under its
+ * parent, and a group already there is used as it is - with whatever
+ * products the operator has put in it or taken out since. Only a group that
+ * is not there is made, with its products; a product already on the site
+ * with the template's SKU is placed in it rather than made again. The pictures go to a folder of their own under the site's root
+ * folder ('folder'), found again by its name.
+ *
+ * A group's parent is 'root' (the site's top product group, if any) or the
+ * key of another group of the template, listed before it. A product's price
+ * is per currency ('USD' => 89, 'TRY' => 3499): the site's base currency, or
+ * the USD figure for any other; in major units. 'details' are lines every
+ * product's Details tab lists.
+ *
+ * Returns array('groups' => key => id, 'paths' => key => address name,
+ * 'images' => key => picture address). Empty without the shop.
+ */
+function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
+{
+    $out = array('groups' => array(), 'paths' => array(), 'images' => array());
+    if (!defined('ECOMMERCE') || !ECOMMERCE) return $out;
+    $def = (isset($tpl['catalog']) && is_array($tpl['catalog'])) ? $tpl['catalog'] : array();
+    if (empty($def['groups']) || !is_array($def['groups'])) return $out;
+    if (!function_exists('pg_pb_create_product')) {
+        if (!is_file(PG_FUNCTIONS_DIR . '/product_builder.php')) return $out;
+        require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+    }
+
+    // The pictures' folder, public, beside the site's other top folders.
+    $folder_id = 0;
+    $folder_name = isset($def['folder']) ? trim((string)$def['folder']) : '';
+    $root_folder = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+    if ($folder_name !== '' && $root_folder > 0) {
+        $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '$root_folder' AND folder_name = '" . e($folder_name) . "' ORDER BY folder_id LIMIT 1");
+        if ($folder_id <= 0) {
+            db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_access_control_type, folder_archived, folder_timestamp, folder_user)
+                VALUES ('" . e(mb_substr($folder_name, 0, 100)) . "', '$root_folder', '" . ((int)db_value("SELECT folder_level FROM folder WHERE folder_id = '$root_folder' LIMIT 1") + 1) . "', '0', 'public', '0', UNIX_TIMESTAMP(), '" . (int)$user_id . "')");
+            $folder_id = (int)mysqli_insert_id(db::$con);
+        }
+    }
+    if ($folder_id <= 0) $folder_id = $root_folder;
+
+    $currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'USD';
+    // The lines every product's details carry ('details'), as a list.
+    $details = '';
+    foreach ((isset($def['details']) && is_array($def['details'])) ? $def['details'] : array() as $line) {
+        $details .= '<li>' . h((string)$line) . '</li>';
+    }
+    if ($details !== '') $details = '<ul>' . $details . '</ul>';
+    $base_path = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/');
+    $today = date('Y-m-d');
+
+    foreach ($def['groups'] as $key => $g) {
+        $key   = (string)$key;
+        $title = isset($g['title']) ? trim((string)$g['title']) : '';
+        if ($title === '' || !preg_match('/^[a-z0-9_-]+$/', $key)) continue;
+        $name  = mb_substr($title, 0, 100);
+        $parent_key = isset($g['parent']) ? (string)$g['parent'] : 'root';
+        $parent = ($parent_key === 'root') ? (int)$root_group_id : (isset($out['groups'][$parent_key]) ? (int)$out['groups'][$parent_key] : -1);
+        if ($parent < 0) continue;
+
+        $row = db_item("SELECT id, address_name, image_name FROM product_groups
+                        WHERE name = '" . e($name) . "' AND parent_id = '" . (int)$parent . "' ORDER BY id LIMIT 1");
+        if (is_array($row) && (int)$row['id'] > 0) {
+            $out['groups'][$key] = (int)$row['id'];
+            $out['paths'][$key]  = (string)$row['address_name'];
+            if ((string)$row['image_name'] !== '') $out['images'][$key] = $base_path . encode_url_path((string)$row['image_name']);
+            continue;
+        }
+
+        $image = isset($g['image']) ? _pg_tpl_catalog_file($tpl['id'], $g['image'], $folder_id, $user_id) : '';
+        $address = prepare_catalog_item_address_name($title);
+
+        db("INSERT INTO product_groups (name, enabled, parent_id, sort_order, short_description, full_description, details, code, keywords,
+                image_name, display_type, address_name, title, meta_description, meta_keywords, seo_analysis, attributes, user, timestamp)
+            VALUES (
+                '" . e($name) . "', '1', '" . (int)$parent . "', '" . (int)(isset($g['sort_order']) ? $g['sort_order'] : 0) . "',
+                '" . e($name) . "',
+                '" . e(isset($g['description']) ? '<p>' . h((string)$g['description']) . '</p>' : '') . "',
+                '', '', '" . e(isset($g['keywords']) ? (string)$g['keywords'] : '') . "',
+                '" . e($image) . "', 'browse', '" . e($address) . "', '',
+                '" . e(isset($g['description']) ? mb_substr((string)$g['description'], 0, 255) : '') . "',
+                '', '', '1', '" . (int)$user_id . "', UNIX_TIMESTAMP())");
+        $gid = (int)mysqli_insert_id(db::$con);
+        if ($gid <= 0) continue;
+        $out['groups'][$key] = $gid;
+        $out['paths'][$key]  = (string)db_value("SELECT address_name FROM product_groups WHERE id = '$gid' LIMIT 1");
+        if ($image !== '') $out['images'][$key] = $base_path . encode_url_path($image);
+
+        // The group's products: made here only, with the group.
+        $n = 0;
+        foreach ((isset($g['products']) && is_array($g['products'])) ? $g['products'] : array() as $p) {
+            $sku = isset($p['sku']) ? trim((string)$p['sku']) : '';
+            if ($sku === '') continue;
+            $n++;
+            $pid = (int)db_value("SELECT id FROM products WHERE name = '" . e($sku) . "' ORDER BY id LIMIT 1");
+            if ($pid <= 0) {
+                $prices = (isset($p['price']) && is_array($p['price'])) ? $p['price'] : array();
+                $price  = isset($prices[$currency]) ? $prices[$currency] : (isset($prices['USD']) ? $prices['USD'] : 0);
+                $label  = isset($p['title']) ? (string)$p['title'] : $sku;
+                $text   = isset($p['description']) ? (string)$p['description'] : '';
+                $product = array(
+                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => '1', 'shippable' => '1',
+                    'free_shipping' => '0', 'title' => '', 'short_description' => mb_substr($label, 0, 255), 'meta_description' => mb_substr($text, 0, 255),
+                    'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => isset($p['keywords']) ? (string)$p['keywords'] : '',
+                    'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0, 'inventory' => '0', 'inventory_quantity' => 0,
+                    'user' => (int)$user_id, 'full_description' => ($text !== '') ? '<p>' . h($text) . '</p>' : '', 'meta_keywords' => '',
+                    'notes' => '', 'details' => $details, 'seo_analysis' => '', 'code' => '', 'out_of_stock_message' => '',
+                    'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
+                    'google_product_category' => '', 'tax_rate' => null,
+                );
+                $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
+                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'attributes' => array(), 'submit_form' => array()));
+                if ($pid <= 0) continue;
+            }
+            if ((int)db_value("SELECT COUNT(*) FROM products_groups_xref WHERE product = '$pid' AND product_group = '$gid'") === 0) {
+                db("INSERT INTO products_groups_xref (product, product_group, sort_order, featured, featured_sort_order, new_date)
+                    VALUES ('$pid', '$gid', '$n', '" . (!empty($p['featured']) ? 1 : 0) . "', '" . (!empty($p['featured']) ? $n : 0) . "',
+                            '" . (!empty($p['new']) ? $today : '0000-00-00') . "')");
+            }
+        }
+    }
+    return $out;
+}
+
+// The template's contact groups ('contact_groups' in the template file), for
+// {{contact_group:<key>}}: one of that name already on the site is used,
+// otherwise it is made. 'subscription' makes it a mailing list visitors can
+// join and leave on their e-mail preferences page. Returns key => id.
+function _pg_tpl_contact_groups($tpl, $user_id)
+{
+    $out = array();
+    foreach ((isset($tpl['contact_groups']) && is_array($tpl['contact_groups'])) ? $tpl['contact_groups'] : array() as $key => $g) {
+        $name = isset($g['name']) ? trim((string)$g['name']) : '';
+        if ($name === '') continue;
+        $name = mb_substr($name, 0, 100);
+        $id = (int)db_value("SELECT id FROM contact_groups WHERE name = '" . e($name) . "' ORDER BY id LIMIT 1");
+        if ($id <= 0) {
+            db("INSERT INTO contact_groups (name, description, email_subscription, email_subscription_type,
+                    created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
+                VALUES ('" . e($name) . "', '" . e(mb_substr(isset($g['description']) ? (string)$g['description'] : '', 0, 255)) . "',
+                    '" . (!empty($g['subscription']) ? 1 : 0) . "', 'open',
+                    '" . (int)$user_id . "', UNIX_TIMESTAMP(), '" . (int)$user_id . "', UNIX_TIMESTAMP())");
+            $id = (int)mysqli_insert_id(db::$con);
+        }
+        if ($id > 0) $out[(string)$key] = $id;
+    }
+    return $out;
 }
 
 // Whether a template part that names a requirement belongs on this site:
@@ -4957,8 +5315,9 @@ function _pg_tpl_shared_row($origin, $name, $tree, $user_id)
  * once, because the canvas draws them from their rows. When the operator
  * leaves without publishing, the editor sends the ids it was given; each is
  * deleted if it is one a template made (a widget whose config names its
- * template_origin, a shared component whose category says "template:") and
- * no page places it. Anything published, or made any other way, stays.
+ * template_origin, a shared component whose category says "template:") or
+ * an import made out of the blocks its pages repeat (category "import:"),
+ * and no page places it. Anything published, or made any other way, stays.
  *
  * Returns the number of rows deleted.
  */
@@ -4975,7 +5334,7 @@ function pg_design_template_discard($ids)
     $deleted = 0;
     foreach ((array)$rows as $row) {
         $sid = (int)$row['id'];
-        $made = (strpos((string)$row['category'], 'template:') === 0);
+        $made = (strpos((string)$row['category'], 'template:') === 0) || (strpos((string)$row['category'], 'import:') === 0);
         if (!$made && (string)$row['system_region_config'] !== '') {
             $cfg = json_decode((string)$row['system_region_config'], true);
             $made = is_array($cfg) && !empty($cfg['template_origin']);
@@ -5078,7 +5437,14 @@ function pg_design_template_prepare($template_id, $user)
     }
     $site_name = (defined('ORGANIZATION_NAME') && trim((string)ORGANIZATION_NAME) !== '') ? (string)ORGANIZATION_NAME : lang('My Site');
     $tab_prefix = 'tpl' . substr(md5(uniqid('', true)), 0, 6) . '_';
+    // The template's own product groups and products, and its contact
+    // groups: found again or made, before anything names them.
+    $root_group = _pg_tpl_root_product_group();
+    $catalog = _pg_tpl_catalog($tpl, (int)$user['id'], $root_group);
     $vars = array(
+        'product_group_paths'  => $catalog['paths'],
+        'product_group_images' => $catalog['images'],
+        'contact_groups'       => _pg_tpl_contact_groups($tpl, (int)$user['id']),
         'site_name' => $site_name,
         // The site's own address (Settings → e-mail), for the notification
         // settings a template fills in.
@@ -5087,6 +5453,7 @@ function pg_design_template_prepare($template_id, $user)
         'pages'     => array(),
         'tabs'      => array(),
         'folders'   => _pg_tpl_folders($tpl, (int)$user['id']),
+        'product_groups' => array_merge($catalog['groups'], array('root' => $root_group)),
     );
     foreach ($names as $key => $name) {
         $vars['pages'][$key] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($name);

@@ -115,6 +115,13 @@ if (($request === null) && ($raw_request === '') && ($_SERVER['REQUEST_METHOD'] 
 // turned away as too large today.
 $GLOBALS['pg_request_body_bytes'] = strlen($raw_request);
 
+// A request from a page drawn in another language says so (pg_lang, in the
+// query string or the body), so what it is answered with - a product's
+// description, a shipping method's name - is in that language too.
+if (function_exists('pg_tr_define_from_request')) {
+    pg_tr_define_from_request($request);
+}
+
 unset($raw_request);
 
 // If login info was included in the request, then store it, so that initialize_user() can login user.
@@ -646,6 +653,44 @@ switch ($action) {
         ));
         break;
 
+    case 'ca_bundle_config_repair':
+        // Point CURL_CA_BUNDLE in data/config.php at the bundled
+        // data/cacert.pem, from the System Status widget. What is written and
+        // how is pg_ca_bundle_config_repair() in includes/fn/update.php.
+        //
+        // Administrator only: this writes the configuration file, which
+        // holds the database password.
+        $user = validate_user();
+
+        if ((int) $user['role'] !== 0) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+            break;
+        }
+
+        $ca_config_result = pg_ca_bundle_config_repair();
+
+        if ($ca_config_result['status'] === 'success') {
+            log_activity(lang('CURL_CA_BUNDLE was pointed at data/cacert.pem from the dashboard.'), $_SESSION['sessionusername']);
+        }
+
+        // The widget renders from a ten-minute cache and would keep the row
+        // red until it expired.
+        $ca_config_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
+
+        if (file_exists($ca_config_cache)) {
+            @unlink($ca_config_cache);
+        }
+
+        respond(array(
+            'status' => ($ca_config_result['status'] === 'error') ? 'error' : 'success',
+            'message' => $ca_config_result['message'],
+            'summary' => ($ca_config_result['status'] === 'error') ? lang('Failed') : lang('Done'),
+        ));
+        break;
+
     case 'write_permissions_repair':
         // Open the folders and files of the software the web server cannot
         // write to, from the System Status widget. The scan and the chmod are
@@ -915,8 +960,6 @@ switch ($action) {
                         $sm_maps[$sm_key] = $sm_file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $sm_file);
                     }
 
-                    $sm_country_rows = db_items("SELECT code, name FROM countries", 'code');
-
                     $sm_heads = '';
                     $sm_lists = '';
                     $sm_tabs = '';
@@ -940,8 +983,11 @@ switch ($action) {
 
                         if ($sm_is_world) {
 
-                            foreach ($sm_country_rows as $sm_code => $sm_row) {
-                                $sm_names[strtoupper($sm_code)] = h(lang($sm_row['name']));
+                            // Every country the outlines have, under the code
+                            // the outlines use -- not only the rows the shop's
+                            // countries table happens to hold.
+                            foreach (pg_sales_map_country_names() as $sm_code => $sm_name) {
+                                $sm_names[$sm_code] = h(lang($sm_name));
                             }
 
                         } else {
@@ -1826,6 +1872,31 @@ switch ($action) {
                                 $job_panel = '
                                 <div class="pg-job-panel pg-job-result d-none" id="server_config_repair_result">
                                     <div class="pg-job-panel-row"><span id="server_config_repair_message"></span></div>
+                                </div>';
+                            }
+
+                        } elseif ($job_key === 'CA Bundle Setting') {
+
+                            // One line in data/config.php. Offered to an
+                            // administrator only, and only while the bundled
+                            // file is there and the configuration can be
+                            // written; otherwise the row's text says what to
+                            // add by hand.
+                            if (((int) $user['role'] === 0) && is_file(pg_ca_bundle_path()) && is_writable(PG_FUNCTIONS_DIR . '/data/config.php')) {
+
+                                $job_action = '
+                                <button type="button" class="pg-job-btn pg-job-btn-fix" id="ca_bundle_config_repair"
+                                        title="' . h(lang('Writes define(\'CURL_CA_BUNDLE\', dirname(__FILE__) . \'/cacert.pem\'); into data/config.php, replacing the current CURL_CA_BUNDLE line. Nothing else in the file is changed.')) . '"
+                                        data-busy-label="' . h(lang('Writing')) . '"
+                                        data-idle-label="' . h(lang('Fix')) . '"
+                                        data-confirm-content="' . h(lang('CURL_CA_BUNDLE in data/config.php will be pointed at the bundled data/cacert.pem.')) . '"
+                                        data-failed-label="' . h(lang('The setting could not be written.')) . '">
+                                    <i class="bi bi-wrench-adjustable"></i><span id="ca_bundle_config_repair_state">' . h(lang('Fix')) . '</span>
+                                </button>';
+
+                                $job_panel = '
+                                <div class="pg-job-panel pg-job-result d-none" id="ca_bundle_config_repair_result">
+                                    <div class="pg-job-panel-row"><span id="ca_bundle_config_repair_message"></span></div>
                                 </div>';
                             }
 
@@ -3001,7 +3072,13 @@ switch ($action) {
                         $eg_avatar = pg_chat_avatar_src(
                             isset($eg_person['image']) ? $eg_person['image'] : '',
                             isset($eg_person['image_file_id']) ? $eg_person['image_file_id'] : 0,
-                            isset($eg_person['image_file_name']) ? $eg_person['image_file_name'] : '');
+                            isset($eg_person['image_file_name']) ? $eg_person['image_file_name'] : '',
+                            // Without the name, a person with no photo got the initials
+                            // avatar's "?" fallback instead of their own letters.
+                            isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
+                            isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
+                            $eg_person['username'],
+                            $eg_person['id']);
 
                         $eg_name = pg_chat_display_name(
                             isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
@@ -9067,6 +9144,15 @@ switch ($action) {
         validate_area_access($user, 'manager');
         validate_token();
 
+        // A hosted site's code is replaced by the platform for every site on
+        // the account at once, never by one of them.
+        if (pg_hosted()) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Software updates are managed by the hosting platform.')
+            ));
+        }
+
         // This feature can take a long time to run for a large site,
         // so increase the allowed execution time for the PHP script.
         ini_set('max_execution_time', '9999');
@@ -11552,6 +11638,16 @@ switch ($action) {
     case 'update_layout':
         validate_token();
 
+        // A custom layout is a PHP file that the page render includes as it
+        // stands, so a hosted site neither writes nor uses one.
+        if (pg_hosted()) {
+            echo encode_json(array(
+                'status' => 'error',
+                'message' => lang('Custom layouts are not available on this site.')
+            ));
+            exit();
+        }
+
         $layout = db_item(
             "SELECT
                 page_id AS id,
@@ -13357,8 +13453,11 @@ switch ($action) {
                         if (is_string($sn) && $sn !== '') $paste_skip[] = $sn;
                     }
                 }
+                // A design without a framework keeps the markup's own
+                // Bootstrap / jQuery links (pg_designer_import_zip()).
                 $paste_res = pg_designer_import_single_html(
-                    $paste_html, $paste_name . '.html', $user, array('skip_names' => $paste_skip));
+                    $paste_html, $paste_name . '.html', $user, array('skip_names' => $paste_skip,
+                        'keep_framework' => isset($request['framework_bootstrap']) && (string)$request['framework_bootstrap'] === '0'));
                 if (!empty($paste_res['errors'])) {
                     respond(array('status' => 'error', 'message' => implode(' ', $paste_res['errors'])));
                 }
@@ -13825,9 +13924,15 @@ switch ($action) {
                 $sc_name = _sc_unique_name($sc_name);
                 $sc_now  = time();
                 $sc_cfg_sql = ($sc_src_cfg !== null) ? "'" . e($sc_src_cfg) . "'" : 'NULL';
-                db("INSERT INTO shared_components (name, description, tree_json, system_region_config, created_by, created_at, updated_at)
+                // Only the import's marker is taken ("import:<project>"): it
+                // lets a design that is never published discard the rows its
+                // import made (pg_design_template_discard()).
+                $sc_cat = isset($request['category']) && is_string($request['category']) ? trim($request['category']) : '';
+                if (strpos($sc_cat, 'import:') !== 0) $sc_cat = '';
+                $sc_cat = mb_substr($sc_cat, 0, 100);
+                db("INSERT INTO shared_components (name, description, tree_json, system_region_config, category, created_by, created_at, updated_at)
                     VALUES ('" . e($sc_name) . "', '" . e($sc_desc) . "', '" . e($sc_tree) . "',
-                            $sc_cfg_sql, '" . (int)$user['id'] . "', '$sc_now', '$sc_now')");
+                            $sc_cfg_sql, '" . e($sc_cat) . "', '" . (int)$user['id'] . "', '$sc_now', '$sc_now')");
                 $sc_new_id = mysqli_insert_id(db::$con);
                 respond(array('status' => 'success', 'id' => $sc_new_id, 'name' => $sc_name));
                 break;

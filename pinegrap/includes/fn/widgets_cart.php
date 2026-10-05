@@ -18,6 +18,22 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The software's wording of a button label, in the language the page is drawn
+// in and in the site's source language: a cart saved in the designer carries
+// the source wording, and a page served in another language still has to
+// recognise it as the default the label setting replaces.
+function _pg_cart_default_labels($keys)
+{
+    $labels = array();
+    foreach ($keys as $key) {
+        $labels[] = lang($key);
+        if (function_exists('pg_tr_source_language')) {
+            $labels[] = lang(array('string' => $key, 'language' => pg_tr_source_language()));
+        }
+    }
+    return array_values(array_unique($labels));
+}
+
 /**
  * Walk the cart tree and apply per-node bindings the designer set on btn /
  * input nodes. Recognized bindings:
@@ -77,7 +93,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
             $_lbl = (string)($context['checkout_button_label'] ?? '');
             if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me'
                 || $node['props']['text'] === 'Button'
-                || ($_lbl !== '' && in_array($node['props']['text'], array(lang('Proceed to Checkout'), lang('Checkout')), true))) {
+                || ($_lbl !== '' && in_array($node['props']['text'], _pg_cart_default_labels(array('Proceed to Checkout', 'Checkout')), true))) {
                 $node['props']['text'] = ($_lbl !== '') ? $_lbl : lang('Checkout');
             }
         } elseif ($action === 'cart_update') {
@@ -106,7 +122,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
             $_lbl = (string)($context['update_button_label'] ?? '');
             if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me'
                 || $node['props']['text'] === 'Button'
-                || ($_lbl !== '' && $node['props']['text'] === lang('Update'))) {
+                || ($_lbl !== '' && in_array($node['props']['text'], _pg_cart_default_labels(array('Update')), true))) {
                 $node['props']['text'] = ($_lbl !== '') ? $_lbl : lang('Update');
             }
         }
@@ -3759,6 +3775,12 @@ function _render_system_widget_cart_link($tree_json, $widget_id, $cfg = array(),
     ));
     _pg_member_drop_empty_links($tree, $links);
     pg_cf_link_labels($tree);
+    // Stamped with a form name nothing posts to, as the login region is. An
+    // unnamed Messages block prints (and uses up) every alert waiting for the
+    // page, and the cart link sits in the account bar above the content: the
+    // sign-in page's "wrong password", or a contact form's errors, would show
+    // up there and never reach the form they belong to.
+    _pg_inject_messages_node($tree, 'cart_link');
 
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));

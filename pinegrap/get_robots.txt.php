@@ -24,8 +24,13 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $additional_robots_content = $row['additional_robots_content'];
 
-// Pages the operator has taken out of the search engines.
+// Pages the operator has taken out of the search engines, under every
+// language directory as well.
 $disallow_rules = pg_build_robots_disallow_rules();
+
+if (function_exists('pg_tr_robots_rules')) {
+    $disallow_rules = pg_tr_robots_rules($disallow_rules);
+}
 
 $own_group = '';
 

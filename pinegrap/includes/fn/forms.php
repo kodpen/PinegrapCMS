@@ -1399,6 +1399,13 @@ function get_forgot_password_screen()
         $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a forgot password page, so use default screen
     } else {
+        // A site built in the visual page editor keeps this form on the page
+        // that carries the forgot password widget. See pg_sw_screen_page_url().
+        $designed_url = function_exists('pg_sw_screen_page_url') ? pg_sw_screen_page_url('forgot password') : '';
+        if ($designed_url !== '') {
+            header('Location: ' . URL_SCHEME . HOSTNAME . $designed_url);
+            exit();
+        }
         require_once(PG_FUNCTIONS_DIR . '/get_forgot_password.php');
         $output = output_header_secure() . get_forgot_password() . output_footer_secure();
     }
@@ -1417,6 +1424,15 @@ function get_login_screen()
         $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a login page, so use default screen
     } else {
+        // A site built in the visual page editor signs visitors in on the page
+        // that carries the login widget, so the control panel sends its
+        // visitors there too, and after the sign-in they come back to the
+        // screen they asked for. See pg_sw_screen_page_url().
+        $designed_url = function_exists('pg_sw_screen_page_url') ? pg_sw_screen_page_url('login') : '';
+        if ($designed_url !== '') {
+            header('Location: ' . URL_SCHEME . HOSTNAME . $designed_url);
+            exit();
+        }
         require_once(PG_FUNCTIONS_DIR . '/get_login.php');
         $output = output_header_secure() . get_login() . output_footer_secure();
     }

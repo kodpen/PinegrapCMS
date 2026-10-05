@@ -2706,6 +2706,10 @@ function output_menu($properties = false)
         $menu_items[21]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
+        // VISUAL PAGE EDITOR > Translations: the pages of a visual design in
+        // the site's other languages (includes/translate/).
+        $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
 
         // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
         // both are reached from the right-click menu of Page Styles, below.
@@ -4105,6 +4109,16 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
     $actions = array();
     $style_type = (string) db_value("SELECT style_type FROM style WHERE style_id = '" . escape($style_id) . "'");
 
+    // On one of the design's own pages the style designer opens on that page,
+    // as the toolbar's edit button (pg_page_edit_url()) does. Without &page=
+    // edit_system_style.php opens the design's first page, so Ctrl+G - which
+    // clicks the button below - landed on that first page from every page.
+    // Both design actions carry it, so the de-duplication below still sees
+    // one screen under two names.
+    $style_page = (($style_type == 'system') && $visual && ((int) $page['page_style'] === (int) $style_id))
+        ? '&page=' . $page_id
+        : '';
+
     if ($user['role'] < 2) {
 
         // Keeps the page_designer_button class wherever it is drawn: the
@@ -4114,7 +4128,7 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
             $actions[] = array(
                 'icon'  => 'easel',
                 'label' => lang('Open Style Designer'),
-                'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . '&send_to=' . $send_to,
+                'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . $style_page . '&send_to=' . $send_to,
                 'class' => 'page_designer_button');
         } else {
             $actions[] = array(
@@ -4127,7 +4141,7 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
         $actions[] = array(
             'icon'  => 'palette',
             'label' => lang('Edit Page Style'),
-            'url'   => $software . 'edit_' . $style_type . '_style.php?id=' . urlencode($style_id) . '&send_to=' . $send_to);
+            'url'   => $software . 'edit_' . $style_type . '_style.php?id=' . urlencode($style_id) . $style_page . '&send_to=' . $send_to);
     }
 
     // The switch that turns theme preview on. While it is on the controls

@@ -31,8 +31,10 @@
  *
  * Nothing here runs by itself. ws_scheduled_run() is called by the screens'
  * ws_tick (a channel that is open asks for it as soon as ws_sync reports
- * something due) and by the workspace's scheduled job, so an action is late
- * by at most the time until somebody opens the workspace or the job runs.
+ * something due), by the general job on every tick (job.php) and by the
+ * workspace's scheduled job, so an action is late by at most the time until
+ * somebody opens the workspace or the general job next runs - a minute on a
+ * site that schedules it every minute.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -3724,7 +3726,7 @@ function ws_scheduled_js_strings()
         'sa_state_cancelled' => lang('Cancelled'),
         'sa_by_hand'        => lang('by hand'),
         'sa_by'             => lang('Written by'),
-        'sa_help'           => lang('A scheduled action runs by itself when its time comes: a channel that is open asks for it within seconds, and the workspace\'s scheduled job runs it otherwise. For it to run on the minute when nobody has the workspace open, the site\'s scheduled job has to run every minute.'),
+        'sa_help'           => lang('A scheduled action runs by itself when its time comes: a channel that is open asks for it within seconds, and the site\'s general job runs it otherwise. For it to run on the minute when nobody has the workspace open, the general job has to be scheduled every minute.'),
         'sa_money_help'     => lang('An amount, like 1250.50'),
         'sa_yes'            => lang('Yes'),
         'sa_no'             => lang('No'),

@@ -1225,6 +1225,435 @@
             '<div class="d-flex flex-wrap gap-1">' + html + '</div>');
     }
 
+    /* -------------------------------------------------------- price rules */
+
+    /* A variant set can be priced from its options: one attribute sets the
+       price, others multiply it or add an amount or a percentage. The rules
+       fill the price column of the matrix; a price typed into a row is the
+       operator's and is left alone.
+
+       pgPriceRuleCompute() is the preview twin of pg_variant_price_compute()
+       in includes/fn/ecommerce.php. Same arithmetic, same order, same
+       rounding: the server prices every row that was not typed by hand again
+       and stores its own figure, so a preview that disagrees would show the
+       operator a price that is never saved. */
+
+    /* What the operator has typed, by attribute (mode) and by option (value,
+       unit). Kept apart from the markup because the block is redrawn whenever
+       an option is ticked. */
+    var priceRuleState = { modes: {}, values: {}, units: {} };
+
+    /* The rules as they stand, or null when no ticked attribute has one. */
+    var activeRules = null;
+
+    /* The twin of pg_pb_decimal_from_input(): the last separator is always the
+       decimal point. Used for multipliers and percentages, which are routinely
+       given to more than two places. */
+    function decimalToNumber(value) {
+
+        value = String(value === undefined || value === null ? '' : value).replace(/[^0-9.,]/g, '');
+
+        if (value === '') {
+            return NaN;
+        }
+
+        var pos = Math.max(value.lastIndexOf('.'), value.lastIndexOf(','));
+
+        if (pos < 0) {
+            return parseFloat(value);
+        }
+
+        var whole    = value.slice(0, pos).replace(/[.,]/g, '');
+        var fraction = value.slice(pos + 1);
+
+        return parseFloat((whole === '' ? '0' : whole) + '.' + (fraction === '' ? '0' : fraction));
+    }
+
+    /* The parsers above drop every character that is not a digit or a
+       separator, the sign included, so the sign is read first. U+2212 is the
+       minus sign some keyboards and pasted figures carry. */
+    function signOf(value) {
+        return /^\s*[-−]/.test(String(value === undefined || value === null ? '' : value)) ? -1 : 1;
+    }
+
+    function priceRuleUnit(optionId) {
+        return priceRuleState.units[optionId] === 'amount' ? 'amount' : 'percent';
+    }
+
+    /* One option's typed value as the server wants it: integer cents for an
+       amount, a plain number for a multiplier or a percentage. null when the
+       box is blank (no effect), false when it holds something unusable. The
+       limits are the ones pg_variant_price_rule_value() checks. */
+    function priceRuleValue(mode, unit, raw) {
+
+        raw = String(raw === undefined || raw === null ? '' : raw).trim();
+
+        if (raw === '') {
+            return null;
+        }
+
+        var sign = signOf(raw);
+
+        if ((mode === 'set') || ((mode === 'adjust') && (unit === 'amount'))) {
+
+            var amount = priceToNumber(raw);
+
+            if (isNaN(amount)) {
+                return false;
+            }
+
+            var cents = Math.round(amount * 100) * sign;
+
+            if (((mode === 'set') && (cents < 0)) || (Math.abs(cents) > 2000000000)) {
+                return false;
+            }
+
+            return { amount: cents };
+        }
+
+        var number = decimalToNumber(raw);
+
+        if (isNaN(number)) {
+            return false;
+        }
+
+        number = number * sign;
+
+        if (mode === 'multiply') {
+            return ((number > 0) && (number <= 100000)) ? { factor: number } : false;
+        }
+
+        return ((number >= -100) && (number <= 100000)) ? { percent: number } : false;
+    }
+
+    /* The canonical rules for the ticked options, in attribute card order —
+       the shape pg_variant_price_rules_normalize() accepts. */
+    function collectPriceRules(dimensions) {
+
+        var attributes = [];
+        var setTaken   = false;
+
+        for (var i = 0; i < dimensions.length; i++) {
+
+            var attrId = String(dimensions[i][0].attr_id);
+            var mode   = priceRuleState.modes[attrId] || '';
+
+            if (!mode) {
+                continue;
+            }
+
+            /* One base per price. The mode select does not offer a second
+               one; this is for state left over from an attribute that was
+               unticked and ticked again. */
+            if (mode === 'set') {
+                if (setTaken) {
+                    continue;
+                }
+                setTaken = true;
+            }
+
+            var options = [];
+
+            for (var j = 0; j < dimensions[i].length; j++) {
+
+                var optionId = String(dimensions[i][j].option_id);
+                var value    = priceRuleValue(mode, priceRuleUnit(optionId), priceRuleState.values[optionId]);
+
+                if (value) {
+                    options.push($.extend({ option_id: Number(optionId) }, value));
+                }
+            }
+
+            if (options.length) {
+                attributes.push({ attribute_id: Number(attrId), mode: mode, options: options });
+            }
+        }
+
+        return attributes.length ? { version: 1, attributes: attributes } : null;
+    }
+
+    /* The product's own price in cents, the way the server reads it
+       (pg_pb_price_to_cents() on $_POST['price']). */
+    function baseCents() {
+        var value = priceToNumber($('#price').val());
+        return isNaN(value) ? 0 : Math.round(value * 100);
+    }
+
+    /* Amounts and factors in the formula hint, with the store's separators.
+       No currency symbol: the hint sits right under a box that has one. */
+    function plainMoney(cents) {
+
+        var seps  = cfg.moneySeparators || { decimal: '.', thousands: ',' };
+        var parts = (Math.abs(cents) / 100).toFixed(2).split('.');
+
+        return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, seps.thousands) + seps.decimal + parts[1];
+    }
+
+    function plainFactor(value) {
+        var seps = cfg.moneySeparators || { decimal: '.', thousands: ',' };
+        return String(Number(value.toFixed(4))).replace('.', seps.decimal);
+    }
+
+    /* Price one combination. combo is the matrix's own [{attr_id, option_id}].
+       Returns the cents, whether the rules went below zero, whether any rule
+       touched this row, and the arithmetic as text for the hint. */
+    function pgPriceRuleCompute(base, rules, combo) {
+
+        var selection = {};
+        var i;
+
+        for (i = 0; i < combo.length; i++) {
+            selection[String(combo[i].attr_id)] = String(combo[i].option_id);
+        }
+
+        var multiply = 1;
+        var add      = 0;
+        var factors  = [];
+        var amounts  = [];
+        var percents = [];
+        var applied  = false;
+
+        for (i = 0; i < rules.attributes.length; i++) {
+
+            var attribute = rules.attributes[i];
+            var optionId  = selection[String(attribute.attribute_id)];
+
+            if (optionId === undefined) {
+                continue;
+            }
+
+            for (var j = 0; j < attribute.options.length; j++) {
+
+                var option = attribute.options[j];
+
+                if (String(option.option_id) !== optionId) {
+                    continue;
+                }
+
+                applied = true;
+
+                if (attribute.mode === 'set') {
+                    base = option.amount;
+                } else if (attribute.mode === 'multiply') {
+                    multiply *= option.factor;
+                    factors.push(option.factor);
+                } else if (option.percent !== undefined) {
+                    percents.push(option.percent);
+                } else {
+                    add += option.amount;
+                    amounts.push(option.amount);
+                }
+
+                break;
+            }
+        }
+
+        var price = (base * multiply) + add;
+
+        /* One factor at a time, as pg_variant_price_compute() does. */
+        for (i = 0; i < percents.length; i++) {
+            price *= (1 + (percents[i] / 100));
+        }
+
+        /* toFixed(6) strips floating-point noise before the cent is decided,
+           the server's inner round($price, 6). */
+        var cents   = Math.round(Number(price.toFixed(6)));
+        var clamped = cents < 0;
+
+        if (clamped) {
+            cents = 0;
+        }
+
+        var formula = plainMoney(base);
+
+        for (i = 0; i < factors.length; i++) {
+            formula += ' × ' + plainFactor(factors[i]);
+        }
+
+        for (i = 0; i < amounts.length; i++) {
+            formula += ((amounts[i] < 0) ? ' − ' : ' + ') + plainMoney(amounts[i]);
+        }
+
+        if (amounts.length && percents.length) {
+            formula = '(' + formula + ')';
+        }
+
+        for (i = 0; i < percents.length; i++) {
+            formula += ' × ' + plainFactor(1 + (percents[i] / 100));
+        }
+
+        return { cents: cents, clamped: clamped, applied: applied, formula: formula };
+    }
+
+    /* The rules block: one row per ticked attribute, and while that attribute
+       has an effect, one small box per ticked option. */
+    function renderPriceRules(dimensions) {
+
+        var $body = $('#pg_pb_price_rules_body');
+
+        if (!$body.length) {
+            return;
+        }
+
+        /* Which attribute holds the base, if any. A second one claiming it
+           (state from before an untick) is put back to no effect. */
+        var setOwner = '';
+        var i;
+
+        for (i = 0; i < dimensions.length; i++) {
+
+            var ownerId = String(dimensions[i][0].attr_id);
+
+            if (priceRuleState.modes[ownerId] === 'set') {
+                if (setOwner === '') {
+                    setOwner = ownerId;
+                } else {
+                    priceRuleState.modes[ownerId] = '';
+                }
+            }
+        }
+
+        var hints = {
+            set:      label('price_rule_set_hint'),
+            multiply: label('price_rule_multiply_hint'),
+            adjust:   label('price_rule_adjust_hint')
+        };
+
+        var placeholders = { set: label('Unit Price'), multiply: '1', adjust: '0' };
+
+        var html = '';
+
+        for (i = 0; i < dimensions.length; i++) {
+
+            var attrId   = String(dimensions[i][0].attr_id);
+            var attrName = dimensions[i][0].attr_name;
+            var mode     = priceRuleState.modes[attrId] || '';
+
+            var choice = function (value, text, disabled) {
+                return '<option value="' + value + '"' +
+                    ((mode === value) ? ' selected="selected"' : '') +
+                    (disabled ? ' disabled="disabled"' : '') + '>' + esc(text) + '</option>';
+            };
+
+            html += '<div class="pg-pb-pr-attr border rounded px-3 py-2 mb-2" data-attr-id="' + esc(attrId) + '">' +
+                '<div class="d-flex flex-wrap align-items-center gap-2">' +
+                '<span class="fw-semibold">' + esc(attrName) + '</span>' +
+                '<select class="form-select form-select-sm pg-pb-pr-mode" aria-label="' + esc(attrName) + '">' +
+                choice('', label('No effect on price'), false) +
+                choice('set', label('Sets the price'), (setOwner !== '') && (setOwner !== attrId)) +
+                choice('multiply', label('Multiplier'), false) +
+                choice('adjust', label('Adds a difference'), false) +
+                '</select>' +
+                (mode ? '<span class="small text-body-secondary">' + esc(hints[mode]) + '</span>' : '') +
+                '</div>';
+
+            if (mode) {
+
+                html += '<div class="d-flex flex-wrap gap-2 mt-2">';
+
+                for (var j = 0; j < dimensions[i].length; j++) {
+
+                    var part     = dimensions[i][j];
+                    var optionId = String(part.option_id);
+                    var raw      = priceRuleState.values[optionId] || '';
+                    var unit     = priceRuleUnit(optionId);
+                    var invalid  = priceRuleValue(mode, unit, raw) === false;
+
+                    html += '<div class="input-group input-group-sm pg-pb-pr-option" data-option-id="' + esc(optionId) + '">' +
+                        '<span class="input-group-text">' + esc(part.label) + '</span>' +
+                        ((mode === 'multiply') ? '<span class="input-group-text">×</span>' : '') +
+                        '<input type="text" inputmode="decimal" autocomplete="off"' +
+                        ' class="form-control pg-pb-pr-value' + (invalid ? ' is-invalid' : '') + '"' +
+                        ' value="' + esc(raw) + '" placeholder="' + esc(placeholders[mode]) + '"' +
+                        ' title="' + (invalid ? esc(label('price_rule_invalid')) : '') + '"' +
+                        ' aria-label="' + esc(attrName + ': ' + part.label) + '" />' +
+                        /* Not escaped: the symbol is a setting and is often
+                           stored as an entity, as in variantRow(). */
+                        ((mode === 'set') ? '<span class="input-group-text">' + symbol + '</span>' : '') +
+                        ((mode === 'adjust')
+                            ? '<select class="form-select pg-pb-pr-unit" aria-label="' + esc(attrName + ': ' + part.label) + '">' +
+                                '<option value="percent"' + ((unit === 'percent') ? ' selected="selected"' : '') + '>%</option>' +
+                                '<option value="amount"' + ((unit === 'amount') ? ' selected="selected"' : '') + '>' + symbol + '</option>' +
+                              '</select>'
+                            : '') +
+                        '</div>';
+                }
+
+                html += '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        $body.html(html);
+    }
+
+    /* Bring one matrix row in line with the rules. A row typed by hand keeps
+       its price and shows that it does; a row the rules filled earlier goes
+       back to the product price when the rules are switched off. */
+    function applyRowPrice($row, base) {
+
+        var $price   = $row.find('.pg-pb-v-price');
+        var $formula = $row.find('.pg-pb-v-formula');
+        var $manual  = $row.find('.pg-pb-v-manual');
+
+        if (!activeRules) {
+
+            if ($row.attr('data-price-auto') === '1') {
+                $price.val((base / 100).toFixed(2));
+                $row.removeAttr('data-price-auto');
+            }
+
+            $formula.addClass('d-none').text('');
+            $manual.addClass('d-none').removeClass('d-inline-flex');
+            return;
+        }
+
+        if ($row.attr('data-price-manual') === '1') {
+            $formula.addClass('d-none');
+            $manual.removeClass('d-none').addClass('d-inline-flex');
+            return;
+        }
+
+        var result = pgPriceRuleCompute(base, activeRules, $row.data('combo') || []);
+
+        $price.val((result.cents / 100).toFixed(2));
+        $row.attr('data-price-auto', '1');
+        $manual.addClass('d-none').removeClass('d-inline-flex');
+
+        $formula
+            .text(result.formula)
+            .toggleClass('d-none', !result.applied)
+            .toggleClass('text-danger', result.clamped)
+            .toggleClass('text-body-secondary', !result.clamped)
+            .attr('title', result.clamped ? label('price_rule_clamped') : '');
+    }
+
+    /* The matrix button that copies the product price into every row becomes
+       "recalculate" while there are rules: copying one figure into every row
+       is exactly what the rules replace. */
+    function refreshApplyPriceButton() {
+
+        $('#pg_pb_apply_price').html(activeRules
+            ? '<i class="bi bi-calculator me-1" aria-hidden="true"></i>' + esc(label('Recalculate with Rules'))
+            : '<i class="bi bi-currency-exchange me-1" aria-hidden="true"></i>' + esc(label('Apply Price to All')));
+    }
+
+    function refreshRulePrices() {
+
+        var dimensions = selectedDimensions();
+        var base       = baseCents();
+
+        activeRules = (cartesian(dimensions).length > 1) ? collectPriceRules(dimensions) : null;
+
+        $('#pg_pb_matrix .pg-pb-variant').each(function () {
+            applyRowPrice($(this), base);
+        });
+
+        refreshApplyPriceButton();
+        updatePreview();
+    }
+
     /* ------------------------------------------------------ matrix render */
 
     /* Values the operator typed, keyed by combination, so ticking one more
@@ -1259,7 +1688,10 @@
                    not inside .pg-pb-variant, so $row.find() would never see it. */
                 gtin:               advField($row, '.pg-pb-v-gtin'),
                 barcode:            advField($row, '.pg-pb-v-barcode'),
-                touched:            $row.data('touched') === true
+                touched:            $row.data('touched') === true,
+                /* Typed by hand / filled by the price rules. */
+                priceManual:        $row.attr('data-price-manual') === '1',
+                priceAuto:          $row.attr('data-price-auto') === '1'
             };
         });
     }
@@ -1420,8 +1852,22 @@
         var suffix = comboSku($('#sku_template').val(), combo);
         var sku    = saved.touched ? saved.name : fullSku(defaults.baseSku, suffix);
         var short  = saved.touched ? saved.short_description : variantShortDescription(combo);
-        var price  = saved.price !== undefined ? saved.price : defaults.price;
         var stock  = saved.inventory_quantity !== undefined ? saved.inventory_quantity : defaults.stock;
+
+        /* Price: the rules' figure unless the operator typed one; without
+           rules, what was typed before the matrix was rebuilt, as always —
+           except a figure the rules filled in, which goes with them. */
+        var manual = saved.priceManual === true;
+        var priced = (activeRules && !manual) ? pgPriceRuleCompute(baseCents(), activeRules, combo) : null;
+        var price;
+
+        if (priced) {
+            price = (priced.cents / 100).toFixed(2);
+        } else if ((saved.price !== undefined) && !(saved.priceAuto && !activeRules)) {
+            price = saved.price;
+        } else {
+            price = defaults.price;
+        }
         var images = saved.images || [];
 
         var attributes = combo.map(function (part) {
@@ -1439,6 +1885,8 @@
             ' data-pg-pb-adv="' + index + '"' +
             ' data-combo-key="' + esc(key) + '"' +
             ' data-combo-suffix="' + esc(suffix) + '"' +
+            (manual ? ' data-price-manual="1"' : '') +
+            (priced ? ' data-price-auto="1"' : '') +
             ' data-combo=\'' + JSON.stringify(combo).replace(/'/g, '&#39;') + '\'' +
             ' data-attributes=\'' + JSON.stringify(attributes).replace(/'/g, '&#39;') + '\'>' +
 
@@ -1467,7 +1915,21 @@
                for the lira). Escaping it prints the entity instead of the
                symbol. Every legacy screen outputs it raw. */
             '<span class="input-group-text">' + symbol + '</span>' +
-            '</div></td>' +
+            '</div>' +
+            /* What the rules did to this row, or that the operator overrode
+               them. Both stay hidden while there are no rules. */
+            '<div class="small mt-1 pg-pb-v-formula' +
+                ((priced && priced.applied) ? '' : ' d-none') +
+                ((priced && priced.clamped) ? ' text-danger' : ' text-body-secondary') + '"' +
+                ((priced && priced.clamped) ? ' title="' + esc(label('price_rule_clamped')) + '"' : '') + '>' +
+                esc(priced ? priced.formula : '') + '</div>' +
+            '<div class="small mt-1 align-items-center gap-1 pg-pb-v-manual' + ((activeRules && manual) ? ' d-inline-flex' : ' d-none') + '">' +
+                '<span class="badge rounded-pill text-bg-light border">' + esc(label('Typed by hand')) + '</span>' +
+                '<button type="button" class="btn btn-sm btn-link p-0 pg-pb-v-price-reset"' +
+                ' title="' + esc(label('Back to the rule')) + '" aria-label="' + esc(label('Back to the rule')) + '">' +
+                '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>' +
+            '</div>' +
+            '</td>' +
 
             '<td class="d-block d-lg-table-cell align-middle">' +
             cellLabel(label('Inventory Quantity')) +
@@ -1586,6 +2048,11 @@
 
         updateSummary(combos.length);
         refreshComboPreview(combos);
+
+        /* Before the rows: variantRow() prices from activeRules. */
+        renderPriceRules(dimensions);
+        activeRules = (combos.length > 1) ? collectPriceRules(dimensions) : null;
+        refreshApplyPriceButton();
 
         /* The shared identifier fields only make sense while there is one
            product to identify. Hidden rather than disabled: a greyed box the
@@ -2092,7 +2559,41 @@
        switch panel, which is markup this file does not own and may be
        re-rendered. A direct binding made at load survives nothing. */
     $(document).on('click', '#pg_pb_apply_price', function () {
+
+        /* With rules the button recalculates; prices typed by hand are lost
+           by that, so it asks first when there are any. */
+        if (activeRules) {
+
+            var manualCount = $('#pg_pb_matrix .pg-pb-variant[data-price-manual="1"]').length;
+
+            var recalculate = function () {
+                $('#pg_pb_matrix .pg-pb-variant').removeAttr('data-price-manual');
+                refreshRulePrices();
+            };
+
+            if (!manualCount || (typeof window.pgConfirm !== 'function')) {
+                recalculate();
+                return;
+            }
+
+            window.pgConfirm({
+                title:       label('Recalculate with Rules'),
+                message:     label('price_rules_reset').replace('{count}', manualCount),
+                confirmText: label('Continue'),
+                cancelText:  label('Cancel'),
+                variant:     'warning'
+            }).then(function (ok) {
+                if (ok) {
+                    recalculate();
+                }
+            });
+
+            return;
+        }
+
         $('#pg_pb_matrix .pg-pb-v-price').val($('#price').val() || '0');
+        $('#pg_pb_matrix .pg-pb-variant').removeAttr('data-price-manual data-price-auto');
+        updatePreview();
     });
 
     $(document).on('click', '#pg_pb_apply_stock', function () {
@@ -2486,7 +2987,9 @@
                 gtin:               advField($row, '.pg-pb-v-gtin'),
                 barcode:            advField($row, '.pg-pb-v-barcode'),
                 images:             images,
-                attributes:         $row.data('attributes') || []
+                attributes:         $row.data('attributes') || [],
+                /* The server prices every other row from the rules again. */
+                price_manual:       ($row.attr('data-price-manual') === '1') ? '1' : ''
             };
 
             /* The advanced row is a sibling <tr>, not a descendant, so it is
@@ -2578,6 +3081,14 @@
         $('#variants_json').val(JSON.stringify(collectVariants()));
         $('#attributes_meta_json').val(JSON.stringify(collectAttributeMeta()));
 
+        /* Read again rather than taken from activeRules: a value typed a
+           moment ago is in the state either way, and this is what the server
+           will price with. Only a set has rules. */
+        var submitDimensions = selectedDimensions();
+        var submitRules      = (cartesian(submitDimensions).length > 1) ? collectPriceRules(submitDimensions) : null;
+
+        $('#variant_price_rules').val(submitRules ? JSON.stringify(submitRules) : '');
+
         /* TinyMCE writes back on submit for its own textareas, but the group
            description is read server-side from $_POST, so make sure the
            textarea is in sync before the form leaves. */
@@ -2586,6 +3097,85 @@
         }
 
         return true;
+    });
+
+    /* ------------------------------------------------- price rule events */
+
+    /* Bound after the generic ".is-invalid" handler above, which clears the
+       mark on every input: delegated handlers run in the order they were
+       bound, so this one gets the last word on whether a value is usable. */
+
+    function priceRuleMode($el) {
+        return priceRuleState.modes[String($el.closest('.pg-pb-pr-attr').data('attr-id'))] || '';
+    }
+
+    function markPriceRuleValue($input) {
+
+        var optionId = String($input.closest('.pg-pb-pr-option').data('option-id'));
+        var invalid  = priceRuleValue(priceRuleMode($input), priceRuleUnit(optionId), $input.val()) === false;
+
+        $input.toggleClass('is-invalid', invalid)
+            .attr('title', invalid ? label('price_rule_invalid') : '');
+    }
+
+    $(document).on('change', '.pg-pb-pr-mode', function () {
+
+        priceRuleState.modes[String($(this).closest('.pg-pb-pr-attr').data('attr-id'))] = $(this).val();
+
+        /* Redrawn: the boxes differ per mode, and "sets the price" has to be
+           offered to, or withheld from, the other attributes. */
+        renderPriceRules(selectedDimensions());
+        refreshRulePrices();
+    });
+
+    /* Not redrawn on typing — that would take the caret away. */
+    $(document).on('input', '.pg-pb-pr-value', function () {
+
+        priceRuleState.values[String($(this).closest('.pg-pb-pr-option').data('option-id'))] = $(this).val();
+
+        markPriceRuleValue($(this));
+        refreshRulePrices();
+    });
+
+    $(document).on('change', '.pg-pb-pr-unit', function () {
+
+        var $option = $(this).closest('.pg-pb-pr-option');
+
+        priceRuleState.units[String($option.data('option-id'))] = $(this).val();
+
+        markPriceRuleValue($option.find('.pg-pb-pr-value'));
+        refreshRulePrices();
+    });
+
+    /* A price typed into a row is the operator's. */
+    $('#pg_pb_matrix').on('input', '.pg-pb-v-price', function () {
+
+        var $row = $(this).closest('.pg-pb-variant');
+
+        $row.attr('data-price-manual', '1').removeAttr('data-price-auto');
+
+        if (activeRules) {
+            $row.find('.pg-pb-v-formula').addClass('d-none');
+            $row.find('.pg-pb-v-manual').removeClass('d-none').addClass('d-inline-flex');
+        }
+    });
+
+    $('#pg_pb_matrix').on('click', '.pg-pb-v-price-reset', function () {
+
+        var $row = $(this).closest('.pg-pb-variant');
+
+        $row.removeAttr('data-price-manual');
+        applyRowPrice($row, baseCents());
+        updatePreview();
+    });
+
+    /* The product price is the base of every rule, so the rows follow it while
+       there are rules. Without rules it keeps seeding new rows only, as
+       before. */
+    $('#price').on('input change', function () {
+        if (activeRules) {
+            refreshRulePrices();
+        }
     });
 
     /* ---------------------------------------------------------- first run */

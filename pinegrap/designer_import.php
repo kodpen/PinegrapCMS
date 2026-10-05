@@ -65,18 +65,22 @@ if (!empty($_POST['skip_names'])) {
     if (is_array($tmp_skip)) foreach ($tmp_skip as $s) if (is_string($s) && $s !== '') $skip[] = $s;
 }
 
+// The editor says whether the design is built on Bootstrap 5 (its sentinels
+// load it) or has no framework (the project's own Bootstrap and jQuery stay).
+$keep_framework = isset($_POST['framework_bootstrap']) && (string)$_POST['framework_bootstrap'] === '0';
+
 $head = @file_get_contents($tmp, false, null, 0, 4);
 $is_zip = ($ext === 'zip') || (function_exists('pg_looks_like_zip') && pg_looks_like_zip($head));
 
 if ($is_zip) {
-    $res = pg_designer_import_zip($tmp, $project, $user, array('skip_names' => $skip));
+    $res = pg_designer_import_zip($tmp, $project, $user, array('skip_names' => $skip, 'keep_framework' => $keep_framework));
 } elseif ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') {
     $html = @file_get_contents($tmp);
     if ($html === false || trim($html) === '') {
         echo encode_json(array('status' => 'error', 'message' => lang('The file is empty.')));
         exit();
     }
-    $res = pg_designer_import_single_html($html, $orig_name, $user, array('skip_names' => $skip));
+    $res = pg_designer_import_single_html($html, $orig_name, $user, array('skip_names' => $skip, 'keep_framework' => $keep_framework));
 } else {
     echo encode_json(array('status' => 'error', 'message' => lang('Only .html, .htm and .zip files can be imported.')));
     exit();

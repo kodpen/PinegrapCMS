@@ -366,6 +366,12 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
 // that is not a date.
 function pg_sw_default_date_format($type)
 {
+    // A page served in another language writes dates that language's way.
+    $locale = function_exists('pg_tr_locale') ? pg_tr_locale('date') : '';
+    if ($locale !== '') {
+        if ($type === 'date')          return $locale;
+        if ($type === 'date and time') return $locale . ' H:i';
+    }
     $us = (defined('DATE_FORMAT') && DATE_FORMAT == 'month_day');
     if ($type === 'date')          return $us ? lang('n/j/Y') : lang('j/n/Y');
     if ($type === 'date and time') return $us ? lang('n/j/Y g:i A') : lang('j/n/Y g:i A');
@@ -2906,6 +2912,12 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
     $host         = (defined('URL_SCHEME') ? URL_SCHEME : '') . (defined('HOSTNAME') ? HOSTNAME : '');
     $page_row     = function ($title, $name_or_url, $excerpt, $is_url = false) use ($path, $host) {
         $url = $is_url ? $path . $name_or_url : $path . encode_url_path((string)$name_or_url);
+        // On a page in another language the title reads in it; the link gets
+        // the language's directory with the rest of the page's links.
+        if (function_exists('pg_tr_text')) {
+            $title   = pg_tr_text((string)$title, 'text', 'seo');
+            $excerpt = pg_tr_text((string)$excerpt, 'text', 'seo');
+        }
         return array(
             'title'    => ((string)$title !== '') ? (string)$title : $host . $url,
             'url'      => $url,
@@ -2980,6 +2992,17 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
 
     if (!$want_pages) return $out;
 
+    // On a page served in another language the visitor searches in that
+    // language: the translated texts of the visual pages are searched, and
+    // their pages come first; what the source text matched follows.
+    $tr_pages = array();
+    if (function_exists('pg_tr_search_pages')) {
+        foreach (pg_tr_search_pages($query) as $hit) {
+            if (!check_view_access($hit['folder_id'], true)) continue;
+            $tr_pages[] = $page_row($hit['title'], $hit['name'], $hit['excerpt']);
+        }
+    }
+
     $binned = pg_designer_not_binned_sql('page.page_folder');
 
     // ── Advanced: fulltext over search_items ─────────────────────────────
@@ -3027,6 +3050,7 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             $out['pages'][] = $page_row($item['title'], $item['url'], $item['description'], true);
         }
         $out['limited'] = (is_array($results) && count($results) === 100);
+        $out['pages'] = _pg_sw_search_merge_pages($tr_pages, $out['pages']);
         return $out;
     }
 
@@ -3154,6 +3178,21 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
         if ($excerpt === '' && isset($texts[$pid])) $excerpt = _pg_sw_snippet($texts[$pid], $query);
         $out['pages'][] = $page_row($r['page_title'], $r['page_name'], $excerpt);
     }
+    $out['pages'] = _pg_sw_search_merge_pages($tr_pages, $out['pages']);
+    return $out;
+}
+
+// The pages the translated texts matched, then the others, each page once.
+function _pg_sw_search_merge_pages($first, $rest)
+{
+    if (!$first) return $rest;
+    $seen = array();
+    $out  = array();
+    foreach (array_merge($first, $rest) as $row) {
+        if (isset($seen[$row['url']])) continue;
+        $seen[$row['url']] = true;
+        $out[] = $row;
+    }
     return $out;
 }
 
@@ -3262,7 +3301,8 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     if ($query === '') {
         $heading = lang('Please enter keyword(s) or phrase to search.');
     } elseif ($total === 0) {
-        $heading = (!$empty_has_slot && $empty_message !== lang('No results found.'))
+        $heading = (!$empty_has_slot && $empty_message !== lang('No results found.')
+                    && (!function_exists('pg_tr_source_language') || $empty_message !== lang(array('string' => 'No results found.', 'language' => pg_tr_source_language()))))
             ? $empty_message
             : lang(array('string' => 'No results were found for: {var:1}', 'vars' => $query));
     } elseif (!empty($found['limited'])) {

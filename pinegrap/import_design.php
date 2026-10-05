@@ -42,6 +42,12 @@ if (PHP_SAPI === 'cli') {
     validate_area_access($user, 'designer');
 }
 
+// The import fetches every address it is given from the server itself, so a
+// hosted site, which shares that server with other sites, goes without it.
+if (pg_hosted()) {
+    output_error(lang('This feature is not currently available.'));
+}
+
 include_once('liveform.class.php');
 $liveform = new liveform('import_design');
 
@@ -399,6 +405,13 @@ if ($action != 'import') {
         $name = $item['name'];
         $extension = $item['extension'];
         $design = $item['design'];
+
+        // Imported files land in the files directory like uploads do, so the
+        // upload rules apply: a name the web server would run, or one that
+        // changes how it serves that directory (.htaccess), is skipped.
+        if (($type != 'html') && pg_upload_name_blocked($name)) {
+            continue;
+        }
 
         $content = fetch_url_content($url);
 

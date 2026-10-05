@@ -19,6 +19,323 @@
 
 
 
+  2026.4.6
+  ==========================================================
+
+  PANO
+  --------------------------------------------------------
+
+  [DÜZELTME] Çevrimiçi Etkileşim kartında fotoğrafı olmayan
+         kullanıcıların resmi yerine "?" çıkıyordu. Artık adının
+         (ad yoksa kullanıcı adının) baş harfleri görünür.
+
+  SİSTEM DURUMU
+  --------------------------------------------------------
+
+  [YENİ] Sunucu HTTPS sertifikalarını kendi deposuyla doğrulayamıyor
+         ve data/config.php'de CURL_CA_BUNDLE boşsa ya da var
+         olmayan bir dosyayı gösteriyorsa Sistem Durumu kartında
+         kırmızı "CA paketi ayarı" satırı çıkar; "Düzelt" ayarı tek
+         tıkla paketle gelen data/cacert.pem'e yönlendirir. Kurulum
+         da aynı durumu görürse satırı config.php'ye kendisi yazar.
+         Bu ayar yokken güncellemeler, Pinegrap AI, ödeme ve webhook
+         çağrıları sessizce başarısız oluyordu.
+
+  [YENİ] En düşük PHP sürümü 7.1. Kurulum ekranı ve Sistem
+         Durumu kartı PHP 7.0'ı artık yetersiz (kırmızı)
+         gösterir; ERP fatura PDF'i zaten 7.1 istiyordu.
+
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [YENİ] Görsel editörle yapılmış sayfalar başka dillerde de
+         sunulabiliyor. Ayarlar → Diller ve Çeviri'den bir hedef
+         dil eklenince (örneğin İngilizce) aynı sayfalar bir dil
+         dizini altından açılır: /hakkimizda sayfası /en/hakkimizda
+         adresinde, aynı tasarımla ve çevrilmiş metinlerle. Dosya
+         kopyalanmaz; dosyalar, görseller ve CSS/JS tek adreste
+         kalır. Menü, sayfa başlığı ve açıklama da çevrilir; iç
+         bağlantılar dilin dizininde kalır; arama motorları için
+         hreflang alternatifleri yazılır. Çevirisi olmayan metin
+         kaynak dilde görünür.
+
+  [YENİ] Çeviriler ekranı (Görsel Sayfa Editörü menüsü): sayfa
+         listesi ve kapsama oranı, kaynak metin ile çevirinin yan
+         yana düzenlenmesi, "gözden geçirildi" işareti, CSV dışa ve
+         içe aktarma. "Çevirileri güncelle" sayfaları tarar ve
+         yalnız çevirisi olmayan metinleri motora gönderir; aynı
+         metin kırk sayfada geçse de bir kez çevrilir. Kaynak
+         sayfada bir metin değişince yalnız o metin yeniden
+         beklemeye düşer, elle yapılan çeviriler ezilmez.
+
+  [YENİ] Çeviri motorları: Google Cloud Translation (site
+         sahibinin kendi API anahtarıyla, arka planda), tarayıcı
+         (masaüstü Chrome 138+ / Edge 148+ üzerindeki Translator
+         API ile, anahtar gerektirmez) ve elle çeviri. Dil başına
+         motor, yedek motor ve arama motoru indeks politikası
+         (yalnız gözden geçirilmiş metinler / makine çevirileri de
+         / indekslenmez) seçilir.
+
+  [YENİ] İki yapay zekâ motoru, ikisi de anahtar istemez: Pinegrap
+         AI (Çalışma Alanı modülünün model bağlantısıyla, sunucuda,
+         metinler bağlamıyla küçük paketler hâlinde; güncelleme
+         ekran açıkken sürer, kalanı zamanlanmış iş bitirir) ve
+         Claude (Çalışma Alanı Ayarları'ndaki rutin: iş olduğu
+         bildirilir, metinleri API'den alır, çevirileri geri
+         gönderir; rutinin günlük hakkı ortaktır). İkisi de üslup
+         notunu ve sözlüğü okur. Ayarlar kartı motorların hazır
+         olup olmadığını gösterir.
+
+  [YENİ] Çeviriler ekranında sözlük: kullanılacak karşılığıyla bir
+         terim ya da olduğu gibi bırakılacak bir ad (marka, ürün
+         adı; istenirse büyük/küçük harf birebir). Bırakılan
+         terimleri Google ve tarayıcı motoru da ellemez; yapay zekâ
+         motorlarına satır olarak verilir. Terim tek dile ya da
+         tüm dillere yazılabilir.
+
+  [YENİ] Dış API'ye translations modülü (translations:read /
+         translations:write): GET /translations/languages,
+         GET /translations/strings (hash anahtarlı, imleçli),
+         GET /translations/pages/{id}, POST /translations (bir
+         çeviri aracının bitmiş işi toplu yazması); Claude'un
+         rutini için iş kuyruğu uçları /translations/jobs (liste,
+         claim, items, results, fail). Modül, 2026.4.6 yükseltmesi
+         koşulmuş her sitede açıktır.
+
+  [YENİ] Ayarlar → Diller ve Çeviri kartının başlığından Çeviriler
+         ekranına düğme.
+
+  [YENİ] Mağaza, formlar ve widget metinleri de çevriliyor: ürün ve ürün
+         grubu adları, açıklamaları, nitelikler ve seçenekleri; form
+         başlığı, etiketleri, seçenekleri, onay ve doğrulama mesajları;
+         sepet, katalog ve arama widget'larında ayarlardan yazılan
+         mesaj ve düğme metinleri; özel HTML blokları. Çeviriler
+         ekranında sayfaların altında "Diğer metinler" grupları
+         (Ürünler ve ürün grupları, Formlar). Ürün kodu (SKU) ve stok
+         kodları (D10, KT-1) çevrilmez. Yazılımın kendi arayüz
+         ifadeleri ("Sepete ekle" gibi) bu ekranda değil, dil
+         dosyalarındadır.
+
+  [YENİ] Çeviriler ekranında "Tümünü onayla": seçili dil ve kapsamdaki
+         makine çevirileri tek tıkla gözden geçirildi olur; şüpheli
+         işaretliler tek tek bakılmak üzere kalır.
+
+  [YENİ] Görsel Sayfa Editörü'nde seçili metnin diğer dillerdeki
+         çevirileri Seçenekler panelinin üstündeki "Çeviri" bölümünde
+         görülür, düzenlenir ve onaylanır.
+
+  [YENİ] /en/ gibi bir dil sayfasından gönderilen form ve sipariş o
+         dilde kalır: hata mesajları, yönlendirmeler, gönderene ve
+         müşteriye giden e-posta o dilde; yöneticiye giden e-posta
+         sitenin kendi dilinde.
+
+  [YENİ] Arama motorları için: sitemap.xml dil adreslerini hreflang
+         alternatifleriyle listeler (dilin indeks politikasına göre);
+         robots.txt'de gizlenen sayfalar her dil dizininde de gizli;
+         yapılandırılmış verideki adresler dilin adresi. Site araması
+         dil sayfasında o dilde arar.
+
+  [YENİ] Dilin sayı ve tarih biçimi (Ayarlar → Diller ve Çeviri)
+         fiyatlarda ve tarihlerde kullanılıyor.
+
+  [YENİ] "Kaydedince çevir": dil satırında açılınca, görsel editörde
+         kaydedilen sayfanın yeni ve değişen metinleri kendiliğinden
+         dilin motoruna (Claude, Pinegrap AI ya da Google) gönderilir.
+         Yeni eklenen dilin motoru artık "Elle" değil: Claude bağlıysa
+         Claude, değilse tarayıcı.
+
+  [YENİ] Görsel editöre Dil Seçici widget'ı: sitenin dillerini ad
+         ya da kod olarak listeler, her biri bulunulan sayfanın o
+         dildeki hâline gider.
+
+  [ŞEMA] Dil, metin, çeviri, kullanım yeri, iş, sözlük ve çevrilmiş
+         sayfa gövdesi tabloları; ayarlar tablosuna kaynak dil,
+         dil önekleri, Google anahtarı (şifreli), üslup notu ve
+         rozet sütunları; dil tablosuna "kaydedince çevir".
+
+  OTURUM, HESAP VE GÜVENLİK
+  --------------------------------------------------------
+
+  [GÜVENLİK] Config düzenleme ekranı (Ayarlar → Altyapı →
+         Config Düzenle) kaldırıldı. Ekran config.php içindeki her
+         ayarı panelden değiştirebildiği için bir yönetici PHP
+         bölgelerini yeniden açabiliyor, veritabanı parolasını
+         görebiliyordu. Bir ayar gerektiğinde config.php elle
+         düzenlenir; yazılım temizliği eski dosyayı siler.
+
+  [GÜVENLİK] Tasarımı İçe Aktar, dosya yöneticisinin yükleme
+         kurallarını artık kendisi de uyguluyor: .htaccess gibi
+         sunucu dosyaları ve çalıştırılabilir uzantılı dosyalar
+         içe aktarılmaz.
+
+  [DÜZELTME] Görsel sayfa editörüyle kurulan sitede (kurulumda
+         hazır şablon seçildiğinde de) yönetim paneline oturum
+         açmadan girilince giriş sayfası bulunamıyor, stilsiz bir
+         yedek form ve "Undefined array key page_id" uyarısı
+         çıkıyordu. Görsel editörde sayfayı giriş sayfası yapan
+         sayfa türü değil, üzerindeki Giriş widget'ıdır; panel
+         artık o sayfaya gönderir ve giriş yapılınca açılmak
+         istenen panel ekranına döner. Şifremi unuttum ekranı da
+         aynı biçimde Şifremi Unuttum widget'ının sayfasına gider.
+         Eski giriş sayfası olan siteler değişmez.
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] "Online Mağaza" şablonu (Şablondan Seç). Ana sayfa dört
+         kategoriyi dört ayrı düzende gösterir (ızgara, liste, stil
+         rehberi, kaydırmalı şerit); üst menüdeki "Tüm Kategoriler"
+         kategorileri resimleriyle açar. Mağaza sayfası filtreli,
+         tek ürün sayfası bütün ürünlere hizmet eder; sepet, ödeme,
+         sipariş özeti, hesap sayfaları, Kargo ve İade sayfası,
+         iletişim formu ve e-posta sayfaları hazır gelir. Şablon
+         açılınca dört kategori ve görselleriyle 18 örnek ürün,
+         ayrıca "Bülten Aboneleri" rehber grubu oluşturulur (bir
+         kez; yeniden açılınca var olanlar kullanılır). Sayfaların
+         altındaki bülten formu e-posta adresini bu gruba ekler ve
+         aboneye hoş geldin e-postası gönderir. Şablon, seçicide
+         seçili görünüm ve paletle açılır; kartta önerilen tema
+         (Modern Keskin, Mercan) yazar, "Bu temayı kullan" onu
+         seçer. Mağazası kapalı sitede şablon listelenmez.
+
+  [YENİ] Birden çok sayfalık HTML/ZIP içe aktarmada sayfalarda
+         birebir aynı tekrarlanan bölümler (üst bilgi, alt bilgi,
+         menü, ortak bantlar) bulunur ve sorulur: "Ortak yap"
+         denirse her biri bir ortak bileşen olur, sayfalardaki
+         kopyalar ona bağlanır; sonra bir kez düzenlemek yeter.
+         Listeden istenmeyen bölümün işareti kaldırılabilir. Yalnız
+         seçili bağlantısıyla ayrılan menüler de aynı sayılır;
+         ortak kopyada açık olan sayfanın bağlantısı kendiliğinden
+         işaretlenir. Tasarım yayınlanmadan editörden çıkılırsa
+         oluşturulan ortak bileşenler silinir.
+
+  [YENİ] SVG öğesi: bir çizimin kodu sayfaya olduğu gibi gömülür
+         (Bileşenler → İçerik → SVG; kod Düzenle ile değişir). Renk
+         "currentColor" ise çevresindeki yazı rengini, sınıflar
+         panelinden verilen rengi alır. HTML/ZIP içe aktarma ve
+         HTML yapıştırma, sayfadaki <svg>'leri artık dosyaya
+         yazmıyor, bu öğeyle sayfada bırakıyor: aynı logo her
+         sayfa için ayrı bir .svg dosyası olmuyor, rengi
+         kaybolmuyor. İç içe <svg> içeren çizim de bölünmeden
+         alınır. Çizimdeki betik, olay öznitelikleri ve betik
+         bağlantıları sayfaya çıkmaz.
+
+  [DÜZELTME] Özel (Bootstrap 5 olmayan) bir tasarıma HTML/ZIP
+         içe aktarılınca ya da HTML yapıştırılınca projenin kendi
+         bootstrap.css, bootstrap.bundle.js ve jQuery dosyaları
+         "içe aktarılmadı" notuyla atılıyor, tasarım bozuk
+         çıkıyordu (ör. Bootstrap 6 alfa). Özel tasarımda artık
+         projenin dosyaları olduğu gibi alınır; Bootstrap 5
+         tasarımında editörün kendi Bootstrap'i kullanılmaya
+         devam eder.
+
+  [DÜZELTME] Tasarımlar sayfasında "HTML / ZIP İçe Aktar" ve
+         "HTML içeriği yapıştır" çatıyı sormadan Bootstrap 5
+         tasarımı açıyordu; Bootstrap 6 gibi başka bir sürümle
+         yapılmış projenin kendi Bootstrap'i atılıp Bootstrap 5
+         yükleniyor, sayfa bozuluyordu. İkisi de artık önce
+         "Bootstrap 5" mi "Özel" mi diye sorar. Bootstrap 5
+         tasarımına başka sürümde bir proje aktarılırsa notlarda
+         uyarı çıkar.
+
+  [DÜZELTME] HTML/ZIP içe aktarmada <script type="module"> ile
+         çağrılan betikler (ör. Bootstrap 6 paketi) düz betik
+         olarak ekleniyor, sayfada "Unexpected token 'export'"
+         hatası çıkıyordu. Modül betikler artık modül olarak
+         alınır ve yüklenir; Varlıklar panelinde JS dosyasının sağ
+         tık menüsündeki "Modül olarak yükle" ile elle de
+         açılıp kapatılabilir.
+
+  [DÜZELTME] Görsel editör tuvalinde yüksekliği üst öğesine bağlı
+         (h-100) öğeler, ör. kare bir kutudaki iç içe yuvarlak
+         halkalar, basık/oval çiziliyordu; sitede doğruydu. Tuval
+         artık siteyle aynı çizer.
+
+  [DÜZELTME] Görsel editör sayfa açılır açılmaz ve her sekme
+         değişiminde hiçbir şey değiştirilmeden "kaydedilmemiş
+         değişiklik" durumuna düşüyordu (sekmede nokta, çıkarken
+         uyarı). Artık yalnız gerçek bir değişiklikte düşer.
+
+  [DÜZELTME] Görsel editörle yapılmış bir sayfada formun hata
+         mesajı (yanlış parola, iletişim formunda eksik alan)
+         formun içinde değil, sayfanın en üstündeki hesap
+         çubuğunda sepet düğmesinin yanında çıkıyordu; giriş
+         formunda yazılan e-posta da kutuya geri gelmiyordu. Sepet
+         bağlantısı artık yalnız kendi mesajlarını gösterir; mesaj
+         ait olduğu formda çıkar.
+
+  [DÜZELTME] Görsel editörle yapılmış ürün sayfasında varyantlı
+         bir üründe nitelik (beden, renk, asorti…) değiştirilince
+         ürün adı, fiyatı ve resmi güncellenmiyordu; Sepete Ekle
+         de seçilen varyantı değil sayfanın açıldığı ilk varyantı
+         sepete koyuyordu. Seçimi izleyen betik yanlış adresten
+         çağrıldığı için hiç yüklenmiyordu (2026.4.4'ten beri).
+         Arka arkaya hızlı seçimde önceki varyantın bilgisinin
+         yenisinin üstüne yazılması da giderildi.
+
+  [DÜZELTME] "Pinegrap'a merhaba deyin" şablonuyla kurulan
+         sitenin Mağaza sayfası bütün ürünleri düz bir liste
+         olarak gösteriyordu: varyantlı ürünün her varyantı ayrı
+         bir kart oluyordu. Şablon (2.4.1) katalog widget'ını
+         artık sitenin en üst ürün grubuna bağlıyor: kategoriler
+         tıklanınca açılır, varyantlı ürün tek kart olur ve
+         varyant ürün sayfasında seçilir. Şablonun önceki
+         sürümüyle kurulmuş sitede widget ayarlarından Ürün Grubu
+         seçilmesi yeter.
+
+  [DÜZELTME] Görsel editörle yapılmış bir sayfada Ctrl+G sayfanın
+         kendisini değil, tasarımın ilk sayfasını düzenlemeye
+         açıyordu. Artık araç çubuğundaki düzenle düğmesi gibi
+         açık olan sayfayı açar.
+
+  ZAMANLANMIŞ GÖREVLER
+  --------------------------------------------------------
+
+  [DÜZELTME] Çalışma Alanı'ndaki programlanmış işlemler, Çalışma
+         Alanı kimsede açık değilken saatte bir sırası gelen
+         "Tekrarlayan görevler" işini bekliyor ve yarım saat ile
+         bir saat arası geç çalışabiliyordu. Artık genel görev
+         (job.php) her çalıştığında zamanı gelen işlemleri kendisi
+         yürütür; genel görev dakikada bir çalışıyorsa işlem en geç
+         bir dakika içinde çalışır. "Cron İşlerini Otomatik Yürüt"
+         kapalı olsa da çalışır. Genel görev için önerilen
+         zamanlama da dakikada bire çekildi.
+
+  [DÜZELTME] Ayarlar → Cron İşleri listesinde Webhook gönderimi
+         ve Cihaz bildirimleri "1 saatte bir" görünüyordu. Bu iki
+         iş genel görevin her çalışmasında yürür ve liste artık
+         bunu yazar; bir saatten kısa aralıklar dakika olarak
+         gösterilir.
+
+  [HIZ] "Tekrarlayan görevler" işi saatte bir yerine 5 dakikada
+         bir sıraya girer: günün tekrarlayan görev kopyaları ve
+         bekleyen Claude / Pinegrap AI istekleri daha erken çıkar.
+
+  E-TİCARET
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Varyant fiyat kuralları: varyantlı ürün
+         eklerken fiyat her varyanta tek tek yazılmak yerine
+         seçeneklerden hesaplanabilir. Bir nitelik fiyatı
+         belirler (asorti A 160 ₺, B 200 ₺), çarpan olur (çift
+         fiyatı × 8) ya da tutar veya yüzde ekler (Beyaz +%20,
+         Deri +%50). Yüzdeler birbirinin üstüne uygulanır;
+         böylece "deri rugandan %50 pahalı" her renkte doğru
+         kalır. Her satırın altında hesabı görünür; bir satıra
+         elle yazılan fiyat korunur. Kurallar varyant setiyle
+         birlikte saklanır.
+
+  [DÜZELTME] Panodaki Satış Haritası, ülkeler tablosunda kodu
+         değiştirilmiş bir ülkeyi (ör. kodu "TÜRKİYE" yazılmış
+         Türkiye) tanımıyordu: dünya haritasında ülke boyanmıyor,
+         siparişlerin hepsi oradan olsa bile ülkenin il haritası
+         açılmıyordu. Kart böyle bir satırı artık adından tanıyor.
+         Dünya haritası da ülkeler tablosunda bulunmayan ülkelerin
+         adını gösteriyor.
+
+
+
+
   2026.4.5
   ==========================================================
 

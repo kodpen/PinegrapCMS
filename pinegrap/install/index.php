@@ -992,7 +992,7 @@ function get_install_system_checks() {
 
 	$php_state = 'ok';
 
-	if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+	if (version_compare(PHP_VERSION, '7.1.0', '<')) {
 
 		$php_state = 'error';
 
@@ -1602,6 +1602,40 @@ class db {
 
 }
 
+// A demonstration site shows this screen to anyone who wants to walk through it, but
+// nothing on it acts: no database is tested, created, backed up or upgraded and no file
+// is written. The platform that restores the site upgrades it from the command line,
+// which this leaves alone.
+$install_demo = ((defined('PG_DEMO')) && (PG_DEMO === true) && (PHP_SAPI !== 'cli'));
+
+if ($install_demo == true) {
+
+	if ($automated_upgrade_requested == true) {
+		set_response_code(403);
+		header('Content-Type: text/plain; charset=utf-8');
+		exit('Forbidden');
+	}
+
+	$install_demo_action = ((isset($_POST['install_action'])) && (is_string($_POST['install_action']))) ? $_POST['install_action'] : '';
+
+	if ($install_demo_action == 'test_database') {
+		header('Content-Type: application/json; charset=utf-8');
+		print json_encode(array('state' => 'ok', 'message' => lang('This is a demonstration site: the connection is not tested and nothing is installed.')));
+		exit();
+	}
+
+	if (in_array($install_demo_action, array('upgrade_step', 'backup_database'), true)) {
+		header('Content-Type: application/json; charset=utf-8');
+		print json_encode(array('ok' => false, 'error' => lang('This is a demonstration site: nothing is installed or upgraded here.')));
+		exit();
+	}
+
+	if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+		output_install_demo_notice();
+	}
+
+}
+
 // if there are database constants in config.php and we can't connect to the database or select the database, then output error
 // this is done in order to make sure that someone does not install over an existing site while a database is just having connection issues
 if (
@@ -1710,6 +1744,16 @@ if ($automated_upgrade == false) {
 		}
 
 	}
+
+}
+
+// On a demonstration site the screen opens for anyone the way it does for a new
+// installation: the existing site is not offered for upgrade or reinstallation, and
+// every request that would act has already been answered above.
+if ($install_demo == true) {
+
+	$install_site_exists = false;
+	$install_locked = false;
 
 }
 
@@ -2481,9 +2525,35 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	$output_design_choices = '';
 
+	// the first template is the one recommended
+	$design_template_number = 0;
+
 	foreach ($install_design_templates as $design_template) {
 
+		$design_template_number++;
+
 		$design_template_summary = pg_design_template_summary($design_template);
+
+		// the points the card lists: what every template gives, then the template's own
+		$design_template_points = array(
+			lang('Every page is changed on the page itself: drag blocks, write on the canvas, publish.'),
+			lang('The look and the colours change with a click, now or later.'),
+			lang('Fits every screen: phone, tablet and desktop.'));
+
+		foreach ($design_template_summary['highlights'] as $design_template_highlight) {
+
+			$design_template_points[] = $design_template_highlight;
+
+		}
+
+		$output_design_points = '';
+
+		foreach ($design_template_points as $design_template_point) {
+
+			$output_design_points .= '<li><i class="bi bi-check2 text-primary"></i>' . h($design_template_point) . '</li>';
+
+		}
+
 
 		$design_template_preview = array();
 
@@ -2506,20 +2576,14 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
 					<div class="d-flex flex-wrap align-items-center gap-1 mb-1">
-						<span class="badge text-bg-primary"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>
+						' . (($design_template_number == 1) ? '<span class="badge text-bg-primary"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>' : '') . '
 						<span class="badge text-bg-secondary">' . h($design_template_summary['framework_label']) . '</span>
 						<span class="badge text-bg-secondary">' . lang(array('string' => '{var:1} pages', 'vars' => count($design_template['pages']))) . '</span>
 					</div>
 					<div class="fw-semibold pg-design-name"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 text-primary"></i>' . h($design_template_summary['name']) . '</div>
 					<div class="small text-body-secondary">' . h($design_template_summary['description']) . '</div>
 					<div class="small fw-semibold text-primary mt-2"><i class="bi bi-magic me-1"></i>' . lang('Made to be edited in the Visual Page Editor') . '</div>
-					<ul class="pg-design-points list-unstyled small text-body-secondary mb-0 mt-1">
-						<li><i class="bi bi-check2 text-primary"></i>' . lang('Every page is changed on the page itself: drag blocks, write on the canvas, publish.') . '</li>
-						<li><i class="bi bi-check2 text-primary"></i>' . lang('The look and the colours change with a click, now or later.') . '</li>
-						<li><i class="bi bi-check2 text-primary"></i>' . lang('Fits every screen: phone, tablet and desktop.') . '</li>
-						<li><i class="bi bi-check2 text-primary"></i>' . lang('A blog, a contact form, member pages and a shop come ready.') . '</li>
-						<li><i class="bi bi-check2 text-primary"></i>' . lang('The e-mails the site sends are pages too: the notification, the reply and the order receipt are designed in the same editor.') . '</li>
-					</ul>
+					<ul class="pg-design-points list-unstyled small text-body-secondary mb-0 mt-1">' . $output_design_points . '</ul>
 				</div>
 			</div>
 		</div>';
@@ -5715,6 +5779,31 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 
 
+		// A host whose own certificate store cannot verify HTTPS gets the
+		// bundled root list (data/cacert.pem), so updates, Pinegrap AI and
+		// payment calls work from the first request. One HEAD request with a
+		// five-second limit; a probe that reaches nothing at all says nothing
+		// about the store and leaves the setting out. The System Status
+		// widget checks the same thing later and offers the same line.
+		if (function_exists('curl_init') && is_file(dirname(CONFIG_FILE_PATH) . '/cacert.pem')) {
+			$ca_probe = curl_init('https://curl.se/ca/cacert.pem');
+			curl_setopt_array($ca_probe, array(
+				CURLOPT_NOBODY         => true,
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_CONNECTTIMEOUT => 5,
+				CURLOPT_TIMEOUT        => 5,
+				CURLOPT_SSL_VERIFYPEER => true,
+				CURLOPT_SSL_VERIFYHOST => 2,
+			));
+			curl_exec($ca_probe);
+			$ca_probe_errno = (int) curl_errno($ca_probe);
+			curl_close($ca_probe);
+
+			if (in_array($ca_probe_errno, array(35, 51, 60, 77), true)) {
+				$config_data = preg_replace('/\?>\s*$/', "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');\n?>", $config_data, 1);
+			}
+		}
+
 		// create data directory if it does not exist (failsafe for FTP deployments)
 		if (!is_dir(dirname(CONFIG_FILE_PATH))) {
 			mkdir(dirname(CONFIG_FILE_PATH), 0755, true);
@@ -7014,6 +7103,28 @@ function get_unique_backup_folder_name($backups_path, $folder_name) {
 // Outputs the authentication screen that is shown when a site is already installed in the
 // database and this session has not authenticated yet.  Nothing about the site is sent to the
 // browser here, so the backups on the server stay private.  This function never returns.
+// The answer a demonstration site gives to a submitted form: the wizard can be walked
+// through to its last step, but installing is not something it does.
+function output_install_demo_notice() {
+
+	print
+	get_header() . '
+		<div class="container py-5" style="max-width: 40rem">
+			<div class="card">
+				<div class="card-body p-4 text-center">
+					<i class="bi bi-info-circle display-5 text-primary"></i>
+					<h1 class="h4 mt-3">' . lang('This is a demonstration site') . '</h1>
+					<p class="text-body-secondary mb-4">' . lang('The installer can be walked through to its last step here, but it does not install anything. The demonstration site is restored every hour.') . '</p>
+					<a class="btn btn-primary rounded-pill" href="index.php">' . lang('Back to the installer') . '</a>
+				</div>
+			</div>
+		</div>' .
+	get_footer();
+
+	exit();
+
+}
+
 function output_install_lock_screen() {
 
 	$error_message = '';
@@ -8367,6 +8478,14 @@ function get_tables() {
 		'designer_presence',
 		'designer_page_lock',
 		'design_proposals',
+		'site_languages',
+		'translation_strings',
+		'translations',
+		'translation_uses',
+		'translation_jobs',
+		'translation_job_items',
+		'translation_glossary',
+		'page_translations',
 	);
 
 }

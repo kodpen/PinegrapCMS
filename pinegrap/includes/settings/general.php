@@ -168,7 +168,7 @@ $pg_settings_cards[] = '
                                                     <div class="alert alert-secondary ">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
                                                     <textarea id="cron_job_general_dispatch">' . $cron_job_general . '</textarea>
                                                     ' . get_codemirror_javascript(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
-                                                    <div class="form-text text-end">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
+                                                    <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
                                                 </div>' . $output_job_dispatch_switches . '
                                             </div>
                                         </div>
@@ -221,7 +221,7 @@ $pg_settings_modals[] = '
                                         <p>' . lang('The general job is an optional feature which only needs to be enabled if you are using the scheduled comment feature to publish comments at a future date &amp; time.') . '</p>
                                         <textarea id="cron_job_general">' . $cron_job_general . '</textarea>
                                         ' . get_codemirror_javascript(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
+                                        <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
                                         <h5>' . lang('Webhook Delivery Jobs') . '</h5>

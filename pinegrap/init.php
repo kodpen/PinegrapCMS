@@ -722,6 +722,23 @@ define('BARCODE_LABEL_WIDTH', $row['barcode_label_width'] ?? 60);
 define('BARCODE_LABEL_HEIGHT', $row['barcode_label_height'] ?? 40);
 define('BARCODE_LABEL_TEMPLATE', $row['barcode_label_template'] ?? '');
 
+// Front-end translation (2026.4.6, 6.2; includes/fn/translate.php). Read
+// defensively like the modules above: the files land before the upgrade runs.
+// TRANSLATION_READY is the whole "is the schema there" answer - the columns and
+// the tables arrive in one step. The source language is the language the pages
+// are written in; empty means the panel language, read here from the row rather
+// than from SOFTWARE_LANGUAGE, which a request may have set to something else.
+define('TRANSLATION_READY', is_array($row) && array_key_exists('translation_prefixes', $row));
+define('TRANSLATION_SOURCE_LANGUAGE', (($row['translation_source_language'] ?? '') !== '')
+    ? (string) $row['translation_source_language']
+    : ((isset($row['software_language']) && $row['software_language'] !== '' && $row['software_language'] !== 'undefined') ? (string) $row['software_language'] : 'en'));
+define('TRANSLATION_PREFIXES', (string) ($row['translation_prefixes'] ?? ''));
+// The Google Cloud key stays encrypted (cipher:iv) in the constant and is
+// decoded on the request that calls Google (pg_tr_google_key()).
+define('TRANSLATION_GOOGLE_KEY_ENC', (string) ($row['translation_google_key'] ?? ''));
+define('TRANSLATION_STYLE_NOTE', (string) ($row['translation_style_note'] ?? ''));
+define('TRANSLATION_ATTRIBUTION', isset($row['translation_attribution']) ? (int) $row['translation_attribution'] : 1);
+
 
 if (!defined('SOFTWARE_LANGUAGE')) {
     $lang = isset($row['software_language']) && $row['software_language'] !== '' && $row['software_language'] !== 'undefined'
@@ -773,6 +790,16 @@ if (defined('PATH') == FALSE) {
 } else if (PATH != $row['path']) {
     $query = "UPDATE config SET path = '" . escape(PATH) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+}
+
+// A form posted from a page served in another language (/en/...) carries
+// pg_lang, and so does an AJAX call made from one: the script that answers -
+// its messages, its redirect, the e-mail it sends - answers in that language.
+// A page request has its language from its address alone (the router), so
+// ?pg_lang= on a page address changes nothing.
+if (!defined('FRONTEND_LANGUAGE') && isset($_REQUEST['pg_lang']) && function_exists('pg_tr_define_from_request')
+    && (basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')) !== 'router.php')) {
+    pg_tr_define_from_request();
 }
 
 // Check if we need to set a default value for logo_url

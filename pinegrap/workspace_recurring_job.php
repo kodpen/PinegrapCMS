@@ -59,12 +59,14 @@ if (ws_enabled() && function_exists('ws_ai_job')) {
 }
 
 // Scheduled actions whose time has come (includes/workspace/scheduled.php).
+// The general job runs them on every tick as well; this covers a site that
+// schedules this script on its own.
 if (ws_enabled() && function_exists('ws_scheduled_run')) {
     ws_scheduled_run(20);
 }
 
-// Task reminders by e-mail whose time has come; the general job looks every
-// five minutes as well (includes/workspace/reminders.php).
+// Task reminders by e-mail whose time has come; the general job looks on
+// every tick as well (includes/workspace/reminders.php).
 if (ws_enabled() && function_exists('ws_task_reminders_run')) {
     ws_task_reminders_run();
 }

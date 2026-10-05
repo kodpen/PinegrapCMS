@@ -263,6 +263,9 @@ function pg_designer_screen_render($ctx)
         'hiddenPages'   => $hidden_pages,
         // The assistant panel (assets/js/designer_ai.js): designers only.
         'ai'            => $sd_ai,
+        // The Translate section of the options panel: the site's other
+        // languages, null on a site with one language.
+        'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
         'autoImport'    => !empty($ctx['auto_import']),
         'autoPasteHtml' => !empty($ctx['auto_paste']),
         // What the design is built on (pg_design_frameworks()). The editor
@@ -669,12 +672,13 @@ function pg_designer_start_screen($ctx)
         $primary  = !empty($opts['primary']);
         $disabled = !empty($opts['disabled']);
         $modal    = !empty($opts['modal']) ? (string)$opts['modal'] : '';
+        $start    = !empty($opts['start']) ? (string)$opts['start'] : '';
         $badge    = $disabled ? '<span class="badge text-bg-secondary ms-auto">' . lang('Soon') . '</span>' : '';
         if ($disabled) {
             $tag_open = '<div class="card h-100 sd-start-card sd-start-card-disabled" aria-disabled="true">';
         } elseif ($modal !== '') {
             // Opens a choice first (framework, template); nothing loads yet.
-            $tag_open = '<a href="#" role="button" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-bs-toggle="modal" data-bs-target="' . h($modal) . '">';
+            $tag_open = '<a href="#" role="button" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-bs-toggle="modal" data-bs-target="' . h($modal) . '"' . ($start !== '' ? ' data-sd-start="' . h($start) . '"' : '') . '>';
         } else {
             $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">';
         }
@@ -718,8 +722,8 @@ function pg_designer_start_screen($ctx)
             ' . ($can_create ? '
             <div class="row g-3 mb-4">
                 ' . $card('#', 'bi-file-earmark-plus', lang('Create New'), lang('An empty page on the canvas, on Bootstrap 5 or as a custom design. Add sections from the palette and build the design up.'), array('primary' => true, 'modal' => '#sdNewDesignModal')) . '
-                ' . $card('add_system_style.php' . $qs_import, 'bi-file-earmark-zip', lang('Import HTML / ZIP'), lang('Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.')) . '
-                ' . $card('add_system_style.php' . $qs_paste, 'bi-clipboard-plus', lang('Paste HTML content'), lang('Paste the markup straight in — from a code editor, from a page you have open. The design starts from what you paste.')) . '
+                ' . $card('#', 'bi-file-earmark-zip', lang('Import HTML / ZIP'), lang('Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.'), array('modal' => '#sdNewDesignModal', 'start' => 'import')) . '
+                ' . $card('#', 'bi-clipboard-plus', lang('Paste HTML content'), lang('Paste the markup straight in — from a code editor, from a page you have open. The design starts from what you paste.'), array('modal' => '#sdNewDesignModal', 'start' => 'paste')) . '
                 ' . $card('#', 'bi-grid-1x2', lang('Choose a Template'), lang('Start from a ready-made design and change what you like.'), $templates ? array('modal' => '#sdTemplateModal') : array('disabled' => true)) . '
             </div>' : '
             <div class="alert alert-secondary py-2 small mb-4">
@@ -788,17 +792,19 @@ function pg_designer_start_screen($ctx)
 function pg_designer_new_design_modal($from_pages)
 {
     $extra = $from_pages ? '&from=pages' : '';
-    $option = function ($framework, $icon, $title, $text, $recommended) use ($extra) {
+    // $import_text: what the option means when the design starts from an
+    // import or a paste (the modal is shared, see the script below).
+    $option = function ($framework, $icon, $title, $text, $recommended, $import_text) use ($extra) {
         return
             '<div class="col-12 col-md-6">
-                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card' . ($recommended ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">
+                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '" data-loading-content="' . lang('Loading') . '">
                     <div class="card-body d-flex flex-column align-items-start gap-2">
                         <div class="d-flex w-100 align-items-start">
                             <i class="bi ' . h($icon) . ' fs-2 ' . ($recommended ? 'text-primary' : 'text-body-secondary') . '" aria-hidden="true"></i>
                             ' . ($recommended ? '<span class="badge text-bg-primary ms-auto">' . lang('Recommended') . '</span>' : '') . '
                         </div>
                         <span class="h5 mb-0 text-body">' . h($title) . '</span>
-                        <span class="small text-muted">' . h($text) . '</span>
+                        <span class="small text-muted sd-fw-text" data-text-new="' . h($text) . '" data-text-import="' . h($import_text) . '">' . h($text) . '</span>
                     </div>
                 </a>
             </div>';
@@ -808,21 +814,59 @@ function pg_designer_new_design_modal($from_pages)
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2 class="modal-title fs-5" id="sdNewDesignModalLabel"><i class="bi bi-file-earmark-plus me-2" aria-hidden="true"></i>' . lang('Create New Design') . '</h2>
+                        <h2 class="modal-title fs-5" id="sdNewDesignModalLabel"><i class="bi bi-file-earmark-plus me-2 sd-fw-icon" aria-hidden="true"></i><span class="sd-fw-title" data-text-new="' . h(lang('Create New Design')) . '" data-text-import="' . h(lang('Import HTML / ZIP')) . '" data-text-paste="' . h(lang('Paste HTML content')) . '">' . lang('Create New Design') . '</span></h2>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="small text-muted mb-3">' . lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.') . '</p>
+                        <p class="small text-muted mb-3 sd-fw-intro" data-text-new="' . h(lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.')) . '" data-text-import="' . h(lang('What is the project built on? Bootstrap 5 projects use the editor\'s Bootstrap; a project on another framework (Bootstrap 6, Tailwind…) or none goes into a custom design, with its own files. This cannot be changed later.')) . '">' . lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.') . '</p>
                         <div class="row g-3">
                             ' . $option('bootstrap5', 'bi-bootstrap', lang('Build with Bootstrap 5'),
-                                lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true) . '
+                                lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true,
+                                lang('For a project on Bootstrap 5. The editor\'s Bootstrap 5.3 is used; the project\'s own Bootstrap and jQuery files are left out.')) . '
                             ' . $option('custom', 'bi-code-slash', lang('Build a Custom Design'),
-                                lang('No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.'), false) . '
+                                lang('No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.'), false,
+                                lang('For any other project (Bootstrap 6, Tailwind, your own CSS). Its CSS and JS files come in as they are, framework included; nothing is added.')) . '
                         </div>
                     </div>
                 </div>
             </div>
-        </div>';
+        </div>
+        <script>
+            // One modal for three starts: a blank design, an import and a
+            // paste all ask the framework first. The card that opened it says
+            // which (data-sd-start); ?start=import|paste opens it on load.
+            (function () {
+                var modal = document.getElementById("sdNewDesignModal");
+                if (!modal) return;
+                function setMode(start) {
+                    var mode = (start === "import" || start === "paste") ? start : "";
+                    var t = modal.querySelector(".sd-fw-title");
+                    if (t) t.textContent = mode === "paste" ? t.dataset.textPaste : (mode ? t.dataset.textImport : t.dataset.textNew);
+                    modal.querySelectorAll(".sd-fw-intro, .sd-fw-text").forEach(function (el) {
+                        el.textContent = mode ? el.dataset.textImport : el.dataset.textNew;
+                    });
+                    modal.querySelectorAll(".sd-fw-choice").forEach(function (a) {
+                        a.href = a.dataset.href + (mode ? "&start=" + mode : "");
+                    });
+                    var ic = modal.querySelector(".sd-fw-icon");
+                    if (ic) ic.className = "bi me-2 sd-fw-icon " + (mode === "import" ? "bi-file-earmark-zip" : (mode === "paste" ? "bi-clipboard-plus" : "bi-file-earmark-plus"));
+                }
+                modal.addEventListener("show.bs.modal", function (e) {
+                    var src = e.relatedTarget;
+                    setMode(src && src.dataset ? (src.dataset.sdStart || "") : (modal.dataset.sdStart || ""));
+                });
+                modal.addEventListener("hidden.bs.modal", function () { delete modal.dataset.sdStart; });
+                var q = new URLSearchParams(window.location.search).get("start");
+                if (q === "import" || q === "paste") {
+                    var open = function () {
+                        if (!window.bootstrap || !window.bootstrap.Modal) return;
+                        modal.dataset.sdStart = q;
+                        window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    };
+                    if (document.readyState === "complete") open(); else window.addEventListener("load", open);
+                }
+            })();
+        </script>';
 }
 
 /**
@@ -840,9 +884,31 @@ function pg_designer_template_modal($templates, $from_pages)
         $thumb = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
             ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name']))) . '</div>'
             : '';
+        // The theme the template is made for: offered on the card, applied
+        // to the picker above only when the operator asks. The picker is
+        // what every template opens in: "No theme" and "Bootstrap" there
+        // mean plain Bootstrap, whatever a template suggests.
+        $theme_attrs = '';
+        $theme_note  = '';
+        if ($s['look'] !== null || $s['palette'] !== null) {
+            $theme_attrs = ' data-look="' . h((string)$s['look']) . '" data-palette="' . h((string)$s['palette']) . '"'
+                         . ' data-has-look="' . ($s['look'] !== null ? '1' : '0') . '" data-has-palette="' . ($s['palette'] !== null ? '1' : '0') . '"';
+            $parts = array();
+            if ($s['look'] !== null && function_exists('pg_design_look_label')) $parts[] = pg_design_look_label($s['look']);
+            if ($s['palette'] !== null && $s['palette'] !== '') {
+                $pals = pg_design_palettes();
+                if (isset($pals[$s['palette']])) $parts[] = $pals[$s['palette']]['name'];
+            }
+            $parts = array_filter($parts, 'strlen');
+            if ($parts) {
+                $theme_note = '<span class="small text-muted sd-tpl-theme-note d-flex flex-wrap align-items-center gap-2"><span><i class="bi bi-palette me-1" aria-hidden="true"></i>'
+                            . lang(array('string' => 'Made for: {var:1}', 'vars' => h(implode(' · ', $parts)))) . '</span>'
+                            . '<button type="button" class="btn btn-link btn-sm p-0 sd-tpl-theme-apply">' . lang('Use this theme') . '</button></span>';
+            }
+        }
         $cards .=
             '<div class="col-12 col-md-6">
-                <div class="card h-100 overflow-hidden">
+                <div class="card h-100 overflow-hidden sd-tpl-card"' . $theme_attrs . '>
                     ' . $thumb . '
                     <div class="card-body d-flex flex-column gap-2">
                         <div class="d-flex align-items-start gap-2">
@@ -855,6 +921,7 @@ function pg_designer_template_modal($templates, $from_pages)
                         <span class="h5 mb-0">' . h($s['name']) . '</span>
                         <span class="small text-muted">' . h($s['description']) . '</span>
                         <span class="small"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang(array('string' => '{var:1} pages: {var:2}', 'vars' => array(count($s['pages']), h(implode(', ', $s['pages']))))) . '</span>
+                        ' . $theme_note . '
                         <div class="mt-auto pt-2">
                             <a href="add_system_style.php?start=template&template=' . h(rawurlencode($s['id'])) . h($extra) . '" class="btn btn-sm btn-primary rounded-pill px-3 sd-tpl-use" data-href="add_system_style.php?start=template&template=' . h(rawurlencode($s['id'])) . h($extra) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                         </div>
@@ -945,6 +1012,12 @@ function pg_designer_template_theme_picker()
                     return { "--tp": p, "--ts": s, "--tr": r + "px", "--tbr": br + "px", "--tsh": sh[pv.shadow] || "none",
                              "--tbw": ((+pv.border || 0) * 0.75) + "px", "--tbc": pv.shadow === "hard" ? "#111827" : "#e5e7eb" };
                 }
+                function radio(name, value) {
+                    var found = null;
+                    box.querySelectorAll("input[name=" + name + "]").forEach(function (r) { if (r.value === value) found = r; });
+                    return found;
+                }
+                // Every template opens in what the picker shows.
                 function sync() {
                     var l = box.querySelector("input[name=sd_tpl_look]:checked");
                     var p = box.querySelector("input[name=sd_tpl_palette]:checked");
@@ -960,6 +1033,17 @@ function pg_designer_template_theme_picker()
                     modal.querySelectorAll(".sd-tpl-use").forEach(function (a) { a.href = a.getAttribute("data-href") + q; });
                 }
                 box.addEventListener("change", sync);
+                // "Use this theme" on a card puts its theme in the picker.
+                modal.addEventListener("click", function (e) {
+                    var btn = e.target.closest ? e.target.closest(".sd-tpl-theme-apply") : null;
+                    if (!btn) return;
+                    var card = btn.closest(".sd-tpl-card");
+                    if (!card) return;
+                    var r;
+                    if (card.getAttribute("data-has-look") === "1" && (r = radio("sd_tpl_look", card.getAttribute("data-look") || ""))) r.checked = true;
+                    if (card.getAttribute("data-has-palette") === "1" && (r = radio("sd_tpl_palette", card.getAttribute("data-palette") || ""))) r.checked = true;
+                    sync();
+                });
                 // The cards come after this script in the page.
                 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync); else sync();
                 if (modal) modal.addEventListener("show.bs.modal", sync);
