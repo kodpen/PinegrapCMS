@@ -60,6 +60,27 @@ function software_parse_money(text) {
 
 var software_$ = jQuery.noConflict(true);
 
+// A page drawn in another language (<html data-pg-lang>) tells the software's
+// own scripts which language it is in, so what they are answered with is in
+// the same language. Added to every request that goes to the software
+// directory; a request that already says so is left alone.
+(function () {
+	var pg_lang = document.documentElement.getAttribute('data-pg-lang');
+	if (!pg_lang) {
+		return;
+	}
+	software_$.ajaxPrefilter(function (options) {
+		if ((typeof software_path === 'undefined') || (typeof software_directory === 'undefined')) {
+			return;
+		}
+		var base = software_path + software_directory + '/';
+		if ((typeof options.url !== 'string') || (options.url.indexOf(base) !== 0) || /[?&]pg_lang=/.test(options.url)) {
+			return;
+		}
+		options.url += ((options.url.indexOf('?') === -1) ? '?' : '&') + 'pg_lang=' + encodeURIComponent(pg_lang);
+	});
+})();
+
 software_$(document).ready(function() {
     
     var payment_accept_installment = software_$('input[name=payment_gateway_installment_option]');

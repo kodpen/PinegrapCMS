@@ -650,6 +650,11 @@ function get_sitemap_info() {
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n" .
         $output_sitemap_urls . 
         '</urlset>';
+
+    // The same pages in the site's other languages, with their alternates.
+    if (function_exists('pg_tr_sitemap')) {
+        $sitemap_info['content'] = pg_tr_sitemap($sitemap_info['content']);
+    }
     
     return $sitemap_info;
 }

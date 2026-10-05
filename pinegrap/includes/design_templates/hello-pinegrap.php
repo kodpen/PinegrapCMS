@@ -24,6 +24,7 @@
  *   {{page:<key>}}    address of the template page with that key
  *   {{tab:<key>}}     that page in a widget setting; its id once published
  *   {{folder:<key>}}  id of that template folder
+ *   {{product_group:root}}  id of the site's top product group (0 if none)
  *   {{site_name}}     the site's organization name
  *   {{site_email}}    the site's own e-mail address (notification settings)
  *   {{year}}          the current year
@@ -1771,7 +1772,11 @@ $widgets = array(
         'slug'     => lang('catalog'),
         'config'   => array(
             'regionType'               => 'catalog_listing',
-            'product_group_id'         => 0,
+            // The catalog's top group, not 0: the grid then holds its
+            // categories (opened in place) and its variant sets (one card
+            // each, the variant picked on the product page). 0 would list
+            // every product of the site flat, each variant on its own card.
+            'product_group_id'         => '{{product_group:root}}',
             // Browsing: the categories open in place, and the filters
             // (price, in stock, the products' attributes) sit in the side
             // panel behind the Filters button, beside the search and sorting.
@@ -1979,11 +1984,18 @@ $widgets = array(
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.0',
+    'version'     => '2.4.1',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',
     'description' => lang('A whole starter site: home, about, services, a blog, a contact page whose messages become conversations, sign-in and account pages with an inbox, a staff area and, with the shop on, a small shop.'),
+
+    // What the installer lists on the template's card, after the points
+    // every template shares.
+    'highlights'  => array(
+        lang('A blog, a contact form, member pages and a shop come ready.'),
+        lang('The e-mails the site sends are pages too: the notification, the reply and the order receipt are designed in the same editor.'),
+    ),
 
     // Made (or found again) when the template is opened; see _pg_tpl_folders().
     'folders'     => array(

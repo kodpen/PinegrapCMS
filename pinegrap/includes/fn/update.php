@@ -235,6 +235,166 @@ function pg_ca_bundle_status()
 }
 
 /**
+ * Whether outbound TLS needs data/cacert.pem and the configuration does not
+ * point at it - the state a reinstall leaves behind when the new config.php
+ * comes with CURL_CA_BUNDLE empty on a host whose own store is missing.
+ *
+ * 'state':
+ *   ok        nothing to do: the setting points at a file that exists, or it
+ *             is empty and the host's own store verifies a connection
+ *   broken    CURL_CA_BUNDLE names a file that does not exist; every
+ *             outbound call then verifies against nothing and fails
+ *   needed    CURL_CA_BUNDLE is empty and a connection verified against the
+ *             host's own store failed on the certificate
+ *   unknown   the probe could not reach the internet at all, so nothing can
+ *             be said about the store
+ * 'fixable' says whether the one-click repair can help: the bundled file is
+ * there and data/config.php can be written.
+ *
+ * The probe is one HEAD request with a five-second limit, and runs only when
+ * the setting is empty; the System Status widget caches its answer with the
+ * rest of the checks.
+ *
+ * @return array state, configured, fixable, error
+ */
+function pg_ca_bundle_config_state()
+{
+    $config_file = PG_FUNCTIONS_DIR . '/data/config.php';
+    $configured = (defined('CURL_CA_BUNDLE') && is_string(CURL_CA_BUNDLE)) ? CURL_CA_BUNDLE : '';
+
+    $out = array(
+        'state'      => 'ok',
+        'configured' => $configured,
+        'fixable'    => is_file(pg_ca_bundle_path()) && is_file($config_file) && is_writable($config_file),
+        'error'      => '',
+    );
+
+    if ($configured !== '') {
+        if (!is_file($configured) || !is_readable($configured)) {
+            $out['state'] = 'broken';
+        }
+
+        return $out;
+    }
+
+    if (!function_exists('curl_init')) {
+        $out['state'] = 'unknown';
+        return $out;
+    }
+
+    $source = pg_ca_bundle_source_url();
+    $probe = curl_init(($source !== '') ? $source : 'https://curl.se/ca/cacert.pem');
+
+    curl_setopt_array($probe, array(
+        CURLOPT_NOBODY         => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 5,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_USERAGENT      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (ca-probe)',
+    ));
+
+    curl_exec($probe);
+    $errno = (int) curl_errno($probe);
+    $error = (string) curl_error($probe);
+    curl_close($probe);
+
+    // 60 peer certificate cannot be verified, 77 no CA file to read, 35 and
+    // 51 a handshake the store could not complete. Anything else - no DNS, no
+    // route, a timeout - says nothing about the store.
+    if (in_array($errno, array(35, 51, 60, 77), true)) {
+        $out['state'] = 'needed';
+        $out['error'] = $errno . ': ' . $error;
+    } elseif ($errno !== 0) {
+        $out['state'] = 'unknown';
+        $out['error'] = $errno . ': ' . $error;
+    }
+
+    return $out;
+}
+
+/**
+ * Points CURL_CA_BUNDLE in data/config.php at the bundled data/cacert.pem.
+ *
+ * The define line is replaced where it is (a commented-out example is left
+ * alone) or added at the end of the file, written as
+ * dirname(__FILE__) . '/cacert.pem' so that it survives a move of the site to
+ * another folder. Nothing else in the file is touched; the write goes to a
+ * temporary file beside it that is renamed over it, so the configuration is
+ * never half written. The running request keeps the old value: the next one
+ * reads the new line.
+ *
+ * @return array('status' => 'success'|'unchanged'|'error', 'message' => string)
+ */
+function pg_ca_bundle_config_repair()
+{
+    $config_file = PG_FUNCTIONS_DIR . '/data/config.php';
+    $line = "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');";
+
+    if (!is_file(pg_ca_bundle_path())) {
+        return array('status' => 'error', 'message' => lang('data/cacert.pem is missing. Update the CA certificate bundle first, then try again.'));
+    }
+
+    if (!is_file($config_file) || !is_writable($config_file)) {
+        return array('status' => 'error', 'message' => lang('data/config.php cannot be written by the web server. Add the line by hand:') . ' ' . $line);
+    }
+
+    $text = @file_get_contents($config_file);
+
+    if (($text === false) || ($text === '')) {
+        return array('status' => 'error', 'message' => lang('data/config.php could not be read.'));
+    }
+
+    $eol = (strpos($text, "\r\n") !== false) ? "\r\n" : "\n";
+    // The line up to, not including, its end: a CRLF file keeps its \r.
+    $pattern = '/^[ \t]*define\(\s*([\'"])CURL_CA_BUNDLE\1\s*,[^;]*\)\s*;[^\r\n]*(?=\r?\n|\z)/m';
+
+    if (preg_match($pattern, $text, $found)) {
+        if (trim($found[0]) === $line) {
+            return array('status' => 'unchanged', 'message' => lang('CURL_CA_BUNDLE already points at data/cacert.pem.'));
+        }
+
+        $new = preg_replace($pattern, $line, $text, 1);
+    } else {
+        // At the end, before a closing tag when the file has one.
+        if (preg_match('/\?>\s*$/', $text)) {
+            $new = preg_replace('/\?>\s*$/', $line . $eol . '?>' . $eol, $text, 1);
+        } else {
+            $new = rtrim($text) . $eol . $eol . $line . $eol;
+        }
+    }
+
+    if (!is_string($new) || ($new === $text) || (strpos($new, '<?php') !== 0 && strpos($text, '<?php') === 0)) {
+        return array('status' => 'error', 'message' => lang('data/config.php could not be changed safely. Add the line by hand:') . ' ' . $line);
+    }
+
+    $temporary = $config_file . '.' . bin2hex(random_bytes(4)) . '.tmp';
+
+    if (@file_put_contents($temporary, $new, LOCK_EX) !== strlen($new)) {
+        @unlink($temporary);
+        return array('status' => 'error', 'message' => lang('data/config.php cannot be written by the web server. Add the line by hand:') . ' ' . $line);
+    }
+
+    // rename() over an existing file fails on Windows with some PHP builds;
+    // the copy is then written in place instead.
+    if (!@rename($temporary, $config_file)) {
+        $written = (@file_put_contents($config_file, $new, LOCK_EX) === strlen($new));
+        @unlink($temporary);
+
+        if (!$written) {
+            return array('status' => 'error', 'message' => lang('data/config.php cannot be written by the web server. Add the line by hand:') . ' ' . $line);
+        }
+    }
+
+    if (function_exists('opcache_invalidate')) {
+        @opcache_invalidate($config_file, true);
+    }
+
+    return array('status' => 'success', 'message' => lang('CURL_CA_BUNDLE in data/config.php now points at data/cacert.pem.'));
+}
+
+/**
  * Download the current Mozilla root list and replace data/cacert.pem with it.
  *
  * The download is verified with pg_curl_tls() -- the same rule as the update

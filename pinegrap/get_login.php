@@ -18,7 +18,8 @@
 
 function get_login($properties = array()) {
 
-    $page_id = $properties['page_id'];
+    // The default screen (a site without a login page) passes no page.
+    $page_id = isset($properties['page_id']) ? $properties['page_id'] : 0;
 
     $layout_type = get_layout_type($page_id);
 

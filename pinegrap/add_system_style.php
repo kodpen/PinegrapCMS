@@ -36,10 +36,18 @@ $from_pages = (isset($_GET['from']) && $_GET['from'] === 'pages')
 // view_system_styles.php.
 $start = isset($_GET['start']) ? (string)$_GET['start'] : '';
 
-// The framework the new design is built on (view_system_styles.php asks), or
-// the template it starts from - a template brings its own framework. An
-// import or a paste starts on Bootstrap 5, the framework the importer
-// converts to.
+// An import or a paste is asked the framework first, like a blank design:
+// a project on another Bootstrap goes into a custom design, with its own
+// files. A link without the answer (an old bookmark, a menu) goes to the
+// question.
+if (!$_POST && ($start === 'import' || $start === 'paste') && !isset($_GET['framework'])) {
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_system_styles.php?start=' . $start . ($from_pages ? '&from=pages' : ''));
+    exit();
+}
+
+// The framework the new design is built on (view_system_styles.php asks, for
+// an import or a paste too), or the template it starts from - a template
+// brings its own framework.
 $template = null;
 if ($start === 'template') {
     $template = pg_design_template(isset($_GET['template']) ? $_GET['template'] : '');

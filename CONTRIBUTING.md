@@ -12,7 +12,7 @@ the interface through `lang()` and is translated in `includes/local/tr.json`.
 There is nothing to install. Pinegrap has no Composer step and no build
 pipeline; third-party libraries are vendored under `pinegrap/includes/`.
 
-- Reading, editing and running the static checks needs only PHP (7.0–8.5).
+- Reading, editing and running the static checks needs only PHP (7.1–8.5).
 - A runnable instance, when you need to reproduce a runtime error, comes from
   one command: `bash tools/setup_sandbox.sh` (installs MariaDB, writes
   `data/config.php`, runs the installer, serves on `127.0.0.1:8000`). It is

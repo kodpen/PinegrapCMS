@@ -5857,3 +5857,22 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-ai-actions { display: flex; align-items: center; gap: .5rem; }
 .sd-ai-hint { flex: 1; font-size: .7rem; color: var(--sd-text-muted); line-height: 1.35; }
 @media (prefers-reduced-motion: reduce) { .sd-ai-btn-dot { animation: none; } }
+
+/* ── Options panel: Translate section (site languages) ── */
+.sd-tr-box { font-size: .75rem; }
+.sd-tr-note { color: var(--sd-text-muted, #8a939e); font-size: .7rem; margin: .15rem 0 .35rem; }
+.sd-tr-seg + .sd-tr-seg { margin-top: .6rem; padding-top: .5rem; border-top: 1px dashed var(--sd-panel-border); }
+.sd-tr-field { font-weight: 600; font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; opacity: .75; margin-bottom: .15rem; }
+.sd-tr-src { color: var(--sd-text-muted, #8a939e); white-space: pre-wrap; word-break: break-word; max-height: 4.6em; overflow: auto; margin-bottom: .3rem; }
+.sd-tr-lang { margin-top: .4rem; }
+.sd-tr-head { display: flex; align-items: center; gap: .35rem; margin-bottom: .2rem; }
+.sd-tr-code { font-family: var(--bs-font-monospace); font-size: .65rem; padding: 0 .3rem; border-radius: .25rem; background: rgba(var(--sd-accent-rgb), .18); }
+.sd-tr-label { opacity: .85; }
+.sd-tr-state { margin-left: auto; font-size: .65rem; opacity: .8; }
+.sd-tr-reviewed { color: var(--bs-success); }
+.sd-tr-pending { color: var(--bs-warning); }
+.sd-tr-input { font-size: .75rem; resize: vertical; }
+.sd-tr-inline { font-family: var(--bs-font-monospace); font-size: .7rem; }
+.sd-tr-actions { display: flex; align-items: center; gap: .25rem; margin-top: .2rem; }
+.sd-tr-actions .btn { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .7rem; }
+.sd-tr-screen { display: inline-block; margin-top: .55rem; font-size: .7rem; }

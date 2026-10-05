@@ -1709,7 +1709,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // job dispatches from, so a job added there appears here without a second
     // edit. The cadence in brackets is the interval the dispatcher enforces,
     // not a suggestion: a job switched on here runs no more often than that
-    // however frequently the general job itself is scheduled.
+    // however frequently the general job itself is scheduled. An inline job
+    // has no turn of its own - the general job runs it every time it runs -
+    // so it says that instead of an interval.
     $job_dispatch_selection = array();
 
     foreach (explode(',', $job_dispatch) as $job_dispatch_name) {
@@ -1733,7 +1735,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                         <div class="pg-f-md">
                                             <div class="form-check form-switch">
                                                 <input value="1"' . (in_array($job_dispatch_name, $job_dispatch_selection, true) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="job_dispatch_job_' . h($job_dispatch_name) . '" name="job_dispatch_job[' . h($job_dispatch_name) . ']"/>
-                                                <label class="form-check-label" for="job_dispatch_job_' . h($job_dispatch_name) . '">' . h($job_dispatch_job['label']) . ' <span class="text-muted">(' . h(pg_cron_interval_label($job_dispatch_job['interval'])) . ')</span>' . (pg_cron_job_active($job_dispatch_name) ? '' : ' <span class="text-warning-emphasis">&middot; ' . lang('disabled in config.php') . '</span>') . '</label>
+                                                <label class="form-check-label" for="job_dispatch_job_' . h($job_dispatch_name) . '">' . h($job_dispatch_job['label']) . ' <span class="text-muted">(' . h(!empty($job_dispatch_job['inline']) ? lang('on every run of the general job') : pg_cron_interval_label($job_dispatch_job['interval'])) . ')</span>' . (pg_cron_job_active($job_dispatch_name) ? '' : ' <span class="text-warning-emphasis">&middot; ' . lang('disabled in config.php') . '</span>') . '</label>
                                             </div>
                                         </div>';
     }
@@ -2100,3 +2102,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if(isset($_SERVER['SERVER_ADDR'])){
         $server_addr = $_SERVER['SERVER_ADDR'];
     }
+
+    // Languages and Translation (2026.4.6). The columns arrive with the
+    // upgrade; without them the cards say so instead of drawing controls.
+    $translation_settings_ready = array_key_exists('translation_prefixes', $row);
+    $translation_source_language = (string) ($row['translation_source_language'] ?? '');
+    $translation_style_note = (string) ($row['translation_style_note'] ?? '');
+    $translation_attribution = isset($row['translation_attribution']) ? (int) $row['translation_attribution'] : 1;
+    // The key itself is never drawn back; the screen only says whether one is stored.
+    $translation_google_key_stored = ((string) ($row['translation_google_key'] ?? '') !== '');

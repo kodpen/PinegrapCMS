@@ -242,7 +242,7 @@ define('SEO_ANALYZE_FULL_REFRESH_DAYS', 7);
 
 // Path to a CA bundle (cacert.pem), for servers whose certificate store is
 // not on the default search path. Leave empty to use the system store.
-define('CURL_CA_BUNDLE', '');
+define('CURL_CA_BUNDLE', ''); // example: define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');
 
 // Where "Update" on the System Status card's CA certificate bundle row fetches
 // the current Mozilla root list from, to replace data/cacert.pem. Leave empty

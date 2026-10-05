@@ -7,7 +7,7 @@
 | Current `2026.x` release line (see `pinegrap/changelog.txt`) | Yes |
 | Older release lines | No — please update first |
 
-Pinegrap runs on PHP 7.0 through 8.5 (see the README); fixes are verified
+Pinegrap runs on PHP 7.1 through 8.5 (see the README); fixes are verified
 against that range.
 
 ## Reporting a vulnerability

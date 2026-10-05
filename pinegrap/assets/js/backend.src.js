@@ -6507,6 +6507,19 @@ $(function () {
         pg_health_job($button, 'server_config_repair');
     });
 
+    // Pointing CURL_CA_BUNDLE in data/config.php at the bundled cacert.pem.
+    // Same confirm-then-run shape as the rules file.
+    $(document).on('click', '#ca_bundle_config_repair', function (event) {
+
+        var $button = $(this);
+
+        if (event.isDefaultPrevented() || $button.prop('disabled')) {
+            return;
+        }
+
+        pg_health_job($button, 'ca_bundle_config_repair');
+    });
+
     // Opening the folders and files of the software the web server cannot
     // write to (0777 / 0666), so the next update can replace everything. Same
     // confirm-then-run shape as the rules file: the delegated

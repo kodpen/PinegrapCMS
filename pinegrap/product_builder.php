@@ -785,10 +785,42 @@ function pg_pb_decode_variants($json)
             // fields — see the note on the hidden GTIN field in add_product.php.
             'gtin'               => isset($row['gtin']) ? trim($row['gtin']) : '',
             'barcode'            => isset($row['barcode']) ? trim($row['barcode']) : '',
+
+            // The operator typed this row's price over what the price rules
+            // gave it. Such a row keeps the posted price; every other row is
+            // priced again on the server — see pg_pb_price_rules_from_post().
+            'price_manual'       => !empty($row['price_manual']),
         );
     }
 
     return $variants;
+}
+
+
+/**
+ * The variant price rules posted with a new variant set, checked.
+ *
+ * NULL when there are none or when they cannot be applied as a whole (see
+ * pg_variant_price_rules_normalize()); the rows then keep the prices the
+ * browser posted, which is what the screen showed.
+ *
+ * @return array|NULL canonical rules
+ */
+function pg_pb_price_rules_from_post()
+{
+    $json = isset($_POST['variant_price_rules']) ? trim((string) $_POST['variant_price_rules']) : '';
+
+    if ($json === '') {
+        return NULL;
+    }
+
+    $rules = pg_variant_price_rules_normalize(decode_json($json));
+
+    if (!$rules || !pg_variant_price_rules_owned($rules)) {
+        return NULL;
+    }
+
+    return $rules;
 }
 
 
@@ -1163,6 +1195,12 @@ function pg_pb_save_new_product()
 
         $product_ids = array();
 
+        // Prices from the option rules, when the set was given any. The rules
+        // are applied here rather than trusted from the rows: the browser's
+        // figures are a preview of this computation.
+        $price_rules = pg_pb_price_rules_from_post();
+        $price_base  = pg_pb_price_to_cents(isset($_POST['price']) ? $_POST['price'] : 0);
+
         foreach ($variants as $variant) {
 
             $product = $common;
@@ -1170,6 +1208,19 @@ function pg_pb_save_new_product()
             $product['name']              = $variant['name'];
             $product['short_description'] = $variant['short_description'];
             $product['price']             = pg_pb_price_to_cents($variant['price']);
+
+            if ($price_rules && !$variant['price_manual']) {
+
+                $selection = array();
+
+                foreach ($variant['attributes'] as $pair) {
+                    $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
+                }
+
+                $priced = pg_variant_price_compute($price_base, $price_rules, $selection);
+
+                $product['price'] = $priced['cents'];
+            }
             $product['full_description']  = prepare_rich_text_editor_content_for_input($full_description);
             $product['details']           = prepare_rich_text_editor_content_for_input($details);
             $product['title']             = isset($_POST['title']) ? trim($_POST['title']) : '';
@@ -1227,6 +1278,10 @@ function pg_pb_save_new_product()
             pg_pb_apply_barcode($variant_product_id, $variant['barcode']);
 
             $product_ids[] = $variant_product_id;
+        }
+
+        if ($price_rules) {
+            pg_variant_price_rules_store($group_id, $price_rules, $price_base);
         }
 
         return array(
@@ -2968,6 +3023,15 @@ function pg_pb_render_styles()
             @media (max-width: 991.98px) {
                 .pg-pb-vtable tbody tr { border-bottom: 2px solid var(--bs-border-color); }
             }
+
+            /* Price rules: one small input group per option, wrapping. The
+               value box is sized for a price ("12,345.00"), the unit select
+               for a symbol. */
+            .pg-pb-pr-option { width: auto; flex-wrap: nowrap; }
+            .pg-pb-pr-option .pg-pb-pr-value { width: 6.5rem; flex: 0 0 auto; text-align: right; }
+            .pg-pb-pr-option .pg-pb-pr-unit { width: 4.25rem; flex: 0 0 auto; }
+            .pg-pb-pr-mode { width: auto; }
+            .pg-pb-v-formula { font-variant-numeric: tabular-nums; }
         </style>';
 }
 
@@ -4220,6 +4284,24 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'Google Product Category' => lang('Google Product Category'),
         'single_summary'     => lang('A single product will be created. No catalog group is added.'),
         'group_summary'      => lang('{count} products and one product group covering them will be created.'),
+
+        // Variant price rules
+        'No effect on price'     => lang('No effect on price'),
+        'Sets the price'         => lang('Sets the price'),
+        'Multiplier'             => lang('Multiplier'),
+        'Adds a difference'      => lang('Adds a difference'),
+        'price_rule_set_hint'    => lang('An option left blank uses the Unit Price.'),
+        'price_rule_multiply_hint' => lang('The price is multiplied by this number.'),
+        'price_rule_adjust_hint' => lang('Adds an amount or a percentage; a minus sign lowers the price.'),
+        'price_rule_invalid'     => lang('Not a usable value; it is ignored.'),
+        'Typed by hand'          => lang('Typed by hand'),
+        'Back to the rule'       => lang('Back to the rule'),
+        'Recalculate with Rules' => lang('Recalculate with Rules'),
+        'Apply Price to All'     => lang('Apply Price to All'),
+        'price_rules_reset'      => lang('{count} price(s) typed by hand will be recalculated from the rules.'),
+        'price_rule_clamped'     => lang('The rules take this price below zero, so it is 0.'),
+        'Continue'               => lang('Continue'),
+        'Cancel'                 => lang('Cancel'),
     );
 
     // The nav lists only sections that are actually rendered — a link to a section
@@ -4354,6 +4436,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
         <input type="hidden" id="variants_json" name="variants_json" value="" />
         <input type="hidden" id="attributes_meta_json" name="attributes_meta_json" value="" />
+        <input type="hidden" id="variant_price_rules" name="variant_price_rules" value="" />
 
         <div class="row">
             <!--
@@ -4604,6 +4687,23 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         <div class="pg-pb-tokens d-flex flex-wrap gap-1 mt-1" data-pg-pb-target="short_description_template"></div>
                                                         <div class="form-text">' . lang('The whole description. Leave blank to use the one above plus the combination.') . '</div>
                                                     </div>
+
+                                                    ' . (($pg_mode === 'edit') ? '' : '
+                                                    <!-- Price rules: one block for the whole set rather than a
+                                                         row inside every attribute card. The cards are shared
+                                                         with the single product screen and with the "new
+                                                         attribute" modal, and the rules only mean something
+                                                         for a set; the rows are drawn by product_builder.js
+                                                         from the options that are ticked. -->
+                                                    <div class="col-12 mt-4 pg-pb-group-only d-none" id="pg_pb_price_rules">
+                                                        <hr class="mt-0" />
+                                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                                            <i class="bi bi-calculator text-primary" aria-hidden="true"></i>
+                                                            <span class="h6 mb-0 fw-bold">' . lang('Price Rules') . '</span>
+                                                        </div>
+                                                        <div class="form-text mt-0 mb-2">' . lang('Give options an effect on the price and every variant below is priced from the Unit Price. Order: the base, times the multipliers, plus the amounts, then the percentages one after another. Only one attribute can set the price. A price typed into a row is kept.') . '</div>
+                                                        <div id="pg_pb_price_rules_body"></div>
+                                                    </div>') . '
 
                                                     <!-- The matrix belongs to this switch, so it lives
                                                          inside its panel rather than in a card of its

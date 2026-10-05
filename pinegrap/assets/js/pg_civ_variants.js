@@ -94,6 +94,13 @@
         // {color_attr_id: mocha_option_id} → JS pre-selects Mocha + enables
         // Add to Cart. Visitor still sees ALL options and can switch.
         var selection = {};
+
+        // Id of the product currently on screen. Background API responses
+        // (stock refresh, cross-sell) are dropped when they belong to a
+        // variant the visitor has already switched away from — otherwise a
+        // slow response for an earlier pick would overwrite the name, price
+        // and stock state of the variant now shown.
+        var currentPid = data.default_product_id ? String(data.default_product_id) : '';
         var defaults = (data.default_selection && typeof data.default_selection === 'object') ? data.default_selection : {};
         Object.keys(data.attrs).forEach(function (aid) {
             selection[aid] = defaults[aid] ? String(defaults[aid]) : '';
@@ -219,6 +226,8 @@
         }
 
         function applyVariant(p) {
+            currentPid = String(p.id);
+
             // 1. Update every [data-pg-bind] element inside the form.
             //    The data-pg-bind attribute is "prop1:field1;prop2:field2;..."
             //    where prop is HTML prop (text/html/src/alt/href/value) and
@@ -321,6 +330,8 @@
             })
                 .then(function (r) { return r.json(); })
                 .then(function (json) {
+                    // A newer variant was picked while this was in flight.
+                    if (String(productId) !== currentPid) return;
                     if (!json || json.status !== 'success' || !Array.isArray(json.items) || json.items.length === 0) {
                         // No items returned for the new variant. Rather than
                         // wiping the wrapper (which would HIDE the cross-sell
@@ -490,6 +501,8 @@
             })
                 .then(function (r) { return r.json(); })
                 .then(function (json) {
+                    // A newer variant was picked while this was in flight.
+                    if (String(productId) !== currentPid) return;
                     if (!json || json.status !== 'success' || !json.product) return;
                     var p = json.product;
                     // Re-apply only the fields the API returned (overrides the

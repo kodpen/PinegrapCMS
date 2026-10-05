@@ -266,7 +266,7 @@ foreach ($fields as $field) {
                     $error_message = '';
                     
                     if ($field['label']) {
-                        $error_message = lang(array('string'=>'{var:1} is required.','vars'=>$field['label']));
+                        $error_message = lang(array('string'=>'{var:1} is required.','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
                     }
                     
                     $liveform->mark_error($field['id'], $error_message);
@@ -277,7 +277,7 @@ foreach ($fields as $field) {
                 $error_message = '';
                 
                 if ($field['label']) {
-                    $error_message = lang(array('string'=>'{var:1} is required.','vars'=>$field['label']));
+                    $error_message = lang(array('string'=>'{var:1} is required.','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
                 }
                 
                 $liveform->validate_required_field($field['id'], $error_message);
@@ -312,22 +312,22 @@ foreach ($fields as $field) {
 
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
         if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
         
         // if field has date & time type and there is not already an error for this field and user entered value for field and submitted date & time is invalid, prepare error
         if (($field['type'] == 'date and time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date_and_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
         
         // if field has email address type and there is not already an error for this field and user entered value for field and submitted e-mail address is invalid, prepare error
         if (($field['type'] == 'email address') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_email_address($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
         
         // if field has time type and there is not already an error for this field and user entered value for field and submitted time is invalid, prepare error
         if (($field['type'] == 'time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
 
         // Pattern validation, when the field carries one.
@@ -356,8 +356,13 @@ foreach ($fields as $field) {
             if ($matched === 0) {
                 $message = trim((string)$field['validation_message']);
 
+                // The message the designer wrote, in the visitor's language.
+                if (($message !== '') && function_exists('pg_tr_label')) {
+                    $message = pg_tr_label($message);
+                }
+
                 if ($message == '') {
-                    $message = lang(array('string'=>'Please enter a valid value for {var:1}','vars'=>$field['label']));
+                    $message = lang(array('string'=>'Please enter a valid value for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
                 }
 
                 $liveform->mark_error($field['id'], $message);
@@ -377,7 +382,7 @@ foreach ($fields as $field) {
 
             // If that address name is already in use, then output error.
             if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($_POST['page_id'] ?? '') . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
-                $liveform->mark_error($field['id'], lang(array('string'=>'Sorry, that {var:1} is already in use. Can you please enter a different {var:1}?','vars'=>$field['label'])) );
+                $liveform->mark_error($field['id'], lang(array('string'=>'Sorry, that {var:1} is already in use. Can you please enter a different {var:1}?','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
             }
         }
     }
@@ -1336,6 +1341,11 @@ if ($liveform->check_form_errors() == false) {
 
                     $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
 
+                    // The sender's copy reads in the language they wrote in.
+                    if (function_exists('pg_tr_email')) {
+                        $body = pg_tr_email($body);
+                    }
+
                     // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
                     // with the key code that was created, or a blank value if no key code was created.
                     if ($offer) {
@@ -1421,7 +1431,17 @@ if ($liveform->check_form_errors() == false) {
 
             require_once(dirname(__FILE__) . '/get_page_content.php');
             
+            // The administrator's e-mail in the site's own language, whatever
+            // language the form was sent from.
+            if (function_exists('pg_tr_suspend')) {
+                pg_tr_suspend(true);
+            }
+
             $body = get_page_content($administrator_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+            if (function_exists('pg_tr_suspend')) {
+                pg_tr_suspend(false);
+            }
 
             // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
             // with the key code that was created, or a blank value if no key code was created.

@@ -4222,6 +4222,28 @@ const StyleDesigner = (function () {
                 return pad + (p.html || '') + '\n';
             }
         },
+        // Inline SVG: the drawing's own markup, placed in the page as it is
+        // (no file), so currentColor follows the text colour around it. The
+        // markup is cleaned the same way here and on the server
+        // (pg_designer_svg_markup()): only the first <svg>, no scripts, no
+        // event handlers, no script URLs.
+        svg: {
+            label: _sdT('SVG'), icon: 'bi-filetype-svg',
+            defaultProps: { html: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">' +
+                '<path d="M8 .5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15m0 3a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"/></svg>', cssClass: '' },
+            render: function (doc, p) {
+                var el = _sdSvgElement(doc, p);
+                if (el) return el;
+                var ph = doc.createElement('span');
+                ph.className = 'sd-region-ph';
+                ph.textContent = _sdT('SVG');
+                return ph;
+            },
+            toHTML: function (p, pad) {
+                var el = _sdSvgElement(document, p);
+                return el ? pad + el.outerHTML + '\n' : '';
+            }
+        },
         custom_php: {
             // PHP code block — evaluated server-side at render time via _render_tree_node.
             // In the designer canvas only a placeholder is shown (PHP cannot execute client-side);
@@ -4712,6 +4734,12 @@ const StyleDesigner = (function () {
         // An image told to fill its parent (h-100) fills the WRAPPER in the
         // canvas; let the wrapper fill the parent so the picture does too.
         '.sd-wrap[data-content-type="image"]:has(> img.h-100) { display:block !important; height:100% !important; margin:0 !important; }',
+        // Same for any element sized to its parent's height (h-100 or an
+        // inline height:100%): the wrapper has no height of its own, so the
+        // percentage resolved to auto and nested circles / panels inside a
+        // square box collapsed to their borders (ovals in the canvas, round
+        // in the front end). The wrapper passes the parent's height on.
+        '.sd-wrap:has(> .h-100), .sd-wrap:has(> [style*="height:100%"]:not([style*="-height:100%"])), .sd-wrap:has(> [style*="height: 100%"]:not([style*="-height: 100%"])) { height:100%; }',
         // Image content with aspectRatio prop: renders as sd-wrap[content-type=image] > div.ratio > img.
         // Default sd-wrap for images is inline-block/auto-width — this collapses .ratio. Override to
         // block full-width so the ratio container gets a defined width to compute its padding from.
@@ -8084,6 +8112,7 @@ const StyleDesigner = (function () {
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
+                    language_switcher:    _sdT('Language Switcher'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -8783,7 +8812,7 @@ const StyleDesigner = (function () {
 
         // Structural nodes can have children; void content types (img, hr, icon, spacer) and
         // semantic nodes whose HTML tag is a void element cannot hold children.
-        var voidContentTypes = ['image', 'divider', 'icon', 'spacer'];
+        var voidContentTypes = ['image', 'divider', 'icon', 'spacer', 'svg'];
         var _isVoidSemantic = node.type === 'semantic' && node.props && node.props.tag &&
             ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']
                 .indexOf(node.props.tag.toLowerCase()) !== -1;
@@ -9417,6 +9446,32 @@ const StyleDesigner = (function () {
         }
         return label ? '\u2039' + label + '\u203a' : '';
     }
+    // An svg content node's drawing as an element of `doc`: the first <svg>
+    // of its markup, without scripts, foreignObject, event handlers or script
+    // URLs (the same rules as pg_designer_svg_markup()), with the node's
+    // classes added. null when the markup holds no <svg>.
+    function _sdSvgElement(doc, p) {
+        var markup = String((p && p.html) || '');
+        if (markup.toLowerCase().indexOf('<svg') === -1) return null;
+        var tpl = doc.createElement('template');
+        tpl.innerHTML = markup;
+        var svg = tpl.content.querySelector('svg');
+        if (!svg) return null;
+        svg.querySelectorAll('script, foreignObject, foreignobject, iframe, embed, object').forEach(function (n) { n.parentNode.removeChild(n); });
+        [svg].concat(Array.prototype.slice.call(svg.querySelectorAll('*'))).forEach(function (n) {
+            Array.prototype.slice.call(n.attributes).forEach(function (a) {
+                var name = a.name.toLowerCase();
+                var val  = String(a.value || '').replace(/[\s\u0000-\u001f]+/g, '').toLowerCase();
+                if (name.indexOf('on') === 0 || /^(javascript|vbscript):/.test(val) || val.indexOf('javascript:') !== -1 ||
+                    ((name === 'href' || name === 'xlink:href') && /^data:/.test(val) && !/^data:image\//.test(val))) {
+                    n.removeAttribute(a.name);
+                }
+            });
+        });
+        (p.cssClass || '').split(/\s+/).forEach(function (c) { if (c) svg.classList.add(c); });
+        return doc.importNode(svg, true);
+    }
+
     // Compact SVG placeholder — kept short to avoid extra-long data URIs and minimize
     // any chance of layout-thrash that could affect hover/toolbar interactions.
     var _SD_IMG_PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
@@ -10967,7 +11022,7 @@ const StyleDesigner = (function () {
 
         // Void content types cannot receive any children
         if (target.type === 'content') {
-            var voidTypes = ['image', 'divider', 'icon', 'spacer'];
+            var voidTypes = ['image', 'divider', 'icon', 'spacer', 'svg'];
             if (voidTypes.indexOf(target.props.contentType) !== -1) return false;
         }
 
@@ -18968,6 +19023,7 @@ const StyleDesigner = (function () {
                     case 'link':       tag = 'a';   cls = cp.cssClass || ''; preview = cp.text || 'Link'; break;
                     case 'list':       tag = cp.tag || 'ul'; cls = cp.cssClass || ''; break;
                     case 'custom_html':tag = 'div'; cls = cp.cssClass || ''; preview = 'custom'; break;
+                    case 'svg':        tag = 'svg'; cls = cp.cssClass || ''; break;
                     case 'span':
                     case 'text':       tag = 'span'; cls = cp.cssClass || ''; preview = (cp.text || '').replace(/<[^>]+>/g, '').substring(0, 28); break;
                     default:           tag = 'div'; cls = cp.cssClass || ''; break;
@@ -19181,7 +19237,9 @@ const StyleDesigner = (function () {
                 var src = f.content.trim();
                 if (f._file) src += (src.indexOf('?') === -1 ? '?_t=' : '&_t=') + Date.now();
                 var scr = canvasDoc.createElement('script');
-                scr.id = 'pg-ext-js-' + (jsIdx++); scr.src = src;
+                scr.id = 'pg-ext-js-' + (jsIdx++);
+                if (f.module) scr.type = 'module';
+                scr.src = src;
                 canvasDoc.body.appendChild(scr);
             }
         });
@@ -19195,6 +19253,8 @@ const StyleDesigner = (function () {
             if (f.type === 'json') {
                 scr.type = 'application/json';
                 scr.id = f.name.replace(/"/g, '') || scr.id;
+            } else if (f.module) {
+                scr.type = 'module';
             }
             scr.textContent = f.content;
             canvasDoc.body.appendChild(scr);
@@ -19327,9 +19387,10 @@ const StyleDesigner = (function () {
                         var _assetsJs = _readAssetsFromFields();
                         _assetsJs.jsFiles.forEach(function(f) {
                             if (f.enabled === false) return;
+                            var _modAttr = f.module ? '&nbsp;<span class="sd-ht-attr">type</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"module"</span>' : '';
                             if (f.type === 'external-js') {
                                 buildHtmlLockedRow(bodyWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' +
+                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + _modAttr +
                                     '&nbsp;<span class="sd-ht-attr">src</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(f.content || '') + '"</span>' +
                                     '<span class="sd-ht-bracket">&gt;&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
                             } else if (f.type === 'json') {
@@ -19342,7 +19403,7 @@ const StyleDesigner = (function () {
                                 var preview = (f.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 60);
                                 if ((f.content || '').length > 60) preview += '…';
                                 buildHtmlLockedRow(bodyWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' +
+                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + _modAttr +
                                     '&nbsp;<span class="sd-ht-attr">id</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(f.name) + '"</span>' +
                                     '<span class="sd-ht-bracket">&gt;</span>' +
                                     '<span class="sd-ht-comment">' + preview + '</span>' +
@@ -20793,6 +20854,175 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ========================= TRANSLATE SECTION =========================
+    // On a site with other languages the options panel opens with the
+    // selected element's texts and their translation in each language,
+    // read and written through the Translations screen's endpoint. The
+    // lookup goes by the wording as it is in the editor, so a text typed
+    // since the last save shows as not translated yet; a translation entered
+    // for it is stored and applies once the page is saved.
+    var _sdTrCache = {};
+    var _sdTrTimer = null;
+    var _sdTrSeq = 0;
+
+    function _sdTrConfig() {
+        var cfg = (typeof sdDesign !== 'undefined' && sdDesign) ? sdDesign.translate : null;
+        return (cfg && cfg.languages && cfg.languages.length) ? cfg : null;
+    }
+
+    // Mirrors pg_tr_node_fields(): only a node with wording asks the server.
+    function _sdTrCandidate(n) {
+        var p = (n && n.props) || {};
+        if (n.type === 'content' && p.contentType === 'custom_html') return typeof p.html === 'string' && p.html.trim() !== '';
+        var keys = ['text', 'title', 'subtitle', 'btnText', 'headerText', 'footerText', 'brand', 'alt'];
+        for (var i = 0; i < keys.length; i++) {
+            if (typeof p[keys[i]] === 'string' && p[keys[i]].trim() !== '') return true;
+        }
+        if (Array.isArray(p._attrs)) {
+            return p._attrs.some(function (a) {
+                return a && /^(title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
+            });
+        }
+        return false;
+    }
+
+    function _sdTrSection(n) {
+        if (!_sdTrConfig() || !n || n.type === 'root' || !_sdTrCandidate(n)) return '';
+        return sect('bi-translate', _sdT('Translate'),
+            '<div class="sd-tr-box" id="sd-tr-box" data-node="' + esc(n._id || '') + '">' +
+                '<div class="sd-tr-note"><span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>' + esc(_sdT('Loading…')) + '</div>' +
+            '</div>');
+    }
+
+    function _sdTrCall(payload) {
+        var cfg = _sdTrConfig();
+        payload.token = (typeof software_token !== 'undefined') ? software_token : '';
+        return fetch(cfg.actionUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            if (!data || data.status !== 'success') throw new Error((data && data.message) ? data.message : _sdT('The request failed.'));
+            return data;
+        });
+    }
+
+    function _sdTrFieldLabel(field) {
+        var labels = { text: _sdT('Text'), title: _sdT('Title'), subtitle: _sdT('Subtitle'), btnText: _sdT('Button text'),
+            headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML') };
+        if (field.indexOf('_attrs:') === 0) return field.slice(7);
+        return labels[field] || field;
+    }
+
+    function _sdTrStateBadge(t) {
+        if (!t || !t.text) return '<span class="sd-tr-state sd-tr-pending">' + esc(_sdT('Not translated')) + '</span>';
+        if (t.state === 'reviewed') return '<span class="sd-tr-state sd-tr-reviewed"><i class="bi bi-check2"></i> ' + esc(_sdT('Reviewed')) + '</span>';
+        return '<span class="sd-tr-state sd-tr-machine"><i class="bi bi-robot"></i> ' + esc(_sdT('Machine')) + '</span>';
+    }
+
+    function _sdTrDraw(box, data) {
+        var cfg = _sdTrConfig();
+        var segs = data.segments || [];
+        if (!segs.length) {
+            var sectEl = box.closest('.sd-props-section');
+            if (sectEl) sectEl.parentNode.removeChild(sectEl);
+            return;
+        }
+        var html = '';
+        segs.forEach(function (seg, si) {
+            var tr = seg.translations || {};
+            html += '<div class="sd-tr-seg" data-seg="' + si + '">' +
+                (segs.length > 1 ? '<div class="sd-tr-field">' + esc(_sdTrFieldLabel(seg.field)) + '</div>' : '') +
+                '<div class="sd-tr-src" title="' + esc(_sdT('Source text') + ' (' + cfg.source + ')') + '">' + esc(seg.source) + '</div>' +
+                (seg.string_id ? '' : '<div class="sd-tr-note">' + esc(_sdT('New wording: a translation entered here applies once the page is saved.')) + '</div>');
+            cfg.languages.forEach(function (lang) {
+                var t = tr[lang.code] || null;
+                html += '<div class="sd-tr-lang" data-lang="' + esc(lang.code) + '">' +
+                    '<div class="sd-tr-head"><span class="sd-tr-code">' + esc(lang.code) + '</span><span class="sd-tr-label">' + esc(lang.label) + '</span>' + _sdTrStateBadge(t) + '</div>' +
+                    '<textarea class="form-control form-control-sm sd-tr-input' + (seg.format === 'inline' ? ' sd-tr-inline' : '') + '" rows="2" spellcheck="true" lang="' + esc(lang.code) + '">' + esc(t ? t.text : '') + '</textarea>' +
+                    '<div class="sd-tr-actions">' +
+                        '<button type="button" class="btn btn-sm btn-primary sd-tr-save" disabled>' + esc(_sdT('Save')) + '</button>' +
+                        ((t && t.text && t.state !== 'reviewed') ? '<button type="button" class="btn btn-sm btn-link sd-tr-review">' + esc(_sdT('Approve')) + '</button>' : '') +
+                    '</div>' +
+                '</div>';
+            });
+            html += '</div>';
+        });
+        html += '<a class="sd-tr-screen" href="' + esc(cfg.screenUrl) + '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>' + esc(_sdT('Open the Translations screen')) + '</a>';
+        box.innerHTML = html;
+
+        box.querySelectorAll('.sd-tr-lang').forEach(function (langEl) {
+            var segEl = langEl.closest('.sd-tr-seg');
+            var seg = segs[parseInt(segEl.getAttribute('data-seg'), 10)];
+            var code = langEl.getAttribute('data-lang');
+            var input = langEl.querySelector('.sd-tr-input');
+            var saveBtn = langEl.querySelector('.sd-tr-save');
+            var current = function () { var t = (seg.translations || {})[code]; return t ? t.text : ''; };
+            var redrawLang = function () {
+                var t = (seg.translations || {})[code];
+                var head = langEl.querySelector('.sd-tr-state');
+                if (head) head.outerHTML = _sdTrStateBadge(t);
+                var rv = langEl.querySelector('.sd-tr-review');
+                if (rv && !(t && t.text && t.state !== 'reviewed')) rv.parentNode.removeChild(rv);
+                saveBtn.disabled = (input.value === current());
+            };
+            var save = function () {
+                if (saveBtn.disabled) return;
+                saveBtn.disabled = true;
+                _sdTrCall({ action: 'save', language: code, string_id: seg.string_id || 0, source: seg.source, format: seg.format, text: input.value }).then(function (res) {
+                    seg.string_id = res.string_id || seg.string_id;
+                    if (!seg.translations || Array.isArray(seg.translations)) seg.translations = {};
+                    if (res.text) seg.translations[code] = { text: res.text, state: res.state, engine: res.engine, suspicious: res.suspicious };
+                    else delete seg.translations[code];
+                    input.value = res.text;
+                    redrawLang();
+                    sdToast(esc(_sdT('Translation saved ({var}).', code)), 'success');
+                }).catch(function (err) {
+                    saveBtn.disabled = false;
+                    sdToast(esc(err.message), 'error');
+                });
+            };
+            input.addEventListener('input', function () { saveBtn.disabled = (input.value === current()); });
+            input.addEventListener('keydown', function (e) {
+                e.stopPropagation();
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+            });
+            saveBtn.addEventListener('click', save);
+            var reviewBtn = langEl.querySelector('.sd-tr-review');
+            if (reviewBtn) reviewBtn.addEventListener('click', function () {
+                reviewBtn.disabled = true;
+                _sdTrCall({ action: 'status', language: code, string_id: seg.string_id, status: 'reviewed' }).then(function () {
+                    seg.translations[code].state = 'reviewed';
+                    redrawLang();
+                }).catch(function (err) {
+                    reviewBtn.disabled = false;
+                    sdToast(esc(err.message), 'error');
+                });
+            });
+        });
+    }
+
+    function _sdTrLoad(n) {
+        var box = document.getElementById('sd-tr-box');
+        if (!box || !n) return;
+        var node = { type: n.type, props: n.props || {} };
+        var key = JSON.stringify(node);
+        if (_sdTrCache[key]) { _sdTrDraw(box, _sdTrCache[key]); return; }
+        var seq = ++_sdTrSeq;
+        clearTimeout(_sdTrTimer);
+        _sdTrTimer = setTimeout(function () {
+            _sdTrCall({ action: 'node', node: node }).then(function (data) {
+                _sdTrCache[key] = data;
+                var now = document.getElementById('sd-tr-box');
+                if (seq === _sdTrSeq && now && now.getAttribute('data-node') === String(n._id || '')) _sdTrDraw(now, data);
+            }).catch(function (err) {
+                var now = document.getElementById('sd-tr-box');
+                if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note text-danger">' + esc(err.message) + '</div>';
+            });
+        }, 250);
+    }
+
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
@@ -20941,8 +21171,9 @@ const StyleDesigner = (function () {
         }
 
         // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         bindPropEvents();
+        _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
@@ -21295,6 +21526,7 @@ const StyleDesigner = (function () {
             var _isErrorPage       = (_regionType === 'error_page');
             var _isLoginRegion     = (_regionType === 'login_region');
             var _isCartLink        = (_regionType === 'cart_link');
+            var _isLanguageSwitcher = (_regionType === 'language_switcher');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -22225,6 +22457,26 @@ const StyleDesigner = (function () {
                     row(_sdT('Cart page'),
                         '<select class="form-select form-select-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the cart page the visitor last saw, else the site\'s cart page. Token: ^^__cart_url^^')) + '</div>'
+                    )
+                );
+            }
+
+            // ── language_switcher settings ────────────────────────────────────
+            if (_isLanguageSwitcher) {
+                systemSection += sect('bi-translate', _sdT('Language Switcher Settings'),
+                    row(_sdT('Show codes instead of names'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="show_codes" data-sw-cfg-kind="bool"' + (_cfg.show_codes ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('EN, DE, TR instead of English, Deutsch, Türkçe. Token: ^^__language_label^^')) + '</div>'
+                    ) +
+                    row(_sdT('Hide the current language'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="hide_current" data-sw-cfg-kind="bool"' + (_cfg.hide_current ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only the other languages are listed; the current one is shown by ^^__current_language_label^^.')) + '</div>'
                     )
                 );
             }
@@ -25668,9 +25920,29 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // language_switcher token palette — has loop_area (one row per language).
+    // Mirrors _render_system_widget_language_switcher() in widgets_language.php.
+    var SW_LANGUAGE_SWITCHER_TOKEN_GROUPS = [
+        { label: _sdT('Language (loop_area)'), tokens: [
+            ['__language_code',         _sdT('Language code (en, de, tr)')],
+            ['__language_label',        _sdT('Language name (or code, per the setting)')],
+            ['__language_active_class', _sdT('"active" on the current language, empty otherwise')],
+            ['__language_aria_current', _sdT('"page" on the current language, empty otherwise')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__language_url',          _sdT('This page in that language')]
+        ]},
+        { label: _sdT('Current language (static)'), tokens: [
+            ['__current_language_code',  _sdT('Code of the language the page is shown in')],
+            ['__current_language_label', _sdT('Name of the language the page is shown in')],
+            ['__language_count',         _sdT('Number of languages listed')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
+        language_switcher: SW_LANGUAGE_SWITCHER_TOKEN_GROUPS,
         logout:            SW_LOGOUT_TOKEN_GROUPS,
         change_password:   SW_CHANGE_PASSWORD_TOKEN_GROUPS,
         set_password:      SW_SET_PASSWORD_TOKEN_GROUPS,
@@ -26241,6 +26513,7 @@ const StyleDesigner = (function () {
             if (cfg && cfg.regionType === 'calendar_event_view') return 'calendar_event_view';
             if (cfg && _SW_ACCOUNT_TYPES[cfg.regionType] === 1) return cfg.regionType;
             if (cfg && cfg.regionType === 'error_page')        return 'error_page';
+            if (cfg && cfg.regionType === 'language_switcher') return 'language_switcher';
             return 'form_list_view';
         } catch (e) { return 'form_list_view'; }
     }
@@ -26506,6 +26779,9 @@ const StyleDesigner = (function () {
         cart_link: [
             ['cart_has_items',   _sdT('The cart has something in it')],
             ['cart_is_empty',    _sdT('The cart is empty')]
+        ],
+        language_switcher: [
+            ['has_languages',    _sdT('There is more than one language to choose from')]
         ],
         login_region: [
             ['is_signed_in',     _sdT('The visitor is signed in')],
@@ -33642,6 +33918,8 @@ const StyleDesigner = (function () {
                             // and tells the panel which lock badge to show.
                             locked: !!f.locked,
                             meta: f.meta || '',
+                            // Loaded as an ES module (<script type="module">).
+                            module: !!f.module,
                             // The CSS file currently designated as the
                             // overlay flush target. The Save handler reads
                             // this to know where to append unmoved Google
@@ -33852,6 +34130,7 @@ const StyleDesigner = (function () {
                         content: a.content || '', enabled: a.enabled !== false, _file: !!a._file,
                         locked: false, meta: '', _overlayTarget: false
                     };
+                    if (a.module) entry.module = true;
                     // Keep the user-styles sentinel last so the operator's own
                     // rules still win the cascade over imported sheets.
                     var us = -1;
@@ -34222,6 +34501,7 @@ const StyleDesigner = (function () {
         function buildCtx(items) {
             ctxEl.innerHTML = items.map(function(it) {
                 if (it.divider) return '<div class="sd-as-ctx-divider"></div>';
+                if (it.hidden) return '';
                 var cls = 'sd-as-ctx-item' + (it.danger ? ' danger' : '') + (it.disabled ? ' disabled' : '');
                 return '<div class="' + cls + '" data-ca="' + (it.action || '') + '">' + (it.icon ? '<span class="bi ' + it.icon + '"></span> ' : '') + it.label + '</div>';
             }).join('');
@@ -34685,6 +34965,8 @@ const StyleDesigner = (function () {
             //                downgrade it to "unlink" because there's nothing
             //                to unlink on disk.
             var hasFile = !!file._file;
+            // ES module switch — JS files only, never the framework rows.
+            var canModule = type === 'js' && !isLocked && (file.type === 'js' || file.type === 'external-js');
             buildCtx([
                 { label: _sdT('Move Up'),       action: 'up',     icon: 'bi-arrow-up',   disabled: idx <= 0 },
                 { label: _sdT('Move Down'),        action: 'dn',     icon: 'bi-arrow-down', disabled: idx >= files.length - 1 },
@@ -34692,6 +34974,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Rename'),  action: 'rename', icon: 'bi-pencil',  disabled: isLocked },
                 { label: _sdT('Duplicate'),            action: 'dup',    icon: 'bi-copy',    disabled: isLocked },
                 { label: tgl,                 action: 'toggle', icon: 'bi-toggles' },
+                { label: _sdT('Load as a Module'), action: 'module', icon: file.module ? 'bi-check2-square' : 'bi-square', hidden: !canModule },
                 { divider: true },
                 { label: _sdT('Remove from Design'), action: 'unlink', icon: 'bi-eject',   disabled: isLocked },
                 { label: _sdT('Delete (permanent)'),      action: 'delete', icon: 'bi-trash',   danger: true, disabled: isLocked || !hasFile }
@@ -34714,8 +34997,10 @@ const StyleDesigner = (function () {
             if (action === 'up' && idx > 0)                   { var t=files[idx]; files[idx]=files[idx-1]; files[idx-1]=t; }
             else if (action === 'dn' && idx < files.length-1) { var t=files[idx]; files[idx]=files[idx+1]; files[idx+1]=t; }
             else if (action === 'toggle') { files[idx].enabled = !files[idx].enabled; }
+            else if (action === 'module') { if (entry.locked) return; files[idx].module = !files[idx].module; }
             else if (action === 'dup') {
                 var dup = { id: mkId(), name: files[idx].name.replace(/(\.\w+)$/, '-copy$1'), type: files[idx].type, content: files[idx].content, enabled: files[idx].enabled };
+                if (files[idx].module) dup.module = true;
                 files.splice(idx+1, 0, dup);
             } else if (action === 'rename') {
                 var nn = prompt(_sdT('New name:'), files[idx].name);
@@ -34830,6 +35115,7 @@ const StyleDesigner = (function () {
                     + (f.locked ? ' sd-as-item-locked' : '');
                 var ic = FILE_ICONS[f.type] || (type === 'css' ? 'bi-filetype-css' : 'bi-filetype-js');
                 var extBadge = (f.type === 'external-css' || f.type === 'external-js') ? '<span class="sd-as-badge-ext">ext</span>' : '';
+                if (f.module) extBadge += '<span class="sd-as-badge-ext" title="' + esc(_sdT('Loaded as an ES module (type="module")')).replace(/"/g, '&quot;') + '">module</span>';
                 var offBadge = f.enabled === false ? '<span class="sd-as-badge-off">off</span>' : '';
                 var lockBadge = f.locked ? '<span class="sd-as-badge-lock" title="' + esc(_sdT('A system file — it cannot be deleted')) + '"><span class="bi bi-lock-fill"></span></span>' : '';
                 item.innerHTML = '<span class="bi ' + ic + ' sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(f.name) + '</span>' + extBadge + offBadge + lockBadge;
@@ -36968,7 +37254,8 @@ const StyleDesigner = (function () {
         { type: 'email_preferences', label: _sdT('Email Preferences'), slug: _sdT('email-preferences'), icon: 'bi-envelope-paper' },
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
-        { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' }
+        { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
+        { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -37061,6 +37348,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'language_switcher') {
+            if (cfg.show_codes === undefined) cfg.show_codes = false;
+            if (cfg.hide_current === undefined) cfg.hide_current = false;
         } else if (newType === 'custom_form') {
             if (cfg.form_source === undefined) cfg.form_source = 'page';
         } else if (newType === 'form_list_view') {
@@ -39003,6 +39293,37 @@ const StyleDesigner = (function () {
                             _bindings: { text: '__cart_count', eo_visible_if: 'cart_has_items' } })
                     ]),
                     createNode('loop_area', {}, [])
+                ]);
+            }
+
+            case 'language_switcher': {
+                // The site's languages in a dropdown: the button carries the
+                // current language, loop_area holds one language. Names, not
+                // flags - a flag is a country. The server stamps hreflang on
+                // the links and keeps their addresses out of the prefix pass.
+                var lsLoop = createNode('loop_area', {}, [
+                    createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Language') }, [
+                        createNode('content', { contentType: 'link', text: _sdT('English'), href: '#',
+                            cssClass: 'dropdown-item',
+                            _attrs: [{ name: 'class', value: '' }],
+                            _bindings: { href: '__language_url', text: '__language_label' } })
+                    ])
+                ]);
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'dropdown', customName: _sdT('Language Switcher'),
+                        _bindings: { eo_visible_if: 'has_languages' } }, [
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary dropdown-toggle',
+                            customName: _sdT('Current Language'),
+                            _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }] }, [
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-translate me-1', customName: _sdT('Icon'),
+                                _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                            createNode('semantic', { tag: 'span', text: _sdT('English'), customName: _sdT('Label'),
+                                _bindings: { text: '__current_language_label' } })
+                        ]),
+                        createNode('semantic', { tag: 'ul', cssClass: 'dropdown-menu dropdown-menu-end', customName: _sdT('Languages') }, [
+                            lsLoop
+                        ])
+                    ])
                 ]);
             }
 
@@ -41721,12 +42042,16 @@ const StyleDesigner = (function () {
         // Custom JS
         var _pvExtJs = '';
         var _pvInlineJs = '';
+        var _pvJsonJs = '';
+        var _pvModuleJs = '';
         _pvAssets.jsFiles.forEach(function(f) {
             if (f.enabled === false) return;
             if (f.type === 'external-js') {
-                if (f.content && f.content.trim()) _pvExtJs += '    <script src="' + f.content.trim() + '"><\/script>\n';
+                if (f.content && f.content.trim()) _pvExtJs += '    <script' + (f.module ? ' type="module"' : '') + ' src="' + f.content.trim() + '"><\/script>\n';
             } else if (f.type === 'json') {
-                if (f.content) _pvInlineJs += '    <script type="application/json" id="' + f.name.replace(/"/g, '') + '">\n' + f.content + '\n    <\/script>\n';
+                if (f.content) _pvJsonJs += '    <script type="application/json" id="' + f.name.replace(/"/g, '') + '">\n' + f.content + '\n    <\/script>\n';
+            } else if (f.module) {
+                if (f.content) _pvModuleJs += '    <script type="module">\n/* ' + f.name.replace(/\*\//g, '') + ' */\n' + f.content.replace(/<\/script/gi, '<\\/script') + '\n    <\/script>\n';
             } else {
                 if (f.content) _pvInlineJs += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + f.content + '\n';
             }
@@ -41737,11 +42062,10 @@ const StyleDesigner = (function () {
         // pages are expected to do and matches the canvas iframe's _initCanvasTooltips().
         var _pvJsInject = '';
         if (_pvExtJs) _pvJsInject += _pvExtJs;
-        if (_pvInlineJs.trim() && _pvInlineJs.indexOf('<script') === -1) {
-            _pvJsInject += '    <script id="pg-page-js">\n' + _pvInlineJs + '    <\/script>\n';
-        } else if (_pvInlineJs) {
-            _pvJsInject += _pvInlineJs;
-        }
+        // Same order as the front end: JSON data, classic code, modules.
+        if (_pvJsonJs) _pvJsInject += _pvJsonJs;
+        if (_pvInlineJs.trim()) _pvJsInject += '    <script id="pg-page-js">\n' + _pvInlineJs + '    <\/script>\n';
+        if (_pvModuleJs) _pvJsInject += _pvModuleJs;
         html = html.replace('</body>',
             _pvJsInject +
             (_pvFw.js
@@ -42639,9 +42963,16 @@ const StyleDesigner = (function () {
     function _pgActivePage() { return _pgPageByKey(_activeKey); }
 
     // Settings snapshot of a page — what the per-page baseline compares.
+    // Values are normalised before comparing: the page object is filled from
+    // the server with numbers (folder id, e-mail page id) but read back from
+    // the form as strings, and 0 vs "0" must not count as an edit.
     function _pgSettingsJSON(p) {
         var o = {};
-        _PG_PAGE_FIELDS.forEach(function (k) { o[k] = p[k]; });
+        _PG_PAGE_FIELDS.forEach(function (k) {
+            var v = p[k];
+            if (_PG_BOOL_FIELDS[k]) o[k] = (v && v !== '0') ? 1 : 0;
+            else o[k] = (v == null) ? '' : String(v);
+        });
         return JSON.stringify(o);
     }
 
@@ -44145,6 +44476,8 @@ const StyleDesigner = (function () {
         fd.append('token', _pgToken());
         _pgTabsPersistActive();
         fd.append('skip_names', JSON.stringify(_pages.map(function (p) { return p.page_name; }).filter(Boolean)));
+        // A design without a framework keeps the project's own Bootstrap.
+        fd.append('framework_bootstrap', _sdUsesBootstrap() ? '1' : '0');
 
         if (run) { run.disabled = true; }
         if (status) { status.style.display = ''; status.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + esc(_sdT('Importing…')); }
@@ -44174,7 +44507,245 @@ const StyleDesigner = (function () {
      * same {pages, css, js, fonts, warnings} shape, and a second copy of this
      * would drift the moment one of them learned something the other did not.
      */
+    /* ── Parts repeated across the imported pages ─────────────────────────
+     * A site exported page by page carries its header, footer, call to
+     * action band… once per page. Before the pages open, blocks that are the
+     * same on two or more pages are offered as shared components: accepted,
+     * each becomes one shared_components row and every copy a reference to
+     * it, so the next edit to the header is made once.
+     *
+     * "The same" is compared on the tree with the editor ids left out. A
+     * menu that marks the current page differs on every page only by its
+     * active link; such blocks are matched with the active states ignored,
+     * and the shared copy gets the smart active state, which marks the
+     * current page's link when the page is drawn.
+     *
+     * The rows are made at once (the canvas draws a reference from its row)
+     * and carry category "import:…"; leaving a never-published design
+     * discards them like a template's (pg_design_template_discard()).
+     */
+    var _PG_IMPORT_SHARED_DEPTH = 3;      // how deep under <body> blocks are looked for
+    var _PG_IMPORT_SHARED_MIN   = 3;      // descendants a block needs to be worth sharing
+
+    function _pgImportStripIds(node, activeToo) {
+        if (!node || typeof node !== 'object') return node;
+        var out = {};
+        Object.keys(node).forEach(function (k) {
+            if (k === '_id' || k.indexOf('_pgImp') === 0) return;
+            if (k === 'children') {
+                out.children = (node.children || []).map(function (c) { return _pgImportStripIds(c, activeToo); });
+                return;
+            }
+            if (k === 'props') {
+                var src = (node.props && !Array.isArray(node.props)) ? node.props : {};
+                var pr = {};
+                Object.keys(src).forEach(function (pk) { pr[pk] = src[pk]; });
+                if (activeToo) {
+                    if (typeof pr.cssClass === 'string') {
+                        pr.cssClass = pr.cssClass.split(/\s+/).filter(function (c) { return c && c !== 'active'; }).join(' ');
+                    }
+                    if (Array.isArray(pr._attrs)) {
+                        pr._attrs = pr._attrs.filter(function (a) { return !(a && String(a.name || '').toLowerCase() === 'aria-current'); });
+                    }
+                }
+                out.props = pr;
+                return;
+            }
+            out[k] = node[k];
+        });
+        return out;
+    }
+
+    function _pgImportSize(node) {
+        var n = 0;
+        (node.children || []).forEach(function (c) { n += 1 + _pgImportSize(c); });
+        return n;
+    }
+
+    function _pgImportText(node) {
+        var p = (node && node.props && !Array.isArray(node.props)) ? node.props : {};
+        var t = (typeof p.text === 'string' ? p.text : '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (t) return t;
+        for (var i = 0; i < (node.children || []).length; i++) {
+            var c = _pgImportText(node.children[i]);
+            if (c) return c;
+        }
+        return '';
+    }
+
+    function _pgImportBlockName(node, projectName) {
+        var tag = (node.props && node.props.tag) || '';
+        var names = { header: _sdT('Site Header'), footer: _sdT('Site Footer'), nav: _sdT('Navigation'), aside: _sdT('Sidebar') };
+        var label = names[tag];
+        if (!label) {
+            // A band in the middle of the page reads by its first words.
+            var words = _pgImportText(node).slice(0, 30).trim();
+            label = (tag === 'section' ? _sdT('Section') : getNodeLabel(node)) + (words ? ' · ' + words : '');
+        }
+        return (projectName ? projectName + ' · ' : '') + label;
+    }
+
+    // The groups of blocks that two or more pages share, outermost first: a
+    // block inside a shared one is not offered on its own.
+    function _pgImportFindShared(pages) {
+        var groups = {};
+        var order = [];
+        pages.forEach(function (sp, pi) {
+            var walk = function (n, depth) {
+                (n.children || []).forEach(function (c) {
+                    if (!c || (c.type !== 'semantic' && c.type !== 'container')) return;
+                    if (_pgImportSize(c) >= _PG_IMPORT_SHARED_MIN) {
+                        var sig = JSON.stringify(_pgImportStripIds(c, true));
+                        var g = groups[sig];
+                        if (!g) { g = groups[sig] = { sig: sig, pages: {}, nodes: [], raw: {}, depth: depth }; order.push(g); }
+                        g.pages[pi] = true;
+                        g.nodes.push(c);
+                        g.raw[JSON.stringify(_pgImportStripIds(c, false))] = true;
+                        if (depth < g.depth) g.depth = depth;
+                    }
+                    if (depth < _PG_IMPORT_SHARED_DEPTH) walk(c, depth + 1);
+                });
+            };
+            if (sp.tree) walk(sp.tree, 1);
+        });
+        var list = order.filter(function (g) { return Object.keys(g.pages).length >= 2; });
+        list.sort(function (a, b) { return (a.depth - b.depth) || (_pgImportSize(b.nodes[0]) - _pgImportSize(a.nodes[0])); });
+        var mark = function (n) { (n.children || []).forEach(function (c) { c._pgImpInside = true; mark(c); }); };
+        var accepted = list.filter(function (g) {
+            if (g.nodes.every(function (n) { return n._pgImpInside; })) return false;
+            g.nodes.forEach(mark);
+            return true;
+        });
+        var unmark = function (n) { delete n._pgImpInside; (n.children || []).forEach(unmark); };
+        pages.forEach(function (sp) { if (sp.tree) unmark(sp.tree); });
+        return accepted;
+    }
+
+    // The question: one line per block, ticked; resolves with the chosen
+    // groups ([] when the operator keeps the pages as they are).
+    function _pgImportAskShared(groups, projectName) {
+        return new Promise(function (resolve) {
+            var rows = groups.map(function (g, i) {
+                var preview = _pgImportText(g.nodes[0]).slice(0, 70);
+                var tag = (g.nodes[0].props && g.nodes[0].props.tag) || g.nodes[0].type;
+                return '<label class="list-group-item d-flex gap-2 align-items-start">' +
+                    '<input class="form-check-input flex-shrink-0 mt-1" type="checkbox" checked data-sd-imp-group="' + i + '">' +
+                    '<span class="flex-grow-1 min-w-0">' +
+                        '<span class="d-block fw-semibold">' + esc(_pgImportBlockName(g.nodes[0], '')) +
+                            ' <code class="small">&lt;' + esc(tag) + '&gt;</code></span>' +
+                        '<span class="d-block small text-body-secondary">' + esc(_sdT('On {var} pages', Object.keys(g.pages).length)) +
+                            (preview ? ' · ' + esc(preview) : '') + '</span>' +
+                    '</span>' +
+                '</label>';
+            }).join('');
+            var el = document.createElement('div');
+            el.className = 'modal fade';
+            el.tabIndex = -1;
+            el.setAttribute('role', 'dialog');
+            el.setAttribute('aria-modal', 'true');
+            el.setAttribute('aria-labelledby', 'sd-imp-shared-title');
+            el.innerHTML =
+                '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">' +
+                    '<div class="modal-content">' +
+                        '<div class="modal-header">' +
+                            '<h5 class="modal-title" id="sd-imp-shared-title"><span class="bi bi-puzzle me-2" aria-hidden="true"></span>' + esc(_sdT('Make the repeated parts shared?')) + '</h5>' +
+                        '</div>' +
+                        '<div class="modal-body">' +
+                            '<p class="small mb-3">' + esc(_sdT('These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.')) + '</p>' +
+                            '<div class="list-group">' + rows + '</div>' +
+                        '</div>' +
+                        '<div class="modal-footer">' +
+                            '<button type="button" class="btn btn-secondary" data-sd-imp="keep">' + esc(_sdT('Keep them on each page')) + '</button>' +
+                            '<button type="button" class="btn btn-primary" data-sd-imp="share">' + esc(_sdT('Make shared')) + '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(el);
+            var chosen = [];
+            var modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
+            el.querySelector('[data-sd-imp="share"]').addEventListener('click', function () {
+                el.querySelectorAll('[data-sd-imp-group]').forEach(function (cb) {
+                    if (cb.checked) chosen.push(groups[parseInt(cb.getAttribute('data-sd-imp-group'), 10)]);
+                });
+                modal.hide();
+            });
+            el.querySelector('[data-sd-imp="keep"]').addEventListener('click', function () { modal.hide(); });
+            el.addEventListener('hidden.bs.modal', function () {
+                if (el.parentNode) el.parentNode.removeChild(el);
+                resolve(chosen);
+            });
+            modal.show();
+        });
+    }
+
+    // One row for a chosen group, then every copy on every page becomes a
+    // reference to it. Resolves with the number of rows made.
+    function _pgImportMakeShared(groups, pages, projectName) {
+        var made = 0;
+        var chain = Promise.resolve();
+        groups.forEach(function (g) {
+            chain = chain.then(function () {
+                var varies = Object.keys(g.raw).length > 1;
+                var tree = JSON.parse(JSON.stringify(_pgImportStripIds(g.nodes[0], varies)));
+                if (varies) {
+                    // The current page's link is marked when the page is drawn.
+                    var host = null, queue = [tree];
+                    while (queue.length && !host) {
+                        var n = queue.shift();
+                        if (_sdSmartActiveHost(n)) host = n;
+                        (n.children || []).forEach(function (c) { queue.push(c); });
+                    }
+                    (host || tree).props.smartActive = true;
+                }
+                _backfillIds(tree);
+                var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+                return fetch(url, { method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify({ action: 'shared_component', sub_action: 'create', token: _pgToken(),
+                        name: _pgImportBlockName(g.nodes[0], projectName),
+                        tree_json: JSON.stringify(tree),
+                        category: 'import:' + String(projectName || 'paste').slice(0, 80) })
+                }).then(function (r) { return r.json(); }).then(function (res) {
+                    var sid = res && res.status === 'success' ? parseInt(res.id, 10) : 0;
+                    if (!(sid > 0)) return;
+                    made++;
+                    var name = res.name || _pgImportBlockName(g.nodes[0], projectName);
+                    _sharedCache[sid] = { name: name, tree: tree };
+                    _pgTemplateTrackRows({ shared: [{ id: sid }] });
+                    var swap = function (n) {
+                        (n.children || []).forEach(function (c, i) {
+                            if (g.nodes.indexOf(c) !== -1) {
+                                n.children[i] = { _id: gid(), type: 'shared_ref', props: { sharedId: sid, sharedName: name }, children: [] };
+                            } else {
+                                swap(c);
+                            }
+                        });
+                    };
+                    pages.forEach(function (sp) { if (sp.tree) swap(sp.tree); });
+                });
+            });
+        });
+        return chain.then(function () { return made; });
+    }
+
     function _pgImportApply(d, projectName) {
+        var pages = (d && d.pages) || [];
+        var groups = (pages.length > 1) ? _pgImportFindShared(pages) : [];
+        if (!groups.length) { _pgImportApplyPages(d, projectName, 0); return; }
+        var im = document.getElementById('sdImportModal');
+        if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+        _pgImportAskShared(groups, projectName).then(function (chosen) {
+            if (!chosen.length) return 0;
+            return _pgImportMakeShared(chosen, pages, projectName).catch(function () {
+                sdToast(_sdT('The shared components could not all be made; the pages keep their own copies of the rest.'), 'warning', 7000);
+                return 0;
+            });
+        }).then(function (made) {
+            _pgImportApplyPages(d, projectName, made || 0);
+        });
+    }
+
+    function _pgImportApplyPages(d, projectName, sharedMade) {
             // Assets first, so the canvas paints the new pages with their CSS.
             var added = (typeof window.sdImportAssets === 'function') ? window.sdImportAssets({ css: d.css, js: d.js, fonts: d.fonts }) : { css: 0, js: 0, fonts: 0 };
             // A brand-new design opens with one blank, unnamed tab. Once the
@@ -44222,7 +44793,9 @@ const StyleDesigner = (function () {
             var im = document.getElementById('sdImportModal');
             if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
             if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
-            var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)');
+            var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)') +
+                (sharedMade ? ', ' + _sdT('{var} shared component(s)', sharedMade) : '');
+            if (sharedMade && typeof _refreshSharedPalette === 'function') _refreshSharedPalette();
             sdToast('<strong>' + esc(_sdT('Imported:')) + '</strong> ' + esc(summary) + '<br>' + esc(_sdT('Review the tabs, then publish.')), 'success', 7000);
             if (Array.isArray(d.warnings) && d.warnings.length) {
                 sdToast('<strong>' + esc(_sdT('Notes')) + '</strong><br>' + d.warnings.slice(0, 8).map(esc).join('<br>') + (d.warnings.length > 8 ? '<br>…' : ''), 'warning', 12000);
@@ -44499,6 +45072,7 @@ const StyleDesigner = (function () {
                     esc(_sdT('Reading the markup…')), 'info', 4000);
             _pgApiPost('import_paste', {
                 html: code,
+                framework_bootstrap: _sdUsesBootstrap() ? '1' : '0',
                 skip_names: _pages.map(function (p) { return p.page_name; }).filter(Boolean)
             }).then(function (res) {
                 if (!res || res.status !== 'success') {

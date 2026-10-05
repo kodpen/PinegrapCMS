@@ -1844,6 +1844,10 @@ function check_name_availability($properties)
     if (($name == 'sitemap.xml') || ($name == 'robots.txt')) {
         return false;
     }
+    // A language directory (/en/...) would shadow an item of the same name.
+    if (function_exists('pg_tr_is_reserved_name') && pg_tr_is_reserved_name($name)) {
+        return false;
+    }
     $sql_ignore = "";
     // If an ignore item was passed, and that ignore item is a page,
     // then prepare SQL to ignore that item.
@@ -2871,6 +2875,11 @@ function lang($properties = false)
 
     // If explicit info request (get current software language)
     if (is_array($properties) && isset($properties['info'])) {
+        // A front-end page drawn in another language (router.php found a
+        // language prefix) speaks that language, whatever the panel is set to.
+        if (defined('FRONTEND_LANGUAGE') && FRONTEND_LANGUAGE && !(function_exists('pg_tr_suspend') && pg_tr_suspend())) {
+            return FRONTEND_LANGUAGE;
+        }
         if (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWARE_LANGUAGE) {
             return ENFORCEMENT_SOFTWARE_LANGUAGE;
         }
@@ -2904,12 +2913,22 @@ function lang($properties = false)
         return '';
     }
 
-    // Determine selected language (en default)
+    // Determine selected language (en default). A front-end page drawn in
+    // another language comes first: the enforced language is the panel's.
     $selected_software_language = 'en';
-    if (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWARE_LANGUAGE) {
+    if (defined('FRONTEND_LANGUAGE') && FRONTEND_LANGUAGE && !(function_exists('pg_tr_suspend') && pg_tr_suspend())) {
+        $selected_software_language = FRONTEND_LANGUAGE;
+    } elseif (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWARE_LANGUAGE) {
         $selected_software_language = ENFORCEMENT_SOFTWARE_LANGUAGE;
     } elseif (defined('SOFTWARE_LANGUAGE') && SOFTWARE_LANGUAGE) {
         $selected_software_language = SOFTWARE_LANGUAGE;
+    }
+
+    // A caller may ask for one language explicitly - the source language of
+    // the site, say, to recognise a label the designer saved in it.
+    if (is_array($properties) && isset($properties['language']) && is_string($properties['language'])
+        && preg_match('/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/', $properties['language'])) {
+        $selected_software_language = $properties['language'];
     }
 
     // Load translations for language (cache)
@@ -3181,8 +3200,7 @@ function get_short_version()
 }
 
 // Editing define() lines in data/config.php. Shared by the settings screens
-// that rewrite the file in place (edit_config.php, smtp_settings.php,
-// private_label.php).
+// that rewrite the file in place (smtp_settings.php, private_label.php).
 //
 // The patterns avoid the /s modifier and a lazy '(.*?)'. A hand-edited config
 // file mixes LF and CRLF line endings; a lazy value match followed by a
@@ -3289,4 +3307,21 @@ function remove_config_define($content, $key, $type = 'string') {
         '',
         $content
     );
+}
+
+
+// Hosted mode: the site runs on a shared hosting account next to other
+// sites that belong to other people. Everything that would run PHP written
+// in the control panel stays closed, as do the tools that change the
+// software itself, whatever the site's own settings say. PG_HOSTED is
+// written to data/config.php by the provisioning tool; no screen of the
+// control panel writes it.
+function pg_hosted() {
+    return (defined('PG_HOSTED') && (PG_HOSTED === true)) || pg_demo();
+}
+
+// Demo mode: a public demonstration site whose data is restored on a
+// schedule. It is a hosted site as well, and it sends no e-mail.
+function pg_demo() {
+    return defined('PG_DEMO') && (PG_DEMO === true);
 }

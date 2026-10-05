@@ -84,6 +84,11 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
     $output_edit_send_to = ($edit_mode && isset($edit_context['send_to'])) ? urlencode($edit_context['send_to']) : '';
     // loop through all menu items in order to get content
     foreach ($menu_items as $menu_item) {
+        // On a page drawn in another language the item's name is read from
+        // the translation table.
+        if (defined('FRONTEND_LANGUAGE')) {
+            $menu_item['name'] = pg_tr_text($menu_item['name'], 'text');
+        }
         // If security is disabled,
         // or if this menu item is not connected to a page
         // or this visitor has access to view this menu item's page,
@@ -3168,7 +3173,9 @@ function render_layout($properties)
         include(PG_FUNCTIONS_DIR . '/includes/templates/' . $template_name);
     } else {
         require_once(PG_FUNCTIONS_DIR . '/generate_layout_content.php');
-        if ($page['layout_modified']) {
+        // A modified layout is a PHP file written from the control panel and
+        // included as it stands. A hosted site keeps to the generated layout.
+        if ($page['layout_modified'] && !pg_hosted()) {
             include(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php');
         } else {
             $template_name = str_replace(' ', '_', $page['type']) . '.php';

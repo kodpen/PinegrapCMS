@@ -84,6 +84,10 @@ $presenters = array(
 	'api_device_schema'               => 'api_device_present',
 	'api_notification_schema'         => 'api_notification_present',
 	'api_auth_session_schema'         => 'api_auth_session_present',
+	'translate_api_language_schema'   => 'translate_api_language_present',
+	'translate_api_string_schema'     => 'translate_api_string_present',
+	'translate_api_page_schema'       => 'translate_api_page_present',
+	'translate_api_job_schema'        => 'translate_api_job_present',
 );
 
 $problems = array();

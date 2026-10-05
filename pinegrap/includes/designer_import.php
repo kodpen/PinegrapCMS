@@ -18,8 +18,11 @@
  * What is deliberately NOT carried over:
  *   • <head> markup other than title, meta description, stylesheets, scripts
  *     and Google Fonts — canonical/og/charset/viewport are the renderer's job
- *   • bootstrap*.css / bootstrap*.js / jquery*.js, local or CDN — the design
- *     ships its own via the assets panel sentinels; a second copy would fight
+ *   • bootstrap*.css / bootstrap*.js / jquery*.js, local or CDN — a design
+ *     built on Bootstrap 5 ships its own via the assets panel sentinels; a
+ *     second copy would fight. A custom design has no framework of its own,
+ *     so there they are the page's and come through like any other file
+ *     ('keep_framework'): a project on another Bootstrap (6, say) keeps it.
  *   • the original folder layout of the URLs — files are flat on disk (that
  *     is how files.name works), so assets/css/site.css becomes site.css. The
  *     file manager keeps the folders (Import/<project>/assets/css/…) so the
@@ -44,7 +47,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param string $project_name Folder name under Import/ and default design name
  * @param array  $user         Validated user row
  * @param array  $opts         'skip_names' => page names already in use by the
- *                             caller (open tabs), so new names avoid them
+ *                             caller (open tabs), so new names avoid them;
+ *                             'keep_framework' => true for a design without a
+ *                             framework of its own (keep Bootstrap / jQuery)
  * @return array  see pg_designer_import_result()
  */
 function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array())
@@ -92,9 +97,13 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
 
     // Bootstrap / jQuery bundles are replaced by the design's own sentinels;
     // do not even upload them, they would sit unused in the file manager.
+    // A design without a framework keeps them: they are its framework.
+    $keep_framework = !empty($opts['keep_framework']);
+    $fw_skipped = array();
     foreach ($entries as $path => $e) {
-        if (($e['type'] === 'css' || $e['type'] === 'js') && pg_di_is_framework_file($path)) {
+        if (!$keep_framework && ($e['type'] === 'css' || $e['type'] === 'js') && pg_di_is_framework_file($path)) {
             $entries[$path]['type'] = 'skip';
+            $fw_skipped[] = $path;
             $res['warnings'][] = lang(array('string' => '{var:1} was not imported: the design uses its own Bootstrap / jQuery.', 'vars' => $path));
         }
     }
@@ -105,6 +114,7 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     $ctx->folders    = array();
     $ctx->root_id    = pg_di_folder_path(array('Import', $project_name), $ctx);
     $ctx->project    = $project_name;
+    $ctx->keep_framework = $keep_framework;
     $ctx->files      = array();  // archive path => array('name','url','type')
     $ctx->warnings   = array();
     $ctx->read       = function ($path) use ($archive, $entries) {
@@ -126,6 +136,14 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         $x = $archive->extract(PCLZIP_OPT_BY_NAME, $orig, PCLZIP_OPT_EXTRACT_AS_STRING);
         return (is_array($x) && isset($x[0]['content'])) ? $x[0]['content'] : null;
     };
+
+    // A project on another Bootstrap than the design's 5 loses its own copy
+    // above and gets 5 instead — say so, the page will not look the same.
+    foreach ($fw_skipped as $path) {
+        if (!preg_match('#(?:^|/)bootstrap[^/]*\.(?:css|js)$#i', $path)) continue;
+        $code = call_user_func($ctx->read, $path);
+        pg_di_note_bootstrap_major(pg_di_bootstrap_major($path, is_string($code) ? substr($code, 0, 400) : ''), $path, $ctx);
+    }
 
     // Second pass: reserve a flat, unique file name for every non-HTML entry
     // so cross-references can be rewritten before anything is written.
@@ -204,6 +222,7 @@ function pg_designer_import_single_html($html, $file_name, $user, $opts = array(
     $ctx->warnings = array();
     $ctx->root_id  = 0;
     $ctx->project  = pathinfo($file_name, PATHINFO_FILENAME);
+    $ctx->keep_framework = !empty($opts['keep_framework']);
     $taken = isset($opts['skip_names']) && is_array($opts['skip_names']) ? $opts['skip_names'] : array();
     $seen  = array();
     $page  = pg_designer_import_html($html, $file_name, $ctx);
@@ -248,7 +267,7 @@ function pg_designer_import_fragment($html, $user, $opts = array())
     $ctx->project   = '';
     $ctx->base_dir  = '';
     $ctx->page_slug = 'paste';
-    $ctx->fragment  = true;              // read by pg_di_svg_node / pg_di_rewrite_ref
+    $ctx->fragment  = true;              // read by pg_di_rewrite_ref
 
     // Count what is being dropped before it is dropped, so the operator is
     // told rather than left wondering why the paste looks unstyled.
@@ -260,10 +279,7 @@ function pg_designer_import_fragment($html, $user, $opts = array())
     // Same reason as the page importer: libxml does not know SVG's
     // self-closing elements and turns "<path/><path/>" into nested paths.
     $ctx->svg_raw = array();
-    $html = preg_replace_callback('/<svg\b[^>]*>.*?<\/svg\s*>/is', function ($m) use ($ctx) {
-        $ctx->svg_raw[] = $m[0];
-        return '<pg-svg data-i="' . (count($ctx->svg_raw) - 1) . '"></pg-svg>';
-    }, $html);
+    $html = pg_di_lift_svgs($html, $ctx);
 
     $doc = new DOMDocument('1.0', 'UTF-8');
     libxml_use_internal_errors(true);
@@ -437,10 +453,7 @@ function pg_designer_import_html($html, $html_path, $ctx)
     // nested paths and the drawing is gone. Each <svg> is kept verbatim and
     // stands in the document as a placeholder element.
     $ctx->svg_raw = array();
-    $html = preg_replace_callback('/<svg\b[^>]*>.*?<\/svg\s*>/is', function ($m) use ($ctx) {
-        $ctx->svg_raw[] = $m[0];
-        return '<pg-svg data-i="' . (count($ctx->svg_raw) - 1) . '"></pg-svg>';
-    }, $html);
+    $html = pg_di_lift_svgs($html, $ctx);
 
     $doc = new DOMDocument('1.0', 'UTF-8');
     libxml_use_internal_errors(true);
@@ -479,7 +492,10 @@ function pg_designer_import_html($html, $html_path, $ctx)
             foreach (pg_di_parse_google_fonts($href) as $f) $out['fonts'][] = $f;
             continue;
         }
-        if (pg_di_is_framework_url($href)) continue;           // our sentinels cover it
+        if (empty($ctx->keep_framework) && pg_di_is_framework_url($href)) {   // our sentinels cover it
+            pg_di_note_bootstrap_major(pg_di_bootstrap_major($href, ''), $href, $ctx);
+            continue;
+        }
         if (pg_di_is_absolute($href)) {
             $out['css'][] = pg_di_asset_entry('external-css', basename(parse_url($href, PHP_URL_PATH) ?: 'external.css'), $href, false);
             continue;
@@ -499,18 +515,31 @@ function pg_designer_import_html($html, $html_path, $ctx)
         $out['css'][] = pg_di_asset_entry('css', $ctx->page_slug . '-inline.css', pg_di_rewrite_css_urls($inline_css, $base_dir, $ctx), false);
     }
 
-    $inline_js = '';
+    // ES modules keep their type: a module script loaded as a classic one
+    // stops at its first import / export. Inline modules are collected apart
+    // from classic code — the two cannot share one <script> block.
+    $inline_js  = '';
+    $inline_mod = '';
     foreach ($xp->query('//script') as $sc) {
         $src  = trim((string)$sc->getAttribute('src'));
         $type = strtolower(trim((string)$sc->getAttribute('type')));
+        $is_module = ($type === 'module');
         if ($src !== '') {
-            if (pg_di_is_framework_url($src)) continue;
+            if (empty($ctx->keep_framework) && pg_di_is_framework_url($src)) {
+                pg_di_note_bootstrap_major(pg_di_bootstrap_major($src, ''), $src, $ctx);
+                continue;
+            }
+            $entry = null;
             if (pg_di_is_absolute($src)) {
-                $out['js'][] = pg_di_asset_entry('external-js', basename(parse_url($src, PHP_URL_PATH) ?: 'external.js'), $src, false);
+                $entry = pg_di_asset_entry('external-js', basename(parse_url($src, PHP_URL_PATH) ?: 'external.js'), $src, false);
             } else {
                 $url = pg_di_resolve_ref($src, $ctx);
-                if ($url !== null) $out['js'][] = pg_di_asset_entry('external-js', basename($url), $url, true);
+                if ($url !== null) $entry = pg_di_asset_entry('external-js', basename($url), $url, true);
                 else $out['warnings'][] = lang(array('string' => '{var:1}: script "{var:2}" is not in the archive and was left out.', 'vars' => array($html_path, $src)));
+            }
+            if ($entry !== null) {
+                if ($is_module) $entry['module'] = true;
+                $out['js'][] = $entry;
             }
             continue;
         }
@@ -518,10 +547,17 @@ function pg_designer_import_html($html, $html_path, $ctx)
         // like stay out; they would only run as errors.
         if ($type !== '' && $type !== 'text/javascript' && $type !== 'module' && $type !== 'application/javascript') continue;
         $code = trim($sc->textContent);
-        if ($code !== '') $inline_js .= $code . "\n";
+        if ($code === '') continue;
+        if ($is_module) $inline_mod .= $code . "\n";
+        else            $inline_js  .= $code . "\n";
     }
     if (trim($inline_js) !== '') {
         $out['js'][] = pg_di_asset_entry('js', $ctx->page_slug . '-inline.js', $inline_js, false);
+    }
+    if (trim($inline_mod) !== '') {
+        $entry = pg_di_asset_entry('js', $ctx->page_slug . '-inline-module.js', $inline_mod, false);
+        $entry['module'] = true;
+        $out['js'][] = $entry;
     }
 
     // ── <body> → tree ─────────────────────────────────────────────────
@@ -568,13 +604,54 @@ function pg_di_opaque_tags()
     return $t;
 }
 
+// Every top-level <svg> of $html, taken out whole into $ctx->svg_raw and
+// replaced by a <pg-svg data-i="n"> placeholder. Nested <svg> elements are
+// counted, so a drawing that holds another one leaves in one piece instead
+// of being cut at the inner closing tag.
+function pg_di_lift_svgs($html, $ctx)
+{
+    $html = (string)$html;
+    $out  = '';
+    $pos  = 0;
+    while (($i = stripos($html, '<svg', $pos)) !== false) {
+        $next = substr($html, $i + 4, 1);
+        if ($next !== '' && !ctype_space($next) && $next !== '>' && $next !== '/') {
+            $out .= substr($html, $pos, $i + 4 - $pos);
+            $pos  = $i + 4;
+            continue;
+        }
+        $depth = 0;
+        $at    = $i;
+        $end   = false;
+        while (preg_match('~<(/?)svg\b[^>]*>~i', $html, $m, PREG_OFFSET_CAPTURE, $at)) {
+            $tag = $m[0][0];
+            if ($m[1][0] === '') {
+                if (substr($tag, -2) !== '/>') $depth++;
+            } else {
+                $depth--;
+            }
+            $at = $m[0][1] + strlen($tag);
+            if ($depth <= 0) { $end = $at; break; }
+        }
+        // An <svg> that is never closed is left to the HTML parser.
+        if ($end === false) break;
+        $ctx->svg_raw[] = substr($html, $i, $end - $i);
+        $out .= substr($html, $pos, $i - $pos) . '<pg-svg data-i="' . (count($ctx->svg_raw) - 1) . '"></pg-svg>';
+        $pos  = $end;
+    }
+    return $out . substr($html, $pos);
+}
+
 /**
- * Inline <svg> → an ordinary node, never custom_html.
+ * Inline <svg> → a node of its own, the drawing kept in the page.
  *
  * Bootstrap Icons markup (class="bi bi-alarm") becomes the icon node the
- * palette makes. Any other drawing is written to the project's assets as an
- * .svg file and placed through an image node, so the page tree stays made
- * of things the designer can select, move and restyle.
+ * palette makes. Any other drawing becomes an svg content node holding its
+ * markup: it is drawn where it was, currentColor still follows the text
+ * around it, and a logo repeated on every page stays one drawing per page
+ * instead of a file per page. Its class moves to the node, so the classes
+ * panel edits it; the markup is cleaned when the page is drawn
+ * (pg_designer_svg_markup()).
  */
 function pg_di_svg_node($raw, $ctx)
 {
@@ -592,45 +669,12 @@ function pg_di_svg_node($raw, $ctx)
         return pg_di_mk('content', $props);
     }
 
-    $markup = $raw;
-    if (stripos($open, 'xmlns=') === false) {
-        $markup = preg_replace('/^<svg\b/i', '<svg xmlns="http://www.w3.org/2000/svg"', $markup, 1);
+    $markup = pg_designer_svg_markup($raw);
+    if ($markup === '') return null;
+    if ($cls !== '') {
+        $markup = preg_replace('/^(<svg\b[^>]*?)\s+class\s*=\s*("[^"]*"|\'[^\']*\')/is', '$1', $markup, 1);
     }
-    // A paste writes no files, so the drawing stays as markup. The node is
-    // still selectable and movable; it just is not a separate .svg.
-    if (!empty($ctx->fragment)) {
-        return pg_di_mk('content', array('contentType' => 'custom_html', 'html' => $markup, 'cssClass' => $cls));
-    }
-    $ctx->svg_seq = isset($ctx->svg_seq) ? $ctx->svg_seq + 1 : 1;
-    $vpath = 'assets/svg/' . $ctx->page_slug . '-' . $ctx->svg_seq . '.svg';
-    $url   = pg_di_store_generated($vpath, $markup, $ctx);
-    if ($url === null) return null;
-    if (stripos($markup, 'currentColor') !== false && empty($ctx->svg_color_warned)) {
-        $ctx->svg_color_warned = true;
-        $ctx->warnings[] = lang('Inline SVG drawings were saved as files. Colours that relied on currentColor now need to be set in the file itself.');
-    }
-    $alt = trim($attr('aria-label'));
-    if ($alt === '' && preg_match('/<title[^>]*>(.*?)<\/title>/is', $raw, $t)) $alt = trim(strip_tags($t[1]));
-    return pg_di_mk('content', array(
-        'contentType' => 'image', 'src' => $url, 'alt' => $alt,
-        'width' => trim($attr('width')), 'height' => trim($attr('height')),
-        'fluid' => false, 'rounded' => false, 'objectPosition' => '', 'aspectRatio' => '', 'cssClass' => $cls,
-    ));
-}
-
-// A file the importer made itself (an inline SVG, say): reserve a name,
-// register it like an archive entry, write it. Returns the URL, or null.
-function pg_di_store_generated($vpath, $content, $ctx)
-{
-    if (!defined('FILE_DIRECTORY_PATH')) return null;
-    $ctx->files[$vpath] = array(
-        'name' => pg_di_reserve_file_name(basename($vpath), $ctx),
-        'type' => 'asset',
-        'ext'  => strtolower(pathinfo($vpath, PATHINFO_EXTENSION)),
-    );
-    $ctx->files[$vpath]['url'] = OUTPUT_PATH . $ctx->files[$vpath]['name'];
-    pg_di_store_file($vpath, $content, $ctx);
-    return $ctx->files[$vpath]['url'];
+    return pg_di_mk('content', array('contentType' => 'svg', 'html' => $markup, 'cssClass' => preg_replace('/\s+/', ' ', $cls)));
 }
 
 // Inline formatting that lives INSIDE a heading / paragraph / link text.
@@ -828,6 +872,30 @@ function pg_di_is_framework_url($url)
 function pg_di_is_framework_file($path)
 {
     return pg_di_is_framework_url($path);
+}
+
+// Bootstrap major version of a framework file, from its CDN address
+// (bootstrap@6.0.0, /bootstrap/4.6.2/) or its banner ("Bootstrap v6.0.0").
+// 0 when it cannot be told.
+function pg_di_bootstrap_major($url, $head)
+{
+    if (preg_match('#/(?:npm/)?bootstrap[@/](\d+)\.#i', (string)$url, $m)) return (int)$m[1];
+    if (preg_match('#Bootstrap\s+v(\d+)\.#i', (string)$head, $m)) return (int)$m[1];
+    // Minified builds without a banner: the 6 palette has shade 025.
+    if (strpos((string)$head, '--bs-blue-025') !== false) return 6;
+    return 0;
+}
+
+// One warning per import when the project's Bootstrap is not the design's 5.
+function pg_di_note_bootstrap_major($major, $ref, $ctx)
+{
+    if ($major <= 0 || $major === 5 || !empty($ctx->bs_major_noted)) return;
+    $ctx->bs_major_noted = true;
+    if (!isset($ctx->warnings) || !is_array($ctx->warnings)) $ctx->warnings = array();
+    $ctx->warnings[] = lang(array(
+        'string' => 'The project is built on Bootstrap {var:1} ({var:2}), this design on Bootstrap 5: the project\'s own Bootstrap was left out and the page may look different. To keep it, import the project into a custom design.',
+        'vars'   => array($major, $ref),
+    ));
 }
 
 // Skip archive noise: OS metadata, VCS, editor caches, source files that are

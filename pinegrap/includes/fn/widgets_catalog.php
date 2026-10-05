@@ -5217,8 +5217,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     if ($is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs'])) {
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
-                     . '/assets/js';
-        $_civ_v_v   = '2';  // bump on pg_civ_variants.js source changes
+                     . '/assets/js/';
+        $_civ_v_v   = '3';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

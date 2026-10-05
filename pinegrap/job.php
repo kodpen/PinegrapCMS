@@ -435,6 +435,32 @@ if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
 
 }
 
+// Workspace scheduled actions whose time has come, and the starts one action
+// gave another (includes/workspace/scheduled.php).
+//
+// Run on every tick rather than left to the workspace's own scheduled job:
+// that one waits for its turn in the dispatcher's rotation below, so an action
+// set for a given minute could run the better part of an hour late. With the
+// general job scheduled every minute, an action now runs within a minute of
+// its time even when nobody has the workspace open.
+//
+// The module is loaded only while it is switched on, and the look is two
+// indexed reads. Each action is claimed before it runs, so two ticks that
+// overlap cannot carry out the same one twice; a backlog is worked off a few
+// actions per tick (WS_SCHEDULED_BATCH).
+if (
+    defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
+    && is_file(dirname(__FILE__) . '/includes/workspace/bootstrap.php')
+) {
+
+    require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
+
+    if (ws_enabled() && function_exists('ws_scheduled_due') && ws_scheduled_due()) {
+        ws_scheduled_run();
+    }
+
+}
+
 // Optional dispatcher: at most one other scheduled job per tick, and only as
 // the very last thing this script does. Several of those scripts call exit()
 // from inside their own control flow, which ends this process too - harmless

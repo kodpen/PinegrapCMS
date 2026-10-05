@@ -1180,7 +1180,9 @@ if ((ECOMMERCE == true) && USER_MANAGE_ECOMMERCE_REPORTS) {
         }
 
         $greeting_map_place = array(
-            'name'    => pg_sales_map_label($greeting_map_row['billing_country'], $greeting_map_row['billing_state']),
+            'name'    => pg_sales_map_label(
+                pg_sales_map_country_code($greeting_map_row['billing_country'], $greeting_map_row['billing_state']),
+                $greeting_map_row['billing_state']),
             'state'   => trim((string) $greeting_map_row['billing_state']),
             'country' => trim((string) $greeting_map_row['billing_country']),
             'count'   => $greeting_map_count,

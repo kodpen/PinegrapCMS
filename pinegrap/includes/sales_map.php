@@ -173,18 +173,258 @@ function pg_sales_map_region_name($country, $code)
     return $names[$code] ?? '';
 }
 
-// Country as stored -> two letter code.
+// Every country code the card can place without the shop's help, spelled the
+// way installations ship them in their countries table
+// (data/backups/*_default/sql.sql) so that lang() still translates them, plus
+// the four the world map draws and that table predates (ME, RS, SS, XK).
 //
-// select_country() writes the code, so almost every row is already one. The
-// rest are the awkward ones: rows imported from elsewhere carry a name, and
-// rows written before the field was required carry nothing at all. An empty
+// The countries table is the operator's to edit, and an operator can do more
+// than rename a row in it. One shop had cut it down to a single row whose code
+// was "TÜRKİYE": every order carried that, neither the world map nor the region
+// maps have an id by that name, and the card fell back to a grey world with
+// nothing on it. This list is how a row like that is still recognised -- by its
+// name, when its code is not a code.
+function pg_sales_map_iso_countries()
+{
+    static $countries = array(
+        'AD' => 'Andorra', 'AE' => 'United Arab Emirates', 'AF' => 'Afghanistan', 'AG' => 'Antigua',
+        'AI' => 'Anguilla', 'AL' => 'Albania', 'AM' => 'Armenia', 'AN' => 'Netherlands Antilles',
+        'AO' => 'Angola', 'AQ' => 'Antarctica', 'AR' => 'Argentina', 'AS' => 'American Samoa',
+        'AT' => 'Austria', 'AU' => 'Australia', 'AW' => 'Aruba', 'AX' => 'Aland Islands',
+        'AZ' => 'Azerbaijan', 'BA' => 'Bosnia-Herzegovina', 'BB' => 'Barbados',
+        'BD' => 'Bangladesh', 'BE' => 'Belgium', 'BF' => 'Burkina Faso', 'BG' => 'Bulgaria',
+        'BH' => 'Bahrain', 'BI' => 'Burundi', 'BJ' => 'Benin', 'BM' => 'Bermuda',
+        'BN' => 'Brunei Darussalam', 'BO' => 'Bolivia', 'BR' => 'Brazil', 'BS' => 'Bahamas',
+        'BT' => 'Bhutan', 'BV' => 'Bouvet Island', 'BW' => 'Botswana', 'BY' => 'Belarus',
+        'BZ' => 'Belize', 'CA' => 'Canada', 'CC' => 'Cocos Islands (CC)', 'CD' => 'Congo (CD)',
+        'CF' => 'Central African Rep', 'CG' => 'Congo', 'CH' => 'Switzerland',
+        'CI' => 'Cote d\'Ivoire', 'CK' => 'Cook Islands', 'CL' => 'Chile', 'CM' => 'Cameroon',
+        'CN' => 'China', 'CO' => 'Colombia', 'CR' => 'Costa Rica', 'CS' => 'Serbia and Montenegro',
+        'CU' => 'Cuba', 'CV' => 'Cape Verde Islands', 'CX' => 'Christmas Island', 'CY' => 'Cyprus',
+        'CZ' => 'Czech Republic', 'DE' => 'Germany', 'DJ' => 'Djibouti', 'DK' => 'Denmark',
+        'DM' => 'Dominica', 'DO' => 'Dominican Republic', 'DZ' => 'Algeria', 'EC' => 'Ecuador',
+        'EE' => 'Estonia', 'EG' => 'Egypt', 'EH' => 'Western Samoa', 'ER' => 'Eritrea',
+        'ES' => 'Spain', 'ET' => 'Ethiopia', 'FI' => 'Finland', 'FJ' => 'Fiji',
+        'FK' => 'Falkland Islands', 'FM' => 'Micronesia (FM)', 'FO' => 'Faroe Islands',
+        'FR' => 'France', 'GA' => 'Gabon', 'GB' => 'United Kingdom', 'GD' => 'Grenada',
+        'GE' => 'Georgia', 'GF' => 'French Guiana', 'GH' => 'Ghana', 'GI' => 'Gibraltar',
+        'GL' => 'Greenland', 'GM' => 'Gambia', 'GN' => 'Guinea', 'GP' => 'Guadeloupe',
+        'GQ' => 'Equatorial Guinea', 'GR' => 'Greece', 'GS' => 'South Georgia (GS)',
+        'GT' => 'Guatemala', 'GU' => 'Guam', 'GW' => 'Guinea-Bissau', 'GY' => 'Guyana',
+        'HK' => 'Hong Kong', 'HM' => 'Heard McDonald Is. (HM)', 'HN' => 'Honduras',
+        'HR' => 'Croatia', 'HT' => 'Haiti', 'HU' => 'Hungary', 'ID' => 'Indonesia',
+        'IE' => 'Ireland', 'IL' => 'Israel', 'IN' => 'India', 'IO' => 'British Territory (IO)',
+        'IQ' => 'Iraq', 'IR' => 'Iran', 'IS' => 'Iceland', 'IT' => 'Italy', 'JM' => 'Jamaica',
+        'JO' => 'Jordan', 'JP' => 'Japan', 'KE' => 'Kenya', 'KG' => 'Kyrgystan', 'KH' => 'Cambodia',
+        'KI' => 'Kiribati', 'KM' => 'Comoros', 'KN' => 'Saint Kitts and Nevis',
+        'KP' => 'Korea, North', 'KR' => 'Korea, South', 'KW' => 'Kuwait', 'KY' => 'Cayman Islands',
+        'KZ' => 'Kazakhstan', 'LA' => 'Lao', 'LB' => 'Lebanon', 'LC' => 'Saint Lucia',
+        'LI' => 'Liechtenstein', 'LK' => 'Sri Lanka', 'LR' => 'Liberia', 'LS' => 'Lesotho',
+        'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'LV' => 'Latvia',
+        'LY' => 'Libyan Arab Jamahiriya', 'MA' => 'Morocco', 'MC' => 'Monaco',
+        'MD' => 'Moldova, Republic of', 'ME' => 'Montenegro', 'MG' => 'Madagascar',
+        'MH' => 'Marshall Islands', 'MK' => 'Macedonia', 'ML' => 'Mali', 'MM' => 'Myanmar',
+        'MN' => 'Mongolia', 'MO' => 'Macao', 'MP' => 'Northern Marina Islands',
+        'MQ' => 'Martinique', 'MR' => 'Mauritania', 'MS' => 'Montserrat', 'MT' => 'Malta',
+        'MU' => 'Mauritius', 'MV' => 'Maldives', 'MW' => 'Malawi', 'MX' => 'Mexico',
+        'MY' => 'Malaysia', 'MZ' => 'Mozambique', 'NA' => 'Namibia', 'NC' => 'New Caledonia',
+        'NE' => 'Niger', 'NF' => 'Norfolk Island', 'NG' => 'Nigeria', 'NI' => 'Nicaragua',
+        'NL' => 'Netherlands', 'NO' => 'Norway', 'NP' => 'Nepal', 'NR' => 'Nauru', 'NU' => 'Niue',
+        'NZ' => 'New Zealand', 'OM' => 'Oman', 'PA' => 'Panama', 'PE' => 'Peru',
+        'PF' => 'French Polynesia', 'PG' => 'Papua New Guinea', 'PH' => 'Philippines',
+        'PK' => 'Pakistan', 'PL' => 'Poland', 'PM' => 'Saint Pierre Miquelon', 'PN' => 'Pitcairn',
+        'PR' => 'Puerto Rico', 'PS' => 'Palestinian Territory (PS)', 'PT' => 'Portugal',
+        'PW' => 'Palau', 'PY' => 'Paraguay', 'QA' => 'Qatar', 'RE' => 'Reunion', 'RO' => 'Romania',
+        'RS' => 'Serbia', 'RU' => 'Russian Federation', 'RW' => 'Rwanda', 'SA' => 'Saudi Arabia',
+        'SB' => 'Solomon Islands', 'SC' => 'Seychelles', 'SD' => 'Sudan', 'SE' => 'Sweden',
+        'SG' => 'Singapore', 'SH' => 'Saint Helena', 'SI' => 'Slovenia',
+        'SJ' => 'Svalbard and Jan Mayen', 'SK' => 'Slovakia', 'SL' => 'Sierra Leone',
+        'SM' => 'San Marino', 'SN' => 'Senegal', 'SO' => 'Somalia', 'SR' => 'Suriname',
+        'SS' => 'South Sudan', 'ST' => 'Sao Tome and Principe', 'SV' => 'El Salvador',
+        'SY' => 'Syrian Arab Republic', 'SZ' => 'Swaziland', 'TC' => 'Turks and Calicos Is.',
+        'TD' => 'Chad', 'TF' => 'French Territories (TF)', 'TG' => 'Togo', 'TH' => 'Thailand',
+        'TJ' => 'Tajikistan', 'TK' => 'Tokelau', 'TL' => 'Timor-Leste', 'TM' => 'Turkmenistan',
+        'TN' => 'Tunisia', 'TO' => 'Tonga', 'TR' => 'Turkey', 'TT' => 'Trinidad and Tobago',
+        'TV' => 'Tuvalu', 'TW' => 'Taiwan', 'TZ' => 'Tanzania', 'UA' => 'Ukraine', 'UG' => 'Uganda',
+        'UM' => 'United States Minor (UM)', 'US' => 'United States', 'UY' => 'Uruguay',
+        'UZ' => 'Uzbekistan', 'VA' => 'Holy See (Vatican City)', 'VC' => 'Saint Vincent (VC)',
+        'VE' => 'Venezuela', 'VG' => 'Virgin Islands, British', 'VI' => 'Virgin Islands, U.S.',
+        'VN' => 'Vietnam', 'VU' => 'Vanuatu', 'WF' => 'Wallis and Futuna', 'WS' => 'Samoa',
+        'XK' => 'Kosovo', 'YE' => 'Yemen', 'YT' => 'Mayotte', 'ZA' => 'South Africa',
+        'ZM' => 'Zambia', 'ZW' => 'Zimbabwe');
+
+    return $countries;
+}
+
+// Spellings of a country that the shipped table does not use: names countries
+// have changed to since it was written, and the short forms people type. The
+// panel language's own names need no entry here -- pg_sales_map_iso_code()
+// reads them out of lang().
+function pg_sales_map_country_aliases()
+{
+    static $aliases = array(
+        'AE' => array('UAE'),
+        'BA' => array('Bosnia and Herzegovina'),
+        'BN' => array('Brunei'),
+        'CD' => array('Zaire', 'Democratic Republic of the Congo', 'DR Congo'),
+        'CG' => array('Republic of the Congo'),
+        'CI' => array('Ivory Coast'),
+        'CV' => array('Cabo Verde', 'Cape Verde'),
+        'CZ' => array('Czechia'),
+        'FM' => array('Micronesia'),
+        'GB' => array('UK', 'Great Britain'),
+        'KG' => array('Kyrgyzstan'),
+        'KP' => array('North Korea'),
+        'KR' => array('South Korea'),
+        'LA' => array('Laos'),
+        'LY' => array('Libya'),
+        'MD' => array('Moldova'),
+        'MK' => array('North Macedonia'),
+        'NL' => array('Holland'),
+        'PS' => array('Palestine'),
+        'RU' => array('Russia'),
+        'SY' => array('Syria'),
+        'SZ' => array('Eswatini'),
+        'TC' => array('Turks and Caicos Islands'),
+        'TR' => array('Türkiye'),
+        'US' => array('USA', 'United States of America'),
+        'VA' => array('Vatican City', 'Holy See'));
+
+    return $aliases;
+}
+
+// A country's name in any spelling we know -- the shipped one, an alias, or the
+// panel language's translation of the shipped one -- to its code. '' when the
+// name is not one we know.
+function pg_sales_map_iso_code($value)
+{
+    static $index = null;
+
+    if ($index === null) {
+
+        $index = array();
+        $countries = pg_sales_map_iso_countries();
+
+        // Shipped names first and translations last, so that a translation can
+        // never take over a name that already belongs to another country.
+        foreach ($countries as $code => $name) {
+            $index[pg_sales_map_normalize($name)] = $code;
+        }
+
+        foreach (pg_sales_map_country_aliases() as $code => $spellings) {
+
+            foreach ($spellings as $spelling) {
+
+                $key = pg_sales_map_normalize($spelling);
+
+                if (!isset($index[$key])) {
+                    $index[$key] = $code;
+                }
+            }
+        }
+
+        foreach ($countries as $code => $name) {
+
+            $key = pg_sales_map_normalize(lang($name));
+
+            if (($key !== '') && (!isset($index[$key]))) {
+                $index[$key] = $code;
+            }
+        }
+    }
+
+    $key = pg_sales_map_normalize($value);
+
+    return (($key !== '') && (isset($index[$key]))) ? $index[$key] : '';
+}
+
+// One countries table row -> the code the maps know it by.
+//
+// Its own code whenever that is a country code, which is every row an
+// installation ships with -- so a table nobody has rewritten resolves exactly
+// as it always did. Otherwise its name decides, and failing that its code read
+// as a name ("TÜRKİYE"). A row that neither can place keeps its own code: it is
+// still a country in the list, the maps simply have nothing to draw it with.
+function pg_sales_map_canonical_country($code, $name = '')
+{
+    $code = strtoupper(trim((string) $code));
+
+    if (isset(pg_sales_map_iso_countries()[$code])) {
+        return $code;
+    }
+
+    $iso = pg_sales_map_iso_code($name);
+
+    if ($iso === '') {
+        $iso = pg_sales_map_iso_code($code);
+    }
+
+    return ($iso !== '') ? $iso : $code;
+}
+
+// The shop's countries table, keyed the way the maps key things.
+//
+//   'index'  every stored code and name, normalised -> code
+//   'names'  code -> the shop's own spelling of it, first row wins
+//
+// The name stays the stored one, untranslated: it is also what filters the
+// orders screen, and that filter compares it against the same table.
+function pg_sales_map_countries()
+{
+    static $directory = null;
+
+    if ($directory === null) {
+
+        $directory = array('index' => array(), 'names' => array());
+
+        foreach (db_items("SELECT code, name FROM countries ORDER BY id") as $row) {
+
+            $code = pg_sales_map_canonical_country($row['code'], $row['name']);
+
+            if ($code === '') {
+                continue;
+            }
+
+            if (!isset($directory['names'][$code])) {
+                $directory['names'][$code] = (string) $row['name'];
+            }
+
+            foreach (array($row['code'], $row['name']) as $spelling) {
+
+                $key = pg_sales_map_normalize($spelling);
+
+                if (($key !== '') && (!isset($directory['index'][$key]))) {
+                    $directory['index'][$key] = $code;
+                }
+            }
+        }
+    }
+
+    return $directory;
+}
+
+// Code -> name for every country the world map can point at: the shop's own
+// spelling where its table has the country, the shipped one where it does not.
+// Untranslated, like a row -- the caller puts it through lang().
+//
+// "+" rather than array_merge(): a code an operator typed as digits would be
+// renumbered by the latter.
+function pg_sales_map_country_names()
+{
+    return pg_sales_map_countries()['names'] + pg_sales_map_iso_countries();
+}
+
+// Country as stored -> the code the maps know it by.
+//
+// The form fields write countries.code, so almost every row is already a code,
+// and nearly always a real one. The rest are the awkward ones: a code the
+// operator invented, rows imported from elsewhere that carry a name, and rows
+// written before the field was required that carry nothing at all. An empty
 // country whose state matches a region we have a map for is credited to that
 // country, because the alternative is a shop losing part of its own map to
 // "unknown".
 function pg_sales_map_country_code($country, $state = '')
 {
-    static $names = null;
-
     $country = trim((string) $country);
 
     if ($country === '') {
@@ -199,22 +439,28 @@ function pg_sales_map_country_code($country, $state = '')
         return '';
     }
 
-    if (strlen($country) === 2) {
-        return strtoupper($country);
+    $upper = strtoupper($country);
+
+    if (isset(pg_sales_map_iso_countries()[$upper])) {
+        return $upper;
     }
 
-    if ($names === null) {
-
-        $names = array();
-
-        foreach (db_items("SELECT code, name FROM countries") as $row) {
-            $names[pg_sales_map_normalize($row['name'])] = strtoupper($row['code']);
-        }
-    }
-
+    // Whatever the shop's own table makes of it -- by code or by name.
+    $directory = pg_sales_map_countries();
     $key = pg_sales_map_normalize($country);
 
-    return (isset($names[$key])) ? $names[$key] : '';
+    if (($key !== '') && (isset($directory['index'][$key]))) {
+        return $directory['index'][$key];
+    }
+
+    // No row speaks for it: an imported order, or a row deleted since.
+    $iso = pg_sales_map_iso_code($country);
+
+    if ($iso !== '') {
+        return $iso;
+    }
+
+    return (strlen($country) === 2) ? $upper : '';
 }
 
 // Region code as stored -> the name an operator would recognise, using the
@@ -229,11 +475,15 @@ function pg_sales_map_state_names()
         $names = array();
 
         foreach (db_items(
-            "SELECT states.name, states.code, countries.code AS country
+            "SELECT states.name, states.code, countries.code AS country, countries.name AS country_name
             FROM states
             LEFT JOIN countries ON countries.id = states.country_id") as $row) {
 
-            $country = strtoupper((string) $row['country']);
+            // Keyed the way the orders resolve, so a states table hanging off
+            // an edited countries row still names its regions.
+            $country = ((string) $row['country'] === '')
+                ? ''
+                : pg_sales_map_canonical_country($row['country'], $row['country_name']);
             $key = pg_sales_map_normalize($row['code']);
 
             if (($country === '') || ($key === '')) {
@@ -426,7 +676,7 @@ function pg_sales_map_collect()
         LIMIT 400");
 
     // ── Summaries ───────────────────────────────────────────────────────────
-    $country_rows = db_items("SELECT code, name FROM countries", 'code');
+    $country_names = pg_sales_map_countries()['names'];
     $summary = array();
 
     foreach ($periods as $key => $period) {
@@ -450,7 +700,7 @@ function pg_sales_map_collect()
             $country = $row['pg_country'];
             $country_name = ($country === '')
                 ? lang('Unknown')
-                : (isset($country_rows[$country]) ? $country_rows[$country]['name'] : $country);
+                : ($country_names[$country] ?? $country);
 
             $country_key = ($country === '') ? '?' : $country;
 
@@ -565,7 +815,7 @@ function pg_sales_map_collect()
     return array(
         'status'    => 'ok',
         'home'      => $home,
-        'home_name' => ($home !== '' && isset($country_rows[$home])) ? $country_rows[$home]['name'] : $home,
+        'home_name' => ($home !== '') ? ($country_names[$home] ?? $home) : '',
         'home_map'  => $home_map,
         'default'   => $default,
         'period'    => $period_default,

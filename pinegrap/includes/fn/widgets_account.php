@@ -89,15 +89,52 @@ function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designe
 {
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $fallback;
     if (!$designed_first && (int)db_value("SELECT COUNT(*) FROM page WHERE page_type = '" . e($legacy_type) . "'") > 0) return $fallback;
-    // Only a sign-in page the visitor may open: one in a folder that itself
-    // asks for a sign-in would send them round in a circle.
-    foreach (pg_sw_widget_pages('login_form') as $p) {
+    $name = _pg_sw_open_widget_page_name('login_form');
+    if ($name === '') return $fallback;
+    $url = (defined('PATH') ? PATH : '/') . encode_url_path($name);
+    return ((string)$send_to === '') ? $url : $url . '?send_to=' . urlencode((string)$send_to);
+}
+
+// Name of the first designed page carrying a widget of $type that the
+// visitor may open, or ''. A page in a folder that itself asks for a sign-in
+// does not count: sending a signed-out visitor there to sign in would send
+// them round in a circle.
+function _pg_sw_open_widget_page_name($type)
+{
+    foreach (pg_sw_widget_pages($type) as $p) {
         $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
         if ($folder === null || $folder === '' || !check_view_access($folder)) continue;
-        $url = (defined('PATH') ? PATH : '/') . encode_url_path((string)$p['page_name']);
-        return $url . '?send_to=' . urlencode((string)$send_to);
+        return (string)$p['page_name'];
     }
-    return $fallback;
+    return '';
+}
+
+// Where a screen of the software directory sends its visitor on a site that
+// has no page of the legacy type the screen draws, or ''. index.php (the
+// 'login' type: the control panel and every other address that asks for a
+// sign-in land there) and forgot_password.php (the 'forgot password' type)
+// otherwise fall back to a bare built-in form. A site built in the visual
+// page editor has no page types at all: the widget on a page is what makes
+// it the sign-in page, so the designed page carrying the widget that stands
+// in for the type answers, with the send_to the screen was opened with.
+// Kept to a GET: a posted form is the screen's own processor.
+function pg_sw_screen_page_url($page_type)
+{
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== 'GET') return '';
+    $map = pg_sw_page_type_widgets();
+    if (!isset($map[$page_type])) return '';
+    // page_tree_json arrived with the multi-page editor; before that upgrade
+    // no designed page can carry a widget.
+    if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return '';
+    $name = _pg_sw_open_widget_page_name($map[$page_type]);
+    if ($name === '') return '';
+    $url = (defined('PATH') ? PATH : '/') . encode_url_path($name);
+    // Only a same-site path is passed on, as the widget itself would read it.
+    $send_to = (isset($_GET['send_to']) && is_scalar($_GET['send_to'])) ? (string)$_GET['send_to'] : '';
+    if ($send_to !== '' && pg_safe_redirect_path($send_to, '/__none__') !== '/__none__') {
+        $url .= '?send_to=' . urlencode($send_to);
+    }
+    return $url;
 }
 
 // Whether a page belongs to a visual design (its own tree, or a design made

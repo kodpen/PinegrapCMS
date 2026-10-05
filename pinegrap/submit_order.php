@@ -5724,6 +5724,11 @@ function submit_order($type) {
             // is told the order here (there is no ?order_id= in an e-mail)
             $body = get_page_content($order_receipt_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true,
                 array('order_id' => (int)($_SESSION['ecommerce']['order_id'] ?? 0)));
+
+            // The receipt reads in the language the order was placed in.
+            if (function_exists('pg_tr_email')) {
+                $body = pg_tr_email($body);
+            }
             
         }
         
@@ -5732,7 +5737,7 @@ function submit_order($type) {
             'bcc' => $bcc_email_addresses,
             'from_name' => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
-            'subject' => $order_receipt_email_subject . $order_number,
+            'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
             'format' => $order_receipt_email_format,
             'body' => $body));
     }
@@ -7118,7 +7123,16 @@ function submit_order($type) {
 
                                 require_once(dirname(__FILE__) . '/get_page_content.php');
 
+                                // The administrator's e-mail in the site's own language.
+                                if (function_exists('pg_tr_suspend')) {
+                                    pg_tr_suspend(true);
+                                }
+
                                 $body = get_page_content($administrator_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $submitted_form_id));
+
+                                if (function_exists('pg_tr_suspend')) {
+                                    pg_tr_suspend(false);
+                                }
 
                             }
 

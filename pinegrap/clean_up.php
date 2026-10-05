@@ -65,6 +65,10 @@ $file_list = array(
     'view_products_development.php',
     'datatable_serverside_script.php',
     'JSON.php',
+    // The config.php editor. A screen that rewrote any define() in the file
+    // let an administrator switch PHP execution back on from the panel; the
+    // file is edited by hand where a site needs a setting changed.
+    'edit_config.php',
     // The offer library screens. An offer now owns its rule and its actions
     // through edit_offer.php, which writes the same tables; these screens
     // edited rows that several offers could share, so a change made here

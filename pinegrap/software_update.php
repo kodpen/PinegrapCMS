@@ -26,6 +26,12 @@ $user = validate_user();
 // Validate the users access
 validate_area_access($user, 'manager');
 
+// A hosted site's code is replaced by the platform for every site on the
+// account at once, never from one site's control panel.
+if (pg_hosted()) {
+    output_error(lang('Software updates are managed by the hosting platform.'));
+}
+
 
 // --- PRE-UPGRADE PREPARATION ---
 // Only run if current VERSION is 2026

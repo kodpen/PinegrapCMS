@@ -60,6 +60,14 @@ function api_modules() {
 			'enabled' => (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED == true),
 			'file'    => dirname(__FILE__) . '/../workspace/api.php',
 			'prefix'  => 'ws_'
+		),
+
+		// The front-end translation: on once the 2026.4.6 upgrade has made its
+		// tables, whether or not a target language has been added yet.
+		'translations' => array(
+			'enabled' => (defined('TRANSLATION_READY') && TRANSLATION_READY == true),
+			'file'    => dirname(__FILE__) . '/../translate/api.php',
+			'prefix'  => 'translate_'
 		)
 
 	);

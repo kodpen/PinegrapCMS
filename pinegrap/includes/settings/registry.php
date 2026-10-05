@@ -138,6 +138,20 @@ function pg_settings_categories()
             ),
         ),
 
+        'languages' => array(
+            'label' => lang('Languages and Translation'),
+            'icon'  => 'bi-translate',
+            'description' => lang('The language the pages are written in, the languages they are served in, and the engines that translate them.'),
+            'sections' => array(
+                'pgset-languages' => lang('Site Languages'),
+                'pgset-translation-engines' => lang('Translation Engines'),
+            ),
+            'keywords' => array(
+                'pgset-languages' => pg_settings_keywords(lang('language, languages, translation, translate, multilingual, prefix, hreflang, locale, source language')),
+                'pgset-translation-engines' => pg_settings_keywords(lang('google translate, google cloud, api key, chrome, translator, engine, machine translation, attribution, style note')),
+            ),
+        ),
+
         'contact' => array(
             'label' => lang('Communication'),
             'icon'  => 'bi-chat-dots',
@@ -409,10 +423,6 @@ function pg_settings_tool_groups($user)
         && defined('CLOUDFLARE_ZONE_ID') && trim(CLOUDFLARE_ZONE_ID) != ''
     ) {
         $infrastructure[] = array('label' => lang('Cloudflare Tools'), 'icon' => 'bi-cloud', 'url' => 'cloudflare.php');
-    }
-
-    if ($role == 0) {
-        $infrastructure[] = array('label' => lang('Edit Config'), 'icon' => 'bi-file-earmark-code', 'url' => 'edit_config.php');
     }
 
     $groups[] = array('label' => lang('Infrastructure'), 'icon' => 'bi-hdd-stack', 'items' => $infrastructure);

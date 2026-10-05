@@ -1453,6 +1453,10 @@ function get_system_status_checks()
         // the site, so it sits at the bottom of this class beside
         // IndexNow, not among the housekeeping below.
         'ca_bundle'       => 8,
+        // No usable trust list at all: every outbound HTTPS call fails
+        // (updates, Pinegrap AI, payment, webhooks). Weighed above the age
+        // of the list for that reason.
+        'ca_setting'      => 12,
         // Minor
         'extensions'      => 6,
         'cron'            => 6,
@@ -1471,6 +1475,7 @@ function get_system_status_checks()
         'Directory File Integrity' => $weights['file_integrity'],
         'SSL Status'               => $weights['ssl'],
         'CA Certificate Bundle'    => $weights['ca_bundle'],
+        'CA Bundle Setting'        => $weights['ca_setting'],
         'Password Hint'            => $weights['password'],
         'CAPTCHA Protection'       => $weights['captcha'],
         'Strong Password'          => $weights['strong_password'],
@@ -1535,6 +1540,7 @@ function get_system_status_checks()
         'Directory File Integrity' => 'Files',
         'SSL Status'               => 'SSL',
         'CA Certificate Bundle'    => 'CA bundle',
+        'CA Bundle Setting'        => 'CA setting',
         'Password Hint'            => 'Password hint',
         'Strong Password'          => 'Strong password',
         'CAPTCHA Protection'       => 'CAPTCHA',
@@ -1581,6 +1587,7 @@ function get_system_status_checks()
     // renaming a check and forgetting this list is one edit away from being
     // noticed rather than a screen away.
     $job_titles = array(
+        'CA Bundle Setting',
         'Web Server Rules',
         'Write Permissions',
         'Last Backup',
@@ -1823,6 +1830,39 @@ function get_system_status_checks()
         }
     }
 
+    // 🔌 CA bundle setting — a plug, because what fails is every connection
+    // out. Drawn only when something is wrong: CURL_CA_BUNDLE names a file
+    // that is not there, or it is empty and the host's own store could not
+    // verify a connection (a reinstall brings a config.php with the setting
+    // empty). A job row, because the repair is one click: it points the
+    // setting at the bundled data/cacert.pem.
+    if (function_exists('pg_ca_bundle_config_state')) {
+        $ca_setting = pg_ca_bundle_config_state();
+
+        if ($ca_setting['state'] === 'broken') {
+            $output .= $makeIcon(
+                'bi-plug-fill',
+                'text-danger',
+                'CA Bundle Setting',
+                array(
+                    'string' => 'CURL_CA_BUNDLE in data/config.php points at a file that does not exist ({var:1}). Outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - cannot verify certificates and fail.',
+                    'vars'   => array($ca_setting['configured']),
+                ),
+                lang('File missing')
+            );
+            $score -= $weights['ca_setting'];
+        } elseif ($ca_setting['state'] === 'needed') {
+            $output .= $makeIcon(
+                'bi-plug-fill',
+                'text-danger',
+                'CA Bundle Setting',
+                'This server cannot verify HTTPS certificates with its own certificate store, and CURL_CA_BUNDLE in data/config.php is empty. Outbound calls - updates, Pinegrap AI, payments, webhooks - fail. Point it at the bundled data/cacert.pem.',
+                lang('Not set')
+            );
+            $score -= $weights['ca_setting'];
+        }
+    }
+
     // 👁 Password hint — an eye, because the risk is that the hint reveals something.
     //
     // Two things were wrong here. It shared the title 'Password Management'
@@ -1990,7 +2030,7 @@ function get_system_status_checks()
 
     // 🐘 PHP version
     $php_version = PHP_VERSION;
-    if (version_compare($php_version, '7.0.0', '<')) {
+    if (version_compare($php_version, '7.1.0', '<')) {
         $output .= $makeIcon(
             'bi-terminal-x',
             'text-danger',

@@ -39,6 +39,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $page_home = $row['page_home'] ?? '';
     $page_title = $row['page_title'] ?? '';
     $page_meta_description = $row['page_meta_description'] ?? '';
+
+    // On a page drawn in another language the title and the description are
+    // read from the translation table like the texts of the body.
+    if (defined('FRONTEND_LANGUAGE')) {
+        $page_title = pg_tr_text($page_title, 'text', 'seo');
+        $page_meta_description = pg_tr_text($page_meta_description, 'text', 'seo');
+    }
+
     $page_noindex = (int) ($row['noindex'] ?? 0);
     $page_nofollow = (int) ($row['nofollow'] ?? 0);
     $page_custom_jsonld = trim((string) ($row['custom_jsonld'] ?? ''));
@@ -121,6 +129,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $row = mysqli_fetch_assoc($result);
 
     $style_name = $row['style_name'] ?? '';
+
+    // On a page drawn in another language the body is the tree drawn with the
+    // translations: from page_translations while the source body is
+    // unchanged, drawn now otherwise. The page's own body stays as it is.
+    if (defined('FRONTEND_LANGUAGE') && ($page_tree_code !== '')) {
+        $page_tree_code = pg_tr_page_body($page_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
+    }
+
     // The page's own generated layout wins when it has one; the style's code
     // is the fallback for legacy styles and for pages saved before the
     // per-page tree existed.
@@ -366,6 +382,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         if ($page_custom_js !== '') {
             $_js_inline  = '';
             $_js_srcs    = '';
+            $_js_json    = '';   // <script type="application/json"> blocks
+            $_js_modules = '';   // inline ES modules, each in its own block
             $_js_arr = json_decode($page_custom_js, true);
             if (is_array($_js_arr)) {
                 foreach ($_js_arr as $_jf) {
@@ -396,12 +414,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // OUTPUT_PATH is a root-relative path like "/" so file picker URLs
                         // come back as "/filename.js" which filter_var rejects.
                         if ($_url !== '' && (filter_var($_url, FILTER_VALIDATE_URL) || strpos($_url, '/') === 0)) {
-                            $_js_srcs .= '<script src="' . htmlspecialchars($_url, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
+                            $_js_srcs .= '<script' . (!empty($_jf['module']) ? ' type="module"' : '') . ' src="' . htmlspecialchars($_url, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
                         }
                     } elseif ($_jtype === 'json') {
                         if (!empty($_jf['content'])) {
                             $_jname = isset($_jf['name']) ? htmlspecialchars($_jf['name'], ENT_QUOTES, 'UTF-8') : 'data';
-                            $_js_inline .= '<script type="application/json" id="' . $_jname . '">' . "\n" . $_jf['content'] . "\n</script>\n";
+                            $_js_json .= '<script type="application/json" id="' . $_jname . '">' . "\n" . $_jf['content'] . "\n</script>\n";
+                        }
+                    } elseif (!empty($_jf['module'])) {
+                        if (!empty($_jf['content'])) {
+                            $_js_modules .= '<script type="module">' . "\n" . '/* ' . str_replace('*/', '', isset($_jf['name']) ? $_jf['name'] : 'file') . " */\n" . str_ireplace('</script', '<\\/script', $_jf['content']) . "\n</script>\n";
                         }
                     } else {
                         if (!empty($_jf['content'])) {
@@ -414,14 +436,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
             $_body_inject = '';
             if ($_js_srcs   !== '') $_body_inject .= $_js_srcs;
+            // JSON data first so the scripts after it can read it; classic
+            // inline code shares one block, modules keep their own.
+            if ($_js_json   !== '') $_body_inject .= $_js_json;
             if (trim($_js_inline) !== '') {
-                // Wrap all inline JS in one block, JSON blocks already have their own tags
-                if (strpos($_js_inline, '<script') !== false) {
-                    $_body_inject .= $_js_inline;
+                if (!is_array($_js_arr) && strpos($_js_inline, '<script') !== false) {
+                    $_body_inject .= $_js_inline;   // legacy plain text carrying its own tags
                 } else {
                     $_body_inject .= '<script id="pg-page-js">' . "\n" . $_js_inline . '</script>' . "\n";
                 }
             }
+            if ($_js_modules !== '') $_body_inject .= $_js_modules;
             if ($_body_inject !== '') {
                 $content = str_replace('</body>', $_body_inject . '</body>', $content);
             }
