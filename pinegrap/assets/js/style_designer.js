@@ -484,10 +484,10 @@ const StyleDesigner = (function () {
         var loading = _sharedLoadInFlight > 0;
         btn.disabled = loading;
         btn.classList.toggle('sd-saving-blocked', loading);
-        btn.title = loading
-            ? _sdT('The shared components are loading — wait before publishing…')
-            : (btn.dataset.origTitle || '');
-        if (!btn.dataset.origTitle && !loading) btn.dataset.origTitle = btn.title || '';
+        var pub = document.getElementById('sd-publish-page');
+        if (pub) pub.disabled = loading;
+        if (loading) _sdSetButtonTitle(btn, _sdT('The shared components are loading — wait before publishing…'));
+        else if (btn.dataset.origTitle) _sdSetButtonTitle(btn, btn.dataset.origTitle);
     }
 
     // Fetch tree_json for the given id array; populate _sharedCache; call cb() when done.
@@ -517,9 +517,18 @@ const StyleDesigner = (function () {
             try {
                 var resp = JSON.parse(xhr.responseText);
                 if (resp && resp.status === 'success' && Array.isArray(resp.items)) {
+                    var repaired = [];
                     resp.items.forEach(function (item) {
                         var sid = parseInt(item.id, 10);
                         if (sid > 0) {
+                            // An unsaved change stays: until the next save pushes
+                            // it (_flushDirtyShared()) the cache is the only place
+                            // it exists. Opening a tab prefetches every widget its
+                            // page shows, so without this a widget changed on one
+                            // tab - or the layout a template leaves to the editor -
+                            // went back to the stored row as soon as another page
+                            // showing it was opened, and the save wrote that back.
+                            if (_sharedDirty[sid] && _sharedCache[sid] && _sharedCache[sid].tree) return;
                             var parsed = null;
                             try { parsed = JSON.parse(item.tree_json); } catch (e) {}
                             // Object slots the PHP round trip turned into arrays.
@@ -540,8 +549,29 @@ const StyleDesigner = (function () {
                             // it lives on the attribute now. Moved on load so the
                             // next save writes the tree in its current shape.
                             if (parsed && typeof _cfMigrateWidgetTree === 'function') _cfMigrateWidgetTree(parsed, sid);
+                            // A template's widget whose layout was never written
+                            // (the loss above): it still holds the placeholder and
+                            // draws nothing on the site. It gets the layout its
+                            // kind starts with, and the next save writes it.
+                            if (parsed && _swIsTemplatePlaceholder(parsed) && _sdAccess() === 'full') {
+                                var tcfg = null;
+                                try { tcfg = JSON.parse(item.system_region_config || 'null'); } catch (e) {}
+                                if (tcfg && tcfg.template_origin && _swIsType(tcfg.regionType)) {
+                                    var st = _buildStarterTree(tcfg.regionType);
+                                    _sdTreeObjects(st); _backfillIds(st); _stripToggleableShowState(st);
+                                    _sharedSnapshots[sid] = JSON.stringify(parsed);
+                                    _sharedCache[sid].tree = st;
+                                    _sharedDirty[sid] = true;
+                                    repaired.push(item.name || ('#' + sid));
+                                }
+                            }
                         }
                     });
+                    if (repaired.length) {
+                        setTimeout(function () {
+                            sdToast(esc(_sdT('These widgets had no layout and drew nothing on the site: {var}. Their default layout was loaded; save to put it on the site.', repaired.join(', '))), 'warning', 9000);
+                        }, 0);
+                    }
                 }
             } catch (e) {}
             _done();
@@ -3271,6 +3301,15 @@ const StyleDesigner = (function () {
             var t = e.target;
             var isInput = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable;
 
+            // Ctrl+S / Cmd+S in the canvas, in a text being written too: the
+            // editor's document never sees a key pressed in the iframe, and
+            // the browser would offer to save the canvas as a file.
+            if ((e.ctrlKey || e.metaKey) && !e.altKey && String(e.key || '').toLowerCase() === 's') {
+                e.preventDefault();
+                _sdSaveShortcut();
+                return;
+            }
+
             // View mode: every shortcut below mutates the tree. Arrow keys and
             // copy stay available — reading is not editing.
             if (!_collab.mayEdit) {
@@ -3850,6 +3889,35 @@ const StyleDesigner = (function () {
 
     // ========================= COMPONENT REGISTRY =========================
     // Each component: { label, icon, defaultProps, render(doc, props), toHTML(props, indent) }
+    // The language switcher component's markup: the dropdown
+    // pg_language_switcher_html() draws on the site (widgets_language.php),
+    // with the site's languages (sdDesign.siteLanguages, source first) and
+    // the page's own language current. On the site every item links to the
+    // page in its language; here none goes anywhere.
+    function _sdLangSwitcherMarkup(p) {
+        p = p || {};
+        // Attribute-safe as well: names and classes end up inside quotes.
+        var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        var langs = (typeof sdDesign !== 'undefined' && sdDesign && Array.isArray(sdDesign.siteLanguages) && sdDesign.siteLanguages.length)
+            ? sdDesign.siteLanguages : [{ code: 'en', label: 'English' }];
+        var variant = (['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark', 'link'].indexOf(p.variant) !== -1) ? p.variant : 'secondary';
+        var outline = (p.outline === undefined) ? true : !!p.outline;
+        var size = (p.size === '' || p.size === 'sm' || p.size === 'lg') ? p.size : 'sm';
+        var label = function (l) { return (p.display === 'code') ? String(l.code).toUpperCase() : String(l.label); };
+        var current = langs[0];
+        var icon = (p.icon === 'none') ? '' : '<i class="bi bi-' + ((p.icon === 'globe') ? 'globe2' : 'translate') + ' me-1" aria-hidden="true"></i>';
+        var items = langs.map(function (l, i) {
+            return '<li><a class="dropdown-item' + (i === 0 ? ' active' : '') + '" href="#" hreflang="' + esc(l.code) + '" lang="' + esc(l.code) + '"' +
+                (i === 0 ? ' aria-current="page"' : '') + '>' + esc(label(l)) + '</a></li>';
+        }).join('');
+        return '<div class="dropdown' + (p.cssClass ? ' ' + esc(p.cssClass) : '') + '">' +
+            '<button type="button" class="btn btn-' + ((outline && variant !== 'link') ? 'outline-' : '') + variant + (size ? ' btn-' + size : '') + ' dropdown-toggle"' +
+            ' data-bs-toggle="dropdown" aria-expanded="false" aria-label="' + esc(_sdT('Language: {var:1}', current.label)) + '">' +
+            icon + '<span lang="' + esc(current.code) + '" translate="no">' + esc(label(current)) + '</span></button>' +
+            '<ul class="dropdown-menu' + ((p.align === 'start') ? '' : ' dropdown-menu-end') + '" translate="no">' + items + '</ul>' +
+            '</div>';
+    }
+
     var COMPONENTS = {
         navbar: {
             label: _sdT('Navbar'), icon: 'bi-layout-navbar',
@@ -3968,6 +4036,21 @@ const StyleDesigner = (function () {
         dropdown: {
             label: _sdT('Dropdown'), icon: 'bi-menu-button-wide',
             defaultProps: { text: _sdT('Dropdown'), variant: 'secondary', items: _sdT('Action\\nAnother action\\nSomething else') }
+        },
+        // The site's languages in a dropdown, each opening this page in that
+        // language. On the site it is drawn for the request and left out
+        // while the site has one language.
+        language_switcher: {
+            label: _sdT('Language Switcher Button'), icon: 'bi-translate',
+            defaultProps: { variant: 'secondary', outline: true, size: 'sm', align: 'end', display: 'name', icon: 'translate' },
+            render: function (doc, p) {
+                var holder = doc.createElement('div');
+                holder.innerHTML = _sdLangSwitcherMarkup(p);
+                return holder.firstElementChild;
+            },
+            toHTML: function (p, pad) {
+                return pad + _sdLangSwitcherMarkup(p) + '\n';
+            }
         },
         'list-group': {
             label: _sdT('List Group'), icon: 'bi-list-ul',
@@ -17826,7 +17909,8 @@ const StyleDesigner = (function () {
         }
 
         var n = selectedNode;
-        if (!n.props._attrs) n.props._attrs = [];
+        // The attribute list is created when a row is added, not when the
+        // panel is drawn: drawing must not change the element.
 
         // ── class tag-chip input ──
         // Built-in classes (from component/content type) — read-only, clickable to focus right panel
@@ -17895,7 +17979,7 @@ const StyleDesigner = (function () {
         // below whether to prepend a synthetic one for prop-derived inline
         // styles (font-family from props.fontFamily, etc.).
         var _renderedStyleRow = false;
-        n.props._attrs.forEach(function (attr, i) {
+        (n.props._attrs || []).forEach(function (attr, i) {
             // `id` is owned by the top-level "id" row (bound to props.id). Skip any
             // legacy `_attrs` entry named "id" so the panel never shows duplicates.
             if (attr && attr.name === 'id') return;
@@ -18119,7 +18203,7 @@ const StyleDesigner = (function () {
                     _writeInlineStyleValue(n, '');
                 });
             }
-            dynEl.querySelectorAll('.sd-attr-del').forEach(function (btn) {
+            dynEl.querySelectorAll('.sd-attr-del[data-idx]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     saveState();
                     n.props._attrs.splice(parseInt(this.dataset.idx, 10), 1);
@@ -18135,6 +18219,7 @@ const StyleDesigner = (function () {
         var addBtn = document.getElementById('sd-attr-add-btn');
         if (addBtn) {
             addBtn.addEventListener('click', function () {
+                if (!Array.isArray(n.props._attrs)) n.props._attrs = [];
                 n.props._attrs.push({ name: '', value: '' });
                 renderAttrsPanel();
                 var rows = document.querySelectorAll('#sd-attr-dynamic .sd-attr-row');
@@ -19439,10 +19524,13 @@ const StyleDesigner = (function () {
                 selected: !!(selectedNode && selectedNode.type === 'root')
             }
         );
-        // Scroll HTML tree viewer to the selected node's code line
+        // Scroll HTML tree viewer to the selected node's code line. The id is
+        // read now: by the time the timer runs the selection may be gone (a
+        // tab switch clears it), and reading it then threw.
         if (selectedNode) {
+            var _htNid = selectedNode._id;
             setTimeout(function() {
-                var _htLine = panel.querySelector('[data-nid="' + selectedNode._id + '"]');
+                var _htLine = panel.querySelector('[data-nid="' + _htNid + '"]');
                 if (_htLine) _htLine.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 50);
         }
@@ -20875,6 +20963,8 @@ const StyleDesigner = (function () {
         var p = (n && n.props) || {};
         if (n.type === 'content' && p.contentType === 'custom_html') return typeof p.html === 'string' && p.html.trim() !== '';
         var keys = ['text', 'title', 'subtitle', 'btnText', 'headerText', 'footerText', 'brand', 'alt'];
+        // A catalog row's adaptive link carries its two captions on the node.
+        if (p._bindings && p._bindings.text === '__link_label') keys = keys.concat(['_labelDetail', '_labelExpand']);
         for (var i = 0; i < keys.length; i++) {
             if (typeof p[keys[i]] === 'string' && p[keys[i]].trim() !== '') return true;
         }
@@ -20897,6 +20987,10 @@ const StyleDesigner = (function () {
     function _sdTrCall(payload) {
         var cfg = _sdTrConfig();
         payload.token = (typeof software_token !== 'undefined') ? software_token : '';
+        // The page being edited: a user with content rights may change the
+        // translations of that page's texts (translations_action.php).
+        var _trPage = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        payload.page_id = (_trPage && _trPage.page_id > 0) ? _trPage.page_id : 0;
         return fetch(cfg.actionUrl, {
             method: 'POST',
             credentials: 'same-origin',
@@ -20910,7 +21004,8 @@ const StyleDesigner = (function () {
 
     function _sdTrFieldLabel(field) {
         var labels = { text: _sdT('Text'), title: _sdT('Title'), subtitle: _sdT('Subtitle'), btnText: _sdT('Button text'),
-            headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML') };
+            headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML'),
+            _labelDetail: _sdT('Caption: to the detail'), _labelExpand: _sdT('Caption: expanding') };
         if (field.indexOf('_attrs:') === 0) return field.slice(7);
         return labels[field] || field;
     }
@@ -20935,21 +21030,26 @@ const StyleDesigner = (function () {
             html += '<div class="sd-tr-seg" data-seg="' + si + '">' +
                 (segs.length > 1 ? '<div class="sd-tr-field">' + esc(_sdTrFieldLabel(seg.field)) + '</div>' : '') +
                 '<div class="sd-tr-src" title="' + esc(_sdT('Source text') + ' (' + cfg.source + ')') + '">' + esc(seg.source) + '</div>' +
-                (seg.string_id ? '' : '<div class="sd-tr-note">' + esc(_sdT('New wording: a translation entered here applies once the page is saved.')) + '</div>');
+                (seg.string_id ? '' : '<div class="sd-tr-note">' + esc(_sdT('New wording: a translation entered here applies once the page is saved.')) + '</div>') +
+                // One translation serves every place that draws the text, so
+                // a text shared with places this user may not edit is shown
+                // and not changed here (translations_action.php).
+                (seg.locked ? '<div class="sd-tr-note"><i class="bi bi-lock-fill me-1" aria-hidden="true"></i>' + esc(_sdT('This text is also used in places you cannot edit; a site manager can change its translation on the Translations screen.')) + '</div>' : '');
             cfg.languages.forEach(function (lang) {
                 var t = tr[lang.code] || null;
                 html += '<div class="sd-tr-lang" data-lang="' + esc(lang.code) + '">' +
                     '<div class="sd-tr-head"><span class="sd-tr-code">' + esc(lang.code) + '</span><span class="sd-tr-label">' + esc(lang.label) + '</span>' + _sdTrStateBadge(t) + '</div>' +
-                    '<textarea class="form-control form-control-sm sd-tr-input' + (seg.format === 'inline' ? ' sd-tr-inline' : '') + '" rows="2" spellcheck="true" lang="' + esc(lang.code) + '">' + esc(t ? t.text : '') + '</textarea>' +
+                    '<textarea class="form-control form-control-sm sd-tr-input' + (seg.format === 'inline' ? ' sd-tr-inline' : '') + '" rows="2" spellcheck="true" lang="' + esc(lang.code) + '"' + (seg.locked ? ' readonly' : '') + '>' + esc(t ? t.text : '') + '</textarea>' +
+                    (seg.locked ? '' :
                     '<div class="sd-tr-actions">' +
                         '<button type="button" class="btn btn-sm btn-primary sd-tr-save" disabled>' + esc(_sdT('Save')) + '</button>' +
                         ((t && t.text && t.state !== 'reviewed') ? '<button type="button" class="btn btn-sm btn-link sd-tr-review">' + esc(_sdT('Approve')) + '</button>' : '') +
-                    '</div>' +
+                    '</div>') +
                 '</div>';
             });
             html += '</div>';
         });
-        html += '<a class="sd-tr-screen" href="' + esc(cfg.screenUrl) + '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>' + esc(_sdT('Open the Translations screen')) + '</a>';
+        if (cfg.screenUrl) html += '<a class="sd-tr-screen" href="' + esc(cfg.screenUrl) + '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>' + esc(_sdT('Open the Translations screen')) + '</a>';
         box.innerHTML = html;
 
         box.querySelectorAll('.sd-tr-lang').forEach(function (langEl) {
@@ -20957,6 +21057,11 @@ const StyleDesigner = (function () {
             var seg = segs[parseInt(segEl.getAttribute('data-seg'), 10)];
             var code = langEl.getAttribute('data-lang');
             var input = langEl.querySelector('.sd-tr-input');
+            if (seg.locked) {
+                // Keys typed in the read-only box stay out of the editor's shortcuts.
+                input.addEventListener('keydown', function (e) { e.stopPropagation(); });
+                return;
+            }
             var saveBtn = langEl.querySelector('.sd-tr-save');
             var current = function () { var t = (seg.translations || {})[code]; return t ? t.text : ''; };
             var redrawLang = function () {
@@ -21037,7 +21142,12 @@ const StyleDesigner = (function () {
         if (_sdIsContentLevel() && !_sdCanEditNode(selectedNode)) {
             var _roText  = _sdCanEditNode(selectedNode, 'text');
             var _roImage = _sdCanEditNode(selectedNode, 'image') ? _sdNodeImage(selectedNode) : null;
+            // The translations of a text the operator may edit are theirs as
+            // well: changing a sentence and leaving its translation behind
+            // would put two different texts on the site.
+            var _roTr = _roText ? _sdTrSection(selectedNode) : '';
             panel.innerHTML =
+                (_roTr ? '<div class="sd-tab-content">' + _roTr + '</div>' : '') +
                 '<div class="sd-props-readonly">' +
                     '<div class="sd-props-readonly-head">' +
                         '<span class="bi bi-lock-fill me-2"></span>' +
@@ -21065,6 +21175,7 @@ const StyleDesigner = (function () {
                         : '') +
                 '</div>';
             if (_roText) bindPropEvents();
+            if (_roTr) _sdTrLoad(selectedNode);
             if (_roImage) {
                 var _roNode = selectedNode;
                 var _roApply = function (url) {
@@ -22405,6 +22516,22 @@ const StyleDesigner = (function () {
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                         '</label>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While on, a ^^field_name__label^^ token is offered for every field as well.') + '</div>'
+                    )
+                );
+            }
+
+            // ── Records in the translation (form list / detail) ───────────
+            // Only on a site with other languages. Off by default: the
+            // records are what visitors wrote as often as what the site
+            // publishes, and an engine should only be sent the second kind.
+            if ((_isFormListView || _isFormItemView) && _curFormId > 0 && _sdTrConfig()) {
+                systemSection += sect('bi-translate', _sdT('Translation'),
+                    row(_sdT('Include the contents in translation'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" id="sd-sw-translate-records" data-sw-id="' + sid + '"' + (_cfg.translate_records ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While on, the texts of the form\'s records (a blog post\'s title, summary and body) join the Translations screen under Forms and are shown translated on the language pages. Off: they stay in the language they were written in.')) + '</div>'
                     )
                 );
             }
@@ -24408,6 +24535,17 @@ const StyleDesigner = (function () {
                 if (!sid) return;
                 var on = !!this.checked;
                 _patchSysCfg(sid, function (cfg) { cfg.show_field_labels = on; });
+            });
+        }
+
+        // ── translate_records (form list / form item view) ───────────────
+        var swTrRecEl = document.getElementById('sd-sw-translate-records');
+        if (swTrRecEl) {
+            swTrRecEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var on = !!this.checked;
+                _patchSysCfg(sid, function (cfg) { cfg.translate_records = on; });
             });
         }
 
@@ -29971,6 +30109,29 @@ const StyleDesigner = (function () {
         return sect('bi-images', _sdT('Carousel Options'), h);
     }
 
+    // The language switcher: how the button looks and what it says. The
+    // languages and the addresses are the site's, not settings.
+    function propsLanguageSwitcher(n) {
+        var dp = COMPONENTS.language_switcher.defaultProps;
+        var v = function (key) { return (n.props[key] !== undefined) ? n.props[key] : dp[key]; };
+        var h = row(esc(_sdT('Designer Note')), '<input type="text" class="form-control form-control-sm" data-prop="customName" value="' + esc(n.props.customName || '') + '" placeholder="' + esc(_sdT('Optional note…')) + '">');
+        h += row(esc(_sdT('Style')), sel('variant', [['primary', esc(_sdT('Primary'))], ['secondary', esc(_sdT('Secondary'))], ['success', esc(_sdT('Success'))],
+            ['danger', esc(_sdT('Danger'))], ['warning', esc(_sdT('Warning'))], ['info', esc(_sdT('Info'))], ['light', esc(_sdT('Light'))], ['dark', esc(_sdT('Dark'))],
+            ['link', esc(_sdT('Link'))]], String(v('variant'))));
+        h += row(esc(_sdT('Outline')), sw('outline', !!v('outline')));
+        h += row(esc(_sdT('Size')), sel('size', [['sm', esc(_sdT('Small'))], ['', esc(_sdT('Default'))], ['lg', esc(_sdT('Large'))]], String(v('size'))));
+        h += row(esc(_sdT('Shows')), sel('display', [['name', esc(_sdT('Language name'))], ['code', esc(_sdT('Language code'))]], String(v('display'))));
+        h += row(esc(_sdT('Icon')), sel('icon', [['translate', esc(_sdT('Translate'))], ['globe', esc(_sdT('Globe'))], ['none', esc(_sdT('None'))]], String(v('icon'))));
+        h += row(esc(_sdT('Menu')), sel('align', [['end', esc(_sdT('Aligned right'))], ['start', esc(_sdT('Aligned left'))]], String(v('align'))));
+        var count = (typeof sdDesign !== 'undefined' && sdDesign && Array.isArray(sdDesign.siteLanguages)) ? sdDesign.siteLanguages.length : 1;
+        h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+            esc(_sdT('Each language opens this page in that language. The button names the language the visitor is reading.')) + ' ' +
+            esc(count > 1 ? _sdT('The site has {var} active languages.', count)
+                          : _sdT('The site has one active language, so the switcher is not shown on the site until a language is added.')) +
+            '</div></div>';
+        return sect('bi-translate', esc(_sdT('Language Switcher Button')), h);
+    }
+
     function propsComponent(n) {
         var ct = n.props.componentType;
         var comp = COMPONENTS[ct];
@@ -29979,6 +30140,10 @@ const StyleDesigner = (function () {
         // btn component: delegate entirely to the unified panel
         if (ct === 'btn') {
             return propsButtonLinkOptions(n);
+        }
+
+        if (ct === 'language_switcher') {
+            return propsLanguageSwitcher(n);
         }
 
         // Designer Note — shown for all other components
@@ -37269,6 +37434,17 @@ const StyleDesigner = (function () {
     }
     function _swIsType(type) { return !!_swTypeInfo(type); }
 
+    // The tree pg_design_template_prepare() stores for a widget the template
+    // leaves to the editor ('starter'): a root holding one empty repeated
+    // area. The editor builds the real layout when the template opens, and
+    // the first save writes it.
+    function _swIsTemplatePlaceholder(t) {
+        if (!t || t.type !== 'root' || !Array.isArray(t.children) || t.children.length !== 1) return false;
+        var la = t.children[0];
+        return !!la && la.type === 'loop_area' && (!la.children || !la.children.length)
+            && (!la.props || !Object.keys(la.props).length) && (!t.props || !Object.keys(t.props).length);
+    }
+
     // "Ana Sayfa" → "ana-sayfa". Same letter map the form field names use,
     // dashes instead of underscores because this is a name, not a key.
     function _swSlug(s) {
@@ -42798,8 +42974,11 @@ const StyleDesigner = (function () {
         // hasn't finished hydrating into _sharedCache yet — the
         // shared_ref nodes are still in the tree but their on-canvas
         // expansion would serialize back as empty placeholders.
+        // opts.onError: the save did not happen, whatever the reason.
+        var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
         if (_sharedLoadInFlight > 0) {
             sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
+            _abandon();
             return;
         }
 
@@ -42834,6 +43013,7 @@ const StyleDesigner = (function () {
                     esc(_sdT('This page is being edited by ')) + esc(who) +
                     esc(_sdT('. Your changes to it cannot be saved — leave a note instead.')),
                     'warning', 6000);
+            _abandon();
             return;
         }
 
@@ -42841,6 +43021,7 @@ const StyleDesigner = (function () {
         var form   = document.getElementById(formId);
         if (!form) {
             sdToast(_sdT('The form was not found.'), 'error');
+            _abandon();
             return;
         }
 
@@ -42857,7 +43038,18 @@ const StyleDesigner = (function () {
         // prepareFormData() runs the same validation + serialisation pipeline
         // as the legacy submit handler. A `false` return means a hard error
         // already surfaced its own toast — bail out quietly.
-        if (prepareFormData() === false) return;
+        var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
+        // Saving a draft is not publishing it, and the reply says which it
+        // was. Read before the save serialises and flushes: one save writes
+        // the whole design, so a change waiting on a page on the site (or in
+        // the design's settings, or in a shared component) goes live with it.
+        var _asDraft  = _pgActiveIsDraft();
+        var _asKey    = _activeKey;
+        var _liveToo  = _asDraft && (_pages.some(function (p) {
+                            return !p.page_draft && p.access !== 'locked' && _pgPageDirty(p);
+                        }) || (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline)
+                           || Object.keys(_sharedDirty).length > 0);
+        if (prepareFormData() === false) { _abandon(); return; }
 
         // Disable the button for the duration of the request to prevent
         // double-submits on slow connections. Restore on completion.
@@ -42894,7 +43086,16 @@ const StyleDesigner = (function () {
         .then(function (res) {
             if (btn) { btn.disabled = false; btn.classList.remove('sd-saving'); }
             if (res.data && res.data.status === 'success') {
-                sdToast(esc(_sdT('Published — the changes are live.')) + ' <span class="bi bi-check2"></span>', 'success', 2500);
+                // successMessage may be worked out from what the server did.
+                var _okMsg = (typeof opts.successMessage === 'function') ? opts.successMessage(res.data) : opts.successMessage;
+                var _okDur = _okMsg ? 4500 : 2500;
+                var _keptDraft = _asDraft && (Array.isArray(res.data.pages) ? res.data.pages : []).some(function (m) { return m && m.key === _asKey && m.draft; });
+                if (!_okMsg && _keptDraft) {
+                    _okMsg = _liveToo ? _sdT('Saved. This page is a draft, off the site; the changes made to pages on the site are live.')
+                                      : _sdT('Saved. This page is a draft, off the site.');
+                    _okDur = _liveToo ? 4500 : 2500;
+                }
+                sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
                 // Update last-modified statusbar label without a full page reload
                 var _lmLabel = document.getElementById('sd-last-modified-label');
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {
@@ -42921,11 +43122,13 @@ const StyleDesigner = (function () {
             var msg = (res.data && res.data.message)
                         ? res.data.message
                         : (res.ok ? _sdT('Publishing failed.') : _sdT('Server error ({var}).', res.status));
-            sdToast('<strong>' + esc(_sdT('It could not be published:')) + '</strong><br>' + esc(msg), 'error', 5000);
+            sdToast('<strong>' + esc(_asDraft ? _sdT('It could not be saved:') : _sdT('It could not be published:')) + '</strong><br>' + esc(msg), 'error', 5000);
+            _abandon();
         })
         .catch(function () {
             if (btn) { btn.disabled = false; btn.classList.remove('sd-saving'); }
-            sdToast(_sdT('Network error — the changes could not be published.'), 'error', 5000);
+            sdToast(_asDraft ? _sdT('Network error — the changes could not be saved.') : _sdT('Network error — the changes could not be published.'), 'error', 5000);
+            _abandon();
         });
     }
 
@@ -42944,13 +43147,13 @@ const StyleDesigner = (function () {
     var _PG_PAGE_FIELDS = [
         'page_name', 'page_folder', 'page_title', 'page_meta_description',
         'page_search', 'page_search_keywords', 'page_sitemap', 'page_home',
-        'page_noindex', 'page_nofollow',
+        'page_noindex', 'page_nofollow', 'page_draft',
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'
     ];
     var _PG_BOOL_FIELDS = {
-        page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1,
+        page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1,
         pg_comments: 1, pg_comments_allow_new: 1, pg_comments_rating: 1,
         pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1
     };
@@ -42982,11 +43185,22 @@ const StyleDesigner = (function () {
         return (p.key === _activeKey) ? tree : p.tree;
     }
 
+    // Keys of a tree the dirty check reads past, because selecting an
+    // element writes them without changing the page: the Layers panel keeps
+    // its open/closed state on the nodes (`_expanded`, set on every ancestor
+    // of the selection), and an empty attribute list draws exactly what no
+    // list draws (`_attrs: []`).
+    function _pgBaselineTreeKey(key, value) {
+        if (key === '_expanded') return undefined;
+        if (key === '_attrs' && Array.isArray(value) && value.length === 0) return undefined;
+        return value;
+    }
+
     function _pgBaselineOf(p) {
         var t = _pgTreeOf(p);
         // The form-level settings travel with the page, so they count as
         // its content: a changed notification address is an unsaved change.
-        return JSON.stringify(t || null) + '|' + _pgSettingsJSON(p) + '|' + JSON.stringify(p.formSettings || {});
+        return JSON.stringify(t || null, _pgBaselineTreeKey) + '|' + _pgSettingsJSON(p) + '|' + JSON.stringify(p.formSettings || {});
     }
 
     function _pgPageDirty(p) {
@@ -43074,6 +43288,7 @@ const StyleDesigner = (function () {
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
         });
+        _pgSyncDraftBox(p);
         // Search keywords row + noindex hint follow their switches.
         var kwRow = document.getElementById('pg_search_kw_row');
         if (kwRow) kwRow.style.display = p.page_search ? 'block' : 'none';
@@ -43118,16 +43333,20 @@ const StyleDesigner = (function () {
                 extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
                         esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
             }
+            // A page kept off the site says so on its tab.
+            var draft = _pgDraftsReady() && !!p.page_draft;
             html += '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
-                    (locked ? ' sd-tab-locked' : '') + '"' +
+                    (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + '"' +
                     ' data-key="' + esc(p.key) + '" role="tab" tabindex="0" title="' + esc(name) + '">' +
                     '<span class="sd-tab-dot" aria-hidden="true"></span>' +
                     '<span class="sd-tab-name">' + esc(name) + '</span>' +
+                    (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '') +
                     extra +
                     '</div>';
         });
         list.innerHTML = html;
         _pgTabsSyncViewButton();
+        _pgTabsSyncPublishButton();
         // The strip scrolls on its own; keep the active tab in view.
         var act = list.querySelector('.sd-tab.active');
         if (act && list.scrollWidth > list.clientWidth) {
@@ -43188,6 +43407,54 @@ const StyleDesigner = (function () {
         }
         var addNew = document.getElementById('sd-tab-new-page');
         if (addNew && !addNew._pgBound) { addNew._pgBound = true; addNew.addEventListener('click', _pgTabsAddNew); }
+        // The draft's Publish button: this page goes on the site with the
+        // save it makes.
+        var pubPage = document.getElementById('sd-publish-page');
+        if (pubPage && !pubPage._pgBound) {
+            pubPage._pgBound = true;
+            pubPage.addEventListener('click', function () {
+                var a = _pgActivePage();
+                if (a) _pgSetDraft([a.key], false);
+            });
+        }
+        // The publishing menu beside the main button: this page or every
+        // page of the design, kept off the site or put on it.
+        document.querySelectorAll('[data-sd-status]').forEach(function (b) {
+            if (b._pgBound) return;
+            b._pgBound = true;
+            b.addEventListener('click', function () {
+                var what = b.getAttribute('data-sd-status');
+                var a = _pgActivePage();
+                var all = _pages.map(function (p) { return p.key; });
+                if (what === 'page-draft' && a)        _pgSetDraft([a.key], true);
+                else if (what === 'page-publish' && a) _pgSetDraft([a.key], false);
+                else if (what === 'all-draft')         _pgSetDraft(all, true);
+                else if (what === 'all-publish')       _pgSetDraft(all, false);
+            });
+        });
+        // The switch in Page Settings changes the tab at once; it is applied
+        // with the next publish, like the other page settings.
+        var draftBox = document.getElementById('pg_page_draft');
+        if (draftBox && !draftBox._pgDraftBound) {
+            draftBox._pgDraftBound = true;
+            draftBox.addEventListener('change', function () {
+                var a = _pgActivePage();
+                if (a) a.page_draft = this.checked ? 1 : 0;
+                _pgTabsRender();
+            });
+        }
+        var homeBox = document.getElementById('pg_page_home');
+        if (homeBox && draftBox && !homeBox._pgDraftBound) {
+            homeBox._pgDraftBound = true;
+            homeBox.addEventListener('change', function () {
+                // The home page cannot be a draft: the tab and the publishing
+                // menu follow the switch at once.
+                var a = _pgActivePage();
+                if (a) _pgReadFieldsIntoPage(a);
+                _pgSyncDraftBox(a);
+                _pgTabsRender();
+            });
+        }
         var pick = document.getElementById('sd-tab-pick-page');
         if (pick && !pick._pgBound) { pick._pgBound = true; pick.addEventListener('click', _pgTabsOpenPicker); }
         var exit = document.getElementById('sd-exit-btn');
@@ -43336,7 +43603,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '',
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
-            page_noindex: 0, page_nofollow: 0,
+            page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
             tree: createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0,
             baseline: null, treeLoadWarning: false,
@@ -43347,7 +43614,8 @@ const StyleDesigner = (function () {
         _pgTabsSwitch(p.key);
         // The name is typed on the tab itself.
         _pgTabsRename(p.key);
-        sdToast(_sdT('New page added — give it a name, then publish.'), 'info', 3500);
+        sdToast(p.page_draft ? _sdT('New page added as a draft — give it a name. Save keeps it off the site; Publish puts it on.')
+                             : _sdT('New page added — give it a name, then publish.'), 'info', 4500);
     }
 
     // Duplicate the ACTIVE PAGE into a new tab of the same design. The
@@ -43375,6 +43643,7 @@ const StyleDesigner = (function () {
             page_search: src.page_search, page_search_keywords: src.page_search_keywords,
             page_sitemap: src.page_sitemap, page_home: 0,           // never two home pages
             page_noindex: src.page_noindex, page_nofollow: src.page_nofollow,
+            page_draft: (src.page_draft || _pgNewPageDraft()) ? 1 : 0,  // a copy starts off the site, like any new page
             pg_comments: src.pg_comments, pg_comments_label: src.pg_comments_label,
             pg_comments_allow_new: src.pg_comments_allow_new, pg_comments_rating: src.pg_comments_rating,
             pg_comments_auto_publish: src.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: src.pg_comments_show_date ? 1 : 0,
@@ -43488,11 +43757,23 @@ const StyleDesigner = (function () {
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
+        // Draft or on the site, for an operator who decides it. A page picked
+        // from another design is still that design's until it is saved here.
+        var stateItem = '';
+        if (_pgDraftsCanChange() && !p.pickedPending && p.access !== 'locked') {
+            if (p.page_draft) {
+                stateItem = item('publish', 'bi-rocket-takeoff', _sdT('Publish this page'));
+            } else {
+                stateItem = item('draft', 'bi-eye-slash', saved ? _sdT('Take off the site (draft)') : _sdT('Save as draft'), {
+                    disabled: !!p.page_home, title: _sdT('The home page stays on the site.') });
+            }
+        }
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
+            stateItem +
             '<div class="sd-tab-popmenu-sep"></div>';
         if (p.pickedPending) {
             // Picked from another design and not saved here yet. On the
@@ -43538,9 +43819,12 @@ const StyleDesigner = (function () {
             if (!b || b.disabled) return;
             var act = b.dataset.act;
             _pgTabsCloseMenu();
-            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view') _pgTabsSwitch(key);
+            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view'
+                && act !== 'draft' && act !== 'publish') _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
+                case 'draft':    _pgSetDraft([key], true); break;
+                case 'publish':  _pgSetDraft([key], false); break;
                 case 'rename':   _pgTabsRename(); break;
                 case 'settings': _pgTabsOpenPageSettings(); break;
                 case 'dup':      _pgTabsDuplicateActive(); break;
@@ -44413,6 +44697,7 @@ const StyleDesigner = (function () {
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
+            page_draft: sp.page_draft ? 1 : 0,
             pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
             pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
             pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
@@ -44783,6 +45068,7 @@ const StyleDesigner = (function () {
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
                     page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
+                    page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
                     tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree),
                     baseline: null, treeLoadWarning: false
@@ -45037,6 +45323,7 @@ const StyleDesigner = (function () {
                 page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
                 page_home: 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
+                page_draft: _pgNewPageDraft(),
                 pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
                 pg_comments_allow_new: (sp.pg_comments_allow_new === 0) ? 0 : 1, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
                 pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
@@ -45151,6 +45438,9 @@ const StyleDesigner = (function () {
             if (typeof _swResolveTabRefs === 'function') _swResolveTabRefs(keyMap);
             data.pages.forEach(function (m) {
                 var p = _pgPageByKey(m.key);
+                // The state the server left the page in: a draft of the home
+                // page is refused (pg_designer_page_draft_plan()).
+                if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
                 if (p && m.page_id > 0) {
                     p.page_id = m.page_id;
                     var newKey = 'p' + m.page_id;
@@ -45174,6 +45464,7 @@ const StyleDesigner = (function () {
             });
         }
         if (data && data.style_id && _design) _design.styleId = data.style_id;
+        _pgSyncDraftBox(_pgActivePage());
         _pages.forEach(function (p) { p.baseline = _pgBaselineOf(p); if (p.page_id > 0) p.savedName = p.page_name; });
         _styleBaseline = _pgStyleJSON();
         _pgTabsRender();
@@ -45200,6 +45491,192 @@ const StyleDesigner = (function () {
             btn.style.display = url ? '' : 'none';
             btn.href = url || '#';
         });
+    }
+
+    // ── Drafts ────────────────────────────────────────────────────────────
+    // A draft is a page kept off the site: the server keeps it in the private
+    // Drafts folder, where visitors cannot open it and administrators can
+    // (pg_designer_page_draft_plan()). Its folder setting stays the folder it
+    // is published to. Changing the state is a save like any other, so the
+    // content and the state never part: the pages are marked, then the whole
+    // design is published.
+    function _pgDraftsReady()     { return !!(_design && _design.drafts && _design.drafts.ready); }
+    function _pgDraftsCanChange() { return !!(_design && _design.drafts && _design.drafts.canChange); }
+    // A page the editor creates - a new tab, a copy, a template's or an
+    // import's pages, the first page of a new design - starts as a draft:
+    // Save keeps it off the site, Publish puts it on. Nobody who cannot
+    // publish creates pages, so the state is theirs to change.
+    function _pgNewPageDraft()    { return _pgDraftsCanChange() ? 1 : 0; }
+    function _pgActiveIsDraft()   { var a = _pgActivePage(); return _pgDraftsReady() && !!(a && a.page_draft); }
+
+    function _pgSetDraft(keys, on) {
+        if (!_pgDraftsCanChange()) return;
+        // The state reaches the server with a save. When no save can run
+        // now, nothing is marked: a mark left behind would show a state the
+        // site does not have.
+        if (_sharedLoadInFlight > 0) {
+            sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
+            return;
+        }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        _pgTabsPersistActive();
+        var list = keys.map(_pgPageByKey).filter(function (p) {
+            return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
+        });
+        // The home page stays on the site; the server would refuse it too.
+        var home = on ? list.filter(function (p) { return p.page_home; }) : [];
+        if (on) list = list.filter(function (p) { return !p.page_home; });
+        if (!list.length) {
+            sdToast(esc(home.length ? _sdT('The home page stays on the site.')
+                                    : (on ? _sdT('Nothing to take off the site.') : _sdT('Nothing to publish.'))), 'info', 3500);
+            return;
+        }
+        var go = function () {
+            // The keys as the save sends them: a new page gets its id and a
+            // new key once the server answers.
+            var marked = list.map(function (p) { return { page: p, key: p.key, was: p.page_draft ? 1 : 0 }; });
+            list.forEach(function (p) { p.page_draft = on ? 1 : 0; });
+            _pgSyncDraftBox(_pgActivePage());
+            _pgTabsRender();
+            // The pages the server wrote in the state asked for. One it did
+            // not write - another user holds it - comes back without a state.
+            var applied = function (data) {
+                var done = {};
+                ((data && Array.isArray(data.pages)) ? data.pages : []).forEach(function (m) {
+                    if (m && typeof m.draft !== 'undefined') done[m.key] = !!m.draft;
+                });
+                return marked.filter(function (r) { return done[r.key] === on; });
+            };
+            var unmark = function (rows, rebase) {
+                rows.forEach(function (r) {
+                    r.page.page_draft = r.was;
+                    if (rebase) r.page.baseline = _pgBaselineOf(r.page);
+                });
+                _pgSyncDraftBox(_pgActivePage());
+                _pgTabsRender();
+            };
+            saveAjax({
+                successMessage: function (data) {
+                    var n = applied(data).length;
+                    if (!n) return '';
+                    var msg = on
+                        ? ((n > 1) ? _sdT('{var} pages are kept as drafts, off the site.', n) : _sdT('The page is kept as a draft, off the site.'))
+                        : ((n > 1) ? _sdT('{var} pages were published.', n) : _sdT('The page was published.'));
+                    if (home.length) msg += ' ' + _sdT('The home page stays on the site.');
+                    return msg;
+                },
+                onSuccess: function (data) {
+                    var ok = applied(data);
+                    var rest = marked.filter(function (r) { return ok.indexOf(r) < 0; });
+                    // Saved, so the page is clean again with the state the
+                    // site actually has.
+                    if (rest.length) unmark(rest, true);
+                },
+                onError: function () { unmark(marked, false); }
+            });
+        };
+        // Taking a page that visitors can open off the site is asked first;
+        // a page that was never published has nobody to lose.
+        var live = on ? list.filter(function (p) { return p.page_id > 0; }) : [];
+        if (!live.length) { go(); return; }
+        var ask = (live.length > 1)
+            ? _sdT('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.', live.length)
+            : _sdT('"{var}" will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open it; administrators will.', live[0].page_name || _sdT('New Page'));
+        if (home.length) ask += ' ' + _sdT('The home page stays on the site.');
+        if (typeof window.pgConfirm === 'function') {
+            window.pgConfirm({ title: _sdT('Take off the site'), message: ask,
+                               confirmText: _sdT('Yes, make it a draft'), cancelText: _sdT('No'), variant: 'warning' })
+                .then(function (ok) { if (ok) go(); });
+        } else if (window.confirm(ask)) {
+            go();
+        }
+    }
+
+    // The draft switch of Page Settings shows the active page; the home page
+    // cannot be a draft, so the switch is off and locked while it is home.
+    function _pgSyncDraftBox(p) {
+        var box = document.getElementById('pg_page_draft');
+        if (!box || !p) return;
+        var homeBox = document.getElementById('pg_page_home');
+        var home = homeBox ? homeBox.checked : !!p.page_home;
+        if (home && p.page_draft) p.page_draft = 0;
+        box.checked  = !!p.page_draft;
+        box.disabled = home;
+        box.title    = home ? _sdT('The home page stays on the site.') : '';
+    }
+
+    // The keys of the editor's save, as the panel writes a shortcut.
+    var _SD_SAVE_KEYS = 'Ctrl+S | \u2318+S';
+
+    // Ctrl+S / Cmd+S: what the main button does - Save on a draft, Publish
+    // on a page on the site - or nothing while it cannot.
+    function _sdSaveShortcut() {
+        var b = document.getElementById('sd-ajax-save');
+        if (b && !b.disabled) b.click();
+    }
+
+    // A toolbar button's hint. The panel gives every titled element a hover
+    // popover once, from the title it has then (pgBindTitlePopovers() in
+    // backend.js); a title set afterwards reaches the popover only through
+    // it, and on its own would add the browser's tooltip beside it.
+    function _sdSetButtonTitle(el, text) {
+        if (!el) return;
+        var pop = (window.bootstrap && bootstrap.Popover && bootstrap.Popover.getInstance) ? bootstrap.Popover.getInstance(el) : null;
+        if (pop) {
+            el.removeAttribute('title');
+            el.setAttribute('data-bs-original-title', text);
+            try { pop.setContent({ '.popover-header': esc(text) }); } catch (e) {}
+        } else {
+            el.title = text;
+        }
+    }
+
+    // The main button says what it does to the page on screen: a draft is
+    // saved and stays off the site. The menu beside it offers the change the
+    // page and the design can still make.
+    function _pgTabsSyncPublishButton() {
+        var btn = document.getElementById('sd-ajax-save');
+        if (!btn) return;
+        var a = _pgActivePage();
+        var draft = _pgDraftsReady() && !!(a && a.page_draft);
+        var label = draft ? _sdT('Save') : _sdT('Publish');
+        var txt = btn.querySelector('.sd-publish-txt');
+        if (txt) txt.textContent = label;
+        var icon = btn.querySelector('.bi');
+        if (icon) icon.className = 'bi ' + (draft ? 'bi-floppy' : 'bi-rocket-takeoff');
+        btn.classList.toggle('sd-publish-draft', draft);
+        var title = (draft ? _sdT('Saves the design. This page stays a draft, off the site.') : _sdT('Publish')) + ' (' + _SD_SAVE_KEYS + ')';
+        if (!btn.classList.contains('sd-saving-blocked')) _sdSetButtonTitle(btn, title);
+        btn.dataset.origTitle = title;
+        // A draft has two actions side by side: Save keeps it off the site,
+        // Publish puts it on. A page on the site has one, Publish.
+        var pub = document.getElementById('sd-publish-page');
+        if (pub) {
+            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending;
+            pub.classList.toggle('d-none', !both);
+            btn.classList.toggle('sd-publish-solo', both);
+        }
+        var more = document.querySelector('.sd-publish-more');
+        if (!more) return;
+        var anyDraft = _pages.some(function (p) { return !!p.page_draft; });
+        var anyLive  = _pages.some(function (p) { return !p.page_draft && !p.page_home; });
+        var show = function (what, on) {
+            var b = more.querySelector('[data-sd-status="' + what + '"]');
+            if (b && b.parentNode) b.parentNode.classList.toggle('d-none', !on);
+        };
+        show('page-draft',   !!a && !draft && !a.page_home && !a.pickedPending);
+        show('page-publish', draft);
+        show('all-draft',    anyLive);
+        show('all-publish',  anyDraft);
+    }
+
+    // What a save put on the site, in one sentence.
+    function _pgSavedMessage(data) {
+        var pages  = (data && Array.isArray(data.pages)) ? data.pages : [];
+        var drafts = pages.filter(function (m) { return m && m.draft; }).length;
+        if (drafts && drafts === pages.length) return _sdT('Saved. Drafts stay off the site.');
+        if (drafts) return _sdT('Published — the changes are live. Drafts stay off the site.');
+        return _sdT('Published — the changes are live.');
     }
 
     // Keep ?page= pointing at the active tab so a reload lands on it. A tab
@@ -45254,6 +45731,7 @@ const StyleDesigner = (function () {
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
                 page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
+                page_draft: sp.page_draft ? 1 : 0,
                 pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
                 pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
                 pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
@@ -45277,6 +45755,7 @@ const StyleDesigner = (function () {
             _pages.push({
                 key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '',
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
+                page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
                 tree: createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false,
                 formSettings: {}
@@ -45378,23 +45857,23 @@ const StyleDesigner = (function () {
     function _protectMainForm() {
         var form = document.getElementById('style_designer_form');
         if (!form) return;
-        // Ctrl+S / Cmd+S publishes from anywhere in the editor. The panel-wide
-        // shortcut (backend.js) submits the form around the focused element,
-        // or the page's first form when there is none; outside the editor's
-        // own form (the layer tree, the assistant panel, the page itself) that
-        // is a header form, and the editor navigated away with the tab
-        // unsaved. Inside the editor's form the shortcut already clicks
-        // Publish, so it is left to it there.
+        // Ctrl+S / Cmd+S is the editor's own, everywhere in it: what the
+        // main button says (_sdSaveShortcut()). The panel-wide shortcut
+        // (backend.js) submits the form around the focused element, or the
+        // page's first form when there is none - the account menu's, the
+        // search box - and puts its hint on a button once, while the main
+        // button changes its word with the page on screen. The editor's form
+        // stays out of it (disable_shortcut); the two places with a Ctrl+S of
+        // their own keep theirs: a node's note and the settings modal.
         if (!window._sdSaveShortcutBound) {
             window._sdSaveShortcutBound = true;
             window.addEventListener('keydown', function (e) {
                 if (!(e.ctrlKey || e.metaKey) || e.altKey || String(e.key || '').toLowerCase() !== 's') return;
                 var ae = document.activeElement;
-                if (ae && ae.closest && ae.closest('#style_designer_form')) return;
+                if (ae && ae.closest && ae.closest('.sd-note-overlay, #pg_settings_modal')) return;
                 e.preventDefault();
                 e.stopPropagation();
-                var publish = document.getElementById('sd-ajax-save');
-                if (publish && !publish.disabled) publish.click();
+                _sdSaveShortcut();
             }, true);
         }
         form.addEventListener('submit', function (e) {
@@ -45799,6 +46278,7 @@ const StyleDesigner = (function () {
         if (!_sdShortcutsModalEl) {
             var _cats = [
                 { title: _sdT('Editing'), rows: [
+                    ['Ctrl+S',              _sdT('What the main button does: Save on a draft, Publish on a page on the site')],
                     ['Ctrl+Z',              _sdT('Undo')],
                     ['Ctrl+Y / Ctrl+Shift+Z', _sdT('Redo')],
                     ['Ctrl+D',              _sdT('Duplicate the selected element')],
@@ -45916,7 +46396,9 @@ const StyleDesigner = (function () {
                 if (_tc.length) clipboardNodes = _tc.map(function(n) { return cloneTree(n); });
             }},
             // ── Save / Preview / Snapshot ───────────────────────────
-            { id: 'act_save', label: _sdT('Publish'), icon: 'bi-rocket-takeoff', hint: 'Ctrl+S', action: function() {
+            // The main button's word: a draft is saved and stays off the site.
+            { id: 'act_save', label: _pgActiveIsDraft() ? _sdT('Save') : _sdT('Publish'),
+              icon: _pgActiveIsDraft() ? 'bi-floppy' : 'bi-rocket-takeoff', hint: 'Ctrl+S', action: function() {
                 var b = document.getElementById('sd-ajax-save'); if (b) b.click();
             }},
             { id: 'act_preview', label: _sdT('Preview'), icon: 'bi-box-arrow-up-right', hint: 'Ctrl+Alt+P', action: function() { openPreview(); } },
@@ -45940,6 +46422,15 @@ const StyleDesigner = (function () {
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];
+
+        // A draft has its second action here too: put it on the site.
+        if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_save'; }) + 1, 0,
+                { id: 'act_publish_page', label: _sdT('Publish this page'), icon: 'bi-rocket-takeoff', action: function () {
+                    var a = _pgActivePage();
+                    if (a) _pgSetDraft([a.key], false);
+                }});
+        }
 
         // ── Assets-panel commands (only when the panel is mounted) ──
         if (_assetsApi) {

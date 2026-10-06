@@ -70,8 +70,8 @@ function pg_tr_hash($normalized, $format = 'text')
 }
 
 /**
- * Whether a text is worth translating: it has letters, and it is not only a
- * token the renderer fills in later.
+ * Whether a text is worth translating: it has letters, it is not only a
+ * token the renderer fills in later, and it is not placeholder Latin.
  */
 function pg_tr_translatable($text)
 {
@@ -92,7 +92,64 @@ function pg_tr_translatable($text)
         return false;
     }
 
-    return (bool) preg_match('/\p{L}/u', $plain);
+    if (!preg_match('/\p{L}/u', $plain)) {
+        return false;
+    }
+
+    return !pg_tr_placeholder_latin($plain);
+}
+
+/**
+ * Whether a text is placeholder Latin, the "Lorem ipsum dolor sit amet" a
+ * template or a demo fills its places with. An engine has nothing to
+ * translate in it: it answers with half-Latin, half-made-up words in the
+ * target language, so the text is shown as written in every language. Read
+ * on the longer words (four letters or more), most of which have to come
+ * from the generators' vocabulary: "Ad", "et" or "in" alone say nothing.
+ *
+ * @param string $plain text without tags
+ * @return bool
+ */
+function pg_tr_placeholder_latin($plain)
+{
+    static $vocabulary = null;
+
+    if ($vocabulary === null) {
+        $vocabulary = array_flip(explode(' ',
+            'accumsan adipiscing aenean aliqua aliquam aliquet aliquip amet anim ante aptent arcu auctor augue aute '
+            . 'bibendum blandit cillum class commodo condimentum congue consectetur consequat conubia convallis cras '
+            . 'cubilia culpa cupidatat curabitur curae cursus dapibus deserunt diam dictum dictumst dignissim dolor '
+            . 'dolore donec duis efficitur egestas eget eiusmod eleifend elementum elit enim erat eros esse etiam '
+            . 'euismod excepteur exercitation facilisi facilisis fames faucibus felis fermentum feugiat finibus '
+            . 'fringilla fugiat fusce gravida habitant habitasse hendrerit himenaeos iaculis imperdiet inceptos '
+            . 'incididunt integer interdum ipsum irure justo labore laboris laborum lacinia lacus laoreet lectus '
+            . 'libero ligula litora lobortis lorem luctus maecenas magna magnis malesuada massa mattis mauris maximus '
+            . 'metus minim molestie mollis montes morbi nascetur natoque neque netus nibh nisi nisl nostra nostrud '
+            . 'nulla nullam nunc occaecat odio officia orci ornare pariatur parturient pellentesque penatibus '
+            . 'pharetra phasellus placerat platea porta porttitor posuere potenti praesent pretium primis proident '
+            . 'proin pulvinar purus quam quis quisque reprehenderit rhoncus ridiculus risus rutrum sagittis sapien '
+            . 'scelerisque semper senectus sint sociosqu sodales sollicitudin sunt suscipit suspendisse taciti tellus '
+            . 'tempor tempus tincidunt torquent tortor tristique turpis ullamco ullamcorper ultrices ultricies urna '
+            . 'varius vehicula velit veniam venenatis vestibulum vitae vivamus viverra volutpat voluptate vulputate'));
+    }
+
+    $lower = function_exists('mb_strtolower') ? mb_strtolower((string) $plain, 'UTF-8') : strtolower((string) $plain);
+
+    if (!preg_match_all('/\p{L}{4,}/u', $lower, $matches)) {
+        return false;
+    }
+
+    $latin = 0;
+
+    foreach ($matches[0] as $word) {
+        if (isset($vocabulary[$word])) {
+            $latin++;
+        }
+    }
+
+    $words = count($matches[0]);
+
+    return ($words >= 2) && (($latin * 10) >= ($words * 8));
 }
 
 /**
@@ -793,10 +850,17 @@ function pg_tr_pending_string_ids($language, $owners = array())
 }
 
 /**
- * SQL for a set of owners, '' for all.
+ * SQL for a set of owners. No owner is the whole site: every text but the
+ * software's own wording (owner 'ui'), which is translated on its own, as
+ * the "Interface texts" group, and only for a language with no language
+ * file (pg_tr_ui_text()).
  */
 function pg_tr_owner_where($owners)
 {
+    if (!$owners) {
+        return "u.owner_type <> 'ui'";
+    }
+
     $parts = array();
 
     foreach ((array) $owners as $owner) {
@@ -840,6 +904,116 @@ function pg_tr_page_owners($page_id)
     }
 
     return $owners;
+}
+
+/**
+ * Whether a string is one of the texts of a page edited in the visual
+ * editor: its body, title and description as last read, or its tree as
+ * stored now, or wording typed in the editor since the page was last saved,
+ * used nowhere yet. Texts of shared components and widgets are not the
+ * page's. Who may change the translation is pg_tr_string_page_scope().
+ *
+ * @param int $string_id
+ * @param int $page_id
+ * @return bool
+ */
+function pg_tr_string_on_page($string_id, $page_id)
+{
+    $string_id = (int) $string_id;
+    $page_id = (int) $page_id;
+
+    if (($string_id <= 0) || ($page_id <= 0)) {
+        return false;
+    }
+
+    if ((int) db_value("SELECT COUNT(*) FROM translation_uses
+                        WHERE string_id = '$string_id' AND owner_type IN ('page', 'page_seo') AND owner_id = '$page_id'") > 0) {
+        return true;
+    }
+
+    if ((int) db_value("SELECT COUNT(*) FROM translation_uses WHERE string_id = '$string_id'") === 0) {
+        return true;
+    }
+
+    // The uses are as fresh as the page's last update of translations; the
+    // stored tree is what the page says now.
+    $hash = (string) db_value("SELECT hash FROM translation_strings WHERE id = '$string_id' LIMIT 1");
+    $tree_json = pg_page_tree_json($page_id);
+    $tree = ($tree_json !== '') ? json_decode($tree_json, true) : null;
+
+    if (($hash === '') || !is_array($tree)) {
+        return false;
+    }
+
+    $segments = array();
+    $refs = array('shared' => array(), 'menu' => array());
+    $position = 0;
+
+    pg_tr_walk_tree($tree, $segments, $refs, $position);
+
+    foreach ($segments as $segment) {
+        if ($segment['hash'] === $hash) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The same question with the rest of the site in view. A text has one
+ * translation wherever it appears, so a change made from one page reaches
+ * every other place that draws the same text. The user may make it when
+ * each of those places is one they may edit as well: a page that passes
+ * $may_edit_page, never a shared component, a widget, a menu or a form.
+ * Pages deleted since or sitting in the recycle bin draw nothing and do not
+ * count.
+ *
+ * @param int      $string_id
+ * @param int      $page_id        the page being edited
+ * @param callable $may_edit_page  page id => bool
+ * @return string  'yes'; 'elsewhere' when the text is on the page and also
+ *                 in a place the user may not edit; 'no' when it is not on
+ *                 the page at all
+ */
+function pg_tr_string_page_scope($string_id, $page_id, $may_edit_page)
+{
+    $string_id = (int) $string_id;
+    $page_id = (int) $page_id;
+
+    if (($string_id <= 0) || ($page_id <= 0)) {
+        return 'no';
+    }
+
+    $uses = db_items("SELECT DISTINCT u.owner_type, u.owner_id, p.page_folder
+                      FROM translation_uses u
+                      LEFT JOIN page p ON (p.page_id = u.owner_id AND u.owner_type IN ('page', 'page_seo'))
+                      WHERE u.string_id = '$string_id'
+                        AND NOT (u.owner_type IN ('page', 'page_seo') AND u.owner_id = '$page_id')");
+
+    $binned = function_exists('pg_recycle_bin_folder_ids') ? pg_recycle_bin_folder_ids() : array();
+    $outside = false;
+
+    foreach ((array) $uses as $use) {
+        if (in_array($use['owner_type'], array('page', 'page_seo'), true)) {
+            if (($use['page_folder'] === null) || in_array((int) $use['page_folder'], $binned, true)) {
+                continue;
+            }
+
+            if (call_user_func($may_edit_page, (int) $use['owner_id'])) {
+                continue;
+            }
+        }
+
+        $outside = true;
+        break;
+    }
+
+    if (!$outside) {
+        return 'yes';
+    }
+
+    return pg_tr_string_on_page($string_id, $page_id) ? 'elsewhere' : 'no';
 }
 
 /**
@@ -889,7 +1063,7 @@ function pg_tr_language_stats($language)
                            COUNT(DISTINCT CASE WHEN t.status = 'reviewed' THEN t.string_id END) AS reviewed
                     FROM translation_uses u
                     LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
-                    WHERE u.string_id > 0");
+                    WHERE u.string_id > 0 AND " . pg_tr_owner_where(array()));
 
     $total = is_array($row) ? (int) $row['total'] : 0;
     $translated = is_array($row) ? (int) $row['translated'] : 0;

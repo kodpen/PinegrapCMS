@@ -1257,12 +1257,17 @@ function output_header($properties = false)
 
     $output_contact_quick = '';
 
+    // The form is the first one on every screen while it shows. Ctrl+S
+    // (backend.js) submits the form around the focus, or the first form when
+    // the focus is in none, and hints the shortcut on that form's button: so
+    // it is kept out (disable_shortcut), or the shortcut would save the
+    // account menu instead of the screen.
     if ((!$output_user_named || !$output_user_has_photo) && function_exists('pg_contact_quick_save') && (USER_ID > 0)) {
         $output_quick_photo_only = $output_user_named;
 
         $output_contact_quick = '
                             <li class="px-3 py-2 border-bottom" id="pg_contact_quick"' . ($output_quick_photo_only ? ' data-photo-only' : '') . '>
-                                <form data-pg-contact-quick novalidate>
+                                <form data-pg-contact-quick class="disable_shortcut" novalidate>
                                     <div class="fw-semibold small mb-1"><i class="bi ' . ($output_quick_photo_only ? 'bi-person-bounding-box' : 'bi-person-exclamation') . ' me-1" aria-hidden="true"></i>' . ($output_quick_photo_only ? lang('Add a profile picture') : lang('Complete your address book details')) . '</div>
                                     <div class="small text-body-secondary mb-2">' . ($output_quick_photo_only ? lang('Your colleagues then see your face next to your name instead of its initials.') : lang('Your colleagues then see you by your name and its initials instead of your username.')) . '</div>'
                                     . ($output_quick_photo_only ? '' : '

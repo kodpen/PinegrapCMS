@@ -28,7 +28,7 @@
 // has just written a title is not left wondering why the structure score did
 // not move.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

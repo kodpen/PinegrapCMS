@@ -137,8 +137,8 @@ function api_schema() {
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
 				array('name' => 'inventory',         'in' => 'body', 'type' => 'bool',   'description' => 'Track stock for this product.'),
 				array('name' => 'inventory_quantity','in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 1000000, 'description' => 'Opening stock. Only meaningful with inventory on.'),
-				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'max_items' => 50, 'description' => 'Product groups this product belongs to. A variant is a product in the article\'s group - see the product-groups endpoint.'),
-				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}: what makes this row one variant rather than another. Both ids have to belong together.')
+				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to. A variant is a product in the article\'s group - see the product-groups endpoint.'),
+				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}: what makes this row one variant rather than another. Both ids have to belong together.')
 			)
 		),
 
@@ -211,7 +211,7 @@ function api_schema() {
 			'summary' => 'Set or adjust stock for many products',
 			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC.')
 			)
 		),
 
@@ -226,7 +226,7 @@ function api_schema() {
 			'summary' => 'Set prices for many products',
 			'description' => 'The twin of the batch stock endpoint: one call for a repricing run instead of one call per product. Answers 200 with an outcome per item - ok, not_found or invalid - and applied says how many landed, because a product the other side has not noticed was deleted is data rather than a failure. Prices are whole minor units; a decimal is refused rather than rounded. Only the price is written.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'required' => true, 'max_items' => 250, 'description' => 'Up to 250 objects: id, sku or barcode to say which product, and price in minor units.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'price' => 'integer'), 'required' => true, 'max_items' => 250, 'description' => 'Up to 250 objects: id, sku or barcode to say which product, and price in minor units.')
 			)
 		),
 
@@ -357,7 +357,7 @@ function api_schema() {
 			'description' => 'The tracking numbers for one of the order\'s shipping addresses, and optionally the dates. A tracking number is what makes an order count as shipped in this store - the ship date is a planned dispatch date on many configurations, so nothing is read from it. The list replaces what that address holds, which is what the order screen does with the same field: send everything you know each time and the call can be repeated without collecting duplicates. The customer is told only when notify is true.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has.'),
+				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has.'),
 				array('name' => 'ship_to_id',       'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
 				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
@@ -411,7 +411,7 @@ function api_schema() {
 			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes.',
 			'params'  => array(
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'https address to call. It is checked now, not at delivery time.'),
-				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.')
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.')
 			)
 		),
 
@@ -662,7 +662,7 @@ function api_schema() {
 				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'meta_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'search',           'in' => 'body', 'type' => 'bool', 'description' => 'Whether the page is included in the site search.'),
-				array('name' => 'search_keywords',  'in' => 'body', 'type' => 'list', 'max_items' => 50, 'description' => 'Words that promote the page in the site search. A list of words; send an empty list to clear it.'),
+				array('name' => 'search_keywords',  'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Words that promote the page in the site search. A list of words; send an empty list to clear it.'),
 				array('name' => 'sitemap',          'in' => 'body', 'type' => 'bool', 'description' => 'Whether the page is listed in the site map.'),
 				array('name' => 'noindex',          'in' => 'body', 'type' => 'bool', 'description' => 'Closes the page to search engines: a noindex robots tag, blocked in robots.txt and left out of the site map.'),
 				array('name' => 'nofollow',         'in' => 'body', 'type' => 'bool', 'description' => 'Qualifies noindex. Only accepted while noindex is on.')
@@ -902,7 +902,7 @@ function api_schema() {
 			'description' => 'Nothing on the page changes here. The operations are checked against the page - each must find what it names, and the page they make must be valid - and kept as a proposal that a designer previews and applies, in the Visual Page Editor or under the workspace answer it was made for. A failing operation is refused with 422 and its index in field (ops[2]). Operations, in order: update {node, text, classes, add_classes, remove_classes, style, attrs, name}; set_props {node, props} for a <pg-keep> part; replace {node, html}; insert {parent + index, or before / after, html}; remove {node}; move {node, parent + index, or before / after}; page {html} for the whole page; css {css} for the page\'s own CSS block ("" removes it). In html, an element that keeps its data-pg stays that element, with its settings, notes and data; one without is new; a <pg-keep> left out is removed. Script, event handlers, frames, forms and <style> are removed from html, and CSS loses @import, script and outside url() - dropped says what went. removed names the parts the page runs that the change takes away. With request_id (Claude\'s application only) the proposal answers that workspace request: it is shown in the editor that asked, or under the answer in the channel.',
 			'params'  => array(
 				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'ops',        'in' => 'body', 'type' => 'list', 'max_items' => 40, 'required' => true, 'description' => 'The operations, as objects with "op".'),
+				array('name' => 'ops',        'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string'), 'max_items' => 40, 'required' => true, 'description' => 'The operations, as objects with "op".'),
 				array('name' => 'summary',    'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'description' => 'One or two sentences on what the change does, for the person who applies it.'),
 				array('name' => 'node',       'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The element the change is about, when there is one.'),
 				array('name' => 'request_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The workspace request this proposal answers.')
@@ -1084,7 +1084,7 @@ function api_schema() {
 			'summary' => 'Mark notifications read',
 			'description' => 'For this person only - the others\' bells are not touched. Send ids, or all: true for everything unread. An id this person cannot see is skipped rather than refused. unread in the answer is the count afterwards.',
 			'params'  => array(
-				array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'max_items' => 500, 'description' => 'Notification ids.'),
+				array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 500, 'description' => 'Notification ids.'),
 				array('name' => 'all', 'in' => 'body', 'type' => 'bool', 'description' => 'Everything unread.')
 			)
 		),
@@ -1099,7 +1099,7 @@ function api_schema() {
 			'returns' => array('updated' => 'integer', 'unread' => 'integer'),
 			'summary' => 'Mark notifications unread again',
 			'params'  => array(
-				array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'max_items' => 500, 'required' => true, 'description' => 'Notification ids.')
+				array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 500, 'required' => true, 'description' => 'Notification ids.')
 			)
 		),
 

@@ -762,10 +762,16 @@ function pg_design_thumb_vars($look, $palette)
 // A small drawing of a design's home page in its look and colours: the
 // picture a template is known by, in the template dialog and on the list of
 // designs. Inline SVG, coloured through CSS variables (pg_design_thumb_vars()).
-function pg_design_thumb_svg($look, $palette, $class = '', $label = '')
+// $kind is the template's 'thumb': 'store' draws a shop front, anything else
+// the starter site's home page.
+function pg_design_thumb_svg($look, $palette, $class = '', $label = '', $kind = '')
 {
     $vars = pg_design_thumb_vars($look, $palette);
     $a11y = ($label !== '') ? ' role="img" aria-label="' . h($label) . '"' : ' aria-hidden="true" focusable="false"';
+    if ($kind === 'store') {
+        return '<svg class="' . h(trim('pg-design-thumb ' . $class)) . '" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" style="' . h($vars) . '"' . $a11y . '>'
+            . _pg_design_thumb_store() . '</svg>';
+    }
     $card = function ($x, $y) {
         return '<g style="filter:var(--tsh)">'
              . '<rect x="' . $x . '" y="' . $y . '" width="84" height="36" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/>'
@@ -806,4 +812,77 @@ function pg_design_thumb_svg($look, $palette, $class = '', $label = '')
         . '<rect y="180" width="320" height="20" fill="#f8fafc"/><rect y="180" width="320" height="0.75" fill="#e5e7eb"/>'
         . '<rect x="18" y="188.5" width="50" height="3" rx="1.5" fill="#94a3b8"/><rect x="220" y="188.5" width="82" height="3" rx="1.5" fill="#94a3b8"/>'
         . '</svg>';
+}
+
+// The shop front: a header with search and cart, the category links, an
+// offer band, four products with their prices and cart buttons, the
+// footer with the payment marks. Same variables as the home page drawing.
+function _pg_design_thumb_store()
+{
+    $products = array(
+        // a shirt
+        '<path d="M%1$s %2$s l5 -2.5 q3 3 6 0 l5 2.5 l3.5 5.5 l-4.5 2.2 v13.3 h-14 v-13.3 l-4.5 -2.2 z" style="fill:var(--tp);opacity:.6"/>',
+        // a bag
+        '<rect x="%3$s" y="%4$s" width="18" height="15" rx="2" style="fill:var(--ts);opacity:.75"/><path d="M%5$s %4$s v-3 a4 4 0 0 1 8 0 v3" fill="none" style="stroke:var(--ts)" stroke-width="1.4"/>',
+        // a watch
+        '<rect x="%6$s" y="%7$s" width="8" height="26" rx="2" fill="#cbd5e1"/><circle cx="%8$s" cy="%9$s" r="7.5" style="fill:var(--tp)"/><circle cx="%8$s" cy="%9$s" r="5.2" fill="#fff"/><path d="M%8$s %10$s v3.5 h2.5" fill="none" stroke="#1f2937" stroke-width="1" stroke-linecap="round"/>',
+        // headphones
+        '<path d="M%11$s %12$s v-4 a10 10 0 0 1 20 0 v4" fill="none" style="stroke:var(--ts)" stroke-width="2.2"/><rect x="%13$s" y="%14$s" width="6" height="10" rx="2" style="fill:var(--tp)"/><rect x="%15$s" y="%14$s" width="6" height="10" rx="2" style="fill:var(--tp)"/>',
+    );
+    $cards = '';
+    foreach (array(12, 88, 164, 240) as $i => $x) {
+        $y  = 103;
+        $cx = $x + 34;
+        $cy = $y + 20;
+        $cards .= '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="' . $y . '" width="68" height="66" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+            . '<rect x="' . ($x + 4) . '" y="' . ($y + 4) . '" width="60" height="32" rx="2" style="rx:var(--tr);fill:var(--tp);opacity:.08"/>'
+            . sprintf($products[$i],
+                $cx - 8, $cy - 9,           // shirt: the left shoulder
+                $cx - 9, $cy - 5, $cx - 4,  // bag: body, handle
+                $cx - 4, $cy - 13, $cx, $cy, $cy - 3.5, // watch: band, face, hands
+                $cx - 10, $cy + 4, $cx - 13, $cy + 1, $cx + 7) // headphones: band, cups
+            . '<rect x="' . ($x + 5) . '" y="' . ($y + 41) . '" width="' . ($i === 1 ? 38 : 46) . '" height="3.5" rx="1.75" fill="#1f2937"/>'
+            . '<rect x="' . ($x + 5) . '" y="' . ($y + 47.5) . '" width="30" height="2.5" rx="1.25" fill="#cbd5e1"/>'
+            . '<rect x="' . ($x + 5) . '" y="' . ($y + 54) . '" width="20" height="5" rx="1.5" style="fill:var(--tp)"/>'
+            . ($i === 1 ? '<rect x="' . ($x + 28) . '" y="' . ($y + 55.25) . '" width="11" height="2.5" rx="1.25" fill="#cbd5e1"/>'
+                        . '<rect x="' . ($x + 7) . '" y="' . ($y + 7) . '" width="16" height="6" rx="3" style="fill:var(--ts)"/><rect x="' . ($x + 10) . '" y="' . ($y + 9.25) . '" width="10" height="1.5" rx=".75" fill="#fff"/>' : '')
+            . '<rect x="' . ($x + 45) . '" y="' . ($y + 52) . '" width="18" height="9" rx="3" style="rx:var(--tbr);fill:var(--tp)"/>'
+            . '<path d="M' . ($x + 51) . ' ' . ($y + 56.5) . ' h6 M' . ($x + 54) . ' ' . ($y + 53.5) . ' v6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>';
+    }
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // the offer line above the header
+        . '<rect width="320" height="8" style="fill:var(--ts)"/><rect x="120" y="3" width="80" height="2" rx="1" fill="#fff" opacity=".75"/>'
+        // header: name, search, account, cart with its count
+        . '<circle cx="16" cy="18" r="4.5" style="fill:var(--tp)"/><rect x="24" y="15" width="28" height="6" rx="2" fill="#111827"/>'
+        . '<rect x="96" y="12.5" width="128" height="11" rx="5.5" style="fill:#f8fafc;stroke:var(--tbc);stroke-width:.75"/>'
+        . '<circle cx="104" cy="17.6" r="2.4" fill="none" stroke="#94a3b8" stroke-width="1"/><path d="M105.8 19.4 l1.8 1.8" stroke="#94a3b8" stroke-width="1" stroke-linecap="round"/>'
+        . '<rect x="112" y="16.8" width="44" height="2.4" rx="1.2" fill="#cbd5e1"/>'
+        . '<circle cx="262" cy="16" r="2.4" fill="none" stroke="#475569" stroke-width="1.1"/><path d="M257.6 23 q4.4 -4.6 8.8 0" fill="none" stroke="#475569" stroke-width="1.1" stroke-linecap="round"/>'
+        . '<path d="M279 15 h10 l-1 9 h-8 z" fill="none" stroke="#475569" stroke-width="1.1" stroke-linejoin="round"/><path d="M281.5 15 v-1.2 a2.5 2.5 0 0 1 5 0 v1.2" fill="none" stroke="#475569" stroke-width="1.1"/>'
+        . '<circle cx="290.5" cy="13" r="3.6" style="fill:var(--tp)"/><rect x="289.6" y="11.6" width="1.8" height="2.8" rx=".5" fill="#fff"/>'
+        . '<rect y="27.5" width="320" height="0.75" fill="#e5e7eb"/>'
+        // the categories
+        . '<rect x="18" y="31.5" width="22" height="3" rx="1.5" style="fill:var(--tp)"/><rect x="18" y="36.5" width="22" height="1" style="fill:var(--tp)"/>'
+        . '<rect x="50" y="31.5" width="26" height="3" rx="1.5" fill="#94a3b8"/><rect x="86" y="31.5" width="20" height="3" rx="1.5" fill="#94a3b8"/>'
+        . '<rect x="116" y="31.5" width="28" height="3" rx="1.5" fill="#94a3b8"/><rect x="154" y="31.5" width="18" height="3" rx="1.5" fill="#94a3b8"/>'
+        . '<rect y="37.5" width="320" height="0.75" fill="#e5e7eb"/>'
+        // the offer band: words, a button, a bag and a discount
+        . '<g style="filter:var(--tsh)"><rect x="12" y="44" width="296" height="42" rx="4" style="rx:var(--tr);fill:var(--tp)"/></g>'
+        . '<rect x="26" y="51" width="30" height="4" rx="2" fill="#fff" opacity=".6"/><rect x="26" y="59" width="96" height="7" rx="2" fill="#fff"/>'
+        . '<rect x="26" y="69" width="70" height="3" rx="1.5" fill="#fff" opacity=".7"/>'
+        . '<rect x="26" y="75" width="36" height="7" rx="3" style="rx:var(--tbr)" fill="#fff"/><rect x="32" y="77.75" width="24" height="1.5" rx=".75" style="fill:var(--tp)"/>'
+        . '<rect x="206" y="57" width="22" height="22" rx="2" fill="#fff" opacity=".35"/><path d="M211.5 57 v-3 a5.5 5.5 0 0 1 11 0 v3" fill="none" stroke="#fff" stroke-width="1.4" opacity=".6"/>'
+        . '<circle cx="268" cy="65" r="14" fill="#fff" opacity=".92"/>'
+        . '<circle cx="263.6" cy="60.6" r="2.2" fill="none" style="stroke:var(--tp)" stroke-width="1.4"/><circle cx="272.4" cy="69.4" r="2.2" fill="none" style="stroke:var(--tp)" stroke-width="1.4"/>'
+        . '<path d="M273.2 59 l-10.4 12" style="stroke:var(--tp)" stroke-width="1.6" stroke-linecap="round"/>'
+        // the products
+        . '<rect x="12" y="92" width="52" height="5" rx="2" fill="#111827"/><rect x="276" y="93" width="32" height="3" rx="1.5" style="fill:var(--tp)"/>'
+        . $cards
+        // footer: links, the payment marks
+        . '<rect y="176" width="320" height="24" fill="#f8fafc"/><rect y="176" width="320" height="0.75" fill="#e5e7eb"/>'
+        . '<rect x="12" y="184" width="50" height="3" rx="1.5" fill="#94a3b8"/><rect x="12" y="190" width="34" height="2.5" rx="1.25" fill="#cbd5e1"/>'
+        . '<rect x="236" y="183.5" width="14" height="9" rx="1.5" fill="#fff" stroke="#e5e7eb" stroke-width=".75"/><rect x="254" y="183.5" width="14" height="9" rx="1.5" fill="#fff" stroke="#e5e7eb" stroke-width=".75"/>'
+        . '<rect x="272" y="183.5" width="14" height="9" rx="1.5" fill="#fff" stroke="#e5e7eb" stroke-width=".75"/><rect x="290" y="183.5" width="14" height="9" rx="1.5" fill="#fff" stroke="#e5e7eb" stroke-width=".75"/>'
+        . '<circle cx="241" cy="188" r="2.2" style="fill:var(--tp)" opacity=".7"/><circle cx="244" cy="188" r="2.2" style="fill:var(--ts)" opacity=".7"/>'
+        . '<rect x="257" y="186.5" width="8" height="3" rx="1" fill="#94a3b8"/><rect x="275" y="186.5" width="8" height="3" rx="1" fill="#94a3b8"/><rect x="293" y="186.5" width="8" height="3" rx="1" fill="#94a3b8"/>';
 }

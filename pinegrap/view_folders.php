@@ -247,6 +247,10 @@ $explorer_lang = array(
     'file_read_only' => lang('Shown for reference only. This file cannot be edited here.'),
     'save_copy_as' => lang('Save a copy as {var:1}'),
     'home_page' => lang('Homepage'),
+    'draft' => lang('Draft'),
+    'draft_hint' => lang('Draft: not on the site. Visitors cannot open it.'),
+    'draft_status' => lang('Draft - not on the site'),
+    'live_on_site' => lang('Live on the site'),
     'archived' => lang('Archived'),
     'design_file' => lang('Design File'),
     'design_on' => lang('Mark as Design File'),
@@ -4635,8 +4639,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (item.kind === 'page') {
-            var icon = item.home ? 'bi-house-door-fill' : 'bi-window-fullscreen';
-            return '<span class="' + sizeClass + ' bi ' + icon + ' ' + item.access_control_type + '">' + badge + '</span>';
+            // A draft is a page kept off the site: its own picture, so it
+            // reads as one in every view, not only inside the drafts folder.
+            var icon = item.home ? 'bi-house-door-fill' : (item.draft ? 'bi-window-dash' : 'bi-window-fullscreen');
+            return '<span class="' + sizeClass + ' bi ' + icon + ' ' + item.access_control_type + '"' +
+                (item.draft ? ' title="' + esc(L.draft_hint) + '"' : '') + '>' + badge + '</span>';
         }
 
         if (item.is_image && withPicture) {
@@ -4732,6 +4739,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (item.kind === 'page' && item.home) { flags.push('<span class="bi bi-house text-success" title="' + esc(L.home_page) + '"></span>'); }
+        if (item.kind === 'page' && item.draft) { flags.push('<span class="badge rounded-pill text-bg-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft) + '</span>'); }
         if (item.archived) { flags.push('<span class="bi bi-archive" title="' + esc(L.archived) + '"></span>'); }
         if (item.kind === 'file' && item.design) { flags.push('<span class="bi bi-palette2" title="' + esc(L.design_file) + '"></span>'); }
         if (item.kind === 'file' && item.optimized) { flags.push('<span class="bi bi-check2-circle text-success" title="' + esc(L.optimized) + '"></span>'); }
@@ -5353,6 +5361,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var classes = '';
         if (state.selection[itemKey(item)]) { classes += ' selected'; }
         if (item.archived) { classes += ' archived'; }
+        if ((item.kind === 'page') && item.draft) { classes += ' page-draft'; }
         if (((item.kind === 'group') || (item.kind === 'product')) && (item.enabled === false)) { classes += ' catalog-off'; }
         if (item.kind === 'file' && item.design) { classes += ' design'; }
         if (item.erp && item.cancelled) { classes += ' erp-cancelled'; }
@@ -6558,6 +6567,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if ((item.kind === 'page') && !item.backup) {
+            rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.draft
+                ? '<span class="badge rounded-pill text-bg-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
+                : esc(L.live_on_site)) + '</td></tr>';
             rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
             rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + '</td></tr>';
             rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + '</td></tr>';

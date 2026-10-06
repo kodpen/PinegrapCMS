@@ -19,6 +19,209 @@
 
 
 
+  2026.4.7
+  ==========================================================
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Sayfalar taslak olarak saklanabiliyor. Editörde yeni
+         açılan sayfa (yeni sekme, sayfa kopyası, şablonun ya da
+         içe aktarılan HTML'nin sayfaları, yeni tasarımın ilk
+         sayfası) taslak olarak başlar. Taslak sayfada iki düğme
+         vardır: "Kaydet" sayfayı taslak olarak saklar, "Yayınla"
+         siteye koyar. Yayındaki sayfada tek düğme vardır,
+         "Yayınla". Taslak özel "Taslaklar" klasöründe durur:
+         ziyaretçiler açamaz (giriş ekranına yönlenir), site
+         haritasında ve site aramasında görünmez; yöneticiler
+         açabilir. Yayındaki bir sayfa sekme menüsündeki "Yayından
+         kaldır (taslak)", Yayınla düğmesinin yanındaki menü ya da
+         Sayfa Ayarları'ndaki "Taslak" anahtarıyla taslağa alınır;
+         "Bu sayfayı yayınla" onu eski klasörüne geri koyar. Aynı
+         menüden tasarımın tüm sayfaları bir kerede yayından
+         kaldırılıp yeniden yayınlanabilir; ana sayfa her durumda
+         yayında kalır. Taslak sayfanın sekmesinde "Taslak" yazar.
+         Taslak sayfanın ya da tasarımın kopyası da taslaktır;
+         yayınlanınca aslının klasörüne döner.
+
+  [ŞEMA] Taslaklar klasörü için config tablosuna draft_folder_id
+         sütunu, taslak sayfanın yayınlanınca döneceği klasörü
+         saklayan page_drafts tablosu eklenir.
+
+  [DÜZELTME] Görsel editörde bir öğeyi seçmek, hiçbir şey
+         değiştirilmeden sayfayı "kaydedilmemiş değişiklik"
+         durumuna düşürüyordu (sekmede nokta, çıkarken uyarı).
+         Öğe seçmek ve katmanları açıp kapatmak artık değişiklik
+         sayılmaz.
+
+  [DÜZELTME] Öznitelikler panelinde yazı tipinden gelen style
+         satırını silmek öğenin ilk özniteliğini de siliyordu.
+
+  [YENİ] Bileşen paletinin Bootstrap grubunda "Dil Seçici Düğme":
+         sitenin dillerini açılır menüde listeleyen bir düğme.
+         Düğmede ziyaretçinin okuduğu dil yazar; menüden bir dil
+         seçilince aynı sayfanın o dildeki sürümü açılır, adresteki
+         sorgu parametreleri korunur. Editörde gerçek bir düğme ve
+         açılır menü olarak görünür. Stil, anahat, boyut, dil adı ya
+         da kodu, ikon ve menü hizası Seçenekler panelinden seçilir.
+         Sitede tek etkin dil varken düğme sitede gösterilmez.
+
+  [DÜZELTME] "Şablondan Seç" penceresinde ve tasarım listesinde
+         "Online Mağaza" şablonunun resmi "Pinegrap'a merhaba deyin"
+         şablonununkiyle aynıydı. Artık bir mağaza vitrini gösteriyor
+         (arama ve sepetli üst bölüm, kampanya bandı, ürün kartları);
+         seçilen görünüme ve renk paletine uyuyor.
+
+  [YENİ] Görsel Sayfa Editörü listesinde her tasarımın yayın
+         durumu görünür: Yayında, Taslak ya da Kısmen yayında (kaç
+         sayfanın taslak olduğuyla). Satırdaki "Yayından kaldır"
+         tasarımın bütün sayfalarını taslağa alır, "Yayına al"
+         taslaklarını yeniden yayınlar; ana sayfa her durumda
+         yayında kalır. Tasarım o sırada editörde açıksa işlem
+         yapılmaz ve kimin açık tuttuğu söylenir.
+
+  [DÜZELTME] Editörün tuvalinde, örneğin bir metin yazılırken,
+         basılan Ctrl+S editöre ulaşmıyor, tarayıcının kendi
+         kaydetme penceresini açıyordu. Ctrl+S artık editörün her
+         yerinde ana düğmenin işini yapar: taslak sayfada Kaydet,
+         yayındaki sayfada Yayınla. Düğmenin ipucu da o anki adını
+         ve kısayolu gösterir.
+
+  [DÜZELTME] Bir widget'ta ya da ortak bileşende yapılıp henüz
+         kaydedilmemiş değişiklik, o widget'ı gösteren bir sayfanın
+         sekmesine geçilince (değişikliğin yapıldığı sayfaya geri
+         dönülünce de) sunucudaki hâline dönüyor ve kayboluyordu.
+         Şablondan açılan tasarımda bu, şablonun editöre bıraktığı
+         widget düzenlerini siliyordu: "Online Mağaza" şablonuyla
+         yapılmış bir tasarımda mağaza ve ürün sayfaları boş
+         kalabiliyor, üst banttaki sepet düğmesi görünmüyordu.
+         Kaydedilmemiş değişiklik artık kayda kadar korunur. Düzeni
+         bu yüzden boş kalmış bir şablon widget'ı editörde açılınca
+         varsayılan düzeniyle yüklenir ve bir uyarı çıkar; tasarım
+         kaydedilince sitede görünür.
+
+  [DÜZELTME] "Online Mağaza" şablonunda (1.0.1) ana sayfada ya da
+         mağaza sayfasında ürün sepete eklenince çıkan bildirimin
+         "Sepete git" bağlantısı şablonun kendi sepet sayfasını
+         açar. Önceden ziyaretçinin en son gördüğü sepet sayfasını
+         açıyordu; iki mağazalı bir sitede bu öteki mağazanın
+         sepeti olabiliyordu.
+
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [GÜVENLİK] Çeviriler ekranındaki metin araması ve dış API'deki
+         GET /translations/strings?search= aranan metni veritabanı
+         sorgusuna kaçışlamadan koyuyordu. Tırnak işareti içeren
+         bir arama sorguyu bozuyor, kötü niyetli bir arama ise
+         sorguyu değiştirebiliyordu. Arama artık güvenli.
+
+  [YENİ] Form liste ve form detay widget'larında "İçerikler
+         çeviriye dahil olsun" seçeneği (birden çok dili olan
+         sitede görünür). Açıksa formun kayıtlarındaki metinler
+         (bir blog yazısının başlığı, özeti ve gövdesi) Çeviriler
+         ekranında Formlar grubuna girer, çeviri motorlarına
+         gönderilir ve dil sayfalarında çevrilmiş gösterilir.
+         Kapalıyken (varsayılan) kayıtlar yazıldıkları dilde kalır.
+
+  [YENİ] Görsel editörün Seçenekler panelindeki Çeviri bölümü site
+         yöneticilerine ve sayfada içerik düzenleme yetkisi olan
+         kullanıcılara da açıldı: metnini düzenleyebildikleri
+         öğenin çevirisini panelde görüp düzenleyebilir ve
+         onaylayabilirler. Kullanıcılar yalnız düzenledikleri
+         sayfanın metinlerinin çevirisini değiştirebilir; Çeviriler
+         ekranı yöneticilerde kalır.
+         Aynı metin düzenleyemedikleri bir yerde de (başka bir
+         sayfada, ortak bileşende, menüde) geçiyorsa çevirisi
+         panelde salt okunur görünür: bir metnin çevirisi her
+         yerde aynıdır.
+
+  [DÜZELTME] Katalog widget'ındaki "Görüntüle / Genişlet" düğme
+         yazıları dil sayfalarında çevrilmiyordu (örneğin /ko/
+         mağazada Türkçe kalıyordu). Artık Çeviriler ekranında
+         listelenir ve çevrilir; Seçenekler panelinden de
+         çevrilebilir.
+
+  [DÜZELTME] Yorum alanında sayfanın yorum etiketi çevrilmiyordu;
+         dil sayfasında "Add Yorum" ya da "... when a yorum is
+         added" gibi karışık metinler çıkıyordu. Etiket artık
+         sayfanın metinleriyle birlikte çevrilir.
+
+  [YENİ] Dil dosyası olmayan dillerde yazılımın kendi metinleri
+         (yorum alanının düğmeleri ve etiketleri, iletiler gibi)
+         Çeviriler ekranındaki yeni "Arayüz metinleri" grubunda
+         çevrilebilir. Yazılım Türkçe ve İngilizce dil dosyalarıyla
+         gelir; siteye eklenen başka bir dilin sayfalarında bu
+         metinler İngilizce kalıyordu. Bir metin, o dildeki bir
+         sayfada bir ziyaretçiye gösterildiğinde gruba girer;
+         çevrilene kadar İngilizcesi görünür. Dil dosyası olan
+         dillerde dosya geçerlidir, grup listelenmez.
+
+  [DÜZELTME] "Lorem ipsum" gibi yer tutucu metinler artık çeviriye
+         girmez: Çeviriler ekranında listelenmez, çeviri motorlarına
+         gönderilmez, her dilde yazıldığı gibi görünür. Çeviri
+         motorları bu metinlere yarı Latince, yarı uydurma
+         sözcüklerle karşılık veriyordu.
+
+  DIŞ API
+  --------------------------------------------------------
+
+  [YENİ] POST /translations/refresh: sayfaların metinleri yeniden
+         okunur (tek sayfa, katalog, formlar ya da tüm site) ve
+         her dilde kaç metnin çeviri beklediği döner. Metinler
+         şimdiye kadar yalnız Çeviriler ekranındaki "Çevirileri
+         güncelle" ile ya da kaydedince çeviri açıkken okunuyordu;
+         API'yi kullanan bir çeviri aracı eski listeyi görebiliyordu.
+
+  [YENİ] POST /translations/status: çeviriler metin gönderilmeden
+         gözden geçirildi ya da makine çevirisi yapılır, ya da
+         kaldırılıp yeniden çeviri bekler hâle getirilir. all ile
+         Çeviriler ekranındaki "Tümünü onayla" API'den de
+         yapılabilir (şüpheli işaretliler hariç).
+
+  [YENİ] Sözlük API'de: GET /translations/glossary terimleri okur,
+         POST /translations/glossary terim ekler ya da değiştirir
+         (aynı dildeki aynı terim ikinci kez eklenmez). Terim
+         silme Çeviriler ekranında kalır.
+
+  [YENİ] GET /translations/strings katalog ya da formlarla
+         daraltılabilir (group) ve her metin nerede kullanıldığını
+         (sayfa, bileşen, ürün ya da form; alan; önceki ve sonraki
+         metin) ve ifadesi değiştiyse eski ifadeyle çevirisini
+         birlikte verir.
+
+  [DÜZELTME] API Belgeleri'ndeki "OpenAPI" bağlantısının indirdiği
+         belgede ürün, sipariş, sayfa gibi çekirdek nesnelerin
+         tanımları yoktu; Postman ve Swagger belgeyi kabul
+         etmiyordu. integration.php/openapi.json etkilenmiyordu.
+
+  [DÜZELTME] OpenAPI belgesi artık gövde alanlarının açıklamalarını,
+         liste alanlarının öğe türünü (ör. group_ids bir sayı
+         listesi) ve üst sınırını, seçmeli ve evet/hayır alanların
+         varsayılanlarını, 400, 409 ve 503 yanıtlarını da içeriyor.
+         ERP faturasındaki e-belge gönderim zamanının geçersiz
+         türü düzeltildi; belge OpenAPI doğrulayıcılarından
+         geçiyor.
+
+  DOSYA YÖNETİCİSİ
+  --------------------------------------------------------
+
+  [YENİ] Taslak sayfalar dosya yöneticisinde ayırt edilir: kendi
+         simgeleri ve "Taslak" etiketiyle görünürler; ayrıntılarda
+         "Durum: Taslak (sitede yayında değil)" yazar. Yayındaki
+         sayfanın durumu "Yayında"dır.
+
+  PANEL
+  --------------------------------------------------------
+
+  [DÜZELTME] Hesap menüsünde profil resmi ya da ad isteyen kutu
+         göründüğü sürece, imleç bir formun içinde değilken basılan
+         Ctrl+S ekranın kendi formunu değil o kutuyu kaydetmeye
+         çalışıyordu; kutunun Kaydet düğmesinde de "Ctrl+S" ipucu
+         çıkıyordu. Kutu artık kısayolun dışında.
+
+
+
   2026.4.6
   ==========================================================
 

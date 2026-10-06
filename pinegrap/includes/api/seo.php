@@ -22,7 +22,7 @@
 // ago each half was examined, which is the part a client needs in order to know
 // whether its own change has been taken into account yet.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

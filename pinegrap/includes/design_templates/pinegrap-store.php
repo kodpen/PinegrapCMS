@@ -480,6 +480,9 @@ $home_listing = function ($group, $card, $row_class = '', $gutter = '4') use ($w
             'order_by_direction'       => 'ASC',
             'detail_page_id'           => '{{tab:product}}',
             'add_to_cart_stay_on_page' => true,
+            // The notice after an add names this store's cart, not the one
+            // the visitor happened to see last on a site with two shops.
+            'add_to_cart_next_page_id' => '{{tab:cart}}',
             'empty_message'            => lang('Product not found.'),
         ),
         'tree'     => $widget_root(array(
@@ -1135,6 +1138,7 @@ $widgets = array(
             'items_per_page'           => 12,
             'detail_page_id'           => '{{tab:product}}',
             'add_to_cart_stay_on_page' => true,
+            'add_to_cart_next_page_id' => '{{tab:cart}}',
             'empty_message'            => lang('Product not found.'),
         ),
         'tree'     => 'starter',
@@ -1566,10 +1570,13 @@ $catalog = array(
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',
+    // The picture on the template's card and beside the designs made from
+    // it: a shop front (pg_design_thumb_svg()).
+    'thumb'       => 'store',
     'requires'    => 'ecommerce',
     'description' => lang('A shop front: a home page that shows four categories in four layouts, a menu that opens the categories, the shop with filters, one product page, cart, checkout and account pages, a help page and a newsletter.'),
 

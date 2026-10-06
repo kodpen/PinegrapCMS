@@ -2272,6 +2272,9 @@ function get_comment_label($properties)
     }
     if ($label == '') {
         $label = lang('Comment');
+    } elseif (function_exists('pg_tr_label')) {
+        // The page's own label, in the language the page is served in.
+        $label = pg_tr_label($label);
     }
     if (isset($number)) {
         $label = pluralize(array(
@@ -2833,6 +2836,8 @@ function url_exists($url)
 //   echo lang(array('string' => 'Welcome {var:1|c}', 'vars' => array('john doe'))); // capitalize variable
 //   echo lang(array('string' => 'Count: {var:1}', 'vars' => 5));
 //   $lang = lang(array('info' => true)); // returns enforced or configured SOFTWARE_LANGUAGE (e.g. 'en' or 'tr')
+//   echo lang(array('string' => 'Save', 'language' => 'tr')); // one language explicitly
+//   $tr = lang(array('string' => 'Save', 'language' => 'tr', 'if_known' => true)); // the file's wording, null when it has none
 //
 // Notes:
 // - Works on PHP 7.0 up to PHP 8.5.
@@ -2916,8 +2921,10 @@ function lang($properties = false)
     // Determine selected language (en default). A front-end page drawn in
     // another language comes first: the enforced language is the panel's.
     $selected_software_language = 'en';
+    $frontend_language_selected = false;
     if (defined('FRONTEND_LANGUAGE') && FRONTEND_LANGUAGE && !(function_exists('pg_tr_suspend') && pg_tr_suspend())) {
         $selected_software_language = FRONTEND_LANGUAGE;
+        $frontend_language_selected = true;
     } elseif (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWARE_LANGUAGE) {
         $selected_software_language = ENFORCEMENT_SOFTWARE_LANGUAGE;
     } elseif (defined('SOFTWARE_LANGUAGE') && SOFTWARE_LANGUAGE) {
@@ -2929,6 +2936,7 @@ function lang($properties = false)
     if (is_array($properties) && isset($properties['language']) && is_string($properties['language'])
         && preg_match('/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/', $properties['language'])) {
         $selected_software_language = $properties['language'];
+        $frontend_language_selected = false;
     }
 
     // Load translations for language (cache)
@@ -2963,9 +2971,22 @@ function lang($properties = false)
         }
     }
 
+    // if_known: the wording the language's file has for the string, or null
+    // when the file does not know it - nothing filled in.
+    if (is_array($properties) && !empty($properties['if_known'])) {
+        return isset($translations[$selected_software_language][$string]) ? $translations[$selected_software_language][$string] : null;
+    }
+
     // If translation exists, replace string
     if (isset($translations[$selected_software_language][$string])) {
         $string = $translations[$selected_software_language][$string];
+    } elseif ($frontend_language_selected && function_exists('pg_tr_ui_text')) {
+        // A front-end page in a language with no language file: the site's
+        // own translation of the wording, while it has one.
+        $ui_template = pg_tr_ui_text($string);
+        if ($ui_template !== null) {
+            $string = $ui_template;
+        }
     }
 
 

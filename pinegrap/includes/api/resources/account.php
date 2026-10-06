@@ -17,7 +17,7 @@
 // operator has given it the account permission - an integration syncing stock
 // has no business reading its owner's bell.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

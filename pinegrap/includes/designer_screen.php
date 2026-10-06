@@ -159,6 +159,7 @@ function pg_designer_screen_render($ctx)
             'page_id'               => (int)$p['page_id'],
             'page_name'             => (string)$p['page_name'],
             'page_folder'           => (int)$p['page_folder'],
+            'page_draft'            => (int)(isset($p['page_draft']) ? $p['page_draft'] : 0),
             'page_title'            => (string)$p['page_title'],
             'page_meta_description' => (string)$p['page_meta_description'],
             'page_search'           => (int)$p['page_search'],
@@ -195,6 +196,10 @@ function pg_designer_screen_render($ctx)
             'page_id'               => 0,
             'page_name'             => '',
             'page_folder'           => 0,
+            // A page the editor creates starts as a draft (Save keeps it
+            // off the site, Publish puts it on) where drafts exist and the
+            // operator decides them.
+            'page_draft'            => ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? 1 : 0,
             'page_title'            => '',
             'page_meta_description' => '',
             'page_search'           => 1,
@@ -266,6 +271,16 @@ function pg_designer_screen_render($ctx)
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
+        // Drafts (2026.4.7): whether pages can be kept off the site, and
+        // whether this operator decides it (designers; a content-level
+        // operator sees the state only).
+        'drafts'        => array(
+            'ready'     => pg_page_draft_ready(),
+            'canChange' => pg_page_draft_ready() && ($access === PG_DESIGNER_ACCESS_FULL),
+        ),
+        // The site's languages, source first: what the language switcher
+        // component lists on the canvas (pg_language_switcher_editor_languages()).
+        'siteLanguages' => pg_language_switcher_editor_languages(),
         'autoImport'    => !empty($ctx['auto_import']),
         'autoPasteHtml' => !empty($ctx['auto_paste']),
         // What the design is built on (pg_design_frameworks()). The editor
@@ -331,7 +346,9 @@ function pg_designer_screen_render($ctx)
         <main id="content" style="padding:0; max-width:100%;">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
-            <form id="style_designer_form" name="style_designer_form" action="' . $form_action . '" method="post" style="height:100%;">
+            <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
+                 main button says on the page on screen (style_designer.js). -->
+            <form id="style_designer_form" name="style_designer_form" class="disable_shortcut" action="' . $form_action . '" method="post" style="height:100%;">
                 ' . get_token_field() . '
                 ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id')) . '
                 ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to')) . '
@@ -407,6 +424,24 @@ function pg_designer_screen_render($ctx)
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
                             <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . lang('Publish') . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
+                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? '<!-- A draft page has two actions: the main button saves it
+                                 (it stays a draft), this one puts it on the
+                                 site. Hidden while the page on screen is on
+                                 the site. -->
+                            <button type="button" id="sd-publish-page" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn d-none" title="' . h(lang('Publishes this page and saves the design.')) . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
+                            <!-- Draft or on the site: this page, or every page of the design.
+                                 Each item sets the state and saves, the same
+                                 save the main button makes. -->
+                            <div class="dropdown sd-publish-more">
+                                <button type="button" id="sd-publish-more" class="sd-icon-btn sd-icon-btn-primary sd-publish-more-btn" data-bs-toggle="dropdown" aria-expanded="false" title="' . h(lang('Publishing options')) . '" aria-label="' . h(lang('Publishing options')) . '"><span class="bi bi-chevron-down" aria-hidden="true"></span></button>
+                                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                                    <li><button type="button" class="dropdown-item" data-sd-status="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . lang('Save this page as a draft') . '</button></li>
+                                    <li><button type="button" class="dropdown-item" data-sd-status="page-publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . lang('Publish this page') . '</button></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><button type="button" class="dropdown-item" data-sd-status="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . lang('Take every page of the design off the site') . '</button></li>
+                                    <li><button type="button" class="dropdown-item" data-sd-status="all-publish"><span class="bi bi-cloud-check me-2" aria-hidden="true"></span>' . lang('Publish every page of the design') . '</button></li>
+                                </ul>
+                            </div>' : '') . '
                             <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
                         </div>
                     </div>
@@ -549,6 +584,17 @@ function pg_designer_list_designs()
         $rows[$i]['template'] = '';
         $rows[$i]['look'] = '';
         $rows[$i]['palette'] = '';
+        $rows[$i]['draft_count'] = 0;
+        $rows[$i]['home_count'] = 0;
+    }
+    // Off the site and on it: the drafts and the home page of each design,
+    // for the Status column.
+    if ($rows && function_exists('pg_designer_design_draft_counts')) {
+        $by_style = pg_designer_design_draft_counts(array_map(function ($r) { return (int)$r['style_id']; }, $rows));
+        foreach ($rows as $i => $r) {
+            $c = isset($by_style[(int)$r['style_id']]) ? $by_style[(int)$r['style_id']] : null;
+            if ($c) { $rows[$i]['draft_count'] = $c['drafts']; $rows[$i]['home_count'] = $c['home']; }
+        }
     }
     // The template a design started from, its look and its palette: the
     // thumbnail beside the name and the Theme column.
@@ -571,15 +617,58 @@ function pg_designer_list_designs()
 }
 
 /**
+ * The Status cell of a design on the designs list: on the site, a draft, or
+ * partly on the site, and the buttons that take every page off the site or
+ * put the drafts back on it (api.php designer/design_publish). The home page
+ * stays on the site, so a design that holds it is a draft without it.
+ *
+ * @param array $d          a pg_designer_list_designs() row
+ * @param bool  $can_change the operator decides drafts
+ * @return string
+ */
+function pg_designer_list_status_cell($d, $can_change)
+{
+    $c = array('pages' => (int)$d['page_count'], 'drafts' => (int)$d['draft_count'], 'home' => (int)$d['home_count']);
+    $s = pg_designer_design_state($c);
+
+    if ($s['state'] === 'empty') return '<span class="text-body-secondary">—</span>';
+
+    if ($s['state'] === 'live') {
+        $html = '<span class="badge rounded-pill text-bg-success"><i class="bi bi-broadcast me-1" aria-hidden="true"></i>' . lang('Live on the site') . '</span>';
+    } elseif ($s['state'] === 'draft') {
+        $html = '<span class="badge rounded-pill text-bg-secondary"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . lang('Draft') . '</span>'
+              . ($c['home'] > 0 ? '<div class="small text-body-secondary mt-1">' . lang('The home page stays on the site.') . '</div>' : '');
+    } else {
+        $html = '<span class="badge rounded-pill text-bg-warning"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>' . lang('Partly on the site') . '</span>'
+              . '<div class="small text-body-secondary mt-1">' . lang(array('string' => '{var:1} of {var:2} pages are drafts', 'vars' => array($c['drafts'], $c['pages']))) . '</div>';
+    }
+
+    if ($can_change && pg_page_draft_ready()) {
+        $name = h($d['style_name']);
+        $buttons = '';
+        if ($s['offable'] > 0) {
+            $buttons .= '<button type="button" class="btn btn-sm btn-outline-secondary sd-design-status" data-style-id="' . (int)$d['style_id'] . '" data-name="' . $name . '" data-draft="1" data-count="' . $s['offable'] . '"><i class="bi bi-cloud-slash me-1" aria-hidden="true"></i>' . lang('Take off the site') . '</button>';
+        }
+        if ($c['drafts'] > 0) {
+            $buttons .= '<button type="button" class="btn btn-sm btn-outline-success sd-design-status" data-style-id="' . (int)$d['style_id'] . '" data-name="' . $name . '" data-draft="0" data-count="' . $c['drafts'] . '"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . lang('Put on the site') . '</button>';
+        }
+        if ($buttons !== '') $html .= '<div class="d-flex flex-wrap gap-1 mt-2">' . $buttons . '</div>';
+    }
+
+    return $html;
+}
+
+/**
  * The thumbnail beside a design's name: its template's picture in the
  * design's own look and colours. A design started blank or imported has no
  * picture of its own; it gets an empty frame so the column stays even.
  */
 function pg_designer_list_thumb($d)
 {
-    if (!empty($d['template']) && !empty($d['framework_bootstrap']) && function_exists('pg_design_thumb_svg') && pg_design_template($d['template'])) {
+    $tpl = !empty($d['template']) ? pg_design_template($d['template']) : null;
+    if ($tpl && !empty($d['framework_bootstrap']) && function_exists('pg_design_thumb_svg')) {
         return '<span class="sd-design-thumb" title="' . h(pg_designer_list_theme_text($d)) . '">'
-             . pg_design_thumb_svg($d['look'], $d['palette'], '', lang(array('string' => 'Preview of {var:1}', 'vars' => $d['style_name'])))
+             . pg_design_thumb_svg($d['look'], $d['palette'], '', lang(array('string' => 'Preview of {var:1}', 'vars' => $d['style_name'])), isset($tpl['thumb']) ? (string)$tpl['thumb'] : '')
              . '</span>';
     }
     return '<span class="sd-design-thumb-blank" aria-hidden="true"><i class="bi bi-file-earmark"></i></span>';
@@ -663,6 +752,7 @@ function pg_designer_start_screen($ctx)
             <td class="align-middle sd-design-thumb-cell">' . pg_designer_list_thumb($d) . '</td>
             <td class="align-middle" nowrap>' . h($d['framework_label']) . '</td>
             <td class="align-middle text-center" data-order="' . $count . '">' . pg_format_number($count, 0) . '</td>
+            <td class="align-middle sd-design-status-cell" data-order="' . (int)$d['draft_count'] . '">' . pg_designer_list_status_cell($d, $can_create) . '</td>
             <td class="align-middle">' . pg_designer_list_theme_label($d) . '</td>
             <td class="align-middle" nowrap data-order="' . (int)$d['last_modified_timestamp'] . '">' . get_relative_time(array('timestamp' => (int)$d['last_modified_timestamp'])) . '  ' . h($user_label) . '</td>
         </tr>';
@@ -739,6 +829,7 @@ function pg_designer_start_screen($ctx)
                                 <th class="no-sort">' . lang('Preview') . '</th>
                                 <th>' . lang('Framework') . '</th>
                                 <th class="text-center">' . lang('Pages') . '</th>
+                                <th>' . lang('Status') . '</th>
                                 <th>' . lang('Theme') . '</th>
                                 <th nowrap>' . lang('Last Modified') . '</th>
                             </tr>
@@ -777,6 +868,53 @@ function pg_designer_start_screen($ctx)
                 };
                 if (typeof window.pgConfirm === "function") {
                     window.pgConfirm({ title: ' . json_encode(lang('Delete Design')) . ', message: msg, confirmText: ' . json_encode(lang('Yes, delete')) . ', cancelText: ' . json_encode(lang('No')) . ', variant: "danger" })
+                        .then(function (ok) { if (ok) run(); });
+                } else if (window.confirm(msg)) { run(); }
+            });
+
+            // Take every page of a design off the site, or put its drafts
+            // back on it, from its row. The home page stays on the site. The
+            // answer brings the row\'s new Status cell.
+            document.addEventListener("click", function (e) {
+                var btn = e.target.closest(".sd-design-status");
+                if (!btn) return;
+                e.preventDefault();
+                var id = parseInt(btn.dataset.styleId, 10), off = (btn.dataset.draft === "1"), n = parseInt(btn.dataset.count, 10) || 0;
+                var name = btn.dataset.name || "";
+                var msg = off
+                    ? ' . json_encode(lang('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.')) . '.replace("{var}", n) + " " + ' . json_encode(lang('The home page stays on the site.')) . '
+                    : ' . json_encode(lang('The {var} draft pages of the design will be put on the site: visitors will be able to open them.')) . '.replace("{var}", n);
+                var run = function () {
+                    var cell = btn.closest("td");
+                    cell.querySelectorAll(".sd-design-status").forEach(function (b) { b.disabled = true; });
+                    fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                           body: JSON.stringify({ action: "designer", sub_action: "design_publish", style_id: id, draft: off ? 1 : 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || res.status !== "success") {
+                            cell.querySelectorAll(".sd-design-status").forEach(function (b) { b.disabled = false; });
+                            if (typeof pgToast === "function") pgToast({ message: (res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . ', variant: "danger" });
+                            else alert((res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . ');
+                            return;
+                        }
+                        cell.innerHTML = res.cell || "";
+                        if (typeof res.drafts !== "undefined") cell.setAttribute("data-order", String(res.drafts));
+                        var table = cell.closest("table");
+                        if (table && window.jQuery && jQuery.fn.dataTable && jQuery.fn.dataTable.isDataTable(table)) {
+                            jQuery(table).DataTable().row(cell.closest("tr")).invalidate("dom");
+                        }
+                        if (typeof pgToast === "function") pgToast({ message: res.message, variant: "success" });
+                    })
+                    .catch(function () {
+                        cell.querySelectorAll(".sd-design-status").forEach(function (b) { b.disabled = false; });
+                        alert(' . json_encode(lang('Network error.')) . ');
+                    });
+                };
+                var title = name + " — " + (off ? ' . json_encode(lang('Take off the site')) . ' : ' . json_encode(lang('Put on the site')) . ');
+                if (typeof window.pgConfirm === "function") {
+                    window.pgConfirm({ title: title, message: msg,
+                                       confirmText: off ? ' . json_encode(lang('Yes, make it a draft')) . ' : ' . json_encode(lang('Put on the site')) . ',
+                                       cancelText: ' . json_encode(lang('No')) . ', variant: off ? "warning" : "success" })
                         .then(function (ok) { if (ok) run(); });
                 } else if (window.confirm(msg)) { run(); }
             });
@@ -882,7 +1020,7 @@ function pg_designer_template_modal($templates, $from_pages)
     foreach ((array)$templates as $tpl) {
         $s = pg_design_template_summary($tpl);
         $thumb = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
-            ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name']))) . '</div>'
+            ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name'])), $s['thumb']) . '</div>'
             : '';
         // The theme the template is made for: offered on the card, applied
         // to the picker above only when the operator asks. The picker is
@@ -1062,6 +1200,17 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
     $liveform = $ctx['liveform'];
     $user     = $ctx['user'];
 
+    // The drafts folder is not a place to publish a page to: a draft is a
+    // state, set with the switch below the list. Only its own row goes; a
+    // folder somebody made inside it keeps its row, or a page living there
+    // would open with no folder selected and be moved by the next save.
+    $folder_options = select_folder(0);
+    $draft_folder_id = pg_page_draft_folder_id(false);
+
+    if ($draft_folder_id > 0) {
+        $folder_options = preg_replace('~<option value="' . $draft_folder_id . '"[^>]*>[^<]*</option>~', '', $folder_options, 1);
+    }
+
     return '
         <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-fullscreen">
@@ -1157,9 +1306,14 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                                     <div class="mb-3">
                                         <label class="form-label small">' . lang('Page Folder') . '</label>
                                         <select name="page_folder" id="pg_page_folder" class="form-select form-select-sm sd-page-field" data-page-key="page_folder" style="background-color:#0d1117; color:#c9d1d9; border-color:#30363d;">
-                                            ' . select_folder(0) . '
+                                            ' . $folder_options . '
                                         </select>
                                     </div>
+                                    ' . ((pg_designer_is_full($user) && pg_page_draft_ready()) ? '<div class="form-check form-switch mb-0">
+                                        <input class="form-check-input sd-page-field" type="checkbox" id="pg_page_draft" value="1" data-page-key="page_draft">
+                                        <label class="form-check-label small" for="pg_page_draft">' . lang('Draft - not on the site') . '</label>
+                                        <small class="form-text d-block">' . lang('A draft is kept in the private Drafts folder: visitors cannot open it, administrators can. Once published it goes back to the folder above. Applied when the design is published.') . '</small>
+                                    </div>' : '') . '
                                 </div>
 
                                 <div class="sd-settings-group">
@@ -1636,7 +1790,9 @@ function pg_designer_screen_post($ctx)
         }
         $r = pg_designer_save_page($style_id, $p, $user, false);
         if ($r['ok']) {
-            $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id']);
+            // `draft`: the state the page ended up in, which is not always
+            // the one asked for (the home page stays on the site).
+            $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => !empty($r['draft']) ? 1 : 0);
             // The page's form. Its fields are the controls its custom_form
             // widget draws, read from the widget tree the editor flushed just
             // before this request; the editor sends only the form-level

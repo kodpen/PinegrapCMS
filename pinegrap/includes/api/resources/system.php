@@ -26,7 +26,7 @@
 // the panel would show, which is the honest one; it does not get a freshly
 // computed site scan every minute, which no site would survive.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 	exit;
 

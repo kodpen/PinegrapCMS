@@ -25,7 +25,7 @@
 // application put a change in front of the people who build the site, not
 // make one.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

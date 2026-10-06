@@ -35,7 +35,7 @@
 // panel does not, and two people at one address is a real thing. An integration
 // that wants an upsert looks first with GET /customers?email=.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

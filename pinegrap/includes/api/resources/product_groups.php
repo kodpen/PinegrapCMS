@@ -23,7 +23,7 @@
 // Read only. Groups are how the shop's own navigation is built, and an
 // integration reshaping them would move pages around on the live site.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

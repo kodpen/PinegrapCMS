@@ -209,8 +209,10 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             // Empty string is a legitimate choice — the designer may want no
             // caption at all (icon-only button), so we do NOT fall back to a
             // default here. The property panel seeds the defaults instead.
-            'detail' => isset($node['props']['_labelDetail']) ? (string)$node['props']['_labelDetail'] : '',
-            'expand' => isset($node['props']['_labelExpand']) ? (string)$node['props']['_labelExpand'] : '',
+            // On a page served in another language the captions are read in
+            // it (pg_tr_node_fields() extracts them).
+            'detail' => isset($node['props']['_labelDetail']) ? (string)pg_tr_text((string)$node['props']['_labelDetail']) : '',
+            'expand' => isset($node['props']['_labelExpand']) ? (string)pg_tr_text((string)$node['props']['_labelExpand']) : '',
         );
         $node['props']['_bindings']['text'] = $tok;
         $bindings = $node['props']['_bindings'];

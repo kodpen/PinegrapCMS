@@ -26,7 +26,7 @@
 // field two systems change at the same moment, and it has to be adjusted by the
 // database rather than read into PHP and written back.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

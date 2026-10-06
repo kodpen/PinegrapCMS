@@ -12,7 +12,7 @@ Pinegrap CMS, LiveSite temeli üzerine inşa edilmiş açık kaynaklı bir içer
 
 ## Genel Bakış
 
-Pinegrap CMS; kurumsal web sitelerini, e-ticareti, kullanıcı yetkilerini ve özel dinamik içeriği yönetmek için tasarlanmış güçlü bir sistemdir. Paylaşımlı bir cPanel hosting'den özel bir IIS sunucusuna kadar, eski ve modern web ortamlarında yüksek güvenilirlikle çalışır.
+Pinegrap CMS; kurumsal web sitelerini, e-ticareti, kullanıcı yetkilerini ve özel dinamik içeriği yönetmek için tasarlanmış güçlü bir sistemdir. Paylaşımlı bir cPanel hosting'den özel bir IIS sunucusuna kadar, eski ve modern web ortamlarında yüksek güvenilirlikle çalışır. Yerleşik web uygulama güvenlik duvarı ve bot denetimi, eklenti ya da dış hizmet kurmadan her siteyi ilk istekten itibaren korur.
 
 ### Gururla Monolitik
 
@@ -28,6 +28,7 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 * **Geniş Uyumluluk:** PHP 7.1'den PHP 8.5'e kadar sorunsuz çalışır.
 * **Sunucu Desteği:** Apache, Nginx ve Microsoft IIS ile uyumludur (otomatik yönlendirme ve `.htaccess` / `web.config` rewrite desteği dahil).
 * **Hepsi Bir Arada:** Web sitesi, görsel sayfa editörü, e-ticaret, ERP, ekip çalışma alanı ve dış API tek kod tabanında.
+* **Yerleşik Güvenlik Duvarı ve Bot Denetimi:** Her isteğin önünde saldırı imzaları, hız sınırları ve otomatik yasaklar; gerçek arama motorları doğrulanır, sahte tarayıcılar, kazıyıcılar, yapay zekâ eğitim botları ve saldırı araçları geri çevrilir.
 * **Çok Dilli Ön Yüz:** Görsel editörde yapılmış sayfalar, kopyalanmadan, sanal bir dil dizininden başka dillerde sunulur.
 
 ---
@@ -91,7 +92,9 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 
 **Güvenlik**
 
-* Yerleşik Web Uygulama Güvenlik Duvarı (WAF): imza taraması, hız sınırlama, IP itibarı, bot sınıflandırma ve IPv6 destekli IP yasakları
+* **Yerleşik Web Uygulama Güvenlik Duvarı (WAF):** SQL enjeksiyonu, XSS, dizin aşma, uzaktan kod çalıştırma ve protokol kötüye kullanımı için imza taraması; genel, giriş / ödeme ve API hız sınırları, eşzamanlı istek sınırı, otomatik geçici yasaklar ve IPv6'yı (/64) anlayan izin / engel listeleri. İzleme kipinde başlar: engellemeye geçmeden önce günlükte neyin durdurulacağı görülür. Hata durumunda açık kalır: güvenlik duvarındaki bir hata siteyi asla düşürmez
+* **Bot denetimi:** arama motoru tarayıcıları ters ve ileri DNS ile doğrulanır, sahte bir "Googlebot" yakalanır; yapay zekâ asistanları yayımladıkları IP aralıklarıyla denetlenir, yapay zekâ yanıtlarında ve aramasında görünmek için ayrı anahtarlar vardır; saldırgan tarayıcılar, yapay zekâ eğitim tarayıcıları, saldırı araçları (sqlmap, Nikto, …) ve betik istemcileri engellenebilir
+* Güvenlik başlıkları ve ihlal raporlu İçerik Güvenliği Politikası (CSP); Cloudflare ve güvenilir proxy arkasında gerçek ziyaretçi IP'si çözülür
 * CSRF token'ları, rol tabanlı erişim (Yönetici / Tasarımcı / Müdür / Kullanıcı), geliştirici PIN kilidi
 * TLS doğrulamalı güncelleme kanalı — güncelleme paketleri sertifika doğrulaması olmadan asla kabul edilmez — ve GitHub'daki sürüm etiketine karşı dosya bütünlüğü denetimi
 

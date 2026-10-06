@@ -1522,6 +1522,296 @@ function pg_recycle_bin_folder_ids()
     return $ids;
 }
 
+/* ---------------------------------------------------------------------------
+   Drafts: a visual page taken off the site
+   ---------------------------------------------------------------------------
+   A draft is a page moved into one private folder. Everything that already
+   respects folder access - the router, the site map, the site search -
+   keeps visitors out of it, while an administrator, a designer or a manager
+   can still open it (check_view_access()). page_drafts remembers the folder
+   the page is published to again; the editor shows that folder as the
+   page's folder throughout, so the state and the place stay two settings. */
+
+/**
+ * Whether the drafts schema (2026.4.7) is in place: the config column and
+ * the page_drafts table arrive in one step. Probed with raw queries, so a
+ * site that has not run the upgrade reads "no" instead of failing.
+ */
+function pg_page_draft_ready($recheck = false)
+{
+    static $cached = null;
+
+    if (($cached !== null) && !$recheck) return $cached;
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) return false;
+
+    $column = @mysqli_query(db::$con, "SHOW COLUMNS FROM config WHERE Field = 'draft_folder_id'");
+    $table  = @mysqli_query(db::$con, "SHOW COLUMNS FROM page_drafts WHERE Field = 'folder_id'");
+
+    $cached = ($column && (@mysqli_num_rows($column) == 1) && $table && (@mysqli_num_rows($table) == 1));
+
+    return $cached;
+}
+
+/**
+ * The private folder drafts are kept in, created on first use when $create
+ * is set. 0 before the upgrade, or while there is none.
+ */
+function pg_page_draft_folder_id($create = false)
+{
+    static $cached = 0;
+
+    if (!pg_page_draft_ready()) return 0;
+    if ($cached > 0) return $cached;
+
+    $id = (int)db_value("SELECT draft_folder_id FROM config");
+
+    // A folder deleted by hand, or sent to the recycle bin, is no drafts
+    // folder: a stale id would make an unrelated folder that later gets the
+    // id hide its pages, and a binned one would hide the drafts with it.
+    if ($id > 0 && (!db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '$id'") || in_array($id, pg_recycle_bin_folder_ids(), true))) {
+        $id = 0;
+    }
+
+    if ($id > 0) {
+        $cached = $id;
+        return $id;
+    }
+
+    if (!$create) return 0;
+
+    $root_id    = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+    $root_level = (int)db_value("SELECT folder_level FROM folder WHERE folder_id = '$root_id'");
+
+    db("INSERT INTO folder (
+            folder_name,
+            folder_parent,
+            folder_level,
+            folder_order,
+            folder_access_control_type,
+            folder_archived,
+            folder_style,
+            mobile_style_id,
+            folder_timestamp,
+            folder_user)
+        VALUES (
+            '" . e(lang('Drafts')) . "',
+            '$root_id',
+            '" . ($root_level + 1) . "',
+            '9998',
+            'private',
+            '0',
+            '0',
+            '0',
+            UNIX_TIMESTAMP(),
+            '" . (defined('USER_ID') ? (int)USER_ID : 0) . "')");
+
+    $id = (int)mysqli_insert_id(db::$con);
+
+    if ($id <= 0) return 0;
+
+    db("UPDATE config SET draft_folder_id = '$id'");
+    $cached = $id;
+
+    log_activity(lang(array('string' => 'folder ({var:1}) was created', 'vars' => array(lang('Drafts')))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    return $id;
+}
+
+/**
+ * Whether a page in this folder is a draft.
+ */
+function pg_page_is_draft($folder_id)
+{
+    $draft_folder = pg_page_draft_folder_id(false);
+
+    return ($draft_folder > 0) && ((int)$folder_id === $draft_folder);
+}
+
+/**
+ * The folder a draft goes back to when it is published: the one it was taken
+ * from, while that folder still exists outside the recycle bin; the top
+ * folder otherwise (a page moved into the drafts folder by hand has none).
+ */
+function pg_page_draft_publish_folder($page_id)
+{
+    $page_id = (int)$page_id;
+    $folder  = pg_page_draft_ready() ? (int)db_value("SELECT folder_id FROM page_drafts WHERE page_id = '$page_id' LIMIT 1") : 0;
+
+    if ($folder > 0 && $folder !== pg_page_draft_folder_id(false)
+        && db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '$folder'")
+        && !in_array($folder, pg_recycle_bin_folder_ids(), true)) {
+        return $folder;
+    }
+
+    return (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+}
+
+/**
+ * What a save does with a page's draft state (pg_designer_save_page()):
+ * whether the page ends up a draft, and the warning when a draft is refused.
+ * The editor sends the state as page_draft; a save without it - and every
+ * save of a content-level operator, who does not decide where a page lives -
+ * keeps the stored state. Decided before the dry run returns, so the check
+ * of every page reports it before anything is written.
+ *
+ * @return array ready, was, want, warnings
+ */
+function pg_designer_page_draft_plan($page_id, $page, $user, $restricted)
+{
+    $plan = array('ready' => pg_page_draft_ready(), 'was' => false, 'want' => false, 'warnings' => array());
+
+    if (!$plan['ready']) return $plan;
+
+    $page_id = (int)$page_id;
+    $stored  = ($page_id > 0) ? db_item("SELECT page_folder, page_home FROM page WHERE page_id = '$page_id' LIMIT 1") : null;
+    $on      = function ($v) { return ($v === 1 || $v === '1' || $v === true); };
+
+    $plan['was']  = is_array($stored) && pg_page_is_draft($stored['page_folder']);
+    $sent         = !$restricted && array_key_exists('page_draft', $page);
+    $plan['want'] = $sent ? $on($page['page_draft']) : $plan['was'];
+
+    // The home page is the site's front door: as a draft it would send every
+    // visitor to the sign-in page. Staff decide the home flag in this same
+    // save; anybody else keeps the stored one.
+    $home = ((int)$user['role'] < 3)
+        ? $on(isset($page['page_home']) ? $page['page_home'] : 0)
+        : (is_array($stored) && (string)$stored['page_home'] === 'yes');
+
+    if ($plan['want'] && $home) {
+        $plan['want'] = false;
+        $plan['warnings'][] = lang(array('string' => 'The page "{var:1}" is the home page, so it stays on the site.',
+                                         'vars'   => trim((string)(isset($page['page_name']) ? $page['page_name'] : ''))));
+    }
+
+    return $plan;
+}
+
+/**
+ * How many of each design's pages there are, how many are drafts and how
+ * many carry the home flag (the designs list, view_system_styles.php). The
+ * pages are the ones the editor opens: the design's own, outside the bin.
+ *
+ * @param array $style_ids
+ * @return array style_id => array(pages, drafts, home)
+ */
+function pg_designer_design_draft_counts($style_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$style_ids))));
+    $out = array();
+    foreach ($ids as $id) $out[$id] = array('pages' => 0, 'drafts' => 0, 'home' => 0);
+    if (!$ids) return $out;
+
+    $draft_folder = pg_page_draft_ready() ? pg_page_draft_folder_id(false) : 0;
+    $rows = db_items("SELECT page_style, COUNT(*) AS pages,
+                             " . ($draft_folder > 0 ? "SUM(page_folder = '$draft_folder')" : "0") . " AS drafts,
+                             SUM(page_home = 'yes') AS home
+                      FROM page
+                      WHERE page_style IN (" . implode(',', $ids) . ") AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+                      GROUP BY page_style");
+    foreach ((array)$rows as $r) {
+        $out[(int)$r['page_style']] = array('pages' => (int)$r['pages'], 'drafts' => (int)$r['drafts'], 'home' => (int)$r['home']);
+    }
+    return $out;
+}
+
+/**
+ * A design's place on the site from its counts: 'empty' (no pages), 'live'
+ * (no drafts), 'draft' (every page that can be a draft is one - the home
+ * page stays on the site) or 'mixed'; with the number of pages on the site
+ * that could be taken off it.
+ *
+ * @param array $c pg_designer_design_draft_counts() row
+ * @return array state, offable
+ */
+function pg_designer_design_state($c)
+{
+    $pages   = (int)$c['pages'];
+    $drafts  = (int)$c['drafts'];
+    $offable = max(0, $pages - $drafts - (int)$c['home']);
+
+    if ($pages <= 0)   return array('state' => 'empty', 'offable' => 0);
+    if ($drafts <= 0)  return array('state' => 'live', 'offable' => $offable);
+    return array('state' => ($offable > 0) ? 'mixed' : 'draft', 'offable' => $offable);
+}
+
+/**
+ * Every page of a design taken off the site, or every draft of it put back
+ * on (the designs list): the move the editor's save makes for one page
+ * (pg_designer_save_page()) - into the private drafts folder with the folder
+ * it returns to kept in page_drafts, and back. The home page stays on the
+ * site. Refused while somebody has the design open in the editor: the
+ * editor saves every tab at once, so their next save would put the state
+ * their tabs hold back over this one.
+ *
+ * @param int   $style_id
+ * @param bool  $on   true: off the site; false: on it
+ * @param array $user
+ * @return array ok, error, changed, home (pages kept on the site as the home page)
+ */
+function pg_designer_design_set_draft($style_id, $on, $user)
+{
+    $style_id = (int)$style_id;
+    $out = array('ok' => false, 'error' => '', 'changed' => 0, 'home' => 0);
+
+    if (!pg_page_draft_ready()) {
+        $out['error'] = lang('Drafts are not available on this site yet.');
+        return $out;
+    }
+    if ($style_id <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$style_id'")) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    $peers = pg_collab_peers('', $style_id);
+    if ($peers) {
+        $names = array();
+        foreach ($peers as $peer) $names[$peer['name']] = true;
+        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+                                   'vars'   => implode(', ', array_keys($names))));
+        return $out;
+    }
+
+    $draft_folder = pg_page_draft_folder_id((bool)$on);
+    if ($on && $draft_folder <= 0) {
+        $out['error'] = lang('Drafts are not available on this site yet.');
+        return $out;
+    }
+
+    $uid  = (int)$user['id'];
+    $who  = isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '';
+    $rows = db_items("SELECT page_id, page_name, page_folder, page_home FROM page
+                      WHERE page_style = '$style_id' AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+                      ORDER BY page_id");
+    foreach ((array)$rows as $r) {
+        $pid   = (int)$r['page_id'];
+        $draft = pg_page_is_draft($r['page_folder']);
+
+        if ($on) {
+            if ($draft) continue;
+            if ((string)$r['page_home'] === 'yes') { $out['home']++; continue; }
+            db("UPDATE page SET page_folder = '$draft_folder', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
+            db("INSERT INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
+                VALUES ('$pid', '" . (int)$r['page_folder'] . "', UNIX_TIMESTAMP(), '$uid')
+                ON DUPLICATE KEY UPDATE folder_id = VALUES(folder_id), drafted_at = VALUES(drafted_at), drafted_by = VALUES(drafted_by)");
+            log_activity(lang(array('string' => 'page ({var:1}) was taken off the site as a draft', 'vars' => array($r['page_name']))), $who);
+        } else {
+            if (!$draft) continue;
+            $folder = pg_page_draft_publish_folder($pid);
+            db("UPDATE page SET page_folder = '$folder', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
+            db("DELETE FROM page_drafts WHERE page_id = '$pid'");
+            log_activity(lang(array('string' => 'page ({var:1}) was published', 'vars' => array($r['page_name']))), $who);
+        }
+        $out['changed']++;
+    }
+
+    $out['ok'] = true;
+    return $out;
+}
+
 /**
  * The editor's UI text keys: every _sdT('…') key in
  * assets/js/style_designer.js. The keys are English source text, so
@@ -1736,10 +2026,14 @@ function pg_designer_load_pages($style_id, $style_name = '')
 
     $out = array();
     foreach ($rows as $r) {
+        // A draft is shown in the folder it is published to; its place in
+        // the drafts folder is the state, not a folder the operator chose.
+        $draft = pg_page_is_draft($r['page_folder']);
         $out[] = array(
             'page_id'               => (int)$r['page_id'],
             'page_name'             => (string)$r['page_name'],
-            'page_folder'           => (int)$r['page_folder'],
+            'page_folder'           => $draft ? pg_page_draft_publish_folder($r['page_id']) : (int)$r['page_folder'],
+            'page_draft'            => $draft ? 1 : 0,
             'page_title'            => (string)$r['page_title'],
             'page_meta_description' => (string)$r['page_meta_description'],
             'page_search'           => !empty($r['page_search']) ? 1 : 0,
@@ -1821,9 +2115,12 @@ function pg_designer_selectable_pages($style_id)
  *   page_id (0 = create), page_name, tree_json, page_folder, page_title,
  *   page_meta_description, page_search, page_search_keywords, page_sitemap,
  *   page_home, page_noindex, page_nofollow, pg_comments, pg_comments_label,
- *   pg_comments_allow_new, pg_comments_rating
+ *   pg_comments_allow_new, pg_comments_rating, page_draft (1 = keep the page
+ *   off the site in the drafts folder; page_folder is then the folder it is
+ *   published to)
  *
- * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...]).
+ * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...],
+ * 'draft' => bool).
  * On error nothing is written for this page.
  *
  * $dry_run = true runs the validation and returns without touching the
@@ -1890,8 +2187,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     if (!empty($errors)) {
         return array('ok' => false, 'page_id' => $page_id, 'errors' => $errors, 'warnings' => $warnings);
     }
+
+    // Draft or on the site (2026.4.7): decided here, so the dry run that
+    // checks every page reports a refused draft before anything is written.
+    $draft_plan = pg_designer_page_draft_plan($page_id, $page, $user, $restricted);
+    foreach ($draft_plan['warnings'] as $w) $warnings[] = $w;
+
     if ($dry_run) {
-        return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings);
+        return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
     }
 
     $tree_json = !empty($vt['cleaned_json']) ? $vt['cleaned_json'] : $tree_raw;
@@ -1983,6 +2286,22 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // manager and could never be sent to (or restored from) the recycle bin.
     if ($folder <= 0 || !db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '$folder'")) {
         $folder = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+    }
+    // The folder the editor sends is the one the page is published to. The
+    // drafts folder is not one: a save that names it (the stored folder a
+    // content-level save restores) keeps the folder the draft returns to.
+    $draft_return = 0;
+    if ($draft_plan['ready']) {
+        if (pg_page_is_draft($folder)) {
+            $folder = ($page_id > 0)
+                ? pg_page_draft_publish_folder($page_id)
+                : (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+        }
+        $draft_folder = $draft_plan['want'] ? pg_page_draft_folder_id(true) : 0;
+        if ($draft_folder > 0) {
+            $draft_return = $folder;
+            $folder       = $draft_folder;
+        }
     }
     $title       = (string)(isset($page['page_title']) ? $page['page_title'] : '');
     $meta_desc   = (string)(isset($page['page_meta_description']) ? $page['page_meta_description'] : '');
@@ -2090,6 +2409,24 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
     }
 
+    // The folder a draft returns to, kept while it is a draft. The time and
+    // the person are those of taking it off the site, not of the last save.
+    if ($draft_plan['ready'] && $page_id > 0) {
+        if ($draft_return > 0) {
+            db("INSERT INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
+                VALUES ('$page_id', '$draft_return', UNIX_TIMESTAMP(), '" . (int)$user['id'] . "')
+                ON DUPLICATE KEY UPDATE folder_id = VALUES(folder_id)");
+        } else {
+            db("DELETE FROM page_drafts WHERE page_id = '$page_id'");
+        }
+        if ($draft_plan['was'] !== ($draft_return > 0)) {
+            $draft_log = ($draft_return > 0)
+                ? lang(array('string' => 'page ({var:1}) was taken off the site as a draft', 'vars' => array($name)))
+                : lang(array('string' => 'page ({var:1}) was published', 'vars' => array($name)));
+            log_activity($draft_log, isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        }
+    }
+
     // Un-migrated database: the only place the tree can live is the style.
     // Keep the old single-page behaviour so nothing is lost.
     if (!$multi_ready) {
@@ -2103,7 +2440,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
-    return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings);
+    return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0));
 }
 
 /**
@@ -3121,6 +3458,13 @@ function _render_component_html($props, $pad, $kids = '')
                 $btn_type  = isset($props['btnType']) ? h($props['btnType']) : 'button';
                 $html .= $pad . '<button type="' . $btn_type . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</button>' . "\n";
             }
+            break;
+
+        case 'language_switcher':
+            // The languages and the addresses are the request's, not the
+            // saved page's: a placeholder the page's last pass draws the
+            // switcher into (pg_language_switcher_expand()).
+            $html .= $pad . pg_language_switcher_placeholder($props) . "\n";
             break;
 
         case 'badge':
@@ -4819,6 +5163,8 @@ function pg_design_template_summary($tpl)
         'framework_label' => $fw['label'],
         'description' => isset($tpl['description']) ? (string)$tpl['description'] : '',
         'icon'        => isset($tpl['icon']) ? (string)$tpl['icon'] : 'bi-grid-1x2',
+        // The drawing it is shown with (pg_design_thumb_svg()).
+        'thumb'       => (isset($tpl['thumb']) && is_string($tpl['thumb'])) ? $tpl['thumb'] : '',
         'pages'       => $pages,
         'look'        => $theme['look'],
         'palette'     => $theme['palette'],

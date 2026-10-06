@@ -13662,6 +13662,42 @@ switch ($action) {
                 respond(array('status' => 'success', 'deleted' => $td_deleted));
                 break;
 
+            // Every page of a design off the site, or its drafts back on it,
+            // from the designs list (pg_designer_design_set_draft()). The
+            // answer carries the row's new Status cell.
+            case 'design_publish':
+                $dp_style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+                $dp_off      = !empty($request['draft']);
+                $dp = pg_designer_design_set_draft($dp_style_id, $dp_off, $user);
+                if (!$dp['ok']) {
+                    respond(array('status' => 'error', 'message' => $dp['error']));
+                }
+                if ($dp['changed'] === 0) {
+                    $dp_message = $dp_off ? lang('Nothing to take off the site.') : lang('Nothing to publish.');
+                } elseif ($dp_off) {
+                    $dp_message = ($dp['changed'] > 1) ? str_replace('{var}', $dp['changed'], lang('{var} pages are kept as drafts, off the site.')) : lang('The page is kept as a draft, off the site.');
+                } else {
+                    $dp_message = ($dp['changed'] > 1) ? str_replace('{var}', $dp['changed'], lang('{var} pages were published.')) : lang('The page was published.');
+                }
+                if ($dp['home'] > 0) $dp_message .= ' ' . lang('The home page stays on the site.');
+                require_once(dirname(__FILE__) . '/includes/designer_screen.php');
+                $dp_counts = pg_designer_design_draft_counts(array($dp_style_id));
+                $dp_row = array(
+                    'style_id'    => $dp_style_id,
+                    'style_name'  => (string)db_value("SELECT style_name FROM style WHERE style_id = '$dp_style_id' LIMIT 1"),
+                    'page_count'  => $dp_counts[$dp_style_id]['pages'],
+                    'draft_count' => $dp_counts[$dp_style_id]['drafts'],
+                    'home_count'  => $dp_counts[$dp_style_id]['home'],
+                );
+                respond(array(
+                    'status'  => 'success',
+                    'message' => $dp_message,
+                    'changed' => $dp['changed'],
+                    'drafts'  => $dp_row['draft_count'],
+                    'cell'    => pg_designer_list_status_cell($dp_row, true),
+                ));
+                break;
+
             case 'design_delete':
                 $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
                 $style = $style_id > 0 ? db_item("SELECT style_id, style_name, style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") : null;

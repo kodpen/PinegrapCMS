@@ -27,7 +27,7 @@
 // The name rules, the collision suffix and the blocked extension list are the
 // panel's own (includes/fn/files.php), reused rather than restated.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
