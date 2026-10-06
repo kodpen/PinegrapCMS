@@ -87,7 +87,19 @@ function api_openapi_build() {
 
 			if ($where === 'body') {
 
-				$body_properties[$param['name']] = api_openapi_type($param);
+				$property = api_openapi_type($param);
+
+				// A body field is described in its own schema: unlike a query
+				// parameter it has no entry of its own to carry the text.
+				if (isset($param['description'])) {
+
+					$property['description'] = isset($property['description'])
+						? $param['description'] . ' ' . $property['description']
+						: $param['description'];
+
+				}
+
+				$body_properties[$param['name']] = $property;
 
 				if (!empty($param['required'])) {
 
@@ -307,11 +319,27 @@ function api_openapi_type($param) {
 
 		case 'bool':
 
-			return array('type' => 'boolean');
+			$schema = array('type' => 'boolean');
+
+			if (isset($param['default'])) {
+
+				$schema['default'] = (bool)$param['default'];
+
+			}
+
+			return $schema;
 
 		case 'enum':
 
-			return array('type' => 'string', 'enum' => $param['values']);
+			$schema = array('type' => 'string', 'enum' => $param['values']);
+
+			if (isset($param['default'])) {
+
+				$schema['default'] = $param['default'];
+
+			}
+
+			return $schema;
 
 		case 'datetime':
 
@@ -319,7 +347,21 @@ function api_openapi_type($param) {
 
 		case 'list':
 
-			return array('type' => 'array', 'items' => array('type' => 'object'));
+			// 'of' names what the list holds, in the spelling of the field
+			// maps below: 'integer', 'string', or an inline object. A list
+			// that does not say is a list of objects.
+			$schema = array(
+				'type'  => 'array',
+				'items' => isset($param['of']) ? api_openapi_type_spec($param['of']) : array('type' => 'object')
+			);
+
+			if (isset($param['max_items'])) {
+
+				$schema['maxItems'] = (int)$param['max_items'];
+
+			}
+
+			return $schema;
 
 		default:
 
@@ -328,6 +370,12 @@ function api_openapi_type($param) {
 			if (isset($param['max_length'])) {
 
 				$schema['maxLength'] = $param['max_length'];
+
+			}
+
+			if (isset($param['default'])) {
+
+				$schema['default'] = (string)$param['default'];
 
 			}
 
@@ -476,12 +524,48 @@ function api_openapi_objects()
 }
 
 /**
+ * Loads the files the API's own objects are declared in.
+ *
+ * The declarations sit beside the presenters, in the resource files the API
+ * entry loads for its handlers. The panel builds the same document for its
+ * download link without loading the handlers, and a declaration that is not
+ * loaded is skipped by api_openapi_components() - every reference to it would
+ * then point at nothing and the document would be refused by the tools it is
+ * made for. Loading them is enough: those files only declare functions.
+ */
+function api_openapi_load_declarations()
+{
+    static $loaded = false;
+
+    if ($loaded) {
+
+        return;
+
+    }
+
+    $loaded = true;
+
+    $directory = dirname(__FILE__);
+
+    require_once($directory . '/devices.php');
+    require_once($directory . '/seo.php');
+
+    foreach (glob($directory . '/resources/*.php') as $file) {
+
+        require_once($file);
+
+    }
+}
+
+/**
  * components.schemas, built from those declarations.
  *
  * @return array
  */
 function api_openapi_components()
 {
+    api_openapi_load_declarations();
+
     $schemas = array();
 
     foreach (api_openapi_objects() as $name => $declare) {
@@ -581,18 +665,29 @@ function api_openapi_responses($route) {
 
 	$responses = array(
 		'200' => $success,
+		'400' => array('description' => 'The request could not be read: the body is not JSON, or a cursor or header is not one this API issues.', 'content' => $error_content),
 		'401' => array('description' => 'The key or the secret is wrong, or none was sent.', 'content' => $error_content),
 		'403' => array('description' => 'The application is not allowed to do this.', 'content' => $error_content),
 		'404' => array('description' => 'No such record.', 'content' => $error_content),
 		'422' => array('description' => 'A parameter is missing or the wrong shape.', 'content' => $error_content),
-		'429' => array('description' => 'Rate limit reached. Retry-After says how long to wait.', 'content' => $error_content)
+		'429' => array('description' => 'Rate limit reached. Retry-After says how long to wait.', 'content' => $error_content),
+		'503' => array('description' => 'The API, or the part of the site this endpoint belongs to, cannot answer right now.', 'content' => $error_content)
 	);
 
 	if ($route['method'] === 'GET') {
 
 		$responses['304'] = array('description' => 'Not modified: the ETag sent in If-None-Match still matches. No body.');
 
+	} else {
+
+		// Every write takes an Idempotency-Key, and a key reused for a
+		// different request is a conflict; the endpoint's own conflicts are
+		// named in its description.
+		$responses['409'] = array('description' => 'The change conflicts with the state of the record, or the Idempotency-Key was already used for a different request. The description of the endpoint names its own codes.', 'content' => $error_content);
+
 	}
+
+	ksort($responses, SORT_STRING);
 
 	return $responses;
 

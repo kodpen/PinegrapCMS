@@ -6,9 +6,10 @@
  *
  * Merged into the API's own lists by includes/api/modules.php while the
  * translation tables exist: the site's languages, the texts of its pages with
- * their translations, a bulk write for a translation tool, and the job queue
- * Claude's routine works through (includes/translate/claude.php). Nothing
- * under includes/api/ is edited to add a translation endpoint.
+ * their translations, a bulk write and a state change for a translation tool,
+ * reading the pages again, the glossary, and the job queue Claude's routine
+ * works through (includes/translate/claude.php). Nothing under includes/api/
+ * is edited to add a translation endpoint.
  *
  * The job endpoints answer the application Claude works through alone; the
  * rest any application whose owner may run the Translations screen.
@@ -74,6 +75,9 @@ function translate_openapi_objects()
         'TranslationString'      => 'translate_api_string_schema',
         'TranslationPage'        => 'translate_api_page_schema',
         'TranslationWriteResult' => 'translate_api_write_result_schema',
+        'TranslationRefreshResult' => 'translate_api_refresh_result_schema',
+        'TranslationStatusResult'  => 'translate_api_status_result_schema',
+        'TranslationGlossaryTerm'  => 'translate_api_glossary_schema',
         'TranslationJob'         => 'translate_api_job_schema',
         'TranslationJobItems'    => 'translate_api_job_items_schema',
         'TranslationJobResults'  => 'translate_api_job_results_schema',
@@ -109,11 +113,12 @@ function translate_api_routes()
             'handler'     => 'translate_api_strings_list',
             'returns'     => array('list' => 'TranslationString'),
             'summary'     => 'The texts and their translations',
-            'description' => 'Every text drawn on the site\'s pages, with its translation into the language asked for. The hash is what POST /translations is keyed on; a text that changes gets a new hash, so an old translation is never written over a new wording. status narrows the list: pending has no translation yet, machine was translated by an engine and not reviewed, reviewed was checked by a person, suspicious was flagged by the check. page_id keeps the texts of one page. Page with next_cursor.',
+            'description' => 'Every text drawn on the site\'s pages, with its translation into the language asked for. The hash is what POST /translations is keyed on; a text that changes gets a new hash, so an old translation is never written over a new wording. status narrows the list: pending has no translation yet, machine was translated by an engine and not reviewed, reviewed was checked by a person, suspicious was flagged by the check. page_id keeps the texts of one page, group the catalogue (catalog) or the forms (forms). Each text says where it is used first - the page, component, product or form, the kind of field, the texts before and after it - and, when its wording changed, the old wording with its translation. The list holds what the pages said when they were last read; POST /translations/refresh reads them again. Page with next_cursor.',
             'params'      => array(
                 array('name' => 'language', 'in' => 'query', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code, from GET /translations/languages.'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'pending', 'machine', 'reviewed', 'suspicious'), 'default' => 'all'),
                 array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the texts of this page, its title and description included.'),
+                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('catalog', 'forms'), 'description' => 'Only the products and product groups (catalog), or only the forms (forms).'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Looks in the source text and the translation.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 100),
@@ -145,9 +150,78 @@ function translate_api_routes()
             'description' => 'Writes translations for one language in bulk, keyed on the hash from GET /translations/strings - the way a translation tool hands finished work back. A translation is refused when it drops a tag or a token of its text (rejected names the hash and the reason); a hash the site no longer has is stale and skipped; an empty text is skipped. What is written is reviewed unless status says machine, and shows on the pages at once. A reviewed translation already there is kept unless overwrite is true.',
             'params'      => array(
                 array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code.'),
-                array('name' => 'items', 'in' => 'body', 'type' => 'list', 'max_items' => 200, 'required' => true, 'description' => 'Objects of {hash, text}.'),
+                array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('hash' => 'string', 'text' => 'string'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {hash, text}.'),
                 array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('reviewed', 'machine'), 'default' => 'reviewed'),
                 array('name' => 'overwrite', 'in' => 'body', 'type' => 'bool', 'description' => 'Write over a reviewed translation too. Default false.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.refresh',
+            'method'      => 'POST',
+            'path'        => '/translations/refresh',
+            'scope'       => 'translations:write',
+            'handler'     => 'translate_api_refresh',
+            'returns'     => 'TranslationRefreshResult',
+            'summary'     => 'Read the texts off the pages again',
+            'description' => 'The texts GET /translations/strings lists are the ones read off the site the last time its pages were gone through: by "Update translations" on the Translations screen, by translate-on-save, or by this endpoint. Call it after the pages changed and before reading what is pending, so the list holds the wording they have now - a changed text gets a new hash and the old one becomes stale. page_id reads one page with its title, description and the components and menus it uses; group reads the catalogue (catalog) or the forms (forms); neither reads the whole site, which takes longer. Nothing is sent to an engine. pending says, for every target language, how many texts of the scope have no translation yet.',
+            'params'      => array(
+                array('name' => 'page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Only this page.'),
+                array('name' => 'group', 'in' => 'body', 'type' => 'enum', 'values' => array('catalog', 'forms'), 'description' => 'Only the products and product groups (catalog), or only the forms (forms).'),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.status',
+            'method'      => 'POST',
+            'path'        => '/translations/status',
+            'scope'       => 'translations:write',
+            'handler'     => 'translate_api_status',
+            'returns'     => 'TranslationStatusResult',
+            'summary'     => 'Review translations, or take them back',
+            'description' => 'Changes the state of translations without sending their text, keyed on the hash from GET /translations/strings. reviewed marks a translation as checked by a person; machine sends it back to unreviewed; pending takes the translation away, so the source text shows on the pages again and the text waits to be translated. A hash with no translation to change is counted as unchanged; a hash the site no longer has is stale. all: true with status reviewed marks every machine translation of the language as reviewed in one go - page_id or group narrows it - and leaves out the ones the check flagged as suspicious, as Approve all on the Translations screen does.',
+            'params'      => array(
+                array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code.'),
+                array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('reviewed', 'machine', 'pending'), 'required' => true),
+                array('name' => 'hashes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 200, 'description' => 'The texts to change. Left out with all.'),
+                array('name' => 'all', 'in' => 'body', 'type' => 'bool', 'description' => 'Every machine translation of the language; with status reviewed only.'),
+                array('name' => 'page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'With all: only the texts of this page.'),
+                array('name' => 'group', 'in' => 'body', 'type' => 'enum', 'values' => array('catalog', 'forms'), 'description' => 'With all: only the catalogue, or only the forms.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.glossary.list',
+            'method'      => 'GET',
+            'path'        => '/translations/glossary',
+            'scope'       => 'translations:read',
+            'handler'     => 'translate_api_glossary_list',
+            'returns'     => array('list' => 'TranslationGlossaryTerm'),
+            'summary'     => 'The glossary',
+            'description' => 'The terms the engines are told to keep as written or to translate one way. With language, the terms of that language and the ones kept in every language - what an engine translating into it is given; without it, every term. A term whose language is empty holds for every language. Longer terms come first, because they are matched first.',
+            'params'      => array(
+                array('name' => 'language', 'in' => 'query', 'type' => 'string', 'max_length' => 16, 'description' => 'A target language code.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.glossary.save',
+            'method'      => 'POST',
+            'path'        => '/translations/glossary',
+            'scope'       => 'translations:write',
+            'handler'     => 'translate_api_glossary_save',
+            'returns'     => 'TranslationGlossaryTerm',
+            'summary'     => 'Add or change a glossary term',
+            'description' => 'With id, changes that term. Without it, the term with the same wording in the same language is changed when there is one and a new term is added otherwise, so a repeated call does not leave two behind. A kept term (keep true) stays as written in every translation and may hold for every language; a translated term needs translation and belongs to one language. It applies to the texts sent to an engine from then on. Terms are removed on the Translations screen.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The term to change.'),
+                array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'description' => 'A target language code. Not needed with all_languages.'),
+                array('name' => 'term', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+                array('name' => 'translation', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Required unless keep is true; a kept term has none.'),
+                array('name' => 'keep', 'in' => 'body', 'type' => 'bool', 'description' => 'Keep the term exactly as written.'),
+                array('name' => 'all_languages', 'in' => 'body', 'type' => 'bool', 'description' => 'For a kept term: it holds for every language. Ignored for a translated term.'),
+                array('name' => 'case_sensitive', 'in' => 'body', 'type' => 'bool', 'description' => 'Match the term only in this capitalisation.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'A note for the translator.'),
             ),
         ),
 
@@ -205,7 +279,7 @@ function translate_api_routes()
             'description' => 'The translations of up to 100 items of the job, keyed on hash. Each is checked against its text - the tags and tokens have to be there - and written as a machine translation that shows on the pages at once. rejected names what was refused and why; a refused item is asked once more and then given up. {hash, skip: true, reason} gives an item up without an answer. A hash that is not in the job is stale. The job closes by itself when every item is answered.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-                array('name' => 'results', 'in' => 'body', 'type' => 'list', 'max_items' => 100, 'required' => true, 'description' => 'Objects of {hash, text} or {hash, skip, reason}.'),
+                array('name' => 'results', 'in' => 'body', 'type' => 'list', 'of' => array('hash' => 'string', 'text' => 'string', 'skip' => 'boolean', 'reason' => 'string'), 'max_items' => 100, 'required' => true, 'description' => 'Objects of {hash, text} or {hash, skip, reason}.'),
             ),
         ),
 
@@ -350,9 +424,11 @@ function translate_api_languages_list($params)
    Strings
    --------------------------------------------------------------------------- */
 
-function translate_api_string_present($row)
+function translate_api_string_present($row, $context = null)
 {
     $has = ($row['text'] !== null);
+    $context = is_array($context) ? $context : array();
+    $previous = (isset($context['previous']) && is_array($context['previous'])) ? $context['previous'] : null;
 
     return array(
         'id'          => (int) $row['id'],
@@ -365,6 +441,17 @@ function translate_api_string_present($row)
         'engine'      => $has ? (string) $row['engine'] : '',
         'suspicious'  => $has && ((int) $row['suspicious'] === 1),
         'updated_at'  => $has ? api_time($row['updated_at']) : null,
+        'where'       => array(
+            'owner'      => isset($context['owner']) ? (string) $context['owner'] : '',
+            'owner_type' => isset($context['owner_type']) ? (string) $context['owner_type'] : '',
+            'field'      => isset($context['field']) ? (string) $context['field'] : '',
+            'before'     => isset($context['before']) ? (string) $context['before'] : '',
+            'after'      => isset($context['after']) ? (string) $context['after'] : '',
+        ),
+        'previous'    => array(
+            'text'        => $previous ? (string) $previous['source'] : '',
+            'translation' => $previous ? (string) $previous['translation'] : '',
+        ),
     );
 }
 
@@ -382,6 +469,8 @@ function translate_api_string_schema()
         'engine'      => 'string',
         'suspicious'  => 'boolean',
         'updated_at'  => 'string?',
+        'where'       => array('owner' => 'string', 'owner_type' => 'string', 'field' => 'string', 'before' => 'string', 'after' => 'string'),
+        'previous'    => array('text' => 'string', 'translation' => 'string'),
     );
 }
 
@@ -394,9 +483,23 @@ function translate_api_strings_list($params)
     $limit = (int) ($params['limit'] ?? 100);
     $where = array('u.string_id > 0');
 
+    if (!empty($params['page_id']) && !empty($params['group'])) {
+        api_fail_validation(lang('Send page_id or group, not both.'), 'group');
+    }
+
     if (!empty($params['page_id'])) {
         $owner_where = pg_tr_owner_where(pg_tr_page_owners((int) $params['page_id']));
         $where[] = ($owner_where !== '') ? '(' . $owner_where . ')' : '0 = 1';
+    }
+
+    if (!empty($params['group'])) {
+        $owner_where = pg_tr_owner_where(pg_tr_scope_owners('group:' . (string) $params['group']));
+        $where[] = ($owner_where !== '') ? '(' . $owner_where . ')' : '0 = 1';
+    }
+
+    // Neither: the whole site, as the Translations screen counts it.
+    if (empty($params['page_id']) && empty($params['group'])) {
+        $where[] = '(' . pg_tr_owner_where(array()) . ')';
     }
 
     switch ((string) ($params['status'] ?? 'all')) {
@@ -415,7 +518,7 @@ function translate_api_strings_list($params)
     }
 
     if (!empty($params['search'])) {
-        $like = "'%" . escape_like($params['search']) . "%'";
+        $like = "'%" . e(escape_like($params['search'])) . "%'";
         $where[] = "(s.source_text LIKE $like OR t.text LIKE $like)";
     }
 
@@ -446,10 +549,17 @@ function translate_api_strings_list($params)
         $next = api_cursor_encode((int) $last['id'], (int) $last['id']);
     }
 
+    $ids = array();
+
+    foreach ($rows as $string) {
+        $ids[] = (int) $string['id'];
+    }
+
+    $context = pg_tr_context($ids, $language);
     $out = array();
 
     foreach ($rows as $string) {
-        $out[] = translate_api_string_present($string);
+        $out[] = translate_api_string_present($string, isset($context[(int) $string['id']]) ? $context[(int) $string['id']] : null);
     }
 
     api_ok_list($out, $limit, $next);
@@ -539,13 +649,7 @@ function translate_api_pages_get($params)
 {
     translate_api_boot();
 
-    $page = db_item("SELECT page.page_id, page.page_name, page.page_title FROM page WHERE page.page_id = '" . (int) $params['id'] . "'" . pg_designer_not_binned_sql() . " LIMIT 1");
-
-    if (!is_array($page)) {
-        api_fail_not_found(lang('Page'));
-    }
-
-    api_ok(translate_api_page_present($page));
+    api_ok(translate_api_page_present(translate_api_page_or_404($params['id'])));
 }
 
 /* ---------------------------------------------------------------------------
@@ -644,6 +748,317 @@ function translate_api_write($params)
     }
 
     api_ok($result);
+}
+
+/* ---------------------------------------------------------------------------
+   Refresh and status
+   --------------------------------------------------------------------------- */
+
+/**
+ * A page that may be translated, or a 404.
+ */
+function translate_api_page_or_404($id)
+{
+    $page = db_item("SELECT page.page_id, page.page_name, page.page_title FROM page WHERE page.page_id = '" . (int) $id . "'" . pg_designer_not_binned_sql() . " LIMIT 1");
+
+    if (!is_array($page)) {
+        api_fail_not_found(lang('Page'));
+    }
+
+    return $page;
+}
+
+/**
+ * The scope page_id and group name, in the spelling the Translations screen
+ * uses: 'page:12', 'group:catalog' or 'all'.
+ */
+function translate_api_scope_of($params)
+{
+    $page_id = (int) ($params['page_id'] ?? 0);
+    $group = (string) ($params['group'] ?? '');
+
+    if (($page_id > 0) && ($group !== '')) {
+        api_fail_validation(lang('Send page_id or group, not both.'), 'group');
+    }
+
+    if ($page_id > 0) {
+        translate_api_page_or_404($page_id);
+
+        return 'page:' . $page_id;
+    }
+
+    return ($group !== '') ? 'group:' . $group : 'all';
+}
+
+// What translate_api_refresh() answers with.
+function translate_api_refresh_result_schema()
+{
+    return array(
+        'scope'     => 'string',
+        'pages'     => 'integer',
+        'segments'  => 'integer',
+        'languages' => array(array('code' => 'string', 'pending' => 'integer')),
+    );
+}
+
+function translate_api_refresh($params)
+{
+    translate_api_boot();
+
+    $scope = translate_api_scope_of($params);
+    $extracted = pg_tr_scope_extract($scope);
+    $owners = pg_tr_scope_owners($scope);
+    $languages = array();
+
+    foreach (pg_tr_languages(false) as $code => $row) {
+        if ($code === pg_tr_source_language()) {
+            continue;
+        }
+
+        $languages[] = array('code' => (string) $code, 'pending' => count(pg_tr_pending_string_ids($code, $owners)));
+    }
+
+    api_ok(array(
+        'scope'     => $scope,
+        'pages'     => (int) $extracted['pages'],
+        'segments'  => (int) $extracted['segments'],
+        'languages' => $languages,
+    ));
+}
+
+// What translate_api_status() answers with.
+function translate_api_status_result_schema()
+{
+    return array(
+        'language'  => 'string',
+        'status'    => 'string',
+        'changed'   => 'integer',
+        'unchanged' => 'integer',
+        'stale'     => 'string[]',
+    );
+}
+
+function translate_api_status($params)
+{
+    translate_api_boot();
+
+    $row = translate_api_language_or_422($params['language']);
+    $language = (string) $row['code'];
+    $status = (string) $params['status'];
+    $hashes = isset($params['hashes']) ? array_values((array) $params['hashes']) : array();
+    $app = api_current_app();
+    $user_id = (int) ($app['owner']['id'] ?? 0);
+    $result = array('language' => $language, 'status' => $status, 'changed' => 0, 'unchanged' => 0, 'stale' => array());
+
+    // Approve all: the machine translations of a scope, the suspicious ones
+    // left out, in one statement.
+    if (!empty($params['all'])) {
+        if ($hashes) {
+            api_fail_validation(lang('Send hashes or all, not both.'), 'hashes');
+        }
+
+        if ($status !== 'reviewed') {
+            api_fail_validation(lang('all only marks translations as reviewed. Send hashes to change other states.'), 'all');
+        }
+
+        $result['changed'] = pg_tr_review_all($language, translate_api_scope_of($params), $user_id);
+
+        if ($result['changed'] > 0) {
+            log_activity(lang(array('string' => 'machine translations were marked as reviewed ({var:1}, {var:2} text(s))', 'vars' => array($language, $result['changed']))), (string) ($app['name'] ?? 'API'));
+        }
+
+        api_ok($result);
+    }
+
+    if (!$hashes) {
+        api_fail_validation(lang('Send the hashes of the texts to change, or all.'), 'hashes');
+    }
+
+    foreach (array('page_id', 'group') as $narrowing) {
+        if (!empty($params[$narrowing])) {
+            api_fail_validation(lang('page_id and group only narrow all.'), $narrowing);
+        }
+    }
+
+    foreach ($hashes as $index => $hash) {
+        if (!is_string($hash) || !preg_match('/^[0-9a-f]{40}$/', $hash)) {
+            api_fail_validation(lang('Each hash is the 40-character hash of a text.'), 'hashes[' . $index . ']');
+        }
+    }
+
+    $hashes = array_values(array_unique($hashes));
+    $strings = pg_tr_strings_by_hash($hashes);
+    $ids = array();
+
+    foreach ($strings as $string) {
+        $ids[] = (int) $string['id'];
+    }
+
+    $current = array();
+
+    if ($ids) {
+        foreach ((array) db_items("SELECT string_id, status FROM translations WHERE language = '" . e($language) . "' AND string_id IN (" . implode(',', $ids) . ")") as $translation) {
+            $current[(int) $translation['string_id']] = (string) $translation['status'];
+        }
+    }
+
+    foreach ($hashes as $hash) {
+        if (!isset($strings[$hash])) {
+            $result['stale'][] = $hash;
+            continue;
+        }
+
+        $string_id = (int) $strings[$hash]['id'];
+
+        // No translation is already pending, and has nothing to review.
+        if (!isset($current[$string_id]) || ($current[$string_id] === $status)) {
+            $result['unchanged']++;
+            continue;
+        }
+
+        if ($status === 'pending') {
+            // The same as emptying the box on the Translations screen: the
+            // source shows again and the text waits for a translation.
+            db("DELETE FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "'");
+            pg_tr_invalidate_pages($language);
+        } else {
+            pg_tr_set_status($string_id, $language, $status, $user_id);
+        }
+
+        $result['changed']++;
+    }
+
+    if ($result['changed'] > 0) {
+        log_activity(lang(array('string' => 'translation states were changed through the API ({var:1}, {var:2}, {var:3} text(s))', 'vars' => array($language, $status, $result['changed']))), (string) ($app['name'] ?? 'API'));
+    }
+
+    api_ok($result);
+}
+
+/* ---------------------------------------------------------------------------
+   Glossary
+   --------------------------------------------------------------------------- */
+
+function translate_api_glossary_present($row)
+{
+    return array(
+        'id'             => (int) $row['id'],
+        'language'       => (string) $row['language'],
+        'term'           => (string) $row['term'],
+        'translation'    => (string) $row['translation'],
+        'keep'           => ((int) $row['keep'] === 1),
+        'case_sensitive' => ((int) $row['case_sensitive'] === 1),
+        'note'           => (string) $row['note'],
+    );
+}
+
+// What translate_api_glossary_present() returns.
+function translate_api_glossary_schema()
+{
+    return array(
+        'id'             => 'integer',
+        'language'       => 'string',
+        'term'           => 'string',
+        'translation'    => 'string',
+        'keep'           => 'boolean',
+        'case_sensitive' => 'boolean',
+        'note'           => 'string',
+    );
+}
+
+function translate_api_glossary_list($params)
+{
+    translate_api_boot();
+
+    $language = trim((string) ($params['language'] ?? ''));
+
+    if ($language !== '') {
+        $row = translate_api_language_or_422($language);
+        $rows = pg_tr_glossary((string) $row['code']);
+    } else {
+        $rows = db_items("SELECT * FROM translation_glossary ORDER BY CHAR_LENGTH(term) DESC, id");
+    }
+
+    $out = array();
+
+    foreach ((array) $rows as $term) {
+        $out[] = translate_api_glossary_present($term);
+    }
+
+    api_ok_list($out, count($out));
+}
+
+function translate_api_glossary_save($params)
+{
+    translate_api_boot();
+
+    $id = (int) ($params['id'] ?? 0);
+    $existing = null;
+
+    if ($id > 0) {
+        $existing = db_item("SELECT * FROM translation_glossary WHERE id = '$id' LIMIT 1");
+
+        if (!is_array($existing)) {
+            api_fail_not_found(lang('Term'));
+        }
+    }
+
+    $term = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $params['term'])), 0, 255);
+    $translation = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) ($params['translation'] ?? ''))), 0, 255);
+    $keep = !empty($params['keep']);
+    $note = mb_substr(trim((string) ($params['note'] ?? '')), 0, 255);
+    $case_sensitive = !empty($params['case_sensitive']) ? 1 : 0;
+
+    if ($term === '') {
+        api_fail_validation(lang('Please enter the term.'), 'term');
+    }
+
+    if (!$keep && ($translation === '')) {
+        api_fail_validation(lang('Enter the translation to use, or mark the term as one to keep as written.'), 'translation');
+    }
+
+    // The rules of the glossary form: a kept term has no translation and may
+    // hold for every language; a translated term is for one language.
+    $for_all = $keep && !empty($params['all_languages']);
+    $language = '';
+
+    if (!$for_all) {
+        $row = translate_api_language_or_422($params['language'] ?? '');
+        $language = (string) $row['code'];
+    }
+
+    if ($keep) {
+        $translation = '';
+    }
+
+    // Without an id, the same wording in the same language is the same term.
+    // Compared byte for byte: a case-sensitive "Apple" is not "apple".
+    if (!is_array($existing)) {
+        $existing = db_item("SELECT * FROM translation_glossary WHERE language = '" . e($language) . "' AND BINARY term = '" . e($term) . "' ORDER BY id LIMIT 1");
+    }
+
+    $values = "language = '" . e($language) . "', term = '" . e($term) . "', translation = '" . e($translation) . "',
+        keep = '" . ($keep ? 1 : 0) . "', case_sensitive = '$case_sensitive', note = '" . e($note) . "'";
+
+    if (is_array($existing)) {
+        $id = (int) $existing['id'];
+        db("UPDATE translation_glossary SET $values WHERE id = '$id'");
+    } else {
+        db("INSERT INTO translation_glossary SET $values");
+        $id = (int) mysqli_insert_id(db::$con);
+    }
+
+    $app = api_current_app();
+
+    log_activity(lang(array('string' => 'the glossary term "{var:1}" was saved ({var:2})', 'vars' => array($term, $for_all ? lang('all languages') : $language))), (string) ($app['name'] ?? 'API'));
+
+    $saved = db_item("SELECT * FROM translation_glossary WHERE id = '$id' LIMIT 1");
+
+    if (!is_array($saved)) {
+        api_fail(500, 'server_error', lang('The term could not be saved.'));
+    }
+
+    api_ok(translate_api_glossary_present($saved));
 }
 
 /* ---------------------------------------------------------------------------

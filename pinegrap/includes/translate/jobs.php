@@ -398,7 +398,10 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
     }
 
     $extracted = pg_tr_scope_extract($scope);
-    $pending = pg_tr_pending_string_ids($language, pg_tr_scope_owners($scope));
+
+    // The software's wording of a language with a language file comes from
+    // that file (pg_tr_ui_text()): nothing to send.
+    $pending = (($scope === 'group:ui') && pg_tr_ui_has_file($language)) ? array() : pg_tr_pending_string_ids($language, pg_tr_scope_owners($scope));
 
     $result = array(
         'ok'        => true,

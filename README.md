@@ -12,7 +12,7 @@ Pinegrap CMS is an open-source content management and enterprise web platform bu
 
 ## Overview
 
-Pinegrap CMS provides a powerful system designed to manage enterprise websites, e-commerce, user permissions, and custom dynamic content with high reliability across legacy and modern web environments — from a shared-hosting cPanel account to a dedicated IIS server.
+Pinegrap CMS provides a powerful system designed to manage enterprise websites, e-commerce, user permissions, and custom dynamic content with high reliability across legacy and modern web environments — from a shared-hosting cPanel account to a dedicated IIS server. A built-in web application firewall and bot control protect every site from the first request, with no plugin or outside service to set up.
 
 ### Proudly Monolithic
 
@@ -28,6 +28,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 * **Broad Compatibility:** Runs seamlessly across PHP 7.1 to PHP 8.5.
 * **Server Support:** Compatible with Apache, Nginx, and Microsoft IIS (including automatic web routing and `.htaccess` / `web.config` rewrite handling).
 * **All in One:** Website, visual page editor, e-commerce, ERP, team workspace and an external API in a single codebase.
+* **Built-in Firewall & Bot Control:** Attack signatures, rate limits and automatic bans in front of every request; real search engines are verified, while fake crawlers, scrapers, AI training bots and attack tools are turned away.
 * **Multilingual Front End:** Pages built in the visual editor are served in other languages from a virtual language directory, without copying them.
 
 ---
@@ -91,7 +92,9 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 
 **Security**
 
-* Built-in Web Application Firewall: signature scanning, rate limiting, IP reputation, bot classification, and IPv6-aware IP bans
+* **Built-in Web Application Firewall:** signature scanning for SQL injection, XSS, path traversal, remote code execution and protocol abuse; global, sign-in / checkout and API rate limits, concurrent-request caps, automatic temporary bans, and allow / block lists that understand IPv6 (/64). It starts in monitor mode, so the log shows what would be stopped before you switch to blocking, and it fails open: a firewall error never takes the site down
+* **Bot control:** search-engine crawlers are confirmed by reverse and forward DNS, so a fake "Googlebot" is caught; AI assistants are checked against their published IP ranges, with separate switches for appearing in AI answers and AI search; aggressive crawlers, AI training crawlers, attack tools (sqlmap, Nikto, …) and scripted clients can be blocked
+* Security headers and a Content Security Policy with violation reports; the real visitor IP is resolved behind Cloudflare and trusted proxies
 * CSRF tokens, role-based access control (Administrator / Designer / Manager / User), developer PIN locks
 * TLS-verified update channel — update packages are never accepted without certificate verification — and file integrity checked against the release tag on GitHub
 

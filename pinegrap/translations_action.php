@@ -9,8 +9,10 @@
  * JSON in, JSON out, for everything but the CSV transfers and the glossary
  * forms: the export is a file download, the import a multipart form, the
  * glossary two plain forms. Every call needs a
- * signed-in manager and the session token; a refusal is JSON too, so the
- * screen's script can show it instead of choking on an HTML error page.
+ * signed-in manager and the session token - or, for the visual editor's
+ * Translate section, a user with edit rights to the page being edited; a
+ * refusal is JSON too, so the screen's script can show it instead of
+ * choking on an HTML error page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -45,12 +47,66 @@ function translations_respond($response)
     exit;
 }
 
+/**
+ * For a user limited to the page: whether they may change the
+ * translation of this string from that page (pg_tr_string_page_scope()).
+ *
+ * @return string  'yes', 'elsewhere' or 'no'
+ */
+function translations_page_scope($string_id, $page_id, $user)
+{
+    static $pages = array();
+
+    return pg_tr_string_page_scope($string_id, $page_id, function ($other_page_id) use ($user, &$pages) {
+        if (!isset($pages[$other_page_id])) {
+            $pages[$other_page_id] = (pg_designer_page_access($other_page_id, $user) === 'edit');
+        }
+
+        return $pages[$other_page_id];
+    });
+}
+
+/**
+ * Ends the request when a user limited to the page may not change the
+ * translation of this string.
+ */
+function translations_require_page_scope($string_id, $page_id, $user)
+{
+    $scope = translations_page_scope($string_id, $page_id, $user);
+
+    if ($scope === 'elsewhere') {
+        translations_respond(array('status' => 'error', 'message' => lang('This text is also used in places you cannot edit; a site manager can change its translation on the Translations screen.')));
+    }
+
+    if ($scope !== 'yes') {
+        translations_respond(array('status' => 'error', 'message' => lang('Only the translations of the texts on the page you are editing can be changed here.')));
+    }
+}
+
 if (!$translations_is_import && !$translations_is_export) {
 
     // The role gate answers in JSON: validate_area_access() prints a page.
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        translations_respond(array('status' => 'error', 'message' => lang('Access denied.')));
+    //
+    // A manager runs the whole screen. A user (role 3) who edits a page's
+    // content in the visual editor gets the editor's three calls - read the
+    // texts of the selected element, save a translation, approve one - for a
+    // page whose folder they have edit rights to, the same rule that opens
+    // the page in the editor (pg_designer_page_access()). Which texts are
+    // theirs is checked where a translation is written.
+    $translations_page_only = ((int) $user['role'] > 2);
+    $translations_page_id = (isset($request['page_id']) && is_numeric($request['page_id'])) ? (int) $request['page_id'] : 0;
+
+    if ($translations_page_only) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+
+        $editor_action = isset($request['action']) ? (string) $request['action'] : '';
+
+        if (!in_array($editor_action, array('node', 'save', 'status'), true) || ($translations_page_id <= 0)
+            || (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE)
+            || (pg_designer_page_access($translations_page_id, $user) !== 'edit')) {
+            http_response_code(403);
+            translations_respond(array('status' => 'error', 'message' => lang('Access denied.')));
+        }
     }
 
     $session_token = (string) ($_SESSION['software']['token'] ?? '');
@@ -188,6 +244,10 @@ if (!$translations_is_import && !$translations_is_export) {
                 translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
             }
 
+            if ($translations_page_only) {
+                translations_require_page_scope($string_id, $translations_page_id, $user);
+            }
+
             $clean = pg_tr_sanitize_incoming($text, $string['format']);
 
             if (trim($clean) === '') {
@@ -252,6 +312,9 @@ if (!$translations_is_import && !$translations_is_export) {
                     'source'       => (string) $segment['text'],
                     'string_id'    => $string_id,
                     'translations' => $found ? $found : new stdClass(),
+                    // Shown read-only to a user limited to the page.
+                    'locked'       => ($translations_page_only && ($string_id > 0)
+                                       && (translations_page_scope($string_id, $translations_page_id, $user) !== 'yes')),
                 );
             }
 
@@ -265,6 +328,10 @@ if (!$translations_is_import && !$translations_is_export) {
 
             if (($string_id <= 0) || ($language === '')) {
                 translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+            }
+
+            if ($translations_page_only) {
+                translations_require_page_scope($string_id, $translations_page_id, $user);
             }
 
             pg_tr_set_status($string_id, $language, $status, (int) $user['id']);

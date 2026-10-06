@@ -20,7 +20,7 @@
 // the way to clear one is to fix what it is about - through the page, product
 // or group endpoint - and let the next analysis run notice.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 	exit;
 

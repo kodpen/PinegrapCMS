@@ -105,6 +105,14 @@ function pg_designer_page_access($page, $user)
     }
     if ($folder_id <= 0) return 'locked';
 
+    // A draft sits in the private drafts folder. Who may work on it is
+    // decided by the folder it is published to, as it was before it was
+    // taken off the site (pg_page_draft_publish_folder()).
+    if (function_exists('pg_page_is_draft') && pg_page_is_draft($folder_id)) {
+        $draft_page_id = is_array($page) ? (int)(isset($page['page_id']) ? $page['page_id'] : 0) : (int)$page;
+        if ($draft_page_id > 0) $folder_id = pg_page_draft_publish_folder($draft_page_id);
+    }
+
     // check_edit_access() answers true for every folder at role < 3, which is
     // the manager rule the rest of the software already applies.
     if (check_edit_access($folder_id)) return 'edit';

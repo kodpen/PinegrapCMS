@@ -312,6 +312,15 @@ function duplicate_page($request) {
     $new_page['id'] = mysqli_insert_id(db::$con);
     $new_page['name'] = $page_name;
 
+    // The copy of a draft stays in the drafts folder with its original, so it
+    // also needs the folder it goes back to when it is published.
+    if (pg_page_is_draft($folder['id'])) {
+        db("INSERT IGNORE INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
+            SELECT '" . (int)$new_page['id'] . "', folder_id, UNIX_TIMESTAMP(), '" . (int)$user['id'] . "'
+            FROM page_drafts
+            WHERE page_id = '" . (int)$page_id . "'");
+    }
+
     // A form widget in the copied tree describes fields that belong to the
     // page, not to the widget, so the copy needs rows of its own. This is the
     // same call the visual editor makes on every save; it reads the widgets

@@ -142,8 +142,8 @@ function ws_api_routes()
         array('name' => 'due_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Empty clears it.'),
         array('name' => 'estimate_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'description' => 'Each person\'s share of the effort, in minutes. 0 counts the site default on the board.'),
         array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
-        array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
-        array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, form, calendar_event, file or page.'),
+        array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
+        array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, form, calendar_event, file or page.'),
         array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Hand the work over even though somebody on it is away on those days. Refused unless the owner may override the board.'),
     );
 
@@ -180,7 +180,7 @@ function ws_api_routes()
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('public', 'private'), 'default' => 'public'),
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
-                array('name' => 'members', 'in' => 'body', 'type' => 'list', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
+                array('name' => 'members', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
             ),
         ),
 
@@ -230,7 +230,7 @@ function ws_api_routes()
             'description' => 'Adds colleagues to a channel the owner of the application may post in - a private one only when the owner is in it. The people added are told, and the channel gets a line naming them. Ids of people already in it or not in the team are left out: added says who came in.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-                array('name' => 'user_ids', 'in' => 'body', 'type' => 'list', 'max_items' => 100, 'required' => true),
+                array('name' => 'user_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'required' => true),
             ),
         ),
 
@@ -520,7 +520,7 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'frequency', 'in' => 'body', 'type' => 'enum', 'values' => array('daily', 'weekly', 'monthly', 'yearly', 'none'), 'required' => true),
                 array('name' => 'interval', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 99, 'default' => 1, 'description' => 'Every how many days, weeks, months or years.'),
-                array('name' => 'weekdays', 'in' => 'body', 'type' => 'list', 'max_items' => 7, 'description' => 'Weekly only: ISO days, 1 for Monday to 7 for Sunday. Empty repeats on the weekday of the due date.'),
+                array('name' => 'weekdays', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 7, 'description' => 'Weekly only: ISO days, 1 for Monday to 7 for Sunday. Empty repeats on the weekday of the due date.'),
                 array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, the last day a copy may fall on. Empty for no end.'),
             ),
         ),

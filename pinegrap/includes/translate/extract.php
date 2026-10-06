@@ -100,6 +100,14 @@ function pg_tr_node_fields($type, $props)
             break;
     }
 
+    // The two captions of a catalog row's adaptive link: written on the node
+    // by the designer, one of them picked per row by the renderer
+    // (_apply_catalog_listing_bindings()). The bound text itself is a sample.
+    if (isset($bound['text']) && ($bound['text'] === '__link_label')) {
+        $add('_labelDetail', 'text');
+        $add('_labelExpand', 'text');
+    }
+
     // Attributes with words in them, on any node. A button's value is its
     // label; an input's value is what the form posts unless the input is a
     // button itself.
@@ -320,8 +328,9 @@ function pg_tr_store_segments($owner_type, $owner_id, $segments, $kind = 'conten
 }
 
 /**
- * Extracts one page: its tree, its title and description, and - through the
- * references the tree holds - the shared components and menus it shows.
+ * Extracts one page: its tree, its title and description, its comment label,
+ * and - through the references the tree holds - the shared components and
+ * menus it shows, with the records of a form a widget on it includes.
  *
  * @param int $page_id
  * @return array('ok' => bool, 'segments' => int, 'shared' => int, 'menus' => int)
@@ -331,7 +340,7 @@ function pg_tr_extract_page($page_id)
     $page_id = (int) $page_id;
     $result = array('ok' => false, 'segments' => 0, 'shared' => 0, 'menus' => 0);
 
-    $page = db_item("SELECT page_id, page_name, page_title, page_meta_description FROM page WHERE page_id = '$page_id' LIMIT 1");
+    $page = db_item("SELECT page_id, page_name, page_title, page_meta_description, comments, comments_label FROM page WHERE page_id = '$page_id' LIMIT 1");
 
     if (!is_array($page)) {
         return $result;
@@ -349,6 +358,25 @@ function pg_tr_extract_page($page_id)
     $position = 0;
 
     pg_tr_walk_tree($tree, $segments, $refs, $position);
+
+    // The label of the page's comments ("Comment" when none is set): the
+    // comment area repeats it in its headings, buttons and messages
+    // (get_comment_label()).
+    if (!empty($page['comments'])) {
+        $label = pg_tr_normalize((string) $page['comments_label'], 'text');
+
+        if (($label !== '') && pg_tr_translatable($label)) {
+            $segments[] = array(
+                'hash'     => pg_tr_hash($label, 'text'),
+                'text'     => $label,
+                'format'   => 'text',
+                'node_id'  => 'page',
+                'field'    => 'comments_label',
+                'position' => $position++,
+            );
+        }
+    }
+
     pg_tr_store_segments('page', $page_id, $segments);
     $result['segments'] = count($segments);
 
@@ -385,6 +413,12 @@ function pg_tr_extract_page($page_id)
         if ($extracted['ok']) {
             $result['shared']++;
             $ref_rows[] = array('string_id' => 0, 'node_id' => 'shared', 'field' => (string) $shared_id, 'position' => 0);
+
+            // A list or detail widget that includes its records: the form's
+            // records are drawn on this page too.
+            if ($extracted['records'] > 0) {
+                $ref_rows[] = array('string_id' => 0, 'node_id' => 'form_records', 'field' => (string) $extracted['records'], 'position' => 0);
+            }
         }
     }
 
@@ -409,12 +443,13 @@ function pg_tr_extract_page($page_id)
  * Extracts a shared component (or a system widget) from its stored tree.
  *
  * @param int $shared_id
- * @return array('ok' => bool, 'segments' => int)
+ * @return array('ok' => bool, 'segments' => int, 'records' => int) records:
+ *               the custom form whose records the widget includes, 0 for none
  */
 function pg_tr_extract_shared($shared_id)
 {
     $shared_id = (int) $shared_id;
-    $result = array('ok' => false, 'segments' => 0);
+    $result = array('ok' => false, 'segments' => 0, 'records' => 0);
 
     $row = db_item("SELECT tree_json, system_region_config FROM shared_components WHERE id = '$shared_id' LIMIT 1");
     $tree_json = is_array($row) ? $row['tree_json'] : null;
@@ -434,6 +469,10 @@ function pg_tr_extract_shared($shared_id)
     $segments = array_merge($segments, pg_tr_widget_config_segments($row['system_region_config'], $position));
 
     pg_tr_store_segments('shared', $shared_id, $segments);
+
+    // A form list or form item view set to include its records in the
+    // translation: the form's records are read as well.
+    $result['records'] = pg_tr_extract_widget_records($row['system_region_config']);
 
     $result['ok'] = true;
     $result['segments'] = count($segments);

@@ -20,7 +20,7 @@
 // The status vocabulary is the store's own, all four of it. The endpoint this
 // replaces knew three and had no way to see a cancelled order at all.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

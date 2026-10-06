@@ -29,7 +29,7 @@
 // the status from the enabled switch and the date range, and the incomplete
 // flag for an offer that is saved but cannot do anything at checkout.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

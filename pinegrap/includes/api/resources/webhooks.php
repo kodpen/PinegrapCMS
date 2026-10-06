@@ -19,7 +19,7 @@
 // the same reason an application's own secret is: the receiver needs it to
 // verify what arrives, and nothing else does.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

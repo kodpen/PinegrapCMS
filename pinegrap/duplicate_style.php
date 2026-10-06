@@ -151,6 +151,16 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
             $vals[] = ($val === null) ? 'NULL' : "'" . e($val) . "'";
         }
         db("INSERT INTO page (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ")");
+        $new_page_id = (int)mysqli_insert_id(db::$con);
+
+        // The copy of a draft lands in the drafts folder with its original,
+        // so it also needs the folder it goes back to when it is published.
+        if ($new_page_id > 0 && pg_page_is_draft($src_page['page_folder'])) {
+            db("INSERT IGNORE INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
+                SELECT '$new_page_id', folder_id, UNIX_TIMESTAMP(), '" . (int)$user['id'] . "'
+                FROM page_drafts
+                WHERE page_id = '" . (int)$src_page['page_id'] . "'");
+        }
     }
 }
 

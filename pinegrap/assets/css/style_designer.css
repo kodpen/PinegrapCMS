@@ -5588,7 +5588,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    The button puts every page of the design on the site. Below 992px the
    word goes and the icon stays (the title still names it), as the other
    labels in this toolbar do. */
-#sd-ajax-save.sd-publish-btn {
+#sd-ajax-save.sd-publish-btn,
+#sd-publish-page.sd-publish-btn {
     width: auto;
     padding: 0 .8rem;
     gap: .4rem;
@@ -5597,8 +5598,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     white-space: nowrap;
 }
 @media (max-width: 991.98px) {
-    #sd-ajax-save.sd-publish-btn { width: 32px; padding: 0; }
-    #sd-ajax-save .sd-publish-txt { display: none; }
+    #sd-ajax-save.sd-publish-btn,
+    #sd-publish-page.sd-publish-btn { width: 32px; padding: 0; }
+    #sd-ajax-save .sd-publish-txt,
+    #sd-publish-page .sd-publish-txt { display: none; }
 }
 
 /* ── Template: "your design is being prepared" ──
@@ -5876,3 +5879,41 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-tr-actions { display: flex; align-items: center; gap: .25rem; margin-top: .2rem; }
 .sd-tr-actions .btn { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .7rem; }
 .sd-tr-screen { display: inline-block; margin-top: .55rem; font-size: .7rem; }
+
+/* ── Drafts: a page kept off the site ──
+   The tab carries a badge; on a draft the main button reads "Save" in a
+   neutral colour, and the caret beside it opens the menu that changes the
+   state of this page or of every page of the design. The caret sits flush
+   against the button: the toolbar's gap is taken back with a negative
+   margin of the same size. */
+.sd-tab-draft .sd-tab-name { font-style: italic; }
+.sd-tab-draft-badge {
+    flex: 0 0 auto;
+    padding: 0 .35rem;
+    border: 1px dashed var(--sd-text-muted, #8b949e);
+    border-radius: 999px;
+    color: var(--sd-text-muted, #8b949e);
+    font-size: .6rem;
+    line-height: 1.45;
+}
+.sd-tab.active .sd-tab-draft-badge { color: var(--sd-text, #c9d1d9); border-color: var(--sd-text, #c9d1d9); }
+.sd-publish-more { display: inline-flex; margin-left: -4px; }
+#sd-publish-more.sd-publish-more-btn {
+    width: 22px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-color: rgba(255, 255, 255, .28);
+    font-size: .7rem;
+}
+#sd-ajax-save.sd-publish-btn:has(+ .sd-publish-more) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+/* The menu joins the button beside it: the main one on a page on the site,
+   the draft's Publish (which stands between them) on a draft. */
+#sd-ajax-save.sd-publish-btn:not(.sd-publish-solo):has(+ #sd-publish-page + .sd-publish-more),
+#sd-publish-page.sd-publish-btn:has(+ .sd-publish-more) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+#sd-ajax-save.sd-publish-draft,
+#sd-ajax-save.sd-publish-draft + .sd-publish-more #sd-publish-more { background: #373e47; border-color: #545d68; }
+#sd-ajax-save.sd-publish-draft:hover,
+#sd-ajax-save.sd-publish-draft + .sd-publish-more #sd-publish-more:hover { background: #444c56; }
+@media (max-width: 991.98px) {
+    .sd-publish-more { margin-left: -2px; }
+}

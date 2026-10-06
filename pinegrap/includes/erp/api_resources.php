@@ -967,7 +967,7 @@ function erp_api_invoice_schema()
             'external_id' => 'string',
             'gib_number' => 'string',
             'gib_uuid' => 'string',
-            'sent_at' => 'datetime|null',
+            'sent_at' => 'string?',
         ),
         'notes' => 'string',
         'lines' => array(array(

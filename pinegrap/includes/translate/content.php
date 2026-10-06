@@ -4,10 +4,12 @@
  *
  * Front-end translation - the texts that do not live in a page's tree: the
  * catalog (products, product groups, attributes and their options), the
- * custom forms (title, confirmation message, field labels and options), the
- * texts a system widget's settings hold and the custom HTML blocks of the
- * visual pages. The software's own wording (lang()) is not among them: it
- * comes from the language files in includes/local/.
+ * custom forms (title, confirmation message, field labels and options) and
+ * the records of those a list or detail widget includes in the translation,
+ * the texts a system widget's settings hold and the custom HTML blocks of the
+ * visual pages. The software's own wording (lang()) comes from the language
+ * files in includes/local/; for a language that has none, the wording a
+ * visitor is shown is taken in here as well (pg_tr_ui_translate()).
  *
  * Extraction puts them in the store like any page text; drawing them is one
  * pass over the finished page (pg_tr_render_db_texts()): every text node,
@@ -40,12 +42,201 @@ function pg_tr_owner_groups()
             'icon'  => 'bi-bag',
             'types' => array('product', 'product_group', 'attribute'),
         ),
+        // The forms, and the records of those a list or detail widget
+        // includes in the translation (pg_tr_extract_form_records()).
         'forms' => array(
             'label' => lang('Forms'),
             'icon'  => 'bi-ui-checks',
-            'types' => array('form'),
+            'types' => array('form', 'form_records'),
+        ),
+        // The software's own wording a visitor was shown on a page in a
+        // language with no language file (pg_tr_ui_translate()). Listed for
+        // those languages only, and left out of the whole-site scope.
+        'ui' => array(
+            'label' => lang('Interface texts'),
+            'icon'  => 'bi-window',
+            'types' => array('ui'),
         ),
     );
+}
+
+/* ---------------------------------------------------------------------------
+   The software's own wording, for a language with no language file
+   ---------------------------------------------------------------------------
+   lang() draws the software's wording from includes/local/<code>.json. The
+   software ships Turkish and English; a site may add any language. On a page
+   in a language with no file, lang() asks here: a key the software knows is
+   taken in as the template the site's source language has for it, with its
+   {var} placeholders, the first time a visitor is shown it, and its
+   translation - made on the Translations screen, in the "Interface texts"
+   group - is the wording from then on. Until there is one, the English
+   wording stays. A language with a file never comes here. */
+
+/**
+ * The translation of a lang() key on a page in a language with no language
+ * file: a template whose {var} placeholders lang() fills in, or null while
+ * there is none.
+ *
+ * @param string $key
+ * @return string|null
+ */
+function pg_tr_ui_translate($key)
+{
+    static $memo = array();
+
+    $key = (string) $key;
+
+    if (array_key_exists($key, $memo)) {
+        return $memo[$key];
+    }
+
+    $memo[$key] = null;
+
+    $template = pg_tr_ui_source_template($key);
+
+    if ($template === null) {
+        return null;
+    }
+
+    $format = (strpos($template, '<') !== false) ? 'inline' : 'text';
+    $normalized = pg_tr_normalize($template, $format);
+
+    if (($normalized === '') || !pg_tr_translatable($normalized)) {
+        return null;
+    }
+
+    $hash = pg_tr_hash($normalized, $format);
+
+    pg_tr_ui_record($hash, $normalized, $format);
+
+    $map = pg_tr_map_load(pg_tr_language());
+
+    if (!isset($map[$hash]) || ((string) $map[$hash]['text'] === '')) {
+        return null;
+    }
+
+    $memo[$key] = (string) $map[$hash]['text'];
+
+    return $memo[$key];
+}
+
+/**
+ * What a lang() key says in the site's source language, placeholders kept,
+ * or null for a string the software does not know. Only the software's own
+ * wording is taken in: every key the code uses is in the Turkish file
+ * (tools/check_lang.php), text a caller passes through lang() - a label read
+ * from the database, say - is not.
+ *
+ * @param string $key
+ * @return string|null
+ */
+function pg_tr_ui_source_template($key)
+{
+    $turkish = lang(array('string' => $key, 'language' => 'tr', 'if_known' => true));
+
+    if ($turkish === null) {
+        return null;
+    }
+
+    $source = pg_tr_source_language();
+
+    if ($source === 'tr') {
+        return $turkish;
+    }
+
+    // A source language with a file speaks its file; one without one has
+    // the software's English wording.
+    return pg_tr_ui_has_file($source) ? lang(array('string' => $key, 'language' => $source)) : $key;
+}
+
+/**
+ * Notes a template a visitor was shown, so "Update translations" of the
+ * Interface texts group finds it. The ones already in the store are read
+ * once a request; the new ones are written when the request ends, in one go.
+ *
+ * @param string $hash
+ * @param string $normalized
+ * @param string $format
+ */
+function pg_tr_ui_record($hash, $normalized, $format)
+{
+    static $known = null;
+
+    if ($known === null) {
+        $known = array();
+
+        foreach ((array) db_items("SELECT s.hash
+                                   FROM translation_uses u
+                                   INNER JOIN translation_strings s ON s.id = u.string_id
+                                   WHERE u.owner_type = 'ui'") as $row) {
+            $known[$row['hash']] = true;
+        }
+
+        register_shutdown_function('pg_tr_ui_record_flush');
+    }
+
+    if (isset($known[$hash])) {
+        return;
+    }
+
+    $known[$hash] = true;
+    pg_tr_ui_record_queue($hash, array($normalized, $format));
+}
+
+/**
+ * The templates waiting to be written: adds one, or hands the lot over and
+ * empties the list.
+ *
+ * @return array hash => array(normalized, format)
+ */
+function pg_tr_ui_record_queue($hash = null, $row = null)
+{
+    static $queue = array();
+
+    if ($hash === null) {
+        $out = $queue;
+        $queue = array();
+
+        return $out;
+    }
+
+    $queue[$hash] = $row;
+
+    return $queue;
+}
+
+/**
+ * Writes the templates noted during the request: the strings (kind 'ui'
+ * unless the same words are already a page's text) and one use each. A use
+ * another request wrote in the meantime is not written twice.
+ */
+function pg_tr_ui_record_flush()
+{
+    $queue = pg_tr_ui_record_queue();
+
+    if (!$queue || !isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    $now = time();
+
+    foreach (array_chunk($queue, 100, true) as $chunk) {
+        $values = array();
+
+        foreach ($chunk as $hash => $row) {
+            $values[] = "('" . e($hash) . "', '" . e($row[0]) . "', '" . e($row[1]) . "', 'ui', '" . mb_strlen($row[0]) . "', '$now', '$now')";
+        }
+
+        db("INSERT INTO translation_strings (hash, source_text, format, kind, chars, first_seen, last_seen)
+            VALUES " . implode(',', $values) . "
+            ON DUPLICATE KEY UPDATE last_seen = VALUES(last_seen)");
+
+        db("INSERT INTO translation_uses (string_id, owner_type, owner_id, node_id, field, position, prev_string_id, seen_at)
+            SELECT s.id, 'ui', 0, 'lang', 'text', 0, 0, '$now'
+            FROM translation_strings s
+            WHERE s.hash IN ('" . implode("','", array_map('e', array_keys($chunk))) . "')
+              AND NOT EXISTS (SELECT 1 FROM translation_uses x WHERE x.owner_type = 'ui' AND x.string_id = s.id)");
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -471,7 +662,273 @@ function pg_tr_extract_forms()
     $summary['owners'] = count($by_owner);
     $summary['segments'] = pg_tr_store_owner_type('form', $by_owner);
 
+    // The records of the forms a widget includes in the translation; a form
+    // no widget includes any more keeps none.
+    $record_forms = pg_tr_record_forms();
+
+    foreach ($record_forms as $form_page_id) {
+        $summary['segments'] += pg_tr_extract_form_records($form_page_id);
+    }
+
+    db("DELETE FROM translation_uses WHERE owner_type = 'form_records'"
+        . ($record_forms ? " AND owner_id NOT IN (" . implode(',', array_map('intval', $record_forms)) . ")" : ''));
+
     return $summary;
+}
+
+/* ---------------------------------------------------------------------------
+   The records of a form a widget shows
+   --------------------------------------------------------------------------- */
+
+/**
+ * The custom form a form list or form item view widget shows. With
+ * $included, only when the widget includes the form's records in the
+ * translation (its "include the contents in translation" setting).
+ *
+ * @param string|null $config_json system_region_config
+ * @param bool        $included
+ * @return int the form's page id, 0 for none
+ */
+function pg_tr_widget_record_form($config_json, $included = true)
+{
+    $config = ($config_json !== null && $config_json !== '') ? json_decode((string) $config_json, true) : null;
+
+    if (!is_array($config) || ($included && empty($config['translate_records']))) {
+        return 0;
+    }
+
+    $type = isset($config['regionType']) ? (string) $config['regionType'] : '';
+
+    // The list's earlier type names render the same widget (_expand_system_widgets()).
+    if (!in_array($type, array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list', 'form_item_view'), true)) {
+        return 0;
+    }
+
+    foreach (array('custom_form_page_id', 'form_page_id') as $key) {
+        if (isset($config[$key]) && ((int) $config[$key] > 0)) {
+            return (int) $config[$key];
+        }
+    }
+
+    if (!empty($config['source_page']) && is_string($config['source_page'])) {
+        return (int) db_value("SELECT page_id FROM page WHERE page_name = '" . e($config['source_page']) . "' LIMIT 1");
+    }
+
+    return 0;
+}
+
+/**
+ * Every custom form whose records a list or detail widget includes in the
+ * translation. Read once a request: an extraction asks for every widget of
+ * every page and changes no widget on the way.
+ *
+ * @return array form page ids
+ */
+function pg_tr_record_forms()
+{
+    static $cached = null;
+
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $forms = array();
+    $rows = db_items("SELECT system_region_config FROM shared_components WHERE system_region_config LIKE '%translate_records%'");
+
+    foreach ((array) $rows as $row) {
+        $form_page_id = pg_tr_widget_record_form($row['system_region_config']);
+
+        if ($form_page_id > 0) {
+            $forms[$form_page_id] = true;
+        }
+    }
+
+    $cached = array_keys($forms);
+
+    return $cached;
+}
+
+/**
+ * The records of one custom form, the way a widget that includes them in the
+ * translation shows them: the text boxes and text areas of every complete
+ * record, a rich-text area split into its blocks like any stored HTML.
+ * Choices, addresses, dates and codes are left out - a choice prints its
+ * option, whose label pg_tr_extract_forms() reads. One owner per form; the
+ * field names the record and the form field ("r12:34"). Read once a
+ * request: a widget on every page would otherwise read its form's records
+ * again for each of them.
+ *
+ * @param int $form_page_id
+ * @return int segments
+ */
+function pg_tr_extract_form_records($form_page_id)
+{
+    static $done = array();
+
+    $form_page_id = (int) $form_page_id;
+
+    if ($form_page_id <= 0) {
+        return 0;
+    }
+
+    if (isset($done[$form_page_id])) {
+        return $done[$form_page_id];
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(300);
+    }
+
+    $segments = array();
+    $position = 0;
+
+    $rows = db_items("SELECT form_data.form_id, form_data.form_field_id, form_data.data, form_fields.type, form_fields.wysiwyg
+                      FROM form_data
+                      INNER JOIN forms ON forms.id = form_data.form_id
+                      INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
+                      WHERE forms.page_id = '$form_page_id'
+                        AND forms.complete = '1'
+                        AND form_fields.type IN ('text box', 'text area')
+                      ORDER BY forms.id, form_fields.sort_order, form_data.id");
+
+    foreach ((array) $rows as $row) {
+        $field = 'r' . (int) $row['form_id'] . ':' . (int) $row['form_field_id'];
+        $value = (string) $row['data'];
+
+        // Written in the rich-text editor: HTML, split like a description.
+        if (($row['type'] === 'text area') && !empty($row['wysiwyg'])) {
+            foreach (pg_tr_field_segments($field, $value, $position) as $segment) {
+                $segment['node_id'] = 'record';
+                $segments[] = $segment;
+            }
+
+            continue;
+        }
+
+        // Plain text, line breaks included: the widget escapes it and turns
+        // the breaks into <br>, after the translation (pg_tr_record_fields()).
+        $normalized = pg_tr_normalize($value, 'text');
+
+        if (($normalized === '') || !pg_tr_translatable($normalized)) {
+            continue;
+        }
+
+        $segments[] = array(
+            'hash'     => pg_tr_hash($normalized, 'text'),
+            'text'     => $normalized,
+            'format'   => 'text',
+            'node_id'  => 'record',
+            'field'    => $field,
+            'position' => $position++,
+        );
+    }
+
+    $done[$form_page_id] = pg_tr_store_owner_segments('form_records', $form_page_id, $segments);
+
+    return $done[$form_page_id];
+}
+
+/**
+ * After a widget was read (pg_tr_extract_shared()): the records of its form,
+ * when it includes them in the translation. The form of a list or detail
+ * widget that does not include them loses its records from the store unless
+ * another widget still includes them.
+ *
+ * @param string|null $config_json system_region_config
+ * @return int the form whose records were read, 0 for none
+ */
+function pg_tr_extract_widget_records($config_json)
+{
+    $form_page_id = pg_tr_widget_record_form($config_json);
+
+    if ($form_page_id > 0) {
+        pg_tr_extract_form_records($form_page_id);
+
+        return $form_page_id;
+    }
+
+    $shown = pg_tr_widget_record_form($config_json, false);
+
+    if (($shown > 0) && !in_array($shown, pg_tr_record_forms(), true)) {
+        db("DELETE FROM translation_uses WHERE owner_type = 'form_records' AND owner_id = '$shown'");
+    }
+
+    return 0;
+}
+
+/**
+ * pg_tr_store_segments() for an owner with many texts (the records of a
+ * form): the strings are written many to a statement instead of one round
+ * trip each, then the owner's uses are replaced. A statement holds up to 200
+ * strings and stops short of half a megabyte, well inside the smallest
+ * max_allowed_packet a server ships with: blog posts are long.
+ *
+ * @param string $owner_type
+ * @param int    $owner_id
+ * @param array  $segments
+ * @param string $kind
+ * @return int uses written
+ */
+function pg_tr_store_owner_segments($owner_type, $owner_id, $segments, $kind = 'content')
+{
+    $now = time();
+    $strings = array();
+
+    foreach ($segments as $segment) {
+        $strings[$segment['hash']] = array($segment['text'], $segment['format']);
+    }
+
+    $values = array();
+    $bytes = 0;
+
+    $flush = function () use (&$values, &$bytes) {
+        if ($values) {
+            db("INSERT INTO translation_strings (hash, source_text, format, kind, chars, first_seen, last_seen)
+                VALUES " . implode(',', $values) . "
+                ON DUPLICATE KEY UPDATE last_seen = VALUES(last_seen)");
+        }
+
+        $values = array();
+        $bytes = 0;
+    };
+
+    foreach ($strings as $hash => $row) {
+        $value = "('" . e($hash) . "', '" . e($row[0]) . "', '" . e($row[1]) . "', '" . e($kind) . "', '" . mb_strlen($row[0]) . "', '$now', '$now')";
+
+        if ($values && ((count($values) >= 200) || ($bytes + strlen($value) > 524288))) {
+            $flush();
+        }
+
+        $values[] = $value;
+        $bytes += strlen($value) + 1;
+    }
+
+    $flush();
+
+    $ids = array();
+
+    foreach (array_chunk(array_keys($strings), 500) as $chunk) {
+        foreach ((array) db_items("SELECT id, hash FROM translation_strings WHERE hash IN ('" . implode("','", array_map('e', $chunk)) . "')") as $row) {
+            $ids[$row['hash']] = (int) $row['id'];
+        }
+    }
+
+    $uses = array();
+
+    foreach ($segments as $segment) {
+        if (isset($ids[$segment['hash']])) {
+            $uses[] = array(
+                'string_id' => $ids[$segment['hash']],
+                'node_id'   => $segment['node_id'],
+                'field'     => $segment['field'],
+                'position'  => $segment['position'],
+            );
+        }
+    }
+
+    pg_tr_uses_rewrite($owner_type, $owner_id, $uses);
+
+    return count($uses);
 }
 
 /**
@@ -679,6 +1136,40 @@ function pg_tr_render_db_html($html)
     }, $html);
 
     return $html;
+}
+
+/**
+ * A stored piece of HTML (a record's rich-text field) with its texts in the
+ * current language, taken apart the way pg_tr_html_segments() stored it: HTML
+ * with no block in it is one text, anything else goes by its leaf blocks and
+ * loose texts.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_tr_render_html_value($html)
+{
+    $html = (string) $html;
+
+    if (trim(strip_tags($html)) === '') {
+        return $html;
+    }
+
+    if (!preg_match('~<(' . implode('|', pg_tr_block_tags()) . ')\b~i', $html)) {
+        $trimmed = trim($html);
+        $plain = (strpos($trimmed, '<') === false);
+        $found = $plain
+            ? pg_tr_db_text(html_entity_decode($trimmed, ENT_QUOTES | ENT_HTML5, 'UTF-8'), array('text'))
+            : pg_tr_db_text($trimmed, array('inline'));
+
+        if ($found === null) {
+            return $html;
+        }
+
+        return ($found[1] === 'inline') ? $found[0] : h($found[0]);
+    }
+
+    return pg_tr_render_db_html($html);
 }
 
 /**

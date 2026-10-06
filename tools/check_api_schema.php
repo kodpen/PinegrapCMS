@@ -88,6 +88,7 @@ $presenters = array(
 	'translate_api_string_schema'     => 'translate_api_string_present',
 	'translate_api_page_schema'       => 'translate_api_page_present',
 	'translate_api_job_schema'        => 'translate_api_job_present',
+	'translate_api_glossary_schema'   => 'translate_api_glossary_present',
 );
 
 $problems = array();

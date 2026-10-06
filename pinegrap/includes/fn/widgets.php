@@ -1207,6 +1207,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // write for them. Values stay raw — escaping happens once, at replace time.
     $by_form = pg_sw_index_form_data($data_rows);
 
+    // A widget that includes its records in the translation prints their
+    // texts in the language the page is served in (includes/fn/translate.php).
+    if (!empty($cfg['translate_records'])) {
+        $by_form = array_map('pg_tr_record_fields', $by_form);
+    }
+
     // 3. Render each submission by cloning the LOOP template and replacing tokens.
     //    An identifier this form does not answer is swept after the pass, so a
     //    raw "^^something^^" never leaks into the page.
@@ -1588,6 +1594,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 
         $indexed = pg_sw_index_form_data($data_rows);
         $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
+
+        // The record's texts in the page's language, when the widget includes
+        // its records in the translation (includes/fn/translate.php).
+        if (!empty($cfg['translate_records'])) {
+            $custom = pg_tr_record_fields($custom);
+        }
 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the

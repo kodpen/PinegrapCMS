@@ -150,7 +150,11 @@ function pg_tr_render_props($props, $type)
 function pg_tr_render_page_body($page_id, $page_tree_code, $style_name, $additional_body_classes)
 {
     $language = pg_tr_language();
-    $fingerprint = sha1($page_tree_code);
+
+    // The source body, and the rules a body is drawn by: a body drawn before
+    // they changed (placeholder Latin left as written, the software's
+    // wording from the site's translations) is drawn again.
+    $fingerprint = sha1('2026.4.7' . "\n" . $page_tree_code);
 
     $cached = db_item("SELECT tree_code, fingerprint, coverage, reviewed, mt_google FROM page_translations
                        WHERE page_id = '$page_id' AND language = '" . e($language) . "' LIMIT 1");

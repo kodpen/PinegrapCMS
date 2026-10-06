@@ -20,7 +20,7 @@
 // marketplace integration needs that, so this replacement is read-only and
 // narrow on purpose.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

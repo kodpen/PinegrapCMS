@@ -416,15 +416,20 @@ function pg_tr_auto_update_page($page_id, $user_id = 0)
 /**
  * What the visual editor needs for its Translate section: the target
  * languages and where translations are read and written. Null on a site with
- * one language, before the 2026.4.6 upgrade, or for a user the Translations
- * screen does not admit.
+ * one language or before the 2026.4.6 upgrade.
+ *
+ * Whoever may edit a page's text in the editor may edit its translations
+ * there: a manager every text of the site, a user (role 3) the texts of the
+ * pages whose folder they have edit rights to (translations_action.php
+ * checks each request). The Translations screen itself stays the manager's,
+ * so a user gets no link to it.
  *
  * @param array $user
  * @return array|null
  */
 function pg_tr_editor_config($user)
 {
-    if (!pg_tr_ready() || !is_array($user) || ((int) $user['role'] > 2)) {
+    if (!pg_tr_ready() || !is_array($user) || ((int) $user['role'] > 3)) {
         return null;
     }
 
@@ -448,8 +453,41 @@ function pg_tr_editor_config($user)
         'source'    => $source,
         'languages' => $languages,
         'actionUrl' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations_action.php',
-        'screenUrl' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php',
+        'screenUrl' => ((int) $user['role'] <= 2) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php' : '',
     );
+}
+
+/**
+ * A record's own fields in the current language, for a form list or form
+ * item view widget that includes its records in the translation: the text
+ * boxes and text areas, the fields pg_tr_extract_form_records() reads. Done
+ * on the raw values, before the widget escapes them and turns line breaks
+ * into <br>. Unchanged in the source language.
+ *
+ * @param array $fields identifier => array('data', 'type', 'wysiwyg'), as
+ *                      pg_sw_index_form_data() builds them
+ * @return array
+ */
+function pg_tr_record_fields($fields)
+{
+    if (!pg_tr_active() || !is_array($fields)) {
+        return $fields;
+    }
+
+    pg_tr_load();
+
+    foreach ($fields as $key => $field) {
+        if (!is_array($field) || !isset($field['data'], $field['type']) || ($field['data'] === '')
+            || !in_array($field['type'], array('text box', 'text area'), true)) {
+            continue;
+        }
+
+        $fields[$key]['data'] = !empty($field['wysiwyg'])
+            ? pg_tr_render_html_value($field['data'])
+            : pg_tr_render_text($field['data'], 'text');
+    }
+
+    return $fields;
 }
 
 /**
@@ -458,6 +496,58 @@ function pg_tr_editor_config($user)
 function pg_tr_label($text)
 {
     return pg_tr_text((string) $text, 'text', 'content');
+}
+
+/**
+ * Whether a language has a file of its own for the software's wording
+ * (includes/local/<code>.json). One that has one speaks it; for one that has
+ * none, the wording a visitor is shown comes from the site's translations
+ * (pg_tr_ui_text()).
+ *
+ * @param string $code
+ * @return bool
+ */
+function pg_tr_ui_has_file($code)
+{
+    static $known = array();
+
+    $code = (string) $code;
+
+    if (!isset($known[$code])) {
+        $known[$code] = (bool) preg_match('/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/', $code)
+            && is_file(PG_FUNCTIONS_DIR . '/includes/local/' . $code . '.json');
+    }
+
+    return $known[$code];
+}
+
+/**
+ * The software's wording (a lang() key) on a page drawn in a language with
+ * no language file: the site's translation of it, a template whose {var}
+ * placeholders lang() fills in. Null while there is none - lang() keeps the
+ * English wording - for a key the software does not know, and in every
+ * other case: the source language, a language with a file, the panel.
+ *
+ * @param string $key
+ * @return string|null
+ */
+function pg_tr_ui_text($key)
+{
+    static $busy = false;
+
+    // The lookup itself may print through lang() (a message of the store):
+    // that one stays as it is. Before the configuration is read there is no
+    // answer yet, and pg_tr_active() would keep a "no" for the request.
+    if ($busy || !pg_tr_ready() || !pg_tr_active() || pg_tr_ui_has_file(pg_tr_language())) {
+        return null;
+    }
+
+    $busy = true;
+    pg_tr_load();
+    $text = pg_tr_ui_translate($key);
+    $busy = false;
+
+    return $text;
 }
 
 /**
@@ -550,21 +640,24 @@ function pg_tr_text($text, $format = 'text', $kind = 'content')
 
 /**
  * The assembled page on its way out: the language attributes, the address
- * prefix on the links to pages, the alternates. Also runs for a page in the
- * source language, which gets the alternates alone.
+ * prefix on the links to pages, the alternates, the language switchers. Also
+ * runs for a page in the source language, which gets the alternates and the
+ * switchers alone.
  *
  * @param string $content
  * @return string
  */
 function pg_tr_finalize($content)
 {
-    if (!pg_tr_ready() || !pg_tr_languages()) {
-        return $content;
+    if (pg_tr_ready() && pg_tr_languages()) {
+        pg_tr_load();
+        $content = pg_tr_render_finalize($content);
     }
 
-    pg_tr_load();
-
-    return pg_tr_render_finalize($content);
+    // The language switchers last: the language pass has run, so their
+    // names and addresses stay as drawn (widgets_language.php). A site with
+    // one language loses them.
+    return function_exists('pg_language_switcher_expand') ? pg_language_switcher_expand($content) : $content;
 }
 
 /**

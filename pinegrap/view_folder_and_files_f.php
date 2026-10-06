@@ -879,6 +879,8 @@ function pg_explorer_page_payload($page, $user)
         'folder_name' => isset($map[$page_folder_id]) ? $map[$page_folder_id]['folder_name'] : '',
         'type' => $page['page_type'],
         'home' => ($page['page_home'] == 'yes'),
+        // Kept off the site in the private drafts folder (2026.4.7).
+        'draft' => function_exists('pg_page_is_draft') && pg_page_is_draft($page['page_folder']),
         'style_name' => ($page['page_style'] != '0') ? (string) $page['style_name'] : '',
         'style_desktop' => pg_explorer_style_info($page['page_style'], $page['page_folder'], 'desktop'),
         'style_mobile' => pg_explorer_style_info(isset($page['mobile_style_id']) ? $page['mobile_style_id'] : 0, $page['page_folder'], 'mobile'),

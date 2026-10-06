@@ -160,7 +160,7 @@ function pg_tr_context($string_ids, $language)
     $uses = db_items("SELECT u.string_id, u.owner_type, u.owner_id, u.field, u.position, u.prev_string_id
                       FROM translation_uses u
                       WHERE u.string_id IN ($list) AND u.string_id > 0
-                      ORDER BY FIELD(u.owner_type, 'page', 'page_seo', 'shared', 'menu', 'product', 'product_group', 'attribute', 'form'), u.owner_id, u.position");
+                      ORDER BY FIELD(u.owner_type, 'page', 'page_seo', 'shared', 'menu', 'product', 'product_group', 'attribute', 'form', 'form_records', 'ui'), u.owner_id, u.position");
 
     $first = array();
 
@@ -175,7 +175,7 @@ function pg_tr_context($string_ids, $language)
     }
 
     // The owners' names, one query per kind.
-    $owners = array('page' => array(), 'shared' => array(), 'menu' => array(), 'product' => array(), 'product_group' => array(), 'attribute' => array(), 'form' => array());
+    $owners = array('page' => array(), 'shared' => array(), 'menu' => array(), 'product' => array(), 'product_group' => array(), 'attribute' => array(), 'form' => array(), 'form_records' => array());
 
     foreach ($first as $use) {
         $type = ($use['owner_type'] === 'page_seo') ? 'page' : $use['owner_type'];
@@ -185,7 +185,7 @@ function pg_tr_context($string_ids, $language)
         }
     }
 
-    $names = array('page' => array(), 'shared' => array(), 'menu' => array(), 'product' => array(), 'product_group' => array(), 'attribute' => array(), 'form' => array());
+    $names = array('page' => array(), 'shared' => array(), 'menu' => array(), 'product' => array(), 'product_group' => array(), 'attribute' => array(), 'form' => array(), 'form_records' => array());
 
     if ($owners['page']) {
         foreach ((array) db_items("SELECT page_id, page_name, page_title FROM page WHERE page_id IN (" . implode(',', array_keys($owners['page'])) . ")") as $row) {
@@ -205,12 +205,14 @@ function pg_tr_context($string_ids, $language)
         }
     }
 
-    // The catalog and the forms: what a translator should know the text is.
+    // The catalog, the forms and their records: what a translator should
+    // know the text is.
     foreach (array(
         'product'       => array("SELECT id, IF(short_description <> '', short_description, name) AS label FROM products WHERE id IN (%s)", lang('Product')),
         'product_group' => array("SELECT id, name AS label FROM product_groups WHERE id IN (%s)", lang('Product Group')),
         'attribute'     => array("SELECT id, name AS label FROM product_attributes WHERE id IN (%s)", lang('Product attribute')),
         'form'          => array("SELECT page_id AS id, form_name AS label FROM custom_form_pages WHERE page_id IN (%s)", lang('Form')),
+        'form_records'  => array("SELECT page_id AS id, form_name AS label FROM custom_form_pages WHERE page_id IN (%s)", lang('Form record')),
     ) as $type => $spec) {
         if (!$owners[$type]) {
             continue;
@@ -221,10 +223,17 @@ function pg_tr_context($string_ids, $language)
         }
     }
 
+    // The software's wording: one owner for all of it, so no neighbours.
+    $names['ui'] = array(0 => lang('Interface text of the website (a button, a label, a message)'));
+
     // The neighbours: the texts just before and after in the same owner.
     $neighbour_where = array();
 
     foreach ($first as $use) {
+        if ($use['owner_type'] === 'ui') {
+            continue;
+        }
+
         $neighbour_where[] = "(u.owner_type = '" . e($use['owner_type']) . "' AND u.owner_id = '" . (int) $use['owner_id'] . "' AND u.position BETWEEN '" . max(0, (int) $use['position'] - 1) . "' AND '" . ((int) $use['position'] + 1) . "')";
     }
 

@@ -25,7 +25,7 @@
 // Stock is also where a retried call does real harm, so this endpoint is the
 // main reason the Idempotency-Key header exists.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 

@@ -8486,6 +8486,7 @@ function get_tables() {
 		'translation_job_items',
 		'translation_glossary',
 		'page_translations',
+		'page_drafts',
 	);
 
 }

@@ -21,7 +21,7 @@
 // available through the status parameter for a caller who wants them - a shop
 // measuring its abandonment rate is asking a real question.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 	exit;
 
