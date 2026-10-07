@@ -81,6 +81,21 @@
          çatısıyla kurulan tasarımlarda tuvalin stil hesabı da
          birkaç kat hızlandı.
 
+  [DÜZELTME] Görsel editörde Form Listesi ya da Form Kaydı
+         widget'ıyla kurulan sayfalar RSS beslemesi vermiyordu;
+         katalog widget'lı sayfalar veriyordu. Sayfa artık
+         "?rss=true" ile formun en yeni elli kaydını (başlık,
+         açıklama, kategori ve medya alanları formun RSS öğesi
+         ayarından) sunuyor ve beslemeyi sayfa başlığında
+         duyuruyor; kayıt bağlantıları widget'ın ayrıntı
+         sayfasına gider. Form Kaydı widget'ıyla açılan kayıtta
+         sayfa başlığı ve açıklaması kaydın RSS başlığı ve
+         açıklamasından dolar (Open Graph "article" ve BlogPosting
+         yapısal verisiyle), eski "form kaydı" sayfa türündeki
+         gibi. Bir sayfada birden çok besleme widget'ı varsa tek
+         besleme verilir: önce Form Kaydı, sonra Form Listesi,
+         sonra katalog widget'ları.
+
   SAYFA TASARIMCISI
   --------------------------------------------------------
 
@@ -101,7 +116,6 @@
          reddedildi" diyor, yalnız "Yeni olarak kaydet" çalışıyordu.
          Yönetici ve tasarımcı artık tasarım dosyasının üstüne
          yazabilir; menejer ve kullanıcı için kural değişmedi.
-
 
 
   2026.4.7
