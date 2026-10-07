@@ -71,6 +71,50 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Düzenleme/yazdırma ekranları geçersiz kayıt kimliğinde "Kayıt bulunamadı." veriyor (2026-10-07)
+
+**Sorun.** v2026.4.7 kararlılık denetimi (GitHub #192). 22 panel ekranı
+(`edit_tax_zone.php`, `edit_zone.php`, `edit_user.php`, `edit_contact.php`,
+`edit_calendar.php`, `print_order.php`, `view_visitor.php`,
+`edit_shipping_method.php`, `edit_product_group.php`, `edit_email_campaign.php`,
+`edit_calendar_event.php`, `edit_gift_card.php`, `edit_key_code.php`,
+`edit_container.php`, `edit_ad.php`, `edit_product_attribute.php`,
+`edit_folder.php`, `edit_currency.php`, `edit_country.php`, `edit_state.php`,
+`edit_referral_source.php`, `edit_short_link.php`) `$_GET['id']` /
+`$_REQUEST['id']` değerini okuyup satırı denetlemeden kullanıyordu. Kimlik
+yoksa ya da satır silinmişse PHP 8 `Undefined array key "id"` ve `Trying to
+access array offset on null` uyarıları günlüğe düşüyor (`edit_zone.php`'de
+ülke/eyalet döngüsü yüzünden istek başına 240+), ekran HTTP 200 ile yarı boş
+bir form çiziyordu; DEBUG açıkken uyarılar sayfaya basılıyordu.
+
+**Kök neden.** Ekranlar rol denetiminden sonra doğrudan kaydı çekiyor; "kayıt
+var mı" sorusu hiç sorulmuyordu. Round-2'de (#78/#81/#90/#91) düzeltilen
+ekranlardaki `output_error(lang('… not found.'))` kalıbı bu ekranlara
+uygulanmamıştı.
+
+**Çözüm.** Her ekranın başına, alan erişim denetiminin hemen ardından ortak
+bir kapı: `$id = (int) ($_REQUEST['id'] ?? 0)`; kimlik 1'den küçükse ya da
+ilgili tabloda (`user.user_id`, `folder.folder_id`, diğerlerinde `id`)
+satır yoksa `output_error(lang('Record not found.') …, 404)`. Kapı
+`$_REQUEST` okuduğu için GET (form) ve POST (kaydet/sil) yolları aynı
+denetimden geçer; sonraki kod değişmedi. Yeni çeviri anahtarı `Record not
+found.` → "Kayıt bulunamadı." (`tr.json`). Yan düzeltme: `edit_folder.php`
+her GET'te `!$_POST['name']` ile uyarı üretiyordu, `empty()` oldu.
+
+**Doğrulama.** Sandbox (PHP 8.3, `release/2026.4.8`): kimliksiz ve
+`id=999999` isteklerinde 404 + "Kayıt bulunamadı. Geri git"; geçerli
+kimlikle `edit_user`, `edit_folder` (kök klasör id=1), `print_order`,
+`edit_zone`, `edit_country`, `edit_calendar`, `edit_product_group`,
+`edit_contact`, `view_visitor` 200 ve `php_errors.log` boş. `php -l` 22
+dosyada temiz, `tools/check_lang.php` OK.
+
+**Açık.** `edit_ad.php` ve `edit_folder.php`'de rol 3 (kullanıcı) için
+"kayıt yok" cevabı artık kayıt bazlı erişim denetiminden önce gelir (kayıt
+varlığı sızdırmaz: ekran zaten giriş ister). Kapı yalnız sayılan 22 ekranda;
+aynı kalıbı taşıyan başka ekran varsa aynı blok kopyalanır.
+
+---
+
 ## 2026.4.8 — ERP dışa aktarma ve yedekleme GLOB_BRACE olmayan PHP'de çökmüyor; mailchimp.php doğrudan istekte 500 vermiyor (2026-10-07)
 
 **Sorun.** v2026.4.7 etiketinin kararlılık denetimi (GitHub #190, #191).

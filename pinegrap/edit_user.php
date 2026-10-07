@@ -23,6 +23,14 @@ $liveform_view_users = new liveform('view_users');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
+// of a half-empty form and PHP notices from the unchecked row below.
+$id = (int) ($_REQUEST['id'] ?? 0);
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM user WHERE user_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if editor is less than an administrator role, check to make sure that editor has access to edit user
 if ($user['role'] > 0) {
     // get role of user that is being edited
