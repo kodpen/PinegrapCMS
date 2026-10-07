@@ -54,3 +54,6 @@
 # Real configuration - never committed
 config.local.php
 .env
+
+# Local agent outputs - never published
+/Claude outputs/

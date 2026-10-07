@@ -480,6 +480,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
             : null;
         $content = _expand_system_widgets($content, $mode, $email);
+        // A widget's own layout can place shared components and other
+        // widgets; their markers come out of the widget's render.
+        $content = pg_expand_nested_components($content, $mode, $email);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
 

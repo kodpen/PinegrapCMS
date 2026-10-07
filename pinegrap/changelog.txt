@@ -19,6 +19,70 @@
 
 
 
+  2026.4.8
+  ==========================================================
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Bootstrap ikonları her yerde ikon olarak düzenlenir.
+         HTML içe aktarmada ve yapıştırmada, tasarımın çatısı ne
+         olursa olsun, "bi bi-…" sınıflı <i> ve <span> öğeleri
+         ikon olarak gelir; içinde ikon olan bağlantı ve
+         düğmelerde ikon ayrı bir öğe olur. Elle "bi bi-house"
+         sınıfı verilen bir öğe (div, i, span) seçilince ikon
+         seçicisini gösterir; yalnız ikondan ibaretse çift
+         tıklamayla da değişir.
+
+  [YENİ] Ortak bileşenin içine başka bir ortak bileşen ya da
+         sistem widget'ı (ör. sepet bağlantısı) konabiliyor;
+         yayın artık "iç içe ortak bileşene izin yok" diye
+         durmuyor. Birbirini döngü halinde içeren bileşenler
+         kaydedilmez: editör böyle bir bırakmaya izin vermez ve
+         döngüyü bileşen adlarıyla bildirir. Bir bileşenin
+         kullanıldığı sayfalar, onu içeren bileşenin
+         sayfalarını da kapsar.
+
+  [DÜZELTME] Kendi CSS çatısıyla (Bootstrap dışında) kurulan
+         tasarımlarda tuval sitedeki görünümden ayrılıyordu: yan
+         yana durması gereken bloklar sütunlara yayılıyor,
+         çatının kuralları editörün kutuları yüzünden
+         tutmuyordu, yazı tipi değişiyordu, kaydırınca beliren
+         bölümler görünmüyordu. Tuval artık sayfanın düzenini
+         çiziyor; seçim çerçevesi, araç çubuğu ve sürükle-bırak
+         işaretleri öğenin kendisinde.
+
+  [DÜZELTME] Bootstrap 5 tasarımlarında satırdaki sütunlar
+         tuvalde sayfadakinden geniş çiziliyordu (sütun aralığı
+         yok sayılıyordu); yan yana dizilen liste öğeleri alt
+         alta düşüyordu.
+
+  [DÜZELTME] Liste widget'larının (blog, form kayıtları, ürün
+         kataloğu) tekrarlanan kartı tuvalde sayfadaki gibi
+         çiziliyor: tasarlanan kartın görsel yer tutucusu gerçek
+         kayıtların görseli kadar, kartlar satırın düzenini
+         alıyor, kartın tarih alanı kolayca seçiliyor. Kartın
+         ardından gelen gerçek kayıtların sayısı widget'ın
+         sayfada gösterdiği sayıyı izliyor (en çok on): üç kayıt
+         gösteren widget tuvalde de üç kart gösteriyor.
+
+  [DÜZELTME] Sepet bağlantısı, giriş bölgesi ve dil seçici
+         widget'larının düzenine eklenen "Mesajlar (PHP)" alanı
+         kaldırıldı. Bu widget'lar hiçbir zaman mesaj göstermez;
+         alan yalnız tuvalde, başlığın ortasında "PHP Mesajları"
+         kutusu çiziyordu. Yeni widget'lar bu alan olmadan
+         kurulur, eski düzende kalan alan editörde görünmez.
+
+  [HIZ] Tuvalde kaydırma takılmıyor. Her kaydırma adımında
+         tuvaldeki bütün öğeler yeniden ölçülüp düzeltiliyordu;
+         kendiliğinden dönen bir karusel bile bunu durmadan
+         tetikliyordu. Artık kaydırmada yalnız seçili ve fare
+         altındaki öğenin araç çubuğu güncelleniyor. Kendi CSS
+         çatısıyla kurulan tasarımlarda tuvalin stil hesabı da
+         birkaç kat hızlandı.
+
+
+
   2026.4.7
   ==========================================================
 

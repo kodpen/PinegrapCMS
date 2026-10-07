@@ -17610,5 +17610,8 @@
     "The {var} draft pages of the design will be put on the site: visitors will be able to open them.": "Tasarımın {var} taslak sayfası yayına alınacak; ziyaretçiler açabilecek.",
     "The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.": "Tasarım şu anda Görsel Sayfa Editörü'nde açık ({var:1}). Sayfalarını oradan değiştirin ya da editör kapanınca yeniden deneyin.",
     "Drafts are not available on this site yet.": "Taslaklar bu sitede henüz kullanılamıyor.",
-    "These widgets had no layout and drew nothing on the site: {var}. Their default layout was loaded; save to put it on the site.": "Bu widget'ların düzeni yoktu, sitede hiçbir şey göstermiyordu: {var}. Varsayılan düzenleri yüklendi; sitede görünmesi için kaydedin."
+    "These widgets had no layout and drew nothing on the site: {var}. Their default layout was loaded; save to put it on the site.": "Bu widget'ların düzeni yoktu, sitede hiçbir şey göstermiyordu: {var}. Varsayılan düzenleri yüklendi; sitede görünmesi için kaydedin.",
+    "These shared components place each other in a loop: {var}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var}",
+    "These shared components place each other in a loop: {var:1}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var:1}",
+    "A loop: \"{var}\" places itself, so it is not drawn here again": "Döngü: \"{var}\" kendini içeriyor, burada yeniden çizilmez"
 }

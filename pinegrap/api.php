@@ -13984,6 +13984,12 @@ switch ($action) {
                 if ($sc_tree === '' || json_decode($sc_tree) === null) {
                     respond(array('status' => 'error', 'message' => lang('Invalid tree data.')));
                 }
+                // The tree may place other shared components, never this one —
+                // directly or through them: that loop could not be drawn.
+                $sc_loop = pg_shared_component_cycle(array($sc_id), array($sc_id => json_decode($sc_tree, true)));
+                if (!empty($sc_loop)) {
+                    respond(array('status' => 'error', 'message' => pg_shared_component_loop_message($sc_loop)));
+                }
                 // Validate system_region_config when provided
                 if ($sc_src_cfg !== false && $sc_src_cfg !== null && ($sc_src_cfg === '' || json_decode($sc_src_cfg) === null)) {
                     respond(array('status' => 'error', 'message' => lang('Invalid system region config.')));

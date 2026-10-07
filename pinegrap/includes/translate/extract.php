@@ -407,8 +407,26 @@ function pg_tr_extract_page($page_id)
     // drawn into it from elsewhere.
     $ref_rows = array();
 
-    foreach (array_keys($refs['shared']) as $shared_id) {
+    // The components the page places, and the ones those place in turn (a
+    // widget inside a header): all of them are drawn on this page.
+    $queue = array_keys($refs['shared']);
+    $done = array();
+
+    while (!empty($queue)) {
+        $shared_id = (int) array_shift($queue);
+
+        if (($shared_id <= 0) || isset($done[$shared_id])) {
+            continue;
+        }
+
+        $done[$shared_id] = true;
         $extracted = pg_tr_extract_shared($shared_id);
+
+        foreach ($extracted['shared'] as $nested_id) {
+            if (!isset($done[$nested_id])) {
+                $queue[] = $nested_id;
+            }
+        }
 
         if ($extracted['ok']) {
             $result['shared']++;
@@ -443,13 +461,14 @@ function pg_tr_extract_page($page_id)
  * Extracts a shared component (or a system widget) from its stored tree.
  *
  * @param int $shared_id
- * @return array('ok' => bool, 'segments' => int, 'records' => int) records:
- *               the custom form whose records the widget includes, 0 for none
+ * @return array('ok' => bool, 'segments' => int, 'records' => int, 'shared' => int[])
+ *               records: the custom form whose records the widget includes, 0 for
+ *               none; shared: the shared components this one places
  */
 function pg_tr_extract_shared($shared_id)
 {
     $shared_id = (int) $shared_id;
-    $result = array('ok' => false, 'segments' => 0, 'records' => 0);
+    $result = array('ok' => false, 'segments' => 0, 'records' => 0, 'shared' => array());
 
     $row = db_item("SELECT tree_json, system_region_config FROM shared_components WHERE id = '$shared_id' LIMIT 1");
     $tree_json = is_array($row) ? $row['tree_json'] : null;
@@ -476,6 +495,7 @@ function pg_tr_extract_shared($shared_id)
 
     $result['ok'] = true;
     $result['segments'] = count($segments);
+    $result['shared'] = array_map('intval', array_keys($refs['shared']));
 
     return $result;
 }

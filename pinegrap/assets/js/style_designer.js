@@ -341,18 +341,90 @@ const StyleDesigner = (function () {
         }
     }
 
-    // Returns true if `node` or any descendant has type === 'shared_ref'.
-    // Used to detect nested shared components (banned in Phase 1).
-    function _hasSharedRef(node) {
-        if (!node || typeof node !== 'object') return false;
-        if (node.type === 'shared_ref') return true;
-        if (node.children) {
-            for (var i = 0; i < node.children.length; i++) {
-                if (_hasSharedRef(node.children[i])) return true;
-            }
+    // ── Nested shared components ─────────────────────────────────────────
+    // A shared component (or a system widget) may place other shared
+    // components. The one shape that cannot be drawn is a loop — A placing B
+    // while B, directly or further down, places A — so the helpers below walk
+    // the cached trees as a graph and refuse exactly that.
+
+    // The shared ids a cached component places directly.
+    function _sdSharedChildIds(sid) {
+        var c = _sharedCache[sid];
+        var acc = {};
+        if (c && c.tree) collectSharedIds(c.tree, acc);
+        return Object.keys(acc).map(Number).filter(function (n) { return n > 0; });
+    }
+
+    // Whether `targetSid` is `fromSid` itself or is placed somewhere inside
+    // it. A component that is not in the cache counts as a leaf.
+    function _sdSharedReaches(fromSid, targetSid) {
+        if (!fromSid || !targetSid) return false;
+        var seen = {};
+        var stack = [fromSid];
+        while (stack.length) {
+            var s = stack.pop();
+            if (s === targetSid) return true;
+            if (seen[s]) continue;
+            seen[s] = true;
+            var kids = _sdSharedChildIds(s);
+            for (var i = 0; i < kids.length; i++) if (!seen[kids[i]]) stack.push(kids[i]);
         }
         return false;
     }
+
+    // The first loop reachable from `sid`, as the ids along it (A, B, A), or
+    // null. Depth-first with an explicit path so a message can name it.
+    function _sdSharedCyclePath(sid) {
+        var done = {};
+        var path = [];
+        var onPath = {};
+        function visit(s) {
+            if (onPath[s]) return path.slice(path.indexOf(s)).concat([s]);
+            if (done[s]) return null;
+            onPath[s] = true;
+            path.push(s);
+            var kids = _sdSharedChildIds(s);
+            for (var i = 0; i < kids.length; i++) {
+                var hit = visit(kids[i]);
+                if (hit) return hit;
+            }
+            path.pop();
+            delete onPath[s];
+            done[s] = true;
+            return null;
+        }
+        return visit(sid);
+    }
+
+    // The shared component whose tree holds `target` (that tree's root
+    // included), or 0 for a node of the page itself.
+    function _sdSharedOwnerOf(target) {
+        if (!target) return 0;
+        for (var k in _sharedCache) {
+            if (!Object.prototype.hasOwnProperty.call(_sharedCache, k)) continue;
+            var c = _sharedCache[k];
+            if (c && c.tree === target) return parseInt(k, 10) || 0;
+        }
+        return _resolveSharedSid(target);
+    }
+
+    // The shared ids a drag would place: the dragged reference itself, or
+    // every reference inside a dragged subtree. Kept on the drag payload —
+    // dragover asks on every mouse move and the subtree does not change.
+    function _sdDragSharedIds(data) {
+        if (!data) return [];
+        if (data._sdSids) return data._sdSids;
+        var acc = {};
+        if (data.source === 'node' && data.node) collectSharedIds(data.node, acc);
+        else if (data.extra && data.extra.sharedId) acc[parseInt(data.extra.sharedId, 10) || 0] = true;
+        var ids = Object.keys(acc).map(Number).filter(function (n) { return n > 0; });
+        try { data._sdSids = ids; } catch (e) {}
+        return ids;
+    }
+
+    // Shared trees being drawn or walked right now: a loop that made it into
+    // the cache ends in a marker instead of an endless recursion.
+    var _sdSharedOpen = {};
 
     // ── DYNAMIC PLACEHOLDER MODEL (F7 — future-proof) ────────────────────────────
     //
@@ -492,7 +564,9 @@ const StyleDesigner = (function () {
 
     // Fetch tree_json for the given id array; populate _sharedCache; call cb() when done.
     // If ids is empty cb() is called synchronously.
-    function prefetchShared(ids, cb) {
+    // `_seen` (internal): the ids this chain already asked for, so a nested
+    // id the server did not return is not asked for again.
+    function prefetchShared(ids, cb, _seen) {
         if (!ids || !ids.length) { if (cb) cb(); return; }
         // Mark load in-flight + freeze the Save button. Even a fast cache
         // hit is still ~1 RTT — saving during that window has historically
@@ -549,6 +623,16 @@ const StyleDesigner = (function () {
                             // it lives on the attribute now. Moved on load so the
                             // next save writes the tree in its current shape.
                             if (parsed && typeof _cfMigrateWidgetTree === 'function') _cfMigrateWidgetTree(parsed, sid);
+                            // A widget whose Messages block can never show
+                            // anything (_SW_NO_MESSAGES) loses the one an older
+                            // layout carries. Nothing is marked unsaved: the
+                            // site drew nothing there, and the widget's next
+                            // save writes the tree without it.
+                            if (parsed && item.system_region_config) {
+                                var mcfg = null;
+                                try { mcfg = JSON.parse(item.system_region_config); } catch (e) {}
+                                if (mcfg && _SW_NO_MESSAGES[mcfg.regionType]) _sdDropMessagesNodes(parsed);
+                            }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
                             // draws nothing on the site. It gets the layout its
@@ -574,7 +658,24 @@ const StyleDesigner = (function () {
                     }
                 }
             } catch (e) {}
-            _done();
+            // What the loaded components place in turn is drawn inside them,
+            // so it is loaded before the callback runs; the in-flight count
+            // (and with it the Save button) holds until the whole chain is in.
+            var nested = [];
+            var seenNext = _seen || {};
+            try {
+                var accN = {};
+                ids.forEach(function (rid) {
+                    var n = parseInt(rid, 10);
+                    seenNext[n] = true;
+                    if (_sharedCache[n] && _sharedCache[n].tree) collectSharedIds(_sharedCache[n].tree, accN);
+                });
+                nested = Object.keys(accN).map(Number).filter(function (n) {
+                    return n > 0 && !_sharedCache[n] && !seenNext[n];
+                });
+            } catch (e) { nested = []; }
+            if (nested.length) prefetchShared(nested, _done, seenNext);
+            else _done();
         };
         xhr.onerror = function () { _done(); };
         xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'prefetch', ids: ids, token: token }));
@@ -679,9 +780,36 @@ const StyleDesigner = (function () {
 
     // Where `sid` is placed across the design's pages:
     // { count, pages: [{key, name, page_id, count}] }.
-    function _sharedRefUsageInDesign(sid) {
+    // A placement inside another shared component counts too: every page
+    // that shows that component shows this one (`_seen` guards a loop).
+    function _sharedRefUsageInDesign(sid, _seen) {
         var res = { count: 0, pages: [] };
         if (!sid) return res;
+        _seen = _seen || {};
+        _seen[sid] = true;
+        function addPage(p, n) {
+            for (var i = 0; i < res.pages.length; i++) {
+                if (res.pages[i].key === p.key && res.pages[i].page_id === p.page_id) { res.pages[i].count += n; return; }
+            }
+            res.pages.push({ key: p.key, name: p.name, page_id: p.page_id, count: n });
+        }
+        Object.keys(_sharedCache).forEach(function (k) {
+            var owner = parseInt(k, 10);
+            var oc = _sharedCache[owner];
+            if (!owner || owner === sid || _seen[owner] || !oc || !oc.tree) return;
+            var n = 0;
+            (function walk(node) {
+                if (!node) return;
+                if (node.type === 'shared_ref') {
+                    if (parseInt(node.props && node.props.sharedId, 10) === sid) n++;
+                    return;
+                }
+                if (node.children) node.children.forEach(walk);
+            })(oc.tree);
+            if (!n) return;
+            res.count += n;
+            _sharedRefUsageInDesign(owner, _seen).pages.forEach(function (p) { addPage(p, p.count); });
+        });
         _pgAllPageTrees().forEach(function (entry) {
             var n = 0;
             (function walk(node) {
@@ -695,12 +823,11 @@ const StyleDesigner = (function () {
             })(entry.tree);
             if (n > 0) {
                 res.count += n;
-                res.pages.push({
+                addPage({
                     key:     entry.page ? entry.page.key : '',
                     name:    entry.page ? (entry.page.page_name || _sdT('New Page')) : '',
-                    page_id: entry.page ? (entry.page.page_id || 0) : 0,
-                    count:   n
-                });
+                    page_id: entry.page ? (entry.page.page_id || 0) : 0
+                }, n);
             }
         });
         return res;
@@ -732,6 +859,27 @@ const StyleDesigner = (function () {
                     walk(c);
                 }
             })(entry.tree);
+        });
+        // The shared components that place it lose it too; the next save
+        // writes them.
+        Object.keys(_sharedCache).forEach(function (k) {
+            var owner = parseInt(k, 10);
+            var oc = _sharedCache[owner];
+            if (!owner || owner === sid || !oc || !oc.tree) return;
+            var removed = 0;
+            (function walk(node) {
+                if (!node || !node.children) return;
+                for (var i = node.children.length - 1; i >= 0; i--) {
+                    var c = node.children[i];
+                    if (c.type === 'shared_ref' && parseInt(c.props && c.props.sharedId, 10) === sid) {
+                        node.children.splice(i, 1);
+                        removed++;
+                        continue;
+                    }
+                    walk(c);
+                }
+            })(oc.tree);
+            if (removed) _sharedDirty[owner] = true;
         });
     }
 
@@ -2655,20 +2803,40 @@ const StyleDesigner = (function () {
             var sid = parseInt(sids[i], 10);
             var cached = _sharedCache[sid];
             if (cached && cached.tree && expandAncestors(node, cached.tree)) {
-                // Also expand the shared_ref placeholder in the main tree
-                (function expandSharedRefInMain(root) {
-                    if (!root || !root.children) return false;
-                    for (var j = 0; j < root.children.length; j++) {
-                        var c = root.children[j];
-                        if (c.type === 'shared_ref' && c.props && parseInt(c.props.sharedId, 10) === sid) {
-                            root._expanded = true;
-                            c._expanded = true;
-                            return true;
-                        }
-                        if (expandSharedRefInMain(c)) { root._expanded = true; return true; }
-                    }
-                    return false;
-                })(tree);
+                // Also expand the shared_ref placeholder that leads to it —
+                // in the page tree, or inside the component it is nested in.
+                _sdExpandSharedChain(sid, {});
+                return;
+            }
+        }
+    }
+
+    // Expand, in the overview tree, a placement of shared component `sid`:
+    // in the page tree, or inside another cached component, which is then
+    // expanded the same way, up to the page.
+    function _sdExpandSharedChain(sid, seen) {
+        if (!sid || seen[sid]) return;
+        seen[sid] = true;
+        function expandRefIn(root) {
+            if (!root || !root.children) return false;
+            for (var j = 0; j < root.children.length; j++) {
+                var c = root.children[j];
+                if (c.type === 'shared_ref' && c.props && parseInt(c.props.sharedId, 10) === sid) {
+                    root._expanded = true;
+                    c._expanded = true;
+                    return true;
+                }
+                if (expandRefIn(c)) { root._expanded = true; return true; }
+            }
+            return false;
+        }
+        if (expandRefIn(tree)) return;
+        for (var k in _sharedCache) {
+            if (!Object.prototype.hasOwnProperty.call(_sharedCache, k)) continue;
+            var owner = parseInt(k, 10);
+            var oc = _sharedCache[owner];
+            if (owner !== sid && oc && oc.tree && expandRefIn(oc.tree)) {
+                _sdExpandSharedChain(owner, seen);
                 return;
             }
         }
@@ -4619,11 +4787,26 @@ const StyleDesigner = (function () {
     };
 
     // ========================= IFRAME CSS (injected) =========================
+    // Rules marked _SD_BX only make sense while every canvas wrapper is a box:
+    // the Bootstrap 5 structure emulation (direct-child rules re-created
+    // across the wrapper) and the wrapper display model for images, links and
+    // inline text. A design on a custom framework draws its wrappers as
+    // display:contents instead (_sdFxFlatOn()) and matches its own child
+    // selectors across them (_sdBridgeSheets()); there these rules are left
+    // out. The marker is a leading \u0001 that _sdIframeCss() strips.
+    var _SD_BX = '\u0001';
+    // The element inside a wrapper: any child that is not editor chrome.
+    var _SD_FX_EL = ':not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge)';
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
         'html { height:100%; overflow-y:auto; }',
-        'body { margin:0; padding:0; min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }',
+        // The body defaults sit in the lowest cascade layer (this stylesheet
+        // comes first, so the layer is declared first): any rule of the
+        // design wins over them, layered or not. As plain rules they beat a
+        // design whose framework puts its own body rules in @layer (Bootstrap
+        // 6), and the canvas lost the design's font.
+        '@layer sd-canvas-base { body { margin:0; padding:0; min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; } }',
         // The editor hides its own wrappers with d-none (a single-screen
         // widget's loop area); a custom design has no Bootstrap to honour it.
         '.sd-wrap.d-none, .sd-loop-tr.d-none { display:none !important; }',
@@ -4646,6 +4829,12 @@ const StyleDesigner = (function () {
         // elements (or the link itself) impossible. Disable just the click
         // capture — the visual layout (positioning, sizing) is unchanged.
         '.stretched-link::after { pointer-events:none !important; }',
+        // Scroll-reveal libraries (AOS, sal.js, WOW.js) hide an element until
+        // their script sees it scroll into view. The canvas rebuilds its DOM on
+        // every change and the script never sees the new nodes, so whole
+        // sections stayed invisible; the canvas draws them revealed, the way a
+        // visitor sees them once they have scrolled past.
+        '[data-aos], [data-sal], .wow { opacity:1 !important; visibility:visible !important; transform:none !important; transition:none !important; animation:none !important; }',
         // Designer node wrapper — inset box-shadow: it does not affect layout and adds no scrollbar
         '.sd-wrap { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
         '.sd-wrap:hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
@@ -4666,14 +4855,18 @@ const StyleDesigner = (function () {
         'body > .sd-wrap[data-sd-type="root"] { min-height: 100vh; padding: 0; }',
         '.sd-wrap[data-sd-type="container"] { padding:8px 4px; margin-bottom:6px; }',
         '.sd-wrap[data-sd-type="area"] { padding:8px 4px; margin-bottom:4px; }',
-        '.sd-wrap[data-sd-type="col"] { padding:4px; min-height:36px; }',
+        '.sd-wrap[data-sd-type="col"] { min-height:36px; }',
+        // A column in a row keeps the row's own gutter (Bootstrap's .row > *
+        // padding); the 4px inset replaced it, and every column read wider on
+        // the canvas than on the page.
+        '.sd-wrap[data-sd-type="col"]:not(.row > *) { padding:4px; }',
         '.sd-wrap[data-sd-type="region"], .sd-wrap[data-sd-type="component"], .sd-wrap[data-sd-type="content"] { margin:3px 0; }',
         // Inside modal parts: remove the 3px wrapper margin so there's no extra gap
-        '.modal-body > .sd-wrap, .modal-header > .sd-wrap, .modal-footer > .sd-wrap { margin:0 !important; min-height:0; }',
+        _SD_BX + '.modal-body > .sd-wrap, .modal-header > .sd-wrap, .modal-footer > .sd-wrap { margin:0 !important; min-height:0; }',
         // Alert dismiss button: make sd-wrap a display:contents ghost so btn-close positions
         // relative to .alert-dismissible (Bootstrap position:absolute top:0 right:0 is preserved).
         // Hover/select outlines are transferred to the actual .btn-close element.
-        '.alert-dismissible .sd-wrap:has(> .btn-close) { display:contents !important; }',
+        _SD_BX + '.alert-dismissible .sd-wrap:has(> .btn-close) { display:contents !important; }',
         // Card Group: Bootstrap's `.card-group` is a flex row whose direct
         // children must be `.card` for `flex: 1 0 0%` to kick in. Our editor
         // wraps every card in a `.sd-wrap`, which broke that direct-child
@@ -4681,11 +4874,11 @@ const StyleDesigner = (function () {
         // wrapper transparent to layout (display:contents) restores the
         // direct-child relationship without changing the saved tree shape.
         // Hover/select outlines stay on the inner `.card` itself.
-        '.card-group > .sd-wrap:has(> .card) { display:contents !important; }',
-        '.card-group > .sd-wrap.sd-selected:has(> .card) > .card { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:1px !important; }',
-        '.card-group > .sd-wrap:hover:not(.sd-selected):has(> .card) > .card { outline:1px solid rgba(13,110,253,.35) !important; }',
-        '.alert-dismissible .sd-wrap.sd-selected:has(> .btn-close) > .btn-close { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:1px !important; }',
-        '.alert-dismissible .sd-wrap:hover:not(.sd-selected):has(> .btn-close) > .btn-close { outline:1px solid rgba(13,110,253,.35) !important; }',
+        _SD_BX + '.card-group > .sd-wrap:has(> .card) { display:contents !important; }',
+        _SD_BX + '.card-group > .sd-wrap.sd-selected:has(> .card) > .card { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:1px !important; }',
+        _SD_BX + '.card-group > .sd-wrap:hover:not(.sd-selected):has(> .card) > .card { outline:1px solid rgba(13,110,253,.35) !important; }',
+        _SD_BX + '.alert-dismissible .sd-wrap.sd-selected:has(> .btn-close) > .btn-close { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:1px !important; }',
+        _SD_BX + '.alert-dismissible .sd-wrap:hover:not(.sd-selected):has(> .btn-close) > .btn-close { outline:1px solid rgba(13,110,253,.35) !important; }',
         // Table structural elements get sd-wrap class directly — reset any wrapper styles that break table layout
         'tr.sd-wrap, thead.sd-wrap, tbody.sd-wrap, tfoot.sd-wrap { display:revert; min-height:0 !important; padding:0 !important; margin:0 !important; position:relative; }',
         // Canvas-only: when an <img> has no src (or empty/placeholder src)
@@ -4763,132 +4956,132 @@ const StyleDesigner = (function () {
         '.sd-wrap[data-content-type="icon"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; }',
         '.sd-wrap[data-content-type="icon"] > .sd-lbl { display:none; }',
         // Image: the wrapper follows the image's own size instead of spanning the block width (img-fluid still works — max-width:100%)
-        '.sd-wrap[data-content-type="image"] { display:inline-block; vertical-align:top; width:auto; min-height:unset; max-width:100%; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"] { display:inline-block; vertical-align:top; width:auto; min-height:unset; max-width:100%; }',
         // When img carries w-100 / d-block / img-fluid the wrapper must stretch too; otherwise
         // inline-block:width:auto creates a circular constraint and the class has no visible effect.
-        '.sd-wrap[data-content-type="image"]:has(> img.w-100), .sd-wrap[data-content-type="image"]:has(> img.d-block) { display:block !important; width:100% !important; }',
-        '.sd-wrap[data-content-type="image"]:has(> img.img-fluid) { display:block !important; max-width:100% !important; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"]:has(> img.w-100), .sd-wrap[data-content-type="image"]:has(> img.d-block) { display:block !important; width:100% !important; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"]:has(> img.img-fluid) { display:block !important; max-width:100% !important; }',
         // height:auto removed — explicit height values (from p.height / style attr) should not be overridden
-        '.sd-wrap[data-content-type="image"] > img { display:block; max-width:100%; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"] > img { display:block; max-width:100%; }',
         // Empty image placeholder — fills column width, provides a clickable target before a src is chosen
         '.sd-img-placeholder { width:100%; min-height:140px; background:linear-gradient(135deg,#e0c3fc,#8ec5fc); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.4rem; border-radius:.25rem; cursor:pointer; }',
         '.sd-img-placeholder .bi-image { font-size:2.5rem; color:rgba(0,0,0,.25); }',
         '.sd-img-ph-hint { font-size:.72rem; color:rgba(0,0,0,.35); }',
         '.sd-wrap[data-content-type="image"] > .sd-img-placeholder { display:flex; }',
         // Inline components (btn, badge) must not fill the block
-        '.sd-wrap[data-component-type="btn"], .sd-wrap[data-component-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
-        '.sd-wrap[data-content-type="button"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        _SD_BX + '.sd-wrap[data-component-type="btn"], .sd-wrap[data-component-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        _SD_BX + '.sd-wrap[data-content-type="button"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
         // Span / text content is inline on the page; its block wrapper pushed
         // the label of an "icon + text" list item onto its own line. Inline,
         // no margin, baseline-aligned like the <span> it stands for.
-        '.sd-wrap[data-content-type="span"], .sd-wrap[data-content-type="text"] { display:inline; margin:0; width:auto; min-height:unset; max-width:100%; vertical-align:baseline; }',
+        _SD_BX + '.sd-wrap[data-content-type="span"], .sd-wrap[data-content-type="text"] { display:inline; margin:0; width:auto; min-height:unset; max-width:100%; vertical-align:baseline; }',
         '.sd-wrap[data-content-type="span"] > .sd-lbl, .sd-wrap[data-content-type="text"] > .sd-lbl { display:none; }',
         // Inline semantic elements — span, a, button, strong, em and friends must not span the block width
-        '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
         // Empty-element minimum sizing (no placeholder text — icon-only FAB buttons must render
         // clean). Keep the min-width/height so a brand-new empty button is still grabbable. The
         // ::before placeholder rule was dropped when virtual-text replaced it for button/a.
         '[data-sd-ph]:empty { min-width:40px; min-height:1.2em; display:inline-block; }',
         // Progress bar: sd-wrap must be layout-transparent so .progress-bar is a direct flex child of .progress
-        '.progress > .sd-wrap { display:contents !important; }',
-        '.progress > .sd-wrap > .sd-tb { display:none !important; }',
+        _SD_BX + '.progress > .sd-wrap { display:contents !important; }',
+        _SD_BX + '.progress > .sd-wrap > .sd-tb { display:none !important; }',
         // Placeholder (loading skeleton): .placeholder children use col-* widths resolving
         // against their parent's width. sd-wrap in between collapses that containing block, so
         // col-6 measures against the inline wrapper (width:auto) → the bar shrinks to content.
         // display:contents restores the direct parent-child relationship.
-        '.placeholder-glow > .sd-wrap, .placeholder-wave > .sd-wrap { display:contents !important; }',
-        '.placeholder-glow > .sd-wrap > .sd-tb, .placeholder-wave > .sd-wrap > .sd-tb { display:none !important; }',
-        '.placeholder-glow > .sd-wrap.sd-selected > .placeholder, .placeholder-wave > .sd-wrap.sd-selected > .placeholder { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
-        '.placeholder-glow > .sd-wrap:hover:not(.sd-selected) > .placeholder, .placeholder-wave > .sd-wrap:hover:not(.sd-selected) > .placeholder { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.placeholder-glow > .sd-wrap, .placeholder-wave > .sd-wrap { display:contents !important; }',
+        _SD_BX + '.placeholder-glow > .sd-wrap > .sd-tb, .placeholder-wave > .sd-wrap > .sd-tb { display:none !important; }',
+        _SD_BX + '.placeholder-glow > .sd-wrap.sd-selected > .placeholder, .placeholder-wave > .sd-wrap.sd-selected > .placeholder { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.placeholder-glow > .sd-wrap:hover:not(.sd-selected) > .placeholder, .placeholder-wave > .sd-wrap:hover:not(.sd-selected) > .placeholder { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
         // Aspect ratio (Bootstrap .ratio): the ::before padding + .ratio > * absolute-positioning trick
         // requires the img/iframe to be a DIRECT child of .ratio. When the user manually creates a
         // <div class="ratio ratio-1x1"> with an image inside, the intermediate sd-wrap breaks that.
         // Make sd-wrap layout-transparent inside .ratio so .ratio > * matches the real content.
-        '.ratio > .sd-wrap { display:contents !important; }',
-        '.ratio > .sd-wrap > .sd-tb { display:none !important; }',
+        _SD_BX + '.ratio > .sd-wrap { display:contents !important; }',
+        _SD_BX + '.ratio > .sd-wrap > .sd-tb { display:none !important; }',
         // display:contents drops the wrapper's BOX, not the DOM node, so
         // Bootstrap's `.ratio > *` still matches the wrapper and its absolute
         // positioning evaporates; the real child then flows BELOW the padded
         // box (the picture sat under the empty 16:9 area). Re-apply the rule
         // to the real child and carry the outline over.
-        '.ratio > .sd-wrap > * { position:absolute; top:0; left:0; width:100%; height:100%; }',
-        '.ratio > .sd-wrap.sd-selected > * { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
-        '.ratio > .sd-wrap:hover:not(.sd-selected) > * { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.ratio > .sd-wrap > * { position:absolute; top:0; left:0; width:100%; height:100%; }',
+        _SD_BX + '.ratio > .sd-wrap.sd-selected > * { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.ratio > .sd-wrap:hover:not(.sd-selected) > * { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
         // An image told to fill its parent (h-100) fills the WRAPPER in the
         // canvas; let the wrapper fill the parent so the picture does too.
-        '.sd-wrap[data-content-type="image"]:has(> img.h-100) { display:block !important; height:100% !important; margin:0 !important; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"]:has(> img.h-100) { display:block !important; height:100% !important; margin:0 !important; }',
         // Same for any element sized to its parent's height (h-100 or an
         // inline height:100%): the wrapper has no height of its own, so the
         // percentage resolved to auto and nested circles / panels inside a
         // square box collapsed to their borders (ovals in the canvas, round
         // in the front end). The wrapper passes the parent's height on.
-        '.sd-wrap:has(> .h-100), .sd-wrap:has(> [style*="height:100%"]:not([style*="-height:100%"])), .sd-wrap:has(> [style*="height: 100%"]:not([style*="-height: 100%"])) { height:100%; }',
+        _SD_BX + '.sd-wrap:has(> .h-100), .sd-wrap:has(> [style*="height:100%"]:not([style*="-height:100%"])), .sd-wrap:has(> [style*="height: 100%"]:not([style*="-height: 100%"])) { height:100%; }',
         // Image content with aspectRatio prop: renders as sd-wrap[content-type=image] > div.ratio > img.
         // Default sd-wrap for images is inline-block/auto-width — this collapses .ratio. Override to
         // block full-width so the ratio container gets a defined width to compute its padding from.
-        '.sd-wrap[data-content-type="image"]:has(> .ratio) { display:block !important; width:100% !important; }',
-        '.sd-wrap[data-content-type="image"] > .ratio { width:100%; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"]:has(> .ratio) { display:block !important; width:100% !important; }',
+        _SD_BX + '.sd-wrap[data-content-type="image"] > .ratio { width:100%; }',
         // Navbar: always full width inside its sd-wrap
-        '.sd-wrap > nav, .sd-wrap > .navbar { width:100%; }',
+        _SD_BX + '.sd-wrap > nav, .sd-wrap > .navbar { width:100%; }',
         // Navbar: sd-wrap direct child of navbar must fill width (flex item fix)
-        '.navbar > .sd-wrap { width:100%; flex:1 1 auto; min-width:0; }',
+        _SD_BX + '.navbar > .sd-wrap { width:100%; flex:1 1 auto; min-width:0; }',
         // container-fluid is NOT a direct child of .navbar in canvas (it's wrapped in sd-wrap),
         // so Bootstrap's .navbar>.container-fluid{display:flex} rule doesn't apply.
         // We force display:flex but do NOT set flex-wrap — Bootstrap's responsive rules handle wrap
         // (though we must replicate them below since Bootstrap uses ">" direct-child selector).
-        '.navbar .container-fluid, .navbar .container { display:flex !important; align-items:center; justify-content:space-between; width:100%; min-width:0; }',
+        _SD_BX + '.navbar .container-fluid, .navbar .container { display:flex !important; align-items:center; justify-content:space-between; width:100%; min-width:0; }',
         // sd-wrap children of container-fluid are flex items; let them size naturally
-        '.navbar .container-fluid > .sd-wrap, .navbar .container > .sd-wrap { display:flex; align-items:center; flex-shrink:0; position:relative; min-width:0; }',
+        _SD_BX + '.navbar .container-fluid > .sd-wrap, .navbar .container > .sd-wrap { display:flex; align-items:center; flex-shrink:0; position:relative; min-width:0; }',
         // The sd-wrap wrapping .navbar-collapse must be layout-transparent so Bootstrap's own CSS
         // (media-query show/hide + flex sizing) applies directly to .navbar-collapse.
         // display:contents removes the sd-wrap box from layout; .navbar-collapse becomes a direct flex child
         // of .container-fluid, and Bootstrap's collapse/expand rules work without interference.
-        '.navbar .container-fluid > .sd-wrap:has(> .navbar-collapse), .navbar .container > .sd-wrap:has(> .navbar-collapse) { display:contents !important; }',
+        _SD_BX + '.navbar .container-fluid > .sd-wrap:has(> .navbar-collapse), .navbar .container > .sd-wrap:has(> .navbar-collapse) { display:contents !important; }',
         // Bootstrap uses ">" direct-child selector for flex-wrap on container-fluid, which doesn't match
         // our sd-wrap-wrapped structure for other children. We replicate the responsive wrap explicitly:
-        '@media (max-width:575.98px){.navbar-expand-sm .container-fluid,.navbar-expand-sm .container{flex-wrap:wrap !important;}}',
-        '@media (max-width:767.98px){.navbar-expand-md .container-fluid,.navbar-expand-md .container{flex-wrap:wrap !important;}}',
-        '@media (max-width:991.98px){.navbar-expand-lg .container-fluid,.navbar-expand-lg .container{flex-wrap:wrap !important;}}',
-        '@media (max-width:1199.98px){.navbar-expand-xl .container-fluid,.navbar-expand-xl .container{flex-wrap:wrap !important;}}',
-        '@media (max-width:1399.98px){.navbar-expand-xxl .container-fluid,.navbar-expand-xxl .container{flex-wrap:wrap !important;}}',
+        _SD_BX + '@media (max-width:575.98px){.navbar-expand-sm .container-fluid,.navbar-expand-sm .container{flex-wrap:wrap !important;}}',
+        _SD_BX + '@media (max-width:767.98px){.navbar-expand-md .container-fluid,.navbar-expand-md .container{flex-wrap:wrap !important;}}',
+        _SD_BX + '@media (max-width:991.98px){.navbar-expand-lg .container-fluid,.navbar-expand-lg .container{flex-wrap:wrap !important;}}',
+        _SD_BX + '@media (max-width:1199.98px){.navbar-expand-xl .container-fluid,.navbar-expand-xl .container{flex-wrap:wrap !important;}}',
+        _SD_BX + '@media (max-width:1399.98px){.navbar-expand-xxl .container-fluid,.navbar-expand-xxl .container{flex-wrap:wrap !important;}}',
         // Dropdown menu sd-wrap must be layout-transparent so Bootstrap positions .dropdown-menu
         // directly relative to the .dropdown ancestor. display:contents removes the sd-wrap box
         // (no min-height space when menu is hidden) and lets Bootstrap's absolute positioning work.
         // With dropdown-menu.show now position:static the absolute-positioning reason is gone,
         // but display:contents still prevents the sd-wrap from adding unwanted height when closed.
-        '.dropdown > .sd-wrap:has(> .dropdown-menu), .dropup > .sd-wrap:has(> .dropdown-menu), .dropend > .sd-wrap:has(> .dropdown-menu), .dropstart > .sd-wrap:has(> .dropdown-menu) { display:contents !important; }',
+        _SD_BX + '.dropdown > .sd-wrap:has(> .dropdown-menu), .dropup > .sd-wrap:has(> .dropdown-menu), .dropend > .sd-wrap:has(> .dropdown-menu), .dropstart > .sd-wrap:has(> .dropdown-menu) { display:contents !important; }',
         // The display:contents sd-wrap has no box so its position:absolute sd-tb floats to the
         // nearest positioned ancestor (div.dropdown). Hide it to prevent ghost click areas above dropdown.
-        '.dropdown > .sd-wrap:has(> .dropdown-menu) > .sd-tb, .dropup > .sd-wrap:has(> .dropdown-menu) > .sd-tb, .dropend > .sd-wrap:has(> .dropdown-menu) > .sd-tb, .dropstart > .sd-wrap:has(> .dropdown-menu) > .sd-tb { display:none !important; }',
+        _SD_BX + '.dropdown > .sd-wrap:has(> .dropdown-menu) > .sd-tb, .dropup > .sd-wrap:has(> .dropdown-menu) > .sd-tb, .dropend > .sd-wrap:has(> .dropdown-menu) > .sd-tb, .dropstart > .sd-wrap:has(> .dropdown-menu) > .sd-tb { display:none !important; }',
         // Carousel: sd-wraps inside carousel structure must be layout-transparent so Bootstrap finds
         // the right CSS structure and click delegation works without interference.
-        '.carousel > .sd-wrap:has(> .carousel-indicators) { display:contents !important; }',
-        '.carousel > .sd-wrap:has(> .carousel-inner)       { display:contents !important; }',
-        '.carousel > .sd-wrap:has(> .carousel-control-prev){ display:contents !important; }',
-        '.carousel > .sd-wrap:has(> .carousel-control-next){ display:contents !important; }',
-        '.carousel-inner > .sd-wrap:has(> .carousel-item)  { display:contents !important; }',
-        '.carousel-indicators > .sd-wrap:has(> [data-bs-slide-to]) { display:contents !important; }',
-        '.carousel > .sd-wrap > .sd-tb, .carousel-inner > .sd-wrap > .sd-tb, .carousel-indicators > .sd-wrap > .sd-tb { display:none !important; }',
+        _SD_BX + '.carousel > .sd-wrap:has(> .carousel-indicators) { display:contents !important; }',
+        _SD_BX + '.carousel > .sd-wrap:has(> .carousel-inner)       { display:contents !important; }',
+        _SD_BX + '.carousel > .sd-wrap:has(> .carousel-control-prev){ display:contents !important; }',
+        _SD_BX + '.carousel > .sd-wrap:has(> .carousel-control-next){ display:contents !important; }',
+        _SD_BX + '.carousel-inner > .sd-wrap:has(> .carousel-item)  { display:contents !important; }',
+        _SD_BX + '.carousel-indicators > .sd-wrap:has(> [data-bs-slide-to]) { display:contents !important; }',
+        _SD_BX + '.carousel > .sd-wrap > .sd-tb, .carousel-inner > .sd-wrap > .sd-tb, .carousel-indicators > .sd-wrap > .sd-tb { display:none !important; }',
         // ─── Bootstrap group layouts (btn-group, input-group, nav, list-group, accordion) ───
         // These components rely on DIRECT child selectors (e.g. ".btn-group > .btn" for collapsed
         // border-radius, ".input-group > .form-control" for -1px margins). The canvas wraps every
         // node in an sd-wrap, which breaks those selectors. display:contents removes the sd-wrap
         // box from layout so Bootstrap's "> child" rules match the real content again.
         // Mirrors the same pattern already used for .dropdown-menu, .carousel-*, and sticky/fixed.
-        '.btn-group > .sd-wrap, .btn-group-vertical > .sd-wrap { display:contents !important; }',
-        '.input-group > .sd-wrap                              { display:contents !important; }',
-        '.nav > .sd-wrap                                      { display:contents !important; }',
-        '.list-group > .sd-wrap                               { display:contents !important; }',
-        '.accordion > .sd-wrap                                { display:contents !important; }',
+        _SD_BX + '.btn-group > .sd-wrap, .btn-group-vertical > .sd-wrap { display:contents !important; }',
+        _SD_BX + '.input-group > .sd-wrap                              { display:contents !important; }',
+        _SD_BX + '.nav > .sd-wrap                                      { display:contents !important; }',
+        _SD_BX + '.list-group > .sd-wrap                               { display:contents !important; }',
+        _SD_BX + '.accordion > .sd-wrap                                { display:contents !important; }',
         // `.d-grid` is display:grid — its DIRECT child becomes the grid item and
         // gets stretched to full width. With the wrapper in between, the wrapper
         // is the grid item and the button inside just sits at its natural size:
         // full-width in the front end, shrink-wrapped in the canvas. Same class
         // of mismatch as the .row gutter above.
-        '.d-grid > .sd-wrap                                   { display:contents !important; }',
+        _SD_BX + '.d-grid > .sd-wrap                                   { display:contents !important; }',
         // `.btn-toolbar` / `.d-flex` variants used for button rows have the same
         // direct-child assumption for flex sizing utilities (flex-fill, w-100).
-        '.d-flex > .sd-wrap:has(> .flex-fill), .d-flex > .sd-wrap:has(> .w-100) { display:contents !important; }',
+        _SD_BX + '.d-flex > .sd-wrap:has(> .flex-fill), .d-flex > .sd-wrap:has(> .w-100) { display:contents !important; }',
         // Every flex container, not just button rows. The wrapper was the flex
         // item, so align-items / justify-content acted on the wrapper and the
         // real child never saw them: a `.d-flex.align-items-center.justify-content-center`
@@ -4896,16 +5089,16 @@ const StyleDesigner = (function () {
         // the front end centred it (the container's auto margins only centre
         // it when IT is the flex item). Shared/system widget wrappers keep
         // their box — their toolbar band needs it.
-        '.d-flex > .sd-wrap:not(.sd-shared-wrap), .d-inline-flex > .sd-wrap:not(.sd-shared-wrap), ' +
+        _SD_BX + '.d-flex > .sd-wrap:not(.sd-shared-wrap), .d-inline-flex > .sd-wrap:not(.sd-shared-wrap), ' +
             '.d-sm-flex > .sd-wrap:not(.sd-shared-wrap), .d-md-flex > .sd-wrap:not(.sd-shared-wrap), ' +
             '.d-lg-flex > .sd-wrap:not(.sd-shared-wrap), .d-xl-flex > .sd-wrap:not(.sd-shared-wrap), .d-xxl-flex > .sd-wrap:not(.sd-shared-wrap) ' +
             '{ display:contents !important; }',
-        '.d-flex > .sd-wrap > .sd-tb, .d-inline-flex > .sd-wrap > .sd-tb, .d-sm-flex > .sd-wrap > .sd-tb, .d-md-flex > .sd-wrap > .sd-tb, ' +
+        _SD_BX + '.d-flex > .sd-wrap > .sd-tb, .d-inline-flex > .sd-wrap > .sd-tb, .d-sm-flex > .sd-wrap > .sd-tb, .d-md-flex > .sd-wrap > .sd-tb, ' +
             '.d-lg-flex > .sd-wrap > .sd-tb, .d-xl-flex > .sd-wrap > .sd-tb, .d-xxl-flex > .sd-wrap > .sd-tb { display:none !important; }',
-        '.d-flex > .sd-wrap.sd-selected > *, .d-inline-flex > .sd-wrap.sd-selected > *, .d-sm-flex > .sd-wrap.sd-selected > *, .d-md-flex > .sd-wrap.sd-selected > *, ' +
+        _SD_BX + '.d-flex > .sd-wrap.sd-selected > *, .d-inline-flex > .sd-wrap.sd-selected > *, .d-sm-flex > .sd-wrap.sd-selected > *, .d-md-flex > .sd-wrap.sd-selected > *, ' +
             '.d-lg-flex > .sd-wrap.sd-selected > *, .d-xl-flex > .sd-wrap.sd-selected > *, .d-xxl-flex > .sd-wrap.sd-selected > * ' +
             '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
-        '.d-flex > .sd-wrap:hover:not(.sd-selected) > *, .d-inline-flex > .sd-wrap:hover:not(.sd-selected) > *, .d-sm-flex > .sd-wrap:hover:not(.sd-selected) > *, ' +
+        _SD_BX + '.d-flex > .sd-wrap:hover:not(.sd-selected) > *, .d-inline-flex > .sd-wrap:hover:not(.sd-selected) > *, .d-sm-flex > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.d-md-flex > .sd-wrap:hover:not(.sd-selected) > *, .d-lg-flex > .sd-wrap:hover:not(.sd-selected) > *, .d-xl-flex > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.d-xxl-flex > .sd-wrap:hover:not(.sd-selected) > * { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
         // CRITICAL: Bootstrap grid. .row is display:flex; its direct children
@@ -4925,9 +5118,9 @@ const StyleDesigner = (function () {
         // canvas even though the wrapper had the correct Bootstrap classes,
         // because `display:contents` was killing the flex-item sizing — exact
         // symptom: "every col looks like col-12 even on wide screens".
-        '.row > .sd-wrap:not([data-sd-type="col"])                                       { display:contents !important; }',
-        '.row > .sd-wrap:not([data-sd-type="col"]).sd-selected > [class*="col"]          { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
-        '.row > .sd-wrap:not([data-sd-type="col"]):hover:not(.sd-selected) > [class*="col"] { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.row > .sd-wrap:not([data-sd-type="col"])                                       { display:contents !important; }',
+        _SD_BX + '.row > .sd-wrap:not([data-sd-type="col"]).sd-selected > [class*="col"]          { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.row > .sd-wrap:not([data-sd-type="col"]):hover:not(.sd-selected) > [class*="col"] { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
         // Re-apply the grid GUTTER to the real column above.
         //
         // Bootstrap puts the gutter on `.row > *` — a DIRECT-CHILD selector.
@@ -4942,22 +5135,22 @@ const StyleDesigner = (function () {
         // `width:100%; max-width:100%` from that same rule: this selector is
         // more specific than `.col-md-6`, so the width would override the
         // column's own 50% and every column would go full width.
-        '.row > .sd-wrap:not([data-sd-type="col"]) > *                                   { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
+        _SD_BX + '.row > .sd-wrap:not([data-sd-type="col"]) > *                                   { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
         // Same fix for row-cols-* (Bootstrap's "auto column" variant where
         // children should be .col without explicit numbers).
-        '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"])                       { display:contents !important; }',
-        '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"]) > *                   { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
+        _SD_BX + '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"])                       { display:contents !important; }',
+        _SD_BX + '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"]) > *                   { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
         // sd-wrap has no box when display:contents, so its toolbar would render in free space and
         // its selection outline would disappear. Hide the toolbar, and transfer outlines to the
         // direct Bootstrap child instead so users still get visual feedback on hover/selection.
-        '.btn-group > .sd-wrap > .sd-tb, .btn-group-vertical > .sd-wrap > .sd-tb, ' +
+        _SD_BX + '.btn-group > .sd-wrap > .sd-tb, .btn-group-vertical > .sd-wrap > .sd-tb, ' +
             '.input-group > .sd-wrap > .sd-tb, .nav > .sd-wrap > .sd-tb, ' +
             '.list-group > .sd-wrap > .sd-tb, .accordion > .sd-wrap > .sd-tb { display:none !important; }',
-        '.btn-group > .sd-wrap.sd-selected > *, .btn-group-vertical > .sd-wrap.sd-selected > *, ' +
+        _SD_BX + '.btn-group > .sd-wrap.sd-selected > *, .btn-group-vertical > .sd-wrap.sd-selected > *, ' +
             '.input-group > .sd-wrap.sd-selected > *, .nav > .sd-wrap.sd-selected > *, ' +
             '.list-group > .sd-wrap.sd-selected > *, .accordion > .sd-wrap.sd-selected > * ' +
             '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; position:relative; z-index:2; }',
-        '.btn-group > .sd-wrap:hover:not(.sd-selected) > *, .btn-group-vertical > .sd-wrap:hover:not(.sd-selected) > *, ' +
+        _SD_BX + '.btn-group > .sd-wrap:hover:not(.sd-selected) > *, .btn-group-vertical > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.input-group > .sd-wrap:hover:not(.sd-selected) > *, .nav > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.list-group > .sd-wrap:hover:not(.sd-selected) > *, .accordion > .sd-wrap:hover:not(.sd-selected) > * ' +
             '{ outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
@@ -4967,24 +5160,24 @@ const StyleDesigner = (function () {
         // sd-wrap sits between them. display:contents restores layout but NOT :first-child /
         // :last-child across the wrapper boundary, so we re-create the visual by targeting the
         // sd-wrap's first-/last-child position and styling the real button inside.
-        '.btn-group > .sd-wrap:not(:first-child) > .btn, .btn-group > .sd-wrap:not(:first-child) > .btn-group { border-top-left-radius:0 !important; border-bottom-left-radius:0 !important; margin-left:-1px; }',
-        '.btn-group > .sd-wrap:not(:last-child) > .btn,  .btn-group > .sd-wrap:not(:last-child)  > .btn-group { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }',
-        '.btn-group-vertical > .sd-wrap:not(:first-child) > .btn, .btn-group-vertical > .sd-wrap:not(:first-child) > .btn-group { border-top-left-radius:0 !important; border-top-right-radius:0 !important; margin-top:-1px; }',
-        '.btn-group-vertical > .sd-wrap:not(:last-child)  > .btn, .btn-group-vertical > .sd-wrap:not(:last-child)  > .btn-group { border-bottom-left-radius:0 !important; border-bottom-right-radius:0 !important; }',
-        '.input-group > .sd-wrap:not(:first-child) > .form-control, .input-group > .sd-wrap:not(:first-child) > .form-select, .input-group > .sd-wrap:not(:first-child) > .input-group-text, .input-group > .sd-wrap:not(:first-child) > .btn { border-top-left-radius:0 !important; border-bottom-left-radius:0 !important; margin-left:-1px; }',
-        '.input-group > .sd-wrap:not(:last-child)  > .form-control, .input-group > .sd-wrap:not(:last-child)  > .form-select, .input-group > .sd-wrap:not(:last-child)  > .input-group-text, .input-group > .sd-wrap:not(:last-child)  > .btn { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }',
+        _SD_BX + '.btn-group > .sd-wrap:not(:first-child) > .btn, .btn-group > .sd-wrap:not(:first-child) > .btn-group { border-top-left-radius:0 !important; border-bottom-left-radius:0 !important; margin-left:-1px; }',
+        _SD_BX + '.btn-group > .sd-wrap:not(:last-child) > .btn,  .btn-group > .sd-wrap:not(:last-child)  > .btn-group { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }',
+        _SD_BX + '.btn-group-vertical > .sd-wrap:not(:first-child) > .btn, .btn-group-vertical > .sd-wrap:not(:first-child) > .btn-group { border-top-left-radius:0 !important; border-top-right-radius:0 !important; margin-top:-1px; }',
+        _SD_BX + '.btn-group-vertical > .sd-wrap:not(:last-child)  > .btn, .btn-group-vertical > .sd-wrap:not(:last-child)  > .btn-group { border-bottom-left-radius:0 !important; border-bottom-right-radius:0 !important; }',
+        _SD_BX + '.input-group > .sd-wrap:not(:first-child) > .form-control, .input-group > .sd-wrap:not(:first-child) > .form-select, .input-group > .sd-wrap:not(:first-child) > .input-group-text, .input-group > .sd-wrap:not(:first-child) > .btn { border-top-left-radius:0 !important; border-bottom-left-radius:0 !important; margin-left:-1px; }',
+        _SD_BX + '.input-group > .sd-wrap:not(:last-child)  > .form-control, .input-group > .sd-wrap:not(:last-child)  > .form-select, .input-group > .sd-wrap:not(:last-child)  > .input-group-text, .input-group > .sd-wrap:not(:last-child)  > .btn { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }',
         // Bootstrap's ".input-group > .form-control" flex rule is selector-scoped — it only
         // matches DIRECT children of .input-group. sd-wrap sits between them in the DOM, so the
         // form-control inside the wrapper never receives flex:1 1 auto and collapses to its
         // intrinsic width (or stacks vertically if the wrapper becomes a block). display:contents
         // flattens *layout* but not *selector matching*, so we must re-declare the flex rule here.
-        '.input-group > .sd-wrap > .form-control, .input-group > .sd-wrap > .form-select, .input-group > .sd-wrap > .form-floating { flex:1 1 auto !important; width:1% !important; min-width:0 !important; }',
+        _SD_BX + '.input-group > .sd-wrap > .form-control, .input-group > .sd-wrap > .form-select, .input-group > .sd-wrap > .form-floating { flex:1 1 auto !important; width:1% !important; min-width:0 !important; }',
         // ─── General Bootstrap container sweep: sd-wrap must be layout-transparent ───
         // Any Bootstrap component whose styling depends on direct-child selectors needs its
         // sd-wrap wrapper flattened. Accordion-button's "width:100%" is the headline case that
         // prompted this sweep, but the same pattern applies broadly. Also transfer selection /
         // hover outlines to the real inner element so visual feedback survives display:contents.
-        '.accordion-item > .sd-wrap, ' +
+        _SD_BX + '.accordion-item > .sd-wrap, ' +
             '.accordion-header > .sd-wrap, ' +
             'h1.accordion-header > .sd-wrap, h2.accordion-header > .sd-wrap, h3.accordion-header > .sd-wrap, ' +
             'h4.accordion-header > .sd-wrap, h5.accordion-header > .sd-wrap, h6.accordion-header > .sd-wrap, ' +
@@ -5002,7 +5195,7 @@ const StyleDesigner = (function () {
             '.input-group > .sd-wrap, ' +
             '.figure > .sd-wrap { display:contents !important; }',
         // Hide toolbars and transfer outline for the sweep above
-        '.accordion-item > .sd-wrap > .sd-tb, .accordion-header > .sd-wrap > .sd-tb, ' +
+        _SD_BX + '.accordion-item > .sd-wrap > .sd-tb, .accordion-header > .sd-wrap > .sd-tb, ' +
             'h1.accordion-header > .sd-wrap > .sd-tb, h2.accordion-header > .sd-wrap > .sd-tb, h3.accordion-header > .sd-wrap > .sd-tb, ' +
             'h4.accordion-header > .sd-wrap > .sd-tb, h5.accordion-header > .sd-wrap > .sd-tb, h6.accordion-header > .sd-wrap > .sd-tb, ' +
             '.accordion-collapse > .sd-wrap > .sd-tb, .accordion-body > .sd-wrap > .sd-tb, ' +
@@ -5017,7 +5210,7 @@ const StyleDesigner = (function () {
             '.navbar > .sd-wrap > .sd-tb, .navbar-nav > .sd-wrap > .sd-tb, .nav-item > .sd-wrap > .sd-tb, ' +
             '.form-floating > .sd-wrap > .sd-tb, .form-check > .sd-wrap > .sd-tb, ' +
             '.figure > .sd-wrap > .sd-tb { display:none !important; }',
-        '.accordion-item > .sd-wrap.sd-selected > *, .accordion-header > .sd-wrap.sd-selected > *, ' +
+        _SD_BX + '.accordion-item > .sd-wrap.sd-selected > *, .accordion-header > .sd-wrap.sd-selected > *, ' +
             '.card-body > .sd-wrap.sd-selected > *, .card-header > .sd-wrap.sd-selected > *, .card-footer > .sd-wrap.sd-selected > *, ' +
             '.modal-content > .sd-wrap.sd-selected > *, .modal-header > .sd-wrap.sd-selected > *, .modal-body > .sd-wrap.sd-selected > *, .modal-footer > .sd-wrap.sd-selected > *, ' +
             '.offcanvas-header > .sd-wrap.sd-selected > *, .offcanvas-body > .sd-wrap.sd-selected > *, ' +
@@ -5029,7 +5222,7 @@ const StyleDesigner = (function () {
             '.form-floating > .sd-wrap.sd-selected > *, .form-check > .sd-wrap.sd-selected > *, ' +
             '.figure > .sd-wrap.sd-selected > * ' +
             '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; position:relative; z-index:2; }',
-        '.accordion-item > .sd-wrap:hover:not(.sd-selected) > *, .accordion-header > .sd-wrap:hover:not(.sd-selected) > *, ' +
+        _SD_BX + '.accordion-item > .sd-wrap:hover:not(.sd-selected) > *, .accordion-header > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.card-body > .sd-wrap:hover:not(.sd-selected) > *, .card-header > .sd-wrap:hover:not(.sd-selected) > *, .card-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.modal-content > .sd-wrap:hover:not(.sd-selected) > *, .modal-header > .sd-wrap:hover:not(.sd-selected) > *, .modal-body > .sd-wrap:hover:not(.sd-selected) > *, .modal-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.offcanvas-header > .sd-wrap:hover:not(.sd-selected) > *, .offcanvas-body > .sd-wrap:hover:not(.sd-selected) > *, ' +
@@ -5056,10 +5249,10 @@ const StyleDesigner = (function () {
         // sd-wrap box so the sticky element sticks within the next meaningful scroll ancestor
         // (typically the root sd-wrap that spans the full page). Selection/hover outlines are
         // transferred to the actual sticky/fixed child element.
-        '.sd-wrap:has(> .sticky-top),.sd-wrap:has(> .sticky-bottom),.sd-wrap:has(> .fixed-top),.sd-wrap:has(> .fixed-bottom) { display:contents !important; }',
-        '.sd-wrap.sd-selected:has(> .sticky-top) > .sticky-top,.sd-wrap.sd-selected:has(> .sticky-bottom) > .sticky-bottom,.sd-wrap.sd-selected:has(> .fixed-top) > .fixed-top,.sd-wrap.sd-selected:has(> .fixed-bottom) > .fixed-bottom { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
-        '.sd-wrap:hover:not(.sd-selected):has(> .sticky-top) > .sticky-top,.sd-wrap:hover:not(.sd-selected):has(> .sticky-bottom) > .sticky-bottom,.sd-wrap:hover:not(.sd-selected):has(> .fixed-top) > .fixed-top,.sd-wrap:hover:not(.sd-selected):has(> .fixed-bottom) > .fixed-bottom { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
-        '.dropdown, .dropup, .dropend, .dropstart { position:relative; }',
+        _SD_BX + '.sd-wrap:has(> .sticky-top),.sd-wrap:has(> .sticky-bottom),.sd-wrap:has(> .fixed-top),.sd-wrap:has(> .fixed-bottom) { display:contents !important; }',
+        _SD_BX + '.sd-wrap.sd-selected:has(> .sticky-top) > .sticky-top,.sd-wrap.sd-selected:has(> .sticky-bottom) > .sticky-bottom,.sd-wrap.sd-selected:has(> .fixed-top) > .fixed-top,.sd-wrap.sd-selected:has(> .fixed-bottom) > .fixed-bottom { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.sd-wrap:hover:not(.sd-selected):has(> .sticky-top) > .sticky-top,.sd-wrap:hover:not(.sd-selected):has(> .sticky-bottom) > .sticky-bottom,.sd-wrap:hover:not(.sd-selected):has(> .fixed-top) > .fixed-top,.sd-wrap:hover:not(.sd-selected):has(> .fixed-bottom) > .fixed-bottom { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.dropdown, .dropup, .dropend, .dropstart { position:relative; }',
         // Dropdown menu: forced visible in canvas for editing.
         // position:static prevents Bootstrap/Popper from floating the menu absolutely — if the menu
         // floated over other elements, clicking those elements would select dropdown items instead
@@ -5113,8 +5306,8 @@ const StyleDesigner = (function () {
         // Tab pane: Bootstrap's ".tab-content > .tab-pane { display:none }" uses a direct-child selector
         // that can't pierce the .sd-wrap wrapper between .tab-content and .tab-pane in the canvas DOM.
         // Replicate the hide/show behavior explicitly so inactive panes don't occupy vertical space.
-        '.tab-content > .sd-wrap { min-height: 0 !important; }',
-        '.tab-content > .sd-wrap:has(> .tab-pane:not(.active)) { display: none !important; }',
+        _SD_BX + '.tab-content > .sd-wrap { min-height: 0 !important; }',
+        _SD_BX + '.tab-content > .sd-wrap:has(> .tab-pane:not(.active)) { display: none !important; }',
         // Offcanvas: ensure .show state is visible in canvas (no JS transition needed)
         '.offcanvas.show { visibility:visible !important; transform:none !important; }',
         // Outline Grid mode — frames every element with a box-shadow, so layout is unaffected
@@ -5218,7 +5411,9 @@ const StyleDesigner = (function () {
         // the full row width so col-12/col-sm-6/col-md-4 children size
         // correctly again. (Fixes: card narrows/collapses when the
         // catalog_listing default layout is loaded.)
-        '.sd-loop-area { position:relative; width:100%; min-height:60px; padding:22px 2px 4px; margin:0; border:1px dashed #6366f1; border-radius:4px; background:rgba(99,102,241,.04); }',
+        // The frame is an outline, not a border: it takes no width, so the
+        // records inside get the full width the page gives them.
+        '.sd-loop-area { position:relative; width:100%; min-height:60px; padding:22px 0 4px; margin:0; border:0; outline:1px dashed #6366f1; outline-offset:-1px; border-radius:4px; background:rgba(99,102,241,.04); }',
         // When loop_area direct children are cols (col type, or semantic
         // div with col-* class), the loop_area MUST behave like a Bootstrap
         // .row → without flex+wrap the col widths collapse to default block
@@ -5226,20 +5421,30 @@ const StyleDesigner = (function () {
         // runtime the loop_area renders into a real .row container so this
         // is canvas-only cosmetic to match what visitors will actually see.
         '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) { display:flex; flex-wrap:wrap; gap:0; }',
-        '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) > .sd-wrap[data-sd-type="col"] { padding-left:.5rem; padding-right:.5rem; }',
+        '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) > .sd-wrap[data-sd-type="col"] { padding:0 .5rem; }',
         // Loop areas with row type children (the legitimate row > col pattern
         // inside loop_area) don't need this — the row itself handles flex.
         // Band label — real DOM element (.sd-loop-band) appended in buildInnerElement,
         // so it can carry a Bootstrap Icon (bi-arrow-repeat) and a clear label.
         // The element is canvas-only (data-sd-band="1"), excluded from tree ops.
         '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; }',
-        '.sd-wrap.sd-loop-single > .sd-loop-area { min-height:0; padding:0; border:0; background:none; }',
+        '.sd-wrap.sd-loop-single > .sd-loop-area { min-height:0; padding:0; border:0; outline:0; background:none; }',
         // Ghost records (_sdAppendGhosts): real records drawn after the card
         // being designed — untouchable, faintly hatched so they read as a
         // preview of the card, not as more cards to edit.
         '.sd-ghost { pointer-events:none !important; user-select:none; position:relative; }',
         '.sd-ghost::after { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(99,102,241,.07) 0 6px, transparent 6px 14px); }',
         '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) > .sd-ghost { padding-left:.5rem; padding-right:.5rem; }',
+        // A loop area inside a row renders its records as that row's columns:
+        // the card being designed and the records after it take the row's
+        // gutter, and the area itself adds none (_sdFxLoopArea() lays it out
+        // like the row).
+        '.row > .sd-wrap > .sd-loop-area { padding-left:0; padding-right:0; margin-top:0; }',
+        '.row > .sd-wrap > .sd-loop-area > .sd-wrap[data-sd-type="col"], .row > .sd-wrap > .sd-loop-area > .sd-ghost { padding:0 calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
+        _SD_BX + '.row > .sd-wrap > .sd-loop-area > .sd-wrap:not([data-sd-type="col"]) { display:contents !important; }',
+        _SD_BX + '.row > .sd-wrap > .sd-loop-area > .sd-wrap:not([data-sd-type="col"]) > ' + _SD_FX_EL + ' { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
+        _SD_BX + '.row > .sd-wrap > .sd-loop-area > .sd-wrap:not([data-sd-type="col"]).sd-selected > ' + _SD_FX_EL + ' { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.row > .sd-wrap > .sd-loop-area > .sd-wrap:not([data-sd-type="col"]):hover:not(.sd-selected) > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
         '.sd-ghost-note { font-weight:400; text-transform:none; letter-spacing:0; opacity:.85; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area > .sd-loop-band { display:none; }',
         '.sd-loop-band .bi { font-size:.85rem; line-height:1; }',
@@ -5247,7 +5452,7 @@ const StyleDesigner = (function () {
         // Recipient loop band — uses a teal accent so designers can tell the
         // per-recipient template apart from a regular per-cart-item loop_area.
         '.sd-recipient-loop-band { background:#0d9488; }',
-        '.sd-recipient-loop-area { border-color:rgba(13,148,136,.35) !important; }',
+        '.sd-recipient-loop-area { border-color:rgba(13,148,136,.35) !important; outline-color:rgba(13,148,136,.35) !important; }',
         // ─── LOOP AREA — table context (EO "Your Cart" <tbody> template) ────
         // Real <tr>/<td> equivalents of .sd-loop-band / .sd-loop-area, built
         // by buildTableLoopAreaEl() so the DOM stays valid inside <tbody>.
@@ -5282,7 +5487,7 @@ const StyleDesigner = (function () {
         // Empty-state hint (pseudo) — shown when there are no rendered children inside.
         // :has(.sd-wrap) goes false when nothing has been dropped → hint appears.
         '.sd-loop-area:not(:has(.sd-wrap))::after { content:"' + _sdT('Drag the repeated template here (card, col, heading\\2026)') + '"; display:block; padding:18px 8px 8px; margin-top:18px; text-align:center; color:#6366f1; opacity:.75; font-size:.78rem; }',
-        '.sd-loop-area.sd-drop-hl { background:rgba(99,102,241,.14); border-color:#4f46e5; }',
+        '.sd-loop-area.sd-drop-hl { background:rgba(99,102,241,.14); outline-color:#4f46e5; }',
         // The drop area covers the ENTIRE inner space below the band — wide hit target
         // Only an empty widget needs room to drop into; one with content is
         // drawn at the size the page gives it.
@@ -5340,11 +5545,51 @@ const StyleDesigner = (function () {
         // Bootstrap's form-control / form-check / form-select sizing works without the wrapper box.
         // The toolbar is suppressed (it loses its positioned parent); selection outline is
         // transferred directly to the inner form element instead.
-        '.sd-wrap:has(> input), .sd-wrap:has(> textarea), .sd-wrap:has(> select) { display:contents !important; }',
-        '.sd-wrap:has(> input) > .sd-tb, .sd-wrap:has(> textarea) > .sd-tb, .sd-wrap:has(> select) > .sd-tb { display:none !important; }',
-        '.sd-wrap.sd-selected:has(> input) > input, .sd-wrap.sd-selected:has(> textarea) > textarea, .sd-wrap.sd-selected:has(> select) > select { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:1px !important; }',
-        '.sd-wrap:hover:not(.sd-selected):has(> input) > input, .sd-wrap:hover:not(.sd-selected):has(> textarea) > textarea, .sd-wrap:hover:not(.sd-selected):has(> select) > select { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:1px !important; }',
-    ].join('\n');
+        _SD_BX + '.sd-wrap:has(> input), .sd-wrap:has(> textarea), .sd-wrap:has(> select) { display:contents !important; }',
+        _SD_BX + '.sd-wrap:has(> input) > .sd-tb, .sd-wrap:has(> textarea) > .sd-tb, .sd-wrap:has(> select) > .sd-tb { display:none !important; }',
+        _SD_BX + '.sd-wrap.sd-selected:has(> input) > input, .sd-wrap.sd-selected:has(> textarea) > textarea, .sd-wrap.sd-selected:has(> select) > select { outline:2px solid rgba(13,110,253,.7) !important; outline-offset:1px !important; }',
+        _SD_BX + '.sd-wrap:hover:not(.sd-selected):has(> input) > input, .sd-wrap:hover:not(.sd-selected):has(> textarea) > textarea, .sd-wrap:hover:not(.sd-selected):has(> select) > select { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:1px !important; }',
+        // ─── Canvas fidelity (_sdCanvasFidelityPass) ───
+        // A wrapper drawn inline (span, link, button) around an element its own
+        // classes make a block (span.d-block.ratio, a.btn.w-100).
+        '.sd-wrap.sd-fx-block { display:block !important; width:auto !important; max-width:none !important; vertical-align:baseline; }',
+        // A column's inner holder adds no box: the column's own layout reaches
+        // its children and an h-100 card fills the stretched column. One that
+        // carries an id, style or attribute keeps its box and fills the column.
+        '.sd-col-inner { display:contents !important; }',
+        '.sd-col-fill { height:100%; }',
+        // ─── See-through wrappers (custom framework designs, _sdFxFlatOn()) ───
+        // The wrapper adds no box; its element is laid out by its real parent —
+        // a flex or grid item, an absolute child of the right ancestor, a
+        // percentage of the right height. Hover, selection and drop marks move
+        // to the element; the toolbar, note dot and issue badge are placed at
+        // the element by _sdPlaceWrapChrome() whenever they show.
+        '.sd-wrap.sd-fx-flat:not(.d-none):not(.sd-state-off) { display:contents !important; }',
+        '.sd-wrap.sd-fx-flat:hover:not(:has(.sd-wrap:hover)) > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
+        '.sd-wrap.sd-fx-flat.sd-has-issue > ' + _SD_FX_EL + ' { outline:1px solid rgba(240,192,64,.7); outline-offset:-1px; }',
+        '.sd-wrap.sd-fx-flat.sd-selected > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        '.sd-wrap.sd-fx-flat.sd-drop-hl > ' + _SD_FX_EL + ' { box-shadow:inset 0 0 0 2px #0d6efd !important; }',
+        '.sd-wrap.sd-fx-flat.sd-insert-before > ' + _SD_FX_EL + ' { box-shadow:0 -2px 0 0 #0d6efd !important; }',
+        '.sd-wrap.sd-fx-flat.sd-insert-after > ' + _SD_FX_EL + ' { box-shadow:0 2px 0 0 #0d6efd !important; }',
+        '.sd-wrap.sd-fx-flat.sd-insert-before-x > ' + _SD_FX_EL + ' { box-shadow:-2px 0 0 0 #0d6efd !important; }',
+        '.sd-wrap.sd-fx-flat.sd-insert-after-x > ' + _SD_FX_EL + ' { box-shadow:2px 0 0 0 #0d6efd !important; }',
+        '.sd-wrap.sd-fx-flat.sd-binding-off > ' + _SD_FX_EL + ' { opacity:.42; filter:grayscale(1); }',
+        '.sd-wrap.sd-fx-flat.sd-binding-off.sd-selected > ' + _SD_FX_EL + ' { opacity:.75; filter:none; }',
+        '.sd-wrap.sd-fx-flat.sd-binding-off::after { display:none; }',
+    ];
+
+    // The canvas stylesheet for this design: everything for a Bootstrap design,
+    // the _SD_BX rules left out when the wrappers are see-through.
+    function _sdIframeCss() {
+        var boxed = !_sdFxFlatOn();
+        var out = [];
+        for (var i = 0; i < IFRAME_CSS.length; i++) {
+            var r = IFRAME_CSS[i];
+            if (r.charAt(0) === _SD_BX) { if (boxed) out.push(r.slice(1)); }
+            else out.push(r);
+        }
+        return out.join('\n');
+    }
 
     // ========================= CANVAS THEME =========================
     // Single point of control for the canvas iframe's color mode. Called
@@ -5616,7 +5861,7 @@ const StyleDesigner = (function () {
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
             '<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
-            '<style>' + IFRAME_CSS + '</style></head><body></body></html>');
+            '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body></body></html>');
         doc.close();
         canvasDoc = doc;
 
@@ -5632,6 +5877,25 @@ const StyleDesigner = (function () {
         // and refresh the HTML tree so saved files appear immediately after page load.
         // (deferred so canvasDoc and #sd-html-tree are both fully set up)
         setTimeout(function() { applyAssetsToIframe(); renderHtmlTree(); }, 50);
+
+        // A see-through wrapper's toolbar is placed at its element whenever it
+        // shows (_sdPlaceWrapChrome()). Layout-dependent fixes run again when
+        // the canvas is resized or a stylesheet arrives; a picture arriving
+        // only moves things, so only the shown chrome is placed again.
+        canvasDoc.addEventListener('mouseover', function (e) {
+            var t = e.target;
+            var w = (t && t.closest) ? t.closest('.sd-wrap') : null;
+            _sdHoverWrap = w;
+            if (w) { _sdTbFlip(w); _sdPlaceWrapChrome(w); }
+        });
+        var _sdChromeRaf = 0;
+        canvasDoc.addEventListener('load', function (e) {
+            var t = e.target;
+            if (t && t.tagName === 'LINK') { _sdBridgeSheets(); _sdFxSoon(); return; }
+            if (_sdChromeRaf || !canvasDoc.defaultView) return;
+            _sdChromeRaf = canvasDoc.defaultView.requestAnimationFrame(function () { _sdChromeRaf = 0; _sdPlaceSelectedChrome(); });
+        }, true);
+        if (canvasDoc.defaultView) canvasDoc.defaultView.addEventListener('resize', _sdFxSoon);
 
         // Stop the browser navigating when a drag is dropped inside the iframe (the real reason elements went missing)
         canvasDoc.addEventListener('dragover', function(e) {
@@ -5767,9 +6031,22 @@ const StyleDesigner = (function () {
             e.preventDefault();
         }, true);
 
-        // Recompute the toolbar flip on scroll
-        canvasDoc.addEventListener('scroll', function() {
-            requestAnimationFrame(function() { adjustCanvasToolbars(); updateIconResizeHandle(); });
+        // A scroll moves the viewport, not the page: once a frame, only what
+        // sits at the viewport's edge is updated (_sdOnCanvasScroll()). Every
+        // scroll event used to run the whole layout pass
+        // (adjustCanvasToolbars()), re-measuring and re-classing every wrapper
+        // per frame, and the scrolls of inner boxes (a carousel sliding by
+        // itself) counted too.
+        var _sdScrollRaf = 0;
+        canvasDoc.addEventListener('scroll', function (e) {
+            var t = e.target;
+            if (t !== canvasDoc && t !== canvasDoc.documentElement && t !== canvasDoc.body) return;
+            if (_sdScrollRaf) return;
+            _sdScrollRaf = requestAnimationFrame(function () {
+                _sdScrollRaf = 0;
+                _sdOnCanvasScroll();
+                updateIconResizeHandle();
+            });
         }, true);
 
         // Canvas right-click context menu
@@ -7505,7 +7782,7 @@ const StyleDesigner = (function () {
             if (!el) return;
             var win = canvasDoc.defaultView;
             if (!win) return;
-            var rect = el.getBoundingClientRect();
+            var rect = _sdBoxRect(el);
             // The selection toolbar (.sd-tb) sits at top:-20px relative to the wrapper.
             // Reserve ≥30px above the element so the toolbar never clips at viewport top.
             // Otherwise the toolbar appears "missing" when an element is selected from
@@ -7537,6 +7814,7 @@ const StyleDesigner = (function () {
                 var wrap = _findCanvasEl(n);
                 if (wrap) wrap.classList.add('sd-selected');
             });
+            _sdPlaceSelectedChrome();
         }
         renderProperties();
         renderStatusBar();
@@ -7611,6 +7889,635 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ========================= CANVAS FIDELITY =========================
+    // Every element on the canvas sits inside its own .sd-wrap. Most of what
+    // makes the canvas look unlike the published page comes from that extra
+    // box; the helpers below take it out of the picture where they can.
+
+    // Canvas wrappers drawn see-through (display:contents) — a design on a
+    // framework the editor does not emulate. Its own layout rules then reach
+    // the elements directly (see _sdIframeCss() and _sdBridgeSheets()).
+    function _sdFxFlatOn() { return !_sdUsesBootstrap(); }
+
+    var _SD_FX_CHROME = '.sd-tb, .sd-persistent-note, .sd-issue-badge';
+
+    // The element a wrapper holds: its first child that is not editor chrome.
+    function _sdWrapEl(w) {
+        for (var c = w ? w.firstElementChild : null; c; c = c.nextElementSibling) {
+            if (!c.matches(_SD_FX_CHROME)) return c;
+        }
+        return null;
+    }
+
+    // The nearest ancestor that draws a box; display:contents ones are
+    // see-through to layout.
+    function _sdLayoutParent(el) {
+        var doc = el.ownerDocument, win = doc.defaultView;
+        var p = el.parentElement;
+        while (p && p !== doc.body && win.getComputedStyle(p).display === 'contents') p = p.parentElement;
+        return p;
+    }
+
+    // The box a wrapper stands for: its own, or its element's when it has
+    // none (display:contents reports an empty rectangle).
+    function _sdBoxRect(w) {
+        var r = w.getBoundingClientRect();
+        if (r.width || r.height) return r;
+        var el = _sdWrapEl(w);
+        return el ? el.getBoundingClientRect() : r;
+    }
+
+    // A see-through wrapper's toolbar, note dot and issue badge are absolutely
+    // positioned against whichever ancestor happens to be positioned, not
+    // against the element; they are put at the element each time they show.
+    // A wrapper with a box of its own keeps the stylesheet positions.
+    function _sdPlaceWrapChrome(w) {
+        if (!w || !canvasDoc) return;
+        var win = canvasDoc.defaultView;
+        if (!win) return;
+        var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
+        if (!parts.length) return;
+        if (win.getComputedStyle(w).display !== 'contents') {
+            parts.forEach(function (p) {
+                if (!p._sdPlaced) return;
+                p.style.removeProperty('top');
+                p.style.removeProperty('left');
+                p.style.removeProperty('right');
+                p._sdPlaced = false;
+            });
+            return;
+        }
+        var el = _sdWrapEl(w);
+        if (!el) return;
+        var er = el.getBoundingClientRect();
+        if (!er.width && !er.height) return;
+        parts.forEach(function (p) {
+            if (win.getComputedStyle(p).display === 'none') return;
+            // The containing block's padding-box origin, in viewport terms.
+            var op = p.offsetParent, bx, by;
+            if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
+                var r = op.getBoundingClientRect();
+                bx = r.left + op.clientLeft - op.scrollLeft;
+                by = r.top + op.clientTop - op.scrollTop;
+            } else {
+                bx = -win.scrollX;
+                by = -win.scrollY;
+            }
+            var top, left;
+            if (p.classList.contains('sd-tb')) {
+                // Above the element; inside it when there is no room above.
+                top = er.top - by + (er.top < 22 ? 2 : -20);
+                left = er.left - bx;
+            } else if (p.classList.contains('sd-persistent-note')) {
+                top = er.top - by + 2;
+                left = er.right - bx - 18;
+            } else {
+                top = er.top - by - 7;
+                left = er.left - bx - 7;
+            }
+            p.style.setProperty('top', Math.round(top) + 'px', 'important');
+            p.style.setProperty('left', Math.round(left) + 'px', 'important');
+            p.style.setProperty('right', 'auto', 'important');
+            p._sdPlaced = true;
+        });
+    }
+
+    // The chrome that shows without a hover: the selection's toolbar, note
+    // dots, issue badges.
+    function _sdPlaceSelectedChrome() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')
+            .forEach(_sdPlaceWrapChrome);
+        // The size badge sits at the selection's corner: placed again once
+        // the fidelity pass has moved things.
+        if (selectedNode) _positionSizeBadge();
+    }
+
+    // The wrapper under the pointer (the canvas mouseover handler).
+    var _sdHoverWrap = null;
+
+    // A wrapper's toolbar sits above it; with no room above (the top of the
+    // canvas) it is drawn inside instead.
+    function _sdTbFlip(w) {
+        if (w && w.tagName === 'DIV') w.classList.toggle('sd-tb-inside', _sdBoxRect(w).top < 22);
+    }
+
+    // What a scroll changes: nothing in the page, only where the viewport
+    // is. The hovered and the selected wrapper's toolbar flips at the top of
+    // the canvas and the size badge follows the selection; nothing else is
+    // measured or written.
+    function _sdOnCanvasScroll() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        var ws = Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap.sd-selected'));
+        var hw = _sdHoverWrap;
+        if (hw && hw.isConnected && hw.tagName === 'DIV' && ws.indexOf(hw) === -1) ws.push(hw);
+        var tops = ws.map(function (w) { return _sdBoxRect(w).top; });
+        ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
+        ws.forEach(_sdPlaceWrapChrome);
+        if (selectedNode) _positionSizeBadge();
+    }
+
+    // Wrappers drawn inline for their tag (span, link, button, badge text).
+    var _SD_FX_INLINE_WRAPS = 'div.sd-wrap.sd-wrap-inline, div.sd-wrap[data-content-type="link"], div.sd-wrap[data-content-type="button"], ' +
+        'div.sd-wrap[data-content-type="badge"], div.sd-wrap[data-content-type="span"], div.sd-wrap[data-content-type="text"], ' +
+        'div.sd-wrap[data-component-type="btn"], div.sd-wrap[data-component-type="badge"]';
+
+    // Runs after each render, once there is a layout to measure, and again
+    // when the canvas is resized or a stylesheet or picture arrives.
+    function _sdCanvasFidelityPass() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        var win = canvasDoc.defaultView;
+        if (!win) return;
+        _sdBridgeSheets();
+        // An inline wrapper around an element its classes turn into a block
+        // (span.d-block.ratio, a.d-block, a.btn.w-100) kept the tag's inline
+        // display and shrank around it: a 16:9 picture frame came out zero
+        // pixels wide and its picture spilled over the lines below. Measured
+        // first, written after, so the page is laid out once. A wrapper keeps
+        // the class it has while the reason holds: a pass that finds nothing
+        // new (a resize, a stylesheet arriving) writes nothing, and the canvas
+        // is not restyled for it.
+        var blockish = /^(block|flex|grid|table|list-item|flow-root)$/;
+        var addBlock = [], dropBlock = [];
+        canvasDoc.querySelectorAll(_SD_FX_INLINE_WRAPS).forEach(function (w) {
+            var had = w.classList.contains('sd-fx-block');
+            // Its own display tells only without the class (with it, block).
+            if (!had) {
+                var d = win.getComputedStyle(w).display;
+                if (d !== 'inline' && d !== 'inline-block') return;
+            }
+            var el = _sdWrapEl(w), want = false;
+            if (el) {
+                var cs = win.getComputedStyle(el);
+                want = !(cs.position === 'absolute' || cs.position === 'fixed' || cs.cssFloat !== 'none') && blockish.test(cs.display);
+            }
+            if (want && !had) addBlock.push(w);
+            else if (!want && had) dropBlock.push(w);
+        });
+        // The other way round: a block wrapper around an element its classes
+        // make inline-level (li.list-inline-item, div.d-inline-block) put each
+        // one on a line of its own where the page runs them along one line.
+        // In a plain block flow such a wrapper is drawn see-through, the way a
+        // custom framework design draws all of them (sd-fx-flat): the element
+        // takes its place in the line, its widths and margins measured against
+        // its real parent. A wrapper whose display the editor set itself is
+        // left as it is.
+        var addInline = [], dropInline = [];
+        if (!_sdFxFlatOn()) {
+            var flowParent = /^(block|list-item|flow-root|inline-block|table-cell)$/;
+            canvasDoc.querySelectorAll('div.sd-wrap').forEach(function (w) {
+                var had = w.classList.contains('sd-fx-inline');
+                if (w.style.display) { if (had) dropInline.push(w); return; }
+                // Its own box tells only without the class (with it, none).
+                if (!had) {
+                    var wcs = win.getComputedStyle(w);
+                    if (wcs.display !== 'block' || wcs.position === 'absolute' || wcs.position === 'fixed' || wcs.cssFloat !== 'none') return;
+                }
+                var el = _sdWrapEl(w), want = false;
+                if (el) {
+                    var cs = win.getComputedStyle(el);
+                    if (cs.display.indexOf('inline') === 0 && cs.position !== 'absolute' && cs.position !== 'fixed') {
+                        var p = _sdLayoutParent(w);
+                        want = !!(p && flowParent.test(win.getComputedStyle(p).display));
+                    }
+                }
+                if (want && !had) addInline.push(w);
+                else if (!want && had) dropInline.push(w);
+            });
+        }
+        addBlock.forEach(function (w) { w.classList.add('sd-fx-block'); });
+        dropBlock.forEach(function (w) { w.classList.remove('sd-fx-block'); });
+        addInline.forEach(function (w) { w.classList.add('sd-fx-inline', 'sd-fx-flat'); });
+        dropInline.forEach(function (w) { w.classList.remove('sd-fx-inline', 'sd-fx-flat'); });
+        canvasDoc.querySelectorAll('.sd-loop-area').forEach(function (la) {
+            _sdFxLoopArea(la, win);
+            _sdFxGhostImageSizes(la);
+        });
+    }
+
+    // A loop area's records are rendered straight into its parent — usually a
+    // .row. On the canvas it is laid out the way that parent lays out its
+    // children, so the card being designed and the real records after it sit
+    // in the same columns the page gives them.
+    var _SD_FX_LOOP_PROPS = ['display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content',
+        'row-gap', 'column-gap', 'flex', 'min-width', 'grid-column', 'grid-template-columns', 'justify-items'];
+    function _sdFxLoopArea(la, win) {
+        var want = {};
+        var lw = la.parentElement;
+        // One record (sd-loop-single) repeats nothing and keeps no layout.
+        var p = (lw && lw.classList.contains('sd-loop-single')) ? null : _sdLayoutParent(la);
+        var cs = p ? win.getComputedStyle(p) : null;
+        if (cs && (cs.display === 'flex' || cs.display === 'inline-flex')) {
+            want = {
+                'display': 'flex', 'flex-direction': cs.flexDirection, 'flex-wrap': cs.flexWrap,
+                'justify-content': cs.justifyContent, 'align-items': cs.alignItems, 'align-content': cs.alignContent,
+                'row-gap': cs.rowGap, 'column-gap': cs.columnGap,
+                'flex': (cs.flexDirection.indexOf('row') === 0) ? '0 0 100%' : '0 0 auto', 'min-width': '0px'
+            };
+        } else if (cs && (cs.display === 'grid' || cs.display === 'inline-grid')) {
+            want = {
+                'display': 'grid', 'grid-column': '1 / -1', 'grid-template-columns': 'subgrid',
+                'row-gap': cs.rowGap, 'column-gap': cs.columnGap,
+                'align-items': cs.alignItems, 'justify-items': cs.justifyItems
+            };
+        }
+        // Written only where it differs: a pass that changes nothing leaves
+        // the records alone instead of making the browser restyle them all.
+        _SD_FX_LOOP_PROPS.forEach(function (k) {
+            var v = want[k] || '';
+            if (la.style.getPropertyValue(k) === v) return;
+            if (v) la.style.setProperty(k, v); else la.style.removeProperty(k);
+        });
+    }
+
+    // A bound picture in the card being designed has no record behind it,
+    // so its placeholder had a size of its own (a small grey card) while the
+    // real records after it showed full pictures. It takes the size of the
+    // first real record's picture for the same field instead.
+    function _sdFxGhostImageSizes(la) {
+        var ghosts = la.querySelectorAll(':scope > .sd-ghost');
+        if (!ghosts.length) return;
+        la.querySelectorAll('img[data-sd-bind-src]').forEach(function (img) {
+            if (img.closest('.sd-ghost')) return;
+            var tok = img.getAttribute('data-sd-bind-src');
+            if (!tok) return;
+            // The card names the field the editor's way (__image_url), the
+            // record's markup without the underscores (image_url).
+            var key = tok.replace(/^_+/, '');
+            var ref = null, first = null;
+            for (var g = 0; g < ghosts.length && !ref; g++) {
+                var pics = ghosts[g].querySelectorAll('img[data-pg-bind]');
+                for (var i = 0; i < pics.length; i++) {
+                    if (!_sdBindsSrc(pics[i].getAttribute('data-pg-bind'), key)) continue;
+                    if (!first) first = pics[i];
+                    // The site's "no image" stand-in says nothing about the
+                    // size of the pictures the records do have.
+                    if (!/\/no-image\./.test(pics[i].getAttribute('src') || '')) ref = pics[i];
+                    break;
+                }
+            }
+            ref = ref || first;
+            if (!ref) return;
+            var apply = function () {
+                if (!img.isConnected || !ref.naturalWidth || !ref.naturalHeight) return;
+                var src = _sdImgPlaceholderSized(tok, ref.naturalWidth, ref.naturalHeight);
+                if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+            };
+            if (ref.complete && ref.naturalWidth) apply();
+            else ref.addEventListener('load', apply, { once: true });
+        });
+    }
+
+    // Whether a server-drawn data-pg-bind list ("src:image_url;alt:title")
+    // binds the picture's src to the field.
+    function _sdBindsSrc(bind, key) {
+        var parts = String(bind || '').split(';');
+        for (var i = 0; i < parts.length; i++) {
+            var c = parts[i].indexOf(':');
+            if (c > 0 && parts[i].slice(0, c).trim() === 'src' && parts[i].slice(c + 1).trim().replace(/^_+/, '') === key) return true;
+        }
+        return false;
+    }
+
+    // The bound-picture placeholder (_sdImgPlaceholderForToken()) at a given
+    // natural size; the labels scale with it.
+    function _sdImgPlaceholderSized(tokenName, w, h) {
+        w = Math.max(1, Math.round(w));
+        h = Math.max(1, Math.round(h));
+        var label = '[' + String(tokenName || 'image').replace(/[^a-z0-9_]/gi, '') + ']';
+        if (label.length > 28) label = label.slice(0, 26) + '…]';
+        var fs = Math.max(10, Math.round(Math.min(w, h) / 9));
+        var svg =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+                '<rect fill="#e5e7eb" width="' + w + '" height="' + h + '"/>' +
+                '<text x="50%" y="47%" text-anchor="middle" fill="#6c757d" font-family="sans-serif" font-size="' + fs + '" font-weight="600">' + esc(_sdT('Image')) + '</text>' +
+                '<text x="50%" y="47%" dy="1.4em" text-anchor="middle" fill="#0d6efd" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="' + Math.round(fs * .85) + '">' + label + '</text>' +
+            '</svg>';
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    // ========================= CANVAS SELECTOR BRIDGE =========================
+    // A design on its own framework styles the page with child, sibling and
+    // position selectors — `.navbar > .container`, `.form-floating >
+    // .form-control`, `li:first-child`, `.btn + .btn`. On the canvas every
+    // element sits one level down, inside its .sd-wrap, so those rules missed
+    // and the canvas drifted away from the page. Rather than copying a
+    // framework's rules by hand (as the Bootstrap 5 emulation in IFRAME_CSS
+    // does), the design's own rules are taught about the wrapper: a selector
+    // that depends on parentage or position is rewritten — in the canvas's
+    // copy of the stylesheet only — into a form that also steps over one
+    // wrapper level (and over a loop area). The rule keeps its place in the
+    // cascade and its specificity (the added parts sit in :where()); a
+    // rewrite the browser rejects leaves the rule as it was.
+
+    var _SD_BR_WRAP = 'div.sd-wrap:not([data-sd-type="col"])';
+    // Appended to every compound: a wrapper, a piece of editor chrome or a
+    // canvas-only holder is never one of the page's elements. They all carry
+    // an `sd-` class; the two page elements that do too are a ghost record
+    // and a column (whose wrapper is the column itself). All of it inside
+    // :where(), so it adds nothing to the rule's specificity.
+    var _SD_BR_X = ':not(:where([class^="sd-"]:not(.sd-ghost, [data-sd-type="col"]), [class*=" sd-"]:not(.sd-ghost, [data-sd-type="col"])))';
+    // Siblings that count for :first-child and the like (chrome does not).
+    var _SD_BR_SIB = ':where(:not(.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-loop-band, .sd-dz, .sd-virtual-text, .sd-section-binding-hint, .sd-align-guide))';
+    var _SD_BR_NEED = /[>+~]|:(first|last|only|nth)-|:has\(/i;
+    var _SD_BR_STRUCT = /^:(first-child|last-child|only-child|nth-child\(|nth-last-child\(|first-of-type|last-of-type|only-of-type|nth-of-type\(|nth-last-of-type\()/i;
+    var _sdBridged = (typeof WeakSet === 'function') ? new WeakSet() : null;
+
+    // Every stylesheet of the canvas except the editor's own. Rules already
+    // rewritten are skipped, so it is cheap to call again.
+    // How many rules each sheet had when it was last walked.
+    var _sdBridgedLen = (typeof WeakMap === 'function') ? new WeakMap() : null;
+
+    function _sdBridgeSheets() {
+        if (!canvasDoc || !_sdFxFlatOn() || !_sdBridged) return;
+        var sheets = canvasDoc.styleSheets;
+        for (var i = 0; i < sheets.length; i++) {
+            var sh = sheets[i];
+            var owner = sh.ownerNode;
+            if (owner && owner.id === 'sd-canvas-css') continue;
+            // A sheet walked before with as many rules as now, and no @import
+            // that may still be arriving, holds nothing new: its thousands of
+            // rules are not walked again on every pass.
+            var n;
+            try { n = sh.cssRules.length; } catch (e) { continue; }   // cross-origin without CORS
+            if (_sdBridgedLen && _sdBridgedLen.get(sh) === n) continue;
+            var imports = _sdBridgeRules(sh, 0);
+            if (_sdBridgedLen && !imports) _sdBridgedLen.set(sh, n);
+        }
+    }
+
+    // Returns whether the container holds an @import (its sheet may arrive later).
+    function _sdBridgeRules(container, depth) {
+        var rules;
+        try { rules = container.cssRules; } catch (e) { return false; }   // cross-origin without CORS
+        if (!rules || depth > 8) return false;
+        var imports = false;
+        for (var i = 0; i < rules.length; i++) {
+            var r = rules[i];
+            if (r.styleSheet) { imports = true; _sdBridgeRules(r.styleSheet, depth + 1); continue; }     // @import
+            if (typeof r.selectorText === 'string' && r.style) {
+                if (_sdBridged.has(r)) continue;
+                _sdBridged.add(r);
+                var st = r.selectorText;
+                if (_SD_BR_NEED.test(st)) {
+                    var b = _sdBridgeList(st);
+                    if (b !== st) {
+                        try { r.selectorText = b; } catch (e) {}
+                        // A list the browser refuses as a whole (one part it
+                        // cannot parse) goes in the forgiving :is() form.
+                        if (r.selectorText === st && b.indexOf('::') === -1) {
+                            try { r.selectorText = ':is(' + b + ')'; } catch (e) {}
+                        }
+                    }
+                }
+                continue;   // rules nested inside a style rule keep their selectors
+            }
+            if (r.cssRules && _sdBridgeRules(r, depth + 1)) imports = true;               // @media, @layer, @supports, @container
+        }
+        return imports;
+    }
+
+    // A selector list, each selector rewritten where needed.
+    function _sdBridgeList(text) {
+        if (!_SD_BR_NEED.test(text)) return text;
+        var list = _sdSelSplitList(text);
+        if (!list) return text;
+        var changed = false;
+        var out = list.map(function (sel) {
+            if (!_SD_BR_NEED.test(sel)) return sel;
+            var b = null;
+            try { b = _sdBridgeComplex(sel); } catch (e) { b = null; }
+            if (b && b !== sel) { changed = true; return b; }
+            return sel;
+        });
+        return changed ? out.join(', ') : text;
+    }
+
+    // Reads one escape sequence starting at s[i] ('\'): returns its end.
+    function _sdSelEscEnd(s, i) {
+        var j = i + 1, n = 0;
+        while (n < 6 && j < s.length && /[0-9a-fA-F]/.test(s.charAt(j))) { j++; n++; }
+        if (n > 0) { if (j < s.length && /[ \t\n\r\f]/.test(s.charAt(j))) j++; return j; }
+        return Math.min(s.length, i + 2);
+    }
+
+    // Splits a selector list at its top-level commas; null when unbalanced.
+    function _sdSelSplitList(s) {
+        var parts = [], start = 0, depth = 0, q = '';
+        for (var i = 0; i < s.length; i++) {
+            var ch = s.charAt(i);
+            if (ch === '\\') { i = _sdSelEscEnd(s, i) - 1; continue; }
+            if (q) { if (ch === q) q = ''; continue; }
+            if (ch === '"' || ch === "'") { q = ch; continue; }
+            if (ch === '(' || ch === '[') depth++;
+            else if (ch === ')' || ch === ']') { if (--depth < 0) return null; }
+            else if (ch === ',' && depth === 0) { parts.push(s.slice(start, i).trim()); start = i + 1; }
+        }
+        if (depth !== 0 || q) return null;
+        parts.push(s.slice(start).trim());
+        return parts;
+    }
+
+    // A complex selector as compounds and combinators:
+    // [{t:'s', v:compound}, {t:'c', v:'>'|'+'|'~'|' '}, …]; null when unbalanced
+    // or when it starts with a combinator.
+    function _sdSelTokens(s) {
+        var toks = [], cur = '', depth = 0, q = '';
+        function pushCur() { if (cur) { toks.push({ t: 's', v: cur }); cur = ''; } }
+        function pushComb(v) {
+            pushCur();
+            var last = toks[toks.length - 1];
+            if (!last) { if (v !== ' ') toks.push({ t: 'c', v: v }); return; }
+            if (last.t === 'c') { if (v !== ' ' && last.v === ' ') last.v = v; return; }
+            toks.push({ t: 'c', v: v });
+        }
+        for (var i = 0; i < s.length; i++) {
+            var ch = s.charAt(i);
+            if (q) {
+                cur += ch;
+                if (ch === '\\' && i + 1 < s.length) { cur += s.charAt(++i); continue; }
+                if (ch === q) q = '';
+                continue;
+            }
+            if (ch === '\\') { var e = _sdSelEscEnd(s, i); cur += s.slice(i, e); i = e - 1; continue; }
+            if (ch === '"' || ch === "'") { q = ch; cur += ch; continue; }
+            if (ch === '(' || ch === '[') { depth++; cur += ch; continue; }
+            if (ch === ')' || ch === ']') { if (--depth < 0) return null; cur += ch; continue; }
+            if (depth === 0 && /[ \t\n\r\f]/.test(ch)) { pushComb(' '); continue; }
+            if (depth === 0 && (ch === '>' || ch === '+' || ch === '~')) { pushComb(ch); continue; }
+            cur += ch;
+        }
+        if (depth !== 0 || q) return null;
+        pushCur();
+        while (toks.length && toks[toks.length - 1].t === 'c' && toks[toks.length - 1].v === ' ') toks.pop();
+        if (!toks.length || toks[0].t !== 's' || toks[toks.length - 1].t !== 's') return null;
+        return toks;
+    }
+
+    // A compound selector in its parts: an optional type or universal
+    // selector, then .class, #id, [attr], :pseudo(…) and ::pseudo-element.
+    function _sdSelCompoundParts(c) {
+        var parts = [], cur = '', depth = 0, q = '';
+        for (var i = 0; i < c.length; i++) {
+            var ch = c.charAt(i);
+            if (q) {
+                cur += ch;
+                if (ch === '\\' && i + 1 < c.length) { cur += c.charAt(++i); continue; }
+                if (ch === q) q = '';
+                continue;
+            }
+            if (ch === '\\') { var e = _sdSelEscEnd(c, i); cur += c.slice(i, e); i = e - 1; continue; }
+            if (ch === '"' || ch === "'") { q = ch; cur += ch; continue; }
+            if (depth === 0 && (ch === '.' || ch === '#' || ch === '[' || ch === ':')) {
+                if (ch === ':' && cur === ':') { cur += ch; continue; }   // ::pseudo-element
+                if (cur) parts.push(cur);
+                cur = ch;
+                if (ch === '[') depth++;
+                continue;
+            }
+            if (ch === '(' || ch === '[') depth++;
+            else if (ch === ')' || ch === ']') depth--;
+            cur += ch;
+        }
+        if (cur) parts.push(cur);
+        return parts;
+    }
+
+    // One position pseudo-class, as the wrapper (not the element) must
+    // match it on the canvas; null when it cannot be said that way. An
+    // *-of-type test without a type selector counts the siblings that match
+    // the rest of the compound instead (`.accordion-item:first-of-type`) —
+    // the same answer for the usual run of like siblings.
+    function _sdBridgeStructW(p, type, rest) {
+        var lc = p.toLowerCase();
+        var S = _SD_BR_SIB;
+        if (lc === ':first-child') return ':nth-child(1 of ' + S + ')';
+        if (lc === ':last-child') return ':nth-last-child(1 of ' + S + ')';
+        if (lc === ':only-child') return ':nth-child(1 of ' + S + '):where(:nth-last-child(1 of ' + S + '))';
+        var m = /^:(nth-child|nth-last-child)\((.*)\)$/i.exec(p);
+        if (m) {
+            if (/\sof\s/i.test(m[2])) return null;
+            return ':' + m[1].toLowerCase() + '(' + m[2].trim() + ' of ' + S + ')';
+        }
+        var t = /^:(first-of-type|last-of-type|only-of-type|nth-of-type\((.*)\)|nth-last-of-type\((.*)\))$/i.exec(p);
+        if (!t) return null;
+        var of = (type && type !== '*') ? type : (rest || '');
+        if (!of) return null;
+        var OT = ':where(' + _SD_BR_WRAP + ':has(> ' + of + '))';
+        var kind = t[1].toLowerCase();
+        if (kind === 'first-of-type') return ':nth-child(1 of ' + OT + ')';
+        if (kind === 'last-of-type') return ':nth-last-child(1 of ' + OT + ')';
+        if (kind === 'only-of-type') return ':nth-child(1 of ' + OT + '):where(:nth-last-child(1 of ' + OT + '))';
+        if (kind.indexOf('nth-of-type') === 0) return ':nth-child(' + t[2].trim() + ' of ' + OT + ')';
+        return ':nth-last-child(' + t[3].trim() + ' of ' + OT + ')';
+    }
+
+    // `:has(> C)` also finds C inside a wrapper.
+    function _sdBridgeHasArgs(inner) {
+        var list = _sdSelSplitList(inner);
+        if (!list) return inner;
+        var out = [];
+        list.forEach(function (rel) {
+            out.push(rel);
+            var m = /^>\s*([\s\S]+)$/.exec(rel);
+            var tk = m ? _sdSelTokens(m[1]) : null;
+            if (tk && tk.length === 1) out.push('> :where(' + _SD_BR_WRAP + ') > ' + m[1]);
+        });
+        return out.join(', ');
+    }
+
+    // One compound in its canvas forms: `plain` (no position pseudo-class),
+    // `u` (the element itself is a child of the real parent — a ghost record,
+    // raw HTML) and `w` (the element sits inside its wrapper, which carries
+    // the position test). Null leaves the whole selector as it is.
+    function _sdBridgeCompound(c) {
+        var parts = _sdSelCompoundParts(c);
+        if (!parts.length) return null;
+        var type = '', rest = '', struct = [], pe = '';
+        for (var i = 0; i < parts.length; i++) {
+            var p = parts[i];
+            var lc = p.toLowerCase();
+            if (i === 0 && !/^[.#\[:]/.test(p)) {
+                if (p.indexOf('|') !== -1 || p.indexOf('&') !== -1) return null;
+                type = p;
+                continue;
+            }
+            if (lc.indexOf('::') === 0 || /^:(before|after|first-line|first-letter)$/.test(lc)) { pe += p; continue; }
+            if (pe) return null;
+            if (/^:(host|slotted|part)\b/.test(lc)) return null;
+            if (_SD_BR_STRUCT.test(lc)) { struct.push(p); continue; }
+            var fn = /^:(not|is|where|matches|-webkit-any|has)\(/i.exec(p);
+            if (fn && p.charAt(p.length - 1) === ')') {
+                var inner = p.slice(fn[0].length, -1);
+                var bridged = (fn[1].toLowerCase() === 'has') ? _sdBridgeHasArgs(inner) : _sdBridgeList(inner);
+                if (bridged !== inner) p = fn[0] + bridged + ')';
+            }
+            rest += p;
+        }
+        var base = ((type || rest) ? type + rest : '*') + _SD_BR_X;
+        var structW = '';
+        for (var k = 0; k < struct.length; k++) {
+            var mW = _sdBridgeStructW(struct[k], type, rest);
+            if (mW === null) return null;
+            structW += mW;
+        }
+        return {
+            plain: base,
+            u: base + struct.join('') + (struct.length ? ':not(:where(' + _SD_BR_WRAP + ') > *)' : ''),
+            w: ':where(' + _SD_BR_WRAP + ')' + structW + ' > ' + base,
+            hasStruct: struct.length > 0,
+            pe: pe
+        };
+    }
+
+    // One complex selector in its canvas form, or null to leave it alone.
+    function _sdBridgeComplex(sel) {
+        if (sel.indexOf('&') !== -1) return null;
+        var toks = _sdSelTokens(sel);
+        if (!toks) return null;
+        var W = ':where(' + _SD_BR_WRAP + ')';
+        var LA = ':where(.sd-loop-area)';
+        var childCount = 0;
+        toks.forEach(function (t) { if (t.t === 'c' && t.v === '>') childCount++; });
+        var ctx = '';
+        for (var i = 0; i < toks.length; i += 2) {
+            var cp = _sdBridgeCompound(toks[i].v);
+            if (!cp) return null;
+            var last = (i === toks.length - 1);
+            if (cp.pe && !last) return null;
+            var comb = i ? toks[i - 1].v : '';
+            var alts;
+            if (!comb) {
+                alts = cp.hasStruct ? [cp.u, cp.w] : [cp.plain];
+            } else if (comb === ' ') {
+                alts = cp.hasStruct ? [ctx + ' ' + cp.u, ctx + ' ' + cp.w] : [ctx + ' ' + cp.plain];
+            } else if (comb === '>') {
+                alts = [ctx + ' > ' + cp.u, ctx + ' > ' + cp.w];
+                // A loop area renders its records straight into this parent
+                // (a .row, mostly): its records are children here too.
+                if (childCount <= 2 && last) {
+                    alts.push(ctx + ' > ' + W + ' > ' + LA + ' > ' + cp.u);
+                    alts.push(ctx + ' > ' + W + ' > ' + LA + ' > ' + cp.w);
+                }
+            } else if (comb === '+' || comb === '~') {
+                alts = [ctx + ' ' + comb + ' ' + cp.u, W + ':has(> :is(' + ctx + ')) ' + comb + ' ' + cp.w];
+            } else {
+                return null;
+            }
+            // The last step is a plain selector list, not one :is(): each
+            // alternative keeps its own rightmost compound, so the browser
+            // files the rule under that class or tag and tests it only on
+            // elements that carry it. Wrapped in :is(), every bridged rule sat
+            // in the catch-all bucket and was tested on every element at every
+            // style change, which made the canvas slow to restyle. All the
+            // alternatives have the original's specificity (what they add is
+            // :where()), so the cascade is the same.
+            if (last) ctx = alts.map(function (a) { return a + (cp.pe || ''); }).join(', ');
+            else ctx = (alts.length === 1) ? alts[0] : ':is(' + alts.join(', ') + ')';
+        }
+        return ctx;
+    }
+
     function renderCanvas() {
         if (!canvasDoc || !canvasDoc.body || !iframeReady) return;
         // Preserve scroll position so options changes don't jump the canvas to top
@@ -7622,6 +8529,9 @@ const StyleDesigner = (function () {
         _captureTabState();
         if (tree) injectGoogleFonts();
         canvasDoc.body.innerHTML = '';
+        // A shared tree left marked open by an interrupted render would draw
+        // as a loop from now on; every full render starts clean.
+        _sdSharedOpen = {};
         if (tree) canvasDoc.body.appendChild(buildNodeEl(tree));
         // Apply root-level fontFamily directly to the iframe <body> so the
         // canvas previews body-wide typography. Empty/missing prop clears
@@ -7757,11 +8667,30 @@ const StyleDesigner = (function () {
      */
     function adjustCanvasToolbars() {
         if (!canvasDoc || !canvasDoc.body) return;
+        // The layout corrections first: they move things.
+        _sdCanvasFidelityPass();
         // Only div.sd-wrap elements have the flip logic — table structural elements (tr.sd-wrap etc.)
         // don't have toolbars that could overflow the viewport, so skip them.
-        canvasDoc.querySelectorAll('div.sd-wrap').forEach(function(w) {
-            var top = w.getBoundingClientRect().top;
-            w.classList.toggle('sd-tb-inside', top < 22);
+        // All measured, then all written: one layout instead of one per wrapper.
+        // A see-through wrapper is measured by its element.
+        var ws = canvasDoc.querySelectorAll('div.sd-wrap');
+        var tops = [];
+        ws.forEach(function (w) { tops.push(_sdBoxRect(w).top); });
+        ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
+        _sdPlaceSelectedChrome();
+    }
+
+    // Layout-dependent canvas work after something moved without a render
+    // (the canvas resized, a stylesheet or picture arrived). Once per frame.
+    var _sdFxRaf = 0;
+    function _sdFxSoon() {
+        if (_sdFxRaf || !canvasDoc) return;
+        var win = canvasDoc.defaultView;
+        if (!win) return;
+        _sdFxRaf = win.requestAnimationFrame(function () {
+            _sdFxRaf = 0;
+            _sdCanvasFidelityPass();
+            _sdPlaceSelectedChrome();
         });
     }
 
@@ -8163,7 +9092,11 @@ const StyleDesigner = (function () {
         // Inner content: show the actual tree for both regular shared_refs and system widgets.
         // System widgets get an extra item-template band above the editable tree so the user
         // understands they are designing the per-item template (not static content).
-        if (cached && cached.tree) {
+        // A component already being drawn further up — a loop that reached the
+        // cache — is not drawn again; it ends in the marker below.
+        var _sdLoopHere = !!(sid > 0 && _sdSharedOpen[sid]);
+        if (cached && cached.tree && !_sdLoopHere) {
+            if (sid > 0) _sdSharedOpen[sid] = true;
             var inner = doc.createElement('div');
             inner.className = 'sd-shared-inner';
             if (_isSysWidget) {
@@ -8239,11 +9172,14 @@ const StyleDesigner = (function () {
                 // it shrink so the inner drop area handles all drops. CSS class added below.
                 // Expose system_region_config to buildNodeEl so loop_area can be hidden
                 // in single-record widget types (form_item_view, my_account w/o submissions).
+                // Restored afterwards, not cleared: a widget can sit inside
+                // another shared component or widget whose render goes on.
+                var _prevCfgE = _sysWidgetRenderCfg, _prevRootE = _sysWidgetRenderTreeRoot;
                 _sysWidgetRenderCfg = _sysCfg;
                 _sysWidgetRenderTreeRoot = cached.tree;
                 var _emptyRootEl = buildNodeEl(cached.tree);
-                _sysWidgetRenderCfg = null;
-                _sysWidgetRenderTreeRoot = null;
+                _sysWidgetRenderCfg = _prevCfgE;
+                _sysWidgetRenderTreeRoot = _prevRootE;
                 _emptyRootEl.classList.add('sd-system-empty-root');
                 inner.appendChild(_emptyRootEl);
             } else {
@@ -8253,11 +9189,12 @@ const StyleDesigner = (function () {
                     var _selState = _sdSessionStateOf(cached.tree, selectedNode);
                     if (_selState) _sdSessionPreview = _selState;
                 }
+                var _prevCfg = _sysWidgetRenderCfg, _prevRoot = _sysWidgetRenderTreeRoot;
                 _sysWidgetRenderCfg = _sysCfg;
                 _sysWidgetRenderTreeRoot = cached.tree;
                 inner.appendChild(buildNodeEl(cached.tree));
-                _sysWidgetRenderCfg = null;
-                _sysWidgetRenderTreeRoot = null;
+                _sysWidgetRenderCfg = _prevCfg;
+                _sysWidgetRenderTreeRoot = _prevRoot;
                 // Real records after the card being designed (canvas only).
                 _sdAppendGhosts(doc, inner, sid, cached, _sysCfg);
             }
@@ -8270,8 +9207,16 @@ const StyleDesigner = (function () {
                 inner.querySelectorAll('[data-sd-id]').forEach(function (el) {
                     if (!el.hasAttribute('data-sw-sid')) el.setAttribute('data-sw-sid', sid);
                 });
+                delete _sdSharedOpen[sid];
             }
             wrapper.appendChild(inner);
+        } else if (_sdLoopHere) {
+            // The component places itself, through others or directly.
+            var loopPh = doc.createElement('div');
+            loopPh.className = _isSysWidget ? 'sd-system-placeholder' : 'sd-shared-placeholder';
+            loopPh.innerHTML = '<span class="bi bi-arrow-repeat"></span> ' +
+                esc(_sdT('A loop: "{var}" places itself, so it is not drawn here again', scName || ('#' + sid)));
+            wrapper.appendChild(loopPh);
         } else {
             // Fallback placeholder when tree is not yet cached
             var ph = doc.createElement('div');
@@ -8477,6 +9422,11 @@ const StyleDesigner = (function () {
         wrapper.className = 'sd-wrap';
         wrapper.setAttribute('data-sd-id', node._id);
         wrapper.setAttribute('data-sd-type', node.type);
+        // A design on a custom framework: the wrapper draws no box of its own,
+        // so its element is laid out by its real parent, as on the page. The
+        // page root keeps its box (it is the canvas-wide drop target), and so
+        // does a column, whose wrapper is the column itself.
+        if (_sdFxFlatOn() && node.type !== 'root' && node.type !== 'col') wrapper.classList.add('sd-fx-flat');
 
         // Content level: the canvas says which blocks are the operator's.
         // A marked area gets a ring and a label; everything they cannot touch
@@ -8879,12 +9829,25 @@ const StyleDesigner = (function () {
             } else if (node.props.title) {
                 innerEl.title = node.props.title;
             }
+            // A column's inner holder: see-through when it carries nothing of
+            // its own (its children are then laid out by the column, and an
+            // h-100 card fills it); otherwise it fills the column's height.
+            if (node.type === 'col') {
+                innerEl.classList.add(innerEl.attributes.length ? 'sd-col-fill' : 'sd-col-inner');
+            }
+            // A bound picture names its field, so the canvas can size its
+            // placeholder after a real record's picture (_sdFxGhostImageSizes()).
+            if (node.props._bindings && node.props._bindings.src) {
+                var _bImg = (innerEl.tagName === 'IMG') ? innerEl : innerEl.querySelector('img');
+                if (_bImg) _bImg.setAttribute('data-sd-bind-src', String(node.props._bindings.src));
+            }
             wrapper.appendChild(innerEl);
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
             // Force the wrapper to block so the percentage applies against the column width.
-            if (node.type === 'content' && node.props.contentType === 'image') {
+            // (A see-through wrapper has no box to size; the image sizes itself.)
+            if (node.type === 'content' && node.props.contentType === 'image' && !wrapper.classList.contains('sd-fx-flat')) {
                 var _imgPW = node.props.width ? String(node.props.width) : '';
                 if (_imgPW.indexOf('%') !== -1) {
                     wrapper.style.setProperty('display', 'block', 'important');
@@ -9950,10 +10913,12 @@ const StyleDesigner = (function () {
     // A listing widget's repeated part is designed once, on one sample
     // record. The canvas follows that card with real records the server draws
     // from the same tree (api.php designer/widget_ghosts), so the design is
-    // judged the way the page will look. Ghosts are canvas-only DOM: inert,
-    // never selectable, never in the tree JSON; they are redrawn with every
-    // render and fetched again whenever the widget's tree or settings change
-    // (the last answer stays on screen meanwhile).
+    // judged the way the page will look: the card takes the first record's
+    // place and the rest of the page's first page follows it, as many cards
+    // as the page shows (at most _SD_GHOST_LIMIT after the card). Ghosts are
+    // canvas-only DOM: inert, never selectable, never in the tree JSON; they
+    // are redrawn with every render and fetched again whenever the widget's
+    // tree or settings change (the last answer stays on screen meanwhile).
     var _SD_GHOST_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, catalog_listing: 1 };
     var _SD_GHOST_LIMIT = 10;
     var _sdGhostsOn = (function () { try { return localStorage.getItem('pg_sd_ghosts') !== '0'; } catch (e) { return true; } })();
@@ -10289,6 +11254,49 @@ const StyleDesigner = (function () {
         return rich ? src.innerHTML : src.textContent.replace(/\u00a0/g, ' ').trim();
     }
 
+    // The Bootstrap icon an element draws through its classes ("bi-alarm"),
+    // '' when none: an <i> or <span> kept as an element, a div given
+    // `bi bi-house` by hand, a link carrying one. An icon node keeps its own
+    // (props.iconName).
+    function _sdBiIconClass(n) {
+        if (!n || !n.props || (n.type === 'content' && n.props.contentType === 'icon')) return '';
+        var m = /(?:^|\s)(bi-[a-z0-9-]+)(?=\s|$)/.exec(String(n.props.cssClass || ''));
+        return m ? m[1] : '';
+    }
+
+    // An element that is that icon and nothing else (no text, no children).
+    function _sdBiIconOnly(n) {
+        return !!(n && n.type === 'semantic' && _sdBiIconClass(n)
+            && !String(n.props.text || '').trim() && !(n.children && n.children.length));
+    }
+
+    // The options section for such an element: the icon, with the picker.
+    function _sdBiIconSection(n) {
+        var ico = _sdBiIconClass(n);
+        if (!ico) return '';
+        return sect('bi-emoji-smile', _sdT('Icon'),
+            row(_sdT('Icon'),
+                '<div class="sd-pick-group">' +
+                    '<input type="text" class="form-control form-control-sm" data-sd-bi-icon value="' + esc(ico) + '" placeholder="bi-icon-name">' +
+                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn sd-bi-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
+                '</div>'));
+    }
+
+    // Puts another icon on an element that draws one by class: the bi-*
+    // class is swapped, every other class stays.
+    function _sdSetBiIcon(n, value) {
+        var v = String(value || '').trim().toLowerCase();
+        if (v && v.indexOf('bi-') !== 0) v = 'bi-' + v;
+        var cur = _sdBiIconClass(n);
+        if (!cur || !/^bi-[a-z0-9-]+$/.test(v) || v === cur) return false;
+        n.props.cssClass = String(n.props.cssClass || '').split(/\s+/)
+            .map(function (c) { return c === cur ? v : c; }).join(' ').trim();
+        renderCanvas();
+        renderAttrsPanel();
+        renderHtmlTree();
+        return true;
+    }
+
     function setupInlineEditing(wrapper, innerEl, node) {
         // Icon double-click → open the icon picker
         if (node.type === 'content' && node.props.contentType === 'icon') {
@@ -10365,6 +11373,28 @@ const StyleDesigner = (function () {
             // Only set designer hint if user hasn't defined their own tooltip/title (avoid clobbering).
             if (!(node.props.tooltipEnabled && node.props.tooltipTitle) && !node.props.title) {
                 innerEl.title = _sdT('Double-click to select an image');
+            }
+            innerEl.style.cursor = 'pointer';
+            return;
+        }
+
+        // An element that is only a Bootstrap icon drawn by its class (an
+        // empty <i class="bi bi-bag">, a div given `bi bi-house`): a double
+        // click picks another icon, as on an icon node, instead of starting
+        // to type text into it.
+        if (_sdBiIconOnly(node)) {
+            innerEl.addEventListener('dblclick', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectedNode = node;
+                renderProperties();
+                setTimeout(function () {
+                    var inp = document.querySelector('#sd-properties input[data-sd-bi-icon]');
+                    if (inp) openIconModal(inp);
+                }, 60);
+            });
+            if (!(node.props.tooltipEnabled && node.props.tooltipTitle) && !node.props.title) {
+                innerEl.title = _sdT('Double-click to change the icon');
             }
             innerEl.style.cursor = 'pointer';
             return;
@@ -10803,7 +11833,8 @@ const StyleDesigner = (function () {
             el.classList.remove('sd-drop-hl', 'sd-insert-before', 'sd-insert-after', 'sd-insert-before-x', 'sd-insert-after-x');
         }
         function _getZone(e) {
-            var r = el.getBoundingClientRect();
+            // A see-through wrapper is measured by its element.
+            var r = _sdBoxRect(el);
             var y = e.clientY - r.top;
             var h = r.height;
             // Root nodes always go "inside"; very short elements get only before/after
@@ -11067,6 +12098,18 @@ const StyleDesigner = (function () {
         if (data.source === 'node' && data.node && (hasLockedAncestor(data.node) || data.node.props._locked)) return false;
         if (target.props && target.props._locked) return false;
         if (hasLockedAncestor(target)) return false;
+
+        // Nested shared components: one may be placed inside another, never
+        // inside itself or inside a component it already contains.
+        var _dragSids = _sdDragSharedIds(data);
+        if (_dragSids.length) {
+            var _ownerSid = _sdSharedOwnerOf(target);
+            if (_ownerSid) {
+                for (var _dsi = 0; _dsi < _dragSids.length; _dsi++) {
+                    if (_sdSharedReaches(_dragSids[_dsi], _ownerSid)) return false;
+                }
+            }
+        }
 
         // A Form palette block is a semantic element (div / fieldset / input)
         // and goes wherever one goes.
@@ -15819,20 +16862,25 @@ const StyleDesigner = (function () {
                         var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                         var target = selectedNode || tree;
                         if (!target) return;
-                        if (!canDrop({ type: 'shared_ref' }, target)) {
+                        // Carries the id, so canDrop() can refuse placing a component inside itself.
+                        var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
+                        if (!canDrop(_dbData, target)) {
                             if (target.children && target.children.length) {
                                 for (var i = target.children.length - 1; i >= 0; i--) {
-                                    if (canDrop({ type: 'shared_ref' }, target.children[i])) { target = target.children[i]; break; }
+                                    if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
                                 }
                             }
-                            if (!canDrop({ type: 'shared_ref' }, target)) target = tree;
-                            if (!canDrop({ type: 'shared_ref' }, target)) return;
+                            if (!canDrop(_dbData, target)) target = tree;
+                            if (!canDrop(_dbData, target)) return;
                         }
                         saveState();
                         var n = createFromPalette('shared_ref', extra);
                         if (!n) return;
                         if (!target.children) target.children = [];
                         target.children.push(n);
+                        // Placed inside a shared component: that component is saved with the next save.
+                        var _dbOwner = _sdSharedOwnerOf(target);
+                        if (_dbOwner) _sharedDirty[_dbOwner] = true;
                         selectedNode = n;
                         expandAncestors(n, tree);
                         render();
@@ -16120,20 +17168,25 @@ const StyleDesigner = (function () {
                     var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                     var target = selectedNode || tree;
                     if (!target) return;
-                    if (!canDrop({ type: 'shared_ref' }, target)) {
+                    // Carries the id, so canDrop() can refuse placing a component inside itself.
+                    var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
+                    if (!canDrop(_dbData, target)) {
                         if (target.children && target.children.length) {
                             for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop({ type: 'shared_ref' }, target.children[i])) { target = target.children[i]; break; }
+                                if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
                             }
                         }
-                        if (!canDrop({ type: 'shared_ref' }, target)) target = tree;
-                        if (!canDrop({ type: 'shared_ref' }, target)) return;
+                        if (!canDrop(_dbData, target)) target = tree;
+                        if (!canDrop(_dbData, target)) return;
                     }
                     saveState();
                     var n = createFromPalette('shared_ref', extra);
                     if (!n) return;
                     if (!target.children) target.children = [];
                     target.children.push(n);
+                    // Placed inside a shared component: that component is saved with the next save.
+                    var _dbOwner = _sdSharedOwnerOf(target);
+                    if (_dbOwner) _sharedDirty[_dbOwner] = true;
                     selectedNode = n;
                     expandAncestors(n, tree);
                     render();
@@ -18896,8 +19949,12 @@ const StyleDesigner = (function () {
                 // Expand the cached shared component tree inline.
                 var _scId = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
                 var _scCached = _scId > 0 ? _sharedCache[_scId] : null;
-                if (_scCached && _scCached.tree) {
-                    h = buildNodeHTML(_scCached.tree, pad);
+                // A nested component is expanded too; one already open further
+                // up (a loop) is left out rather than expanded forever.
+                if (_scCached && _scCached.tree && !_sdSharedOpen[_scId]) {
+                    _sdSharedOpen[_scId] = true;
+                    try { h = buildNodeHTML(_scCached.tree, pad); }
+                    finally { delete _sdSharedOpen[_scId]; }
                 }
                 break;
         }
@@ -19360,6 +20417,10 @@ const StyleDesigner = (function () {
         // The look and the palette go back right after Bootstrap, which the
         // links above may just have moved.
         _sdThemeApply();
+        // The design's rules taught about the wrappers (inline styles now,
+        // linked sheets as they load — see the load listener on the canvas).
+        _sdBridgeSheets();
+        _sdFxSoon();
     }
 
     // Renders the HTML tree in the bottom panel — the full page structure
@@ -19550,11 +20611,14 @@ const StyleDesigner = (function () {
         // PREVIEW-ONLY visual expansion — the saved tree_json on the parent style
         // never changes (the canonical source is shared_components.tree_json).
         var _children = node.children || [];
+        var _sRefOpen = 0;
         if (node.type === 'shared_ref') {
             var _sRefSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
             var _sRefCached = _sRefSid > 0 ? _sharedCache[_sRefSid] : null;
-            if (_sRefCached && _sRefCached.tree && _sRefCached.tree.children) {
+            // Not expanded again inside itself (a loop of nested components).
+            if (_sRefCached && _sRefCached.tree && _sRefCached.tree.children && !_sdSharedOpen[_sRefSid]) {
                 _children = _sRefCached.tree.children;
+                _sRefOpen = _sRefSid;
             }
         }
         var hasChildren = _children.length > 0;
@@ -19655,9 +20719,14 @@ const StyleDesigner = (function () {
 
         // Children (for shared_ref they come from _sharedCache, otherwise node.children)
         if (hasChildren && isExpanded && !info.selfClose) {
-            _children.forEach(function(child) {
-                buildHtmlTreeEl(container, child, depth + 1);
-            });
+            if (_sRefOpen) _sdSharedOpen[_sRefOpen] = true;
+            try {
+                _children.forEach(function(child) {
+                    buildHtmlTreeEl(container, child, depth + 1);
+                });
+            } finally {
+                if (_sRefOpen) delete _sdSharedOpen[_sRefOpen];
+            }
             // Closing tag
             var closeLine = document.createElement('div');
             closeLine.className = 'sd-ht-row sd-ht-close-row';
@@ -20039,7 +21108,9 @@ const StyleDesigner = (function () {
         // For shared_ref nodes, show children from cache tree instead of (empty) node.children
         var _sharedRefSid = (node.type === 'shared_ref' && node.props && node.props.sharedId)
             ? parseInt(node.props.sharedId, 10) : 0;
-        var _sharedRefTree = (_sharedRefSid > 0 && _sharedCache[_sharedRefSid])
+        // A component already listed further up this branch (a loop of
+        // nested components) is not listed inside itself again.
+        var _sharedRefTree = (_sharedRefSid > 0 && _sharedCache[_sharedRefSid] && !_sdSharedOpen[_sharedRefSid])
             ? _sharedCache[_sharedRefSid].tree : null;
         var hasChildren = _sharedRefTree
             ? (_sharedRefTree.children && _sharedRefTree.children.length > 0)
@@ -20498,7 +21569,12 @@ const StyleDesigner = (function () {
             childUl.className = 'sd-tree-children';
             ul.appendChild(childUl);
             var _childSource = _sharedRefTree ? _sharedRefTree.children : node.children;
-            _childSource.forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
+            if (_sharedRefTree) _sdSharedOpen[_sharedRefSid] = true;
+            try {
+                _childSource.forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
+            } finally {
+                if (_sharedRefTree) delete _sdSharedOpen[_sharedRefSid];
+            }
         }
     }
 
@@ -21241,6 +22317,10 @@ const StyleDesigner = (function () {
             case 'loop_area':  optHtml += propsLoopArea(selectedNode);   break;
             case 'recipient_loop_area': optHtml += propsRecipientLoopArea(selectedNode); break;
         }
+
+        // An element drawing a Bootstrap icon through its class gets the icon
+        // picker an icon node has (_sdBiIconSection()).
+        optHtml = _sdBiIconSection(selectedNode) + optHtml;
 
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
         // Renders nothing for nodes outside system widgets (zero overhead in the common case).
@@ -33131,6 +34211,29 @@ const StyleDesigner = (function () {
                 openIconModal(input);
             });
         });
+        // The icon of an element that draws one by class: the picker writes
+        // the box (and has already saved the undo step); a name typed by hand
+        // applies when the box is left.
+        document.querySelectorAll('#sd-properties .sd-bi-icon-trigger').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var inp = this.parentElement.querySelector('[data-sd-bi-icon]');
+                if (inp) openIconModal(inp);
+            });
+        });
+        document.querySelectorAll('#sd-properties [data-sd-bi-icon]').forEach(function (inp) {
+            inp.addEventListener('input', function (e) {
+                if (!e.isTrusted && selectedNode) _sdSetBiIcon(selectedNode, this.value);
+            });
+            inp.addEventListener('change', function () {
+                if (!selectedNode) return;
+                var cur = _sdBiIconClass(selectedNode);
+                var v = this.value.trim().toLowerCase();
+                if (v && v.indexOf('bi-') !== 0) v = 'bi-' + v;
+                if (!/^bi-[a-z0-9-]+$/.test(v) || v === cur) { this.value = cur; return; }
+                saveState();
+                _sdSetBiIcon(selectedNode, v);
+            });
+        });
 
         // ── Code Editor Triggers (generic CodeMirror modal) ─────────────────────
         // Any `[data-sd-code-edit=mode]` button in the prop panel opens the shared modal.
@@ -37303,6 +38406,11 @@ const StyleDesigner = (function () {
     // `node` is replaced in the tree by a { type:'shared_ref', props:{ sharedId, sharedName } } node.
     function convertToShared(node) {
         if (!node || node.type === 'root' || node.type === 'shared_ref') return;
+        // The node may sit on the page or inside another shared component
+        // (the new component is then nested in that one). Resolved before the
+        // row is created, so a node that is nowhere leaves no stray row.
+        var _convCtx = _findParentAnywhere(node);
+        if (!_convCtx || !_convCtx.parent) return;
         var defaultName = getNodeLabel(node);
         var scName = window.prompt(_sdT('Shared component name:'), defaultName);
         if (!scName) return;
@@ -37335,12 +38443,12 @@ const StyleDesigner = (function () {
 
                     // Replace node in tree with shared_ref
                     saveState();
-                    var parent = findParent(node, tree);
-                    if (!parent) return;
-                    var idx = parent.children.indexOf(node);
+                    var parent = _convCtx.parent;
+                    var idx = parent.children ? parent.children.indexOf(node) : -1;
                     if (idx === -1) return;
                     var refNode = { _id: gid(), type: 'shared_ref', props: { sharedId: newId, sharedName: newName }, children: [] };
                     parent.children.splice(idx, 1, refNode);
+                    if (_convCtx.sid) _sharedDirty[_convCtx.sid] = true;
                     selectedNode = refNode;
                     render();
                     // Refresh the "Ortak" palette tab so the newly created shared
@@ -37568,9 +38676,14 @@ const StyleDesigner = (function () {
         } else {
             target.children.push(refNode);
         }
+        // Dropped inside a shared component (a widget nested in a header, for
+        // one): that component carries the new placement and is saved with
+        // the next save.
+        var _insOwner = _sdSharedOwnerOf(target);
+        if (_insOwner) _sharedDirty[_insOwner] = true;
         selectedNode  = refNode;
         selectedNodes = [];
-        expandAncestors(refNode, tree);
+        expandAncestorsAnywhere(refNode);
         return refNode;
     }
 
@@ -40968,8 +42081,9 @@ const StyleDesigner = (function () {
         }
     }
 
-    // Mandatory Messages content node — auto-prepended to every starter tree
-    // so designers never have to remember to add an alert area, and per-widget
+    // Mandatory Messages content node — auto-prepended to the starter tree of
+    // every widget that can show alerts (not _SW_NO_MESSAGES below) so
+    // designers never have to remember to add an alert area, and per-widget
     // backend pre-process can scope it to its own liveform name. Lives inside
     // the first container (when present) so it inherits the widget's outer
     // padding; otherwise sits at root.
@@ -41000,12 +42114,37 @@ const StyleDesigner = (function () {
         return tree;
     }
 
-    // Wrap _buildStarterTree to always run the messages-prepend pass on its
-    // output. Done via a closure swap so every existing case keeps its body
-    // intact — only the final returned tree is post-processed.
+    // Widgets whose Messages block can never show anything. Their server
+    // render stamps it with a form name nothing posts to
+    // (_render_system_widget_cart_link(), _login_region(),
+    // _language_switcher()): they sit in the header above the content, and an
+    // unnamed block there would take the page's alerts. Keep the two lists in
+    // step. Their layouts get no Messages block, and one an older layout still
+    // carries is dropped on load (prefetchShared()): on the canvas it was a
+    // "PHP Messages" box in the middle of the header that the page never shows.
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1 };
+
+    // Removes every Messages block from a tree; true when there was one.
+    function _sdDropMessagesNodes(n) {
+        if (!n || !Array.isArray(n.children)) return false;
+        var dropped = false;
+        n.children = n.children.filter(function (c) {
+            var isMsg = !!(c && c.type === 'content' && c.props && c.props.contentType === 'messages');
+            if (isMsg) dropped = true;
+            return !isMsg;
+        });
+        n.children.forEach(function (c) { if (_sdDropMessagesNodes(c)) dropped = true; });
+        return dropped;
+    }
+
+    // Wrap _buildStarterTree to run the messages-prepend pass on its output
+    // (not for the kinds above). Done via a closure swap so every existing
+    // case keeps its body intact — only the final returned tree is
+    // post-processed.
     var _origBuildStarterTree = _buildStarterTree;
     _buildStarterTree = function (regionType, opts) {
-        return _ensureMessagesNode(_origBuildStarterTree(regionType, opts));
+        var t = _origBuildStarterTree(regionType, opts);
+        return _SW_NO_MESSAGES[regionType] ? t : _ensureMessagesNode(t);
     };
 
     // Rebuild a form view widget's layout from the chosen form's fields.
@@ -41083,7 +42222,14 @@ const StyleDesigner = (function () {
     // canvas reflect the new name immediately — and the other tabs do not
     // keep the old name until a reload.
     function _updateSharedRefNames(sid, newName) {
-        _pgAllPageTrees().forEach(function (entry) {
+        // Pages, and the shared components that place it (the name there is
+        // the same display snapshot; it does not make them unsaved).
+        var roots = _pgAllPageTrees().map(function (entry) { return entry.tree; });
+        Object.keys(_sharedCache).forEach(function (k) {
+            var oc = _sharedCache[k];
+            if (oc && oc.tree) roots.push(oc.tree);
+        });
+        roots.forEach(function (root) {
             (function walk(node) {
                 if (!node) return;
                 if (node.type === 'shared_ref') {
@@ -41092,7 +42238,7 @@ const StyleDesigner = (function () {
                     return; // shared_ref is a black box — no children to walk
                 }
                 if (node.children) node.children.forEach(walk);
-            })(entry.tree);
+            })(root);
         });
         render();
     }
@@ -41194,12 +42340,14 @@ const StyleDesigner = (function () {
                             sharedName: (node.props.sharedName || '?')
                         });
                     } else {
-                        // Nested shared_ref check (banned Phase 1)
-                        var inner = _sharedCache[sid] ? _sharedCache[sid].tree : null;
-                        if (inner && _hasSharedRef(inner)) {
-                            result.errors.push(
-                                _sdT('A nested shared component is not allowed for now: "{var:1}" [id: {var:2}]', [esc(node.props.sharedName || '?'), node._id])
-                            );
+                        // A shared component may place others; a loop cannot
+                        // be drawn — each one would draw the other forever.
+                        var loop = _sdSharedCyclePath(sid);
+                        if (loop) {
+                            var loopMsg = _sdT('These shared components place each other in a loop: {var}', esc(loop.map(function (s) {
+                                return (_sharedCache[s] && _sharedCache[s].name) ? _sharedCache[s].name : ('#' + s);
+                            }).join(' → ')));
+                            if (result.errors.indexOf(loopMsg) === -1) result.errors.push(loopMsg);
                             result.ok = false;
                         }
                     }
@@ -41544,8 +42692,12 @@ const StyleDesigner = (function () {
                         // A system widget is drawn by the server; the Preview
                         // puts its answer here (openPreview()).
                         h += '<!--pg-sw-preview:' + _prId + '-->';
-                    } else if (_prCached && _prCached.tree) {
-                        h += proc(_prCached.tree, indent);
+                    } else if (_prCached && _prCached.tree && !_sdSharedOpen[_prId]) {
+                        // Nested components expand in place; a loop of them
+                        // stops at the one already open.
+                        _sdSharedOpen[_prId] = true;
+                        try { h += proc(_prCached.tree, indent); }
+                        finally { delete _sdSharedOpen[_prId]; }
                     }
                     break;
             }
@@ -46025,6 +47177,13 @@ const StyleDesigner = (function () {
                     action: 'shared_component', sub_action: 'update',
                     id: sid, tree_json: currentJson, token: token
                 })
+            }).then(function (r) { return r.json(); }).then(function (resp) {
+                // Refused — a loop of nested components, for one: it stays
+                // unsaved and the operator is told why.
+                if (!resp || resp.status !== 'success') {
+                    _sharedDirty[sid] = true;
+                    if (resp && resp.message) sdToast(esc(resp.message), 'error', 8000);
+                }
             }).catch(function () {
                 // Not answered: keep it dirty so the next save tries again.
                 _sharedDirty[sid] = true;
@@ -47199,10 +48358,13 @@ const StyleDesigner = (function () {
             if (n.type === 'shared_ref') {
                 var sid = n.props && n.props.sharedId ? parseInt(n.props.sharedId, 10) : 0;
                 var c = sid > 0 ? _sharedCache[sid] : null;
-                if (c && c.tree) {
+                // Nested components are walked too, a loop of them only once.
+                if (c && c.tree && !_sdSharedOpen[sid]) {
                     var cfg = null;
                     try { cfg = c.system_region_config ? JSON.parse(c.system_region_config) : null; } catch (e) { cfg = null; }
-                    walk(c.tree, _cfWidgetOwnsPageForm(cfg));
+                    _sdSharedOpen[sid] = true;
+                    try { walk(c.tree, _cfWidgetOwnsPageForm(cfg)); }
+                    finally { delete _sdSharedOpen[sid]; }
                 }
             }
             if (n.children) n.children.forEach(function (c2) { walk(c2, inPageForm); });
