@@ -71,6 +71,130 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — ERP dışa aktarma ve yedekleme GLOB_BRACE olmayan PHP'de çökmüyor; mailchimp.php doğrudan istekte 500 vermiyor (2026-10-07)
+
+**Sorun.** v2026.4.7 etiketinin kararlılık denetimi (GitHub #190, #191).
+`erp_export.php` her istekte `erp_export_sweep()` ile eski dışa aktarma
+dosyalarını siliyor; süpürme `glob($dir . '/erp_export_*.{csv,xlsx}',
+GLOB_BRACE)` ile yazılmıştı. `GLOB_BRACE` GNU libc'ye özgü: musl tabanlı
+derlemeler (Alpine imajları) ve öteki GNU dışı sistemler sabiti tanımlamaz,
+PHP 8'de tanımsız sabit ölümcül hata. Süpürme ekran çizilmeden koştuğu için
+ERP Dışa Aktarma ekranı o sunucularda baştan sona 500. Aynı sabit yedekleme
+temizliğinde de vardı (`auto_backup.php` ve `api.php`'deki
+`'/files/{,.}*'` ve `'/layouts/{,.}*'`): otomatik ve elle yedek de aynı
+sunucularda çöküyordu. Dev makinada (glibc) sabit var, bu yüzden görünmüyordu.
+
+`mailchimp.php` ise dosya kapsamında `mailchimp_init()` çağırıyor ve o
+fonksiyon ilk satırında `db_item()` kullanıyor. Dosya web kökünde, giriş
+kapısı yok, `init.php` yüklemiyor: `job.php` üzerinden gelince sorun yok,
+ama doğrudan `GET /pinegrap/mailchimp.php` veritabanı katmanı olmadan
+`db_item()`'a düşüp 500 veriyordu; hata ayıklama açıkken sunucu yolunu da
+yazıyordu.
+
+**Çözüm.**
+
+- `includes/fn/core.php`: `pg_glob_brace($pattern, $flags = 0)`. Sabit
+  tanımlıysa çağrı `GLOB_BRACE` ile doğrudan `glob()`'a gider; değilse
+  süslü parantez grupları birer birer açılır (`{csv,xlsx}` → iki kalıp,
+  `{,.}*` → `*` ve `.*`), sonuçlar sırayla ve tekrarsız birleştirilir. Her
+  durumda dizi döner (`glob()`'un `false` döndüğü yerde boş dizi). Beş çağrı
+  yeri (`includes/erp/export.php` süpürme, `auto_backup.php` ve `api.php`
+  yedek temizliği ×2) yardımcıya geçti; `.` ve `..` girdilerini zaten
+  `is_file()` eliyor.
+- `mailchimp.php`: başa `PG_INIT_LOADED` kapısı — öteki include'lar gibi
+  doğrudan istekte sessizce çıkar; `job.php` yolu değişmedi.
+
+**Doğrulama (sandbox, GLOB_BRACE tanımsız PHP 8.3).** ERP açıkken
+`erp_export.php` düzeltmeden önce 500 (`export.php:1188`), sonra 200; iki
+günlük `erp_export_old.csv` ve `.xlsx` silindi, yeni dosya kaldı.
+`mailchimp.php` doğrudan istekte 500 yerine boş 200. Yardımcı CLI'de
+`{csv,xlsx}`, `{,.}*`, eşleşmesiz kalıp ve parantezsiz kalıpla denendi.
+Tam yedek alma akışı sandbox'ta koşulmadı.
+
+---
+
+## 2026.4.8 — Form Listesi / Form Kaydı widget sayfalarında RSS beslemesi ve kaydın başlık-açıklaması (2026-10-07)
+
+**Sorun (ürün sahibi).** "Görsel tasarımcıdan oluşturulan sayfalarda rss
+özelliği olan widget eklendiğinde her bir sistem widgeti için rss eklenmeliydi.
+Ürün katalog ve ürün detay içeren sayfalarda sağlıklı çalışırken form item view
+ve form list view sistem widgeti sayfalarında bu özellik atlanmış; bu sayfalar
+rss başlık ve açıklamaya göre title ve meta desc. doldurması gerekirdi o da
+eksik; bir sayfaya birden fazla rss özellikli widget konuyor, karışmaması
+lazım." (GitHub #198, PR #200.)
+
+**Kök neden.** `get_page.php`'nin `?rss=true` dalı yalnız eski sayfa
+türlerini (`form list view`, `form item view`, katalog) ve görsel editör
+sayfasında yalnız katalog widget'larını tanıyordu; form widget'ı için dal
+yoktu. `get_page_content.php`'de başlık/açıklama bloğu kaydı yalnız eski "form
+item view" sayfa türünde okuyordu; widget'la kurulan sayfada `?r=` kaydı
+başlığa yansımıyordu.
+
+**Çözüm.**
+
+- `includes/fn/widgets.php`: `pg_sw_form_widget_form_page_id()`,
+  `pg_sw_page_form_feed_widget()`, `pg_sw_submitted_form_rss_text()`,
+  `pg_sw_form_feed_parts()`. Sayfadaki widget'lar taranır; öncelik Form
+  Kaydı > Form Listesi > katalog, sayfa başına tek besleme (iki widget
+  karışmasın diye, alan seçtirmek yerine kesin kural).
+- `get_page.php`: `?rss=true` bloğunda katalog dallarından önce form
+  beslemesi dalı — formun en yeni elli kaydı, alanlar formun RSS öğesi
+  ayarından (başlık, açıklama, kategori, medya), bağlantılar widget'ın ayrıntı
+  sayfasına. Eski besleme `category`/`title`/`description`'ı `??` ile okur
+  (ayarsız formda sekiz "Undefined array key" uyarısı susturuldu).
+- `get_page_content.php`: otomatik keşif `<link rel="alternate">` önce form
+  beslemesi, katalog bağlantıları yalnız form beslemesi yoksa; Form Kaydı
+  widget'ında `?r=` kaydı `pg_sw_record_comment_context()` ile bulunup
+  `<title>` ve meta açıklama kaydın RSS başlık/açıklamasından, `og:type`
+  article, BlogPosting yapısal verisi (ayar `strutured_data` açıkken).
+
+**Doğrulama (sandbox).** Form Listesi ve Form Kaydı widget'larıyla iki
+sentetik sayfa: liste sayfası başlıkta besleme bağlantısı veriyor,
+`?rss=true` → `application/rss+xml`, sekiz kayıt; `?r=<ref>` → `<title>`
+kaydın başlığı, açıklama kaydın açıklaması, og:type article; `?r=` yokken
+sayfanın kendi başlığı. `check_lang` ve `check_bindings` temiz.
+
+**Açık.** Başlık/açıklamanın hangi form alanından alınacağını seçtiren bir
+ayar eklenmedi; öncelik kuralı yeterli görüldü, ürün sahibi isterse eklenir.
+
+---
+
+## 2026.4.8 — Sayfa Tasarımcısı'nda Ctrl+S sayfayı yenilemiyor; tasarım dosyası Görsel Düzenleyici'de üstüne yazılabiliyor (2026-10-07)
+
+**Sorun (ürün sahibi).** "Sayfa Tasarımcısı (legacy) açıp kodlarda bir
+düzenleme yaptıktan sonra Ctrl+S kullanıldığında 'Yaptığınız değişiklikler
+kaybolabilir' uyarısını veriyor, İptal'e basınca değişikliği kaydediyor; yani
+Ctrl+S sayfayı yeniliyor." ve "Dosyalardaki görseller Tasarım Dosyası olarak
+işaretlenmişse Görsel Düzenleyici ile değişiklik yapıp Değiştir'e tıklayınca
+'Erişim reddedildi' veriyor; Yeni olarak kaydet çalışıyor." (GitHub #194,
+#195, PR #199.)
+
+**Kök neden.** Panelin genel Ctrl+S kısayolu (`assets/js/backend.src.js`)
+imleç bir formun içinde değilken sayfadaki ilk `disable_shortcut` sınıfsız
+formu gönderiyor; Sayfa Tasarımcısı'nda bu form kapalı duran Ayarlar
+penceresinin formuydu (`includes/settings/modal.php`): form gönderilince
+sayfa yenileniyor, editörün `beforeunload` uyarısı çıkıyor, İptal denince
+editörün kendi Ctrl+S kaydı tamamlanıyordu. Görsel düzenleyicide
+`image_editor_save.php` tasarım dosyasını her rol için reddediyordu, oysa
+düzenleme kapıları (`image_editor_edit.php`, `edit_file.php`) yönetici ve
+tasarımcıyı içeri alıyordu.
+
+**Çözüm.** Ayarlar penceresinin formu `disable_shortcut` aldı; kısayolun
+yedek seçimi yalnız görünen formlara bakıyor
+(`$('form:not(.disable_shortcut)').filter(':visible').first()`).
+`image_editor_save.php` tasarım dosyasını yalnız `role > 1` için reddediyor
+(`edit_file.php` ile aynı kural); menejer ve kullanıcı için değişiklik yok.
+
+**Doğrulama (sandbox).** `page_designer.php` yönetici olarak: `disable_shortcut`
+olmayan tek form Ayarlar penceresininki. `image_editor_save.php` replace
+kipi tasarım dosyasında: yönetici 200, tasarımcı 200, menejer 403.
+Ctrl+S'nin kendisi tarayıcıda denenmedi.
+
+**Açık.** `image_editor_edit.php` menejer kapısı `== 3` ile yazılmış,
+`edit_file.php` `> 1`; hizalanıp hizalanmayacağı ürün sahibinde.
+
+---
+
 ## 2026.4.8 — Görsel editör: Bootstrap ikonu içe aktarmada da, elle verilen sınıfta da ikon olarak düzenleniyor (2026-10-06)
 
 **Sorun (ürün sahibi).** "HTML içe aktarmada framework olsun olmasın span,
