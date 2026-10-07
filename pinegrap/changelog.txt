@@ -81,6 +81,27 @@
          çatısıyla kurulan tasarımlarda tuvalin stil hesabı da
          birkaç kat hızlandı.
 
+  SAYFA TASARIMCISI
+  --------------------------------------------------------
+
+  [DÜZELTME] Sayfa Tasarımcısı'nda kodu değiştirdikten sonra
+         basılan Ctrl+S "değişiklikleriniz kaybolabilir" uyarısı
+         çıkarıyor, İptal'e basılınca değişikliği kaydediyordu.
+         Panelin genel Ctrl+S kısayolu, imleç bir formun içinde
+         değilken kapalı duran Ayarlar penceresinin formunu
+         gönderiyor ve sayfayı yeniliyordu. Kısayol artık yalnız
+         görünen bir formu kaydeder; Ayarlar penceresi kendi
+         kısayolunu kullanır.
+
+  DOSYA YÖNETİCİSİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Tasarım Dosyası olarak işaretli bir görsel Görsel
+         Düzenleyici'de değiştirilip "Değiştir" denince "Erişim
+         reddedildi" diyor, yalnız "Yeni olarak kaydet" çalışıyordu.
+         Yönetici ve tasarımcı artık tasarım dosyasının üstüne
+         yazabilir; menejer ve kullanıcı için kural değişmedi.
+
 
 
   2026.4.7
