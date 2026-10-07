@@ -117,6 +117,28 @@
          Yönetici ve tasarımcı artık tasarım dosyasının üstüne
          yazabilir; menejer ve kullanıcı için kural değişmedi.
 
+  ERP (ÖN MUHASEBE)
+  --------------------------------------------------------
+
+  [DÜZELTME] Dışa Aktarma ekranı, PHP'si GLOB_BRACE sabitini
+         tanımlamayan sunucularda (Alpine tabanlı imajlar ve
+         öteki GNU dışı sistemler) 500 hatasıyla açılmıyordu:
+         eski dışa aktarma dosyalarını süpüren adım bu sabitle
+         çağrılıyordu. Aynı sabit yedekleme (elle ve otomatik)
+         dosya temizliğinde de vardı. Süslü parantezli dosya
+         kalıpları artık her PHP derlemesinde çalışan ortak bir
+         yardımcıyla açılıyor; sabitin olduğu sunucularda
+         davranış değişmedi.
+
+  ZAMANLANMIŞ GÖREVLER
+  --------------------------------------------------------
+
+  [DÜZELTME] mailchimp.php dosyasına doğrudan yapılan bir istek,
+         veritabanı katmanı yüklenmeden ayar okumaya çalıştığı
+         için 500 hatası veriyordu (hata ayıklama açıkken sunucu
+         yolunu da gösteriyordu). Dosya artık yalnız job.php
+         üzerinden çalışır, doğrudan istekte sessizce çıkar.
+
 
   2026.4.7
   ==========================================================
