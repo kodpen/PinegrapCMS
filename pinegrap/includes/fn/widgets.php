@@ -2644,6 +2644,223 @@ function pg_sw_catalog_detail_page_name($page_id = 0)
     return $auto;
 }
 
+// ============================================================================
+// RSS feed of the form widgets (Form List View, Form Item View)
+// ============================================================================
+// A legacy "form list view" page answers ?rss=true with the form's newest
+// records and announces the feed in its head; a page built in the visual
+// editor is page_type 'standard' and got neither. These helpers give such a
+// page one feed, chosen by the widget it carries, built from the same custom
+// form, filters and detail page the widget renders with.
+
+// The custom form a form widget shows, from its config: custom_form_page_id,
+// the older form_page_id, or the source_page name. 0 when it names none.
+function pg_sw_form_widget_form_page_id($cfg)
+{
+    if (!is_array($cfg)) return 0;
+    if (!empty($cfg['custom_form_page_id'])) return (int)$cfg['custom_form_page_id'];
+    if (!empty($cfg['form_page_id'])) return (int)$cfg['form_page_id'];
+    if (!empty($cfg['source_page'])) {
+        return (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($cfg['source_page']) . "' LIMIT 1");
+    }
+    return 0;
+}
+
+// The widget a page's feed is built from: the record page (form_item_view)
+// wins over a list (form_list_view, under any of its older type names), so
+// a page that shows one record and lists others feeds the record's form.
+// null when the page has no form widget, the widget is not public, or the
+// form has no field with an RSS element - then there is nothing to feed.
+// Returns array('type' => 'form_item_view' | 'form_list_view',
+//               'widget' => the pg_sw_page_widget() row,
+//               'custom_form_page_id' => int).
+function pg_sw_page_form_feed_widget($page_id)
+{
+    static $cache = array();
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return null;
+    if (array_key_exists($page_id, $cache)) return $cache[$page_id];
+    $cache[$page_id] = null;
+
+    $types = array(
+        'form_item_view'       => 'form_item_view',
+        'form_list_view'       => 'form_list_view',
+        'submitted_forms_list' => 'form_list_view',
+        'form_list'            => 'form_list_view',
+        'blog_list'            => 'form_list_view',
+    );
+    foreach ($types as $region_type => $kind) {
+        $widget = pg_sw_page_widget($page_id, $region_type);
+        if (!$widget) continue;
+        $cfg = $widget['cfg'];
+        $access = isset($cfg['access_control']) ? (string)$cfg['access_control'] : 'public';
+        if ($access !== '' && $access !== 'public') return null;
+        $form_page_id = pg_sw_form_widget_form_page_id($cfg);
+        if ($form_page_id <= 0) continue;
+        $rss_fields = (int)db_value(
+            "SELECT COUNT(*) FROM form_fields WHERE page_id = '" . $form_page_id . "' AND rss_field != ''"
+        );
+        if ($rss_fields === 0) continue;
+        return $cache[$page_id] = array(
+            'type'                => $kind,
+            'widget'              => $widget,
+            'custom_form_page_id' => $form_page_id,
+        );
+    }
+    return null;
+}
+
+// The RSS title and description of one record, from the form's fields whose
+// RSS element is "title" (every one, in field order, joined by a space, as
+// the page title does) and "description" (the first). Rich-text values are
+// flattened: neither tag takes markup.
+// Returns array('title' => string, 'description' => string).
+function pg_sw_submitted_form_rss_text($form_id)
+{
+    $out = array('title' => '', 'description' => '');
+    $rows = db_items(
+        "SELECT form_data.data, form_data.type, form_fields.rss_field
+         FROM form_data
+         INNER JOIN form_fields ON form_data.form_field_id = form_fields.id
+         WHERE form_data.form_id = '" . (int)$form_id . "'
+           AND form_fields.rss_field IN ('title', 'description')
+         ORDER BY form_fields.sort_order ASC, form_data.id ASC"
+    );
+    foreach ((array)$rows as $row) {
+        $text = (string)$row['data'];
+        if ($row['type'] == 'html' && $text != '') $text = trim(convert_html_to_text($text));
+        $text = trim($text);
+        if ($text === '') continue;
+        if ($row['rss_field'] == 'title') {
+            $out['title'] .= ($out['title'] !== '' ? ' ' : '') . $text;
+        } elseif ($out['description'] === '') {
+            $out['description'] = $text;
+        }
+    }
+    return $out;
+}
+
+// The channel and the items of a form widget page's feed: the newest fifty
+// complete records of the form, the list widget's own filters applied, each
+// with the fields whose RSS element is title, description, media or category.
+// An item links to the widget's detail page (?r=) when it has one, and to the
+// page itself for a record page; the channel describes the host page.
+// Same return shape as _pg_build_catalog_listing_rss_parts().
+function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
+{
+    $cfg          = $feed['widget']['cfg'];
+    $form_page_id = (int)$feed['custom_form_page_id'];
+    $base_path    = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $site         = URL_SCHEME . HOSTNAME_SETTING;
+
+    // Where an item links: the record page is its own detail page; a list
+    // links to its detail page when that page is bound to the same form.
+    $detail_page_name = '';
+    if ($feed['type'] === 'form_item_view') {
+        $detail_page_name = $page_name;
+    } else {
+        $detail_page_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
+        if ($detail_page_id > 0) {
+            $detail_page_name = (string)db_value(
+                "SELECT page.page_name
+                 FROM page
+                 INNER JOIN form_item_view_pages
+                         ON form_item_view_pages.page_id = page.page_id
+                        AND form_item_view_pages.collection = 'a'
+                        AND form_item_view_pages.custom_form_page_id = '" . $form_page_id . "'
+                 WHERE page.page_id = '" . $detail_page_id . "'
+                 LIMIT 1"
+            );
+            if ($detail_page_name === '' && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
+                return pg_sw_form_widget_form_page_id($c) === $form_page_id;
+            })) {
+                $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+            }
+        }
+    }
+
+    // The records, under the filters the designer set on the list.
+    $filter_where = '';
+    $filter_join  = '';
+    if ($feed['type'] === 'form_list_view') {
+        $filter_sql   = pg_sw_form_list_filter_sql($form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array());
+        $filter_where = $filter_sql['where'];
+        if ($filter_where !== '' && $filter_sql['tokens']) {
+            $standard    = pg_sw_standard_sql($filter_sql['tokens'], isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, array('reference_code'));
+            $filter_join = $standard['join'];
+        }
+    }
+    $records = db_items(
+        "SELECT forms.id, forms.reference_code, forms.submitted_timestamp
+         FROM forms
+         $filter_join
+         WHERE forms.page_id = '" . $form_page_id . "'
+           AND forms.complete = 1
+           $filter_where
+         ORDER BY forms.submitted_timestamp DESC
+         LIMIT 50"
+    );
+
+    // The category and media fields, read once; title and description per
+    // record through pg_sw_submitted_form_rss_text().
+    $category_field_id = (int)db_value("SELECT id FROM form_fields WHERE page_id = '" . $form_page_id . "' AND rss_field = 'category' ORDER BY sort_order ASC LIMIT 1");
+    $media_field_id    = (int)db_value("SELECT id FROM form_fields WHERE page_id = '" . $form_page_id . "' AND rss_field = 'media' ORDER BY sort_order ASC LIMIT 1");
+
+    $items = '';
+    foreach ((array)$records as $record) {
+        $form_id = (int)$record['id'];
+        $text    = pg_sw_submitted_form_rss_text($form_id);
+        $link    = ($detail_page_name !== '')
+            ? $site . $base_path . encode_url_path($detail_page_name) . '?r=' . rawurlencode((string)$record['reference_code'])
+            : $site . $base_path . encode_url_path($page_name);
+
+        $categories = '';
+        if ($category_field_id > 0) {
+            $values = db_items("SELECT data FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $category_field_id . "' ORDER BY id ASC");
+            foreach ((array)$values as $value) {
+                foreach (explode('||', (string)$value['data']) as $category) {
+                    $category = trim($category);
+                    if ($category !== '') $categories .= '<category>' . h($category) . '</category>';
+                }
+            }
+        }
+
+        $enclosure = '';
+        if ($media_field_id > 0) {
+            $media = db_item("SELECT data, file_id FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $media_field_id . "' LIMIT 1");
+            if (is_array($media) && !empty($media['file_id'])) {
+                $file = db_item("SELECT name, type, size FROM files WHERE id = '" . (int)$media['file_id'] . "' LIMIT 1");
+                if (is_array($file)) {
+                    $enclosure = '<enclosure url="' . $site . PATH . h(rawurlencode($file['name'])) . '" length="' . (int)$file['size'] . '" type="' . h(get_mime_type($file['type'])) . '"/>';
+                }
+            } elseif (is_array($media) && trim((string)$media['data']) !== '') {
+                // A URL typed into the field: its size and type are not known here.
+                $enclosure = '<enclosure url="' . h(trim((string)$media['data'])) . '" length="50000" type="image/jpeg"/>';
+            }
+        }
+
+        $items .= '
+        <item>
+            <title>' . h($text['title'] !== '' ? $text['title'] : lang('There is not an RSS title specified in the form.')) . '</title>
+            <link>' . h($link) . '</link>
+            <guid>' . h($link) . '</guid>
+            <description>' . h($text['description'] !== '' ? $text['description'] : lang('There is not an RSS description specified in the form.')) . '</description>
+            <pubDate>' . date('r', (int)$record['submitted_timestamp']) . '</pubDate>
+            ' . $categories . $enclosure . '
+        </item>';
+    }
+
+    $channel_title = trim((string)$page_title) !== '' ? trim((string)$page_title) : $page_name;
+    $channel_desc  = trim((string)$page_meta_description) !== '' ? trim((string)$page_meta_description) : $channel_title;
+
+    return array(
+        'title'       => h($channel_title),
+        'link'        => $site . $base_path . encode_url_path($page_name),
+        'description' => h($channel_desc),
+        'items'       => $items,
+    );
+}
+
 // Bootstrap pagination for a widget list: previous / next, a window of two
 // pages around the current one, the first and the last. '' for a single page.
 // Links keep every other query parameter (search text, filters).
