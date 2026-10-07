@@ -138,6 +138,19 @@
          için 500 hatası veriyordu (hata ayıklama açıkken sunucu
          yolunu da gösteriyordu). Dosya artık yalnız job.php
          üzerinden çalışır, doğrudan istekte sessizce çıkar.
+  YÖNETİM PANELİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Düzenleme, görüntüleme ve yazdırma ekranları (vergi
+         bölgesi, nakliye bölgesi, kullanıcı, kişi, takvim, takvim
+         etkinliği, sipariş yazdırma, ziyaretçi, ürün grubu, e-posta
+         kampanyası, hediye kartı, anahtar kodu, kap, reklam, ürün
+         özelliği, klasör, para birimi, ülke, eyalet, yönlendirme
+         kaynağı, kısa bağlantı, nakliye yöntemi) geçersiz ya da
+         silinmiş bir kayıt kimliğiyle açıldığında yarı boş bir form
+         gösteriyor ve hata günlüğüne PHP uyarıları yazıyordu.
+         Artık "Kayıt bulunamadı." ekranı 404 koduyla gösterilir.
+
 
 
   2026.4.7

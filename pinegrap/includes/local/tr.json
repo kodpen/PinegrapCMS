@@ -17613,5 +17613,6 @@
     "These widgets had no layout and drew nothing on the site: {var}. Their default layout was loaded; save to put it on the site.": "Bu widget'ların düzeni yoktu, sitede hiçbir şey göstermiyordu: {var}. Varsayılan düzenleri yüklendi; sitede görünmesi için kaydedin.",
     "These shared components place each other in a loop: {var}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var}",
     "These shared components place each other in a loop: {var:1}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var:1}",
-    "A loop: \"{var}\" places itself, so it is not drawn here again": "Döngü: \"{var}\" kendini içeriyor, burada yeniden çizilmez"
+    "A loop: \"{var}\" places itself, so it is not drawn here again": "Döngü: \"{var}\" kendini içeriyor, burada yeniden çizilmez",
+    "Record not found.": "Kayıt bulunamadı."
 }
