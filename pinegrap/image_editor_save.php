@@ -182,9 +182,11 @@ if (check_edit_access($image_editor_target_folder) == false) {
     image_editor_refuse(lang('Access denied'), 403);
 }
 
-// A design file is refused in every role, which is what image_editor_edit.php
-// does at its own door. Two entry points to one file cannot give two answers.
-if (($image_editor_row) && ($image_editor_row['design'] == 1)) {
+// A design file belongs to the site's designers: administrators (0) and
+// designers (1) may write over it, the same rule edit_file.php applies to the
+// file's own edit screen. Managers and users are refused; they may still save
+// the edited picture as a new file, which is not a design file.
+if (($image_editor_row) && ($image_editor_row['design'] == 1) && ($user['role'] > 1)) {
     image_editor_refuse(lang('Access denied'), 403);
 }
 
