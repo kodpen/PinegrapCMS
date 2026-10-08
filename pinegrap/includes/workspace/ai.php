@@ -1686,7 +1686,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
 }
 
 /**
@@ -2266,6 +2266,17 @@ function ws_ai_change_out($change)
 {
     $out = array('type' => (string) $change['type'], 'action' => (string) $change['action']);
 
+    // Many records at once (bulk.php): the rule as it was proposed.
+    if ($change['action'] === 'bulk') {
+        $out['bulk'] = (array) ($change['bulk'] ?? array());
+
+        if ((string) ($change['reason'] ?? '') !== '') {
+            $out['reason'] = (string) $change['reason'];
+        }
+
+        return $out;
+    }
+
     if ($change['action'] !== 'create') {
         $out['id'] = (int) $change['id'];
     }
@@ -2404,6 +2415,52 @@ function ws_ai_propose_change($row, &$state, $args)
         'ok'   => true,
         'note' => 'Proposed, not done: it is shown under your answer and the person who asked applies it. Before you answer: if the request also asks for a task, call propose_task for it now - a task only written in the answer cannot be opened. Then call answer, saying that you propose it.'
             . ((!$checked['ok'] && ($action === 'create')) ? ' Still missing for the new record: ' . preg_replace('/^changes\[0\]: /', '', $checked['error']) : ''),
+    );
+}
+
+/**
+ * Adds a bulk change to the answer being put together: one rule for many
+ * records (bulk.php), checked at once so a mistake comes back now.
+ *
+ * @param array $row
+ * @param array $state the conversation, by reference
+ * @param array $args  type, action, scope, group_id, search, ids, only_empty, field,
+ *                     operation, value, instruction, values, round, reason
+ * @return array what the model is told
+ */
+function ws_ai_propose_bulk($row, &$state, $args)
+{
+    if (count((array) ($state['proposals']['changes'] ?? array())) >= 10) {
+        return array('error' => 'An answer takes at most 10 changes.');
+    }
+
+    $asker = ws_ai_viewer((int) $row['requested_by']);
+    $bulk = array();
+
+    foreach (array('type', 'action', 'scope', 'group_id', 'search', 'ids', 'only_empty', 'field', 'operation', 'value', 'instruction', 'values', 'round') as $key) {
+        if (isset($args[$key]) && ($args[$key] !== '')) {
+            $bulk[$key] = $args[$key];
+        }
+    }
+
+    $bulk['type'] = strtolower(trim((string) ($bulk['type'] ?? '')));
+    $checked = $asker ? ws_bulk_input($asker, $bulk) : array('ok' => false, 'error' => 'The person who asked is no longer a member of the workspace.');
+
+    if (!$checked['ok']) {
+        return array('error' => $checked['error']);
+    }
+
+    $state['proposals']['changes']['bulk:' . count((array) ($state['proposals']['changes'] ?? array()))] = array(
+        'type'   => $bulk['type'],
+        'action' => 'bulk',
+        'bulk'   => $bulk,
+        'reason' => trim(mb_substr((string) ($args['reason'] ?? ''), 0, 400)),
+    );
+
+    return array(
+        'ok'      => true,
+        'matched' => $checked['matched'],
+        'note'    => 'Proposed, not done: it reaches ' . $checked['matched'] . ' records and the person who asked applies it. Then call answer, saying what you propose and how many records it reaches.',
     );
 }
 
@@ -2831,6 +2888,10 @@ function ws_ai_system_prompt($row, $asker, $readable)
         $lines[] = '- When the request asks to change, add or delete a record: find it first with search_records or read_record (for a new one, check that it is not there already), then call propose_change once for each field to set, with the id you found. Never guess an id. Calls for the same record make one change. The person who asked applies it with one click, with their own rights. When propose_change answers with an error, fix the call and call it again.';
         $lines[] = '- For example, asked to set the stock of the red mug to 50: call search_records with type product and query "mug", then propose_change with type stock, the id from the results, field quantity and value 50, then answer that you propose it.';
         $lines[] = ws_ai_changes_guide($asker, (int) $row['channel_id']);
+
+        if (function_exists('ws_bulk_guide') && (ws_bulk_guide($asker) !== '')) {
+            $lines[] = ws_bulk_guide($asker);
+        }
         $lines[] = '- Call add_task_note only when the request asks for a note on a task.';
 
         if (ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
@@ -3088,6 +3149,25 @@ function ws_ai_tools($row)
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));
 
+        if (function_exists('ws_bulk_ready') && ws_bulk_ready()) {
+            $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...). The person who asked sees how many records it reaches and applies it.', array(
+                'type'        => array('type' => 'string', 'enum' => ws_bulk_types()),
+                'action'      => array('type' => 'string', 'enum' => array('update', 'delete')),
+                'scope'       => array('type' => 'string', 'enum' => array('all', 'group', 'search', 'ids')),
+                'group_id'    => array('type' => 'integer', 'description' => 'For scope group: a product group id.'),
+                'search'      => array('type' => 'string', 'description' => 'For scope search: a word of the name.'),
+                'ids'         => array('type' => 'string', 'description' => 'For scope ids: record ids separated by commas.'),
+                'only_empty'  => array('type' => 'string', 'description' => 'A text field the records must have empty, to fill in only the missing ones.'),
+                'field'       => array('type' => 'string', 'description' => 'The field to change; for generate up to three text fields separated by commas.'),
+                'operation'   => array('type' => 'string', 'enum' => array_keys(ws_bulk_operations())),
+                'value'       => array('type' => 'string', 'description' => 'set: the value; percent: such as 50 or -10; add: the amount (money in minor units).'),
+                'instruction' => array('type' => 'string', 'description' => 'generate: what to write for each record.'),
+                'values'      => array('type' => 'string', 'description' => 'values: a JSON object of record id => new value.'),
+                'round'       => array('type' => 'string', 'enum' => array('', 'whole'), 'description' => 'whole rounds money to whole units.'),
+                'reason'      => array('type' => 'string', 'description' => 'One line on why.'),
+            ), array('type', 'action'));
+        }
+
         $tools[] = $tool('add_task_note', 'Add a dated note to an existing task, only when the request asks in so many words for a note on that task.', array(
             'task_id' => array('type' => 'integer'),
             'text'    => array('type' => 'string'),
@@ -3250,6 +3330,9 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
         case 'propose_change':
             return $note ? array('error' => 'Not from a note.') : ws_ai_propose_change($row, $state, $args);
+
+        case 'propose_bulk_change':
+            return ($note || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note.') : ws_ai_propose_bulk($row, $state, $args);
 
         case 'add_task_note':
             if ($note) {

@@ -438,6 +438,7 @@ switch ($action) {
     case 'ws_ai_draft_dismiss':
     case 'ws_ai_change_apply':
     case 'ws_ai_change_dismiss':
+    case 'ws_ai_bulk_step':
     case 'ws_ai_design_apply':
     case 'ws_ai_design_revert':
     case 'ws_ai_design_dismiss':

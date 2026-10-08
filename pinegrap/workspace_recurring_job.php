@@ -65,6 +65,11 @@ if (ws_enabled() && function_exists('ws_scheduled_run')) {
     ws_scheduled_run(20);
 }
 
+// Bulk changes a closed screen left half done (includes/workspace/bulk.php).
+if (ws_enabled() && function_exists('ws_bulk_continue')) {
+    ws_bulk_continue(20);
+}
+
 // Concluded discussions whose time is up, deleted with what was said in
 // them (includes/workspace/threads.php).
 if (ws_enabled() && function_exists('ws_threads_purge')) {

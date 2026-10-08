@@ -8323,6 +8323,29 @@
 
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
+        // A bulk change being applied: the next slice, one at a time, until
+        // it is done; the card is drawn again by the sync.
+        kickBulk: function (changeId) {
+            var self = this;
+
+            self.bulkRunning = self.bulkRunning || {};
+
+            if (self.bulkRunning[changeId]) {
+                return;
+            }
+
+            self.bulkRunning[changeId] = true;
+
+            api('ws_ai_bulk_step', { change_id: changeId }).then(function (data) {
+                window.setTimeout(function () {
+                    self.bulkRunning[changeId] = false;
+                    self.sync();
+                }, (data.status === 'busy') ? 2000 : 300);
+            }).catch(function () {
+                self.bulkRunning[changeId] = false;
+            });
+        },
+
         changesNode: function (message) {
             var self = this;
             var box = el('div', 'ws-drafts ws-changes');
@@ -8332,7 +8355,7 @@
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
                 var head = el('div', 'ws-draft-head');
-                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right' };
+                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection' };
 
                 head.appendChild(icon(change.status === 'applied' ? 'bi-check2-circle' : (icons[change.action] || 'bi-pencil-square')));
 
@@ -8354,6 +8377,19 @@
 
                 head.appendChild(el('span', 'ws-change-type', change.type_label));
                 card.appendChild(head);
+
+                // Many records at once (bulk.php): how many, a few of them
+                // below, and while it is applied how far it has got.
+                if (change.bulk) {
+                    var reach = el('div', 'ws-bulk-reach');
+                    reach.appendChild(el('b', '', t('bulk_records', change.bulk.total)));
+
+                    if (change.fields.length) {
+                        reach.appendChild(document.createTextNode(' · ' + t('bulk_sample')));
+                    }
+
+                    card.appendChild(reach);
+                }
 
                 if (change.hidden) {
                     card.appendChild(el('div', 'ws-draft-meta', t('change_hidden', change.count)));
@@ -8392,6 +8428,32 @@
                     card.appendChild(el('div', 'ws-draft-text', change.reason));
                 }
 
+                if (change.bulk && change.bulk.progress && (change.status === 'applying' || change.status === 'applied' || change.status === 'failed')) {
+                    var progress = change.bulk.progress;
+                    var share = progress.total ? Math.round((progress.done + progress.skipped + progress.failed) * 100 / progress.total) : 100;
+                    var meter = el('div', 'progress ws-bulk-progress');
+                    var fill = el('div', 'progress-bar' + (change.status === 'applying' ? ' progress-bar-striped progress-bar-animated' : ''));
+
+                    meter.setAttribute('role', 'progressbar');
+                    meter.setAttribute('aria-valuenow', String(share));
+                    meter.setAttribute('aria-valuemin', '0');
+                    meter.setAttribute('aria-valuemax', '100');
+                    fill.style.width = share + '%';
+                    meter.appendChild(fill);
+                    card.appendChild(meter);
+                    card.appendChild(el('div', 'ws-draft-meta', (change.status === 'applying' ? t('bulk_running') + ' ' + t('bulk_progress', progress.done + progress.skipped + progress.failed, progress.total) + ' · ' : '')
+                        + t('bulk_result', progress.done, progress.skipped, progress.failed)));
+
+                    (progress.errors || []).forEach(function (error) {
+                        card.appendChild(el('div', 'small text-danger-emphasis', error));
+                    });
+
+                    // The one who applied it carries the work on from here.
+                    if (change.status === 'applying' && change.bulk.mine) {
+                        self.kickBulk(change.id);
+                    }
+                }
+
                 if (change.warning && change.status === 'pending') {
                     var warning = el('div', 'ws-change-warning');
                     warning.appendChild(icon('bi-exclamation-triangle', 'me-1'));
@@ -8405,7 +8467,8 @@
                     var apply = button('btn btn-sm btn-primary rounded-pill px-3', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
-                        var go = change.warning ? ask(change.warning, t('change_apply'), true) : Promise.resolve(true);
+                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : 'bulk_warning', change.bulk.total) : change.warning;
+                        var go = question ? ask(question, t('change_apply'), true) : Promise.resolve(true);
 
                         go.then(function (yes) {
                             if (!yes) {

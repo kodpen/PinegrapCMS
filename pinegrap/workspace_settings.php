@@ -325,6 +325,12 @@ if ($_POST) {
             $anchor = '#ws-claude';
             break;
 
+        // Bulk changes the assistants propose (includes/workspace/bulk.php).
+        case 'bulk':
+            ws_bulk_settings_post($viewer, $liveform);
+            $anchor = '#ws-bulk';
+            break;
+
         // Pinegrap AI in the channels (includes/workspace/ai.php).
         case 'ai':
         case 'ai_test':
@@ -591,6 +597,8 @@ pg_page_shell([
                     <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
                 </div>
             </form>
+
+            ' . ws_bulk_settings_card($self_url, $viewer) . '
 
             <div class="card">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('Who is in the team')) . '</h2></div>

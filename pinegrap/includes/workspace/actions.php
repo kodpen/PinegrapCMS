@@ -193,6 +193,11 @@ function ws_handle_action($action, $request)
                 ws_threads_purge();
             }
 
+            // Bulk changes a closed screen left half done (bulk.php).
+            if (function_exists('ws_bulk_continue')) {
+                ws_bulk_continue(1);
+            }
+
             return ws_action_ok();
 
         // Scheduled actions (includes/workspace/scheduled.php): staff only.
@@ -1657,6 +1662,17 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('decision_id' => $result['decision_id']));
+
+        // The next slice of a bulk change being applied (bulk.php): the
+        // screen of the person who applied it carries it on.
+        case 'ws_ai_bulk_step':
+            $change = db_item("SELECT requested_by FROM ws_ai_changes WHERE id = '" . (int) ($request['change_id'] ?? 0) . "' AND action = 'bulk'");
+
+            if (!is_array($change) || ((int) $change['requested_by'] !== (int) $viewer['id'])) {
+                return ws_action_error(lang('That proposal could not be found.'));
+            }
+
+            return ws_action_ok(ws_bulk_step((int) ($request['change_id'] ?? 0)));
 
         case 'ws_ai_change_dismiss':
             $result = ws_change_dismiss($viewer, (int) ($request['change_id'] ?? 0));

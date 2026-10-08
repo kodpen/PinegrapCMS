@@ -293,6 +293,31 @@
   [ŞEMA] ws_channels.kind alanına 'thread' değeri; ws_threads ve
          ws_thread_copies tabloları.
 
+  [YENİ] Asistanlarla toplu işlem: Pinegrap AI'dan ya da Claude'dan
+         birçok kaydı birden değiştirmesi istenebilir ("@ai tüm
+         ürünlerin fiyatını %50 artır", "bu gruptaki ürünlere 200 TL
+         ekle", "sayfaların eksik meta açıklamalarını doldur", "tüm
+         ürünlerin başlık ve açıklamalarını SEO'ya uygun düzenle").
+         Asistan tek bir toplu değişiklik önerir: hangi kayıtlar (bir
+         türün tümü, bir ürün grubundakiler, adında bir sözcük
+         geçenler, bir liste; istenirse yalnız alanı boş olanlar) ve
+         ne yapılacağı (bir değer, yüzde ya da tutar artışı/azalışı,
+         her kayıt için Pinegrap AI'ın yazdığı metin ya da tek tek
+         verilen değerler). Kart kaç kayda dokunacağını ve birkaç
+         örneği önce/sonra gösterir; soran kişi tek tıkla, kendi
+         yetkileriyle uygular. Kayıtlar dilim dilim, paneldeki gibi
+         yazılır, kartta ilerleme görünür; ekran kapansa da iş
+         tamamlanır ve sonunda kanala kilitli bir karar düşer.
+         Ürünler, stok, ürün grupları, sayfalar, dosyalar, kişiler,
+         teklifler, takvim etkinlikleri ve cari hesaplar desteklenir.
+
+  [YENİ] Toplu silme (ör. "sitedeki tüm dosyaları sil") Çalışma
+         Alanı Ayarları'ndaki "Asistanlar kayıtları toplu silmeyi
+         önerebilir" anahtarı açılmadan çalışmaz; anahtar varsayılan
+         olarak kapalıdır ve yalnız yönetici değiştirir.
+
+  [ŞEMA] config.ws_ai_bulk_delete sütunu.
+
 
 
   2026.4.7

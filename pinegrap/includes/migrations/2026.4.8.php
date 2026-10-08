@@ -27,6 +27,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_scheduled_messages();      // 8.81
 	upgrade_2026_4_8_channel_shares();          // 8.82
 	upgrade_2026_4_8_threads();                 // 8.83
+	upgrade_2026_4_8_bulk_changes();            // 8.84
 
 }
 
@@ -136,5 +137,19 @@ function upgrade_2026_4_8_threads() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a message can be talked over in a discussion of its own beside the channel; its decisions and tasks go into the channel.');
+
+}
+
+// Bulk changes the assistants propose (2026.4.8, 8.84;
+// includes/workspace/bulk.php). A bulk change is a ws_ai_changes row with
+// action 'bulk' (the column is a VARCHAR and takes it as it is): fields holds
+// the rule, snapshot what it reached and how far applying it has got.
+// config.ws_ai_bulk_delete is the administrator's choice whether the
+// assistants may propose deleting records in bulk; off (0) by default.
+function upgrade_2026_4_8_bulk_changes() {
+
+	install_add_column('config', 'ws_ai_bulk_delete', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Workspace: Pinegrap AI and Claude can propose one change for many records at once; deleting in bulk stays off until an administrator allows it.');
 
 }

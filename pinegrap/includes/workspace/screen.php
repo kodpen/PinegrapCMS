@@ -594,8 +594,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
 
-    // Discussions (includes/workspace/threads.php).
-    $strings = array_merge($strings, ws_threads_js_strings());
+    // Discussions (includes/workspace/threads.php) and the assistants' bulk
+    // changes (includes/workspace/bulk.php).
+    $strings = array_merge($strings, ws_threads_js_strings(), ws_bulk_js_strings());
 
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
