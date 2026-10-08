@@ -172,7 +172,7 @@ function pg_dashboard_widget_18($request, $user)
              LEFT JOIN folder ON files.folder = folder.folder_id
              WHERE " . $fm_where . "
                AND " . $fm_optimize_condition . "
-             ORDER BY files.size DESC
+             ORDER BY files.size DESC, files.id ASC
              LIMIT " . (int) $fm_optimize_limit
         );
 
@@ -202,7 +202,7 @@ function pg_dashboard_widget_18($request, $user)
              FROM files
              LEFT JOIN folder ON files.folder = folder.folder_id
              WHERE " . $fm_where . "
-             ORDER BY files.size DESC
+             ORDER BY files.size DESC, files.id ASC
              LIMIT " . (int) $fm_largest_limit
         );
 

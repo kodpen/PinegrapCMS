@@ -18,9 +18,6 @@
  */
 
 
-//required for software backup mysql dumb
-use Ifsnop\Mysqldump as IMysqldump;
-
 // A file dragged into the file manager arrives as one large json body, base64 encoded.  Reading
 // it and parsing it leaves two copies of it in memory at once, and memory_limit is sized for
 // ordinary page requests, so a file well inside what the server could carry used to end the
@@ -249,6 +246,37 @@ if (
     and ($action != 'write_permissions_repair')
     and ($action != 'purge_cache')
 
+    // Browser notifications for this device. The bell they hang from is drawn
+    // for every backend role, and each of these touches only the caller's own
+    // subscriptions and devices, so every role may use them; the case blocks
+    // check the session and the token for themselves.
+    and ($action != 'push_config')
+    and ($action != 'push_subscribe')
+    and ($action != 'push_unsubscribe')
+    and ($action != 'push_test')
+
+    // Asked by the service worker, which cannot hold a form token. It only
+    // reads what the bell would show the same person, so the case block asks
+    // for the session alone.
+    and ($action != 'push_pending')
+
+    // Personal settings: the pinned apps live in the caller's own user row and
+    // the front-end toolbar's open/closed state in the caller's own session.
+    // Every role; the case blocks check the session and the token.
+    and ($action != 'user_pinned_app_update')
+    and ($action != 'update_toolbar_properties')
+
+    // Product barcodes and the label template are drawn on the product
+    // screens, which admit whoever manages the store (roles 0-2, or a basic
+    // user with manage_ecommerce). The case blocks apply that same rule, so
+    // an endpoint never refuses a button its screen offered.
+    and ($action != 'get_product_barcodes')
+    and ($action != 'generate_product_barcode')
+    and ($action != 'save_product_barcode')
+    and ($action != 'delete_product_barcode')
+    and ($action != 'bulk_assign_barcodes')
+    and ($action != 'save_barcode_template')
+
 ) {
 
     // The password was right but the account has a second step, which a
@@ -282,6 +310,10 @@ if (
         }
     }
 }
+
+require_once(dirname(__FILE__) . '/includes/panel/actions.php');
+
+pg_panel_dispatch($action, $request);
 
 switch ($action) {
 
@@ -540,343 +572,6 @@ switch ($action) {
         respond($response);
         break;
 
-    case 'database_deep_check':
-        // The full CHECK TABLE sweep, on request instead of on every dashboard
-        // load. The routine sweep behind the System Status widget uses the
-        // cheap MyISAM flags and leaves alone the engines that ignore them;
-        // the thorough pass lives here, where an operator decides when the
-        // site can afford it.
-        $user = validate_user();
-
-        // Same gate as the widget that reports the result.
-        if ((int) $user['role'] >= 3) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Access denied.'),
-            ));
-            break;
-        }
-
-        // A write from the panel session needs the session token like every
-        // other one; a password-authenticated API request is waived inside
-        // validate_token().
-        validate_token();
-
-        // This reads every row and every index of every table. On a large
-        // database that is minutes, so it releases the session lock first --
-        // otherwise the operator's own next page load queues behind it -- and
-        // lifts the execution limit, because a sweep killed halfway leaves the
-        // report it was building unwritten.
-        session_write_close();
-
-        if (function_exists('set_time_limit')) { // disable_functions on some hosts
-            @set_time_limit(0);
-        }
-
-        $deep_report = check_and_repair_database_tables(true);
-
-        $deep_issues = 0;
-        $deep_repairs = 0;
-
-        foreach ($deep_report as $deep_messages) {
-            foreach ($deep_messages as $deep_message) {
-                if ($deep_message === 'error') {
-                    $deep_issues++;
-                }
-                if ($deep_message === 'repaired') {
-                    $deep_repairs++;
-                }
-            }
-        }
-
-        // The status widget renders from a cache of its own, and would keep
-        // showing what the routine sweep found until it expired.
-        $deep_status_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
-
-        if (file_exists($deep_status_cache)) {
-            @unlink($deep_status_cache);
-        }
-
-        respond(array(
-            'status' => 'success',
-            'message' => lang(array(
-                'string' => '{var:1} table(s) checked, {var:2} issue(s) found, {var:3} repaired.',
-                'vars' => array(
-                    pg_format_number(count($deep_report), 0),
-                    pg_format_number($deep_issues, 0),
-                    pg_format_number($deep_repairs, 0),
-                ),
-            )),
-            // The tile that starts this is one of the health tiles and has a
-            // health tile's room -- a couple of words. The sentence above goes
-            // in the row beneath it; this is what fits on the tile itself.
-            'summary' => lang(array(
-                'string' => '{var:1} issue(s)',
-                'vars' => array(pg_format_number($deep_issues, 0)),
-            )),
-        ));
-        break;
-
-    case 'server_config_repair':
-        // Write the missing rules into the web.config / .htaccess in the web
-        // root. What gets written and how is in includes/server_config.php;
-        // this is the door.
-        //
-        // Administrator only. The general gate above lets a designer through,
-        // and a designer is trusted with the look of the site, not with the
-        // file that decides what the whole server will and will not hand out.
-        // The rest of the widget stands behind role < 3, so the tile that
-        // starts this is drawn for role 0 alone rather than being offered to
-        // people it would refuse.
-        $user = validate_user();
-
-        if ((int) $user['role'] !== 0) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Access denied.'),
-            ));
-            break;
-        }
-
-        // A write from the panel session needs the session token like every
-        // other one; a password-authenticated API request is waived inside
-        // validate_token().
-        validate_token();
-
-        $server_config_result = pg_server_config_repair(true);
-
-        // The status widget renders from a ten-minute cache and would keep
-        // reporting the rules as missing until it expired -- which reads as
-        // the button having done nothing.
-        $server_config_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
-
-        if (file_exists($server_config_cache)) {
-            @unlink($server_config_cache);
-        }
-
-        if ($server_config_result['status'] !== 'success') {
-            respond(array(
-                'status' => 'error',
-                'message' => $server_config_result['message'],
-                'summary' => lang('Failed'),
-            ));
-            break;
-        }
-
-        // Shown relative to the web root: an absolute path names the account and
-        // the folder the site lives in, and the operator going after the file
-        // over FTP starts at the web root anyway. Separators are normalised
-        // first -- on Windows dirname() answers in backslashes while the backup
-        // path was built with forward ones, and the two never match.
-        $server_config_backup = str_replace('\\', '/', $server_config_result['backup']);
-        $server_config_root   = rtrim(str_replace('\\', '/', dirname(dirname(__FILE__))), '/') . '/';
-
-        if (strpos($server_config_backup, $server_config_root) === 0) {
-            $server_config_backup = substr($server_config_backup, strlen($server_config_root));
-        }
-
-        respond(array(
-            'status' => 'success',
-            'message' => $server_config_result['message']
-                . ($server_config_result['backup'] !== ''
-                    ? ' ' . lang(array(
-                        'string' => 'The previous file was kept as {var:1}.',
-                        'vars'   => $server_config_backup,
-                    ))
-                    : ''),
-            'summary' => lang('Done'),
-        ));
-        break;
-
-    case 'ca_bundle_config_repair':
-        // Point CURL_CA_BUNDLE in data/config.php at the bundled
-        // data/cacert.pem, from the System Status widget. What is written and
-        // how is pg_ca_bundle_config_repair() in includes/fn/update.php.
-        //
-        // Administrator only: this writes the configuration file, which
-        // holds the database password.
-        $user = validate_user();
-
-        if ((int) $user['role'] !== 0) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Access denied.'),
-            ));
-            break;
-        }
-
-        // A write from the panel session needs the session token like every
-        // other one; a password-authenticated API request is waived inside
-        // validate_token().
-        validate_token();
-
-        $ca_config_result = pg_ca_bundle_config_repair();
-
-        if ($ca_config_result['status'] === 'success') {
-            log_activity(lang('CURL_CA_BUNDLE was pointed at data/cacert.pem from the dashboard.'), $_SESSION['sessionusername']);
-        }
-
-        // The widget renders from a ten-minute cache and would keep the row
-        // red until it expired.
-        $ca_config_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
-
-        if (file_exists($ca_config_cache)) {
-            @unlink($ca_config_cache);
-        }
-
-        respond(array(
-            'status' => ($ca_config_result['status'] === 'error') ? 'error' : 'success',
-            'message' => $ca_config_result['message'],
-            'summary' => ($ca_config_result['status'] === 'error') ? lang('Failed') : lang('Done'),
-        ));
-        break;
-
-    case 'write_permissions_repair':
-        // Open the folders and files of the software the web server cannot
-        // write to, from the System Status widget. The scan and the chmod are
-        // pg_write_permission_scan() / pg_write_permission_repair() in
-        // functions.php; this is the door.
-        //
-        // Administrator only, like the rules file: this changes who may write
-        // into the software directory, which is not the same authority as
-        // clearing a cache.
-        $user = validate_user();
-
-        if ((int) $user['role'] !== 0) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Access denied.'),
-            ));
-            break;
-        }
-
-        // A write from the panel session needs the session token like every
-        // other one; a password-authenticated API request is waived inside
-        // validate_token().
-        validate_token();
-
-        $permissions_result = pg_write_permission_repair();
-
-        log_activity(
-            lang(array('string' => 'Write permissions repaired from the dashboard ({var:1}).', 'vars' => array($permissions_result['message']))),
-            $_SESSION['sessionusername']
-        );
-
-        // The widget renders from a ten-minute cache and would keep reporting
-        // the folders as closed until it expired -- which reads as the button
-        // having done nothing.
-        $permissions_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
-
-        if (file_exists($permissions_cache)) {
-            @unlink($permissions_cache);
-        }
-
-        respond(array(
-            'status' => ($permissions_result['status'] === 'error') ? 'error' : 'success',
-            'message' => $permissions_result['message'],
-            'summary' => ($permissions_result['status'] === 'success') ? lang('Done') : (($permissions_result['status'] === 'partial') ? lang('Partly') : lang('Failed')),
-        ));
-        break;
-
-    case 'purge_cache':
-        // Clearing the caches from the System Status widget, without leaving
-        // the dashboard.
-        //
-        // purge_cache.php does the same work and then redirects to
-        // settings.php. That is the right ending for a link pressed on the
-        // settings screen and the wrong one for a tile on a card: the operator
-        // pressed a button on the dashboard and landed on another page, with
-        // the widget they were reading left behind. Both doors call
-        // pg_purge_caches(), so the two cannot come to clear different things.
-        //
-        // Manager and above, matching purge_cache.php's own
-        // validate_area_access($user, 'manager') -- written here as a role test
-        // because that function answers in HTML, and an HTML refusal reaches a
-        // caller expecting JSON as "unexpected token <".
-        $user = validate_user();
-
-        if ((int) $user['role'] >= 3) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Access denied.'),
-            ));
-            break;
-        }
-
-        // A write from the panel session needs the session token like every
-        // other one; a password-authenticated API request is waived inside
-        // validate_token().
-        validate_token();
-
-        $purge_result = pg_purge_caches();
-
-        log_activity(
-            lang(array('string' => 'Cache purged ({var:1}).', 'vars' => array($purge_result['message']))),
-            $_SESSION['sessionusername']
-        );
-
-        respond(array(
-            'status'  => 'success',
-            'message' => lang(array('string' => 'Cache cleared: {var:1}', 'vars' => array($purge_result['message']))),
-            // Two words is what the row's own state line holds; the sentence
-            // above goes in the panel that opens under it.
-            'summary' => lang('Cleared'),
-        ));
-        break;
-
-    case 'ca_bundle_update':
-        // Replace data/cacert.pem with the current Mozilla root list, from the
-        // System Status widget. The download, the checks and the atomic swap
-        // are pg_ca_bundle_update() in includes/fn/update.php; this is the
-        // door.
-        //
-        // Administrator only, and the token is checked as well as the
-        // session: this writes the file that decides which certificates every
-        // outbound connection will trust, which is the same authority as the
-        // web server rules file, not the same as clearing a cache. The row is
-        // drawn for every role that sees the widget, its button for role 0
-        // alone, so nobody is offered a control that would refuse them.
-        $user = validate_user();
-
-        if ((int) $user['role'] !== 0) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Access denied.'),
-            ));
-            break;
-        }
-
-        validate_token();
-
-        // The download may take a while on a slow link; the operator's own
-        // next page load should not queue behind it.
-        session_write_close();
-
-        $ca_bundle_result = pg_ca_bundle_update();
-
-        log_activity(
-            lang(array('string' => 'CA bundle update from the dashboard ({var:1}).', 'vars' => array($ca_bundle_result['message']))),
-            $_SESSION['sessionusername']
-        );
-
-        if ($ca_bundle_result['status'] === 'error') {
-            respond(array(
-                'status'  => 'error',
-                'message' => $ca_bundle_result['message'],
-                'summary' => lang('Failed'),
-            ));
-            break;
-        }
-
-        respond(array(
-            'status'  => 'success',
-            'message' => $ca_bundle_result['message'],
-            // Two words for the row's own state line; the sentence above goes
-            // in the panel that opens under it.
-            'summary' => ($ca_bundle_result['status'] === 'unchanged') ? lang('Already current') : lang('Updated'),
-        ));
-        break;
-
     case 'get_widget_data':
         $user = validate_user();
         // Release the session file lock immediately after authentication so that
@@ -1030,6 +725,14 @@ switch ($action) {
         break;
 
     case 'push_config':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -1063,6 +766,14 @@ switch ($action) {
         break;
 
     case 'push_subscribe':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -1096,6 +807,14 @@ switch ($action) {
         break;
 
     case 'push_unsubscribe':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -1112,6 +831,14 @@ switch ($action) {
         break;
 
     case 'push_test':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -1136,6 +863,14 @@ switch ($action) {
         // to hold a form token: it is woken by the operating system, with no
         // page of its own to have been handed one. The request only reads, and
         // it reads exactly what the bell would have shown the same person.
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/notifications.php');
 
@@ -1206,6 +941,14 @@ switch ($action) {
         // The list is written straight into the operator's own user row, so it
         // has to come from a signed-in session with a valid token, and the
         // entries can only be menu item numbers.
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
         validate_token();
 
@@ -1465,725 +1208,6 @@ switch ($action) {
             'message' => 'dashboard appearance updated.'
         );
         echo encode_json($response);
-        exit();
-        break;
-
-    case 'software_backup':
-
-        // A backup writes the whole database out to disk and copies every file
-        // beside it.  The action sits in the exemption list at the top of this
-        // file and had nothing of its own in the general gate's place, so the
-        // steps ran for whoever could reach the address.  Manager and a valid
-        // token is the same reach backups.php asks for at its own door, and
-        // now the door the Backups view knocks on asks the same.
-        $user = validate_user();
-        validate_area_access($user, 'manager');
-        validate_token();
-
-        // This feature can take a long time to run for a large site,
-        // so increase the allowed execution time for the PHP script.
-        ini_set('memory_limit', '512M');
-        ini_set('max_execution_time', 500);
-        $step = isset($request['step']) ? (string) $request['step'] : '';
-        $backup_name = isset($request['backup_name']) ? (string) $request['backup_name'] : '';
-
-        $backup_location = 'data/backups/';
-
-        // The name travels back to the client after every step and returns
-        // with the next one, so each step has to treat it as input. It is
-        // reduced once, here, to a single folder-name character class: path
-        // separators, dots and anything else outside it become underscores,
-        // which keeps every step's mkdir, dump, copy and unlink inside the
-        // backups directory. The result is stable under a second pass, so the
-        // name a step hands back is the name the next step will compute.
-        $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', basename($backup_name));
-
-        // Only the first step may start without a name; it makes its own. Every
-        // later step works on a folder that must already exist under a name.
-        if (($backup_folder_name === '') && ($step != 'create_backup_folder')) {
-            $response = array(
-                'status' => 'error',
-                'message' => lang('The backup name is not valid.')
-            );
-            echo encode_json($response);
-            exit();
-        }
-
-        switch ($step) {
-
-            case 'create_backup_folder':
-                if ($backup_folder_name === '') {
-                    $hostname_clean = defined('HOSTNAME') ? HOSTNAME : '';
-                    $backup_name = ($hostname_clean ? $hostname_clean . '_' : '') . date('Y-m-d@H-i');
-                    $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', $backup_name);
-                }
-
-                //check if directory is exists
-                //if not exist Create directory.
-                if (!file_exists($backup_location . $backup_folder_name)) {
-                    mkdir($backup_location . $backup_folder_name, 0777, true);
-                }
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'backup_name' => $backup_folder_name,
-                    'message' => lang('Site backup folder create successful. Mysql dumb creating, please wait...')
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'create_mysql_dumb':
-                include_once('mysqldump.php');
-
-                //Create mysql dump file named slq.sql and save it in backup directory
-                // first backup Mysql because, if there is timeout when file copy mysql important for us. so even timeout to copy files or layouts we have mysql dump anyway.
-                try {
-                    $dump = new IMysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE . '', '' . DB_USERNAME . '', '' . DB_PASSWORD . '');
-                    $dump->start($backup_location . $backup_folder_name . '/sql.sql');
-                } catch (\Exception $e) {
-                    $backups_error_message = $e->getMessage();
-
-                    //if mysql error and backup folder is empty, delete it.
-                    if (is_dir($backup_location . $backup_folder_name) && count(glob($backup_location . $backup_folder_name . '/*')) === 0) {
-                        rmdir($backup_location . $backup_folder_name);
-                    }
-
-                    log_activity('Creating Mysql Dumb is Failure. Because: ' . h($backups_error_message), $_SESSION['sessionusername']);
-                    //return error json output
-                    $response = array(
-                        'status' => 'error',
-                        'message' => h($backups_error_message)
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'backup_name' => $backup_folder_name,
-                    'message' => lang('Mysql dumb created in backup directory successful. Clearing old files in directory, please wait...')
-                );
-                echo encode_json($response);
-                exit();
-                //Mysql Backup complete
-                break;
-
-            case 'clear_files_and_layouts':
-                //Prepare for files and layouts**
-                //if files directory not exist Create directory
-                if (!file_exists($backup_location . $backup_folder_name . '/files')) {
-                    mkdir($backup_location . $backup_folder_name . '/files', 0777, true);
-                }
-                //if layouts directory not exist Create directory
-                if (!file_exists($backup_location . $backup_folder_name . '/layouts')) {
-                    mkdir($backup_location . $backup_folder_name . '/layouts', 0777, true);
-                }
-                //CLEAR//
-                // delete all files from template files directory
-                $files = pg_glob_brace($backup_location . $backup_folder_name . '/files/{,.}*'); // get all file names
-                foreach ($files as $file) { // iterate files
-                    if (is_file($file))
-                        unlink($file); // delete file
-                }
-                // delete all files from template layouts directory
-                $layouts = pg_glob_brace($backup_location . $backup_folder_name . '/layouts/{,.}*'); // get all layouts names
-                foreach ($layouts as $layout) { // iterate layouts files
-                    if (is_file($layout))
-                        unlink($layout); // delete layouts files
-                }
-
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'backup_name' => $backup_folder_name,
-                    'message' => lang('Files and layouts cleared in backup directory. Copying files, please wait...')
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-
-            case 'move_files':
-
-                //WRITE//
-                // prepare path to template files
-                $backup_files_path = $backup_location . $backup_folder_name . '/files/';
-                $handle = opendir(FILE_DIRECTORY_PATH);
-                // copy files to backup directory
-                while (false !== ($file = readdir($handle))) {
-                    if (($file != '.') && ($file != '..')) {
-                        copy(FILE_DIRECTORY_PATH . '/' . $file, $backup_files_path . $file);
-                    }
-                }
-                closedir($handle);
-
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'backup_name' => $backup_folder_name,
-                    'message' => lang('Files copied to backup directory. Copying layouts, please wait...')
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'move_layouts':
-
-                //WRITE//
-                // prepare path to template layouts
-                $backup_layouts_path = $backup_location . $backup_folder_name . '/layouts/';
-                $handle = opendir(LAYOUT_DIRECTORY_PATH);
-                // copy files to backup directory
-                while (false !== ($file = readdir($handle))) {
-                    if (($file != '.') && ($file != '..')) {
-                        copy(LAYOUT_DIRECTORY_PATH . '/' . $file, $backup_layouts_path . $file);
-                    }
-                }
-                closedir($handle);
-
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'backup_name' => $backup_folder_name,
-                    'message' => lang('Layouts copied to backup directory. Creating .htaccess for security reason, please wait...')
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'create_htaccess_and_config':
-                //create .htaccess file to make directory unaccessable.
-                file_put_contents($backup_location . $backup_folder_name . '/.htaccess', 'deny from all');
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'backup_name' => $backup_folder_name,
-                    'message' => lang('Htaccess create in backup directory successful. Check backup folder create success or not, please wait...')
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'check':
-
-                if (file_exists($backup_location . $backup_folder_name)) {
-
-                    if (file_exists($backup_location . $backup_folder_name . '/sql.sql')) {
-                        if (file_exists($backup_location . $backup_folder_name . '/files')) {
-                            if (file_exists($backup_location . $backup_folder_name . '/layouts')) {
-                                $liveform_backups = new liveform('backups');
-
-                                log_activity("Software Backup (" . $backup_folder_name . ") Success", $_SESSION['sessionusername']);
-                                // Add notice to liveform.
-                                $liveform_backups->add_notice('Software Backup (' . $backup_folder_name . ') Create Success.');
-                                //return success json output
-                                $response = array(
-                                    'status' => 'success',
-                                    'backup_name' => $backup_folder_name,
-                                    'message' => lang('Software Backup process Successful. Page will be refresh...')
-                                );
-                                echo encode_json($response);
-                                exit();
-                            }
-                        }
-                    }
-
-                }
-
-                //return error json output
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang('software Backup check has error. backup maybe still created but we cant provide.')
-                );
-                echo encode_json($response);
-                exit();
-
-
-                break;
-
-            default:
-                //return error json output
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang('software Backup steps error.')
-                );
-                echo encode_json($response);
-                exit();
-        }
-        break;
-
-    case 'software_update_check':
-        // Async background check triggered by output_header() JS injection.
-        // Runs the daily/periodic software update check without blocking the page load.
-        validate_token();
-        $user = validate_user();
-        $current_timestamp = time();
-        if (
-            (defined('SOFTWARE_UPDATE_CHECK') == false or SOFTWARE_UPDATE_CHECK == true)
-            and ($current_timestamp >= (LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP + 259200))
-        ) {
-            require(dirname(__FILE__) . '/software_update_check.php');
-            software_update_check();
-            exit();
-        }
-        break;
-
-    case 'software_update':
-        //software update is not software update check.
-        //it is action to update software from software_update.php
-        //used api because some slow servers connections down, timeout or somethings like this when do this one step.
-
-        // The steps below download a package and unpack it over the codebase.
-        // The action sits in the exemption list at the top of this file, so
-        // the general gate does not run for it: ask here for the same thing
-        // software_update.php asks at its own door - a signed-in manager with
-        // a valid token - before any step is looked at.
-        if (!USER_LOGGED_IN) {
-            respond(array(
-                'status' => 'error',
-                'message' => 'Invalid login.'
-            ));
-        }
-        $user = validate_user();
-        validate_area_access($user, 'manager');
-        validate_token();
-
-        // A hosted site's code is replaced by the platform for every site on
-        // the account at once, never by one of them.
-        if (pg_hosted()) {
-            respond(array(
-                'status' => 'error',
-                'message' => lang('Software updates are managed by the hosting platform.')
-            ));
-        }
-
-        // This feature can take a long time to run for a large site,
-        // so increase the allowed execution time for the PHP script.
-        ini_set('max_execution_time', '9999');
-
-        $step = isset($request['step']) ? $request['step'] : '';
-        if (!in_array($step, array('check', 'download', 'replace'), true)) {
-            respond(array(
-                'status' => 'error',
-                'message' => 'Invalid step.'
-            ));
-        }
-        switch ($step) {
-            case 'check':
-                //check if there is really have a software update, also software_update page check but may user open 2 page and update and update again.
-                // now if try software update after an update user get error message and update stop.
-                if (!function_exists('curl_init')) {
-                    $liveform->mark_error('Update', 'Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.');
-                }
-                $request = array();
-                $request['hostname'] = HOSTNAME_SETTING;
-                $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
-                $request['version'] = VERSION;
-                $request['edition'] = EDITION;
-                $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
-                $request['os'] = PHP_OS;
-                $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
-                $request['php_version'] = phpversion();
-                $request['mysql_version'] = db("SELECT VERSION()");
-                $request['installer'] = INSTALLER;
-                $request['private_label'] = PRIVATE_LABEL;
-                $data = encode_json($request);
-                $API = '59593DS72233483322T669223344';
-                // Beta sites ask their own question; see pg_update_channel().
-                $REQUEST = pg_update_request_key();
-
-                $ch = curl_init();
-                // Identify this installation on outgoing requests. Sent with no
-                // User-Agent, a request looks like an anonymous client to the receiving
-                // server's firewall and gets rejected — which is how Pinegrap ended up
-                // blocking its own licence and update checks.
-                curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-                curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                // Verify the certificate. See pg_curl_tls() for why this matters most
-                // on the update and licence channel.
-                pg_curl_tls($ch);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-                curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                    'Content-Type: application/json',
-                    'Content-Length: ' . strlen($data)
-                ));
-
-                // if there is a proxy address, then send cURL request through proxy
-                if (PROXY_ADDRESS != '') {
-                    curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-                    curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-                }
-
-                $response = curl_exec($ch);
-                $curl_errno = curl_errno($ch);
-                $curl_error = curl_error($ch);
-                curl_close($ch);
-
-                if ($response === false) {
-                    log_activity(
-                        'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.'
-                    );
-                    //return error json output
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'No access to the update server.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                $response = decode_json($response);
-
-                if (!isset($response['version'])) {
-                    log_activity('software update check received an invalid response from the software update server, so it is not known if there is a software update available');
-                    //return error json output
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'No response from the update server.'
-                    );
-                    echo encode_json($response);
-                    exit();
-
-                }
-                // If the software update check is not disabled in the config.php file,
-                // then continue to determine if there is a software update.
-                if (
-                    (defined('SOFTWARE_UPDATE_CHECK') == FALSE)
-                    || (SOFTWARE_UPDATE_CHECK == TRUE)
-                ) {
-                    // figure out if new version is greater than old version
-
-                    $new_version = trim($response['version']);
-                    $new_version_parts = explode('.', $new_version);
-
-                    $old_version = VERSION;
-                    $old_version_parts = explode('.', $old_version);
-
-                    // assume that new version is not greater than old version, until we find out otherwise
-                    $new_version_is_greater_than_old_version = FALSE;
-
-                    // if the major number of the new version is greater than the major number of the old version,
-                    // then the new version is greater than the old version
-                    if ($new_version_parts[0] > $old_version_parts[0]) {
-                        $new_version_is_greater_than_old_version = TRUE;
-
-                        // else if the major number of the new version is equal to the major number of the old version,
-                        // then continue to check
-                    } elseif ($new_version_parts[0] == $old_version_parts[0]) {
-                        // if the minor number of the new version is greater than the minor number of the old version,
-                        // then the new version is greater than the old version
-                        if ($new_version_parts[1] > $old_version_parts[1]) {
-                            $new_version_is_greater_than_old_version = TRUE;
-
-                            // else if the minor number of the new version is equal to the minor number of the old version,
-                            // then continue to check
-                        } elseif ($new_version_parts[1] == $old_version_parts[1]) {
-                            // if the maintenance number of the new version is greater than the maintenance number of the old version,
-                            // then the new version is greater than the old version
-                            if ($new_version_parts[2] > $old_version_parts[2]) {
-                                $new_version_is_greater_than_old_version = TRUE;
-                            }
-                        }
-                    }
-
-                    // assume that there is not an available software update until we find out otherwise
-                    $software_update_available = 0;
-
-                    // if the new version is greater than the old version, then there is an available software update
-                    if ($new_version_is_greater_than_old_version == TRUE) {
-                        $software_update_available = 1;
-                    }
-
-                }
-                //there is no software
-                if ($software_update_available == 0) {
-                    //return error json output
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'There is no update available.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-                //there is software update so we can go step 2:Download the update file.
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'message' => 'Downloading...'
-                );
-                echo encode_json($response);
-                exit();
-
-                break;
-            case 'download':
-                //Step 2: download update file from curl
-                // The package of this installation's channel. The name is asked for
-                // once and reused below, so the file the replace step opens is the
-                // file this step wrote.
-                $update_package = pg_update_package_file();
-
-                $ch = curl_init("https://www.kodpen.com/" . $update_package);
-                // Identify this installation on outgoing requests. Sent with no
-                // User-Agent, a request looks like an anonymous client to the receiving
-                // server's firewall and gets rejected — which is how Pinegrap ended up
-                // blocking its own licence and update checks.
-                curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-                curl_setopt($ch, CURLOPT_HEADER, 0);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15); // seconds to establish the connection
-                curl_setopt($ch, CURLOPT_TIMEOUT, 120);       // total seconds allowed for the zip download
-
-                // if there is a proxy address, then send cURL request through proxy
-                if (PROXY_ADDRESS != '') {
-                    curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-                    curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-                }
-                $raw = curl_exec($ch);
-                $curl_errno = curl_errno($ch);
-                $curl_error = curl_error($ch);
-                $http_status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $expected_bytes = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
-                curl_close($ch);
-
-                // A non-200 body is still a successful transfer as far as cURL
-                // is concerned. Without this check a 403 from the update
-                // server's own firewall, or a 404 page, gets written to disk
-                // as pinegrap_software_update.zip and fails three steps later
-                // as an unexplained archive error.
-                if ($raw !== false && $http_status !== 200) {
-                    log_activity('software update download returned HTTP ' . $http_status . ' instead of the update package.');
-
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'The update server returned HTTP ' . $http_status . ' instead of the update package.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                // A transfer cut short mid-stream is not an error to cURL
-                // either; compare against the length the server promised.
-                if ($raw !== false && $expected_bytes > 0 && strlen($raw) < $expected_bytes) {
-                    log_activity('software update download was truncated: ' . strlen($raw) . ' of ' . $expected_bytes . ' bytes.');
-
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'The download was cut short (' . strlen($raw) . ' of ' . $expected_bytes . ' bytes). Please try again.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                if ($raw !== false && !pg_looks_like_zip($raw)) {
-                    log_activity('software update download was not a zip archive.');
-
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'What was downloaded is not a zip archive. A proxy or firewall may have replaced the response.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                if ($raw === false) {
-                    // there is an error about download so notice user and log activiy
-                    log_activity(
-                        'software update file get could not communicate with the software update server, may its about update server so try it later. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.'
-                    );
-                    //return error json output
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'Error while get files from the update server.' . pg_curl_tls_hint($curl_errno)
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                // Zip file name
-                $filename = $update_package;
-                if (file_exists($filename)) {
-                    unlink($filename);
-                }
-
-                // 'x' fails when the file still exists, and the unlink above
-                // can fail on permissions. Writing through an unchecked handle
-                // emitted a warning and carried on as if it had worked.
-                $fp = @fopen($filename, 'wb');
-
-                if ($fp === false) {
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'Could not create the update file. Check write permission for the software directory.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                $written = fwrite($fp, $raw);
-                fclose($fp);
-
-                // A short write means a full disk. Left unchecked it produced a
-                // truncated archive that extracted partially.
-                if ($written === false || $written < strlen($raw)) {
-                    @unlink($filename);
-
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'The update file could not be written completely. The disk may be full.'
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-                //zip file download success we can go step 3: replace the software files
-                $response = array(
-                    'status' => 'success',
-                    'message' => 'Files overwriting...'
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'replace':
-                //Step 3: replace files.
-                define('_PATH', dirname(__FILE__));
-                // Zip file name — the channel's package, the same name the download step used.
-                $filename = pg_update_package_file();
-                // Unzip path
-                $path = _PATH . "/../";
-
-                // pg_extract_archive() checks archive consistency BEFORE
-                // touching anything, refuses to start while a file on disk
-                // cannot be replaced (another owner, read-only), then proves
-                // every entry landed on disk with the archive's own size and
-                // CRC afterwards - not merely that a file of that name exists,
-                // which an old copy the server kept would satisfy.
-                //
-                // The previous code called extractTo() and discarded its
-                // return value. Extraction stops at the first entry it cannot
-                // write — one locked file, one permission problem, a full disk
-                // — and everything after it is silently never created, while
-                // the screen reports a successful update. That is why an
-                // update could leave files missing and need repairing by hand.
-                $extract = pg_extract_archive($filename, $path);
-
-                if (!$extract['ok']) {
-                    log_activity('software update extraction failed: ' . $extract['message']
-                        . (!empty($extract['missing']) ? ' Missing: ' . implode(', ', array_slice($extract['missing'], 0, 10)) : '')
-                        . (!empty($extract['stale']) ? ' Not replaced: ' . implode(', ', array_slice($extract['stale'], 0, 10)) : '')
-                        . (!empty($extract['blocked']) ? ' Cannot be replaced: ' . implode(', ', array_slice($extract['blocked'], 0, 10)) : ''));
-
-                    $response = array(
-                        'status' => 'error',
-                        'message' => $extract['message']
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                unlink($filename);
-
-                // The bytecode cache still holds the OLD files. Two reasons
-                // this has to be dropped here rather than left to the cache's
-                // own timestamp check:
-                //
-                //  • The screen sends the browser to install/index.php as
-                //    soon as this returns. Between the new files landing and
-                //    the cache noticing them (opcache.revalidate_freq, two
-                //    seconds by default) the upgrade would run the PREVIOUS
-                //    version's code against the new schema — the exact
-                //    window the upgrade bridge exists to survive, entered on
-                //    purpose for no reason.
-                //  • Where the host turned timestamp validation off
-                //    (opcache.validate_timestamps = 0, common on tuned
-                //    production boxes) the old code keeps running until
-                //    someone restarts PHP. The operator sees "update
-                //    complete" and no change whatsoever.
-                //
-                // Also reclaims the memory the replaced files occupied:
-                // every superseded copy stays in the cache as waste until
-                // it is invalidated, and this software's largest file is
-                // several megabytes of compiled opcodes on its own.
-                //
-                // Failure is not fatal — purge_cache.php exists for the
-                // hosts that refuse the API — but it is worth a log line,
-                // because "I updated and nothing changed" starts here.
-                // extension_loaded() is not the question, and neither is
-                // function_exists(): the extension can be compiled in while
-                // opcache.enable is off, in which case the functions all
-                // exist, every call returns false and emits a warning. Ask
-                // the cache whether it is running.
-                //
-                // A host that blocks opcache.restrict_api answers nothing at
-                // all — status is unreadable there but a reset may still be
-                // allowed, so "unknown" tries anyway and stays quiet about
-                // the outcome. Only a cache that says it is enabled AND
-                // refuses every attempt is worth a log line.
-                $pg_opcache_status  = function_exists('opcache_get_status') ? @opcache_get_status(false) : null;
-                $pg_opcache_running = is_array($pg_opcache_status) ? !empty($pg_opcache_status['opcache_enabled']) : null;
-
-                if ($pg_opcache_running !== false) {
-                    $pg_update_opcache_cleared = false;
-
-                    if (function_exists('opcache_reset')) {
-                        $pg_update_opcache_cleared = (bool) @opcache_reset();
-                    }
-
-                    // opcache.restrict_api blocks reset() from a script
-                    // outside its directory; per-file invalidation is still
-                    // allowed on some of those hosts. The paths are the ones
-                    // the archive just wrote, so nothing else is walked.
-                    if (!$pg_update_opcache_cleared && function_exists('opcache_invalidate')) {
-                        $pg_update_files = (isset($extract['files']) && is_array($extract['files'])) ? $extract['files'] : array();
-                        foreach ($pg_update_files as $pg_update_file) {
-                            if (substr($pg_update_file, -4) === '.php') {
-                                if (@opcache_invalidate($pg_update_file, true)) {
-                                    $pg_update_opcache_cleared = true;
-                                }
-                            }
-                        }
-                    }
-
-                    if (!$pg_update_opcache_cleared && $pg_opcache_running === true) {
-                        log_activity('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect');
-                    }
-                }
-
-                $query = "DELETE FROM notifications WHERE action = 'software_update'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-
-                //there is no error so update complete.
-                //return success json output
-                $response = array(
-                    'status' => 'success',
-                    'message' => 'Success. Being redirected for Upgrade.'
-                );
-                echo encode_json($response);
-                exit();
-
-                break;
-
-            default:
-                //return error json output
-                $response = array(
-                    'status' => 'error',
-                    'message' => 'Crashed.'
-                );
-                echo encode_json($response);
-                exit();
-        }
-
         exit();
         break;
 
@@ -3177,457 +2201,6 @@ switch ($action) {
 
         break;
 
-    case 'backend_search':
-        $user = validate_user();
-
-        $search = isset($request['search']) ? trim($request['search']) : '';
-
-        $offset = isset($request['offset']) ? max(0, (int) $request['offset']) : 0;
-        $per_limit = $offset + 21; // +1 extra to detect has_more
-        $results = array();
-
-        // Role helpers
-        $role = (int) $user['role']; // 0=admin,1=designer,2=manager,3=user
-        $can_design = ($role <= 1);
-        $can_manage = ($role <= 2);
-        $can_ecommerce = ($role <= 2) || !empty($user['manage_ecommerce']);
-        $can_manage_forms = ($role <= 2) || !empty($user['manage_forms']);
-        $can_contacts = ($role <= 2) || !empty($user['manage_contacts']);
-
-        // Build quick actions based on role (used for both empty and typed searches)
-        $base_url = PATH . SOFTWARE_DIRECTORY;
-        $actions = array();
-
-        // ── Sayfalar / Pages ──────────────────────────────────────────────────
-        $actions[] = array('label' => lang('Pages'), 'icon' => 'bi-file-earmark-text', 'url' => $base_url . '/view_pages.php', 'keys' => array('sayfa', 'sayfalar', 'page', 'pages', 'say'));
-        $actions[] = array('label' => lang('Add Page'), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'page add', 'yeni sayfa', 'add page', 'sayfaekle'));
-        $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
-        $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
-        if ($can_manage) {
-            $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
-        }
-        $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
-        $actions[] = array('label' => lang('Auto Dialogs'), 'icon' => 'bi-chat-square-text', 'url' => $base_url . '/view_auto_dialogs.php', 'keys' => array('dialog', 'auto', 'oto', 'diy'));
-
-        // ── Dosyalar / Files ──────────────────────────────────────────────────
-        $actions[] = array('label' => lang('Files'), 'icon' => 'bi-folder2-open', 'url' => $base_url . '/view_files.php', 'keys' => array('dosya', 'dosyalar', 'file', 'files', 'fil', 'dos'));
-        $actions[] = array('label' => lang('Add File'), 'icon' => 'bi-file-earmark-arrow-up', 'url' => $base_url . '/add_file.php', 'keys' => array('dosya yukle', 'dosya ekle', 'upload', 'add file', 'yukle'));
-
-        // ── e-Ticaret / eCommerce ─────────────────────────────────────────────
-        if ($can_ecommerce) {
-            $actions[] = array('label' => lang('Orders'), 'icon' => 'bi-receipt', 'url' => $base_url . '/view_orders.php', 'keys' => array('siparis', 'siparisler', 'order', 'orders', 'ord', 'sip'));
-            $actions[] = array('label' => lang('Products'), 'icon' => 'bi-box-seam', 'url' => $base_url . '/view_products.php', 'keys' => array('urun', 'urunler', 'product', 'products', 'pro', 'uru'));
-            $actions[] = array('label' => lang('Add Product'), 'icon' => 'bi-box-seam', 'url' => $base_url . '/add_product.php', 'keys' => array('urun ekle', 'add product', 'yeni urun', 'urunek'));
-            $actions[] = array('label' => lang('Product Groups'), 'icon' => 'bi-boxes', 'url' => $base_url . '/view_product_groups.php', 'keys' => array('urun grubu', 'grup', 'product group', 'group', 'gru'));
-            $actions[] = array('label' => lang('Add Product Group'), 'icon' => 'bi-boxes', 'url' => $base_url . '/add_product_group.php', 'keys' => array('grup ekle', 'add group', 'yeni grup', 'grupekle'));
-            $actions[] = array('label' => lang('Offers'), 'icon' => 'bi-percent', 'url' => $base_url . '/view_offers.php', 'keys' => array('teklif', 'teklifler', 'indirim', 'offer', 'offers', 'off', 'tek', 'ind'));
-            $actions[] = array('label' => lang('Add Offer'), 'icon' => 'bi-percent', 'url' => $base_url . '/add_offer.php', 'keys' => array('teklif ekle', 'add offer', 'indirim ekle', 'teklifekle'));
-            $actions[] = array('label' => lang('Gift Cards'), 'icon' => 'bi-gift', 'url' => $base_url . '/view_gift_cards.php', 'keys' => array('hediye', 'gift', 'kart', 'giftcard', 'hed'));
-            $actions[] = array('label' => lang('Shipping Methods'), 'icon' => 'bi-truck', 'url' => $base_url . '/view_shipping_methods.php', 'keys' => array('kargo', 'shipping', 'gonder', 'gönderim', 'kar'));
-            $actions[] = array('label' => lang('Currencies'), 'icon' => 'bi-currency-exchange', 'url' => $base_url . '/view_currencies.php', 'keys' => array('para', 'doviz', 'döviz', 'currency', 'cur', 'par', 'döv'));
-            $actions[] = array('label' => lang('Countries'), 'icon' => 'bi-globe2', 'url' => $base_url . '/view_countries.php', 'keys' => array('ulke', 'ülke', 'country', 'countries', 'ulk'));
-            $actions[] = array('label' => lang('Tax Zones'), 'icon' => 'bi-receipt-cutoff', 'url' => $base_url . '/view_tax_zones.php', 'keys' => array('vergi', 'kdv', 'tax', 'ver'));
-            $actions[] = array('label' => lang('Zones'), 'icon' => 'bi-map', 'url' => $base_url . '/view_zones.php', 'keys' => array('bolge', 'bölge', 'zone', 'zon', 'böl'));
-            $actions[] = array('label' => lang('States'), 'icon' => 'bi-geo-alt', 'url' => $base_url . '/view_states.php', 'keys' => array('sehir', 'şehir', 'eyalet', 'state', 'seh'));
-            $actions[] = array('label' => lang('Order Reports'), 'icon' => 'bi-bar-chart', 'url' => $base_url . '/view_order_reports.php', 'keys' => array('siparis rapor', 'order report', 'rapor sip', 'raporord'));
-        }
-
-        // ── Visitors ──────────────────────────────────────────────────────────
-        $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
-        $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
-
-        // ── Contacts ──────────────────────────────────────────────────────────
-        if ($can_contacts) {
-            $actions[] = array('label' => lang('Contacts'), 'icon' => 'bi-people', 'url' => $base_url . '/view_contacts.php', 'keys' => array('kisi', 'kişi', 'contact', 'rehber', 'con', 'kis', 'reh'));
-            $actions[] = array('label' => lang('Add Contact'), 'icon' => 'bi-person-plus', 'url' => $base_url . '/add_contact.php', 'keys' => array('kisi ekle', 'add contact', 'yeni kisi', 'kisieki'));
-            $actions[] = array('label' => lang('Contact Groups'), 'icon' => 'bi-people-fill', 'url' => $base_url . '/view_contact_groups.php', 'keys' => array('grup kisi', 'contact group', 'kisigrup'));
-        }
-
-        // ── Users ─────────────────────────────────────────────────────────────
-        if ($can_manage) {
-            $actions[] = array('label' => lang('Users'), 'icon' => 'bi-person-gear', 'url' => $base_url . '/view_users.php', 'keys' => array('kullanici', 'kullanıcı', 'user', 'usr', 'kul'));
-            $actions[] = array('label' => lang('Add User'), 'icon' => 'bi-person-plus', 'url' => $base_url . '/add_user.php', 'keys' => array('kullanici ekle', 'add user', 'yeni kullanici', 'kullanicieki'));
-        }
-
-        // ── Campaigns ─────────────────────────────────────────────────────────
-        if ($can_manage) {
-            $actions[] = array('label' => lang('Email Campaigns'), 'icon' => 'bi-megaphone', 'url' => $base_url . '/view_email_campaigns.php', 'keys' => array('kampanya', 'mail', 'email', 'campaign', 'kamp'));
-            $actions[] = array('label' => lang('Add Email Campaign'), 'icon' => 'bi-megaphone', 'url' => $base_url . '/add_email_campaign.php', 'keys' => array('kampanya ekle', 'add campaign', 'kampanyaekle'));
-            $actions[] = array('label' => lang('Calendars'), 'icon' => 'bi-calendar3', 'url' => $base_url . '/view_calendars.php', 'keys' => array('takvim', 'calendar', 'tak', 'cal'));
-            $actions[] = array('label' => lang('Submitted Forms'), 'icon' => 'bi-ui-checks', 'url' => $base_url . '/view_submitted_forms.php', 'keys' => array('form', 'gonderilen', 'submitted', 'frm', 'gon'));
-            $actions[] = array('label' => lang('Menus'), 'icon' => 'bi-menu-button', 'url' => $base_url . '/view_menus.php', 'keys' => array('menu', 'men'));
-            $actions[] = array('label' => lang('Ads'), 'icon' => 'bi-badge-ad', 'url' => $base_url . '/view_ads.php', 'keys' => array('reklam', 'ad', 'ads', 'rek'));
-
-            // Every settings section, from the one list the hub and the sidebar
-            // of the dialog draw from (includes/settings/registry.php).
-            // Registering them is what answers "where is that setting": the
-            // operator types the thing itself (ssl, waf, cron, kargo) and the
-            // settings open on the card holding it instead of on a long page.
-            // The keywords are the field names of the section, not just its
-            // title, because nobody searches for "Feature Options" when they
-            // are looking for the cart.
-            if (!defined('PG_SETTINGS_MENU')) {
-                define('PG_SETTINGS_MENU', true);
-            }
-
-            include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
-
-            // Plain "Settings" opens on the category last used; the eight
-            // below each name one.
-            $actions[] = array('label' => lang('Settings'), 'icon' => 'bi-gear', 'url' => $base_url . '/' . pg_settings_link(), 'keys' => array('ayar', 'ayarlar', 'setting', 'settings', 'set', 'aya'));
-
-            foreach (pg_settings_categories() as $settings_key => $settings_category) {
-
-                $actions[] = array(
-                    'label' => lang('Settings') . ' - ' . $settings_category['label'],
-                    'icon'  => $settings_category['icon'],
-                    'url'   => $base_url . '/' . pg_settings_url($settings_key),
-                    'keys'  => array_merge(
-                        array(mb_strtolower($settings_category['label'], 'UTF-8')),
-                        call_user_func_array('array_merge', array_values($settings_category['keywords']))));
-
-                foreach ($settings_category['sections'] as $settings_section_id => $settings_section_label) {
-
-                    $actions[] = array(
-                        'label' => lang('Settings') . ' - ' . $settings_section_label,
-                        'icon'  => $settings_category['icon'],
-                        'url'   => $base_url . '/' . pg_settings_url($settings_key) . '#' . $settings_section_id,
-                        'keys'  => isset($settings_category['keywords'][$settings_section_id])
-                            ? $settings_category['keywords'][$settings_section_id]
-                            : array());
-                }
-            }
-            $actions[] = array('label' => lang('Log'), 'icon' => 'bi-journal-text', 'url' => $base_url . '/view_log.php', 'keys' => array('log', 'kayit', 'journal', 'akt'));
-            $actions[] = array('label' => lang('Backups'), 'icon' => 'bi-database', 'url' => $base_url . '/backups.php', 'keys' => array('yedek', 'backup', 'bak', 'yed'));
-            $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
-        }
-
-        // ── Design ────────────────────────────────────────────────────────────
-        if ($can_design) {
-            $actions[] = array('label' => lang('Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
-            $actions[] = array('label' => lang('Add Style'), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_style.php', 'keys' => array('stil ekle', 'add style', 'yeni stil', 'stilekle'));
-            $actions[] = array('label' => lang('Themes'), 'icon' => 'bi-palette', 'url' => $base_url . '/view_themes.php', 'keys' => array('tema', 'theme', 'them', 'tem'));
-            $actions[] = array('label' => lang('Design Files'), 'icon' => 'bi-filetype-css', 'url' => $base_url . '/view_design_files.php', 'keys' => array('tasarim dosya', 'design file', 'css', 'js', 'des', 'tas'));
-            $actions[] = array('label' => lang('Common Regions'), 'icon' => 'bi-columns-gap', 'url' => $base_url . '/view_regions.php?filter=all_common_regions', 'keys' => array('ortak bolge', 'common region', 'region', 'reg', 'ort', 'common', 'bol'));
-            $actions[] = array('label' => lang('Login Regions'), 'icon' => 'bi-shield-lock', 'url' => $base_url . '/view_regions.php?filter=all_login_regions', 'keys' => array('giris bolge', 'login region', 'logi', 'gir'));
-            $actions[] = array('label' => lang('Designer Regions'), 'icon' => 'bi-code-square', 'url' => $base_url . '/view_regions.php?filter=all_designer_regions', 'keys' => array('tasarim bolge', 'designer region', 'desi'));
-            $actions[] = array('label' => lang('Dynamic Regions'), 'icon' => 'bi-arrow-repeat', 'url' => $base_url . '/view_regions.php?filter=all_dynamic_regions', 'keys' => array('dinamik bolge', 'dynamic region', 'dyna', 'din'));
-            $actions[] = array('label' => lang('Find & Replace'), 'icon' => 'bi-search', 'url' => $base_url . '/find_and_replace.php', 'keys' => array('bul degistir', 'find replace', 'degistir', 'bul'));
-        }
-
-        // Empty search: return only quick actions (no DB query needed)
-        if (strlen($search) < 1) {
-            echo encode_json(array('status' => 'success', 'results' => array(), 'actions' => $actions, 'has_more' => false));
-            exit();
-        }
-
-        $s = escape('%' . $search . '%');
-
-        // Relevance score: exact=100, starts-with=60, contains=30, secondary=15
-        $score_fn = function ($name, $secondary = '') use ($search) {
-            $n = mb_strtolower((string) ($name ?? ''));
-            $q = mb_strtolower($search);
-            $sc = mb_strtolower((string) ($secondary ?? ''));
-            $score = 0;
-            if ($n === $q)
-                $score += 100;
-            elseif (mb_strpos($n, $q) === 0)
-                $score += 60;
-            elseif (mb_strpos($n, $q) !== false)
-                $score += 30;
-            if ($sc !== '' && mb_strpos($sc, $q) !== false)
-                $score += 15;
-            return $score;
-        };
-
-        $add = function ($type, $id, $name, $sub, $score, $extra = array ()) use (&$results) {
-            $results[] = array_merge(array(
-                'type' => $type,
-                'id' => $id,
-                'name' => $name,
-                'sub' => $sub,
-                'score' => $score
-            ), $extra);
-        };
-
-        // ── Pages (all authenticated users) ──────────────────────────────────
-        $rows = db_items(
-            "SELECT page_id AS id, page_name AS name, page_type AS type
-             FROM page
-             WHERE page_name LIKE '$s'
-             LIMIT $per_limit"
-        );
-        foreach ($rows as $r) {
-            $add('page', $r['id'], $r['name'], $r['type'], $score_fn($r['name']));
-        }
-
-        // ── Files (all authenticated users) ──────────────────────────────────
-        $rows = db_items(
-            "SELECT id, name, folder AS folder_id, design
-             FROM files
-             WHERE name LIKE '$s'
-             LIMIT $per_limit"
-        );
-        foreach ($rows as $r) {
-            // Design files restricted to designers+
-            if ($r['design'] && !$can_design)
-                continue;
-            $add(
-                'file',
-                $r['id'],
-                $r['name'],
-                '',
-                $score_fn($r['name']),
-                array('folder_id' => (int) $r['folder_id'], 'design' => (bool) $r['design'])
-            );
-        }
-
-        // ── Menus (manager+) ─────────────────────────────────────────────────
-        if ($can_manage) {
-            $rows = db_items(
-                "SELECT id, name
-                 FROM menus
-                 WHERE name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('menu', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-        }
-
-        // ── Calendars (manager+) ──────────────────────────────────────────────
-        if ($can_manage) {
-            $rows = db_items(
-                "SELECT id, name
-                 FROM calendars
-                 WHERE name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('calendar', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-        }
-
-        // ── Email campaign profiles (manager+) ────────────────────────────────
-        if ($can_manage) {
-            $rows = db_items(
-                "SELECT id, name
-                 FROM email_campaign_profiles
-                 WHERE name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('email_campaign', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-        }
-
-        // ── Forms (manager+ or manage_forms) ──────────────────────────────────
-        if ($can_manage_forms) {
-            $rows = db_items(
-                "SELECT page_id AS id, page_name AS name
-                 FROM page
-                 WHERE " . pg_form_page_sql('page') . "
-                   AND page_name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('form', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-        }
-
-        // ── Users (manager+) ─────────────────────────────────────────────────
-        if ($can_manage) {
-            $rows = db_items(
-                "SELECT user_id AS id,
-                        user_username AS name,
-                        user_email AS sub
-                 FROM user
-                 WHERE (user_username LIKE '$s'
-                    OR user_email LIKE '$s')
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('user', $r['id'], $r['name'], $r['sub'], $score_fn($r['name'], $r['sub']));
-            }
-        }
-
-        // ── E-commerce (manager+ or manage_ecommerce) ────────────────────────
-        if ($can_ecommerce) {
-            // Products
-            $rows = db_items(
-                "SELECT id, name, short_description, image_name
-                 FROM products
-                 WHERE (name LIKE '$s' OR short_description LIKE '$s')
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add(
-                    'product',
-                    $r['id'],
-                    $r['name'],
-                    $r['short_description'],
-                    $score_fn($r['name'], $r['short_description']),
-                    array('image' => $r['image_name'] ?: null)
-                );
-            }
-
-            // Product groups
-            $rows = db_items(
-                "SELECT id, name
-                 FROM product_groups
-                 WHERE name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('product_group', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-
-            // Offers
-            $rows = db_items(
-                "SELECT id, code, description
-                 FROM offers
-                 WHERE (code LIKE '$s' OR description LIKE '$s')
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add(
-                    'offer',
-                    $r['id'],
-                    $r['code'],
-                    $r['description'],
-                    $score_fn($r['code'], $r['description'])
-                );
-            }
-
-            // Orders — search by order_number, customer name, email
-            $s_order_num = escape('%' . ltrim($search, '#') . '%');
-            $rows = db_items(
-                "SELECT
-                    orders.id,
-                    orders.order_number,
-                    TRIM(CONCAT(COALESCE(contacts.first_name,''), ' ', COALESCE(contacts.last_name,''))) AS customer
-                 FROM orders
-                 LEFT JOIN contacts ON orders.contact_id = contacts.id
-                 WHERE orders.status != 'incomplete'
-                   AND (orders.order_number LIKE '$s_order_num'
-                    OR contacts.first_name LIKE '$s'
-                    OR contacts.last_name  LIKE '$s'
-                    OR contacts.email_address LIKE '$s')
-                 ORDER BY orders.order_date DESC
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add(
-                    'order',
-                    $r['id'],
-                    '#' . $r['order_number'],
-                    $r['customer'],
-                    $score_fn($r['order_number'], $r['customer'])
-                );
-            }
-        }
-
-        // ── Design: styles + design files (designer+) ────────────────────────
-        if ($can_design) {
-            $rows = db_items(
-                "SELECT style_id AS id, style_name AS name
-                 FROM style
-                 WHERE style_name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('style', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-        }
-
-        // ── Contacts / Rehber (manager+ or manage_contacts) ──────────────────
-        if ($can_contacts) {
-            $rows = db_items(
-                "SELECT c.id,
-                        TRIM(CONCAT(c.first_name, ' ', c.last_name)) AS name,
-                        COALESCE(NULLIF(c.email_address,''), NULLIF(c.company,'')) AS sub,
-                        COALESCE(NULLIF(f.name,''), NULLIF(c.image,'')) AS image
-                 FROM contacts c
-                 LEFT JOIN files f ON f.id = c.file_id AND c.file_id > 0
-                 WHERE (c.first_name LIKE '$s'
-                    OR c.last_name LIKE '$s'
-                    OR c.email_address LIKE '$s'
-                    OR c.company LIKE '$s')
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $name = $r['name'] ?: lang('Unknown');
-                $add(
-                    'contact',
-                    $r['id'],
-                    $name,
-                    $r['sub'],
-                    $score_fn($r['name'], $r['sub']),
-                    array('image' => $r['image'] ?: null)
-                );
-            }
-        }
-
-        // ── Regions (designer+) ───────────────────────────────────────────────
-        if ($can_design) {
-            $rows = db_items(
-                "SELECT cregion_id AS id, cregion_name AS name
-                 FROM cregion
-                 WHERE cregion_designer_type = 'no'
-                   AND cregion_name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('common_region', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-
-            $rows = db_items(
-                "SELECT cregion_id AS id, cregion_name AS name
-                 FROM cregion
-                 WHERE cregion_designer_type = 'yes'
-                   AND cregion_name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('design_region', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-
-            $rows = db_items(
-                "SELECT id, name
-                 FROM login_regions
-                 WHERE name LIKE '$s'
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('login_region', $r['id'], $r['name'], '', $score_fn($r['name']));
-            }
-        }
-
-        // ── Short links (manager+) ────────────────────────────────────────────
-        if ($can_manage) {
-            $rows = db_items(
-                "SELECT id, name, destination_type
-                 FROM short_links
-                 WHERE name LIKE '$s' AND name <> ''
-                 LIMIT $per_limit"
-            );
-            foreach ($rows as $r) {
-                $add('short_link', $r['id'], $r['name'], $r['destination_type'], $score_fn($r['name']));
-            }
-        }
-
-        // Sort by score desc, paginate
-        usort($results, function ($a, $b) {
-            return $b['score'] - $a['score'];
-        });
-        $has_more = count($results) > $offset + 20;
-        $results = array_slice($results, $offset, 20);
-
-        echo encode_json(array('status' => 'success', 'results' => $results, 'actions' => $actions, 'has_more' => $has_more));
-        exit();
-
-        break;
-
     case 'get_pages':
         $pages = db_items(
             "SELECT
@@ -4438,9 +3011,17 @@ switch ($action) {
         break;
 
     case 'update_toolbar_properties':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
 
-        $_SESSION['software']['toolbar_enabled'] = $request['enabled'];
+        $_SESSION['software']['toolbar_enabled'] = (bool) ($request['enabled'] ?? false);
 
         respond(array('status' => 'success'));
 
@@ -4474,829 +3055,6 @@ switch ($action) {
 
         break;
 
-
-    case 'file_explorer':
-        $user = validate_user();
-        validate_token();
-
-        // The catalog rides this same action but is not part of the folder
-        // tree, so it is gated on commerce rights instead of folder edit
-        // rights.  Asking a basic user for folder rights here would turn away
-        // exactly the person "manage all commerce" was granted to, at the door
-        // of a store the menu had just offered them.  Every explorer_catalog_*
-        // sub-action re-checks the same rule for itself in
-        // view_folder_and_files_f.php; this only keeps the shared preamble
-        // from answering first.
-        $explorer_catalog_request = (strpos((string) ($request['type'] ?? ''), 'explorer_catalog_') === 0);
-
-        if ($explorer_catalog_request == true) {
-            if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
-                log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
-                respond(array(
-                    'status' => 'error',
-                    'request' => (string) ($request['type'] ?? ''),
-                    'message' => lang('Access denied')));
-            }
-        } else {
-            validate_area_access($user, 'user');
-        }
-
-
-        if (isset($request['folder_id']) && ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '') != $request['folder_id']) {
-            $_SESSION['software']['explorer']['folder']['folder_id'] = $request['folder_id'];
-        }
-
-        $folder_id = ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '');
-        if (!isset($folder_id)) {
-            $folder_id = db("SELECT folder_id FROM folder WHERE folder.folder_parent = '0'");
-        }
-
-
-        if (isset($request['view_type']) && ($_SESSION['software']['explorer']['folder']['view_type'] ?? '') != $request['view_type']) {
-            $_SESSION['software']['explorer']['folder']['view_type'] = $request['view_type'];
-        }
-
-        $folder_table_view_type = ($_SESSION['software']['explorer']['folder']['view_type'] ?? '');
-
-        if (!isset($folder_table_view_type)) {
-            $folder_table_view_type = 'list';
-        }
-
-        // A catalog request never carries a folder, so the folder the session
-        // happens to have open is none of its business.
-        if (($explorer_catalog_request == false) && (check_view_access($folder_id) == false)) {
-            $response = array(
-                'status' => 'error',
-                'request' => $request['type'],
-                'message' => lang('Access denied'),
-            );
-            echo encode_json($response);
-            exit();
-        }
-
-        $folders_that_user_has_access_to = array();
-        // prepare expanded folders array from cookie
-        $expanded_folders = isset($_COOKIE['software']['view_folders']['expanded_folders']) ? explode(',', $_COOKIE['software']['view_folders']['expanded_folders']) : array();
-
-        // if user is a basic user, then get folders that user has access to
-        if ($user['role'] == 3) {
-            $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
-        }
-
-        switch ($request['type']) {
-
-            // Combined folder/page/file explorer (view_folder_and_files.php).
-            // These sub-actions return structured JSON and live in their own
-            // include; pg_explorer_handle() responds and exits.
-            case 'explorer_list':
-            case 'explorer_tree':
-            case 'explorer_create_folder':
-            case 'explorer_create_file':
-            case 'explorer_rename':
-            case 'explorer_move':
-            case 'explorer_paste':
-            case 'explorer_delete_files':
-            case 'explorer_upload':
-            case 'explorer_folder_options':
-            case 'explorer_folder_access_get':
-            case 'explorer_folder_access_set':
-            case 'explorer_delete_check':
-            case 'explorer_recycle_delete':
-            case 'explorer_recycle_restore':
-            case 'explorer_hard_delete':
-            case 'explorer_optimize':
-            case 'explorer_webp':
-            case 'explorer_folder_settings_get':
-            case 'explorer_folder_settings_set':
-            case 'explorer_bulk_page_options':
-            case 'explorer_pages_bulk_edit':
-            case 'explorer_bulk_file_options':
-            case 'explorer_files_bulk_edit':
-            case 'explorer_shared_list':
-            case 'explorer_files_design':
-            case 'explorer_file_get':
-            case 'explorer_file_usage':
-            case 'explorer_file_save':
-            case 'explorer_rotate':
-            case 'explorer_backups_list':
-            case 'explorer_backup_zip':
-            case 'explorer_backup_rename':
-            case 'explorer_backup_copy':
-            case 'explorer_backup_delete':
-            case 'explorer_backup_upload':
-            case 'explorer_backup_extract':
-            case 'explorer_backup_chmod':
-            case 'explorer_zip_create':
-            case 'explorer_erp_tree':
-            case 'explorer_erp_list':
-            case 'explorer_zip_extract':
-            case 'explorer_short_links_list':
-            case 'explorer_short_link_options':
-            case 'explorer_short_link_create':
-            case 'explorer_short_link_rename':
-            case 'explorer_short_link_update':
-            case 'explorer_short_link_duplicate':
-            case 'explorer_short_link_delete':
-            case 'explorer_catalog_list':
-            case 'explorer_catalog_tree':
-            case 'explorer_catalog_pages':
-            case 'explorer_catalog_recycle':
-            case 'explorer_catalog_restore':
-            case 'explorer_catalog_purge':
-            case 'explorer_catalog_enable':
-            case 'explorer_bulk_product_options':
-            case 'explorer_products_bulk_edit':
-            case 'explorer_catalog_quick_edit':
-            case 'explorer_catalog_access_get':
-            case 'explorer_catalog_access_set':
-            case 'explorer_catalog_membership_remove':
-            case 'explorer_catalog_create_group':
-            case 'explorer_catalog_rename':
-            case 'explorer_catalog_paste':
-                require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
-                pg_explorer_handle($request, $user, $folders_that_user_has_access_to);
-                break;
-            case 'delete_file':
-                $query =
-                    "SELECT 
-                    files.id,
-                    files.name,
-                    files.folder,
-                    files.description,
-                    files.type,
-                    files.size,
-                    files.design,
-                    files.optimized,
-                    folder.folder_archived
-                FROM files 
-                LEFT JOIN folder ON files.folder = folder.folder_id
-                WHERE files.id = '" . escape($request['file_id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_array($result);
-
-                // A document the ERP module keeps is read-only here, whoever
-                // asks (see pg_files_include_erp_document()).
-                if (is_array($row) && pg_files_include_erp_document(array($row['id']))) {
-                    respond(array(
-                        'status' => 'error',
-                        'request' => $request['type'],
-                        'message' => lang('ERP documents are read-only in the file manager.')));
-                }
-
-                $file_id = $row['id'];
-                $file_design = $row['design'];
-                $file_folder = $row['folder'];
-                $file_name = $row['name'];
-
-                // if the user does not have edit rights to this file's folder,
-                // or this file is a design file and the user is not a designer or administrator,
-                // response error
-                if (
-                    (check_edit_access($file_folder) == false)
-                    ||
-                    (
-                        ($file_design == 1)
-                        && ($user['role'] > 1)
-                    )
-                ) {
-                    $response = array(
-                        'status' => 'error',
-                        'request' => $request['type'],
-                        'message' => lang('Access denied'),
-                    );
-                    echo encode_json($response);
-                    exit();
-                }
-
-                $result = mysqli_query(db::$con, "DELETE FROM files WHERE id = '" . escape($file_id) . "'") or output_error('Query failed');
-                // delete file's system css properties in case any exist
-                $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($file_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-                db("DELETE FROM preview_styles WHERE theme_id = '" . escape($file_id) . "'");
-
-                // Delete file on file system.
-                @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
-
-                log_activity(lang(array('string' => 'file ({var:1}) was deleted', 'vars' => $file_name)), $_SESSION['sessionusername']);
-
-                $response = array(
-                    'status' => 'success',
-                    'request' => $request['type'],
-                    'deleted_file_id' => $file_id,
-                );
-
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'get_folder_id':
-                $response = array(
-                    'status' => 'success',
-                    'request' => $request['type'],
-                    'folder_id' => $folder_id,
-                );
-                echo encode_json($response);
-                exit();
-                break;
-
-            case 'get_breadcrumb':
-                function get_folder_breadcrumb($parent_folder_id)
-                {
-                    global $user;
-                    global $folders_that_user_has_access_to;
-                    $output_parent_folder_name = '';
-
-                    $current_folder_name = db("SELECT folder_name FROM folder WHERE folder.folder_id = '" . escape($parent_folder_id) . "'");
-                    if (db("SELECT folder_level FROM folder WHERE folder.folder_id = '" . escape($parent_folder_id) . "'") > 0) {
-                        $parent_id = $parent_folder_id;
-                        for (
-                            $current_folder_level = db("SELECT folder_level FROM folder WHERE folder.folder_id = '" . escape($parent_folder_id) . "'");
-                            $current_folder_level >= 0;
-                            $current_folder_level--
-                        ) {
-                            $parent_id = db("SELECT folder_parent FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
-                            $parent_folder_name = db("SELECT folder_name FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
-                            if ($parent_folder_name) {
-                                $output_parent_folder_name = '<li class="breadcrumb-item"><a class="text-body-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . (int) $parent_id . '\'});">' . h($parent_folder_name) . '</a></li>' . $output_parent_folder_name;
-                            }
-
-                        }
-
-                    }
-
-                    return
-                        '<nav class="overflow-auto" style="--bs-border-opacity: 0.05;--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'8\' height=\'8\'%3E%3Cpath d=\'M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z\' fill=\'%236c757d\'/%3E%3C/svg%3E&#34;);">
-                        <ol class="breadcrumb mb-0">
-                            ' . $output_parent_folder_name . '
-                            <li class="breadcrumb-item active text-body" aria-current="page">' . h($current_folder_name) . '</li>
-                        </ol>
-                    </nav>';
-                }
-
-                $response = array(
-                    'status' => 'success',
-                    'request' => $request['type'],
-                    'content' => get_folder_breadcrumb($folder_id),
-                );
-
-                echo encode_json($response);
-                exit();
-                break;
-
-
-            case 'get_tables':
-
-                function get_folder_table($parent_folder_id, $folder_table_view_type)
-                {
-                    global $user;
-                    global $folders_that_user_has_access_to;
-                    function get_access_control_icon_classes($access_control_type)
-                    {
-                        switch ($access_control_type) {
-                            case 'public':
-                                $output = ' bi-people-fill public ';
-                                break;
-                            case 'guest':
-                                $output = ' bi-incognito guest ';
-                                break;
-                            case 'registration':
-                                $output = ' bi-person-fill registration ';
-                                break;
-                            case 'membership':
-                                $output = ' bi-person-vcard-fill membership ';
-                                break;
-                            case 'private':
-                                $output = ' bi-lock-fill private ';
-                                break;
-                        }
-                        return $output;
-                    }
-
-                    function get_file_icon($file_type)
-                    {
-                        $file_class = ' bi-file-earmark ';
-
-                        switch (mb_strtolower($file_type)) {
-                            case 'css':
-                                $file_class = ' bi-filetype-css ';
-                                break;
-                            case 'js':
-                                $file_class = ' bi-filetype-js ';
-                                break;
-                            case 'jpg':
-                            case 'jpeg':
-                            case 'png':
-                            case 'gif':
-                            case 'svg':
-                            case 'webp':
-                                $file_class = ' bi-file-earmark-image ';
-                                break;
-                            case 'pdf':
-                                $file_class = ' bi-file-earmark-pdf ';
-                                break;
-                            case 'zip':
-                                $file_class = ' bi-file-earmark-zip ';
-                                break;
-                            case 'mp4':
-                                $file_class = ' bi-file-earmark-play ';
-                                break;
-                            case 'mp3':
-                                $file_class = ' bi-file-earmark-music ';
-                                break;
-                        }
-
-                        return $file_class;
-                    }
-
-
-
-                    if (!isset($parent_folder_id)) {
-                        $parent_folder_id = db("SELECT folder_id FROM folder WHERE folder.folder_level = '0'");
-                    }
-
-                    // get styles
-                    $query = "SELECT style_id, style_name FROM style";
-                    $style_result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-                    // get folders
-                    $query = "SELECT
-                                folder.folder_id,
-                                folder.folder_name,
-                                folder.folder_level,
-                                folder.folder_style,
-                                folder.folder_archived,
-                                folder.folder_user,
-                                style.style_id,
-                                style.style_name,
-                                user.user_username as user_username
-                             FROM folder
-                             LEFT JOIN style ON folder.folder_style = style.style_id
-                             LEFT JOIN user ON folder.folder_user = user.user_id
-                             WHERE folder.folder_parent = '" . escape($parent_folder_id) . "'
-                             ORDER BY folder.folder_order, folder.folder_name";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $output = '';
-
-                    while ($folder = mysqli_fetch_assoc($result)) {
-                        // if user has access to folder
-                        if (check_folder_access_in_array($folder['folder_id'], $folders_that_user_has_access_to) == true) {
-                            $folder_access = true;
-                        } else {
-                            $folder_access = false;
-                        }
-
-                        // if user has access to folder
-                        if ($folder_access == true) {
-                            $access_control_type = get_access_control_type($folder['folder_id']);
-                            $style = '';
-                            // If the folder style is not set to zero then set the page style name.
-                            if ($folder['folder_style'] != '0') {
-                                $style = '<span class="fs-5 bi bi-palette" title="' . lang('Style') . ': ' . h($folder['style_name']) . '"></span>';
-                            }
-
-                            $folder_archived = '';
-                            if ($folder['folder_archived'] == '1') {
-                                $folder_archived = '<span class="fs-5 bi bi-archive" title="' . lang('Archived') . '"></span>';
-                            }
-
-                            $folder_user = '';
-                            if ($folder['user_username'] != NULL) {
-                                $folder_user = h($folder['user_username']);
-                            }
-
-                            $parent_folder_pages_size = 0;
-                            $parent_folder_file_size = 0;
-
-                            //get size of parent folder or this folder
-                            $parent_folder_query = "SELECT
-                            folder_id
-                            FROM folder
-                            WHERE folder.folder_parent = '" . e($folder["folder_id"]) . "' OR folder.folder_id = '" . e($folder["folder_id"]) . "'";
-                            $parent_folder_result = mysqli_query(db::$con, $parent_folder_query) or output_error('Query failed.');
-                            while ($parent_folder = mysqli_fetch_assoc($parent_folder_result)) {
-
-
-                                //get all page sizes from this and parent folders.
-                                $parent_folder_page_query = "SELECT
-                                page_id
-                                FROM page
-                                LEFT JOIN folder ON page.page_folder = folder.folder_id
-                                WHERE folder.folder_id = '" . e($parent_folder["folder_id"]) . "'";
-                                $parent_folder_page_result = mysqli_query(db::$con, $parent_folder_page_query) or output_error('Query failed.');
-
-                                while ($parent_folder_page_rows = mysqli_fetch_assoc($parent_folder_page_result)) {
-                                    $parent_folder_pages_size = $parent_folder_pages_size + db("SELECT sum(char_length(pregion_content)) FROM pregion WHERE pregion_page = '" . e($parent_folder_page_rows["page_id"]) . "'");
-                                }
-
-                                //get all files sizes from this and parent folders.
-                                $parent_folder_file_query = "SELECT
-                                size
-                                FROM files
-                                LEFT JOIN folder ON files.folder = folder.folder_id
-                                WHERE files.folder = '" . e($parent_folder["folder_id"]) . "'";
-                                $parent_folder_file_result = mysqli_query(db::$con, $parent_folder_file_query) or output_error('Query failed.');
-
-                                while ($parent_folder_file_rows = mysqli_fetch_assoc($parent_folder_file_result)) {
-                                    $parent_folder_file_size = $parent_folder_file_size + $parent_folder_file_rows["size"];
-                                }
-
-                            }
-
-                            //Page size from pregions.
-                            $size = '';
-                            if ($parent_folder_pages_size > 0 || $parent_folder_file_size > 0) {
-                                $size = h(convert_bytes_to_string($parent_folder_pages_size + $parent_folder_file_size));
-                            }
-
-                            if (isset($folder_table_view_type) && $folder_table_view_type == 'grid') {
-                                // output folder as grid
-                                $output .=
-                                    '<div class="col-6 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2">
-                                        <div style="min-height:130px;" class="card h-100 hoverable border-0 bg-transparent shadow-none pointer user-select-none " folder_id="' . $folder['folder_id'] . '"  onclick="get_file_explorer({folder_id:\'' . $folder['folder_id'] . '\'});">
-                                            <div class="card-header border-0 bg-transparent p-1 d-flex">
-                                                <input class="d-none form-check-input show-on-hovered" type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" />
-                                            </div>
-                                            <div class="card-body text-center position-relative overflow-hidden p-0">
-                                                <div class="text-center position-relative">
-                                                    <i class="bi display-3 bi-folder ' . $access_control_type . '"></i>
-                                                    <i class="bi fs-5 position-absolute top-50 start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></i>
-
-                                                </div>
-                                                <div class="d-none">' . h($style) . '</div>
-                                                <div class="d-none">' . $access_control_type . '</div>
-                                                <div class="d-none">' . $folder_archived . '</div>
-                                            </div>
-                                            <div class="card-footer border-0 p-1 text-center bg-transparent">
-                                                <div class="text-truncate">' . h($folder['folder_name']) . '</div>
-                                            </div>
-                                        </div>
-                                    </div>';
-
-                            } else {
-                                // output folder as table
-                                $output .=
-                                    '<tr type="folder" folder_id="' . $folder['folder_id'] . '" class="unselectable pointer " onclick="get_file_explorer({folder_id:\'' . $folder['folder_id'] . '\'});">' .
-                                    '<td class="position-relative"></td>' .
-                                    '<td class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" /></td>' .
-                                    '<td class="position-relative">
-                                            <span class="fs-5 bi bi-folder position-relative overflow-hidden ' . $access_control_type . '" title="' . lang(ucwords($access_control_type)) . '">
-                                                <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></span>
-                                            </span>
-                                            ' . $folder_archived . '
-                                            ' . $style . '
-                                        </td>' .
-                                    '<td >' . h($folder['folder_name']) . '</td>' .
-                                    '<td >' . $size . '</td>' .
-                                    '<td>' . $folder_user . '</td>
-                                    </tr>';
-                            }
-                        }
-                    }
-
-
-
-                    // if user has access to folder
-                    if (check_folder_access_in_array($parent_folder_id, $folders_that_user_has_access_to) == true) {
-                        // get pages
-                        $query = "SELECT
-                                    page.page_id,
-                                    page.page_name,
-                                    page.page_folder,
-                                    page.page_style,
-                                    page.page_home,
-                                    page.page_type,
-                                    page.page_user,
-                                    style.style_id,
-                                    style.style_name,
-                                    folder.folder_archived,
-                                    folder.folder_id,
-                                    user.user_username as user_username
-                                 FROM page
-                                 LEFT JOIN style ON page.page_style = style.style_id
-                                 LEFT JOIN folder ON page.page_folder = folder.folder_id
-                                 LEFT JOIN user ON page.page_user = user.user_id
-                                 WHERE page.page_folder = '" . escape($parent_folder_id) . "'
-                                 ORDER BY page.page_name";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        $access_control_type = '';
-                        while ($page = mysqli_fetch_assoc($result)) {
-
-                            $access_control_type = get_access_control_type($page['folder_id']);
-
-                            $style = '';
-                            // If the folder style is not set to zero then set the page style name.
-                            if ($page['page_style'] != '0') {
-                                $style = '<span class="fs-5 bi bi-palette" title="' . lang('Style') . ': ' . h($page['style_name']) . '"></span>';
-                            }
-
-                            //Check if page is homepage, if its output icon.
-                            $home = '';
-                            if ($page['page_home'] == 'yes') {
-                                $home = '<span class="fs-5 bi bi-house" title="' . lang('Homepage') . '"></span>';
-                            }
-
-                            //Check if page is in archived folder.
-                            $folder_archived = '';
-                            if ($page['folder_archived'] == '1') {
-                                $folder_archived = '<span class="fs-5 bi bi-archive" title="' . lang('Archived') . '"></span>';
-                            }
-
-                            //Page size from pregions.
-                            $size = '';
-                            if (db("SELECT sum(char_length(pregion_content)) FROM pregion WHERE pregion_page = '" . e($page["page_id"]) . "'") > 0) {
-                                $size = h(convert_bytes_to_string(db("SELECT sum(char_length(pregion_content)) FROM pregion WHERE pregion_page = '" . e($page["page_id"]) . "'")));
-                            }
-
-                            //Modifier user.
-                            $page_user = '';
-                            if ($page['user_username'] != NULL) {
-                                $page_user = h($page['user_username']);
-                            }
-
-
-                            if (isset($folder_table_view_type) && $folder_table_view_type == 'grid') {
-                                // output page as grid
-                                $output .=
-                                    '<div type="page" page_id="' . $page['page_id'] . '" class="col-6 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2 pointer custom-contextmenu explorer-contextmenu" onclick="preview_page({page_id:\'' . $page['page_id'] . '\',page_name:\'' . h($page['page_name']) . '\'})">
-                                        <div style="min-height:130px;" class="card h-100 hoverable border-0 bg-transparent shadow-none" >
-                                           <div class="card-header border-0 bg-transparent p-1 d-flex">
-                                                <input class="d-none form-check-input show-on-hovered" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" />
-                                            </div>
-                                            <div class="card-body text-center position-relative overflow-hidden p-0">
-                                                <div class="text-center position-relative">
-                                                    <i class="bi display-3 bi-window-fullscreen ' . $access_control_type . '"></i>
-                                                    <i style="top:58%;" class="bi fs-5 position-absolute start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></i>
-                                                </div>
-                                                <div class="d-none">' . h($style) . '</div>
-                                                <div class="d-none">' . $home . '</div>
-                                                <div class="d-none">' . h($page['page_type']) . '</div>
-                                                <div class="d-none">' . $access_control_type . '</div>
-                                                <div class="d-none">' . $folder_archived . '</div>
-                                            </div>
-                                            <div class="card-footer border-0 p-1 text-center bg-transparent">
-                                                <div class="text-truncate">' . h($page['page_name']) . '</div>
-                                            </div>
-                                        </div>
-                                    </div>';
-
-                            } else {
-                                // output page as table
-                                $output .=
-                                    '<tr type="page" page_id="' . $page['page_id'] . '" class="unselectable pointer custom-contextmenu explorer-contextmenu" onclick="preview_page({page_id:\'' . $page['page_id'] . '\',page_name:\'' . h($page['page_name']) . '\'})">' .
-                                    '<td class="position-relative"></td>' .
-                                    '<td class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>' .
-                                    '<td class="position-relative">
-                                            <span class="fs-5 position-relative  overflow-hidden bi bi-window-fullscreen ' . $access_control_type . '" title="' . $access_control_type . '">
-                                                <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></span>
-                                            </span>
-                                            ' . $folder_archived . '
-                                            ' . $style . '
-                                            ' . $home . '
-                                        </td>' .
-                                    '<td title="page type: ' . h($page['page_type']) . ' ">' . h($page['page_name']) . '</td>' .
-                                    '<td>' . $size . '</td>' .
-                                    '<td>' . $page_user . '</td>' .
-                                    '</tr>';
-                            }
-                        }
-
-                        // get files
-                        $query = "SELECT
-                                    files.id,
-                                    files.name,
-                                    files.design,
-                                    files.type,
-                                    files.size,
-                                    files.user,
-                                    files.timestamp,
-                                    folder.folder_archived,
-                                    folder.folder_id,
-                                    user.user_username as user_username
-                                 FROM files
-                                 LEFT JOIN folder ON files.folder = folder.folder_id
-                                 LEFT JOIN user ON files.user = user.user_id
-                                 WHERE files.folder = '" . escape($parent_folder_id) . "'
-                                 ORDER BY files.name";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        $access_control_type = '';
-
-                        while ($file = mysqli_fetch_assoc($result)) {
-
-                            // if the user does not have edit rights to this file's folder,
-                            // or this file is a design file and the user is not a designer or administrator,
-                            if (
-                                (check_edit_access($file['folder_id']) == false)
-                                ||
-                                (
-                                    ($file['design'] == 1)
-                                    && ($user['role'] > 1)
-                                )
-                            ) {
-
-                            } else {
-
-                                $design = 'false';
-                                $access_control_type = get_access_control_type($file['folder_id']);
-
-                                // if the file is a design file, then set design to true
-                                if ($file['design'] == '1') {
-                                    $design = 'true';
-                                }
-                                $file_time_before_upload = time() - $file['timestamp'];
-                                $new_file_icon = '';
-                                if ($file_time_before_upload < 900) {
-                                    $new_file_icon = '<i class="bi bi-clock-history" title="' . lang('New file') . '"></i>';
-                                }
-
-                                $access = '';
-                                // if this is not a design file or if the user has access to design files,
-                                // then the user has access so send that
-                                if (
-                                    ($file['design'] == 0)
-                                    || ($user['role'] <= 1)
-                                ) {
-                                    $access = 'true';
-                                }
-
-
-
-                                $file_user = '';
-                                if ($file['user_username'] != NULL) {
-                                    $file_user = h($file['user_username']);
-                                }
-
-
-
-
-
-                                $folder_archived = '';
-                                if ($file['folder_archived'] == '1') {
-                                    $folder_archived = '<span class="fs-5 bi bi-archive" title="' . lang('Archived') . '"></span>';
-                                }
-
-
-
-                                $size = '';
-                                if ($file['size'] != '' && $file['size'] != 0) {
-                                    $size = h(convert_bytes_to_string($file['size']));
-                                }
-
-
-
-
-                                if (isset($folder_table_view_type) && $folder_table_view_type == 'grid') {
-                                    // If the file is an image.
-                                    if (
-                                        (mb_strtolower($file['type']) == 'bmp')
-                                        || (mb_strtolower($file['type']) == 'gif')
-                                        || (mb_strtolower($file['type']) == 'jpg')
-                                        || (mb_strtolower($file['type']) == 'jpeg')
-                                        || (mb_strtolower($file['type']) == 'png')
-                                        || (mb_strtolower($file['type']) == 'tif')
-                                        || (mb_strtolower($file['type']) == 'tiff')
-                                    ) {
-
-                                        // Get the dimensions of the image.
-                                        $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                                        $image_width = $image_size[0];
-                                        $image_height = $image_size[1];
-
-                                        // Output the image dimension to the table.
-                                        $output_image_dimensions = lang('width') . ': ' . $image_width . ' px ' . lang('height') . ': ' . $image_height . ' px';
-
-                                        // Set the maximum dimension size for the image.
-                                        $max_dimension = 75;
-                                        $output_image_style = '';
-
-                                        if ($image_width >= $image_height) {
-                                            $output_image_style = 'style="max-width:100%;max-height:auto;" ';
-                                        } else {
-                                            $output_image_style = 'style="max-width:auto;max-height:100%;" ';
-                                        }
-
-                                        // Call function to resize image.
-                                        $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-                                        $output_thumbnail = '<img ' . $output_image_style . ' title="' . $output_image_dimensions . '" class="position-absolute no-popover start-50 top-50 translate-middle " src="' . PATH . $file['name'] . '" />';
-                                        $output_file_access_icon = '<i class="bi ' . get_access_control_icon_classes($access_control_type) . ' "></i>';
-                                    } else {
-                                        $output_thumbnail = '
-                                            <div class="text-center position-relative">
-                                                <i class="bi display-3 ' . get_file_icon($file['type']) . ' ' . $access_control_type . '"></i>
-                                                <i style="top:50%;" class="bi fs-5 position-absolute start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></i>
-                                            </div>';
-                                        $output_image_dimensions = '';
-                                        $output_file_access_icon = '';
-                                    }
-
-                                    // output file as grid
-                                    $output .=
-                                        '<div type="file" class="col-6 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2 pointer custom-contextmenu explorer-contextmenu" file_id="' . $file['id'] . '"  onclick="preview_file({file_name:\'' . $file['name'] . '\',file_id:\'' . $file['id'] . '\',file_type:\'' . $file['type'] . '\'})">
-                                            <div style="min-height:130px;" class="card h-100 hoverable border-0 bg-transparent shadow-none">
-                                                <div class="card-header border-0 bg-transparent p-1 d-flex">
-                                                    <input class="d-none form-check-input show-on-hovered" type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" />
-                                                    <div class="ms-auto d-inline-block">
-                                                        ' . $new_file_icon . '
-                                                        ' . $output_file_access_icon . '
-                                                    </div>
-                                                </div>
-                                                <div class="card-body text-center position-relative overflow-hidden p-0">
-                                                    ' . $output_thumbnail . '
-                                                    <div class="d-none">' . $design . '</div>
-                                                    <div class="d-none">' . $access . '</div>
-                                                    <div class="d-none">' . $access_control_type . '</div>
-                                                    <div class="d-none">' . $folder_archived . '</div>
-                                                </div>
-                                                <div class="card-footer border-0 p-1 text-center bg-transparent">
-                                                    <div class="text-truncate">' . h($file['name']) . '</div>
-                                                </div>
-                                            </div>
-                                        </div>';
-
-                                } else {
-
-                                    // output file as table
-                                    $output .=
-                                        '<tr type="file" file_id="' . $file['id'] . '" class="unselectable pointer custom-contextmenu explorer-contextmenu" onclick="preview_file({file_name:\'' . $file['name'] . '\',file_id:\'' . $file['id'] . '\',file_type:\'' . $file['type'] . '\'})">' .
-                                        '<td class="position-relative"></td>' .
-                                        '<td  class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" /></td>' .
-                                        '<td class="position-relative">
-                                            <span class="fs-5 position-relative overflow-hidden bi ' . get_file_icon($file['type']) . ' ' . $access_control_type . '" title="' . $access_control_type . '">
-                                                <span style="font-size:40%" class="bi position-absolute top-50 start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></span>
-                                            </span>
-                                            ' . $new_file_icon . '
-                                            ' . $folder_archived . '
-                                        </td>' .
-                                        '<td title="design:' . $design . ' |access: ' . $access . ' ">' . h($file['name']) . '</td>' .
-                                        '<td>' . $size . '</td>' .
-                                        '<td>' . $file_user . '</td>' .
-                                        '</tr>';
-                                }
-                            }
-                        }
-                    }
-
-                    if (isset($folder_table_view_type) && $folder_table_view_type == 'grid') {
-                        if ($output == '') {
-                            $output = '
-                            <div class="container-fluid">
-                            <div class="row my-5 row-cols-1 g-3">
-                                <div class="col-12 text-center">
-                                    <i class="bi display-3 bi-folder2-open ' . $access_control_type . '"></i>
-                                    <p>' . lang('This folder is a bit quiet.') . '</p>
-                                </div>
-                            </div>
-                            </div>';
-                        } else {
-                            $output = '<div class="container-fluid"><div class="row p-2 g-3">' . $output . '</div></div>';
-                        }
-                        //defualt
-                    } else {
-                        $output_table_classes = '';
-                        if (isset($folder_table_view_type) && $folder_table_view_type == 'minimal') {
-                            //minimal table view
-                            $output_table_classes = 'chart table table-hover table-sm table-borderless table-condensed datatable-restricted-mode datatable-no-info datatable-click-to-select';
-                        } else {
-                            //normal table view
-                            $output_table_classes = 'chart table-condensed table-hover table datatable-restricted-mode datatable-no-info datatable-click-to-select ';
-                        }
-
-                        $output = '
-                        <table class="' . $output_table_classes . '" style="width:100%" >
-                            <thead>
-                                <tr>
-                                    <th class="noVis"></th>
-                                    <th class="noVis d-none">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all">
-                                        </div>
-                                    </th>
-                                    <th class="noVis"><i class="bi bi-file-earmark"></i></th>
-                                    <th class="noVis">' . lang('Name') . '</th>
-                                    <th>' . lang('Size') . '</th>
-                                    <th>' . lang('Last Modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ' . $output . '
-                            </tbody>
-                        </table>';
-                    }
-
-                    return $output;
-                }
-                $response = array(
-                    'status' => 'success',
-                    'request' => $request['type'],
-                    'view_type' => $folder_table_view_type,
-                    'content' => get_folder_table($folder_id, $folder_table_view_type),
-                );
-                echo encode_json($response);
-                break;
-
-
-        }
-        break;
 
     case 'getproductlist':
         $data = array();
@@ -5487,8 +3245,23 @@ switch ($action) {
 
     // ── Barcode: get all barcodes for a product ─────────────────────────
     case 'get_product_barcodes':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_id = (int) ($request['product_id'] ?? 0);
@@ -5507,8 +3280,23 @@ switch ($action) {
 
     // ── Barcode: generate a unique barcode for a product ─────────────────
     case 'generate_product_barcode':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_id = (int) ($request['product_id'] ?? 0);
@@ -5549,8 +3337,23 @@ switch ($action) {
 
     // ── Barcode: save a new barcode for a product (always inserts) ────────
     case 'save_product_barcode':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_id = (int) ($request['product_id'] ?? 0);
@@ -5585,8 +3388,23 @@ switch ($action) {
 
     // ── Barcode: delete a single barcode row by id ───────────────────────
     case 'delete_product_barcode':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $id = (int) ($request['id'] ?? 0);
@@ -5601,8 +3419,23 @@ switch ($action) {
 
     // ── Barcode: bulk assign barcodes to selected products ───────────────
     case 'bulk_assign_barcodes':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_ids = isset($request['product_ids']) ? (array) $request['product_ids'] : array();
@@ -5667,8 +3500,23 @@ switch ($action) {
 
     // ── Barcode: save global label template ──────────────────────────────
     case 'save_barcode_template':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $template = isset($request['template']) ? trim($request['template']) : '';

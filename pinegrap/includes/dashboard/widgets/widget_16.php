@@ -38,7 +38,7 @@ function pg_dashboard_widget_16($request, $user)
             last_modified_user.user_username as last_modified_username
         FROM currencies
         LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
-        ORDER BY base DESC,name DESC LIMIT 20";
+        ORDER BY base DESC,name DESC,currencies.id DESC LIMIT 20";
 
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         while ($row = mysqli_fetch_assoc($result)) {

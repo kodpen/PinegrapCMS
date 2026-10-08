@@ -30,7 +30,7 @@ function pg_dashboard_widget_15($request, $user)
             "SELECT offers.id, offers.code, offers.description, offers.status,
                     offers.start_date, offers.end_date
              FROM offers
-             ORDER BY offers.end_date ASC
+             ORDER BY offers.end_date ASC, offers.id ASC
              LIMIT 60"
         );
 
@@ -58,9 +58,12 @@ function pg_dashboard_widget_15($request, $user)
             }
         }
 
-        // Sort expired by end_date DESC (most recently expired first)
+        // Sort expired by end_date DESC (most recently expired first), then
+        // by id: usort() is not stable before PHP 8.0, so equal dates would
+        // otherwise come out in any order.
         usort($expired, function ($a, $b) {
-            return strcmp($b['end_date'], $a['end_date']);
+            $by_date = strcmp($b['end_date'], $a['end_date']);
+            return ($by_date !== 0) ? $by_date : ((int) $a['id'] <=> (int) $b['id']);
         });
 
         // "Automatic - cart is 100.00 or more -> %100 off shipping":

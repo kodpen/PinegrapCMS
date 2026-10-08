@@ -49,6 +49,12 @@ Pinegrap için yazılan hiçbir dosya LiveSite başlığı taşımaz. Yeni PHP/J
   $user)` echo/exit yapmaz, `status`/`message`/`data` dizisi döndürür. Id
   `welcome.php` kayıt defterine de girer; 22 ve 24 emeklidir, yeniden
   kullanılmaz.
+- Yeni panel AJAX eylemi `includes/panel/<grup>.php` dosyasına
+  `pg_panel_<action>($request, $action)` olarak girer (kapı
+  `PG_PANEL_ACTIONS`) ve `pg_panel_actions()` tablosuna satır eklenir.
+  `exempt` (genel kapı zincirinde muaf mı), `token` (`validate_token()`
+  çağırıyor mu) ve `write` doğru doldurulur; `tests/panel_actions_test.php`
+  bunları handler kaynağı ve `api.php` zinciriyle karşılaştırır.
 
 ## Kapı sabiti
 
