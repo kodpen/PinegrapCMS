@@ -362,6 +362,8 @@ Komut: `grep -rn --include=*.php --include=*.js -E "(^|[^a-zA-Z0-9_>:\$])<ad>\("
 
 ## Genel kapı muafiyet listesi (`api.php:155-251`)
 
+Güncellendi (+13): `push_config`, `push_subscribe`, `push_unsubscribe`, `push_test`, `push_pending`, `user_pinned_app_update`, `update_toolbar_properties`, `get_product_barcodes`, `generate_product_barcode`, `save_product_barcode`, `delete_product_barcode`, `bulk_assign_barcodes`, `save_barcode_template` muafiyet zincirine eklendi (soru 1'in cevabı; kural ve gerekçe `docs/degisiklikler.md` panel eylem tablosu bölümü). `update_dashboard_appearance` genel kapıda kaldı. Aşağıdaki tablo ekleme öncesini gösterir.
+
 38 tam ad + 3 önek kuralı = **41** madde (görevde 40 dendi; fark: `get_widget_data` ya da önek kuralları sayılmamış olabilir).
 Her tam adın bir case'i var; case'i olmayan muaf ad yok.
 

@@ -246,6 +246,37 @@ if (
     and ($action != 'write_permissions_repair')
     and ($action != 'purge_cache')
 
+    // Browser notifications for this device. The bell they hang from is drawn
+    // for every backend role, and each of these touches only the caller's own
+    // subscriptions and devices, so every role may use them; the case blocks
+    // check the session and the token for themselves.
+    and ($action != 'push_config')
+    and ($action != 'push_subscribe')
+    and ($action != 'push_unsubscribe')
+    and ($action != 'push_test')
+
+    // Asked by the service worker, which cannot hold a form token. It only
+    // reads what the bell would show the same person, so the case block asks
+    // for the session alone.
+    and ($action != 'push_pending')
+
+    // Personal settings: the pinned apps live in the caller's own user row and
+    // the front-end toolbar's open/closed state in the caller's own session.
+    // Every role; the case blocks check the session and the token.
+    and ($action != 'user_pinned_app_update')
+    and ($action != 'update_toolbar_properties')
+
+    // Product barcodes and the label template are drawn on the product
+    // screens, which admit whoever manages the store (roles 0-2, or a basic
+    // user with manage_ecommerce). The case blocks apply that same rule, so
+    // an endpoint never refuses a button its screen offered.
+    and ($action != 'get_product_barcodes')
+    and ($action != 'generate_product_barcode')
+    and ($action != 'save_product_barcode')
+    and ($action != 'delete_product_barcode')
+    and ($action != 'bulk_assign_barcodes')
+    and ($action != 'save_barcode_template')
+
 ) {
 
     // The password was right but the account has a second step, which a
@@ -694,6 +725,14 @@ switch ($action) {
         break;
 
     case 'push_config':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -727,6 +766,14 @@ switch ($action) {
         break;
 
     case 'push_subscribe':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -760,6 +807,14 @@ switch ($action) {
         break;
 
     case 'push_unsubscribe':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -776,6 +831,14 @@ switch ($action) {
         break;
 
     case 'push_test':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/push.php');
@@ -800,6 +863,14 @@ switch ($action) {
         // to hold a form token: it is woken by the operating system, with no
         // page of its own to have been handed one. The request only reads, and
         // it reads exactly what the bell would have shown the same person.
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/notifications.php');
 
@@ -870,6 +941,14 @@ switch ($action) {
         // The list is written straight into the operator's own user row, so it
         // has to come from a signed-in session with a valid token, and the
         // entries can only be menu item numbers.
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
         validate_token();
 
@@ -2932,9 +3011,17 @@ switch ($action) {
         break;
 
     case 'update_toolbar_properties':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         validate_token();
 
-        $_SESSION['software']['toolbar_enabled'] = $request['enabled'];
+        $_SESSION['software']['toolbar_enabled'] = (bool) ($request['enabled'] ?? false);
 
         respond(array('status' => 'success'));
 
@@ -3158,8 +3245,23 @@ switch ($action) {
 
     // ── Barcode: get all barcodes for a product ─────────────────────────
     case 'get_product_barcodes':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_id = (int) ($request['product_id'] ?? 0);
@@ -3178,8 +3280,23 @@ switch ($action) {
 
     // ── Barcode: generate a unique barcode for a product ─────────────────
     case 'generate_product_barcode':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_id = (int) ($request['product_id'] ?? 0);
@@ -3220,8 +3337,23 @@ switch ($action) {
 
     // ── Barcode: save a new barcode for a product (always inserts) ────────
     case 'save_product_barcode':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_id = (int) ($request['product_id'] ?? 0);
@@ -3256,8 +3388,23 @@ switch ($action) {
 
     // ── Barcode: delete a single barcode row by id ───────────────────────
     case 'delete_product_barcode':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $id = (int) ($request['id'] ?? 0);
@@ -3272,8 +3419,23 @@ switch ($action) {
 
     // ── Barcode: bulk assign barcodes to selected products ───────────────
     case 'bulk_assign_barcodes':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $product_ids = isset($request['product_ids']) ? (array) $request['product_ids'] : array();
@@ -3338,8 +3500,23 @@ switch ($action) {
 
     // ── Barcode: save global label template ──────────────────────────────
     case 'save_barcode_template':
+        // Exempt from the general gate, which answered a request without a
+        // session this way; the same answer is kept.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
         $user = validate_user();
-        validate_ecommerce_access($user);
+        // The product screens' own rule, answered in JSON: roles 0-2, or a
+        // basic user with manage_ecommerce.
+        if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied')));
+        }
         validate_token();
 
         $template = isset($request['template']) ? trim($request['template']) : '';

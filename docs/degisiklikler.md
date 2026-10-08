@@ -190,12 +190,54 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 **Açık kalan.**
 
-1. `push_*` (5), `user_pinned_app_update`, `update_dashboard_appearance`,
-   `update_toolbar_properties` ve 6 barkod ucu genel kapının arkasında (rol ≤
-   1). Kardeşleri (`update_dashboard_widgets`, `tour_seen`, bildirim uçları)
-   muaf; barkod uçlarının kendi `validate_ecommerce_access`'i rol 2/3'e hiç
-   ulaşmıyor. Bilinçli mi, yoksa muafiyet listesi mi eksik? Ürün sahibine
-   soru (envanter soru 1). Davranış aynen korundu.
+1. **Çözüldü.** `push_*` (5), `user_pinned_app_update`,
+   `update_dashboard_appearance`, `update_toolbar_properties` ve 6 barkod
+   ucu genel kapının arkasındaydı (rol ≤ 1); kardeşleri muaftı ve barkod
+   uçlarının kendi `validate_ecommerce_access`'i rol 2/3'e hiç ulaşmıyordu.
+   Ürün sahibine göre bilinçli değildi. İlke: **uç kuralı = UI
+   görünürlüğü** — arayüzün sunduğu düğmeyi uç reddetmez, sunmadığını uç
+   açmaz. 13 ad muafiyet zincirine yorumlarıyla eklendi; her case
+   `if (!USER_LOGGED_IN) respond('Invalid login.')` ile açılır (oturumsuz
+   yanıt genel kapınınkiyle aynı JSON kalır; önce `validate_user()` çağıran
+   uçlar aksi halde 302 dönerdi), mevcut kontroller yerinde ve sırasında.
+   - `push_config`, `push_subscribe`, `push_unsubscribe`, `push_test`:
+     oturum + token, her panel rolü. Çan menüsündeki "Bu cihazda
+     bildirimler" satırı `output_header()`'da her role çiziliyor; uçlar
+     yalnız çağıranın kendi aboneliğine ve cihazlarına dokunur.
+   - `push_pending`: yalnız oturum (token yok), her rol. Çağıran service
+     worker (`sw.js`) token tutamaz; uç yalnız okur. Oturumsuz JSON kontrolü
+     burada özellikle önemli: 302 gelirse worker `response.json()`'da kırılır.
+   - `user_pinned_app_update` (kendi `user` satırı) ve
+     `update_toolbar_properties` (kendi oturumu; değer artık `(bool)`):
+     oturum + token, her rol. Ön yüz araç çubuğu `get_page.php`'de rol 2/3'e
+     de çiziliyordu, aç/kapa tercihi hatırlanmıyordu.
+   - 6 barkod ucu: oturum + e-ticaret erişimi + token. Ürün ekranlarının
+     kendi kapısı (`validate_ecommerce_access`: rol 0–2 ya da rol 3 +
+     `manage_ecommerce`) uçta JSON olarak uygulanır:
+     `log_activity(lang('access denied to commerce'), …)` +
+     `respond(… lang('Access denied'))` (`explorer_catalog_*` deseni).
+     `validate_ecommerce_access()` çağrısı kaldırıldı — reddi HTML
+     `output_error` idi, JSON konuşan uçta ret de JSON olur; artık tek kapı.
+     `save_barcode_template` site geneli bir ayar (`config`) yazsa da etiket
+     şablonu düzenleyicisi her e-ticaret kullanıcısına sunuluyor, kural
+     onunla aynı.
+   - `update_dashboard_appearance` **değişmedi**, genel kapı (rol ≤ 1)
+     arkasında kalır: seçiciler `includes/fn/output.php`'de `role < 2`
+     dalında çiziliyor ve iki yerdeki yorum bunu açıkça istiyor; site
+     geneli bir yazım. `pinegrap-verilmis-kararlar`'a işlendi.
+   - MFA: genel kapı parolayla gelen API isteğinde `API_MFA_REQUIRED` için
+     HTTP 401 `mfa_required` döner; muaf uçlar (bugünkü 41'i gibi) bunun
+     yerine "Invalid login." döner. Bilerek eklenmedi, diğer muaflarla
+     tutarlı.
+   - Golden (`--actions-only`): 13 ucun yalnız `role3` durumu değişti
+     (push uçları ve `push_pending` success, `push_subscribe` admin'deki gibi
+     "Push Subscribe Failed", `user_pinned_app_update` ve
+     `update_toolbar_properties` success, 6 barkod ucu JSON "Erişim
+     reddedildi");
+     `admin` / `nosession` / `notoken` ve `update_dashboard_appearance`
+     bayt bayt aynı. Ek olarak (golden dışı) `get_product_barcodes`
+     `manage_ecommerce` bayraklı rol 3 ve rol 2 ile success döndü, bayraksız
+     rol 3 ile JSON ret.
 2. **Çözüldü.** `software_update` `check` adımı cURL yoksa tanımsız
    `$liveform` üzerinde metot çağırıyordu (ölümcül hata). Artık
    `software_update.php`'nin aynı durum için kullandığı metinle

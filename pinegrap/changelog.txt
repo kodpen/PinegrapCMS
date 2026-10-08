@@ -241,6 +241,14 @@
          (MySQL dökümü) kütüphanesini yüklemiyor; pano
          kartlarının her biri yalnız kendi kodunu yüklüyor.
 
+  [DÜZELTME] Tarayıcı bildirimlerine abone olma, ürün barkodu
+         ekleme, üretme, silme ve barkod etiket şablonu artık
+         yönetici ve tasarımcı dışındaki panel kullanıcılarında
+         da çalışıyor (barkodlar, ürün ekranları gibi, mağazayı
+         yönetme yetkisi olanlara açık). Ön yüzdeki düzenleme
+         araç çubuğunun açık ya da kapalı bırakıldığı da artık
+         her kullanıcı için hatırlanıyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
