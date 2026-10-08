@@ -109,7 +109,7 @@ bölümüne yaz:
   push'tan hemen önce `main` üzerine rebase et.
 - **Depo dışındakiler** (`docs/CLAUDE-tam.md`, `docs/degisiklikler.md`): git
   akışı yoktur, yalnız ekleme kuralı geçerlidir.
-
+  github üzerinden geliştirmeler `main`'e değil `development`'a girer.
 ---
 
 ## Değişmez kurallar

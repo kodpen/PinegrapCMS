@@ -82,7 +82,7 @@ düzeltildiğinde kayar (2026-09-17'de PR #6 hepsini +1 kaydırdı); güncel num
 her zaman `main`'deki açık sürüm dosyasından oku, notlardan değil. (2026.4.4
 yayınlandı ve kapandı; alt adım etiketleri 2026.4.5'te aynı yapıyla `5.x`
 olarak sürer — aralıklar `docs/degisiklikler.md` "Dağıtım durumu"nda.)
-
+github üzerinden geliştirmeler `main`'e değil `development`'a girer.
 ### Kod İçi Yorum Kuralları (YASAK LİSTESİ — istisnasız)
 
 Ürün dosyaları müşteriye dağıtılır; yorumlar ürünün parçasıdır.

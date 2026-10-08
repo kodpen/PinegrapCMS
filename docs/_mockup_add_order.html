@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Yerel Satış Ekranı</title>
+<style>
+/* Tokens measured from the live panel (dev.pinegrap.com, Bootstrap 5 + backend.css). */
+:root{
+  --page:#eceff3; --frame:rgba(0,0,0,.14);
+  --bg:#ffffff; --card:#f5f5f5; --raise:#ffffff;
+  --line:rgba(0,0,0,.176); --line-soft:rgba(0,0,0,.08);
+  --text:#212529; --muted:rgba(33,37,41,.72); --faint:rgba(33,37,41,.5);
+  --heading:#1565c0; --link:#1565c0;
+  --primary:#64b5f6; --on-primary:#1a1c1e; --primary-tint:rgba(100,181,246,.16); --primary-ring:rgba(100,181,246,.35);
+  --success:#81c784; --on-success:#1a1c1e; --success-text:#2e7d32; --success-tint:rgba(129,199,132,.18);
+  --danger:#e57373; --danger-text:#c62828; --danger-tint:rgba(229,115,115,.14);
+  --warning:#ffd54f; --warning-text:#7a5d00; --warning-tint:rgba(255,213,79,.22);
+  --topbar:#f8f8f8; --rail:#f8f8f8; --secondary-bg:#e9ecef; --hover:rgba(0,0,0,.045); --hover-strong:rgba(0,0,0,.075);
+  --input-bg:#ffffff; --input-line:rgba(0,0,0,.28);
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 18px 40px -18px rgba(0,0,0,.25);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#060709; --frame:rgba(255,255,255,.12);
+    --bg:#101114; --card:#0c0d0f; --raise:#16181c;
+    --line:rgba(255,255,255,.15); --line-soft:rgba(255,255,255,.07);
+    --text:#dee2e6; --muted:rgba(222,226,230,.72); --faint:rgba(222,226,230,.48);
+    --heading:#90caf9; --link:#90caf9;
+    --primary-tint:rgba(100,181,246,.14);
+    --success-text:#81c784; --success-tint:rgba(129,199,132,.14);
+    --danger-text:#ef9a9a; --danger-tint:rgba(229,115,115,.14);
+    --warning-text:#ffd54f; --warning-tint:rgba(255,213,79,.12);
+    --topbar:#0e0e0e; --rail:#0e0e0e; --secondary-bg:#343a40; --hover:rgba(255,255,255,.05); --hover-strong:rgba(255,255,255,.09);
+    --input-bg:#101114; --input-line:rgba(222,226,230,.5);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 18px 40px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#060709; --frame:rgba(255,255,255,.12);
+  --bg:#101114; --card:#0c0d0f; --raise:#16181c;
+  --line:rgba(255,255,255,.15); --line-soft:rgba(255,255,255,.07);
+  --text:#dee2e6; --muted:rgba(222,226,230,.72); --faint:rgba(222,226,230,.48);
+  --heading:#90caf9; --link:#90caf9;
+  --primary-tint:rgba(100,181,246,.14);
+  --success-text:#81c784; --success-tint:rgba(129,199,132,.14);
+  --danger-text:#ef9a9a; --danger-tint:rgba(229,115,115,.14);
+  --warning-text:#ffd54f; --warning-tint:rgba(255,213,79,.12);
+  --topbar:#0e0e0e; --rail:#0e0e0e; --secondary-bg:#343a40; --hover:rgba(255,255,255,.05); --hover-strong:rgba(255,255,255,.09);
+  --input-bg:#101114; --input-line:rgba(222,226,230,.5);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 18px 40px -18px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--text);font-family:var(--font);padding-inline:16px;padding-block:0 56px;line-height:1.5}
+.bi{width:1em;height:1em;fill:currentColor;vertical-align:-.125em;flex:none}
+kbd{font-family:var(--mono);font-size:.72em;padding:.1em .4em;border-radius:4px;border:1px solid var(--line);background:var(--hover);color:var(--muted);white-space:nowrap}
+button{font:inherit;color:inherit}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:.85em}
+
+/* ── Document chrome (outside the mock) ───────────────────────────────── */
+.doc{max-width:1480px;margin-inline:auto}
+.doc-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding-block:22px 14px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--muted)}
+.doc-head h1{margin:.15rem 0 .2rem;font-size:26px;line-height:1.15;text-wrap:balance}
+.doc-head p{margin:0;color:var(--muted);max-width:62ch;font-size:14px}
+.tabs{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--frame);border-radius:10px;background:var(--bg)}
+.tabs button{border:0;background:transparent;padding:.4rem .9rem;border-radius:7px;font-size:14px;cursor:pointer;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--secondary-bg);color:var(--text);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 12px;margin-bottom:14px;border:1px solid var(--frame);border-radius:10px;background:var(--bg);font-size:13px}
+.ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctl>span{color:var(--muted);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;padding:.2rem .6rem;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;display:inline-flex;align-items:center;gap:.35rem}
+.seg button[aria-pressed="true"]{background:var(--secondary-bg);color:var(--text)}
+.ctl-sep{flex:1 1 0}
+.chipbtn{border:1px solid var(--line);background:transparent;border-radius:999px;padding:.2rem .7rem;font-size:13px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.chipbtn:hover{background:var(--hover)}
+
+/* ── The mock panel ───────────────────────────────────────────────────── */
+.stage-wrap{display:flex;justify-content:center}
+.stage{width:100%;container:stage/inline-size;border:1px solid var(--frame);border-radius:12px;background:var(--bg);color:var(--text);font-size:15px;overflow-x:clip;position:relative;box-shadow:var(--shadow)}
+.stage[data-w="tablet"]{max-width:820px}
+.stage[data-w="phone"]{max-width:400px}
+.pgapp{display:grid;grid-template-columns:52px minmax(0,1fr);position:relative;min-height:640px;border-radius:12px}
+.rail{background:var(--rail);border-right:1px solid var(--line-soft);display:flex;flex-direction:column;align-items:center;gap:6px;padding:62px 0 16px;border-radius:12px 0 0 12px}
+.rail i{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;color:var(--faint);font-size:17px}
+.rail i.on{background:var(--hover-strong);color:var(--primary)}
+.pgmain{min-width:0;display:flex;flex-direction:column}
+.topbar{height:50px;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--topbar);border-bottom:1px solid var(--line-soft);border-radius:0 12px 0 0}
+.ttl{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.ttl strong{font-size:14px}
+.ttl span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsearch{margin-inline:auto;display:flex;align-items:center;gap:8px;width:min(260px,30%);padding:.3rem .7rem;border:1px solid var(--line);border-radius:999px;color:var(--faint);font-size:13px}
+.gsearch kbd{margin-left:auto}
+.tb-icons{display:flex;align-items:center;gap:14px;color:var(--muted);font-size:16px;margin-left:auto}
+.avatar{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text)}
+.avatar b{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--primary-tint);color:var(--heading);font-size:12px}
+.crumbs{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:8px 16px 0}
+.crumbs strong{color:var(--text);font-weight:600}
+.cf{padding:8px 16px 20px;flex:1}
+.pgfoot{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;font-size:12px;color:var(--faint);border-top:1px solid var(--line-soft)}
+
+/* Buttons — Bootstrap recipes as the panel uses them */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid transparent;border-radius:8px;padding:.375rem .75rem;background:transparent;cursor:pointer;line-height:1.5;font-size:.9375rem;white-space:nowrap;text-decoration:none}
+.btn-sm{padding:.25rem .55rem;font-size:.8125rem}
+.btn-ghost{color:var(--muted)}
+.btn-ghost:hover{background:var(--hover);color:var(--text)}
+.btn-primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn-primary:hover{filter:brightness(.95)}
+.btn-success{background:var(--success);color:var(--on-success);border-color:var(--success)}
+.btn-success:hover{filter:brightness(.96)}
+.btn-outline{border-color:var(--line);color:var(--text)}
+.btn-outline:hover{background:var(--hover)}
+.btn-outline-success{border-color:transparent;color:var(--success-text)}
+.btn-outline-success:hover{background:var(--success-tint)}
+.btn[disabled],.btn.disabled{opacity:.45;cursor:not-allowed;filter:none}
+.pill{border-radius:999px}
+.btn-group{display:inline-flex;border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.btn-group .btn{border-radius:6px}
+.btn-group .btn.active{background:var(--secondary-bg);color:var(--text)}
+
+/* Toolbar (#button_bar) */
+.pg-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-bottom:.75rem}
+.pg-toolbar .grow{flex:1 1 120px;min-width:0;font-size:12.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dd{position:relative}
+.dd-menu{position:absolute;right:0;top:calc(100% + 4px);min-width:230px;background:var(--raise);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:4px;z-index:40}
+.dd-menu button{display:flex;width:100%;align-items:center;gap:.6rem;border:0;background:transparent;padding:.45rem .6rem;border-radius:6px;cursor:pointer;font-size:.875rem;text-align:left}
+.dd-menu button:hover{background:var(--hover)}
+.dd-menu hr{border:0;border-top:1px solid var(--line-soft);margin:4px 2px}
+.dd-menu .tick{margin-left:auto;color:var(--success-text)}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px}
+.card+.card{margin-top:1rem}
+.card-header{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.7rem 1rem;border-bottom:1px solid var(--line)}
+.card-body{padding:1rem}
+.ch{margin:0;font-size:.95rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--heading)}
+.form-label{display:block;font-size:.8125rem;font-weight:600;margin-bottom:.35rem;color:var(--text)}
+
+/* Layout: form column + status column (+ save bar under lg) */
+.sale-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;align-items:start}
+.col-status{align-self:stretch}
+.col-status .sticky{display:flex;flex-direction:column;gap:1rem}
+.savebar{position:sticky;bottom:0;z-index:5;padding:.5rem 0 .25rem;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+@container stage (min-width: 992px){
+  .sale-grid{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+  .col-status .sticky{position:sticky;top:12px}
+  .savebar{display:none}
+}
+@container stage (min-width: 1400px){
+  .sale-grid{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
+}
+
+/* Entry card: product field + customer field */
+.entry .card-body{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem}
+@container stage (min-width: 760px){
+  .entry .card-body{grid-template-columns:minmax(0,1.75fr) minmax(0,1fr)}
+  .pgapp[data-mode="belge"] .entry .card-body{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+}
+.field{position:relative;min-width:0}
+.ig{display:flex;align-items:stretch;border:1px solid var(--input-line);border-radius:8px;background:var(--input-bg);min-width:0}
+.ig:focus-within{border-color:var(--primary);box-shadow:0 0 0 .2rem var(--primary-ring)}
+.ig-text{display:grid;place-items:center;padding:0 .7rem;color:var(--muted);font-size:1.05em}
+.ig input{flex:1 1 auto;min-width:0;border:0;background:transparent;padding:.45rem .25rem;outline:none}
+.ig .mult{display:flex;align-items:center;gap:.15rem;padding:0 .4rem;border-left:1px solid var(--line-soft);color:var(--muted);font-size:.85em}
+.ig .mult input{width:2.6em;text-align:center;padding:.3rem 0;font-variant-numeric:tabular-nums}
+.ig .btn{border-radius:0 7px 7px 0;margin:-1px -1px -1px 0}
+.ig.lg input{font-size:1.15rem;padding:.7rem .25rem}
+.ig.lg .ig-text{font-size:1.3rem;padding:0 .85rem}
+.ig.lg .btn{padding-inline:1.1rem;font-size:1rem}
+.field-foot{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.4rem;font-size:.78rem;color:var(--muted)}
+.field-foot .dot{width:.55rem;height:.55rem;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-tint)}
+.field-foot .dot.pulse{animation:pulse .6s ease-out}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--success)}100%{box-shadow:0 0 0 8px transparent}}
+.field-foot.err{color:var(--danger-text);font-weight:500;flex-wrap:nowrap;align-items:flex-start}
+.field-foot.err .bi{margin-top:.2rem}
+.field-foot kbd{margin-left:auto}
+.results{position:absolute;left:0;right:0;top:calc(100% - 1.3rem);z-index:30;background:var(--raise);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);max-height:330px;overflow:auto;padding:4px}
+.res{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.15rem 1rem;align-items:center;width:100%;border:0;background:transparent;text-align:left;padding:.5rem .6rem;border-radius:6px;cursor:pointer}
+.res:hover,.res.on{background:var(--hover-strong)}
+.res b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res small{grid-column:1;color:var(--muted);font-size:.78rem}
+.res .rp{grid-row:1/3;grid-column:2;text-align:right;font-variant-numeric:tabular-nums}
+.res .rp small{display:block}
+.res[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.res-empty{padding:.7rem;color:var(--muted);font-size:.875rem}
+
+.cust{display:flex;align-items:center;gap:.7rem;min-height:3.05rem;padding:.35rem .5rem .35rem .6rem;border:1px solid var(--line);border-radius:8px;background:var(--input-bg)}
+.cust .av{display:grid;place-items:center;width:2rem;height:2rem;border-radius:50%;background:var(--secondary-bg);color:var(--muted);flex:none}
+.cust .av.acc{background:var(--primary-tint);color:var(--heading)}
+.cust .who{min-width:0;flex:1;line-height:1.25}
+.cust .who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust .who small{display:block;color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pgapp[data-mode="kasa"] .entry .cust{min-height:3.55rem}
+
+/* Cart table */
+.table-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:.76rem;font-weight:600;color:var(--muted);text-align:left;padding:.55rem .75rem;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl th small{display:block;font-weight:400;color:var(--faint)}
+.tbl th.num{text-align:right}
+.tbl td{padding:.6rem .75rem;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:0}
+.pgapp[data-mode="kasa"] .tbl td{padding-block:.8rem}
+.pgapp[data-mode="kasa"] .pname{font-size:1rem}
+.pname{font-weight:600;line-height:1.3}
+.psub{display:block;font-size:.76rem;color:var(--muted);margin-top:.1rem}
+.psub .warn{color:var(--danger-text)}
+.thumb{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;background:var(--secondary-bg);color:var(--faint);font-size:18px}
+.lineno{color:var(--faint);font-variant-numeric:tabular-nums;width:1%}
+tr.flash td{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:var(--primary-tint)}100%{background:transparent}}
+tr.limit td{background:var(--danger-tint)}
+.step{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--input-bg)}
+.step button{width:30px;height:30px;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;border-radius:7px;color:var(--muted)}
+.step button:hover:not([disabled]){background:var(--hover);color:var(--text)}
+.step button[disabled]{opacity:.35;cursor:not-allowed}
+.step input{width:2.8em;border:0;background:transparent;text-align:center;font-weight:600;font-variant-numeric:tabular-nums;padding:0;outline:none}
+.pgapp[data-mode="kasa"] .step button{width:38px;height:38px}
+.linemsg{display:block;font-size:.74rem;color:var(--danger-text);margin-top:.25rem;white-space:normal;max-width:14rem}
+.rm{width:32px;height:32px;border:0;background:transparent;border-radius:8px;color:var(--faint);cursor:pointer;display:grid;place-items:center}
+.rm:hover{background:var(--danger-tint);color:var(--danger-text)}
+.empty{padding:2.2rem 1rem;text-align:center;color:var(--muted)}
+.empty .big{font-size:2.2rem;color:var(--faint);display:block;margin-bottom:.4rem}
+.empty b{display:block;color:var(--text);font-size:1rem;margin-bottom:.2rem}
+.col-kasa-only,.col-belge-only{display:none}
+.pgapp[data-mode="kasa"] .col-kasa-only{display:table-cell}
+.pgapp[data-mode="belge"] .col-belge-only{display:table-cell}
+@container stage (max-width: 599px){
+  .tbl thead{display:none}
+  .tbl tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:.6rem;padding:.7rem .75rem;border-bottom:1px solid var(--line-soft)}
+  .tbl tbody tr:last-child{border-bottom:0}
+  .tbl tbody tr.empty-row{display:block;padding:0}
+  .tbl tbody td{border:0 !important;padding:0 !important}
+  .tbl td.col-thumb,.tbl td.col-unit,.tbl td.col-rate,.tbl td.col-tax,.tbl td.lineno{display:none !important}
+  .tbl td.cell-name{grid-column:1/-1;margin-bottom:.5rem}
+  .unit-inline{display:block !important}
+}
+.unit-inline{display:none;font-size:.76rem;color:var(--muted)}
+
+/* Status column */
+.total-big{padding:1rem 1rem .85rem}
+.total-big .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.total-big .amt{font-size:2.35rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin:.15rem 0 .2rem}
+.total-big .sub{font-size:.8rem;color:var(--muted)}
+.rows{display:grid;grid-template-columns:1fr auto;gap:.3rem 1rem;padding:.75rem 1rem;border-top:1px solid var(--line-soft);font-size:.875rem}
+.rows dt{color:var(--muted)}
+.rows dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.rows .grand{font-size:1.35rem;font-weight:700;color:var(--text);padding-top:.35rem;border-top:1px solid var(--line-soft);margin-top:.2rem}
+.rows dt.grand{font-size:.95rem;align-self:end}
+.pay{display:flex;flex-direction:column;gap:.85rem}
+.methods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.4rem}
+.method{display:flex;flex-direction:column;align-items:center;gap:.2rem;border:1px solid var(--line);background:var(--input-bg);border-radius:8px;padding:.5rem .2rem;cursor:pointer;font-size:.78rem;color:var(--muted)}
+.method .bi{font-size:1.15rem}
+.method:hover{background:var(--hover);color:var(--text)}
+.method[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-tint);color:var(--text);box-shadow:inset 0 0 0 1px var(--primary)}
+.pgapp[data-mode="kasa"] .method{padding:.8rem .2rem;font-size:.84rem}
+.pgapp[data-mode="kasa"] .method .bi{font-size:1.45rem}
+.linkish{border:0;background:transparent;padding:0;color:var(--link);font-size:.78rem;cursor:pointer;text-decoration:underline;text-underline-offset:2px;align-self:flex-start}
+.select{width:100%;border:1px solid var(--input-line);border-radius:8px;background:var(--input-bg);padding:.4rem .6rem;font-size:.875rem}
+.recv .ig input{font-size:1.1rem;font-weight:600;font-variant-numeric:tabular-nums}
+.quick{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem}
+.quick button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:.12rem .6rem;font-size:.78rem;cursor:pointer;font-variant-numeric:tabular-nums}
+.quick button:hover{background:var(--hover)}
+.change{display:flex;justify-content:space-between;align-items:baseline;padding:.55rem .75rem;border-radius:8px;background:var(--success-tint)}
+.change span{font-size:.8rem;color:var(--muted)}
+.change b{font-size:1.5rem;color:var(--success-text);font-variant-numeric:tabular-nums}
+.change.short{background:var(--warning-tint)}
+.change.short b{color:var(--warning-text);font-size:1.1rem}
+.check{display:flex;gap:.55rem;align-items:flex-start;font-size:.875rem;cursor:pointer}
+.check input{accent-color:var(--primary);width:1.05rem;height:1.05rem;margin-top:.15rem}
+.check small{display:block;color:var(--muted);font-size:.76rem}
+.note{font-size:.76rem;color:var(--muted);display:flex;gap:.4rem;align-items:flex-start}
+.go{width:100%;padding:.8rem 1rem;font-size:1.05rem;font-weight:600}
+.go kbd{margin-left:auto;background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.12);color:inherit}
+.go .spin{width:1em;height:1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.3rem .9rem;font-size:.84rem;margin:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.bal{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem}
+.bal b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;font-weight:600;padding:.12rem .45rem;border-radius:999px;background:var(--secondary-bg);color:var(--text);white-space:nowrap}
+.badge.ok{background:var(--success-tint);color:var(--success-text)}
+.badge.info{background:var(--primary-tint);color:var(--heading)}
+.alert{display:flex;gap:.55rem;align-items:flex-start;padding:.6rem .75rem;border-radius:8px;font-size:.82rem;border:1px solid transparent}
+.alert .bi{margin-top:.15rem}
+.alert.warn{background:var(--warning-tint);border-color:color-mix(in srgb,var(--warning) 45%,transparent)}
+.alert.warn .bi{color:var(--warning-text)}
+.alert a,.alert .linkish{color:var(--link)}
+.done-head{display:flex;gap:.8rem;align-items:center;padding:1rem;border-bottom:1px solid var(--line-soft)}
+.done-head .bi{font-size:2.1rem;color:var(--success-text)}
+.done-head b{display:block;font-size:1.05rem}
+.done-head small{color:var(--muted);font-size:.8rem}
+.done-list{list-style:none;margin:0;padding:.25rem 0}
+.done-list li{display:flex;gap:.6rem;align-items:center;padding:.5rem 1rem;font-size:.86rem}
+.done-list li .bi{color:var(--muted)}
+.done-list li a{color:var(--link);text-decoration:none}
+.done-list li .badge{margin-left:auto}
+.done-actions{display:flex;flex-wrap:wrap;gap:.4rem;padding:.25rem 1rem 1rem}
+.next{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.75rem 1rem;border-top:1px solid var(--line-soft);font-size:.8rem;color:var(--muted)}
+.next .btn{margin-left:auto}
+.savebar-in{display:flex;align-items:center;gap:.75rem;padding:.55rem .6rem .55rem .9rem;border:1px solid var(--line);border-radius:999px;background:var(--raise);box-shadow:var(--shadow)}
+.savebar-in .t{min-width:0;line-height:1.2}
+.savebar-in .t b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.savebar-in .t small{color:var(--muted);font-size:.74rem;white-space:nowrap}
+.savebar-in .btn{margin-left:auto}
+
+/* Drawer, modal, toasts */
+.backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:60;border-radius:12px}
+.drawer{position:absolute;right:0;width:min(430px,100%);background:var(--raise);border-left:1px solid var(--line);box-shadow:var(--shadow);z-index:61;display:flex;flex-direction:column;transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.drawer.open{transform:none;visibility:visible;transition:transform .22s ease}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;border-bottom:1px solid var(--line)}
+.drawer-head h3{margin:0;font-size:1rem}
+.drawer-body{overflow:auto;flex:1}
+.rs{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.2rem .8rem;padding:.75rem 1rem;border-bottom:1px solid var(--line-soft)}
+.rs b{font-weight:600}
+.rs small{color:var(--muted);font-size:.78rem}
+.rs .r{text-align:right;font-variant-numeric:tabular-nums}
+.rs .acts{grid-column:1/-1;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.rs .acts .btn:last-child{margin-left:auto}
+.drawer-foot{padding:.75rem 1rem;border-top:1px solid var(--line);font-size:.85rem}
+.drawer-foot a{color:var(--link);text-decoration:none}
+.modal{position:absolute;left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 32px));background:var(--raise);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:62}
+.modal-head{padding:.9rem 1rem;border-bottom:1px solid var(--line);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.modal-body{padding:1rem;font-size:.9rem}
+.modal-foot{display:flex;justify-content:flex-end;gap:.5rem;padding:.75rem 1rem;border-top:1px solid var(--line)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:.45rem 1rem;margin:0}
+.keys dt{text-align:right}
+.keys dd{margin:0;color:var(--muted)}
+.toasts{position:absolute;right:16px;z-index:70;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
+.toast{pointer-events:auto;display:flex;gap:.55rem;align-items:center;padding:.55rem .8rem;border-radius:8px;background:var(--raise);border:1px solid var(--line);box-shadow:var(--shadow);font-size:.84rem;max-width:320px;animation:tin .18s ease-out}
+.toast .bi{color:var(--success-text)}
+@keyframes tin{from{opacity:0;transform:translateY(-4px)}}
+
+/* Narrow stage adjustments */
+@container stage (max-width: 759px){
+  .gsearch,.ttl span{display:none}
+  .pg-toolbar .lbl{display:none}
+}
+@container stage (max-width: 599px){
+  .pgapp{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .topbar{border-radius:12px 12px 0 0}
+  .avatar span{display:none}
+  .total-big .amt{font-size:2rem}
+}
+
+/* ── Plan tab ─────────────────────────────────────────────────────────── */
+.plan{max-width:880px;margin-inline:auto;background:var(--bg);border:1px solid var(--frame);border-radius:12px;padding:8px 28px 28px;font-size:15px}
+.plan h1{font-size:24px;margin:20px 0 6px;text-wrap:balance}
+.plan h2{font-size:17px;margin:28px 0 8px;padding-top:14px;border-top:1px solid var(--line-soft);color:var(--heading)}
+.plan p,.plan li{max-width:72ch}
+.plan ul{padding-left:1.2rem}
+.plan li{margin:.25rem 0}
+.plan code{font-family:var(--mono);font-size:.86em;background:var(--hover);padding:.08em .35em;border-radius:4px}
+.plan pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:13px;line-height:1.45}
+.plan pre code{background:none;padding:0}
+.plan .tw{overflow-x:auto;margin:10px 0}
+.plan table{border-collapse:collapse;font-size:13.5px;min-width:560px;width:100%}
+.plan th,.plan td{border-bottom:1px solid var(--line-soft);padding:.45rem .6rem;text-align:left;vertical-align:top}
+.plan th{color:var(--muted);font-weight:600;border-bottom-color:var(--line)}
+.plan strong{font-weight:650}
+@media (max-width:600px){.plan{padding:4px 16px 20px}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><symbol id="i-arrow-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></symbol><symbol id="i-arrow-right" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/></symbol><symbol id="i-bank" viewBox="0 0 16 16"><path d="m8 0 6.61 3h.89a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H15v7a.5.5 0 0 1 .485.38l.5 2a.498.498 0 0 1-.485.62H.5a.498.498 0 0 1-.485-.62l.5-2A.5.5 0 0 1 1 13V6H.5a.5.5 0 0 1-.5-.5v-2A.5.5 0 0 1 .5 3h.89zM3.777 3h8.447L8 1zM2 6v7h1V6zm2 0v7h2.5V6zm3.5 0v7h1V6zm2 0v7H12V6zM13 6v7h1V6zm2-1V4H1v1zm-.39 9H1.39l-.25 1h13.72z"/></symbol><symbol id="i-bell" viewBox="0 0 16 16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4 4 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4 4 0 0 0-3.203-3.92zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5 5 0 0 1 13 6c0 .88.32 4.2 1.22 6"/></symbol><symbol id="i-box-arrow-up-right" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/>
+  <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></symbol><symbol id="i-box-seam" viewBox="0 0 16 16"><path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2zm3.564 1.426L5.596 5 8 5.961 14.154 3.5zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/></symbol><symbol id="i-boxes" viewBox="0 0 16 16"><path d="M7.752.066a.5.5 0 0 1 .496 0l3.75 2.143a.5.5 0 0 1 .252.434v3.995l3.498 2A.5.5 0 0 1 16 9.07v4.286a.5.5 0 0 1-.252.434l-3.75 2.143a.5.5 0 0 1-.496 0l-3.502-2-3.502 2.001a.5.5 0 0 1-.496 0l-3.75-2.143A.5.5 0 0 1 0 13.357V9.071a.5.5 0 0 1 .252-.434L3.75 6.638V2.643a.5.5 0 0 1 .252-.434zM4.25 7.504 1.508 9.071l2.742 1.567 2.742-1.567zM7.5 9.933l-2.75 1.571v3.134l2.75-1.571zm1 3.134 2.75 1.571v-3.134L8.5 9.933zm.508-3.996 2.742 1.567 2.742-1.567-2.742-1.567zm2.242-2.433V3.504L8.5 5.076V8.21zM7.5 8.21V5.076L4.75 3.504v3.134zM5.258 2.643 8 4.21l2.742-1.567L8 1.076zM15 9.933l-2.75 1.571v3.134L15 13.067zM3.75 14.638v-3.134L1 9.933v3.134z"/></symbol><symbol id="i-calendar3" viewBox="0 0 16 16"><path d="M14 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M1 3.857C1 3.384 1.448 3 2 3h12c.552 0 1 .384 1 .857v10.286c0 .473-.448.857-1 .857H2c-.552 0-1-.384-1-.857z"/>
+  <path d="M6.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></symbol><symbol id="i-cart-x" viewBox="0 0 16 16"><path d="M7.354 5.646a.5.5 0 1 0-.708.708L7.793 7.5 6.646 8.646a.5.5 0 1 0 .708.708L8.5 8.207l1.146 1.147a.5.5 0 0 0 .708-.708L9.207 7.5l1.147-1.146a.5.5 0 0 0-.708-.708L8.5 6.793z"/>
+  <path d="M.5 1a.5.5 0 0 0 0 1h1.11l.401 1.607 1.498 7.985A.5.5 0 0 0 4 12h1a2 2 0 1 0 0 4 2 2 0 0 0 0-4h7a2 2 0 1 0 0 4 2 2 0 0 0 0-4h1a.5.5 0 0 0 .491-.408l1.5-8A.5.5 0 0 0 14.5 3H2.89l-.405-1.621A.5.5 0 0 0 2 1zm3.915 10L3.102 4h10.796l-1.313 7zM6 14a1 1 0 1 1-2 0 1 1 0 0 1 2 0m7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/></symbol><symbol id="i-cash-coin" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8m5-4a5 5 0 1 1-10 0 5 5 0 0 1 10 0"/>
+  <path d="M9.438 11.944c.047.596.518 1.06 1.363 1.116v.44h.375v-.443c.875-.061 1.386-.529 1.386-1.207 0-.618-.39-.936-1.09-1.1l-.296-.07v-1.2c.376.043.614.248.671.532h.658c-.047-.575-.54-1.024-1.329-1.073V8.5h-.375v.45c-.747.073-1.255.522-1.255 1.158 0 .562.378.92 1.007 1.066l.248.061v1.272c-.384-.058-.639-.27-.696-.563h-.668zm1.36-1.354c-.369-.085-.569-.26-.569-.522 0-.294.216-.514.572-.578v1.1zm.432.746c.449.104.655.272.655.569 0 .339-.257.571-.709.614v-1.195z"/>
+  <path d="M1 0a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h4.083q.088-.517.258-1H3a2 2 0 0 0-2-2V3a2 2 0 0 0 2-2h10a2 2 0 0 0 2 2v3.528c.38.34.717.728 1 1.154V1a1 1 0 0 0-1-1z"/>
+  <path d="M9.998 5.083 10 5a2 2 0 1 0-3.132 1.65 6 6 0 0 1 3.13-1.567"/></symbol><symbol id="i-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></symbol><symbol id="i-check2" viewBox="0 0 16 16"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0"/></symbol><symbol id="i-check2-circle" viewBox="0 0 16 16"><path d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0 5.5 5.5 0 1 1-11 0"/>
+  <path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"/></symbol><symbol id="i-chevron-right" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></symbol><symbol id="i-clock-history" viewBox="0 0 16 16"><path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z"/>
+  <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"/>
+  <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/></symbol><symbol id="i-credit-card" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1z"/>
+  <path d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></symbol><symbol id="i-dash-lg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 8a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 8"/></symbol><symbol id="i-exclamation-triangle-fill" viewBox="0 0 16 16"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></symbol><symbol id="i-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
+  <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></symbol><symbol id="i-folder2" viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5zM2.5 3a.5.5 0 0 0-.5.5V6h12v-.5a.5.5 0 0 0-.5-.5H9c-.964 0-1.71-.629-2.174-1.154C6.374 3.334 5.82 3 5.264 3zM14 7H2v5.5a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5z"/></symbol><symbol id="i-gear" viewBox="0 0 16 16"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+  <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/></symbol><symbol id="i-hourglass-split" viewBox="0 0 16 16"><path d="M2.5 15a.5.5 0 1 1 0-1h1v-1a4.5 4.5 0 0 1 2.557-4.06c.29-.139.443-.377.443-.59v-.7c0-.213-.154-.451-.443-.59A4.5 4.5 0 0 1 3.5 3V2h-1a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-1v1a4.5 4.5 0 0 1-2.557 4.06c-.29.139-.443.377-.443.59v.7c0 .213.154.451.443.59A4.5 4.5 0 0 1 12.5 13v1h1a.5.5 0 0 1 0 1zm2-13v1c0 .537.12 1.045.337 1.5h6.326c.216-.455.337-.963.337-1.5V2zm3 6.35c0 .701-.478 1.236-1.011 1.492A3.5 3.5 0 0 0 4.5 13s.866-1.299 3-1.48zm1 0v3.17c2.134.181 3 1.48 3 1.48a3.5 3.5 0 0 0-1.989-3.158C8.978 9.586 8.5 9.052 8.5 8.351z"/></symbol><symbol id="i-images" viewBox="0 0 16 16"><path d="M4.502 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"/>
+  <path d="M14.002 13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5A2 2 0 0 1 2 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-1.998 2M14 2H4a1 1 0 0 0-1 1h9.002a2 2 0 0 1 2 2v7A1 1 0 0 0 15 11V3a1 1 0 0 0-1-1M2.002 4a1 1 0 0 0-1 1v8l2.646-2.354a.5.5 0 0 1 .63-.062l2.66 1.773 3.71-3.71a.5.5 0 0 1 .577-.094l1.777 1.947V5a1 1 0 0 0-1-1z"/></symbol><symbol id="i-info-circle" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/></symbol><symbol id="i-journal-text" viewBox="0 0 16 16"><path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+  <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/>
+  <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/></symbol><symbol id="i-keyboard" viewBox="0 0 16 16"><path d="M14 5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM2 4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+  <path d="M13 10.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm0-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-5 0A.25.25 0 0 1 8.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 8 8.75zm2 0a.25.25 0 0 1 .25-.25h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5a.25.25 0 0 1-.25-.25zm1 2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-5-2A.25.25 0 0 1 6.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 6 8.75zm-2 0A.25.25 0 0 1 4.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 4 8.75zm-2 0A.25.25 0 0 1 2.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 2 8.75zm11-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-2 0a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-2 0A.25.25 0 0 1 9.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 9 6.75zm-2 0A.25.25 0 0 1 7.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 7 6.75zm-2 0A.25.25 0 0 1 5.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 5 6.75zm-3 0A.25.25 0 0 1 2.25 6h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5A.25.25 0 0 1 2 6.75zm0 4a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm2 0a.25.25 0 0 1 .25-.25h5.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25z"/></symbol><symbol id="i-laptop" viewBox="0 0 16 16"><path d="M13.5 3a.5.5 0 0 1 .5.5V11H2V3.5a.5.5 0 0 1 .5-.5zm-11-1A1.5 1.5 0 0 0 1 3.5V12h14V3.5A1.5 1.5 0 0 0 13.5 2zM0 12.5h16a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 12.5"/></symbol><symbol id="i-megaphone" viewBox="0 0 16 16"><path d="M13 2.5a1.5 1.5 0 0 1 3 0v11a1.5 1.5 0 0 1-3 0v-.214c-2.162-1.241-4.49-1.843-6.912-2.083l.405 2.712A1 1 0 0 1 5.51 15.1h-.548a1 1 0 0 1-.916-.599l-1.85-3.49-.202-.003A2.014 2.014 0 0 1 0 9V7a2.02 2.02 0 0 1 1.992-2.013 75 75 0 0 0 2.483-.075c3.043-.154 6.148-.849 8.525-2.199zm1 0v11a.5.5 0 0 0 1 0v-11a.5.5 0 0 0-1 0m-1 1.35c-2.344 1.205-5.209 1.842-8 2.033v4.233q.27.015.537.036c2.568.189 5.093.744 7.463 1.993zm-9 6.215v-4.13a95 95 0 0 1-1.992.052A1.02 1.02 0 0 0 1 7v2c0 .55.448 1.002 1.006 1.009A61 61 0 0 1 4 10.065m-.657.975 1.609 3.037.01.024h.548l-.002-.014-.443-2.966a68 68 0 0 0-1.722-.082z"/></symbol><symbol id="i-moon" viewBox="0 0 16 16"><path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278M4.858 1.311A7.27 7.27 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.32 7.32 0 0 0 5.205-2.162q-.506.063-1.029.063c-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286"/></symbol><symbol id="i-people" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></symbol><symbol id="i-percent" viewBox="0 0 16 16"><path d="M13.442 2.558a.625.625 0 0 1 0 .884l-10 10a.625.625 0 1 1-.884-.884l10-10a.625.625 0 0 1 .884 0M4.5 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m0 1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5m7 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m0 1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/></symbol><symbol id="i-person" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/></symbol><symbol id="i-phone" viewBox="0 0 16 16"><path d="M11 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM5 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+  <path d="M8 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></symbol><symbol id="i-plus-lg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></symbol><symbol id="i-printer" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
+  <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1"/></symbol><symbol id="i-receipt" viewBox="0 0 16 16"><path d="M1.92.506a.5.5 0 0 1 .434.14L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27m.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.509.509.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0z"/>
+  <path d="M3 4.5a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5m8-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5"/></symbol><symbol id="i-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></symbol><symbol id="i-shop" viewBox="0 0 16 16"><path d="M2.97 1.35A1 1 0 0 1 3.73 1h8.54a1 1 0 0 1 .76.35l2.609 3.044A1.5 1.5 0 0 1 16 5.37v.255a2.375 2.375 0 0 1-4.25 1.458A2.37 2.37 0 0 1 9.875 8 2.37 2.37 0 0 1 8 7.083 2.37 2.37 0 0 1 6.125 8a2.37 2.37 0 0 1-1.875-.917A2.375 2.375 0 0 1 0 5.625V5.37a1.5 1.5 0 0 1 .361-.976zm1.78 4.275a1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0 1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0 1.375 1.375 0 1 0 2.75 0V5.37a.5.5 0 0 0-.12-.325L12.27 2H3.73L1.12 5.045A.5.5 0 0 0 1 5.37v.255a1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0M1.5 8.5A.5.5 0 0 1 2 9v6h1v-5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5h6V9a.5.5 0 0 1 1 0v6h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1V9a.5.5 0 0 1 .5-.5M4 15h3v-5H4zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1zm3 0h-2v3h2z"/></symbol><symbol id="i-speedometer2" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4M3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707M2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10m9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5m.754-4.246a.39.39 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.39.39 0 0 0-.029-.518z"/>
+  <path fill-rule="evenodd" d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.475 13 8 13c-1.474 0-3.31.488-4.615.911-1.087.352-2.49.003-2.932-1.25A8 8 0 0 1 0 10m8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3"/></symbol><symbol id="i-sun" viewBox="0 0 16 16"><path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6m0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708"/></symbol><symbol id="i-tablet" viewBox="0 0 16 16"><path d="M12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+  <path d="M8 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></symbol><symbol id="i-three-dots-vertical" viewBox="0 0 16 16"><path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/></symbol><symbol id="i-trash3" viewBox="0 0 16 16"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/></symbol><symbol id="i-truck" viewBox="0 0 16 16"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.563l1.481 1.85a1.5 1.5 0 0 1 .329.938V10.5a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H5a2 2 0 1 1-3.998-.085A1.5 1.5 0 0 1 0 10.5zm1.294 7.456A2 2 0 0 1 4.732 11h5.536a2 2 0 0 1 .732-.732V3.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .294.456M12 10a2 2 0 0 1 1.732 1h.768a.5.5 0 0 0 .5-.5V8.35a.5.5 0 0 0-.11-.312l-1.48-1.85A.5.5 0 0 0 13.02 6H12zm-9 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2m9 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2"/></symbol><symbol id="i-upc" viewBox="0 0 16 16"><path d="M3 4.5a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0z"/></symbol><symbol id="i-upc-scan" viewBox="0 0 16 16"><path d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5M.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5M3 4.5a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0z"/></symbol><symbol id="i-volume-up" viewBox="0 0 16 16"><path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303z"/>
+  <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.48 5.48 0 0 1 11.025 8a5.48 5.48 0 0 1-1.61 3.89z"/>
+  <path d="M10.025 8a4.5 4.5 0 0 1-1.318 3.182L8 10.475A3.5 3.5 0 0 0 9.025 8c0-.966-.392-1.841-1.025-2.475l.707-.707A4.5 4.5 0 0 1 10.025 8M7 4a.5.5 0 0 0-.812-.39L3.825 5.5H1.5A.5.5 0 0 0 1 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 7 12zM4.312 6.39 6 5.04v5.92L4.312 9.61A.5.5 0 0 0 4 9.5H2v-3h2a.5.5 0 0 0 .312-.11"/></symbol><symbol id="i-window" viewBox="0 0 16 16"><path d="M2.5 4a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m2-.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m1 .5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
+  <path d="M2 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm13 2v2H1V3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1M2 14a1 1 0 0 1-1-1V6h14v7a1 1 0 0 1-1 1z"/></symbol><symbol id="i-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/></symbol></svg>
+
+<div class="doc">
+  <header class="doc-head">
+    <div>
+      <div class="eyebrow">Pinegrap · pinegrap/add_order.php</div>
+      <h1>Yerel Satış Ekranı</h1>
+      <p>Tam sayfa POST'tan AJAX'a geçiş; aynı ekran tezgâhtaki kasiyere de ERP kullanıcısına da uyuyor. Önizleme çalışır durumda: ürün ekleyin, müşteri seçin, satışı tamamlayın.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Bölüm">
+      <button role="tab" id="tabPreview" aria-selected="true" aria-controls="preview">Önizleme</button>
+      <button role="tab" id="tabPlan" aria-selected="false" aria-controls="plan">Plan</button>
+    </div>
+  </header>
+
+  <section id="preview" role="tabpanel" aria-labelledby="tabPreview">
+    <div class="controls" aria-label="Önizleme ayarları">
+      <div class="ctl"><span>Senaryo</span>
+        <div class="seg" id="ctlScenario">
+          <button data-v="kasa" aria-pressed="true">Kasa · dolu sepet</button>
+          <button data-v="belge" aria-pressed="false">Belge · cari seçili</button>
+          <button data-v="done" aria-pressed="false">Tamamlandı</button>
+          <button data-v="errors" aria-pressed="false">Uyarılar</button>
+          <button data-v="empty" aria-pressed="false">Boş sepet</button>
+        </div>
+      </div>
+      <div class="ctl"><span>ERP modülü</span>
+        <div class="seg" id="ctlErp"><button data-v="on" aria-pressed="true">Açık</button><button data-v="off" aria-pressed="false">Kapalı</button></div>
+      </div>
+      <div class="ctl"><span>Genişlik</span>
+        <div class="seg" id="ctlWidth">
+          <button data-v="wide" aria-pressed="true"><svg class="bi"><use href="#i-laptop"/></svg>Geniş</button>
+          <button data-v="tablet" aria-pressed="false"><svg class="bi"><use href="#i-tablet"/></svg>Tablet</button>
+          <button data-v="phone" aria-pressed="false"><svg class="bi"><use href="#i-phone"/></svg>Telefon</button>
+        </div>
+      </div>
+      <div class="ctl"><span>Tema</span>
+        <div class="seg" id="ctlTheme">
+          <button data-v="light" aria-pressed="false"><svg class="bi"><use href="#i-sun"/></svg>Açık</button>
+          <button data-v="dark" aria-pressed="false"><svg class="bi"><use href="#i-moon"/></svg>Koyu</button>
+        </div>
+      </div>
+      <div class="ctl-sep"></div>
+      <div class="ctl"><span>Okuyucu</span>
+        <button class="chipbtn" id="simScan"><svg class="bi"><use href="#i-upc-scan"/></svg>Örnek okut</button>
+        <button class="chipbtn" id="simBad"><svg class="bi"><use href="#i-upc"/></svg>Bilinmeyen barkod</button>
+      </div>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage" data-w="wide">
+        <div class="pgapp" id="app" data-mode="kasa">
+          <aside class="rail" aria-hidden="true">
+            <i><svg class="bi"><use href="#i-speedometer2"/></svg></i>
+            <i><svg class="bi"><use href="#i-folder2"/></svg></i>
+            <i><svg class="bi"><use href="#i-window"/></svg></i>
+            <i><svg class="bi"><use href="#i-images"/></svg></i>
+            <i><svg class="bi"><use href="#i-calendar3"/></svg></i>
+            <i><svg class="bi"><use href="#i-people"/></svg></i>
+            <i><svg class="bi"><use href="#i-megaphone"/></svg></i>
+            <i class="on"><svg class="bi"><use href="#i-shop"/></svg></i>
+            <i><svg class="bi"><use href="#i-journal-text"/></svg></i>
+            <i><svg class="bi"><use href="#i-boxes"/></svg></i>
+            <i><svg class="bi"><use href="#i-percent"/></svg></i>
+            <i><svg class="bi"><use href="#i-truck"/></svg></i>
+          </aside>
+          <div class="pgmain">
+            <header class="topbar">
+              <div class="ttl"><strong>Yerel Sipariş Ekle</strong><span>Barkod okutun ya da ürün arayın; satışı tek adımda tamamlayın.</span></div>
+              <div class="gsearch"><svg class="bi"><use href="#i-search"/></svg>Ara…<kbd>Ctrl+K</kbd></div>
+              <div class="tb-icons"><svg class="bi"><use href="#i-gear"/></svg><svg class="bi"><use href="#i-bell"/></svg><span class="avatar"><b>A</b><span>admin</span></span></div>
+            </header>
+            <nav class="crumbs" aria-label="breadcrumb"><svg class="bi"><use href="#i-arrow-left"/></svg><span>Siparişler</span><svg class="bi"><use href="#i-chevron-right"/></svg><strong>Yerel Sipariş Ekle</strong></nav>
+            <main class="cf">
+              <div class="pg-toolbar" id="button_bar">
+                <button class="btn btn-sm btn-ghost" id="tbRecent" type="button"><svg class="bi"><use href="#i-clock-history"/></svg><span class="lbl">Son satışlar</span></button>
+                <button class="btn btn-sm btn-ghost" id="tbClear" type="button"><svg class="bi"><use href="#i-cart-x"/></svg><span class="lbl">Sepeti boşalt</span></button>
+                <div class="grow" id="tbInfo"></div>
+                <div class="btn-group btn-group-sm" id="viewSwitch" role="group" aria-label="Görünüm">
+                  <button class="btn btn-sm btn-ghost" data-mode="kasa" type="button"><svg class="bi"><use href="#i-shop"/></svg><span class="lbl">Kasa</span></button>
+                  <button class="btn btn-sm btn-ghost" data-mode="belge" type="button"><svg class="bi"><use href="#i-journal-text"/></svg><span class="lbl">Belge</span></button>
+                </div>
+                <div class="dd">
+                  <button class="btn btn-sm btn-ghost" id="tbMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Diğer"><svg class="bi"><use href="#i-three-dots-vertical"/></svg></button>
+                  <div class="dd-menu" id="moreMenu" role="menu" hidden>
+                    <button role="menuitem" id="mKeys" type="button"><svg class="bi"><use href="#i-keyboard"/></svg>Klavye kısayolları</button>
+                    <button role="menuitem" id="mSound" type="button"><svg class="bi"><use href="#i-volume-up"/></svg>Hata sesi<span class="tick" id="mSoundTick"><svg class="bi"><use href="#i-check2"/></svg></span></button>
+                    <hr>
+                    <button role="menuitem" type="button"><svg class="bi"><use href="#i-gear"/></svg>Satış ayarları (ERP kartı)</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sale-grid">
+                <section class="col-form" aria-label="Satış">
+                  <div class="card entry">
+                    <div class="card-body">
+                      <div class="field">
+                        <label class="form-label" for="pInput">Ürün</label>
+                        <div class="ig" id="pGroup">
+                          <span class="ig-text"><svg class="bi"><use href="#i-upc-scan"/></svg></span>
+                          <input id="pInput" type="text" autocomplete="off" placeholder="Barkod okutun ya da ürün arayın" aria-describedby="pFoot">
+                          <label class="mult" title="Bir sonraki ekleme için adet"><span>×</span><input id="pQty" type="number" min="1" value="1" aria-label="Adet"></label>
+                          <button class="btn btn-primary" id="pAdd" type="button">Ekle</button>
+                        </div>
+                        <div class="field-foot" id="pFoot"></div>
+                        <div class="results" id="pResults" hidden></div>
+                      </div>
+                      <div class="field" id="custField"></div>
+                    </div>
+                  </div>
+
+                  <div class="card cart">
+                    <div class="card-header"><h2 class="ch">Sepet</h2><span class="muted" id="cartCount" style="font-size:.8rem"></span></div>
+                    <div class="table-wrap"><table class="tbl"><thead id="cartHead"></thead><tbody id="cartBody"></tbody></table></div>
+                  </div>
+                </section>
+
+                <aside class="col-status" aria-label="Özet ve ödeme"><div class="sticky" id="statusBox"></div></aside>
+                <div class="savebar" id="savebar"></div>
+              </div>
+            </main>
+            <footer class="pgfoot"><span>Pinegrap İçerik Yönetim Sistemi</span><span>v2026.4.4 CE</span></footer>
+          </div>
+
+          <div class="backdrop" id="backdrop" hidden></div>
+          <aside class="drawer" id="drawer" aria-label="Son yerel satışlar" aria-hidden="true">
+            <div class="drawer-head"><h3>Son yerel satışlar</h3><button class="btn btn-sm btn-ghost" id="drawerClose" type="button" aria-label="Kapat"><svg class="bi"><use href="#i-x-lg"/></svg></button></div>
+            <div class="drawer-body" id="drawerBody"></div>
+            <div class="drawer-foot"><a href="#" onclick="return false">Tüm siparişler <svg class="bi"><use href="#i-arrow-right"/></svg></a></div>
+          </aside>
+          <div class="modal" id="modal" role="dialog" aria-modal="true" hidden></div>
+          <div class="toasts" id="toasts" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="plan" role="tabpanel" aria-labelledby="tabPlan" hidden>
+    <article class="plan"><h1>add_order.php — AJAX dönüşümü ve iki kitleli arayüz</h1>
+<p>Durum: <strong>taslak, önizleme onayı bekliyor</strong> (2026-09-23).
+Önizleme: <code>docs/_mockup_add_order.html</code> (etkileşimli; Kasa/Belge, genişlik ve tema değiştirilebilir).</p>
+<h2>1. Bugünkü durum</h2>
+<ul>
+<li>Ekran yedi POST eylemiyle çalışıyor (<code>set_customer</code>, <code>clear_customer</code>, <code>add_to_cart</code>,
+  <code>increase_qty</code>, <code>decrease_qty</code>, <code>remove_item</code>, <code>complete_order</code>); her biri 302 + tam
+  sayfa yüklemesi. Barkod okutmak ve her <code>+</code>/<code>−</code> tıklaması sayfayı baştan çiziyor;
+  sayfa yüklenirken gelen ikinci okutma kaybolabiliyor.</li>
+<li><code>&lt;main class="container"&gt;</code> — <code>container-fluid</code> olmalı. Sol sütunda satır içi
+  <code>min-width:300px;max-width:420px</code>.</li>
+<li>Kartlar <code>border-4 border-primary</code> (tasarım dilinde yok); Tamamla düğmesinde Material
+  Icons (yeni kodda yasak).</li>
+<li>Tamamlayınca <code>view_order.php</code>'ye gidiliyor: tezgâhta her satıştan sonra geri dönmek gerekiyor.</li>
+<li>Fiyatlar KDV hariç gösteriliyor; tezgâhtaki kişi raf etiketindeki KDV dahil fiyatı
+  ekranda göremiyor.</li>
+<li>Tamamlamada stok yeniden denetlenmiyor; çift tıklama/iki sekme aynı siparişi iki kez
+  tamamlamaya çalışabiliyor (<code>status = 'incomplete'</code> koşullu güncelleme yok).</li>
+<li>Yerel satış <code>order.created</code> olayını kuyruğa yazmıyor (<code>submit_order.php</code> yazıyor).</li>
+<li>İki arama ucu (<code>search_products</code>, <code>search_customers</code>) zaten JSON — korunur.</li>
+</ul>
+<h2>2. Hedef</h2>
+<ul>
+<li>Hiç tam sayfa yenilemesi yok; sunucu tek doğruluk kaynağı (sepet oturum + <code>order_items</code>).</li>
+<li><strong>Dükkân kullanıcısı:</strong> okut → okut → tamamla; para üstü; bir sonraki müşteriye anında hazır.</li>
+<li><strong>ERP kullanıcısı:</strong> cari, e-Fatura/e-Arşiv türü, vade, kasa/banka ve fatura aynı adımda;
+  e-Belgeyi durduracak eksik cari bilgisi satıştan önce görünür.</li>
+</ul>
+<h2>3. İki görünüm, tek ekran</h2>
+<p>Araç çubuğundaki görünüm değiştirici (<code>btn-group</code> + <code>btn-ghost.active</code>): <strong>Kasa | Belge</strong>.
+ERP açık ve kullanıcıda <code>manage_erp</code> varsa varsayılan Belge; yoksa değiştirici hiç
+görünmez, ekran Kasa'dır. Seçim tarayıcıda (localStorage) kullanıcı başına saklanır.
+İki görünüm aynı DOM'dur; fark sınıf ve sunucunun döndürdüğü sütunlardır.</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th></th>
+<th>Kasa</th>
+<th>Belge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ürün girişi</td>
+<td>büyük alan, "okuyucu hazır" göstergesi, <code>× adet</code> çarpanı</td>
+<td>aynı, standart boy</td>
+</tr>
+<tr>
+<td>Sepet sütunları</td>
+<td>Ürün · Miktar · Birim fiyat (KDV dahil) · Tutar</td>
+<td>Ürün · Miktar · Birim fiyat (KDV hariç) · KDV % · KDV · Tutar</td>
+</tr>
+<tr>
+<td>Müşteri</td>
+<td>çip: "Sıcak satış" (F4 ile değiştir)</td>
+<td>cari kartı: bakiye, vade, e-Fatura/e-Arşiv, eksik bilgi uyarısı, "Cari özeti" çekmecesi</td>
+</tr>
+<tr>
+<td>Ödeme</td>
+<td>büyük yöntem düğmeleri, Alınan → Para üstü, hızlı tutarlar</td>
+<td>yöntem, kasa/banka, "Sonra tahsil et" → hesaplanan vade tarihi</td>
+</tr>
+<tr>
+<td>Fatura</td>
+<td>yetki varsa tek onay kutusu</td>
+<td>onay kutusu + belge türü</td>
+</tr>
+<tr>
+<td>Tamamlanınca</td>
+<td>sonuç kartı (para üstü büyük), sepet sıfır, odak ürün alanında</td>
+<td>sonuç kartı + Faturayı aç / Tahsilatı aç / Siparişi aç</td>
+</tr>
+</tbody>
+</table></div>
+<h2>4. Yerleşim</h2>
+<ul>
+<li><code>container-fluid</code>; araç çubuğu <code>#button_bar</code>: Son satışlar · Sepeti boşalt · [boşluk] ·
+  Kasa|Belge · ⋮ (Klavye kısayolları, Sesli uyarı, Satış ayarları).</li>
+<li>Form sütunu <code>col-12 col-lg-8 col-xxl-9 order-1</code>: ürün + müşteri kutusu, SEPET kartı.</li>
+<li>Durum sütunu <code>col-12 col-lg-4 col-xxl-3 order-2</code>, içindeki kutu <code>position-sticky</code>:
+  ÖZET (toplamlar, Belge'de KDV kırılımı), ÖDEME, <strong>Satışı tamamla</strong>, Belge'de CARİ.</li>
+<li><strong>Desenden bilinçli sapma:</strong> birincil düğme alt kaydet çubuğunda değil, durum
+  sütununda — tezgâhta toplam ve düğme okuturken hep görünür kalmalı; alt çubuk ikisini
+  ayırır. Gerekçe koda yorum olarak yazılır. <code>lg</code> altında sütunlar alt alta iner ve
+  <code>col-12 order-3 position-sticky</code> alt çubuğu "Toplam ₺… [Tamamla]" gösterir.</li>
+<li>"Son yerel satışlar" sayfa altındaki katlanır karttan sağdan çekmeceye taşınır
+  (add_user / api_settings'te onaylanan dil); açılınca AJAX ile yüklenir, satırda Fatura kes.</li>
+</ul>
+<h2>5. AJAX mimarisi</h2>
+<p><strong>Uç:</strong> aynı dosya. <code>POST add_order.php</code> + <code>X-Requested-With: XMLHttpRequest</code> → her zaman
+JSON. Başlıksız POST bugünkü gibi 302 ile döner (JS kapalıyken ve eski formlarda çalışır);
+iki yol aynı eylem fonksiyonunu çağırır.</p>
+<p><strong>Kapı:</strong> <code>USER_LOGGED_IN</code> + e-ticaret yetkisi (arama uçlarıyla aynı, red JSON).
+CSRF <code>hash_equals($_SESSION['software']['token'], $_POST['token'])</code> elle —
+<code>validate_token_field()</code> HTML hata basar. Oturum düşmüşse <code>{ok:false, code:"session"}</code>
+→ ekranda "Oturum sona erdi — sayfayı yenileyin" kutusu.</p>
+<p><strong>Eylemler</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>action</th>
+<th>girdi</th>
+<th>not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>state</code></td>
+<td>—</td>
+<td>sekme odağa gelince ve ilk yüklemede</td>
+</tr>
+<tr>
+<td><code>add_item</code></td>
+<td><code>barcode</code> | <code>product_id</code>, <code>quantity</code></td>
+<td>stok denetimi; eklenen satır id'si döner</td>
+</tr>
+<tr>
+<td><code>set_qty</code></td>
+<td><code>item_id</code>, <code>quantity</code></td>
+<td>mutlak miktar (tekrar gelirse zarar yok); 0 = sil; <code>increase/decrease</code> buna iner</td>
+</tr>
+<tr>
+<td><code>remove_item</code></td>
+<td><code>item_id</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>clear_cart</code></td>
+<td>—</td>
+<td>yeni; onay ekranda</td>
+</tr>
+<tr>
+<td><code>set_customer</code> / <code>clear_customer</code></td>
+<td><code>contact_id</code> | <code>account_id</code></td>
+<td>müşteri + ödeme kutusunu yeniden döndürür (fatura kesilebilirliği değişir)</td>
+</tr>
+<tr>
+<td><code>complete</code></td>
+<td><code>pay_method</code>, <code>pay_till</code>, <code>issue_invoice</code></td>
+<td>sonuç kartı + boş sepet döner</td>
+</tr>
+<tr>
+<td><code>recent</code></td>
+<td>—</td>
+<td>çekmece içeriği</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Yanıt</strong></p>
+<pre><code class="language-json">{
+  &quot;ok&quot;: true,
+  &quot;code&quot;: &quot;&quot;,
+  &quot;message&quot;: &quot;Silikon Şeffaf 280 ml sepete eklendi.&quot;,
+  &quot;level&quot;: &quot;success&quot;,
+  &quot;line_id&quot;: 4812,
+  &quot;cart&quot;: {
+    &quot;count&quot;: 4, &quot;units&quot;: 9,
+    &quot;total_cents&quot;: 238900,
+    &quot;html&quot;: { &quot;rows&quot;: &quot;&lt;tr&gt;…&lt;/tr&gt;&quot;, &quot;summary&quot;: &quot;…&quot;, &quot;savebar&quot;: &quot;…&quot; }
+  },
+  &quot;customer&quot;: { &quot;html&quot;: &quot;…&quot;, &quot;can_invoice&quot;: true },
+  &quot;pay&quot;: { &quot;html&quot;: &quot;…&quot; },
+  &quot;result&quot;: null
+}
+</code></pre>
+<p><code>complete</code> başarılıysa <code>result</code>: <code>{order:{id,number,url}, invoice:{id,number,url}|null,
+receipt:{id,url}|null, warnings:[…]}</code>. Sipariş tamamlanıp fatura/tahsilat düşerse
+<code>ok:true</code> + <code>warnings</code> — sipariş geri alınmaz, sonuç kartı "Faturayı yeniden dene" sunar.</p>
+<p><strong>HTML sunucuda üretilir.</strong> Satırlar, özet, müşteri ve ödeme kutuları PHP fonksiyonlarıdır;
+ilk sayfa da AJAX yanıtı da aynı fonksiyonları çağırır (tek render kaynağı, <code>lang()</code> ve
+<code>prepare_amount()</code> biçimi korunur). JS yalnız yerleştirir; para üstü dışında hiçbir toplamı
+kendisi hesaplamaz.</p>
+<p><strong>İstemci</strong></p>
+<ul>
+<li>İstek kuyruğu sıralıdır: hızlı okutmalar sırayla işlenir, kuyruk boşalana dek Tamamla kilitli.</li>
+<li><code>scannerDetection</code> kalır; form submit yerine kuyruğa <code>add_item</code>. <code>*</code> → <code>-</code> dönüşümü korunur.
+  Ürün alanında Enter aynı işi yapar; <code>× n</code> çarpanı bir sonraki eklemeden sonra 1'e döner.</li>
+<li><code>visibilitychange</code> → <code>state</code> (iki sekme tutarlılığı).</li>
+<li>JSON olmayan yanıt / ağ hatası → uyarı + <code>state</code> yeniden çekilir (durum sunucudan gelir,
+  istemci tahmin yürütmez).</li>
+<li>Hata sesi (bulunamadı / stok sınırı) Web Audio ile kısa bip; ⋮ menüden kapatılır.</li>
+</ul>
+<h2>6. Aynı işte yapılacak sunucu düzeltmeleri</h2>
+<ul>
+<li><code>complete</code>: stok yeniden denetimi (hangi satır, kaç adet var), <code>UPDATE orders … WHERE
+  id = … AND status = 'incomplete'</code> + etkilenen satır sayısı (çift tamamlama), sıra numarası
+  kilidinin hata yolu JSON.</li>
+<li><code>api_webhook_enqueue('order.created', …)</code> — <code>submit_order.php</code> ile aynı yük.</li>
+<li>Material Icons → <code>bi-check2-circle</code>; <code>border-4 border-primary</code> ve satır içi genişlikler kalkar.</li>
+</ul>
+<h2>7. Klavye</h2>
+<p>F2 ürün alanı · F4 müşteri · F9 veya Ctrl+Enter tamamla · Esc arama sonucunu kapat ·
+sonuçlarda ↑ ↓ Enter · sepette seçili satırda <code>+</code> <code>−</code> <code>Del</code>. Genel Ctrl+S/D/E/G ile
+çakışmaz (formlar <code>disable_shortcut</code> kalır).</p>
+<h2>8. Dosyalar</h2>
+<ul>
+<li><code>pinegrap/add_order.php</code> — eylem dağıtıcı + sayfa iskeleti</li>
+<li><code>pinegrap/includes/local_sale.php</code> — <strong>yeni</strong>: eylem ve render fonksiyonları (kapı sabitiyle)</li>
+<li><code>pinegrap/assets/js/add_order.js</code> — <strong>yeni</strong>, doğrudan <code>&lt;script src&gt;</code> + <code>?v=</code> (<code>.min</code> ikizi yok)</li>
+<li><code>pinegrap/assets/css/backend.src.css</code> — ekrana özel birkaç sınıf (<code>.pg-sale-*</code>)</li>
+<li><code>tr.json</code> (+ <code>php tools/check_lang.php</code>), <code>docs/degisiklikler.md</code>, <code>pinegrap/changelog.txt</code></li>
+</ul>
+<h2>9. Kapsam dışı (ayrı iş önerisi)</h2>
+<p>Satırda fiyat/iskonto değiştirme (ERP satır hesabını etkiler) · satışı beklet (birden çok açık
+sepet) · parçalı ödeme (nakit + kart) · ESC/POS fiş yazıcısı (şimdilik <code>print_order.php</code>) ·
+mağaza sepetiyle aynı oturum anahtarının paylaşılması (bugünkü durum).</p>
+<h2>10. Test</h2>
+<p>ERP kapalı / açık · <code>manage_erp</code> yok · <code>manage_erp_cash</code> yok · sıcak satış carisi tanımsız ·
+10 hızlı ardışık okutma = 10 adet, sırayla · iki sekme · oturum düşmesi · stok 2 iken 3 okutma ·
+Tamamla'ya çift tık · 400 / 820 / 1440 px · açık/koyu tema · <code>php tools/lint.php</code>.</p>
+<h2>11. Açık sorular</h2>
+<ol>
+<li>Tamamla düğmesi durum sütununda (öneri) mı, alt çubukta mı?</li>
+<li>Kasa görünümünde birim fiyat KDV dahil gösterilsin mi? (öneri: evet; Belge'de KDV hariç)</li>
+<li>Yerel satış <code>order.created</code> olayını da atsın mı? (öneri: evet)</li>
+</ol></article>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const ic = n => '<svg class="bi" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = new Intl.NumberFormat('tr-TR', {style:'currency', currency:'TRY'});
+const money = k => fmt.format(k / 100);
+
+/* Sample catalogue — a small building-supply shop. Prices are net (kuruş), as in Pinegrap. */
+const CATALOG = [
+  {id:1021, sku:'SLK-280', name:'Silikon Şeffaf 280 ml', price:14500, rate:20, stock:38, bc:'8690001002801'},
+  {id:1034, sku:'VD-440-100', name:"Sunta Vidası 4×40 (100'lü)", price:8990, rate:20, stock:120, bc:'8690001004404'},
+  {id:1102, sku:'MB-48', name:'Maskeleme Bandı 48 mm', price:6250, rate:20, stock:64, bc:'8690001011020'},
+  {id:1107, sku:'ELD-NTR-L', name:'Nitril İş Eldiveni (L)', price:3990, rate:20, stock:2, bc:'8690001011075'},
+  {id:1210, sku:'BY-25-BYZ', name:'İç Cephe Boyası 2,5 L Beyaz', price:74900, rate:20, stock:15, bc:'8690001012104'},
+  {id:1214, sku:'FR-RL-25', name:'Rulo Fırça 25 cm', price:18400, rate:20, stock:22, bc:'8690001012142'},
+  {id:1301, sku:'MT-5', name:'Şerit Metre 5 m', price:12900, rate:20, stock:30, bc:'8690001013019'},
+  {id:1405, sku:'TH-CIM-1', name:'Çim Tohumu Karışımı 1 kg', price:31000, rate:1, stock:40, bc:'8690001014054'},
+  {id:1502, sku:'MU-SET-13', name:'Matkap Ucu Seti 13 Parça', price:45900, rate:20, stock:0, bc:'8690001015020'}
+];
+const P = Object.fromEntries(CATALOG.map(p => [p.id, p]));
+const WALKIN = 'Sıcak Satış';
+const CUSTOMERS = [
+  {key:'a57', kind:'account', label:'Aydın Yapı Ltd. Şti.', sub:'Cari · Kadıköy / İstanbul', tax:'VKN 1234567890', einv:true, balance:1845000, term:30, missing:[]},
+  {key:'c311', kind:'contact', label:'Selin Korkmaz', sub:'selin.korkmaz@example.com · İzmir', tax:'TCKN kayıtlı', einv:false, balance:-25000, term:0, missing:['posta kodu'], hasAccount:true},
+  {key:'c402', kind:'contact', label:'Mert Usta', sub:'Usta Tadilat · Üsküdar', tax:'', einv:false, balance:0, term:0, missing:[], hasAccount:false}
+];
+const TILLS = {merkez:'Merkez Kasa', pos:'Ziraat POS', banka:'İş Bankası – Vadesiz'};
+const METHOD = {cash:['Nakit','cash-coin','merkez'], card:['Kart','credit-card','pos'], transfer:['Havale','bank','banka'], later:['Sonra','hourglass-split','']};
+const EXTRA = {cheque:'Çek', other:'Diğer'};
+
+let S;
+let lineSeq = 4800;
+let orderNo = 1043;
+let sound = true;
+let recent = [
+  {no:1042, time:'14:32', who:'Sıcak satış', items:3, total:84500, inv:'KDP2026000000123'},
+  {no:1041, time:'13:05', who:'Aydın Yapı Ltd. Şti.', items:12, total:1423000, inv:'KDP2026000000122'},
+  {no:1040, time:'11:47', who:'Mert Usta', items:2, total:38990, inv:''},
+  {no:1039, time:'10:12', who:'Sıcak satış', items:1, total:12900, inv:'KDP2026000000121'}
+];
+
+function line(pid, qty){ return {id: ++lineSeq, pid, qty}; }
+function preset(name){
+  const base = {mode:'kasa', customer:null, cart:[], method:'cash', extra:'', till:'merkez', received:'', invoice:true,
+    inputErr:'', lineMsg:{}, flash:null, done:null, busy:false, picker:false, pickQ:'', res:[], resOn:-1, showExtra:false};
+  if (name === 'kasa' || name === 'errors') {
+    base.cart = [line(1021,2), line(1034,3), line(1210,1), line(1107,2)];
+    base.received = '2500';
+  }
+  if (name === 'errors') {
+    const last = base.cart[3];
+    base.lineMsg[last.id] = 'Stokta 2 adet var; daha fazla eklenemez.';
+    base.inputErr = '“8690009999999” barkodlu ürün bulunamadı. Barkodu elle kontrol edin ya da adıyla arayın.';
+  }
+  if (name === 'belge') {
+    base.mode = 'belge';
+    base.customer = CUSTOMERS[0];
+    base.cart = [line(1210,4), line(1214,4), line(1102,6), line(1405,2)];
+    base.method = 'later'; base.till = '';
+  }
+  if (name === 'done') {
+    base.done = {no:1043, total:238900, method:'cash', till:'merkez', received:250000, inv:'KDP2026000000124', invType:'e-Arşiv', receipt:89, warn:'', who:'Sıcak satış'};
+  }
+  return base;
+}
+S = preset('kasa');
+S.erp = true;
+
+/* ── Derived figures (the real screen gets these from the server) ── */
+function lines(){
+  return S.cart.map(l => {
+    const p = P[l.pid], net = p.price * l.qty, tax = Math.round(net * p.rate / 100);
+    return {l, p, net, tax, gross: net + tax, unitGross: Math.round(p.price * (100 + p.rate) / 100)};
+  });
+}
+function totals(){
+  const ls = lines(); const t = {net:0, tax:0, gross:0, units:0, count:ls.length, rates:{}};
+  ls.forEach(x => { t.net += x.net; t.tax += x.tax; t.gross += x.gross; t.units += x.l.qty; t.rates[x.p.rate] = (t.rates[x.p.rate] || 0) + x.tax; });
+  return t;
+}
+const custHasLedger = () => !S.customer || S.customer.kind === 'account' || S.customer.hasAccount;
+const invoiceType = () => (S.customer && S.customer.einv) ? 'e-Fatura' : 'e-Arşiv';
+function dueDate(days){
+  const d = new Date(2026, 8, 23); d.setDate(d.getDate() + days);
+  return d.toLocaleDateString('tr-TR', {day:'numeric', month:'short', year:'numeric'});
+}
+
+/* ── Render ── */
+function render(){
+  const app = $('#app');
+  if (!S.erp) S.mode = 'kasa';
+  app.dataset.mode = S.mode;
+  $('#viewSwitch').hidden = !S.erp;
+  $('#viewSwitch').style.display = S.erp ? '' : 'none';
+  document.querySelectorAll('#viewSwitch .btn').forEach(b => b.classList.toggle('active', b.dataset.mode === S.mode));
+  $('#tbClear').disabled = !S.cart.length;
+  $('#tbInfo').textContent = S.erp ? ((S.method === 'later' && !S.extra) ? 'Tahsilat sonra' : 'Kasa: ' + TILLS[S.till]) + ' · admin' : 'admin';
+  $('#pGroup').classList.toggle('lg', S.mode === 'kasa');
+  renderFoot(); renderCustomer(); renderCart(); renderStatus(); renderSavebar();
+}
+
+function renderFoot(){
+  const f = $('#pFoot');
+  if (S.inputErr) {
+    f.className = 'field-foot err';
+    f.innerHTML = ic('exclamation-triangle-fill') + '<span>' + esc(S.inputErr) + '</span>';
+  } else {
+    f.className = 'field-foot';
+    f.innerHTML = '<span class="dot" id="scanDot"></span><span>' + (S.busy ? 'İşleniyor…' : 'Okuyucu hazır — imleç nerede olursa olsun okutabilirsiniz') + '</span><kbd>F2</kbd>';
+  }
+}
+
+function renderCustomer(){
+  const box = $('#custField');
+  let h = '<label class="form-label" for="cInput">Müşteri</label>';
+  if (S.picker) {
+    h += '<div class="ig"><span class="ig-text">' + ic('person') + '</span><input id="cInput" type="text" autocomplete="off" placeholder="Ad, firma, e-posta' + (S.erp ? ' ya da cari' : '') + '" value="' + esc(S.pickQ) + '"><button class="btn btn-ghost btn-sm" id="cCancel" type="button" aria-label="Vazgeç">' + ic('x-lg') + '</button></div>';
+    const q = S.pickQ.trim().toLocaleLowerCase('tr');
+    const list = CUSTOMERS.filter(c => (S.erp || c.kind === 'contact') && (!q || (c.label + ' ' + c.sub).toLocaleLowerCase('tr').includes(q)));
+    h += '<div class="results" style="top:calc(100% + 4px)">' + (list.length ? list.map(c =>
+      '<button class="res" type="button" data-cust="' + c.key + '"><b>' + ic(c.kind === 'account' ? 'journal-text' : 'person') + ' ' + esc(c.label) + '</b><small>' + esc(c.sub) + '</small></button>').join('')
+      : '<div class="res-empty">Müşteri bulunamadı.</div>') + '</div>';
+  } else if (S.customer) {
+    const c = S.customer;
+    h += '<div class="cust"><span class="av acc">' + ic(c.kind === 'account' ? 'journal-text' : 'person') + '</span><span class="who"><b>' + esc(c.label) + '</b><small>' + esc(c.sub) + '</small></span>'
+      + '<button class="btn btn-sm btn-ghost" id="cChange" type="button">Değiştir</button><button class="btn btn-sm btn-ghost" id="cClear" type="button" aria-label="Müşteriyi kaldır">' + ic('x-lg') + '</button></div>';
+  } else {
+    h += '<div class="cust"><span class="av">' + ic('shop') + '</span><span class="who"><b>Sıcak satış</b><small>Siparişe müşteri yazılmaz</small></span>'
+      + '<button class="btn btn-sm btn-ghost" id="cChange" type="button">Seç <kbd>F4</kbd></button></div>';
+  }
+  box.innerHTML = h;
+  if (S.picker) { const i = $('#cInput'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+}
+
+function renderCart(){
+  const t = totals(), belge = S.mode === 'belge';
+  $('#cartCount').textContent = t.count ? t.count + ' kalem · ' + t.units + ' adet' : '';
+  $('#cartHead').innerHTML = '<tr>'
+    + '<th class="col-thumb col-kasa-only"></th><th class="col-belge-only">#</th>'
+    + '<th>Ürün</th><th>Miktar</th>'
+    + '<th class="num col-unit">Birim fiyat<small>' + (belge ? 'KDV hariç' : 'KDV dahil') + '</small></th>'
+    + '<th class="num col-rate col-belge-only">KDV</th><th class="num col-tax col-belge-only">KDV tutarı</th>'
+    + '<th class="num">Tutar<small>' + (belge ? 'KDV hariç' : 'KDV dahil') + '</small></th><th style="width:1%"></th></tr>';
+  if (!t.count) {
+    $('#cartBody').innerHTML = '<tr class="empty-row"><td colspan="9"><div class="empty"><span class="big">' + ic('upc-scan') + '</span><b>Sepet boş</b>Barkod okutun ya da ürün adını yazın. Okuyucu için alana tıklamanız gerekmez.</div></td></tr>';
+    return;
+  }
+  $('#cartBody').innerHTML = lines().map((x, i) => {
+    const atMax = x.l.qty >= x.p.stock, msg = S.lineMsg[x.l.id];
+    const unit = belge ? x.p.price : x.unitGross, amount = belge ? x.net : x.gross;
+    return '<tr data-line="' + x.l.id + '" class="' + (S.flash === x.l.id ? 'flash' : '') + (msg ? ' limit' : '') + '">'
+      + '<td class="col-thumb col-kasa-only"><span class="thumb">' + ic('box-seam') + '</span></td>'
+      + '<td class="lineno col-belge-only">' + (i + 1) + '</td>'
+      + '<td class="cell-name"><span class="pname">' + esc(x.p.name) + '</span><span class="psub"><span class="mono">' + esc(x.p.sku) + '</span> · Stok ' + x.p.stock + (atMax ? ' · <span class="warn">sınırda</span>' : '') + '</span><span class="unit-inline">' + money(unit) + ' / adet</span></td>'
+      + '<td><span class="step"><button type="button" data-dec="' + x.l.id + '" aria-label="Azalt">' + ic('dash-lg') + '</button><input type="text" inputmode="numeric" value="' + x.l.qty + '" data-qty="' + x.l.id + '" aria-label="Miktar"><button type="button" data-inc="' + x.l.id + '" aria-label="Artır"' + (atMax ? ' disabled title="Stok sınırı"' : '') + '>' + ic('plus-lg') + '</button></span>' + (msg ? '<span class="linemsg">' + esc(msg) + '</span>' : '') + '</td>'
+      + '<td class="num col-unit">' + money(unit) + '</td>'
+      + '<td class="num col-rate col-belge-only">%' + x.p.rate + '</td><td class="num col-tax col-belge-only">' + money(x.tax) + '</td>'
+      + '<td class="num"><b>' + money(amount) + '</b></td>'
+      + '<td><button class="rm" type="button" data-rm="' + x.l.id + '" aria-label="Satırı sil">' + ic('trash3') + '</button></td></tr>';
+  }).join('');
+}
+
+function quickAmounts(total){
+  const lira = Math.ceil(total / 100), out = [];
+  [50, 100, 500, 1000].forEach(step => { const v = Math.ceil(lira / step) * step; if (v > lira && !out.includes(v) && out.length < 3) out.push(v); });
+  return out;
+}
+
+function renderStatus(){
+  const box = $('#statusBox');
+  if (S.done) { box.innerHTML = doneCard(); return; }
+  const t = totals(), belge = S.mode === 'belge';
+  let h = '<div class="card">';
+  if (belge) {
+    h += '<div class="card-header"><h2 class="ch">Özet</h2><span class="muted" style="font-size:.8rem">' + (t.count ? t.count + ' kalem' : '') + '</span></div><dl class="rows" style="border-top:0"><dt>Ara toplam (KDV hariç)</dt><dd>' + money(t.net) + '</dd>';
+    Object.keys(t.rates).sort((a, b) => b - a).forEach(r => { h += '<dt>KDV %' + r + '</dt><dd>' + money(t.rates[r]) + '</dd>'; });
+    if (!t.count) h += '<dt>KDV</dt><dd>' + money(0) + '</dd>';
+    h += '<dt class="grand">Genel toplam</dt><dd class="grand">' + money(t.gross) + '</dd></dl>';
+  } else {
+    h += '<div class="total-big"><div class="lbl">Toplam</div><div class="amt">' + money(t.gross) + '</div><div class="sub">' + (t.count ? t.count + ' kalem · ' + t.units + ' adet · KDV dahil' : 'Sepet boş') + '</div></div>'
+      + '<dl class="rows"><dt>KDV hariç</dt><dd>' + money(t.net) + '</dd><dt>KDV</dt><dd>' + money(t.tax) + '</dd></dl>';
+  }
+  h += '</div>';
+  h += payCard(t);
+  if (belge && S.customer) h += ledgerCard();
+  box.innerHTML = h;
+}
+
+function payCard(t){
+  const belge = S.mode === 'belge';
+  let h = '<div class="card"><div class="card-header"><h2 class="ch">' + (S.erp ? 'Ödeme' : 'Para üstü') + '</h2></div><div class="card-body pay">';
+  if (S.erp) {
+    h += '<div class="methods" role="group" aria-label="Ödeme yöntemi">' + Object.keys(METHOD).map(k =>
+      '<button class="method" type="button" data-method="' + k + '" aria-pressed="' + (S.method === k && !S.extra) + '">' + ic(METHOD[k][1]) + METHOD[k][0] + '</button>').join('') + '</div>';
+    if (S.showExtra || S.extra) {
+      h += '<select class="select" id="extraSel" aria-label="Diğer yöntem"><option value="">Çek ya da başka bir yöntem seçin</option>' + Object.keys(EXTRA).map(k => '<option value="' + k + '"' + (S.extra === k ? ' selected' : '') + '>' + EXTRA[k] + '</option>').join('') + '</select>';
+    } else {
+      h += '<button class="linkish" type="button" id="showExtra">Çek ya da başka bir yöntem</button>';
+    }
+    if (S.method !== 'later' || S.extra) {
+      h += '<div><label class="form-label" for="tillSel">Kasa / banka hesabı</label><select class="select" id="tillSel">' + Object.keys(TILLS).map(k => '<option value="' + k + '"' + (S.till === k ? ' selected' : '') + '>' + TILLS[k] + '</option>').join('') + '</select></div>';
+    }
+  }
+  const cash = !S.erp || (S.method === 'cash' && !S.extra);
+  if (cash && (!belge || !S.erp)) {
+    const rec = Math.round(parseFloat(String(S.received).replace(',', '.')) * 100) || 0;
+    h += '<div class="recv"><label class="form-label" for="recv">Alınan</label><div class="ig"><span class="ig-text">₺</span><input id="recv" type="text" inputmode="decimal" placeholder="0,00" value="' + esc(S.received) + '"></div>'
+      + '<div class="quick"><button type="button" data-recv="' + (t.gross / 100) + '">Tam</button>' + quickAmounts(t.gross).map(v => '<button type="button" data-recv="' + v + '">' + money(v * 100).replace(',00', '') + '</button>').join('') + '</div></div>';
+    if (rec > 0 && t.gross > 0) {
+      h += rec >= t.gross ? '<div class="change"><span>Para üstü</span><b>' + money(rec - t.gross) + '</b></div>' : '<div class="change short"><span>Eksik</span><b>' + money(t.gross - rec) + '</b></div>';
+    }
+    if (!S.erp) h += '<div class="note">' + ic('info-circle') + '<span>Bu hesap kaydedilmez; yalnız para üstü içindir.</span></div>';
+  }
+  if (S.erp) {
+    const forced = S.method !== 'later' || !!S.extra;
+    const party = S.customer ? S.customer.label : WALKIN + ' carisi';
+    h += '<label class="check"><input type="checkbox" id="invChk"' + ((S.invoice || forced) ? ' checked' : '') + (forced ? ' disabled' : '') + '><span>Faturayı kes<small>' + invoiceType() + ' · ' + esc(party) + '</small></span></label>';
+    if (forced) h += '<div class="note">' + ic('info-circle') + '<span>Tahsilat faturaya işleneceği için fatura kesilir.</span></div>';
+    else if (S.invoice) {
+      h += '<div class="note">' + ic('calendar3') + '<span>' + (S.customer && S.customer.term ? 'Vade: <b>' + dueDate(S.customer.term) + '</b> · cari vadesi ' + S.customer.term + ' gün' : 'Vade: <b>' + dueDate(0) + '</b> · tutar cariye borç yazılır') + '</span></div>';
+    }
+  }
+  const t2 = totals();
+  h += '<button class="btn btn-success go" type="button" id="goBtn"' + (!t2.count || S.busy ? ' disabled' : '') + '>'
+    + (S.busy ? '<span class="spin"></span>Tamamlanıyor…' : ic('check2-circle') + 'Satışı tamamla<kbd>F9</kbd>') + '</button>';
+  h += '</div></div>';
+  return h;
+}
+
+function ledgerCard(){
+  const c = S.customer;
+  if (!custHasLedger()) {
+    return '<div class="card"><div class="card-header"><h2 class="ch">Cari</h2></div><div class="card-body"><div class="note">' + ic('info-circle') + '<span>Bu kişinin carisi yok. Fatura kesilirken kişi kartından açılır.</span></div></div></div>';
+  }
+  const side = c.balance > 0 ? 'size borçlu' : (c.balance < 0 ? 'siz borçlusunuz' : 'bakiye yok');
+  const color = c.balance > 0 ? 'var(--success-text)' : (c.balance < 0 ? 'var(--danger-text)' : 'var(--muted)');
+  let h = '<div class="card"><div class="card-header"><h2 class="ch">Cari</h2><button class="btn btn-sm btn-ghost" type="button" id="ledgerOpen">' + ic('box-arrow-up-right') + 'Cari özeti</button></div><div class="card-body">'
+    + '<div class="bal"><b style="color:' + color + '">' + money(Math.abs(c.balance)) + '</b><span class="muted">' + side + '</span></div>'
+    + '<dl class="facts"><dt>Kimlik</dt><dd>' + esc(c.tax || '—') + '</dd><dt>e-Belge</dt><dd>' + (c.einv ? '<span class="badge ok">' + ic('check2') + 'e-Fatura mükellefi</span>' : '<span class="badge">e-Arşiv</span>') + '</dd>'
+    + '<dt>Vade</dt><dd>' + (c.term ? c.term + ' gün' : 'Mağaza varsayılanı') + '</dd></dl>';
+  if (c.missing.length) {
+    h += '<div class="alert warn" style="margin-top:.8rem">' + ic('exclamation-triangle-fill') + '<span>e-Belge için eksik: <b>' + esc(c.missing.join(', ')) + '</b>. Fatura kesilir ama gönderilemez. <a href="#" onclick="return false">Cari kartını düzenle</a></span></div>';
+  }
+  return h + '</div></div>';
+}
+
+function doneCard(){
+  const d = S.done, belge = S.mode === 'belge';
+  let h = '<div class="card"><div class="done-head">' + ic('check-circle-fill') + '<div><b>Satış tamamlandı</b><small>Sipariş #' + d.no + ' · ' + esc(d.who) + '</small></div></div>';
+  h += '<div class="total-big" style="padding-bottom:.6rem"><div class="lbl">Tahsil edilen</div><div class="amt" style="font-size:1.8rem">' + money(d.total) + '</div><div class="sub">' + (d.method === 'later' ? 'Sonra tahsil edilecek' : (METHOD[d.method] ? METHOD[d.method][0] : EXTRA[d.method]) + (d.till && S.erp ? ' · ' + TILLS[d.till] : '')) + '</div></div>';
+  if (d.method === 'cash' && d.received > d.total) {
+    h += '<div style="padding:0 1rem .75rem"><div class="change"><span>Para üstü</span><b>' + money(d.received - d.total) + '</b></div></div>';
+  }
+  if (S.erp && (d.inv || d.receipt)) {
+    h += '<ul class="done-list" style="border-top:1px solid var(--line-soft)">';
+    if (d.inv) h += '<li>' + ic('receipt') + '<a href="#" onclick="return false">Fatura ' + d.inv + '</a><span class="badge info">' + d.invType + '</span></li>';
+    if (d.receipt) h += '<li>' + ic('cash-coin') + '<a href="#" onclick="return false">Tahsilat #' + d.receipt + '</a><span class="badge ok">fatura ödendi</span></li>';
+    h += '</ul>';
+  }
+  if (d.warn) h += '<div style="padding:0 1rem .75rem"><div class="alert warn">' + ic('exclamation-triangle-fill') + '<span>' + d.warn + '</span></div></div>';
+  h += '<div class="done-actions"><button class="btn btn-sm btn-outline" type="button">' + ic('printer') + 'Fişi yazdır</button><button class="btn btn-sm btn-outline" type="button">' + ic('box-arrow-up-right') + 'Siparişi aç</button>'
+    + (belge && d.inv ? '<button class="btn btn-sm btn-outline" type="button">' + ic('receipt') + 'Faturayı aç</button>' : '') + '</div>';
+  h += '<div class="next"><span>Sonraki ürünü okuttuğunuzda yeni satış başlar.</span><button class="btn btn-sm btn-primary pill" type="button" id="newSale">Yeni satış <kbd style="background:transparent;border-color:rgba(0,0,0,.2);color:inherit">Enter</kbd></button></div></div>';
+  return h;
+}
+
+function renderSavebar(){
+  const t = totals(), sb = $('#savebar');
+  if (S.done || !t.count) { sb.innerHTML = ''; sb.style.display = 'none'; return; }
+  sb.style.display = '';
+  const how = S.erp ? (S.method === 'later' && !S.extra ? 'Sonra tahsil' : (S.extra ? EXTRA[S.extra] : METHOD[S.method][0]) + ' · ' + TILLS[S.till]) : t.count + ' kalem';
+  sb.innerHTML = '<div class="savebar-in"><div class="t"><b>' + money(t.gross) + '</b><small>' + esc(how) + ' · <button class="linkish" type="button" id="toPay">değiştir</button></small></div><button class="btn btn-success pill" type="button" id="goBtn2"' + (S.busy ? ' disabled' : '') + '>' + ic('check2-circle') + 'Tamamla</button></div>';
+}
+
+function renderDrawer(){
+  $('#drawerBody').innerHTML = recent.map(r => '<div class="rs"><div><b>#' + r.no + '</b> <small>· ' + r.time + '</small><br><small>' + esc(r.who) + ' · ' + r.items + ' kalem</small></div><div class="r"><b>' + money(r.total) + '</b></div>'
+    + '<div class="acts">' + (S.erp ? (r.inv ? '<span class="badge ok">' + ic('receipt') + r.inv + '</span>' : '<button class="btn btn-sm btn-outline-success" type="button">' + ic('receipt') + 'Faturayı kes</button>') : '')
+    + '<button class="btn btn-sm btn-ghost" type="button" aria-label="Siparişi aç">' + ic('eye') + '</button></div></div>').join('');
+}
+
+/* ── Overlays placed where the viewer is looking (the stage is not a scroll box) ── */
+function viewTop(){
+  const r = $('#app').getBoundingClientRect();
+  return {top: Math.max(0, -r.top), vh: window.innerHeight, h: r.height};
+}
+function openDrawer(){
+  renderDrawer();
+  const v = viewTop(), d = $('#drawer');
+  const hgt = Math.min(v.vh, v.h);
+  d.style.top = Math.min(v.top, v.h - hgt) + 'px'; d.style.height = hgt + 'px';
+  $('#backdrop').hidden = false; d.classList.add('open'); d.setAttribute('aria-hidden', 'false');
+  $('#drawerClose').focus();
+}
+function closeDrawer(){ $('#drawer').classList.remove('open'); $('#drawer').setAttribute('aria-hidden', 'true'); $('#backdrop').hidden = true; }
+function openModal(html){
+  const m = $('#modal'), v = viewTop();
+  m.innerHTML = html; m.hidden = false; $('#backdrop').hidden = false;
+  m.style.top = Math.max(16, Math.min(v.top + v.vh * 0.22, v.h - m.offsetHeight - 16)) + 'px';
+  const f = m.querySelector('[data-autofocus]'); if (f) f.focus();
+}
+function closeModal(){ $('#modal').hidden = true; if (!$('#drawer').classList.contains('open')) $('#backdrop').hidden = true; }
+function toast(msg, icon){
+  const box = $('#toasts'), v = viewTop();
+  box.style.top = (v.top + 12) + 'px';
+  const el = document.createElement('div'); el.className = 'toast'; el.innerHTML = ic(icon || 'check-circle-fill') + '<span>' + esc(msg) + '</span>';
+  box.appendChild(el); setTimeout(() => el.remove(), 2600);
+}
+let audio;
+function beep(){
+  if (!sound) return;
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square'; o.frequency.value = 220; g.gain.value = 0.05; o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.18); } catch (e) {}
+}
+
+/* ── Actions (each stands for one queued POST in the real screen) ── */
+let queue = Promise.resolve();
+function enqueue(fn, delay){
+  S.busy = true; renderFoot();
+  queue = queue.then(() => new Promise(r => setTimeout(() => { fn(); r(); }, delay || 180))).then(() => { S.busy = false; render(); });
+}
+function addProduct(p, qty){
+  qty = Math.max(1, qty || 1);
+  if (S.done) { S.done = null; S.received = ''; }
+  S.inputErr = ''; S.lineMsg = {};
+  if (p.stock <= 0) { S.inputErr = p.name + ' stokta yok.'; beep(); return; }
+  const ex = S.cart.find(l => l.pid === p.id);
+  const have = ex ? ex.qty : 0;
+  if (have + qty > p.stock) {
+    if (ex) { S.lineMsg[ex.id] = 'Stokta ' + p.stock + ' adet var; daha fazla eklenemez.'; S.flash = ex.id; }
+    else S.inputErr = 'Stokta ' + p.stock + ' adet var; ' + qty + ' adet eklenemez.';
+    beep(); return;
+  }
+  if (ex) { ex.qty += qty; S.flash = ex.id; } else { const l = line(p.id, qty); S.cart.push(l); S.flash = l.id; }
+}
+function findExact(q){
+  q = q.trim();
+  return CATALOG.find(p => p.bc === q || p.sku.toLowerCase() === q.toLowerCase());
+}
+function submitInput(){
+  const inp = $('#pInput'), q = inp.value.trim(), qty = parseInt($('#pQty').value, 10) || 1;
+  if (!q) return;
+  let p = findExact(q);
+  if (!p && S.resOn >= 0 && S.res[S.resOn]) p = S.res[S.resOn];
+  if (!p && S.res.length === 1) p = S.res[0];
+  hideResults();
+  inp.value = ''; $('#pQty').value = 1;
+  enqueue(() => {
+    if (p) addProduct(p, qty);
+    else { S.inputErr = /^\d{8,}$/.test(q) ? '“' + q + '” barkodlu ürün bulunamadı. Barkodu elle kontrol edin ya da adıyla arayın.' : '“' + q + '” ile eşleşen ürün yok. Farklı bir ad ya da kod deneyin.'; if (S.done) S.done = null; beep(); }
+  });
+}
+function showResults(){
+  const q = $('#pInput').value.trim().toLocaleLowerCase('tr'), box = $('#pResults');
+  if (!q) { hideResults(); return; }
+  S.res = CATALOG.filter(p => (p.name + ' ' + p.sku + ' ' + p.bc).toLocaleLowerCase('tr').includes(q)).slice(0, 8);
+  if (S.resOn >= S.res.length) S.resOn = S.res.length - 1;
+  box.innerHTML = S.res.length ? S.res.map((p, i) => {
+    const out = p.stock <= 0;
+    return '<button class="res' + (i === S.resOn ? ' on' : '') + '" type="button" data-pid="' + p.id + '"' + (out ? ' aria-disabled="true"' : '') + '><b>' + esc(p.name) + '</b><small><span class="mono">' + esc(p.sku) + '</span> · ' + (out ? '<span style="color:var(--danger-text)">Stokta yok</span>' : 'Stok ' + p.stock) + '</small><span class="rp">' + money(Math.round(p.price * (100 + p.rate) / 100)) + '<small>KDV dahil</small></span></button>';
+  }).join('') : '<div class="res-empty">Ürün bulunamadı. Enter ile barkod olarak okutulur.</div>';
+  box.hidden = false;
+}
+function hideResults(){ $('#pResults').hidden = true; S.res = []; S.resOn = -1; }
+function setQty(id, q){
+  const l = S.cart.find(x => x.id === id); if (!l) return;
+  const p = P[l.pid]; S.lineMsg = {}; S.inputErr = '';
+  if (q <= 0) { S.cart = S.cart.filter(x => x.id !== id); return; }
+  if (q > p.stock) { S.lineMsg[id] = 'Stokta ' + p.stock + ' adet var; daha fazla eklenemez.'; l.qty = p.stock; beep(); return; }
+  l.qty = q; S.flash = null;
+}
+function complete(){
+  const t = totals(); if (!t.count || S.busy) return;
+  S.busy = true; render();
+  setTimeout(() => {
+    const extra = S.extra, method = extra || S.method;
+    const rec = Math.round(parseFloat(String(S.received).replace(',', '.')) * 100) || 0;
+    const inv = S.erp && (S.invoice || method !== 'later') ? 'KDP2026000000' + (124 + (orderNo - 1043)) : '';
+    const warn = inv && S.customer && S.customer.missing.length ? 'Fatura kesildi ama e-Belge olarak gönderilemez: carinin <b>' + esc(S.customer.missing.join(', ')) + '</b> bilgisi eksik. <a href="#" onclick="return false">Cari kartını düzenle</a>' : '';
+    S.done = {no: orderNo, total: t.gross, method, till: method === 'later' ? '' : S.till, received: rec, inv, invType: invoiceType(), receipt: S.erp && method !== 'later' ? 89 + (orderNo - 1043) : 0, warn, who: S.customer ? S.customer.label : 'Sıcak satış'};
+    recent.unshift({no: orderNo, time: '15:0' + (orderNo - 1043), who: S.done.who, items: t.count, total: t.gross, inv});
+    orderNo++;
+    S.cart = []; S.busy = false; S.lineMsg = {}; S.inputErr = ''; S.flash = null;
+    if (S.mode === 'kasa') S.customer = null;
+    render(); $('#pInput').focus();
+  }, 650);
+}
+function pickCustomer(key){
+  S.customer = CUSTOMERS.find(c => c.key === key) || null; S.picker = false; S.pickQ = '';
+  if (S.customer && !custHasLedger() && S.method !== 'later') { /* no ledger yet: the account is opened at invoicing */ }
+  render(); toast('Müşteri: ' + (S.customer ? S.customer.label : 'Sıcak satış'), 'person');
+}
+
+/* ── Events ── */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button, a');
+  if (!e.target.closest('.dd')) $('#moreMenu').hidden = true;
+  if (!e.target.closest('#pResults, #pInput')) $('#pResults').hidden = true;
+  if (!b) return;
+  const d = b.dataset;
+  if (d.pid) { const p = P[+d.pid]; if (p.stock <= 0) return; const qty = parseInt($('#pQty').value, 10) || 1; $('#pInput').value = ''; $('#pQty').value = 1; hideResults(); enqueue(() => addProduct(p, qty)); $('#pInput').focus(); return; }
+  if (d.inc) { const l = S.cart.find(x => x.id === +d.inc); enqueue(() => setQty(l.id, l.qty + 1), 120); return; }
+  if (d.dec) { const l = S.cart.find(x => x.id === +d.dec); enqueue(() => setQty(l.id, l.qty - 1), 120); return; }
+  if (d.rm) { enqueue(() => setQty(+d.rm, 0), 120); return; }
+  if (d.method) { S.method = d.method; S.extra = ''; S.showExtra = false; if (METHOD[d.method][2]) S.till = METHOD[d.method][2]; render(); return; }
+  if (d.recv) { S.received = String(d.recv).replace('.', ','); render(); return; }
+  if (d.cust) { pickCustomer(d.cust); return; }
+  if (d.mode) { S.mode = d.mode; render(); return; }
+  switch (b.id) {
+    case 'pAdd': submitInput(); break;
+    case 'cChange': S.picker = true; S.pickQ = ''; renderCustomer(); break;
+    case 'cCancel': S.picker = false; renderCustomer(); break;
+    case 'cClear': S.customer = null; render(); toast('Müşteri kaldırıldı: sıcak satış', 'shop'); break;
+    case 'showExtra': S.showExtra = true; render(); break;
+    case 'goBtn': case 'goBtn2': complete(); break;
+    case 'newSale': S.done = null; S.received = ''; render(); $('#pInput').focus(); break;
+    case 'toPay': $('#statusBox').scrollIntoView({behavior:'smooth', block:'start'}); break;
+    case 'tbRecent': case 'ledgerOpen': openDrawer(); break;
+    case 'drawerClose': closeDrawer(); break;
+    case 'tbMore': { const m = $('#moreMenu'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden)); break; }
+    case 'mSound': sound = !sound; $('#mSoundTick').style.visibility = sound ? 'visible' : 'hidden'; break;
+    case 'mKeys': $('#moreMenu').hidden = true; openModal('<div class="modal-head">Klavye kısayolları<button class="btn btn-sm btn-ghost" data-close type="button" aria-label="Kapat">' + ic('x-lg') + '</button></div><div class="modal-body"><dl class="keys"><dt><kbd>F2</kbd></dt><dd>Ürün alanına git</dd><dt><kbd>F4</kbd></dt><dd>Müşteri seç</dd><dt><kbd>F9</kbd> <kbd>Ctrl+Enter</kbd></dt><dd>Satışı tamamla</dd><dt><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd></dt><dd>Arama sonuçlarında gezin ve ekle</dd><dt><kbd>Esc</kbd></dt><dd>Sonuçları kapat</dd><dt><kbd>Enter</kbd></dt><dd>Satış bitince yeni satış</dd></dl></div>'); break;
+    case 'tbClear': openModal('<div class="modal-head">Sepet boşaltılsın mı?</div><div class="modal-body">' + S.cart.length + ' kalem sepetten çıkarılacak. Stok etkilenmez; sepetteki ürünler henüz stoktan düşülmedi.</div><div class="modal-foot"><button class="btn btn-sm btn-ghost" data-close type="button">Vazgeç</button><button class="btn btn-sm btn-outline" type="button" id="doClear" data-autofocus style="border-color:var(--warning);color:var(--warning-text)">' + ic('cart-x') + 'Sepeti boşalt</button></div>'); break;
+    case 'doClear': closeModal(); enqueue(() => { S.cart = []; S.lineMsg = {}; S.inputErr = ''; }); toast('Sepet boşaltıldı', 'cart-x'); break;
+    case 'simScan': case 'simBad': {
+      const dot = $('#scanDot'); if (dot) { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); }
+      if (b.id === 'simBad') { enqueue(() => { if (S.done) S.done = null; S.inputErr = '“8690009999999” barkodlu ürün bulunamadı. Barkodu elle kontrol edin ya da adıyla arayın.'; beep(); }); }
+      else { const pool = CATALOG.filter(p => p.stock > 0); const p = pool[Math.floor(Math.random() * pool.length)]; enqueue(() => addProduct(p, 1)); }
+      break;
+    }
+  }
+  if (b.hasAttribute('data-close')) closeModal();
+});
+$('#backdrop').addEventListener('click', () => { closeDrawer(); closeModal(); });
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'pInput') { S.resOn = -1; if (S.inputErr) { S.inputErr = ''; renderFoot(); } showResults(); }
+  if (t.id === 'cInput') { S.pickQ = t.value; const pos = t.selectionStart; renderCustomer(); const i = $('#cInput'); i.setSelectionRange(pos, pos); }
+  if (t.id === 'recv') { S.received = t.value; const pos = t.selectionStart; renderStatus(); const i = $('#recv'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.qty) { const q = parseInt(t.value, 10); enqueue(() => setQty(+t.dataset.qty, isNaN(q) ? 0 : q), 120); }
+  if (t.id === 'tillSel') { S.till = t.value; render(); }
+  if (t.id === 'extraSel') { S.extra = t.value; if (t.value && !S.till) S.till = 'merkez'; render(); }
+  if (t.id === 'invChk') { S.invoice = t.checked; render(); }
+});
+$('#pInput').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if ($('#pResults').hidden) showResults();
+    if (!S.res.length) return;
+    e.preventDefault();
+    S.resOn = (S.resOn + (e.key === 'ArrowDown' ? 1 : -1) + S.res.length) % S.res.length; showResults();
+  } else if (e.key === 'Enter') { e.preventDefault(); submitInput(); }
+  else if (e.key === 'Escape') { hideResults(); }
+});
+document.addEventListener('keydown', e => {
+  if ($('#preview').hidden) return;
+  if (e.key === 'F2') { e.preventDefault(); $('#pInput').focus(); }
+  else if (e.key === 'F4') { e.preventDefault(); S.picker = true; S.pickQ = ''; renderCustomer(); }
+  else if (e.key === 'F9' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); complete(); }
+  else if (e.key === 'Escape') { closeDrawer(); closeModal(); if (S.picker) { S.picker = false; renderCustomer(); } }
+  else if (e.key === 'Enter' && S.done && document.activeElement === $('#pInput') && !$('#pInput').value) { S.done = null; S.received = ''; render(); }
+});
+
+/* ── Preview controls ── */
+function segSet(id, v){ document.querySelectorAll('#' + id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v))); }
+document.querySelectorAll('#ctlScenario button').forEach(b => b.addEventListener('click', () => {
+  const erp = S.erp; S = preset(b.dataset.v); S.erp = erp; segSet('ctlScenario', b.dataset.v); closeDrawer(); closeModal(); render();
+}));
+document.querySelectorAll('#ctlErp button').forEach(b => b.addEventListener('click', () => {
+  S.erp = b.dataset.v === 'on'; if (!S.erp && S.customer && S.customer.kind === 'account') S.customer = null;
+  segSet('ctlErp', b.dataset.v); render();
+}));
+document.querySelectorAll('#ctlWidth button').forEach(b => b.addEventListener('click', () => { $('#stage').dataset.w = b.dataset.v; segSet('ctlWidth', b.dataset.v); }));
+document.querySelectorAll('#ctlTheme button').forEach(b => b.addEventListener('click', () => { document.documentElement.setAttribute('data-theme', b.dataset.v); segSet('ctlTheme', b.dataset.v); }));
+(function initTheme(){
+  const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  segSet('ctlTheme', cur);
+})();
+function showTab(which){
+  const plan = which === 'plan';
+  $('#preview').hidden = plan; $('#plan').hidden = !plan;
+  $('#tabPreview').setAttribute('aria-selected', String(!plan)); $('#tabPlan').setAttribute('aria-selected', String(plan));
+}
+$('#tabPreview').addEventListener('click', () => showTab('preview'));
+$('#tabPlan').addEventListener('click', () => showTab('plan'));
+if (location.hash === '#plan') showTab('plan');
+
+render();
+})();
+</script>
+
+</body>
+</html>
