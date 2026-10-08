@@ -133,7 +133,29 @@
     // ── The room ─────────────────────────────────────────────────────────
 
     function drawHead(data) {
-        document.getElementById('pg-guest-title').textContent = data.topic || t('title');
+        var title = document.getElementById('pg-guest-title');
+
+        // A channel of the team shared with the guest carries its name; a
+        // room of their own its topic.
+        title.textContent = data.title || data.topic || t('title');
+        title.title = (data.title && data.topic) ? data.topic : '';
+
+        var hint = document.querySelector('.pg-guest-hint');
+
+        if (hint && data.privacy) {
+            hint.textContent = data.privacy;
+        }
+
+        var badge = document.getElementById('pg-guest-readonly');
+
+        if (data.read_only && !badge) {
+            badge = el('span', 'pg-guest-readonly-badge', t('readonly_badge'));
+            badge.id = 'pg-guest-readonly';
+            badge.title = t('read_only');
+            title.parentNode.appendChild(badge);
+        } else if (!data.read_only && badge) {
+            badge.remove();
+        }
 
         var staff = document.getElementById('pg-guest-staff');
         staff.textContent = '';
@@ -231,14 +253,29 @@
 
         var actions = el('div', 'pg-guest-actions');
 
+        // Reading only: the emoji are shown, nothing is offered.
         (message.reactions || []).forEach(function (reaction) {
-            var chip = el('button', 'pg-guest-reaction' + (reaction.mine ? ' mine' : ''));
-            chip.type = 'button';
-            chip.setAttribute('aria-pressed', reaction.mine ? 'true' : 'false');
+            var chip = el(state.readOnly ? 'span' : 'button', 'pg-guest-reaction' + (reaction.mine ? ' mine' : ''));
             chip.textContent = reaction.emoji + ' ' + reaction.count;
-            chip.addEventListener('click', function () { react(message.id, reaction.emoji); });
+
+            if (!state.readOnly) {
+                chip.type = 'button';
+                chip.setAttribute('aria-pressed', reaction.mine ? 'true' : 'false');
+                chip.addEventListener('click', function () { react(message.id, reaction.emoji); });
+            }
+
             actions.appendChild(chip);
         });
+
+        if (state.readOnly) {
+            if (actions.children.length) {
+                bubble.appendChild(actions);
+            }
+
+            row.appendChild(bubble);
+
+            return row;
+        }
 
         var add = el('button', 'pg-guest-tool');
         add.type = 'button';
@@ -269,6 +306,10 @@
     // tasks: the server leaves its boxes disabled); a block of code copies.
     function wireBody(body, message) {
         Array.prototype.forEach.call(body.querySelectorAll('input[data-ws-check]'), function (box) {
+            if (state.readOnly) {
+                box.disabled = true;
+            }
+
             if (box.disabled) {
                 return;
             }
@@ -350,7 +391,7 @@
         var box = el('div', 'pg-guest-poll');
         var total = poll.options.reduce(function (sum, option) { return sum + option.count; }, 0);
         var chosen = {};
-        var open = !poll.closed;
+        var open = !poll.closed && !state.readOnly;
 
         poll.options.forEach(function (option) {
             chosen[option.id] = option.mine;
@@ -530,9 +571,20 @@
         }
 
         if (data.status === 'ok') {
+            var readOnly = !!data.read_only;
+
             state.csrf = data.csrf || state.csrf;
             drawHead(data);
-            foot.classList.remove('d-none');
+
+            // Shared to read only: no writing box; the messages are drawn
+            // again without their buttons when that changes.
+            if (readOnly !== !!state.readOnly) {
+                state.readOnly = readOnly;
+                data.same = false;
+                state.signature = '';
+            }
+
+            foot.classList.toggle('d-none', readOnly);
 
             if (!data.same && data.messages) {
                 state.signature = data.signature;

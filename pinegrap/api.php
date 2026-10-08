@@ -447,6 +447,9 @@ switch ($action) {
     case 'ws_guest_start':
     case 'ws_guest_relink':
     case 'ws_guest_end':
+    case 'ws_channel_share':
+    case 'ws_share_relink':
+    case 'ws_share_end':
 
         if (!USER_LOGGED_IN) {
             respond(array(

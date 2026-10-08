@@ -150,7 +150,12 @@ function ws_channel_detail($viewer, $channel)
     // what the reader may do. The assistants are never asked there.
     $brief['guest'] = function_exists('ws_guest_channel_state') ? ws_guest_channel_state($viewer, $channel) : null;
 
-    if ($brief['guest'] !== null) {
+    // A channel of the team shared with guests: who reads along, and the
+    // reader's way to share it (guests.php).
+    $brief['shares'] = function_exists('ws_channel_shares_state') ? ws_channel_shares_state($viewer, $channel) : null;
+    $brief['can_share'] = function_exists('ws_channel_can_share') && ws_channel_can_share($viewer, $channel);
+
+    if (($brief['guest'] !== null) || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel))) {
         $brief['claude'] = null;
         $brief['ai'] = null;
     }

@@ -11331,6 +11331,15 @@ a.ws-chip:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A channel shared outside the team (guests.php): the people in the
+   manage drawer, and the two ways it can be shared. */
+.ws-share-row {
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.ws-share-choice + .ws-share-choice {
+  margin-top: .4rem;
+}
 /* Scheduled messages (scheduled_messages.php): the send button's second
    half, the line above the box that says some wait, and their cards. */
 .ws-composer-tools > .ws-send-group {

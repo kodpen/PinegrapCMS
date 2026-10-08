@@ -3848,6 +3848,94 @@
         setTimeout(function () { name.focus(); }, 300);
     }
 
+    // A channel of the team shared with somebody outside it (guests.php):
+    // who it is for, whether they only read, and how the link opens.
+    function shareForm(channel, onDone) {
+        var conf = CFG.guests || {};
+        var node = offcanvas('ws-share-form', '');
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var footer = clear(node.querySelector('.offcanvas-footer'));
+        var access = 'read';
+        var group = nextId('ws_share_access_');
+
+        footer.classList.remove('d-none');
+        node.querySelector('.offcanvas-title').textContent = t('share_start') + ' · #' + channel.name;
+        body.appendChild(el('div', 'alert alert-info small py-2', t('share_help')));
+
+        var name = el('input', 'form-control');
+        name.id = nextId('ws-share-name-');
+        name.maxLength = 60;
+        name.autocomplete = 'off';
+        body.appendChild(formRow(t('guest_name'), name));
+
+        var choices = el('div', 'mb-3');
+        choices.appendChild(el('div', 'form-label', t('share_access')));
+
+        [['read', t('share_read'), t('share_read_help'), 'bi-eye'], ['write', t('share_write'), t('share_write_help'), 'bi-chat-dots']].forEach(function (option) {
+            var wrap = el('div', 'form-check ws-share-choice');
+            var radio = el('input', 'form-check-input');
+            radio.type = 'radio';
+            radio.name = group;
+            radio.value = option[0];
+            radio.id = nextId('ws-share-access-');
+            radio.checked = (option[0] === access);
+            radio.addEventListener('change', function () { access = radio.value; });
+
+            var label = el('label', 'form-check-label');
+            label.htmlFor = radio.id;
+            label.appendChild(icon(option[3], 'me-1'));
+            label.appendChild(document.createTextNode(option[1]));
+            wrap.appendChild(radio);
+            wrap.appendChild(label);
+            wrap.appendChild(el('div', 'form-text mt-0', option[2]));
+            choices.appendChild(wrap);
+        });
+
+        body.appendChild(choices);
+
+        var link = guestLinkFields(conf.durations);
+        body.appendChild(link);
+
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', t('share_create'), 'bi-link-45deg');
+        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+        footer.appendChild(cancel);
+        footer.appendChild(save);
+
+        save.addEventListener('click', function () {
+            var chosen = link.value();
+
+            save.disabled = true;
+
+            api('ws_channel_share', {
+                channel_id: channel.id,
+                guest_name: name.value,
+                access: access,
+                mode: chosen.mode,
+                duration: chosen.duration
+            }).then(function (result) {
+                save.disabled = false;
+                hideOffcanvas(node);
+
+                if (onDone) {
+                    onDone();
+                }
+
+                guestLinkShow(result.url);
+            }).catch(function (error) {
+                save.disabled = false;
+                fail(error);
+
+                if (error.field === 'guest_name') {
+                    name.focus();
+                }
+            });
+        });
+
+        showOffcanvas(node);
+        setTimeout(function () { name.focus(); }, 300);
+    }
+
     // ── The inbox ──────────────────────────────────────────────────────
 
     function openInbox(onChange) {
@@ -6082,6 +6170,114 @@
             return bar;
         },
 
+        // Who outside the team reads this channel, and for staff who may
+        // manage it, their links.
+        shareBar: function (channel) {
+            var self = this;
+            var info = channel.shares;
+            var open = info.guests.filter(function (guest) { return guest.open; });
+            var bar = el('div', 'alert rounded-0 m-0 py-2 small d-flex flex-wrap align-items-center gap-2 ws-share-bar ' + (open.length ? 'alert-warning' : 'alert-secondary'));
+
+            bar.appendChild(icon('bi-box-arrow-up-right', 'fs-6'));
+
+            var names = open.map(function (guest) {
+                return guest.name + ' (' + (guest.access === 'read' ? t('share_read_badge') : t('share_write_badge')) + ')';
+            });
+
+            var text = el('div', 'flex-grow-1 ws-share-bar-text');
+            text.appendChild(el('span', 'fw-semibold', open.length ? t('share_bar', names.join(', ')) : t('share_bar_closed')));
+
+            open.filter(function (guest) { return guest.online; }).forEach(function (guest) {
+                text.appendChild(el('span', 'ws-guest-online ms-2', guest.name + ' · ' + t('guest_online')));
+            });
+
+            bar.appendChild(text);
+
+            if (info.can_host) {
+                var manage = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('share_manage'), 'bi-gear');
+                manage.addEventListener('click', function () { self.shareManage(channel); });
+                bar.appendChild(manage);
+            }
+
+            return bar;
+        },
+
+        shareManage: function (channel) {
+            var self = this;
+            var info = channel.shares || { guests: [], durations: [] };
+            var node = offcanvas('ws-share-list', t('share_start') + ' · #' + channel.name);
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+
+            footer.classList.remove('d-none');
+
+            info.guests.forEach(function (guest) {
+                var row = el('div', 'ws-share-row');
+                var head = el('div', 'd-flex align-items-center gap-2');
+
+                head.appendChild(icon(guest.access === 'read' ? 'bi-eye' : 'bi-chat-dots', 'text-body-secondary'));
+                head.appendChild(el('b', 'flex-grow-1', guest.name));
+                head.appendChild(el('span', 'badge rounded-pill ' + (guest.open ? 'text-bg-warning' : 'text-bg-secondary'), guest.access === 'read' ? t('share_read') : t('share_write')));
+                row.appendChild(head);
+                row.appendChild(el('div', 'small text-body-secondary', guest.label + (guest.seen ? ' · ' + t('guest_seen', guest.seen) : '')));
+
+                var tools = el('div', 'd-flex flex-wrap gap-1 mt-1');
+                var relink = button('btn btn-sm btn-ghost', t('guest_relink'), 'bi-link-45deg');
+                relink.addEventListener('click', function () {
+                    var fields = guestLinkFields(info.durations);
+
+                    hideOffcanvas(node);
+                    ask(t('guest_relink_help'), t('guest_relink_make'), false, fields).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        var chosen = fields.value();
+
+                        api('ws_share_relink', { channel_id: channel.id, guest_id: guest.id, mode: chosen.mode, duration: chosen.duration }).then(function (result) {
+                            self.reloadChannels(channel.id);
+                            guestLinkShow(result.url);
+                        }).catch(fail);
+                    });
+                });
+                tools.appendChild(relink);
+
+                if (guest.open) {
+                    var end = button('btn btn-sm btn-ghost text-danger', t('share_end'), 'bi-x-circle');
+                    end.addEventListener('click', function () {
+                        hideOffcanvas(node);
+                        ask(t('share_end_confirm', guest.name), t('share_end'), true).then(function (yes) {
+                            if (!yes) {
+                                return;
+                            }
+
+                            api('ws_share_end', { channel_id: channel.id, guest_id: guest.id }).then(function () {
+                                toast(t('share_ended_toast'), 'success');
+                                self.reloadChannels(channel.id);
+                            }).catch(fail);
+                        });
+                    });
+                    tools.appendChild(end);
+                }
+
+                row.appendChild(tools);
+                body.appendChild(row);
+            });
+
+            if (channel.can_share) {
+                var add = button('btn btn-sm btn-primary rounded-pill px-3', t('share_add'), 'bi-plus-lg');
+                add.addEventListener('click', function () {
+                    hideOffcanvas(node);
+                    shareForm(channel, function () { self.reloadChannels(channel.id); });
+                });
+                footer.appendChild(add);
+            } else {
+                footer.classList.add('d-none');
+            }
+
+            showOffcanvas(node);
+        },
+
         guestRelink: function (channel) {
             var self = this;
             var fields = guestLinkFields(channel.guest.durations);
@@ -6195,6 +6391,11 @@
 
             if (channel.guest) {
                 center.appendChild(self.guestBar(channel));
+            }
+
+            // A channel of the team that people outside it read.
+            if (channel.shares) {
+                center.appendChild(self.shareBar(channel));
             }
 
             // An earlier version of the conversation: read as it was, with
@@ -6414,6 +6615,17 @@
 
             if (channel.can_group) {
                 item(t('grp_move_channel'), 'bi-folder-symlink', function () { self.pickGroupFor(channel); });
+            }
+
+            // Shared with somebody outside the team (guests.php).
+            if (channel.can_share && !self.era) {
+                item(t('share_start'), 'bi-box-arrow-up-right', function () {
+                    if (channel.shares && channel.shares.guests.length) {
+                        self.shareManage(channel);
+                    } else {
+                        shareForm(channel, function () { self.reloadChannels(channel.id); });
+                    }
+                });
             }
 
             if (CFG.eras && channel.eras) {
@@ -11027,6 +11239,19 @@
                 if (data.pin !== undefined && self.channel && (JSON.stringify(data.pin) !== JSON.stringify(self.channel.pin || null))) {
                     self.channel.pin = data.pin;
                     self.drawPinBar();
+                }
+
+                // Who outside the team reads along, as it changes.
+                if ((data.shares !== undefined) && self.channel && !self.channel.guest && (JSON.stringify(data.shares) !== JSON.stringify(self.channel.shares || null))) {
+                    var shareWas = self.center.querySelector('.ws-share-bar');
+
+                    self.channel.shares = data.shares;
+
+                    if (shareWas && data.shares) {
+                        shareWas.replaceWith(self.shareBar(self.channel));
+                    } else if (shareWas) {
+                        shareWas.remove();
+                    }
                 }
 
                 // A guest's link and whether they are here, as they change.

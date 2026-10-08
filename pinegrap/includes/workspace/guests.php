@@ -24,6 +24,16 @@
  * guest reads session, guest, link and room again; ending the conversation,
  * a link running out and the room being archived all close it.
  *
+ * A channel of the team can be shared the same way (ws_channel_share()):
+ * the guest is a ws_guests row of that channel, comes in by the same kind of
+ * link and reads the channel's conversation through the same page, either
+ * to read only or to read and write (ws_guests.access). Nothing else of the
+ * team opens to them: not the channel's tabs, its discussions, its files
+ * beyond the ones posted in the conversation, nor any other channel. The
+ * channel stays the team's; ending a share closes that guest's way in and
+ * leaves the channel as it is. While a share is open the assistants are not
+ * asked in the channel, as in a guest's room.
+ *
  * The guest reads the room as staff do: the messages drawn by the same
  * engine (tables, sums, code, titled blocks, checklists), the files and
  * pictures, polls and task cards staff put in it. They write text with bold,
@@ -77,6 +87,34 @@ function ws_guests_ready()
     }
 
     return $ready;
+}
+
+/**
+ * Can a channel of the team be shared with a guest (2026.4.8, 8.82)?
+ *
+ * @return bool
+ */
+function ws_shares_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_guests_ready() && function_exists('waf_table_has_column') && waf_table_has_column('ws_guests', 'access');
+    }
+
+    return $ready;
+}
+
+/**
+ * Does this guest only read? A guest of a room writes; a guest a channel
+ * was shared with may have been given reading only.
+ *
+ * @param array $guest
+ * @return bool
+ */
+function ws_guest_reads_only($guest)
+{
+    return is_array($guest) && ((string) ($guest['access'] ?? 'write') === 'read');
 }
 
 /**
@@ -231,9 +269,21 @@ function ws_guest_link_issue($viewer, $guest, $mode, $duration = 0)
         return $fail(lang('The link could not be made.'));
     }
 
-    ws_message_system($guest['channel_id'], ($mode === 'timed')
-        ? lang(array('string' => '{var:1} gave {var:2} a new link, valid until {var:3}', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name'], date('d.m.Y H:i', $expires))))
-        : lang(array('string' => '{var:1} gave {var:2} a new one-time link', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name']))));
+    // In a channel of the team everybody is told who reads along from now,
+    // and whether they may write.
+    $room = ws_channel($guest['channel_id']);
+
+    if ($room && !ws_channel_is_guest($room)) {
+        $how = ws_guest_reads_only($guest) ? lang('to read only') : lang('to read and write');
+
+        ws_message_system($guest['channel_id'], ($mode === 'timed')
+            ? lang(array('string' => '{var:1} shared this channel with {var:2} ({var:3}), with a link valid until {var:4}', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name'], $how, date('d.m.Y H:i', $expires))))
+            : lang(array('string' => '{var:1} shared this channel with {var:2} ({var:3}), with a one-time link', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name'], $how))));
+    } else {
+        ws_message_system($guest['channel_id'], ($mode === 'timed')
+            ? lang(array('string' => '{var:1} gave {var:2} a new link, valid until {var:3}', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name'], date('d.m.Y H:i', $expires))))
+            : lang(array('string' => '{var:1} gave {var:2} a new one-time link', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name']))));
+    }
 
     log_activity(lang(array('string' => 'a workspace guest link was made for ({var:1})', 'vars' => (string) $guest['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
@@ -445,6 +495,261 @@ function ws_guest_channel_state($viewer, $channel)
 }
 
 /* ---------------------------------------------------------------------------
+   A channel of the team shared with a guest
+   --------------------------------------------------------------------------- */
+
+/**
+ * May this person share the channel with somebody outside the team? Staff
+ * who may manage it (a private one only from inside), while it is open.
+ * Neither a guest's room nor a discussion is shared.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return bool
+ */
+function ws_channel_can_share($viewer, $channel)
+{
+    return ws_shares_ready() && ws_can_host_guests($viewer) && is_array($channel)
+        && in_array((string) $channel['kind'], array('public', 'private'), true)
+        && ((int) $channel['archived_at'] === 0)
+        && ws_can_manage_channel($viewer, $channel);
+}
+
+/**
+ * The guests a channel of the team is shared with, newest first.
+ *
+ * @param int  $channel_id
+ * @param bool $open_only leave the ended shares out
+ * @return array[]
+ */
+function ws_channel_share_guests($channel_id, $open_only = false)
+{
+    if (!ws_shares_ready()) {
+        return array();
+    }
+
+    return (array) db_items("SELECT * FROM ws_guests
+        WHERE channel_id = '" . (int) $channel_id . "'" . ($open_only ? " AND ended_at = 0" : '') . "
+        ORDER BY ended_at = 0 DESC, id DESC LIMIT 50");
+}
+
+/**
+ * Is a channel of the team open to a guest now: a share not ended whose link
+ * still opens (a one-time link that was opened keeps the guest in)? The
+ * assistants are not asked in it meanwhile, as in a guest's room.
+ *
+ * @param array $channel
+ * @return bool
+ */
+function ws_channel_share_open($channel)
+{
+    static $cache = array();
+
+    if (!ws_shares_ready() || !is_array($channel) || ws_channel_is_guest($channel)) {
+        return false;
+    }
+
+    $channel_id = (int) $channel['id'];
+
+    if (!isset($cache[$channel_id])) {
+        $cache[$channel_id] = (int) db_value("SELECT COUNT(*) FROM ws_guests g
+            INNER JOIN short_links l ON l.ws_guest_id = g.id AND l.destination_type = 'workspace_guest'
+            WHERE g.channel_id = '" . $channel_id . "' AND g.ended_at = 0
+            AND (l.expires_at = 0 OR l.expires_at > '" . time() . "')") > 0;
+    }
+
+    return $cache[$channel_id];
+}
+
+/**
+ * Shares a channel of the team with somebody who has no account: a guest of
+ * the channel, to read only or to read and write, and their first link.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $data guest_name, access (read | write), mode (once | timed), duration
+ * @return array ok, error, field, url
+ */
+function ws_channel_share($viewer, $channel, $data)
+{
+    $fail = function ($message, $field = '') {
+        return array('ok' => false, 'error' => $message, 'field' => $field, 'url' => '');
+    };
+
+    if (!ws_channel_can_share($viewer, $channel)) {
+        return $fail(lang('Only staff who may manage this channel can share it.'));
+    }
+
+    $name = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($data['guest_name'] ?? '')), 0, 60));
+
+    if ($name === '') {
+        return $fail(lang('Write the name of the guest.'), 'guest_name');
+    }
+
+    $access = ((string) ($data['access'] ?? 'read') === 'write') ? 'write' : 'read';
+
+    db("INSERT INTO ws_guests (channel_id, name, access, created_by, created_at)
+        VALUES ('" . (int) $channel['id'] . "', '" . e($name) . "', '" . $access . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+
+    $guest = ws_guest((int) mysqli_insert_id(db::$con));
+
+    if (!$guest) {
+        return $fail(lang('The channel could not be shared.'));
+    }
+
+    $link = ws_guest_link_issue($viewer, $guest, (string) ($data['mode'] ?? 'once'), (int) ($data['duration'] ?? 0));
+
+    if (!$link['ok']) {
+        db("DELETE FROM ws_guests WHERE id = '" . (int) $guest['id'] . "'");
+
+        return $fail($link['error'], 'duration');
+    }
+
+    log_activity(lang(array('string' => 'workspace channel ({var:1}) was shared with a guest ({var:2})', 'vars' => array((string) $channel['name'], $name))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'url' => $link['url']);
+}
+
+/**
+ * One guest of a shared channel, for those who may manage the share.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param int   $guest_id
+ * @return array|null
+ */
+function ws_channel_share_guest($viewer, $channel, $guest_id)
+{
+    $guest = ws_guest((int) $guest_id);
+
+    if (!$guest || ((int) $guest['channel_id'] !== (int) $channel['id']) || ws_channel_is_guest($channel)
+        || !ws_shares_ready() || !ws_can_host_guests($viewer) || !ws_can_manage_channel($viewer, $channel)) {
+        return null;
+    }
+
+    return $guest;
+}
+
+/**
+ * Gives a guest of a shared channel a new link (an ended share opens again
+ * with it), or ends the share: the guest's links and sessions are closed,
+ * the channel stays as it is.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $guest_id
+ * @param string $what     relink | end
+ * @param string $mode     once | timed (relink)
+ * @param int    $duration seconds (relink)
+ * @return array ok, error, url
+ */
+function ws_channel_share_change($viewer, $channel, $guest_id, $what, $mode = 'once', $duration = 0)
+{
+    $guest = ws_channel_share_guest($viewer, $channel, $guest_id);
+
+    if (!$guest) {
+        return array('ok' => false, 'error' => lang('Only staff who may manage this channel can share it.'), 'url' => '');
+    }
+
+    if ($what === 'relink') {
+        if ((int) $channel['archived_at'] > 0) {
+            return array('ok' => false, 'error' => lang('This channel is archived. It can be read but not written in.'), 'url' => '');
+        }
+
+        if ((int) $guest['ended_at'] > 0) {
+            db("UPDATE ws_guests SET ended_at = 0, ended_by = 0 WHERE id = '" . (int) $guest['id'] . "'");
+        }
+
+        $link = ws_guest_link_issue($viewer, ws_guest($guest['id']), $mode, $duration);
+
+        return array('ok' => $link['ok'], 'error' => $link['error'], 'url' => $link['url']);
+    }
+
+    $now = time();
+
+    db("UPDATE ws_guests SET ended_at = '" . $now . "', ended_by = '" . (int) $viewer['id'] . "' WHERE id = '" . (int) $guest['id'] . "'");
+    db("UPDATE ws_guest_sessions SET ended_at = '" . $now . "' WHERE guest_id = '" . (int) $guest['id'] . "' AND ended_at = 0");
+    db("UPDATE short_links SET expires_at = '" . $now . "'
+        WHERE destination_type = 'workspace_guest' AND ws_guest_id = '" . (int) $guest['id'] . "'
+        AND (expires_at = 0 OR expires_at > '" . $now . "')");
+
+    ws_message_system($channel['id'], lang(array('string' => '{var:1} stopped sharing this channel with {var:2}', 'vars' => array('<@user:' . (int) $viewer['id'] . '>', (string) $guest['name']))));
+
+    log_activity(lang(array('string' => 'workspace channel ({var:1}) is no longer shared with a guest ({var:2})', 'vars' => array((string) $channel['name'], (string) $guest['name']))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    return array('ok' => true, 'error' => '', 'url' => '');
+}
+
+/**
+ * What the channel screen shows about the guests a channel is shared with:
+ * who, to read or to write, where their link stands, whether they are here,
+ * and what the reader may do. Null when nobody outside the team reads it.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return array|null
+ */
+function ws_channel_shares_state($viewer, $channel)
+{
+    if (!ws_shares_ready() || ws_channel_is_guest($channel)) {
+        return null;
+    }
+
+    $host = ws_channel_can_share($viewer, $channel) || (ws_can_host_guests($viewer) && ws_can_manage_channel($viewer, $channel));
+    $now = time();
+    $guests = array();
+
+    foreach (ws_channel_share_guests($channel['id'], !$host) as $guest) {
+        $link = db_item("SELECT link_mode, expires_at, used_at FROM short_links
+            WHERE destination_type = 'workspace_guest' AND ws_guest_id = '" . (int) $guest['id'] . "'
+            ORDER BY id DESC LIMIT 1");
+        $expires = is_array($link) ? (int) $link['expires_at'] : 0;
+        $closed = ((int) $guest['ended_at'] > 0) || !is_array($link) || (($expires > 0) && ($expires <= $now));
+
+        if ($closed && !$host) {
+            continue;
+        }
+
+        if ((int) $guest['ended_at'] > 0) {
+            $label = lang('The share has ended.');
+        } elseif ($closed) {
+            $label = lang('The link is closed.');
+        } elseif ((string) $link['link_mode'] === 'once') {
+            $label = ((int) $link['used_at'] > 0)
+                ? lang(array('string' => 'The one-time link was opened on {var:1}; the guest goes on in that browser.', 'vars' => date('d.m.Y H:i', (int) $link['used_at'])))
+                : lang('A one-time link is waiting to be opened.');
+        } else {
+            $label = lang(array('string' => 'The link is valid until {var:1}.', 'vars' => date('d.m.Y H:i', $expires)));
+        }
+
+        $seen = (int) $guest['last_seen_at'];
+
+        $guests[] = array(
+            'id'     => (int) $guest['id'],
+            'name'   => (string) $guest['name'],
+            'access' => ws_guest_reads_only($guest) ? 'read' : 'write',
+            'open'   => !$closed,
+            'label'  => $label,
+            'seen'   => ($seen > 0) ? ws_time_label($seen) : '',
+            'online' => !$closed && ($seen > ($now - 90)),
+        );
+    }
+
+    $open = array_filter($guests, function ($guest) { return $guest['open']; });
+
+    if (empty($open) && (!$host || empty($guests))) {
+        return null;
+    }
+
+    return array(
+        'guests'    => $guests,
+        'open'      => count($open),
+        'can_host'  => $host,
+        'durations' => $host ? ws_guest_duration_options() : array(),
+    );
+}
+
+/* ---------------------------------------------------------------------------
    The guest's side (workspace_guest.php)
    --------------------------------------------------------------------------- */
 
@@ -475,7 +780,9 @@ function ws_guest_link_for_token($token)
  */
 function ws_guest_refusal($link, $guest, $channel)
 {
-    if (!$link || !$guest || !$channel || !ws_channel_is_guest($channel)) {
+    // A guest's own room, or a channel of the team shared with them.
+    if (!$link || !$guest || !$channel || !in_array((string) $channel['kind'], array('guest', 'public', 'private'), true)
+        || (!ws_channel_is_guest($channel) && !ws_shares_ready())) {
         return lang('This link is not valid.');
     }
 
@@ -805,11 +1112,15 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
     $channel_id = (int) $context['channel']['id'];
     $guest_id = (int) $context['guest']['id'];
 
+    // The current conversation only: what came before a clear is an earlier
+    // version the team keeps (eras.php).
+    $floor = function_exists('ws_channel_floor') ? ws_channel_floor($channel_id) : 0;
+
     $rows = array_reverse((array) db_items("SELECT id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name, edited_at, created_at
         FROM ws_messages
         WHERE channel_id = '" . $channel_id . "' AND deleted_at = 0
         AND kind IN ('message', 'decision', 'note', 'task') AND sender_kind IN ('user', 'guest')
-        AND id > '" . (int) $after . "'
+        AND id > '" . max((int) $after, $floor) . "'
         ORDER BY id DESC LIMIT " . max(1, min(200, (int) $limit))));
 
     $ids = array_map(function ($row) { return (int) $row['id']; }, $rows);
@@ -1270,11 +1581,18 @@ function ws_guest_state($context, $signature = '')
         $staff[] = array('name' => (string) $person['name'], 'avatar' => (string) $person['avatar']);
     }
 
+    $shared = !ws_channel_is_guest($channel);
+
     $state = array(
         'status'    => 'ok',
         'csrf'      => (string) $context['session']['csrf'],
         'guest'     => (string) $context['guest']['name'],
         'topic'     => (string) $channel['topic'],
+        // A channel of the team: its name is the page's title. Reading only:
+        // the page has no writing box and no buttons that change anything.
+        'title'     => $shared ? '#' . (string) $channel['name'] : '',
+        'read_only' => ws_guest_reads_only($context['guest']),
+        'privacy'   => $shared ? lang('The team of the site reads what you write here.') : lang('Only the people of the site in this conversation read what you write here.'),
         'staff'     => $staff,
         'signature' => $now,
         'same'      => ($signature !== '') && ($signature === $now),
@@ -1341,6 +1659,10 @@ function ws_guest_handle($action, $request)
 
     if (!hash_equals((string) $context['session']['csrf'], (string) ($request['csrf'] ?? ''))) {
         return array('status' => 'error', 'message' => lang('The page has expired. Please reload it.'));
+    }
+
+    if (in_array($action, array('send', 'react', 'vote', 'check'), true) && ws_guest_reads_only($context['guest'])) {
+        return array('status' => 'error', 'message' => lang('This conversation was shared with you to read only.'));
     }
 
     switch ($action) {
@@ -1419,6 +1741,8 @@ function ws_guest_page_strings()
         'poll_closes'  => ws_js_template('Closes {var:1}', 1),
         'poll_multiple' => lang('You can choose more than one.'),
         'privacy'      => lang('Only the people of the site in this conversation read what you write here.'),
+        'read_only'    => lang('This conversation was shared with you to read only.'),
+        'readonly_badge' => lang('Read only'),
     );
 }
 
@@ -1456,5 +1780,22 @@ function ws_guests_js_strings()
         'guest_end_confirm'  => lang('End the conversation? The guest\'s link and session are closed and the room is archived. A new link opens it again.'),
         'guest_ended_toast'  => lang('The conversation has ended.'),
         'guest_badge'        => lang('Guest'),
+        'share_start'        => lang('Share with a link'),
+        'share_help'         => lang('Somebody without an account reads this channel\'s conversation through a link: earlier messages, files and pictures in it, polls and task cards. Nothing else of the workspace opens to them. While it is shared, the assistants are not asked here.'),
+        'share_access'       => lang('What they may do'),
+        'share_read'         => lang('Read only'),
+        'share_read_help'    => lang('They read the conversation as it goes on; they cannot write, react or vote.'),
+        'share_write'        => lang('Read and write'),
+        'share_write_help'   => lang('They also write, answer, leave an emoji, vote and tick, as a guest of a room does.'),
+        'share_create'       => lang('Make the link'),
+        'share_bar'          => ws_js_template('This channel is shared outside the team: {var:1}. They read everything written in the conversation.', 1),
+        'share_bar_closed'   => lang('This channel was shared outside the team; no link is open now.'),
+        'share_read_badge'   => lang('reads'),
+        'share_write_badge'  => lang('reads and writes'),
+        'share_manage'       => lang('Manage'),
+        'share_end'          => lang('Stop sharing'),
+        'share_end_confirm'  => ws_js_template('Stop sharing this channel with {var:1}? Their link and session are closed; the channel stays as it is.', 1),
+        'share_ended_toast'  => lang('The channel is no longer shared with them.'),
+        'share_add'          => lang('Share with somebody else'),
     );
 }

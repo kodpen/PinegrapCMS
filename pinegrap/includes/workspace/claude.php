@@ -357,8 +357,9 @@ function ws_claude_ready()
  */
 function ws_claude_channel_allowed($channel)
 {
-    // Never where a guest reads along (guests.php).
-    if (($channel['kind'] ?? '') === 'guest') {
+    // Never where a guest reads along (guests.php): a guest's room, or a
+    // channel shared with somebody outside the team.
+    if ((($channel['kind'] ?? '') === 'guest') || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel))) {
         return false;
     }
 

@@ -789,6 +789,8 @@ function ws_handle_action($action, $request)
                     // A guest's link and whether they are here (guests.php).
                     if (((string) $channel['kind'] === 'guest') && function_exists('ws_guest_channel_state')) {
                         $out['guest'] = ws_guest_channel_state($viewer, $channel);
+                    } elseif (function_exists('ws_channel_shares_state')) {
+                        $out['shares'] = ws_channel_shares_state($viewer, $channel);
                     }
                     $out['messages'] = ws_message_payloads($viewer, $rows);
 
@@ -1151,6 +1153,37 @@ function ws_handle_action($action, $request)
                 : ws_guest_end($viewer, $channel);
 
             return $result['ok'] ? ws_action_ok(array('url' => (string) ($result['url'] ?? ''))) : ws_action_error($result['error']);
+
+        // A channel of the team shared with a guest (guests.php): shared, a
+        // guest given a new link, a share ended.
+        case 'ws_channel_share':
+            $channel = ws_action_channel($viewer, $request, 'manage');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $result = ws_channel_share($viewer, $channel, array(
+                'guest_name' => $request['guest_name'] ?? '',
+                'access'     => $request['access'] ?? 'read',
+                'mode'       => $request['mode'] ?? 'once',
+                'duration'   => $request['duration'] ?? 0,
+            ));
+
+            return $result['ok'] ? ws_action_ok(array('url' => $result['url'])) : ws_action_error($result['error'], $result['field']);
+
+        case 'ws_share_relink':
+        case 'ws_share_end':
+            $channel = ws_action_channel($viewer, $request, 'manage');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $result = ws_channel_share_change($viewer, $channel, (int) ($request['guest_id'] ?? 0), ($action === 'ws_share_relink') ? 'relink' : 'end',
+                (string) ($request['mode'] ?? 'once'), (int) ($request['duration'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('url' => (string) $result['url'])) : ws_action_error($result['error']);
 
         case 'ws_channel_create':
             $result = ws_channel_create($viewer, array(

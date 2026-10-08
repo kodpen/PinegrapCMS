@@ -25,6 +25,7 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_ai_license();              // 8.80
 	upgrade_2026_4_8_scheduled_messages();      // 8.81
+	upgrade_2026_4_8_channel_shares();          // 8.82
 
 }
 
@@ -65,5 +66,20 @@ function upgrade_2026_4_8_scheduled_messages() {
 	install_add_column('ws_scheduled_queue', 'context', "TEXT NULL");
 
 	install_note('Workspace: a message can be scheduled from the writing box by anybody in the team, and a scheduled action can greet the people who join a channel.');
+
+}
+
+// A channel of the team shared with a guest (2026.4.8, 8.82;
+// includes/workspace/guests.php). A guest was always the guest of a room of
+// their own (ws_channels.kind 'guest'); a ws_guests row may now belong to a
+// public or private channel of the team as well, which is the channel shared
+// with them through the same kind of link. ws_guests.access says what they
+// may do there: 'write' (every guest before this step: read, write, react,
+// vote, tick) or 'read' (read the conversation only).
+function upgrade_2026_4_8_channel_shares() {
+
+	install_add_column('ws_guests', 'access', "ENUM('write','read') NOT NULL DEFAULT 'write' AFTER name");
+
+	install_note('Workspace: a channel can be shared with somebody outside the team through a one-time or timed link, to read only or to read and write.');
 
 }

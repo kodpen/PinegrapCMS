@@ -250,6 +250,22 @@
          mesaj) ve idx_kind dizini; ws_scheduled_queue.context
          sütunu (katılan kişi).
 
+  [YENİ] Kanalı bağlantıyla paylaşma: misafirle görüşmedeki gibi
+         tek seferlik ya da süreli bir bağlantıyla, siteye üye
+         olmayan biri ekibin bir kanalının konuşmasını okur. İki
+         seçenek var: "Okuma" (yalnız okur; yazamaz, ifade
+         bırakamaz, oy veremez) ve "Okuma ve yazma" (misafir
+         odasındaki gibi yazar, yanıtlar, oy verir). Kanalı
+         yönetebilen yöneticiler kanal menüsündeki "Bağlantıyla
+         paylaş" ile paylaşır; kanalın üstündeki şerit kimlerin
+         okuduğunu herkese gösterir, "Yönet" ile yeni bağlantı
+         verilir ya da paylaşım bitirilir (kanal olduğu gibi
+         kalır). Misafir kanalın sekmelerini, tartışmalarını ve
+         başka bir yerini görmez; paylaşım sürerken kanalda
+         asistanlara sorulmaz.
+
+  [ŞEMA] ws_guests.access sütunu (okuma / okuma ve yazma).
+
 
 
   2026.4.7

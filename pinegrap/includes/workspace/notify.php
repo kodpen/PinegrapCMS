@@ -300,11 +300,13 @@ function ws_inbox_describe($viewer, $row)
         // The guest of a room wrote (guests.php): one line until the room is
         // read, with the last of what they wrote.
         case 'guest_message':
-            $guest = function_exists('ws_guest_for_channel') ? ws_guest_for_channel((int) $row['channel_id']) : null;
             $last = (int) db_value("SELECT id FROM ws_messages
                 WHERE channel_id = '" . (int) $row['channel_id'] . "' AND sender_kind = 'guest' AND deleted_at = 0
                 ORDER BY id DESC LIMIT 1");
             $message = ($last > 0) ? ws_message($last) : null;
+
+            // The guest who wrote it: a shared channel may have more than one.
+            $guest = ($message && function_exists('ws_guest')) ? ws_guest((int) $message['sender_id']) : null;
 
             return array(
                 'title' => lang(array('string' => '{var:1} wrote in {var:2}', 'vars' => array($guest ? (string) $guest['name'] : lang('Guest'), $channel_name))),
