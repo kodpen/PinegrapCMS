@@ -1158,8 +1158,10 @@ function pg_device_limit_revoke_oldest($user_id, $keep)
 // it stashes a short-lived pending sign-in and diverts to the confirmation
 // screen without returning; otherwise it returns and the caller proceeds. A
 // no-op unless a limit is set and already reached, so it is safe to place in
-// every login flow.
-function pg_device_limit_gate($user_id, $username, $send_to, $remember = false)
+// every login flow. $mfa_passed says the second step was already taken
+// (mfa.php); device_limit.php refuses a pending record without it for an
+// account that has a second factor.
+function pg_device_limit_gate($user_id, $username, $send_to, $remember = false, $mfa_passed = false)
 {
     if (!pg_device_limit_exceeded($user_id)) {
         return;
@@ -1180,11 +1182,12 @@ function pg_device_limit_gate($user_id, $username, $send_to, $remember = false)
     }
 
     $_SESSION['software']['device_limit_pending'] = array(
-        'user_id'  => (int) $user_id,
-        'username' => (string) $username,
-        'send_to'  => (string) $send_to,
-        'remember' => $remember ? 1 : 0,
-        'time'     => time(),
+        'user_id'    => (int) $user_id,
+        'username'   => (string) $username,
+        'send_to'    => (string) $send_to,
+        'remember'   => $remember ? 1 : 0,
+        'mfa_passed' => $mfa_passed ? 1 : 0,
+        'time'       => time(),
     );
 
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/device_limit.php');

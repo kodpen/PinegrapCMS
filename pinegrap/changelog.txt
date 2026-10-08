@@ -32,7 +32,7 @@
          Kişi bunu hesap sayfasından kendisi açar: ekranda
          gösterilen anahtar uygulamaya elle girilir (QR kod
          yoktur), uygulamanın gösterdiği ilk kodla onaylanır.
-         Açılırken 10 yedek kod verilir; telefon kaybolursa
+         Açılırken 10 kurtarma kodu verilir; telefon kaybolursa
          her biri bir kez oturum açtırır ve bir daha
          gösterilmez. Kod e-postayla gönderilmez; bu sürümde
          yalnız doğrulama uygulaması desteklenir.
@@ -47,9 +47,9 @@
 
   [YENİ] Yönetici, kullanıcı düzenleme ekranından bir kişinin
          iki adımlı doğrulamasını sıfırlayabilir (doğrulama
-         uygulamasını ve yedek kodlarını birlikte kaybeden kişi
-         için). Kişi sonra yalnız parolasıyla girer ve isterse
-         yeniden kurar.
+         uygulamasını ve kurtarma kodlarını birlikte kaybeden
+         kişi için). Kişi sonra yalnız parolasıyla girer ve
+         isterse yeniden kurar.
 
   [GÜVENLİK] Google ile oturum açma iki adımlı doğrulamadan
          muaf değildir: doğrulaması açık hesap Google ile

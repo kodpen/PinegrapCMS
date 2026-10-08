@@ -54,6 +54,10 @@ if ($_POST['users']) {
                 // browser holding it keeps presenting it on every request.
                 pg_auth_token_revoke_user($user_id);
 
+                // The second factor and its recovery codes go with the
+                // account, for the same reason (silent before the 8.40 upgrade).
+                pg_mfa_reset($user_id);
+
                 // delete user record
                 $query = "DELETE FROM user WHERE user_id = '" . escape($user_id) . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));

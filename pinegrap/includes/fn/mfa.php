@@ -11,9 +11,14 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// The primitives below touch neither the database nor the session, so they
-// are covered by tests/mfa_test.php. Secrets are passed around as raw bytes;
-// base32 is only the shape a person types into an app.
+// Two sections. The pure primitives touch neither the database nor the
+// session, so they are covered by tests/mfa_test.php. The account state
+// section reads and writes user_mfa / user_mfa_recovery (schema step 8.40)
+// and the pending sign-in in the session; every entry point there asks
+// pg_mfa_table_exists() first, so a site whose upgrade has not run yet signs
+// in exactly as before. Secrets are passed around as raw bytes; base32 is
+// only the shape a person types into an app and the shape that is stored
+// encrypted.
 //
 // Nothing here may run at load time: tools/test.php loads functions.php with
 // no connection, and every module is loaded on every request.
@@ -315,4 +320,510 @@ function pg_mfa_format_secret($secret)
     }
 
     return implode(' ', str_split($text, 4));
+}
+
+// ── Account state (database) ────────────────────────────────────────────────
+
+// How long a password-verified sign-in waits for its second step, and how
+// long a generated but unconfirmed key stays on offer.
+function pg_mfa_pending_lifetime()
+{
+    return 600;
+}
+
+function pg_mfa_setup_lifetime()
+{
+    return 1800;
+}
+
+/**
+ * Whether both tables of schema step 8.40 exist. Probed by exact name in
+ * information_schema (SHOW TABLES LIKE would read '_' as a wildcard) and
+ * cached for the request. Between new files landing and the upgrade running
+ * this is false, and every caller treats the feature as switched off.
+ *
+ * @return bool
+ */
+function pg_mfa_table_exists()
+{
+    static $exists = null;
+
+    if ($exists !== null) {
+        return $exists;
+    }
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $count = db_value("SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME IN ('user_mfa', 'user_mfa_recovery')");
+
+    $exists = ((int) $count === 2);
+
+    return $exists;
+}
+
+/**
+ * Whether a second factor can be set up and checked on this site: the
+ * tables exist and the key can be encrypted (ENCRYPTION_KEY and openssl).
+ *
+ * @return bool
+ */
+function pg_mfa_available()
+{
+    return pg_mfa_table_exists()
+        && defined('ENCRYPTION_KEY')
+        && (ENCRYPTION_KEY !== '')
+        && extension_loaded('openssl');
+}
+
+/**
+ * The user_mfa row of an account, or null.
+ *
+ * @param int $user_id
+ * @return array|null
+ */
+function pg_mfa_row($user_id)
+{
+    if (!pg_mfa_table_exists()) {
+        return null;
+    }
+
+    $row = db_item(
+        "SELECT user_id, method, totp_secret, enabled_at, last_step, pending_secret, pending_at
+        FROM user_mfa WHERE user_id = '" . (int) $user_id . "'");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Whether the account has a confirmed second factor that sign-in must ask
+ * for.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_enabled($user_id)
+{
+    if (!pg_mfa_available()) {
+        return false;
+    }
+
+    $row = pg_mfa_row($user_id);
+
+    return ($row !== null) && ((int) $row['enabled_at'] > 0) && ((string) $row['totp_secret'] !== '');
+}
+
+/**
+ * Accounts whose role is at or below this value must have a second factor;
+ * 99 means no role is required to.
+ *
+ * @return int
+ */
+function pg_mfa_required_role()
+{
+    return defined('MFA_REQUIRED_ROLE') ? (int) MFA_REQUIRED_ROLE : 99;
+}
+
+/**
+ * Whether the account's role obliges it to have a second factor.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_required_for_user($user_id)
+{
+    $required_role = pg_mfa_required_role();
+
+    if (($required_role >= 99) || !pg_mfa_available()) {
+        return false;
+    }
+
+    $role = db_value("SELECT user_role FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+    return ($role !== null) && ((int) $role <= $required_role);
+}
+
+/**
+ * Encrypt a key for storage: base32, then AES-256-CBC under ENCRYPTION_KEY,
+ * kept as "cipher:iv" like the connector credentials. The key is read back
+ * on every sign-in to compute the expected code, so it cannot be hashed.
+ *
+ * @param string $secret_bytes Raw key bytes.
+ * @return string
+ */
+function pg_mfa_secret_encode($secret_bytes)
+{
+    list($cipher, $iv) = encrypt_string_with_iv(pg_base32_encode($secret_bytes));
+
+    return $cipher . ':' . $iv;
+}
+
+/**
+ * Decrypt a stored key back to raw bytes; '' when the blob is empty, damaged
+ * or was encrypted under a different ENCRYPTION_KEY.
+ *
+ * @param string $blob
+ * @return string
+ */
+function pg_mfa_secret_decode($blob)
+{
+    $parts = explode(':', (string) $blob, 2);
+
+    if ((count($parts) !== 2) || ($parts[0] === '') || ($parts[1] === '')) {
+        return '';
+    }
+
+    return pg_base32_decode(decode_ssl_keys($parts[0], $parts[1]));
+}
+
+/**
+ * The sign-in waiting for its second step, or null. An expired or malformed
+ * record is removed on the way.
+ *
+ * @return array|null
+ */
+function pg_mfa_pending()
+{
+    $pending = isset($_SESSION['software']['mfa_pending']) ? $_SESSION['software']['mfa_pending'] : null;
+
+    $valid = is_array($pending)
+        && !empty($pending['user_id'])
+        && isset($pending['time'])
+        && ((time() - (int) $pending['time']) <= pg_mfa_pending_lifetime())
+        && isset($pending['mode'])
+        && in_array($pending['mode'], array('verify', 'setup'), true);
+
+    if (!$valid) {
+        pg_mfa_pending_clear();
+        return null;
+    }
+
+    return $pending;
+}
+
+function pg_mfa_pending_clear()
+{
+    unset($_SESSION['software']['mfa_pending']);
+}
+
+// Second-factor gate for every password (or Google) sign-in. Called after the
+// credentials were accepted and the throttle cleared, before the device limit
+// is counted and before any token is minted: a token minted here would sign
+// the browser in on its next request through initialize_user() with no code
+// asked. Returns false when nothing is owed and the caller carries on;
+// otherwise it stashes the verified identity as a short-lived pending record
+// and sends the visitor to mfa.php without returning. 'setup' mode is for an
+// account whose role must have a second factor and has none yet.
+function pg_mfa_gate($user_id, $username, $send_to, $remember, $origin)
+{
+    $mode = '';
+
+    if (pg_mfa_enabled($user_id)) {
+        $mode = 'verify';
+    } elseif (pg_mfa_required_for_user($user_id)) {
+        $mode = 'setup';
+    }
+
+    if ($mode === '') {
+        return false;
+    }
+
+    // The password was right: a session id that may have been planted before
+    // it was typed must not carry the half-signed-in state.
+    // pg_session_sign_in() renews the id once more when the sign-in completes.
+    if ((session_status() === PHP_SESSION_ACTIVE) && !headers_sent()) {
+        session_regenerate_id(true);
+    }
+
+    $_SESSION['software']['mfa_pending'] = array(
+        'user_id'  => (int) $user_id,
+        'username' => (string) $username,
+        'send_to'  => (string) $send_to,
+        'remember' => $remember ? 1 : 0,
+        'mode'     => $mode,
+        'origin'   => (string) $origin,
+        'time'     => time(),
+    );
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/mfa.php');
+    exit();
+}
+
+/**
+ * The key an account is about to set up, as raw bytes. A fresh unconfirmed
+ * key is handed back as it is, so reloading the setup screen does not change
+ * the key the person may already have typed into their app; an absent or
+ * stale one is replaced.
+ *
+ * @param int $user_id
+ * @return string Raw key bytes; '' when the feature is unavailable.
+ */
+function pg_mfa_begin_setup($user_id)
+{
+    if (!pg_mfa_available()) {
+        return '';
+    }
+
+    $row = pg_mfa_row($user_id);
+
+    if (($row !== null)
+        && ((string) $row['pending_secret'] !== '')
+        && ((time() - (int) $row['pending_at']) <= pg_mfa_setup_lifetime())) {
+
+        $secret = pg_mfa_secret_decode($row['pending_secret']);
+
+        if ($secret !== '') {
+            return $secret;
+        }
+    }
+
+    $secret = pg_totp_secret();
+    $blob = pg_mfa_secret_encode($secret);
+
+    db("INSERT INTO user_mfa (user_id, pending_secret, pending_at)
+        VALUES ('" . (int) $user_id . "', '" . e($blob) . "', UNIX_TIMESTAMP())
+        ON DUPLICATE KEY UPDATE pending_secret = VALUES(pending_secret), pending_at = VALUES(pending_at)");
+
+    return $secret;
+}
+
+/**
+ * Confirm the key being set up with the first code the app shows. On success
+ * the key becomes the account's second factor, a fresh set of recovery codes
+ * replaces any earlier one, and every remember-me token and API device of
+ * the account is revoked: they were issued without a second step.
+ *
+ * @param int    $user_id
+ * @param string $code
+ * @return string[]|false The recovery codes in plain text (shown once), or
+ *                        false when the code was not accepted.
+ */
+function pg_mfa_confirm_setup($user_id, $code)
+{
+    if (!pg_mfa_available()) {
+        return false;
+    }
+
+    $row = pg_mfa_row($user_id);
+
+    if (($row === null) || ((string) $row['pending_secret'] === '')) {
+        return false;
+    }
+
+    $secret = pg_mfa_secret_decode($row['pending_secret']);
+    $step = pg_totp_verify($secret, preg_replace('/\s+/', '', (string) $code), time(), 0, 1);
+
+    if ($step === false) {
+        return false;
+    }
+
+    // The pending blob is already encrypted the way totp_secret is stored, so
+    // it moves across as it is. enabled_at = 0 in the WHERE keeps two
+    // confirmations racing from replacing a key that is already in use.
+    db("UPDATE user_mfa SET
+            totp_secret = pending_secret,
+            enabled_at = UNIX_TIMESTAMP(),
+            last_step = '" . (int) $step . "',
+            pending_secret = '',
+            pending_at = 0
+        WHERE user_id = '" . (int) $user_id . "' AND enabled_at = 0 AND pending_secret != ''");
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        return false;
+    }
+
+    $codes = pg_mfa_recovery_regenerate($user_id);
+
+    pg_auth_token_revoke_user($user_id);
+
+    log_activity(lang('user turned on two-step verification'),
+        (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $user_id . "'"));
+
+    return $codes;
+}
+
+/**
+ * Remove the account's second factor and recovery codes, and revoke its
+ * remember-me tokens and API devices.
+ *
+ * @param int $user_id
+ */
+function pg_mfa_disable($user_id)
+{
+    if (!pg_mfa_table_exists()) {
+        return;
+    }
+
+    db("DELETE FROM user_mfa WHERE user_id = '" . (int) $user_id . "'");
+    db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
+
+    pg_auth_token_revoke_user($user_id);
+}
+
+/**
+ * Administrator reset and account deletion. Silent when the tables do not
+ * exist yet.
+ *
+ * @param int $user_id
+ */
+function pg_mfa_reset($user_id)
+{
+    pg_mfa_disable($user_id);
+}
+
+/**
+ * Check a code typed at the second step: six digits are a TOTP code,
+ * anything that normalizes to eight characters is a recovery code.
+ *
+ * Both are consumed with a conditional UPDATE whose affected-row count
+ * decides, so two requests racing with the same code cannot both pass: the
+ * TOTP step only moves forward (last_step < S) and a recovery code is only
+ * spent once (used_at = 0).
+ *
+ * @param int    $user_id
+ * @param string $code
+ * @return string|false 'totp', 'recovery' or false.
+ */
+function pg_mfa_verify_code($user_id, $code)
+{
+    if (!pg_mfa_enabled($user_id)) {
+        return false;
+    }
+
+    $code = (string) $code;
+    $digits = preg_replace('/\s+/', '', $code);
+
+    if (preg_match('/^[0-9]{6}$/D', $digits)) {
+
+        $row = pg_mfa_row($user_id);
+        $secret = pg_mfa_secret_decode($row['totp_secret']);
+        $step = pg_totp_verify($secret, $digits, time(), (int) $row['last_step'], 1);
+
+        if ($step === false) {
+            return false;
+        }
+
+        db("UPDATE user_mfa SET last_step = '" . (int) $step . "'
+            WHERE user_id = '" . (int) $user_id . "' AND last_step < '" . (int) $step . "'");
+
+        return (mysqli_affected_rows(db::$con) === 1) ? 'totp' : false;
+    }
+
+    if (strlen(pg_mfa_recovery_normalize($code)) !== 8) {
+        return false;
+    }
+
+    db("UPDATE user_mfa_recovery SET used_at = UNIX_TIMESTAMP()
+        WHERE user_id = '" . (int) $user_id . "'
+        AND code_hash = '" . e(pg_mfa_recovery_hash($code)) . "'
+        AND used_at = 0
+        LIMIT 1");
+
+    return (mysqli_affected_rows(db::$con) === 1) ? 'recovery' : false;
+}
+
+/**
+ * Count one second-step attempt and say whether the account or the address
+ * is over its allowance: 5 per account and 30 per address in 10 minutes.
+ * Every call is an attempt, so it is called right before a code is checked
+ * and nowhere else. A correct password does not reset the account counter,
+ * or signing in again would be a fresh allowance of guesses. Fails open
+ * where waf_rate is unavailable, like every other rate limit here.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_attempt_blocked($user_id)
+{
+    if (!function_exists('waf_rate_exceeded') || !isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    if (waf_rate_exceeded((string) (int) $user_id, 'mfa-u', 5, 600)) {
+        return true;
+    }
+
+    $ip = function_exists('waf_client_ip') ? waf_client_ip() : '';
+
+    if (($ip !== '') && function_exists('waf_ip_subject')) {
+        $ip = waf_ip_subject($ip);
+    }
+
+    return ($ip !== '') && waf_rate_exceeded($ip, 'mfa-ip', 30, 600);
+}
+
+/**
+ * Forget the attempt counters after a correct code.
+ *
+ * @param int $user_id
+ */
+function pg_mfa_attempt_clear($user_id)
+{
+    if (!function_exists('waf_rate_clear') || !isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    waf_rate_clear((string) (int) $user_id, 'mfa-u');
+
+    $ip = function_exists('waf_client_ip') ? waf_client_ip() : '';
+
+    if (($ip !== '') && function_exists('waf_ip_subject')) {
+        waf_rate_clear(waf_ip_subject($ip), 'mfa-ip');
+    }
+}
+
+/**
+ * Replace the account's recovery codes with a fresh set of ten.
+ *
+ * @param int $user_id
+ * @return string[] The codes in plain text; only their hashes are stored.
+ */
+function pg_mfa_recovery_regenerate($user_id)
+{
+    $codes = pg_mfa_recovery_codes(10);
+
+    db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
+
+    $values = array();
+
+    foreach ($codes as $code) {
+        $values[] = "('" . (int) $user_id . "', '" . e(pg_mfa_recovery_hash($code)) . "', 0)";
+    }
+
+    db("INSERT INTO user_mfa_recovery (user_id, code_hash, used_at) VALUES " . implode(', ', $values));
+
+    return $codes;
+}
+
+/**
+ * How many unused recovery codes the account has.
+ *
+ * @param int $user_id
+ * @return int
+ */
+function pg_mfa_recovery_remaining($user_id)
+{
+    if (!pg_mfa_table_exists()) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT COUNT(*) FROM user_mfa_recovery
+        WHERE user_id = '" . (int) $user_id . "' AND used_at = 0");
+}
+
+/**
+ * The issuer named in the key URI: the site title, or its host name.
+ *
+ * @return string
+ */
+function pg_mfa_issuer()
+{
+    if (defined('TITLE') && (trim((string) TITLE) !== '')) {
+        return trim((string) TITLE);
+    }
+
+    return defined('HOSTNAME') ? (string) HOSTNAME : '';
 }

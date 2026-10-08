@@ -173,11 +173,22 @@ if (!$_POST) {
             $username = db_value(
                 "SELECT user_username FROM user WHERE user_id = '" . (int) $login_user_id . "'");
 
+            $pg_remember = (REMEMBER_ME == TRUE && $login_form->get_field_value('login_remember_me') == 1);
+
+            // The posted fields, password included, were copied into the session
+            // for the error path. Dropped here, before the gates below, because
+            // either of them may end this request and the password must not wait
+            // in the session.
+            $login_form->remove();
+
+            // An account with a second factor (or a role that requires one)
+            // continues on mfa.php; nothing is signed in until then.
+            pg_mfa_gate($login_user_id, $username, ($_REQUEST['send_to'] ?? ''), $pg_remember, 'registration_entrance.php');
+
             // Sign the visitor in and, when the device limit is on, count this device.
             // The gate fires for every login (no-op when the limit is off); a remembered
             // login keeps a persistent cookie, a non-remembered one gets a session cookie
             // only while the limit is on.
-            $pg_remember = (REMEMBER_ME == TRUE && $login_form->get_field_value('login_remember_me') == 1);
             pg_device_limit_gate($login_user_id, $username, ($_REQUEST['send_to'] ?? ''), $pg_remember);
             pg_login_set_device_cookie($login_user_id, $pg_remember);
 
@@ -192,9 +203,7 @@ if (!$_POST) {
             
             // validation complete - we may now continue
             log_activity(lang('user logged into registration area'), $username);
-            
-            $login_form->remove();
-            
+
             send_user_to_login_home();
             
         // else an error does exist

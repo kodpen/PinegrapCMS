@@ -121,9 +121,40 @@ dinamik kesme; sayaç `pack('N*', 0, $step)` — 32 bit PHP'de `pack('J')` yok,
 üst kelime 6053 yılına kadar sıfır), `pg_totp_verify` (±1 adım; adaylar
 0, −1, +1 sırasıyla, `last_step` ve altı atlanır — RFC 6238 §5.2 tekrar
 kullanım; karşılaştırma `hash_equals`), `pg_totp_uri`,
-`pg_mfa_recovery_codes/normalize/hash`, `pg_mfa_format_secret`. Hesap
-durumunu okuyan veritabanı katmanı, giriş kapısı (`mfa.php`), hesap ve ayar
-ekranları aynı dosyaya ve yeni kök dosyaya eklenir.
+`pg_mfa_recovery_codes/normalize/hash`, `pg_mfa_format_secret`.
+
+Aynı dosyanın veritabanı bölümü: tablo yoklaması `pg_mfa_table_exists()`
+(`information_schema`, iki tablo birden, tam ad), `pg_mfa_available()`
+(tablolar + `ENCRYPTION_KEY` + openssl), sır `pg_mfa_secret_encode/decode`,
+kurulum `pg_mfa_begin_setup` (onaylanmamış anahtar 30 dk aynı kalır, ekran
+yenilense de değişmez) / `pg_mfa_confirm_setup` (bekleyen blob olduğu gibi
+`totp_secret`'e taşınır; 10 yeni kurtarma kodu; hesabın bütün hatırla-beni
+jetonları ve API cihazları düşer; etkinlik kaydını kendisi yazar),
+`pg_mfa_verify_code` (6 hane TOTP, 8 karakter kurtarma kodu; ikisi de
+etkilenen satır sayısına bakan koşullu `UPDATE` ile harcanır — eşzamanlı iki
+istek aynı kodla geçemez), `pg_mfa_disable` / `pg_mfa_reset`, deneme kovası
+`pg_mfa_attempt_blocked` (`waf_rate`: hesap başına 5, adres başına 30, 10
+dakikada; parola başarısı sıfırlamaz).
+
+**Giriş kapısı.** `pg_mfa_gate()` dört girişte (`index.php`,
+`membership_entrance.php`, `registration_entrance.php`, `google_auth.php`)
+parola kabul edilip sayaç temizlendikten **sonra**, cihaz sınırı ve jeton
+basılmadan **önce** çağrılır: 2FA açıksa (ya da rolü gerektiriyorsa)
+oturum kimliğini yeniler, 600 sn'lik bekleyen kaydı
+(`$_SESSION['software']['mfa_pending']`) yazar ve kök `mfa.php`'ye gönderir;
+o ana kadar `sessionuserid` ve `software[auth]` yoktur. Parola oturuma
+kopyalanmış liveform alanlarıyla birlikte kapıdan önce silinir (önceden
+başarı yolunun en sonunda siliniyordu; cihaz sınırı kapısı da çıkış
+yaptığında parola oturumda kalıyordu). `mfa.php`: doğrulama (TOTP ya da
+kurtarma kodu), kurulum (anahtar + `otpauth://` adresi + kopyala, ilk kod,
+kurtarma kodları bir kez, `.txt` indirme `data:` adresiyle — sunucuya
+gitmez), İptal yalnız sabit listedeki giriş ekranına döner; tamamlama
+sırası giriş akışlarıyla aynı (cihaz sınırı → jeton → oturum → sipariş).
+Sınır aşımı `waf_log`'a `rate-mfa` olarak da yazılır.
+`pg_device_limit_gate()` beşinci parametre `$mfa_passed` alır;
+`device_limit.php` ikinci adımdan geçmemiş bekleyen kaydı 2FA'lı hesap için
+reddeder. `delete_users.php` hesabın 2FA satırlarını siler. `init.php`
+`MFA_REQUIRED_ROLE` sabitini tanımlar (sütun yokken 99).
 
 **Ödün.**
 - `ENCRYPTION_KEY` sıfırlanırsa (Ayarlar › Ticaret › "Şifreleme Anahtarını
@@ -151,11 +182,29 @@ Ek B (SHA1, 8 hane: T=59, 1111111109, 1111111111, 1234567890, 2000000000,
 20000000000), doğrulama penceresi (±1 kabul, ±2 red), tekrar kullanım reddi,
 biçimsiz/yanlış kod reddi, yedek kod biçimi ve normalleştirme, `otpauth://`
 adresi, anahtar gösterimi — 17 test yeşil. `lint`, `check_lang` temiz.
+Sandbox (PHP 8.3 + MariaDB): şema adımı kurulumda ve `config.version`
+2026.4.7'ye çekilip yükseltme ekranından ikinci kez koşuldu (ikincisinde
+"12 ifade, 12 tanesi zaten yerindeydi"). Playwright, TOTP Node'da
+hesaplanarak: 2FA'sız giriş değişmedi; `mfa_required_role = 0` ile yönetici
+kurulum ekranına düşüyor, anahtar yenilemede aynı kalıyor, yanlış kod
+reddediliyor, kurtarma kodları gösteriliyor, `send_to` korunuyor; bekleyen
+kayıtta panel giriş istiyor, çerezde `software[auth]` yok, oturum kimliği
+yenilenmiş, parola oturumda yok; doğru kod → oturum + hatırla-beni; aynı
+kod ikinci kez red; 6. denemede kilit (doğru kod da reddediliyor) ve
+`waf_log` satırı; kurtarma kodu (küçük harf, boşlukla) bir kez geçiyor,
+ikinci kez red; bekleyen kaydın zamanı oturum dosyasında 601 sn geri
+çekilince doğru kod da giriş ekranına dönüyor; cihaz sınırı 2FA'dan sonra
+geliyor ve onayla tamamlanıyor; `mfa_passed` taşımayan cihaz-sınırı kaydı
+reddediliyor; rol 3 hesap zorunluluk 0'da kapısız, 3'te kurulum ekranına
+düşüyor; üyelik ve kayıt girişlerinde İptal kendi ekranına dönüyor;
+`delete_users.php` 2FA satırlarını siliyor.
 
-**Doğrulanamayanlar.** Şema adımı henüz dev veritabanında koşturulmadı
-(yalnız `php -l`); giriş kapısı ve ekranlar bu değişiklikte yok. Gerçek bir
-doğrulama uygulamasına (Google Authenticator, Aegis) anahtarın elle girilmesi
-denenmedi.
+**Doğrulanamayanlar.** Google ile giriş (sandbox'ta Google yok; kapı satırı
+kod incelemesiyle). Sıfırlama bağlantısıyla parola belirleme
+(`set_password.php`) bu değişiklikte hâlâ otomatik oturum açar ve 2FA'lı
+hesapta ikinci adımı atlar; kapanması `pg_post_password_signin()`
+düzeltmesine bağlıdır. Gerçek bir doğrulama uygulamasına (Google
+Authenticator, Aegis) anahtarın elle girilmesi denenmedi.
 
 ---
 
