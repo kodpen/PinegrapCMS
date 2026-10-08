@@ -75,6 +75,9 @@ function pg_dashboard_widget_6($request, $user)
         $top_products = [];
         if ((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS)) {
 
+            // Rows with equal quantities come back in no defined order, so
+            // the product id breaks the tie; without it the card could show
+            // a different product on every load.
             $query = "
                 SELECT
                     p.id,
@@ -86,7 +89,7 @@ function pg_dashboard_widget_6($request, $user)
                 JOIN products p ON p.id = oi.product_id
                 WHERE o.status = 'complete'
                 GROUP BY p.id
-                ORDER BY total_qty DESC
+                ORDER BY total_qty DESC, p.id ASC
                 LIMIT 5
             ";
 
