@@ -17971,9 +17971,13 @@ const StyleDesigner = (function () {
     function filterOverviewTree(q) {
         if (!q) { renderTree(); return; }
         var items = document.querySelectorAll('#sd-tree-list li, #sd-tree-list .sd-tree-children li');
+        // A row matches on its label, its designer label (props._label) or
+        // its #id badge.
         items.forEach(function(li) {
-            var lbl = li.querySelector('.sd-tree-lbl');
-            var txt = lbl ? lbl.textContent.toLowerCase() : '';
+            var txt = ['.sd-tree-lbl', '.sd-tree-user-label', '.sd-tree-id'].map(function(sel) {
+                var el = li.querySelector(sel);
+                return el ? el.textContent : '';
+            }).join(' ').toLowerCase();
             li.style.display = (txt.indexOf(q) !== -1) ? '' : 'none';
         });
     }

@@ -800,6 +800,7 @@ function pg_designer_start_screen($ctx)
             .sd-design-thumb { display: block; width: 88px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--bs-border-color); background: var(--bs-body-bg); }
             .sd-design-thumb-blank { display: flex; align-items: center; justify-content: center; width: 88px; aspect-ratio: 8 / 5; border-radius: 6px; border: 1px dashed var(--bs-border-color); color: var(--bs-secondary-color); }
             .sd-tpl-thumb { border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+            .sd-tpl-title { min-width: 0; }
             .sd-tpl-look .btn { --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .8125rem; }
             .sd-tpl-pal { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
             .sd-tpl-pal i { flex: 1; }
@@ -1027,7 +1028,7 @@ function pg_designer_template_modal($templates, $from_pages)
         // what every template opens in: "No theme" and "Bootstrap" there
         // mean plain Bootstrap, whatever a template suggests.
         $theme_attrs = '';
-        $theme_note  = '';
+        $theme_names = '';
         if ($s['look'] !== null || $s['palette'] !== null) {
             $theme_attrs = ' data-look="' . h((string)$s['look']) . '" data-palette="' . h((string)$s['palette']) . '"'
                          . ' data-has-look="' . ($s['look'] !== null ? '1' : '0') . '" data-has-palette="' . ($s['palette'] !== null ? '1' : '0') . '"';
@@ -1037,32 +1038,49 @@ function pg_designer_template_modal($templates, $from_pages)
                 $pals = pg_design_palettes();
                 if (isset($pals[$s['palette']])) $parts[] = $pals[$s['palette']]['name'];
             }
-            $parts = array_filter($parts, 'strlen');
-            if ($parts) {
-                $theme_note = '<span class="small text-muted sd-tpl-theme-note d-flex flex-wrap align-items-center gap-2"><span><i class="bi bi-palette me-1" aria-hidden="true"></i>'
-                            . lang(array('string' => 'Made for: {var:1}', 'vars' => h(implode(' · ', $parts)))) . '</span>'
-                            . '<button type="button" class="btn btn-link btn-sm p-0 sd-tpl-theme-apply">' . lang('Use this theme') . '</button></span>';
-            }
+            $theme_names = implode(' · ', array_filter($parts, 'strlen'));
         }
+        $made_for = ($theme_names !== '') ? lang(array('string' => 'Made for: {var:1}', 'vars' => $theme_names)) : '';
+        // "Use this theme" stays inside .sd-tpl-card: the picker script finds
+        // the card's data-look / data-palette from the button.
+        $theme_apply = ($made_for !== '')
+            ? '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap sd-tpl-theme-apply" title="' . h(h($made_for)) . '">'
+              . '<i class="bi bi-palette me-1" aria-hidden="true"></i>' . lang('Use this theme') . '</button>'
+            : '';
+        // The details live in the info button's title, which the panel turns
+        // into an HTML popover (pgBindTitlePopovers()): every piece escaped,
+        // then the whole markup escaped once more for the attribute.
+        $info = array();
+        if ($s['description'] !== '') $info[] = h($s['description']);
+        if ($s['pages']) {
+            $info[] = '<strong>' . h(lang(array('string' => 'Pages ({var:1})', 'vars' => count($s['pages'])))) . '</strong><br>' . h(implode(', ', $s['pages']));
+        }
+        if ($s['highlights']) {
+            $info[] = '<strong>' . h(lang('Highlights')) . '</strong><br>• ' . implode('<br>• ', array_map('h', $s['highlights']));
+        }
+        if ($made_for !== '') $info[] = h($made_for);
+        $info[] = '<strong>' . h(lang('Framework')) . '</strong> ' . h($s['framework_label'])
+                . '<br><strong>' . h(lang('Template version')) . '</strong> ' . h($s['version']);
+        $info_btn = '<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" aria-label="' . h(lang('Template details')) . '"'
+                  . ' title="' . h(implode('<br>', $info)) . '"><i class="bi bi-info-circle" aria-hidden="true"></i></button>';
+        $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
             '<div class="col-12 col-md-6">
                 <div class="card h-100 overflow-hidden sd-tpl-card"' . $theme_attrs . '>
                     ' . $thumb . '
-                    <div class="card-body d-flex flex-column gap-2">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="bi ' . h($s['icon']) . ' fs-2 text-primary" aria-hidden="true"></i>
-                            <div class="ms-auto d-flex flex-wrap gap-1 justify-content-end">
-                                <span class="badge text-bg-light border">' . h($s['framework_label']) . '</span>
-                                <span class="badge text-bg-light border" title="' . lang('Template version') . '">v' . h($s['version']) . '</span>
+                    <div class="card-body d-flex flex-column gap-1 p-3">
+                        <div class="d-flex flex-wrap align-items-center column-gap-2 row-gap-1">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1 sd-tpl-title">
+                                <i class="bi ' . h($s['icon']) . ' fs-5 text-primary" aria-hidden="true"></i>
+                                <span class="h6 mb-0 text-truncate">' . h($s['name']) . '</span>
+                                ' . $info_btn . '
+                            </div>
+                            <div class="d-flex align-items-center gap-2 ms-auto">
+                                ' . $theme_apply . '
+                                <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
-                        <span class="h5 mb-0">' . h($s['name']) . '</span>
-                        <span class="small text-muted">' . h($s['description']) . '</span>
-                        <span class="small"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang(array('string' => '{var:1} pages: {var:2}', 'vars' => array(count($s['pages']), h(implode(', ', $s['pages']))))) . '</span>
-                        ' . $theme_note . '
-                        <div class="mt-auto pt-2">
-                            <a href="add_system_style.php?start=template&template=' . h(rawurlencode($s['id'])) . h($extra) . '" class="btn btn-sm btn-primary rounded-pill px-3 sd-tpl-use" data-href="add_system_style.php?start=template&template=' . h(rawurlencode($s['id'])) . h($extra) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
-                        </div>
+                        <span class="small text-muted text-truncate">' . h($s['description']) . '</span>
                     </div>
                 </div>
             </div>';

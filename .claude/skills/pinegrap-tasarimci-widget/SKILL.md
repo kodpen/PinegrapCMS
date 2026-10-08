@@ -359,6 +359,9 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   Sayfada kalan katalog widget'ı (`add_to_cart_stay_on_page`) da
   `add_to_cart_next_page_id` alır: bildirimin "Sepete git" bağlantısı
   (`pg_sw_cart_url()`); verilmezse ziyaretçinin son gördüğü sepet sayfası.
+  Şablon ağacında yapısal düğümün tanımlayıcı adı `_label`'a yazılır,
+  `customName`'e değil (customName Genel Bakış'ta etiketi gizler);
+  `pg_design_thumb_svg()` yeni çizimi `_pg_design_thumb_<kind>()` ile bulur.
 - Şablonun kendi verisi: `'catalog'` (gruplar + ürünler, açılışta bir kez;
   grup üst grubu altında adıyla, ürün SKU'suyla bulunur — `_pg_tpl_catalog()`),
   `'contact_groups'` (adıyla bulunur). Yer tutucular

@@ -72,6 +72,89 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
+
+**Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve
+mağaza): kişisel site, butik ve kitapçı gibi yaygın site türleri için
+başlangıç noktası yoktu. Şablon kartları çok uzundu: sayfa listesi, çatı
+rozeti, sürüm ve tema notu kartta açık duruyor, iki kart bir ekranı
+dolduruyordu (aynı genişlikte kart 764 px). Genel Bakış ağacının araması
+yalnız satır adını arıyordu; tasarımcı etiketi (`props._label`) ve `#id`
+bulunmuyordu, uzun etiketler 110 px'te kesiliyordu.
+
+**Karar.**
+- **(a) Şablon ağacında yapısal düğümün tanımlayıcı adı `_label`'a yazılır,
+  `customName`'e değil** (ürün sahibinin kararı, 2026-10-08). `customName`
+  Genel Bakış'ta satırın tag'ını gizleyip "Hero" diye sahte bir element
+  gösteriyordu; `_label` ile satır "Div 🏷 Hero" okunur: gerçek eleman ve
+  tasarımcının adı birlikte. hello-pinegrap ve pinegrap-store'daki
+  `customName`'lere dokunulmadı; üç yeni şablonda `customName` yok.
+- **(b)** `pg_design_thumb_svg()` (`includes/fn/design_themes.php`) artık
+  `$kind === 'store'` özel dalı yerine genel kuralla genişler: kind
+  `/^[a-z0-9-]+$/` ile eşleşir ve `_pg_design_thumb_<kind>()` (tire → alt
+  çizgi) tanımlıysa onun çıktısı aynı `<svg>` sarmalayıcısıyla basılır;
+  yoksa başlangıç sitesi çizimi. 'store' çıktısı bayt bayt aynı kaldı.
+- **(c)** Boutique'te ana sayfadaki "New in" şeridi için `'new'` işaretli 6
+  ürün kendi kategorisinin yanında şablonun üst grubu "Boutique"a da
+  bağlanır: katalog listesi ürün bazında süzemez ve inmeyen bir listeleme
+  yalnız kendi grubunun ürünlerini gösterir; tek bir Boutique listelemesi
+  böylece bütün kategorilerin yenilerini gösterir.
+- **(d)** Playground'da blog yazısı yorumu `login=false`, `auto_publish=true`;
+  ziyaretçi defteri duvarı (`form_list_view`) gönderileri anında gösterir.
+  Moderasyon yok, iki formda da CAPTCHA var. Blog yazısı yazmak için özel
+  klasörde ayrı bir `blog_new` sayfası (form) var.
+- **(e)** Katalog resimleri dosya yöneticisine `store-` önekiyle girer
+  (`_pg_tpl_catalog_file()`), gruplar üst grup altında başlıkla, ürünler
+  SKU ile yeniden bulunur. Şablonlar çakışmasın diye her mağaza şablonu
+  kendi üst grup adını ("Boutique", "Bookshop"), SKU önekini (`PGB-`,
+  `PGK-`; mağaza `PGS-`), resim dosya önekini (`bq-`, `bk-`) ve katalog
+  klasörünü kullanır.
+- **(f)** Satır düğümünün `gutter: '0'` değeri PHP renderer'da
+  (`_render_tree_node()`, `!empty()`) boş sayılır ve `g-0` yazılmaz (editör
+  JS'i yazar); oluksuz satırlar bu yüzden `g-0` sınıfıyla (`cssClass`)
+  yazıldı.
+
+**Çözüm.**
+- Yeni şablonlar: `includes/design_templates/pinegrap-playground.php`
+  (order 15, playful/fuchsia; 13 sayfa, 10 widget, 5 ortak bileşen),
+  `pinegrap-boutique.php` + `pinegrap-boutique/` resimleri (order 30,
+  elegant/burgundy; 26 sayfa, 32 widget, 5 ortak; katalog 5 grup),
+  `pinegrap-bookshop.php` + `pinegrap-bookshop/` resimleri (order 40,
+  corporate/forest; 27 sayfa, 29 widget, 6 ortak; katalog 5 grup, kitap
+  kulübü formu hoş geldin e-postasıyla).
+- Çizimler: `_pg_design_thumb_playground()`, `_pg_design_thumb_boutique()`,
+  `_pg_design_thumb_bookshop()` `_pg_design_thumb_store()`'un arkasına.
+- `pg_designer_template_modal()` (`includes/designer_screen.php`): kart =
+  thumb + ikon, ad, ⓘ, "Use this theme", "Use This Template" + tek satır
+  açıklama. Ayrıntılar (açıklama, sayfalar, öne çıkanlar, "Made for",
+  çatı, sürüm) ⓘ düğmesinin `title`'ında; `pgBindTitlePopovers()` onu HTML
+  hover popover yapar (parçalar `h()`, bütün işaretleme öznitelik için bir
+  kez daha `h()`; düğmede `data-bs-toggle` yok). `sd-tpl-theme-apply` kartın
+  içinde kaldı (`.closest('.sd-tpl-card')`). Kart 764 → 358 px.
+- `filterOverviewTree()` (`assets/js/style_designer.js`): `.sd-tree-lbl` +
+  `.sd-tree-user-label` + `.sd-tree-id` metni birlikte aranır;
+  `.sd-tree-user-label` `max-width` 110 → 160 px (`style_designer.css`).
+- `tr.json`: `Pages ({var:1})`, `Template details` ve üç şablonun 684
+  anahtarı (sona eklendi; üç parça arasında aynı anahtar farklı çeviriyle
+  geçmedi, gözden geçirmede birkaç çeviri düzeltildi).
+
+**Doğrulama.** `lint`, `check_lang` (her anahtar çözülüyor),
+`check_bindings`, `node --check` temiz. Beş şablon `pg_design_templates()` +
+`pg_design_template_summary()` ile stub'larla yüklendi (sayılar yukarıda).
+Beş `pg_design_thumb_svg()` çıktısı `<svg … </svg>` ve birbirinden farklı;
+eski/yeni 'store' ve başlangıç çizimi aynı. Şablon modalı stub'larla
+render edilip Bootstrap 5.3.8 ile Playwright'ta çizildi.
+
+**Doğrulanamayanlar.** Şablonların ağaçları depo dışı bir önizleme
+düzeneğiyle (`/tmp`, PHP render + Playwright) ve her şablonun kendi
+`check.php` denetimiyle doğrulandı; ikisi de commit'lenmedi. Çalışan bir
+site/DB ile doğrulanmadı: şablonu açma (`pg_design_template_prepare()`,
+katalog/klasör/iletişim grubu yaratma), sistem widget'larının gerçek
+çıktısı, yorum ve ziyaretçi defteri akışları, e-postalar, ⓘ popover'ının
+panel CSS'iyle görünümü denenmedi.
+
+---
+
 ## 2026.4.8 — Görsel editör: ağır animasyonlu sayfada tuval takılmıyor; seçim tuvali yeniden kurmuyor, betikler bir kez çalışıyor, "Animasyonlar" düğmesi (2026-10-08)
 
 **Sorun.** Ağır animasyonlu sayfalarda tuval kilitleniyordu: paletten
