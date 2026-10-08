@@ -18629,7 +18629,6 @@
     "New recovery codes": "Yeni kurtarma kodları",
     "Not required (each person may turn it on for their own account)": "Zorunlu değil (herkes kendi hesabında açabilir)",
     "Required for": "Zorunlu olanlar",
-    "Reset two-step verification": "İki adımlı doğrulamayı sıfırla",
     "Resetting the key also makes every two-step verification key unreadable: people who turned it on will need it reset from their user screen.": "Anahtarı sıfırlamak bütün iki adımlı doğrulama anahtarlarını da okunamaz yapar: doğrulamayı açmış kişilerin kullanıcı ekranlarından sıfırlanması gerekir.",
     "Turn on two-step verification": "İki adımlı doğrulamayı aç",
     "Turning it off also signs out your other devices.": "Kapatmak diğer cihazlarınızdaki oturumları da kapatır.",
@@ -18640,7 +18639,6 @@
     "Two-step verification is on since {var:1}. {var:2} recovery codes left.": "İki adımlı doğrulama {var:1} tarihinden beri açık. {var:2} kurtarma kodu kaldı.",
     "Two-step verification is {var:1}.": "İki adımlı doğrulama {var:1}.",
     "Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.": "İki adımlı doğrulama için config.php'de bir şifreleme anahtarı gerekir; önce Ayarlar › Ticaret'ten (Şifreleme Anahtarını Sıfırla) bir anahtar oluşturun.",
-    "Use this when the person has lost both their authenticator app and their recovery codes. They sign in with their password alone afterwards and can set it up again.": "Kişi doğrulama uygulamasını ve kurtarma kodlarını birlikte kaybettiyse kullanın. Sonrasında yalnız parolasıyla oturum açar ve yeniden kurabilir.",
     "Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.": "Rolünüz iki adımlı doğrulama gerektiriyor; kapattıktan sonra bir sonraki girişinizde yeniden kurmanız istenir.",
     "access denied to reset two-step verification for a higher-role user ({var:1})": "daha yüksek rollü bir kullanıcının iki adımlı doğrulamasını sıfırlama erişimi reddedildi ({var:1})",
     "two-step verification reset for user ({var:1})": "kullanıcının iki adımlı doğrulaması sıfırlandı ({var:1})",
@@ -18649,7 +18647,6 @@
     "user turned off two-step verification": "kullanıcı iki adımlı doğrulamayı kapattı",
     "Code from your authenticator app or a recovery code": "Doğrulama uygulamanızdaki kod ya da bir kurtarma kodu",
     "The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.": "Site doğrulama uygulaması anahtarlarını şu anda okuyamıyor; kurtarma kodlarınızdan birini kullanın ya da site sahibine başvurun.",
-    "Turn off two-step verification from your own account page, where your password and a code are asked for.": "Kendi iki adımlı doğrulamanızı, parolanızın ve bir kodun istendiği hesap sayfanızdan kapatın.",
     "The verification code is not correct.": "Doğrulama kodu doğru değil.",
     "This account uses two-step verification and cannot sign in with a password here. Sign in on the website, or use an application key.": "Bu hesap iki adımlı doğrulama kullanıyor ve burada parolayla oturum açamaz. Web sitesinden oturum açın ya da bir uygulama anahtarı kullanın.",
     "This account uses two-step verification. Send the code from the authenticator app in otp.": "Bu hesap iki adımlı doğrulama kullanıyor. Doğrulama uygulamasındaki kodu otp alanında gönderin.",
@@ -18804,5 +18801,8 @@
     "Cobalt": "Kobalt",
     "Crimson": "Kızıl",
     "Cocoa": "Kakao",
-    "Steel": "Çelik"
+    "Steel": "Çelik",
+    "Turn off two-step verification": "İki adımlı doğrulamayı kapat",
+    "Turns off the person's second step and signs them out everywhere. Use it when they lost their authenticator app and recovery codes; they sign in with the password alone afterwards and can set it up again.": "Kişinin ikinci adımını kapatır ve tüm cihazlardaki oturumlarını sonlandırır. Doğrulama uygulamasını ve kurtarma kodlarını kaybettiğinde kullanın; kişi sonra yalnız parolasıyla girer ve isterse yeniden kurar.",
+    "Turn it on from your account page.": "Hesabım sayfasından açabilirsiniz."
 }

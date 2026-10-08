@@ -172,7 +172,8 @@ if (strpos($action, 'mfa_') === 0) {
     }
 
     // Everything below checks a code, and every check is an attempt.
-    if (in_array($action, array('mfa_confirm', 'mfa_recovery_regenerate', 'mfa_disable'), true)
+    // Turning it off counts its attempt in pg_mfa_self_disable_check().
+    if (in_array($action, array('mfa_confirm', 'mfa_recovery_regenerate'), true)
         && pg_mfa_attempt_blocked($user_id)) {
         log_activity(lang('access denied (too many two-step verification attempts)'), $mfa_username);
         output_error(lang('Too many attempts. Please wait a few minutes and try again.'));
@@ -204,31 +205,17 @@ if (strpos($action, 'mfa_') === 0) {
     }
 
     if ($action === 'mfa_disable') {
-        // A Google-only account (algo 3) has no password to ask for; the
-        // code is the proof there.
-        $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
+        // The password (none for a Google-only account) and a code, checked
+        // the same way as on the panel's user screen.
+        $mfa_refused = pg_mfa_self_disable_check($user_id, $mfa_username,
+            (isset($_POST['current_password']) && is_scalar($_POST['current_password'])) ? (string) $_POST['current_password'] : '',
+            $mfa_code);
 
-        if ($algo !== 3) {
-            // This form accepts a password, so it is throttled like the
-            // sign-in forms: a stolen session must not become a free
-            // password oracle.
-            pg_login_throttle_guard($mfa_username);
-
-            $current_password = (isset($_POST['current_password']) && is_scalar($_POST['current_password'])) ? (string) $_POST['current_password'] : '';
-
-            if (($current_password === '') || ((int) validate_login($mfa_username, $current_password) !== $user_id)) {
-                pg_login_record_failure($mfa_username);
-                $mfa_messages->add_error(lang('The password you entered is incorrect. Please remember that passwords are case sensitive.'));
-                go($mfa_back);
-            }
-        }
-
-        if (pg_mfa_verify_code($user_id, $mfa_code) === false) {
-            $mfa_messages->add_error(lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.'));
+        if ($mfa_refused !== '') {
+            $mfa_messages->add_error($mfa_refused);
             go($mfa_back);
         }
 
-        pg_mfa_attempt_clear($user_id);
         pg_mfa_disable($user_id);
         unset($_SESSION['software']['mfa_codes_show']);
         log_activity(lang('user turned off two-step verification'), $mfa_username);

@@ -822,6 +822,59 @@ function pg_mfa_attempt_clear($user_id)
 }
 
 /**
+ * Check what a person must prove to turn off their own second factor: the
+ * current password (unless the account is Google-only, algo 3, which has no
+ * password) and a TOTP or recovery code. Counts the attempt and clears the
+ * counters on success; does not disable anything. Shared by the account
+ * page and the panel's user screen, so a stolen session cannot remove the
+ * second step from either.
+ *
+ * The password check goes through the sign-in throttle like the sign-in
+ * forms. pg_login_throttle_guard() does not return while the name or the
+ * address is locked out: it answers 429 with the error page and exits.
+ *
+ * @param int    $user_id
+ * @param string $username
+ * @param string $current_password
+ * @param string $code
+ * @return string '' when both proofs were accepted, otherwise the message to
+ *                show.
+ */
+function pg_mfa_self_disable_check($user_id, $username, $current_password, $code)
+{
+    $user_id = (int) $user_id;
+    $username = (string) $username;
+
+    if (pg_mfa_attempt_blocked($user_id)) {
+        log_activity(lang('access denied (too many two-step verification attempts)'), $username);
+
+        return lang('Too many attempts. Please wait a few minutes and try again.');
+    }
+
+    $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
+
+    if ($algo !== 3) {
+        pg_login_throttle_guard($username);
+
+        $current_password = (string) $current_password;
+
+        if (($current_password === '') || ((int) validate_login($username, $current_password) !== $user_id)) {
+            pg_login_record_failure($username);
+
+            return lang('The password you entered is incorrect. Please remember that passwords are case sensitive.');
+        }
+    }
+
+    if (pg_mfa_verify_code($user_id, (string) $code) === false) {
+        return lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');
+    }
+
+    pg_mfa_attempt_clear($user_id);
+
+    return '';
+}
+
+/**
  * Replace the account's recovery codes with a fresh set of ten.
  *
  * @param int $user_id
@@ -884,9 +937,10 @@ function pg_mfa_issuer()
  */
 function pg_mfa_account_url()
 {
-    $url = get_page_type_url('my account profile');
+    // get_page_type_url() answers false, not '', for a site without the page.
+    $url = (string) get_page_type_url('my account profile');
 
-    return ($url !== '') ? $url : get_page_type_url('my account');
+    return ($url !== '') ? $url : (string) get_page_type_url('my account');
 }
 
 /**
