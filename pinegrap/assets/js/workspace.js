@@ -7377,9 +7377,11 @@
                 var itemText = ((checkItem.querySelector('.ws-check-text') || checkItem).textContent || '').trim();
 
                 items.push({ icon: 'bi-check2-square', label: t('task_from_item'), action: function () {
-                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
-                        title: itemText.slice(0, 200)
-                    }), function () { self.sync(); });
+                    taskDrawer.open(0, {
+                        channel_id: self.channel.id,
+                        title: itemText.slice(0, 200),
+                        department_id: self.channel.department ? self.channel.department.id : 0
+                    }, function () { self.sync(); });
                 } });
                 items.push('-');
             }
@@ -7392,10 +7394,12 @@
                 } });
 
                 items.push({ icon: 'bi-check2-square', label: t('task_from_message'), tool: true, action: function () {
-                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
+                    taskDrawer.open(0, {
+                        channel_id: self.channel.id,
                         title: self.plain(message.html).slice(0, 200),
-                        description: message.raw || ''
-                    }), function () { self.sync(); });
+                        description: message.raw || '',
+                        department_id: self.channel.department ? self.channel.department.id : 0
+                    }, function () { self.sync(); });
                 } });
             }
 
@@ -8264,12 +8268,6 @@
 
         // ── Checklists ──
 
-        // Where a task made here is posted: this channel (a discussion posts
-        // into the channel it sits beside).
-        taskDefaults: function () {
-            return { channel_id: this.channel.id, department_id: this.channel.department ? this.channel.department.id : 0 };
-        },
-
         // The whole list becomes one task; the list stays here and both
         // places tick the same items.
         listToTask: function (message) {
@@ -8281,11 +8279,13 @@
             var first = box.querySelector('.ws-text');
             var title = first ? (first.textContent || '').replace(/\s+/g, ' ').trim().replace(/[:：]$/, '') : '';
 
-            taskDrawer.open(0, Object.assign(self.taskDefaults(), {
+            taskDrawer.open(0, {
+                channel_id: self.channel.id,
                 title: (title || t('list_task_title')).slice(0, 200),
                 checklist_message_id: message.id,
-                list_count: box.querySelectorAll('input[data-ws-check]').length
-            }), function () { self.sync(true); });
+                list_count: box.querySelectorAll('input[data-ws-check]').length,
+                department_id: self.channel.department ? self.channel.department.id : 0
+            }, function () { self.sync(true); });
         },
 
         // ── Claude ──
@@ -11706,14 +11706,6 @@
 
         Object.keys(fresh).forEach(function (key) { view[key] = fresh[key]; });
 
-        // A task made in a discussion is posted into the channel it sits beside.
-        view.taskDefaults = function () {
-            var parentId = this.channel.thread ? this.channel.thread.channel_id : 0;
-            var parent = (BOOT.channels || []).filter(function (item) { return item.id === parentId; })[0];
-
-            return { channel_id: parentId, department_id: parent ? (parent.department_id || 0) : 0 };
-        };
-
         view.load = function (threadId, messageId) {
             var self = this;
 
@@ -11820,16 +11812,6 @@
             faces.addEventListener('click', function () { self.showPeople(); });
             actions.appendChild(faces);
             actions.appendChild(self.threadMenu());
-
-            var widen = button('btn btn-sm btn-ghost', '', 'bi-arrows-angle-expand', t('th_widen'));
-            widen.addEventListener('click', function () {
-                var wide = main.root.classList.toggle('ws-thread-wide');
-
-                widen.title = wide ? t('th_narrow') : t('th_widen');
-                widen.setAttribute('aria-label', widen.title);
-                widen.querySelector('i').className = 'bi ' + (wide ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand');
-            });
-            actions.appendChild(widen);
 
             var shut = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('th_close_panel'));
             shut.addEventListener('click', function () { self.close(); });

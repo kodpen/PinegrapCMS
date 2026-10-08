@@ -17832,7 +17832,5 @@
     "This deletes {var:1} records at once. Records with a Recycle Bin go there; the others are deleted for good. Go on?": "Bu, {var:1} kaydı birden siler. Geri dönüşüm kutusu olan kayıtlar oraya gider; diğerleri kalıcı olarak silinir. Devam edilsin mi?",
     "Animations": "Animasyonlar",
     "Pause animations": "Animasyonları duraklat",
-    "Play animations": "Animasyonları oynat",
-    "Widen the discussion panel": "Tartışma panelini genişlet",
-    "Narrow the discussion panel": "Tartışma panelini daralt"
+    "Play animations": "Animasyonları oynat"
 }
