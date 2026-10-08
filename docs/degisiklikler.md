@@ -72,6 +72,93 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — İki adımlı oturum açma: doğrulama uygulaması (TOTP) ve yedek kodlar (8.40) (2026-10-08)
+
+**Sorun.** Oturum yalnız parolayla açılıyordu. Parolası sızan bir yönetici
+hesabı (başka sitede aynı parola, oltalama) panelin tamamını veriyordu;
+WAF'ın giriş sayacı tahmini yavaşlatır ama doğru parolayı durdurmaz. Kodda
+TOTP, base32 ya da QR için hazır bir parça yoktu.
+
+**Karar.**
+- **Yöntem: TOTP (RFC 6238) + 10 yedek kod.** Kişi hesap sayfasından açar;
+  ekranda base32 anahtar (dörtlü gruplar) ve `otpauth://` adresi gösterilir,
+  anahtar doğrulama uygulamasına **elle** girilir. **QR yok**: depoda QR
+  kütüphanesi yok, gömülecek bir PHP/JS kütüphanesinin 7.1 uyumu ve bakım
+  yükü bu sürüme alınmadı; dış QR servisi sırrı üçüncü tarafa vereceği için
+  kullanılmaz. Yedek kodlar `XXXX-XXXX` (I, O, 0, 1 yok), bir kez
+  gösterilir, SHA-256 olarak saklanır; kullanılan kodun satırı `used_at` ile
+  kalır (kalan sayısı için).
+- **E-posta kodu yöntemi bu sürümde yok.** Sıfırlama bağlantısı da aynı
+  posta kutusuna gittiği için ikinci adım olarak zayıf; ayrıca gönderim limiti
+  ve kuyrukla birlikte ele alınmalı. Şema (`user_mfa.method`) ikinci bir
+  yönteme yer bırakır.
+- **Zorunluluk role göre, varsayılan kapalı:** Ayarlar › Güvenlik'te
+  `config.mfa_required_role` (99 = zorunlu değil; 0 yönetici, 1 +tasarımcı,
+  2 +menejer, 3 herkes). Zorunlu roldeki 2FA'sız kişi girişte kurulum
+  ekranına düşer, oturum kurulum bitmeden açılmaz. Herkes (üyeler dahil)
+  kendi hesabında isteğe bağlı açabilir.
+- **Google ile giriş muaf değil.** `google_auth.php` doğrulanmış e-postayla
+  personel hesabına da bağlanabildiği için muafiyet, parola yerine Google
+  hesabını tek adım yapardı.
+- **Parola kabul eden API yolları 2FA'lı hesabı reddeder** (istek başına
+  `API_USERNAME`/`API_PASSWORD` gibi): bu yollarda kod
+  sorulacak bir ekran yok; kabul etmek ikinci adımı yan kapıdan açmak olurdu.
+  Kurulum ekranı kilidi (`install/index.php`) dokunulmadı.
+- **Kurtarma:** yedek kodlar; ikisi de kaybolursa yönetici kullanıcı
+  düzenleme ekranından sıfırlar (kendi rolünden düşük hesap için). Son çare
+  `user_mfa` satırını veritabanından silmek; config sabiti yok.
+- **Sır geri okunur, hash'lenmez:** `totp_secret` her girişte HMAC anahtarı
+  olarak gerekir; `ENCRYPTION_KEY` ile `"cipher:iv"` biçiminde şifrelenir
+  (`encrypt_string_with_iv()`, konnektör kimlik bilgilerinin deseni).
+  Anahtar tanımlı değilse özellik açılamaz.
+
+**Çözüm.** `includes/fn/mfa.php` (manifestte `auth.php`'den sonra), saf
+fonksiyonlar: `pg_base32_encode/decode` (RFC 4648; çözücü küçük harf, boşluk
+ve dolgusuzluğa toleranslı, çünkü anahtar elle yazılır; alfabe dışı karakter
+tüm girdiyi reddeder, 0→O / 1→I eşlemesi yok), `pg_totp_secret` (20 bayt,
+RFC 4226'nın önerdiği 160 bit), `pg_totp_step`, `pg_totp_code` (HMAC-SHA1,
+dinamik kesme; sayaç `pack('N*', 0, $step)` — 32 bit PHP'de `pack('J')` yok,
+üst kelime 6053 yılına kadar sıfır), `pg_totp_verify` (±1 adım; adaylar
+0, −1, +1 sırasıyla, `last_step` ve altı atlanır — RFC 6238 §5.2 tekrar
+kullanım; karşılaştırma `hash_equals`), `pg_totp_uri`,
+`pg_mfa_recovery_codes/normalize/hash`, `pg_mfa_format_secret`. Hesap
+durumunu okuyan veritabanı katmanı, giriş kapısı (`mfa.php`), hesap ve ayar
+ekranları aynı dosyaya ve yeni kök dosyaya eklenir.
+
+**Ödün.**
+- `ENCRYPTION_KEY` sıfırlanırsa (Ayarlar › Ticaret › "Şifreleme Anahtarını
+  Sıfırla") 2FA anahtarları **okunamaz** olur: sıfırlama ekranı TOTP
+  sırlarını yeniden şifrelemez, doğrulaması açık kişiler giremez ve
+  yöneticinin sıfırlaması gerekir. Ekrana uyarı yazılır; yeniden şifreleme
+  ayrı bir iş.
+- QR olmadığı için kurulum elle anahtar girmeyi ister.
+- Zorunlu roldeki ve henüz 2FA kurmamış bir hesabın parolasını ele geçiren
+  kişi kurulumu kendisi yapıp gerçek sahibini kilitleyebilir; çözüm yönetici
+  sıfırlaması.
+- Böyle bir hesabın parolasıyla çalışan API entegrasyonu, 2FA açılınca
+  çalışmayı bırakır.
+
+**Şema.** 8.40 `upgrade_2026_4_8_mfa()`: `user_mfa` (hesap başına bir satır:
+`method`, şifreli `totp_secret`, `enabled_at`, `last_step`, onaylanmamış
+kurulum için `pending_secret` / `pending_at`), `user_mfa_recovery`
+(`code_hash` CHAR(64) ascii, `used_at`, `idx_user`), `config.mfa_required_role`
+TINYINT varsayılan 99. İki tablo `install/index.php` `get_tables()`
+listesinde. 8.40 etiketi kimlik doğrulama işine açıldı (2026.4.8 aralıklarında
+bu konu için ayrılmış bir aralık yoktu).
+
+**Doğrulama.** `php tools/test.php mfa`: RFC 4648 base32 vektörleri, RFC 6238
+Ek B (SHA1, 8 hane: T=59, 1111111109, 1111111111, 1234567890, 2000000000,
+20000000000), doğrulama penceresi (±1 kabul, ±2 red), tekrar kullanım reddi,
+biçimsiz/yanlış kod reddi, yedek kod biçimi ve normalleştirme, `otpauth://`
+adresi, anahtar gösterimi — 17 test yeşil. `lint`, `check_lang` temiz.
+
+**Doğrulanamayanlar.** Şema adımı henüz dev veritabanında koşturulmadı
+(yalnız `php -l`); giriş kapısı ve ekranlar bu değişiklikte yok. Gerçek bir
+doğrulama uygulamasına (Google Authenticator, Aegis) anahtarın elle girilmesi
+denenmedi.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve
