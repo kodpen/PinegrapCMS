@@ -28,6 +28,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_channel_shares();          // 8.82
 	upgrade_2026_4_8_threads();                 // 8.83
 	upgrade_2026_4_8_bulk_changes();            // 8.84
+	upgrade_2026_4_8_backup_settings(); // 8.33
 
 }
 
@@ -151,5 +152,25 @@ function upgrade_2026_4_8_bulk_changes() {
 	install_add_column('config', 'ws_ai_bulk_delete', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('Workspace: Pinegrap AI and Claude can propose one change for many records at once; deleting in bulk stays off until an administrator allows it.');
+
+}
+
+// Automatic backup retention and remote copy (2026.4.8, 8.33;
+// includes/fn/backup.php). backup_keep is how many weekly automatic backups
+// stay in data/backups (0 keeps all of them). backup_remote_type is '' (none),
+// 'ftp' or 's3'; backup_remote_settings holds that destination's address and
+// credentials as encrypted JSON ("<ciphertext>:<iv>"), TEXT because the
+// config row is near the row size limit. backup_remote_error is the message
+// of the last failed copy, emptied by the next one that succeeds, and
+// backup_remote_sent_at when a copy last succeeded.
+function upgrade_2026_4_8_backup_settings() {
+
+	install_add_column('config', 'backup_keep', "INT UNSIGNED NOT NULL DEFAULT 4");
+	install_add_column('config', 'backup_remote_type', "VARCHAR(8) NOT NULL DEFAULT ''");
+	install_add_column('config', 'backup_remote_settings', "TEXT NULL");
+	install_add_column('config', 'backup_remote_error', "TEXT NULL");
+	install_add_column('config', 'backup_remote_sent_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Backups: the automatic backup is written as one zip archive per week, keeps the last four weeks by default, and can send a copy to an FTP server or an S3-compatible bucket (Settings › General › Backups).');
 
 }
