@@ -2905,6 +2905,10 @@ const StyleDesigner = (function () {
     }
     function _restoreAssetFields(snap) {
         if (!snap) return;
+        // Undo/redo of a tree edit carries the same asset fields: nothing to
+        // reload, and the canvas keeps its stylesheets and scripts.
+        var _cur = _snapshotAssetFields();
+        if (_cur.css === snap.css && _cur.js === snap.js && _cur.fonts === snap.fonts) return;
         function _write(id, val) {
             var el = document.getElementById(id);
             if (el && typeof val === 'string') el.value = val;
@@ -4835,6 +4839,18 @@ const StyleDesigner = (function () {
         // sections stayed invisible; the canvas draws them revealed, the way a
         // visitor sees them once they have scrolled past.
         '[data-aos], [data-sal], .wow { opacity:1 !important; visibility:visible !important; transform:none !important; transition:none !important; animation:none !important; }',
+        // Animations paused (the canvas default, see _sdMotionPaused()): every
+        // CSS animation and transition jumps to its end at once, so an
+        // entrance animation shows its final state rather than its first
+        // frame (which is often invisible), and a looping one stands still.
+        'body.sd-motion-paused *, body.sd-motion-paused *::before, body.sd-motion-paused *::after { animation-duration:0s !important; animation-delay:0s !important; animation-iteration-count:1 !important; transition-duration:0s !important; transition-delay:0s !important; }',
+        'body.sd-motion-paused .sd-sect-flash { animation-duration:1.2s !important; }',
+        // A drag in progress (_sdMotionHold()) freezes what is playing.
+        'body.sd-motion-hold *, body.sd-motion-hold *::before, body.sd-motion-hold *::after { animation-play-state:paused !important; }',
+        // The editor sets the canvas scroll position itself (after every
+        // render, on a fragment link); a design's smooth scrolling would turn
+        // each of those into an animated scroll.
+        'html { scroll-behavior:auto !important; }',
         // Designer node wrapper — inset box-shadow: it does not affect layout and adds no scrollbar
         '.sd-wrap { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
         '.sd-wrap:hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
@@ -5710,6 +5726,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-outline" title="' + esc(_sdT('Outline Grid')) + '"><span class="bi bi-grid-3x3"></span> <span class="sd-vb-txt">' + esc(_sdT('Outline')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-theme" title="' + esc(_sdT('Dark Canvas')) + '"><span class="bi bi-moon"></span> <span class="sd-vb-txt">' + esc(_sdT('Dark')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-grid" title="' + esc(_sdT('Grid Snap (8px)')) + '"><span class="bi bi-grid"></span> <span class="sd-vb-txt">' + esc(_sdT('Grid')) + '</span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-motion" aria-pressed="false" title="' + esc(_sdT('Play animations')) + '"><span class="bi bi-play-circle"></span> <span class="sd-vb-txt">' + esc(_sdT('Animations')) + '</span></button>' +
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('Snapshots')) + '"><span class="bi bi-camera"></span> <span class="sd-vb-txt">' + esc(_sdT('Snap')) + '</span></button>' +
@@ -5821,6 +5838,24 @@ const StyleDesigner = (function () {
             });
         }
 
+        // Animations toggle — the page's motion on the canvas, kept per
+        // browser (see _sdMotionPaused()).
+        var motionBtn = document.getElementById('sd-vb-motion');
+        if (motionBtn) {
+            _sdSyncMotionButton();
+            motionBtn.addEventListener('click', function () { _sdSetMotion(_sdMotionPaused()); });
+        }
+
+        // A drag started outside the canvas (palette, layer tree) holds the
+        // canvas motion too; the canvas document binds its own drags.
+        if (!window._sdMotionHoldBound) {
+            window._sdMotionHoldBound = true;
+            document.addEventListener('dragstart', function () { _sdMotionHold(true); }, true);
+            document.addEventListener('dragend', function () { _sdMotionHold(false); }, true);
+            document.addEventListener('drop', function () { _sdMotionHold(false); }, true);
+            document.addEventListener('mousemove', _sdMotionHoldLeftover, true);
+        }
+
         // Snapshots panel button
         var _snapshotsBtn = document.getElementById('sd-vb-snapshots');
         if (_snapshotsBtn) _snapshotsBtn.addEventListener('click', openSnapshotsPanel);
@@ -5840,6 +5875,57 @@ const StyleDesigner = (function () {
         // in the DOM. Every later tab switch / save keeps it in step.
         if (typeof _pgTabsSyncViewButton === 'function') _pgTabsSyncViewButton();
 
+        _sdInitCanvasDoc();
+
+        // Inject theme stylesheet (CSS only — themes never carry JS) into the canvas iframe
+        var themeSel = document.querySelector('select[name="theme_id"]');
+        var syncTheme = window._sdSyncTheme = function() {
+            if (!themeSel) return;
+            var themeStr = themeSel.options[themeSel.selectedIndex].text.trim();
+            // CSS
+            var themeLink = canvasDoc.getElementById('sd-custom-theme');
+            if (themeStr && themeStr.indexOf('.css') !== -1) {
+                if (!themeLink) {
+                    themeLink = canvasDoc.createElement('link');
+                    themeLink.id = 'sd-custom-theme';
+                    themeLink.rel = 'stylesheet';
+                    canvasDoc.head.appendChild(themeLink);
+                }
+                // Theme files are addressed from the site root, which is not "/" on a subfolder install.
+                themeLink.href = (window.OUTPUT_PATH || '/') + themeStr + '?t=' + new Date().getTime();
+            } else if (themeLink) {
+                themeLink.remove();
+            }
+            renderHtmlTree();
+        };
+        if (themeSel) {
+            themeSel.addEventListener('change', syncTheme);
+            syncTheme();
+        }
+
+        // jQuery is now driven by the `jquery-js` assets-panel sentinel.
+        // applyAssetsToIframe() already injects every enabled external-js
+        // entry (sentinels included), so a legacy syncJquery helper is no
+        // longer needed. Stub kept as a no-op for any caller that may have
+        // referenced window._sdSyncJquery.
+        window._sdSyncJquery = function() {};
+
+        initResize();
+        initIconResizeHandle();
+
+        // Context bar: Show / Hide buttons for modal, offcanvas, dropdown
+        document.getElementById('sd-ctx-show').addEventListener('click', function () {
+            ctxBarToggle(true);
+        });
+        document.getElementById('sd-ctx-hide').addEventListener('click', function () {
+            ctxBarToggle(false);
+        });
+    }
+
+    // The canvas document: written into the iframe, its listeners, the
+    // framework bundle and the assets. Runs once when the canvas is built and
+    // again for every fresh document (_sdCanvasRealmReset()).
+    function _sdInitCanvasDoc() {
         canvasIframe = document.getElementById('sd-canvas-iframe');
         var doc = canvasIframe.contentDocument;
         // Canvas iframe base: absolute URL so root-relative asset paths ("/cover.jpg") resolve
@@ -5857,26 +5943,42 @@ const StyleDesigner = (function () {
         // The framework files are the design's (_sdFrameworkInfo()): a custom
         // design gets none, so the canvas shows what its visitors will get.
         var _fwInfo = _sdFrameworkInfo();
+        // The motion shim runs before any script of the design (see
+        // _sdMotionShim()); the body starts with the editor's state classes
+        // so the first paint already has the animations stopped.
+        var _bodyCls = [];
+        if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
+        if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
         doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+            '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
             '<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
-            '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body></body></html>');
+            '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body' +
+            (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') +
+            (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '></body></html>');
         doc.close();
         canvasDoc = doc;
+        if (canvasZoom !== 1.0 && doc.documentElement) doc.documentElement.style.zoom = canvasZoom;
 
-        // Inject Bootstrap JS bundle so data-bs-toggle/data-bs-dismiss/data-bs-target all work natively
+        // Inject Bootstrap JS bundle so data-bs-toggle/data-bs-dismiss/data-bs-target all work natively.
+        // When the assets panel carries the bundle (its bootstrap-js entry),
+        // that entry loads it in its place, after jQuery, as on the page.
         var bsScript = null;
-        if (_fwInfo.js) {
+        var _fwViaAssets = !!_fwInfo.js && _readAssetsFromFields().jsFiles.some(function (f) {
+            return f.enabled !== false && f.type === 'external-js' && String(f.content || '').trim() === _fwInfo.js;
+        });
+        if (_fwInfo.js && !_fwViaAssets) {
             bsScript = canvasDoc.createElement('script');
             bsScript.src = _fwInfo.js;
             canvasDoc.body.appendChild(bsScript);
+            canvasDoc._sdFwJs = _fwInfo.js;
         }
 
         // Inject any saved custom CSS/JS assets from the assets panel into the canvas iframe,
         // and refresh the HTML tree so saved files appear immediately after page load.
         // (deferred so canvasDoc and #sd-html-tree are both fully set up)
-        setTimeout(function() { applyAssetsToIframe(); renderHtmlTree(); }, 50);
+        setTimeout(function() { if (canvasDoc === doc) { applyAssetsToIframe(); renderHtmlTree(); } }, 50);
 
         // A see-through wrapper's toolbar is placed at its element whenever it
         // shows (_sdPlaceWrapChrome()). Layout-dependent fixes run again when
@@ -5892,8 +5994,8 @@ const StyleDesigner = (function () {
         canvasDoc.addEventListener('load', function (e) {
             var t = e.target;
             if (t && t.tagName === 'LINK') { _sdBridgeSheets(); _sdFxSoon(); return; }
-            if (_sdChromeRaf || !canvasDoc.defaultView) return;
-            _sdChromeRaf = canvasDoc.defaultView.requestAnimationFrame(function () { _sdChromeRaf = 0; _sdPlaceSelectedChrome(); });
+            if (_sdChromeRaf) return;
+            _sdChromeRaf = requestAnimationFrame(function () { _sdChromeRaf = 0; _sdPlaceSelectedChrome(); });
         }, true);
         if (canvasDoc.defaultView) canvasDoc.defaultView.addEventListener('resize', _sdFxSoon);
 
@@ -6170,57 +6272,155 @@ const StyleDesigner = (function () {
         // discards local closures across renders.
         var _sdExitDesigner = window._sdExitDesigner;
 
+        // A drag in progress (from the palette, the layer tree or a canvas
+        // grip) holds the page's motion; see _sdMotionHold().
+        canvasDoc.addEventListener('dragstart', function () { _sdMotionHold(true); }, true);
+        canvasDoc.addEventListener('dragend', function () { _sdMotionHold(false); }, true);
+        canvasDoc.addEventListener('drop', function () { _sdMotionHold(false); }, true);
+        canvasDoc.addEventListener('mousemove', _sdMotionHoldLeftover, true);
+
+        // The guards are bound to this document: a timer or load event of a
+        // document that has since been replaced does nothing.
+        var _thisDoc = canvasDoc;
+        var _ready = function (always) {
+            if (canvasDoc !== _thisDoc || (iframeReady && !always)) return;
+            iframeReady = true;
+            render();
+            if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay');
+            // The page is drawn: the design's scripts can start.
+            applyAssetsToIframe();
+        };
         var link = canvasDoc.querySelector('link[href*="bootstrap"]');
         if (link) {
-            link.onload = function () { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); };
-            link.onerror = function () { iframeReady = true; render(); };
+            link.onload = function () { _ready(true); };
+            link.onerror = function () { _ready(true); };
         }
-        if (bsScript) bsScript.onload = function () { if (!iframeReady) { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); } };
-        setTimeout(function () { if (!iframeReady) { iframeReady = true; render(); if (canvasGridSnap && canvasDoc && canvasDoc.body) canvasDoc.body.classList.add('sd-grid-overlay'); } }, 3000);
+        if (bsScript) bsScript.onload = function () { _ready(false); };
+        setTimeout(function () { _ready(false); }, 3000);
+    }
 
-        // Inject theme stylesheet (CSS only — themes never carry JS) into the canvas iframe
-        var themeSel = document.querySelector('select[name="theme_id"]');
-        var syncTheme = window._sdSyncTheme = function() {
-            if (!themeSel) return;
-            var themeStr = themeSel.options[themeSel.selectedIndex].text.trim();
-            // CSS
-            var themeLink = canvasDoc.getElementById('sd-custom-theme');
-            if (themeStr && themeStr.indexOf('.css') !== -1) {
-                if (!themeLink) {
-                    themeLink = canvasDoc.createElement('link');
-                    themeLink.id = 'sd-custom-theme';
-                    themeLink.rel = 'stylesheet';
-                    canvasDoc.head.appendChild(themeLink);
+    // A fresh canvas document. Whatever the design's scripts started in the
+    // old one — timers, animation loops, listeners, observers, top-level
+    // declarations — goes with its browsing context, so a script change
+    // never runs on top of the previous copy. The iframe element is replaced
+    // rather than reopened: document.open() keeps the window, its timers and
+    // its globals. The editor's own state (selection, zoom, width, dark
+    // canvas, grid and outline, scroll position) carries over.
+    var _sdPendingScrollY = 0;
+    function _sdCanvasRealmReset() {
+        var old = document.getElementById('sd-canvas-iframe');
+        if (!old || !old.parentNode) return;
+        if (canvasDoc && canvasDoc.documentElement) {
+            _sdPendingScrollY = canvasDoc.documentElement.scrollTop || (canvasDoc.body ? canvasDoc.body.scrollTop : 0) || 0;
+        }
+        var fresh = document.createElement('iframe');
+        for (var i = 0; i < old.attributes.length; i++) {
+            fresh.setAttribute(old.attributes[i].name, old.attributes[i].value);
+        }
+        // A drag cannot outlive the document it was held in.
+        _sdHoldOn = false;
+        canvasDoc = null;
+        iframeReady = false;
+        _sdHoverWrap = null;
+        old.parentNode.replaceChild(fresh, old);
+        _sdInitCanvasDoc();
+        if (typeof window._sdSyncTheme === 'function') window._sdSyncTheme();
+    }
+
+    // ── Motion on the canvas ──────────────────────────────────────────
+    // A design full of animation keeps the browser busy on every frame, and
+    // the editor shares that frame: hovering, dragging and scrolling stall
+    // behind it. The canvas stops the page's motion unless the operator
+    // asks for it (the "Animations" button); the preview window and the
+    // site always play it.
+    function _sdMotionPaused() {
+        try { return localStorage.getItem('pg_sd_motion') !== 'play'; } catch (e) { return true; }
+    }
+
+    function _sdSetMotion(play) {
+        try { localStorage.setItem('pg_sd_motion', play ? 'play' : 'pause'); } catch (e) {}
+        _sdSyncMotionButton();
+        // Scripts read the setting when they start, so they start again.
+        _sdCanvasRealmReset();
+    }
+
+    function _sdSyncMotionButton() {
+        var btn = document.getElementById('sd-vb-motion');
+        if (!btn) return;
+        var paused = _sdMotionPaused();
+        btn.classList.toggle('active', !paused);
+        btn.setAttribute('aria-pressed', paused ? 'false' : 'true');
+        var ic = btn.querySelector('.bi');
+        if (ic) ic.className = 'bi ' + (paused ? 'bi-play-circle' : 'bi-pause-circle');
+        _sdSetButtonTitle(btn, paused ? _sdT('Play animations') : _sdT('Pause animations'));
+    }
+
+    // Runs in the canvas document before any script of the design.
+    //   • Paused: a script asking for prefers-reduced-motion is told
+    //     "reduce", so the ones that honour it do not start their loops
+    //     (CSS motion is stopped by the body.sd-motion-paused rules).
+    //   • A held drag (_sdMotionHold()): animation frames the page asks for
+    //     wait until the drag ends, which leaves the frames to the drag.
+    // The editor schedules its own canvas work on the designer window, so
+    // nothing of the editor waits.
+    function _sdMotionShimFn(w, paused) {
+        if (paused && w.matchMedia) {
+            var mm = w.matchMedia;
+            w.matchMedia = function (q) {
+                var r = mm.call(w, q);
+                var t = String(q).toLowerCase().replace(/\s+/g, '');
+                var v = t.indexOf('prefers-reduced-motion:reduce') !== -1 ? true
+                      : (t.indexOf('prefers-reduced-motion:no-preference') !== -1 ? false : null);
+                if (v !== null) {
+                    try { Object.defineProperty(r, 'matches', { value: v, configurable: true }); } catch (e) {}
                 }
-                // Theme files are addressed from the site root, which is not "/" on a subfolder install.
-                themeLink.href = (window.OUTPUT_PATH || '/') + themeStr + '?t=' + new Date().getTime();
-            } else if (themeLink) {
-                themeLink.remove();
-            }
-            renderHtmlTree();
-        };
-        if (themeSel) {
-            themeSel.addEventListener('change', syncTheme);
-            syncTheme();
+                return r;
+            };
         }
+        var raf = w.requestAnimationFrame, caf = w.cancelAnimationFrame;
+        if (!raf || !caf) return;
+        var held = {}, seq = 0;
+        w.__sdHold = false;
+        w.requestAnimationFrame = function (cb) {
+            if (!w.__sdHold) return raf.call(w, cb);
+            seq++;
+            held[seq] = cb;
+            return -seq;
+        };
+        w.cancelAnimationFrame = function (id) {
+            if (id < 0) { delete held[-id]; return; }
+            return caf.call(w, id);
+        };
+        w.__sdRelease = function () {
+            w.__sdHold = false;
+            var q = held;
+            held = {};
+            Object.keys(q).forEach(function (k) { raf.call(w, q[k]); });
+        };
+    }
+    function _sdMotionShim(paused) {
+        return '(' + _sdMotionShimFn.toString() + ')(window,' + (paused ? 'true' : 'false') + ');';
+    }
 
-        // jQuery is now driven by the `jquery-js` assets-panel sentinel.
-        // applyAssetsToIframe() already injects every enabled external-js
-        // entry (sentinels included), so a legacy syncJquery helper is no
-        // longer needed. Stub kept as a no-op for any caller that may have
-        // referenced window._sdSyncJquery.
-        window._sdSyncJquery = function() {};
-
-        initResize();
-        initIconResizeHandle();
-
-        // Context bar: Show / Hide buttons for modal, offcanvas, dropdown
-        document.getElementById('sd-ctx-show').addEventListener('click', function () {
-            ctxBarToggle(true);
-        });
-        document.getElementById('sd-ctx-hide').addEventListener('click', function () {
-            ctxBarToggle(false);
-        });
+    // While something is being dragged the page's CSS animations stand
+    // still and its animation frames wait (see _sdMotionShimFn()): every
+    // dragover is answered on time and the drop lands, however busy the
+    // design is. Released on drop / dragend, or on the first mouse move
+    // after a drag whose end never reached us (its source left the page).
+    var _sdHoldOn = false;
+    function _sdMotionHold(on) {
+        on = !!on;
+        if (_sdHoldOn === on) return;
+        _sdHoldOn = on;
+        if (!canvasDoc || !canvasDoc.body) return;
+        canvasDoc.body.classList.toggle('sd-motion-hold', on);
+        var w = canvasDoc.defaultView;
+        if (!w) return;
+        if (on) w.__sdHold = true;
+        else if (typeof w.__sdRelease === 'function') w.__sdRelease();
+    }
+    function _sdMotionHoldLeftover() {
+        if (_sdHoldOn) _sdMotionHold(false);
     }
 
     // ========================= CTX BAR (Modal / Dropdown / Offcanvas) =========================
@@ -7667,22 +7867,7 @@ const StyleDesigner = (function () {
         // The tree may have changed since the last paint; the editable-area
         // set is derived from it.
         _sdEditableInvalidate();
-        // Track whether the current selection is inside a shared component;
-        // mark dirty and show a one-per-session warning toast when editing begins.
-        var _prevSid = _editingSharedSid;
-        _editingSharedSid = _resolveSharedSid(selectedNode);
-        if (_editingSharedSid > 0) {
-            _sharedDirty[_editingSharedSid] = true;
-            if (_editingSharedSid !== _prevSid && !_sharedSnapshots[_editingSharedSid]) {
-                var _sc = _sharedCache[_editingSharedSid];
-                _sharedSnapshots[_editingSharedSid] = _sc ? JSON.stringify(_sc.tree) : '{}';
-                sdToast(
-                    '<span class="bi bi-puzzle-fill me-1" style="color:#22c55e"></span>' +
-                    _sdT('You are editing a shared component — saving affects <strong>every</strong> style that uses it.'),
-                    'warning', 7000
-                );
-            }
-        }
+        _sdTrackSharedEditing();
         // BEFORE re-rendering the canvas, mirror any LIVE `.show` state on
         // toggleable elements (modal / offcanvas / collapse / dropdown-menu)
         // back into their tree node's props.cssClass. Without this sync the
@@ -7706,6 +7891,49 @@ const StyleDesigner = (function () {
         // rebuilt without them); the debounced pass below refreshes them.
         applyIssueBadges();
         scheduleValidation();
+    }
+
+    // Track whether the current selection is inside a shared component;
+    // mark dirty and show a one-per-session warning toast when editing begins.
+    function _sdTrackSharedEditing() {
+        var _prevSid = _editingSharedSid;
+        _editingSharedSid = _resolveSharedSid(selectedNode);
+        if (_editingSharedSid > 0) {
+            _sharedDirty[_editingSharedSid] = true;
+            if (_editingSharedSid !== _prevSid && !_sharedSnapshots[_editingSharedSid]) {
+                var _sc = _sharedCache[_editingSharedSid];
+                _sharedSnapshots[_editingSharedSid] = _sc ? JSON.stringify(_sc.tree) : '{}';
+                sdToast(
+                    '<span class="bi bi-puzzle-fill me-1" style="color:#22c55e"></span>' +
+                    _sdT('You are editing a shared component — saving affects <strong>every</strong> style that uses it.'),
+                    'warning', 7000
+                );
+            }
+        }
+    }
+
+    // A selection change leaves the tree as it was, so the canvas keeps its
+    // DOM: running CSS animations, playing videos and the state scripts gave
+    // the page carry on, and a large page is not rebuilt on every click.
+    // Only the selection marks and the panels are drawn again. The exception
+    // is an element of a login region's session state that the canvas is not
+    // drawing — showing it means switching states, which takes a render.
+    function _sdSelectRender() {
+        if (_sdSelectionNeedsCanvas()) { render(); return; }
+        _sdTrackSharedEditing();
+        renderSelectionOnly();
+    }
+
+    function _sdSelectionNeedsCanvas() {
+        if (!selectedNode) return false;
+        var sid = _resolveSharedSid(selectedNode);
+        var cached = sid > 0 ? _sharedCache[sid] : null;
+        if (!cached || !cached.tree || !cached.system_region_config) return false;
+        var cfg = cached.system_region_config;
+        if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; } }
+        if (!cfg || cfg.regionType !== 'login_region') return false;
+        var st = _sdSessionStateOf(cached.tree, selectedNode);
+        return !!st && st !== _sdSessionPreview;
     }
 
     // Walk all toggleable elements in the canvas and sync their live
@@ -8523,6 +8751,9 @@ const StyleDesigner = (function () {
         // Preserve scroll position so options changes don't jump the canvas to top
         var _scrollY = (canvasDoc.documentElement ? canvasDoc.documentElement.scrollTop : 0) ||
                        canvasDoc.body.scrollTop || 0;
+        // A fresh canvas document starts at the top; it goes back to where
+        // the old one was (_sdCanvasRealmReset()).
+        if (_sdPendingScrollY) { _scrollY = _sdPendingScrollY; _sdPendingScrollY = 0; }
         // Capture tab activation before the DOM wipe so the re-render can
         // restore the user's last-selected tab (Bootstrap's tab JS otherwise
         // resets to whatever the tree marks as active = always tab 1).
@@ -8533,6 +8764,7 @@ const StyleDesigner = (function () {
         // as a loop from now on; every full render starts clean.
         _sdSharedOpen = {};
         if (tree) canvasDoc.body.appendChild(buildNodeEl(tree));
+        canvasDoc._sdDrawn = true;
         // Apply root-level fontFamily directly to the iframe <body> so the
         // canvas previews body-wide typography. Empty/missing prop clears
         // the inline style so Bootstrap's --bs-body-font-family takes over.
@@ -8554,7 +8786,7 @@ const StyleDesigner = (function () {
         // after toggling Grid/Outline turned them off and the user had to
         // manually re-toggle. They're re-added below from the captured
         // snapshot. (`sd-dark-theme` was removed — see applyCanvasTheme.)
-        var _EDITOR_STATE_CLASSES = ['sd-grid-overlay', 'sd-outline-grid'];
+        var _EDITOR_STATE_CLASSES = ['sd-grid-overlay', 'sd-outline-grid', 'sd-motion-paused', 'sd-motion-hold'];
         var _preservedClasses = _EDITOR_STATE_CLASSES.filter(function (c) {
             return canvasDoc.body.classList.contains(c);
         });
@@ -8682,12 +8914,13 @@ const StyleDesigner = (function () {
 
     // Layout-dependent canvas work after something moved without a render
     // (the canvas resized, a stylesheet or picture arrived). Once per frame.
+    // Scheduled on the designer window: the canvas window's frames can be
+    // held during a drag (_sdMotionShimFn()) and go away with a replaced
+    // canvas document.
     var _sdFxRaf = 0;
     function _sdFxSoon() {
         if (_sdFxRaf || !canvasDoc) return;
-        var win = canvasDoc.defaultView;
-        if (!win) return;
-        _sdFxRaf = win.requestAnimationFrame(function () {
+        _sdFxRaf = requestAnimationFrame(function () {
             _sdFxRaf = 0;
             _sdCanvasFidelityPass();
             _sdPlaceSelectedChrome();
@@ -8773,7 +9006,7 @@ const StyleDesigner = (function () {
             if (selectedNode !== node) {
                 selectedNode = node;
                 e.stopPropagation();
-                render();
+                _sdSelectRender();
             } else {
                 if (!e._sdInteractive) e.stopPropagation();
                 updateCtxBar();
@@ -8868,7 +9101,7 @@ const StyleDesigner = (function () {
                 selectedNode = node;
                 selectedNodes = [];
                 e.stopPropagation();
-                render();
+                _sdSelectRender();
             } else {
                 if (!e._sdInteractive) e.stopPropagation();
                 updateCtxBar();
@@ -9254,7 +9487,7 @@ const StyleDesigner = (function () {
             e.stopPropagation();
             selectedNode = node;
             selectedNodes = [];
-            render();
+            _sdSelectRender();
         });
 
         // A widget at the very top of the canvas has no room above it for its
@@ -9583,9 +9816,7 @@ const StyleDesigner = (function () {
                 e.preventDefault();
                 selectedNode = node;
                 selectedNodes = [];
-                renderCanvas();
-                renderTree();
-                renderProperties();
+                _sdSelectRender();
                 openNotesPopup(node);
             });
             wrapper.appendChild(noteDot);
@@ -9692,7 +9923,7 @@ const StyleDesigner = (function () {
                     // Select this node so its props panel renders, then scroll + highlight
                     selectedNode = node;
                     selectedNodes = [];
-                    render();
+                    _sdSelectRender();
                     setTimeout(function () {
                         var panel = document.getElementById('sd-properties');
                         if (!panel) return;
@@ -10156,7 +10387,7 @@ const StyleDesigner = (function () {
                     // No stopPropagation: Bootstrap's document-level delegation must fire
                 } else {
                     e.stopPropagation();
-                    render();
+                    _sdSelectRender();
                 }
                 // Scroll only the OVERVIEW tree to reveal the selected node.
                 // Do NOT call scrollCanvasToNode() here: the user just clicked something
@@ -11811,16 +12042,23 @@ const StyleDesigner = (function () {
     }
 
     // ========================= DRAG & DROP =========================
+    // One guide is moved rather than a new one added on every dragover: each
+    // added or removed element is a change the design's own observers are
+    // called for, many times a second while a drag lasts.
     function _showAlignGuide(clientY) {
         if (!canvasDoc) return;
         if (_alignRafId) cancelAnimationFrame(_alignRafId);
         _alignRafId = requestAnimationFrame(function() {
-            _clearAlignGuides();
-            var guide = canvasDoc.createElement('div');
-            guide.className = 'sd-align-guide';
-            guide.style.top = clientY + 'px';
-            canvasDoc.body.appendChild(guide);
             _alignRafId = null;
+            if (!canvasDoc || !canvasDoc.body) return;
+            var guide = canvasDoc.querySelector('.sd-align-guide');
+            if (!guide) {
+                guide = canvasDoc.createElement('div');
+                guide.className = 'sd-align-guide';
+                canvasDoc.body.appendChild(guide);
+            }
+            var top = clientY + 'px';
+            if (guide.style.top !== top) guide.style.top = top;
         });
     }
     function _clearAlignGuides() {
@@ -11828,10 +12066,22 @@ const StyleDesigner = (function () {
         if (canvasDoc) canvasDoc.querySelectorAll('.sd-align-guide').forEach(function(el) { el.remove(); });
     }
 
+    var _SD_INSERT_MARKS = ['sd-drop-hl', 'sd-insert-before', 'sd-insert-after', 'sd-insert-before-x', 'sd-insert-after-x'];
+
     function setupDropEvents(el, node) {
-        function _clearInsertMarks() {
-            el.classList.remove('sd-drop-hl', 'sd-insert-before', 'sd-insert-after', 'sd-insert-before-x', 'sd-insert-after-x');
+        // The drop mark is written only when it changes. dragover fires many
+        // times a second; removing and adding the same class each time is an
+        // attribute change for the browser to restyle and for every
+        // MutationObserver of the design to process.
+        function _setInsertMark(mark) {
+            var cl = el.classList;
+            for (var i = 0; i < _SD_INSERT_MARKS.length; i++) {
+                var m = _SD_INSERT_MARKS[i];
+                if (m !== mark && cl.contains(m)) cl.remove(m);
+            }
+            if (mark && !cl.contains(mark)) cl.add(mark);
         }
+        function _clearInsertMarks() { _setInsertMark(null); }
         function _getZone(e) {
             // A see-through wrapper is measured by its element.
             var r = _sdBoxRect(el);
@@ -11879,7 +12129,6 @@ const StyleDesigner = (function () {
             // changed no measurement — it only forced the browser to lay the
             // page out again before every single read.
             var zone = _getZone(e);
-            _clearInsertMarks();
 
             // One lookup for the whole handler. It used to be asked three
             // separate times, each a full walk of the tree before the drag
@@ -11922,6 +12171,7 @@ const StyleDesigner = (function () {
                 // We also reset dropEffect so the browser shows "not-allowed" if nothing
                 // up the tree accepts it either. An accepting ancestor will override.
                 e.dataTransfer.dropEffect = 'none';
+                _clearInsertMarks();
                 _sdPerfMark('dragover', _dragT0);
                 return;
             }
@@ -11931,11 +12181,11 @@ const StyleDesigner = (function () {
             e.dataTransfer.dropEffect = (dragData.source === 'palette' || e.altKey) ? 'copy' : 'move';
             // Use horizontal bars for inline-sibling zones (detected by parent interactive node)
             var _parInline = !!(_par && _isInteractiveNode(_par));
-            if (zone === 'before')            { el.classList.add(_parInline ? 'sd-insert-before-x' : 'sd-insert-before'); }
-            else if (zone === 'after')        { el.classList.add(_parInline ? 'sd-insert-after-x' : 'sd-insert-after'); }
-            else if (zone === 'inside-start') { el.classList.add('sd-insert-before-x'); }
-            else if (zone === 'inside-end')   { el.classList.add('sd-insert-after-x'); }
-            else                              { el.classList.add('sd-drop-hl'); _showAlignGuide(e.clientY); }
+            if (zone === 'before')            { _setInsertMark(_parInline ? 'sd-insert-before-x' : 'sd-insert-before'); }
+            else if (zone === 'after')        { _setInsertMark(_parInline ? 'sd-insert-after-x' : 'sd-insert-after'); }
+            else if (zone === 'inside-start') { _setInsertMark('sd-insert-before-x'); }
+            else if (zone === 'inside-end')   { _setInsertMark('sd-insert-after-x'); }
+            else                              { _setInsertMark('sd-drop-hl'); _showAlignGuide(e.clientY); }
             el._sdDropZone = zone;
             _sdPerfMark('dragover', _dragT0);
         });
@@ -12021,7 +12271,7 @@ const StyleDesigner = (function () {
             // incompatible → Chromium aborts the drop → user sees "release
             // does nothing". Match wrapper(col)'s logic.
             e.dataTransfer.dropEffect = (dragData.source === 'palette' || e.altKey) ? 'copy' : 'move';
-            dz.classList.add('active');
+            if (!dz.classList.contains('active')) dz.classList.add('active');
         });
         dz.addEventListener('dragleave', function () { dz.classList.remove('active'); });
         dz.addEventListener('drop', function (e) {
@@ -20267,47 +20517,89 @@ const StyleDesigner = (function () {
         };
     }
 
+    // Managed designer files (_file=true) keep their URL when their body is
+    // saved, so the canvas asks for them with a stamp: the editor's load time,
+    // or the moment the file was last saved from this editor. A stable stamp
+    // lets a link survive an unrelated asset change; a fresh one fetches the
+    // new body. CDN externals are never stamped (that would defeat HTTP
+    // caching for Bootstrap and friends).
+    var _sdAssetLoadStamp = Date.now();
+    var _sdAssetStamps = {};
+    function _sdBustAsset(url) {
+        url = String(url || '').trim();
+        if (url) _sdAssetStamps[url] = Date.now();
+    }
+    function _sdAssetHref(f) {
+        var href = String(f.content || '').trim();
+        if (!f._file || !href) return href;
+        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[href] || _sdAssetLoadStamp);
+    }
+
+    // Brings one family of canvas <link>s (ids prefix0, prefix1, …) to the
+    // wanted hrefs. The links that already match from the start are kept:
+    // removing a stylesheet and adding it back drops every animation and
+    // transition it drives (they start over once it is back) and makes the
+    // page lay itself out again without it in between.
+    function _sdSyncCanvasLinks(prefix, hrefs, cors) {
+        var have = Array.prototype.slice.call(canvasDoc.querySelectorAll('link[id^="' + prefix + '"]'));
+        var keep = 0;
+        while (keep < have.length && keep < hrefs.length && have[keep].getAttribute('href') === hrefs[keep]) keep++;
+        for (var i = keep; i < have.length; i++) have[i].parentNode.removeChild(have[i]);
+        for (var j = keep; j < hrefs.length; j++) {
+            var link = canvasDoc.createElement('link');
+            link.rel = 'stylesheet';
+            link.id = prefix + j;
+            // CORS-anon enables reading cssRules in the bottom Styles panel
+            // for sources that send permissive CORS headers (jsdelivr does,
+            // most CDNs do). Same-origin URLs ignore the attribute.
+            if (cors) link.crossOrigin = 'anonymous';
+            link.href = hrefs[j];
+            canvasDoc.head.appendChild(link);
+        }
+    }
+
+    // What the canvas scripts are made of: every enabled JS entry, with the
+    // stamp of a managed file so saving its body counts as a change.
+    function _sdCanvasJsSig(jsFiles) {
+        return JSON.stringify(jsFiles.filter(function (f) { return f.enabled !== false; }).map(function (f) {
+            return [f.type || '', f.name || '', f.type === 'external-js' ? _sdAssetHref(f) : (f.content || ''), f.module ? 1 : 0];
+        }));
+    }
+
     // Inject / update custom CSS and JS into the canvas iframe.
-    // Called after every asset change so the preview stays in sync without a save/reload.
+    // Called after every asset change so the preview stays in sync without a
+    // save/reload. Only what changed is written: stylesheets are compared
+    // with what the canvas holds, and the scripts run once per canvas
+    // document. A script cannot be taken back once it has run (its timers,
+    // listeners and observers stay), so a change to the scripts gets a fresh
+    // canvas document instead (_sdCanvasRealmReset()).
     function applyAssetsToIframe() {
         if (!canvasDoc) return;
         var assets = _readAssetsFromFields();
 
+        // A script change first: the fresh document applies everything again.
+        var jsSig = _sdCanvasJsSig(assets.jsFiles);
+        if (canvasDoc._sdJsSig !== undefined && canvasDoc._sdJsSig !== jsSig) {
+            _sdCanvasRealmReset();
+            return;
+        }
+
         // ── CSS: Google Font links ──
-        // Remove old pg-font-* links, re-add for every enabled font
-        canvasDoc.querySelectorAll('link[id^="pg-gf-"]').forEach(function(l) { l.parentNode.removeChild(l); });
-        assets.gfFonts.forEach(function(f, i) {
+        var gfHrefs = [];
+        assets.gfFonts.forEach(function(f) {
             if (f.enabled === false || !f.family) return;
             var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-            var url = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap';
-            var link = canvasDoc.createElement('link');
-            link.rel = 'stylesheet'; link.id = 'pg-gf-' + i; link.href = url;
-            canvasDoc.head.appendChild(link);
+            gfHrefs.push('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap');
         });
+        _sdSyncCanvasLinks('pg-gf-', gfHrefs, false);
 
         // ── CSS: external links ──
-        // Managed designer files (_file=true) get a cache-bust query param so
-        // edits made via designer_file/save show up in the canvas without a
-        // full reload. CDN externals do NOT get the param (would defeat HTTP
-        // caching for Bootstrap etc.).
-        canvasDoc.querySelectorAll('link[id^="pg-ext-css-"]').forEach(function(l) { l.parentNode.removeChild(l); });
-        var extIdx = 0;
+        var cssHrefs = [];
         assets.cssFiles.forEach(function(f) {
             if (f.enabled === false) return;
-            if (f.type === 'external-css' && f.content && f.content.trim()) {
-                var href = f.content.trim();
-                if (f._file) href += (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + Date.now();
-                var link = canvasDoc.createElement('link');
-                link.rel = 'stylesheet'; link.id = 'pg-ext-css-' + (extIdx++); link.href = href;
-                // CORS-anon enables reading cssRules in the bottom Styles
-                // panel for sources that send permissive CORS headers (jsdelivr
-                // does, most CDNs do). Same-origin URLs ignore the attribute,
-                // and CDNs without CORS headers fall back to the cross-origin
-                // error label as before — no regression.
-                link.crossOrigin = 'anonymous';
-                canvasDoc.head.appendChild(link);
-            }
+            if (f.type === 'external-css' && f.content && f.content.trim()) cssHrefs.push(_sdAssetHref(f));
         });
+        _sdSyncCanvasLinks('pg-ext-css-', cssHrefs, true);
 
         // ── CSS: inline ──
         // Three buckets, each with their own <style id> in <head>:
@@ -20323,6 +20615,8 @@ const StyleDesigner = (function () {
         //                        "User Styles" section. Kept separate so
         //                        empty rules don't show up read-only in the
         //                        matching list (which would block deletion).
+        // A <style> is rewritten only when its text changed: a new text is a
+        // new stylesheet the whole canvas is restyled for.
         var inlineCss = '';
         var userStylesCss = '';
         assets.cssFiles.forEach(function(f) {
@@ -20337,9 +20631,17 @@ const StyleDesigner = (function () {
         var pgStyle = canvasDoc.getElementById('pg-page-css');
         if (inlineCss.trim()) {
             if (!pgStyle) { pgStyle = canvasDoc.createElement('style'); pgStyle.id = 'pg-page-css'; canvasDoc.head.appendChild(pgStyle); }
-            pgStyle.textContent = inlineCss;
+            if (pgStyle.textContent !== inlineCss) pgStyle.textContent = inlineCss;
         } else {
             if (pgStyle) pgStyle.parentNode.removeChild(pgStyle);
+            pgStyle = null;
+        }
+        // The inline files come after the linked ones, as on the page; a
+        // link added later lands after the <style>, so it is moved back.
+        var _lastExt = canvasDoc.querySelectorAll('link[id^="pg-ext-css-"]');
+        _lastExt = _lastExt.length ? _lastExt[_lastExt.length - 1] : null;
+        if (pgStyle && _lastExt && (pgStyle.compareDocumentPosition(_lastExt) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            canvasDoc.head.appendChild(pgStyle);
         }
 
         // Defensive: drop any stale pg-page-overlays element. The iframe
@@ -20362,45 +20664,56 @@ const StyleDesigner = (function () {
                 usEl.id = 'pg-user-styles';
                 canvasDoc.head.appendChild(usEl);
             }
-            usEl.textContent = userStylesCss;
+            if (usEl.textContent !== userStylesCss) usEl.textContent = userStylesCss;
         } else if (usEl) {
             usEl.parentNode.removeChild(usEl);
+            usEl = null;
         }
 
-        // ── JS: external <script src> ──
-        // Same cache-bust rule as CSS: managed designer files (_file=true) get
-        // a query param so live edits show up in the canvas; CDN externals do
-        // not.
-        canvasDoc.querySelectorAll('script[id^="pg-ext-js-"]').forEach(function(s) { s.parentNode.removeChild(s); });
-        var jsIdx = 0;
-        assets.jsFiles.forEach(function(f) {
-            if (f.enabled === false) return;
-            if (f.type === 'external-js' && f.content && f.content.trim()) {
-                var src = f.content.trim();
-                if (f._file) src += (src.indexOf('?') === -1 ? '?_t=' : '&_t=') + Date.now();
-                var scr = canvasDoc.createElement('script');
-                scr.id = 'pg-ext-js-' + (jsIdx++);
-                if (f.module) scr.type = 'module';
-                scr.src = src;
-                canvasDoc.body.appendChild(scr);
-            }
-        });
+        // ── JS: once per canvas document ──
+        // They start once the page has been drawn on the canvas
+        // (renderCanvas() marks the document), so a script that looks for
+        // its elements when it starts finds them. They go in <head>: the
+        // body is rebuilt on every render, and a JSON block a script reads
+        // has to stay.
+        if (canvasDoc._sdJsSig === undefined && canvasDoc._sdDrawn) {
+            canvasDoc._sdJsSig = jsSig;
+            // The framework bundle already on the canvas (_sdInitCanvasDoc())
+            // is not loaded a second time: two copies of Bootstrap answer
+            // every delegated click twice (a collapse opens and shuts again).
+            var _fwJs = canvasDoc._sdFwJs || '';
+            var jsIdx = 0;
+            assets.jsFiles.forEach(function(f) {
+                if (f.enabled === false) return;
+                if (f.type === 'external-js' && f.content && f.content.trim()) {
+                    var src = _sdAssetHref(f);
+                    if (_fwJs && src === _fwJs) return;
+                    var scr = canvasDoc.createElement('script');
+                    scr.id = 'pg-ext-js-' + (jsIdx++);
+                    if (f.module) scr.type = 'module';
+                    // Dynamically inserted scripts are async by default; the
+                    // page runs them in their order (jQuery before what uses it).
+                    scr.async = false;
+                    scr.src = src;
+                    canvasDoc.head.appendChild(scr);
+                }
+            });
 
-        // ── JS: inline (one <script> block per file, keyed by id) ──
-        canvasDoc.querySelectorAll('script[id^="pg-inline-js-"]').forEach(function(s) { s.parentNode.removeChild(s); });
-        assets.jsFiles.forEach(function(f, idx) {
-            if (f.enabled === false || f.type === 'external-js' || !f.content) return;
-            var scr = canvasDoc.createElement('script');
-            scr.id = 'pg-inline-js-' + idx;
-            if (f.type === 'json') {
-                scr.type = 'application/json';
-                scr.id = f.name.replace(/"/g, '') || scr.id;
-            } else if (f.module) {
-                scr.type = 'module';
-            }
-            scr.textContent = f.content;
-            canvasDoc.body.appendChild(scr);
-        });
+            // ── JS: inline (one <script> block per file, keyed by id) ──
+            assets.jsFiles.forEach(function(f, idx) {
+                if (f.enabled === false || f.type === 'external-js' || !f.content) return;
+                var scr = canvasDoc.createElement('script');
+                scr.id = 'pg-inline-js-' + idx;
+                if (f.type === 'json') {
+                    scr.type = 'application/json';
+                    scr.id = f.name.replace(/"/g, '') || scr.id;
+                } else if (f.module) {
+                    scr.type = 'module';
+                }
+                scr.textContent = f.content;
+                canvasDoc.head.appendChild(scr);
+            });
+        }
 
         // Note: Google Font overlay CSS rules are shown informatively in the Overlays panel
         // but are NOT auto-injected into the canvas body — doing so would affect editor
@@ -20410,8 +20723,12 @@ const StyleDesigner = (function () {
         // Re-append pg-user-styles so it remains the LAST <style> in head —
         // any other style we just created/updated above would otherwise sit
         // after it and break the cascade for handwritten rules.
-        if (usEl && usEl.parentNode === canvasDoc.head && usEl !== canvasDoc.head.lastChild) {
-            canvasDoc.head.appendChild(usEl);
+        // Only a stylesheet after it counts: the scripts live in <head> too,
+        // and moving a <style> re-adds it for nothing.
+        if (usEl && usEl.parentNode === canvasDoc.head) {
+            var _after = usEl.nextElementSibling;
+            while (_after && _after.tagName === 'SCRIPT') _after = _after.nextElementSibling;
+            if (_after) canvasDoc.head.appendChild(usEl);
         }
 
         // The look and the palette go back right after Bootstrap, which the
@@ -20712,7 +21029,7 @@ const StyleDesigner = (function () {
         line.addEventListener('click', function(e) {
             e.stopPropagation();
             selectedNode = node;
-            render();
+            _sdSelectRender();
         });
 
         container.appendChild(line);
@@ -21277,7 +21594,7 @@ const StyleDesigner = (function () {
                 selectedNodes = [];
                 document.querySelectorAll('#sd-tree-list li.sd-multi-selected').forEach(function(x) { x.classList.remove('sd-multi-selected'); });
                 selectedNode = node;
-                render();
+                _sdSelectRender();
                 scrollCanvasToNode(node);
             }
         });
@@ -35692,8 +36009,9 @@ const StyleDesigner = (function () {
                             file.content = newContent;
                             saveFiles(fieldId, files);
                         }
-                        // Refresh the canvas link/script tags (cache-busted in
-                        // applyAssetsToIframe so the new body is visible).
+                        // Refresh the canvas link/script tags: a new stamp on
+                        // this file's URL fetches the saved body.
+                        _sdBustAsset(file.content);
                         applyAssetsToIframe();
                     } else {
                         sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + res.message, 'error', 5000);
@@ -37567,6 +37885,7 @@ const StyleDesigner = (function () {
                                     sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + sRes.message, 'error', 4000);
                                     return;
                                 }
+                                _sdBustAsset(target.content);
                                 _doneAppend();
                             });
                         });
@@ -42864,6 +43183,14 @@ const StyleDesigner = (function () {
         }
         if (!nodes.length) return;
         var ref = anchor ? anchor.nextSibling : doc.head.firstChild;
+        // Already in place: moving a stylesheet re-adds it, and the canvas
+        // is restyled for nothing.
+        var _at = ref, _inPlace = true;
+        for (var _i = 0; _i < nodes.length; _i++) {
+            if (_at !== nodes[_i]) { _inPlace = false; break; }
+            _at = _at.nextSibling;
+        }
+        if (_inPlace) return;
         nodes.forEach(function (n) { doc.head.insertBefore(n, ref); });
     }
 

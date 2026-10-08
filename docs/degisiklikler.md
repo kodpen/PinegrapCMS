@@ -72,6 +72,110 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Görsel editör: ağır animasyonlu sayfada tuval takılmıyor; seçim tuvali yeniden kurmuyor, betikler bir kez çalışıyor, "Animasyonlar" düğmesi (2026-10-08)
+
+**Sorun.** Ağır animasyonlu sayfalarda tuval kilitleniyordu: paletten
+sürüklenen öğe uzun süre askıda kalıyor, iframe'e bırakılamıyor, kaydırma
+takılıyordu. Ayrıca bir SVG logonun tek seferlik CSS animasyonu iframe'in
+içinde ya da dışında her tıklamada baştan oynuyordu.
+
+**Kök neden.** Üç ayrı birikim:
+1. Her seçim (tuvalde, ortak bileşen/tablo bandında, katmanlar ve HTML
+   ağacında, not noktası, bağlama düğmesi) `render()` → `renderCanvas()`
+   çağırıyordu: `body.innerHTML = ''` + bütün ağacın yeniden kurulması.
+   Öğeler DOM'dan silinip yeniden yaratıldığı için CSS animasyonları baştan
+   başlıyordu (SVG bulgusunun açıklaması bu); büyük sayfada tıklama başına
+   160–285 ms ve özel HTML betiklerinin yeniden koşması.
+2. `applyAssetsToIframe()` her çağrıda bütün `<script>`'leri silip yeniden
+   ekliyordu (undo/redo, Stiller paneli, tema değişkeninin renk seçicisinin
+   her `input`'u, font ve dosya değişiklikleri). Eski kod durmuyordu:
+   zamanlayıcı, rAF, dinleyici, observer birikiyordu. `bootstrap-js`
+   sentinel'i çatı paketini her seferinde bir kez daha yüklüyordu (başta da
+   `createCanvasIframe()` bir kopya yüklüyordu); harici CSS ve GF
+   `<link>`'leri silinip `?_t=Date.now()` ile yeniden indiriliyordu —
+   arada stil sayfası yokken animasyonlar düşüp yeniden başlıyordu.
+3. dragover'da her olayda insert sınıfları silinip yeniden yazılıyor ve her
+   karede yeni bir `.sd-align-guide` ekleniyordu; tasarımın
+   MutationObserver'ları (birikmiş kopyalarıyla) her seferinde çağrılıyordu.
+
+**Çözüm** (`assets/js/style_designer.js`).
+- **Seçim yeniden kurmaz:** `_sdSelectRender()` = `_sdTrackSharedEditing()`
+  (render()'dan çıkarılan ortak bileşen kirli/uyarı bloğu) +
+  `renderSelectionOnly()`. Tek istisna: giriş bölgesinin tuvalin çizmediği
+  oturum durumundaki öğe (`_sdSelectionNeedsCanvas()`) → `render()`.
+  Yedi seçim yolu buna çevrildi; ağacı değiştiren yollar `render()`'da kaldı.
+- **Varlıklar farkla yazılır:** `_sdSyncCanvasLinks()` baştan eşleşen
+  `<link>`'leri korur; satır içi `<style>` metni değişmedikçe yazılmaz;
+  `_sdThemeApply()` yerindeyse bağlantıları taşımaz; `pg-user-styles` yalnız
+  arkasında bir stil sayfası varsa sona alınır. Yönetilen dosyalar
+  (`_file`) editörün açılış damgasıyla, kaydedilen dosya
+  `_sdBustAsset(url)` damgasıyla istenir (`designer_file/save` iki yolu).
+  `_restoreAssetFields()` alanlar aynıysa hiçbir şey yapmaz.
+- **Betikler belge başına bir kez:** imza `_sdCanvasJsSig()`; tuval çizildikten
+  sonra (`canvasDoc._sdDrawn`) `<head>`'e eklenir (gövde her render'da
+  yenilenir, JSON blokları kalmalı), harici olanlar `async=false` ile sırayla.
+  İmza değişince `_sdCanvasRealmReset()`: `#sd-canvas-iframe` yenisiyle
+  değiştirilir (document.open() pencereyi, zamanlayıcıları ve globalleri
+  korur), `createCanvasIframe()` kapsayıcı/araç çubuğu ve
+  `_sdInitCanvasDoc()` (belge, dinleyiciler, çatı paketi, hazır kapıları)
+  olarak bölündü. Korunan: seçim, zoom, genişlik, koyu tuval, grid/outline,
+  kaydırma (`_sdPendingScrollY`). Çatı paketi sentinel'de varsa yalnız
+  sentinel yükler (jQuery'den sonra, sayfadaki sırayla); yoksa init yükler
+  ve `canvasDoc._sdFwJs` ile ikinci kopya atlanır.
+- **Animasyonlar düğmesi** (`#sd-vb-motion`, `localStorage.pg_sd_motion`,
+  varsayılan duraklatılmış): `body.sd-motion-paused` altında animasyon ve
+  geçiş süreleri 0 (son hal görünür; `play-state:paused` giriş animasyonunu
+  görünmez ilk karede bırakırdı). doc.write sırasında, tasarım betiklerinden
+  ve çatı paketinden önce `_sdMotionShimFn()` koşar: duraklatılmışken
+  `matchMedia('(prefers-reduced-motion: reduce)')` `true` döner. Düğme realm'i
+  yeniler. Önizleme ve site etkilenmez.
+- **Sürükleme beklemesi:** ana belge ve tuval belgesinde dragstart →
+  `_sdMotionHold(true)`: `body.sd-motion-hold` animasyonları dondurur, shim
+  sayfanın rAF isteklerini bırakmaya kadar bekletir. dragend/drop ya da
+  sonraki ilk mousemove bırakır. Editörün kendi tuval işleri (`_sdFxSoon`,
+  yükleme sonrası konumlama) artık tasarımcı penceresinin rAF'ında.
+- dragover işaretleri farkla (`_setInsertMark()`), hizalama kılavuzu tek
+  öğe olarak taşınıyor; `html { scroll-behavior:auto !important }` render
+  sonrası kaydırma geri yüklemesini canlandırmıyor.
+- `tr.json`: `Animations`, `Pause animations`, `Play animations`.
+
+**Doğrulama.** Sandbox (PHP 8.3 + MariaDB, `tools/setup_sandbox.sh`) ve
+Playwright/Chromium, `add_system_style.php?framework=bootstrap5`:
+iki tıklamadan sonra ilk başlık DOM'da duruyor ve 20 sn'lik animasyonun
+`currentTime`'ı ilerliyor (önce: öğe kopuk, animasyon yok). Satır içi test
+betiği altı `applyAssetsToIframe()` sonrası 1 kez çalışmış (önce: 7) ve
+tek bootstrap betiği var; CSS değişikliğinde iframe ve `<link>` aynı öğe;
+sil + undo/redo'da iframe aynı; katmanlar panelinden seçimde tuval
+kurulmadı; Animasyonlar düğmesi realm'i yeniledi, duraklatılmışken
+`animationDuration` 0s ve reduced-motion `true`; sentetik palet sürüklemesinde
+20 dragover 3 mutasyon üretti, bırakma yerine oturdu, bekleme bırakıldı.
+Konsolda yeni hata yok. `node --check`, `check_lang`, `check_bindings`,
+`lint` temiz. Gerçek ağır bir tasarımla (776 / 404) ölçüm yapılmadı:
+`StyleDesigner.perf()` ile bakılmalı.
+
+**Ödün / açık.**
+- Seçim artık `_syncToggleableShowStateFromDom()` çalıştırmıyor; canlı
+  `.show` durumu bir sonraki düzenlemede props'a yazılır.
+- Plan B4 (özel HTML bloğundaki satır içi betiği yalnız ilk görünüşte
+  çalıştırmak) uygulanmadı: gövde her düzenlemede yeniden kurulduğu için
+  betik koşmazsa çizdiği içerik (grafik, sayaç) tuvalden kaybolur. Seçim
+  artık yeniden kurmadığı için yalnız düzenlemelerde koşuyor.
+- Tasarım betikleri tuval çizildikten sonra bir kez koşar; bir düzenleme
+  gövdeyi yeniden kurunca betiğin başlangıçta bağlandığı öğeler gider
+  (önceden de render'da gidiyordu; artık varlık değişikliği de onları
+  "tazelemiyor"). Animasyonlar düğmesi realm'i yeniden açar.
+- Bootstrap CSS ve ikon CSS'i tuvalde hâlâ iki kez (init + sentinel):
+  ikinci kopya editör kurallarının arkasında durduğu için kaldırmak kaskadı
+  değiştirir; ayrı ölçülüp karar verilmeli.
+- "Yükü ekran kartına verme": darboğaz paint değil, ana iş parçacığındaki
+  JS ve stil hesabı; `will-change`/`translateZ` yardım etmez. Kazanım
+  duraklatma ve birikimin kalkmasından gelir. Sonraki aday ölçüm:
+  `.sd-wrap:hover:not(:has(.sd-wrap:hover))` kuralının fare hareketindeki
+  invalidasyonu; hover/seçim çerçevesini tek bir transform'lu kaplamaya
+  taşımak.
+
+---
+
 ## 2026.4.8 — Çalışma Alanı: asistanların önerdiği toplu değişiklik (2026-10-08)
 
 **Sorun.** Pinegrap AI ve Claude bir kayıt değişikliğini yalnız tek kayıt için

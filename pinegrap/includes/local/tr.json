@@ -17829,5 +17829,8 @@
     "{var:1} of {var:2} done": "{var:2} kayıttan {var:1} tamam",
     "{var:1} changed · {var:2} left as they were · {var:3} could not be changed": "{var:1} değişti · {var:2} olduğu gibi kaldı · {var:3} değiştirilemedi",
     "This changes {var:1} records at once. Go on?": "Bu, {var:1} kaydı birden değiştirir. Devam edilsin mi?",
-    "This deletes {var:1} records at once. Records with a Recycle Bin go there; the others are deleted for good. Go on?": "Bu, {var:1} kaydı birden siler. Geri dönüşüm kutusu olan kayıtlar oraya gider; diğerleri kalıcı olarak silinir. Devam edilsin mi?"
+    "This deletes {var:1} records at once. Records with a Recycle Bin go there; the others are deleted for good. Go on?": "Bu, {var:1} kaydı birden siler. Geri dönüşüm kutusu olan kayıtlar oraya gider; diğerleri kalıcı olarak silinir. Devam edilsin mi?",
+    "Animations": "Animasyonlar",
+    "Pause animations": "Animasyonları duraklat",
+    "Play animations": "Animasyonları oynat"
 }

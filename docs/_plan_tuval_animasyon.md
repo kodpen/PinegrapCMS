@@ -47,3 +47,16 @@ Erdal'ın seçimi (2026-10-07): **A + B + C**, animasyonlar varsayılan olarak *
 - `style_designer.js`'te başka bir oturumun commit'lenmemiş büyük farkı var. Düzenleme cerrahi olmalı; dosya düzenlemeden hemen önce yeniden okunmalı.
 - Bağlı klasörde git komutu çalıştırma (silme izni olmadan .lock bırakıyor).
 - Ayrı konu (D, sonra): içe aktarmada satır içi CSS/JS içeriğe göre tekilleştirilsin; "yalnız şu sayfalarda" asset seçeneği eklensin (canlı sitede de her sayfa bütün sayfaların JS'ini yüklüyor).
+
+## Durum (2026-10-08) — uygulandı
+- Plana eklenen ana madde: **seçim tuvali yeniden kurmuyor** (`_sdSelectRender()`).
+  SVG'nin her tıklamada yeniden oynamasının asıl sebebi buydu (seçim → `render()`
+  → `body.innerHTML=''`); A+B+C bunu kapsamıyordu.
+- A, B, C uygulandı. Farklar: `_writeThemeVar()`'daki doğrudan çağrı yerinde
+  bırakıldı (fark yazımıyla maliyetsiz); betikler tuval çizildikten sonra ve
+  `<head>`'e ekleniyor; çatı paketi sentinel'de varsa yalnız sentinel yüklüyor.
+- Eklenen: sürükleme sırasında animasyon ve rAF beklemesi (`_sdMotionHold()`),
+  dragover sınıflarının farkla yazılması, tek hizalama kılavuzu,
+  `html{scroll-behavior:auto}`.
+- B4 uygulanmadı (gerekçe `docs/degisiklikler.md` 2026-10-08 kaydında).
+- Ayrıntı ve doğrulama: `docs/degisiklikler.md`.

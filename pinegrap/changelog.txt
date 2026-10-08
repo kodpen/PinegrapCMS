@@ -25,6 +25,28 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [HIZ] Ağır animasyonlu sayfalarda görsel editör takılmıyor.
+         Tuvalde ya da katmanlar panelinde bir öğeye tıklamak
+         artık sayfayı baştan çizmiyor: seçim yalnız
+         işaretleniyor, oynayan bir animasyon (ör. bir SVG
+         logo) her tıklamada baştan başlamıyor. Tasarımın
+         JavaScript dosyaları tuvalde bir kez çalışıyor; her
+         geri al, stil, yazı tipi ya da tema değişikliğinde
+         yeniden çalışıp zamanlayıcı ve dinleyici biriktirmiyor.
+         Bir JavaScript dosyası değişince tuval temiz bir
+         belgeyle yeniden açılıyor. Bootstrap paketi tuvale iki
+         kez yüklenmiyor, yalnız değişen stil dosyası
+         yenileniyor.
+
+  [YENİ] Tuval araç çubuğunda "Animasyonlar" düğmesi. Tuvalde
+         sayfanın animasyonları varsayılan olarak durur ve son
+         halleriyle görünür; düğmeyle oynatılır, seçim
+         tarayıcıda hatırlanır. Hareketi azaltma ayarına bakan
+         betikler de duraklatılmışken döngü başlatmaz. Paletten
+         ya da tuvalden bir öğe sürüklenirken animasyonlar
+         bekletilir, bırakma gecikmeden yerine oturur. Önizleme
+         penceresi ve site animasyonları her zaman oynatır.
+
   [YENİ] Bootstrap ikonları her yerde ikon olarak düzenlenir.
          HTML içe aktarmada ve yapıştırmada, tasarımın çatısı ne
          olursa olsun, "bi bi-…" sınıflı <i> ve <span> öğeleri

@@ -147,6 +147,18 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   katmansız `body` kuralı Bootstrap 6'nın katmanlı kurallarını yener. Satırdaki
   sütuna (`.row > .sd-wrap[data-sd-type="col"]`) padding verme: Bootstrap'ın
   oluğunu ezer.
+- Yalnız seçimi değiştiren yol `render()` çağırmaz, `_sdSelectRender()`
+  çağırır: tuval DOM'u kalır (oynayan animasyon, video, betik durumu baştan
+  başlamaz). `render()` ağacı değiştiren yollar içindir.
+- Tasarımın JS'i tuval belgesi başına **bir kez** koşar
+  (`applyAssetsToIframe()`, imza `_sdCanvasJsSig()`); JS değişince
+  `_sdCanvasRealmReset()` iframe'i yeniler. Tuvale betik ekleyen yeni bir
+  yol bu kapıdan geçsin; CSS `<link>`/`<style>` farkla yazılır
+  (`_sdSyncCanvasLinks()`), kaydedilen yönetilen dosya `_sdBustAsset(url)`
+  ile yeniden istenir. Editörün tuval işi tasarımcı penceresinin
+  `requestAnimationFrame`'inde zamanlanır: tuval penceresininki sürüklemede
+  bekletilir (`_sdMotionShimFn()`). Tuval gövdesine yeni bir editör durum
+  sınıfı eklersen `renderCanvas()` içindeki `_EDITOR_STATE_CLASSES`'a yaz.
 
 ## Sistem widget kimliği
 
