@@ -18598,6 +18598,8 @@
     "Choose a gift card": "Hediye kartı seç",
     "Bookshop E-mail Header": "Kitapçı E-posta Üst Bilgisi",
     "Bookshop E-mail Footer": "Kitapçı E-posta Alt Bilgisi",
+    "Your password has been changed. Please sign in with your new password.": "Parolanız değiştirildi. Lütfen yeni parolanızla giriş yapın.",
+    "Your password has been set. Please sign in with your new password.": "Parolanız belirlendi. Lütfen yeni parolanızla giriş yapın.",
     "Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.": "Anahtarı doğrulama uygulamanıza (Google Authenticator, Aegis, 1Password, Microsoft Authenticator) elle ekleyin, sonra uygulamanın gösterdiği kodu girin.",
     "Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.": "Telefonunuzu kaybederseniz her kod bir kez oturum açtırır. Güvenli bir yerde saklayın; bir daha gösterilmezler.",
     "Enter the 6-digit code from your authenticator app, or one of your recovery codes.": "Doğrulama uygulamanızdaki 6 haneli kodu ya da kurtarma kodlarınızdan birini girin.",

@@ -88,8 +88,10 @@ function get_login($properties = array()) {
             $password_autofocus = true;
         }
         
+        // Notices too, not only errors: a password change that ends without a
+        // session leaves its confirmation on this form.
         $output =
-            $form->output_errors() . '
+            $form->output_errors() . $form->output_notices() . '
             <form name="login" action="' . $action_url . '" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />

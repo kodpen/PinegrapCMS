@@ -79,8 +79,16 @@ yüklenir), `auth`, `forms`, `ecommerce`, `seo`, `content`, `calendar`, `editor`
   niteliksiz `Exception` global `\Exception`'dır.
 - Modül yükleme sırası yalnız fonksiyon-dışı ifadeler için önemlidir;
   fonksiyonlar birbirini her sırada çağırabilir.
-- `get_file.php` `functions.php`'yi yüklemez ve 18 fonksiyonun kopyasını taşır —
-  o fonksiyonlardan birini değiştirirken kopyayı da güncelle.
+- `get_file.php` `functions.php`'yi yüklemez. Oturum ve klasör erişim
+  fonksiyonları (`pg_auth_token_verify`, `pg_load_user_row`,
+  `get_access_control_type`, `check_view_access`, `check_edit_access`,
+  `pg_folder_edit_access`, `check_private_access`) iki tarafın da yüklediği
+  `includes/authentication.php`'de tek kopyadır; oraya yazarken dosya
+  başlığındaki sözleşmeye uy (yalnız `db/db_value/db_item/db_items/escape` +
+  PHP, `lang()` / `output_error()` yok). Kalan kopyalar `tools/check_copies.php`
+  içindeki `$intended` listesindedir (gerekçe `docs/_get_file_kopyalar.md`) —
+  onlardan birini değiştirirken `get_file.php`'deki kopyayı da güncelle;
+  listede olmayan yeni bir kopya CI'da `FAIL` olur.
 - Eski notlardaki `functions.php:NNNNN` satır referansları bölünmeden öncesine
   aittir; fonksiyonu **adıyla** ara.
 

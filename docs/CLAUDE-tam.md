@@ -287,7 +287,16 @@ Kurallar:
   PHPMailer `require` + `use`, tur sabiti, görsel id globali); fonksiyonlar
   derleme anında yükseltildiği için birbirini herhangi bir sırada çağırır.
 - `get_file.php` `functions.php`'yi yüklemediği için 18 fonksiyonun kopyasını
-  taşımaya devam eder (bölme bunu değiştirmedi).
+  taşımaya devam eder (bölme bunu değiştirmedi). **2026-10-08 (2026.4.8):**
+  klasör erişim fonksiyonları (`get_access_control_type`, `check_view_access`,
+  `check_edit_access`, `pg_folder_edit_access`, `check_private_access`)
+  `includes/authentication.php`'ye tek kopya olarak taşındı; `get_file.php`'de
+  14 fonksiyon kaldı, 11'i bilerek tutulan kopyadır. Liste ve gerekçe
+  `docs/_get_file_kopyalar.md`'de; `tools/check_copies.php` (CI'da) listede
+  olmayan yeni bir kopyayı `FAIL` eder. Ortak koda dokunurken
+  `includes/authentication.php` başlığındaki sözleşmeye uy (yalnız
+  `db/db_value/db_item/db_items/escape` + PHP; `lang()` ve `output_error()`
+  yok, `get_file.php`'ye özgü fonksiyon `function_exists()` ile).
 - Doğrulama: `docs/_plan_functions_bolme.md` §5'teki üç kapı geçti — fonksiyon
   envanteri (801 kullanıcı fonksiyonu, imzalarıyla birebir), `php -l` (25 dosya),
   bayt sayımı. Dördüncü kapı (313 giriş noktasının duman testi) dev sitede
