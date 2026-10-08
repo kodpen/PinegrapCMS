@@ -218,12 +218,12 @@ function pg_cron_jobs()
         // one indexed read.
         // Runs inline, not in the rotation.
         //
-        // The rotation hands out one job per tick and holds a site-wide lock
-        // while it runs, so a webhook could sit behind a backup for the length
-        // of that backup. The whole value of a webhook is that it is prompt,
-        // and this one is cheap enough not to need a turn: on a site with no
-        // subscriptions it is a single indexed read. job.php therefore calls
-        // it on every tick, and the dispatcher skips it.
+        // The rotation hands out one job per tick, so a webhook would wait its
+        // turn behind every other due job in its lane, one tick each. The
+        // whole value of a webhook is that it is prompt, and this one is cheap
+        // enough not to need a turn: on a site with no subscriptions it is a
+        // single indexed read. job.php therefore calls it on every tick, and
+        // the dispatcher skips it.
         //
         // It stays a real script as well, so an operator who wants delivery
         // within a minute can point a dedicated cron entry at
@@ -292,6 +292,7 @@ function pg_cron_jobs()
             'interval'    => 60,
             'stale_after' => 3600,
             'dispatch'    => false,
+            'lane'        => 'light',
             'inline'      => true,
         ),
         // Overdue receivable reminders. Once a day is the finest the setting

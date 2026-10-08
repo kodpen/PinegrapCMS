@@ -168,10 +168,11 @@ function pg_mail_properties_decode($json)
     return $properties;
 }
 
-// Whether a queued message would be picked up soon: the general job, which
-// works the queue on every run, finished within the last fifteen minutes.
-// A site without a cron schedule never gets there, and its mail keeps going
-// out synchronously instead of waiting for a job that will not come.
+// Whether a queued message would be picked up soon: a job that works the
+// queue (the general job on every run, or mail_job.php on a cron entry of its
+// own) finished within the last fifteen minutes. A site without a cron
+// schedule never gets there, and its mail keeps going out synchronously
+// instead of waiting for a job that will not come.
 function pg_mail_should_queue($last_job_run_at, $now)
 {
     $last_job_run_at = (int) $last_job_run_at;
@@ -179,7 +180,8 @@ function pg_mail_should_queue($last_job_run_at, $now)
     return ($last_job_run_at > 0) && (((int) $now - $last_job_run_at) <= 900);
 }
 
-// pg_mail_should_queue() for this site, asked once per request.
+// pg_mail_should_queue() for this site, asked once per request. Either job
+// counts: a site may schedule only mail_job.php and leave job.php off cron.
 function pg_mail_job_alive()
 {
     static $alive = null;
@@ -194,7 +196,7 @@ function pg_mail_job_alive()
         return $alive;
     }
 
-    $alive = pg_mail_should_queue((int) db_value("SELECT last_run_at FROM cron_runs WHERE job_name = 'job'"), time());
+    $alive = pg_mail_should_queue((int) db_value("SELECT MAX(last_run_at) FROM cron_runs WHERE job_name IN ('job', 'mail_job')"), time());
 
     return $alive;
 }

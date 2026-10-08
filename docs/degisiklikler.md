@@ -103,8 +103,8 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
   aynen çalışır; hazırlık (opt-out, mail merge, altbilgi)
   `email_campaign_job_prepare()`'e taşındı, iki akış da onu çağırır.
   Motor değişikliği (InnoDB) bu işin konusu değil.
-- **(b) `email(['queue' => true])`.** Genel iş (`cron_runs.job`) son 15
-  dakikada bittiyse ileti `mail_outbox`'a yazılır ve `true` döner; değilse
+- **(b) `email(['queue' => true])`.** Genel iş (`cron_runs.job`) ya da
+  yalnız posta için cron'a bağlanmış `mail_job` son 15 dakikada bittiyse ileti `mail_outbox`'a yazılır ve `true` döner; değilse
   bugünkü gibi senkron gönderilir — cron kurmamış site hiçbir e-postayı
   beklemez. Kuyruğu `job.php` her tıkta **koşulsuz** işler
   (`pg_mail_queue_run(25, 20)`; `pg_cron_jobs()`'ta `mail_job`

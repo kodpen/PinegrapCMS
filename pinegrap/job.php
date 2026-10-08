@@ -391,8 +391,9 @@ pg_cron_ran('job');
 // Webhook deliveries, when the operator has switched them on.
 //
 // Run here rather than through the dispatcher below: that hands out one job per
-// tick and holds a site-wide lock, so an event could wait behind a backup, and a
-// notification that arrives late is most of the way to one that did not arrive.
+// tick, so an event would wait its turn behind every other due job in its lane,
+// and a notification that arrives late is most of the way to one that did not
+// arrive.
 // The cost when nothing is queued is one indexed read, which is why it can
 // afford a turn on every tick.
 //
