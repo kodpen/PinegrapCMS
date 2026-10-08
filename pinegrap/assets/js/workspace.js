@@ -3750,17 +3750,30 @@
         return box;
     }
 
-    // The address of a new link, this once, with a way to copy it.
-    function guestLinkShow(url) {
+    // The address of a new link, this once, with a way to copy it. qr is the
+    // same address as SVG markup drawn by the server (pg_qr_svg()); nothing
+    // else goes into that string, so it is inserted as it is.
+    function guestLinkShow(url, qr) {
         var shown = document.getElementById('ws-ask');
 
         // The question before it is still on its way out.
         if (shown && (shown.style.display === 'block')) {
             shown.addEventListener('hidden.bs.modal', function once() {
                 shown.removeEventListener('hidden.bs.modal', once);
-                guestLinkShow(url);
+                guestLinkShow(url, qr);
             });
             return;
+        }
+
+        var details = el('div');
+
+        if (qr) {
+            var qrRow = el('div', 'text-center mb-3');
+            var qrBox = el('div', 'd-inline-block border rounded p-2 bg-white');
+            qrBox.style.width = '200px';
+            qrBox.innerHTML = qr;
+            qrRow.appendChild(qrBox);
+            details.appendChild(qrRow);
         }
 
         var group = el('div', 'input-group');
@@ -3788,8 +3801,9 @@
 
         group.appendChild(field);
         group.appendChild(copy);
+        details.appendChild(group);
 
-        ask(t('guest_link_help'), t('guest_link_done'), false, group);
+        ask(t('guest_link_help'), t('guest_link_done'), false, details);
     }
 
     function guestForm(onDone) {
@@ -3853,7 +3867,7 @@
                     onDone(result.channel_id);
                 }
 
-                guestLinkShow(result.url);
+                guestLinkShow(result.url, result.qr || '');
             }).catch(function (error) {
                 save.disabled = false;
                 fail(error);
@@ -3941,7 +3955,7 @@
                     onDone();
                 }
 
-                guestLinkShow(result.url);
+                guestLinkShow(result.url, result.qr || '');
             }).catch(function (error) {
                 save.disabled = false;
                 fail(error);
@@ -6592,7 +6606,7 @@
 
                         api('ws_share_relink', { channel_id: channel.id, guest_id: guest.id, mode: chosen.mode, duration: chosen.duration }).then(function (result) {
                             self.reloadChannels(channel.id);
-                            guestLinkShow(result.url);
+                            guestLinkShow(result.url, result.qr || '');
                         }).catch(fail);
                     });
                 });
@@ -6647,7 +6661,7 @@
 
                 api('ws_guest_relink', { channel_id: channel.id, mode: chosen.mode, duration: chosen.duration }).then(function (result) {
                     self.reloadChannels(channel.id);
-                    guestLinkShow(result.url);
+                    guestLinkShow(result.url, result.qr || '');
                 }).catch(fail);
             });
         },

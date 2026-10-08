@@ -160,6 +160,13 @@
          Yönetici ve tasarımcı artık tasarım dosyasının üstüne
          yazabilir; menejer ve kullanıcı için kural değişmedi.
 
+  [YENİ] Kısa linklerde QR kodu: adlı bir kısa linkin düzenleme
+         ekranında linkin QR kodu görünür ve SVG olarak
+         indirilebilir (afiş, broşür, masa kartı için). Tek
+         kullanımlık link oluşturulduğunda adresin yanında QR kodu
+         da bir kez gösterilir. QR kodu sitenin kendi sunucusunda
+         çizilir; adres hiçbir dış servise gitmez.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
@@ -415,6 +422,12 @@
          olarak kapalıdır ve yalnız yönetici değiştirir.
 
   [ŞEMA] config.ws_ai_bulk_delete sütunu.
+
+  [YENİ] Misafir bağlantısında QR kodu: misafirle görüşme
+         başlatıldığında, kanal bağlantıyla paylaşıldığında ya da
+         yeni bağlantı verildiğinde, bağlantının bir kez gösterildiği
+         pencerede QR kodu da çıkar; misafir telefonuyla tarayarak
+         katılabilir. QR kodu sitenin kendi sunucusunda çizilir.
 
   E-POSTA
   --------------------------------------------------------

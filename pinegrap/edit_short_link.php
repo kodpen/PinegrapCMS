@@ -163,6 +163,33 @@ if (!$_POST) {
             break;
     }
 
+    // The saved address as a QR code, to print or put on a poster. It leaves
+    // the request, so it is built on the configured host (HOSTNAME_SETTING),
+    // not on the Host header. The name is already restricted to URL-safe
+    // characters when it is saved.
+    $short_link_qr_url = URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link['name'];
+    $short_link_qr_options = array('label' => lang('QR code for the short link'), 'class' => 'd-block mx-auto');
+    $short_link_qr = pg_qr_svg($short_link_qr_url, 160, $short_link_qr_options);
+    $output_short_link_qr_card = '';
+
+    if ($short_link_qr !== '') {
+        $short_link_qr_file = pg_ascii_file_name((string) $short_link['name']);
+
+        $output_short_link_qr_card =
+            '<div class="col-12 col-md-6 col-xl-4">
+                <div class="card my-4">
+                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('QR Code')) . '</span>
+                        <a class="btn btn-sm btn-outline-secondary" download="' . h((($short_link_qr_file !== '') ? $short_link_qr_file : 'short-link') . '-qr.svg') . '" href="' . h(pg_qr_svg_data_uri($short_link_qr_url, 0, $short_link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="d-inline-block border rounded p-2 bg-white">' . $short_link_qr . '</div>
+                        <p class="small text-muted mt-2 mb-0 text-break">' . h($short_link_qr_url) . '</p>
+                    </div>
+                </div>
+            </div>';
+    }
+
     print
     pg_page_shell(
         array(
@@ -236,6 +263,7 @@ if (!$_POST) {
                                         </div>
                                     </div>
                                 </div>
+                                ' . $output_short_link_qr_card . '
                                 <div class="col-12 collapse" id="options_row">
                                     <div class="card my-4">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">

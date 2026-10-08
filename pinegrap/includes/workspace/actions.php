@@ -40,6 +40,20 @@ function ws_action_ok($data = array())
 }
 
 /**
+ * A guest link as an inline SVG QR code, for the screen that shows the link
+ * once. Drawn here so the token never goes into an image URL.
+ *
+ * @param string $url
+ * @return string '' for an empty link (an ended one).
+ */
+function ws_action_link_qr($url)
+{
+    $url = (string) $url;
+
+    return ($url !== '') ? pg_qr_svg($url, 0, array('label' => lang('QR code for the link'), 'class' => 'd-block w-100')) : '';
+}
+
+/**
  * The channel an action is about, checked for what the action needs.
  *
  * @param array  $viewer
@@ -1170,7 +1184,7 @@ function ws_handle_action($action, $request)
                 'members'    => (array) ($request['members'] ?? array()),
             ));
 
-            return $result['ok'] ? ws_action_ok(array('channel_id' => $result['channel_id'], 'url' => $result['url'])) : ws_action_error($result['error'], $result['field']);
+            return $result['ok'] ? ws_action_ok(array('channel_id' => $result['channel_id'], 'url' => $result['url'], 'qr' => ws_action_link_qr($result['url']))) : ws_action_error($result['error'], $result['field']);
 
         case 'ws_guest_relink':
         case 'ws_guest_end':
@@ -1184,7 +1198,7 @@ function ws_handle_action($action, $request)
                 ? ws_guest_relink($viewer, $channel, (string) ($request['mode'] ?? 'once'), (int) ($request['duration'] ?? 0))
                 : ws_guest_end($viewer, $channel);
 
-            return $result['ok'] ? ws_action_ok(array('url' => (string) ($result['url'] ?? ''))) : ws_action_error($result['error']);
+            return $result['ok'] ? ws_action_ok(array('url' => (string) ($result['url'] ?? ''), 'qr' => ws_action_link_qr($result['url'] ?? ''))) : ws_action_error($result['error']);
 
         // Discussions (threads.php): started from a message, joined by staff
         // who read the channel, concluded, renamed, left.
@@ -1251,7 +1265,7 @@ function ws_handle_action($action, $request)
                 'duration'   => $request['duration'] ?? 0,
             ));
 
-            return $result['ok'] ? ws_action_ok(array('url' => $result['url'])) : ws_action_error($result['error'], $result['field']);
+            return $result['ok'] ? ws_action_ok(array('url' => $result['url'], 'qr' => ws_action_link_qr($result['url']))) : ws_action_error($result['error'], $result['field']);
 
         case 'ws_share_relink':
         case 'ws_share_end':
@@ -1264,7 +1278,7 @@ function ws_handle_action($action, $request)
             $result = ws_channel_share_change($viewer, $channel, (int) ($request['guest_id'] ?? 0), ($action === 'ws_share_relink') ? 'relink' : 'end',
                 (string) ($request['mode'] ?? 'once'), (int) ($request['duration'] ?? 0));
 
-            return $result['ok'] ? ws_action_ok(array('url' => (string) $result['url'])) : ws_action_error($result['error']);
+            return $result['ok'] ? ws_action_ok(array('url' => (string) $result['url'], 'qr' => ws_action_link_qr($result['url']))) : ws_action_error($result['error']);
 
         case 'ws_channel_create':
             $result = ws_channel_create($viewer, array(
