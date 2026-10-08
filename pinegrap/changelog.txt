@@ -180,6 +180,22 @@
          süreliğine siteden çekmek için "Yayında" anahtarı
          kapatılır; o zaman çeviriler korunur.
 
+  ÇALIŞMA ALANI
+  --------------------------------------------------------
+
+  [YENİ] Pinegrap AI artık ayrı bir lisans anahtarı istemez:
+         Ayarlar › Genel'deki abonelik anahtarıyla (Pinegrap
+         Premium) çalışır. Çalışma Alanı Ayarları'ndaki Pinegrap AI
+         kartından lisans anahtarı alanı kaldırıldı. Sitede
+         geçerli bir lisans yoksa @ai ile seslenen kişi kanalda
+         "Bu özellikten faydalanmak için Pinegrap Premium lisansı
+         gerekir" yanıtını ve iletişim adresini görür. Abonelik
+         anahtarı değiştirildiğinde yeni anahtar yeniden
+         doğrulanır.
+
+  [ŞEMA] config.ws_ai_license sütunu kaldırıldı (eski, ayrı
+         Pinegrap AI anahtarı).
+
 
 
   2026.4.7

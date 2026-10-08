@@ -27,10 +27,13 @@
  * anyway.
  *
  * Every call carries the site's licence key (Authorization: Bearer) and the
- * site's host name. The gateway in front of the model checks both: 401
- * (license_invalid) or 402 / 403 (license_expired) stop the assistant until
- * an administrator enters a key that works. GET /license says whether the key
- * is valid and until when. Where no gateway stands in front of the model yet,
+ * site's host name. The key is the subscription key of the site (Settings ›
+ * General, config.subscription_key): Pinegrap AI is part of Pinegrap Premium
+ * and has no key of its own. The gateway in front of the model checks both:
+ * 401 (license_invalid) or 402 / 403 (license_expired) stop the assistant
+ * until the site holds a key that works, and whoever asks is told that the
+ * feature needs a Premium licence. GET /license says whether the key is valid
+ * and until when. Where no gateway stands in front of the model yet,
  * that address does not exist and the key counts as accepted ('pending'):
  * the site behaves as it will once the check is made, so nothing here changes
  * when the gateway arrives. docs/pinegrap-ai-gecit.md describes the answers
@@ -138,7 +141,7 @@ function ws_ai_schema_ready()
             && waf_table_has_column('ws_ai_requests', 'agent')
             && waf_table_has_column('ws_ai_requests', 'ai_state')
             && waf_table_has_column('ws_channels', 'ai_access')
-            && waf_table_has_column('config', 'ws_ai_license');
+            && waf_table_has_column('config', 'ws_ai_license_state');
     }
 
     return $ready;
@@ -186,14 +189,14 @@ function ws_ai_config($fresh = false)
     }
 
     if (($config === null) || $fresh) {
-        $row = (array) db_item("SELECT ws_ai_enabled, ws_ai_app_id, ws_ai_license, ws_ai_license_state, ws_ai_license_checked,
+        $row = (array) db_item("SELECT ws_ai_enabled, ws_ai_app_id, subscription_key, ws_ai_license_state, ws_ai_license_checked,
                 ws_ai_license_expires, ws_ai_model, ws_ai_error, ws_ai_hold_until
             FROM config LIMIT 1");
 
         $config = array(
             'enabled'         => ((int) ($row['ws_ai_enabled'] ?? 0) === 1),
             'app_id'          => (int) ($row['ws_ai_app_id'] ?? 0),
-            'license_set'     => (strpos((string) ($row['ws_ai_license'] ?? ''), ':') !== false),
+            'license_set'     => (ws_ai_license_clean((string) ($row['subscription_key'] ?? '')) !== ''),
             'license_state'   => (string) ($row['ws_ai_license_state'] ?? ''),
             'license_checked' => (int) ($row['ws_ai_license_checked'] ?? 0),
             'license_expires' => (int) ($row['ws_ai_license_expires'] ?? 0),
@@ -207,8 +210,21 @@ function ws_ai_config($fresh = false)
 }
 
 /**
- * The licence key, decrypted. Empty when none is stored or it cannot be read
- * back (a site restored with another ENCRYPTION_KEY).
+ * A subscription key as the gateway reads it: without the dashes the
+ * settings field shows and without surrounding spaces.
+ *
+ * @param string $key
+ * @return string
+ */
+function ws_ai_license_clean($key)
+{
+    return str_replace('-', '', trim((string) $key));
+}
+
+/**
+ * The licence key: the site's subscription key, read from the database
+ * rather than from the constant, so a key saved in this request is the one
+ * used. Empty when none is entered.
  *
  * @return string
  */
@@ -218,15 +234,9 @@ function ws_ai_license_key()
         return '';
     }
 
-    $stored = (string) db_value("SELECT ws_ai_license FROM config LIMIT 1");
+    $key = ws_ai_license_clean((string) db_value("SELECT subscription_key FROM config LIMIT 1"));
 
-    if (($stored === '') || (strpos($stored, ':') === false) || !function_exists('decode_ssl_keys') || !defined('ENCRYPTION_KEY')) {
-        return '';
-    }
-
-    list($cipher, $iv) = explode(':', $stored, 2);
-
-    return (string) decode_ssl_keys($cipher, $iv);
+    return ws_ai_license_shape_ok($key) ? $key : '';
 }
 
 /**
@@ -250,8 +260,22 @@ function ws_ai_license_shape_ok($key)
 function ws_ai_license_sentence($state)
 {
     return ($state === 'expired')
-        ? lang('The Pinegrap AI licence has expired. Renew it and enter the new key.')
-        : lang('Pinegrap AI refused the licence key: it does not match this site or it is not valid.');
+        ? lang('The Pinegrap Premium licence of this site has expired. Renew it and enter the new key under Settings › General.')
+        : lang('Pinegrap AI refused the subscription key under Settings › General: it does not match this site or it is not valid.');
+}
+
+/**
+ * What the people who ask Pinegrap AI are told when the site holds no
+ * licence that works: the feature is part of Pinegrap Premium.
+ *
+ * @return string markup (a link in Markdown)
+ */
+function ws_ai_premium_sentence()
+{
+    return lang(array(
+        'string' => 'A Pinegrap Premium licence is needed to use this feature. Contact us at {var:1}.',
+        'vars'   => '[www.kodpen.com/iletisim](https://www.kodpen.com/iletisim)',
+    ));
 }
 
 /**
@@ -265,7 +289,7 @@ function ws_ai_license_problem()
     $config = ws_ai_config();
 
     if (!$config['license_set']) {
-        return lang('The Pinegrap AI licence key is not entered.');
+        return lang('The subscription key under Settings › General is not entered.');
     }
 
     if (($config['license_state'] === 'expired') || (($config['license_expires'] > 0) && ($config['license_expires'] < time()))) {
@@ -846,25 +870,21 @@ function ws_ai_answers_ai($message_id)
 
 /**
  * The line a channel gets when Pinegrap AI is asked before it can answer:
- * what is missing and where it is set up.
+ * that a Premium licence is needed, or where it is set up.
  *
  * @return string markup
  */
 function ws_ai_setup_hint()
 {
-    $base = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/';
-    $parts = array(lang('Pinegrap AI cannot answer yet.'));
-
-    $license = ws_ai_schema_ready() ? ws_ai_license_problem() : '';
-
-    if ($license !== '') {
-        $parts[] = $license;
+    // No licence that works: the feature is Premium's, whoever asks.
+    if (ws_ai_schema_ready() && (ws_ai_license_problem() !== '')) {
+        return ws_ai_premium_sentence();
     }
 
-    $parts[] = lang('An administrator connects it on this card:') . ' ['
-        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . 'workspace_settings.php#ws-ai)';
+    $base = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/';
 
-    return implode(' ', $parts);
+    return lang('Pinegrap AI cannot answer yet.') . ' ' . lang('An administrator connects it on this card:') . ' ['
+        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . 'workspace_settings.php#ws-ai)';
 }
 
 /**
@@ -1109,7 +1129,7 @@ function ws_ai_kick($budget = WS_AI_BUDGET)
     $license = ws_ai_license_check();
 
     if (($license === 'invalid') || ($license === 'expired')) {
-        ws_ai_fail_waiting(ws_ai_license_sentence($license));
+        ws_ai_fail_waiting(ws_ai_premium_sentence());
         db_value("SELECT RELEASE_LOCK('pg_ws_ai_run')");
 
         return array('status' => 'failed');
@@ -1427,7 +1447,7 @@ function ws_ai_response_problem($response)
     if ($verdict !== '') {
         ws_ai_license_store($verdict, 0);
         ws_ai_ready(true);
-        ws_ai_fail_waiting(ws_ai_license_sentence($verdict));
+        ws_ai_fail_waiting(ws_ai_premium_sentence());
 
         return 'license';
     }
@@ -3573,7 +3593,6 @@ function ws_ai_settings_post($viewer, $action, $liveform)
 
     $enabled = !empty($_POST['ai_enabled']);
     $app_id = (int) ($_POST['ai_app_id'] ?? 0);
-    $key = trim((string) ($_POST['ai_license'] ?? ''));
 
     if (($app_id > 0) && !ws_ai_app($app_id)) {
         $liveform->add_error(lang('That application could not be found.'));
@@ -3585,38 +3604,12 @@ function ws_ai_settings_post($viewer, $action, $liveform)
         return;
     }
 
-    if (($key !== '') && !ws_ai_license_shape_ok($key)) {
-        $liveform->add_error(lang('That does not look like a licence key: 16 to 256 characters, without spaces.'));
-        return;
-    }
-
     $sets = array(
         "ws_ai_enabled = '" . ($enabled ? 1 : 0) . "'",
         "ws_ai_app_id = '" . $app_id . "'",
         "ws_ai_error = ''",
         "ws_ai_hold_until = 0",
     );
-
-    // The key is written, never shown: left empty, the stored one stays. A
-    // new key is asked about afresh.
-    if ($key !== '') {
-        if (!function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
-            $liveform->add_error(lang('The licence key cannot be stored: encryption is not available on this site.'));
-            return;
-        }
-
-        list($cipher, $iv) = encrypt_string_with_iv($key);
-
-        $sets[] = "ws_ai_license = '" . e($cipher . ':' . $iv) . "'";
-        $sets[] = "ws_ai_license_state = ''";
-        $sets[] = "ws_ai_license_checked = 0";
-        $sets[] = "ws_ai_license_expires = 0";
-    } elseif (!empty($_POST['ai_license_clear'])) {
-        $sets[] = "ws_ai_license = NULL";
-        $sets[] = "ws_ai_license_state = ''";
-        $sets[] = "ws_ai_license_checked = 0";
-        $sets[] = "ws_ai_license_expires = 0";
-    }
 
     db("UPDATE config SET " . implode(', ', $sets));
 
@@ -3642,7 +3635,7 @@ function ws_ai_settings_post($viewer, $action, $liveform)
 function ws_ai_settings_test($liveform)
 {
     if (!ws_ai_config(true)['license_set']) {
-        $liveform->add_error(lang('The Pinegrap AI licence key is not entered.'));
+        $liveform->add_error(lang('The subscription key under Settings › General is not entered.'));
         return;
     }
 
@@ -3800,8 +3793,8 @@ function ws_ai_settings_card($self_url, $viewer)
         ),
         array(
             lang('The licence key'),
-            lang('Enter the Pinegrap AI licence key issued for this site and save. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
-            '',
+            lang('Enter the subscription key of your Pinegrap Premium licence under Settings › General. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
+            '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Settings › General')) . '</a>',
         ),
         array(
             lang('Try it'),
@@ -3836,7 +3829,7 @@ function ws_ai_settings_card($self_url, $viewer)
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" name="ai_enabled" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
                                 <label class="form-check-label" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
-                                <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s licence key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
+                                <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
@@ -3847,14 +3840,8 @@ function ws_ai_settings_card($self_url, $viewer)
                                     : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="ws_ai_license">' . h(lang('Licence key')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="password" name="ai_license" id="ws_ai_license" value="" autocomplete="new-password" placeholder="' . h($config['license_set'] ? lang('Stored. Type a new one to replace it.') : lang('The key issued for this site')) . '"' . $disabled . '>
-                                ' . ($config['license_set'] && $admin ? '
-                                <div class="form-check mt-1">
-                                    <input class="form-check-input" type="checkbox" name="ai_license_clear" value="1" id="ws_ai_license_clear">
-                                    <label class="form-check-label small" for="ws_ai_license_clear">' . h(lang('Remove the stored key')) . '</label>
-                                </div>' : '') . '
-                                <div class="form-text">' . h(lang('It is stored encrypted and never shown again.')) . '</div>
+                                <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
+                                <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Settings › General')) . '</a></div>
                             </div>
                             ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
                         </form>

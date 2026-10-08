@@ -17623,5 +17623,13 @@
     "{var} translation(s) will be deleted.": "{var} çeviri silinecek.",
     "Clear translations": "Çevirileri temizle",
     "The translations of the texts shown here are deleted, so the next \"Update translations\" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.": "Burada gösterilen metinlerin çevirileri silinir; bir sonraki \"Çevirileri güncelle\" bu metinleri motora yeniden gönderir. Başka yerlerde de kullanılan bir metnin çevirisi oralarda da silinir.",
-    "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil"
+    "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil",
+    "The Pinegrap Premium licence of this site has expired. Renew it and enter the new key under Settings › General.": "Bu sitenin Pinegrap Premium lisansının süresi doldu. Lisansı yenileyin ve yeni anahtarı Ayarlar › Genel altına girin.",
+    "Pinegrap AI refused the subscription key under Settings › General: it does not match this site or it is not valid.": "Pinegrap AI, Ayarlar › Genel altındaki abonelik anahtarını kabul etmedi: anahtar bu siteye ait değil ya da geçerli değil.",
+    "The subscription key under Settings › General is not entered.": "Ayarlar › Genel altındaki abonelik anahtarı girilmemiş.",
+    "Enter the subscription key of your Pinegrap Premium licence under Settings › General. It is checked against the site's address: a key that does not match or has expired does not work.": "Pinegrap Premium lisansınızın abonelik anahtarını Ayarlar › Genel altına girin. Anahtar sitenin adresiyle karşılaştırılır: eşleşmeyen ya da süresi dolmuş bir anahtar çalışmaz.",
+    "Settings › General": "Ayarlar › Genel",
+    "The model at ai.pinegrap.com answers, with the site's subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.": "Yanıtları ai.pinegrap.com'daki model, sitenin abonelik anahtarıyla verir. Sorulduğu kanalda yazılanlar oraya gönderilir. Herkese açık kanallar ona açıktır; özel kanallar yalnızca yöneticisi izin verirse.",
+    "Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.": "Pinegrap AI, Pinegrap Premium'un bir parçasıdır ve sitenin abonelik anahtarıyla çalışır; ayrı bir anahtarı yoktur.",
+    "A Pinegrap Premium licence is needed to use this feature. Contact us at {var:1}.": "Bu özellikten faydalanmak için Pinegrap Premium lisansı gerekir. {var:1} adresinden bizimle irtibata geçin."
 }
