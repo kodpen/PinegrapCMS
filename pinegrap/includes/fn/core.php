@@ -208,25 +208,83 @@ function init_mysql_charset()
     @mysqli_query(db::$con, "SET NAMES '" . $mysql_character_set . "' COLLATE '" . $mysql_character_set . "_unicode_ci'");
 }
 
-// Use this to run any type of general db query (e.g. select, insert, update, etc.).
-function db($query)
+// The counters behind pg_db_stats(), held in one place so pg_db_run() can add
+// to them and pg_db_stats() can read them.
+function &pg_db_counters()
+{
+    static $counters = array('count' => 0, 'ms' => 0.0);
+
+    return $counters;
+}
+
+/**
+ * How many queries this request has sent through db(), db_value(),
+ * db_values(), db_item() and db_items(), and how long they took together.
+ *
+ * Only those five go through pg_db_run(). The code base still has a couple of
+ * thousand plain mysqli_query() calls, and none of them is counted here; the
+ * performance monitor asks the connection itself (Questions) for the full
+ * figure and falls back to this one.
+ *
+ * @return array('count' => int, 'ms' => float)
+ */
+function pg_db_stats()
+{
+    $counters = &pg_db_counters();
+
+    return array('count' => (int) $counters['count'], 'ms' => (float) $counters['ms']);
+}
+
+/**
+ * Runs one query for the five db helpers below; the one place where their
+ * shared contract lives.
+ *
+ * Returns the mysqli result (a result set, or true for a statement), or null
+ * when the query failed and the upgrade runner took it over. Any other
+ * failure ends the request through output_error(), as it always has.
+ *
+ * @param string $query
+ * @return mysqli_result|bool|null
+ */
+function pg_db_run($query)
 {
     if (!isset(db::$con) || !db::$con) {
         output_error(lang('No database connection.'));
     }
 
+    $counters = &pg_db_counters();
+
+    $started = microtime(true);
+
     $result = @mysqli_query(db::$con, $query);
+
+    $counters['count']++;
+    $counters['ms'] += (microtime(true) - $started) * 1000;
+
     if ($result === false) {
         // Provide mysqli error to output_error for debugging (output_error may suppress details based on DEBUG).
         $err = mysqli_error(db::$con);
         // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
         // a failed schema statement can be waved through as "already applied", and anything
         // else becomes an exception the runner reports with the statement.  Outside a run the
-        // hook is inactive and the failure is fatal, as it always was.
+        // hook is inactive and the failure is fatal, as it always was. When the runner waves
+        // a failure through, each helper answers with what it has always answered then.
         if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
-            return true;
+            return null;
         }
         output_error(lang('Query failed.') . ' ' . h($err));
+    }
+
+    return $result;
+}
+
+// Use this to run any type of general db query (e.g. select, insert, update, etc.).
+function db($query)
+{
+    $result = pg_db_run($query);
+
+    if ($result === null) {
+        return true;
     }
 
     // If this was a query like an insert or update and it was successful (true), return the result (true).
@@ -267,42 +325,24 @@ function db($query)
 
 function db_value($query)
 {
-    if (!isset(db::$con) || !db::$con) {
-        output_error(lang('No database connection.'));
+    $result = pg_db_run($query);
+
+    if ($result === null) {
+        return null;
     }
-    $result = @mysqli_query(db::$con, $query);
-    if ($result === false) {
-        $err = mysqli_error(db::$con);
-        // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
-        // a failed schema statement can be waved through as "already applied", and anything
-        // else becomes an exception the runner reports with the statement.  Outside a run the
-        // hook is inactive and the failure is fatal, as it always was.
-        if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
-            return null;
-        }
-        output_error(lang('Query failed.') . ' ' . h($err));
-    }
+
     $row = mysqli_fetch_row($result);
     return isset($row[0]) ? $row[0] : null;
 }
 
 function db_values($query)
 {
-    if (!isset(db::$con) || !db::$con) {
-        output_error(lang('No database connection.'));
+    $result = pg_db_run($query);
+
+    if ($result === null) {
+        return array();
     }
-    $result = @mysqli_query(db::$con, $query);
-    if ($result === false) {
-        $err = mysqli_error(db::$con);
-        // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
-        // a failed schema statement can be waved through as "already applied", and anything
-        // else becomes an exception the runner reports with the statement.  Outside a run the
-        // hook is inactive and the failure is fatal, as it always was.
-        if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
-            return array();
-        }
-        output_error(lang('Query failed.') . ' ' . h($err));
-    }
+
     $values = array();
     while ($row = mysqli_fetch_row($result)) {
         $values[] = $row[0];
@@ -312,41 +352,23 @@ function db_values($query)
 
 function db_item($query)
 {
-    if (!isset(db::$con) || !db::$con) {
-        output_error(lang('No database connection.'));
+    $result = pg_db_run($query);
+
+    if ($result === null) {
+        return null;
     }
-    $result = @mysqli_query(db::$con, $query);
-    if ($result === false) {
-        $err = mysqli_error(db::$con);
-        // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
-        // a failed schema statement can be waved through as "already applied", and anything
-        // else becomes an exception the runner reports with the statement.  Outside a run the
-        // hook is inactive and the failure is fatal, as it always was.
-        if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
-            return null;
-        }
-        output_error(lang('Query failed.') . ' ' . h($err));
-    }
+
     return mysqli_fetch_assoc($result);
 }
 
 function db_items($query, $key_column = '')
 {
-    if (!isset(db::$con) || !db::$con) {
-        output_error(lang('No database connection.'));
+    $result = pg_db_run($query);
+
+    if ($result === null) {
+        return array();
     }
-    $result = @mysqli_query(db::$con, $query);
-    if ($result === false) {
-        $err = mysqli_error(db::$con);
-        // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
-        // a failed schema statement can be waved through as "already applied", and anything
-        // else becomes an exception the runner reports with the statement.  Outside a run the
-        // hook is inactive and the failure is fatal, as it always was.
-        if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
-            return array();
-        }
-        output_error(lang('Query failed.') . ' ' . h($err));
-    }
+
     $items = array();
     if ($key_column != '') {
         while ($item = mysqli_fetch_assoc($result)) {
@@ -362,6 +384,240 @@ function db_items($query, $key_column = '')
         }
     }
     return $items;
+}
+
+// ─── Schema probes ───────────────────────────────────────────────────────────
+//
+// Code that reads a table or a column a migration adds asks first: files land
+// before the schema does, and a site whose upgrade has not run yet must keep
+// working on the old shape. pg_schema_has() is the one way to ask. It compares
+// names exactly - SHOW TABLES LIKE / SHOW COLUMNS LIKE treat the underscore as
+// a wildcard, so LIKE 'entity_%' also matched a column called entityXtype - and
+// it remembers the answer, in this request and in a file under data/temp, so a
+// check that runs on every request costs a file read instead of a round trip
+// to information_schema.
+//
+// The file is named after both versions: config.version (what the database
+// says it is) and pg_code_version() (what the files on disk are). Either one
+// moving starts a new file. Both are needed because they can disagree: on a
+// site whose includes/migrations folder is 0555 the upgrade runs the old list,
+// config.version moves on and the schema stays behind, and a file keyed on
+// config.version alone would go on answering for a schema that never arrived.
+// A "not there" answer is remembered as well; pg_schema_cache_clear() drops
+// every file, and runs when an upgrade finishes and from pg_purge_caches().
+
+/**
+ * The cache file name for a database version and a code version. Anything
+ * other than a letter or a digit becomes an underscore.
+ *
+ * No database access.
+ *
+ * @param string $db_version
+ * @param string $code_version
+ * @return string
+ */
+function pg_schema_cache_name($db_version, $code_version)
+{
+    $safe = function ($value) {
+        return preg_replace('/[^A-Za-z0-9]+/', '_', (string) $value);
+    };
+
+    return 'schema_' . $safe($db_version) . '_' . $safe($code_version) . '.json';
+}
+
+/**
+ * What a schema cache says about a table, or about one of its columns.
+ *
+ * No database access.
+ *
+ * @param array       $cache  array('tables' => array(table => array of columns), 'missing' => array of tables)
+ * @param string      $table
+ * @param string|null $column
+ * @return bool|null true / false, or null when the cache does not know the table
+ */
+function pg_schema_cache_lookup($cache, $table, $column = null)
+{
+    if (isset($cache['missing']) && is_array($cache['missing']) && in_array($table, $cache['missing'], true)) {
+        return false;
+    }
+
+    if (!isset($cache['tables'][$table]) || !is_array($cache['tables'][$table])) {
+        return null;
+    }
+
+    if ($column === null) {
+        return true;
+    }
+
+    return in_array(strtolower((string) $column), $cache['tables'][$table], true);
+}
+
+/**
+ * The cache with what is now known about one table: its columns, or false
+ * when the table does not exist.
+ *
+ * No database access.
+ *
+ * @param array       $cache
+ * @param string      $table
+ * @param array|false $columns
+ * @return array
+ */
+function pg_schema_cache_store($cache, $table, $columns)
+{
+    if (!is_array($cache)) {
+        $cache = array();
+    }
+
+    if (!isset($cache['tables']) || !is_array($cache['tables'])) {
+        $cache['tables'] = array();
+    }
+
+    if (!isset($cache['missing']) || !is_array($cache['missing'])) {
+        $cache['missing'] = array();
+    }
+
+    $cache['missing'] = array_values(array_diff($cache['missing'], array($table)));
+
+    if ($columns === false) {
+        unset($cache['tables'][$table]);
+        $cache['missing'][] = $table;
+    } else {
+        $names = array();
+        foreach ((array) $columns as $name) {
+            $names[] = strtolower((string) $name);
+        }
+        $cache['tables'][$table] = array_values(array_unique($names));
+    }
+
+    return $cache;
+}
+
+// What pg_schema_has() knows in this request: the cache and the file it came
+// from ('' when there is no file to keep, see pg_schema_has()).
+function &pg_schema_cache_state()
+{
+    static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
+
+    return $state;
+}
+
+/**
+ * Forgets every remembered schema answer: the files under data/temp and what
+ * this request holds.
+ *
+ * @return void
+ */
+function pg_schema_cache_clear()
+{
+    foreach ((array) glob(PG_FUNCTIONS_DIR . '/data/temp/schema_*.json') as $file) {
+        @unlink($file);
+    }
+
+    $state = &pg_schema_cache_state();
+    $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
+}
+
+/**
+ * Whether a table - or a column of it - exists in this database.
+ *
+ * A table is read whole the first time it is asked about: every column in one
+ * query, so the next question about it costs nothing. The answer is kept in
+ * data/temp/schema_<config.version>_<code version>.json when config.version
+ * is known (init.php defines VERSION from it); during an install or an
+ * upgrade, where the schema is changing under the request, it is kept for the
+ * request only.
+ *
+ * @param string      $table
+ * @param string|null $column
+ * @return bool false as well when the name is not a plain name or there is no connection
+ */
+function pg_schema_has($table, $column = null)
+{
+    $table = (string) $table;
+
+    if (preg_match('/^[a-z0-9_]+$/', $table) !== 1) {
+        return false;
+    }
+
+    if (($column !== null) && (preg_match('/^[a-z0-9_]+$/', (string) $column) !== 1)) {
+        return false;
+    }
+
+    if (!class_exists('db') || empty(db::$con)) {
+        return false;
+    }
+
+    $state = &pg_schema_cache_state();
+
+    if (!$state['loaded']) {
+        $state['loaded'] = true;
+
+        if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
+            $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
+
+            $stored = @json_decode((string) @file_get_contents($state['file']), true);
+
+            if (is_array($stored)) {
+                $state['cache'] = array(
+                    'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
+                    'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
+                );
+            }
+        }
+    }
+
+    $answer = pg_schema_cache_lookup($state['cache'], $table, $column);
+
+    if ($answer !== null) {
+        return $answer;
+    }
+
+    $columns = db_values(
+        "SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE
+            (TABLE_SCHEMA = DATABASE())
+            AND (TABLE_NAME = '" . e($table) . "')");
+
+    if (count($columns) > 0) {
+        $state['cache'] = pg_schema_cache_store($state['cache'], $table, $columns);
+    } else {
+        // No columns: either there is no such table, or its columns could not
+        // be read. Only the first is an answer worth keeping.
+        $exists = ((int) db_value(
+            "SELECT COUNT(*)
+            FROM information_schema.TABLES
+            WHERE
+                (TABLE_SCHEMA = DATABASE())
+                AND (TABLE_NAME = '" . e($table) . "')") > 0);
+
+        if ($exists) {
+            return ($column === null);
+        }
+
+        $state['cache'] = pg_schema_cache_store($state['cache'], $table, false);
+    }
+
+    if ($state['file'] !== '') {
+        $directory = dirname($state['file']);
+
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0755, true);
+        }
+
+        $temporary = $state['file'] . '.' . (function_exists('getmypid') ? getmypid() : mt_rand()) . '.tmp';
+
+        $encoded = json_encode(array('tables' => (object) $state['cache']['tables'], 'missing' => array_values($state['cache']['missing'])));
+
+        if (@file_put_contents($temporary, $encoded, LOCK_EX) !== false) {
+            if (!@rename($temporary, $state['file'])) {
+                @unlink($temporary);
+            }
+        }
+    }
+
+    return pg_schema_cache_lookup($state['cache'], $table, $column) === true;
 }
 
 function h($content)
@@ -1938,8 +2194,7 @@ function pg_short_link_modes_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'short_links' AND COLUMN_NAME = 'token_hash'") > 0);
+        $ready = pg_schema_has('short_links', 'token_hash');
     }
 
     return $ready;

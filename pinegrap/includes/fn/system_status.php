@@ -1036,6 +1036,15 @@ function pg_purge_caches()
         $cleared[] = lang('System status') . ' (' . $temp_cleared . ')';
     }
 
+    // What pg_schema_has() remembers about tables and columns. A schema
+    // changed by hand (a column added or dropped outside an upgrade) is
+    // otherwise only noticed after the next upgrade.
+    $schema_cache_files = glob($temp_directory . 'schema_*.json');
+    pg_schema_cache_clear();
+    if (is_array($schema_cache_files) && (count($schema_cache_files) > 0)) {
+        $cleared[] = lang(array('string' => 'Schema cache ({var:1})', 'vars' => count($schema_cache_files)));
+    }
+
     $message = implode(', ', $cleared);
     if ($message === '') {
         $message = lang('nothing to clear');
@@ -1566,6 +1575,7 @@ function get_system_status_checks()
         'Software Update'          => 'Update status',
         'Scheduled Tasks'          => 'Tasks',
         'Webhooks'                 => 'Webhook',
+        'Storage Engine'           => 'Engine',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1594,6 +1604,7 @@ function get_system_status_checks()
         'Software Update',
         'Scheduled Tasks',
         'Webhooks',
+        'Storage Engine',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -2090,6 +2101,72 @@ function get_system_status_checks()
             'Database Health',
             'All database tables are healthy.'
         );
+    }
+
+    // 🗄️ Storage engine: the tables still on MyISAM.
+    //
+    // The 2026.4.8 upgrade moves every table within its size limits to InnoDB
+    // and leaves the larger ones for the Database Engine screen, where the
+    // operator converts them one by one at a quiet hour. This line is how
+    // they are found again. Reported and not scored, like Database Size: the
+    // site works on either engine, and a table waiting for a quiet hour is
+    // not a fault.
+    if (function_exists('pg_innodb_capability')) {
+        $engine_capability = pg_innodb_capability();
+
+        if (!$engine_capability['ok']) {
+            $output .= $makeIcon(
+                'bi-database-gear',
+                'text-secondary',
+                'Storage Engine',
+                'The database server does not support the InnoDB row format the software needs; tables stay on MyISAM.',
+                'MyISAM'
+            );
+        } else {
+            $engine_pending = pg_innodb_pending_tables();
+
+            if (count($engine_pending) == 0) {
+                $output .= $makeIcon(
+                    'bi-database-gear',
+                    'text-success',
+                    'Storage Engine',
+                    'All tables are on InnoDB.',
+                    'InnoDB',
+                    'database_engine.php'
+                );
+            } else {
+                $engine_detail = array();
+                $engine_bytes = 0;
+
+                foreach ($engine_pending as $engine_table => $engine_row) {
+                    $engine_bytes += $engine_row['bytes'];
+                    $engine_detail[] = array(
+                        'label' => $engine_table,
+                        'state' => 'info',
+                        'when'  => lang(array(
+                            'string' => '{var:1} rows, {var:2}',
+                            'vars'   => array(pg_format_number($engine_row['rows'], 0), pg_innodb_size_label($engine_row['bytes'])),
+                        )),
+                    );
+                }
+
+                $output .= $makeIcon(
+                    'bi-database-gear',
+                    'text-warning',
+                    'Storage Engine',
+                    lang(array(
+                        'string' => '{var:1} table(s) are still on MyISAM ({var:2}). Convert them from the Database Engine screen when the site is quiet.',
+                        'vars'   => array(pg_format_number(count($engine_pending), 0), pg_innodb_size_label($engine_bytes)),
+                    )),
+                    lang(array(
+                        'string' => '{var:1} on MyISAM',
+                        'vars'   => pg_format_number(count($engine_pending), 0),
+                    )),
+                    'database_engine.php',
+                    $engine_detail
+                );
+            }
+        }
     }
 
     // 📦 PHP extensions check with alias support for IIS and Apache
@@ -2706,9 +2783,7 @@ function get_system_status_checks()
 
     if (defined('DB_CONNECTED') && DB_CONNECTED) {
         try {
-            $webhook_table = @mysqli_query(db::$con, "SHOW TABLES LIKE 'api\\_webhooks'");
-
-            if ($webhook_table && mysqli_num_rows($webhook_table) > 0) {
+            if (pg_schema_has('api_webhooks')) {
 
                 // The rows themselves rather than a GROUP BY, because the tile
                 // opens into a list and the question after "3 active" is which

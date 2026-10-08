@@ -34,6 +34,18 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_backup_settings();         // 8.33
 	upgrade_2026_4_8_mfa();                     // 8.40
 
+	upgrade_2026_4_8_perf_queries();            // 8.15
+
+	upgrade_2026_4_8_innodb_orders();           // 8.10
+
+	upgrade_2026_4_8_innodb_products();         // 8.11
+
+	upgrade_2026_4_8_innodb_people();           // 8.12
+
+	upgrade_2026_4_8_innodb_site();             // 8.13
+
+	upgrade_2026_4_8_innodb_search();           // 8.14
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -292,5 +304,298 @@ function upgrade_2026_4_8_mfa() {
 	install_add_column('config', 'mfa_required_role', "TINYINT NOT NULL DEFAULT 99");
 
 	install_note('Two-step sign-in: an account can require a code from an authenticator app after its password, and Settings › Security can require it of a role.');
+
+}
+
+// ─── The remaining tables move to InnoDB (2026.4.8, 8.10-8.14) ──────────────
+//
+// Every table of the starter dumps was created on MyISAM, and until now only
+// visitors (2026.3.6), user and files (2026.4.4) had been moved. MyISAM locks
+// a whole table for every write: one slow UPDATE of an order holds back every
+// read of `orders`, and a busy shop queues on its own tables. A server that
+// stops uncleanly leaves MyISAM tables marked as crashed until REPAIR TABLE
+// runs; InnoDB recovers by itself from its log. And the ERP writes its
+// documents inside a transaction that cannot reach a MyISAM table: on InnoDB
+// a rollback takes the change to `orders` and `products` back with the rest.
+//
+// The conversion itself is what once brought a site down. ALTER TABLE ...
+// ENGINE=InnoDB copies the table while writes to it wait; on a large table
+// the request ran into the web server's limit, the retries started further
+// ALTERs behind the first one's metadata lock, and the site stopped
+// answering. So the steps below go through pg_innodb_convert_table()
+// (includes/fn/innodb.php), which:
+//
+//  - skips a table that is already on InnoDB, so the step can run any number
+//    of times;
+//  - leaves a table over the limits of upgrade_2026_4_8_innodb_limits() on
+//    MyISAM: no upgrade request copies a table of that size. The operator
+//    converts it from the Database Engine screen, when the site is quiet;
+//  - does not start while an ALTER on the same table is still running from
+//    an earlier request, and leaves alone a table whose earlier attempt never
+//    finished;
+//  - waits at most 20 s for the table's metadata lock;
+//  - answers every MySQL error as a note, never as a failed version: the site
+//    works on either engine.
+//
+// The tables are taken smallest first, so the work that is certain to fit is
+// done before the work that might not. Each pass of the version keeps
+// starting tables for install_pause_budget() seconds and then pauses; the
+// upgrade screen sends a new request for the same version, which skips what
+// is done and carries on.
+
+// The limits above which the upgrade leaves a table on MyISAM for the Database
+// Engine screen. Written once here; the step reads nothing else.
+function upgrade_2026_4_8_innodb_limits() {
+
+	return array('max_rows' => 250000, 'max_bytes' => 134217728);
+
+}
+
+// Moves the tables of one group of pg_innodb_table_groups(), smallest first,
+// and says what it did.
+function upgrade_2026_4_8_innodb_group($group, $label) {
+
+	global $install_runner;
+
+	// Tables converted in this pass of the version, by every group together:
+	// the budget is the pass's, not the group's. Keyed by the moment the pass
+	// began, so a new pass starts from nothing.
+	static $pass_converted = array();
+
+	$pass_key = (string) $install_runner['pass_started'];
+
+	if (!isset($pass_converted[$pass_key])) {
+
+		$pass_converted = array($pass_key => 0);
+
+	}
+
+	if (!function_exists('pg_innodb_capability')) {
+
+		install_skipped(lang(array('string' => '{var:1}: the tables stay on MyISAM: {var:2}', 'vars' => array($label, 'includes/fn/innodb.php'))));
+
+		return;
+
+	}
+
+	$capability = pg_innodb_capability();
+
+	if (!$capability['ok']) {
+
+		install_skipped(lang(array('string' => '{var:1}: the tables stay on MyISAM: {var:2}', 'vars' => array($label, $capability['reason']))));
+
+		return;
+
+	}
+
+	$groups = pg_innodb_table_groups();
+
+	$tables = $groups[$group];
+
+	$status = pg_innodb_table_status($tables);
+
+	$pending = array();
+
+	$on_innodb = 0;
+
+	foreach ($tables as $table) {
+
+		if (!isset($status[$table])) {
+
+			install_skipped(pg_innodb_state_text(array('state' => 'missing', 'table' => $table)));
+
+			continue;
+
+		}
+
+		if ($status[$table]['engine'] === 'innodb') {
+
+			$on_innodb++;
+
+			install_skipped(pg_innodb_state_text(array('state' => 'already', 'table' => $table)));
+
+			continue;
+
+		}
+
+		$pending[$table] = $status[$table]['bytes'];
+
+	}
+
+	asort($pending);
+
+	$limits = upgrade_2026_4_8_innodb_limits();
+
+	$options = array('max_rows' => $limits['max_rows'], 'max_bytes' => $limits['max_bytes'], 'retry' => false);
+
+	$moved = 0;
+
+	$remaining = count($pending);
+
+	$left = array();
+
+	foreach ($pending as $table => $bytes) {
+
+		// No new table once the pass has used its time, and only after this
+		// pass has converted something. A pause that did no work would be
+		// followed by a pass that does no work either: the screen would keep
+		// sending requests, and without the screen the runner would repeat
+		// the version in one request until it gave up.
+		if (($pass_converted[$pass_key] > 0) && (install_pass_seconds() >= install_pause_budget())) {
+
+			install_pause(lang(array(
+				'string' => '{var:1}: {var:2} tables moved so far, {var:3} remain; continuing',
+				'vars' => array($label, $on_innodb + $moved, $remaining)
+			)));
+
+		}
+
+		$result = install_move_to_innodb($table, $options);
+
+		$remaining--;
+
+		if ($result['state'] === 'running') {
+
+			install_pause(lang(array('string' => '{var:1}: waiting for the ALTER TABLE on {var:2} that is still running', 'vars' => array($label, $table))), 10);
+
+		}
+
+		if ($result['state'] === 'busy') {
+
+			install_pause(lang(array('string' => '{var:1}: {var:2} is in use; trying again in a moment', 'vars' => array($label, $table))), 5);
+
+		}
+
+		if ($result['state'] === 'converted') {
+
+			$moved++;
+
+			$pass_converted[$pass_key]++;
+
+		} else {
+
+			$left[] = $table;
+
+		}
+
+	}
+
+	install_note(lang(array(
+		'string' => '{var:1}: {var:2} of {var:3} tables are on InnoDB, {var:4} moved by this run.',
+		'vars' => array($label, $on_innodb + $moved, count($status), $moved)
+	)));
+
+	if (count($left) > 0) {
+
+		install_note(lang(array(
+			'string' => '{var:1}: left on MyISAM: {var:2}',
+			'vars' => array($label, implode(', ', $left))
+		)));
+
+	}
+
+	// once per request, after the first group that converted or left a table
+	static $warned = false;
+
+	if ((!$warned) && (($moved > 0) || (count($left) > 0))) {
+
+		$warned = true;
+
+		install_note(lang('Large tables are rewritten whole while they are converted; writes to a table wait until its conversion ends.'));
+
+	}
+
+}
+
+// Orders and everything hanging off them (8.10): order lines, gift cards,
+// addresses, shipping, offers, refunds, the counter shop's sales history.
+// next_order_number is handed out under LOCK TABLES ... WRITE; that keeps
+// working on InnoDB unchanged.
+function upgrade_2026_4_8_innodb_orders() {
+
+	upgrade_2026_4_8_innodb_group('orders', lang('Orders'));
+
+}
+
+// The catalogue (8.11). The ERP writes stock moves in a transaction and
+// changes the stock count of `products` after the commit
+// (erp_stock_apply_pending()); that order of work stays as it is.
+function upgrade_2026_4_8_innodb_products() {
+
+	upgrade_2026_4_8_innodb_group('products', lang('Products'));
+
+}
+
+// Contacts, the activity log, e-mail campaigns, comments, forms and their
+// entries, notifications (8.12). `log` and `email_recipients` are the tables
+// most likely to be over the limit and left for the Database Engine screen.
+function upgrade_2026_4_8_innodb_people() {
+
+	upgrade_2026_4_8_innodb_group('people', lang('Contacts'));
+
+}
+
+// The site itself (8.13): settings, pages, styles, regions, folders, menus,
+// calendars, zones and the rest. `config` is the reason the conversion asks
+// for the DYNAMIC row format first (pg_innodb_capability()).
+function upgrade_2026_4_8_innodb_site() {
+
+	upgrade_2026_4_8_innodb_group('site', lang('Site'));
+
+}
+
+// The search index (8.14), last and on its own: it is the one table with
+// FULLTEXT indexes (four), which InnoDB supports from MySQL 5.6 and MariaDB
+// 10.0.5. The full-text engine is not the same one. InnoDB indexes words from
+// three letters (innodb_ft_min_token_size; MyISAM's ft_min_word_len is four),
+// in boolean and natural language mode alike; its stopword list is much
+// shorter ("and" is not on it, "the" is); and natural language searches have
+// no 50% threshold, under which MyISAM drops a word that appears in half of
+// the rows. With the default settings a search can therefore find more than
+// it did; the relevance scores are worked out differently, so results that
+// match equally may come back in another order. The twelve MATCH ... AGAINST queries in
+// get_search_results.php and includes/fn/widgets.php are not changed.
+function upgrade_2026_4_8_innodb_search() {
+
+	upgrade_2026_4_8_innodb_group('search', lang('Search'));
+
+}
+
+// How many queries a request sends, in the performance monitor (2026.4.8,
+// 8.15; perf_monitor_shutdown() in includes/fn/seo.php, view_performance_log.php).
+//
+// perf_stats keeps one row per page per hour; total_queries is the sum over
+// the hour's requests (BIGINT, it grows with the hits) and max_queries the
+// largest single request. perf_log.query_count is the count of the one slow
+// request the row records. The count is the connection's own Questions
+// counter, so the plain mysqli_query() calls are in it too; where that cannot
+// be read, the count of pg_db_run() (the db helpers) is used.
+//
+// The monitor writes the columns only once pg_schema_has() finds them, so a
+// site with the new files and the old schema keeps recording as before. Both
+// tables have existed since 2026.1.23 / 2026.3.2; each is asked for first all
+// the same, because a site that never ran those steps must still get through
+// this one. The schema cache is cleared at the end so the monitor sees the
+// columns on its next request.
+function upgrade_2026_4_8_perf_queries() {
+
+	if (install_table_exists('perf_stats')) {
+		install_add_column('perf_stats', 'total_queries', "BIGINT UNSIGNED NOT NULL DEFAULT 0");
+		install_add_column('perf_stats', 'max_queries', "INT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped(lang(array('string' => 'table {var:1} does not exist, skipped', 'vars' => 'perf_stats')));
+	}
+
+	if (install_table_exists('perf_log')) {
+		install_add_column('perf_log', 'query_count', "INT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped(lang(array('string' => 'table {var:1} does not exist, skipped', 'vars' => 'perf_log')));
+	}
+
+	if (function_exists('pg_schema_cache_clear')) {
+		pg_schema_cache_clear();
+	}
+
+	install_note('Performance Log: the number of database queries a request sends is recorded per page and for every slow request.');
 
 }

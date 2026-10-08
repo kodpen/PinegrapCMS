@@ -530,6 +530,52 @@
   [ŞEMA] user_mfa ve user_mfa_recovery tabloları;
          config.mfa_required_role sütunu.
 
+  VERİTABANI
+  --------------------------------------------------------
+
+  [ŞEMA] Hâlâ eski MyISAM motorunda duran tablolar (siparişler,
+         ürünler, kişiler, formlar, sayfalar, ayarlar, arama
+         dizini ve diğerleri; toplam 144 tablo) InnoDB'ye
+         taşınır. InnoDB'de bir yazma işlemi tüm tabloyu değil
+         yalnız ilgili satırı kilitler, sunucu beklenmedik
+         kapandığında tablolar onarım gerektirmez ve ERP
+         belgeleri siparişler ve ürünlerle birlikte tek işlem
+         olarak geri alınabilir. Tablolar küçükten büyüğe
+         taşınır. 250.000 satırı ya da 128 MB'ı aşan tablolar
+         yükseltme sırasında taşınmaz, MyISAM'da bırakılır ve
+         yükseltme notlarında adıyla listelenir. Yükseltme uzun
+         sürerse ekran sürümü duraklatıp yeni bir istekle aynı
+         sürümden devam eder; tek bir istek sunucunun süre
+         sınırına takılmaz. Veritabanında aynı tablo üzerinde
+         önceki bir istekten kalan dönüşüm hâlâ sürüyorsa yenisi
+         başlatılmaz, bitmesi beklenir. Taşınamayan bir tablo
+         yükseltmeyi durdurmaz; site her iki motorla da çalışır.
+         Ön kontrol kartının "Büyük tablolar" satırı bunu da
+         söyler.
+
+  [YENİ] Ayarlar → İşler altında "Veritabanı Motoru" ekranı:
+         MyISAM'da kalan tabloları satır sayısı ve boyutuyla
+         listeler; her tablo tek düğmeyle InnoDB'ye dönüştürülür.
+         Büyük bir tablonun dönüşümü dakikalar sürebilir ve o
+         sırada tabloya yazma bekler; dönüştürmeden önce yedek
+         alın, sitenin sakin olduğu bir saati seçin. İşlem
+         etkinlik kaydına yazılır.
+
+  [YENİ] Sistem Durumu'nda "Depolama Motoru" satırı: MyISAM'da
+         kalan tablo varsa sayısını ve boyutlarını gösterir,
+         Veritabanı Motoru ekranına götürür. Puana etki etmez.
+
+  [YENİ] Performans Günlüğü her isteğin veritabanına kaç sorgu
+         gönderdiğini de kaydeder. Sayfa tablosunda "Ort. Sorgu"
+         ve "En Yüksek Sorgu", yavaş istekler listesinde "Sorgu"
+         sütunu var; sütunlara tıklayarak sıralanabilir. Çok
+         sorgu gönderen bir sayfa böylece yavaşlamadan önce de
+         görülür. Yükseltmeden önce kaydedilen satırlarda sayı 0
+         görünür.
+
+  [ŞEMA] perf_stats.total_queries ve perf_stats.max_queries,
+         perf_log.query_count sütunları.
+
 
 
   2026.4.7

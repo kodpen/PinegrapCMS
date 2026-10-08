@@ -402,6 +402,8 @@ function pg_settings_tool_groups($user)
 
     $tools[] = array('label' => lang('Clean Up'), 'icon' => 'bi-eraser', 'url' => 'clean_up.php');
 
+    $tools[] = array('label' => lang('Database Engine'), 'icon' => 'bi-database-gear', 'url' => 'database_engine.php');
+
     $tools[] = array(
         'label'   => lang('Purge Cache'),
         'icon'    => 'bi-trash3',
