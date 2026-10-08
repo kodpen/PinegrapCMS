@@ -11554,10 +11554,14 @@
 
                     self.channel.shares = data.shares;
 
+                    var shareBefore = self.center.querySelector('.ws-era-bar, .ws-tabs');
+
                     if (shareWas && data.shares) {
                         shareWas.replaceWith(self.shareBar(self.channel));
                     } else if (shareWas) {
                         shareWas.remove();
+                    } else if (data.shares && shareBefore) {
+                        shareBefore.before(self.shareBar(self.channel));
                     }
                 }
 
