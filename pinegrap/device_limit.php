@@ -43,6 +43,15 @@ if (!$pending_valid) {
     exit();
 }
 
+// A pending record that did not come through the second step cannot open an
+// account that has one. The sign-in flows ask for the code before they reach
+// the device gate, so this only stops a record written some other way.
+if (empty($pending['mfa_passed']) && pg_mfa_enabled((int) $pending['user_id'])) {
+    unset($_SESSION['software']['device_limit_pending']);
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php');
+    exit();
+}
+
 // Locked devices: the confirmation this screen exists for is not on offer.
 // Reachable only if the switch was turned on between the gate and here, or if
 // someone kept the URL; either way the answer is the same as the gate's.

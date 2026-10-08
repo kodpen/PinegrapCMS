@@ -2528,7 +2528,12 @@ function get_system_status_checks()
                 if (in_array($backup_entry, $backup_seed)) {
                     continue;
                 }
-                if (!is_dir($backup_path . '/' . $backup_entry)) {
+                // The automatic backup writes one archive per week where a
+                // ZipArchive is available. Only its own names are counted:
+                // any other file in the directory is not a backup run.
+                if (!is_dir($backup_path . '/' . $backup_entry)
+                    && !(pg_backup_is_auto_name($backup_entry) && is_file($backup_path . '/' . $backup_entry))
+                ) {
                     continue;
                 }
                 $backup_count++;
@@ -2581,13 +2586,43 @@ function get_system_status_checks()
         $backup_message = 'Automatic backup is turned off.';
     }
 
+    // The remote copy of the automatic backup (FTP / S3). A backup that exists
+    // only on the server it protects is lost with that server, so a failed
+    // copy is worth a warning even while the local backup is fresh. It costs
+    // half the weight, never more than the check is worth in total.
+    $backup_detail = array();
+
+    if (pg_backup_settings_ready()) {
+
+        $backup_settings = pg_backup_settings();
+
+        if (($backup_settings['backup_remote_type'] !== '') && ($backup_settings['backup_remote_error'] !== '')) {
+
+            $backup_detail[] = array(
+                'label' => $backup_settings['backup_remote_error'],
+                'state' => 'fail',
+                'when'  => lang('Remote copy'),
+            );
+
+            if ($backup_color == 'text-success') {
+                $backup_color = 'text-warning';
+                $backup_message = 'The last remote backup copy failed.';
+                $score -= $weights['backup'] * 0.5;
+            } elseif ($backup_color == 'text-warning') {
+                $backup_message = rtrim(lang($backup_message)) . ' ' . lang('The last remote backup copy failed.');
+                $score -= $weights['backup'] * 0.5;
+            }
+        }
+    }
+
     $output .= $makeIcon(
         $backup_icon,
         $backup_color,
         'Last Backup',
         $backup_message,
         $backup_value,
-        'backups.php'
+        'backups.php',
+        $backup_detail
     );
 
     // ⬆️ Software update

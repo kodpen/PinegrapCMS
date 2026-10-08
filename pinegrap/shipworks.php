@@ -75,6 +75,24 @@ if ($user['id'] == '') {
 
     exit;
 
+// The password was right, but the account asks for a second step that
+// ShipWorks has no way to give. Not counted as a failure (it was not a
+// guess); the text is plain English like the other errors here, because it
+// is ShipWorks that shows it.
+} else if (pg_mfa_enabled((int) $user['id'])) {
+    pg_login_throttle_pass($shipworks_username);
+
+    print
+        '<?xml version="1.0" standalone="yes" ?>
+        <ShipWorks moduleVersion="3.0.0" schemaVersion="1.0.0">
+            <Error>
+                <Code>1</Code>
+                <Description>This account uses two-step verification and cannot be used with ShipWorks. Use an account without it.</Description>
+            </Error>
+        </ShipWorks>';
+
+    exit;
+
 // Otherwise, a user was found, so if the user has a user role
 // and the user does not have access to manage commerce, then output error.
 } else if (($user['role'] == 3) && ($user['manage_ecommerce'] != 'yes')) {

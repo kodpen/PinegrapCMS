@@ -176,6 +176,16 @@
   ZAMANLANMIŞ GÖREVLER
   --------------------------------------------------------
 
+  [YENİ] [ŞEMA] Genel görevle çalışan işler artık tek bir
+         ortak kilit yerine her biri kendi kilidiyle çalışır
+         ve iki şeride ayrılır: uzun işler (otomatik yedek,
+         SEO skorları ve yapısı, arama dizini) ile kısa işler.
+         Saatler süren bir yedekleme sürerken kampanyalar,
+         pazaryeri eşitlemesi, çeviriler ve günlük işler
+         sırasını beklemeden çalışmaya devam eder; iki uzun iş
+         üst üste binmez, aynı iş iki kez başlatılmaz.
+         cron_runs tablosuna locked_until sütunu eklenir.
+
   [DÜZELTME] mailchimp.php dosyasına doğrudan yapılan bir istek,
          veritabanı katmanı yüklenmeden ayar okumaya çalıştığı
          için 500 hatası veriyordu (hata ayıklama açıkken sunucu
@@ -214,6 +224,17 @@
 
   [YENİ] Karşılama satırı yarı saydam bir kartta, solunda saatin
          renginde ince bir şeritle gösterilir.
+
+  [YENİ] Yakalanmamış hatalar, sayfayı yarıda kesen ölümcül PHP
+         hataları ve PHP uyarıları artık yazılımın kendi hata
+         günlüğüne yazılır (data/temp/php_errors.log): hata, dosya
+         ve satır, istek adresi (parola ve anahtar değerleri
+         gizlenerek), kullanıcı ve kısa çağrı yığını. Günlük 5
+         MB'ta döner, en fazla üç dosya tutulur. Site Günlükleri
+         ekranındaki "Hata Günlüklerini Göster" bu günlüğü ve
+         php.ini'nin gösterdiği hata dosyasını (yalnız okunur,
+         silinmez) da listeler. Hata ayıklama açıkken PHP'nin
+         kullanımdan kalkacak özellik uyarıları da kaydedilir.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
@@ -381,6 +402,133 @@
          olarak kapalıdır ve yalnız yönetici değiştirir.
 
   [ŞEMA] config.ws_ai_bulk_delete sütunu.
+
+  E-POSTA
+  --------------------------------------------------------
+
+  [YENİ] Şifre sıfırlama, sipariş, form ve yorum e-postaları
+         zamanlanmış genel iş (job.php) çalışıyorsa bir kuyruğa
+         yazılır ve genel iş tarafından gönderilir. Yavaş ya da
+         yanıt vermeyen bir e-posta sunucusu artık ziyaretçinin
+         sayfasını bekletmez; gönderilemeyen e-posta kaybolmaz,
+         bir buçuk gün boyunca altı kez yeniden denenir. Genel
+         iş son 15 dakikada çalışmadıysa (cron kurulmamış
+         sitelerde) e-postalar eskisi gibi hemen gönderilir.
+
+  [YENİ] Ayarlar › İşler › Posta kuyruğu ekranı: bekleyen,
+         son bir haftada gönderilen ve son bir ayda bırakılan
+         e-postalar, son hata, tek tek yeniden deneme ve silme,
+         "Şimdi çalıştır" düğmesi.
+
+  [YENİ] E-posta kampanyaları gönderilemeyen alıcıyı artık
+         "gönderildi" saymaz: e-posta altı kez yeniden denenir,
+         sonunda gönderilemeyen alıcılar kampanya ekranındaki
+         ilerleme kutusunda "teslim edilemedi" olarak sayılır.
+         Gönderen, alıcı başına tek bildirim alır (son denemede).
+         Kampanya işi gönderim sırasında tabloları kilitlemez;
+         yavaş bir e-posta sunucusu kişi ve kayıt ekranlarını
+         bekletmez.
+
+  [YENİ] Ticari kampanya e-postaları List-Unsubscribe ve
+         List-Unsubscribe-Post başlıklarını taşır: Gmail, Yahoo
+         ve Outlook'taki "Abonelikten çık" düğmesi alıcıyı tek
+         tıkla listeden çıkarır. Başlıklar DKIM imzasına dahil
+         edilir; config.php'de ENCRYPTION_KEY yoksa başlık
+         eklenmez.
+
+  [ŞEMA] email_recipients tablosuna claimed_at, claim_token,
+         attempts, last_error, next_attempt_at ve failed
+         sütunları, idx_pending dizini; yeni mail_outbox
+         tablosu. Çok sayıda kampanya göndermiş sitelerde
+         email_recipients büyüktür, yükseltme uzun sürebilir.
+
+  YEDEKLEME
+  --------------------------------------------------------
+
+  [YENİ] Otomatik yedek artık her hafta için tek bir zip arşivi
+         olarak yazılır (data/backups/auto_backup_<yıl-ay-hafta>.zip;
+         içinde veritabanı dökümü, dosyalar ve şablonlar). Arşiv
+         geçici klasörde tamamlanıp yerine taşınır; yarıda kalan bir
+         çalışma o haftanın önceki yedeğini bozmaz. Sunucuda PHP'nin
+         ZipArchive eklentisi yoksa yedek eskisi gibi klasör olarak
+         kalır.
+
+  [YENİ] Saklama: Ayarlar → Genel → Yedeklemeler'de kaç haftalık
+         otomatik yedeğin tutulacağı seçilir (varsayılan 4, 0 = hepsi).
+         Daha eskileri her otomatik yedeklemeden sonra silinir ve
+         etkinlik kaydına yazılır. Elle alınan yedeklere, kurulum
+         dökümlerine ve yükseltme öncesi dökümlere hiç dokunulmaz.
+
+  [YENİ] Uzak kopya: her otomatik yedeklemeden sonra arşiv bir FTP
+         sunucusuna (isteğe bağlı şifreli FTPS) ya da S3 uyumlu bir
+         depoya (Amazon S3, MinIO, Cloudflare R2, Wasabi vb.)
+         gönderilebilir. Parola ve gizli anahtar şifreli saklanır,
+         ekranda gösterilmez. "Kaydet ve bağlantıyı test et" küçük bir
+         deneme dosyası gönderir. Gönderilemeyen kopya etkinlik
+         kaydına yazılır, ayar kartında ve Sistem Durumu'ndaki "Son
+         Yedek" kutusunda uyarı olarak görünür. Klasör olarak
+         tutulan yedek uzağa gönderilmez.
+
+  [YENİ] Yedek Yöneticisi zip arşivlerini de listeler; her satırda
+         türü (arşiv / klasör) ve boyutu görünür, arşiv olduğu gibi
+         indirilir ya da silinir.
+
+  [ŞEMA] config tablosuna backup_keep, backup_remote_type,
+         backup_remote_settings, backup_remote_error,
+         backup_remote_sent_at sütunları.
+
+  OTURUM, HESAP VE GÜVENLİK
+  --------------------------------------------------------
+
+  [YENİ] İki adımlı oturum açma. Bir hesap, paroladan sonra
+         telefondaki bir doğrulama uygulamasının (Google
+         Authenticator, Microsoft Authenticator, Aegis,
+         1Password gibi) ürettiği 6 haneli kodu isteyebilir.
+         Kişi bunu hesap sayfasından kendisi açar: ekranda
+         gösterilen anahtar uygulamaya elle girilir (QR kod
+         yoktur), uygulamanın gösterdiği ilk kodla onaylanır.
+         Açılırken 10 kurtarma kodu verilir; telefon kaybolursa
+         her biri bir kez oturum açtırır ve bir daha
+         gösterilmez. Kod e-postayla gönderilmez; bu sürümde
+         yalnız doğrulama uygulaması desteklenir.
+
+  [YENİ] Ayarlar › Güvenlik'te "İki Adımlı Doğrulama": bir
+         rolden başlayarak zorunlu kılınabilir (yöneticiler;
+         yöneticiler ve tasarımcılar; yöneticiler, tasarımcılar
+         ve menejerler; oturum açan herkes). Zorunlu bir roldeki
+         kişi henüz kurmadıysa bir sonraki girişinde kurulum
+         ekranına yönlenir. Varsayılan "zorunlu değil"dir; herkes
+         kendi hesabında yine açabilir.
+
+  [YENİ] Yönetici, kullanıcı düzenleme ekranından bir kişinin
+         iki adımlı doğrulamasını sıfırlayabilir (doğrulama
+         uygulamasını ve kurtarma kodlarını birlikte kaybeden
+         kişi için). Kişi sonra yalnız parolasıyla girer ve
+         isterse yeniden kurar.
+
+  [GÜVENLİK] Google ile oturum açma iki adımlı doğrulamadan
+         muaf değildir: doğrulaması açık hesap Google ile
+         girdiğinde de kod sorulur. İstek başına kullanıcı adı ve
+         parola gönderen API çağrıları ve ShipWorks, iki adımlı
+         doğrulaması açık hesabı reddeder; böyle bir hesabın
+         parolasıyla çalışan bir entegrasyon varsa çalışmayı
+         bırakır. Ekip cihazlarından giriş (POST /auth/login) bu
+         hesaplarda doğrulama uygulamasının kodunu ya da bir
+         kurtarma kodunu otp alanında ister.
+
+  [GÜVENLİK] İki adımlı doğrulama anahtarları config.php'deki
+         şifreleme anahtarıyla (ENCRYPTION_KEY) şifrelenerek
+         saklanır; şifreleme anahtarı olmayan sitede özellik
+         açılamaz. Ayarlar › Ticaret'teki "Şifreleme Anahtarını
+         Sıfırla" kullanılırsa bütün iki adımlı doğrulama
+         anahtarları okunamaz olur: doğrulaması açık kişiler
+         yalnız kurtarma kodlarıyla girebilir, doğrulama
+         uygulaması için yöneticinin kullanıcı ekranından
+         sıfırlaması gerekir. Şifreleme anahtarı config.php'den
+         silinse de iki adımlı doğrulama kendiliğinden kapanmaz.
+
+  [ŞEMA] user_mfa ve user_mfa_recovery tabloları;
+         config.mfa_required_role sütunu.
 
   VERİTABANI
   --------------------------------------------------------

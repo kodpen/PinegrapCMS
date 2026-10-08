@@ -111,6 +111,15 @@ function pg_cron_last_runs()
  *               that cries wolf teaches the operator to scroll past it.
  * - dispatch    False for the general job, which is the host rather than a
  *               candidate.
+ * - lane        Concurrency class for the dispatcher, 'light' or 'heavy'. At
+ *               most one job per lane holds a dispatch lock at a time, so a
+ *               long heavy job (a backup, a full SEO pass) runs alongside the
+ *               short light ones instead of holding them all up, while two
+ *               heavy jobs never overlap. Missing means 'light'.
+ * - lock        Optional dispatch lock length in seconds, for a job that can
+ *               outlast JOB_DISPATCH_LOCK_SECONDS. The lock is the safety net
+ *               for a process killed outright; a lock shorter than the run
+ *               would let the next tick start the same job a second time.
  *
  * Order is the display order, and it is also the tie-break used when several
  * jobs are equally overdue - which is why the SEO score job is listed before
@@ -127,6 +136,7 @@ function pg_cron_jobs()
             'interval'    => 60,
             'stale_after' => 21600,
             'dispatch'    => false,
+            'lane'        => 'light',
         ),
         'email_campaign_job' => array(
             'label'       => lang('Email Campaigns'),
@@ -134,6 +144,7 @@ function pg_cron_jobs()
             'interval'    => 300,
             'stale_after' => 21600,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         'recurring_payment_job' => array(
             'label'       => lang('Recurring payments'),
@@ -141,6 +152,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         'membership_job' => array(
             'label'       => lang('Memberships'),
@@ -148,6 +160,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         'update_exchange_rates' => array(
             'label'       => lang('Exchange rates'),
@@ -155,6 +168,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         'update_search_index' => array(
             'label'       => lang('Search index'),
@@ -162,6 +176,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'heavy',
         ),
         'seo_score_job' => array(
             'label'       => lang('SEO scores'),
@@ -169,6 +184,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'heavy',
         ),
         'seo_analyze_job' => array(
             'label'       => lang('SEO structure'),
@@ -176,6 +192,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'heavy',
         ),
         'auto_backup' => array(
             'label'       => lang('Auto backup'),
@@ -183,6 +200,8 @@ function pg_cron_jobs()
             'interval'    => 604800,
             'stale_after' => 1209600,
             'dispatch'    => true,
+            'lane'        => 'heavy',
+            'lock'        => 14400,
         ),
         'waf_ranges_job' => array(
             'label'       => lang('Bot IP lists'),
@@ -190,6 +209,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 604800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // Event notifications wait in a queue until this runs, so its interval
         // is the delay an integration sees between something happening here and
@@ -198,12 +218,12 @@ function pg_cron_jobs()
         // one indexed read.
         // Runs inline, not in the rotation.
         //
-        // The rotation hands out one job per tick and holds a site-wide lock
-        // while it runs, so a webhook could sit behind a backup for the length
-        // of that backup. The whole value of a webhook is that it is prompt,
-        // and this one is cheap enough not to need a turn: on a site with no
-        // subscriptions it is a single indexed read. job.php therefore calls
-        // it on every tick, and the dispatcher skips it.
+        // The rotation hands out one job per tick, so a webhook would wait its
+        // turn behind every other due job in its lane, one tick each. The
+        // whole value of a webhook is that it is prompt, and this one is cheap
+        // enough not to need a turn: on a site with no subscriptions it is a
+        // single indexed read. job.php therefore calls it on every tick, and
+        // the dispatcher skips it.
         //
         // It stays a real script as well, so an operator who wants delivery
         // within a minute can point a dedicated cron entry at
@@ -214,6 +234,7 @@ function pg_cron_jobs()
             'interval'    => 60,
             'stale_after' => 3600,
             'dispatch'    => true,
+            'lane'        => 'light',
             'inline'      => true,
         ),
         // Marketplace synchronisation. In the rotation rather than inline, and
@@ -234,6 +255,7 @@ function pg_cron_jobs()
             'interval'    => 300,
             'stale_after' => 86400,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // Device notifications wait in the same shape of queue and for the same
         // reason: the request that caused one must not wait on a push service.
@@ -248,6 +270,29 @@ function pg_cron_jobs()
             'interval'    => 60,
             'stale_after' => 3600,
             'dispatch'    => true,
+            'lane'        => 'light',
+            'inline'      => true,
+        ),
+        // Queued e-mail (includes/fn/mail_queue.php). Inline, and with no
+        // switch: job.php works the queue on every run unconditionally.
+        //
+        // email() only queues a message while the general job has finished
+        // in the last fifteen minutes, and sends it at once otherwise. The
+        // queue therefore exists exactly when the general job runs, and the
+        // general job is what empties it. A switch an operator could turn off
+        // would break that promise: rows would keep being written and never
+        // sent. dispatch false keeps it off the settings screen's switches
+        // and out of the rotation.
+        //
+        // mail_job.php remains a script of its own for an operator who wants
+        // a dedicated cron entry for mail.
+        'mail_job' => array(
+            'label'       => lang('Mail queue'),
+            'script'      => 'mail_job.php',
+            'interval'    => 60,
+            'stale_after' => 3600,
+            'dispatch'    => false,
+            'lane'        => 'light',
             'inline'      => true,
         ),
         // Overdue receivable reminders. Once a day is the finest the setting
@@ -259,6 +304,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // The accountant's monthly pack. Daily, and the script decides: it
         // builds last month's pack once, on the first run of a month that
@@ -269,6 +315,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // Repeating invoices (maintenance contracts, rents): writes each one
         // that has come due. Daily; a visit to the invoice list runs it too.
@@ -278,6 +325,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // Low stock notices: the products newly at or below their minimum,
         // to the bell and the subscribed devices. Hourly, so a sale anywhere
@@ -289,6 +337,7 @@ function pg_cron_jobs()
             'interval'    => 3600,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // Repeating expenses (rent, subscriptions): writes each one that has
         // come due. Daily; a visit to the expenses list runs it too.
@@ -298,6 +347,7 @@ function pg_cron_jobs()
             'interval'    => 86400,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // Repeating workspace tasks, and the requests to Claude and Pinegrap AI
         // that waited. Every five minutes, so a copy due today is handed out in
@@ -313,6 +363,7 @@ function pg_cron_jobs()
             'interval'    => 300,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
         // "Update translations" jobs the server engines work (Google Cloud
         // Translation), and the ones left open for a day to close. Every five
@@ -325,6 +376,7 @@ function pg_cron_jobs()
             'interval'    => 300,
             'stale_after' => 172800,
             'dispatch'    => true,
+            'lane'        => 'light',
         ),
     );
 }
@@ -635,16 +687,316 @@ function pg_cron_job_is_enabled($name)
 }
 
 /**
- * Choose the job the general job should run in this tick, and take the lock.
+ * Whether cron_runs carries the per-job dispatch lock (2026.4.8).
+ *
+ * Until the upgrade adds the column the dispatcher keeps the site-wide lock in
+ * config.job_dispatch_lock_until; reading a column that is not there would end
+ * the general job in output_error() on every tick. Asked once per request: the
+ * dispatcher and the shutdown handler that releases its lock must agree on
+ * which lock was taken.
+ *
+ * @return bool
+ */
+function pg_cron_lock_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = db_item("SHOW TABLES LIKE 'cron_runs'")
+            && db_item("SHOW COLUMNS FROM cron_runs WHERE Field = 'locked_until'");
+    }
+
+    return $ready;
+}
+
+/**
+ * Run record and dispatch lock per job, keyed by job name.
+ *
+ * pg_cron_last_runs() answers the health readers with timestamps alone; the
+ * dispatcher needs the lock beside each one. locked_until reads as 0 while the
+ * column is not there yet.
+ *
+ * @return array<string,array{last_run_at:int,locked_until:int}>|null Null when
+ *         the table does not exist.
+ */
+function pg_cron_run_rows()
+{
+    if (!db_item("SHOW TABLES LIKE 'cron_runs'")) {
+        return null;
+    }
+
+    $lock_column = pg_cron_lock_ready() ? 'locked_until' : '0 AS locked_until';
+
+    $runs = array();
+
+    foreach (db_items("SELECT job_name, last_run_at, " . $lock_column . " FROM cron_runs") as $row) {
+        $runs[$row['job_name']] = array(
+            'last_run_at'  => (int) $row['last_run_at'],
+            'locked_until' => (int) $row['locked_until'],
+        );
+    }
+
+    return $runs;
+}
+
+/**
+ * Dispatch lane of a catalogue entry: 'heavy' when it says so, otherwise
+ * 'light', so an entry written without a lane joins the short jobs.
+ *
+ * @param array $job One pg_cron_jobs() entry.
+ * @return string
+ */
+function pg_cron_lane($job)
+{
+    return (isset($job['lane']) && ($job['lane'] === 'heavy')) ? 'heavy' : 'light';
+}
+
+/**
+ * The job each dispatch lane would run next. Pure: no database, no files.
+ *
+ * A lane is a concurrency class: while any job of a lane holds an unexpired
+ * lock, that lane hands out nothing. Otherwise its candidate is the due job
+ * that has waited longest - the smallest last_run_at, with the catalogue order
+ * deciding a tie because the comparison is strict. A job is due once its
+ * interval has passed since it last finished.
+ *
+ * The lock check covers every dispatchable job in $jobs, $allowed or not: a
+ * job switched off while it runs is still running, and its lane is still
+ * busy. $allowed only narrows who may be chosen; the caller puts there the
+ * jobs that are switched on, present on disk and not held back by their own
+ * config gate.
+ *
+ * @param array    $jobs    Catalogue in pg_cron_jobs() form. Reads dispatch,
+ *                          inline, interval and lane (missing lane = light).
+ * @param array    $runs    name => array('last_run_at' => int, 'locked_until' => int).
+ * @param int      $now     Unix time.
+ * @param array|null $allowed Names that may be chosen; null for all.
+ * @return array{light:string|null,heavy:string|null}
+ */
+function pg_cron_pick($jobs, $runs, $now, $allowed = null)
+{
+    $now = (int) $now;
+    $locked = array('light' => false, 'heavy' => false);
+    $due = array('light' => array(), 'heavy' => array());
+
+    foreach ($jobs as $name => $job) {
+
+        // The general job is the host, and an inline job is run by job.php
+        // itself on every tick; neither takes a turn or a lock here.
+        if (empty($job['dispatch']) || !empty($job['inline'])) {
+            continue;
+        }
+
+        $lane = pg_cron_lane($job);
+
+        $last_run = isset($runs[$name]['last_run_at']) ? (int) $runs[$name]['last_run_at'] : 0;
+        $locked_until = isset($runs[$name]['locked_until']) ? (int) $runs[$name]['locked_until'] : 0;
+
+        if ($locked_until > $now) {
+            $locked[$lane] = true;
+            continue;
+        }
+
+        if (($allowed !== null) && !in_array($name, $allowed, true)) {
+            continue;
+        }
+
+        // A job that also has its own crontab entry writes last_run_at itself,
+        // whoever started it, so it never looks overdue here and is never run
+        // twice.
+        if (($now - $last_run) < (int) $job['interval']) {
+            continue;
+        }
+
+        $due[$lane][$name] = $last_run;
+    }
+
+    $pick = array('light' => null, 'heavy' => null);
+
+    foreach (array('light', 'heavy') as $lane) {
+
+        if ($locked[$lane]) {
+            continue;
+        }
+
+        $selected_run = 0;
+
+        foreach ($due[$lane] as $name => $last_run) {
+
+            if (($pick[$lane] === null) || ($last_run < $selected_run)) {
+                $pick[$lane] = $name;
+                $selected_run = $last_run;
+            }
+        }
+    }
+
+    return $pick;
+}
+
+/**
+ * Choose the job the general job should run in this tick, and take its lock.
  *
  * Returns a path rather than running anything itself, because the caller has
  * to include it at global scope: included from inside a function, a job's
  * top-level code would execute in that function's local scope and every
  * variable it sets would be invisible to the functions it calls.
  *
+ * Still one job per tick, though two lanes may be busy at once. Several of the
+ * dispatched scripts call exit() from inside their own flow, and each one is
+ * written as a whole request, so two of them cannot be included one after the
+ * other in the same process. Parallelism comes from the ticks instead: tick N
+ * starts the backup in the heavy lane, tick N+1 finds that lane locked and
+ * hands a light job its turn while the backup is still running.
+ *
  * @return string Absolute path of the script to include, or '' for nothing.
  */
 function pg_cron_dispatch_next()
+{
+    $allowed = pg_cron_dispatch_list();
+
+    if (!$allowed) {
+        return '';
+    }
+
+    if (!pg_cron_lock_ready()) {
+        return pg_cron_dispatch_next_legacy();
+    }
+
+    // null means the cron_runs table does not exist, and that table is the
+    // whole basis of the decision below. Without it every job would look
+    // overdue on every tick.
+    $runs = pg_cron_run_rows();
+
+    if ($runs === null) {
+        return '';
+    }
+
+    $jobs = pg_cron_jobs();
+    $candidates = array();
+
+    foreach ($jobs as $name => $job) {
+
+        if (empty($job['dispatch']) || !empty($job['inline'])) {
+            continue;
+        }
+
+        if (!in_array($name, $allowed, true)) {
+            continue;
+        }
+
+        if (!file_exists(PG_FUNCTIONS_DIR . '/' . $job['script'])) {
+            continue;
+        }
+
+        // A job whose config gate is closed would start, log a complaint and
+        // exit without doing anything. Skipping it here keeps that noise out
+        // of the activity log entirely.
+        if (!pg_cron_job_active($name)) {
+            continue;
+        }
+
+        $candidates[] = $name;
+    }
+
+    $pick = pg_cron_pick($jobs, $runs, time(), $candidates);
+
+    // Both lanes free and both with a job due: the one that has waited longer
+    // goes first, light on a tie. The other lane is offered again next tick.
+    $selected = $pick['light'];
+
+    if ($pick['heavy'] !== null) {
+
+        $light_run = ($selected !== null && isset($runs[$selected])) ? $runs[$selected]['last_run_at'] : 0;
+        $heavy_run = isset($runs[$pick['heavy']]) ? $runs[$pick['heavy']]['last_run_at'] : 0;
+
+        if (($selected === null) || ($heavy_run < $light_run)) {
+            $selected = $pick['heavy'];
+        }
+    }
+
+    if ($selected === null) {
+        return '';
+    }
+
+    // The lock expires on its own. pg_cron_dispatch_finished() releases it at
+    // the end of a normal run and after a fatal error, but a process killed
+    // outright runs no shutdown handler, and a lock nothing can clear would
+    // keep the job, and its lane, out of the rotation for good.
+    if (isset($jobs[$selected]['lock'])) {
+        $lock_seconds = (int) $jobs[$selected]['lock'];
+    } else {
+        $lock_seconds = defined('JOB_DISPATCH_LOCK_SECONDS') ? (int) JOB_DISPATCH_LOCK_SECONDS : 3600;
+    }
+
+    if ($lock_seconds < 60) {
+        $lock_seconds = 60;
+    }
+
+    // Claimed in one statement, because a job that never ran has no row yet
+    // and a read followed by a write would let two ticks both take it. The new
+    // row carries last_run_at 0, which every reader takes for "never ran".
+    //
+    // With ON DUPLICATE KEY UPDATE, affected rows is 1 for an insert, 2 for an
+    // update that changed the row, and 0 when the row was left as it was -
+    // here, when the IF() kept an unexpired lock held by another tick. Two
+    // ticks claiming in the same second also see 0 on the second claim,
+    // because the first one's lock has not expired.
+    db(
+        "INSERT INTO cron_runs (job_name, last_run_at, locked_until)
+         VALUES ('" . e($selected) . "', 0, UNIX_TIMESTAMP() + " . (int) $lock_seconds . ")
+         ON DUPLICATE KEY UPDATE
+             locked_until = IF(locked_until < UNIX_TIMESTAMP(), VALUES(locked_until), locked_until)");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return '';
+    }
+
+    // The claim is atomic for the job, the lane check above was a read. Two
+    // ticks that read the same moment can claim two different jobs of one
+    // lane; whichever sees the other's lock after claiming gives its own
+    // back. Both may give back, which runs nothing this tick - the safe
+    // direction.
+    $lane = pg_cron_lane($jobs[$selected]);
+    $lane_mates = array();
+
+    foreach ($jobs as $name => $job) {
+
+        if (($name === $selected) || empty($job['dispatch']) || !empty($job['inline'])) {
+            continue;
+        }
+
+        if (pg_cron_lane($job) === $lane) {
+            $lane_mates[] = "'" . e($name) . "'";
+        }
+    }
+
+    if ($lane_mates && db_value(
+        "SELECT COUNT(*)
+         FROM cron_runs
+         WHERE
+             (job_name IN (" . implode(', ', $lane_mates) . "))
+             AND (locked_until > UNIX_TIMESTAMP())")
+    ) {
+        db("UPDATE cron_runs SET locked_until = 0 WHERE job_name = '" . e($selected) . "'");
+
+        return '';
+    }
+
+    pg_cron_dispatch_current($selected);
+
+    return PG_FUNCTIONS_DIR . '/' . $jobs[$selected]['script'];
+}
+
+/**
+ * The dispatcher as it works before the 2026.4.8 upgrade: one site-wide lock
+ * in config.job_dispatch_lock_until, whatever the job.
+ *
+ * Kept for an installation that took the code without the upgrade, where
+ * cron_runs has no locked_until column to lock per job.
+ *
+ * @return string Absolute path of the script to include, or '' for nothing.
+ */
+function pg_cron_dispatch_next_legacy()
 {
     $allowed = pg_cron_dispatch_list();
 
@@ -850,6 +1202,11 @@ function pg_cron_dispatch_output($buffer)
  * when the dispatched script calls exit(), which several of them do from
  * inside their own control flow, and when the run ends in a fatal error.
  *
+ * Releases the lock pg_cron_dispatch_next() took: the job's own row in
+ * cron_runs, or the site-wide one in config before the 2026.4.8 upgrade.
+ * Clearing a lock that is already clear changes nothing, so a second call
+ * does no harm.
+ *
  * @return void
  */
 function pg_cron_dispatch_finished()
@@ -872,6 +1229,18 @@ function pg_cron_dispatch_finished()
 
     if ($name !== '') {
         pg_cron_ran($name);
+    }
+
+    // Stamped above before the lock is released here, so a tick that finds
+    // the lock gone also finds the job no longer due and does not start it
+    // again.
+    if (pg_cron_lock_ready()) {
+
+        if ($name !== '') {
+            db("UPDATE cron_runs SET locked_until = 0 WHERE job_name = '" . e($name) . "'");
+        }
+
+        return;
     }
 
     db("UPDATE config SET job_dispatch_lock_until = 0");

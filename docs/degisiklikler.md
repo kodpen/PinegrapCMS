@@ -340,6 +340,566 @@ fatura + tahsilat, kampanya işi uçtan uca (sandbox'ta koşulmadı).
 
 ---
 
+## 2026.4.8 — Posta kuyruğu (`mail_outbox`), kampanya işinde yeniden deneme ve kilitsiz gönderim, List-Unsubscribe tek tık (2026-10-08)
+
+**Sorun.**
+- `email()` SMTP konuşmasını isteğin içinde yapıyordu. Yavaş ya da yanıt
+  vermeyen sunucu ziyaretçinin isteğini (şifre sıfırlama, sipariş fişi, form
+  bildirimi) PHPMailer'ın zaman aşımı boyunca bekletiyor, DB bağlantısını o
+  süre tutuyordu (`includes/db_guard.php` başlığındaki forgot_password vakası);
+  gönderilemeyen e-posta yalnız günlüğe düşüp kayboluyordu.
+- `email_campaign_job.php` alıcı başına `LOCK TABLES email_recipients,
+  email_campaigns, contacts, log WRITE` (+ takvim tabloları) alıp SMTP'yi
+  kilit altında konuşuyordu: kampanya gönderilirken kişi ve günlük okuyan her
+  ekran bekliyordu. `email()` dönüşüne bakılmadığı için gönderilemeyen alıcı
+  da `complete='1'` oluyordu.
+- Ticari kampanyalarda `List-Unsubscribe` yoktu; Gmail/Yahoo toplu gönderici
+  kuralları (2024) tek tık abonelikten çıkmayı istiyor.
+
+**Karar.**
+- **(a) Kampanya işi kilitsiz.** Aday id'ler okunur, tek koşullu `UPDATE ...
+  SET claimed_at, claim_token WHERE id IN (...) AND claimed_at = 0` ile
+  sahiplenilir (MyISAM'da tek ifade atomik; iki iş aynı satırı alamaz),
+  sahiplenilenler PK + token ile yeniden okunur. Başarısız gönderim
+  `attempts`, `last_error`, `next_attempt_at` yazar (60 s, 5 dk, 30 dk, 2 sa,
+  6 sa, 24 sa — `api_webhook_backoff()` ile aynı takvim, ayrı fonksiyon
+  `pg_mail_backoff()`); altıncı denemede alıcı `complete='1', failed='1'` olur
+  ki kampanya kapanabilsin. `notify_sender` yalnız son denemede: aksi hâlde
+  SMTP düşükken alıcı başına altı "teslim edilemedi" bildirimi çıkardı.
+  15 dakikadan eski sahiplenme geri alınır. Yükseltilmemiş kurulumda
+  (`pg_email_retry_ready()` altı kolonu birden yoklar) eski LOCK TABLES akışı
+  aynen çalışır; hazırlık (opt-out, mail merge, altbilgi)
+  `email_campaign_job_prepare()`'e taşındı, iki akış da onu çağırır.
+  Motor değişikliği (InnoDB) bu işin konusu değil.
+- **(b) `email(['queue' => true])`.** Genel iş (`cron_runs.job`) ya da
+  yalnız posta için cron'a bağlanmış `mail_job` son 15 dakikada bittiyse ileti `mail_outbox`'a yazılır ve `true` döner; değilse
+  bugünkü gibi senkron gönderilir — cron kurmamış site hiçbir e-postayı
+  beklemez. Kuyruğu `job.php` her tıkta **koşulsuz** işler
+  (`pg_mail_queue_run(25, 20)`; `pg_cron_jobs()`'ta `mail_job`
+  `dispatch => false`, `inline => true`): kuyruğa yazma kararı genel işin
+  canlılığına bağlı olduğundan operatör şalteri olamaz — şalter kapalıyken
+  satır yazılıp hiç gönderilmezdi. `mail_job.php` ayrı cron girdisi isteyen
+  için. Sahiplenme InnoDB satır kilidiyle (`UPDATE ... WHERE status='queued'`,
+  etkilenen satır yoksa atla); 15 dk'dan eski `sending` geri döner (ölen bir
+  koşunun gönderdiği ileti ikinci kez gidebilir — kaybolmasından iyidir).
+  Gönderilen 7, bırakılan 30 gün tutulur. Ekler JSON'da `content_base64`
+  (geçersiz UTF-8 bayt `json_encode`'u sessizce `false` yapar); `path` eki
+  gönderim anında okunur, silinmez. `INSERT` `mysqli_query` ile — `db()`
+  başarısız sorguda isteği öldürür, kuyruk reddederse ileti senkron gider.
+  Kuyruğa alınanlar: şifre sıfırlama, sipariş fişi, ürün formu gönderici /
+  yönetici e-postaları, ürün sipariş e-postası, ödül programı, özel form
+  gönderici / yönetici (ikişer yol), üç yorum bildirimi. Hediye kartı ve
+  tekrarlayan ödeme hata e-postaları (operatör uyarısı) senkron kaldı.
+- **(c) List-Unsubscribe (RFC 8058).** `type='campaign'` +
+  `purpose='commercial'` iletide `<mailto:reply_to|from?subject=unsubscribe>,
+  <.../email_preferences.php?id=…&sig=…&unsubscribe=1>` ve
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click`; DKIM varsa iki başlık
+  `DKIM_extraHeaders` ile imzaya girer (RFC şartı). `ENCRYPTION_KEY` yoksa
+  imza üretilemez, başlık eklenmez. `email_preferences.php` POST
+  `List-Unsubscribe=One-Click`'i `validate_token_field()`'dan önce karşılar:
+  imza yetkidir, CSRF istenmez (RFC 8058 istemciden token beklemeyi yasaklar);
+  aynı adresin tüm kişileri `opt_in='0'`, düz metin 200, yönlendirme yok.
+  Yanlış imza 403.
+- **(d) Posta kuyruğu ekranı** `mail_queue.php` (manager): sayaçlar, genel
+  işin son koşusu, kuyruk etkin mi, son 100 satır, satır başına yeniden dene /
+  sil, "Şimdi çalıştır". Ayarlar › İşler'e bağlandı.
+
+**Ödün / açık.**
+- WAF her POST'u hassas sayar (`waf_is_sensitive_request`), adres başına
+  30/dk; tek tık POST'ları da bu sınıra girer. Değiştirilmedi.
+- Genel iş panelden elle bir kez koşturulursa 15 dakika boyunca e-postalar
+  kuyruğa yazılır; cron yoksa bir sonraki elle koşuya kadar bekler.
+- Kampanya işinde SMTP tamamen düşükken her alıcı PHPMailer zaman aşımını
+  ayrı ayrı bekler (önceki davranış); parti erken kesilmiyor.
+
+**Şema.** 8.30 `_email_retry`: `email_recipients.claimed_at`, `claim_token`,
+`attempts`, `last_error`, `next_attempt_at`, `failed`, `idx_pending
+(complete, next_attempt_at)`; `install_heavy_tables()`'a
+`'2026.4.8' => email_recipients`. 8.31 `_mail_outbox`: yeni `mail_outbox`
+(InnoDB), `get_tables()`'a eklendi.
+
+**Doğrulama.** Sandbox (MariaDB, PHP 8.3): yükseltme iki kez (17 ifade, ilk
+koşuda 9'u, ikincide 17'si yerindeydi); kampanya işi SMTP'siz → `attempts=1`,
+60 s bekleme, ikinci koşu atladı, `attempts=5` → `complete=1, failed=1`,
+kampanya `complete`, tek günlük satırı ve tek gönderici bildirimi; `failed`
+kolonu düşürülünce eski LOCK TABLES akışı. Kuyruk: `cron_runs.job` tazeyken
+`email(['queue'=>true])` satır yazdı (ikili ek dahil), `job.php` denedi
+(`attempts=1`, hata, `send_after` ileri); `job` 20 dk geride → senkron;
+6. denemede `failed` + günlük. Yerel SMTP (Python smtpd) ile kuyruk `sent`,
+`forgot_password.php` web isteği kuyruğa yazdı ve `job.php` gönderdi;
+kampanya iletisinde iki List-Unsubscribe başlığı. Tek tık: doğru imza 200 +
+`opt_in=0` + günlük, yanlış imza 403, tokensız normal form POST'u yine
+reddedildi. `mail_queue.php`: sayfa, tokensız POST reddi, retry / delete /
+run_now. DKIM imzasının başlıkları kapsadığı ve gerçek bir posta
+sağlayıcısının tek tık düğmesi sandbox'ta denenemedi.
+
+---
+
+## 2026.4.8 — Cron dağıtıcısı: iş başına kilit, iki şerit (light / heavy); şema 8.32 `cron_runs.locked_until` (2026-10-08)
+
+**Sorun.** `pg_cron_dispatch_next()` her tıkta bir iş seçip
+`config.job_dispatch_lock_until` ile **site geneli** kilit alıyordu
+(varsayılan 3600 sn). `auto_backup` (`max_execution_time 0`) sürerken
+kampanya (300 sn), `api_sync_job`, `translation_job`,
+`workspace_recurring_job` ve günlük ERP işleri yedeğin sonunu bekliyordu.
+
+**Karar.**
+- Tık başına yine **tek** iş. Dağıtılan betikler kendi akışlarının ortasında
+  `exit()` çağırabiliyor ve her biri tam bir istek gibi yazılmış; aynı
+  süreçte ikinci bir `include` güvenli değil. Paralellik tıklardan gelir:
+  tık N yedeği başlatır, tık N+1 yedek sürerken bir hafif işi seçer.
+- Kilit **iş başına**: `cron_runs.locked_until` (8.32). Sahiplenme tek
+  ifade: `INSERT … VALUES (name, 0, now+lock) ON DUPLICATE KEY UPDATE
+  locked_until = IF(locked_until < now, VALUES(locked_until), locked_until)`;
+  `mysqli_affected_rows` 1 (insert) / 2 (update) → sahip, 0 → başka tık
+  tutuyor. Hiç koşmamış işin satırı yoktur, SELECT-sonra-INSERT yarış
+  taşırdı. Yeni satırın `last_run_at = 0` değeri "hiç çalışmadı" anlamını
+  korur (Sistem Durumu `< 1` → Never; API meta `0` → stale).
+- **Şerit** = eşzamanlılık sınıfı, katalogda (`pg_cron_jobs()` `'lane'`):
+  `heavy` = `auto_backup`, `seo_score_job`, `seo_analyze_job`,
+  `update_search_index`; geri kalanı `light` (eksik anahtar `light`
+  sayılır). Bir şeritte aynı anda en fazla bir iş kilitli olur. İki şerit de
+  aday verirse en uzun bekleyen seçilir, eşitlikte `light`.
+- `lane` için **kolon eklenmedi**: şerit katalogun özelliğidir, DB'de onu
+  okuyan hiçbir kod yok; okuyucusu olmayan kolon tutulmaz.
+- `auto_backup` için kilit `'lock' => 14400` (yedek bir saati aşabilir;
+  kilit yalnız öldürülen süreç için emniyet ağıdır, koşudan kısa kilit aynı
+  işi ikinci kez başlatırdı). Diğerleri `JOB_DISPATCH_LOCK_SECONDS`
+  (varsayılan 3600, en az 60).
+- Seçim saf fonksiyonda: `pg_cron_pick($jobs, $runs, $now, $allowed)`
+  (`tests/cron_test.php`). Şerit kilidi `$allowed`'dan bağımsız bakılır:
+  koşarken kapatılan iş hâlâ koşuyordur ve şeridini tutar.
+- Şerit denetimi bir okumadır, iş sahiplenmesi atomik. Aynı anda okuyan iki
+  tık aynı şeritten iki ayrı işi sahiplenebilirdi; sahiplenen tık şerit
+  arkadaşlarından birinin kilidini görürse kendi kilidini geri bırakır
+  (ikisi de bırakabilir — o tıkta hiçbir şey koşmaz, güvenli yön).
+- `config.job_dispatch_lock_until` **kaldırılmadı** (yayınlanmış şema):
+  kolon yokken (`pg_cron_lock_ready()` false) dağıtıcı eski gövdeyi
+  (`pg_cron_dispatch_next_legacy()`) aynen çalıştırır, `pg_cron_dispatch_finished()`
+  eski kilidi bırakır.
+
+**Ödün.** Sitede aynı anda iki dağıtılmış iş koşabilir (bir hafif, bir ağır);
+sunucu yükü yedek sırasında artar. Ağır işlerin kendi aralarındaki sırası
+değişmedi.
+
+**Açık kalan.** Ağır kilit süresi (14400) ve şerit listesi ürün sahibinin
+onayında. Sandbox'ta doğrulandı: heavy kilitliyken light iş seçildi, üç
+eşzamanlı `php job.php` aynı işi iki kez başlatmadı, süresi dolan kilit geri
+alındı, kolon yokken legacy yol `config.job_dispatch_lock_until` ile çalıştı.
+
+---
+
+## 2026.4.8 — Merkezî hata kaydı: `includes/fn/errors.php`, `php_errors.log`, Site Günlükleri'nde gösterim (2026-10-08)
+
+**Sorun.** Yakalanmamış istisna ve ölümcül hata operatöre görünmüyordu:
+yalnız sunucunun hata günlüğüne düşüyordu, paylaşımlı hostta o dosya ya yok
+ya da sitenin okuyamadığı bir yerde. `view_log.php` yalnız üç `error_log`
+dosyasına (yazılım, ana dizin, kurulum) bakıyordu. PHP 8.5/9'a hazırlık için
+kullanımdan kalkma (deprecation) listesi de hiçbir yerde toplanmıyordu
+(`init.php` `E_DEPRECATED`'ı `error_reporting`'den çıkarıyor).
+
+**Karar.**
+- İşleyiciler **yalnız kaydeder**, davranışı değiştirmez: hata işleyicisi
+  her zaman `false` döner (PHP'nin kendi `display_errors`/`error_log` akışı
+  sürer; çift kayıt kabul), istisna işleyicisi PHP'nin varsayılanını taklit
+  eder (500, `DEBUG` açıksa mesaj, değilse `lang('An unexpected error
+  occurred.')`, CLI'da stderr, `exit(255)`). Önceden kurulu işleyici varsa
+  zincirlenir. `error_reporting` ayarı ve `mysqli_report(MYSQLI_REPORT_OFF)`
+  sözleşmesi değişmedi; DB'ye dokunulmaz (`log_activity()` yok) — kapanış
+  işleyicisi bağlantının gitmiş olabileceği anda çalışır.
+- **Susturma ölçütü:** `@` `error_reporting()`'i PHP 7'de 0'a, PHP 8'de ölümcül
+  maskeye (4437) düşürür; ikisi de "susturulmuş" sayılır ve kaydedilmez
+  (kod tabanında binlerce `@mysqli_query` var). `error_reporting`'de olmayan
+  hata kaydedilmez; tek istisna `DEBUG` açıkken susturulmamış
+  `E_DEPRECATED`/`E_USER_DEPRECATED`.
+- **Sel tavanı:** uyarı/bildirim/deprecation için aynı `file:line` istek
+  başına bir kez, istek başına toplam 50 satır. Ölümcül kayıtlar tavana
+  girmez; `E_USER_ERROR` hem işleyiciden hem `error_get_last()`'ten
+  geldiği için anahtarla tekilleştirilir.
+- **Sızıntı:** sorgu dizesinde `password`, `token`, `k`, `sig`, `key`
+  (`x[]` biçimi dahil, büyük/küçük harf duyarsız) değerleri `***`; yığın
+  kareleri argümansız (`getTraceAsString()` kullanılmaz); `error_get_last()`
+  mesajındaki PHP'nin kendi "Stack trace:" kısmı kesilir.
+- **Biçim:** `[Y-m-d H:i:s] {json}` — `view_log.php`'nin mevcut tarih
+  önekli satır ayrıştırıcısı değişmeden okur. 5 MB'ta döner, üç dosya
+  (`.log`, `.1`, `.2`).
+- `view_log.php`: `php_errors`, `php_errors_1`, `php_errors_2` aday
+  dosyaları silinebilir; `ini_get('error_log')` mutlak bir dosyaysa
+  `php_ini` olarak **yalnız okunur** (site dışı/paylaşımlı olabilir, "Hata
+  günlüklerini sil" atlar; 10 MB'tan büyükse yalnız son 10 MB okunur —
+  `file()` bütün dosyada bellek sınırına takılır). JSON satırı
+  `pg_error_describe_line()` ile düz metne çevrilir.
+
+**Çözüm.**
+- Yeni modül `includes/fn/errors.php` (manifestin sonunda):
+  `pg_error_install()` (idempotent; `init.php`'de `functions.php`'den hemen
+  sonra, CLI dahil), `pg_error_record()`, `pg_error_uncaught()`,
+  `pg_error_shutdown()`; saf yardımcılar `pg_error_format_line()`,
+  `pg_error_trace_short()`, `pg_error_level_name()`, `pg_error_mask_url()`,
+  `pg_error_rotate_plan()`, `pg_error_describe_line()`; yollar
+  `pg_error_log_path()`, `pg_error_log_files()`.
+- `output_error()`'un `RuntimeException` yolu (`pg_seo_rendering()` /
+  `pg_error_throws()`) çağıranlarda yakalanır (`seo_structure.php`
+  `catch (Exception)`, `designer.php` ve `settings_pane.php`
+  `catch (Throwable)`); işleyiciye yalnız yakalanmadığında düşer.
+- Testler `tests/errors_test.php` (7 test). `tr.json`: 4 anahtar.
+
+**Açık kalan.** `router.php`'nin `init.php`'den önceki yolu (DB/config
+hatası) ve `get_file.php` işleyicisiz kalır. Tarih, işleyici kurulduğu anda
+geçerli saat diliminde yazılır; `init.php` site saat dilimini daha sonra
+ayarladığı için ondan önceki bir hata sunucu saat diliminde damgalanır.
+
+---
+
+## 2026.4.8 — Otomatik yedek: haftalık zip arşivi, saklama sayısı, FTP / S3 uzak kopya (2026-10-08)
+
+**Sorun.** `auto_backup.php` her hafta `data/backups/auto_backup_<Y-m-W>/`
+klasörüne veritabanı dökümünü ve `data/files`, `data/layouts` kopyasını
+yazıyordu. Hiçbir şey silinmiyordu: yıllık 52 tam kopya diskte birikiyordu.
+Yedek yalnız korunan sunucunun kendisinde duruyordu; sunucu kaybında yedek
+de kayboluyordu.
+
+**Çözüm.** Yeni modül `includes/fn/backup.php` (`functions.php` manifestinin
+sonunda). `auto_backup.php`'nin kapısı, `pg_cron_ran()`, `pdo_mysql` kontrolü
+ve 24 saat eşiği yerinde; gövde `pg_backup_run_auto()`'ya taşındı.
+
+- ZipArchive varsa yedek tek dosya: `data/backups/auto_backup_<Y-m-W>.zip`
+  (`sql.sql`, `files/<ad>`, `layouts/<ad>`). Döküm ve arşiv
+  `data/temp/auto_backup_<damga>_<rastgele>/` içinde hazırlanır, doğrulanır
+  (`close()` + `pg_looks_like_zip()`), sonra `rename()` ile yerine geçer —
+  başarısız çalışma haftanın önceki arşivini bozmaz. Öldürülen çalışmanın
+  bir günden eski çalışma klasörü sonraki çalışmada silinir. ZipArchive
+  yoksa eski klasör yedeği aynen (pclzip denenmez).
+- Saklama `config.backup_keep` (varsayılan 4, 0 = sınırsız):
+  `pg_backup_prune_list()` saf fonksiyondur ve yalnız
+  `^auto_backup_\d{4}-\d{2}-\d{2}(\.zip)?$` adlarını görür; silme anında ad
+  ikinci kez sınanır. `english_default` / `turkish_default`, elle adlandırılan
+  yedekler ve `pre_upgrade_*` dökümleri hiçbir koşulda listeye girmez.
+  Kolonlar yokken (kod gelmiş, yükseltme koşmamış) hiçbir şey silinmez.
+- Uzak kopya `config.backup_remote_type` (`''|ftp|s3`) +
+  `backup_remote_settings` (şifreli JSON `"<ciphertext>:<iv>"`,
+  `{ftp:{…}, s3:{…}}` — iki hedef ayrı anahtarda, tür değiştirmek ötekinin
+  parolasını kaybettirmez; "Hiçbiri" kaydı blob'u siler). FTP:
+  `ftp_ssl_connect`/`ftp_connect`, pasif kip, `<ad>.part` olarak yükle,
+  sonra `ftp_rename` (yarım yükleme gerçek adla kalmaz). S3: tek SigV4 imzalı
+  PUT, gövde diskten akar (`CURLOPT_INFILE`), `x-amz-content-sha256` dosyanın
+  sha256'sı, `pg_curl_tls()` + `pinegrap_user_agent()`; uç nokta boşsa
+  `https://s3.<bölge>.amazonaws.com`, şemasız uç nokta https sayılır,
+  path-style / virtual-host seçilebilir. Sonuç `backup_remote_error` /
+  `backup_remote_sent_at`'e yazılır, hata `log_activity(…, 'SYSTEM')`.
+- Ayarlar → Genel → Yedeklemeler kartı (`pgset-backup`): saklama sayısı,
+  hedef türü, FTP / S3 alanları (türe göre gösterilir), parola ve gizli
+  anahtar geri basılmaz (boş kutu = kayıtlıyı koru), son gönderim / son
+  hata satırı, "Kaydet ve bağlantıyı test et" (`backup_remote_test`:
+  kaydeder, sonra küçük bir deneme dosyası gönderir; sonuç notice — ayar
+  diyaloğu warning taşımıyor). Kolonlar yokken kart "yükseltmeyi çalıştırın"
+  der, kayıt modülü o kartın kolonlarını yazmaz.
+- Yedek Yöneticisi (`backups.php`) klasörlerin yanında `*.zip` dosyalarını
+  da listeler (tür rozeti, boyut `filesize`, tarih `filemtime`); arşiv olduğu
+  gibi indirilir / `unlink` edilir. Ad doğrulaması değişmedi: işlem yalnız
+  `backup_list()`'in döndürdüğü adla eşleşirse yapılır.
+- Sistem Durumu "Son Yedek": otomatik yedek adlı zip dosyaları da sayılır;
+  uzak kopya hata verdiyse kart sarıya döner (yeşilse) ve ağırlığın yarısı
+  düşer, hata metni ayrıntı satırında.
+
+**Gerekçe ve ödünler.**
+- Haftalık ad (`Y-m-W`) korunur: aynı haftadaki her çalışma o haftanın
+  arşivinin yerine yazar, saklama "hafta" sayar. ISO haftası yılbaşında
+  takvim yılıyla ayrışır (1 Ocak = 53. hafta, 29 Aralık = 1. hafta);
+  `pg_backup_auto_sort_key()` bu haftaları doğru sıraya koyar — düz sözlük
+  sırası yeni yedeği eski sanıyordu.
+- Aynı haftanın klasörü ve zip'i birlikte varsa (yükseltme haftası) hafta
+  bir kez sayılır, klasör zip'in eski kopyası olarak silinir.
+- Uzak kopya yalnız zip için: klasör yedeği uzağa gönderilmez (kartta
+  yazıyor). Uzak taraftaki eski kopyalar silinmez; saklama yalnız yereldir.
+- Çok parçalı S3 yüklemesi yok: tek PUT'un sınırı (AWS'de 5 GB) aşan site
+  için hata mesajı servisten gelir.
+- PHP'nin `ftp_ssl_connect()`'i sunucu sertifikasını doğrulamaz; FTPS
+  dinlemeye karşı korur, ortadaki adama karşı korumaz.
+
+**Şema.** 8.33 `_backup_settings`: `config.backup_keep`,
+`backup_remote_type`, `backup_remote_settings` (TEXT), `backup_remote_error`
+(TEXT), `backup_remote_sent_at`.
+
+**Doğrulama.** `tests/backup_test.php` (ad kapısı, saklama listesi,
+yılbaşı sıralaması, AWS SigV4 IAM örneğinin imza anahtarı / imza /
+kanonik istek özeti, URL kurulumu, hata ayıklama). Yerel alıcılarla
+`php` üzerinden: SigV4'ü bağımsız doğrulayan Python HTTP alıcısına
+path-style ve virtual-host PUT (3 MB'lık dosyada `Expect: 100-continue`
+dahil), yanlış gizli anahtarla 403 + `<Code>/<Message>` ayıklama;
+`pyftpdlib` ile düz FTP ve zorunlu TLS'li FTPS'e yükleme, üzerine yazma,
+yanlış parola, olmayan klasör, kapalı port. Sandbox kurulmadı: migration'ın
+iki kez koşturulması, gerçek `pg_backup_run_auto()` çalışması, ayar
+kaydı ve gerçek S3 / FTP servisleri doğrulanmadı.
+
+---
+
+## 2026.4.8 — İki adımlı oturum açma: doğrulama uygulaması (TOTP) ve yedek kodlar (8.40) (2026-10-08)
+
+**Sorun.** Oturum yalnız parolayla açılıyordu. Parolası sızan bir yönetici
+hesabı (başka sitede aynı parola, oltalama) panelin tamamını veriyordu;
+WAF'ın giriş sayacı tahmini yavaşlatır ama doğru parolayı durdurmaz. Kodda
+TOTP, base32 ya da QR için hazır bir parça yoktu.
+
+**Karar.**
+- **Yöntem: TOTP (RFC 6238) + 10 yedek kod.** Kişi hesap sayfasından açar;
+  ekranda base32 anahtar (dörtlü gruplar) ve `otpauth://` adresi gösterilir,
+  anahtar doğrulama uygulamasına **elle** girilir. **QR yok**: depoda QR
+  kütüphanesi yok, gömülecek bir PHP/JS kütüphanesinin 7.1 uyumu ve bakım
+  yükü bu sürüme alınmadı; dış QR servisi sırrı üçüncü tarafa vereceği için
+  kullanılmaz. Yedek kodlar `XXXX-XXXX` (I, O, 0, 1 yok), bir kez
+  gösterilir, SHA-256 olarak saklanır; kullanılan kodun satırı `used_at` ile
+  kalır (kalan sayısı için).
+- **E-posta kodu yöntemi bu sürümde yok.** Sıfırlama bağlantısı da aynı
+  posta kutusuna gittiği için ikinci adım olarak zayıf; ayrıca gönderim limiti
+  ve kuyrukla birlikte ele alınmalı. Şema (`user_mfa.method`) ikinci bir
+  yönteme yer bırakır.
+- **Zorunluluk role göre, varsayılan kapalı:** Ayarlar › Güvenlik'te
+  `config.mfa_required_role` (99 = zorunlu değil; 0 yönetici, 1 +tasarımcı,
+  2 +menejer, 3 herkes). Zorunlu roldeki 2FA'sız kişi girişte kurulum
+  ekranına düşer, oturum kurulum bitmeden açılmaz. Herkes (üyeler dahil)
+  kendi hesabında isteğe bağlı açabilir.
+- **Google ile giriş muaf değil.** `google_auth.php` doğrulanmış e-postayla
+  personel hesabına da bağlanabildiği için muafiyet, parola yerine Google
+  hesabını tek adım yapardı.
+- **Parola kabul eden API yolları 2FA'lı hesabı reddeder:** istek başına
+  parola taşıyan `api.php` (`username`/`password`) ve `shipworks.php`; bu
+  yollarda kod sorulacak bir ekran yok, kabul etmek ikinci adımı yan kapıdan
+  açmak olurdu. Cihazdan giriş (`POST /auth/login`) kodu alabildiği için
+  reddetmez, `otp` ister (TOTP ya da kurtarma kodu). Kurulum ekranı kilidi
+  (`install/index.php`) dokunulmadı.
+- **Kurtarma:** yedek kodlar; ikisi de kaybolursa yönetici kullanıcı
+  düzenleme ekranından sıfırlar (kendi rolünden düşük hesap için). Son çare
+  `user_mfa` satırını veritabanından silmek; config sabiti yok.
+- **Sır geri okunur, hash'lenmez:** `totp_secret` her girişte HMAC anahtarı
+  olarak gerekir; `ENCRYPTION_KEY` ile `"cipher:iv"` biçiminde şifrelenir
+  (`encrypt_string_with_iv()`, konnektör kimlik bilgilerinin deseni).
+  Anahtar tanımlı değilse özellik açılamaz.
+
+**Çözüm.** `includes/fn/mfa.php` (manifestte `auth.php`'den sonra), saf
+fonksiyonlar: `pg_base32_encode/decode` (RFC 4648; çözücü küçük harf, boşluk
+ve dolgusuzluğa toleranslı, çünkü anahtar elle yazılır; alfabe dışı karakter
+tüm girdiyi reddeder, 0→O / 1→I eşlemesi yok), `pg_totp_secret` (20 bayt,
+RFC 4226'nın önerdiği 160 bit), `pg_totp_step`, `pg_totp_code` (HMAC-SHA1,
+dinamik kesme; sayaç `pack('N*', 0, $step)` — 32 bit PHP'de `pack('J')` yok,
+üst kelime 6053 yılına kadar sıfır), `pg_totp_verify` (±1 adım; adaylar
+0, −1, +1 sırasıyla, `last_step` ve altı atlanır — RFC 6238 §5.2 tekrar
+kullanım; karşılaştırma `hash_equals`), `pg_totp_uri`,
+`pg_mfa_recovery_codes/normalize/hash`, `pg_mfa_format_secret`.
+
+Aynı dosyanın veritabanı bölümü: tablo yoklaması `pg_mfa_table_exists()`
+(`information_schema`, iki tablo birden, tam ad), `pg_mfa_available()`
+(tablolar + `ENCRYPTION_KEY` + openssl), sır `pg_mfa_secret_encode/decode`,
+kurulum `pg_mfa_begin_setup` (onaylanmamış anahtar 30 dk aynı kalır, ekran
+yenilense de değişmez) / `pg_mfa_confirm_setup` (bekleyen blob olduğu gibi
+`totp_secret`'e taşınır; 10 yeni kurtarma kodu; hesabın bütün hatırla-beni
+jetonları ve API cihazları düşer; etkinlik kaydını kendisi yazar),
+`pg_mfa_verify_code` (6 hane TOTP, 8 karakter kurtarma kodu; ikisi de
+etkilenen satır sayısına bakan koşullu `UPDATE` ile harcanır — eşzamanlı iki
+istek aynı kodla geçemez), `pg_mfa_disable` / `pg_mfa_reset`, deneme kovası
+`pg_mfa_attempt_blocked` (`waf_rate`: hesap başına 5, adres başına 30, 10
+dakikada; parola başarısı sıfırlamaz).
+
+**Giriş kapısı.** `pg_mfa_gate()` dört girişte (`index.php`,
+`membership_entrance.php`, `registration_entrance.php`, `google_auth.php`)
+parola kabul edilip sayaç temizlendikten **sonra**, cihaz sınırı ve jeton
+basılmadan **önce** çağrılır: 2FA açıksa (ya da rolü gerektiriyorsa)
+oturum kimliğini yeniler, 600 sn'lik bekleyen kaydı
+(`$_SESSION['software']['mfa_pending']`) yazar ve kök `mfa.php`'ye gönderir;
+o ana kadar `sessionuserid` ve `software[auth]` yoktur. Parola oturuma
+kopyalanmış liveform alanlarıyla birlikte kapıdan önce silinir (önceden
+başarı yolunun en sonunda siliniyordu; cihaz sınırı kapısı da çıkış
+yaptığında parola oturumda kalıyordu). `mfa.php`: doğrulama (TOTP ya da
+kurtarma kodu), kurulum (anahtar + `otpauth://` adresi + kopyala, ilk kod,
+kurtarma kodları bir kez, `.txt` indirme `data:` adresiyle — sunucuya
+gitmez), İptal yalnız sabit listedeki giriş ekranına döner; tamamlama
+sırası giriş akışlarıyla aynı (cihaz sınırı → jeton → oturum → sipariş).
+Sınır aşımı `waf_log`'a `rate-mfa` olarak da yazılır.
+`pg_device_limit_gate()` beşinci parametre `$mfa_passed` alır;
+`device_limit.php` ikinci adımdan geçmemiş bekleyen kaydı 2FA'lı hesap için
+reddeder. `delete_users.php` hesabın 2FA satırlarını siler. `init.php`
+`MFA_REQUIRED_ROLE` sabitini tanımlar (sütun yokken 99).
+
+**API yolları.** `initialize_user()` API dalında parola doğru ve hesap
+2FA'lıysa `API_MFA_REQUIRED` tanımlanır, kullanıcı yüklenmez,
+`API_AUTHENTICATED` tanımlanmaz (CSRF muafiyeti de yok), başarısızlık sayacı
+temizlenir. `api.php` genel kapısı bunu 401 `mfa_required` olarak söyler;
+genel kapının dışındaki uçlar zaten oturumlu kullanıcı istediği için
+reddeder. `POST /auth/login`: `otp` yoksa 401 `mfa_required`, deneme sınırı
+aşılınca 429 `rate_limited` (Retry-After 600, `mfa.php` ile aynı kova),
+yanlış kod 401 `unauthorized`; şemaya `otp` parametresi ve hata kataloğuna
+`mfa_required` eklendi. `shipworks.php` 2FA'lı hesaba Code 1 hatası döner,
+parola doğru olduğu için başarısızlık sayılmaz. `barcode_*_inventory.php`
+`API_USERNAME` tanımlamaz (oturumla çalışır); değişiklik gerekmedi.
+
+**Ekranlar.** Hesap güvenliği bölümü (`pg_account_security_section()`,
+profil sayfası ve özel düzenlerde `$account_security`) cihaz listesinin
+altında "İki adımlı doğrulama" parçasını basar (`pg_mfa_account_section()`):
+aç → anahtar + `otpauth://` adresi + ilk kod → kurtarma kodları ("Kaydettim"
+denene kadar oturumda durur, yenilemede kaybolmaz) → açık durumda tarih ve
+kalan kod sayısı, "Yeni kurtarma kodları" (geçerli TOTP ister) ve "Kapat"
+(parola + kod; Google'a bağlı parolasız hesapta yalnız kod; rolü zorunlu
+tutuyorsa bir sonraki girişte yeniden kurulacağı söylenir). Eylemler
+`account_security.php`'de (`mfa_*`), hepsi POST + CSRF, profil sayfasına
+döner; reddedilen kod profil formunun hata kutusunda görünür. Açma ve
+kapatma hesabın diğer jetonlarını ve API cihazlarını düşürür, bu tarayıcının
+jetonu kalır (`pg_mfa_revoke_other_sessions()`): parola değişimindeki gibi
+hepsini düşürüp yenisini basmak, tarayıcının yoldaki eski çerezli bir
+isteğiyle yarışıyor, oturumu (ve içindeki kurtarma kodlarını) kapatıyordu —
+sandbox'ta yaklaşık üç denemede bir kodlar hiç görünmedi.
+Kapatmadaki parola alanı giriş sayacına bağlı (`pg_login_throttle_guard` /
+`pg_login_record_failure`). Başka kullanıcı olarak oturum açılmışken parça
+yalnız durumu gösterir, eylemler reddedilir. Ayarlar › Güvenlik'te
+"İki Adımlı Doğrulama" kartı (`mfa_required_role`: zorunlu değil /
+yöneticiler / + tasarımcılar / + menejerler / oturum açan herkes);
+`pg_mfa_available()` yanlışsa seçim kapalıdır ve kayıt sütunu olduğu gibi
+bırakır (kapalı kontrol gönderilmez; boş değeri 0 okumak yöneticilere
+zorunluluk getirirdi). `edit_user.php` "Oturum açma ve oturumlar" kartında
+durum satırı, yan panelde "İki adımlı doğrulamayı sıfırla" (Google
+bağlantısını kaldırmayla aynı rol kuralı). Ayarlar › Ticaret'teki şifreleme
+anahtarı sıfırlama satırı, 2FA'sı açık en az bir hesap varsa anahtarların
+okunamaz olacağını yazar.
+
+**Anahtar okunamazsa kapalı taraf.** `pg_mfa_enabled()` yalnız tabloya
+ve satıra bakar, `pg_mfa_available()`'a bakmaz: `ENCRYPTION_KEY` silinir ya
+da openssl kalkarsa 2FA'lı hesap yine ikinci adıma gönderilir (yalnız
+parolayla girmez). O durumda TOTP doğrulanamaz ama kurtarma kodları yalnız
+hash'li olduğu için çalışır; `mfa.php` ve hesap parçası bunu söyler, hesap
+parçası "Yeni kurtarma kodları"nı gizler, "Kapat" kurtarma koduyla çalışır;
+kurulum ve kod gerektiren eylemler reddedilir. Zorunluluk
+(`pg_mfa_required_for_user`) anahtar yokken uygulanmaz: kurulum dayatılamaz.
+`edit_user.php` kişinin kendi hesabını sıfırlamaz — ikinci adımı kaldırmak,
+oturum çalınmış olsa bile parola ve kod istemeli (hesap sayfası ister).
+
+**Ödün.**
+- `ENCRYPTION_KEY` sıfırlanırsa (Ayarlar › Ticaret › "Şifreleme Anahtarını
+  Sıfırla") 2FA anahtarları **okunamaz** olur: sıfırlama ekranı TOTP
+  sırlarını yeniden şifrelemez, doğrulaması açık kişiler yalnız kurtarma
+  kodlarıyla girebilir ve doğrulama uygulaması için yöneticinin sıfırlaması
+  gerekir. Ekrana uyarı yazılır; yeniden şifreleme ayrı bir iş.
+- QR olmadığı için kurulum elle anahtar girmeyi ister.
+- Zorunlu roldeki ve henüz 2FA kurmamış bir hesabın parolasını ele geçiren
+  kişi kurulumu kendisi yapıp gerçek sahibini kilitleyebilir; çözüm yönetici
+  sıfırlaması.
+- Böyle bir hesabın parolasıyla çalışan `api.php` ya da ShipWorks
+  entegrasyonu, 2FA açılınca çalışmayı bırakır (`api.php` 401
+  `mfa_required`, ShipWorks Code 1 ile açıklama); cihaz uygulaması `otp`
+  göndermeyi öğrenmelidir.
+
+**Şema.** 8.40 `upgrade_2026_4_8_mfa()`: `user_mfa` (hesap başına bir satır:
+`method`, şifreli `totp_secret`, `enabled_at`, `last_step`, onaylanmamış
+kurulum için `pending_secret` / `pending_at`), `user_mfa_recovery`
+(`code_hash` CHAR(64) ascii, `used_at`, `idx_user`), `config.mfa_required_role`
+TINYINT varsayılan 99. İki tablo `install/index.php` `get_tables()`
+listesinde. 8.40 etiketi kimlik doğrulama işine açıldı (2026.4.8 aralıklarında
+bu konu için ayrılmış bir aralık yoktu).
+
+**Doğrulama.** `php tools/test.php mfa`: RFC 4648 base32 vektörleri, RFC 6238
+Ek B (SHA1, 8 hane: T=59, 1111111109, 1111111111, 1234567890, 2000000000,
+20000000000), doğrulama penceresi (±1 kabul, ±2 red), tekrar kullanım reddi,
+biçimsiz/yanlış kod reddi, yedek kod biçimi ve normalleştirme, `otpauth://`
+adresi, anahtar gösterimi — 17 test yeşil. `lint`, `check_lang` temiz.
+Sandbox (PHP 8.3 + MariaDB): şema adımı kurulumda ve `config.version`
+2026.4.7'ye çekilip yükseltme ekranından ikinci kez koşuldu (ikincisinde
+"12 ifade, 12 tanesi zaten yerindeydi"). Playwright, TOTP Node'da
+hesaplanarak: 2FA'sız giriş değişmedi; `mfa_required_role = 0` ile yönetici
+kurulum ekranına düşüyor, anahtar yenilemede aynı kalıyor, yanlış kod
+reddediliyor, kurtarma kodları gösteriliyor, `send_to` korunuyor; bekleyen
+kayıtta panel giriş istiyor, çerezde `software[auth]` yok, oturum kimliği
+yenilenmiş, parola oturumda yok; doğru kod → oturum + hatırla-beni; aynı
+kod ikinci kez red; 6. denemede kilit (doğru kod da reddediliyor) ve
+`waf_log` satırı; kurtarma kodu (küçük harf, boşlukla) bir kez geçiyor,
+ikinci kez red; bekleyen kaydın zamanı oturum dosyasında 601 sn geri
+çekilince doğru kod da giriş ekranına dönüyor; cihaz sınırı 2FA'dan sonra
+geliyor ve onayla tamamlanıyor; `mfa_passed` taşımayan cihaz-sınırı kaydı
+reddediliyor; rol 3 hesap zorunluluk 0'da kapısız, 3'te kurulum ekranına
+düşüyor; üyelik ve kayıt girişlerinde İptal kendi ekranına dönüyor;
+`delete_users.php` 2FA satırlarını siliyor. Hesap ekranından tam akış:
+aç → yanlış kod reddi → kod → kurtarma kodları (yenilemede duruyor, tarayıcı
+içeride kalıyor) → TOTP ile giriş → kurtarma koduyla giriş → "9 kurtarma
+kodu kaldı" → yeni kurtarma kodları (yanlış kodla red) → kapatma (yanlış
+parola ve yanlış kodla red) → kapısız giriş. `edit_user.php`: menejer rol 3
+hesabı sıfırlayabiliyor, eşit ve üst rolde reddediliyor. Ayar kartı
+99/0/1/2/3 kaydedip geri okuyor. `login_as_user` kipinde parça salt okunur,
+`mfa_begin` / `mfa_disable` POST'ları reddediliyor. `ENCRYPTION_KEY`
+config'den kaldırılınca parça "anahtar yok" diyor, açma reddediliyor, ayar
+seçimi kapalı ve kaydetmek `mfa_required_role`'ü değiştirmiyor. Ticaret
+uyarısı yalnız açık 2FA varken çıkıyor. Anahtar kaldırılmışken 2FA'lı
+hesap: parola sonrası `mfa.php` (uyarı notuyla), doğru TOTP reddediliyor,
+kurtarma kodu geçiyor; hesap parçasında yalnız "Kapat" var, TOTP ile
+kapatma reddediliyor, kurtarma koduyla kapanıyor ve tarayıcı içeride
+kalıyor; `mfa_begin` / `mfa_recovery_regenerate` reddediliyor.
+`edit_user.php`'de kendi hesabında sıfırlama düğmesi yok, POST reddediliyor.
+API: `api.php` parolalı istek 2FA'lı hesapta 401 `mfa_required`, 2FA'sız
+hesapta genel kapıdan geçiyor; `POST /auth/login` 2FA'lı hesapta `otp`'siz
+401 `mfa_required`, yanlış kodla 401, doğru TOTP ve kurtarma koduyla 201
+(aynı kurtarma kodu ikinci kez 401), altı yanlış koddan sonra 429 +
+Retry-After 600; 2FA'sız hesap değişmedi; `shipworks.php` 2FA'lı hesaba Code 1
+açıklaması, 2FA'sıza modül cevabı. Kurtarma kodlarının görünmesi sekiz
+denemenin sekizinde (önceden yaklaşık üçte birinde kayboluyordu).
+
+**Açık.** Hazır başlangıç sitesinin (`turkish_default`) "my account profile"
+sayfası özel düzenle gelir ve `$account_security`'yi basmaz: o sitelerde
+hesap güvenliği bölümü (cihazlar, Google, 2FA) görünmez; sandbox'ta sayfa
+sistem düzenine alınarak denendi.
+
+**Doğrulanamayanlar.** Google ile giriş (sandbox'ta Google yok; kapı satırı
+kod incelemesiyle). Sıfırlama bağlantısıyla parola belirleme
+(`set_password.php`) bu değişiklikte hâlâ otomatik oturum açar ve 2FA'lı
+hesapta ikinci adımı atlar; kapanması `pg_post_password_signin()`
+düzeltmesine bağlıdır. Gerçek bir doğrulama uygulamasına (Google
+Authenticator, Aegis) anahtarın elle girilmesi denenmedi.
+
+---
+
+## 2026.4.8 — Klasör erişim kontrolü `get_file.php` ile tek kopya (2026-10-08)
+
+**Sorun.** `get_file.php` `functions.php`'yi yüklemediği için klasör erişim
+fonksiyonlarının (`get_access_control_type`, `check_view_access`,
+`check_edit_access`, `check_private_access`) kendi kopyalarını taşıyordu ve
+iki kopya ayrışmıştı: önbellek (`folder` tablosu bir kez okunur) ve
+`folder_parent` döngüsüne karşı koruma yalnız panel tarafındaydı; `isset`
+korumaları ve `pg_folder_edit_access()` ayrımı 2026.4.4'te yalnız
+`includes/fn/auth.php`'ye girmişti. Döngülü bir klasör ağacında dosya isteği
+sonsuz özyinelemeye giriyordu (sandbox'ta istek 30 sn'de cevapsız kaldı),
+ACL satırı olmayan rol-3 kullanıcının her dosya isteği PHP uyarısı
+üretiyordu.
+
+**Karar.** Beş fonksiyon (`pg_folder_edit_access` dahil) asıl
+(`includes/fn/auth.php`) sürümleriyle `includes/authentication.php`'ye tek
+kopya olarak taşındı; `get_file.php` sözleşmesi korundu: yalnız
+`db/db_value/db_item/db_items/escape` + PHP, `lang()` ve `output_error()`
+yok. Başlıktaki izin listesine `db_value()` ve `db_items()` eklendi (iki
+includer'da da tanımlı). `get_access_control_type` sorgusu
+`mysqli_query(...) or output_error(lang(...))` yerine `db_items()` ile;
+`check_private_access` tarih karşılaştırmasından önce
+`function_exists('initialize_timezone')` ile `get_file.php`'nin tembel saat
+dilimi kurulumunu çağırır (`init.php` yolu saat dilimini zaten kurar).
+Kalan 11 kopya bilerek bırakıldı (`output_error`'un dosya sunumuna özgü
+davranışı, küçük `initialize_user`, `log_activity`, `db*`, URL/TLS
+yardımcıları); tablo ve gerekçe `docs/_get_file_kopyalar.md`.
+
+**Çözüm.**
+- `includes/authentication.php`: "Folder access - shared with get_file.php"
+  bölümü; `includes/fn/auth.php` ve `get_file.php`'den kopyalar silindi.
+  Çağıranlar değişmedi.
+- `tools/check_copies.php` (yeni, CI adımı): `get_file.php`'deki fonksiyon
+  adlarını `functions.php`, `includes/authentication.php` ve
+  `includes/fn/*.php` içinde arar; `$intended` listesi dışındaki kopya
+  `FAIL` (çıkış 1), listede olup artık kopya olmayan ad `WARN`.
+- Doğrulama: sandbox'ta 6 klasör (herkese açık, kayıt, özel, özelin
+  mirasçı alt klasörü, misafir, üyelik) × 6 aktör (oturumsuz, ACL'li /
+  ACL'siz / süresi geçmiş ACL'li / düzenleme ACL'li rol 3, yönetici) için
+  dosya ve sayfa HTTP kodu, yönlendirme hedefi ve dosya gövdesi önce/sonra
+  birebir aynı.
+
+**Ödün.** `get_file.php` klasörün erişim türü için artık `folder` tablosunun
+tamamını tek sorguda okur (önceden klasör derinliği kadar tek satırlık
+sorgu); panel tarafı bunu zaten yapıyordu. Döngülü ağaçta dosya isteği artık
+`public` kararı verir — panel tarafıyla aynı.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve

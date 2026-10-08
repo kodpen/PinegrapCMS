@@ -1527,7 +1527,10 @@ function install_heavy_tables() {
 		// `files` takes two columns and an index for the documents the ERP keeps
 		// (4.65); it is a MyISAM table on older installations, rebuilt whole.
 		'2026.4.4' => array('user', 'products', 'product_groups', 'orders', 'page', 'style', 'notifications', 'files'),
-		// 2026.4.8 moves the remaining MyISAM tables to InnoDB; a conversion
+		// 2026.4.8 adds six columns and an index to `email_recipients` for the
+		// campaign job's retries (8.30). It keeps one row per recipient of
+		// every campaign ever sent, and on MyISAM each ALTER copies it whole.
+		// It also moves the remaining MyISAM tables to InnoDB; a conversion
 		// copies the table whole. These are the ones that grow with orders,
 		// mail, form entries, the catalogue and the pages. A table over the
 		// step's limit is not converted by the upgrade at all; it is left for

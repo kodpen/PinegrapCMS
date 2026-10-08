@@ -52,6 +52,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $software_update_channel = ((($row['software_update_channel'] ?? 'stable') === 'beta') ? 'beta' : 'stable');
     $remember_me_device_limit_enabled = ($row['remember_me_device_limit_enabled'] ?? 0);
     $remember_me_device_limit_strict = ($row['remember_me_device_limit_strict'] ?? 0);
+    // Two-step verification (8.40): who must have it, and whether the site
+    // can offer it at all (tables, ENCRYPTION_KEY, openssl).
+    $mfa_required_role = isset($row['mfa_required_role']) ? (int) $row['mfa_required_role'] : 99;
+    $mfa_available = pg_mfa_available();
+    // Commerce warns before the encryption key is reset when somebody's
+    // second factor would become unreadable by it.
+    $mfa_enabled_accounts = pg_mfa_table_exists()
+        ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
+        : 0;
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
     $oauth_google_client_id = $row['oauth_google_client_id'];
@@ -1422,6 +1431,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $ecommerce_reset_encryption_key_disabled = ' disabled="disabled"';
         $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('OpenSSL is disabled') . ')';
     }
+
+    if ($mfa_enabled_accounts > 0) {
+        $ecommerce_reset_encryption_key_disabled_message .= ' ' . lang('Resetting the key also makes every two-step verification key unreadable: people who turned it on will need it reset from their user screen.');
+    }
     
     if ($ecommerce_paypal_express_checkout == 1) {
         $ecommerce_paypal_express_checkout_checked = ' checked="checked"';
@@ -2088,6 +2101,35 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if (!extension_loaded('pdo_mysql') ) {
         $output_warnings_for_auto_backup = '<div class="alert alert-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.') . '</div>';
     }
+
+    // Backups card (2026.4.8, 8.33). The columns arrive with the upgrade; until
+    // then the card says so instead of drawing controls. The remote settings
+    // are decrypted here only to put the address, user and path back in their
+    // boxes: the password and the secret key are never handed to the screen,
+    // which is told only whether one is stored.
+    $backup_settings_ready = (function_exists('pg_backup_settings_ready') && pg_backup_settings_ready());
+    $backup_keep = 4;
+    $backup_remote_type = '';
+    $backup_remote_ftp = pg_backup_remote_normalize('ftp', array());
+    $backup_remote_s3 = pg_backup_remote_normalize('s3', array());
+    $backup_remote_error = '';
+    $backup_remote_sent_at = 0;
+
+    if ($backup_settings_ready) {
+        $backup_keep = (int) $row['backup_keep'];
+        $backup_remote_type = pg_backup_remote_type($row['backup_remote_type']);
+        $backup_remote_stored = pg_backup_remote_decode($row['backup_remote_settings']);
+        $backup_remote_ftp = $backup_remote_stored['ftp'];
+        $backup_remote_s3 = $backup_remote_stored['s3'];
+        $backup_remote_error = (string) $row['backup_remote_error'];
+        $backup_remote_sent_at = (int) $row['backup_remote_sent_at'];
+        unset($backup_remote_stored);
+    }
+
+    $backup_ftp_password_stored = ($backup_remote_ftp['password'] !== '');
+    $backup_s3_secret_stored = ($backup_remote_s3['secret_key'] !== '');
+    $backup_remote_ftp['password'] = '';
+    $backup_remote_s3['secret_key'] = '';
 
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see
