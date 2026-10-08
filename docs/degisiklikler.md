@@ -72,6 +72,224 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — İki adımlı oturum açma: doğrulama uygulaması (TOTP) ve yedek kodlar (8.40) (2026-10-08)
+
+**Sorun.** Oturum yalnız parolayla açılıyordu. Parolası sızan bir yönetici
+hesabı (başka sitede aynı parola, oltalama) panelin tamamını veriyordu;
+WAF'ın giriş sayacı tahmini yavaşlatır ama doğru parolayı durdurmaz. Kodda
+TOTP, base32 ya da QR için hazır bir parça yoktu.
+
+**Karar.**
+- **Yöntem: TOTP (RFC 6238) + 10 yedek kod.** Kişi hesap sayfasından açar;
+  ekranda base32 anahtar (dörtlü gruplar) ve `otpauth://` adresi gösterilir,
+  anahtar doğrulama uygulamasına **elle** girilir. **QR yok**: depoda QR
+  kütüphanesi yok, gömülecek bir PHP/JS kütüphanesinin 7.1 uyumu ve bakım
+  yükü bu sürüme alınmadı; dış QR servisi sırrı üçüncü tarafa vereceği için
+  kullanılmaz. Yedek kodlar `XXXX-XXXX` (I, O, 0, 1 yok), bir kez
+  gösterilir, SHA-256 olarak saklanır; kullanılan kodun satırı `used_at` ile
+  kalır (kalan sayısı için).
+- **E-posta kodu yöntemi bu sürümde yok.** Sıfırlama bağlantısı da aynı
+  posta kutusuna gittiği için ikinci adım olarak zayıf; ayrıca gönderim limiti
+  ve kuyrukla birlikte ele alınmalı. Şema (`user_mfa.method`) ikinci bir
+  yönteme yer bırakır.
+- **Zorunluluk role göre, varsayılan kapalı:** Ayarlar › Güvenlik'te
+  `config.mfa_required_role` (99 = zorunlu değil; 0 yönetici, 1 +tasarımcı,
+  2 +menejer, 3 herkes). Zorunlu roldeki 2FA'sız kişi girişte kurulum
+  ekranına düşer, oturum kurulum bitmeden açılmaz. Herkes (üyeler dahil)
+  kendi hesabında isteğe bağlı açabilir.
+- **Google ile giriş muaf değil.** `google_auth.php` doğrulanmış e-postayla
+  personel hesabına da bağlanabildiği için muafiyet, parola yerine Google
+  hesabını tek adım yapardı.
+- **Parola kabul eden API yolları 2FA'lı hesabı reddeder:** istek başına
+  parola taşıyan `api.php` (`username`/`password`) ve `shipworks.php`; bu
+  yollarda kod sorulacak bir ekran yok, kabul etmek ikinci adımı yan kapıdan
+  açmak olurdu. Cihazdan giriş (`POST /auth/login`) kodu alabildiği için
+  reddetmez, `otp` ister (TOTP ya da kurtarma kodu). Kurulum ekranı kilidi
+  (`install/index.php`) dokunulmadı.
+- **Kurtarma:** yedek kodlar; ikisi de kaybolursa yönetici kullanıcı
+  düzenleme ekranından sıfırlar (kendi rolünden düşük hesap için). Son çare
+  `user_mfa` satırını veritabanından silmek; config sabiti yok.
+- **Sır geri okunur, hash'lenmez:** `totp_secret` her girişte HMAC anahtarı
+  olarak gerekir; `ENCRYPTION_KEY` ile `"cipher:iv"` biçiminde şifrelenir
+  (`encrypt_string_with_iv()`, konnektör kimlik bilgilerinin deseni).
+  Anahtar tanımlı değilse özellik açılamaz.
+
+**Çözüm.** `includes/fn/mfa.php` (manifestte `auth.php`'den sonra), saf
+fonksiyonlar: `pg_base32_encode/decode` (RFC 4648; çözücü küçük harf, boşluk
+ve dolgusuzluğa toleranslı, çünkü anahtar elle yazılır; alfabe dışı karakter
+tüm girdiyi reddeder, 0→O / 1→I eşlemesi yok), `pg_totp_secret` (20 bayt,
+RFC 4226'nın önerdiği 160 bit), `pg_totp_step`, `pg_totp_code` (HMAC-SHA1,
+dinamik kesme; sayaç `pack('N*', 0, $step)` — 32 bit PHP'de `pack('J')` yok,
+üst kelime 6053 yılına kadar sıfır), `pg_totp_verify` (±1 adım; adaylar
+0, −1, +1 sırasıyla, `last_step` ve altı atlanır — RFC 6238 §5.2 tekrar
+kullanım; karşılaştırma `hash_equals`), `pg_totp_uri`,
+`pg_mfa_recovery_codes/normalize/hash`, `pg_mfa_format_secret`.
+
+Aynı dosyanın veritabanı bölümü: tablo yoklaması `pg_mfa_table_exists()`
+(`information_schema`, iki tablo birden, tam ad), `pg_mfa_available()`
+(tablolar + `ENCRYPTION_KEY` + openssl), sır `pg_mfa_secret_encode/decode`,
+kurulum `pg_mfa_begin_setup` (onaylanmamış anahtar 30 dk aynı kalır, ekran
+yenilense de değişmez) / `pg_mfa_confirm_setup` (bekleyen blob olduğu gibi
+`totp_secret`'e taşınır; 10 yeni kurtarma kodu; hesabın bütün hatırla-beni
+jetonları ve API cihazları düşer; etkinlik kaydını kendisi yazar),
+`pg_mfa_verify_code` (6 hane TOTP, 8 karakter kurtarma kodu; ikisi de
+etkilenen satır sayısına bakan koşullu `UPDATE` ile harcanır — eşzamanlı iki
+istek aynı kodla geçemez), `pg_mfa_disable` / `pg_mfa_reset`, deneme kovası
+`pg_mfa_attempt_blocked` (`waf_rate`: hesap başına 5, adres başına 30, 10
+dakikada; parola başarısı sıfırlamaz).
+
+**Giriş kapısı.** `pg_mfa_gate()` dört girişte (`index.php`,
+`membership_entrance.php`, `registration_entrance.php`, `google_auth.php`)
+parola kabul edilip sayaç temizlendikten **sonra**, cihaz sınırı ve jeton
+basılmadan **önce** çağrılır: 2FA açıksa (ya da rolü gerektiriyorsa)
+oturum kimliğini yeniler, 600 sn'lik bekleyen kaydı
+(`$_SESSION['software']['mfa_pending']`) yazar ve kök `mfa.php`'ye gönderir;
+o ana kadar `sessionuserid` ve `software[auth]` yoktur. Parola oturuma
+kopyalanmış liveform alanlarıyla birlikte kapıdan önce silinir (önceden
+başarı yolunun en sonunda siliniyordu; cihaz sınırı kapısı da çıkış
+yaptığında parola oturumda kalıyordu). `mfa.php`: doğrulama (TOTP ya da
+kurtarma kodu), kurulum (anahtar + `otpauth://` adresi + kopyala, ilk kod,
+kurtarma kodları bir kez, `.txt` indirme `data:` adresiyle — sunucuya
+gitmez), İptal yalnız sabit listedeki giriş ekranına döner; tamamlama
+sırası giriş akışlarıyla aynı (cihaz sınırı → jeton → oturum → sipariş).
+Sınır aşımı `waf_log`'a `rate-mfa` olarak da yazılır.
+`pg_device_limit_gate()` beşinci parametre `$mfa_passed` alır;
+`device_limit.php` ikinci adımdan geçmemiş bekleyen kaydı 2FA'lı hesap için
+reddeder. `delete_users.php` hesabın 2FA satırlarını siler. `init.php`
+`MFA_REQUIRED_ROLE` sabitini tanımlar (sütun yokken 99).
+
+**API yolları.** `initialize_user()` API dalında parola doğru ve hesap
+2FA'lıysa `API_MFA_REQUIRED` tanımlanır, kullanıcı yüklenmez,
+`API_AUTHENTICATED` tanımlanmaz (CSRF muafiyeti de yok), başarısızlık sayacı
+temizlenir. `api.php` genel kapısı bunu 401 `mfa_required` olarak söyler;
+genel kapının dışındaki uçlar zaten oturumlu kullanıcı istediği için
+reddeder. `POST /auth/login`: `otp` yoksa 401 `mfa_required`, deneme sınırı
+aşılınca 429 `rate_limited` (Retry-After 600, `mfa.php` ile aynı kova),
+yanlış kod 401 `unauthorized`; şemaya `otp` parametresi ve hata kataloğuna
+`mfa_required` eklendi. `shipworks.php` 2FA'lı hesaba Code 1 hatası döner,
+parola doğru olduğu için başarısızlık sayılmaz. `barcode_*_inventory.php`
+`API_USERNAME` tanımlamaz (oturumla çalışır); değişiklik gerekmedi.
+
+**Ekranlar.** Hesap güvenliği bölümü (`pg_account_security_section()`,
+profil sayfası ve özel düzenlerde `$account_security`) cihaz listesinin
+altında "İki adımlı doğrulama" parçasını basar (`pg_mfa_account_section()`):
+aç → anahtar + `otpauth://` adresi + ilk kod → kurtarma kodları ("Kaydettim"
+denene kadar oturumda durur, yenilemede kaybolmaz) → açık durumda tarih ve
+kalan kod sayısı, "Yeni kurtarma kodları" (geçerli TOTP ister) ve "Kapat"
+(parola + kod; Google'a bağlı parolasız hesapta yalnız kod; rolü zorunlu
+tutuyorsa bir sonraki girişte yeniden kurulacağı söylenir). Eylemler
+`account_security.php`'de (`mfa_*`), hepsi POST + CSRF, profil sayfasına
+döner; reddedilen kod profil formunun hata kutusunda görünür. Açma ve
+kapatma hesabın diğer jetonlarını ve API cihazlarını düşürür, bu tarayıcının
+jetonu kalır (`pg_mfa_revoke_other_sessions()`): parola değişimindeki gibi
+hepsini düşürüp yenisini basmak, tarayıcının yoldaki eski çerezli bir
+isteğiyle yarışıyor, oturumu (ve içindeki kurtarma kodlarını) kapatıyordu —
+sandbox'ta yaklaşık üç denemede bir kodlar hiç görünmedi.
+Kapatmadaki parola alanı giriş sayacına bağlı (`pg_login_throttle_guard` /
+`pg_login_record_failure`). Başka kullanıcı olarak oturum açılmışken parça
+yalnız durumu gösterir, eylemler reddedilir. Ayarlar › Güvenlik'te
+"İki Adımlı Doğrulama" kartı (`mfa_required_role`: zorunlu değil /
+yöneticiler / + tasarımcılar / + menejerler / oturum açan herkes);
+`pg_mfa_available()` yanlışsa seçim kapalıdır ve kayıt sütunu olduğu gibi
+bırakır (kapalı kontrol gönderilmez; boş değeri 0 okumak yöneticilere
+zorunluluk getirirdi). `edit_user.php` "Oturum açma ve oturumlar" kartında
+durum satırı, yan panelde "İki adımlı doğrulamayı sıfırla" (Google
+bağlantısını kaldırmayla aynı rol kuralı). Ayarlar › Ticaret'teki şifreleme
+anahtarı sıfırlama satırı, 2FA'sı açık en az bir hesap varsa anahtarların
+okunamaz olacağını yazar.
+
+**Anahtar okunamazsa kapalı taraf.** `pg_mfa_enabled()` yalnız tabloya
+ve satıra bakar, `pg_mfa_available()`'a bakmaz: `ENCRYPTION_KEY` silinir ya
+da openssl kalkarsa 2FA'lı hesap yine ikinci adıma gönderilir (yalnız
+parolayla girmez). O durumda TOTP doğrulanamaz ama kurtarma kodları yalnız
+hash'li olduğu için çalışır; `mfa.php` ve hesap parçası bunu söyler, hesap
+parçası "Yeni kurtarma kodları"nı gizler, "Kapat" kurtarma koduyla çalışır;
+kurulum ve kod gerektiren eylemler reddedilir. Zorunluluk
+(`pg_mfa_required_for_user`) anahtar yokken uygulanmaz: kurulum dayatılamaz.
+`edit_user.php` kişinin kendi hesabını sıfırlamaz — ikinci adımı kaldırmak,
+oturum çalınmış olsa bile parola ve kod istemeli (hesap sayfası ister).
+
+**Ödün.**
+- `ENCRYPTION_KEY` sıfırlanırsa (Ayarlar › Ticaret › "Şifreleme Anahtarını
+  Sıfırla") 2FA anahtarları **okunamaz** olur: sıfırlama ekranı TOTP
+  sırlarını yeniden şifrelemez, doğrulaması açık kişiler yalnız kurtarma
+  kodlarıyla girebilir ve doğrulama uygulaması için yöneticinin sıfırlaması
+  gerekir. Ekrana uyarı yazılır; yeniden şifreleme ayrı bir iş.
+- QR olmadığı için kurulum elle anahtar girmeyi ister.
+- Zorunlu roldeki ve henüz 2FA kurmamış bir hesabın parolasını ele geçiren
+  kişi kurulumu kendisi yapıp gerçek sahibini kilitleyebilir; çözüm yönetici
+  sıfırlaması.
+- Böyle bir hesabın parolasıyla çalışan `api.php` ya da ShipWorks
+  entegrasyonu, 2FA açılınca çalışmayı bırakır (`api.php` 401
+  `mfa_required`, ShipWorks Code 1 ile açıklama); cihaz uygulaması `otp`
+  göndermeyi öğrenmelidir.
+
+**Şema.** 8.40 `upgrade_2026_4_8_mfa()`: `user_mfa` (hesap başına bir satır:
+`method`, şifreli `totp_secret`, `enabled_at`, `last_step`, onaylanmamış
+kurulum için `pending_secret` / `pending_at`), `user_mfa_recovery`
+(`code_hash` CHAR(64) ascii, `used_at`, `idx_user`), `config.mfa_required_role`
+TINYINT varsayılan 99. İki tablo `install/index.php` `get_tables()`
+listesinde. 8.40 etiketi kimlik doğrulama işine açıldı (2026.4.8 aralıklarında
+bu konu için ayrılmış bir aralık yoktu).
+
+**Doğrulama.** `php tools/test.php mfa`: RFC 4648 base32 vektörleri, RFC 6238
+Ek B (SHA1, 8 hane: T=59, 1111111109, 1111111111, 1234567890, 2000000000,
+20000000000), doğrulama penceresi (±1 kabul, ±2 red), tekrar kullanım reddi,
+biçimsiz/yanlış kod reddi, yedek kod biçimi ve normalleştirme, `otpauth://`
+adresi, anahtar gösterimi — 17 test yeşil. `lint`, `check_lang` temiz.
+Sandbox (PHP 8.3 + MariaDB): şema adımı kurulumda ve `config.version`
+2026.4.7'ye çekilip yükseltme ekranından ikinci kez koşuldu (ikincisinde
+"12 ifade, 12 tanesi zaten yerindeydi"). Playwright, TOTP Node'da
+hesaplanarak: 2FA'sız giriş değişmedi; `mfa_required_role = 0` ile yönetici
+kurulum ekranına düşüyor, anahtar yenilemede aynı kalıyor, yanlış kod
+reddediliyor, kurtarma kodları gösteriliyor, `send_to` korunuyor; bekleyen
+kayıtta panel giriş istiyor, çerezde `software[auth]` yok, oturum kimliği
+yenilenmiş, parola oturumda yok; doğru kod → oturum + hatırla-beni; aynı
+kod ikinci kez red; 6. denemede kilit (doğru kod da reddediliyor) ve
+`waf_log` satırı; kurtarma kodu (küçük harf, boşlukla) bir kez geçiyor,
+ikinci kez red; bekleyen kaydın zamanı oturum dosyasında 601 sn geri
+çekilince doğru kod da giriş ekranına dönüyor; cihaz sınırı 2FA'dan sonra
+geliyor ve onayla tamamlanıyor; `mfa_passed` taşımayan cihaz-sınırı kaydı
+reddediliyor; rol 3 hesap zorunluluk 0'da kapısız, 3'te kurulum ekranına
+düşüyor; üyelik ve kayıt girişlerinde İptal kendi ekranına dönüyor;
+`delete_users.php` 2FA satırlarını siliyor. Hesap ekranından tam akış:
+aç → yanlış kod reddi → kod → kurtarma kodları (yenilemede duruyor, tarayıcı
+içeride kalıyor) → TOTP ile giriş → kurtarma koduyla giriş → "9 kurtarma
+kodu kaldı" → yeni kurtarma kodları (yanlış kodla red) → kapatma (yanlış
+parola ve yanlış kodla red) → kapısız giriş. `edit_user.php`: menejer rol 3
+hesabı sıfırlayabiliyor, eşit ve üst rolde reddediliyor. Ayar kartı
+99/0/1/2/3 kaydedip geri okuyor. `login_as_user` kipinde parça salt okunur,
+`mfa_begin` / `mfa_disable` POST'ları reddediliyor. `ENCRYPTION_KEY`
+config'den kaldırılınca parça "anahtar yok" diyor, açma reddediliyor, ayar
+seçimi kapalı ve kaydetmek `mfa_required_role`'ü değiştirmiyor. Ticaret
+uyarısı yalnız açık 2FA varken çıkıyor. Anahtar kaldırılmışken 2FA'lı
+hesap: parola sonrası `mfa.php` (uyarı notuyla), doğru TOTP reddediliyor,
+kurtarma kodu geçiyor; hesap parçasında yalnız "Kapat" var, TOTP ile
+kapatma reddediliyor, kurtarma koduyla kapanıyor ve tarayıcı içeride
+kalıyor; `mfa_begin` / `mfa_recovery_regenerate` reddediliyor.
+`edit_user.php`'de kendi hesabında sıfırlama düğmesi yok, POST reddediliyor.
+API: `api.php` parolalı istek 2FA'lı hesapta 401 `mfa_required`, 2FA'sız
+hesapta genel kapıdan geçiyor; `POST /auth/login` 2FA'lı hesapta `otp`'siz
+401 `mfa_required`, yanlış kodla 401, doğru TOTP ve kurtarma koduyla 201
+(aynı kurtarma kodu ikinci kez 401), altı yanlış koddan sonra 429 +
+Retry-After 600; 2FA'sız hesap değişmedi; `shipworks.php` 2FA'lı hesaba Code 1
+açıklaması, 2FA'sıza modül cevabı. Kurtarma kodlarının görünmesi sekiz
+denemenin sekizinde (önceden yaklaşık üçte birinde kayboluyordu).
+
+**Açık.** Hazır başlangıç sitesinin (`turkish_default`) "my account profile"
+sayfası özel düzenle gelir ve `$account_security`'yi basmaz: o sitelerde
+hesap güvenliği bölümü (cihazlar, Google, 2FA) görünmez; sandbox'ta sayfa
+sistem düzenine alınarak denendi.
+
+**Doğrulanamayanlar.** Google ile giriş (sandbox'ta Google yok; kapı satırı
+kod incelemesiyle). Sıfırlama bağlantısıyla parola belirleme
+(`set_password.php`) bu değişiklikte hâlâ otomatik oturum açar ve 2FA'lı
+hesapta ikinci adımı atlar; kapanması `pg_post_password_signin()`
+düzeltmesine bağlıdır. Gerçek bir doğrulama uygulamasına (Google
+Authenticator, Aegis) anahtarın elle girilmesi denenmedi.
+
+---
+
 ## 2026.4.8 — Klasör erişim kontrolü `get_file.php` ile tek kopya (2026-10-08)
 
 **Sorun.** `get_file.php` `functions.php`'yi yüklemediği için klasör erişim

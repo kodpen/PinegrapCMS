@@ -1076,10 +1076,14 @@ function pg_account_security_section()
         $devices_html = '<p>' . h(lang('No remembered devices.')) . '</p>';
     }
 
+    // Two-step verification (includes/fn/mfa.php) comes last: it carries its
+    // own heading, so it does not read as part of the device list.
+    $mfa_html = pg_mfa_account_section($user_id, $algo, $action_url, $token);
+
     return
         '<div class="pg-account-security" style="margin-top:2em;max-width:640px">'
         . '<div class="heading" style="margin-bottom:10px">' . h(lang('Sign-in and devices')) . '</div>'
-        . $google_html . $devices_html . '</div>';
+        . $google_html . $devices_html . $mfa_html . '</div>';
 }
 
 // The configured cap on concurrent "remember me" devices per account (Settings).
@@ -1158,8 +1162,10 @@ function pg_device_limit_revoke_oldest($user_id, $keep)
 // it stashes a short-lived pending sign-in and diverts to the confirmation
 // screen without returning; otherwise it returns and the caller proceeds. A
 // no-op unless a limit is set and already reached, so it is safe to place in
-// every login flow.
-function pg_device_limit_gate($user_id, $username, $send_to, $remember = false)
+// every login flow. $mfa_passed says the second step was already taken
+// (mfa.php); device_limit.php refuses a pending record without it for an
+// account that has a second factor.
+function pg_device_limit_gate($user_id, $username, $send_to, $remember = false, $mfa_passed = false)
 {
     if (!pg_device_limit_exceeded($user_id)) {
         return;
@@ -1180,11 +1186,12 @@ function pg_device_limit_gate($user_id, $username, $send_to, $remember = false)
     }
 
     $_SESSION['software']['device_limit_pending'] = array(
-        'user_id'  => (int) $user_id,
-        'username' => (string) $username,
-        'send_to'  => (string) $send_to,
-        'remember' => $remember ? 1 : 0,
-        'time'     => time(),
+        'user_id'    => (int) $user_id,
+        'username'   => (string) $username,
+        'send_to'    => (string) $send_to,
+        'remember'   => $remember ? 1 : 0,
+        'mfa_passed' => $mfa_passed ? 1 : 0,
+        'time'       => time(),
     );
 
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/device_limit.php');
@@ -3509,8 +3516,22 @@ function initialize_user()
             $cred = db_item("SELECT " . pg_password_select_columns() . " FROM user
                 WHERE (user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "') LIMIT 1");
 
-            if (is_array($cred) && isset($cred['user_id'])
-                && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred))) {
+            $api_password_ok = is_array($cred) && isset($cred['user_id'])
+                && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred));
+
+            if ($api_password_ok && pg_mfa_enabled($cred['user_id'])) {
+
+                // The password was right, but the account asks for a second
+                // step and a request carrying a password has nowhere to give
+                // one. No user is loaded (USER_LOGGED_IN stays false) and
+                // API_AUTHENTICATED is not set, so the request cannot act and
+                // cannot waive the CSRF token; api.php answers mfa_required.
+                // The failure counter is still cleared: this was not a guess.
+                define('API_MFA_REQUIRED', true);
+
+                pg_login_throttle_pass(API_USERNAME);
+
+            } elseif ($api_password_ok) {
 
                 $user = pg_load_user_row($cred['user_id']);
 

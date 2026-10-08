@@ -296,6 +296,10 @@ if (isset($_GET['code'])) {
     // Sign the visitor in: server-side session plus a remember-me token, the
     // same shape the password login uses. No password is ever involved.
     $username = db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $user_id . "'");
+    // Google is not a second factor: an account that has one (or whose role
+    // requires one) is asked for it here exactly as after a password, or a
+    // Google account matched by its email address would bypass it.
+    pg_mfa_gate($user_id, $username, $send_to, true, 'registration_entrance.php');
     // Device limit: Google sign-in always "remembers", so it counts as a device;
     // divert to the confirmation screen when this would pass the limit.
     pg_device_limit_gate($user_id, $username, $send_to, true);

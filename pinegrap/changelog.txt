@@ -382,6 +382,59 @@
 
   [ŞEMA] config.ws_ai_bulk_delete sütunu.
 
+  OTURUM, HESAP VE GÜVENLİK
+  --------------------------------------------------------
+
+  [YENİ] İki adımlı oturum açma. Bir hesap, paroladan sonra
+         telefondaki bir doğrulama uygulamasının (Google
+         Authenticator, Microsoft Authenticator, Aegis,
+         1Password gibi) ürettiği 6 haneli kodu isteyebilir.
+         Kişi bunu hesap sayfasından kendisi açar: ekranda
+         gösterilen anahtar uygulamaya elle girilir (QR kod
+         yoktur), uygulamanın gösterdiği ilk kodla onaylanır.
+         Açılırken 10 kurtarma kodu verilir; telefon kaybolursa
+         her biri bir kez oturum açtırır ve bir daha
+         gösterilmez. Kod e-postayla gönderilmez; bu sürümde
+         yalnız doğrulama uygulaması desteklenir.
+
+  [YENİ] Ayarlar › Güvenlik'te "İki Adımlı Doğrulama": bir
+         rolden başlayarak zorunlu kılınabilir (yöneticiler;
+         yöneticiler ve tasarımcılar; yöneticiler, tasarımcılar
+         ve menejerler; oturum açan herkes). Zorunlu bir roldeki
+         kişi henüz kurmadıysa bir sonraki girişinde kurulum
+         ekranına yönlenir. Varsayılan "zorunlu değil"dir; herkes
+         kendi hesabında yine açabilir.
+
+  [YENİ] Yönetici, kullanıcı düzenleme ekranından bir kişinin
+         iki adımlı doğrulamasını sıfırlayabilir (doğrulama
+         uygulamasını ve kurtarma kodlarını birlikte kaybeden
+         kişi için). Kişi sonra yalnız parolasıyla girer ve
+         isterse yeniden kurar.
+
+  [GÜVENLİK] Google ile oturum açma iki adımlı doğrulamadan
+         muaf değildir: doğrulaması açık hesap Google ile
+         girdiğinde de kod sorulur. İstek başına kullanıcı adı ve
+         parola gönderen API çağrıları ve ShipWorks, iki adımlı
+         doğrulaması açık hesabı reddeder; böyle bir hesabın
+         parolasıyla çalışan bir entegrasyon varsa çalışmayı
+         bırakır. Ekip cihazlarından giriş (POST /auth/login) bu
+         hesaplarda doğrulama uygulamasının kodunu ya da bir
+         kurtarma kodunu otp alanında ister.
+
+  [GÜVENLİK] İki adımlı doğrulama anahtarları config.php'deki
+         şifreleme anahtarıyla (ENCRYPTION_KEY) şifrelenerek
+         saklanır; şifreleme anahtarı olmayan sitede özellik
+         açılamaz. Ayarlar › Ticaret'teki "Şifreleme Anahtarını
+         Sıfırla" kullanılırsa bütün iki adımlı doğrulama
+         anahtarları okunamaz olur: doğrulaması açık kişiler
+         yalnız kurtarma kodlarıyla girebilir, doğrulama
+         uygulaması için yöneticinin kullanıcı ekranından
+         sıfırlaması gerekir. Şifreleme anahtarı config.php'den
+         silinse de iki adımlı doğrulama kendiliğinden kapanmaz.
+
+  [ŞEMA] user_mfa ve user_mfa_recovery tabloları;
+         config.mfa_required_role sütunu.
+
 
 
   2026.4.7

@@ -105,6 +105,40 @@ function api_auth_login($params) {
 
 	pg_login_throttle_pass($username);
 
+	// An account with a second step gives the code from its authenticator
+	// app (or a recovery code) in otp. The password was right, so a missing
+	// or wrong code is not counted as a failed password; codes have their
+	// own allowance (pg_mfa_attempt_blocked(), shared with mfa.php).
+	if (pg_mfa_enabled((int)$user_id)) {
+
+		$otp = isset($params['otp']) ? trim((string)$params['otp']) : '';
+
+		if ($otp === '') {
+
+			api_fail(401, 'mfa_required', lang('This account uses two-step verification. Send the code from the authenticator app in otp.'));
+
+		}
+
+		if (pg_mfa_attempt_blocked((int)$user_id)) {
+
+			api_extra_headers('Retry-After', '600');
+
+			api_fail(429, 'rate_limited', lang('Too many verification attempts. Please wait ten minutes.'));
+
+		}
+
+		if (pg_mfa_verify_code((int)$user_id, $otp) === false) {
+
+			log_activity(lang('access denied from a device (two-step code invalid)'), $username);
+
+			api_fail(401, 'unauthorized', lang('The verification code is not correct.'));
+
+		}
+
+		pg_mfa_attempt_clear((int)$user_id);
+
+	}
+
 	$owner = api_load_owner((int)$user_id);
 
 	if (($owner === null) || !api_device_account_has_rights($owner)) {
