@@ -133,12 +133,24 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 - Başka yerlerdeki göndermeler güncellendi: `includes/sales_map.php` ve
   `includes/fn/system_status.php` başlık yorumları ("Rendering lives in
   api.php") artık `widget_1.php` / `widget_2.php`'yi gösteriyor.
+- **Ortak yardımcılar yükleyiciye taşındı.** `api.php`'nin sonunda duran ve
+  yalnız widget'ların kullandığı altı fonksiyon — `pg_activity_daily()`,
+  `pg_widget_headline()`, `pg_widget_row()`, `pg_strip_anchor_tags()`,
+  `pg_readable_ink()`, `pg_widget_row_heading()` — yorumlarıyla birlikte
+  aynen `includes/dashboard/widgets.php`'ye, `pg_dashboard_widget_run()`'ın
+  altına taşındı (241 satır). Widget dosyaları artık `api.php`'nin yerel
+  fonksiyonlarına bağlı değil; `api.php`'de yalnız `respond()`,
+  `_sc_unique_name()` ve `validate_token()` kaldı. `includes/dashboard/`
+  dışında çağıranları yok (`pg_widget_empty()` zaten
+  `includes/fn/output.php`'de).
 - **`tests/dashboard_test.php`:** 27 dosya var ve yüklenince fonksiyon
   tanımlı; geçersiz id'ler (`''`, `'0'`, `'27'`, `'99'`, `'../x'`,
   `'1/../2'`, `"1\n"`, dizi, null, true, anahtar hiç yok) → "Invalid widget
   id."; widget 24 `'24'` ve int `24` ile DB'siz `success` + boş `data`;
   `clock` (`TIME_FORMAT` testte tanımlanır) site saatini `<time>` içinde
-  döndürür.
+  döndürür; saf yardımcılar `pg_readable_ink()` (`#f59e0b` → `#18181b`,
+  `#000` ve geçersiz renk → `#fff`), `pg_strip_anchor_tags()` ve
+  `pg_widget_row_heading()` (yan metin varsa `pg-row-aside`).
 
 **Doğrulama.**
 
@@ -146,7 +158,7 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
   gövdeleri `diff` edildi; 291 farklı satırın hepsi yukarıdaki listede
   (return, yol, `$output_rows`, yorum). `lang(` çağrısı eski widget
   aralığında 320, yeni 27 dosyada 320; sıralanmış anahtar listeleri aynı.
-  `api.php` 15.070 → 7.619 satır.
+  `api.php` 15.070 → 7.619 satır; yardımcılar da taşınınca 7.377.
 - Sandbox, altın karşılaştırma: 27 widget yanıtı + 4 kapı dosyası taşımadan
   önce ve sonra kaydedildi. Tek fark, çok satırlı string literal'lerin
   içindeki satır başı boşluklarının 12 azalması (dedent); boşluk

@@ -107,3 +107,25 @@ function test_dashboard_clock_answers_site_time()
 	pg_assert_true((bool) preg_match('#^<time datetime="[^"]*">([01][0-9]|2[0-3]):[0-5][0-9]</time>$#', $response['data']), 'data: ' . $response['data']);
 	pg_assert_true(substr($response['message'], -1) === 'x', 'message ends with the session name');
 }
+
+// Tile ink: near-black on a mid-tone brand colour, white on dark or unreadable
+// input.
+function test_dashboard_readable_ink_picks_the_legible_colour()
+{
+	pg_assert_same('#18181b', pg_readable_ink('#f59e0b'), 'amber');
+	pg_assert_same('#fff', pg_readable_ink('#000'), 'black, short form');
+	pg_assert_same('#fff', pg_readable_ink('zzz'), 'not a colour');
+}
+
+// Only the anchor tags go; the text and any other markup stay.
+function test_dashboard_strip_anchor_tags_keeps_inner_markup()
+{
+	pg_assert_same('a <i>b</i>', pg_strip_anchor_tags('<a href="x">a <i>b</i></a>'));
+}
+
+// The aside span is rendered only when there is an aside.
+function test_dashboard_row_heading_aside_is_optional()
+{
+	pg_assert_contains('pg-row-aside', pg_widget_row_heading('L', 'A'), 'with aside');
+	pg_assert_false(strpos(pg_widget_row_heading('L'), 'pg-row-aside') !== false, 'without aside');
+}
