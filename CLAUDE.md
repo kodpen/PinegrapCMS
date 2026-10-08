@@ -203,6 +203,7 @@ php tools/check_lang.php       # lang() / _sdT() anahtarlari tr.json ile ortusuy
 php tools/check_bindings.php   # tasarimci acilir listesi ile renderer tokenlari ortusuyor mu
 php tools/check_api_schema.php # dis API alanlari sema ile ortusuyor mu
 php tools/test.php [filtre]    # tests/*_test.php birim testleri (saf fonksiyonlar)
+php tools/check_copies.php     # get_file.php'de yalniz bilerek birakilan fonksiyon kopyalari var mi
 ```
 
 1. `php tools/lint.php` temiz.

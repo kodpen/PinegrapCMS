@@ -32,6 +32,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_mail_outbox();             // 8.31
 	upgrade_2026_4_8_cron_locks();              // 8.32
 	upgrade_2026_4_8_backup_settings();         // 8.33
+	upgrade_2026_4_8_mfa();                     // 8.40
 
 }
 
@@ -249,5 +250,47 @@ function upgrade_2026_4_8_backup_settings() {
 	install_add_column('config', 'backup_remote_sent_at', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Backups: the automatic backup is written as one zip archive per week, keeps the last four weeks by default, and can send a copy to an FTP server or an S3-compatible bucket (Settings › General › Backups).');
+
+}
+
+// Two-step sign-in (2026.4.8, 8.40; includes/fn/mfa.php, mfa.php).
+//
+// user_mfa holds one row per account that has, or is setting up, a second
+// factor. totp_secret is the base32 key encrypted with ENCRYPTION_KEY in the
+// "cipher:iv" shape the connector credentials use; it is read back on every
+// sign-in, so it cannot be a hash. last_step is the last accepted TOTP
+// counter, kept so a code cannot be replayed within its window.
+// pending_secret/pending_at hold a key that was generated but not yet
+// confirmed with a first code. user_mfa_recovery holds the one-time recovery
+// codes as SHA-256 hashes; a used code keeps its row with used_at set so the
+// account screen can say how many are left.
+// config.mfa_required_role: accounts whose role is <= this value must have a
+// second factor and are asked to set one up when they sign in; 99 means no
+// role is required to.
+function upgrade_2026_4_8_mfa() {
+
+	install_create_table('user_mfa', "CREATE TABLE user_mfa (
+		user_id        INT UNSIGNED NOT NULL,
+		method         VARCHAR(8) NOT NULL DEFAULT 'totp',
+		totp_secret    VARCHAR(255) CHARACTER SET ascii NOT NULL DEFAULT '',
+		enabled_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_step      INT UNSIGNED NOT NULL DEFAULT 0,
+		pending_secret VARCHAR(255) CHARACTER SET ascii NOT NULL DEFAULT '',
+		pending_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('user_mfa_recovery', "CREATE TABLE user_mfa_recovery (
+		id        INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id   INT UNSIGNED NOT NULL,
+		code_hash CHAR(64) CHARACTER SET ascii NOT NULL,
+		used_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		INDEX idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'mfa_required_role', "TINYINT NOT NULL DEFAULT 99");
+
+	install_note('Two-step sign-in: an account can require a code from an authenticator app after its password, and Settings › Security can require it of a role.');
 
 }

@@ -177,12 +177,14 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-device'     => lang('Device'),
+                'pgset-mfa'        => lang('Two-Step Verification'),
                 'pgset-signin'     => lang('Sign in with Google'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
+                'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
             ),

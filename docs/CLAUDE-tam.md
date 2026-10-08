@@ -290,7 +290,16 @@ Kurallar:
   PHPMailer `require` + `use`, tur sabiti, görsel id globali); fonksiyonlar
   derleme anında yükseltildiği için birbirini herhangi bir sırada çağırır.
 - `get_file.php` `functions.php`'yi yüklemediği için 18 fonksiyonun kopyasını
-  taşımaya devam eder (bölme bunu değiştirmedi).
+  taşımaya devam eder (bölme bunu değiştirmedi). **2026-10-08 (2026.4.8):**
+  klasör erişim fonksiyonları (`get_access_control_type`, `check_view_access`,
+  `check_edit_access`, `pg_folder_edit_access`, `check_private_access`)
+  `includes/authentication.php`'ye tek kopya olarak taşındı; `get_file.php`'de
+  14 fonksiyon kaldı, 11'i bilerek tutulan kopyadır. Liste ve gerekçe
+  `docs/_get_file_kopyalar.md`'de; `tools/check_copies.php` (CI'da) listede
+  olmayan yeni bir kopyayı `FAIL` eder. Ortak koda dokunurken
+  `includes/authentication.php` başlığındaki sözleşmeye uy (yalnız
+  `db/db_value/db_item/db_items/escape` + PHP; `lang()` ve `output_error()`
+  yok, `get_file.php`'ye özgü fonksiyon `function_exists()` ile).
 - Doğrulama: `docs/_plan_functions_bolme.md` §5'teki üç kapı geçti — fonksiyon
   envanteri (801 kullanıcı fonksiyonu, imzalarıyla birebir), `php -l` (25 dosya),
   bayt sayımı. Dördüncü kapı (313 giriş noktasının duman testi) dev sitede
@@ -2729,6 +2738,7 @@ eklendi.
 | `2026.4.8` (8.31) | `_mail_outbox`: yeni `mail_outbox` (InnoDB; id, created_at, send_after, status ENUM queued/sending/sent/failed, attempts, last_error, claimed_at, sent_at, mail_type, recipient, subject, properties MEDIUMTEXT JSON; `idx_due (status, send_after)`, `idx_created`). `email(['queue' => true])` `job` ya da `mail_job` son 15 dk koştuysa (`pg_mail_job_alive()`: `MAX(last_run_at)` iki satırdan) satır yazar, değilse senkron gönderir; `job.php` her tıkta koşulsuz `pg_mail_queue_run()` (`includes/fn/mail_queue.php`), ekran `mail_queue.php`. Kapı `pg_mail_queue_ready()`. `get_tables()`'a eklendi. Yeniden koşturulabilir; dev'de iki kez koşuldu |
 | `2026.4.8` (8.32) | `_cron_locks`: `cron_runs.locked_until` INT UNSIGNED DEFAULT 0 — dağıtıcının iş başına kilidi (`includes/fn/cron.php`: `pg_cron_dispatch_next()`, atomik `INSERT … ON DUPLICATE KEY UPDATE locked_until = IF(…)`). Şerit (`light`/`heavy`) kolonda değil, `pg_cron_jobs()` `'lane'` anahtarında; seçim `pg_cron_pick()`. `config.job_dispatch_lock_until` kalır, kolon yokken geri düşüş (`pg_cron_lock_ready()`). Yeniden koşturulabilir; sandbox'ta iki kez koşturuldu (ikincisinde atlandı) |
 | `2026.4.8` (8.33) | `_backup_settings`: `config.backup_keep` INT UNSIGNED DEFAULT 4 (saklanacak haftalık otomatik yedek; 0 = hepsi), `backup_remote_type` VARCHAR(8) DEFAULT '' (`''`/`ftp`/`s3`), `backup_remote_settings` TEXT NULL (şifreli JSON `"<ciphertext>:<iv>"`, `{ftp:{host,port,user,password,path,tls}, s3:{endpoint,region,bucket,prefix,access_key,secret_key,path_style}}`; `define()`'a açılmaz, `pg_backup_remote_decode()` gönderim anında çözer), `backup_remote_error` TEXT NULL (son başarısız uzak kopyanın mesajı, başarıda boşalır), `backup_remote_sent_at` INT UNSIGNED. `includes/fn/backup.php`, beş kolon birden `pg_backup_settings_ready()` ile yoklanır; ayarlar `init.php`'ye değil `pg_backup_settings()`'e. Yeniden koşturulabilir (yalnız `install_add_column`); sandbox'ta iki kez koşturuldu (ikincisinde atlandı) |
+| `2026.4.8` (8.40) | `_mfa`: iki adımlı oturum açma. Yeni `user_mfa` (PK `user_id`, `method` VARCHAR(8) DEFAULT 'totp', `totp_secret` VARCHAR(255) ascii — base32 anahtar `ENCRYPTION_KEY` ile `"cipher:iv"` şifreli, her girişte geri okunur; `enabled_at`, `last_step` — son kabul edilen TOTP adımı, tekrar kullanım engeli; onaylanmamış kurulum için `pending_secret` / `pending_at`), `user_mfa_recovery` (`id`, `user_id` + `idx_user`, `code_hash` CHAR(64) ascii — normalleştirilmiş kodun SHA-256'sı, `used_at`; kullanılan kodun satırı kalır), `config.mfa_required_role` TINYINT DEFAULT 99 (rolü ≤ değer olan hesaba 2FA zorunlu; 99 = kimseye). Saf fonksiyonlar `includes/fn/mfa.php` (`tests/mfa_test.php`). İki tablo `get_tables()`'a eklendi. `ENCRYPTION_KEY` sıfırlanırsa `totp_secret` okunamaz olur. Kapı `pg_mfa_gate()` (dört giriş, cihaz sınırı ve jetondan önce) ve kök `mfa.php`; sabit `MFA_REQUIRED_ROLE` (`init.php`). Hesap parçası `pg_mfa_account_section()` + `account_security.php` `mfa_*`; Ayarlar › Güvenlik `pgset-mfa`; `edit_user.php` sıfırlama. Yeniden koşturulabilir (`install_create_table` / `install_add_column`); dev'de iki kez koşuldu |
 
 ---
 

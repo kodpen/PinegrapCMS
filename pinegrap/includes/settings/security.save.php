@@ -94,6 +94,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Two-step verification (8.40): own query, only when the column exists
+    // and the field was posted. A disabled select is not posted; reading the
+    // missing value as 0 would oblige administrators to have a second factor.
+    if (function_exists('waf_table_has_column')
+        && waf_table_has_column('config', 'mfa_required_role')
+        && (post_value('mfa_required_role') !== NULL)
+    ) {
+        $mfa_post_role = (int) post_value('mfa_required_role');
+
+        if (!in_array($mfa_post_role, array(0, 1, 2, 3, 99), true)) {
+            $mfa_post_role = 99;
+        }
+
+        db("UPDATE config SET mfa_required_role = " . $mfa_post_role);
+    }
+
     // Google client secret: stored encrypted (AES-256-CBC + IV) but written
     // as shown - the field carries the current value like the other API
     // secrets on this screen, so whatever is in the field on save is the

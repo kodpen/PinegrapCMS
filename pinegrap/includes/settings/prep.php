@@ -52,6 +52,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $software_update_channel = ((($row['software_update_channel'] ?? 'stable') === 'beta') ? 'beta' : 'stable');
     $remember_me_device_limit_enabled = ($row['remember_me_device_limit_enabled'] ?? 0);
     $remember_me_device_limit_strict = ($row['remember_me_device_limit_strict'] ?? 0);
+    // Two-step verification (8.40): who must have it, and whether the site
+    // can offer it at all (tables, ENCRYPTION_KEY, openssl).
+    $mfa_required_role = isset($row['mfa_required_role']) ? (int) $row['mfa_required_role'] : 99;
+    $mfa_available = pg_mfa_available();
+    // Commerce warns before the encryption key is reset when somebody's
+    // second factor would become unreadable by it.
+    $mfa_enabled_accounts = pg_mfa_table_exists()
+        ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
+        : 0;
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
     $oauth_google_client_id = $row['oauth_google_client_id'];
@@ -1421,6 +1430,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if (extension_loaded('openssl') == FALSE) {
         $ecommerce_reset_encryption_key_disabled = ' disabled="disabled"';
         $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('OpenSSL is disabled') . ')';
+    }
+
+    if ($mfa_enabled_accounts > 0) {
+        $ecommerce_reset_encryption_key_disabled_message .= ' ' . lang('Resetting the key also makes every two-step verification key unreadable: people who turned it on will need it reset from their user screen.');
     }
     
     if ($ecommerce_paypal_express_checkout == 1) {

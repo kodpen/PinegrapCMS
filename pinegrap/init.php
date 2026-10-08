@@ -428,6 +428,9 @@ define('BANNED_EMAIL_ADDRESSES', (string) ($row['banned_email_addresses'] ?? '')
 define('REMEMBER_ME_DEVICE_LIMIT_ENABLED', (int) ($row['remember_me_device_limit_enabled'] ?? 0));
 define('REMEMBER_ME_DEVICE_LIMIT', (int) ($row['remember_me_device_limit'] ?? 0));
 define('REMEMBER_ME_DEVICE_LIMIT_STRICT', (int) ($row['remember_me_device_limit_strict'] ?? 0));
+// Two-step sign-in: accounts whose role is <= this value must have a second
+// factor; 99 (also before the 8.40 upgrade adds the column) means none must.
+define('MFA_REQUIRED_ROLE', (int) ($row['mfa_required_role'] ?? 99));
 define('MOBILE', $row['mobile']);
 define('SEARCH_TYPE', $row['search_type']);
 define('SOCIAL_NETWORKING', $row['social_networking']);

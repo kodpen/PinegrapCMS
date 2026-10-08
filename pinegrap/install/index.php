@@ -8399,6 +8399,8 @@ function get_tables() {
 		'talks',
 		'update_address_book_pages',
 		'user',
+		'user_mfa',
+		'user_mfa_recovery',
 		'users_ad_regions_xref',
 		'users_calendars_xref',
 		'users_common_regions_xref',
