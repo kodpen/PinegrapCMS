@@ -1,10 +1,15 @@
 # Development tree - never published
 /dev/
 
-# Internal documents. The context file and everything under docs/ - the full
-# context file, the change log, the topic plans and the contribution guides -
-# are written for whoever develops this product and stay on the development
-# machine. CONTRIBUTING.md carries what an outside contributor needs.
+# Internal documents. CLAUDE.md, .claude/ and docs/ are tracked on the
+# development branch only and never reach main or a release. The notes below
+# stay on the development machine and are not tracked on any branch.
+/docs/_mockup_add_order.html
+/docs/_plan_barindirma.md
+/docs/_seed_workspace.php
+/docs/_software_create_hash.php
+/docs/barindirma-platformu.md
+/docs/pinegrap-ai-gecit.md
 
 # Runtime data. The tree under pinegrap/data/ belongs to the installation,
 # not to the product: it holds the real configuration, uploaded files, the
