@@ -215,8 +215,9 @@ sunucu yükü yedek sırasında artar. Ağır işlerin kendi aralarındaki sıra
 değişmedi.
 
 **Açık kalan.** Ağır kilit süresi (14400) ve şerit listesi ürün sahibinin
-onayında. Çalışma zamanı doğrulaması (iki paralel `php job.php`, kilit
-dolunca geri alma) entegrasyon sandbox'ında yapılacak.
+onayında. Sandbox'ta doğrulandı: heavy kilitliyken light iş seçildi, üç
+eşzamanlı `php job.php` aynı işi iki kez başlatmadı, süresi dolan kilit geri
+alındı, kolon yokken legacy yol `config.job_dispatch_lock_until` ile çalıştı.
 
 ---
 
