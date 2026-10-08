@@ -706,6 +706,11 @@ function ws_handle_action($action, $request)
                     // The pinned message, as somebody may have changed it.
                     $out['pin'] = ws_channel_pin_present($viewer, $channel, ws_channel_membership($channel_id, $viewer['id']));
 
+                    // The marks on the tabs, every so often (the screen asks).
+                    if (!empty($request['counts'])) {
+                        $out['tab_counts'] = ws_channel_tab_counts($channel);
+                    }
+
                     // A guest's link and whether they are here (guests.php).
                     if (((string) $channel['kind'] === 'guest') && function_exists('ws_guest_channel_state')) {
                         $out['guest'] = ws_guest_channel_state($viewer, $channel);

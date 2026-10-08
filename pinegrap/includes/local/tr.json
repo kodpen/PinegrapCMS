@@ -17631,5 +17631,8 @@
     "Settings › General": "Ayarlar › Genel",
     "The model at ai.pinegrap.com answers, with the site's subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.": "Yanıtları ai.pinegrap.com'daki model, sitenin abonelik anahtarıyla verir. Sorulduğu kanalda yazılanlar oraya gönderilir. Herkese açık kanallar ona açıktır; özel kanallar yalnızca yöneticisi izin verirse.",
     "Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.": "Pinegrap AI, Pinegrap Premium'un bir parçasıdır ve sitenin abonelik anahtarıyla çalışır; ayrı bir anahtarı yoktur.",
-    "A Pinegrap Premium licence is needed to use this feature. Contact us at {var:1}.": "Bu özellikten faydalanmak için Pinegrap Premium lisansı gerekir. {var:1} adresinden bizimle irtibata geçin."
+    "A Pinegrap Premium licence is needed to use this feature. Contact us at {var:1}.": "Bu özellikten faydalanmak için Pinegrap Premium lisansı gerekir. {var:1} adresinden bizimle irtibata geçin.",
+    "{var:1} decisions and notes": "{var:1} karar ve not",
+    "{var:1} open tasks": "{var:1} açık görev",
+    "The summary is written": "Özet yazılmış"
 }

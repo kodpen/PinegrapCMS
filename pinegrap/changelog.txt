@@ -196,6 +196,13 @@
   [ŞEMA] config.ws_ai_license sütunu kaldırıldı (eski, ayrı
          Pinegrap AI anahtarı).
 
+  [YENİ] Kanalın sekmeleri açılmadan ne taşıdıklarını söyler:
+         Kararlar sekmesinin yanında karar ve not sayısı, Görevler
+         sekmesinin yanında açık görev sayısı, özet yazılmışsa
+         Özet sekmesinde bir nokta görünür. Sayılar kanalda bir
+         karar işaretlenince ya da görev açılınca hemen, başkası
+         değiştirdiğinde yarım dakika içinde tazelenir.
+
 
 
   2026.4.7

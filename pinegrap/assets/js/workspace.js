@@ -6160,10 +6160,12 @@
 
             var tabs = el('div', 'ws-tabs');
             tabs.setAttribute('role', 'tablist');
+            self.tabsNode = tabs;
 
             [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]].forEach(function (tab) {
                 var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
                 item.setAttribute('role', 'tab');
+                item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
                     self.drawCenter();
@@ -6176,6 +6178,7 @@
             });
 
             center.appendChild(tabs);
+            self.drawTabMarks();
 
             window.requestAnimationFrame(function () {
                 var active = tabs.querySelector('.active');
@@ -6232,6 +6235,43 @@
             } else {
                 self.drawSummary();
             }
+        },
+
+        // The marks on the tabs: how many decisions and open tasks there are,
+        // and whether the summary is written, so a tab says it holds
+        // something before it is opened.
+        drawTabMarks: function () {
+            var self = this;
+            var counts = (self.channel && self.channel.tab_counts) || null;
+
+            if (!self.tabsNode || !counts) {
+                return;
+            }
+
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+                var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
+                var was = tab ? tab.querySelector('.ws-tab-mark') : null;
+
+                if (!tab) {
+                    return;
+                }
+
+                if (was) {
+                    was.remove();
+                }
+
+                tab.removeAttribute('title');
+
+                if (!mark[1]) {
+                    return;
+                }
+
+                var badge = el('span', 'ws-tab-mark' + (mark[0] === 'summary' ? ' ws-tab-dot' : ''), mark[0] === 'summary' ? '' : (mark[1] > 99 ? '99+' : String(mark[1])));
+
+                badge.setAttribute('aria-hidden', 'true');
+                tab.appendChild(badge);
+                tab.title = (mark[0] === 'summary') ? t(mark[2]) : t(mark[2], mark[1]);
+            });
         },
 
         channelMenu: function () {
@@ -7526,6 +7566,7 @@
 
             api('ws_mark', { message_id: message.id, kind: kind }).then(function (data) {
                 self.replaceMessage(data.message);
+                self.sync();
                 toast(kind === 'message' ? t('unmarked') : (kind === 'decision' ? t('marked_decision') : t('marked_note')), 'success');
             }).catch(fail);
         },
@@ -10606,7 +10647,7 @@
             }
 
             self.timer = setTimeout(function () {
-                self.sync();
+                self.sync(false, true);
             }, (waiting ? Math.min(2, every) : every) * 1000);
         },
 
@@ -10615,8 +10656,14 @@
             this.timer = null;
         },
 
-        sync: function (scroll) {
+        // timed: the look the timer takes; any other is asked for by
+        // something done on the screen, after which the tabs are counted.
+        sync: function (scroll, timed) {
             var self = this;
+
+            if (!timed) {
+                self.countsAt = 0;
+            }
 
             // A look is under way: one more follows as soon as it is back
             // (right after sending, the new line must not wait for the timer).
@@ -10635,12 +10682,21 @@
 
             var asked = Date.now();
 
+            // The marks on the tabs are counted again every half minute, and
+            // at once after something here may have changed them.
+            var counts = !self.era && ((asked - (self.countsAt || 0)) > 30000);
+
+            if (counts) {
+                self.countsAt = asked;
+            }
+
             api('ws_sync', {
                 channel_id: self.channel.id,
                 since_id: self.lastId,
                 since_ts: self.sinceTs,
                 era_id: self.era ? self.era.id : 0,
-                read: (document.hasFocus() && !self.era) ? 1 : 0
+                read: (document.hasFocus() && !self.era) ? 1 : 0,
+                counts: counts ? 1 : 0
             }).then(function (data) {
                 self.syncing = false;
 
@@ -10705,6 +10761,11 @@
                 });
 
                 self.sinceTs = data.now;
+
+                if (data.tab_counts && self.channel && (JSON.stringify(data.tab_counts) !== JSON.stringify(self.channel.tab_counts || null))) {
+                    self.channel.tab_counts = data.tab_counts;
+                    self.drawTabMarks();
+                }
 
                 // The pinned message, as somebody may have changed it.
                 if (data.pin !== undefined && self.channel && (JSON.stringify(data.pin) !== JSON.stringify(self.channel.pin || null))) {

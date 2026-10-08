@@ -9371,6 +9371,36 @@ body.workspace_settings .ws-shell-main > #button_bar {
 .ws-tabs button:hover {
   color: var(--bs-emphasis-color);
 }
+/* What a tab holds, before it is opened: a count of the decisions and the
+   open tasks, a dot when the summary is written. */
+.ws-tab-mark {
+  display: inline-block;
+  min-width: 1.15rem;
+  margin-left: .35rem;
+  padding: 0 .35rem;
+  border-radius: 1rem;
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  text-align: center;
+  vertical-align: .05em;
+}
+.ws-tabs button.active .ws-tab-mark {
+  background: var(--ws-accent);
+  color: #fff;
+}
+.ws-tab-mark.ws-tab-dot {
+  min-width: 0;
+  width: .45rem;
+  height: .45rem;
+  padding: 0;
+  margin-left: .3rem;
+  line-height: 0;
+  vertical-align: .15em;
+  background: var(--ws-accent);
+}
 .ws-pane {
   flex: 1 1 auto;
   min-height: 0;

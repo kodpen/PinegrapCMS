@@ -200,7 +200,30 @@ function ws_channel_detail($viewer, $channel)
         }
     }
 
+    $brief['tab_counts'] = ws_channel_tab_counts($channel);
+
     return $brief;
+}
+
+/**
+ * What the channel's tabs hold, for the marks beside their names: the
+ * decisions and notes, the open tasks, and whether the summary is written.
+ * Two indexed counts (ws_messages.idx_kind, ws_tasks.idx_channel).
+ *
+ * @param array $channel
+ * @return array decisions, tasks, summary
+ */
+function ws_channel_tab_counts($channel)
+{
+    $channel_id = (int) $channel['id'];
+
+    return array(
+        'decisions' => (int) db_value("SELECT COUNT(*) FROM ws_messages
+            WHERE channel_id = '" . $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0"),
+        'tasks'     => (int) db_value("SELECT COUNT(*) FROM ws_tasks
+            WHERE channel_id = '" . $channel_id . "' AND status NOT IN ('done', 'cancelled')"),
+        'summary'   => (trim((string) ($channel['summary'] ?? '')) !== ''),
+    );
 }
 
 /**
