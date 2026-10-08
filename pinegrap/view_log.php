@@ -31,7 +31,31 @@ $candidates = array(
     'software_directory' => $base_dir . DIRECTORY_SEPARATOR . $error_log_path,
     'main_directory'         => $base_dir . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . $error_log_path,
     'installation_directory'       => $base_dir . DIRECTORY_SEPARATOR . 'install' . DIRECTORY_SEPARATOR . $error_log_path,
+    // Written by the handlers in includes/fn/errors.php, with its rotated copies.
+    'php_errors'   => pg_error_log_path(),
+    'php_errors_1' => pg_error_log_path() . '.1',
+    'php_errors_2' => pg_error_log_path() . '.2',
 );
+
+// The error log php.ini points at, when it is a file of its own. Read only:
+// it can sit outside the site and be shared with other sites on the host, so
+// the delete action below leaves it alone. Checked with @ because outside
+// open_basedir every file call on it warns.
+$php_ini_error_log = (string) ini_get('error_log');
+if (($php_ini_error_log !== '') && preg_match('#^(/|[A-Za-z]:[\\\\/]|\\\\\\\\)#', $php_ini_error_log)
+    && @is_file($php_ini_error_log) && @is_readable($php_ini_error_log)) {
+    $php_ini_real = @realpath($php_ini_error_log) ?: $php_ini_error_log;
+    $php_ini_known = false;
+    foreach ($candidates as $candidate_path) {
+        if ((@realpath($candidate_path) ?: $candidate_path) === $php_ini_real) {
+            $php_ini_known = true;
+            break;
+        }
+    }
+    if (!$php_ini_known) {
+        $candidates['php_ini'] = $php_ini_error_log;
+    }
+}
 
 if (!$_POST) {
 
@@ -81,13 +105,17 @@ if (!$_POST) {
         $error_log_controls = '';
         if (defined('USER_ROLE') && (USER_ROLE < 1)) {
 
+            $deletable_error_log_exists = false;
+            foreach ($candidates as $locationmark => $candidate_path) {
+                if (($locationmark !== 'php_ini') && file_exists($candidate_path)) {
+                    $deletable_error_log_exists = true;
+                    break;
+                }
+            }
+
             if(
                 !empty($_SESSION['software']['settings']['view_log']['error_log'])
-                && (
-                    file_exists($candidates['software_directory'])
-                    || file_exists($candidates['main_directory'])
-                    || file_exists($candidates['installation_directory'])
-                )
+                && $deletable_error_log_exists
             ) {
                 $delete_error_logs_button = '<button type="submit" name="delete_all_error_logs" value="Delete Error Logs"  value="1" class="btn btn-link link-danger py-0 mb-2 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Error Logs') . '\', message:\'' . lang('WARNING: error_log files will be permanently deleted around Software. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_error_logs\',value:\'Delete Error Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Error Logs') . '</button>';
             }
@@ -286,7 +314,23 @@ if (!$_POST) {
             continue;
             }
 
-            $lines = @file($candidate_real, FILE_IGNORE_NEW_LINES);
+            $lines = false;
+            // The php.ini log is not rotated by the software and on a shared
+            // host it can run to gigabytes; file() on that ends this screen at
+            // the memory limit. Only its last part is read.
+            $tail_bytes = 10 * 1024 * 1024;
+            if (($locationmark === 'php_ini') && (@filesize($candidate_real) > $tail_bytes)) {
+                $handle = @fopen($candidate_real, 'rb');
+                if ($handle) {
+                    @fseek($handle, -$tail_bytes, SEEK_END);
+                    $tail = (string) @fread($handle, $tail_bytes);
+                    fclose($handle);
+                    // The first line is cut in the middle.
+                    $lines = array_slice(explode("\n", str_replace("\r\n", "\n", $tail)), 1);
+                }
+            } else {
+                $lines = @file($candidate_real, FILE_IGNORE_NEW_LINES);
+            }
             if ($lines === false) {
             continue;
             }
@@ -360,12 +404,29 @@ if (!$_POST) {
                 case 'installation_directory':
                 $locationlabel = lang('Installation Directory');
                 break;
+                case 'php_errors':
+                $locationlabel = lang('Software error log');
+                break;
+                case 'php_errors_1':
+                case 'php_errors_2':
+                $locationlabel = lang('Rotated software error log');
+                break;
+                case 'php_ini':
+                $locationlabel = lang('PHP error log (php.ini)');
+                break;
             }
             if (($timestamp >= $start_timestamp) && ($timestamp <= $stop_timestamp)) {
+                $log_description = implode("\n", $g['lines']);
+                // A line from includes/fn/errors.php is one JSON object; shown
+                // as text, the way the other entries read.
+                $described = pg_error_describe_line(trim($log_description));
+                if ($described !== null) {
+                    $log_description = $described;
+                }
                 $error_logs[] = array(
                 'log_id' => 'error_' . $locationmark . '_' . $local_index,
                 'log_type' => 'Error Log',
-                'log_description' => implode("\n", $g['lines']),
+                'log_description' => $log_description,
                 'log_ip' => '',
                 'log_user' => '[' . lang('SYSTEM') . ']',
                 'log_location' => h($locationlabel),
@@ -825,6 +886,12 @@ if (!$_POST) {
         $deleted = 0;
     
         foreach ($candidates as $locationmark => $candidate_path) {
+            // Never deleted: may be outside the site and shared with other
+            // sites on the host (see where $candidates is built).
+            if ($locationmark === 'php_ini') {
+                continue;
+            }
+
             $candidate_path = str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $candidate_path);
             $candidate_real = @realpath($candidate_path) ?: $candidate_path;
         

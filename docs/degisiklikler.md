@@ -220,6 +220,68 @@ dolunca geri alma) entegrasyon sandbox'ında yapılacak.
 
 ---
 
+## 2026.4.8 — Merkezî hata kaydı: `includes/fn/errors.php`, `php_errors.log`, Site Günlükleri'nde gösterim (2026-10-08)
+
+**Sorun.** Yakalanmamış istisna ve ölümcül hata operatöre görünmüyordu:
+yalnız sunucunun hata günlüğüne düşüyordu, paylaşımlı hostta o dosya ya yok
+ya da sitenin okuyamadığı bir yerde. `view_log.php` yalnız üç `error_log`
+dosyasına (yazılım, ana dizin, kurulum) bakıyordu. PHP 8.5/9'a hazırlık için
+kullanımdan kalkma (deprecation) listesi de hiçbir yerde toplanmıyordu
+(`init.php` `E_DEPRECATED`'ı `error_reporting`'den çıkarıyor).
+
+**Karar.**
+- İşleyiciler **yalnız kaydeder**, davranışı değiştirmez: hata işleyicisi
+  her zaman `false` döner (PHP'nin kendi `display_errors`/`error_log` akışı
+  sürer; çift kayıt kabul), istisna işleyicisi PHP'nin varsayılanını taklit
+  eder (500, `DEBUG` açıksa mesaj, değilse `lang('An unexpected error
+  occurred.')`, CLI'da stderr, `exit(255)`). Önceden kurulu işleyici varsa
+  zincirlenir. `error_reporting` ayarı ve `mysqli_report(MYSQLI_REPORT_OFF)`
+  sözleşmesi değişmedi; DB'ye dokunulmaz (`log_activity()` yok) — kapanış
+  işleyicisi bağlantının gitmiş olabileceği anda çalışır.
+- **Susturma ölçütü:** `@` `error_reporting()`'i PHP 7'de 0'a, PHP 8'de ölümcül
+  maskeye (4437) düşürür; ikisi de "susturulmuş" sayılır ve kaydedilmez
+  (kod tabanında binlerce `@mysqli_query` var). `error_reporting`'de olmayan
+  hata kaydedilmez; tek istisna `DEBUG` açıkken susturulmamış
+  `E_DEPRECATED`/`E_USER_DEPRECATED`.
+- **Sel tavanı:** uyarı/bildirim/deprecation için aynı `file:line` istek
+  başına bir kez, istek başına toplam 50 satır. Ölümcül kayıtlar tavana
+  girmez; `E_USER_ERROR` hem işleyiciden hem `error_get_last()`'ten
+  geldiği için anahtarla tekilleştirilir.
+- **Sızıntı:** sorgu dizesinde `password`, `token`, `k`, `sig`, `key`
+  (`x[]` biçimi dahil, büyük/küçük harf duyarsız) değerleri `***`; yığın
+  kareleri argümansız (`getTraceAsString()` kullanılmaz); `error_get_last()`
+  mesajındaki PHP'nin kendi "Stack trace:" kısmı kesilir.
+- **Biçim:** `[Y-m-d H:i:s] {json}` — `view_log.php`'nin mevcut tarih
+  önekli satır ayrıştırıcısı değişmeden okur. 5 MB'ta döner, üç dosya
+  (`.log`, `.1`, `.2`).
+- `view_log.php`: `php_errors`, `php_errors_1`, `php_errors_2` aday
+  dosyaları silinebilir; `ini_get('error_log')` mutlak bir dosyaysa
+  `php_ini` olarak **yalnız okunur** (site dışı/paylaşımlı olabilir, "Hata
+  günlüklerini sil" atlar; 10 MB'tan büyükse yalnız son 10 MB okunur —
+  `file()` bütün dosyada bellek sınırına takılır). JSON satırı
+  `pg_error_describe_line()` ile düz metne çevrilir.
+
+**Çözüm.**
+- Yeni modül `includes/fn/errors.php` (manifestin sonunda):
+  `pg_error_install()` (idempotent; `init.php`'de `functions.php`'den hemen
+  sonra, CLI dahil), `pg_error_record()`, `pg_error_uncaught()`,
+  `pg_error_shutdown()`; saf yardımcılar `pg_error_format_line()`,
+  `pg_error_trace_short()`, `pg_error_level_name()`, `pg_error_mask_url()`,
+  `pg_error_rotate_plan()`, `pg_error_describe_line()`; yollar
+  `pg_error_log_path()`, `pg_error_log_files()`.
+- `output_error()`'un `RuntimeException` yolu (`pg_seo_rendering()` /
+  `pg_error_throws()`) çağıranlarda yakalanır (`seo_structure.php`
+  `catch (Exception)`, `designer.php` ve `settings_pane.php`
+  `catch (Throwable)`); işleyiciye yalnız yakalanmadığında düşer.
+- Testler `tests/errors_test.php` (7 test). `tr.json`: 4 anahtar.
+
+**Açık kalan.** `router.php`'nin `init.php`'den önceki yolu (DB/config
+hatası) ve `get_file.php` işleyicisiz kalır. Tarih, işleyici kurulduğu anda
+geçerli saat diliminde yazılır; `init.php` site saat dilimini daha sonra
+ayarladığı için ondan önceki bir hata sunucu saat diliminde damgalanır.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve
