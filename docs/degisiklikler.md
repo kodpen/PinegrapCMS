@@ -34,7 +34,8 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 8.110–8.119. Dosya ve `versions.php`'deki `'2026.4.8'` satırı ilk şema
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
-hemen koşar. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
+8.80 adımıyla açıldı (bugün 8.80–8.84). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -68,6 +69,233 @@ Aşağıdaki bölümlerin `İç tur` ve `(iç tur 4.x)` başlıkları **çalış
 numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başlıkları
 2026.4.2 birleştirmesine, `2026.4.4 (iç tur 4.x)` başlıkları 2026.4.4
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: asistanların önerdiği toplu değişiklik (2026-10-08)
+
+**Sorun.** Pinegrap AI ve Claude bir kayıt değişikliğini yalnız tek kayıt için
+önerebiliyordu (`ws_ai_changes`, eylem `create` / `update` / `delete`).
+"Bu gruptaki ürünlerin fiyatına %10 ekle", "açıklaması boş ürünlere açıklama
+yaz" gibi istekler ya yüzlerce ayrı karta bölünüyor ya da hiç
+yapılamıyordu.
+
+**Çözüm.** Yeni `includes/workspace/bulk.php`. Toplu değişiklik, eylemi
+`bulk` olan bir `ws_ai_changes` satırıdır (sütun VARCHAR, şema değişmez):
+`fields` kuralı, `snapshot` ulaştığı kayıtları ve uygulamanın ilerleyişini
+taşır.
+
+- Kural: kayıtlar (bir türün tümü, bir ürün grubunun ürünleri, adında bir
+  sözcük geçenler, bir liste; isteğe bağlı "alanı boş olanlar") ve işlem
+  (değer ata, sayıya yüzde ya da tutar ekle, Pinegrap AI'ın her kayıt için
+  yazdığı metin — çağrı başına en çok üç metin alanı —, tek tek verilen
+  değerler, silme). `ws_bulk_input()` kuralı isteyen kişi için denetler
+  (değiştirebildiği türler, işlemi alan alan, ulaşılan kayıtlar); kart
+  kuralı sözle, kaç kayda ulaştığını ve birkaçının önce/sonrasını gösterir.
+- Uygulama, onay anında kuralın ulaştığı kayıtları alır ve dilim dilim
+  yazar; her kayıt tek bir önerilen değişiklik gibi yazılır
+  (`ws_change_allowed`, `ws_change_check`, `ws_change_write_*`), yani
+  yetki, olaylar, günlük satırları ve Geri Dönüşüm Kutusu panelinkidir.
+  Onaylayanın ekranı ilerlemeyi sürdürür (`ws_bulk_step`, ilerleme çubuğu);
+  kapanan ekranın bıraktığını ekranların tikleri ve çalışma alanı işi
+  (`ws_bulk_continue`) bitirir. Sonda kilitli bir karar mesajı neyin
+  değiştiğini, kaldığını ya da başarısız olduğunu söyler.
+- Pinegrap AI'a `propose_bulk_change` aracı ve yönergesi; Claude'un yanıt
+  ucu `action: bulk` değişikliği alır (rotada belgelendi).
+- Toplu silme, yönetici Çalışma Alanı Ayarları'ndaki yeni kartta
+  açmadıkça reddedilir (`config.ws_ai_bulk_delete`, varsayılan kapalı).
+
+**Gerekçe.** Kayıtlar uygulama anında yeniden seçilir: öneri ile onay
+arasında eklenen ya da silinen kayıt kuralın gerçeğine uyar. Tek kayıt
+yazma yolunun yeniden kullanılması, toplu işin yetki ve kutu davranışında
+ayrı bir yüzey açmaması içindir. Silme varsayılan kapalı: tek onayla yüzlerce
+kaydın kutuya gitmesi bilinçli bir yönetici kararı olmalı.
+
+**Şema.** 8.84 `_bulk_changes`: `config.ws_ai_bulk_delete`.
+
+**Doğrulama.** Sandbox, CLI (`ws_changes_input` → `ws_changes_store` →
+`ws_change_apply`): tüm ürünlerin fiyatına yüzde, bir ürün grubunun
+ürünlerine tutar (25 kayıt, tek dilim), boş meta anahtar kelimeli sayfalara
+değer (166 kayıt; ilk dilim onayda, kalanı `ws_bulk_continue` ile dört
+dilimde) ve sonda kilitli karar mesajı; toplu silmenin ayar kapalıyken
+reddi. Kart ve ilerleme Playwright ile. Pinegrap AI'ın metin yazması
+(`generate`) ve iki asistanın canlı önerisi sandbox'ta denenemedi (geçit ve
+Claude bağlantısı yok); araç tanımı ve rota şeması
+`tools/check_api_schema.php` ile denetlendi.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: kanalın yanında tartışmalar (2026-10-08)
+
+**Sorun.** Bir mesaj üzerine uzun konuşma kanalın akışını uzatıyor, önemli
+mesajlar gömülüyor; konuyla ilgisi olmayan herkes her yanıtı görüyordu.
+
+**Çözüm.** Yeni `includes/workspace/threads.php`. Tartışma, `kind = 'thread'`
+olan bir kanal satırıdır; `ws_threads` onu kanalına ve mesajına bağlar.
+
+- Başlatan ve mesajın yazarı içindedir; kanalı okuyan personel katılabilir;
+  içindekiler kanalı okuyan kişileri ekleyebilir. Okuma kanalı okumaya
+  bağlıdır (`ws_can_read_channel`); kanal açıkken yazılır. İncelemeye
+  açılmaz, sabitlenmez, paylaşılmaz, gruplanmaz, temizlenmez; kanal
+  listesine, zaman çizelgesine, takvime, #etiket aramasına ve ad
+  denetimine girmez.
+- Kanalda mesajın altında bir çubuk (başlık, kimler, kaç mesaj, okunmamış,
+  Aç / Katıl); kenar çubuğunda "Tartışmalar" bölümü (yoksa bölüm yok).
+  Tartışma sağda bir panelde açılır: kanal ekranından `Object.create` ile
+  türetilir (`makeThreadView`), mesajlar, yazma kutusu, seçiciler ve
+  anketler olduğu gibi çalışır; telefonda panel kanalı örter. Bağlantı,
+  anma ya da aramayla kanal olarak istenen tartışma kendi kanalının yanında
+  açılır.
+- Tartışmanın kararları, notları ve görev kartları kanala kopyalanır
+  (`ws_thread_copies`), asılla eşit tutulur (düzenleme, işaret kaldırma,
+  silme, uygulanmış kayıt değişikliğinin kilidi — `ws_thread_copy_sync`) ve
+  geldiği tartışmayla işaretlenir. Tartışmada açılan görev kanalın
+  görevidir. Tartışmada gönderilen dosya kanalın klasöründe tutulur.
+- Asistanlar kanalın kendi ayarına uyar; Pinegrap AI'a tartışılan mesaj
+  bağlam olarak verilir; kanal mesajında asistanın çağrıldığı not edilir.
+- İçindeki herkes sonuçlandırabilir: 30 gün salt okunur, sonra içindekilerle
+  silinir (`ws_threads_purge`, ekran tiki ve çalışma alanı işi); kanalı
+  olmayan tartışma da silinir. Kararları kanalda kalır.
+
+**Gerekçe.** Kanal satırı olarak kurmak, mesaj / dosya / anket / görev /
+asistan altyapısını kopyalamadan kullanmak içindir. Kanal silinmediği
+(yalnız arşivlendiği) için arşivli kanalın tartışması salt okunur kalır;
+kanal satırı yoksa tartışma temizlenir.
+
+**Şema.** 8.83 `_threads`: `ws_channels.kind`'a `thread` (ENUM önce okunur,
+yalnız eksikse genişletilir), `ws_threads`, `ws_thread_copies`
+(`get_tables()`'a eklendi).
+
+**Doğrulama.** Sandbox, CLI: başlatma, personelin katılması, içindekinin kişi
+eklemesi ve özel kanalı okuyamayanın eklenememesi, karar ve görev kopyası,
+düzenlemenin kopyaya geçmesi, sonuçlandırma, purge. Playwright masaüstü ve
+telefon genişliğinde, yönetici ve rol 3: bağlam menüsünden başlatma, panelde
+ve kanalda aynı anda yazma, kanal mesajının altındaki çubuk, telefonda
+panelin kanalı örtmesi ve kapanması. Asistanların tartışmadaki canlı yanıtı
+denenemedi.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: kanalı misafirle paylaşma, salt okunur ya da okuyup yazar (2026-10-08)
+
+**Sorun.** Ekip dışından biri yalnız kendine açılan misafir odasına
+alınabiliyordu; var olan bir kanalı (ör. proje kanalı) müşteriyle ya da
+danışmanla paylaşmanın, hele yalnız okutmanın yolu yoktu.
+
+**Çözüm.** `includes/workspace/guests.php`: `ws_guests` satırı artık ekibin
+herkese açık ya da özel bir kanalına da ait olabilir; aynı tek kullanımlık
+/ süreli `short_links` bağlantısı ve aynı misafir sayfası.
+`ws_guests.access` misafirin yalnız okuduğunu (`read`) ya da okuyup
+yazdığını (`write`) söyler.
+
+- Kanalı yönetebilen personel kanal menüsünden paylaşır
+  (`ws_channel_share`); konuşmanın üstündeki çubuk herkese ekip dışından
+  kimin okuduğunu söyler, Yönet çekmecesi misafire yeni bağlantı verir ya da
+  paylaşımı bitirir. Bitirmek o misafirin bağlantılarını ve oturumlarını
+  kapatır, kanala dokunmaz (misafir odası arşivlenir, paylaşılan kanal
+  arşivlenmez).
+- Misafir sayfası kanalın adını ve yalnız güncel konuşmayı (son
+  temizlemeden sonrasını) gösterir; salt okunur misafire yazma kutusu,
+  tepki, oy ve işaret denetimi çizilmez, sunucu da bu eylemleri reddeder
+  (`ws_guest_reads_only`).
+- Paylaşım açıkken kanalda iki asistan da çağrılmaz (misafir odasındaki
+  gibi): yanıt misafirin okuyacağı kayıt verisi taşıyabilir.
+- Misafir mesajının gelen kutusu satırı yazan misafirin adını verir.
+
+**Şema.** 8.82 `_channel_shares`: `ws_guests.access` ENUM('write','read').
+
+**Doğrulama.** Sandbox, Playwright: salt okunur paylaşımda misafir sayfasında
+yazma denetimlerinin yokluğu ve sunucunun `send` reddi; okuyup yazar
+paylaşımda misafir mesajı; paylaşımı bitirince misafirin oturumunun düşmesi
+ve kanalın açık kalması; açık duran öbür ekip ekranında paylaşım çubuğunun
+senkronla belirmesi.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: zamanlanmış mesaj, katılınca başlayan işlem, görevler e-postayla, akış biçiminde form (2026-10-08)
+
+**Sorun.** Mesaj ileri bir zamana bırakılamıyordu; programlanmış işlemler
+yalnız personelindi, kanala yeni katılanı karşılamanın ve açık görevleri
+e-postayla göndermenin yolu yoktu; işlem formu uzun tek sayfaydı.
+
+**Çözüm.**
+
+- Zamanlanmış mesaj (yeni `includes/workspace/scheduled_messages.php`):
+  gönder düğmesinin ikinci yarısı (bir saat sonra, yarın 09:00, pazartesi
+  09:00, tarih ve saat). Mesaj, `ws_scheduled_actions` içinde `kind =
+  'message'` olan, tek zaman kuralı ve tek gönderi eylemi taşıyan bir
+  satırdır; var olan çalıştırıcı yürütür. Ekibin herkesi (rol 3 dahil)
+  zamanlayabilir; gönderilene dek yalnız yazanındır — yazma kutusunun
+  üstündeki satır ve zamanlanmış ekranındaki sekme listeler; şimdi gönder,
+  taşı, düzenle, sil. Gönderilince yazanın yetkileriyle gider, çağırdığı
+  asistanı kuyruğa koyar, günlüğe yazılır ve satır silinir; gönderilemeyen
+  `failed` kalır, yazana gelen kutusunda söylenir. Personel uçları yalnız
+  `kind = 'action'` satırları okur (`ws_scheduled_action`).
+- Katılma kuralı: işlem bir kanala (ya da herhangi bir herkese açık kanala)
+  katılan ya da eklenen her kişi için bir kez koşar
+  (`ws_scheduled_joined`); yeni gelen `ws_scheduled_queue.context`'te taşınır,
+  `{{newcomer}}`, `{{newcomer_name}}`, `{{channel}}` doldurulur; gönderi
+  "katıldığı kanal"a gidebilir. "Hoş geldin mesajı" şablonu.
+- Yeni eylem `task_digest`: herkese açık görevleri (tüm kanallarda ya da
+  birinde) ya da bir kanalın açık görevleri, e-postayla; tümü, bir hafta
+  içinde bitecekler ya da gecikenler. Boş e-posta gitmez. "Her pazartesi
+  görevler e-postayla" şablonu.
+- Form akış olarak okunur: Ne zaman / Yalnız şu durumda / Yap / Sonra adım
+  rayı, kart olarak şablonlar ve sunucunun yazdığı özet
+  (`ws_scheduled_preview`: kaydın kendi denetimleri, kurallar ve eylemler
+  sözle, sonraki üç çalışma). Kartlara Çoğalt.
+
+**Şema.** 8.81 `_scheduled_messages`: `ws_scheduled_actions.kind`
+ENUM('action','message') + `idx_kind (kind, created_by, status)`,
+`ws_scheduled_queue.context` TEXT.
+
+**Doğrulama.** Sandbox, CLI ve Playwright (yönetici ve rol 3): gönder
+düğmesinin menüsünden zamanlama, yazma kutusunun üstündeki satır ve
+zamanlanmış ekranındaki liste; rol 3'ün zamanlaması, taşıması, şimdi
+göndermesi ve silmesi; başkasının zamanlanmış mesajının ve personel
+uçlarından (`ws_scheduled_get`, `_run_now`, `_status`) mesaj satırının
+reddi; vakti gelen mesajın gönderilip günlüğe yazılması ve satırın
+silinmesi; geçmiş tarihin ve komut mesajının reddi; katılma kuralıyla
+karşılama mesajı; `task_digest` alıcı ve içerik hesabı; akış formu ve
+önizleme. Gerçek e-posta gönderimi sandbox'ta denenemedi (sendmail yok).
+
+---
+
+## 2026.4.8 — Çalışma Alanı: kanal sekmelerinde içerik işaretleri (2026-10-08)
+
+**Sorun.** Kararlar, Görevler ve Özet sekmelerinde bir şey olup olmadığını
+görmek için her sekmeyi açmak gerekiyordu.
+
+**Çözüm.** Kararlar sekmesi kanalın karar ve not sayısını, Görevler açık
+görev sayısını, Özet yazılmış özet varsa bir nokta gösterir.
+`ws_channel_tab_counts()` iki indeksli sayım yapar; `ws_channel_detail()`
+taşır, `ws_sync` ekran `counts` isteyince döndürür (ekrandaki her işten
+sonra, yoksa yarım dakikada bir).
+
+---
+
+## 2026.4.8 — Pinegrap AI sitenin abonelik anahtarıyla çalışıyor (2026-10-08)
+
+**Sorun.** Pinegrap AI kartı ayrı bir lisans anahtarı istiyordu
+(`config.ws_ai_license`, şifreli); oysa Pinegrap AI, Pinegrap Premium'un
+parçası ve site zaten Ayarlar › Genel'de abonelik anahtarını tutuyor.
+
+**Çözüm.** Geçide `config.subscription_key` gönderilir; kartın anahtar alanı,
+temizleme seçeneği ve POST işlemesi kaldırıldı, kart Genel ayarlara
+bağlanır. Sitede anahtar yoksa ya da geçit reddetmiş / süresi dolmuşsa
+@ai'ı çağıran (kanalda ya da notta) yönetici kurulum ipucu yerine
+"Bu özellikten faydalanmak için Pinegrap Premium lisansı gerekir…" ve
+iletişim adresini görür (`ws_ai_premium_sentence()`). Abonelik anahtarı
+değişince (`includes/settings/general.save.php`) eski anahtar hakkında
+geçidin söyledikleri (`ws_ai_license_state` / `_checked` / `_expires`)
+temizlenir.
+
+**Şema.** 8.80 `_ai_license`: `config.ws_ai_license` düşürülür; düşürüldüyse
+durum sütunları sıfırlanır. Eski anahtar taşınmaz: abonelik anahtarı
+lisansın tek kaynağıdır.
+
+**Açık.** Geçidin abonelik anahtarını kabul ettiği canlı olarak denenmedi
+(sandbox'ta geçit yok).
 
 ---
 
