@@ -164,6 +164,13 @@ kodun geçerli olduğunu söylerdi (bilgi sızdırır).
   - İki tarayıcı yolunda SVG sunucunun ürettiği markup olarak `innerHTML`
     ile girer; dizgeye başka hiçbir kullanıcı verisi girmez (metin
     `pg_qr_svg()`'de yalnız modüllere dönüşür, etiket `h()`'den geçer).
+  - ERP muhasebeci paketi bağlantısı (`erp_accountant.php`, "Make a link to
+    copy"): yeşil kutuda adresin solunda QR (160 px) ve altında "SVG indir"
+    (`download="accountant-pack-qr.svg"`; oturumdaki bağlantı kaydı dönem
+    taşımıyor). Bağlantı birkaç gün geçerli ve girişsiz; yalnız hash'i
+    saklandığı için bir kez gösterilir — QR da yalnız orada. Kopyala ve
+    betiği aynen. Sandbox'ta paket kurulup bağlantı yapıldı: QR'dan çözülen
+    adres kutudakiyle aynı, indirme bağlantısı `data:image/svg+xml`.
   - Sandbox'ta (Chromium + zxing-cpp) doğrulandı: kısa link kartındaki QR
     ve indirilen `yaz-kampanya_2026-qr.svg` adresi veriyor (dosya data
     URI'yle bayt bayt aynı); tek kullanımlık linkte ve misafir görüşmesi
@@ -1330,7 +1337,8 @@ denemenin sekizinde (önceden yaklaşık üçte birinde kayboluyordu).
 **Açık.** Hazır başlangıç sitesinin (`turkish_default`) "my account profile"
 sayfası özel düzenle gelir ve `$account_security`'yi basmaz: o sitelerde
 hesap güvenliği bölümü (cihazlar, Google, 2FA) görünmez; sandbox'ta sayfa
-sistem düzenine alınarak denendi.
+sistem düzenine alınarak denendi. (2026-10-08: kapandı, aşağıda "Kapatma
+yolları".)
 
 **Doğrulanamayanlar.** Google ile giriş (sandbox'ta Google yok; kapı satırı
 kod incelemesiyle). Sıfırlama bağlantısıyla parola belirleme
@@ -1338,6 +1346,71 @@ kod incelemesiyle). Sıfırlama bağlantısıyla parola belirleme
 hesapta ikinci adımı atlar; kapanması `pg_post_password_signin()`
 düzeltmesine bağlıdır. Gerçek bir doğrulama uygulamasına (Google
 Authenticator, Aegis) anahtarın elle girilmesi denenmedi.
+
+### Kapatma yolları (2026-10-08)
+
+**Karar (ürün sahibi).** İki adımlı doğrulama açıkken iki yerden kapatılır:
+hesap sayfası ve paneldeki kullanıcı ekranı (`edit_user.php`). Yönetici
+başkasınınkini istediği zaman kapatabilir ama panelden **açılamaz**: anahtar
+kişinin kendi cihazında doğrulanır, açmak hesap sayfasında kişinin işidir.
+Kişi kendi doğrulamasını kapatırken son bir kez parola + kod verir (TOTP ya
+da kurtarma kodu; Google'a bağlı parolasız hesapta yalnız kod): çalınmış bir
+oturum ikinci adımı sessizce kaldıramamalı.
+
+**Çözüm.**
+- `includes/fn/mfa.php` `pg_mfa_self_disable_check($user_id, $username,
+  $current_password, $code)`: deneme kovası (`pg_mfa_attempt_blocked()`,
+  aşımda etkinlik kaydı), algo ≠ 3 ise giriş sayacı
+  (`pg_login_throttle_guard()` — kilitliyken dönmez, 429 + hata sayfasıyla
+  çıkar; yanlış parola `pg_login_record_failure()`), kod
+  (`pg_mfa_verify_code()`), başarıda sayaçlar temizlenir. Boş dizge = kabul,
+  dolu = gösterilecek mesaj; hiçbir şeyi kapatmaz. `account_security.php`
+  `mfa_disable` bu fonksiyonu çağırır. Tek fark: kapatmada deneme sınırı
+  aşıldığında mesaj artık ayrı hata sayfası yerine profil formunun hata
+  kutusunda görünür (sayaç fonksiyonun içinde sayıldığı için ortak kapıdan
+  çıkarıldı; iki kez sayılmasın).
+- `pg_mfa_account_url()` `get_page_type_url()`'nin `false` dönüşünü `''`
+  sayar: önceden profil sayfası olmayan sitede "my account" yedeğine hiç
+  geçmiyordu.
+- `edit_user.php`: başkasının hesabı için `pg_mfa_reset` kalır (rol kuralı
+  ve etkinlik kaydı aynı), metni "kapat"; kendi hesabı için yeni
+  `pg_mfa_self_disable` dalı (yalnız `id` = oturumdaki kullanıcı;
+  `logged_in_as_different_user` kipinde red; parola alanı hesap
+  sayfasındakiyle aynı ad/id `current_password` / `pg_mfa_current_password`,
+  `autocomplete="current-password"`; başarıda `pg_mfa_disable()` — bu
+  tarayıcının jetonu kalır, diğerleri düşer). Kendi hesabına `pg_mfa_reset`
+  POST'u reddedilir. Durum satırında "Yönet" iki hesapta da 2FA açıkken
+  görünür; kapalıyken yalnız "Kapalı", kendi hesabında
+  `pg_mfa_available()` ise "Hesabım sayfasından açabilirsiniz" (bağlantı
+  `pg_mfa_account_url()` boş değilse). İki form `disable_shortcut` taşır
+  (Ctrl+S onlara gitmez). Ekranın mevcut rol kapısı yüzünden kendi
+  `edit_user.php`'sini yalnız yönetici (rol 0) açabilir: tasarımcı ve
+  menejer kendi doğrulamasını yalnız hesap sayfasından kapatır.
+- `get_my_account_profile.php`: özel düzen `pg-account-security` bölümünü
+  basmıyorsa bölüm düzenin sonuna eklenir; `$account_security` bir kez
+  hesaplanır. `data/backups/` düzenlerine dokunulmadı.
+
+**Doğrulama (sandbox, pyotp + Chromium).** Kendi hesabı (yönetici):
+yanlış parola → parola mesajı, giriş sayacına bir hata, 2FA açık; yanlış kod
+→ kod mesajı; doğru parola + kod → "Kapalı · Hesabım sayfasından
+açabilirsiniz" (`/my-account-profile`), `user_mfa` / kurtarma satırları
+silindi, etkinlik kaydı "kullanıcı iki adımlı doğrulamayı kapattı", bu
+tarayıcı içeride, hatırla-beni ile açılmış ikinci tarayıcı dışarıda. Rol
+zorunluluğu notu görünüyor; panelde "aç" düğmesi yok. Başka yönetici olarak
+oturum açılmışken panelde yalnız uyarı, sahte POST "değiştirilemez"
+hatasıyla reddedildi. Başkasının hesabı: yönetici parolasız kapattı, kişinin
+diğer tarayıcısı dışarıda. Menejerin yöneticinin ekranını açması ve sahte
+`pg_mfa_reset` POST'u "Erişim reddedildi" (ekranın rol kapısı), yöneticinin
+2FA'sı açık kaldı; menejer kendi `edit_user.php`'sini de açamıyor. Hesap
+sayfası (başlangıç sitesinin özel düzeni 975, `$account_security` yok):
+bölüm formun altında görünüyor; yanlış parola ve yanlış kod formun hata
+kutusunda, doğru parola + kod kapattı. Deneme sınırı: hesap sayfasında 5
+yanlış koddan sonra 6. deneme (kod doğru olsa da) "Çok fazla deneme" ve
+panel formu da aynı kovadan reddediyor.
+
+**Açık.** Görsel tasarımcının `account_profile` widget'ı bölümü basmıyor:
+tasarımcıyla kurulan sitelerde üyenin cihaz / Google / 2FA bölümü yok (ayrı
+widget mı, forma ek mi — ürün sahibine soru).
 
 ---
 

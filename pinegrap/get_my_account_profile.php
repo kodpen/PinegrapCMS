@@ -354,6 +354,8 @@ function get_my_account_profile($properties = array()) {
 
         $system .= get_token_field();
 
+        $account_security = pg_account_security_section();
+
         $output = render_layout(array(
             'page_id' => $page_id,
             'messages' => $form->get_messages(),
@@ -367,10 +369,18 @@ function get_my_account_profile($properties = array()) {
             // has to be able to print it too, or the member's own "sign out of
             // all devices" and "disconnect Google" controls exist only on the
             // default design.
-            'account_security' => pg_account_security_section(),
+            'account_security' => $account_security,
             'my_account_url' => get_page_type_url('my account')));
 
         $output = $form->prepare($output);
+
+        // A layout written before the section existed does not print
+        // $account_security; the member's own sign-out, Google and two-step
+        // controls must still be reachable, so the section follows the
+        // layout then.
+        if (($account_security !== '') && (strpos($output, 'pg-account-security') === false)) {
+            $output .= $account_security;
+        }
 
     }    
         
