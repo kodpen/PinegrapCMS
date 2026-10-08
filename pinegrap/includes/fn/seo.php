@@ -222,10 +222,70 @@ function pg_perf_stats_has_entity()
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM perf_stats LIKE 'entity\\_%'");
-    $cached = ($result && (@mysqli_num_rows($result) >= 2));
+    $cached = (pg_schema_has('perf_stats', 'entity_type') && pg_schema_has('perf_stats', 'entity_id'));
 
     return $cached;
+}
+
+/**
+ * True when the 2026.4.8 upgrade (8.15) has added the query counts to
+ * perf_stats. Both columns, for the reason given above.
+ */
+function pg_perf_stats_has_queries()
+{
+    static $cached = null;
+
+    if ($cached === null) {
+        $cached = (pg_schema_has('perf_stats', 'total_queries') && pg_schema_has('perf_stats', 'max_queries'));
+    }
+
+    return $cached;
+}
+
+/**
+ * How many queries this request sent to the database.
+ *
+ * The connection is asked first: its Questions counter (session scope on
+ * MySQL and MariaDB alike) counts every statement this connection has sent,
+ * the plain mysqli_query() calls included, which pg_db_stats() cannot see.
+ * Over a persistent connection ("p:" in DB_HOST) the session outlives the
+ * request and the counter would carry earlier requests, so there, and when
+ * the status cannot be read, the count of pg_db_run() is used instead.
+ *
+ * Anything outside 0 - 1,000,000 is reported as 0, for the reason the
+ * duration has its sanity gate in perf_monitor_shutdown(): a summary row keeps
+ * what it is given.
+ *
+ * @return int
+ */
+function pg_perf_request_queries()
+{
+    $queries = -1;
+
+    $persistent = (defined('DB_HOST') && (strncasecmp((string) DB_HOST, 'p:', 2) === 0));
+
+    if (!$persistent) {
+        $status = @mysqli_query(db::$con, "SHOW SESSION STATUS LIKE 'Questions'");
+
+        if ($status) {
+            $row = @mysqli_fetch_row($status);
+
+            if (is_array($row) && isset($row[1]) && is_numeric($row[1])) {
+                $queries = (int) $row[1];
+            }
+        }
+    }
+
+    if ($queries < 0) {
+        $stats = pg_db_stats();
+        $queries = (int) $stats['count'];
+    }
+
+    if (($queries < 0) || ($queries > 1000000)) {
+        $queries = 0;
+    }
+
+    return $queries;
 }
 
 /**
@@ -2913,6 +2973,10 @@ function perf_monitor_shutdown()
     $slow_ms = defined('PERF_MONITOR_SLOW_MS') ? (int) PERF_MONITOR_SLOW_MS : 1000;
     $is_slow = ($slow_ms > 0 && $duration_ms >= $slow_ms) ? 1 : 0;
 
+    // Read before anything below sends a statement of its own, so the count
+    // is the request's and not the monitor's.
+    $query_count = pg_perf_request_queries();
+
     // ── Every request: fold into an hourly bucket ────────────────────────
     //
     // One statement, and the table stops growing with traffic — the same
@@ -2985,17 +3049,31 @@ function perf_monitor_shutdown()
         $sql_entity_values = ", '" . escape($entity_type) . "', " . (int) $entity_id;
     }
 
+    // The query counts, once the upgrade has added their columns; until then
+    // the INSERT stays as it was.
+    $sql_query_columns = '';
+    $sql_query_values = '';
+    $sql_query_update = '';
+
+    if (pg_perf_stats_has_queries()) {
+        $sql_query_columns = ', total_queries, max_queries';
+        $sql_query_values = ', ' . (int) $query_count . ', ' . (int) $query_count;
+        $sql_query_update = ',
+            total_queries = total_queries + ' . (int) $query_count . ',
+            max_queries  = GREATEST(max_queries, ' . (int) $query_count . ')';
+    }
+
     @mysqli_query(
         db::$con,
         "INSERT INTO perf_stats
             (bucket_key, hour_start, label, area, hits, slow_hits,
-             total_ms, min_ms, max_ms, total_kb, max_kb, total_cpu_ms" . $sql_entity_columns . ")
+             total_ms, min_ms, max_ms, total_kb, max_kb, total_cpu_ms" . $sql_entity_columns . $sql_query_columns . ")
          VALUES
             ('" . escape($bucket_key) . "', " . (int) $hour_start . ",
              '" . escape($label) . "', '" . escape($area) . "', 1, " . $is_slow . ",
              " . $duration_ms . ", " . $duration_ms . ", " . $duration_ms . ",
              " . $peak_memory_kb . ", " . $peak_memory_kb . ",
-             " . ($cpu_user_ms + $cpu_system_ms) . $sql_entity_values . ")
+             " . ($cpu_user_ms + $cpu_system_ms) . $sql_entity_values . $sql_query_values . ")
          ON DUPLICATE KEY UPDATE
             hits         = hits + 1,
             slow_hits    = slow_hits + " . $is_slow . ",
@@ -3004,7 +3082,7 @@ function perf_monitor_shutdown()
             max_ms       = GREATEST(max_ms, " . $duration_ms . "),
             total_kb     = total_kb + " . $peak_memory_kb . ",
             max_kb       = GREATEST(max_kb, " . $peak_memory_kb . "),
-            total_cpu_ms = total_cpu_ms + " . ($cpu_user_ms + $cpu_system_ms)
+            total_cpu_ms = total_cpu_ms + " . ($cpu_user_ms + $cpu_system_ms) . $sql_query_update
     );
 
     // ── Slow requests only: keep the full detail ─────────────────────────
@@ -3028,12 +3106,14 @@ function perf_monitor_shutdown()
             ? substr($_SERVER['HTTP_USER_AGENT'], 0, 250)
             : '';
 
+        $has_query_count = pg_schema_has('perf_log', 'query_count');
+
         @mysqli_query(
             db::$con,
             "INSERT INTO perf_log
                 (request_url, query_string, script_name, area, method, http_status,
                  duration_ms, peak_memory_kb, cpu_user_ms, cpu_system_ms,
-                 ip_address, user_agent, user_id, is_ajax, log_timestamp)
+                 ip_address, user_agent, user_id, is_ajax, log_timestamp" . ($has_query_count ? ", query_count" : "") . ")
              VALUES (
                 '" . escape($request_url) . "',
                 '" . escape($query_string) . "',
@@ -3049,7 +3129,8 @@ function perf_monitor_shutdown()
                 '" . escape($user_agent) . "',
                 " . (int) $user_id . ",
                 " . (int) $is_ajax . ",
-                UNIX_TIMESTAMP()
+                UNIX_TIMESTAMP()" . ($has_query_count ? ",
+                " . (int) $query_count : "") . "
             )"
         );
     }

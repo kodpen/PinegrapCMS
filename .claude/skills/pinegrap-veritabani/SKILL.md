@@ -22,7 +22,9 @@ description: "Pinegrap CMS'te SQL yazarken, tablo/kolon okurken veya yüksek hac
   PHP 8.1+'te her SQL hatası gövdesi boş bir 500 olur.
 - Hatayı `mysqli_error(db::$con)` ile oku; try/catch tek emniyet değildir.
 - MyISAM kullanılan tablolarda transaction yoktur; çok adımlı yazmada sırayı
-  kendin güvenceye al (önce doğrula, sonra yaz).
+  kendin güvenceye al (önce doğrula, sonra yaz). 2026.4.8'den itibaren çekirdek
+  tablolar InnoDB'dir; eşik üstü büyük tablolar operatör çevirene kadar MyISAM
+  kalabilir — çok adımlı yazmada yine önce doğrula sonra yaz.
 
 ## Tablo adları tekildir
 
@@ -49,7 +51,7 @@ description: "Pinegrap CMS'te SQL yazarken, tablo/kolon okurken veya yüksek hac
   (OG görsel çözücüleri, `pg_pb_copy_row()`) sonradan gelen kolonlara bağlıdır;
   elle tutulan kolon listesi bir sonraki kolonu sessizce kopyalamaz.
 - Migration'ın eklediği tablo/kolonu okuyan kod önce yoklasın
-  (`waf_table_has_column()`, `SHOW TABLES LIKE`) ve bir "hazır mı" kapısı yazsın
+  (`pg_schema_has($table, $column)`; `waf_table_has_column()` ve `SHOW TABLES LIKE` eski yoldur) ve bir "hazır mı" kapısı yazsın
   (`pg_page_noindex_ready()` deseni); birden çok `ALTER` varsa **tüm** kolonları
   birden yokla.
 - Yeni IP kolonu `VARCHAR(45)` olur (IPv4-mapped IPv6'nın en uzun hâli);

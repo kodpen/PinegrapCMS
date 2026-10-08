@@ -157,7 +157,7 @@ Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinas�
 - Kart iadesi ERP açıkken kalem/adetle (`order_refund.php`); tutarı sunucu
   `erp_return_build()` ile hesaplar, sayfadan gelen tutara güvenme. Sonra iade
   formu aynı adetlerle dolu açılır.
-- `orders` MyISAM'dır: ERP transaction'ı onu geri almaz. Deneme betiğinde
+- `orders` 2026.4.8'e kadar MyISAM'dı; artık InnoDB (eşik üstü büyük tabloda operatör çevirene kadar MyISAM kalabilir). Akış MyISAM-güvenli kalır: ERP transaction'ının `orders`'ı geri alacağına güvenme. Deneme betiğinde
   `erp_invoice_cancel()` gibi `orders`'a yazan fonksiyonu çağırdıysan bağlantıyı
   elle geri koy.
 
@@ -170,7 +170,7 @@ Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinas�
   yalnız elle kesilen satış, alış ve onların iade/iptalinde
   (`includes/erp/stock.php`). Hareketi olmayan eski satır kâr/zararda bugünkü
   ortalama maliyetle **tahmin** edilir; tahmini ayrı raporla.
-- `products` MyISAM: stok sayısını ERP transaction'ı içinde değiştirme. Hareketi
+- `products` 2026.4.8'e kadar MyISAM'dı; artık InnoDB (aynı şart). Akış değişmedi: stok sayısını ERP transaction'ı içinde değiştirme. Hareketi
   işlem içinde `erp_stock_record()` ile yaz (`stock_wanted`), sayıyı commit
   sonrası `erp_stock_apply_pending()` değiştirsin (derinlik > 0 iken çalışmaz).
   Yeni bir belge akışı eklersen iki çağrıyı da ekle.

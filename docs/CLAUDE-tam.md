@@ -2529,6 +2529,13 @@ Kurallar:
   raporlama kapalı, ama yoklamanın sebebi bu değil: yok olan tabloyu okuyan
   kod hâlâ yanlış cevap üretir.)
   Kolon için `waf_table_has_column()`, tablo için `SHOW TABLES LIKE`.
+  **2026.4.8'den itibaren:** yeni kodda tablo/kolon yoklaması
+  `pg_schema_has($table, $column)` (`includes/fn/core.php`) ile yapılır;
+  `SHOW COLUMNS … LIKE` yazılmaz. Cevap istek içinde ve
+  `data/temp/schema_<db>_<kod>.json` dosyasında (config.version +
+  `pg_code_version()`) tutulur; `pg_purge_caches()` ve yükseltme sonu
+  (`install_run_upgrades` `done`) `pg_schema_cache_clear()` ile siler.
+  `get_system_status_checks()` `api_webhooks` yoklaması buna çevrildi.
 - Belirti: "zip açtım, dosya eski kaldı" → önce Yazma İzinleri kartı: kapalı
   klasör (0555) var mı? Yeni dosya oraya eklenemez, geçici dosya + yeniden
   adlandırma ile açan araçlar var olanı da değiştiremez.
@@ -2722,6 +2729,12 @@ eklendi.
 | `2026.4.8` (8.82) | `_channel_shares`: `ws_guests.access` ENUM('write','read') DEFAULT 'write' — `ws_guests` satırı ekibin herkese açık / özel kanalına da ait olabilir (kanalı misafirle paylaşma: `guests.php`'deki `ws_channel_share*`); `read` misafiri yazamaz, tepki / oy / işaret veremez (`ws_guest_reads_only()`, sunucu reddeder). Paylaşım açıkken asistanlar çağrılmaz. Yeniden koşturulabilir; dev'de iki kez koşuldu |
 | `2026.4.8` (8.83) | `_threads`: `ws_channels.kind`'a `thread` (ENUM önce `install_column_info` ile okunur, yalnız eksikse `install_modify_column`), yeni `ws_threads` (PK `channel_id`, `parent_channel_id`, `message_id`, `created_by` / `_at`, `closed_at` / `_by`, `purge_at`, `assistants`; `idx_parent`, `idx_message`, `idx_purge`), `ws_thread_copies` (PK `channel_message_id`, `thread_channel_id`, `thread_message_id`, `title`, `created_at`; `idx_thread`, `idx_source`). `includes/workspace/threads.php`, `ws_threads_ready()` ile yoklanır. `get_tables()`'a eklendi. Yeniden koşturulabilir; dev'de iki kez koşuldu |
 | `2026.4.8` (8.84) | `_bulk_changes`: `config.ws_ai_bulk_delete` TINYINT(1) DEFAULT 0 (asistanların toplu silme önermesine yönetici izni; Çalışma Alanı Ayarları kartı). Toplu değişikliğin kendisi şema istemez: `ws_ai_changes.action = 'bulk'` (VARCHAR), kural `fields`'ta, ilerleyiş `snapshot`'ta (`includes/workspace/bulk.php`). `ws_bulk_ready()` ile yoklanır. Yeniden koşturulabilir; dev'de iki kez koşuldu |
+| `2026.4.8` (8.15) | `_perf_queries`: `perf_stats.total_queries` BIGINT UNSIGNED 0 (saatlik toplam), `perf_stats.max_queries` INT UNSIGNED 0 (en büyük tek istek), `perf_log.query_count` INT UNSIGNED 0 (yavaş istek); her tablo önce `install_table_exists` ile sorulur; adım sonunda `pg_schema_cache_clear()`. Yazan `perf_monitor_shutdown()` (`includes/fn/seo.php`): sayı `SHOW SESSION STATUS LIKE 'Questions'` (ham mysqli dahil; kalıcı bağlantıda ya da okunamazsa `pg_db_stats()['count']`), 0–1.000.000 dışı 0; kolonlar `pg_perf_stats_has_queries()` / `pg_schema_has('perf_log','query_count')` ile yoklanır, yoksa INSERT eski hâli. `view_performance_log.php` Ort./En Yüksek Sorgu ve Sorgu sütunları. `install_heavy_tables()` `2026.4.8`'e `perf_stats`, `perf_log`. Yeniden koşturulabilir; dev'de iki kez koşuldu |
+| `2026.4.8` (8.10) | `_innodb_orders`: `orders` grubunun 31 tablosu (`pg_innodb_table_groups()`, `includes/fn/innodb.php`) InnoDB'ye, `upgrade_2026_4_8_innodb_group()` → `install_move_to_innodb()` → `pg_innodb_convert_table()`. Küçükten büyüğe; 250.000 satır / 128 MB üstü (`upgrade_2026_4_8_innodb_limits()`) ertelenir, `database_engine.php`'den çevrilir; aynı tabloda ALTER sürüyorsa (processlist) `install_pause(…, 10)`, 1205 ise `install_pause(…, 5)`; geçiş bir tablo dönüştürüp `install_pause_budget()` (30 sn) dolunca duraklar (`InstallPauseException`, ekran aynı sürümü yeni istekle ister). Her MySQL hatası not; sürüm düşmez. `install_heavy_tables()`'a `2026.4.8`. Yeniden koşturulabilir; dev'de iki kez koşuldu (144 moved / 144 already) |
+| `2026.4.8` (8.11) | `_innodb_products`: `products` grubunun 14 tablosu, 8.10 ile aynı yol. ERP stok akışı (`erp_stock_apply_pending()`) değişmedi. Yeniden koşturulabilir; dev'de iki kez koşuldu |
+| `2026.4.8` (8.12) | `_innodb_people`: `people` grubunun 27 tablosu (`contacts`, `log`, `email_recipients`, `form_data`, `comments`, `notifications`…), 8.10 ile aynı yol; büyük `log` / `email_recipients` ertelenmeye en aday tablolar. Yeniden koşturulabilir; dev'de iki kez koşuldu |
+| `2026.4.8` (8.13) | `_innodb_site`: `site` grubunun 71 tablosu (`config`, `page`, `style`, bölgeler, klasör, menü, takvim, bölge/vergi…). Yetenek kapısı `pg_innodb_capability()`: InnoDB var ve `@@innodb_default_row_format = dynamic` (yoksa tek not, tablolar MyISAM kalır) — `config` ~400 kolon / 33 TEXT, COMPACT'ta 1118. Yeniden koşturulabilir; dev'de iki kez koşuldu |
+| `2026.4.8` (8.14) | `_innodb_search`: `search_items` (4 FULLTEXT, `url(250)` 1000 bayt indeks) en son, tek başına. InnoDB FT: min token 3, kısa stopword listesi, %50 eşiği yok → daha çok sonuç; 12 `MATCH … AGAINST` sorgusu değişmedi (altın kayıtta eksilen sonuç yok). Yeniden koşturulabilir; dev'de iki kez koşuldu |
 
 ---
 

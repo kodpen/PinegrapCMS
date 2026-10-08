@@ -3755,6 +3755,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		var pg_upgrade_lock_waits = 0;
 
+		var pg_upgrade_pauses = 0;
+
 		var pg_upgrade_timer = null;
 
 		var pg_upgrade_success_html = ' . json_encode('
@@ -3788,6 +3790,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			pg_upgrade_current = pg_upgrade_first;
 			pg_upgrade_failures = 0;
 			pg_upgrade_lock_waits = 0;
+			pg_upgrade_pauses = 0;
 			pg_install_finished = false;
 			pg_install_seen_steps = {};
 			pg_install_notes = {};
@@ -3812,6 +3815,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			pg_upgrade_active = true;
 			pg_upgrade_failures = 0;
 			pg_upgrade_lock_waits = 0;
+			pg_upgrade_pauses = 0;
 			pg_install_finished = false;
 			$("#pg_run_result").empty();
 			if (pg_upgrade_started_at === 0) { pg_upgrade_start(); pg_upgrade_active = true; return; }
@@ -3861,6 +3865,20 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					return;
 				}
 				pg_upgrade_timer = setTimeout(pg_upgrade_step, 5000);
+				return;
+			}
+			if (answer.paused) {
+				// The version is not finished: it stopped before the request could run into
+				// the limit of the web server (or is waiting for something on the database server)
+				// and continues in a new request. Nothing was applied, so the count stays.
+				pg_upgrade_pauses++;
+				pg_upgrade_add_line("' . escape_javascript(lang('Version')) . ' " + (answer.next || ""), answer.paused_note || "", "ok");
+				if (pg_upgrade_pauses > 720) {
+					pg_upgrade_stop("' . escape_javascript(lang('A version has been continuing for an hour. Refresh this screen to see where it is.')) . '", true);
+					return;
+				}
+				pg_upgrade_current = answer.next || "";
+				pg_upgrade_timer = setTimeout(pg_upgrade_step, Math.max(0, (answer.wait || 0)) * 1000);
 				return;
 			}
 			if (answer.steps) {
@@ -6719,6 +6737,9 @@ function output_install_upgrade_step($versions) {
 		'done' => $result['done'],
 		'next' => $result['next'],
 		'last' => $result['last'],
+		'paused' => !empty($result['paused']),
+		'wait' => (int) ($result['wait'] ?? 0),
+		'paused_note' => (string) ($result['paused_note'] ?? ''),
 		'notes' => install_notes(),
 		'from' => $database_version,
 		'version' => $version_now,
@@ -7598,6 +7619,14 @@ function parse_mysql_dump($url)
 	}
 
 	fclose($handle);
+
+	// Dumps written by mysqldump.php (the starter sites under data/backups among them) wrap
+	// every table in SET autocommit=0 ... COMMIT and never switch autocommit back on, so the
+	// rest of this request would run inside an open transaction. On MyISAM that changes
+	// nothing; once the upgrade that follows has moved a table to InnoDB, every later write
+	// to it in this request (config.version, the administrator's password hash, the log
+	// entry) would be rolled back when the connection closes.
+	mysqli_query(db::$con, "SET autocommit = 1");
 
 	$install_progress_running = '';
 

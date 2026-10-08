@@ -77,6 +77,19 @@ class InstallQueryException extends InstallUpgradeException {
 class InstallLockedException extends InstallUpgradeException {
 }
 
+// The version is not finished and continues in a new request. The steps of a version
+// run in one request; a step that works through many tables, each taking a while (the
+// engine conversions of 2026.4.8), stops when the time it was given is used up so the
+// request does not run into the web server's limit, and the same version is run again
+// from the top - every step is safe to repeat, and the work already done is skipped.
+// $wait is how many seconds to let pass before that, when the step is waiting for
+// something outside it (an ALTER another connection is still running).
+class InstallPauseException extends InstallUpgradeException {
+
+	public $wait = 0;
+
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 // Everything the runner knows while a run is going. 'active' is what db() looks at: while
@@ -92,6 +105,8 @@ $install_runner = array(
 	'lock_file' => '',
 	'guard' => false,
 	'started' => 0,
+	'pass_started' => 0,
+	'passes' => 0,
 );
 
 // ─── Version list and migration files ────────────────────────────────────────
@@ -572,6 +587,91 @@ function install_set_engine($table, $engine) {
 	db("ALTER TABLE " . install_quote_name($table) . " ENGINE=" . $engine);
 
 	return install_ran(lang(array('string' => 'table {var:1} moved to {var:2}', 'vars' => array($table, $engine))));
+
+}
+
+// ALTER TABLE t ENGINE=InnoDB through pg_innodb_convert_table() (includes/fn/innodb.php),
+// which asks before it starts - the size limits in $options, an ALTER on the table still
+// running from an earlier request, an earlier attempt that never finished - and answers
+// every MySQL error as a result instead of an exception. The tables work on either engine,
+// so a table that could not be moved is a note and never stops the version. Returns the
+// result of the conversion, so the step can decide to pause on 'running' and 'busy'.
+function install_move_to_innodb($table, $options = array()) {
+
+	global $install_runner;
+
+	if (!function_exists('pg_innodb_convert_table')) {
+
+		install_skipped(lang(array('string' => '{var:1} was left on MyISAM: {var:2}', 'vars' => array($table, 'includes/fn/innodb.php'))));
+
+		return array('state' => 'unsupported', 'table' => $table, 'rows' => 0, 'bytes' => 0, 'seconds' => 0, 'errno' => 0, 'error' => '', 'running_seconds' => 0);
+
+	}
+
+	$result = pg_innodb_convert_table($table, $options);
+
+	$text = pg_innodb_state_text($result);
+
+	if ($result['state'] == 'converted') {
+
+		install_ran($text);
+
+	} elseif (($result['state'] == 'already') || ($result['state'] == 'missing')) {
+
+		install_skipped($text);
+
+	} else {
+
+		install_skipped($text);
+
+		install_log($install_runner['version'] . ' ' . $table . ' left on MyISAM (' . $result['state'] . ')'
+			. (($result['errno'] > 0) ? ', MySQL ' . $result['errno'] . ' ' . $result['error'] : (($result['error'] != '') ? ', ' . $result['error'] : '')));
+
+	}
+
+	return $result;
+
+}
+
+// ─── Pausing a version ───────────────────────────────────────────────────────
+
+// Seconds since the step function of the version began this pass.
+function install_pass_seconds() {
+
+	global $install_runner;
+
+	if (empty($install_runner['pass_started'])) {
+
+		return 0;
+
+	}
+
+	return microtime(true) - $install_runner['pass_started'];
+
+}
+
+// How long a pass may keep starting new work. IIS FastCGI ends a request after 90 s by
+// default and most proxies in front of PHP after 60 s, whatever max_execution_time says.
+// A single ALTER can still run past this - it cannot be cut in two - but once the budget
+// is used up no new table is started in this request.
+function install_pause_budget() {
+
+	return 30;
+
+}
+
+// Ends this pass of the version: the note says where it got to, and the loop runs the
+// same version again, in a new request when the screen drives the upgrade one version at
+// a time. Never returns.
+function install_pause($note, $wait = 0) {
+
+	install_note($note);
+
+	$exception = new InstallPauseException($note);
+
+	$exception->wait = (int) $wait;
+
+	throw $exception;
 
 }
 
@@ -1056,7 +1156,15 @@ function install_describe_error($e) {
 //   'locked'    => bool      another run held the lock; nothing was done
 //   'last'      => array     what the previous run left behind (see install_last_read()),
 //                            when it stopped at the version this run started with
+//   'paused'    => bool      'one' only: the version paused (InstallPauseException) and was
+//                            not written; 'next' is the same version, to be run again
+//   'wait'      => int       seconds to let pass before that request
+//   'paused_note' => string  where the version got to
 // )
+//
+// Without 'one' a version that pauses is run again in the same request, after its wait,
+// up to 720 times; the screen that drives the upgrade one version at a time sends a new
+// request instead, so no single request has to carry the whole version.
 //
 // The version is written to config.version the moment a step returns and before anything
 // is sent to the browser. Every step is expected to be safe to run twice, so after a
@@ -1080,6 +1188,9 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 		'next' => '',
 		'locked' => false,
 		'last' => null,
+		'paused' => false,
+		'wait' => 0,
+		'paused_note' => '',
 	);
 
 	// what the previous run said before it stopped, if it stopped at the version that is next
@@ -1155,11 +1266,15 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 
 			$install_runner['skipped'] = 0;
 
+			$install_runner['passes'] = 0;
+
 			install_progress_running($number);
 
 			$started = microtime(true);
 
 			$has_function = false;
+
+			$pause = null;
 
 			try {
 
@@ -1171,7 +1286,49 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 
 					$has_function = true;
 
-					$function();
+					// A pass ends either with the step returning or with a pause. The
+					// counters are not reset between passes, so the version's total
+					// is what the screen reports.
+					do {
+
+						$paused = false;
+
+						$install_runner['pass_started'] = microtime(true);
+
+						try {
+
+							$function();
+
+						} catch (InstallPauseException $e) {
+
+							if ($one) {
+
+								$pause = $e;
+
+								break;
+
+							}
+
+							$install_runner['passes']++;
+
+							// thrown from here it is a failure of the version, reported below
+							if ($install_runner['passes'] > 720) {
+
+								throw new InstallUpgradeException(lang(array('string' => 'the version paused too many times: {var:1}', 'vars' => array($e->getMessage()))));
+
+							}
+
+							if (($e->wait > 0) && function_exists('sleep')) {
+
+								sleep(min((int) $e->wait, 10));
+
+							}
+
+							$paused = true;
+
+						}
+
+					} while ($paused);
 
 				}
 
@@ -1188,6 +1345,29 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 				$result['error'] = $description['message'];
 
 				$result['statement'] = $description['statement'];
+
+				break;
+
+			}
+
+			// Paused: the version is not written, and the screen asks for it again.
+			if ($pause !== null) {
+
+				$result['paused'] = true;
+
+				$result['next'] = $number;
+
+				$result['wait'] = (int) $pause->wait;
+
+				$result['paused_note'] = $pause->getMessage();
+
+				// The version is moving again, so what an earlier run left at it is
+				// no longer where it stands; a new failure writes its own.
+				if (($last !== null) && ($last['version'] == $number)) {
+
+					install_last_clear();
+
+				}
 
 				break;
 
@@ -1278,11 +1458,23 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 
 	install_progress_running('');
 
-	if ($result['ok'] && ($current_key >= $last_key)) {
+	// a paused run has already said which version is next: the one that paused
+	if ($result['paused']) {
+
+		$result['done'] = false;
+
+	} elseif ($result['ok'] && ($current_key >= $last_key)) {
 
 		$result['done'] = true;
 
 		install_last_clear();
+
+		// what pg_schema_has() remembered was about the schema before this run
+		if (function_exists('pg_schema_cache_clear')) {
+
+			pg_schema_cache_clear();
+
+		}
 
 		// the site no longer has to say that an update is waiting, and the next check
 		// starts from a clean slate so the messages for the new version arrive
@@ -1335,6 +1527,13 @@ function install_heavy_tables() {
 		// `files` takes two columns and an index for the documents the ERP keeps
 		// (4.65); it is a MyISAM table on older installations, rebuilt whole.
 		'2026.4.4' => array('user', 'products', 'product_groups', 'orders', 'page', 'style', 'notifications', 'files'),
+		// 2026.4.8 moves the remaining MyISAM tables to InnoDB; a conversion
+		// copies the table whole. These are the ones that grow with orders,
+		// mail, form entries, the catalogue and the pages. A table over the
+		// step's limit is not converted by the upgrade at all; it is left for
+		// the Database Engine screen. perf_stats (up to PERF_MONITOR_MAX_ROWS
+		// rows) and perf_log take the query count columns (8.15).
+		'2026.4.8' => array('orders', 'order_items', 'log', 'email_recipients', 'contacts', 'form_data', 'comments', 'notifications', 'products', 'product_groups', 'search_items', 'page', 'style', 'perf_stats', 'perf_log'),
 	);
 
 }
@@ -1713,6 +1912,12 @@ function install_preflight_checks($versions, $from_key) {
 	} elseif ($heavy_largest != '') {
 
 		$heavy_value = $heavy_largest;
+
+	}
+
+	if (in_array('2026.4.8', $pending)) {
+
+		$heavy_detail = trim($heavy_detail . ' ' . lang('Tables over the size limit are not converted by the upgrade; they are listed afterwards and can be converted one by one from the Database Engine screen.'));
 
 	}
 

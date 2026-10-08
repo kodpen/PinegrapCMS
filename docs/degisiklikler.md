@@ -35,7 +35,7 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.84). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.84 ve 8.10–8.15). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -69,6 +69,274 @@ Aşağıdaki bölümlerin `İç tur` ve `(iç tur 4.x)` başlıkları **çalış
 numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başlıkları
 2026.4.2 birleştirmesine, `2026.4.4 (iç tur 4.x)` başlıkları 2026.4.4
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
+
+---
+
+## 2026.4.8 — DB katmanı: pg_db_run(), sorgu sayacı, pg_schema_has() (8.15) (2026-10-08)
+
+**Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 9, 10,
+21).
+
+- `includes/fn/core.php`'de `db()`, `db_value()`, `db_values()`, `db_item()`,
+  `db_items()` aynı hata bloğunu beş kez tekrarlıyordu: bağlantı kontrolü,
+  `@mysqli_query`, `install_query_failed()` kancası, `output_error()`.
+  Sorgu sayısı ve süresi tek bir yerde ölçülemiyordu.
+- `perf_stats` süre, bellek ve CPU tutuyordu, sorgu sayısını tutmuyordu.
+  Hangi sayfanın veritabanını yorduğu Performans Günlüğü'nden okunamıyordu.
+- Şema yoklamaları dağınıktı: migration dışında 91 `SHOW COLUMNS` (çoğu
+  `LIKE 'ad'`, `_` joker tuzağıyla), 55 `SHOW TABLES LIKE`, 53
+  `information_schema` sorgusu. Her biri bir sorgu daha ve kendi önbellek
+  kuralı demekti.
+
+**Çözüm.**
+
+- **`pg_db_run($query)`** (`includes/fn/core.php`): beş yardımcının tek
+  çekirdeği. Bağlantı yoksa `output_error(lang('No database connection.'))`,
+  `@mysqli_query`, hata olursa önce runner kancası: kanca üstlenirse `null`
+  döner ve her yardımcı eskiden döndürdüğünü döndürür (`db()` → `true`,
+  `db_value()` / `db_item()` → `null`, `db_values()` / `db_items()` →
+  `array()`); üstlenmezse `output_error(lang('Query failed.') . ' ' . h($err))`.
+  Sonuç işleme mantığı (`db()`'nin satır/kolon sayısına göre dallanması,
+  `db_items()`'in `$key_column`'ı) değişmedi.
+- **`pg_db_stats()`** → `array('count' => int, 'ms' => float)`: bu istekte
+  `pg_db_run()`'dan geçen sorgular. Ham `mysqli_query()` çağrıları (kod
+  tabanında ~2.400) sayılmaz.
+- **Sorgu sayısı Performans Günlüğü'nde.** `perf_monitor_shutdown()`
+  (`includes/fn/seo.php`) isteğin sorgu sayısını önce bağlantının kendisinden
+  alır: `SHOW SESSION STATUS LIKE 'Questions'` (oturum kapsamı MySQL ve
+  MariaDB'de aynı; ham çağrılar dahil). Kalıcı bağlantıda (`DB_HOST`
+  `p:` ile başlıyorsa) oturum istekten uzun yaşadığı için ve değer
+  okunamazsa `pg_db_stats()['count']` kullanılır. 0–1.000.000 dışı değer 0
+  yazılır (süredeki sağlamlık kapısıyla aynı gerekçe: özet satırı verileni
+  unutmaz). Sayı monitörün kendi sorgularından önce okunur. Kolonlar
+  `pg_perf_stats_has_queries()` / `pg_schema_has('perf_log','query_count')`
+  ile yoklanır; yoksa INSERT eski hâlinde kalır (`pg_perf_stats_has_entity()`
+  deseni).
+- **8.15 `upgrade_2026_4_8_perf_queries()`:** `perf_stats.total_queries`
+  BIGINT (saatlik toplam), `perf_stats.max_queries` INT (en büyük tek istek),
+  `perf_log.query_count` INT; tablolar önce sorulur, adım sonunda şema
+  önbelleği silinir. `install_heavy_tables()` `2026.4.8`'e `perf_stats` (en
+  çok `PERF_MONITOR_MAX_ROWS` satır) ve `perf_log` eklendi.
+- **`view_performance_log.php`:** sayfa tablosunda "Avg Queries"
+  (`SUM(total_queries) / GREATEST(SUM(hits), 1)`) ve "Max Queries", yavaş
+  istekler listesinde "Queries" sütunu; ilk ikisi sıralanabilir. Kolonlar
+  yoksa sütunlar gösterilmez.
+- **`pg_schema_has($table, $column = null)`:** tam eşitlikle
+  `information_schema.COLUMNS` (bir tablo ilk sorulduğunda tüm kolonları tek
+  sorguyla), kolon gelmezse `TABLES`'tan bir kez daha ("tablo yok" ile
+  "okunamadı" ayrılır; ikincisi önbelleğe yazılmaz). Ad `[a-z0-9_]` değilse ya
+  da bağlantı yoksa `false`. Cevap istek içinde (static) ve
+  `data/temp/schema_<config.version>_<pg_code_version()>.json` dosyasında
+  (`{"tables": {...}, "missing": [...]}`, `tmp` + `rename`, `LOCK_EX`)
+  tutulur. `VERSION` sürüm biçiminde değilse (kurulum ekranında `true`) yalnız
+  static: şema o istekte değişiyor. Saf yardımcılar
+  `pg_schema_cache_name()`, `pg_schema_cache_lookup()`,
+  `pg_schema_cache_store()`; `pg_schema_cache_clear()` dosyaları ve static'i
+  siler, `pg_purge_caches()` ve yükseltme sonu (`install_run_upgrades`
+  `done`) çağırır.
+- Çevrilen yoklamalar (yalnız bunlar): `pg_short_link_modes_ready()`
+  (`core.php`, information_schema COUNT), `get_system_status_checks()`
+  `api_webhooks` (`SHOW TABLES LIKE 'api\_webhooks'`),
+  `pg_perf_stats_has_entity()` (`SHOW COLUMNS … LIKE 'entity\_%'` → iki
+  kolon ayrı ayrı; static korunur).
+
+**Gerekçe.** Dosya adı iki sürümü birden taşır: `includes/migrations` 0555
+olan bir sitede yükseltme eski listeyi koşar, `config.version` ilerler, şema
+geride kalır; yalnız `config.version`'a bağlı bir önbellek gelmeyen şema için
+cevap vermeye devam ederdi. Kod sürümü değişince (dosyalar indi, yükseltme
+henüz koşmadı) de yeni dosya başlar.
+
+**Ödünler.**
+
+- Ham `mysqli_query()` çağrıları `pg_db_stats()`'a girmez; Performans
+  Günlüğü bu yüzden `Questions`'ı kullanır. `Questions` monitörün okuduğu
+  `SHOW STATUS`'u da sayar (+1) ve oturum başından (bağlantı kurulduktan
+  sonraki `SET NAMES`, saat dilimi gibi) itibaren sayar; sayfa karşılaştırması
+  için yeterli, mutlak sayı değil.
+- "Yok" cevabı da önbelleğe girer. Elle (yükseltme dışında) eklenen bir kolon,
+  önbellek silinene kadar görünmez: temizleme yolları Önbelleği Temizle
+  (`pg_purge_caches()`, "Şema önbelleği (n)" raporlar), yükseltme sonu,
+  `clean_up.php` (`data/temp` süpürülür) ve sürüm değişimi.
+- `pg_schema_has()` `db_values()` kullandığı için information_schema sorgusu
+  başarısız olursa `output_error()` ile çıkar (perf monitörünün kapanış
+  fonksiyonunda da); eski `pg_perf_stats_has_entity()` ham `@mysqli_query`
+  ile sessizdi. information_schema SELECT'inin düşmesi beklenmiyor.
+- Dosya önbelleği her istekte bir dosya okuması demek (ilk `pg_schema_has()`
+  çağrısında); eski kodda ön yüz isteği başına bir `SHOW COLUMNS` vardı.
+
+**Şema.** 8.15 `_perf_queries`: `perf_stats.total_queries`,
+`perf_stats.max_queries`, `perf_log.query_count`.
+
+**Doğrulama (sandbox).** 8.15 iki kez: ilkinde "added", ikincisinde "already
+exists". Ana sayfa isteğinden sonra `perf_stats` `[home]`: 3 istek,
+`total_queries` 759, `max_queries` 253 (ön yüz ana sayfası ~253 sorgu);
+`PERF_MONITOR_SLOW_MS` 1'e çekilince `perf_log.query_count` 253 / 26. Ekran
+200, sütunlar görünüyor, `avg_queries` sıralaması çalışıyor. Runner kancası:
+beş yardımcıya tekrar eden `ADD` → `true` / `null` / `array()` / `null` /
+`array()`, bilinmeyen kolon → `InstallQueryException`; runner dışında hata →
+`output_error()`. `pg_db_stats()` beş çağrıda 0 → 5. `pg_schema_has`:
+`config.version` true, `config.yok_boyle` false, `yok_tablo` false, kötü ad
+false; dosya oluştu, ikinci süreç 0 sorguyla dosyadan cevapladı;
+`pg_purge_caches()` "Schema cache (1)" deyip sildi. Webhook satırı
+(`api_webhooks` yoklaması) bir abonelikle denendi.
+
+---
+
+## 2026.4.8 — InnoDB geçişi (8.10–8.14): kalan 144 tablo, büyük tablolar Veritabanı Motoru ekranına, yükseltme duraklayıp sürüyor (2026-10-08)
+
+**Sorun.** Başlangıç dökümlerindeki (`data/backups/*/sql.sql`) 141 tablonun
+tamamı MyISAM; migration'la yalnız `visitors` (2026.3.6), `user` ve `files`
+(2026.4.4) InnoDB'ye geçmişti. MyISAM her yazmada tüm tabloyu kilitler (yoğun
+mağazada `orders` kendi üstünde kuyruk olur), kirli kapanmada tablo
+"crashed" kalır ve `REPAIR` ister, ERP transaction'ı `orders` / `products`'ı
+geri alamaz.
+
+**Kök sebep (neden "tek ALTER" yetmez).** Geçmişte büyük bir tablonun
+`ALTER TABLE ... ENGINE=InnoDB` dönüşümü yükseltme sırasında sunucuyu
+düşürdü: web isteği zaman aşımına uğradı, sunucu ALTER'ı sürdürürken ekran
+yeniden denedi, her deneme ilkinin metadata kilidinin arkasına yeni bir
+ALTER koydu ve o tabloya dokunan her sorgu onların arkasında bekledi.
+`install_set_engine()` bu durumlara karşı hiçbir şey sormuyordu.
+
+**Çözüm.**
+
+- Yeni modül `includes/fn/innodb.php` (`functions.php` listesine eklendi):
+  `pg_innodb_table_groups()` / `pg_innodb_core_tables()` (saf; 144 tablo,
+  beş grup: orders 31, products 14, people 27, site 71, search 1),
+  `pg_innodb_capability()`, `pg_innodb_table_status()`,
+  `pg_innodb_pending_tables()`, `pg_innodb_running_alter()`,
+  `pg_innodb_convert_table()`, `pg_innodb_state_text()`,
+  `pg_innodb_size_label()`. Envanter: `docs/_innodb_envanter.md`.
+- `pg_innodb_convert_table()` sırayla sorar: tablo yok (`missing`), zaten
+  InnoDB (`already`; kalmış işaret dosyasını siler), sunucu desteklemiyor
+  (`unsupported`), sınır üstü (`deferred`), başka bağlantıda aynı tabloda
+  ALTER sürüyor (`running`, `information_schema.PROCESSLIST`), önceki
+  denemenin işaret dosyası ≥ 30 sn eski ve tablo hâlâ MyISAM (`aborted`;
+  `retry` ile yok sayılır). Sonra `data/temp/innodb_convert.json` işaretini
+  yazar, oturuma `lock_wait_timeout = 20` ve
+  `sql_mode = 'NO_ENGINE_SUBSTITUTION'` verir (sıfır tarihli satırlar COPY
+  sırasında strict mode'a takılmasın), ham `@mysqli_query` ile ALTER'ı koşar,
+  oturum ayarlarını geri koyar, işareti siler. 1205 → `busy`, diğer hata →
+  `failed`, başarı → `converted`. `db()` hiç kullanılmaz: dönüşümün hatası
+  bir sonuçtur, istisna ya da `output_error()` değil.
+- Runner: `InstallPauseException` (`wait` saniyesiyle), `install_pause()`,
+  `install_pass_seconds()`, `install_pause_budget()` (30 sn),
+  `install_move_to_innodb()`. `install_run_upgrades()` `one` kipinde
+  duraklayan sürümü yazmaz, `paused` / `next` (aynı sürüm) / `wait` /
+  `paused_note` döner; `one` değilken (kurulum zinciri, JS'siz form, cron)
+  aynı sürümü aynı istekte yeniden koşar (`wait` > 0 ise en çok 10 sn uyur,
+  720 geçişten sonra gerçek hata). Duraklayınca o sürümde kalmış "son
+  çalıştırma" kaydı silinir (yeni hata kendi kaydını yazar).
+  `install_set_engine()` değişmedi (2026.4.4 kullanıyor).
+- `upgrade_2026_4_8_innodb_{orders,products,people,site,search}()` →
+  `upgrade_2026_4_8_innodb_group()`: yetenek yoksa tek not; zaten InnoDB
+  olan ve olmayan tablolar tek tek not; kalanlar bayta göre artan,
+  `install_move_to_innodb()` ile. `running` → 10 sn, `busy` → 5 sn
+  duraklama. Bu geçiş (tüm gruplar birlikte) en az bir tablo dönüştürdüyse
+  ve bütçe dolduysa yeni tablo başlatılmaz, sürüm duraklar. Hiç iş
+  yapmadan duraklamak kurulum zincirinde sonsuz döngü olurdu, o yüzden
+  "en az bir tablo" şartı var.
+- Yükseltme ekranı (`install/index.php`): `upgrade_step` JSON'una `paused`,
+  `wait`, `paused_note`; JS `pg_upgrade_answer()` duraklamada satır ekler
+  (sayaç artmaz), `wait` sonra aynı sürümü ister; 720 duraklamada durur.
+- Yeni `database_engine.php` (manager kapısı, Ayarlar → İşler): MyISAM'daki
+  tablolar, satır, boyut, satır başına "Dönüştür" (tek gizli form, onay
+  diyaloğu). POST: tablo yalnız `pg_innodb_core_tables()` içinden;
+  `session_write_close()`, `set_time_limit(0)`, `ignore_user_abort(true)`,
+  `pg_innodb_convert_table($t, array('retry' => true))` (sınırsız), oturum
+  yeniden açılır, `log_activity`, PRG. ALTER sürüyorsa sarı uyarı ve düğmeler
+  kapalı; işaret dosyası sahipsiz kaldıysa bilgi kutusu.
+- Sistem Durumu: "Storage Engine" kontrolü (job sütununda, `href`
+  `database_engine.php`, `detail` tablo başına satır/boyut). Puanlanmaz.
+- Ön kontrol kartı: `install_heavy_tables()`'a `2026.4.8` (13 tablo);
+  2026.4.8 bekliyorsa "Large tables" ayrıntısına sınır üstü tabloların
+  Veritabanı Motoru ekranına kaldığı cümlesi.
+
+**Tasarım kararları.**
+
+- Eşik 250.000 satır / 128 MB (`upgrade_2026_4_8_innodb_limits()`, tek yer);
+  `information_schema` tahminine göre. MySQL 8'de istatistik önbelleği
+  (`information_schema_stats_expiry`, varsayılan 1 gün) oturumda 0'a
+  çekilir; 5.7 / MariaDB'de değişken yok, SET sessizce düşer.
+- Duraklama bütçesi 30 sn: IIS FastCGI 90 sn, çoğu proxy 60 sn. Tek bir
+  ALTER bütçeyi aşabilir (bölünemez) ama bütçe dolduktan sonra yeni tablo
+  başlatılmaz.
+- Processlist yoklaması: PROCESS yetkisi olmasa da aynı DB kullanıcısının
+  iş parçacıkları görünür (sitenin kendi istekleri). Sandbox'ta `pinegrap`
+  kullanıcısıyla doğrulandı.
+- `lock_wait_timeout = 20`: varsayılan bir yıl; MDL kuyruğunda bekleyen ALTER
+  arkasındaki her sorguyu da bekletir.
+- İşaret dosyası: ALTER'dan önce yazılır, sonra (her sonuçta) silinir; kalmış
+  ve arkasında ALTER olmayan işaret = istek ya da sunucu kopyanın ortasında
+  öldü. Yükseltme bunu yeniden denemez (aynı duvara yürümesin), operatör
+  ekrandan dener.
+- Hata nota çevrilir: site her iki motorla çalışır; taşınamayan tablo sürümü
+  düşürmez, `install_log()`'a da yazılır.
+- `config` kapısı: `@@innodb_default_row_format = dynamic` şart (MySQL ≥
+  5.7.9, MariaDB ≥ 10.2.2). `config` ~400 kolon / 33 TEXT taşıyor; COMPACT'ta
+  768 baytlık satır içi önekler 8126 baytı aşar ve güncelleme çalışma anında
+  1118 ile düşer. Sandbox'ta (MariaDB 10.11, DYNAMIC) 33 TEXT kolonun hepsine
+  2000 bayt yazan UPDATE geçti. `search_items.url(250)` = 1000 bayt indeks de
+  DYNAMIC (large prefix) ister; `innodb_large_prefix` kapalı eski bir 5.7'de
+  ALTER 1071 ile `failed` notu olur, tablo MyISAM kalır.
+- FULLTEXT: InnoDB `innodb_ft_min_token_size` 3 (MyISAM 4) — iki kipte de;
+  stopword listesi kısa (`and` yok, `the` var); doğal dilde %50 eşiği yok.
+  12 `MATCH … AGAINST` sorgusuna dokunulmadı.
+
+**Kurulumda bulunan ve düzeltilen hata (2026.4.4'ten beri `user` için de
+geçerliydi).** `parse_mysql_dump()` başlangıç dökümünü koşarken dökümdeki
+`SET autocommit=0` bağlantıda açık kalıyordu (mysqldump.php tablo başına
+`SET autocommit=0 … COMMIT` yazar, geri açmaz). MyISAM'da etkisiz; tablo
+InnoDB'ye geçtikten sonra aynı istekteki her yazma bağlantı kapanınca geri
+alınıyordu. Belirti: taze kurulumdan sonra `config.version` 2026.4.7'de
+kalıyor (2026.4.8 adımı koşmuş, tablolar InnoDB) ve
+`last_software_update_check_timestamp` sıfırlanmıyordu (ikisi de sandbox'ta
+görüldü); aynı mekanizmayla yöneticinin bcrypt parolası
+(`user_password_algo`, `user` 2026.4.4'ten beri InnoDB) ve "Yazılım kuruldu"
+kaydı da geri alınıyordu (general log'da COMMIT'siz yazıldıkları görüldü).
+`parse_mysql_dump()` sonunda `SET autocommit = 1`; düzeltmeden sonra kurulum
+2026.4.8'de bitiyor, `user_password_algo = 2`.
+
+**Ödünler.**
+
+- InnoDB'de `SELECT COUNT(*) FROM tablo` artık O(1) değil, tam sayım:
+  `includes/fn/output.php` menü rozeti 60 sn oturum önbelleğiyle
+  `SELECT COUNT(*) FROM log` koşar; değiştirilmedi.
+- Karışık motor dönemi: eşik üstü tablolar operatör çevirene kadar MyISAM
+  kalır (ör. büyük `log`, `email_recipients`). Kod her iki motorla çalışır;
+  ERP akışı (`erp_stock_apply_pending()`) değişmedi.
+- Dönüşüm sırasında tabloya yazma bekler (COPY algoritması).
+- `one` olmayan kipte sayaçlar geçişler boyunca toplanır ("698 ifade" gibi).
+  Duraklama notu iki kipte de yalnız "devam ediliyor" der.
+- Taze kurulum `local_sale_history` / `_items` tablolarını oluşturmuyor
+  (dökümde yok, 2022.2.1 adımı döküm sürümünden önce); liste onları içerir,
+  yoksa `missing` notu düşer. Ayrı konu, dokunulmadı.
+
+**Şema.** 8.10 `_innodb_orders`, 8.11 `_innodb_products`, 8.12
+`_innodb_people`, 8.13 `_innodb_site`, 8.14 `_innodb_search` (motor
+dönüşümü; kolon/indeks değişikliği yok, yeni tablo yok).
+
+**Doğrulama (sandbox, MariaDB 10.11.14, PHP 8.3).** Taze kurulum: 142 hedef
+tablo (taze kurulumda olmayan iki `local_sale_history*` hariç) InnoDB,
+`config.version` 2026.4.8. 144 tablo MyISAM'a çekilip 2026.4.7'den koşuldu:
+144 "moved"; ikinci koşu 144 "already". `log` 393.216 satır / 53 MB:
+"deferred", diğerleri döndü; `pg_innodb_convert_table('log', retry)` →
+`converted` (2,3 sn). `running` (aynı kullanıcıdan bekleyen ALTER), `busy`
+(LOCK TABLES WRITE, 20 sn sonra 1205), `aborted` (60 sn'lik işaret) ve
+`retry` ile dönüşüm denendi. Bütçe 0'a çekilerek: `one` kipinde her istekte
+bir tablo, `paused=true, next='2026.4.8'`; zincir kipinde aynı istekte
+sürdü; tarayıcıda yükseltme ekranı duraklama satırlarını gösterip "1 ara
+sürüm uygulandı" ile bitti. FULLTEXT altın kayıt (36 satır, 30 sorgu): 15
+aynı, 14 yalnız "daha çok sonuç", 1 aynı küme farklı sıra; eksilen yok.
+`database_engine.php` HTTP GET/POST ve tarayıcıda onay diyaloğu; Sistem
+Durumu widget'ında satır.
+
+**Elle doğrulanacaklar.** Gerçek veri kopyasında büyük tablo ALTER süresi
+ve eşiğin yeterliliği; MySQL 5.7 / 8.0'da yetenek kapısı ve
+`information_schema_stats_expiry`; IIS FastCGI altında duraklamalı yükseltme;
+küçük `innodb_buffer_pool_size`'lı paylaşımlı barındırmada performans;
+InnoDB dökümüyle yedek/geri yükleme; mağaza siparişi, tezgâh satışı, ERP
+fatura + tahsilat, kampanya işi uçtan uca (sandbox'ta koşulmadı).
 
 ---
 

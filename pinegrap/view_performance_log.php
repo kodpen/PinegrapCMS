@@ -162,6 +162,21 @@ if (!$table_exists) {
     exit;
 }
 
+// The query counts arrive with the 2026.4.8 upgrade (8.15). Until then their
+// columns are left out of the queries and of the tables below.
+$has_query_stats = pg_schema_has('perf_stats', 'total_queries') && pg_schema_has('perf_stats', 'max_queries');
+$has_query_log = pg_schema_has('perf_log', 'query_count');
+
+if ($has_query_stats) {
+    $slow_sort_columns['avg_queries'] = 'avg_queries';
+    $slow_sort_columns['max_queries'] = 'max_queries';
+
+    // The sort was resolved against the list before these keys were added.
+    if (isset($_GET['slow_sort']) && is_string($_GET['slow_sort']) && isset($slow_sort_columns[$_GET['slow_sort']])) {
+        $slow_sort = $_GET['slow_sort'];
+    }
+}
+
 // ---- Summary KPIs ----------------------------------------------------------
 //
 // Read from the hourly summary, not from raw rows. This is the change that
@@ -228,7 +243,10 @@ $slowest_query =
         MIN(min_ms)                                AS min_ms,
         SUM(total_kb) / GREATEST(SUM(hits), 1)     AS avg_kb,
         MAX(max_kb)                                AS max_kb,
-        SUM(total_cpu_ms) / GREATEST(SUM(hits), 1) AS avg_cpu
+        SUM(total_cpu_ms) / GREATEST(SUM(hits), 1) AS avg_cpu"
+        . ($has_query_stats ? ",
+        SUM(total_queries) / GREATEST(SUM(hits), 1) AS avg_queries,
+        MAX(max_queries)                           AS max_queries" : "") . "
     FROM perf_stats
     $stats_where
     GROUP BY label, area
@@ -265,7 +283,7 @@ $recent_slow_query =
     // turn "something took 101 seconds" into something answerable.
     "SELECT id, request_url, query_string, script_name, area, method, http_status,
             duration_ms, peak_memory_kb, cpu_user_ms, cpu_system_ms,
-            ip_address, user_agent, user_id, log_timestamp
+            ip_address, user_agent, user_id, log_timestamp" . ($has_query_log ? ", query_count" : "") . "
     FROM perf_log
     $where
     ORDER BY duration_ms DESC
@@ -351,11 +369,15 @@ if ($slowest_result && mysqli_num_rows($slowest_result) > 0) {
                 <td class="text-end ' . pmon_duration_class((int) $r['max_ms']) . '">' . pg_format_number((int) $r['max_ms'], 0) . ' ms</td>
                 <td class="text-end">' . pmon_format_kb($r['avg_kb']) . '</td>
                 <td class="text-end">' . pmon_format_kb($r['max_kb']) . '</td>
-                <td class="text-end">' . pg_format_number((int) $r['avg_cpu'], 0) . ' ms</td>
+                <td class="text-end">' . pg_format_number((int) $r['avg_cpu'], 0) . ' ms</td>'
+                . ($has_query_stats
+                    ? '<td class="text-end">' . pg_format_number((float) $r['avg_queries'], 0) . '</td>
+                <td class="text-end">' . pg_format_number((int) $r['max_queries'], 0) . '</td>'
+                    : '') . '
             </tr>';
     }
 } else {
-    $slowest_rows = '<tr><td colspan="8" class="text-center text-muted py-4">' . lang('No data yet for the selected period.') . '</td></tr>';
+    $slowest_rows = '<tr><td colspan="' . ($has_query_stats ? 10 : 8) . '" class="text-center text-muted py-4">' . lang('No data yet for the selected period.') . '</td></tr>';
 }
 
 // ---- Build memory-hungry pages table --------------------------------------
@@ -404,11 +426,12 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
                 <td class="text-end"><span class="badge ' . ((int) $r['http_status'] >= 400 ? 'bg-danger' : 'bg-success-subtle text-dark') . '">' . (int) $r['http_status'] . '</span></td>
                 <td class="text-end ' . pmon_duration_class((int) $r['duration_ms']) . '">' . pg_format_number((int) $r['duration_ms'], 0) . ' ms</td>
                 <td class="text-end">' . pmon_format_kb($r['peak_memory_kb']) . '</td>
-                <td class="text-end">' . pg_format_number((int) $r['cpu_user_ms'] + (int) $r['cpu_system_ms'], 0) . ' ms</td>
+                <td class="text-end">' . pg_format_number((int) $r['cpu_user_ms'] + (int) $r['cpu_system_ms'], 0) . ' ms</td>'
+                . ($has_query_log ? '<td class="text-end">' . pg_format_number((int) $r['query_count'], 0) . '</td>' : '') . '
             </tr>';
     }
 } else {
-    $recent_rows = '<tr><td colspan="8" class="text-center text-muted py-4">' . lang('No slow requests were recorded in this period.') . '</td></tr>';
+    $recent_rows = '<tr><td colspan="' . ($has_query_log ? 9 : 8) . '" class="text-center text-muted py-4">' . lang('No slow requests were recorded in this period.') . '</td></tr>';
 }
 
 // ---- Sortable column headers ----------------------------------------------
@@ -441,6 +464,10 @@ $slowest_thead =
     . pmon_sort_header('avg_kb',  lang('Avg Memory'),   'slow_sort', 'slow_dir', $slow_sort, $slow_dir, $base_params_slow, 'text-end')
     . pmon_sort_header('max_kb',  lang('Peak Memory'),  'slow_sort', 'slow_dir', $slow_sort, $slow_dir, $base_params_slow, 'text-end')
     . pmon_sort_header('avg_cpu', lang('Avg CPU'),      'slow_sort', 'slow_dir', $slow_sort, $slow_dir, $base_params_slow, 'text-end')
+    . ($has_query_stats
+        ? pmon_sort_header('avg_queries', lang('Avg Queries'), 'slow_sort', 'slow_dir', $slow_sort, $slow_dir, $base_params_slow, 'text-end')
+          . pmon_sort_header('max_queries', lang('Max Queries'), 'slow_sort', 'slow_dir', $slow_sort, $slow_dir, $base_params_slow, 'text-end')
+        : '')
     . '</tr>';
 
 $memory_thead =
@@ -619,7 +646,8 @@ echo '
                                 <th class="text-end">' . lang('Status') . '</th>
                                 <th class="text-end">' . lang('Duration') . '</th>
                                 <th class="text-end">' . lang('Peak Memory') . '</th>
-                                <th class="text-end">' . lang('CPU') . '</th>
+                                <th class="text-end">' . lang('CPU') . '</th>'
+                                . ($has_query_log ? '<th class="text-end">' . lang('Queries') . '</th>' : '') . '
                             </tr>
                         </thead>
                         <tbody>' . $recent_rows . '</tbody>
