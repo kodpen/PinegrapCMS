@@ -1001,12 +1001,23 @@ function pg_mfa_account_section($user_id, $password_algo, $action_url, $token)
     if ($pending_fresh) {
         $secret = pg_mfa_secret_decode($row['pending_secret']);
         $account = (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
+        $key_uri = pg_totp_uri(pg_mfa_issuer(), ($account !== '') ? $account : (string) ($_SESSION['sessionusername'] ?? ''), $secret);
+
+        // Inline SVG keeps the key out of any image URL; without a code the
+        // key is still there to type in.
+        $qr = pg_qr_svg($key_uri, 192, array('label' => lang('QR code for the authenticator app')));
+
+        $key_intro = ($qr !== '')
+            ? '<p>' . h(lang('Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>'
+                . '<div style="margin:0 0 1em">' . $qr . '</div>'
+                . '<p>' . h(lang('If you cannot scan it, add the key by hand:')) . '</p>'
+            : '<p>' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>';
 
         return $heading
-            . '<p>' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>'
+            . $key_intro
             . '<p><code id="pg_mfa_key" style="font-size:1.15em;user-select:all">' . h(pg_mfa_format_secret($secret)) . '</code></p>'
             . '<p><input type="text" id="pg_mfa_uri" class="software_input_text" readonly="readonly" style="width:100%" onclick="this.select()"'
-                . ' value="' . h(pg_totp_uri(pg_mfa_issuer(), ($account !== '') ? $account : (string) ($_SESSION['sessionusername'] ?? ''), $secret)) . '"'
+                . ' value="' . h($key_uri) . '"'
                 . ' aria-label="' . h(lang('Key link')) . '"/></p>'
             . $form('mfa_confirm', $code_field('pg_mfa_confirm_code')
                 . '<button type="submit" class="software_input_submit_primary">' . h(lang('Confirm and turn on')) . '</button>')

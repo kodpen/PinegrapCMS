@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($result === false) {
                 log_activity(lang('access denied (two-step code invalid)'), $username);
-                $error = lang('That code was not accepted. Check the time on your phone and try again.');
+                $error = lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');
             } else {
                 pg_mfa_attempt_clear($user_id);
 
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $codes = pg_mfa_confirm_setup($user_id, $code);
 
             if ($codes === false) {
-                $error = lang('That code was not accepted. Check the time on your phone and try again.');
+                $error = lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');
             } else {
                 pg_mfa_attempt_clear($user_id);
 
@@ -215,13 +215,24 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
     $title = lang('Set up two-step verification');
     $secret = pg_mfa_begin_setup($user_id);
     $account = (string) db_value("SELECT user_email FROM user WHERE user_id = '" . $user_id . "'");
+    $key_uri = pg_totp_uri(pg_mfa_issuer(), ($account !== '') ? $account : $username, $secret);
+
+    // Drawn here as inline SVG, so the key is never part of an image URL.
+    // Should no code come out, the key is still there to type in.
+    $qr = pg_qr_svg($key_uri, 208, array('label' => lang('QR code for the authenticator app'), 'class' => 'd-block'));
+
+    $key_intro = ($qr !== '')
+        ? '<p class="mb-2">' . h(lang('Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>
+        <div class="text-center mb-3"><div class="d-inline-block bg-white border rounded p-2">' . $qr . '</div></div>
+        <p class="mb-2">' . h(lang('If you cannot scan it, add the key by hand:')) . '</p>'
+        : '<p class="mb-2">' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>';
 
     $body =
         '<p class="text-muted mb-3">' . h(lang('Your account must use two-step verification: after your password, a code from an authenticator app on your phone.')) . '</p>
-        <p class="mb-2">' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>
+        ' . $key_intro . '
         <p class="mb-2"><code id="mfa_key" class="fs-5 user-select-all">' . h(pg_mfa_format_secret($secret)) . '</code></p>
         <div class="input-group input-group-sm mb-4">
-            <input type="text" id="mfa_uri" class="form-control" readonly="readonly" value="' . h(pg_totp_uri(pg_mfa_issuer(), ($account !== '') ? $account : $username, $secret)) . '" aria-label="' . h(lang('Key link')) . '"/>
+            <input type="text" id="mfa_uri" class="form-control" readonly="readonly" value="' . h($key_uri) . '" aria-label="' . h(lang('Key link')) . '"/>
             <button type="button" class="btn btn-outline-secondary" id="mfa_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
         </div>
         ' . $messages . '

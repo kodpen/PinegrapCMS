@@ -18607,7 +18607,6 @@
     "Key link": "Anahtar bağlantısı",
     "Save your recovery codes": "Kurtarma kodlarınızı kaydedin",
     "Set up two-step verification": "İki adımlı doğrulamayı kurun",
-    "That code was not accepted. Check the time on your phone and try again.": "Kod kabul edilmedi. Telefonunuzun saatini kontrol edip yeniden deneyin.",
     "Too many attempts. Please wait a few minutes and try again.": "Çok fazla deneme yapıldı. Lütfen birkaç dakika bekleyip yeniden deneyin.",
     "Two-Step Verification": "İki Adımlı Doğrulama",
     "Two-step verification is not available on this site right now. Please ask the site owner for help.": "İki adımlı doğrulama bu sitede şu anda kullanılamıyor. Lütfen site sahibinden yardım isteyin.",
@@ -18768,5 +18767,9 @@
     "Schema cache ({var:1})": "Şema önbelleği ({var:1})",
     "Avg Queries": "Ort. Sorgu",
     "Max Queries": "En Yüksek Sorgu",
-    "Queries": "Sorgu"
+    "Queries": "Sorgu",
+    "Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.": "QR kodu doğrulama uygulamanızla (Google Authenticator, Aegis, 1Password, Microsoft Authenticator) tarayın, sonra uygulamanın gösterdiği kodu girin.",
+    "If you cannot scan it, add the key by hand:": "Tarayamıyorsanız anahtarı elle ekleyin:",
+    "QR code for the authenticator app": "Doğrulama uygulaması için QR kodu",
+    "That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.": "Kod kabul edilmedi. Her kod bir kez geçerlidir: bir sonraki kodu bekleyin ve telefonunuzun saatini kontrol edin."
 }
