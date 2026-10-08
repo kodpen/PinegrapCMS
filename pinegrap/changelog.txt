@@ -173,6 +173,27 @@
          gösteriyor ve hata günlüğüne PHP uyarıları yazıyordu.
          Artık "Kayıt bulunamadı." ekranı 404 koduyla gösterilir.
 
+  [YENİ] Panodaki karşılama satırı daha çok şey biliyor: kargo
+         bekleyen siparişler, iadesi yapılmamış iptaller, azalan
+         stok (stok uyarı eşiği tanımlıysa), bu hafta gelen
+         formlar, SEO puanı 30'un altındaki sayfalar, sıradaki
+         e-posta kampanyası, bu hafta biten teklifler, güvenlik
+         duvarının geri çevirdiği istekler, yedek, güncelleme ve
+         zamanlanmış görev durumu, oturum açmış çalışma
+         arkadaşları. Bu haftanın siparişleri geçen haftayla da
+         karşılaştırılır. Her bilgi, ait olduğu kartı görmeye
+         yetkisi olan kullanıcıya gösterilir.
+
+  [YENİ] Çalışma Alanı açıksa karşılama satırının altında küçük
+         bir şerit: size yeni verilen görev, kontrol listesiyle
+         ilerleme yüzdesi, gecikmiş görevler, sizi anan mesajlar,
+         bugün son günü olan görevler. Satır da görevlerinizi,
+         bugünkü toplantıları ve ekibin bu hafta kapattığı işleri
+         okur. Çalışma Alanı kapalıyken şerit görünmez.
+
+  [YENİ] Karşılama satırı yarı saydam bir kartta, solunda saatin
+         renginde ince bir şeritle gösterilir.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

@@ -5758,14 +5758,54 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
    separated by a bullet. Weight does the separating -- the greeting is the
    darker half -- which costs no punctuation and no second row.
 
-   Capped at 62ch. Prose set across two thousand pixels is not read, it is
-   scanned, and the whole point of writing this as a sentence is that it gets
-   read. */
+   The sentence is capped at 62ch. Prose set across two thousand pixels is not
+   read, it is scanned, and the whole point of writing this as a sentence is
+   that it gets read. The card around it is allowed a little more, for its
+   padding and the mark.
+
+   A quiet card rather than bare text: a translucent surface over the panel
+   backdrop, so the line reads as one object sitting on the page instead of a
+   caption floating above the widgets. */
 .pg-brief {
+  position: relative;
   align-self: flex-start;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  max-width: min(100%, 68ch);
+  padding: 0.6rem 0.9rem 0.6rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--bs-body-bg) 72%, transparent);
+}
+html[data-bs-theme="dark"] .pg-brief {
+  background: color-mix(in srgb, var(--bs-body-bg) 55%, transparent);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .pg-brief {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+}
+/* A thin stroke of the clock's gradient down the left edge, inset from the
+   corners so it does not have to follow the radius. Positioned rather than
+   clipped: overflow on the card would also clip the mark's ring. */
+.pg-brief::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--clock-gradient);
+  pointer-events: none;
+}
+.pg-brief-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 /* The speaker. It carries the hour's own glyph -- sunrise, sun, dusk, moon --
@@ -5776,14 +5816,14 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 0.05rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0;
   border-radius: 50%;
   background: var(--clock-gradient);
   box-shadow: 0 1px 6px var(--clock-glow);
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1;
 }
 .pg-brief-mark .bi::before {
@@ -5792,6 +5832,7 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 }
 
 .pg-brief-text {
+  max-width: 62ch;
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
@@ -5833,10 +5874,103 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   .pg-brief-text {
     animation: pg-brief-in 0.45s ease-out both;
   }
+  /* The strip follows the sentence rather than arriving with it, so the eye
+     lands on the words first. */
+  .pg-brief-ws {
+    animation: pg-brief-in 0.45s ease-out 0.18s both;
+  }
+  /* One soft ring from the mark as the line arrives, once, and then still. */
+  .pg-brief-mark {
+    animation: pg-brief-ring 0.9s ease-out 1;
+  }
 }
 @keyframes pg-brief-in {
   from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: none; }
+}
+@keyframes pg-brief-ring {
+  from { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0 var(--clock-glow); }
+  to   { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0.55rem transparent; }
+}
+
+/* The workspace strip: what was handed over, what is under way, what is late.
+   Small pills under the sentence, the same few facts in the same place on
+   every load -- the glance, where the sentence is the read. */
+.pg-brief-ws {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+.pg-brief-ws-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.15rem 0.55rem 0.15rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bs-secondary-bg) 80%, transparent);
+  color: var(--bs-body-color);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.pg-brief-ws-item:hover,
+.pg-brief-ws-item:focus-visible {
+  color: var(--bs-body-color);
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  transform: translateY(-1px);
+}
+/* Something new: a small dot in the clock's colours ahead of the icon. */
+.pg-brief-ws-item.is-new::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clock-gradient);
+}
+.pg-brief-ws-item.is-late .bi,
+.pg-brief-ws-item.is-late .pg-brief-ws-label {
+  color: var(--bs-danger);
+}
+.pg-brief-ws-label {
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+.pg-brief-ws-text {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-brief-ws-bar {
+  flex: 0 0 auto;
+  width: 3.5rem;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--bs-border-color);
+  overflow: hidden;
+}
+.pg-brief-ws-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--clock-gradient);
+}
+.pg-brief-ws-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+@media (max-width: 575.98px) {
+  .pg-brief {
+    padding: 0.5rem 0.65rem;
+  }
+  .pg-brief-ws-text {
+    max-width: 14ch;
+  }
 }
 .pg-clockbar-now {
   display: flex;
