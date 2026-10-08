@@ -30,6 +30,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_bulk_changes();            // 8.84
 	upgrade_2026_4_8_email_retry();             // 8.30
 	upgrade_2026_4_8_mail_outbox();             // 8.31
+	upgrade_2026_4_8_cron_locks();              // 8.32
 
 }
 
@@ -208,5 +209,24 @@ function upgrade_2026_4_8_mail_outbox() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('E-mail: password reset, order, form and comment e-mails are handed to the scheduled general job when it is running, so a slow mail server no longer holds up the visitor; the queue is under Settings › Jobs › Mail queue.');
+
+}
+
+// A dispatch lock per scheduled job (2026.4.8, 8.32; includes/fn/cron.php).
+// The general job locked the whole rotation with config.job_dispatch_lock_until,
+// so a backup running for an hour held up campaigns, synchronisation and every
+// daily job behind it. cron_runs.locked_until is now each job's own lock, and
+// the catalogue puts every job in a lane, light or heavy, with at most one
+// locked job per lane: a running backup no longer stops the short jobs, two
+// heavy jobs never overlap and no job runs twice.
+//
+// The lane lives in pg_cron_jobs(), not in a column: nothing would read it
+// from the table. config.job_dispatch_lock_until stays, a released schema, and
+// is what the dispatcher falls back to until this column is there.
+function upgrade_2026_4_8_cron_locks() {
+
+	install_add_column('cron_runs', 'locked_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Scheduled jobs: each job run with the general job takes a lock of its own, so a long backup no longer holds up campaigns and the other short jobs.');
 
 }

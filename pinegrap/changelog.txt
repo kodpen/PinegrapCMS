@@ -176,6 +176,16 @@
   ZAMANLANMIŞ GÖREVLER
   --------------------------------------------------------
 
+  [YENİ] [ŞEMA] Genel görevle çalışan işler artık tek bir
+         ortak kilit yerine her biri kendi kilidiyle çalışır
+         ve iki şeride ayrılır: uzun işler (otomatik yedek,
+         SEO skorları ve yapısı, arama dizini) ile kısa işler.
+         Saatler süren bir yedekleme sürerken kampanyalar,
+         pazaryeri eşitlemesi, çeviriler ve günlük işler
+         sırasını beklemeden çalışmaya devam eder; iki uzun iş
+         üst üste binmez, aynı iş iki kez başlatılmaz.
+         cron_runs tablosuna locked_until sütunu eklenir.
+
   [DÜZELTME] mailchimp.php dosyasına doğrudan yapılan bir istek,
          veritabanı katmanı yüklenmeden ayar okumaya çalıştığı
          için 500 hatası veriyordu (hata ayıklama açıkken sunucu
