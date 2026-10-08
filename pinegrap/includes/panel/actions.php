@@ -70,6 +70,8 @@ function pg_panel_actions()
         'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),
+
+        'backend_search' => array('file' => 'search.php', 'handler' => 'pg_panel_backend_search', 'exempt' => true, 'token' => false, 'write' => false),
     );
 }
 
