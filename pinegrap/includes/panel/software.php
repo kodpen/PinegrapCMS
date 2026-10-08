@@ -335,8 +335,13 @@ function pg_panel_software_update($request, $action)
         case 'check':
             //check if there is really have a software update, also software_update page check but may user open 2 page and update and update again.
             // now if try software update after an update user get error message and update stop.
+            // The caller is software_update.php's script, which shows the
+            // message of an error answer in its log box and offers a retry.
             if (!function_exists('curl_init')) {
-                $liveform->mark_error('Update', 'Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.');
+                respond(array(
+                    'status' => 'error',
+                    'message' => lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.')
+                ));
             }
             $request = array();
             $request['hostname'] = HOSTNAME_SETTING;
