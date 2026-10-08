@@ -546,6 +546,11 @@ switch ($action) {
             break;
         }
 
+        // A write from the panel session needs the session token like every
+        // other one; a password-authenticated API request is waived inside
+        // validate_token().
+        validate_token();
+
         // This reads every row and every index of every table. On a large
         // database that is minutes, so it releases the session lock first --
         // otherwise the operator's own next page load queues behind it -- and
@@ -622,6 +627,11 @@ switch ($action) {
             break;
         }
 
+        // A write from the panel session needs the session token like every
+        // other one; a password-authenticated API request is waived inside
+        // validate_token().
+        validate_token();
+
         $server_config_result = pg_server_config_repair(true);
 
         // The status widget renders from a ten-minute cache and would keep
@@ -684,6 +694,11 @@ switch ($action) {
             break;
         }
 
+        // A write from the panel session needs the session token like every
+        // other one; a password-authenticated API request is waived inside
+        // validate_token().
+        validate_token();
+
         $ca_config_result = pg_ca_bundle_config_repair();
 
         if ($ca_config_result['status'] === 'success') {
@@ -723,6 +738,11 @@ switch ($action) {
             ));
             break;
         }
+
+        // A write from the panel session needs the session token like every
+        // other one; a password-authenticated API request is waived inside
+        // validate_token().
+        validate_token();
 
         $permissions_result = pg_write_permission_repair();
 
@@ -771,6 +791,11 @@ switch ($action) {
             ));
             break;
         }
+
+        // A write from the panel session needs the session token like every
+        // other one; a password-authenticated API request is waived inside
+        // validate_token().
+        validate_token();
 
         $purge_result = pg_purge_caches();
 
@@ -8819,6 +8844,11 @@ switch ($action) {
 
 
     case 'update_dashboard_appearance':
+
+        // A write from the panel session needs the session token like every
+        // other one; a password-authenticated API request is waived inside
+        // validate_token().
+        validate_token();
 
         // How the dashboard looks: which of the four treatments the cards wear,
         // and what sits behind them. Both are site-wide, both live on the
