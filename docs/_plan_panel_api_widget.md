@@ -2,6 +2,7 @@
 
 Durum: plan (2026-10-08). Kaynak keşif: `docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` maddeler 1, 2, 4, 5, 7, 6.
 Durum (2026-10-08): Faz 0–2 tamamlandı (PR'da), Faz 3 sırada. Faz 2'de widget'lar `echo`+`exit` yerine dizi döndürüyor; `api.php` `respond()` ediyor.
+Durum (2026-10-08): Faz 3 ilk parça (11 eylem: software, system, explorer, search grupları → `includes/panel/`) PR'da. Tablonun `exempt`/`token`/`write` sütunları bilgi amaçlı, dağıtıcı kapı uygulamıyor; muafiyet zincirinin tablodan üretilmesi sonraki PR'da.
 Satır numaraları `development` @ `0294c42`'ye göre; kaymışsa grep ile bul, yeniden keşif yapma.
 
 ## 0. Sabit bağlam (her oturumda, kısaca)

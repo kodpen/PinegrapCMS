@@ -72,6 +72,144 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Panel eylem tablosu (includes/panel): software, system, explorer, search grupları (2026-10-08)
+
+**Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 2 ve
+3; envanter `docs/_panel_api_eylemler.md`).
+
+- Panel `api.php`'sinde 81 case satır içinde duruyordu (`ws_`, `chat_`,
+  `site_chat_` zaten modüle devrediyordu). En büyükleri `file_explorer` 823,
+  `software_update` 457, `backend_search` 451, `software_backup` 246 satır.
+  Yeni bir panel ucu da yine bu dosyaya giriyordu.
+- Kapı kuralı tek bir yerde değildi: genel kapının önünde 38 tam ad + 3
+  önekten oluşan bir `and ($action != '…')` muafiyet zinciri vardı. Muaf
+  case'ler kendi kontrollerini yazıyordu ve case gövdesi zincirden yüzlerce,
+  binlerce satır uzaktaydı.
+
+**Çözüm.**
+
+- **`includes/panel/actions.php`** (kapı `PG_FUNCTIONS_DIR`, ardından
+  `PG_PANEL_ACTIONS` tanımlanır):
+  - `pg_panel_actions()`: `'<action>' => array('file', 'handler', 'exempt',
+    'token', 'write')`.
+  - `pg_panel_action($action)`: satırı ya da `null` döndürür (string
+    değilse `null`).
+  - `pg_panel_dispatch($action, $request)`: tabloda yoksa `false` döndürür
+    ve `api.php`'nin `switch`'i devam eder. Varsa grup dosyasını
+    `require_once` eder, handler'ı `($request, $action)` ile çağırır; dizi
+    dönerse `respond()` eder, sonra `exit`. `api.php` dağıtıcıyı
+    `switch ($action)`'ın hemen önünde, genel kapıdan sonra çağırır.
+- **Tablo sütunları bilgi amaçlıdır, dağıtıcı kapı uygulamaz.** `exempt`
+  genel kapı zincirinde olup olmadığını, `token` handler'ın
+  `validate_token()` çağırıp çağırmadığını, `write` bir şey değiştirip
+  değiştirmediğini kaydeder. Kapı handler'da, bugünkü sırasıyla kalır,
+  çünkü oturumsuz bir isteğin yanıtı kapı sırasına bağlı: genel kapıdakiler
+  JSON "Invalid login.", önce `validate_token()` çağıranlar JSON "Invalid
+  token.", önce `validate_user()` çağıranlar 302 döner. Tek biçimli bir kapı
+  bu üç yanıtı tek bir yanıta indirirdi. Muafiyet bugün hâlâ `api.php`
+  zincirinde; `exempt` sütunu onunla uyuşmak zorunda (test). Zincir sonraki
+  bir PR'da bu sütundan üretilecek.
+- **Handler yanıtı kendisi yazar** (widget'ların aksine, onlar dizi
+  döndürür). Gövdeler case'teki gibi `respond()` / `echo` + `exit` /
+  `output_error()` (HTML hata sayfası) ile biter. Bazı yollar da hiçbir şey yazmadan biter:
+  `software_update_check` ve `file_explorer`'ın bilinmeyen `type`'ı boş 200
+  döner. Bu davranışlar dizi sözleşmesine sığmaz; dağıtıcı bu yüzden "dizi
+  dönerse `respond()`, yoksa `exit`" der.
+- **`respond()` ve `validate_token()` `api.php`'de kaldı.** Derleme anında
+  tanımlılar ve `barcode_increase_inventory.php` /
+  `barcode_decrease_inventory.php` aynı adlarla kendi kopyalarını tanımlıyor;
+  ortak bir dosyaya taşınsalar o iki uçla çakışırlardı. `$token` `api.php`'nin
+  global kapsamında kalır (`validate_token()` `global $token` okur). Çalışma
+  dizini de hâlâ `api.php`'nin dizini; `'data/backups/'` gibi göreli yollar
+  aynen çalışır.
+- **`file_explorer`:** handler'ın ilk satırı `global $user,
+  $folders_that_user_has_access_to;`. Gövde eskiden global kapsamda
+  çalışıyordu. `check_folder_access_in_array()` (`includes/fn/auth.php`),
+  `pg_explorer_handle()`'ın çağırdığı kısa bağlantı seçenek fonksiyonları ve
+  case içinde tanımlı `get_folder_breadcrumb()` / `get_folder_table()` bu
+  değişkenleri `global` ile okur. Yerel kalsalardı erişim kontrolü kapalı
+  tarafa düşerdi: yönetici hiçbir klasör göremezdi. Case içindeki dört adlı
+  fonksiyon tanımı yerinde, aynen duruyor.
+- **Yol düzeltmeleri** (dosyalar artık `includes/panel/` altında):
+  `dirname(__FILE__)` → `PG_FUNCTIONS_DIR` (dört Sistem Durumu önbellek
+  yolu, `software_update_check.php`, `view_folder_and_files_f.php`),
+  `dirname(dirname(__FILE__))` → `dirname(PG_FUNCTIONS_DIR)`
+  (`server_config_repair` web kökü), `define('_PATH', PG_FUNCTIONS_DIR)`,
+  `include_once(PG_FUNCTIONS_DIR . '/mysqldump.php')` (eskiden göreli).
+- **8 erişilemez `break`** silindi. Sistem Durumu case'lerinde `respond()`'dan
+  sonra duruyorlardı (`6854bc5` satır 557, 638, 663, 705, 750, 803, 846,
+  868). Bir fonksiyonun içinde, döngü ya da switch dışında `break` derleme
+  hatasıdır. Tokenizer betiğiyle bulundular; döngü ve iç switch içindeki
+  `break`'lere dokunulmadı.
+- **`use Ifsnop\Mysqldump as IMysqldump;`** `api.php`'den
+  `includes/panel/software.php`'nin başına taşındı; `api.php`'de artık
+  mysqldump geçmiyor.
+- **Dönüşüm betikle yapıldı** (gövdeler 4 boşluk dedent edildi). Taşınan
+  yorumlarda artık yanlış yeri gösteren üç cümle düzeltildi: iki yerde "the
+  exemption list at the top of this file" → "… of api.php", bir yerde "the
+  general gate above" → "… in api.php".
+- **Gruplar ayrı commit'lerde:**
+  - `f5d915a`: dağıtıcı + `software.php` (`software_backup`,
+    `software_update_check`, `software_update`)
+  - `e05ee58`: `system.php` (`database_deep_check`, `server_config_repair`,
+    `ca_bundle_config_repair`, `write_permissions_repair`, `purge_cache`,
+    `ca_bundle_update`)
+  - `66977b2`: `explorer.php` (`file_explorer`)
+  - `f94aec5`: `search.php` (`backend_search`) ve
+    `tests/panel_actions_test.php`
+- **`tests/panel_actions_test.php`:**
+  - her satırın dosyası ve handler'ı var;
+  - üç bayrak bool;
+  - `token` ⇔ handler kaynağında (`ReflectionFunction`) `validate_token(`;
+  - muaf olup yazan her uç token ister;
+  - tablodaki hiçbir eylemin `api.php`'de `case`'i kalmamış;
+  - `exempt`, `api.php` zincirinden ayrıştırılan 38 adla uyuşuyor;
+  - `pg_panel_action('nope')` / `array()` / `null` → `null`;
+    `pg_panel_dispatch('nope', …)` → `false`.
+
+**Doğrulama.**
+
+- **Statik:** `6854bc5`'teki 11 case gövdesi (4 dedent) ile handler gövdeleri
+  `diff` edildi. Toplam 55 satır fark var, hepsi yukarıda listeli:
+  - 19 `break;` (11 case sonu + 8 erişilemez)
+  - 9 yol satırı
+  - `global` satırı ve yorumu
+  - 3 yorum düzeltmesi
+  - 2 boş satır
+
+  `lang(` sayısı eski gövdelerde 111, yeni dört dosyada 111; sıralanmış
+  anahtarlar aynı. `api.php`, `6854bc5` eksi dört aralık eksi `use` satırı
+  ve yorumu artı dağıtıcının 4 satırıyla birebir aynı. `api.php` 7.377 → 5.048 satır.
+- **Sandbox, altın karşılaştırma:** 81 eylem × {admin, oturumsuz, tokensız,
+  rol 3, admin + bilinmeyen alt eylem} kapı dosyası taşımadan önce ve sonra
+  bayt bayt aynı; PHP uyarı sayıları aynı. `file_explorer` `get_tables`,
+  `get_breadcrumb` ve `explorer_tree` yönetici ile çalışıyor (global `$user`
+  doğru kuruluyor).
+- `php tools/lint.php`, `php tools/check_lang.php`, `php tools/test.php`
+  (100/100), `php tools/check_bindings.php` temiz.
+
+**Açık kalan.**
+
+1. `push_*` (5), `user_pinned_app_update`, `update_dashboard_appearance`,
+   `update_toolbar_properties` ve 6 barkod ucu genel kapının arkasında (rol ≤
+   1). Kardeşleri (`update_dashboard_widgets`, `tour_seen`, bildirim uçları)
+   muaf; barkod uçlarının kendi `validate_ecommerce_access`'i rol 2/3'e hiç
+   ulaşmıyor. Bilinçli mi, yoksa muafiyet listesi mi eksik? Ürün sahibine
+   soru (envanter soru 1). Davranış aynen korundu.
+2. `software_update` `check` adımı cURL yoksa tanımsız `$liveform` üzerinde
+   metot çağırıyor; bugün de ölümcül hata. Taşımada dokunulmadı.
+3. `file_explorer`: bilinmeyen `type` boş 200 döndürüyor; `get_tables` dalı
+   `echo` + `break` ile sona akıyor (exit yok). İkisi de aynen korundu.
+4. Sıradaki PR'lar: önce `designer`, `designer_file`, `shared_component`;
+   sonra kalan ~60 case ve muafiyet zincirinin tablonun `exempt`
+   sütunundan üretilmesi.
+5. `migration.php`'nin (LiveSite göçü) uzak siteye kullanıcı adı / parola
+   ile çağırdığı altı eylem (`get_pages`, `get_folders`, `get_styles`,
+   `get_designer_regions`, `get_common_regions`, `test`) dış sözleşmedir:
+   adları ve yanıt biçimleri taşımada değişmemeli.
+
+---
+
 ## 2026.4.8 — Pano widget'ları ayrı dosyalara (includes/dashboard/widgets), api.php'de mysqldump yükü (2026-10-08)
 
 **Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 1 ve

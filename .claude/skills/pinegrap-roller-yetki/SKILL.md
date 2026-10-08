@@ -26,10 +26,14 @@ Hiyerarşide **Designer (1), Manager'ın (2) üstündedir.**
 - `api.php`'de `switch ($action)` öncesinde genel bir rol kapısı vardır; `case`
   içine yazdığın izin listesi oraya ulaşmayan isteği durduramaz — yeni eylemi
   muafiyet listesine **ve** ilgili alt izin listesine ekle.
+  `includes/panel/actions.php` tablosuna alınan eylemler için de muafiyet hâlâ
+  `api.php` zincirindedir; tablonun `exempt` sütunu onunla uyuşmak zorundadır
+  (test karşılaştırır).
 - Okuma ve yazma uçlarını ayır (ör. `shared_component`'in `list/get/prefetch`
   uçları içerik rolüne açık, yazan her şey rol ≤ 1).
 - Yeni `explorer_*` alt eylemini iki yere yaz: `pg_explorer_handle()` switch'i
-  **ve** `api.php file_explorer` izin listesi; yoksa HTTP 200 + boş gövde.
+  **ve** `file_explorer` izin listesi (`includes/panel/explorer.php`); yoksa
+  HTTP 200 + boş gövde.
 
 ## İzin sütunları
 

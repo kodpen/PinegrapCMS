@@ -6651,7 +6651,7 @@ ucu) açık kalır; yazan her şey rol ≤ 1'dir.
 ### Yeni `explorer_*` Alt Eylemi İki Yere Yazılır
 
 `view_folder_and_files_f.php` içindeki `pg_explorer_handle()` switch'ine bir
-`case` eklemek **yetmez**: `api.php`'nin `file_explorer` dalı alt tipleri
+`case` eklemek **yetmez**: `file_explorer` handler'ı (`includes/panel/explorer.php`) alt tipleri
 **açık bir izin listesiyle** karşılıyor (`case 'explorer_list': case
 'explorer_tree': …`). Listede olmayan tip `pg_explorer_handle()`'a hiç
 ulaşmaz.

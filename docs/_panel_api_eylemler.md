@@ -1,6 +1,7 @@
 # Panel `api.php` eylem envanteri
 
 Durum: envanter (2026-10-08), Plan 1 Faz 3'ün girdisi (`docs/_plan_panel_api_widget.md`).
+Taşınanlar (`includes/panel/`, satır numaraları `6854bc5`'e göre — `api.php` orada `ccef814` ile aynı): `software_backup`, `software_update_check`, `software_update` (`f5d915a`, `software.php`); `database_deep_check`, `server_config_repair`, `ca_bundle_config_repair`, `write_permissions_repair`, `purge_cache`, `ca_bundle_update` (`e05ee58`, `system.php`); `file_explorer` (`66977b2`, `explorer.php`); `backend_search` (`f94aec5`, `search.php`). Kalan 70 case henüz `api.php`'de; aşağıdaki tablolar taşıma öncesini anlatır.
 Kaynak: `pinegrap/api.php` @ `dbcea85` (`claude/panel-api-widget`). Sonraki `ccef814` yalnız dosya
 sonundaki altı pano yardımcısını `includes/dashboard/widgets.php`'ye taşıyor; `switch ($action)` bölgesi
 (satır 1–7316) iki committe bayt bayt aynı, satır numaraları `ccef814`'te de geçerli.
