@@ -61,6 +61,13 @@ function pg_panel_actions()
         'software_backup' => array('file' => 'software.php', 'handler' => 'pg_panel_software_backup', 'exempt' => true, 'token' => true, 'write' => true),
         'software_update_check' => array('file' => 'software.php', 'handler' => 'pg_panel_software_update_check', 'exempt' => true, 'token' => true, 'write' => true),
         'software_update' => array('file' => 'software.php', 'handler' => 'pg_panel_software_update', 'exempt' => true, 'token' => true, 'write' => true),
+
+        'database_deep_check' => array('file' => 'system.php', 'handler' => 'pg_panel_database_deep_check', 'exempt' => true, 'token' => true, 'write' => true),
+        'server_config_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_server_config_repair', 'exempt' => true, 'token' => true, 'write' => true),
+        'ca_bundle_config_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_config_repair', 'exempt' => false, 'token' => true, 'write' => true),
+        'write_permissions_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_write_permissions_repair', 'exempt' => true, 'token' => true, 'write' => true),
+        'purge_cache' => array('file' => 'system.php', 'handler' => 'pg_panel_purge_cache', 'exempt' => true, 'token' => true, 'write' => true),
+        'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),
     );
 }
 
