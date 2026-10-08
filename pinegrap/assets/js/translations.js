@@ -2,10 +2,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Translations screen: saving and reviewing a text, "update
- * translations", and the browser engine - the Chrome Translator API, which
- * translates on the operator's own computer. The server engines run in
- * translations_action.php; this script only starts them and shows their
- * progress.
+ * translations", "clear translations", and the browser engine - the Chrome
+ * Translator API, which translates on the operator's own computer. The
+ * server engines run in translations_action.php; this script only starts
+ * them and shows their progress.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -570,6 +570,46 @@
                 window.setTimeout(function () { window.location.reload(); }, 800);
             }).catch(function (error) {
                 reviewAllButton.disabled = false;
+                toast(error.message, 'error');
+            });
+        });
+    }
+
+    // ── "clear translations": the translations of the scope deleted, so the
+    //    next update sends the texts again; the dialog names the count ──
+
+    var clearModal = document.getElementById('pg_tr_clear_modal');
+
+    if (clearModal) {
+        var clearButton = clearModal.querySelector('.pg-tr-clear');
+        var clearReviewed = clearModal.querySelector('.pg-tr-clear-reviewed');
+        var clearCount = clearModal.querySelector('.pg-tr-clear-count');
+
+        function syncClear() {
+            var count = parseInt(clearButton.getAttribute(clearReviewed.checked ? 'data-all' : 'data-machine'), 10) || 0;
+            clearCount.textContent = text('clear_count', count);
+            clearButton.disabled = (count === 0);
+        }
+
+        clearReviewed.addEventListener('change', syncClear);
+
+        clearModal.addEventListener('show.bs.modal', function () {
+            clearReviewed.checked = false;
+            syncClear();
+        });
+
+        clearButton.addEventListener('click', function () {
+            if (running) {
+                return;
+            }
+
+            clearButton.disabled = true;
+
+            call({ action: 'clear', scope: config.scope, reviewed: clearReviewed.checked ? 1 : 0 }).then(function (data) {
+                toast(data.message, 'success');
+                window.setTimeout(function () { window.location.reload(); }, 800);
+            }).catch(function (error) {
+                clearButton.disabled = false;
                 toast(error.message, 'error');
             });
         });

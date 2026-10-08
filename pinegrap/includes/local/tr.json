@@ -17615,5 +17615,13 @@
     "These shared components place each other in a loop: {var:1}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var:1}",
     "A loop: \"{var}\" places itself, so it is not drawn here again": "Döngü: \"{var}\" kendini içeriyor, burada yeniden çizilmez",
     "Record not found.": "Kayıt bulunamadı.",
-    "The server did not answer in time; trying again…": "Sunucu zamanında cevap vermedi; yeniden deneniyor…"
+    "The server did not answer in time; trying again…": "Sunucu zamanında cevap vermedi; yeniden deneniyor…",
+    "the language {var:1} was removed with its translations": "{var:1} dili çevirileriyle birlikte kaldırıldı",
+    "Removing a language deletes its translations, its update history and its own glossary terms as well. Turn \"Served\" off instead to take it off the site for a while.": "Bir dili kaldırmak çevirilerini, güncelleme geçmişini ve yalnız ona ait sözlük terimlerini de siler. Dili bir süreliğine siteden çekmek için bunun yerine \"Yayında\" anahtarını kapatın.",
+    "translations were cleared ({var:1}, {var:2}, {var:3} text(s))": "çeviriler temizlendi ({var:1}, {var:2}, {var:3} metin)",
+    "{var:1} translation(s) deleted.": "{var:1} çeviri silindi.",
+    "{var} translation(s) will be deleted.": "{var} çeviri silinecek.",
+    "Clear translations": "Çevirileri temizle",
+    "The translations of the texts shown here are deleted, so the next \"Update translations\" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.": "Burada gösterilen metinlerin çevirileri silinir; bir sonraki \"Çevirileri güncelle\" bu metinleri motora yeniden gönderir. Başka yerlerde de kullanılan bir metnin çevirisi oralarda da silinir.",
+    "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil"
 }

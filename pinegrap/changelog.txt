@@ -165,6 +165,21 @@
          yerden devam eder. Yavaş bir modelde her tur, süresine
          sığmayacak yeni bir parti başlatmadan biter.
 
+  [YENİ] Çeviriler ekranının ⋮ menüsünde "Çevirileri temizle":
+         seçili sayfanın, grubun ya da tüm sayfaların o dildeki
+         makine çevirilerini siler; bir sonraki "Çevirileri
+         güncelle" bu metinleri motora yeniden gönderir. İsteğe
+         bağlı olarak gözden geçirilmiş çeviriler de silinir. Onay
+         penceresi silinecek çeviri sayısını gösterir, işlem
+         etkinlik kaydına yazılır.
+
+  [YENİ] Ayarlar → Diller ve Çeviri'de bir dil kaldırıldığında o
+         dilin çevirileri, güncelleme geçmişi ve yalnız o dile ait
+         sözlük terimleri de silinir. Önceden dil listeden
+         kalkıyor, çevirileri veritabanında kalıyordu. Dili bir
+         süreliğine siteden çekmek için "Yayında" anahtarı
+         kapatılır; o zaman çeviriler korunur.
+
 
 
   2026.4.7

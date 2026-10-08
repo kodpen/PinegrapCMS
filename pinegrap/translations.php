@@ -10,7 +10,8 @@
  * The left column lists the pages with their coverage; the right column is
  * the editor for the selected page (or for every text when no page is
  * selected). "Update translations" extracts the texts and sends the pending
- * ones to the language's engine; the browser engine runs here, in this
+ * ones to the language's engine; "Clear translations" deletes the ones of the
+ * selection so they are sent again. The browser engine runs here, in this
  * screen's script (assets/js/translations.js), the server engines in
  * translations_action.php and the scheduled job.
  *
@@ -441,6 +442,11 @@ $scope = ($page_id > 0) ? 'page:' . $page_id : (($group !== '') ? 'group:' . $gr
 
 // The machine translations of the scope one click marks reviewed.
 $review_all_count = ($language !== '') ? pg_tr_review_all_count($language, $scope) : 0;
+
+// What "Clear translations" deletes here: the machine translations, and with
+// the reviewed ones the whole count. The dialog names the number.
+$clear_machine_count = ($language !== '') ? pg_tr_clear_count($language, $scope, false) : 0;
+$clear_all_count = ($language !== '') ? pg_tr_clear_count($language, $scope, true) : 0;
 $export_base = 'translations_action.php?action=export&language=' . rawurlencode($language) . '&scope=' . rawurlencode($scope) . '&token=' . rawurlencode($token);
 
 $engine_note = '';
@@ -493,6 +499,7 @@ $config = array(
         'glossary_add'      => lang('Add a term'),
         'glossary_edit'     => lang('Edit the term'),
         'confirm_review_all' => lang('Mark {var} machine translation(s) here as reviewed? The ones flagged suspicious are left to be looked at one by one.'),
+        'clear_count'       => lang('{var} translation(s) will be deleted.'),
         'retrying'          => lang('The server did not answer in time; trying again…'),
     ),
 );
@@ -548,6 +555,7 @@ echo pg_page_shell(array(
                     <li><a class="dropdown-item" href="' . h($export_base) . '"><i class="bi bi-download me-2" aria-hidden="true"></i>' . lang('Export CSV') . '</a></li>
                     <li><a class="dropdown-item" href="' . h($export_base . '&pending=1') . '"><i class="bi bi-download me-2" aria-hidden="true"></i>' . lang('Export pending texts as CSV') . '</a></li>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pg_tr_import"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Import CSV') . '</button></li>
+                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pg_tr_clear_modal"' . (($clear_all_count > 0) ? '' : ' disabled="disabled"') . '><i class="bi bi-eraser me-2" aria-hidden="true"></i>' . lang('Clear translations') . '</button></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-gear me-2" aria-hidden="true"></i>' . lang('Languages and Translation') . '</a></li>
                 </ul>
@@ -634,6 +642,28 @@ echo pg_page_shell(array(
                         <button type="submit" class="btn btn-primary">' . lang('Import') . '</button>
                     </div>
                 </form>
+            </div>
+        </div>
+        <div class="modal fade" id="pg_tr_clear_modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">' . lang('Clear translations') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-body-secondary">' . lang('The translations of the texts shown here are deleted, so the next "Update translations" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.') . '</p>
+                        <div class="form-check mb-3">
+                            <input value="1" class="form-check-input pg-tr-clear-reviewed" type="checkbox" id="pg_tr_clear_reviewed"' . (($clear_all_count > $clear_machine_count) ? '' : ' disabled="disabled"') . '/>
+                            <label class="form-check-label" for="pg_tr_clear_reviewed">' . lang('Delete the reviewed translations as well') . ' <span class="opacity-75">' . ($clear_all_count - $clear_machine_count) . '</span></label>
+                        </div>
+                        <p class="fw-semibold mb-0 pg-tr-clear-count"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-outline-warning pg-tr-clear" data-machine="' . $clear_machine_count . '" data-all="' . $clear_all_count . '"><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="modal fade" id="pg_tr_glossary_modal" tabindex="-1" aria-hidden="true">

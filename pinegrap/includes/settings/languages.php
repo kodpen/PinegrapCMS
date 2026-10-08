@@ -93,7 +93,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                     <input value="1"' . (((int) $translation_row['auto_update'] === 1) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="tr_auto_' . h($translation_code) . '" name="' . $translation_name . '[auto_update]"/>
                                     <label class="form-check-label" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
                                 </div>' : '') . '
-                                <div class="form-check mb-0 ms-2">
+                                <div class="form-check mb-0 ms-2" title="' . h(lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.')) . '">
                                     <input value="1" class="form-check-input" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]"/>
                                     <label class="form-check-label text-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
                                 </div>

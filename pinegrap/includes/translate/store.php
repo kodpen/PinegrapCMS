@@ -441,6 +441,27 @@ function pg_tr_prefixes_rewrite($source = null)
 }
 
 /**
+ * Removes a target language with everything that belongs to it: its
+ * translations, its jobs and their items, the glossary terms written for it
+ * alone, its drawn bodies and its row. Glossary terms for every language
+ * (language '') and the source texts are shared and stay. The items go
+ * before the jobs, since they are found through them.
+ *
+ * @param string $code
+ */
+function pg_tr_language_purge($code)
+{
+    $code = e($code);
+
+    db("DELETE FROM translation_job_items WHERE job_id IN (SELECT id FROM translation_jobs WHERE language = '$code')");
+    db("DELETE FROM translation_jobs WHERE language = '$code'");
+    db("DELETE FROM translations WHERE language = '$code'");
+    db("DELETE FROM translation_glossary WHERE language = '$code'");
+    db("DELETE FROM page_translations WHERE language = '$code'");
+    db("DELETE FROM site_languages WHERE code = '$code'");
+}
+
+/**
  * The Google Cloud key, decrypted for the request that calls Google; '' when
  * none is stored.
  */
@@ -722,6 +743,53 @@ function pg_tr_review_all($language, $scope = 'all', $user_id = 0)
 {
     db("UPDATE translations t SET t.status = 'reviewed', t.updated_by = '" . ((int) $user_id) . "', t.updated_at = '" . time() . "'
         WHERE " . pg_tr_review_all_where($language, $scope));
+
+    $count = (int) mysqli_affected_rows(db::$con);
+
+    if ($count > 0) {
+        pg_tr_invalidate_pages($language);
+    }
+
+    return $count;
+}
+
+/**
+ * The translations of a language in a scope of the Translations screen that
+ * "Clear translations" deletes: the machine ones, and the reviewed ones too
+ * when $with_reviewed says so. A text has one translation wherever it is
+ * used, so a text of the scope that is used elsewhere as well loses it there
+ * too.
+ *
+ * @return string SQL condition on translations t
+ */
+function pg_tr_clear_where($language, $scope = 'all', $with_reviewed = false)
+{
+    $owner_where = pg_tr_owner_where(pg_tr_scope_owners($scope));
+
+    return "t.language = '" . e($language) . "'" . ($with_reviewed ? '' : " AND t.status = 'machine'") . "
+        AND EXISTS (SELECT 1 FROM translation_uses u WHERE u.string_id = t.string_id"
+        . (($owner_where !== '') ? " AND ($owner_where)" : '') . ')';
+}
+
+/**
+ * How many translations pg_tr_clear() would delete.
+ *
+ * @return int
+ */
+function pg_tr_clear_count($language, $scope = 'all', $with_reviewed = false)
+{
+    return (int) db_value('SELECT COUNT(*) FROM translations t WHERE ' . pg_tr_clear_where($language, $scope, $with_reviewed));
+}
+
+/**
+ * Deletes the translations of a language in a scope, so the next update
+ * finds the texts pending and sends them to the engine again.
+ *
+ * @return int how many were deleted
+ */
+function pg_tr_clear($language, $scope = 'all', $with_reviewed = false)
+{
+    db('DELETE t FROM translations t WHERE ' . pg_tr_clear_where($language, $scope, $with_reviewed));
 
     $count = (int) mysqli_affected_rows(db::$con);
 
