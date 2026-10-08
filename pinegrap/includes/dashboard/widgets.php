@@ -52,7 +52,7 @@ function pg_dashboard_widget_run($request, $user)
     );
 
     // The id becomes part of a file path, so only the known shapes pass.
-    if ((!is_string($widget_id)) || (!preg_match('/^(clock|[1-9][0-9]{0,2})$/', $widget_id))) {
+    if ((!is_string($widget_id)) || (!preg_match('/^(clock|[1-9][0-9]{0,2})$/D', $widget_id))) {
         return $invalid;
     }
 

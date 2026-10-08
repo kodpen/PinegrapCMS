@@ -72,6 +72,101 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Pano widget'ları ayrı dosyalara (includes/dashboard/widgets), api.php'de mysqldump yükü (2026-10-08)
+
+**Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 1 ve
+4a).
+
+- `api.php` 15.070 satırdı; bunun 7.459 satırı (yarısı) tek bir case'ti:
+  `get_widget_data`, içinde bir `switch ($widget_id)` ile 27 pano widget'ı
+  (`clock`, `'1'`–`'26'`). Tek bir widget'a dokunmak 15 bin satırlık
+  dosyada diff, çakışma ve FTP yükleme riski demekti; her panel AJAX
+  isteği de bu dosyanın tamamını derliyordu.
+- `api.php`'nin başındaki `include_once('mysqldump.php')` (72 KB) **her**
+  panel AJAX isteğinde çalışıyordu. Sınıfı yalnız `software_backup`
+  kullanıyor ve o case kendi `include_once`'ını zaten yapıyor.
+
+**Çözüm.**
+
+- **Yükleyici** `includes/dashboard/widgets.php` (kapı `PG_FUNCTIONS_DIR`,
+  ardından `PG_DASHBOARD_WIDGETS` tanımlanır):
+  `pg_dashboard_widget_run($request, $user)`. Id int gelirse string'e
+  çevrilir, string değilse geçersizdir; beyaz liste
+  `/^(clock|[1-9][0-9]{0,2})$/D` (id dosya yoluna girdiği için zorunlu).
+  Ardından `is_file` → `require_once` → `function_exists`. Herhangi biri
+  tutmazsa eski `default` dalının yanıtı aynen döner:
+  `array('status' => 'error', 'message' => 'Invalid widget id.')`.
+- **Widget dosyası** `includes/dashboard/widgets/widget_<id>.php` (27 dosya:
+  `widget_clock.php`, `widget_1.php` … `widget_26.php`; 22 ve 24 emekli ama
+  case'leri vardı, aynen taşındı). Pinegrap başlığı + `PG_DASHBOARD_WIDGETS`
+  kapısı + tek fonksiyon `pg_dashboard_widget_<id>($request, $user)`. Erişim
+  kontrolü widget'ın kendisinde kalır.
+- **Dönüş sözleşmesi:** widget `status` / `message` / `data` dizisi döndürür,
+  echo ya da exit yapmaz; `api.php` yükleyicinin döndürdüğünü `respond()`
+  eder. Plandaki "`echo encode_json(...); exit();` kalıbı korunur"
+  varsayılanından bilinçli sapma: `exit` eden bir fonksiyon test edilemez
+  ve `respond()` `api.php`'nin sonunda tanımlı olduğu için widget
+  dosyasından çağrılması `api.php`'ye bağımlılık demekti.
+- **21 → 22:** iki widget Güvenlik Duvarı kartının iki yarısıdır. Eskiden
+  `'21'` başarı dalında `$waf_panel`'i kurup bilerek `'22'`ye düşüyordu
+  (fall-through). Şimdi `pg_dashboard_widget_21()` olay yarısını kurup
+  `pg_dashboard_widget_22($request, $user, $waf_panel)` çağırır; 22 tehdit
+  yarısını ekleyip ikisini döndürür. Doğrudan 22 isteği (`$waf_panel = ''`)
+  yalnız tehdit yarısını verir, eskisi gibi.
+- **`api.php` case gövdesi:** `validate_user()`, `session_write_close()`,
+  yükleyicinin `require_once`'ı ve `respond(pg_dashboard_widget_run($request,
+  $user))`. Kapı davranışı değişmedi: `get_widget_data` genel rol kapısından
+  muaf, token istemiyor (salt okuma), oturumu `validate_user()` doğruluyor.
+- **`include_once('mysqldump.php')` kaldırıldı.** `use Ifsnop\Mysqldump as
+  IMysqldump;` satırı ve `software_backup` içindeki yükleme kalır.
+- **Dönüşüm betikle yapıldı**, elle kopyalanmadı: case gövdeleri dilimlendi,
+  12 boşluk dedent edildi (çok satırlı HTML/JS/SQL string'lerinin satır başı
+  boşlukları da 12 azaldı), yalnız şu satırlar değişti: `echo
+  encode_json($response); exit();` (+ `break;`) → `return $response;` (53
+  yer), `respond(array(…));` → `return array(…);` (3 yer, widget 1), case
+  sonu `break;`'leri silindi, `require_once(dirname(__FILE__) . '/chat.php')`
+  ve `/edit_offer_f.php` → `PG_FUNCTIONS_DIR` (dosya artık kökte değil),
+  `$output_rows` kullanan 10 widget'ın başına `$output_rows = '';` (eskiden
+  case başında atanıyordu), 21/22 devri ve artık yanlış yeri gösteren
+  yorum cümleleri ("this file", "this case", "the switch's default branch").
+  SQL, HTML ve `lang()` anahtarlarına dokunulmadı.
+- Başka yerlerdeki göndermeler güncellendi: `includes/sales_map.php` ve
+  `includes/fn/system_status.php` başlık yorumları ("Rendering lives in
+  api.php") artık `widget_1.php` / `widget_2.php`'yi gösteriyor.
+- **`tests/dashboard_test.php`:** 27 dosya var ve yüklenince fonksiyon
+  tanımlı; geçersiz id'ler (`''`, `'0'`, `'27'`, `'99'`, `'../x'`,
+  `'1/../2'`, `"1\n"`, dizi, null, true, anahtar hiç yok) → "Invalid widget
+  id."; widget 24 `'24'` ve int `24` ile DB'siz `success` + boş `data`;
+  `clock` (`TIME_FORMAT` testte tanımlanır) site saatini `<time>` içinde
+  döndürür.
+
+**Doğrulama.**
+
+- Statik: `25db3a2`'deki case gövdeleri (12 dedent) ile yeni fonksiyon
+  gövdeleri `diff` edildi; 291 farklı satırın hepsi yukarıdaki listede
+  (return, yol, `$output_rows`, yorum). `lang(` çağrısı eski widget
+  aralığında 320, yeni 27 dosyada 320; sıralanmış anahtar listeleri aynı.
+  `api.php` 15.070 → 7.619 satır.
+- Sandbox, altın karşılaştırma: 27 widget yanıtı + 4 kapı dosyası taşımadan
+  önce ve sonra kaydedildi. Tek fark, çok satırlı string literal'lerin
+  içindeki satır başı boşluklarının 12 azalması (dedent); boşluk
+  normalize edilince 31/31 birebir. Yanıtlarda `<pre>`/`<textarea>` yok,
+  yani görünür bir fark yok.
+- `php tools/lint.php`, `php tools/check_lang.php`, `php tools/test.php`,
+  `php tools/check_bindings.php` temiz.
+
+**Açık kalan.**
+
+1. Widget 6'nın "en çok satan ürünler" sorgusu `ORDER BY total_qty DESC
+   LIMIT 5` eşitlik bozucu olmadan sıralıyor: eşit adetlerde her çağrıda
+   farklı ürün gelebiliyor (sandbox'ta görüldü). Gövde aynen taşındığı için
+   dokunulmadı; ikincil sıralama eklenip eklenmeyeceği ürün sahibine soru.
+2. Widget 14'ün başarı dalı (`SUBSCRIPTION_ID` ile Kodpen API çağrısı)
+   sandbox'ta kapsanmadı.
+3. Faz 3 (panel eylem tablosu) ayrı PR.
+
+---
+
 ## 2026.4.8 — DB katmanı: pg_db_run(), sorgu sayacı, pg_schema_has() (8.15) (2026-10-08)
 
 **Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 9, 10,
