@@ -134,8 +134,8 @@ if (!$translations_is_import && !$translations_is_export) {
 
     switch ($action) {
 
-        // "Update translations": extract the scope, open a job for what is
-        // pending, start a server engine on it.
+        // "Update translations": extract the scope and open a job for what
+        // is pending; a server engine's job is then worked by "run".
         case 'update':
             $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
 
@@ -193,7 +193,7 @@ if (!$translations_is_import && !$translations_is_export) {
             translations_respond(array('status' => 'success', 'job' => pg_tr_job_get($job_id)) + $summary);
             break;
 
-        // A server engine's job, worked for another twenty seconds from the
+        // A server engine's job, worked twenty seconds at a time from the
         // panel instead of waiting for the scheduled job.
         case 'run':
             $job_id = isset($request['job_id']) ? (int) $request['job_id'] : 0;

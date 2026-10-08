@@ -151,6 +151,20 @@
          gösteriyor ve hata günlüğüne PHP uyarıları yazıyordu.
          Artık "Kayıt bulunamadı." ekranı 404 koduyla gösterilir.
 
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [DÜZELTME] Binlerce metni olan bir sitede Çeviriler ekranındaki
+         "Çevirileri güncelle" Google ya da Pinegrap AI ile 15-20
+         çeviri yapıp duruyordu: ilk istek bütün sitenin
+         taranmasıyla ilk çeviri turunu bir arada yapıyor ve
+         sunucunun süre sınırına takılabiliyordu. Tarama artık
+         kendi isteğinde yapılır, çeviri ayrı turlarda sürer; bir
+         tur sunucuda ya da vekil sunucuda zaman aşımına uğrarsa
+         ekran işi bırakmaz, kısa bir beklemeden sonra kaldığı
+         yerden devam eder. Yavaş bir modelde her tur, süresine
+         sığmayacak yeni bir parti başlatmadan biter.
+
 
 
   2026.4.7

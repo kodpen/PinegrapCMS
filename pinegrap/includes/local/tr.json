@@ -17614,5 +17614,6 @@
     "These shared components place each other in a loop: {var}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var}",
     "These shared components place each other in a loop: {var:1}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var:1}",
     "A loop: \"{var}\" places itself, so it is not drawn here again": "Döngü: \"{var}\" kendini içeriyor, burada yeniden çizilmez",
-    "Record not found.": "Kayıt bulunamadı."
+    "Record not found.": "Kayıt bulunamadı.",
+    "The server did not answer in time; trying again…": "Sunucu zamanında cevap vermedi; yeniden deneniyor…"
 }

@@ -44,6 +44,15 @@
         return s.replace('{var}', (a === undefined) ? '' : a);
     }
 
+    // A request that never reached the endpoint's own answer - the network,
+    // a server or proxy time limit, an error page - is marked transient: the
+    // job loop waits it out instead of giving up on the first one.
+    function transientError() {
+        var error = new Error(text('network_error'));
+        error.transient = true;
+        return error;
+    }
+
     function call(payload) {
         payload.token = config.token;
         if (!payload.language && config.language) {
@@ -55,7 +64,11 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         }).then(function (response) {
-            return response.json();
+            return response.json().catch(function () {
+                throw transientError();
+            });
+        }, function () {
+            throw transientError();
         }).then(function (data) {
             if (!data || data.status !== 'success') {
                 throw new Error((data && data.message) ? data.message : text('network_error'));
@@ -328,10 +341,27 @@
         running = { id: job.id, total: job.total, done: job.done_count !== undefined ? parseInt(job.done_count, 10) : (job.done || 0), failed: job.failed_count !== undefined ? parseInt(job.failed_count, 10) : (job.failed || 0), stop: false };
         showProgress(text('progress', running.done, running.total), running.done, running.total);
 
-        // Calls that answered with an error and no progress, one after
-        // another. A paused engine answers that way for a minute; the loop
-        // waits it out and gives up only when it keeps happening.
+        // Calls that answered with an error and no progress, or did not
+        // answer at all, one after another. A paused engine answers that way
+        // for a minute, and a run the server or a proxy cut off is followed
+        // by one that gets through; the loop waits them out and gives up only
+        // when it keeps happening.
         var idle = 0;
+
+        function waitOut(message, giveUp) {
+            idle++;
+
+            if (idle >= 8) {
+                toast(giveUp, 'error');
+                hideProgress();
+                running = null;
+                return;
+            }
+
+            showProgress(message, running.done, running.total);
+
+            return new Promise(function (resolve) { window.setTimeout(resolve, 20000); }).then(step);
+        }
 
         function step() {
             if (running.stop) {
@@ -357,25 +387,20 @@
 
                 if (data.error && !data.done) {
                     // The engine answered with an error and nothing was
-                    // translated. A pause is waited out here; what keeps
-                    // failing is left to the scheduled job.
-                    idle++;
-
-                    if (idle >= 8) {
-                        toast(data.error, 'error');
-                        hideProgress();
-                        running = null;
-                        return;
-                    }
-
-                    showProgress(data.error, running.done, running.total);
-
-                    return new Promise(function (resolve) { window.setTimeout(resolve, 20000); }).then(step);
+                    // translated. What keeps failing is left to the
+                    // scheduled job.
+                    return waitOut(data.error, data.error);
                 }
 
                 idle = 0;
 
                 return step();
+            }, function (error) {
+                if (!error.transient) {
+                    throw error;
+                }
+
+                return waitOut(text('retrying'), error.message);
             });
         }
 
@@ -470,12 +495,9 @@
                         return watchQueueJob(data.job || { id: data.job_id, total: data.pending, done_count: 0, failed_count: 0 });
                     }
 
-                    if (data.finished) {
-                        finish(data.done || 0, data.failed || 0);
-                        return;
-                    }
-
-                    return runServerJob(data.job || { id: data.job_id, total: data.pending, done_count: data.done, failed_count: data.failed });
+                    // A server engine: the update only opened the job; every
+                    // turn of translating is a run call of its own.
+                    return runServerJob(data.job);
                 });
             }).catch(function (error) {
                 hideProgress();

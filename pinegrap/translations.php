@@ -493,6 +493,7 @@ $config = array(
         'glossary_add'      => lang('Add a term'),
         'glossary_edit'     => lang('Edit the term'),
         'confirm_review_all' => lang('Mark {var} machine translation(s) here as reviewed? The ones flagged suspicious are left to be looked at one by one.'),
+        'retrying'          => lang('The server did not answer in time; trying again…'),
     ),
 );
 
