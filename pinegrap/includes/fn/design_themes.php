@@ -762,15 +762,20 @@ function pg_design_thumb_vars($look, $palette)
 // A small drawing of a design's home page in its look and colours: the
 // picture a template is known by, in the template dialog and on the list of
 // designs. Inline SVG, coloured through CSS variables (pg_design_thumb_vars()).
-// $kind is the template's 'thumb': 'store' draws a shop front, anything else
-// the starter site's home page.
+// $kind is the template's 'thumb': a drawing of its own when a function
+// _pg_design_thumb_<kind>() exists (dashes in the kind become underscores:
+// 'store' draws a shop front with _pg_design_thumb_store()), the starter
+// site's home page for anything else. Such a function returns the inside of
+// a 320x200 <svg>, drawn with the same variables. The kind comes from a
+// template file, so it is checked before it names a function.
 function pg_design_thumb_svg($look, $palette, $class = '', $label = '', $kind = '')
 {
     $vars = pg_design_thumb_vars($look, $palette);
     $a11y = ($label !== '') ? ' role="img" aria-label="' . h($label) . '"' : ' aria-hidden="true" focusable="false"';
-    if ($kind === 'store') {
+    $draw = (is_string($kind) && preg_match('/^[a-z0-9-]+$/', $kind)) ? '_pg_design_thumb_' . str_replace('-', '_', $kind) : '';
+    if ($draw !== '' && function_exists($draw)) {
         return '<svg class="' . h(trim('pg-design-thumb ' . $class)) . '" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" style="' . h($vars) . '"' . $a11y . '>'
-            . _pg_design_thumb_store() . '</svg>';
+            . $draw() . '</svg>';
     }
     $card = function ($x, $y) {
         return '<g style="filter:var(--tsh)">'
@@ -885,4 +890,268 @@ function _pg_design_thumb_store()
         . '<rect x="272" y="183.5" width="14" height="9" rx="1.5" fill="#fff" stroke="#e5e7eb" stroke-width=".75"/><rect x="290" y="183.5" width="14" height="9" rx="1.5" fill="#fff" stroke="#e5e7eb" stroke-width=".75"/>'
         . '<circle cx="241" cy="188" r="2.2" style="fill:var(--tp)" opacity=".7"/><circle cx="244" cy="188" r="2.2" style="fill:var(--ts)" opacity=".7"/>'
         . '<rect x="257" y="186.5" width="8" height="3" rx="1" fill="#94a3b8"/><rect x="275" y="186.5" width="8" height="3" rx="1" fill="#94a3b8"/><rect x="293" y="186.5" width="8" height="3" rx="1" fill="#94a3b8"/>';
+}
+
+// The playful personal site: a header with a round avatar and a sticker, a
+// big "Hi" with three coloured stickers beside a round photo ringed by icon
+// badges, four "currently" cards, three colourful project cards, the say-hi
+// band and the footer. Same variables as the home page drawing.
+function _pg_design_thumb_playground()
+{
+    $ink = '#111827';
+    // A rounded block with the thick dark outline every sticker wears.
+    $block = function ($x, $y, $w, $h, $fill) use ($ink) {
+        return '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="' . $y . '" width="' . $w . '" height="' . $h . '" rx="6" style="rx:var(--tr);fill:' . $fill . '" stroke="' . $ink . '" stroke-width="1.2"/></g>';
+    };
+    $pill = function ($x, $y, $w, $fill) use ($ink) {
+        return '<rect x="' . $x . '" y="' . $y . '" width="' . $w . '" height="7" rx="3.5" fill="' . $fill . '" stroke="' . $ink . '" stroke-width=".8"/>'
+             . '<rect x="' . ($x + 3) . '" y="' . ($y + 2.75) . '" width="' . ($w - 6) . '" height="1.5" rx=".75" fill="' . $ink . '" opacity=".7"/>';
+    };
+    $badge = function ($cx, $cy, $fill) use ($ink) {
+        return '<circle cx="' . $cx . '" cy="' . $cy . '" r="7" fill="' . $fill . '" stroke="' . $ink . '" stroke-width="1.2"/>'
+             . '<path d="M' . $cx . ' ' . ($cy - 3.5) . ' l1 2.5 l2.5 1 l-2.5 1 l-1 2.5 l-1 -2.5 l-2.5 -1 l2.5 -1 z" fill="#fff"/>';
+    };
+
+    // four "currently" cards: a soft colour each, an icon, a label, a value
+    $currently = '';
+    foreach (array('#fef3c7', '#cffafe', '#d1fae5', '#fee2e2') as $i => $fill) {
+        $x = 12 + $i * 76;
+        $currently .= $block($x, 103, 68, 24, $fill)
+            . '<circle cx="' . ($x + 9) . '" cy="' . 111 . '" r="3.5" style="fill:var(--tp)"/>'
+            . '<rect x="' . ($x + 6) . '" y="117" width="22" height="2.5" rx="1.25" fill="' . $ink . '" opacity=".75"/>'
+            . '<rect x="' . ($x + 6) . '" y="121.5" width="' . (40 - $i * 4) . '" height="2.5" rx="1.25" fill="#64748b"/>';
+    }
+
+    // three project cards: a round icon sticker, a tag, the title, a line, "See it"
+    $projects = '';
+    foreach (array('#fde68a', '#a5f3fc', '#bbf7d0') as $i => $fill) {
+        $x = 12 + $i * 101;
+        $projects .= $block($x, 132, 93, 28, $fill)
+            . '<circle cx="' . ($x + 11) . '" cy="143" r="6" fill="#fff" stroke="' . $ink . '" stroke-width="1"/>'
+            . '<circle cx="' . ($x + 11) . '" cy="143" r="2.6" style="fill:var(--tp)"/>'
+            . '<rect x="' . ($x + 66) . '" y="137" width="21" height="6" rx="3" fill="#fff" stroke="' . $ink . '" stroke-width=".7"/>'
+            . '<rect x="' . ($x + 22) . '" y="139.5" width="' . (30 + $i * 4) . '" height="4" rx="2" fill="' . $ink . '"/>'
+            . '<rect x="' . ($x + 7) . '" y="151" width="62" height="2.5" rx="1.25" fill="#475569"/>'
+            . '<rect x="' . ($x + 7) . '" y="155" width="16" height="2.5" rx="1.25" fill="' . $ink . '"/>';
+    }
+
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // header: round avatar, name with its sticker, menu, a thick line under it
+        . '<circle cx="17" cy="13" r="7" style="fill:var(--tp)" stroke="' . $ink . '" stroke-width="1.4"/>'
+        . '<rect x="13.5" y="11.6" width="7" height="2.8" rx="1.4" fill="#fff"/>'
+        . '<rect x="28" y="7" width="34" height="5" rx="2" fill="' . $ink . '"/>'
+        . '<rect x="28" y="14.5" width="30" height="5" rx="2.5" fill="#22c55e" stroke="' . $ink . '" stroke-width=".7"/>'
+        . '<rect x="178" y="11.5" width="16" height="3" rx="1.5" fill="#64748b"/><rect x="200" y="11.5" width="24" height="3" rx="1.5" fill="#64748b"/>'
+        . '<rect x="230" y="11.5" width="12" height="3" rx="1.5" fill="#64748b"/><rect x="248" y="11.5" width="12" height="3" rx="1.5" fill="#64748b"/>'
+        . '<rect x="266" y="11.5" width="20" height="3" rx="1.5" fill="#64748b"/><rect x="292" y="11.5" width="16" height="3" rx="1.5" style="fill:var(--tp)"/>'
+        . '<rect y="25.5" width="320" height="1.6" fill="' . $ink . '"/>'
+        // hero: a big "Hi", three stickers, two lines, two pill buttons
+        . '<text x="16" y="62" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" font-weight="900" fill="' . $ink . '">Hi!</text>'
+        . $pill(18, 68, 24, '#fbbf24') . $pill(46, 68, 24, '#22d3ee') . $pill(74, 68, 46, '#f87171')
+        . '<rect x="18" y="79" width="120" height="3" rx="1.5" fill="#94a3b8"/><rect x="18" y="84.5" width="96" height="3" rx="1.5" fill="#94a3b8"/>'
+        . '<rect x="18" y="90" width="44" height="9" rx="4.5" style="fill:var(--tp)" stroke="' . $ink . '" stroke-width="1"/>'
+        . '<rect x="25" y="93.5" width="30" height="2" rx="1" fill="#fff"/>'
+        . '<rect x="66" y="90" width="28" height="9" rx="4.5" fill="#fff" stroke="' . $ink . '" stroke-width="1"/>'
+        . '<rect x="72" y="93.5" width="16" height="2" rx="1" fill="' . $ink . '"/>'
+        // the round photo: sky, sun and a hill inside the circle
+        . '<g style="filter:var(--tsh)"><circle cx="246" cy="62" r="31" style="fill:var(--ts)"/></g>'
+        . '<circle cx="246" cy="62" r="31" style="fill:var(--tp)" opacity=".45"/>'
+        . '<circle cx="256" cy="50" r="6" fill="#fff" opacity=".8"/>'
+        . '<path d="M216.5 71 Q234 56 250 68 Q262 60 275.5 71 A31 31 0 0 1 216.5 71 Z" fill="#fff" opacity=".6"/>'
+        . '<circle cx="246" cy="62" r="31" fill="none" stroke="' . $ink . '" stroke-width="2"/>'
+        . $badge(272, 37, '#fbbf24') . $badge(215, 62, '#22d3ee') . $badge(272, 87, '#22c55e')
+        // what is on the desk right now, and the things made
+        . $currently
+        . $projects
+        // the say-hi band in the palette colour, a white pill button
+        . '<rect y="165" width="320" height="18" style="fill:var(--tp)"/>'
+        . '<rect x="14" y="170" width="92" height="4.5" rx="2" fill="#fff"/><rect x="14" y="177" width="64" height="2.5" rx="1.25" fill="#fff" opacity=".65"/>'
+        . '<rect x="270" y="169" width="36" height="10" rx="5" fill="#fff" stroke="' . $ink . '" stroke-width="1"/>'
+        . '<rect x="278" y="173" width="20" height="2" rx="1" fill="' . $ink . '"/>'
+        // footer: a thick line on top, the coffee note, social circles, the copyright
+        . '<rect y="183" width="320" height="17" fill="#f8fafc"/><rect y="183" width="320" height="2" style="fill:var(--tp)"/>'
+        . '<path d="M14 189 h6 v4 a3 3 0 0 1 -6 0 z" style="fill:var(--tp)"/><rect x="24" y="190.5" width="48" height="2.5" rx="1.25" fill="' . $ink . '"/>'
+        . '<circle cx="146" cy="192" r="3.6" fill="#fff" stroke="' . $ink . '" stroke-width=".8"/><circle cx="155" cy="192" r="3.6" fill="#fff" stroke="' . $ink . '" stroke-width=".8"/>'
+        . '<circle cx="164" cy="192" r="3.6" fill="#fff" stroke="' . $ink . '" stroke-width=".8"/><circle cx="173" cy="192" r="3.6" fill="#fff" stroke="' . $ink . '" stroke-width=".8"/>'
+        . '<rect x="262" y="191" width="46" height="2.5" rx="1.25" fill="#94a3b8"/>';
+}
+
+// The boutique: a thin dark line, the name centred over a centred menu, a
+// two-picture hero (a large picture with a small square laid over its
+// corner), a strip of new arrivals, a dark band with a quote and three
+// numbers, and a light footer. Same variables as the home page drawing.
+function _pg_design_thumb_boutique()
+{
+    // A cut gem, the boutique's mark, drawn in the palette's colour.
+    $gem = function ($cx, $cy, $s, $style) {
+        $w = 18 * $s; $h = 16 * $s; $top = $cy - $h / 2; $mid = $top + 5 * $s;
+        return '<path d="M' . ($cx - $w / 2 + 4 * $s) . ' ' . $top . ' h' . ($w - 8 * $s) . ' l' . (4 * $s) . ' ' . (5 * $s)
+            . ' l' . (-$w / 2) . ' ' . ($h - 5 * $s) . ' l' . (-$w / 2) . ' ' . (-$h + 5 * $s) . ' z'
+            . ' M' . ($cx - $w / 2) . ' ' . $mid . ' h' . $w
+            . ' M' . ($cx - 3 * $s) . ' ' . $top . ' l' . (-2 * $s) . ' ' . (5 * $s) . ' l' . (5 * $s) . ' ' . ($h - 5 * $s)
+            . ' M' . ($cx + 3 * $s) . ' ' . $top . ' l' . (2 * $s) . ' ' . (5 * $s) . ' l' . (-5 * $s) . ' ' . ($h - 5 * $s) . '"'
+            . ' fill="none" stroke-width="' . (1.4 * $s) . '" stroke-linejoin="round" style="' . $style . '"/>';
+    };
+    // The new arrivals: square pictures with a "new" mark, the name and the
+    // price under each; the fourth runs off the edge, as the strip scrolls.
+    $cards = '';
+    $tints = array('.10', '.18', '.07', '.14');
+    foreach (array(18, 96, 174, 252) as $i => $x) {
+        $cards .= '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="124" width="70" height="28" rx="2" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+            . '<rect x="' . $x . '" y="124" width="70" height="28" rx="2" style="rx:var(--tr);fill:var(--tp);opacity:' . $tints[$i] . '"/>'
+            . '<rect x="' . ($x + 3) . '" y="127" width="12" height="4" fill="#fff"/><rect x="' . ($x + 5) . '" y="128.5" width="8" height="1" rx=".5" fill="#475569"/>'
+            . '<circle cx="' . ($x + 35) . '" cy="138" r="7" fill="#fff" opacity=".55"/>'
+            . '<rect x="' . ($x + 29) . '" y="134" width="12" height="8" rx="1.5" fill="none" style="stroke:var(--tp)" stroke-width="1.1"/>'
+            . '<path d="M' . ($x + 32) . ' 134 v-1.5 a3 3 0 0 1 6 0 v1.5" fill="none" style="stroke:var(--tp)" stroke-width="1.1"/>'
+            . '<rect x="' . $x . '" y="155" width="' . ($i % 2 ? 30 : 38) . '" height="2.6" rx="1.3" fill="#1f2937"/>'
+            . '<rect x="' . $x . '" y="159.5" width="16" height="2" rx="1" fill="#94a3b8"/>';
+    }
+    // The name in widely spaced thin capitals.
+    $brand = '';
+    for ($i = 0; $i < 9; $i++) {
+        $brand .= '<rect x="' . (132 + $i * 6.5) . '" y="12" width="3.4" height="4.2" rx=".3" fill="#111827" opacity="' . ($i === 4 ? '0' : '.7') . '"/>';
+    }
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // the thin dark line: the announcement and the account links
+        . '<rect width="320" height="7" fill="#1f2937"/><rect x="18" y="2.75" width="54" height="1.5" rx=".75" fill="#fff" opacity=".7"/>'
+        . '<rect x="262" y="2.75" width="14" height="1.5" rx=".75" fill="#fff" opacity=".7"/><rect x="280" y="2.75" width="22" height="1.5" rx=".75" fill="#fff" opacity=".7"/>'
+        // the header: a pin on the left, the name in the middle, the search on the right
+        . '<path d="M20 12.5 a2.6 2.6 0 0 1 5.2 0 c0 2 -2.6 4.6 -2.6 4.6 s-2.6 -2.6 -2.6 -4.6 z" fill="none" stroke="#475569" stroke-width=".9"/>'
+        . '<rect x="27.5" y="13.2" width="20" height="2" rx="1" fill="#94a3b8"/>'
+        . $brand
+        . '<circle cx="298" cy="13.4" r="2.6" fill="none" stroke="#475569" stroke-width="1"/><path d="M300 15.4 l2 2" stroke="#475569" stroke-width="1" stroke-linecap="round"/>'
+        // the menu, centred, the current page underlined
+        . '<rect x="98" y="22.5" width="16" height="2" rx="1" fill="#475569"/><rect x="98" y="26.2" width="16" height=".8" fill="#111827"/>'
+        . '<rect x="120" y="22.5" width="10" height="2" rx="1" fill="#94a3b8"/><rect x="136" y="22.5" width="26" height="2" rx="1" fill="#94a3b8"/>'
+        . '<rect x="168" y="22.5" width="10" height="2" rx="1" fill="#94a3b8"/><rect x="184" y="22.5" width="16" height="2" rx="1" fill="#94a3b8"/>'
+        . '<rect x="206" y="22.5" width="16" height="2" rx="1" fill="#94a3b8"/>'
+        . '<rect y="30" width="320" height=".75" fill="#e5e7eb"/>'
+        // the hero, left: a small line, a serif title on three lines, a sentence, a dark button and a link
+        . '<rect x="18" y="44" width="30" height="2" rx="1" fill="#94a3b8"/>'
+        . '<rect x="18" y="50" width="104" height="7" rx="1" fill="#111827"/><rect x="18" y="60" width="118" height="7" rx="1" fill="#111827"/>'
+        . '<rect x="18" y="70" width="62" height="7" rx="1" fill="#111827"/>'
+        . '<rect x="18" y="82" width="120" height="2.6" rx="1.3" fill="#94a3b8"/><rect x="18" y="87" width="96" height="2.6" rx="1.3" fill="#94a3b8"/>'
+        . '<rect x="18" y="95" width="40" height="10" rx="0" style="rx:var(--tbr)" fill="#1f2937"/><rect x="25" y="99.25" width="26" height="1.5" rx=".75" fill="#fff"/>'
+        . '<rect x="66" y="99.25" width="30" height="1.5" rx=".75" fill="#111827"/><rect x="66" y="101.8" width="30" height=".6" fill="#111827"/>'
+        // the hero, right: the large picture and the small square over its corner
+        . '<g style="filter:var(--tsh)"><rect x="172" y="38" width="130" height="66" rx="2" style="rx:var(--tr);fill:#fff"/></g>'
+        . '<rect x="172" y="38" width="130" height="66" rx="2" style="rx:var(--tr);fill:var(--tp);opacity:.12"/>'
+        . '<circle cx="240" cy="71" r="21" fill="#fff" opacity=".5"/>'
+        . $gem(243, 74, 1.7, 'stroke:var(--tp);opacity:.35')
+        . $gem(240, 71, 1.7, 'stroke:var(--tp)')
+        . '<g style="filter:drop-shadow(0 2px 3px rgba(16,24,40,.22))"><rect x="156" y="90" width="28" height="28" fill="#fff"/></g>'
+        . '<rect x="158.5" y="92.5" width="23" height="23" style="fill:var(--ts);opacity:.35"/>'
+        . '<rect x="164" y="102" width="12" height="9" fill="none" style="stroke:var(--tp)" stroke-width="1.1"/><rect x="163" y="99" width="14" height="3" fill="none" style="stroke:var(--tp)" stroke-width="1.1"/>'
+        . '<path d="M170 99 v12 M170 99 q-4 -4 -5 -1 M170 99 q4 -4 5 -1" fill="none" style="stroke:var(--tp)" stroke-width="1.1"/>'
+        // the new arrivals
+        . $cards
+        // the dark band: a quote and three numbers
+        . '<rect y="166" width="320" height="20" fill="#1f2937"/>'
+        . '<rect x="18" y="171" width="120" height="2.6" rx="1.3" fill="#fff" opacity=".85"/><rect x="18" y="176" width="96" height="2.6" rx="1.3" fill="#fff" opacity=".85"/>'
+        . '<rect x="18" y="181" width="40" height="1.6" rx=".8" fill="#fff" opacity=".45"/>'
+        . '<rect x="214" y="171" width="10" height="5" rx="1" fill="#fff"/><rect x="211" y="179" width="16" height="1.6" rx=".8" fill="#fff" opacity=".5"/>'
+        . '<rect x="244" y="171" width="12" height="5" rx="1" fill="#fff"/><rect x="242" y="179" width="16" height="1.6" rx=".8" fill="#fff" opacity=".5"/>'
+        . '<rect x="276" y="171" width="10" height="5" rx="1" fill="#fff"/><rect x="273" y="179" width="16" height="1.6" rx=".8" fill="#fff" opacity=".5"/>'
+        // the footer: the name centred, small links under it
+        . '<rect y="186" width="320" height="14" fill="#f8fafc"/>'
+        . '<rect x="140" y="189" width="40" height="3" rx=".5" fill="#475569"/>'
+        . '<rect x="112" y="195" width="18" height="1.6" rx=".8" fill="#cbd5e1"/><rect x="136" y="195" width="18" height="1.6" rx=".8" fill="#cbd5e1"/>'
+        . '<rect x="160" y="195" width="22" height="1.6" rx=".8" fill="#cbd5e1"/><rect x="188" y="195" width="18" height="1.6" rx=".8" fill="#cbd5e1"/>';
+}
+
+// The bookshop: a header with a wide search and a category row, the staff
+// picks (a large dark panel beside three small picks), the bestsellers as
+// horizontal cards, and the dark footer with the opening hours. Same
+// variables as the home page drawing.
+function _pg_design_thumb_bookshop()
+{
+    // A book standing on its own: cover, spine and a title band.
+    $book = function ($x, $y, $w, $h, $fill) {
+        return '<rect x="' . $x . '" y="' . $y . '" width="' . $w . '" height="' . $h . '" rx="1" style="' . $fill . '"/>'
+            . '<rect x="' . $x . '" y="' . $y . '" width="' . max(1.5, $w * 0.14) . '" height="' . $h . '" rx=".75" fill="#000" opacity=".18"/>'
+            . '<rect x="' . ($x + $w * 0.3) . '" y="' . ($y + $h * 0.22) . '" width="' . ($w * 0.55) . '" height="' . max(1.5, $h * 0.08) . '" rx=".75" fill="#fff" opacity=".8"/>';
+    };
+
+    // The three small picks on the right: a square cover and two lines.
+    $picks = '';
+    foreach (array(0, 1, 2) as $i) {
+        $y = 42 + $i * 23.5;
+        $picks .= '<g style="filter:var(--tsh)"><rect x="186" y="' . $y . '" width="124" height="20" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+            . '<rect x="188" y="' . ($y + 2) . '" width="16" height="16" rx="2" style="fill:var(--ts);opacity:.14"/>'
+            . $book(192, $y + 4.5, 8, 11, $i === 1 ? 'fill:var(--tp)' : 'fill:var(--ts)')
+            . '<rect x="209" y="' . ($y + 4) . '" width="24" height="2" rx="1" style="fill:var(--tp)"/>'
+            . '<rect x="209" y="' . ($y + 8.5) . '" width="' . (52 - $i * 6) . '" height="3" rx="1.5" fill="#1f2937"/>'
+            . '<rect x="209" y="' . ($y + 14) . '" width="' . (76 - $i * 8) . '" height="2" rx="1" fill="#cbd5e1"/>';
+    }
+
+    // The bestsellers: horizontal cards, a cover on the left, the badge,
+    // the name, the price and the button on the right.
+    $best = '';
+    foreach (array(10, 162) as $i => $x) {
+        $y = 128;
+        $best .= '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="' . $y . '" width="148" height="34" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+            . '<rect x="' . ($x + 1) . '" y="' . ($y + 1) . '" width="40" height="32" rx="2" style="fill:var(--tp);opacity:.08"/>'
+            . $book($x + 12, $y + 6, 17, 22, $i === 0 ? 'fill:var(--tp)' : 'fill:var(--ts)')
+            . '<rect x="' . ($x + 48) . '" y="' . ($y + 5) . '" width="24" height="5" rx="2.5" style="fill:var(--ts);opacity:.22"/>'
+            . '<path d="M' . ($x + 51.5) . ' ' . ($y + 6.2) . ' l.8 1.5 1.6 .2 -1.2 1.1 .3 1.6 -1.5 -.8 -1.5 .8 .3 -1.6 -1.2 -1.1 1.6 -.2 z" style="fill:var(--ts)"/>'
+            . '<rect x="' . ($x + 56) . '" y="' . ($y + 6.75) . '" width="13" height="1.5" rx=".75" style="fill:var(--ts)"/>'
+            . '<rect x="' . ($x + 48) . '" y="' . ($y + 14) . '" width="' . ($i === 0 ? 58 : 48) . '" height="3.5" rx="1.75" fill="#1f2937"/>'
+            . '<rect x="' . ($x + 48) . '" y="' . ($y + 25) . '" width="20" height="3.5" rx="1.75" fill="#1f2937"/>'
+            . '<rect x="' . ($x + 108) . '" y="' . ($y + 22.5) . '" width="34" height="8" rx="2.5" style="rx:var(--tbr);fill:var(--tp)"/>'
+            . '<rect x="' . ($x + 115) . '" y="' . ($y + 25.75) . '" width="20" height="1.5" rx=".75" fill="#fff"/>';
+    }
+
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // header: the brand mark and name, the wide search with its button,
+        // the two thin links on the right
+        . '<rect x="10" y="6" width="12" height="12" rx="2.5" style="fill:var(--tp)"/>'
+        . '<path d="M12.6 9.6 q1.7 -.9 3.4 0 v5.4 q-1.7 -.9 -3.4 0 z M16 9.6 q1.7 -.9 3.4 0 v5.4 q-1.7 -.9 -3.4 0 z" fill="#fff"/>'
+        . '<rect x="26" y="9.5" width="30" height="5" rx="2" fill="#111827"/>'
+        . '<rect x="66" y="6" width="170" height="12" rx="3" style="rx:var(--tbr);fill:#fff;stroke:var(--tbc);stroke-width:.75"/>'
+        . '<circle cx="73" cy="11.6" r="2.3" fill="none" stroke="#94a3b8" stroke-width="1"/><path d="M74.7 13.3 l1.6 1.6" stroke="#94a3b8" stroke-width="1" stroke-linecap="round"/>'
+        . '<rect x="80" y="10.8" width="62" height="2.4" rx="1.2" fill="#cbd5e1"/>'
+        . '<path d="M212 6 h21 a3 3 0 0 1 3 3 v6 a3 3 0 0 1 -3 3 h-21 z" style="fill:var(--tp)"/>'
+        . '<rect x="217" y="11" width="14" height="2" rx="1" fill="#fff"/>'
+        . '<circle cx="250" cy="11" r="2" fill="none" style="stroke:var(--tp)" stroke-width="1"/><rect x="254" y="10" width="20" height="2.4" rx="1.2" fill="#94a3b8"/>'
+        . '<path d="M281 9.2 q0 4.4 4 4.4" fill="none" style="stroke:var(--tp)" stroke-width="1.2" stroke-linecap="round"/><rect x="288" y="10" width="22" height="2.4" rx="1.2" fill="#94a3b8"/>'
+        // the category row: Browse, the four categories, events on the right
+        . '<rect y="24" width="320" height="11" fill="#f8fafc"/><rect y="24" width="320" height=".75" fill="#e5e7eb"/><rect y="34.25" width="320" height=".75" fill="#e5e7eb"/>'
+        . '<rect x="12" y="27.5" width="1.6" height="1.6" fill="#111827"/><rect x="14.5" y="27.5" width="1.6" height="1.6" fill="#111827"/><rect x="12" y="30" width="1.6" height="1.6" fill="#111827"/><rect x="14.5" y="30" width="1.6" height="1.6" fill="#111827"/>'
+        . '<rect x="19" y="28.3" width="20" height="2.6" rx="1.3" fill="#111827"/>'
+        . '<rect x="48" y="28.3" width="16" height="2.6" rx="1.3" fill="#94a3b8"/><rect x="72" y="28.3" width="34" height="2.6" rx="1.3" fill="#94a3b8"/>'
+        . '<rect x="114" y="28.3" width="20" height="2.6" rx="1.3" fill="#94a3b8"/><rect x="142" y="28.3" width="24" height="2.6" rx="1.3" fill="#94a3b8"/>'
+        . '<rect x="240" y="28.3" width="18" height="2.6" rx="1.3" fill="#94a3b8"/><rect x="264" y="28.3" width="22" height="2.6" rx="1.3" fill="#94a3b8"/><rect x="292" y="28.3" width="16" height="2.6" rx="1.3" fill="#94a3b8"/>'
+        // the staff picks: a large dark panel with the book of the week
+        . '<g style="filter:var(--tsh)"><rect x="10" y="42" width="170" height="68" rx="4" style="rx:var(--tr);fill:var(--tp)"/></g>'
+        . '<rect x="10" y="42" width="170" height="68" rx="4" style="rx:var(--tr)" fill="#000" opacity=".22"/>'
+        . '<rect x="20" y="49" width="42" height="5" rx="2.5" fill="#fff"/><rect x="25" y="50.75" width="33" height="1.5" rx=".75" style="fill:var(--tp)"/>'
+        . '<rect x="20" y="58" width="112" height="7" rx="2" fill="#fff"/><rect x="20" y="67" width="70" height="7" rx="2" fill="#fff"/>'
+        . '<rect x="20" y="78" width="96" height="14" rx="2.5" fill="#fff" opacity=".12"/>'
+        . $book(24, 80, 8, 10, 'fill:#fff;opacity:.9')
+        . '<rect x="37" y="82" width="40" height="3" rx="1.5" fill="#fff"/><rect x="37" y="87" width="58" height="2" rx="1" fill="#fff" opacity=".6"/>'
+        . '<rect x="20" y="97" width="36" height="8" rx="2.5" style="rx:var(--tbr)" fill="#fff"/><rect x="25" y="100.25" width="26" height="1.5" rx=".75" style="fill:var(--tp)"/>'
+        . '<rect x="60" y="97" width="36" height="8" rx="2.5" style="rx:var(--tbr)" fill="none" stroke="#fff" stroke-width=".9"/><rect x="65" y="100.25" width="26" height="1.5" rx=".75" fill="#fff"/>'
+        // a stack of books on the panel
+        . $book(140, 70, 12, 34, 'fill:#fff;opacity:.28') . $book(154, 64, 14, 40, 'fill:var(--ts)')
+        . '<rect x="134" y="104" width="40" height="1.5" rx=".75" fill="#fff" opacity=".5"/>'
+        . $picks
+        // the bestsellers heading, with its rule, and the cards
+        . '<rect x="10" y="115" width="44" height="2" rx="1" style="fill:var(--tp)"/><rect x="10" y="119" width="70" height="4.5" rx="2" fill="#111827"/>'
+        . '<rect x="280" y="120" width="30" height="2.5" rx="1.25" style="fill:var(--tp)"/>'
+        . '<rect x="10" y="125.5" width="300" height=".6" fill="#e5e7eb"/>'
+        . $best
+        // the dark footer: the opening hours, the links, the address, the payment marks
+        . '<rect y="168" width="320" height="32" fill="#212529"/>'
+        . '<rect x="10" y="174" width="30" height="2.4" rx="1.2" fill="#f8fafc"/>'
+        . '<rect x="10" y="180" width="24" height="2" rx="1" fill="#6c757d"/><rect x="46" y="180" width="22" height="2" rx="1" fill="#adb5bd"/>'
+        . '<rect x="10" y="185" width="18" height="2" rx="1" fill="#6c757d"/><rect x="46" y="185" width="22" height="2" rx="1" fill="#adb5bd"/>'
+        . '<rect x="10" y="190" width="16" height="2" rx="1" fill="#6c757d"/><rect x="46" y="190" width="22" height="2" rx="1" fill="#adb5bd"/>'
+        . '<rect x="112" y="174" width="22" height="2.4" rx="1.2" fill="#f8fafc"/>'
+        . '<rect x="112" y="180" width="26" height="2" rx="1" fill="#adb5bd"/><rect x="112" y="185" width="34" height="2" rx="1" fill="#adb5bd"/><rect x="112" y="190" width="22" height="2" rx="1" fill="#adb5bd"/>'
+        . '<rect x="158" y="180" width="22" height="2" rx="1" fill="#adb5bd"/><rect x="158" y="185" width="26" height="2" rx="1" fill="#adb5bd"/><rect x="158" y="190" width="18" height="2" rx="1" fill="#adb5bd"/>'
+        . '<rect x="214" y="174" width="24" height="2.4" rx="1.2" fill="#f8fafc"/>'
+        . '<circle cx="216" cy="181" r="1.3" style="fill:var(--tp)"/><rect x="220" y="180" width="44" height="2" rx="1" fill="#adb5bd"/>'
+        . '<circle cx="216" cy="186" r="1.3" style="fill:var(--tp)"/><rect x="220" y="185" width="32" height="2" rx="1" fill="#adb5bd"/>'
+        . '<rect x="274" y="186" width="10" height="7" rx="1.2" fill="none" stroke="#6c757d" stroke-width=".7"/><rect x="287" y="186" width="10" height="7" rx="1.2" fill="none" stroke="#6c757d" stroke-width=".7"/>'
+        . '<rect x="300" y="186" width="10" height="7" rx="1.2" fill="none" stroke="#6c757d" stroke-width=".7"/>';
 }

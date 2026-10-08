@@ -3105,7 +3105,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     color: #e8a838; opacity: .9;
     margin-left: 5px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
-    max-width: 110px; vertical-align: middle;
+    max-width: 160px; vertical-align: middle;
     flex-shrink: 1;
 }
 .sd-tree-user-label .bi { font-size: .58rem; opacity: .85; }

@@ -25,6 +25,27 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Üç yeni tasarım şablonu. Playground: eğlenceli bir
+         kişisel site; herkesin yorum yapabildiği bir blog,
+         yeni merhabaları bir duvarda gösteren ziyaretçi
+         defteri, projeler ve "şimdi" sayfası. Boutique:
+         takı, çanta, gözlük ve hediye butiği; editoryal ana
+         sayfa, lookbook ve sekmeli hediye rehberi. Bookshop:
+         kitapçı ve kırtasiye; ekip seçimleri, çok satanlar,
+         etkinlikler ve hoş geldin e-postası gönderen kitap
+         kulübü. Boutique ve Bookshop kendi örnek
+         kataloglarıyla, görselleriyle birlikte gelir.
+
+  [YENİ] "Şablondan Seç" kartları kısaldı. Kartta şablonun
+         görseli, adı, tek satırlık açıklaması ve düğmeleri
+         kalıyor; sayfa listesi, öne çıkanlar, önerilen tema,
+         çatı ve sürüm ⓘ düğmesinin ipucunda. "Bu temayı
+         kullan" kartta duruyor.
+
+  [YENİ] Genel Bakış'taki arama, öğenin adıyla birlikte
+         tasarımcı etiketini ve #id'sini de buluyor. Uzun
+         etiketler ağaçta daha geç kesiliyor.
+
   [HIZ] Ağır animasyonlu sayfalarda görsel editör takılmıyor.
          Tuvalde ya da katmanlar panelinde bir öğeye tıklamak
          artık sayfayı baştan çizmiyor: seçim yalnız
