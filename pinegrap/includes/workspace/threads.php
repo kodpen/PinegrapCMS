@@ -748,6 +748,7 @@ function ws_threads_js_strings()
         'th_about'          => lang('The message it is about'),
         'th_go_message'     => lang('Show it in the channel'),
         'th_close_panel'    => lang('Close the discussion panel'),
+        'th_resize'         => lang('Drag to resize the discussion panel'),
         'th_conclude'       => lang('Conclude the discussion'),
         'th_conclude_confirm' => lang('Conclude the discussion? It is kept, read only, for 30 days and then deleted. The decisions and tasks it produced stay in the channel.'),
         'th_concluded'      => lang('The discussion was concluded.'),
@@ -761,5 +762,7 @@ function ws_threads_js_strings()
         'th_from'           => ws_js_template('From the discussion “{var:1}”', 1),
         'th_readonly'       => lang('The discussion is concluded; it can be read but not written in.'),
         'th_empty'          => lang('Nobody has written yet. Start the discussion.'),
+        'th_show_all'       => ws_js_template('Show all ({var:1})', 1),
+        'th_show_fewer'     => lang('Show fewer'),
     );
 }

@@ -8734,15 +8734,50 @@ body.workspace_settings .ws-shell-main > #button_bar {
   display: none;
 }
 .ws-app.ws-thread-open {
-  grid-template-columns: 17rem minmax(0, 1fr) minmax(20rem, 26rem);
+  grid-template-columns: 17rem minmax(0, 1fr) var(--ws-thread-w, minmax(20rem, 26rem));
 }
 .ws-app.ws-thread-open .ws-thread-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   border-left: 1px solid var(--bs-border-color);
   background: var(--bs-body-bg);
+}
+/* The discussion panel is widened by dragging its left edge; the strip
+   sits over the border so the panel keeps its own padding. */
+.ws-thread-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.ws-thread-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  transition: background .15s;
+}
+.ws-thread-resizer:hover::after,
+.ws-thread-resizer:focus-visible::after,
+.ws-app.ws-thread-resizing .ws-thread-resizer::after {
+  background: var(--ws-accent);
+}
+.ws-app.ws-thread-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+.ws-app.ws-thread-resizing iframe {
+  pointer-events: none;
 }
 .ws-app.ws-thread-open .ws-composer-hint {
   display: none !important;
@@ -8874,7 +8909,7 @@ button.ws-thread-bar:hover {
 }
 @media (max-width: 1199.98px) {
   .ws-app.ws-thread-open {
-    grid-template-columns: 14rem minmax(0, 1fr) minmax(18rem, 22rem);
+    grid-template-columns: 14rem minmax(0, 1fr) var(--ws-thread-w, minmax(18rem, 22rem));
   }
 }
 .ws-side {
@@ -8913,6 +8948,37 @@ button.ws-thread-bar:hover {
 .ws-side-title .btn {
   padding: 0 .35rem;
   line-height: 1.2;
+}
+/* A section heading that opens and closes the section, drawn like a
+   group's (below); a closed one keeps its count on the right. */
+.ws-side-toggle {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+}
+.ws-side-toggle:hover {
+  color: var(--bs-body-color);
+}
+.ws-side-toggle-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-side-more {
+  font-size: .78rem;
+  padding: .1rem .5rem;
+  text-decoration: none;
 }
 .ws-channel-link {
   display: flex;
@@ -13062,6 +13128,9 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     inset: 0;
     z-index: 6;
     border-left: 0;
+  }
+  .ws-thread-resizer {
+    display: none;
   }
   .ws-app.ws-show-side .ws-center {
     display: none;

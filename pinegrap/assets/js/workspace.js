@@ -2630,7 +2630,23 @@
 
                 f.channel = select(channelOptions, defaults.channel_id || 0);
                 f.channel.id = nextId('ws-task-channel-');
-                col(formRow(t('post_card_in'), f.channel));
+
+                var channelRow = formRow(t('post_card_in'), f.channel);
+
+                // Opened from a discussion: the card goes to the discussion
+                // too, as long as it stays in that discussion's channel.
+                if (defaults.thread_id) {
+                    var threadNote = el('div', 'form-text', t('task_card_thread_note'));
+                    var noteShown = function () {
+                        threadNote.classList.toggle('d-none', String(f.channel.value) !== String(defaults.channel_id));
+                    };
+
+                    channelRow.appendChild(threadNote);
+                    f.channel.addEventListener('change', noteShown);
+                    noteShown();
+                }
+
+                col(channelRow);
             }
 
             body.appendChild(grid);
@@ -2746,6 +2762,10 @@
 
             if (f.channel) {
                 data.channel_id = parseInt(f.channel.value, 10) || 0;
+
+                if (this.defaults && this.defaults.thread_id) {
+                    data.thread_id = this.defaults.thread_id;
+                }
             }
 
             if (f.remind) {
@@ -4040,6 +4060,8 @@
         // An earlier version of the conversation open on the screen
         // (includes/workspace/eras.php), or null for the current one.
         era: null,
+        // Every discussion listed in the sidebar, not only the first few.
+        threadsAll: false,
         fit: function () {},
 
         start: function (root) {
@@ -4155,7 +4177,18 @@
                 var tour = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-signpost-split', t('tour_start'));
 
                 tour.setAttribute('data-ws-tour', '1');
-                tour.addEventListener('click', function () { window.PgTour.start(window.PG_TOUR.key); });
+                tour.addEventListener('click', function () {
+                    // The tour points at links in these sections.
+                    var shutParts = self.closedSections();
+
+                    if (shutParts.work || shutParts.records) {
+                        self.closeSection('work', false);
+                        self.closeSection('records', false);
+                        self.drawSide();
+                    }
+
+                    window.PgTour.start(window.PG_TOUR.key);
+                });
                 head.appendChild(tour);
             }
 
@@ -4195,15 +4228,71 @@
                 box.appendChild(item);
             }
 
-            function group(title) {
-                var box = el('div', 'ws-side-section');
+            var closedParts = self.closedSections();
 
-                if (title) {
+            // A heading that opens and closes its section; closed, it still
+            // says how much is new inside.
+            function sectionToggle(head, key, title, iconName, shut, badge) {
+                var toggle = el('button', 'ws-side-toggle');
+
+                toggle.type = 'button';
+                toggle.setAttribute('aria-expanded', shut ? 'false' : 'true');
+                toggle.title = shut ? t('side_expand') : t('side_collapse');
+                toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
+
+                if (iconName) {
+                    toggle.appendChild(icon(iconName));
+                }
+
+                toggle.appendChild(el('span', 'ws-side-toggle-name', title));
+                toggle.addEventListener('click', function () {
+                    self.closeSection(key, !shut);
+                    self.drawSide();
+                });
+                head.appendChild(toggle);
+
+                if (shut && badge) {
+                    head.appendChild(badge);
+                }
+            }
+
+            function countBadge(count, mention) {
+                return count ? el('span', 'ws-count' + (mention ? ' ws-count-mention' : ''), count > 99 ? '99+' : count) : null;
+            }
+
+            // What is new in a list of channels: the mentions when there are
+            // any, otherwise the unread messages of the channels not muted.
+            function channelsBadge(list) {
+                var mentions = 0;
+                var unread = 0;
+
+                list.forEach(function (channel) {
+                    mentions += channel.mentions || 0;
+
+                    if (channel.notify !== 'none') {
+                        unread += channel.unread || 0;
+                    }
+                });
+
+                return mentions ? countBadge(mentions, true) : countBadge(unread, false);
+            }
+
+            // A section of links; null when it is closed and nothing goes in.
+            function group(title, key) {
+                var box = el('div', 'ws-side-section');
+                var shut = !!(key && closedParts[key]);
+
+                if (title && key) {
+                    var head = el('div', 'ws-side-title');
+
+                    sectionToggle(head, key, title, '', shut, null);
+                    box.appendChild(head);
+                } else if (title) {
                     box.appendChild(el('div', 'ws-side-title', title));
                 }
 
                 scroll.appendChild(box);
-                return box;
+                return shut ? null : box;
             }
 
             var top = group('');
@@ -4296,17 +4385,12 @@
                 return link;
             }
 
-            function section(title, list, sortable, iconName, dropOut) {
+            function section(title, list, sortable, iconName, dropOut, key) {
                 var box = el('div', 'ws-side-section' + (sortable ? ' ws-sortable' : ''));
                 var head = el('div', 'ws-side-title');
-                var label = el('span');
+                var shut = !!closedParts[key];
 
-                if (iconName) {
-                    label.appendChild(icon(iconName, 'me-1'));
-                }
-
-                label.appendChild(document.createTextNode(title));
-                head.appendChild(label);
+                sectionToggle(head, key, title, iconName, shut, channelsBadge(list));
                 box.appendChild(head);
 
                 // A channel dropped on the heading comes out of its group.
@@ -4314,12 +4398,21 @@
                     self.dropTarget(head, 0, null);
                 }
 
-                list.forEach(function (channel) {
-                    box.appendChild(channelLink(channel, box, sortable));
-                });
+                // Closed, a section still shows the one that is on the screen.
+                if (shut) {
+                    list.forEach(function (channel) {
+                        if (self.channel && self.channel.id === channel.id) {
+                            box.appendChild(channelLink(channel, box, false));
+                        }
+                    });
+                } else {
+                    list.forEach(function (channel) {
+                        box.appendChild(channelLink(channel, box, sortable));
+                    });
 
-                if (!list.length) {
-                    box.appendChild(el('div', 'small text-body-secondary px-2', t('no_channels')));
+                    if (!list.length) {
+                        box.appendChild(el('div', 'small text-body-secondary px-2', t('no_channels')));
+                    }
                 }
 
                 scroll.appendChild(box);
@@ -4413,24 +4506,36 @@
             }
 
             if (pinned.length) {
-                section(t('pinned'), pinned, true, 'bi-pin-angle');
+                section(t('pinned'), pinned, true, 'bi-pin-angle', false, 'pinned');
             }
 
             // The open discussions the person is in (threads.php); none, no
-            // section.
-            var threads = BOOT.threads || [];
+            // section. The open one and those of the open channel come
+            // first, then the unread ones, then the latest; a few are shown
+            // until the rest are asked for.
+            var THREADS_SHOWN = 5;
+            var openThread = self.openThreadId();
+            var hereId = self.channel ? self.channel.id : 0;
+            var rank = function (item) {
+                return (item.thread.id === openThread) ? 0 : ((item.thread.channel_id === hereId) ? 1 : (item.thread.unread ? 2 : 3));
+            };
+            var threads = (BOOT.threads || []).map(function (thread, index) {
+                return { thread: thread, index: index };
+            }).sort(function (a, b) {
+                return (rank(a) - rank(b)) || (a.index - b.index);
+            }).map(function (item) { return item.thread; });
 
             if (threads.length) {
                 var talks = el('div', 'ws-side-section ws-side-threads');
                 var talksHead = el('div', 'ws-side-title');
-                var talksLabel = el('span');
+                // Closed, a section still shows the one that is on the screen.
+                var talksShut = !!closedParts.threads;
+                var talksUnread = threads.reduce(function (sum, thread) { return sum + (thread.unread || 0); }, 0);
 
-                talksLabel.appendChild(icon('bi-chat-square-dots', 'me-1'));
-                talksLabel.appendChild(document.createTextNode(t('th_section')));
-                talksHead.appendChild(talksLabel);
+                sectionToggle(talksHead, 'threads', t('th_section'), 'bi-chat-square-dots', talksShut, countBadge(talksUnread, false));
                 talks.appendChild(talksHead);
 
-                threads.forEach(function (thread) {
+                (talksShut ? threads.filter(function (thread) { return thread.id === openThread; }) : (self.threadsAll ? threads : threads.slice(0, THREADS_SHOWN))).forEach(function (thread) {
                     var item = el('button', 'ws-channel-link ws-thread-link' + (self.openThreadId() === thread.id ? ' active' : '') + (thread.unread ? ' ws-unread' : ''));
                     item.type = 'button';
                     item.title = thread.title + ' · #' + thread.channel;
@@ -4452,6 +4557,16 @@
                     talks.appendChild(item);
                 });
 
+                if (!talksShut && (threads.length > THREADS_SHOWN)) {
+                    var more = button('btn btn-sm btn-link link-secondary ws-side-more', self.threadsAll ? t('th_show_fewer') : t('th_show_all', threads.length));
+
+                    more.addEventListener('click', function () {
+                        self.threadsAll = !self.threadsAll;
+                        self.drawSide();
+                    });
+                    talks.appendChild(more);
+                }
+
                 scroll.appendChild(talks);
             }
 
@@ -4471,31 +4586,37 @@
                 scroll.appendChild(groupSection);
             }
 
-            section(t('my_channels'), mine, true, '', true);
+            section(t('my_channels'), mine, true, '', true, 'mine');
 
             if (others.length) {
-                section(t('other_channels'), others, false, '', true);
+                section(t('other_channels'), others, false, '', true, 'others');
             }
 
-            var work = group(t('nav_work'));
-            link(work, t('my_tasks'), 'bi-check2-square', function () { window.location.href = CFG.urls.tasks; });
+            var work = group(t('nav_work'), 'work');
 
-            if (CFG.notes) {
-                link(work, t('nav_notes'), 'bi-journal-text', function () { window.location.href = CFG.urls.notes; });
+            if (work) {
+                link(work, t('my_tasks'), 'bi-check2-square', function () { window.location.href = CFG.urls.tasks; });
+
+                if (CFG.notes) {
+                    link(work, t('nav_notes'), 'bi-journal-text', function () { window.location.href = CFG.urls.notes; });
+                }
+                link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
+                link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
+
+                if (CFG.scheduled || CFG.scheduled_messages) {
+                    link(work, CFG.scheduled ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
+                }
             }
-            link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
-            link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
 
-            if (CFG.scheduled || CFG.scheduled_messages) {
-                link(work, CFG.scheduled ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
-            }
+            var records = group(t('nav_records'), 'records');
 
-            var records = group(t('nav_records'));
-            link(records, t('nav_timeline'), 'bi-clock-history', function () { window.location.href = CFG.urls.timeline; });
-            link(records, t('archived_channels'), 'bi-archive', function () { self.showArchived(); });
+            if (records) {
+                link(records, t('nav_timeline'), 'bi-clock-history', function () { window.location.href = CFG.urls.timeline; });
+                link(records, t('archived_channels'), 'bi-archive', function () { self.showArchived(); });
 
-            if (BOOT.me.rights.staff) {
-                link(records, t('private_channels_audit'), 'bi-shield-lock', function () { self.showAudit(); });
+                if (BOOT.me.rights.staff) {
+                    link(records, t('private_channels_audit'), 'bi-shield-lock', function () { self.showAudit(); });
+                }
             }
 
             // The settings stay at the foot of the sidebar, however long the
@@ -5035,6 +5156,32 @@
                 window.localStorage.setItem('ws-groups-closed', JSON.stringify(closed));
             } catch (error) {
                 // Not kept: the group opens again next time.
+            }
+        },
+
+        // Which sections of the sidebar are closed: this person's, on this
+        // browser.
+        closedSections: function () {
+            try {
+                return JSON.parse(window.localStorage.getItem('ws-side-closed') || '{}') || {};
+            } catch (error) {
+                return {};
+            }
+        },
+
+        closeSection: function (key, shut) {
+            var closed = this.closedSections();
+
+            if (shut) {
+                closed[key] = 1;
+            } else {
+                delete closed[key];
+            }
+
+            try {
+                window.localStorage.setItem('ws-side-closed', JSON.stringify(closed));
+            } catch (error) {
+                // Not kept: the section opens again next time.
             }
         },
 
@@ -5667,6 +5814,8 @@
             self.scheduledPart = part;
 
             self.stop();
+            // The discussion beside the channel goes with it.
+            self.closeThread();
             self.channel = null;
             self.view = 'scheduled';
             self.drawSide();
@@ -5796,6 +5945,8 @@
             var self = this;
 
             self.stop();
+            // The discussion beside the channel goes with it.
+            self.closeThread();
             self.channel = null;
             self.view = 'home';
             self.drawSide();
@@ -7377,11 +7528,9 @@
                 var itemText = ((checkItem.querySelector('.ws-check-text') || checkItem).textContent || '').trim();
 
                 items.push({ icon: 'bi-check2-square', label: t('task_from_item'), action: function () {
-                    taskDrawer.open(0, {
-                        channel_id: self.channel.id,
-                        title: itemText.slice(0, 200),
-                        department_id: self.channel.department ? self.channel.department.id : 0
-                    }, function () { self.sync(); });
+                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
+                        title: itemText.slice(0, 200)
+                    }), function () { self.sync(); });
                 } });
                 items.push('-');
             }
@@ -7394,12 +7543,10 @@
                 } });
 
                 items.push({ icon: 'bi-check2-square', label: t('task_from_message'), tool: true, action: function () {
-                    taskDrawer.open(0, {
-                        channel_id: self.channel.id,
+                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
                         title: self.plain(message.html).slice(0, 200),
-                        description: message.raw || '',
-                        department_id: self.channel.department ? self.channel.department.id : 0
-                    }, function () { self.sync(); });
+                        description: message.raw || ''
+                    }), function () { self.sync(); });
                 } });
             }
 
@@ -8268,6 +8415,12 @@
 
         // ── Checklists ──
 
+        // Where a task made on this screen is posted, and whose department it
+        // takes: this channel.
+        taskDefaults: function () {
+            return { channel_id: this.channel.id, department_id: this.channel.department ? this.channel.department.id : 0 };
+        },
+
         // The whole list becomes one task; the list stays here and both
         // places tick the same items.
         listToTask: function (message) {
@@ -8279,13 +8432,11 @@
             var first = box.querySelector('.ws-text');
             var title = first ? (first.textContent || '').replace(/\s+/g, ' ').trim().replace(/[:：]$/, '') : '';
 
-            taskDrawer.open(0, {
-                channel_id: self.channel.id,
+            taskDrawer.open(0, Object.assign(self.taskDefaults(), {
                 title: (title || t('list_task_title')).slice(0, 200),
                 checklist_message_id: message.id,
-                list_count: box.querySelectorAll('input[data-ws-check]').length,
-                department_id: self.channel.department ? self.channel.department.id : 0
-            }, function () { self.sync(true); });
+                list_count: box.querySelectorAll('input[data-ws-check]').length
+            }), function () { self.sync(true); });
         },
 
         // ── Claude ──
@@ -11268,7 +11419,7 @@
 
             var add = button('btn btn-sm btn-primary rounded-pill px-3', t('new_task'), 'bi-plus-lg');
             add.addEventListener('click', function () {
-                taskDrawer.open(0, { channel_id: self.channel.id, department_id: self.channel.department ? self.channel.department.id : 0 }, function () { self.drawCenter(); });
+                taskDrawer.open(0, self.taskDefaults(), function () { self.drawCenter(); });
             });
             bar.appendChild(add);
             pane.appendChild(bar);
@@ -11706,6 +11857,146 @@
 
         Object.keys(fresh).forEach(function (key) { view[key] = fresh[key]; });
 
+        // A task made in a discussion is a task of the channel beside it: the
+        // card is posted in the channel, and in the discussion as well.
+        view.taskDefaults = function () {
+            var parentId = this.channel.thread ? (this.channel.thread.channel_id || 0) : 0;
+            var parent = (main.channel && main.channel.id === parentId) ? main.channel : null;
+
+            return {
+                channel_id: parentId,
+                thread_id: this.channel.id,
+                department_id: parent && parent.department ? parent.department.id : (this.channel.department ? this.channel.department.id : 0)
+            };
+        };
+
+        // The panel's width: dragged on its left edge, kept on this browser.
+        // The channel beside it never gets narrower than CENTER_MIN; on a
+        // phone the panel covers the channel and is not resized.
+        var THREAD_MIN = 320;
+        var CENTER_MIN = 420;
+        var WIDTH_KEY = 'ws-thread-w';
+        var phone = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
+        var resizer = el('div', 'ws-thread-resizer');
+        var resizing = false;
+        var dragRight = 0;
+        var dragWidth = 0;
+
+        function clampWidth(px) {
+            var side = main.side.getBoundingClientRect().width;
+            var max = Math.max(THREAD_MIN, main.root.clientWidth - side - CENTER_MIN);
+
+            return Math.min(max, Math.max(THREAD_MIN, Math.round(px)));
+        }
+
+        // The width given, as far as it fits; 0 when nothing was set.
+        function applyWidth(px) {
+            if (phone && phone.matches) {
+                return 0;
+            }
+
+            var width = clampWidth(px);
+
+            main.root.style.setProperty('--ws-thread-w', width + 'px');
+
+            return width;
+        }
+
+        function storedWidth() {
+            try {
+                return parseInt(window.localStorage.getItem(WIDTH_KEY) || '0', 10) || 0;
+            } catch (error) {
+                return 0;
+            }
+        }
+
+        function storeWidth(px) {
+            try {
+                if (px > 0) {
+                    window.localStorage.setItem(WIDTH_KEY, String(px));
+                } else {
+                    window.localStorage.removeItem(WIDTH_KEY);
+                }
+            } catch (error) {
+                // Not kept: the panel opens at its usual width next time.
+            }
+        }
+
+        function resetWidth() {
+            main.root.style.removeProperty('--ws-thread-w');
+            storeWidth(0);
+        }
+
+        function endResize() {
+            if (!resizing) {
+                return;
+            }
+
+            resizing = false;
+            main.root.classList.remove('ws-thread-resizing');
+
+            if (dragWidth) {
+                storeWidth(dragWidth);
+            }
+        }
+
+        resizer.setAttribute('role', 'separator');
+        resizer.setAttribute('aria-orientation', 'vertical');
+        resizer.setAttribute('tabindex', '0');
+        resizer.title = t('th_resize');
+        resizer.setAttribute('aria-label', resizer.title);
+
+        resizer.addEventListener('pointerdown', function (event) {
+            if ((event.button !== 0) || (phone && phone.matches)) {
+                return;
+            }
+
+            event.preventDefault();
+            resizing = true;
+            dragRight = panel.getBoundingClientRect().right;
+            dragWidth = 0;
+            resizer.setPointerCapture(event.pointerId);
+            main.root.classList.add('ws-thread-resizing');
+        });
+
+        resizer.addEventListener('pointermove', function (event) {
+            if (resizing) {
+                dragWidth = applyWidth(dragRight - event.clientX);
+            }
+        });
+
+        resizer.addEventListener('pointerup', endResize);
+        resizer.addEventListener('pointercancel', endResize);
+        resizer.addEventListener('dblclick', resetWidth);
+
+        // Left widens, right narrows; Shift takes bigger steps, Home goes
+        // back to the usual width.
+        resizer.addEventListener('keydown', function (event) {
+            if ((event.key === 'ArrowLeft') || (event.key === 'ArrowRight')) {
+                var step = (event.shiftKey ? 64 : 16) * ((event.key === 'ArrowLeft') ? 1 : -1);
+                var width = applyWidth(panel.getBoundingClientRect().width + step);
+
+                event.preventDefault();
+
+                if (width) {
+                    storeWidth(width);
+                }
+            } else if (event.key === 'Home') {
+                event.preventDefault();
+                resetWidth();
+            }
+        });
+
+        // A narrower window takes the kept width down as far as it must; a
+        // wider one gives it back.
+        window.addEventListener('resize', function () {
+            var wanted = storedWidth();
+
+            if (wanted && main.root.classList.contains('ws-thread-open')) {
+                applyWidth(wanted);
+            }
+        });
+
         view.load = function (threadId, messageId) {
             var self = this;
 
@@ -11724,6 +12015,11 @@
                 self.sinceTs = data.now;
                 self.hasMore = data.has_more;
                 main.root.classList.add('ws-thread-open');
+
+                if (storedWidth()) {
+                    applyWidth(storedWidth());
+                }
+
                 self.drawCenter();
 
                 var target = messageId ? panel.querySelector('[data-ws-message="' + messageId + '"]') : null;
@@ -11755,8 +12051,10 @@
             this.stop();
             this.channel = null;
             this.messages = [];
+            endResize();
             clear(panel);
             main.root.classList.remove('ws-thread-open');
+            main.root.style.removeProperty('--ws-thread-w');
             main.drawSide();
             main.syncAddress();
         };
@@ -11786,7 +12084,13 @@
             var self = this;
             var channel = self.channel;
             var thread = channel.thread || {};
+
+            // Drawn again with the panel; a drag going on ends here.
+            endResize();
+
             var center = clear(panel);
+
+            center.appendChild(resizer);
 
             // Head: what it is about, who is in it, its tools.
             var head = el('div', 'ws-head ws-thread-head');

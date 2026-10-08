@@ -17832,5 +17832,11 @@
     "This deletes {var:1} records at once. Records with a Recycle Bin go there; the others are deleted for good. Go on?": "Bu, {var:1} kaydı birden siler. Geri dönüşüm kutusu olan kayıtlar oraya gider; diğerleri kalıcı olarak silinir. Devam edilsin mi?",
     "Animations": "Animasyonlar",
     "Pause animations": "Animasyonları duraklat",
-    "Play animations": "Animasyonları oynat"
+    "Play animations": "Animasyonları oynat",
+    "Drag to resize the discussion panel": "Tartışma panelini yeniden boyutlandırmak için sürükleyin",
+    "Show all ({var:1})": "Tümünü göster ({var:1})",
+    "Show fewer": "Daha az göster",
+    "Posted in the channel it is made from, the card shows in this discussion too.": "Açıldığı kanala basılan kart bu tartışmada da görünür.",
+    "Close the section": "Bölümü kapat",
+    "Open the section": "Bölümü aç"
 }

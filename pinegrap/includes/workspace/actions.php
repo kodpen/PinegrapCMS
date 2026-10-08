@@ -1915,8 +1915,21 @@ function ws_handle_action($action, $request)
 
             if ($channel_id > 0) {
                 $channel = ws_channel($channel_id);
+                $thread_id = (int) ($request['thread_id'] ?? 0);
+
+                // Made in a discussion of that channel: the card is posted in
+                // the discussion, and ws_thread_copy_sync() writes its copy
+                // into the channel and makes the copy the task's message.
+                if (($thread_id > 0) && function_exists('ws_channel_is_thread')) {
+                    $thread = ws_channel($thread_id);
+
+                    if (ws_channel_is_thread($thread) && (ws_thread_parent_id($thread) === $channel_id) && ws_can_post_channel($viewer, $thread)) {
+                        $channel = $thread;
+                    }
+                }
+
                 $list_id = (int) ($fields['checklist_message_id'] ?? 0);
-                $parent_id = (($list_id > 0) && ((int) db_value("SELECT channel_id FROM ws_messages WHERE id = '" . $list_id . "'") === $channel_id)) ? $list_id : 0;
+                $parent_id = (($list_id > 0) && is_array($channel) && ((int) db_value("SELECT channel_id FROM ws_messages WHERE id = '" . $list_id . "'") === (int) $channel['id'])) ? $list_id : 0;
                 $sent = ws_message_send($viewer, $channel, '', array('kind' => 'task', 'task_id' => $result['task_id'], 'parent_id' => $parent_id));
 
                 // In a discussion the task's message is the channel's copy
