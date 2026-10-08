@@ -2630,7 +2630,23 @@
 
                 f.channel = select(channelOptions, defaults.channel_id || 0);
                 f.channel.id = nextId('ws-task-channel-');
-                col(formRow(t('post_card_in'), f.channel));
+
+                var channelRow = formRow(t('post_card_in'), f.channel);
+
+                // Opened from a discussion: the card goes to the discussion
+                // too, as long as it stays in that discussion's channel.
+                if (defaults.thread_id) {
+                    var threadNote = el('div', 'form-text', t('task_card_thread_note'));
+                    var noteShown = function () {
+                        threadNote.classList.toggle('d-none', String(f.channel.value) !== String(defaults.channel_id));
+                    };
+
+                    channelRow.appendChild(threadNote);
+                    f.channel.addEventListener('change', noteShown);
+                    noteShown();
+                }
+
+                col(channelRow);
             }
 
             body.appendChild(grid);
@@ -2746,6 +2762,10 @@
 
             if (f.channel) {
                 data.channel_id = parseInt(f.channel.value, 10) || 0;
+
+                if (this.defaults && this.defaults.thread_id) {
+                    data.thread_id = this.defaults.thread_id;
+                }
             }
 
             if (f.remind) {
@@ -3848,6 +3868,94 @@
         setTimeout(function () { name.focus(); }, 300);
     }
 
+    // A channel of the team shared with somebody outside it (guests.php):
+    // who it is for, whether they only read, and how the link opens.
+    function shareForm(channel, onDone) {
+        var conf = CFG.guests || {};
+        var node = offcanvas('ws-share-form', '');
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var footer = clear(node.querySelector('.offcanvas-footer'));
+        var access = 'read';
+        var group = nextId('ws_share_access_');
+
+        footer.classList.remove('d-none');
+        node.querySelector('.offcanvas-title').textContent = t('share_start') + ' · #' + channel.name;
+        body.appendChild(el('div', 'alert alert-info small py-2', t('share_help')));
+
+        var name = el('input', 'form-control');
+        name.id = nextId('ws-share-name-');
+        name.maxLength = 60;
+        name.autocomplete = 'off';
+        body.appendChild(formRow(t('guest_name'), name));
+
+        var choices = el('div', 'mb-3');
+        choices.appendChild(el('div', 'form-label', t('share_access')));
+
+        [['read', t('share_read'), t('share_read_help'), 'bi-eye'], ['write', t('share_write'), t('share_write_help'), 'bi-chat-dots']].forEach(function (option) {
+            var wrap = el('div', 'form-check ws-share-choice');
+            var radio = el('input', 'form-check-input');
+            radio.type = 'radio';
+            radio.name = group;
+            radio.value = option[0];
+            radio.id = nextId('ws-share-access-');
+            radio.checked = (option[0] === access);
+            radio.addEventListener('change', function () { access = radio.value; });
+
+            var label = el('label', 'form-check-label');
+            label.htmlFor = radio.id;
+            label.appendChild(icon(option[3], 'me-1'));
+            label.appendChild(document.createTextNode(option[1]));
+            wrap.appendChild(radio);
+            wrap.appendChild(label);
+            wrap.appendChild(el('div', 'form-text mt-0', option[2]));
+            choices.appendChild(wrap);
+        });
+
+        body.appendChild(choices);
+
+        var link = guestLinkFields(conf.durations);
+        body.appendChild(link);
+
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', t('share_create'), 'bi-link-45deg');
+        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+        footer.appendChild(cancel);
+        footer.appendChild(save);
+
+        save.addEventListener('click', function () {
+            var chosen = link.value();
+
+            save.disabled = true;
+
+            api('ws_channel_share', {
+                channel_id: channel.id,
+                guest_name: name.value,
+                access: access,
+                mode: chosen.mode,
+                duration: chosen.duration
+            }).then(function (result) {
+                save.disabled = false;
+                hideOffcanvas(node);
+
+                if (onDone) {
+                    onDone();
+                }
+
+                guestLinkShow(result.url);
+            }).catch(function (error) {
+                save.disabled = false;
+                fail(error);
+
+                if (error.field === 'guest_name') {
+                    name.focus();
+                }
+            });
+        });
+
+        showOffcanvas(node);
+        setTimeout(function () { name.focus(); }, 300);
+    }
+
     // ── The inbox ──────────────────────────────────────────────────────
 
     function openInbox(onChange) {
@@ -3952,6 +4060,8 @@
         // An earlier version of the conversation open on the screen
         // (includes/workspace/eras.php), or null for the current one.
         era: null,
+        // Every discussion listed in the sidebar, not only the first few.
+        threadsAll: false,
         fit: function () {},
 
         start: function (root) {
@@ -3980,9 +4090,14 @@
                 target = pinned.length ? pinned[0].id : 0;
             }
 
+            // A discussion asked for in the address opens beside its channel.
+            if (target && query.thread) {
+                self.pendingThread = { id: parseInt(query.thread, 10), message: 0 };
+            }
+
             if (target) {
                 self.open(target, parseInt(query.message || 0, 10), parseInt(query.era || 0, 10));
-            } else if ((query.view === 'scheduled') && CFG.scheduled) {
+            } else if ((query.view === 'scheduled') && (CFG.scheduled || CFG.scheduled_messages)) {
                 self.showScheduled(false);
             } else {
                 self.showHome(false);
@@ -4062,7 +4177,18 @@
                 var tour = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-signpost-split', t('tour_start'));
 
                 tour.setAttribute('data-ws-tour', '1');
-                tour.addEventListener('click', function () { window.PgTour.start(window.PG_TOUR.key); });
+                tour.addEventListener('click', function () {
+                    // The tour points at links in these sections.
+                    var shutParts = self.closedSections();
+
+                    if (shutParts.work || shutParts.records) {
+                        self.closeSection('work', false);
+                        self.closeSection('records', false);
+                        self.drawSide();
+                    }
+
+                    window.PgTour.start(window.PG_TOUR.key);
+                });
                 head.appendChild(tour);
             }
 
@@ -4102,15 +4228,71 @@
                 box.appendChild(item);
             }
 
-            function group(title) {
-                var box = el('div', 'ws-side-section');
+            var closedParts = self.closedSections();
 
-                if (title) {
+            // A heading that opens and closes its section; closed, it still
+            // says how much is new inside.
+            function sectionToggle(head, key, title, iconName, shut, badge) {
+                var toggle = el('button', 'ws-side-toggle');
+
+                toggle.type = 'button';
+                toggle.setAttribute('aria-expanded', shut ? 'false' : 'true');
+                toggle.title = shut ? t('side_expand') : t('side_collapse');
+                toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
+
+                if (iconName) {
+                    toggle.appendChild(icon(iconName));
+                }
+
+                toggle.appendChild(el('span', 'ws-side-toggle-name', title));
+                toggle.addEventListener('click', function () {
+                    self.closeSection(key, !shut);
+                    self.drawSide();
+                });
+                head.appendChild(toggle);
+
+                if (shut && badge) {
+                    head.appendChild(badge);
+                }
+            }
+
+            function countBadge(count, mention) {
+                return count ? el('span', 'ws-count' + (mention ? ' ws-count-mention' : ''), count > 99 ? '99+' : count) : null;
+            }
+
+            // What is new in a list of channels: the mentions when there are
+            // any, otherwise the unread messages of the channels not muted.
+            function channelsBadge(list) {
+                var mentions = 0;
+                var unread = 0;
+
+                list.forEach(function (channel) {
+                    mentions += channel.mentions || 0;
+
+                    if (channel.notify !== 'none') {
+                        unread += channel.unread || 0;
+                    }
+                });
+
+                return mentions ? countBadge(mentions, true) : countBadge(unread, false);
+            }
+
+            // A section of links; null when it is closed and nothing goes in.
+            function group(title, key) {
+                var box = el('div', 'ws-side-section');
+                var shut = !!(key && closedParts[key]);
+
+                if (title && key) {
+                    var head = el('div', 'ws-side-title');
+
+                    sectionToggle(head, key, title, '', shut, null);
+                    box.appendChild(head);
+                } else if (title) {
                     box.appendChild(el('div', 'ws-side-title', title));
                 }
 
                 scroll.appendChild(box);
-                return box;
+                return shut ? null : box;
             }
 
             var top = group('');
@@ -4203,17 +4385,12 @@
                 return link;
             }
 
-            function section(title, list, sortable, iconName, dropOut) {
+            function section(title, list, sortable, iconName, dropOut, key) {
                 var box = el('div', 'ws-side-section' + (sortable ? ' ws-sortable' : ''));
                 var head = el('div', 'ws-side-title');
-                var label = el('span');
+                var shut = !!closedParts[key];
 
-                if (iconName) {
-                    label.appendChild(icon(iconName, 'me-1'));
-                }
-
-                label.appendChild(document.createTextNode(title));
-                head.appendChild(label);
+                sectionToggle(head, key, title, iconName, shut, channelsBadge(list));
                 box.appendChild(head);
 
                 // A channel dropped on the heading comes out of its group.
@@ -4221,12 +4398,21 @@
                     self.dropTarget(head, 0, null);
                 }
 
-                list.forEach(function (channel) {
-                    box.appendChild(channelLink(channel, box, sortable));
-                });
+                // Closed, a section still shows the one that is on the screen.
+                if (shut) {
+                    list.forEach(function (channel) {
+                        if (self.channel && self.channel.id === channel.id) {
+                            box.appendChild(channelLink(channel, box, false));
+                        }
+                    });
+                } else {
+                    list.forEach(function (channel) {
+                        box.appendChild(channelLink(channel, box, sortable));
+                    });
 
-                if (!list.length) {
-                    box.appendChild(el('div', 'small text-body-secondary px-2', t('no_channels')));
+                    if (!list.length) {
+                        box.appendChild(el('div', 'small text-body-secondary px-2', t('no_channels')));
+                    }
                 }
 
                 scroll.appendChild(box);
@@ -4320,7 +4506,68 @@
             }
 
             if (pinned.length) {
-                section(t('pinned'), pinned, true, 'bi-pin-angle');
+                section(t('pinned'), pinned, true, 'bi-pin-angle', false, 'pinned');
+            }
+
+            // The open discussions the person is in (threads.php); none, no
+            // section. The open one and those of the open channel come
+            // first, then the unread ones, then the latest; a few are shown
+            // until the rest are asked for.
+            var THREADS_SHOWN = 5;
+            var openThread = self.openThreadId();
+            var hereId = self.channel ? self.channel.id : 0;
+            var rank = function (item) {
+                return (item.thread.id === openThread) ? 0 : ((item.thread.channel_id === hereId) ? 1 : (item.thread.unread ? 2 : 3));
+            };
+            var threads = (BOOT.threads || []).map(function (thread, index) {
+                return { thread: thread, index: index };
+            }).sort(function (a, b) {
+                return (rank(a) - rank(b)) || (a.index - b.index);
+            }).map(function (item) { return item.thread; });
+
+            if (threads.length) {
+                var talks = el('div', 'ws-side-section ws-side-threads');
+                var talksHead = el('div', 'ws-side-title');
+                // Closed, a section still shows the one that is on the screen.
+                var talksShut = !!closedParts.threads;
+                var talksUnread = threads.reduce(function (sum, thread) { return sum + (thread.unread || 0); }, 0);
+
+                sectionToggle(talksHead, 'threads', t('th_section'), 'bi-chat-square-dots', talksShut, countBadge(talksUnread, false));
+                talks.appendChild(talksHead);
+
+                (talksShut ? threads.filter(function (thread) { return thread.id === openThread; }) : (self.threadsAll ? threads : threads.slice(0, THREADS_SHOWN))).forEach(function (thread) {
+                    var item = el('button', 'ws-channel-link ws-thread-link' + (self.openThreadId() === thread.id ? ' active' : '') + (thread.unread ? ' ws-unread' : ''));
+                    item.type = 'button';
+                    item.title = thread.title + ' · #' + thread.channel;
+                    item.appendChild(icon('bi-chat-square-dots', 'ws-ch-icon'));
+
+                    var names = el('span', 'ws-channel-name');
+                    names.appendChild(el('span', 'ws-thread-link-title', thread.title));
+                    names.appendChild(el('small', 'ws-thread-link-channel', '#' + thread.channel));
+                    item.appendChild(names);
+
+                    if (thread.unread) {
+                        item.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
+                    }
+
+                    item.addEventListener('click', function () {
+                        self.root.classList.remove('ws-show-side');
+                        self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true });
+                    });
+                    talks.appendChild(item);
+                });
+
+                if (!talksShut && (threads.length > THREADS_SHOWN)) {
+                    var more = button('btn btn-sm btn-link link-secondary ws-side-more', self.threadsAll ? t('th_show_fewer') : t('th_show_all', threads.length));
+
+                    more.addEventListener('click', function () {
+                        self.threadsAll = !self.threadsAll;
+                        self.drawSide();
+                    });
+                    talks.appendChild(more);
+                }
+
+                scroll.appendChild(talks);
             }
 
             if ((children[0] || []).length || manage) {
@@ -4339,31 +4586,37 @@
                 scroll.appendChild(groupSection);
             }
 
-            section(t('my_channels'), mine, true, '', true);
+            section(t('my_channels'), mine, true, '', true, 'mine');
 
             if (others.length) {
-                section(t('other_channels'), others, false, '', true);
+                section(t('other_channels'), others, false, '', true, 'others');
             }
 
-            var work = group(t('nav_work'));
-            link(work, t('my_tasks'), 'bi-check2-square', function () { window.location.href = CFG.urls.tasks; });
+            var work = group(t('nav_work'), 'work');
 
-            if (CFG.notes) {
-                link(work, t('nav_notes'), 'bi-journal-text', function () { window.location.href = CFG.urls.notes; });
+            if (work) {
+                link(work, t('my_tasks'), 'bi-check2-square', function () { window.location.href = CFG.urls.tasks; });
+
+                if (CFG.notes) {
+                    link(work, t('nav_notes'), 'bi-journal-text', function () { window.location.href = CFG.urls.notes; });
+                }
+                link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
+                link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
+
+                if (CFG.scheduled || CFG.scheduled_messages) {
+                    link(work, CFG.scheduled ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
+                }
             }
-            link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
-            link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
 
-            if (CFG.scheduled) {
-                link(work, t('sa_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
-            }
+            var records = group(t('nav_records'), 'records');
 
-            var records = group(t('nav_records'));
-            link(records, t('nav_timeline'), 'bi-clock-history', function () { window.location.href = CFG.urls.timeline; });
-            link(records, t('archived_channels'), 'bi-archive', function () { self.showArchived(); });
+            if (records) {
+                link(records, t('nav_timeline'), 'bi-clock-history', function () { window.location.href = CFG.urls.timeline; });
+                link(records, t('archived_channels'), 'bi-archive', function () { self.showArchived(); });
 
-            if (BOOT.me.rights.staff) {
-                link(records, t('private_channels_audit'), 'bi-shield-lock', function () { self.showAudit(); });
+                if (BOOT.me.rights.staff) {
+                    link(records, t('private_channels_audit'), 'bi-shield-lock', function () { self.showAudit(); });
+                }
             }
 
             // The settings stay at the foot of the sidebar, however long the
@@ -4903,6 +5156,32 @@
                 window.localStorage.setItem('ws-groups-closed', JSON.stringify(closed));
             } catch (error) {
                 // Not kept: the group opens again next time.
+            }
+        },
+
+        // Which sections of the sidebar are closed: this person's, on this
+        // browser.
+        closedSections: function () {
+            try {
+                return JSON.parse(window.localStorage.getItem('ws-side-closed') || '{}') || {};
+            } catch (error) {
+                return {};
+            }
+        },
+
+        closeSection: function (key, shut) {
+            var closed = this.closedSections();
+
+            if (shut) {
+                closed[key] = 1;
+            } else {
+                delete closed[key];
+            }
+
+            try {
+                window.localStorage.setItem('ws-side-closed', JSON.stringify(closed));
+            } catch (error) {
+                // Not kept: the section opens again next time.
             }
         },
 
@@ -5524,10 +5803,19 @@
         // ── The overview ──
 
         // Every scheduled action, for staff: the ones still to run first.
-        showScheduled: function (asked) {
+        // The scheduled screen: staff's scheduled actions, and everybody's own
+        // scheduled messages. Somebody who is not staff sees their messages
+        // only, and cannot write a scheduled action here.
+        showScheduled: function (asked, part) {
             var self = this;
+            var staff = !!CFG.scheduled;
+
+            part = staff ? (part || self.scheduledPart || 'actions') : 'messages';
+            self.scheduledPart = part;
 
             self.stop();
+            // The discussion beside the channel goes with it.
+            self.closeThread();
             self.channel = null;
             self.view = 'scheduled';
             self.drawSide();
@@ -5541,18 +5829,57 @@
             var title = el('div', 'ws-head-title');
             var h = el('h2');
             h.appendChild(icon('bi-alarm', 'me-1 text-body-secondary'));
-            h.appendChild(document.createTextNode(t('sa_title')));
+            h.appendChild(document.createTextNode(staff ? t('sa_title') : t('sm_title')));
             title.appendChild(h);
             head.appendChild(title);
 
-            var add = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_new_long'), 'bi-plus-lg');
-            add.addEventListener('click', function () {
-                scheduledForm({}, null, function () { load(); });
-            });
-            head.appendChild(add);
+            if (staff && (part === 'actions')) {
+                var add = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_new_long'), 'bi-plus-lg');
+                add.addEventListener('click', function () {
+                    scheduledForm({}, null, function () { load(); });
+                });
+                head.appendChild(add);
+            }
+
             center.appendChild(head);
 
+            // Staff switch between the two lists.
+            if (staff && CFG.scheduled_messages) {
+                var parts = el('div', 'ws-tabs');
+                parts.setAttribute('role', 'tablist');
+
+                [['actions', t('sa_title')], ['messages', t('sm_title')]].forEach(function (option) {
+                    var tab = button(part === option[0] ? 'active' : '', option[1]);
+                    tab.setAttribute('role', 'tab');
+                    tab.addEventListener('click', function () { self.showScheduled(false, option[0]); });
+                    parts.appendChild(tab);
+                });
+
+                center.appendChild(parts);
+            }
+
             var body = el('div', 'ws-pane ws-sa-view');
+            center.appendChild(body);
+
+            if (asked && window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', CFG.urls.workspace + '?view=scheduled');
+            }
+
+            if (part === 'messages') {
+                var mine = el('div', 'ws-sm-list');
+
+                body.appendChild(el('p', 'small text-body-secondary', t('sm_mine_help')));
+                body.appendChild(mine);
+                scheduledMessagesList(mine, 0, null, function (item) {
+                    if (item.channel) {
+                        self.pendingScheduledEdit = item;
+                        self.open(item.channel.id, 0);
+                    }
+                });
+
+                return;
+            }
+
             var filters = el('div', 'ws-sa-filters');
             var list = el('div', 'ws-sa-list');
             var status = '';
@@ -5572,11 +5899,6 @@
             body.appendChild(filters);
             body.appendChild(el('p', 'small text-body-secondary', t('sa_help')));
             body.appendChild(list);
-            center.appendChild(body);
-
-            if (asked && window.history && window.history.replaceState) {
-                window.history.replaceState(null, '', CFG.urls.workspace + '?view=scheduled');
-            }
 
             function load() {
                 api('ws_scheduled_list', { status: status }).then(function (data) {
@@ -5623,6 +5945,8 @@
             var self = this;
 
             self.stop();
+            // The discussion beside the channel goes with it.
+            self.closeThread();
             self.channel = null;
             self.view = 'home';
             self.drawSide();
@@ -5898,6 +6222,147 @@
             }
         },
 
+        // ── Discussions (threads.php) ──
+
+        // The address says which channel, and which discussion beside it.
+        syncAddress: function () {
+            if (!this.channel || this.era || !window.history || !window.history.replaceState) {
+                return;
+            }
+
+            var thread = this.openThreadId();
+
+            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + (thread ? '&thread=' + thread : ''));
+        },
+
+        // The discussion open beside the channel, 0 for none.
+        openThreadId: function () {
+            return (this.threadView && this.threadView.channel) ? this.threadView.channel.id : 0;
+        },
+
+        // Starts a discussion about a message: a title (the first words of
+        // the message when left empty), then the discussion opens beside the
+        // channel.
+        startThread: function (message) {
+            var self = this;
+            var box = el('div');
+            var title = el('input', 'form-control');
+
+            title.maxLength = 80;
+            title.placeholder = self.plain(message.html).slice(0, 80);
+            title.id = nextId('ws-thread-title-');
+            box.appendChild(el('p', 'small text-body-secondary', t('th_start_help')));
+            box.appendChild(formRow(t('th_title'), title, t('th_title_help')));
+
+            ask(t('th_start'), t('th_create'), false, box).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_start', { message_id: message.id, title: title.value }).then(function (data) {
+                    self.openThread(data.thread_id, 0);
+                    self.sync();
+                }).catch(fail);
+            });
+
+            setTimeout(function () { title.focus(); }, 300);
+        },
+
+        // To a discussion from the bar under its message or the sidebar:
+        // joined first when the reader is staff not yet in it; its channel
+        // first when another one is open.
+        threadGo: function (thread) {
+            var self = this;
+
+            if (!thread.mine && thread.can_join) {
+                api('ws_thread_join', { thread_id: thread.id }).then(function () {
+                    toast(t('th_joined'), 'success');
+                    self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true });
+                    self.sync();
+                }).catch(fail);
+                return;
+            }
+
+            if (!self.channel || (self.channel.id !== thread.channel_id)) {
+                self.pendingThread = { id: thread.id, message: 0 };
+                self.open(thread.channel_id, 0);
+                return;
+            }
+
+            self.openThread(thread.id, 0);
+        },
+
+        openThread: function (threadId, messageId) {
+            if (!this.threadView) {
+                this.threadView = makeThreadView(this);
+            }
+
+            this.threadView.load(threadId, messageId || 0);
+        },
+
+        closeThread: function () {
+            if (this.threadView) {
+                this.threadView.close();
+            }
+        },
+
+        // Under a message: the discussion about it, how far it has got, and
+        // the way in.
+        threadBar: function (message) {
+            var self = this;
+            var thread = message.thread;
+            var bar = el(thread.mine || thread.can_join ? 'button' : 'div', 'ws-thread-bar' + (thread.closed ? ' ws-thread-bar-closed' : '') + (thread.unread ? ' ws-thread-bar-news' : ''));
+
+            if (thread.mine || thread.can_join) {
+                bar.type = 'button';
+                bar.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    self.threadGo(thread);
+                });
+            }
+
+            var faces = el('span', 'ws-avatars ws-thread-faces');
+            (thread.people || []).slice(0, 4).forEach(function (person) { faces.appendChild(avatar(person)); });
+            bar.appendChild(faces);
+
+            var text = el('span', 'ws-thread-bar-text');
+            text.appendChild(el('b', '', t('th_bar', thread.title)));
+
+            var facts = [t('th_bar_count', thread.count)];
+
+            if (thread.last) {
+                facts.push(t('th_bar_last', thread.last));
+            }
+
+            text.appendChild(el('span', 'ws-thread-bar-facts', facts.join(' · ')));
+            bar.appendChild(text);
+
+            if (thread.closed) {
+                bar.appendChild(el('span', 'badge rounded-pill text-bg-secondary', t('th_bar_closed')));
+            } else if (thread.unread) {
+                bar.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
+            }
+
+            if (thread.mine) {
+                bar.appendChild(el('span', 'ws-thread-bar-go', t('th_open')));
+            } else if (thread.can_join) {
+                bar.appendChild(el('span', 'ws-thread-bar-go', t('th_join')));
+            }
+
+            var wrap = el('div', 'ws-thread-wrap');
+            wrap.appendChild(bar);
+
+            // An assistant was asked in it: said here, where the channel reads.
+            if ((thread.assistants || []).length) {
+                var note = el('div', 'ws-thread-ai');
+                note.appendChild(icon('bi-stars', 'me-1'));
+                note.appendChild(document.createTextNode(t('th_bar_assistants', thread.assistants.join(', '))));
+                wrap.appendChild(note);
+            }
+
+            return wrap;
+        },
+
         drawEmptyCenter: function () {
             var center = clear(this.center);
             var empty = el('div', 'ws-empty m-auto');
@@ -5917,9 +6382,23 @@
             self.replyMore = null;
             self.selecting = null;
             self.editing = null;
+            self.editingScheduled = null;
             self.labels = [];
 
             api('ws_channel_open', { channel_id: channelId, message_id: messageId || 0, era_id: eraId || 0 }).then(function (data) {
+                // A discussion asked for as a channel: its channel, with the
+                // discussion beside it.
+                if (data.thread_of) {
+                    self.pendingThread = { id: data.thread_of.thread_id, message: data.thread_of.message_id };
+                    self.open(data.thread_of.channel_id, 0);
+                    return;
+                }
+
+                // Another channel: a discussion of the one before closes.
+                if (self.threadView && self.threadView.channel && (self.threadView.channel.thread || {}).channel_id !== channelId) {
+                    self.closeThread();
+                }
+
                 self.view = 'channel';
                 self.channel = data.channel;
                 self.era = data.era || null;
@@ -5960,6 +6439,22 @@
                 }
 
                 self.flashAfterOpen = null;
+
+                if (self.pendingThread) {
+                    var asked = self.pendingThread;
+
+                    self.pendingThread = null;
+                    self.openThread(asked.id, asked.message);
+                }
+
+                // A scheduled message picked on the scheduled screen to be
+                // changed: its text goes into this channel's box.
+                if (self.pendingScheduledEdit) {
+                    var waiting = self.pendingScheduledEdit;
+
+                    self.pendingScheduledEdit = null;
+                    window.setTimeout(function () { self.editScheduled(waiting); }, 80);
+                }
 
                 if (window.history && window.history.replaceState) {
                     window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : ''));
@@ -6029,6 +6524,114 @@
             }
 
             return bar;
+        },
+
+        // Who outside the team reads this channel, and for staff who may
+        // manage it, their links.
+        shareBar: function (channel) {
+            var self = this;
+            var info = channel.shares;
+            var open = info.guests.filter(function (guest) { return guest.open; });
+            var bar = el('div', 'alert rounded-0 m-0 py-2 small d-flex flex-wrap align-items-center gap-2 ws-share-bar ' + (open.length ? 'alert-warning' : 'alert-secondary'));
+
+            bar.appendChild(icon('bi-box-arrow-up-right', 'fs-6'));
+
+            var names = open.map(function (guest) {
+                return guest.name + ' (' + (guest.access === 'read' ? t('share_read_badge') : t('share_write_badge')) + ')';
+            });
+
+            var text = el('div', 'flex-grow-1 ws-share-bar-text');
+            text.appendChild(el('span', 'fw-semibold', open.length ? t('share_bar', names.join(', ')) : t('share_bar_closed')));
+
+            open.filter(function (guest) { return guest.online; }).forEach(function (guest) {
+                text.appendChild(el('span', 'ws-guest-online ms-2', guest.name + ' · ' + t('guest_online')));
+            });
+
+            bar.appendChild(text);
+
+            if (info.can_host) {
+                var manage = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('share_manage'), 'bi-gear');
+                manage.addEventListener('click', function () { self.shareManage(channel); });
+                bar.appendChild(manage);
+            }
+
+            return bar;
+        },
+
+        shareManage: function (channel) {
+            var self = this;
+            var info = channel.shares || { guests: [], durations: [] };
+            var node = offcanvas('ws-share-list', t('share_start') + ' · #' + channel.name);
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+
+            footer.classList.remove('d-none');
+
+            info.guests.forEach(function (guest) {
+                var row = el('div', 'ws-share-row');
+                var head = el('div', 'd-flex align-items-center gap-2');
+
+                head.appendChild(icon(guest.access === 'read' ? 'bi-eye' : 'bi-chat-dots', 'text-body-secondary'));
+                head.appendChild(el('b', 'flex-grow-1', guest.name));
+                head.appendChild(el('span', 'badge rounded-pill ' + (guest.open ? 'text-bg-warning' : 'text-bg-secondary'), guest.access === 'read' ? t('share_read') : t('share_write')));
+                row.appendChild(head);
+                row.appendChild(el('div', 'small text-body-secondary', guest.label + (guest.seen ? ' · ' + t('guest_seen', guest.seen) : '')));
+
+                var tools = el('div', 'd-flex flex-wrap gap-1 mt-1');
+                var relink = button('btn btn-sm btn-ghost', t('guest_relink'), 'bi-link-45deg');
+                relink.addEventListener('click', function () {
+                    var fields = guestLinkFields(info.durations);
+
+                    hideOffcanvas(node);
+                    ask(t('guest_relink_help'), t('guest_relink_make'), false, fields).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        var chosen = fields.value();
+
+                        api('ws_share_relink', { channel_id: channel.id, guest_id: guest.id, mode: chosen.mode, duration: chosen.duration }).then(function (result) {
+                            self.reloadChannels(channel.id);
+                            guestLinkShow(result.url);
+                        }).catch(fail);
+                    });
+                });
+                tools.appendChild(relink);
+
+                if (guest.open) {
+                    var end = button('btn btn-sm btn-ghost text-danger', t('share_end'), 'bi-x-circle');
+                    end.addEventListener('click', function () {
+                        hideOffcanvas(node);
+                        ask(t('share_end_confirm', guest.name), t('share_end'), true).then(function (yes) {
+                            if (!yes) {
+                                return;
+                            }
+
+                            api('ws_share_end', { channel_id: channel.id, guest_id: guest.id }).then(function () {
+                                toast(t('share_ended_toast'), 'success');
+                                self.reloadChannels(channel.id);
+                            }).catch(fail);
+                        });
+                    });
+                    tools.appendChild(end);
+                }
+
+                row.appendChild(tools);
+                body.appendChild(row);
+            });
+
+            if (channel.can_share) {
+                var add = button('btn btn-sm btn-primary rounded-pill px-3', t('share_add'), 'bi-plus-lg');
+                add.addEventListener('click', function () {
+                    hideOffcanvas(node);
+                    shareForm(channel, function () { self.reloadChannels(channel.id); });
+                });
+                footer.appendChild(add);
+            } else {
+                footer.classList.add('d-none');
+            }
+
+            showOffcanvas(node);
         },
 
         guestRelink: function (channel) {
@@ -6146,6 +6749,11 @@
                 center.appendChild(self.guestBar(channel));
             }
 
+            // A channel of the team that people outside it read.
+            if (channel.shares) {
+                center.appendChild(self.shareBar(channel));
+            }
+
             // An earlier version of the conversation: read as it was, with
             // the way back to the current one.
             if (self.era) {
@@ -6160,10 +6768,12 @@
 
             var tabs = el('div', 'ws-tabs');
             tabs.setAttribute('role', 'tablist');
+            self.tabsNode = tabs;
 
             [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]].forEach(function (tab) {
                 var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
                 item.setAttribute('role', 'tab');
+                item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
                     self.drawCenter();
@@ -6176,6 +6786,7 @@
             });
 
             center.appendChild(tabs);
+            self.drawTabMarks();
 
             window.requestAnimationFrame(function () {
                 var active = tabs.querySelector('.active');
@@ -6232,6 +6843,43 @@
             } else {
                 self.drawSummary();
             }
+        },
+
+        // The marks on the tabs: how many decisions and open tasks there are,
+        // and whether the summary is written, so a tab says it holds
+        // something before it is opened.
+        drawTabMarks: function () {
+            var self = this;
+            var counts = (self.channel && self.channel.tab_counts) || null;
+
+            if (!self.tabsNode || !counts) {
+                return;
+            }
+
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+                var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
+                var was = tab ? tab.querySelector('.ws-tab-mark') : null;
+
+                if (!tab) {
+                    return;
+                }
+
+                if (was) {
+                    was.remove();
+                }
+
+                tab.removeAttribute('title');
+
+                if (!mark[1]) {
+                    return;
+                }
+
+                var badge = el('span', 'ws-tab-mark' + (mark[0] === 'summary' ? ' ws-tab-dot' : ''), mark[0] === 'summary' ? '' : (mark[1] > 99 ? '99+' : String(mark[1])));
+
+                badge.setAttribute('aria-hidden', 'true');
+                tab.appendChild(badge);
+                tab.title = (mark[0] === 'summary') ? t(mark[2]) : t(mark[2], mark[1]);
+            });
         },
 
         channelMenu: function () {
@@ -6323,6 +6971,17 @@
 
             if (channel.can_group) {
                 item(t('grp_move_channel'), 'bi-folder-symlink', function () { self.pickGroupFor(channel); });
+            }
+
+            // Shared with somebody outside the team (guests.php).
+            if (channel.can_share && !self.era) {
+                item(t('share_start'), 'bi-box-arrow-up-right', function () {
+                    if (channel.shares && channel.shares.guests.length) {
+                        self.shareManage(channel);
+                    } else {
+                        shareForm(channel, function () { self.reloadChannels(channel.id); });
+                    }
+                });
             }
 
             if (CFG.eras && channel.eras) {
@@ -6620,6 +7279,23 @@
                 meta.appendChild(flag);
             }
 
+            // A decision, a note or a task that was decided in a discussion.
+            if (message.from_thread) {
+                var origin = el(message.from_thread.open ? 'button' : 'span', 'ws-msg-from-thread');
+                origin.appendChild(icon('bi-chat-square-dots', 'me-1'));
+                origin.appendChild(document.createTextNode(t('th_from', message.from_thread.title)));
+
+                if (message.from_thread.open) {
+                    origin.type = 'button';
+                    origin.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        app.openThread(message.from_thread.thread_id, 0);
+                    });
+                }
+
+                meta.appendChild(origin);
+            }
+
             // The message pinned to the top of the channel.
             if (self.channel && self.channel.pin && self.channel.pin.id === message.id) {
                 var pinned = icon('bi-pin-angle-fill', 'ws-msg-pinned');
@@ -6767,6 +7443,11 @@
                 main.appendChild(self.claudeStateNode(message));
             }
 
+            // A discussion about this message (threads.php).
+            if (message.thread && !self.isThread) {
+                main.appendChild(self.threadBar(message));
+            }
+
             node.appendChild(main);
 
             if (!message.deleted && message.kind !== 'task') {
@@ -6847,11 +7528,9 @@
                 var itemText = ((checkItem.querySelector('.ws-check-text') || checkItem).textContent || '').trim();
 
                 items.push({ icon: 'bi-check2-square', label: t('task_from_item'), action: function () {
-                    taskDrawer.open(0, {
-                        channel_id: self.channel.id,
-                        title: itemText.slice(0, 200),
-                        department_id: self.channel.department ? self.channel.department.id : 0
-                    }, function () { self.sync(); });
+                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
+                        title: itemText.slice(0, 200)
+                    }), function () { self.sync(); });
                 } });
                 items.push('-');
             }
@@ -6864,13 +7543,21 @@
                 } });
 
                 items.push({ icon: 'bi-check2-square', label: t('task_from_message'), tool: true, action: function () {
-                    taskDrawer.open(0, {
-                        channel_id: self.channel.id,
+                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
                         title: self.plain(message.html).slice(0, 200),
-                        description: message.raw || '',
-                        department_id: self.channel.department ? self.channel.department.id : 0
-                    }, function () { self.sync(); });
+                        description: message.raw || ''
+                    }), function () { self.sync(); });
                 } });
+            }
+
+            // A room of its own beside the channel to talk this message over.
+            if (CFG.threads && !self.isThread && !self.era && !message.deleted && !message.past
+                && ['message', 'decision', 'note', 'task'].indexOf(message.kind) !== -1) {
+                if (message.thread && (message.thread.mine || message.thread.can_join)) {
+                    items.push({ icon: 'bi-chat-square-dots', label: message.thread.mine ? t('th_open') : t('th_join'), tool: true, action: function () { self.threadGo(message.thread); } });
+                } else if (!message.thread && self.channel.can_post) {
+                    items.push({ icon: 'bi-chat-square-dots', label: t('th_start'), tool: true, action: function () { self.startThread(message); } });
+                }
             }
 
             // Anybody's message, kept as a copy in the person's own notes.
@@ -7526,6 +8213,7 @@
 
             api('ws_mark', { message_id: message.id, kind: kind }).then(function (data) {
                 self.replaceMessage(data.message);
+                self.sync();
                 toast(kind === 'message' ? t('unmarked') : (kind === 'decision' ? t('marked_decision') : t('marked_note')), 'success');
             }).catch(fail);
         },
@@ -7727,6 +8415,12 @@
 
         // ── Checklists ──
 
+        // Where a task made on this screen is posted, and whose department it
+        // takes: this channel.
+        taskDefaults: function () {
+            return { channel_id: this.channel.id, department_id: this.channel.department ? this.channel.department.id : 0 };
+        },
+
         // The whole list becomes one task; the list stays here and both
         // places tick the same items.
         listToTask: function (message) {
@@ -7738,13 +8432,11 @@
             var first = box.querySelector('.ws-text');
             var title = first ? (first.textContent || '').replace(/\s+/g, ' ').trim().replace(/[:：]$/, '') : '';
 
-            taskDrawer.open(0, {
-                channel_id: self.channel.id,
+            taskDrawer.open(0, Object.assign(self.taskDefaults(), {
                 title: (title || t('list_task_title')).slice(0, 200),
                 checklist_message_id: message.id,
-                list_count: box.querySelectorAll('input[data-ws-check]').length,
-                department_id: self.channel.department ? self.channel.department.id : 0
-            }, function () { self.sync(true); });
+                list_count: box.querySelectorAll('input[data-ws-check]').length
+            }), function () { self.sync(true); });
         },
 
         // ── Claude ──
@@ -7782,6 +8474,29 @@
 
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
+        // A bulk change being applied: the next slice, one at a time, until
+        // it is done; the card is drawn again by the sync.
+        kickBulk: function (changeId) {
+            var self = this;
+
+            self.bulkRunning = self.bulkRunning || {};
+
+            if (self.bulkRunning[changeId]) {
+                return;
+            }
+
+            self.bulkRunning[changeId] = true;
+
+            api('ws_ai_bulk_step', { change_id: changeId }).then(function (data) {
+                window.setTimeout(function () {
+                    self.bulkRunning[changeId] = false;
+                    self.sync();
+                }, (data.status === 'busy') ? 2000 : 300);
+            }).catch(function () {
+                self.bulkRunning[changeId] = false;
+            });
+        },
+
         changesNode: function (message) {
             var self = this;
             var box = el('div', 'ws-drafts ws-changes');
@@ -7791,7 +8506,7 @@
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
                 var head = el('div', 'ws-draft-head');
-                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right' };
+                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection' };
 
                 head.appendChild(icon(change.status === 'applied' ? 'bi-check2-circle' : (icons[change.action] || 'bi-pencil-square')));
 
@@ -7813,6 +8528,19 @@
 
                 head.appendChild(el('span', 'ws-change-type', change.type_label));
                 card.appendChild(head);
+
+                // Many records at once (bulk.php): how many, a few of them
+                // below, and while it is applied how far it has got.
+                if (change.bulk) {
+                    var reach = el('div', 'ws-bulk-reach');
+                    reach.appendChild(el('b', '', t('bulk_records', change.bulk.total)));
+
+                    if (change.fields.length) {
+                        reach.appendChild(document.createTextNode(' · ' + t('bulk_sample')));
+                    }
+
+                    card.appendChild(reach);
+                }
 
                 if (change.hidden) {
                     card.appendChild(el('div', 'ws-draft-meta', t('change_hidden', change.count)));
@@ -7851,6 +8579,32 @@
                     card.appendChild(el('div', 'ws-draft-text', change.reason));
                 }
 
+                if (change.bulk && change.bulk.progress && (change.status === 'applying' || change.status === 'applied' || change.status === 'failed')) {
+                    var progress = change.bulk.progress;
+                    var share = progress.total ? Math.round((progress.done + progress.skipped + progress.failed) * 100 / progress.total) : 100;
+                    var meter = el('div', 'progress ws-bulk-progress');
+                    var fill = el('div', 'progress-bar' + (change.status === 'applying' ? ' progress-bar-striped progress-bar-animated' : ''));
+
+                    meter.setAttribute('role', 'progressbar');
+                    meter.setAttribute('aria-valuenow', String(share));
+                    meter.setAttribute('aria-valuemin', '0');
+                    meter.setAttribute('aria-valuemax', '100');
+                    fill.style.width = share + '%';
+                    meter.appendChild(fill);
+                    card.appendChild(meter);
+                    card.appendChild(el('div', 'ws-draft-meta', (change.status === 'applying' ? t('bulk_running') + ' ' + t('bulk_progress', progress.done + progress.skipped + progress.failed, progress.total) + ' · ' : '')
+                        + t('bulk_result', progress.done, progress.skipped, progress.failed)));
+
+                    (progress.errors || []).forEach(function (error) {
+                        card.appendChild(el('div', 'small text-danger-emphasis', error));
+                    });
+
+                    // The one who applied it carries the work on from here.
+                    if (change.status === 'applying' && change.bulk.mine) {
+                        self.kickBulk(change.id);
+                    }
+                }
+
                 if (change.warning && change.status === 'pending') {
                     var warning = el('div', 'ws-change-warning');
                     warning.appendChild(icon('bi-exclamation-triangle', 'me-1'));
@@ -7864,7 +8618,8 @@
                     var apply = button('btn btn-sm btn-primary rounded-pill px-3', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
-                        var go = change.warning ? ask(change.warning, t('change_apply'), true) : Promise.resolve(true);
+                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : 'bulk_warning', change.bulk.total) : change.warning;
+                        var go = question ? ask(question, t('change_apply'), true) : Promise.resolve(true);
 
                         go.then(function (yes) {
                             if (!yes) {
@@ -9022,6 +9777,11 @@
                 return wrap;
             }
 
+            // The writer's own messages waiting to be posted here.
+            self.scheduledBar = el('div');
+            wrap.appendChild(self.scheduledBar);
+            self.drawScheduledBar();
+
             self.previewBox = el('div');
             wrap.appendChild(self.previewBox);
 
@@ -9113,7 +9873,7 @@
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
-                    CFG.scheduled ? { icon: 'bi-alarm', label: t('sa_new'), action: function () {
+                    (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_new'), action: function () {
                         scheduledForm({ channel_id: self.channel.id }, null, function () { self.sync(true); });
                     } } : null
                 ], true);
@@ -9136,7 +9896,49 @@
 
             var send = button('btn btn-sm btn-primary rounded-pill px-3', t('send'), 'bi-send');
             send.addEventListener('click', function () { self.send(); });
-            tools.appendChild(send);
+
+            // Beside it, the times the message can wait for instead
+            // (scheduled_messages.php).
+            if (CFG.scheduled_messages && !self.era) {
+                var sendGroup = el('div', 'btn-group ws-send-group');
+                var later = button('btn btn-sm btn-primary rounded-end-pill ws-send-later', '', 'bi-clock', t('sm_send_later'));
+
+                send.classList.remove('rounded-pill');
+                send.classList.add('rounded-start-pill');
+                later.addEventListener('click', function (event) {
+                    var place = later.getBoundingClientRect();
+                    var items = [{ header: t('sm_schedule') }];
+
+                    event.stopPropagation();
+
+                    if (self.inputEmpty() || self.editing) {
+                        self.input.focus();
+                        return;
+                    }
+
+                    smPresets().forEach(function (preset) {
+                        items.push({ icon: preset.icon, label: preset.label, action: function () { self.scheduleSend(preset.when); } });
+                    });
+
+                    items.push('-');
+                    items.push({ icon: 'bi-calendar-event', label: t('sm_custom'), action: function () {
+                        smAskWhen('', '').then(function (when) {
+                            if (when) {
+                                self.scheduleSend(when);
+                            }
+                        });
+                    } });
+
+                    ctxMenu(Math.max(8, place.right - 240), place.top - 6, items, true);
+                });
+
+                sendGroup.appendChild(send);
+                sendGroup.appendChild(later);
+                tools.appendChild(sendGroup);
+            } else {
+                tools.appendChild(send);
+            }
+
             box.appendChild(tools);
             wrap.appendChild(box);
 
@@ -9171,6 +9973,129 @@
             }
 
             return wrap;
+        },
+
+        // What is in the box, posted at a time rather than now.
+        scheduleSend: function (when) {
+            var self = this;
+            var raw = self.inputText();
+
+            if (self.busy || (raw.trim() === '')) {
+                return;
+            }
+
+            // A scheduled message being changed takes the new time with its text.
+            var changing = self.editingScheduled;
+            var data = changing
+                ? { id: changing.id, body: self.tokens(raw) }
+                : { channel_id: self.channel.id, body: self.tokens(raw), parent_id: self.reply ? self.reply.id : 0 };
+
+            Object.keys(when || {}).forEach(function (key) { data[key] = when[key]; });
+            self.busy = true;
+
+            api('ws_scheduled_message_save', data).then(function (result) {
+                self.busy = false;
+                self.clearInput();
+                self.reply = null;
+                self.replyMore = null;
+                self.editingScheduled = null;
+                self.drawReplyBar();
+
+                if (!changing) {
+                    self.channel.scheduled_mine = (self.channel.scheduled_mine || 0) + 1;
+                }
+
+                self.drawScheduledBar();
+                toast(t('sm_saved', result.item ? result.item.when : ''), 'success');
+            }).catch(function (error) {
+                self.busy = false;
+                fail(error);
+            });
+        },
+
+        // Above the box: that the writer has messages waiting here, and the
+        // way to see them.
+        drawScheduledBar: function () {
+            var self = this;
+            var bar = self.scheduledBar ? clear(self.scheduledBar) : null;
+            var count = (self.channel && self.channel.scheduled_mine) || 0;
+
+            if (!bar || !count) {
+                return;
+            }
+
+            var row = el('button', 'ws-sm-bar');
+            row.type = 'button';
+            row.appendChild(icon('bi-clock'));
+            row.appendChild(el('span', 'flex-grow-1 text-truncate', (count === 1) ? t('sm_bar_one', '…') : t('sm_bar', count)));
+            row.appendChild(el('span', 'ws-sm-bar-link', t('sm_show')));
+            row.addEventListener('click', function () { self.showScheduledMessages(); });
+            bar.appendChild(row);
+
+            // One waiting: when, in the line itself.
+            if (count === 1) {
+                api('ws_scheduled_messages', { channel_id: self.channel.id }).then(function (data) {
+                    var text = row.querySelector('.text-truncate');
+
+                    if (text && data.items.length) {
+                        text.textContent = t('sm_bar_one', data.items[0].when);
+                    }
+                }).catch(function () {});
+            }
+        },
+
+        showScheduledMessages: function () {
+            var self = this;
+            var channel = self.channel;
+            var node = offcanvas('ws-sm-list', t('sm_title'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var list = el('div', 'ws-sm-list');
+
+            node.querySelector('.offcanvas-footer').classList.add('d-none');
+            body.appendChild(el('p', 'small text-body-secondary', t('sm_mine_help')));
+            body.appendChild(list);
+
+            scheduledMessagesList(list, channel.id, function () {
+                self.sync();
+            }, function (item) {
+                hideOffcanvas(node);
+                self.editScheduled(item);
+            });
+
+            showOffcanvas(node);
+        },
+
+        // A scheduled message's text, back in the box to be changed; its time
+        // stays.
+        editScheduled: function (item) {
+            var self = this;
+
+            if (!self.input) {
+                return;
+            }
+
+            self.editing = null;
+            self.reply = null;
+            self.editingScheduled = item;
+
+            if (self.rich) {
+                self.rich.focus();
+                self.rich.setMarkup(item.raw || '', item.labels || {});
+            } else {
+                self.labels = [];
+                Object.keys(item.labels || {}).forEach(function (token) {
+                    var shown = shownLabel(token.charAt(1), item.labels[token]);
+
+                    self.labels.push({ label: shown, token: token });
+                });
+                self.input.value = (item.raw || '').replace(/<[@#][a-z_]+:\d+>/g, function (token) {
+                    return item.labels[token] ? shownLabel(token.charAt(1), item.labels[token]) : token;
+                });
+                self.input.focus();
+            }
+
+            self.drawReplyBar();
+            self.autosize();
         },
 
         autosize: function () {
@@ -9308,7 +10233,19 @@
             var self = this;
             var bar = clear(self.replyBar);
 
-            if (!self.reply && !self.editing) {
+            if (!self.reply && !self.editing && !self.editingScheduled) {
+                return;
+            }
+
+            if (self.editingScheduled) {
+                var waiting = el('div', 'ws-reply-bar');
+                waiting.appendChild(icon('bi-clock'));
+                waiting.appendChild(el('span', '', t('sm_editing') + ' · ' + t('sm_at', self.editingScheduled.when)));
+
+                var stop = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
+                stop.addEventListener('click', function () { self.cancelCompose(); });
+                waiting.appendChild(stop);
+                bar.appendChild(waiting);
                 return;
             }
 
@@ -9335,13 +10272,14 @@
                 return;
             }
 
-            if (this.editing) {
+            if (this.editing || this.editingScheduled) {
                 this.clearInput();
             }
 
             this.reply = null;
             this.replyMore = null;
             this.editing = null;
+            this.editingScheduled = null;
             this.pending = null;
 
             if (this.previewBox) {
@@ -9421,6 +10359,23 @@
 
             var body = self.tokens(raw);
             self.busy = true;
+
+            // A scheduled message's new text; its time stays.
+            if (self.editingScheduled) {
+                var waiting = self.editingScheduled;
+
+                api('ws_scheduled_message_save', { id: waiting.id, body: body, date: waiting.date, time: waiting.time }).then(function (data) {
+                    self.busy = false;
+                    self.editingScheduled = null;
+                    self.clearInput();
+                    self.drawReplyBar();
+                    toast(t('sm_saved', data.item ? data.item.when : waiting.when), 'success');
+                }).catch(function (error) {
+                    self.busy = false;
+                    fail(error);
+                });
+                return;
+            }
 
             if (self.editing) {
                 var editing = self.editing;
@@ -10464,7 +11419,7 @@
 
             var add = button('btn btn-sm btn-primary rounded-pill px-3', t('new_task'), 'bi-plus-lg');
             add.addEventListener('click', function () {
-                taskDrawer.open(0, { channel_id: self.channel.id, department_id: self.channel.department ? self.channel.department.id : 0 }, function () { self.drawCenter(); });
+                taskDrawer.open(0, self.taskDefaults(), function () { self.drawCenter(); });
             });
             bar.appendChild(add);
             pane.appendChild(bar);
@@ -10606,7 +11561,7 @@
             }
 
             self.timer = setTimeout(function () {
-                self.sync();
+                self.sync(false, true);
             }, (waiting ? Math.min(2, every) : every) * 1000);
         },
 
@@ -10615,8 +11570,14 @@
             this.timer = null;
         },
 
-        sync: function (scroll) {
+        // timed: the look the timer takes; any other is asked for by
+        // something done on the screen, after which the tabs are counted.
+        sync: function (scroll, timed) {
             var self = this;
+
+            if (!timed) {
+                self.countsAt = 0;
+            }
 
             // A look is under way: one more follows as soon as it is back
             // (right after sending, the new line must not wait for the timer).
@@ -10635,17 +11596,33 @@
 
             var asked = Date.now();
 
+            // The marks on the tabs are counted again every half minute, and
+            // at once after something here may have changed them.
+            var counts = !self.era && ((asked - (self.countsAt || 0)) > 30000);
+
+            if (counts) {
+                self.countsAt = asked;
+            }
+
             api('ws_sync', {
                 channel_id: self.channel.id,
                 since_id: self.lastId,
                 since_ts: self.sinceTs,
                 era_id: self.era ? self.era.id : 0,
-                read: (document.hasFocus() && !self.era) ? 1 : 0
+                read: (document.hasFocus() && !self.era) ? 1 : 0,
+                counts: (counts && !self.isThread) ? 1 : 0,
+                panel: self.isThread ? 1 : 0
             }).then(function (data) {
                 self.syncing = false;
 
                 if (data.gone) {
                     toast(t('channel_gone'), 'warning');
+
+                    if (self.isThread) {
+                        self.close();
+                        return;
+                    }
+
                     self.channel = null;
                     self.reloadChannels(0);
                     self.drawEmptyCenter();
@@ -10706,10 +11683,37 @@
 
                 self.sinceTs = data.now;
 
+                if ((data.scheduled_mine !== undefined) && self.channel && (data.scheduled_mine !== (self.channel.scheduled_mine || 0))) {
+                    self.channel.scheduled_mine = data.scheduled_mine;
+                    self.drawScheduledBar();
+                }
+
+                if (data.tab_counts && self.channel && (JSON.stringify(data.tab_counts) !== JSON.stringify(self.channel.tab_counts || null))) {
+                    self.channel.tab_counts = data.tab_counts;
+                    self.drawTabMarks();
+                }
+
                 // The pinned message, as somebody may have changed it.
                 if (data.pin !== undefined && self.channel && (JSON.stringify(data.pin) !== JSON.stringify(self.channel.pin || null))) {
                     self.channel.pin = data.pin;
                     self.drawPinBar();
+                }
+
+                // Who outside the team reads along, as it changes.
+                if ((data.shares !== undefined) && self.channel && !self.channel.guest && (JSON.stringify(data.shares) !== JSON.stringify(self.channel.shares || null))) {
+                    var shareWas = self.center.querySelector('.ws-share-bar');
+
+                    self.channel.shares = data.shares;
+
+                    var shareBefore = self.center.querySelector('.ws-era-bar, .ws-tabs');
+
+                    if (shareWas && data.shares) {
+                        shareWas.replaceWith(self.shareBar(self.channel));
+                    } else if (shareWas) {
+                        shareWas.remove();
+                    } else if (data.shares && shareBefore) {
+                        shareBefore.before(self.shareBar(self.channel));
+                    }
                 }
 
                 // A guest's link and whether they are here, as they change.
@@ -10723,23 +11727,28 @@
                     }
                 }
 
-                BOOT.channels = data.channels;
-                BOOT.groups = data.groups || [];
-                BOOT.inbox = data.inbox;
-
                 // A scheduled action's time has come: the screen starts the run.
                 if (data.scheduled_due) {
                     scheduledTick();
                 }
 
-                // The channel list is drawn again only when it changed: every
-                // few seconds from scratch it dropped a half-typed search, the
-                // list's scroll and the pointer's hover.
-                var sideKey = JSON.stringify([data.channels, data.groups || [], data.inbox, self.channel ? self.channel.id : 0]);
+                // The sidebar is the channel screen's: a discussion beside it
+                // leaves it alone.
+                if (!self.isThread) {
+                    BOOT.channels = data.channels;
+                    BOOT.groups = data.groups || [];
+                    BOOT.threads = data.threads || [];
+                    BOOT.inbox = data.inbox;
 
-                if (!self.dragging && (sideKey !== self.sideKey)) {
-                    self.sideKey = sideKey;
-                    self.drawSide();
+                    // The channel list is drawn again only when it changed: every
+                    // few seconds from scratch it dropped a half-typed search, the
+                    // list's scroll and the pointer's hover.
+                    var sideKey = JSON.stringify([data.channels, data.groups || [], data.threads || [], data.inbox, self.channel ? self.channel.id : 0, self.openThreadId()]);
+
+                    if (!self.dragging && (sideKey !== self.sideKey)) {
+                        self.sideKey = sideKey;
+                        self.drawSide();
+                    }
                 }
 
                 // Down to the newest line only when there is a new line (or
@@ -10776,6 +11785,540 @@
             self.schedule();
         }
     };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // A discussion beside the channel (includes/workspace/threads.php)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // The panel on the right of the channel screen: a discussion's own
+    // conversation, drawn and kept current by the channel screen's own
+    // methods (it is made from the screen with Object.create, so a message,
+    // the writing box, the pickers and the polls work there as they do in
+    // the channel). Its state is its own; the sidebar stays the screen's.
+    // On a phone it covers the channel until it is closed.
+    function makeThreadView(main) {
+        var view = Object.create(main);
+        var panel = el('aside', 'ws-thread-panel');
+
+        panel.setAttribute('aria-label', t('th_section'));
+        main.root.appendChild(panel);
+
+        // Everything a channel screen keeps while it is open, the panel's own.
+        var fresh = {
+            isThread: true,
+            main: main,
+            panel: panel,
+            center: panel,
+            channel: null,
+            messages: [],
+            lastId: 0,
+            sinceTs: 0,
+            hasMore: false,
+            tab: 'messages',
+            reply: null,
+            replyMore: null,
+            editing: null,
+            editingScheduled: null,
+            labels: [],
+            pending: null,
+            timer: null,
+            busy: false,
+            era: null,
+            view: 'thread',
+            briefing: null,
+            pinHolder: null,
+            pane: null,
+            composerWrap: null,
+            input: null,
+            rich: null,
+            picker: null,
+            pickerMode: null,
+            pickerItems: null,
+            selecting: null,
+            syncing: false,
+            syncAgain: false,
+            syncAgainScroll: false,
+            atEnd: true,
+            unseenBelow: 0,
+            localAt: {},
+            sideKey: null,
+            dragging: false,
+            countsAt: 0,
+            scheduledBar: null,
+            previewBox: null,
+            replyBar: null,
+            tabsNode: null,
+            jump: null,
+            jumpCount: null,
+            flashAfterOpen: null,
+            pendingThread: null,
+            pendingScheduledEdit: null
+        };
+
+        Object.keys(fresh).forEach(function (key) { view[key] = fresh[key]; });
+
+        // A task made in a discussion is a task of the channel beside it: the
+        // card is posted in the channel, and in the discussion as well.
+        view.taskDefaults = function () {
+            var parentId = this.channel.thread ? (this.channel.thread.channel_id || 0) : 0;
+            var parent = (main.channel && main.channel.id === parentId) ? main.channel : null;
+
+            return {
+                channel_id: parentId,
+                thread_id: this.channel.id,
+                department_id: parent && parent.department ? parent.department.id : (this.channel.department ? this.channel.department.id : 0)
+            };
+        };
+
+        // The panel's width: dragged on its left edge, kept on this browser.
+        // The channel beside it never gets narrower than CENTER_MIN; on a
+        // phone the panel covers the channel and is not resized.
+        var THREAD_MIN = 320;
+        var CENTER_MIN = 420;
+        var WIDTH_KEY = 'ws-thread-w';
+        var phone = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
+        var resizer = el('div', 'ws-thread-resizer');
+        var resizing = false;
+        var dragRight = 0;
+        var dragWidth = 0;
+
+        function clampWidth(px) {
+            var side = main.side.getBoundingClientRect().width;
+            var max = Math.max(THREAD_MIN, main.root.clientWidth - side - CENTER_MIN);
+
+            return Math.min(max, Math.max(THREAD_MIN, Math.round(px)));
+        }
+
+        // The width given, as far as it fits; 0 when nothing was set.
+        function applyWidth(px) {
+            if (phone && phone.matches) {
+                return 0;
+            }
+
+            var width = clampWidth(px);
+
+            main.root.style.setProperty('--ws-thread-w', width + 'px');
+
+            return width;
+        }
+
+        function storedWidth() {
+            try {
+                return parseInt(window.localStorage.getItem(WIDTH_KEY) || '0', 10) || 0;
+            } catch (error) {
+                return 0;
+            }
+        }
+
+        function storeWidth(px) {
+            try {
+                if (px > 0) {
+                    window.localStorage.setItem(WIDTH_KEY, String(px));
+                } else {
+                    window.localStorage.removeItem(WIDTH_KEY);
+                }
+            } catch (error) {
+                // Not kept: the panel opens at its usual width next time.
+            }
+        }
+
+        function resetWidth() {
+            main.root.style.removeProperty('--ws-thread-w');
+            storeWidth(0);
+        }
+
+        function endResize() {
+            if (!resizing) {
+                return;
+            }
+
+            resizing = false;
+            main.root.classList.remove('ws-thread-resizing');
+
+            if (dragWidth) {
+                storeWidth(dragWidth);
+            }
+        }
+
+        resizer.setAttribute('role', 'separator');
+        resizer.setAttribute('aria-orientation', 'vertical');
+        resizer.setAttribute('tabindex', '0');
+        resizer.title = t('th_resize');
+        resizer.setAttribute('aria-label', resizer.title);
+
+        resizer.addEventListener('pointerdown', function (event) {
+            if ((event.button !== 0) || (phone && phone.matches)) {
+                return;
+            }
+
+            event.preventDefault();
+            resizing = true;
+            dragRight = panel.getBoundingClientRect().right;
+            dragWidth = 0;
+            resizer.setPointerCapture(event.pointerId);
+            main.root.classList.add('ws-thread-resizing');
+        });
+
+        resizer.addEventListener('pointermove', function (event) {
+            if (resizing) {
+                dragWidth = applyWidth(dragRight - event.clientX);
+            }
+        });
+
+        resizer.addEventListener('pointerup', endResize);
+        resizer.addEventListener('pointercancel', endResize);
+        resizer.addEventListener('dblclick', resetWidth);
+
+        // Left widens, right narrows; Shift takes bigger steps, Home goes
+        // back to the usual width.
+        resizer.addEventListener('keydown', function (event) {
+            if ((event.key === 'ArrowLeft') || (event.key === 'ArrowRight')) {
+                var step = (event.shiftKey ? 64 : 16) * ((event.key === 'ArrowLeft') ? 1 : -1);
+                var width = applyWidth(panel.getBoundingClientRect().width + step);
+
+                event.preventDefault();
+
+                if (width) {
+                    storeWidth(width);
+                }
+            } else if (event.key === 'Home') {
+                event.preventDefault();
+                resetWidth();
+            }
+        });
+
+        // A narrower window takes the kept width down as far as it must; a
+        // wider one gives it back.
+        window.addEventListener('resize', function () {
+            var wanted = storedWidth();
+
+            if (wanted && main.root.classList.contains('ws-thread-open')) {
+                applyWidth(wanted);
+            }
+        });
+
+        view.load = function (threadId, messageId) {
+            var self = this;
+
+            self.stop();
+            self.reply = null;
+            self.replyMore = null;
+            self.editing = null;
+            self.editingScheduled = null;
+            self.selecting = null;
+            self.labels = [];
+
+            api('ws_channel_open', { channel_id: threadId, message_id: messageId || 0, as_thread: 1 }).then(function (data) {
+                self.channel = data.channel;
+                self.messages = data.messages;
+                self.lastId = data.last_id;
+                self.sinceTs = data.now;
+                self.hasMore = data.has_more;
+                main.root.classList.add('ws-thread-open');
+
+                if (storedWidth()) {
+                    applyWidth(storedWidth());
+                }
+
+                self.drawCenter();
+
+                var target = messageId ? panel.querySelector('[data-ws-message="' + messageId + '"]') : null;
+
+                if (target) {
+                    target.classList.add('ws-msg-highlight');
+                    target.scrollIntoView({ block: 'center' });
+                } else {
+                    self.scrollToEnd();
+                }
+
+                // What it was about has been read; the sidebar says so.
+                (BOOT.threads || []).forEach(function (item) {
+                    if (item.id === threadId) {
+                        item.unread = 0;
+                    }
+                });
+
+                main.drawSide();
+                main.syncAddress();
+                self.schedule();
+            }).catch(function (error) {
+                fail(error);
+                self.close();
+            });
+        };
+
+        view.close = function () {
+            this.stop();
+            this.channel = null;
+            this.messages = [];
+            endResize();
+            clear(panel);
+            main.root.classList.remove('ws-thread-open');
+            main.root.style.removeProperty('--ws-thread-w');
+            main.drawSide();
+            main.syncAddress();
+        };
+
+        // Another channel or another discussion asked for from inside the
+        // panel goes to the channel screen.
+        view.open = function (channelId, messageId) {
+            if (this.channel && (channelId === this.channel.id)) {
+                this.load(channelId, messageId);
+                return;
+            }
+
+            main.open(channelId, messageId);
+        };
+
+        view.reloadChannels = function () {
+            var self = this;
+
+            main.reloadChannels(0);
+
+            if (self.channel) {
+                self.load(self.channel.id, 0);
+            }
+        };
+
+        view.drawCenter = function () {
+            var self = this;
+            var channel = self.channel;
+            var thread = channel.thread || {};
+
+            // Drawn again with the panel; a drag going on ends here.
+            endResize();
+
+            var center = clear(panel);
+
+            center.appendChild(resizer);
+
+            // Head: what it is about, who is in it, its tools.
+            var head = el('div', 'ws-head ws-thread-head');
+            var title = el('div', 'ws-head-title');
+            var h = el('h2');
+            h.appendChild(icon('bi-chat-square-dots', 'me-1 text-body-secondary'));
+            h.appendChild(document.createTextNode(channel.name));
+            title.appendChild(h);
+
+            var where = el('div', 'ws-topic');
+            var parent = (BOOT.channels || []).filter(function (item) { return item.id === thread.channel_id; })[0];
+            where.textContent = t('th_in', parent ? parent.name : '');
+            title.appendChild(where);
+            head.appendChild(title);
+
+            var actions = el('div', 'ws-head-actions');
+            var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('th_people'));
+            var stack = el('span', 'ws-avatars');
+
+            (channel.members || []).slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
+            faces.appendChild(stack);
+            faces.appendChild(el('span', 'small', (channel.members || []).length));
+            faces.addEventListener('click', function () { self.showPeople(); });
+            actions.appendChild(faces);
+            actions.appendChild(self.threadMenu());
+
+            var shut = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('th_close_panel'));
+            shut.addEventListener('click', function () { self.close(); });
+            actions.appendChild(shut);
+            head.appendChild(actions);
+            center.appendChild(head);
+
+            if (thread.closed) {
+                var closed = el('div', 'alert alert-secondary rounded-0 m-0 py-2 small');
+                closed.appendChild(icon('bi-archive', 'me-1'));
+                closed.appendChild(document.createTextNode(thread.closed_text));
+                center.appendChild(closed);
+            }
+
+            // The message it talks over, as the channel shows it.
+            var about = main.findMessage(thread.message_id);
+            var source = el('div', 'ws-thread-source');
+            var sourceHead = el('div', 'ws-thread-source-head');
+
+            sourceHead.appendChild(el('span', '', t('th_about')));
+
+            var go = button('btn btn-sm btn-link p-0', t('th_go_message'), 'bi-arrow-left-short');
+            go.addEventListener('click', function () {
+                if (window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
+                    self.close();
+                }
+
+                main.jumpTo(thread.message_id, true);
+            });
+            sourceHead.appendChild(go);
+            source.appendChild(sourceHead);
+
+            if (about && !about.deleted) {
+                var quote = el('div', 'ws-thread-source-body');
+                quote.appendChild(el('b', '', about.sender ? about.sender.name : ''));
+                quote.appendChild(el('span', 'ws-thread-source-time', about.time));
+
+                var text = el('div', 'ws-msg-body');
+                setHtml(text, about.html);
+                quote.appendChild(text);
+                source.appendChild(quote);
+            } else {
+                source.appendChild(el('div', 'small text-body-secondary', channel.name));
+            }
+
+            center.appendChild(source);
+
+            var pane = el('div', 'ws-pane ws-pane-messages ws-thread-pane');
+            center.appendChild(pane);
+            self.pane = pane;
+            self.atEnd = true;
+            self.unseenBelow = 0;
+            pane.addEventListener('scroll', function () {
+                self.atEnd = self.nearEnd();
+                self.drawJump();
+            }, { passive: true });
+
+            self.drawMessages();
+
+            if (!self.messages.filter(function (message) { return message.kind !== 'system'; }).length) {
+                pane.appendChild(el('div', 'ws-empty small', t('th_empty')));
+            }
+
+            if (channel.can_post) {
+                center.appendChild(self.composer());
+                self.composerWrap.appendChild(self.jumpButton());
+            } else {
+                var readonly = el('div', 'ws-composer-wrap');
+                readonly.appendChild(el('div', 'small text-body-secondary text-center py-2', thread.closed ? t('th_readonly') : t('cannot_post')));
+                center.appendChild(readonly);
+            }
+        };
+
+        view.threadMenu = function () {
+            var self = this;
+            var channel = self.channel;
+            var thread = channel.thread || {};
+            var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots-vertical', t('more'));
+
+            more.addEventListener('click', function (event) {
+                var place = more.getBoundingClientRect();
+
+                event.stopPropagation();
+                ctxMenu(Math.max(8, place.right - 240), place.bottom + 4, [
+                    (channel.can_post && !thread.closed) ? { icon: 'bi-pencil', label: t('th_rename'), action: function () { self.rename(); } } : null,
+                    (channel.can_post && !thread.closed) ? { icon: 'bi-person-plus', label: t('th_add_people'), action: function () { self.showPeople(); } } : null,
+                    '-',
+                    (thread.mine && !thread.closed) ? { icon: 'bi-check2-circle', label: t('th_conclude'), action: function () { self.conclude(); } } : null,
+                    thread.mine ? { icon: 'bi-box-arrow-right', label: t('th_leave'), danger: true, action: function () { self.leave(); } } : null
+                ]);
+            });
+
+            return more;
+        };
+
+        view.rename = function () {
+            var self = this;
+            var field = el('input', 'form-control');
+
+            field.maxLength = 80;
+            field.value = self.channel.name;
+
+            ask(t('th_rename_title'), t('save'), false, field).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_rename', { thread_id: self.channel.id, title: field.value }).then(function () {
+                    self.load(self.channel.id, 0);
+                    main.sync();
+                }).catch(fail);
+            });
+        };
+
+        view.conclude = function () {
+            var self = this;
+
+            ask(t('th_conclude_confirm'), t('th_conclude'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_close', { thread_id: self.channel.id }).then(function () {
+                    toast(t('th_concluded'), 'success');
+                    self.load(self.channel.id, 0);
+                    main.sync();
+                }).catch(fail);
+            });
+        };
+
+        view.leave = function () {
+            var self = this;
+
+            ask(t('th_leave_confirm'), t('th_leave'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_leave', { thread_id: self.channel.id }).then(function () {
+                    self.close();
+                    main.sync();
+                }).catch(fail);
+            });
+        };
+
+        // The people in it, and the people of the channel who could be
+        // brought in.
+        view.showPeople = function () {
+            var self = this;
+            var channel = self.channel;
+            var node = offcanvas('ws-thread-people', t('th_people'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+
+            footer.classList.add('d-none');
+
+            (channel.members || []).forEach(function (member) {
+                var row = el('div', 'd-flex align-items-center gap-2 py-2 border-bottom');
+                var face = avatar(member, '2rem');
+
+                face.style.borderRadius = '50%';
+                row.appendChild(face);
+                row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
+                body.appendChild(row);
+            });
+
+            var parent = main.channel;
+
+            if (channel.can_post && parent && (parent.id === (channel.thread || {}).channel_id)) {
+                var inside = (channel.members || []).map(function (member) { return member.id; });
+                var readers = (parent.kind === 'public') ? BOOT.people : (parent.members || []);
+                var outside = readers.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
+
+                if (outside.length) {
+                    body.appendChild(el('div', 'form-label mt-3', t('th_add_people')));
+                    body.appendChild(el('div', 'form-text mt-0 mb-2', t('th_add_people_help')));
+
+                    var picker = peoplePicker([], outside);
+                    body.appendChild(picker);
+                    footer.classList.remove('d-none');
+
+                    var add = button('btn btn-sm btn-primary rounded-pill px-3', t('th_add_people'), 'bi-person-plus');
+                    add.addEventListener('click', function () {
+                        var ids = picker.value();
+
+                        if (!ids.length) {
+                            return;
+                        }
+
+                        api('ws_channel_members_add', { channel_id: channel.id, user_ids: ids }).then(function () {
+                            hideOffcanvas(node);
+                            self.load(channel.id, 0);
+                        }).catch(fail);
+                    });
+                    footer.appendChild(add);
+                }
+            }
+
+            showOffcanvas(node);
+        };
+
+        return view;
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Scheduled actions (includes/workspace/scheduled.php): staff only
@@ -11210,7 +12753,7 @@
         var config = CFG.scheduled || {};
         var chains = !!config.chains;
         var groups = [
-            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')]] : [])],
+            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])],
             [t('sa_group_records'), Object.keys(config.changes || {}).length ? [['change', t('sa_do_change')]] : []],
             [t('sa_group_web'), chains ? [['report', t('sa_do_report')], ['web_check', t('sa_do_web_check')], ['webhook', t('sa_do_webhook')]] : []],
             [t('sa_group_chain'), chains ? [['trigger', t('sa_do_trigger')]] : []]
@@ -11245,11 +12788,14 @@
 
     // What is done: in the team, to a record, on the web, or the next step of
     // a chain. selfId: the action being changed, so it can start itself again.
-    function saActionEditor(action, allowNone, selfId) {
+    // state: what the form says around it (join: started by somebody joining
+    // a channel, so "the channel they joined" can be written in).
+    function saActionEditor(action, allowNone, selfId, state) {
         var config = CFG.scheduled || {};
         var box = el('div', 'ws-sa-action');
 
         action = action || null;
+        state = state || {};
 
         var type = saActionTypes(allowNone);
         var detail = el('div', 'ws-sa-action-detail');
@@ -11269,8 +12815,19 @@
         }
 
         function post() {
-            var data = given('post', { channel_id: null, body: '' });
+            var data = given('post', { channel_id: state.join ? -1 : null, body: '' });
             var channel = saChannelSelect(data.channel_id, '');
+
+            // Started by a join: the channel the newcomer came into.
+            if (state.join) {
+                var joined = el('option', '', t('sa_joined_channel'));
+
+                joined.value = '-1';
+                channel.insertBefore(joined, channel.firstChild);
+                channel.value = String((data.channel_id === null || data.channel_id === undefined) ? -1 : data.channel_id);
+            } else if (String(channel.value) === '-1') {
+                channel.selectedIndex = 0;
+            }
             var wrap = el('div', 'ws-note-compose ws-sa-body');
             var rich = richField(wrap, { placeholder: t('sa_message'), previews: true });
             var area = null;
@@ -11378,6 +12935,62 @@
                     priority: priority.value,
                     due_in: due.value,
                     channel_id: parseInt(channel.value, 10) || 0
+                };
+            };
+        }
+
+        // Each person their tasks by e-mail, or one channel's tasks.
+        function taskDigest() {
+            var data = given('task_digest', { mode: 'mine', channel_id: 0, user_ids: [], only: 'open', subject: '', intro: '' });
+            var modes = el('div', 'btn-group btn-group-sm ws-sa-modes');
+            var mode = data.mode || 'mine';
+            var channel = saChannelSelect(data.channel_id || 0, t('sa_digest_all_channels'));
+            var channelBox = saLabelled(t('sa_channel'), channel);
+            var people = peoplePicker(data.user_ids || []);
+            var only = select(Object.keys(config.digest_only || {}).map(function (key) { return [key, config.digest_only[key]]; }), data.only || 'open');
+            var subject = saText(data.subject, t('sa_digest_subject_placeholder'), 250);
+            var intro = saArea(data.intro, 2);
+            var peopleHelp = el('div', 'form-text mt-0');
+
+            function showMode() {
+                peopleHelp.textContent = (mode === 'channel') ? t('sa_digest_people_channel') : t('sa_digest_people_mine');
+                channel.options[0].hidden = (mode === 'channel');
+
+                if ((mode === 'channel') && (channel.value === '0') && channel.options.length > 1) {
+                    channel.selectedIndex = 1;
+                }
+            }
+
+            [['mine', t('sa_digest_mine')], ['channel', t('sa_digest_channel')]].forEach(function (item) {
+                var toggle = button('btn btn-outline-secondary' + (mode === item[0] ? ' active' : ''), item[1]);
+                toggle.addEventListener('click', function () {
+                    mode = item[0];
+                    Array.prototype.forEach.call(modes.children, function (node) { node.classList.toggle('active', node === toggle); });
+                    showMode();
+                });
+                modes.appendChild(toggle);
+            });
+
+            detail.appendChild(modes);
+            detail.appendChild(channelBox);
+            detail.appendChild(saLabelled(t('sa_digest_which'), only));
+
+            var peopleBox = saLabelled(t('sa_people'), people);
+            peopleBox.appendChild(peopleHelp);
+            detail.appendChild(peopleBox);
+            detail.appendChild(saLabelled(t('sa_subject'), subject));
+            detail.appendChild(saLabelled(t('sa_digest_intro'), intro, t('sa_digest_intro_help')));
+            showMode();
+
+            reader = function () {
+                return {
+                    type: 'task_digest',
+                    mode: mode,
+                    channel_id: parseInt(channel.value, 10) || 0,
+                    user_ids: people.value(),
+                    only: only.value,
+                    subject: subject.value,
+                    intro: intro.value
                 };
             };
         }
@@ -11658,7 +13271,7 @@
             };
         }
 
-        var editors = { post: post, email: email, notify: notify, task: task, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change };
+        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change };
 
         function draw() {
             clear(detail);
@@ -11679,17 +13292,34 @@
 
         box.read = function () { return reader(); };
 
+        // The form's "when" changed: a message to write is drawn again, so
+        // "the channel they joined" comes or goes, keeping what was typed.
+        box.setJoin = function (join) {
+            if (!!state.join === !!join) {
+                return;
+            }
+
+            state.join = !!join;
+
+            if (type.value === 'post') {
+                action = reader();
+                draw();
+            }
+        };
+
         return box;
     }
 
     // One follow-up: when it is done, and what.
-    function saFollowRow(item, selfId, onRemove) {
+    function saFollowRow(item, selfId, onRemove, state) {
         var config = CFG.scheduled || {};
         var row = el('div', 'ws-sa-follow');
         var head = el('div', 'ws-sa-follow-head');
         var on = select(Object.keys(config.outcomes || {}).map(function (key) { return [key, config.outcomes[key]]; }), (item && item.on) || 'done');
         var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
-        var editor = saActionEditor(item ? item.do : null, false, selfId);
+        var editor = saActionEditor(item ? item.do : null, false, selfId, { join: !!(state && state.join) });
+
+        row.editor = editor;
 
         head.appendChild(icon('bi-arrow-return-right', 'me-1'));
         head.appendChild(on);
@@ -11753,7 +13383,25 @@
         var digest = ['tasks_open', 'tasks_overdue', 'tasks_due_today', 'orders_today', 'sales_today', 'forms_new', 'comments_pending', 'visitors_yesterday']
             .filter(has).map(function (key) { return { key: key, param: 0 }; });
 
-        out.push({ key: 'digest', label: t('sa_tpl_digest'), data: {
+        // A channel greets the people who join it and asks who they are.
+        if (config.join) {
+            out.push({ key: 'welcome', label: t('sa_tpl_welcome'), icon: 'bi-person-plus', help: t('sa_tpl_welcome_help'), data: {
+                name: t('sa_tpl_welcome'),
+                rules: [{ type: 'join', channel_id: channelId }],
+                action: { type: 'post', channel_id: channelId ? channelId : -1, body: t('sa_tpl_welcome_text') },
+                follow: []
+            } });
+        }
+
+        // Every Monday, each person the open tasks they are on.
+        out.push({ key: 'task_mail', label: t('sa_tpl_task_mail'), icon: 'bi-envelope-check', help: t('sa_tpl_task_mail_help'), data: {
+            name: t('sa_tpl_task_mail'),
+            rules: [{ type: 'at', date: monday, time: '09:00', repeat: 'weekly', every: 1, days: [1] }],
+            action: { type: 'task_digest', mode: channelId ? 'channel' : 'mine', channel_id: channelId, user_ids: [], only: 'open', subject: t('sa_tpl_task_mail_subject'), intro: '' },
+            follow: []
+        } });
+
+        out.push({ key: 'digest', label: t('sa_tpl_digest'), icon: 'bi-clipboard-data', data: {
             name: t('sa_tpl_digest'),
             rules: [{ type: 'at', date: tomorrow, time: '09:00', repeat: 'workdays' }],
             action: { type: 'report', title: t('sa_tpl_digest_title'), metrics: digest, channel_id: channelId, to: [] },
@@ -11766,21 +13414,21 @@
             down.push({ on: 'failed', do: { type: 'email', to: [config.email], subject: t('sa_tpl_uptime_down'), body: '{{result}}\n{{date}} {{time}}' } });
         }
 
-        out.push({ key: 'uptime', label: t('sa_tpl_uptime'), data: {
+        out.push({ key: 'uptime', label: t('sa_tpl_uptime'), icon: 'bi-activity', data: {
             name: t('sa_tpl_uptime'),
             rules: [{ type: 'at', date: today, time: '00:00', repeat: 'minutes', every: 15 }],
             action: { type: 'web_check', url: config.site || 'https://', mode: 'status', redirect: 1, contains: '', max_ms: 5000 },
             follow: down
         } });
 
-        out.push({ key: 'ssl', label: t('sa_tpl_ssl'), data: {
+        out.push({ key: 'ssl', label: t('sa_tpl_ssl'), icon: 'bi-shield-lock', data: {
             name: t('sa_tpl_ssl'),
             rules: [{ type: 'at', date: monday, time: '09:00', repeat: 'weekly', every: 1, days: [1] }],
             action: { type: 'web_check', url: config.site || 'https://', mode: 'ssl', days: 21 },
             follow: [{ on: 'failed', do: tell(t('sa_tpl_ssl_warn')) }]
         } });
 
-        out.push({ key: 'overdue', label: t('sa_tpl_overdue'), data: {
+        out.push({ key: 'overdue', label: t('sa_tpl_overdue'), icon: 'bi-exclamation-diamond', data: {
             name: t('sa_tpl_overdue'),
             rules: [{ type: 'at', date: tomorrow, time: '10:00', repeat: 'workdays' }, { type: 'metric', metric: 'tasks_overdue', param: 0, op: 'gt', value: 0 }],
             action: tell(t('sa_tpl_overdue_text')),
@@ -11788,7 +13436,7 @@
         } });
 
         if (has('forms_new')) {
-            out.push({ key: 'forms', label: t('sa_tpl_forms'), data: {
+            out.push({ key: 'forms', label: t('sa_tpl_forms'), icon: 'bi-ui-checks', data: {
                 name: t('sa_tpl_forms'),
                 rules: [{ type: 'at', date: today, time: '00:00', repeat: 'hourly', every: 1 }, { type: 'metric', metric: 'forms_new', param: 0, op: 'gt', value: 0 }, { type: 'hours', from: '08:00', to: '20:00' }],
                 action: tell(t('sa_tpl_forms_text')),
@@ -11797,7 +13445,7 @@
         }
 
         if (has('stock_low')) {
-            out.push({ key: 'stock', label: t('sa_tpl_stock'), data: {
+            out.push({ key: 'stock', label: t('sa_tpl_stock'), icon: 'bi-box-seam', data: {
                 name: t('sa_tpl_stock'),
                 rules: [{ type: 'at', date: tomorrow, time: '08:30', repeat: 'daily', every: 1 }, { type: 'metric', metric: 'stock_low', param: 5, op: 'gt', value: 0 }],
                 action: { type: 'notify', user_ids: [me], text: t('sa_tpl_stock_text') },
@@ -11806,7 +13454,7 @@
         }
 
         if (has('orders_new')) {
-            out.push({ key: 'orders', label: t('sa_tpl_orders'), data: {
+            out.push({ key: 'orders', label: t('sa_tpl_orders'), icon: 'bi-bag-check', data: {
                 name: t('sa_tpl_orders'),
                 rules: [{ type: 'at', date: today, time: '00:00', repeat: 'hourly', every: 1 }, { type: 'metric', metric: 'orders_new', param: 0, op: 'gt', value: 0 }],
                 action: { type: 'webhook', url: '', format: 'text', text: t('sa_tpl_orders_text') },
@@ -11815,7 +13463,7 @@
         }
 
         if (has('invoices_overdue')) {
-            out.push({ key: 'invoices', label: t('sa_tpl_invoices'), data: {
+            out.push({ key: 'invoices', label: t('sa_tpl_invoices'), icon: 'bi-receipt', data: {
                 name: t('sa_tpl_invoices'),
                 rules: [{ type: 'at', date: monday, time: '09:30', repeat: 'weekly', every: 1, days: [1] }, { type: 'metric', metric: 'invoices_overdue', param: 0, op: 'gt', value: 0 }],
                 action: tell(t('sa_tpl_invoices_text')),
@@ -11823,14 +13471,14 @@
             } });
         }
 
-        out.push({ key: 'monthly', label: t('sa_tpl_monthly'), data: {
+        out.push({ key: 'monthly', label: t('sa_tpl_monthly'), icon: 'bi-calendar-month', data: {
             name: t('sa_tpl_monthly'),
             rules: [{ type: 'at', date: firstOfMonth, time: '09:00', repeat: 'monthly', every: 1 }],
             action: { type: 'task', title: t('sa_tpl_monthly_task'), description: '', priority: 'high', assignees: [me], channel_id: channelId, due_in: 5 },
             follow: []
         } });
 
-        out.push({ key: 'chain', label: t('sa_tpl_chain'), data: {
+        out.push({ key: 'chain', label: t('sa_tpl_chain'), icon: 'bi-diagram-3', data: {
             name: t('sa_tpl_chain'),
             rules: [{ type: 'trigger' }],
             action: tell(t('sa_tpl_chain_text')),
@@ -11842,7 +13490,9 @@
 
     // The form: a new action (context: channel_id or note_id) or one being
     // changed (item from the server); preset fills a new one from a ready
-    // one (saTemplates()).
+    // one (saTemplates()). It reads as a flow, top to bottom: when it starts,
+    // what must hold, what it does, what follows; beside it, the server says
+    // in words what it will do and when it runs next.
     function scheduledForm(context, item, onDone, preset) {
         var config = CFG.scheduled;
 
@@ -11855,23 +13505,47 @@
         var node = offcanvas('ws-sa-form', '');
         var body = clear(node.querySelector('.offcanvas-body'));
         var footer = clear(node.querySelector('.offcanvas-footer'));
+        var state = { join: false };
 
         node.classList.add('ws-sa-offcanvas');
         node.querySelector('.offcanvas-title').textContent = item ? t('sa_edit') : t('sa_new_long');
         footer.classList.remove('d-none');
 
-        // ── a ready one ──
+        // ── a ready one: cards to start from ──
 
         var templates = item ? [] : saTemplates(context);
 
         if (templates.length) {
-            var picker = select([['', t('sa_template_none')]].concat(templates.map(function (template) { return [template.key, template.label]; })), preset ? preset.key : '');
-            picker.addEventListener('change', function () {
-                var chosen = templates.filter(function (template) { return template.key === picker.value; })[0] || null;
+            var gallery = el('div', 'ws-sa-gallery');
+            var galleryTitle = el('div', 'ws-sa-gallery-title', t('sa_templates'));
 
-                scheduledForm(context, null, onDone, chosen);
+            [{ key: '', label: t('sa_template_none'), icon: 'bi-plus-lg', help: t('sa_template_none_help') }].concat(templates).forEach(function (template) {
+                var card = el('button', 'ws-sa-template' + (((preset ? preset.key : '') === template.key) ? ' active' : ''));
+                card.type = 'button';
+                card.appendChild(icon(template.icon || 'bi-alarm', 'ws-sa-template-icon'));
+
+                var text = el('span', 'ws-sa-template-text');
+                text.appendChild(el('b', '', template.label));
+
+                if (template.help) {
+                    text.appendChild(el('small', '', template.help));
+                }
+
+                card.appendChild(text);
+                card.addEventListener('click', function () {
+                    scheduledForm(context, null, onDone, template.key ? template : null);
+                });
+                gallery.appendChild(card);
             });
-            body.appendChild(formRow(t('sa_templates'), picker));
+
+            // Open on a blank form; once one is picked it folds away.
+            var details = el('details', 'ws-sa-gallery-wrap');
+            details.open = !preset;
+            var summary = el('summary', '');
+            summary.appendChild(galleryTitle);
+            details.appendChild(summary);
+            details.appendChild(gallery);
+            body.appendChild(details);
         }
 
         var name = el('input', 'form-control');
@@ -11879,10 +13553,40 @@
         name.value = data.name || '';
         body.appendChild(formRow(t('sa_name'), name, t('sa_name_help')));
 
-        // ── when ──
+        // The flow: numbered steps down a rail.
+        var flow = el('div', 'ws-sa-flow');
+        body.appendChild(flow);
+
+        function step(number, iconName, title, help) {
+            var wrap = el('div', 'pg-step ws-sa-step');
+            var rail = el('div', 'pg-step-rail');
+            var nodeMark = el('span', 'pg-step-node');
+            var box = el('div', 'ws-sa-section');
+            var head = el('div', 'ws-sa-section-title');
+
+            nodeMark.appendChild(icon(iconName));
+            nodeMark.title = String(number);
+            rail.appendChild(nodeMark);
+            wrap.appendChild(rail);
+            head.appendChild(el('span', 'ws-sa-step-number', String(number)));
+            head.appendChild(document.createTextNode(title));
+            box.appendChild(head);
+
+            if (help) {
+                box.appendChild(el('div', 'form-text mt-0 mb-2', help));
+            }
+
+            wrap.appendChild(box);
+            flow.appendChild(wrap);
+
+            return box;
+        }
+
+        // ── 1 · when ──
 
         var time = null;
-        var triggered = false;
+        var whenMode = 'time';
+        var joinRule = null;
 
         (data.rules || []).forEach(function (rule) {
             if (rule.type === 'at') {
@@ -11890,30 +13594,39 @@
             }
 
             if (rule.type === 'trigger') {
-                triggered = true;
+                whenMode = 'trigger';
+            }
+
+            if (rule.type === 'join') {
+                whenMode = 'join';
+                joinRule = rule;
             }
         });
 
-        var tomorrow = addDays(CFG.today, 1);
-        var rules = el('div', 'ws-sa-section');
-        rules.appendChild(el('div', 'ws-sa-section-title', t('sa_rules')));
-        rules.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_rules_help')));
+        if ((whenMode === 'join') && !config.join) {
+            whenMode = 'time';
+        }
 
-        var whenMode = triggered ? 'trigger' : 'time';
-        var modes = el('div', 'btn-group btn-group-sm ws-sa-modes mb-2');
+        var tomorrow = addDays(CFG.today, 1);
+        var rules = step(1, 'bi-lightning', t('sa_step_when'), t('sa_step_when_help'));
+        var modes = el('div', 'btn-group btn-group-sm ws-sa-modes mb-2 flex-wrap');
         var timeBox = el('div');
         var triggerBox = el('div', 'ws-sa-when-trigger small text-body-secondary', t('sa_when_trigger_help'));
+        var joinBox = el('div', 'ws-sa-when-join');
 
         if (config.chains) {
-            [['time', t('sa_when_time'), 'bi-alarm'], ['trigger', t('sa_when_trigger'), 'bi-diagram-3']].forEach(function (option) {
-                var toggle = button('btn btn-outline-secondary' + (whenMode === option[0] ? ' active' : ''), option[1], option[2]);
-                toggle.addEventListener('click', function () {
-                    whenMode = option[0];
-                    Array.prototype.forEach.call(modes.children, function (other) { other.classList.toggle('active', other === toggle); });
-                    showWhen();
+            [['time', t('sa_when_time'), 'bi-alarm'], ['trigger', t('sa_when_trigger'), 'bi-diagram-3']]
+                .concat(config.join ? [['join', t('sa_when_join'), 'bi-person-plus']] : [])
+                .forEach(function (option) {
+                    var toggle = button('btn btn-outline-secondary' + (whenMode === option[0] ? ' active' : ''), option[1], option[2]);
+                    toggle.addEventListener('click', function () {
+                        whenMode = option[0];
+                        Array.prototype.forEach.call(modes.children, function (other) { other.classList.toggle('active', other === toggle); });
+                        showWhen();
+                        preview();
+                    });
+                    modes.appendChild(toggle);
                 });
-                modes.appendChild(toggle);
-            });
             rules.appendChild(modes);
         }
 
@@ -11954,16 +13667,24 @@
         timeBox.appendChild(repeatRow);
         daysBox.classList.add('ws-sa-when-days');
         timeBox.appendChild(daysBox);
+
+        // Somebody joins: one channel, or any public one.
+        var joinChannel = saChannelSelect(joinRule ? (joinRule.channel_id || 0) : ((context && context.channel_id) || 0), t('sa_join_any'));
+        joinBox.appendChild(saLabelled(t('sa_join_channel'), joinChannel, t('sa_join_help')));
+
         rules.appendChild(timeBox);
         rules.appendChild(triggerBox);
+        rules.appendChild(joinBox);
 
         var units = { minutes: 'sa_every_minutes', hourly: 'sa_every_hours', daily: 'sa_every_days', weekly: 'sa_every_weeks', monthly: 'sa_every_months', yearly: 'sa_every_years' };
+        var actionEditors = [];
 
         function showWhen() {
             var value = repeat.value;
 
             timeBox.hidden = (whenMode !== 'time');
             triggerBox.hidden = (whenMode !== 'trigger');
+            joinBox.hidden = (whenMode !== 'join');
             repeatRow.hidden = (value === 'none');
             everyBox.hidden = !units[value];
             everyUnit.textContent = units[value] ? t(units[value]) : '';
@@ -11973,18 +13694,21 @@
             if (value === 'minutes' && (parseInt(every.value, 10) || 0) < (config.min_minutes || 5)) {
                 every.value = String(config.min_minutes || 5);
             }
+
+            state.join = (whenMode === 'join');
+            actionEditors.forEach(function (editor) { editor.setJoin(state.join); });
         }
 
         repeat.addEventListener('change', showWhen);
-        showWhen();
 
-        // ── conditions ──
+        // ── 2 · only if ──
 
+        var checks = step(2, 'bi-funnel', t('sa_step_if'), t('sa_rules_help'));
         var conditions = el('div', 'ws-sa-conditions');
-        rules.appendChild(conditions);
+        checks.appendChild(conditions);
 
         (data.rules || []).forEach(function (rule) {
-            if (rule.type !== 'at' && rule.type !== 'trigger') {
+            if (['at', 'trigger', 'join'].indexOf(rule.type) === -1) {
                 conditions.appendChild(saConditionRow(rule));
             }
         });
@@ -11992,7 +13716,7 @@
         var addRule = button('btn btn-sm btn-ghost', t('sa_add_rule'), 'bi-plus-lg');
         addRule.addEventListener('click', function (event) {
             var box = addRule.getBoundingClientRect();
-            var add = function (rule) { return function () { conditions.appendChild(saConditionRow(rule)); }; };
+            var add = function (rule) { return function () { conditions.appendChild(saConditionRow(rule)); preview(); }; };
 
             event.stopPropagation();
             ctxMenu(box.left, box.bottom + 4, [
@@ -12003,61 +13727,57 @@
                 config.chains ? { icon: 'bi-clock', label: t('sa_rule_hours'), action: add({ type: 'hours' }) } : null
             ]);
         });
-        rules.appendChild(addRule);
-        body.appendChild(rules);
+        checks.appendChild(addRule);
 
-        // ── the action ──
+        // ── 3 · do ──
 
-        var actionSection = el('div', 'ws-sa-section');
-        actionSection.appendChild(el('div', 'ws-sa-section-title', t('sa_action')));
-        actionSection.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_action_help')));
-        var actionEditor = saActionEditor(data.action, false, selfId);
-        actionSection.appendChild(actionEditor);
-        body.appendChild(actionSection);
+        var doing = step(3, 'bi-lightning-charge', t('sa_step_do'), t('sa_action_help'));
+        var actionEditor = saActionEditor(data.action, false, selfId, { join: whenMode === 'join' });
+        actionEditors.push(actionEditor);
+        doing.appendChild(actionEditor);
 
-        // ── afterwards ──
+        // ── 4 · afterwards ──
 
-        var followSection = el('div', 'ws-sa-section');
         var follows = el('div', 'ws-sa-follows');
         var thenEditor = null;
 
         if (config.chains) {
+            var after = step(4, 'bi-signpost-split', t('sa_follow'), t('sa_follow_help'));
             var addFollow = button('btn btn-sm btn-ghost', t('sa_add_follow'), 'bi-plus-lg');
             var countFollow = function () {
                 addFollow.hidden = (follows.children.length >= (config.max_follow || 5));
+                actionEditors = [actionEditor].concat(Array.prototype.map.call(follows.children, function (row) { return row.editor; }).filter(Boolean));
             };
 
-            followSection.appendChild(el('div', 'ws-sa-section-title', t('sa_follow')));
-            followSection.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_follow_help')));
-            followSection.appendChild(follows);
+            after.appendChild(follows);
 
             (data.follow || []).forEach(function (follow) {
-                follows.appendChild(saFollowRow(follow, selfId, countFollow));
+                follows.appendChild(saFollowRow(follow, selfId, countFollow, state));
             });
 
             addFollow.addEventListener('click', function () {
-                follows.appendChild(saFollowRow(null, selfId, countFollow));
+                follows.appendChild(saFollowRow(null, selfId, countFollow, state));
                 countFollow();
             });
-            followSection.appendChild(addFollow);
+            after.appendChild(addFollow);
             countFollow();
         } else {
-            followSection.appendChild(el('div', 'ws-sa-section-title', t('sa_then')));
-            followSection.appendChild(el('div', 'form-text mt-0 mb-2', t('sa_then_help')));
-            thenEditor = saActionEditor((data.follow && data.follow[0]) ? data.follow[0].do : null, true, selfId);
-            followSection.appendChild(thenEditor);
+            var then = step(4, 'bi-signpost-split', t('sa_then'), t('sa_then_help'));
+            thenEditor = saActionEditor((data.follow && data.follow[0]) ? data.follow[0].do : null, true, selfId, { join: whenMode === 'join' });
+            actionEditors.push(thenEditor);
+            then.appendChild(thenEditor);
         }
 
-        body.appendChild(followSection);
+        showWhen();
 
         // ── the words filled in when it runs ──
 
         if (config.placeholders) {
             var words = el('details', 'ws-sa-words small mt-3');
-            var summary = el('summary', 'text-body-secondary', t('sa_placeholders'));
+            var wordsSummary = el('summary', 'text-body-secondary', t('sa_placeholders'));
             var table = el('div', 'ws-sa-words-list');
 
-            words.appendChild(summary);
+            words.appendChild(wordsSummary);
             Object.keys(config.placeholders).forEach(function (key) {
                 var line = el('div');
                 line.appendChild(el('code', '', key));
@@ -12071,20 +13791,18 @@
             body.appendChild(words);
         }
 
-        body.appendChild(el('div', 'small text-body-secondary mt-3', t('sa_help')));
+        // ── what it will do, in words, as it is filled in ──
 
-        // ── saving ──
+        var outline = el('div', 'ws-sa-outline');
+        body.insertBefore(outline, flow);
 
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
-        footer.appendChild(cancel);
-
-        var save = button('btn btn-sm btn-primary rounded-pill px-3', item ? t('save') : t('sa_save'), item ? 'bi-check2' : 'bi-alarm');
-        save.addEventListener('click', function () {
+        function request() {
             var list = [];
 
             if (whenMode === 'trigger') {
                 list.push({ type: 'trigger' });
+            } else if (whenMode === 'join') {
+                list.push({ type: 'join', channel_id: parseInt(joinChannel.value, 10) || 0 });
             } else {
                 var at = { type: 'at', date: date.value, time: clock.value, repeat: repeat.value };
 
@@ -12106,7 +13824,7 @@
                 }
             });
 
-            var request = {
+            var out = {
                 id: item ? item.id : 0,
                 name: name.value,
                 rules: list,
@@ -12116,14 +13834,99 @@
             };
 
             if (config.chains) {
-                request.follow = Array.prototype.map.call(follows.children, function (row) { return row.read(); }).filter(function (follow) { return follow.do; });
+                out.follow = Array.prototype.map.call(follows.children, function (row) { return row.read(); }).filter(function (follow) { return follow.do; });
             } else {
-                request.then_action = thenEditor ? thenEditor.read() : null;
+                out.then_action = thenEditor ? thenEditor.read() : null;
             }
 
+            return out;
+        }
+
+        var previewSerial = 0;
+
+        // A form that was opened empty says nothing is missing until
+        // somebody has started filling it in.
+        var touched = !!(item || preset);
+
+        var preview = debounce(function () {
+            var serial = ++previewSerial;
+            var asked = request();
+
+            if (!asked.name.trim()) {
+                asked.name = '-';
+            }
+
+            api('ws_scheduled_preview', asked).then(function (result) {
+                if (serial !== previewSerial) {
+                    return;
+                }
+
+                clear(outline);
+                outline.classList.remove('ws-sa-outline-error');
+
+                var line = function (iconName, label, text) {
+                    var row = el('div', 'ws-sa-outline-row');
+                    row.appendChild(icon(iconName));
+                    row.appendChild(el('b', '', label));
+                    row.appendChild(el('span', '', text));
+                    outline.appendChild(row);
+                };
+
+                line('bi-lightning', t('sa_step_when'), result.when);
+
+                (result.conditions || []).forEach(function (text) { line('bi-funnel', t('sa_step_if'), text); });
+
+                line('bi-lightning-charge', t('sa_step_do'), result.action);
+
+                (result.follow || []).forEach(function (follow) { line('bi-arrow-return-right', follow.label, follow.text); });
+
+                if ((result.next || []).length) {
+                    line('bi-calendar-check', t('sa_next_runs'), result.next.join(' · '));
+                }
+            }).catch(function (error) {
+                if (serial !== previewSerial) {
+                    return;
+                }
+
+                clear(outline);
+
+                if (!touched) {
+                    return;
+                }
+
+                outline.classList.add('ws-sa-outline-error');
+                outline.appendChild(icon('bi-exclamation-circle', 'me-1'));
+                outline.appendChild(document.createTextNode(error.message));
+            });
+        }, 500);
+
+        var changed = function () {
+            touched = true;
+            preview();
+        };
+
+        body.addEventListener('input', changed);
+        body.addEventListener('change', changed);
+        body.addEventListener('click', function (event) {
+            if (event.target.closest('.ws-sa-days, .ws-sa-modes, .ws-sa-remove, .ws-sa-picker-item')) {
+                changed();
+            }
+        });
+        preview();
+
+        body.appendChild(el('div', 'small text-body-secondary mt-3', t('sa_help')));
+
+        // ── saving ──
+
+        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+        footer.appendChild(cancel);
+
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', item ? t('save') : t('sa_save'), item ? 'bi-check2' : 'bi-alarm');
+        save.addEventListener('click', function () {
             save.disabled = true;
 
-            api('ws_scheduled_save', request).then(function (result) {
+            api('ws_scheduled_save', request()).then(function (result) {
                 hideOffcanvas(node);
                 toast(t('sa_saved'), 'success');
 
@@ -12149,14 +13952,15 @@
     function scheduledCard(item, onChange) {
         var card = el('div', 'ws-sa-card ws-sa-' + item.status);
         var head = el('div', 'ws-sa-card-head');
+        var whenIcon = item.joins ? 'bi-person-plus' : (item.trigger_only ? 'bi-diagram-3' : 'bi-alarm');
 
-        head.appendChild(icon(item.trigger_only ? 'bi-diagram-3' : 'bi-alarm', 'ws-sa-card-icon'));
+        head.appendChild(icon(whenIcon, 'ws-sa-card-icon'));
         head.appendChild(el('b', 'ws-sa-card-name', item.name));
         head.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
         card.appendChild(head);
 
-        var when = el('div', 'ws-sa-line');
-        when.appendChild(icon(item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event'), 'me-1'));
+        var when = el('div', 'ws-sa-line ws-sa-when-line');
+        when.appendChild(icon(item.joins ? 'bi-person-plus' : (item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event')), 'me-1'));
         when.appendChild(document.createTextNode(item.when + (item.next ? ' · ' + t('sa_next') + ': ' + item.next : '')));
         card.appendChild(when);
 
@@ -12255,6 +14059,16 @@
             tools.appendChild(run);
         }
 
+        // A copy to start a new one from.
+        var copy = button('btn btn-sm btn-ghost', t('sa_duplicate'), 'bi-copy');
+        copy.addEventListener('click', function () {
+            var data = JSON.parse(JSON.stringify(item.data || {}));
+
+            data.name = t('sa_copy_of', data.name || item.name);
+            scheduledForm(item.channel ? { channel_id: item.channel.id } : {}, null, function (fresh) { refresh({ item: fresh }); }, { key: '', data: data });
+        });
+        tools.appendChild(copy);
+
         var history = button('btn btn-sm btn-ghost', t('sa_history'), 'bi-clock-history');
         var historyBox = el('div', 'ws-sa-history');
         historyBox.hidden = true;
@@ -12314,6 +14128,189 @@
 
         scheduledTickAt = now;
         api('ws_tick').catch(function () {});
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Scheduled messages (includes/workspace/scheduled_messages.php): written
+    // in the box now, posted later; each person's own
+    // ═══════════════════════════════════════════════════════════════════
+
+    // The times offered beside the send button. Days come from the server's
+    // date; "in an hour" is counted on the server's clock.
+    function smPresets() {
+        var tomorrow = addDays(CFG.today, 1);
+        var monday = CFG.today;
+
+        do {
+            monday = addDays(monday, 1);
+        } while (new Date(monday + 'T12:00:00').getDay() !== 1);
+
+        var out = [
+            { label: t('sm_in_hour'), icon: 'bi-hourglass-split', when: { in_minutes: 60 } },
+            { label: t('sm_tomorrow_morning', '09:00'), icon: 'bi-sunrise', when: { date: tomorrow, time: '09:00' } }
+        ];
+
+        if (monday !== tomorrow) {
+            out.push({ label: t('sm_next_monday', '09:00'), icon: 'bi-calendar-week', when: { date: monday, time: '09:00' } });
+        }
+
+        return out;
+    }
+
+    // A date and a time, for "Choose a time…" and for changing one.
+    function smWhenFields(date, time) {
+        var box = el('div', 'row g-2');
+        var dateInput = el('input', 'form-control form-control-sm');
+        var timeInput = el('input', 'form-control form-control-sm');
+        var dateCol = el('div', 'col-7');
+        var timeCol = el('div', 'col-5');
+        var dateLabel = el('label', 'form-label small mb-1', t('sm_date'));
+        var timeLabel = el('label', 'form-label small mb-1', t('sm_time'));
+
+        dateInput.type = 'date';
+        dateInput.id = nextId('ws-sm-date-');
+        dateInput.min = CFG.today;
+        dateInput.value = date || addDays(CFG.today, 1);
+        timeInput.type = 'time';
+        timeInput.id = nextId('ws-sm-time-');
+        timeInput.value = time || '09:00';
+        dateLabel.htmlFor = dateInput.id;
+        timeLabel.htmlFor = timeInput.id;
+        dateCol.appendChild(dateLabel);
+        dateCol.appendChild(dateInput);
+        timeCol.appendChild(timeLabel);
+        timeCol.appendChild(timeInput);
+        box.appendChild(dateCol);
+        box.appendChild(timeCol);
+
+        box.value = function () {
+            return { date: dateInput.value, time: timeInput.value };
+        };
+
+        return box;
+    }
+
+    // Asks for a date and a time; resolves with { date, time } or null.
+    function smAskWhen(date, time) {
+        var fields = smWhenFields(date, time);
+
+        return askClosed().then(function () {
+            return ask(t('sm_custom_title'), t('sm_save'), false, fields);
+        }).then(function (yes) {
+            return yes ? fields.value() : null;
+        });
+    }
+
+    // One scheduled message, as a card: where and when it posts, what it
+    // says, and what can be done with it. onChange() is told after a change;
+    // onEdit(item) (on the channel screen) takes its text into the box.
+    function scheduledMessageCard(item, onChange, onEdit) {
+        var card = el('div', 'ws-sm-card' + (item.status === 'failed' ? ' ws-sm-failed' : ''));
+        var head = el('div', 'ws-sm-head');
+
+        head.appendChild(icon(item.status === 'failed' ? 'bi-send-exclamation' : 'bi-clock', 'ws-sm-icon'));
+        head.appendChild(el('b', '', item.status === 'failed' ? t('sm_failed') : t('sm_at', item.when)));
+
+        if (item.channel) {
+            var where = el('a', 'ws-sm-where', t('sm_in', item.channel.name));
+            where.href = CFG.urls.workspace + '?channel=' + item.channel.id;
+            head.appendChild(where);
+        }
+
+        card.appendChild(head);
+
+        if (item.parent_id) {
+            card.appendChild(el('div', 'ws-sm-reply small text-body-secondary', t('sm_reply')));
+        }
+
+        var body = el('div', 'ws-sm-body ws-msg-body');
+        setHtml(body, item.html);
+        card.appendChild(body);
+
+        if (item.error) {
+            card.appendChild(el('div', 'small text-danger mt-1', item.error));
+        }
+
+        var tools = el('div', 'ws-sm-tools');
+        var sendNow = button('btn btn-sm btn-ghost', t('sm_send_now'), 'bi-send');
+        sendNow.addEventListener('click', function () {
+            sendNow.disabled = true;
+            api('ws_scheduled_message_send', { id: item.id }).then(function () {
+                toast(t('sm_sent'), 'success');
+                onChange();
+            }).catch(function (error) {
+                sendNow.disabled = false;
+                fail(error);
+            });
+        });
+        tools.appendChild(sendNow);
+
+        var move = button('btn btn-sm btn-ghost', t('sm_reschedule'), 'bi-calendar-event');
+        move.addEventListener('click', function () {
+            smAskWhen(item.date, item.time).then(function (when) {
+                if (!when) {
+                    return;
+                }
+
+                api('ws_scheduled_message_save', { id: item.id, body: item.raw, date: when.date, time: when.time }).then(function (data) {
+                    toast(t('sm_saved', data.item ? data.item.when : ''), 'success');
+                    onChange();
+                }).catch(fail);
+            });
+        });
+        tools.appendChild(move);
+
+        if (onEdit) {
+            var edit = button('btn btn-sm btn-ghost', t('sm_edit_text'), 'bi-pencil');
+            edit.addEventListener('click', function () { onEdit(item); });
+            tools.appendChild(edit);
+        }
+
+        var remove = button('btn btn-sm btn-ghost text-danger', t('sm_delete'), 'bi-trash');
+        remove.addEventListener('click', function () {
+            ask(t('sm_delete_confirm'), t('sm_delete'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_scheduled_message_delete', { id: item.id }).then(function () {
+                    toast(t('sm_deleted'), 'success');
+                    onChange();
+                }).catch(fail);
+            });
+        });
+        tools.appendChild(remove);
+        card.appendChild(tools);
+
+        return card;
+    }
+
+    // The list of one's scheduled messages: of a channel (channelId), or of
+    // every channel (0), into a box.
+    function scheduledMessagesList(box, channelId, onChange, onEdit) {
+        clear(box);
+        box.appendChild(el('div', 'small text-body-secondary', t('loading')));
+
+        api('ws_scheduled_messages', { channel_id: channelId || 0 }).then(function (data) {
+            clear(box);
+
+            if (!data.items.length) {
+                var empty = el('div', 'ws-empty');
+                empty.appendChild(icon('bi-clock'));
+                empty.appendChild(document.createTextNode(t('sm_empty')));
+                box.appendChild(empty);
+            }
+
+            data.items.forEach(function (item) {
+                box.appendChild(scheduledMessageCard(item, function () {
+                    scheduledMessagesList(box, channelId, onChange, onEdit);
+
+                    if (onChange) {
+                        onChange();
+                    }
+                }, onEdit));
+            });
+        }).catch(fail);
     }
 
     // ── Task rows (the tasks screen, a channel's task tab, drawers) ────

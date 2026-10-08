@@ -18,6 +18,15 @@
  * counts, call a webhook, check that a web address answers or how long its
  * certificate has left, and start another scheduled action.
  *
+ * An action may also have no time of its own and wait for somebody to join a
+ * channel (the "join" rule): the join puts it in the queue with the newcomer
+ * named, which is how a channel greets the people who come in and asks them
+ * to say who they are.
+ *
+ * A scheduled message (kind "message", scheduled_messages.php) is the plain
+ * bridge from the writing box: one message written now and posted later, by
+ * anybody in the team, run by the same machinery.
+ *
  * Starting another one is how actions are chained: the follow-up puts the
  * other action in a queue (ws_scheduled_queue) for now or for a while later,
  * and the next run takes it from there. A chain carries its depth, and stops
@@ -124,6 +133,53 @@ function ws_scheduled_chains_ready()
 }
 
 /**
+ * Do scheduled actions know their kind (2026.4.8, 8.81)? Without the column
+ * every row is an action and no message can be scheduled.
+ *
+ * @return bool
+ */
+function ws_scheduled_messages_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_scheduled_ready() && function_exists('waf_table_has_column')
+            && waf_table_has_column('ws_scheduled_actions', 'kind');
+    }
+
+    return $ready;
+}
+
+/**
+ * The condition that keeps a list to the scheduled actions, leaving the
+ * scheduled messages (each person's own) out.
+ *
+ * @param string $alias the table's alias in the query
+ * @return string " AND ..." or ""
+ */
+function ws_scheduled_actions_only($alias = '')
+{
+    return ws_scheduled_messages_ready() ? " AND " . (($alias !== '') ? $alias . '.' : '') . "kind = 'action'" : '';
+}
+
+/**
+ * Can a start in the queue carry who it is about (2026.4.8, 8.81)? The join
+ * rule names the newcomer that way.
+ *
+ * @return bool
+ */
+function ws_scheduled_join_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_scheduled_chains_ready() && waf_table_has_column('ws_scheduled_queue', 'context');
+    }
+
+    return $ready;
+}
+
+/**
  * May this person create, change and see scheduled actions? Staff in the
  * team.
  *
@@ -150,6 +206,20 @@ function ws_scheduled($id)
     $row = db_item("SELECT * FROM ws_scheduled_actions WHERE id = '" . (int) $id . "'");
 
     return is_array($row) ? ws_scheduled_decode($row) : null;
+}
+
+/**
+ * One scheduled action, never somebody's scheduled message: what the staff's
+ * screen reads, changes and runs.
+ *
+ * @param int $id
+ * @return array|null
+ */
+function ws_scheduled_action($id)
+{
+    $row = ws_scheduled($id);
+
+    return ($row && ((string) ($row['kind'] ?? 'action') === 'action')) ? $row : null;
 }
 
 /**
@@ -507,6 +577,9 @@ function ws_scheduled_placeholders()
         '{{status}}'        => lang('how the action went, in a follow-up'),
         '{{source}}'        => lang('the action that started this one'),
         '{{source_result}}' => lang('what the action that started this one did'),
+        '{{newcomer}}'      => lang('the person who joined the channel, tagged'),
+        '{{newcomer_name}}' => lang('the name of the person who joined'),
+        '{{channel}}'       => lang('the channel they joined'),
         '{{count:tasks_overdue}}' => lang('a count, by its key'),
     );
 }
@@ -538,6 +611,9 @@ function ws_scheduled_fill($text, $context)
         '{{status}}'        => (string) ($context['status'] ?? ''),
         '{{source}}'        => (string) ($context['source'] ?? ''),
         '{{source_result}}' => (string) ($context['source_result'] ?? ''),
+        '{{newcomer}}'      => ((int) ($context['newcomer'] ?? 0) > 0) ? '<@user:' . (int) $context['newcomer'] . '>' : '',
+        '{{newcomer_name}}' => ((int) ($context['newcomer'] ?? 0) > 0) ? ws_person_name((int) $context['newcomer']) : '',
+        '{{channel}}'       => ((int) ($context['join_channel_id'] ?? 0) > 0) ? '#' . (string) db_value("SELECT name FROM ws_channels WHERE id = '" . (int) $context['join_channel_id'] . "'") : '',
     );
 
     $text = strtr($text, $values);
@@ -631,6 +707,8 @@ function ws_scheduled_js_config($viewer)
     return array(
         'ready'        => true,
         'chains'       => ws_scheduled_chains_ready(),
+        'join'         => ws_scheduled_join_ready(),
+        'digest_only'  => ws_scheduled_digest_filters(),
         'records'      => $records,
         'changes'      => $changes,
         'metrics'      => $metrics,
@@ -687,7 +765,7 @@ function ws_scheduled_input($viewer, $data, $existing = null)
             return $fail($checked['error'], 'rules');
         }
 
-        if (in_array($checked['rule']['type'], array('at', 'trigger'), true)) {
+        if (in_array($checked['rule']['type'], array('at', 'trigger', 'join'), true)) {
             if ($when !== null) {
                 return $fail(lang('A scheduled action has one time; add the other rules as conditions.'), 'rules');
             }
@@ -702,7 +780,7 @@ function ws_scheduled_input($viewer, $data, $existing = null)
         return $fail(lang('Say when it should run.'), 'rules');
     }
 
-    if (($when['type'] === 'trigger') && !ws_scheduled_chains_ready()) {
+    if ((($when['type'] === 'trigger') && !ws_scheduled_chains_ready()) || (($when['type'] === 'join') && !ws_scheduled_join_ready())) {
         return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), 'rules');
     }
 
@@ -721,7 +799,10 @@ function ws_scheduled_input($viewer, $data, $existing = null)
 
     $self_id = $existing ? (int) $existing['id'] : 0;
     $channel_id = (int) ($existing['channel_id'] ?? ($data['channel_id'] ?? 0));
-    $action = ws_scheduled_action_input($viewer, $data['action'] ?? null, $channel_id, $self_id);
+
+    // "The channel they joined" is a channel only a join rule names.
+    $joined = ($when['type'] === 'join');
+    $action = ws_scheduled_action_input($viewer, $data['action'] ?? null, $channel_id, $self_id, $joined);
 
     if (!$action['ok']) {
         return $fail($action['error'], 'action');
@@ -759,7 +840,7 @@ function ws_scheduled_input($viewer, $data, $existing = null)
             $on = 'done';
         }
 
-        $checked = ws_scheduled_action_input($viewer, $item['do'], $channel_id, $self_id);
+        $checked = ws_scheduled_action_input($viewer, $item['do'], $channel_id, $self_id, $joined);
 
         if (!$checked['ok']) {
             return $fail($checked['error'], 'follow');
@@ -877,6 +958,21 @@ function ws_scheduled_rule_input($viewer, $rule)
         // No time of its own: another action starts it, or somebody by hand.
         case 'trigger':
             return array('ok' => true, 'error' => '', 'rule' => array('type' => 'trigger'));
+
+        // No time of its own either: somebody joining a channel starts it -
+        // one channel, or (0) any public channel.
+        case 'join':
+            $join_channel = max(0, (int) ($rule['channel_id'] ?? 0));
+
+            if ($join_channel > 0) {
+                $channel = ws_channel($join_channel);
+
+                if (!$channel || !ws_can_read_channel($viewer, $channel) || !ws_scheduled_greets($channel)) {
+                    return $fail(lang('Choose a channel people join.'));
+                }
+            }
+
+            return array('ok' => true, 'error' => '', 'rule' => array('type' => 'join', 'channel_id' => $join_channel));
 
         case 'workday':
             return array('ok' => true, 'error' => '', 'rule' => array('type' => 'workday'));
@@ -1089,9 +1185,11 @@ function ws_scheduled_url_input($url)
  * @param mixed $action
  * @param int   $channel_id the channel the scheduled action was written in
  * @param int   $self_id    the action being changed, 0 for a new one
+ * @param bool  $joined     started by somebody joining a channel: "the channel
+ *                          they joined" (channel_id -1) may be written in
  * @return array ok, error, action
  */
-function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id = 0)
+function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id = 0, $joined = false)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'action' => null);
@@ -1104,16 +1202,17 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
     $type = (string) ($action['type'] ?? '');
 
     // What the kinds added in 5.85 need.
-    if (in_array($type, array('notify', 'task', 'webhook', 'web_check', 'report', 'trigger'), true) && !ws_scheduled_chains_ready()) {
+    if (in_array($type, array('notify', 'task', 'webhook', 'web_check', 'report', 'trigger', 'task_digest'), true) && !ws_scheduled_chains_ready()) {
         return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
     }
 
     switch ($type) {
 
         case 'post':
-            $channel = ws_channel((int) ($action['channel_id'] ?? 0));
+            $into_joined = $joined && ((int) ($action['channel_id'] ?? 0) === -1);
+            $channel = $into_joined ? null : ws_channel((int) ($action['channel_id'] ?? 0));
 
-            if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+            if (!$into_joined && (!$channel || !ws_can_post_channel($viewer, $channel))) {
                 return $fail(lang('Choose a channel you can write in.'));
             }
 
@@ -1127,7 +1226,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 return $fail(lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)));
             }
 
-            return array('ok' => true, 'error' => '', 'action' => array('type' => 'post', 'channel_id' => (int) $channel['id'], 'body' => $body));
+            return array('ok' => true, 'error' => '', 'action' => array('type' => 'post', 'channel_id' => $into_joined ? -1 : (int) $channel['id'], 'body' => $body));
 
         case 'email':
             $addresses = ws_scheduled_addresses($action['to'] ?? '');
@@ -1216,6 +1315,38 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'assignees'   => $assignees,
                 'channel_id'  => $task_channel,
                 'due_in'      => ($due === '') ? '' : max(0, min(3650, (int) $due)),
+            ));
+
+        // Each person their tasks by e-mail (a weekly list, say): their own
+        // open tasks, or the open tasks of one channel.
+        case 'task_digest':
+            $mode = ((string) ($action['mode'] ?? 'mine') === 'channel') ? 'channel' : 'mine';
+            $digest_channel = max(0, (int) ($action['channel_id'] ?? 0));
+
+            if ($digest_channel > 0) {
+                $channel = ws_channel($digest_channel);
+
+                if (!$channel || !ws_can_read_channel($viewer, $channel) || in_array((string) $channel['kind'], array('guest', 'thread'), true)) {
+                    return $fail(lang('That channel could not be found.'));
+                }
+            } elseif ($mode === 'channel') {
+                return $fail(lang('Choose the channel whose tasks are sent.'));
+            }
+
+            $only = (string) ($action['only'] ?? 'open');
+
+            if (!isset(ws_scheduled_digest_filters()[$only])) {
+                $only = 'open';
+            }
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'       => 'task_digest',
+                'mode'       => $mode,
+                'channel_id' => $digest_channel,
+                'user_ids'   => ws_scheduled_people($action['user_ids'] ?? array()),
+                'only'       => $only,
+                'subject'    => mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, 250),
+                'intro'      => mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['intro'] ?? ''))), 0, 2000),
             ));
 
         // A call to another system: Slack, Teams, n8n, Zapier, Make.
@@ -1312,7 +1443,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
         // Another scheduled action, now or a while later.
         case 'trigger':
             $target_id = (int) ($action['target_id'] ?? 0);
-            $target = ws_scheduled($target_id);
+            $target = ws_scheduled_action($target_id);
 
             if (!$target || in_array($target['status'], array('cancelled', 'done'), true)) {
                 return $fail(lang('Choose a scheduled action that is set to run.'));
@@ -1576,21 +1707,33 @@ function ws_scheduled_time_rule($row)
 }
 
 /**
- * Has the action no time of its own: another one starts it, or somebody by
- * hand?
+ * Has the action no time of its own: another one starts it, somebody joining
+ * a channel does, or somebody by hand?
  *
  * @param array $row decoded
  * @return bool
  */
 function ws_scheduled_trigger_only($row)
 {
+    return ws_scheduled_event_rule($row) !== null;
+}
+
+/**
+ * The rule that starts an action with no time of its own: trigger (another
+ * action) or join (somebody joining a channel).
+ *
+ * @param array $row decoded
+ * @return array|null
+ */
+function ws_scheduled_event_rule($row)
+{
     foreach ((array) $row['rules'] as $rule) {
-        if (($rule['type'] ?? '') === 'trigger') {
-            return true;
+        if (in_array(($rule['type'] ?? ''), array('trigger', 'join'), true)) {
+            return $rule;
         }
     }
 
-    return false;
+    return null;
 }
 
 // ─── Saying it in words ─────────────────────────────────────────────────
@@ -1716,6 +1859,13 @@ function ws_scheduled_rule_text($viewer, $rule)
 
         case 'trigger':
             return lang('When another scheduled action starts it, or by hand');
+
+        case 'join':
+            $join_channel = ((int) ($rule['channel_id'] ?? 0) > 0) ? ws_channel((int) $rule['channel_id']) : null;
+
+            return ((int) ($rule['channel_id'] ?? 0) > 0)
+                ? lang(array('string' => 'When somebody joins {var:1}', 'vars' => $join_channel ? '#' . $join_channel['name'] : lang('a channel that is gone')))
+                : lang('When somebody joins a public channel');
 
         case 'workday':
             return lang('Only on a working day');
@@ -1846,10 +1996,25 @@ function ws_scheduled_action_text($viewer, $action)
     switch ($action['type'] ?? '') {
 
         case 'post':
-            $channel = ws_channel((int) $action['channel_id']);
+            $channel = ((int) $action['channel_id'] > 0) ? ws_channel((int) $action['channel_id']) : null;
+
+            if ((int) $action['channel_id'] === -1) {
+                return lang(array('string' => 'Write in the channel they joined: “{var:1}”', 'vars' => ws_plain_excerpt($viewer, (string) $action['body'], 140)));
+            }
 
             return lang(array('string' => 'Write in {var:1}: “{var:2}”', 'vars' => array(
                 $channel ? '#' . $channel['name'] : lang('a channel that is gone'), ws_plain_excerpt($viewer, (string) $action['body'], 140))));
+
+        case 'task_digest':
+            $channel = ((int) ($action['channel_id'] ?? 0) > 0) ? ws_channel((int) $action['channel_id']) : null;
+            $who = !empty($action['user_ids'])
+                ? implode(', ', array_filter(array_map('ws_person_name', (array) $action['user_ids'])))
+                : ((($action['mode'] ?? '') === 'channel') ? lang('the members of the channel') : lang('everybody with open tasks'));
+            $what = (string) (ws_scheduled_digest_filters()[$action['only'] ?? 'open'] ?? '');
+
+            return (($action['mode'] ?? '') === 'channel')
+                ? lang(array('string' => 'E-mail the tasks of {var:1} ({var:2}) to {var:3}', 'vars' => array($channel ? '#' . $channel['name'] : lang('a channel that is gone'), $what, $who)))
+                : lang(array('string' => 'E-mail each person their tasks ({var:1}{var:2}) · {var:3}', 'vars' => array($what, $channel ? ', #' . $channel['name'] : '', $who)));
 
         case 'email':
             $to = implode(', ', (array) $action['to']);
@@ -1981,7 +2146,7 @@ function ws_scheduled_starters()
         return $map;
     }
 
-    foreach ((array) db_items("SELECT id, action, follow FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')") as $row) {
+    foreach ((array) db_items("SELECT id, action, follow FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')" . ws_scheduled_actions_only()) as $row) {
         $row = ws_scheduled_decode($row + array('rules' => '[]', 'then_action' => ''));
         $actions = array($row['action']);
 
@@ -2030,7 +2195,8 @@ function ws_scheduled_present($viewer, $row, $full = false)
         'status'      => (string) $row['status'],
         'status_label' => $states[$row['status']] ?? $row['status'],
         'next'        => (((string) $row['status'] === 'active') && ((int) $row['next_run_at'] > 0)) ? ws_scheduled_moment($row['next_run_at']) : '',
-        'when'        => $time ? ws_scheduled_rule_text($viewer, $time) : ($trigger_only ? ws_scheduled_rule_text($viewer, array('type' => 'trigger')) : ''),
+        'when'        => $time ? ws_scheduled_rule_text($viewer, $time) : ($trigger_only ? ws_scheduled_rule_text($viewer, ws_scheduled_event_rule($row)) : ''),
+        'joins'       => (($event = ws_scheduled_event_rule($row)) !== null) && ($event['type'] === 'join'),
         'repeats'     => $time && (($time['repeat'] ?? 'none') !== 'none'),
         'trigger_only' => $trigger_only,
         'runs'        => (int) $row['run_count'],
@@ -2050,7 +2216,7 @@ function ws_scheduled_present($viewer, $row, $full = false)
     $rules = array();
 
     foreach ((array) $row['rules'] as $rule) {
-        if (!in_array(($rule['type'] ?? ''), array('at', 'trigger'), true)) {
+        if (!in_array(($rule['type'] ?? ''), array('at', 'trigger', 'join'), true)) {
             $rules[] = ws_scheduled_rule_text($viewer, $rule);
         }
     }
@@ -2265,7 +2431,7 @@ function ws_scheduled_list($viewer, $filters = array())
         return array();
     }
 
-    $where = array('1 = 1');
+    $where = array('1 = 1' . ws_scheduled_actions_only());
     $status = (string) ($filters['status'] ?? '');
 
     if (isset(ws_scheduled_states()[$status])) {
@@ -2301,7 +2467,7 @@ function ws_scheduled_targets($viewer)
 
     $out = array();
 
-    foreach ((array) db_items("SELECT * FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed') ORDER BY name, id LIMIT 300") as $row) {
+    foreach ((array) db_items("SELECT * FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')" . ws_scheduled_actions_only() . " ORDER BY name, id LIMIT 300") as $row) {
         $row = ws_scheduled_decode($row);
         $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'status' => (string) $row['status'], 'trigger_only' => ws_scheduled_trigger_only($row));
     }
@@ -2331,7 +2497,7 @@ function ws_scheduled_save($viewer, $data)
     }
 
     $id = (int) ($data['id'] ?? 0);
-    $existing = ($id > 0) ? ws_scheduled($id) : null;
+    $existing = ($id > 0) ? ws_scheduled_action($id) : null;
 
     if (($id > 0) && !$existing) {
         return $fail(lang('That scheduled action could not be found.'));
@@ -2432,6 +2598,75 @@ function ws_scheduled_save($viewer, $data)
     log_activity(lang(array('string' => 'scheduled action “{var:1}” was created in the Workspace', 'vars' => $row['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return array('ok' => true, 'error' => '', 'field' => '', 'id' => $id, 'message_id' => $message_id);
+}
+
+/**
+ * What a scheduled action would do, in words, while its form is filled in:
+ * checked the way a save checks it, nothing written. The form shows it
+ * beside the fields, with the next times it would run.
+ *
+ * @param array $viewer
+ * @param array $data as ws_scheduled_save() takes it
+ * @return array ok, error, field, when, conditions, action, follow, next
+ */
+function ws_scheduled_preview($viewer, $data)
+{
+    if (!ws_can_schedule($viewer)) {
+        return array('ok' => false, 'error' => lang('Only staff can schedule actions.'), 'field' => '');
+    }
+
+    $existing = ((int) ($data['id'] ?? 0) > 0) ? ws_scheduled_action((int) $data['id']) : null;
+    $checked = ws_scheduled_input($viewer, $data, $existing);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field']);
+    }
+
+    $row = $checked['row'];
+    $when = '';
+    $conditions = array();
+    $next = array();
+
+    foreach ($row['rules'] as $rule) {
+        if (in_array($rule['type'], array('at', 'trigger', 'join'), true)) {
+            $when = ws_scheduled_rule_text($viewer, $rule);
+        } else {
+            $conditions[] = ws_scheduled_rule_text($viewer, $rule);
+        }
+
+        // The next three times a time rule falls on.
+        if ($rule['type'] === 'at') {
+            $after = time();
+
+            for ($i = 0; $i < 3; $i++) {
+                $after = ws_scheduled_next_run($rule, $after);
+
+                if ($after <= 0) {
+                    break;
+                }
+
+                $next[] = ws_scheduled_moment($after);
+            }
+        }
+    }
+
+    $outcomes = ws_scheduled_outcomes();
+    $follow = array();
+
+    foreach ($row['follow'] as $item) {
+        $follow[] = array('label' => $outcomes[$item['on']] ?? '', 'text' => ws_scheduled_action_text($viewer, $item['do']));
+    }
+
+    return array(
+        'ok'         => true,
+        'error'      => '',
+        'field'      => '',
+        'when'       => $when,
+        'conditions' => $conditions,
+        'action'     => ws_scheduled_action_text($viewer, $row['action']),
+        'follow'     => $follow,
+        'next'       => $next,
+    );
 }
 
 /**
@@ -2594,8 +2829,18 @@ function ws_scheduled_queue_take($item)
         'source_run_id'    => (int) $item['source_run_id'],
     );
 
+    // A start a join wrote: who joined, and where.
+    $carried = json_decode((string) ($item['context'] ?? ''), true);
+
+    if (is_array($carried)) {
+        $context['newcomer'] = (int) ($carried['newcomer'] ?? 0);
+        $context['join_channel_id'] = (int) ($carried['channel_id'] ?? 0);
+    }
+
     if (!$target || ($target['status'] !== 'active')) {
-        if ($target) {
+        // A join that finds the action paused leaves no trace: nobody chained
+        // it, and a busy channel would fill its history with skips.
+        if ($target && ((int) $item['source_action_id'] > 0)) {
             ws_scheduled_record_run($target, 'skipped', array(array('step' => 'rules', 'ok' => false, 'text' => lang(array(
                 'string' => '{var:1} started it, but it is not set to run ({var:2}).',
                 'vars'   => array(ws_scheduled_name($item['source_action_id']), ws_scheduled_states()[$target['status']] ?? $target['status']),
@@ -2687,6 +2932,12 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
         return '';
     }
 
+    // A message written in the writing box and scheduled: posted, kept in
+    // the log, gone (scheduled_messages.php).
+    if ((string) ($row['kind'] ?? 'action') === 'message') {
+        return ws_scheduled_message_run($row, $by_hand);
+    }
+
     $context['by_hand'] = $by_hand;
     $context['depth'] = (int) ($context['depth'] ?? 0);
     $steps = array();
@@ -2703,6 +2954,13 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
         $source_run = ((int) ($context['source_run_id'] ?? 0) > 0) ? db_item("SELECT status, detail FROM ws_scheduled_runs WHERE id = '" . (int) $context['source_run_id'] . "'") : null;
         $fill['source_result'] = is_array($source_run) ? ws_scheduled_run_summary($source_run) : '';
         $steps[] = array('step' => 'source', 'ok' => true, 'text' => lang(array('string' => 'started by {var:1}', 'vars' => ws_scheduled_name($context['source_action_id']))));
+    }
+
+    if ($triggered && ((int) ($context['newcomer'] ?? 0) > 0)) {
+        $fill['newcomer'] = (int) $context['newcomer'];
+        $fill['join_channel_id'] = (int) ($context['join_channel_id'] ?? 0);
+        $steps[] = array('step' => 'source', 'ok' => true, 'text' => lang(array('string' => '{var:1} joined {var:2}', 'vars' => array(
+            ws_person_name($fill['newcomer']), '#' . (string) db_value("SELECT name FROM ws_channels WHERE id = '" . $fill['join_channel_id'] . "'")))));
     }
 
     // The run is written first, so a start it hands on can name it.
@@ -2792,8 +3050,11 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
         WHERE id = '" . (int) $row['id'] . "'");
 
     // News is a first run, an outcome other than the last one, or a single
-    // action: a check every five minutes that keeps going well is not.
-    $news = !$repeats || ($previous === null) || ($previous === false) || ((string) $previous !== $status) || $by_hand;
+    // action: a check every five minutes that keeps going well is not, and
+    // nor is a greeting that went well for the next newcomer.
+    $event = ws_scheduled_event_rule($row);
+    $every_time = $repeats || ($event && ($event['type'] === 'join'));
+    $news = !$every_time || ($previous === null) || ($previous === false) || ((string) $previous !== $status) || $by_hand;
 
     ws_scheduled_report($row, $status, $steps, $news);
 
@@ -3020,7 +3281,7 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
     switch ($action['type'] ?? '') {
 
         case 'post':
-            $channel = ws_channel((int) $action['channel_id']);
+            $channel = ws_channel(((int) $action['channel_id'] === -1) ? (int) ($context['join_channel_id'] ?? 0) : (int) $action['channel_id']);
 
             if (!$channel) {
                 return $fail(lang('The channel to write in is gone.'));
@@ -3070,6 +3331,9 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
 
         case 'task':
             return ws_scheduled_task($viewer, $row, $action, $context);
+
+        case 'task_digest':
+            return ws_scheduled_task_digest($viewer, $row, $action, $context);
 
         case 'webhook':
             return ws_scheduled_webhook($viewer, $row, $action, $context);
@@ -3172,6 +3436,228 @@ function ws_scheduled_notice($inbox_id)
         WHERE n.inbox_id = '" . (int) $inbox_id . "'");
 
     return is_array($row) ? $row : null;
+}
+
+/**
+ * Which tasks a task e-mail lists.
+ *
+ * @return array key => label
+ */
+function ws_scheduled_digest_filters()
+{
+    return array(
+        'open'    => lang('all open tasks'),
+        'week'    => lang('due within a week, and overdue'),
+        'overdue' => lang('overdue only'),
+    );
+}
+
+/**
+ * E-mails people their tasks: each person the open tasks they are on (in
+ * one channel, or in all), or the open tasks of one channel to each person
+ * who reads it. Somebody with nothing to list gets no e-mail.
+ *
+ * @return array ok, text, message_id
+ */
+function ws_scheduled_task_digest($viewer, $row, $action, $context)
+{
+    $mode = (($action['mode'] ?? 'mine') === 'channel') ? 'channel' : 'mine';
+    $channel_id = (int) ($action['channel_id'] ?? 0);
+    $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
+
+    if (($channel_id > 0) && !$channel) {
+        return array('ok' => false, 'text' => lang('The channel whose tasks are sent is gone.'), 'message_id' => 0);
+    }
+
+    $today = date('Y-m-d');
+    $where = array("t.status IN ('todo', 'doing', 'waiting')");
+
+    if ($channel_id > 0) {
+        $where[] = "t.channel_id = '" . $channel_id . "'";
+    }
+
+    switch ($action['only'] ?? 'open') {
+        case 'overdue':
+            $where[] = "t.due_date IS NOT NULL AND t.due_date <> '0000-00-00' AND t.due_date < '" . $today . "'";
+            break;
+
+        case 'week':
+            $where[] = "t.due_date IS NOT NULL AND t.due_date <> '0000-00-00' AND t.due_date <= '" . date('Y-m-d', strtotime('+7 days')) . "'";
+            break;
+    }
+
+    $people = ws_scheduled_people($action['user_ids'] ?? array());
+
+    // Nobody named: the people on the tasks, or the members of the channel.
+    if (empty($people)) {
+        $people = ($mode === 'channel')
+            ? ws_scheduled_people(db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . $channel_id . "'"))
+            : ws_scheduled_people(db_values("SELECT DISTINCT a.user_id FROM ws_task_assignees a
+                INNER JOIN ws_tasks t ON t.id = a.task_id WHERE " . implode(' AND ', $where) . " LIMIT 500"));
+    }
+
+    $channel_tasks = ($mode === 'channel')
+        ? (array) db_items("SELECT t.* FROM ws_tasks t WHERE " . implode(' AND ', $where) . " ORDER BY (t.due_date IS NULL), t.due_date, t.id LIMIT 200")
+        : array();
+
+    $subject = ws_scheduled_fill(((string) ($action['subject'] ?? '') !== '') ? (string) $action['subject'] : (string) $row['name'], $context);
+    $intro = ws_scheduled_fill((string) ($action['intro'] ?? ''), $context);
+    $sent = 0;
+    $tried = 0;
+    $listed = 0;
+
+    foreach ($people as $user_id) {
+        $address = (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
+        $rights = ws_rights_for_id($user_id);
+
+        if (($address === '') || !$rights['member'] || ($channel && !ws_can_read_channel($rights, $channel))) {
+            continue;
+        }
+
+        $tasks = ($mode === 'channel') ? $channel_tasks : (array) db_items("SELECT t.* FROM ws_tasks t
+            INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . (int) $user_id . "'
+            WHERE " . implode(' AND ', $where) . " ORDER BY (t.due_date IS NULL), t.due_date, t.id LIMIT 200");
+
+        if (empty($tasks)) {
+            continue;
+        }
+
+        $tried++;
+
+        if (ws_scheduled_mail(array($address), $subject, ws_scheduled_digest_html($rights, $tasks, $subject, $intro, ($mode === 'channel')), 'html') > 0) {
+            $sent++;
+            $listed += count($tasks);
+        }
+    }
+
+    if ($tried === 0) {
+        return array('ok' => true, 'text' => lang('no task e-mail went out: nobody had a task to list'), 'message_id' => 0);
+    }
+
+    if ($sent === 0) {
+        return array('ok' => false, 'text' => lang('The task e-mail could not be sent.'), 'message_id' => 0);
+    }
+
+    return array('ok' => true, 'text' => lang(array('string' => 'task e-mail sent to {var:1} people ({var:2} tasks listed)', 'vars' => array($sent, $listed))), 'message_id' => 0);
+}
+
+/**
+ * The body of a task e-mail: a short table, each task linked to its page.
+ *
+ * @param array   $reader  the person it goes to
+ * @param array[] $tasks
+ * @param string  $title
+ * @param string  $intro
+ * @param bool    $with_people list who is on each task
+ * @return string HTML
+ */
+function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people)
+{
+    $base = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/';
+    $statuses = ws_task_statuses();
+    $priorities = ws_task_priorities();
+    $assignees = $with_people ? ws_task_assignees_map(array_map(function ($task) { return (int) $task['id']; }, $tasks)) : array();
+    $today = date('Y-m-d');
+    $style = 'padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top';
+    $cell = 'style="' . $style . '"';
+    $rows = '';
+
+    foreach ($tasks as $task) {
+        $due = ((string) ($task['due_date'] ?? '') !== '') && ($task['due_date'] !== '0000-00-00') ? (string) $task['due_date'] : '';
+        $late = ($due !== '') && ($due < $today);
+        $channel = ((int) $task['channel_id'] > 0) ? ws_channel((int) $task['channel_id']) : null;
+        $people = $with_people ? implode(', ', array_filter(array_map('ws_person_name', (array) ($assignees[(int) $task['id']] ?? array())))) : '';
+
+        $rows .= '<tr>'
+            . '<td ' . $cell . '><a href="' . h($base . 'workspace_tasks.php?task=' . (int) $task['id']) . '">' . h(ws_task_number($task['id'])) . '</a></td>'
+            . '<td ' . $cell . '><strong>' . h((string) $task['title']) . '</strong>' . ($channel ? '<br><span style="color:#6b7280">#' . h((string) $channel['name']) . '</span>' : '') . '</td>'
+            . '<td ' . $cell . '>' . h((string) ($statuses[$task['status']] ?? $task['status'])) . '</td>'
+            . '<td ' . $cell . '>' . h((string) ($priorities[$task['priority']] ?? $task['priority'])) . '</td>'
+            . '<td style="' . $style . ($late ? ';color:#b91c1c;font-weight:600' : '') . '">' . h(($due !== '') ? date('d.m.Y', strtotime($due . ' 12:00:00')) : '—') . '</td>'
+            . ($with_people ? '<td ' . $cell . '>' . h($people) . '</td>' : '')
+            . '</tr>';
+    }
+
+    $head = '<tr>'
+        . '<th ' . $cell . '>#</th>'
+        . '<th ' . $cell . '>' . h(lang('Task')) . '</th>'
+        . '<th ' . $cell . '>' . h(lang('Status')) . '</th>'
+        . '<th ' . $cell . '>' . h(lang('Priority')) . '</th>'
+        . '<th ' . $cell . '>' . h(lang('Due')) . '</th>'
+        . ($with_people ? '<th ' . $cell . '>' . h(lang('People')) . '</th>' : '')
+        . '</tr>';
+
+    return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827">'
+        . '<h2 style="font-size:18px;margin:0 0 12px">' . h($title) . '</h2>'
+        . '<p style="margin:0 0 12px">' . h(lang(array('string' => 'Hello {var:1},', 'vars' => ws_person_name($reader['id'])))) . '</p>'
+        . (($intro !== '') ? '<p style="margin:0 0 12px">' . nl2br(h($intro), false) . '</p>' : '')
+        . '<table style="border-collapse:collapse;width:100%;max-width:760px">' . $head . $rows . '</table>'
+        . '<p style="margin:16px 0 0"><a href="' . h($base . 'workspace_tasks.php') . '">' . h(lang('Open My Tasks')) . '</a></p>'
+        . '<p style="margin:12px 0 0;color:#6b7280;font-size:12px">' . h(lang(array('string' => 'Sent by the Workspace of {var:1} on {var:2}.', 'vars' => array((string) HOSTNAME_SETTING, date('d.m.Y H:i'))))) . '</p>'
+        . '</div>';
+}
+
+/**
+ * Can a channel greet the people who join it? Not a guest's room, nor a
+ * discussion: nobody joins those, people are brought in.
+ *
+ * @param array $channel
+ * @return bool
+ */
+function ws_scheduled_greets($channel)
+{
+    return is_array($channel) && in_array((string) $channel['kind'], array('public', 'private'), true) && ((int) $channel['archived_at'] === 0);
+}
+
+/**
+ * Somebody joined a channel, or was brought into it: the actions waiting for
+ * that (the join rule, for this channel or for any public one) are queued,
+ * one start for each newcomer, the newcomer named. The next run - the screen
+ * that is open, or the job - carries them out.
+ *
+ * @param array $channel
+ * @param int[] $user_ids
+ */
+function ws_scheduled_joined($channel, $user_ids)
+{
+    if (!ws_scheduled_join_ready() || !ws_scheduled_greets($channel) || empty($user_ids)) {
+        return;
+    }
+
+    static $waiting = null;
+
+    if ($waiting === null) {
+        $waiting = array();
+
+        foreach ((array) db_items("SELECT id, rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"join\"%'") as $row) {
+            foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
+                if (is_array($rule) && (($rule['type'] ?? '') === 'join')) {
+                    $waiting[(int) $row['id']] = (int) ($rule['channel_id'] ?? 0);
+                }
+            }
+        }
+    }
+
+    $now = time();
+
+    foreach ($waiting as $action_id => $join_channel) {
+        if (($join_channel !== (int) $channel['id']) && (($join_channel !== 0) || ((string) $channel['kind'] !== 'public'))) {
+            continue;
+        }
+
+        $recent = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_queue WHERE action_id = '" . (int) $action_id . "' AND created_at > '" . ($now - 3600) . "'");
+
+        foreach (array_values(array_unique(array_map('intval', (array) $user_ids))) as $user_id) {
+            if (($user_id <= 0) || ($recent >= WS_SCHEDULED_CHAIN_HOURLY)) {
+                continue;
+            }
+
+            db("INSERT INTO ws_scheduled_queue (action_id, due_at, source_action_id, source_run_id, depth, status, created_at, taken_at, context)
+                VALUES ('" . (int) $action_id . "', '" . $now . "', 0, 0, 0, 'waiting', '" . $now . "', 0,
+                    '" . e(json_encode(array('newcomer' => $user_id, 'channel_id' => (int) $channel['id']))) . "')");
+            $recent++;
+        }
+    }
 }
 
 /**
@@ -3450,7 +3936,7 @@ function ws_scheduled_start($row, $action, $context)
         return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
     }
 
-    $target = ws_scheduled((int) $action['target_id']);
+    $target = ws_scheduled_action((int) $action['target_id']);
 
     if (!$target) {
         return $fail(lang('The scheduled action to start is gone.'));
@@ -3752,5 +4238,34 @@ function ws_scheduled_js_strings()
         'sa_tpl_monthly_task' => lang('Monthly report for {{date}}'),
         'sa_tpl_chain'      => lang('A step of a chain'),
         'sa_tpl_chain_text' => lang('{{source}} finished: {{source_result}}'),
+        'sa_tpl_welcome'    => lang('Welcome message'),
+        'sa_tpl_welcome_help' => lang('Greets the people who join a channel and asks them to say a few words about themselves.'),
+        'sa_tpl_welcome_text' => lang('Welcome to {{channel}}, {{newcomer}}! 👋 Could you tell us a little about yourself: who you are and what you work on?'),
+        'sa_tpl_task_mail'  => lang('Tasks by e-mail every Monday'),
+        'sa_tpl_task_mail_help' => lang('Every Monday morning each person gets the open tasks they are on, by e-mail.'),
+        'sa_tpl_task_mail_subject' => lang('Your open tasks this week'),
+        'sa_template_none_help' => lang('Build it yourself, step by step.'),
+        'sa_step_when'      => lang('When'),
+        'sa_step_when_help' => lang('What starts it: a time, another scheduled action, or somebody joining a channel.'),
+        'sa_step_if'        => lang('Only if'),
+        'sa_step_do'        => lang('Do'),
+        'sa_when_join'      => lang('When somebody joins'),
+        'sa_join_channel'   => lang('Channel'),
+        'sa_join_any'       => lang('Any public channel'),
+        'sa_join_help'      => lang('It runs once for each person who joins or is added; {{newcomer}} in a text tags them.'),
+        'sa_joined_channel' => lang('The channel they joined'),
+        'sa_do_task_digest' => lang('E-mail people their tasks'),
+        'sa_digest_mine'    => lang('Each person their own tasks'),
+        'sa_digest_channel' => lang('The tasks of a channel'),
+        'sa_digest_all_channels' => lang('All channels'),
+        'sa_digest_which'   => lang('Which tasks'),
+        'sa_digest_people_mine' => lang('Left empty, everybody who is on an open task gets their list.'),
+        'sa_digest_people_channel' => lang('Left empty, every member of the channel gets the list.'),
+        'sa_digest_subject_placeholder' => lang('The name of the scheduled action'),
+        'sa_digest_intro'   => lang('A few words above the list'),
+        'sa_digest_intro_help' => lang('Optional. Nobody gets an e-mail with nothing in it.'),
+        'sa_next_runs'      => lang('Next runs'),
+        'sa_duplicate'      => lang('Duplicate'),
+        'sa_copy_of'        => ws_js_template('Copy of {var:1}', 1),
     );
 }

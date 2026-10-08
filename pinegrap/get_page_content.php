@@ -480,6 +480,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
             : null;
         $content = _expand_system_widgets($content, $mode, $email);
+        // A widget's own layout can place shared components and other
+        // widgets; their markers come out of the widget's render.
+        $content = pg_expand_nested_components($content, $mode, $email);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
 
@@ -1916,6 +1919,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if ($mode != 'edit' && $page_type == 'standard') {
         $_pg_sw_access_control_type = get_access_control_type($page_folder);
         if ($_pg_sw_access_control_type == 'public') {
+            // One feed per page, chosen as get_page.php chooses it for
+            // ?rss=true: a form widget (record page over list) before the
+            // catalog widgets. The catalog structured data below does not
+            // depend on which feed the page announces.
+            $_pg_sw_form_feed      = function_exists('pg_sw_page_form_feed_widget') ? pg_sw_page_form_feed_widget($page_id) : null;
             $_pg_sw_listing_widget = _pg_find_system_widget_on_page($page_id, 'catalog_listing');
             $_pg_sw_item_widget    = $_pg_sw_listing_widget ? null : _pg_find_system_widget_on_page($page_id, 'catalog_item_view');
 
@@ -1925,19 +1933,29 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $_pg_sw_title      = ($page_title != '') ? h(HOSTNAME) . ' - ' . h(trim($page_title)) : h(HOSTNAME) . ' - ' . h($page_name);
             $_pg_sw_structured_data_enabled = ((defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE));
 
+            if ($_pg_sw_form_feed) {
+                $rss_feeds[] = array(
+                    'sort'         => 0,
+                    'output_title' => $_pg_sw_title,
+                    'output_url'   => OUTPUT_PATH . h(encode_url_path($page_name)) . '?rss=true',
+                );
+            }
+
             if ($_pg_sw_listing_widget) {
                 // Autodiscovery URL must follow the visitor DOWN the category
                 // tree: on /<page>/<group-slug> the feed for that sub-category
                 // is /<page>/<group-slug>?rss=true, not the catalog root's.
                 // Legacy does the same (see the 'catalog' case further below,
                 // which appends the address name before '?rss=true').
-                $rss_feeds[] = array(
-                    'sort'         => 0,
-                    'output_title' => $_pg_sw_title,
-                    'output_url'   => OUTPUT_PATH . h(encode_url_path($page_name))
-                                      . ($_pg_sw_sub_path !== '' ? '/' . h($_pg_sw_sub_path) : '')
-                                      . '?rss=true',
-                );
+                if (!$_pg_sw_form_feed) {
+                    $rss_feeds[] = array(
+                        'sort'         => 0,
+                        'output_title' => $_pg_sw_title,
+                        'output_url'   => OUTPUT_PATH . h(encode_url_path($page_name))
+                                          . ($_pg_sw_sub_path !== '' ? '/' . h($_pg_sw_sub_path) : '')
+                                          . '?rss=true',
+                    );
+                }
 
                 if ($_pg_sw_structured_data_enabled) {
                     $_pg_sw_active_group = _pg_catalog_listing_resolve_active_group($_pg_sw_listing_widget['product_group_id'], $_pg_sw_page_full);
@@ -1959,11 +1977,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             } elseif ($_pg_sw_item_widget) {
                 $_pg_sw_canonical_path = OUTPUT_PATH . encode_url_path($page_name) . ($_pg_sw_sub_path !== '' ? '/' . $_pg_sw_sub_path : '');
 
-                $rss_feeds[] = array(
-                    'sort'         => 0,
-                    'output_title' => $_pg_sw_title,
-                    'output_url'   => h($_pg_sw_canonical_path) . '?rss=true',
-                );
+                if (!$_pg_sw_form_feed) {
+                    $rss_feeds[] = array(
+                        'sort'         => 0,
+                        'output_title' => $_pg_sw_title,
+                        'output_url'   => h($_pg_sw_canonical_path) . '?rss=true',
+                    );
+                }
 
                 if ($_pg_sw_structured_data_enabled) {
                     $_pg_sw_product = _pg_catalog_item_resolve_product($_pg_sw_item_widget['product_group_id']);
@@ -5370,12 +5390,29 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
 
-    // If this page is a form item view, then get title and description from submitted form data.
-    if ($page_type == 'form item view') {
+    // A page built in the visual editor shows a record through its
+    // form_item_view widget rather than a page type. The record is the one
+    // the widget resolves (?r=, or the form id passed in), and only when the
+    // widget's access setting lets this visitor see it.
+    $pg_sw_form_item = null;
+    if (($page_type == 'standard') && function_exists('pg_sw_record_comment_context')) {
+        $pg_sw_form_item_context = pg_sw_record_comment_context($page_id, !empty($dynamic_properties['form_id']) ? (int) $dynamic_properties['form_id'] : 0);
+        if (is_array($pg_sw_form_item_context) && !empty($pg_sw_form_item_context['visible'])) {
+            $pg_sw_form_item = $pg_sw_form_item_context['form'];
+        }
+    }
+
+    // If this page is a form item view, or a page with a form item view widget showing a record,
+    // then get title and description from submitted form data.
+    if (($page_type == 'form item view') || ($pg_sw_form_item !== null)) {
         // If a submitted form id was passed to this function (e.g. for emailing a form item view as a confirmation
         // after a custom form was submitted, then use that id.
         if (!empty($dynamic_properties['form_id'])) {
             $submitted_form['id'] = $dynamic_properties['form_id'];
+
+        // The widget already resolved the record.
+        } else if ($pg_sw_form_item !== null) {
+            $submitted_form['id'] = (int) $pg_sw_form_item['id'];
 
         // Otherwise a submitted form id was not passed, so if there is a reference code,
         // then use it to get the form id.
@@ -5531,7 +5568,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $og_image = pg_og_image_from_file_name($order_form_image_name);
         }
 
-    } else if ($page_type == 'form item view') {
+    } else if (($page_type == 'form item view') || !empty($pg_blog_form_id)) {
+        // A legacy form item view page, or a visual-editor page whose form
+        // item view widget resolved a record: the page is that post's page.
         $og_type = 'article';
 
         if (!empty($pg_og_image_candidate)) {
@@ -5673,7 +5712,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     ) {
         $pg_jsonld_out = '';
 
-        if (($page_type == 'form item view') && !empty($pg_blog_form_id)) {
+        // $pg_blog_form_id is set only for a resolved record: a legacy form
+        // item view page, or a visual-editor page with the form item view widget.
+        if (!empty($pg_blog_form_id)) {
             $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_blogposting_jsonld(array(
                 'headline'    => $page_title,
                 'description' => $page_meta_description,

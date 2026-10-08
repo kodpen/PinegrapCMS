@@ -118,6 +118,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
+    // Pinegrap AI sends this key to its gateway (includes/workspace/ai.php).
+    // What the gateway said about the old key is forgotten with it: a key it
+    // turned down is otherwise never asked about again.
+    if (($subscription_key !== str_replace('-', '', (string) SUBSCRIPTION_KEY))
+        && function_exists('waf_table_has_column') && waf_table_has_column('config', 'ws_ai_license_state')) {
+        db("UPDATE config SET ws_ai_license_state = '', ws_ai_license_checked = 0, ws_ai_license_expires = 0, ws_ai_error = ''");
+    }
+
 
     // Update channel: its column arrives with migration 4.21, so a database that
     // has not been upgraded yet must not break the rest of this save. Changing

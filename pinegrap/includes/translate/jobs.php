@@ -256,8 +256,13 @@ function pg_tr_job_run_server($job_id, $budget = 20)
     // then costs one call per request, a fast one goes round again within
     // the budget.
     $per_batch = ($job['engine'] === 'ai') ? PG_TR_AI_BATCH_ITEMS : 60;
+    // The slowest batch so far: a batch that would not end within the
+    // budget is left to the next run, so a request stays close to its budget
+    // instead of running into the server's or the proxy's time limit.
+    $slowest = 0.0;
 
-    while ((microtime(true) - $started) < $budget) {
+    while ((microtime(true) - $started + $slowest) < $budget) {
+        $batch_started = microtime(true);
         $strings = pg_tr_job_waiting($job_id, $per_batch);
 
         if (!$strings) {
@@ -307,6 +312,8 @@ function pg_tr_job_run_server($job_id, $budget = 20)
                 $result['failed']++;
             }
         }
+
+        $slowest = max($slowest, microtime(true) - $batch_started);
     }
 
     $result['finished'] = (pg_tr_job_close_if_complete($job_id) !== '');
@@ -373,8 +380,13 @@ function pg_tr_jobs_run_due($budget = 40)
 
 /**
  * "Update translations": extract the scope, open a job for what is pending,
- * and start on it right away: a server engine is run for twenty seconds, a
- * browser engine's job is handed to the panel, Claude is told there is work.
+ * and hand it on: a server engine's job is worked by the screen's run calls
+ * (and the scheduled job), a browser engine's job is handed to the panel,
+ * Claude is told there is work.
+ *
+ * Nothing is translated in this request. Extracting a large site takes a
+ * request of its own; translating on top of it ran that request into the
+ * server's time limit, and the screen's loop never started.
  *
  * @param string $language
  * @param string $scope    all | page:ID
@@ -397,6 +409,10 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
         return array('ok' => false, 'error' => lang('The engine is not known.'));
     }
 
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(120);
+    }
+
     $extracted = pg_tr_scope_extract($scope);
 
     // The software's wording of a language with a language file comes from
@@ -410,8 +426,6 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
         'pending'   => count($pending),
         'job_id'    => 0,
         'job'       => null,
-        'done'      => 0,
-        'failed'    => 0,
         'finished'  => true,
         'error'     => '',
     );
@@ -433,23 +447,16 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
 
     $job_id = pg_tr_job_create($language, $engine, $scope, $pending, $user_id);
     $result['job_id'] = $job_id;
+    $result['finished'] = false;
 
-    if ($spec['kind'] === 'server') {
-        $run = pg_tr_job_run_server($job_id, 20);
-        $result['done'] = $run['done'];
-        $result['failed'] = $run['failed'];
-        $result['finished'] = $run['finished'];
-        $result['error'] = $run['error'];
-    } elseif ($spec['kind'] === 'queue') {
+    if ($spec['kind'] === 'queue') {
         // The job waits for the routine; busy or held, the scheduled job
         // tells it again later.
         $dispatch = pg_tr_claude_dispatch();
-        $result['finished'] = false;
         $result['queue'] = $dispatch['status'];
         $result['error'] = $dispatch['ok'] ? '' : $dispatch['error'];
-    } else {
+    } elseif ($spec['kind'] !== 'server') {
         db("UPDATE translation_jobs SET status = 'sent', claimed_at = '" . time() . "' WHERE id = '$job_id'");
-        $result['finished'] = false;
     }
 
     $result['job'] = pg_tr_job_get($job_id);

@@ -1185,7 +1185,7 @@ function erp_export_sweep($max_age = 86400)
     $directory = PG_FUNCTIONS_DIR . '/data/temp';
     $removed = 0;
 
-    foreach ((array) glob($directory . '/erp_export_*.{csv,xlsx}', GLOB_BRACE) as $file) {
+    foreach (pg_glob_brace($directory . '/erp_export_*.{csv,xlsx}') as $file) {
         if (is_file($file) && ((time() - (int) @filemtime($file)) > $max_age) && @unlink($file)) {
             $removed++;
         }

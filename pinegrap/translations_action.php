@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Translations screen's endpoint: "update translations", the browser
- * engine's batches and answers, a translation typed or reviewed by hand, the
- * CSV export and import, the glossary.
+ * engine's batches and answers, a translation typed or reviewed by hand,
+ * clearing the translations of a scope, the CSV export and import, the
+ * glossary.
  *
  * JSON in, JSON out, for everything but the CSV transfers and the glossary
  * forms: the export is a file download, the import a multipart form, the
@@ -134,8 +135,8 @@ if (!$translations_is_import && !$translations_is_export) {
 
     switch ($action) {
 
-        // "Update translations": extract the scope, open a job for what is
-        // pending, start a server engine on it.
+        // "Update translations": extract the scope and open a job for what
+        // is pending; a server engine's job is then worked by "run".
         case 'update':
             $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
 
@@ -193,7 +194,7 @@ if (!$translations_is_import && !$translations_is_export) {
             translations_respond(array('status' => 'success', 'job' => pg_tr_job_get($job_id)) + $summary);
             break;
 
-        // A server engine's job, worked for another twenty seconds from the
+        // A server engine's job, worked twenty seconds at a time from the
         // panel instead of waiting for the scheduled job.
         case 'run':
             $job_id = isset($request['job_id']) ? (int) $request['job_id'] : 0;
@@ -354,6 +355,25 @@ if (!$translations_is_import && !$translations_is_export) {
             }
 
             translations_respond(array('status' => 'success', 'count' => $count, 'message' => lang(array('string' => '{var:1} translation(s) marked as reviewed.', 'vars' => array($count)))));
+            break;
+
+        // The translations of the scope deleted, so the next update sends
+        // the texts again: the machine ones, the reviewed ones on request.
+        case 'clear':
+            $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
+            $with_reviewed = !empty($request['reviewed']);
+
+            if (!preg_match('/^(all|page:\d+|group:[a-z]+)$/', $scope) || ($language === '')) {
+                translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+            }
+
+            $count = pg_tr_clear($language, $scope, $with_reviewed);
+
+            if ($count > 0) {
+                log_activity(lang(array('string' => 'translations were cleared ({var:1}, {var:2}, {var:3} text(s))', 'vars' => array($language, $scope, $count))), $_SESSION['sessionusername']);
+            }
+
+            translations_respond(array('status' => 'success', 'count' => $count, 'message' => lang(array('string' => '{var:1} translation(s) deleted.', 'vars' => array($count)))));
             break;
 
         default:

@@ -299,6 +299,8 @@ function ws_js_strings()
         'share_placeholder'      => lang('A line about it (optional)'),
         'shared'                 => lang('Shared in the channel.'),
         'show_in_conversation'   => lang('Show in the conversation'),
+        'side_collapse'          => lang('Close the section'),
+        'side_expand'            => lang('Open the section'),
         'start_date'             => lang('Starts'),
         'start_poll'             => lang('Start a poll'),
         'start_time'             => lang('Starts at'),
@@ -310,10 +312,14 @@ function ws_js_strings()
         'tab_messages'           => lang('Messages'),
         'tab_summary'            => lang('Summary'),
         'tab_tasks'              => lang('Tasks'),
+        'tab_decisions_count'    => ws_js_template('{var:1} decisions and notes', 1),
+        'tab_tasks_count'        => ws_js_template('{var:1} open tasks', 1),
+        'tab_summary_written'    => lang('The summary is written'),
         'table_column'           => ws_js_template('Column {var:1}', 1),
         'table_size'             => ws_js_template('{var:1} columns × {var:2} rows', 2),
         'tag_record'             => lang('Tag a record'),
         'task'                   => lang('Task'),
+        'task_card_thread_note'  => lang('Posted in the channel it is made from, the card shows in this discussion too.'),
         'task_created'           => lang('The task was created.'),
         'task_from_item'         => lang('Make this item a task'),
         'task_from_message'      => lang('Make a task of it'),
@@ -585,10 +591,15 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
-    // Scheduled actions (includes/workspace/scheduled.php).
+    // Scheduled actions (includes/workspace/scheduled.php) and the messages
+    // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
-        $strings = array_merge($strings, ws_scheduled_js_strings());
+        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
+
+    // Discussions (includes/workspace/threads.php) and the assistants' bulk
+    // changes (includes/workspace/bulk.php).
+    $strings = array_merge($strings, ws_threads_js_strings(), ws_bulk_js_strings());
 
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
@@ -621,6 +632,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),
         'reminders'    => function_exists('ws_task_reminders_js_config') ? ws_task_reminders_js_config() : array('ready' => false),
         'scheduled'    => function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null,
+        'scheduled_messages' => function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer),
+        'threads'      => ws_threads_ready(),
         'palette'      => ws_channel_colors_ready() ? ws_palette_js() : array(),
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),

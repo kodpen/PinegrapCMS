@@ -54,6 +54,18 @@ body.pg-guest {
   white-space: nowrap;
 }
 
+/* A channel shared to read only says so under its name. */
+.pg-guest-readonly-badge {
+  display: inline-block;
+  margin-top: .15rem;
+  padding: .05rem .5rem;
+  border-radius: 1rem;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+  font-size: .72rem;
+  font-weight: 600;
+}
+
 .pg-guest-staff {
   display: flex;
   flex: none;

@@ -112,13 +112,13 @@ function software_auto_backup(){
     }
     //CLEAR//
     // delete all files from template files directory
-    $files = glob($backup_location.$backup_folder_name.'/files/{,.}*', GLOB_BRACE); // get all file names
+    $files = pg_glob_brace($backup_location.$backup_folder_name.'/files/{,.}*'); // get all file names
     foreach($files as $file){ // iterate files
         if(is_file($file))
         unlink($file); // delete file
     }
     // delete all files from template layouts directory
-    $layouts = glob($backup_location.$backup_folder_name.'/layouts/{,.}*', GLOB_BRACE); // get all layouts names
+    $layouts = pg_glob_brace($backup_location.$backup_folder_name.'/layouts/{,.}*'); // get all layouts names
     foreach($layouts as $layout){ // iterate layouts files
         if(is_file($layout))
         unlink($layout); // delete layouts files

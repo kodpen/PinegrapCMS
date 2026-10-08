@@ -5,8 +5,6 @@
 # context file, the change log, the topic plans and the contribution guides -
 # are written for whoever develops this product and stay on the development
 # machine. CONTRIBUTING.md carries what an outside contributor needs.
-/CLAUDE.md
-/docs/
 
 # Runtime data. The tree under pinegrap/data/ belongs to the installation,
 # not to the product: it holds the real configuration, uploaded files, the
@@ -37,7 +35,6 @@
 *.log
 
 # Agent and development leftovers
-.claude/
 *.skill
 /_seed_*.php
 /_probe_*.php
@@ -54,3 +51,6 @@
 # Real configuration - never committed
 config.local.php
 .env
+
+# Local agent outputs - never published
+/Claude outputs/

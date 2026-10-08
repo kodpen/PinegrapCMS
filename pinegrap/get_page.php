@@ -1193,7 +1193,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					{
 						$output_rss_categories = '';
 						// If there is at least one category, then output it.
-						if ($submitted_form['category'] != '')
+						if (($submitted_form['category'] ?? '') != '')
 						{
 							// If there are multiple categories, then output all of them.
 							if (mb_strpos($submitted_form['category'], '||') !== false)
@@ -1220,7 +1220,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						}
 						$output_rss_title = '';
 						// If there is a title, then output it.
-						if ($submitted_form['title'] != '')
+						if (($submitted_form['title'] ?? '') != '')
 						{
 							$output_rss_title = h($submitted_form['title']);
 							// Otherwise there is not a title, so output notice.
@@ -1232,7 +1232,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						}
 						$output_rss_description = '';
 						// If there is a description, then output it.
-						if ($submitted_form['description'] != '')
+						if (($submitted_form['description'] ?? '') != '')
 						{
 							$output_rss_description = h($submitted_form['description']);
 							// Otherwise there is not a description, so output notice.
@@ -2439,6 +2439,16 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 	// legacy check above. Look for such a widget and, if found, build the feed from it using
 	// the same product data the widget itself renders (see functions.php,
 	// _pg_build_catalog_listing_rss_parts / _pg_build_catalog_item_rss_parts).
+	// A form widget comes first: a page that shows one record (form_item_view)
+	// or lists them (form_list_view) feeds that form, whatever else sits on it.
+	elseif ($access_control_type == 'public' && function_exists('pg_sw_page_form_feed_widget') && ($_pg_rss_form_feed = pg_sw_page_form_feed_widget($page_id)))
+	{
+		$_pg_rss_parts = pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $_pg_rss_form_feed);
+		$output_channel_title = $_pg_rss_parts['title'];
+		$output_channel_link = $_pg_rss_parts['link'];
+		$output_channel_description = $_pg_rss_parts['description'];
+		$output_rss_items = $_pg_rss_parts['items'];
+	}
 	elseif ($access_control_type == 'public' && ($_pg_rss_widget = _pg_find_system_widget_on_page($page_id, 'catalog_listing')))
 	{
 		$output_google_declaration = ' xmlns:g="http://base.google.com/ns/1.0"';

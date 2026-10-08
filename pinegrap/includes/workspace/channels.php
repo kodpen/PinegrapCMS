@@ -45,7 +45,7 @@ function ws_channels_for($viewer, $archived = false)
         FROM ws_channels c
         LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . $me . "'
         WHERE c.archived_at " . ($archived ? '> 0' : '= 0') . "
-        AND (c.kind = 'public' OR m.user_id IS NOT NULL)
+        AND (c.kind = 'public' OR m.user_id IS NOT NULL) AND c.kind <> 'thread'
         ORDER BY " . ($ordered ? "(m.pinned = 1) DESC, (COALESCE(m.sort, 0) = 0), m.sort, " : '') . "c.name");
 
     // Unread messages and unread mentions for every joined channel, two
@@ -150,7 +150,12 @@ function ws_channel_detail($viewer, $channel)
     // what the reader may do. The assistants are never asked there.
     $brief['guest'] = function_exists('ws_guest_channel_state') ? ws_guest_channel_state($viewer, $channel) : null;
 
-    if ($brief['guest'] !== null) {
+    // A channel of the team shared with guests: who reads along, and the
+    // reader's way to share it (guests.php).
+    $brief['shares'] = function_exists('ws_channel_shares_state') ? ws_channel_shares_state($viewer, $channel) : null;
+    $brief['can_share'] = function_exists('ws_channel_can_share') && ws_channel_can_share($viewer, $channel);
+
+    if (($brief['guest'] !== null) || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel))) {
         $brief['claude'] = null;
         $brief['ai'] = null;
     }
@@ -200,7 +205,45 @@ function ws_channel_detail($viewer, $channel)
         }
     }
 
+    $brief['tab_counts'] = ws_channel_tab_counts($channel);
+
+    // A discussion (threads.php): what it is about, and no pin of its own.
+    if (ws_channel_is_thread($channel)) {
+        $thread = ws_thread($channel['id']);
+        $brief['thread'] = $thread ? ws_thread_present($viewer, $thread, $channel) : null;
+        $brief['can_pin'] = false;
+        $brief['can_share'] = false;
+    }
+
+    // The reader's own messages waiting to be posted here
+    // (scheduled_messages.php).
+    $brief['scheduled_mine'] = (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer))
+        ? (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
+            WHERE channel_id = '" . (int) $channel['id'] . "' AND kind = 'message' AND created_by = '" . (int) $viewer['id'] . "' AND status IN ('active', 'failed')")
+        : 0;
+
     return $brief;
+}
+
+/**
+ * What the channel's tabs hold, for the marks beside their names: the
+ * decisions and notes, the open tasks, and whether the summary is written.
+ * Two indexed counts (ws_messages.idx_kind, ws_tasks.idx_channel).
+ *
+ * @param array $channel
+ * @return array decisions, tasks, summary
+ */
+function ws_channel_tab_counts($channel)
+{
+    $channel_id = (int) $channel['id'];
+
+    return array(
+        'decisions' => (int) db_value("SELECT COUNT(*) FROM ws_messages
+            WHERE channel_id = '" . $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0"),
+        'tasks'     => (int) db_value("SELECT COUNT(*) FROM ws_tasks
+            WHERE channel_id = '" . $channel_id . "' AND status NOT IN ('done', 'cancelled')"),
+        'summary'   => (trim((string) ($channel['summary'] ?? '')) !== ''),
+    );
 }
 
 /**
@@ -228,8 +271,9 @@ function ws_channel_clean_name($name)
  */
 function ws_channel_name_taken($name, $except_id = 0)
 {
+    // A discussion is named after what it talks over, not as a place to look.
     return (int) db_value("SELECT COUNT(*) FROM ws_channels
-        WHERE archived_at = 0 AND LOWER(name) = LOWER('" . e($name) . "') AND id <> '" . (int) $except_id . "'") > 0;
+        WHERE archived_at = 0 AND kind <> 'thread' AND LOWER(name) = LOWER('" . e($name) . "') AND id <> '" . (int) $except_id . "'") > 0;
 }
 
 /**
@@ -255,6 +299,11 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
 
         // A room with a guest in it has staff in it and nobody else.
         if (((string) $channel['kind'] === 'guest') && ((int) (ws_rights_for_id($user_id)['role'] ?? 3) > 2)) {
+            continue;
+        }
+
+        // A discussion takes in only people who read its channel.
+        if (((string) $channel['kind'] === 'thread') && !ws_can_read_channel(ws_rights_for_id($user_id), ws_thread_parent_channel($channel))) {
             continue;
         }
 
@@ -285,6 +334,12 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
             'string' => '{var:1} added {var:2}',
             'vars'   => array('<@user:' . (int) $viewer['id'] . '>', implode(', ', $mentions)),
         )));
+
+        // The scheduled actions that greet newcomers (scheduled.php). Not for
+        // the people a channel is made with.
+        if (function_exists('ws_scheduled_joined')) {
+            ws_scheduled_joined(ws_channel($channel['id']), $added);
+        }
     }
 
     return $added;
@@ -492,7 +547,7 @@ function ws_can_change_channel_kind($viewer, $channel)
 {
     return is_array($channel) && $viewer['member'] && ($viewer['role'] < 3)
         && ((int) $channel['archived_at'] === 0)
-        && ((string) $channel['kind'] !== 'guest')
+        && in_array((string) $channel['kind'], array('public', 'private'), true)
         && (bool) ws_channel_membership($channel['id'], $viewer['id']);
 }
 
@@ -580,6 +635,10 @@ function ws_channel_join($viewer, $channel)
 
         ws_channel_membership_forget();
         ws_channel_folder_access($channel, array((int) $viewer['id']), true);
+
+        if (function_exists('ws_scheduled_joined')) {
+            ws_scheduled_joined($channel, array((int) $viewer['id']));
+        }
     }
 
     return array('ok' => true, 'error' => '');

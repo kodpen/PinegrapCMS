@@ -10,7 +10,8 @@
  * after post_value() is defined. Only the columns edited by the cards on this
  * screen are written, so a screen that was not submitted cannot have its
  * settings overwritten. A language is added only when nothing of the site is
- * named like it: the save is refused and the names listed otherwise.
+ * named like it: the save is refused and the names listed otherwise. A
+ * removed language takes its translations, jobs and glossary terms with it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -107,8 +108,8 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
         $translation_values = $translation_posted[$translation_code];
 
         if (!empty($translation_values['remove'])) {
-            db("DELETE FROM site_languages WHERE code = '" . e($translation_code) . "'");
-            db("DELETE FROM page_translations WHERE language = '" . e($translation_code) . "'");
+            pg_tr_language_purge($translation_code);
+            log_activity(lang(array('string' => 'the language {var:1} was removed with its translations', 'vars' => array($translation_code))), $_SESSION['sessionusername']);
             continue;
         }
 

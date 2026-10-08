@@ -487,24 +487,16 @@ function _validate_and_clean_tree_json($json)
     if (!empty($used_ids)) {
         $ids_str  = implode(',', array_map('intval', array_keys($used_ids)));
         $found    = array();
-        $rows     = db_items("SELECT id, tree_json FROM shared_components WHERE id IN ($ids_str)");
+        $rows     = db_items("SELECT id FROM shared_components WHERE id IN ($ids_str)");
         if ($rows) {
-            foreach ($rows as $r) {
-                $fid = (int)$r['id'];
-                $found[$fid] = true;
-                // Cycle/nesting check: shared_component must not itself contain shared_refs (Phase 1)
-                if ($r['tree_json'] !== '') {
-                    $inner = json_decode($r['tree_json'], true);
-                    $inner_ids = array();
-                    if ($inner) _vt_collect_shared_ids($inner, $inner_ids);
-                    if (!empty($inner_ids)) {
-                        $errors[] = lang(array('string' => 'Shared component id={var:1} contains nested shared references (not allowed in Phase 1).', 'vars' => $fid));
-                    }
-                }
-            }
+            foreach ($rows as $r) $found[(int)$r['id']] = true;
         }
-        if (!empty($errors)) {
-            return array('ok' => false, 'error' => implode('; ', $errors), 'warnings' => array(), 'cleaned_json' => '');
+        // A shared component may place other shared components (a widget in a
+        // header, a block in a footer). Only a loop — A placing B while B,
+        // directly or further down, places A — is refused: it cannot be drawn.
+        $loop = pg_shared_component_cycle(array_keys($found));
+        if (!empty($loop)) {
+            return array('ok' => false, 'error' => pg_shared_component_loop_message($loop), 'warnings' => array(), 'cleaned_json' => '');
         }
         // Mark orphans (referenced but not found in DB)
         foreach ($used_ids as $sid => $_) {
@@ -562,6 +554,98 @@ function _vt_walk(&$node, $depth, $valid_types, $required_props, &$errors)
     }
 }
 
+/**
+ * The first loop among nested shared components that can be reached from
+ * $start_ids, as the ids along it (A, B, A), or an empty array.
+ *
+ * A shared component places others through the shared_ref nodes of its
+ * tree_json; the rows are read breadth first in batches, a missing row being
+ * a leaf. $override (id => decoded tree) stands for rows whose new tree is
+ * not stored yet, so a save can be checked before it is written. The walk
+ * stops after a few hundred rows; deeper graphs are not checked further.
+ */
+function pg_shared_component_cycle($start_ids, $override = array())
+{
+    $children = array();
+    foreach ((array)$override as $oid => $otree) {
+        $acc = array();
+        if (is_array($otree)) _vt_collect_shared_ids($otree, $acc);
+        $children[(int)$oid] = array_map('intval', array_keys($acc));
+    }
+
+    $starts = array();
+    foreach ((array)$start_ids as $sid) {
+        $sid = (int)$sid;
+        if ($sid > 0) $starts[$sid] = $sid;
+    }
+    $frontier = $starts;
+    foreach ($children as $oid => $kids) {
+        foreach ($kids as $kid) $frontier[$kid] = $kid;
+    }
+    for ($round = 0; $round < 20 && !empty($frontier) && count($children) < 500; $round++) {
+        $need = array();
+        foreach ($frontier as $sid) {
+            if ($sid > 0 && !isset($children[$sid])) $need[$sid] = $sid;
+        }
+        $frontier = array();
+        if (empty($need)) break;
+        $rows = db_items("SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', $need) . ")");
+        foreach ((is_array($rows) ? $rows : array()) as $r) {
+            $rid  = (int)$r['id'];
+            $acc  = array();
+            $tree = ((string)$r['tree_json'] !== '') ? json_decode((string)$r['tree_json'], true) : null;
+            if (is_array($tree)) _vt_collect_shared_ids($tree, $acc);
+            $children[$rid] = array_map('intval', array_keys($acc));
+            foreach ($children[$rid] as $kid) {
+                if (!isset($children[$kid])) $frontier[$kid] = $kid;
+            }
+        }
+        foreach ($need as $sid) {
+            if (!isset($children[$sid])) $children[$sid] = array();
+        }
+    }
+
+    // Depth first over what was read; 1 = on the current path, 2 = done.
+    $state = array();
+    $path  = array();
+    $visit = function ($sid) use (&$visit, &$state, &$path, $children) {
+        if (isset($state[$sid])) {
+            if ($state[$sid] !== 1) return array();
+            $at = array_search($sid, $path, true);
+            return array_merge(array_slice($path, (int)$at), array($sid));
+        }
+        $state[$sid] = 1;
+        $path[] = $sid;
+        foreach ((isset($children[$sid]) ? $children[$sid] : array()) as $kid) {
+            $hit = $visit($kid);
+            if (!empty($hit)) return $hit;
+        }
+        array_pop($path);
+        $state[$sid] = 2;
+        return array();
+    };
+    foreach (array_merge(array_keys((array)$override), $starts) as $sid) {
+        $hit = $visit((int)$sid);
+        if (!empty($hit)) return $hit;
+    }
+    return array();
+}
+
+// The loop refusal, naming the components along it ("Header → Cart → Header").
+function pg_shared_component_loop_message($loop)
+{
+    $ids   = array_values(array_unique(array_map('intval', (array)$loop)));
+    $names = array();
+    $rows  = $ids ? db_items("SELECT id, name FROM shared_components WHERE id IN (" . implode(',', $ids) . ")") : array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) $names[(int)$r['id']] = (string)$r['name'];
+    $parts = array();
+    foreach ((array)$loop as $sid) {
+        $sid = (int)$sid;
+        $parts[] = isset($names[$sid]) ? $names[$sid] : ('#' . $sid);
+    }
+    return lang(array('string' => 'These shared components place each other in a loop: {var:1}', 'vars' => array(implode(' → ', $parts))));
+}
+
 // Collect all sharedId values from shared_ref nodes into $acc array (keyed by id).
 function _vt_collect_shared_ids($node, &$acc)
 {
@@ -603,15 +687,18 @@ function _vt_remove_orphans(&$node, $orphan_ids)
 //
 // Guarantees / invariants:
 //   * Single pass over the string — O(n) regex, batch SELECT for all ids referenced.
-//   * Cycle-safe: Phase-1 validation (`_validate_and_clean_tree_json`) already blocks shared
-//     components from containing nested shared_refs, so the rendered inner HTML will not
-//     contain any markers. A depth cap is kept as a safety net.
+//   * Nested components: a shared component may place others. Their markers in its
+//     rendered HTML are expanded recursively; $ancestors carries the ids being expanded
+//     above, so a loop that reached the database ends in an inert comment instead of
+//     repeating (saving refuses loops — pg_shared_component_cycle()). A depth cap is
+//     kept as a further safety net.
 //   * Missing / deleted shared components → marker is replaced with an empty string (layout
 //     is preserved).
+//   * System widgets are left as `<!--pg-system-widget:ID-->` for _expand_system_widgets().
 //
-function _expand_shared_refs($html, $depth = 0)
+function _expand_shared_refs($html, $depth = 0, $ancestors = array())
 {
-    if ($depth >= 8) return $html; // safety net — should never fire (nested refs blocked)
+    if ($depth >= 8) return $html; // safety net — nesting this deep is not expanded
     if (strpos($html, '<!--pg-shared-ref:') === false) return $html;
 
     // Collect every referenced id in one pass
@@ -640,6 +727,11 @@ function _expand_shared_refs($html, $depth = 0)
     // via _expand_system_widgets(), which wires them into the dynamic render pipeline.
     $replacements = array();
     foreach ($ids as $sid) {
+        // Placed inside itself, directly or through others: not drawn again.
+        if (isset($ancestors[$sid])) {
+            $replacements[$sid] = '<!-- pg-shared-ref:' . $sid . ' places itself (loop), not expanded -->';
+            continue;
+        }
         // Diagnostic comments are admin-visible only (view-source). They appear when:
         //   - shared_components row missing (deleted but still referenced)
         //   - tree_json column NULL/empty (widget never persisted its tree)
@@ -668,12 +760,11 @@ function _expand_shared_refs($html, $depth = 0)
             $replacements[$sid] = '<!-- pg-shared-ref:' . $sid . ' tree_json not valid JSON -->';
             continue;
         }
-        // _render_tree_node emits markers for any shared_ref it encounters. Phase-1 validation
-        // forbids nested shared_refs in shared_components.tree_json, so this *should* produce
-        // marker-free HTML. Still, recurse defensively with depth guard.
+        // _render_tree_node emits a marker for every shared_ref it meets: the components
+        // nested in this one, expanded here with this one counted as their ancestor.
         $rendered = _render_tree_node($sc_tree, 0);
         if (strpos($rendered, '<!--pg-shared-ref:') !== false) {
-            $rendered = _expand_shared_refs($rendered, $depth + 1);
+            $rendered = _expand_shared_refs($rendered, $depth + 1, $ancestors + array($sid => true));
         }
         if (trim($rendered) === '') {
             // Tree parsed fine but produced no visible output — most common cause:
@@ -966,6 +1057,26 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         },
         $html
     );
+}
+
+/**
+ * The markers a system widget's render leaves behind. A widget's layout may
+ * place shared components and other widgets; their markers only appear in the
+ * widget's output, after the page's own pass of _expand_shared_refs() and
+ * _expand_system_widgets(). Resolved here, at most four levels deep.
+ */
+function pg_expand_nested_components($html, $mode = 'preview', $email = false)
+{
+    for ($level = 0; $level < 4; $level++) {
+        $has_refs    = strpos($html, '<!--pg-shared-ref:') !== false;
+        $has_widgets = strpos($html, '<!--pg-system-widget:') !== false;
+        if (!$has_refs && !$has_widgets) break;
+        if ($has_refs) $html = _expand_shared_refs($html);
+        if (strpos($html, '<!--pg-system-widget:') !== false) {
+            $html = _expand_system_widgets($html, $mode, $email);
+        }
+    }
+    return $html;
 }
 
 // Walk a widget tree (deep clone) and locate the FIRST loop_area node. Replaces it
@@ -6434,6 +6545,9 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
  * widget where it left it. Trees live on the page since the multi-page
  * designer; an un-migrated database falls back to the per-style scan and
  * page_id is 0. $ids limits the answer to those rows (null = every row).
+ *
+ * A component placed inside another one (a widget in a header) is used on
+ * every page that places that one, through any number of levels.
  */
 function pg_shared_component_usage($ids = null)
 {
@@ -6465,20 +6579,54 @@ function pg_shared_component_usage($ids = null)
              WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
         );
     }
+    // Placements on the pages themselves, for every component named — the
+    // ones asked about and the ones that may contain them.
+    $direct = array();
     foreach ((is_array($trees) ? $trees : array()) as $row) {
         $json = (string)$row['tree_json'];
         if (strpos($json, '"sharedId"') === false) continue;
         // The whole digit run, so id 1 never matches a reference to 10.
         if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
         foreach (array_unique($m[1]) as $sid) {
-            $sid = (int)$sid;
-            if (!isset($usage[$sid])) continue;
-            $usage[$sid][] = array(
+            $direct[(int)$sid][] = array(
                 'page_id'    => (int)$row['page_id'],
                 'page_name'  => (string)$row['page_name'],
                 'style_id'   => (int)$row['style_id'],
                 'style_name' => (string)$row['style_name'],
             );
+        }
+    }
+
+    // Which components place which: child id => parent ids.
+    $parents = array();
+    $nested  = db_items("SELECT id, tree_json FROM shared_components WHERE tree_json LIKE '%sharedId%'");
+    foreach ((is_array($nested) ? $nested : array()) as $row) {
+        $pid = (int)$row['id'];
+        if (!preg_match_all('/"sharedId":\s*"?(\d+)/', (string)$row['tree_json'], $m)) continue;
+        foreach (array_unique($m[1]) as $cid) {
+            $cid = (int)$cid;
+            if ($cid > 0 && $cid !== $pid) $parents[$cid][$pid] = true;
+        }
+    }
+
+    foreach (array_keys($usage) as $sid) {
+        $seen  = array($sid => true);
+        $queue = array($sid);
+        $keys  = array();
+        while (!empty($queue)) {
+            $cur = array_shift($queue);
+            foreach ((isset($direct[$cur]) ? $direct[$cur] : array()) as $u) {
+                $key = $u['page_id'] . ':' . $u['style_id'] . ':' . $u['page_name'];
+                if (isset($keys[$key])) continue;
+                $keys[$key] = true;
+                $usage[$sid][] = $u;
+            }
+            foreach ((isset($parents[$cur]) ? array_keys($parents[$cur]) : array()) as $pid) {
+                if (!isset($seen[$pid])) {
+                    $seen[$pid] = true;
+                    $queue[] = $pid;
+                }
+            }
         }
     }
     return $usage;
@@ -6580,6 +6728,8 @@ function pg_designer_preview_widgets($page_id, $widgets)
             ob_start();
             try {
                 $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
+                // What the widget's own layout places (nested components).
+                $html = pg_expand_nested_components($html, 'preview');
             } catch (Throwable $t) {
                 $html = '';
             }
@@ -6597,7 +6747,9 @@ function pg_designer_preview_widgets($page_id, $widgets)
 
 /**
  * Real records for the canvas: a listing widget's repeated part rendered by
- * the server for up to $limit records, one HTML string each.
+ * the server, one HTML string per record. The card on the canvas stands for
+ * the first record the page shows, so this returns the rest of the page's
+ * first page (its items per page, capped by its maximum), at most $limit.
  *
  * The widget renders from the editor's tree and settings (saved or not) with
  * a marker around every repetition of its loop area, and the repetitions are
@@ -6649,7 +6801,18 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     $mark($tree);
     if (!$marked) return array();
 
-    $cfg['items_per_page'] = $limit;
+    // The canvas holds as many cards as the page's first page: that page is
+    // rendered and everything after its first record follows the card, each
+    // record in the place it takes on the page. A widget set to three
+    // records shows the card and two records, not the card and ten.
+    $shown = isset($cfg['items_per_page']) ? (int)$cfg['items_per_page'] : 10;
+    if ($shown <= 0) $shown = 10;
+    $max = isset($cfg['max_results']) ? (int)$cfg['max_results'] : 0;
+    if ($max > 0 && $max < $shown) $shown = $max;
+    if ($shown < 2) return array();
+    $fetch = min($shown, $limit + 1);
+
+    $cfg['items_per_page'] = $fetch;
     unset($cfg['max_results']);
 
     $html = pg_designer_preview_widgets($page_id, array(array(
@@ -6664,7 +6827,8 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     foreach ($m[1] as $row) {
         $row = trim(preg_replace('/<!--pg-custom-php:[^>]*-->/', '', $row));
         if ($row !== '') $rows[] = $row;
-        if (count($rows) >= $limit) break;
+        if (count($rows) >= $fetch) break;
     }
-    return $rows;
+    // The first record's place is the card's.
+    return array_slice($rows, 1);
 }

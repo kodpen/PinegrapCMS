@@ -20,6 +20,14 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
+// of a half-empty form and PHP notices from the unchecked row below.
+$id = (int) ($_REQUEST['id'] ?? 0);
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 
 // Cancel and the breadcrumb go back where the operator came from, when the
 // screen that opened this one said where that was. The save already did.
@@ -34,7 +42,7 @@ if (check_edit_access($_REQUEST['id']) == false) {
     output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
-if (!$_POST['name']) {
+if (empty($_POST['name'])) {
     // get folder data
     $query =
         "SELECT

@@ -339,6 +339,11 @@ switch ($action) {
     case 'ws_scheduled_save':
     case 'ws_scheduled_status':
     case 'ws_scheduled_run_now':
+    case 'ws_scheduled_preview':
+    case 'ws_scheduled_message_save':
+    case 'ws_scheduled_messages':
+    case 'ws_scheduled_message_delete':
+    case 'ws_scheduled_message_send':
     case 'ws_sync':
     case 'ws_messages_before':
     case 'ws_send':
@@ -433,6 +438,7 @@ switch ($action) {
     case 'ws_ai_draft_dismiss':
     case 'ws_ai_change_apply':
     case 'ws_ai_change_dismiss':
+    case 'ws_ai_bulk_step':
     case 'ws_ai_design_apply':
     case 'ws_ai_design_revert':
     case 'ws_ai_design_dismiss':
@@ -442,6 +448,14 @@ switch ($action) {
     case 'ws_guest_start':
     case 'ws_guest_relink':
     case 'ws_guest_end':
+    case 'ws_channel_share':
+    case 'ws_thread_start':
+    case 'ws_thread_join':
+    case 'ws_thread_close':
+    case 'ws_thread_rename':
+    case 'ws_thread_leave':
+    case 'ws_share_relink':
+    case 'ws_share_end':
 
         if (!USER_LOGGED_IN) {
             respond(array(
@@ -8976,13 +8990,13 @@ switch ($action) {
                 }
                 //CLEAR//
                 // delete all files from template files directory
-                $files = glob($backup_location . $backup_folder_name . '/files/{,.}*', GLOB_BRACE); // get all file names
+                $files = pg_glob_brace($backup_location . $backup_folder_name . '/files/{,.}*'); // get all file names
                 foreach ($files as $file) { // iterate files
                     if (is_file($file))
                         unlink($file); // delete file
                 }
                 // delete all files from template layouts directory
-                $layouts = glob($backup_location . $backup_folder_name . '/layouts/{,.}*', GLOB_BRACE); // get all layouts names
+                $layouts = pg_glob_brace($backup_location . $backup_folder_name . '/layouts/{,.}*'); // get all layouts names
                 foreach ($layouts as $layout) { // iterate layouts files
                     if (is_file($layout))
                         unlink($layout); // delete layouts files
@@ -13983,6 +13997,12 @@ switch ($action) {
                 }
                 if ($sc_tree === '' || json_decode($sc_tree) === null) {
                     respond(array('status' => 'error', 'message' => lang('Invalid tree data.')));
+                }
+                // The tree may place other shared components, never this one —
+                // directly or through them: that loop could not be drawn.
+                $sc_loop = pg_shared_component_cycle(array($sc_id), array($sc_id => json_decode($sc_tree, true)));
+                if (!empty($sc_loop)) {
+                    respond(array('status' => 'error', 'message' => pg_shared_component_loop_message($sc_loop)));
                 }
                 // Validate system_region_config when provided
                 if ($sc_src_cfg !== false && $sc_src_cfg !== null && ($sc_src_cfg === '' || json_decode($sc_src_cfg) === null)) {

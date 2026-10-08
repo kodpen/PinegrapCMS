@@ -381,8 +381,11 @@ $(document).ready(function () {
                     // Find the form closest to the current focused element.
                     var form = $(document.activeElement).closest('form:not(.disable_shortcut)');
                     if (!form.length) {
-                        // If no focused form, fallback to the first safe form
-                        form = $('form:not(.disable_shortcut):first');
+                        // No focused form: fall back to the first safe form the
+                        // operator can see. A form inside a closed dialog (the
+                        // settings modal on every screen) has no handlers wired
+                        // yet, and submitting it natively would navigate away.
+                        form = $('form:not(.disable_shortcut)').filter(':visible').first();
                     }
 
                     if (form.length) {

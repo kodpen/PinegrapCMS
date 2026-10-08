@@ -20,6 +20,14 @@ include('init.php');
 $user = validate_user();
 validate_email_access($user);
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
+// of a half-empty form and PHP notices from the unchecked row below.
+$id = (int) ($_REQUEST['id'] ?? 0);
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM email_campaigns WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if user has a user role
 if ($user['role'] == 3) {
     // get user that created this e-mail campaign, in order to check if user has access to this e-mail campaign

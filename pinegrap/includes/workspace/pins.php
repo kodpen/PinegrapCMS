@@ -45,7 +45,7 @@ function ws_pins_ready()
  */
 function ws_can_pin($viewer, $channel)
 {
-    return ws_pins_ready() && is_array($channel) && ((int) $channel['archived_at'] === 0) && ws_can_post_channel($viewer, $channel);
+    return ws_pins_ready() && is_array($channel) && ((int) $channel['archived_at'] === 0) && ((string) $channel['kind'] !== 'thread') && ws_can_post_channel($viewer, $channel);
 }
 
 /**

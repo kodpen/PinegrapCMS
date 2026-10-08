@@ -18,6 +18,14 @@
 
 // Various functions related to MailChimp.
 
+// Loaded by job.php after init.php; the settings are read from the database
+// the moment the file is included. The file sits in the web root, so a direct
+// request reaches it with no database layer and nothing to answer: leave the
+// way the other includes do instead of failing on the first query.
+if (!defined('PG_INIT_LOADED')) {
+    exit;
+}
+
 // Get MailChimp settings from the DB and create global constants that various functions will use.
 
 function mailchimp_init() {

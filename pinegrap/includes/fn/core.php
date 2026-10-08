@@ -441,6 +441,32 @@ function csv_cell($value)
     return str_replace('"', '""', $value);
 }
 
+// glob() with brace alternatives ("{csv,xlsx}", "{,.}") on every PHP build.
+// GLOB_BRACE is a GNU extension: PHP built against musl (Alpine images) or
+// another non-GNU libc does not define the constant, and naming it there is a
+// fatal error, so a pattern that works on the developer's host could take a
+// whole screen down on a customer's. Where the constant exists the call is
+// passed straight to glob(); elsewhere the braces are expanded here, one group
+// at a time, and the matches of the resulting plain patterns are merged in
+// order without duplicates. Returns an array in every case, also when glob()
+// reports a failure with false.
+function pg_glob_brace($pattern, $flags = 0)
+{
+    if (defined('GLOB_BRACE')) {
+        return (array) glob($pattern, $flags | GLOB_BRACE);
+    }
+    if (!preg_match('/\{([^{}]*)\}/', $pattern, $match, PREG_OFFSET_CAPTURE)) {
+        return (array) glob($pattern, $flags);
+    }
+    $before = substr($pattern, 0, $match[0][1]);
+    $after = substr($pattern, $match[0][1] + strlen($match[0][0]));
+    $files = array();
+    foreach (explode(',', $match[1][0]) as $alternative) {
+        $files = array_merge($files, pg_glob_brace($before . $alternative . $after, $flags));
+    }
+    return array_values(array_unique($files));
+}
+
 /**
  * Make a redirect target safe to place after URL_SCHEME . HOSTNAME.
  *
