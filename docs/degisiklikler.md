@@ -72,6 +72,300 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Posta kuyruğu (`mail_outbox`), kampanya işinde yeniden deneme ve kilitsiz gönderim, List-Unsubscribe tek tık (2026-10-08)
+
+**Sorun.**
+- `email()` SMTP konuşmasını isteğin içinde yapıyordu. Yavaş ya da yanıt
+  vermeyen sunucu ziyaretçinin isteğini (şifre sıfırlama, sipariş fişi, form
+  bildirimi) PHPMailer'ın zaman aşımı boyunca bekletiyor, DB bağlantısını o
+  süre tutuyordu (`includes/db_guard.php` başlığındaki forgot_password vakası);
+  gönderilemeyen e-posta yalnız günlüğe düşüp kayboluyordu.
+- `email_campaign_job.php` alıcı başına `LOCK TABLES email_recipients,
+  email_campaigns, contacts, log WRITE` (+ takvim tabloları) alıp SMTP'yi
+  kilit altında konuşuyordu: kampanya gönderilirken kişi ve günlük okuyan her
+  ekran bekliyordu. `email()` dönüşüne bakılmadığı için gönderilemeyen alıcı
+  da `complete='1'` oluyordu.
+- Ticari kampanyalarda `List-Unsubscribe` yoktu; Gmail/Yahoo toplu gönderici
+  kuralları (2024) tek tık abonelikten çıkmayı istiyor.
+
+**Karar.**
+- **(a) Kampanya işi kilitsiz.** Aday id'ler okunur, tek koşullu `UPDATE ...
+  SET claimed_at, claim_token WHERE id IN (...) AND claimed_at = 0` ile
+  sahiplenilir (MyISAM'da tek ifade atomik; iki iş aynı satırı alamaz),
+  sahiplenilenler PK + token ile yeniden okunur. Başarısız gönderim
+  `attempts`, `last_error`, `next_attempt_at` yazar (60 s, 5 dk, 30 dk, 2 sa,
+  6 sa, 24 sa — `api_webhook_backoff()` ile aynı takvim, ayrı fonksiyon
+  `pg_mail_backoff()`); altıncı denemede alıcı `complete='1', failed='1'` olur
+  ki kampanya kapanabilsin. `notify_sender` yalnız son denemede: aksi hâlde
+  SMTP düşükken alıcı başına altı "teslim edilemedi" bildirimi çıkardı.
+  15 dakikadan eski sahiplenme geri alınır. Yükseltilmemiş kurulumda
+  (`pg_email_retry_ready()` altı kolonu birden yoklar) eski LOCK TABLES akışı
+  aynen çalışır; hazırlık (opt-out, mail merge, altbilgi)
+  `email_campaign_job_prepare()`'e taşındı, iki akış da onu çağırır.
+  Motor değişikliği (InnoDB) bu işin konusu değil.
+- **(b) `email(['queue' => true])`.** Genel iş (`cron_runs.job`) ya da
+  yalnız posta için cron'a bağlanmış `mail_job` son 15 dakikada bittiyse ileti `mail_outbox`'a yazılır ve `true` döner; değilse
+  bugünkü gibi senkron gönderilir — cron kurmamış site hiçbir e-postayı
+  beklemez. Kuyruğu `job.php` her tıkta **koşulsuz** işler
+  (`pg_mail_queue_run(25, 20)`; `pg_cron_jobs()`'ta `mail_job`
+  `dispatch => false`, `inline => true`): kuyruğa yazma kararı genel işin
+  canlılığına bağlı olduğundan operatör şalteri olamaz — şalter kapalıyken
+  satır yazılıp hiç gönderilmezdi. `mail_job.php` ayrı cron girdisi isteyen
+  için. Sahiplenme InnoDB satır kilidiyle (`UPDATE ... WHERE status='queued'`,
+  etkilenen satır yoksa atla); 15 dk'dan eski `sending` geri döner (ölen bir
+  koşunun gönderdiği ileti ikinci kez gidebilir — kaybolmasından iyidir).
+  Gönderilen 7, bırakılan 30 gün tutulur. Ekler JSON'da `content_base64`
+  (geçersiz UTF-8 bayt `json_encode`'u sessizce `false` yapar); `path` eki
+  gönderim anında okunur, silinmez. `INSERT` `mysqli_query` ile — `db()`
+  başarısız sorguda isteği öldürür, kuyruk reddederse ileti senkron gider.
+  Kuyruğa alınanlar: şifre sıfırlama, sipariş fişi, ürün formu gönderici /
+  yönetici e-postaları, ürün sipariş e-postası, ödül programı, özel form
+  gönderici / yönetici (ikişer yol), üç yorum bildirimi. Hediye kartı ve
+  tekrarlayan ödeme hata e-postaları (operatör uyarısı) senkron kaldı.
+- **(c) List-Unsubscribe (RFC 8058).** `type='campaign'` +
+  `purpose='commercial'` iletide `<mailto:reply_to|from?subject=unsubscribe>,
+  <.../email_preferences.php?id=…&sig=…&unsubscribe=1>` ve
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click`; DKIM varsa iki başlık
+  `DKIM_extraHeaders` ile imzaya girer (RFC şartı). `ENCRYPTION_KEY` yoksa
+  imza üretilemez, başlık eklenmez. `email_preferences.php` POST
+  `List-Unsubscribe=One-Click`'i `validate_token_field()`'dan önce karşılar:
+  imza yetkidir, CSRF istenmez (RFC 8058 istemciden token beklemeyi yasaklar);
+  aynı adresin tüm kişileri `opt_in='0'`, düz metin 200, yönlendirme yok.
+  Yanlış imza 403.
+- **(d) Posta kuyruğu ekranı** `mail_queue.php` (manager): sayaçlar, genel
+  işin son koşusu, kuyruk etkin mi, son 100 satır, satır başına yeniden dene /
+  sil, "Şimdi çalıştır". Ayarlar › İşler'e bağlandı.
+
+**Ödün / açık.**
+- WAF her POST'u hassas sayar (`waf_is_sensitive_request`), adres başına
+  30/dk; tek tık POST'ları da bu sınıra girer. Değiştirilmedi.
+- Genel iş panelden elle bir kez koşturulursa 15 dakika boyunca e-postalar
+  kuyruğa yazılır; cron yoksa bir sonraki elle koşuya kadar bekler.
+- Kampanya işinde SMTP tamamen düşükken her alıcı PHPMailer zaman aşımını
+  ayrı ayrı bekler (önceki davranış); parti erken kesilmiyor.
+
+**Şema.** 8.30 `_email_retry`: `email_recipients.claimed_at`, `claim_token`,
+`attempts`, `last_error`, `next_attempt_at`, `failed`, `idx_pending
+(complete, next_attempt_at)`; `install_heavy_tables()`'a
+`'2026.4.8' => email_recipients`. 8.31 `_mail_outbox`: yeni `mail_outbox`
+(InnoDB), `get_tables()`'a eklendi.
+
+**Doğrulama.** Sandbox (MariaDB, PHP 8.3): yükseltme iki kez (17 ifade, ilk
+koşuda 9'u, ikincide 17'si yerindeydi); kampanya işi SMTP'siz → `attempts=1`,
+60 s bekleme, ikinci koşu atladı, `attempts=5` → `complete=1, failed=1`,
+kampanya `complete`, tek günlük satırı ve tek gönderici bildirimi; `failed`
+kolonu düşürülünce eski LOCK TABLES akışı. Kuyruk: `cron_runs.job` tazeyken
+`email(['queue'=>true])` satır yazdı (ikili ek dahil), `job.php` denedi
+(`attempts=1`, hata, `send_after` ileri); `job` 20 dk geride → senkron;
+6. denemede `failed` + günlük. Yerel SMTP (Python smtpd) ile kuyruk `sent`,
+`forgot_password.php` web isteği kuyruğa yazdı ve `job.php` gönderdi;
+kampanya iletisinde iki List-Unsubscribe başlığı. Tek tık: doğru imza 200 +
+`opt_in=0` + günlük, yanlış imza 403, tokensız normal form POST'u yine
+reddedildi. `mail_queue.php`: sayfa, tokensız POST reddi, retry / delete /
+run_now. DKIM imzasının başlıkları kapsadığı ve gerçek bir posta
+sağlayıcısının tek tık düğmesi sandbox'ta denenemedi.
+
+---
+
+## 2026.4.8 — Cron dağıtıcısı: iş başına kilit, iki şerit (light / heavy); şema 8.32 `cron_runs.locked_until` (2026-10-08)
+
+**Sorun.** `pg_cron_dispatch_next()` her tıkta bir iş seçip
+`config.job_dispatch_lock_until` ile **site geneli** kilit alıyordu
+(varsayılan 3600 sn). `auto_backup` (`max_execution_time 0`) sürerken
+kampanya (300 sn), `api_sync_job`, `translation_job`,
+`workspace_recurring_job` ve günlük ERP işleri yedeğin sonunu bekliyordu.
+
+**Karar.**
+- Tık başına yine **tek** iş. Dağıtılan betikler kendi akışlarının ortasında
+  `exit()` çağırabiliyor ve her biri tam bir istek gibi yazılmış; aynı
+  süreçte ikinci bir `include` güvenli değil. Paralellik tıklardan gelir:
+  tık N yedeği başlatır, tık N+1 yedek sürerken bir hafif işi seçer.
+- Kilit **iş başına**: `cron_runs.locked_until` (8.32). Sahiplenme tek
+  ifade: `INSERT … VALUES (name, 0, now+lock) ON DUPLICATE KEY UPDATE
+  locked_until = IF(locked_until < now, VALUES(locked_until), locked_until)`;
+  `mysqli_affected_rows` 1 (insert) / 2 (update) → sahip, 0 → başka tık
+  tutuyor. Hiç koşmamış işin satırı yoktur, SELECT-sonra-INSERT yarış
+  taşırdı. Yeni satırın `last_run_at = 0` değeri "hiç çalışmadı" anlamını
+  korur (Sistem Durumu `< 1` → Never; API meta `0` → stale).
+- **Şerit** = eşzamanlılık sınıfı, katalogda (`pg_cron_jobs()` `'lane'`):
+  `heavy` = `auto_backup`, `seo_score_job`, `seo_analyze_job`,
+  `update_search_index`; geri kalanı `light` (eksik anahtar `light`
+  sayılır). Bir şeritte aynı anda en fazla bir iş kilitli olur. İki şerit de
+  aday verirse en uzun bekleyen seçilir, eşitlikte `light`.
+- `lane` için **kolon eklenmedi**: şerit katalogun özelliğidir, DB'de onu
+  okuyan hiçbir kod yok; okuyucusu olmayan kolon tutulmaz.
+- `auto_backup` için kilit `'lock' => 14400` (yedek bir saati aşabilir;
+  kilit yalnız öldürülen süreç için emniyet ağıdır, koşudan kısa kilit aynı
+  işi ikinci kez başlatırdı). Diğerleri `JOB_DISPATCH_LOCK_SECONDS`
+  (varsayılan 3600, en az 60).
+- Seçim saf fonksiyonda: `pg_cron_pick($jobs, $runs, $now, $allowed)`
+  (`tests/cron_test.php`). Şerit kilidi `$allowed`'dan bağımsız bakılır:
+  koşarken kapatılan iş hâlâ koşuyordur ve şeridini tutar.
+- Şerit denetimi bir okumadır, iş sahiplenmesi atomik. Aynı anda okuyan iki
+  tık aynı şeritten iki ayrı işi sahiplenebilirdi; sahiplenen tık şerit
+  arkadaşlarından birinin kilidini görürse kendi kilidini geri bırakır
+  (ikisi de bırakabilir — o tıkta hiçbir şey koşmaz, güvenli yön).
+- `config.job_dispatch_lock_until` **kaldırılmadı** (yayınlanmış şema):
+  kolon yokken (`pg_cron_lock_ready()` false) dağıtıcı eski gövdeyi
+  (`pg_cron_dispatch_next_legacy()`) aynen çalıştırır, `pg_cron_dispatch_finished()`
+  eski kilidi bırakır.
+
+**Ödün.** Sitede aynı anda iki dağıtılmış iş koşabilir (bir hafif, bir ağır);
+sunucu yükü yedek sırasında artar. Ağır işlerin kendi aralarındaki sırası
+değişmedi.
+
+**Açık kalan.** Ağır kilit süresi (14400) ve şerit listesi ürün sahibinin
+onayında. Sandbox'ta doğrulandı: heavy kilitliyken light iş seçildi, üç
+eşzamanlı `php job.php` aynı işi iki kez başlatmadı, süresi dolan kilit geri
+alındı, kolon yokken legacy yol `config.job_dispatch_lock_until` ile çalıştı.
+
+---
+
+## 2026.4.8 — Merkezî hata kaydı: `includes/fn/errors.php`, `php_errors.log`, Site Günlükleri'nde gösterim (2026-10-08)
+
+**Sorun.** Yakalanmamış istisna ve ölümcül hata operatöre görünmüyordu:
+yalnız sunucunun hata günlüğüne düşüyordu, paylaşımlı hostta o dosya ya yok
+ya da sitenin okuyamadığı bir yerde. `view_log.php` yalnız üç `error_log`
+dosyasına (yazılım, ana dizin, kurulum) bakıyordu. PHP 8.5/9'a hazırlık için
+kullanımdan kalkma (deprecation) listesi de hiçbir yerde toplanmıyordu
+(`init.php` `E_DEPRECATED`'ı `error_reporting`'den çıkarıyor).
+
+**Karar.**
+- İşleyiciler **yalnız kaydeder**, davranışı değiştirmez: hata işleyicisi
+  her zaman `false` döner (PHP'nin kendi `display_errors`/`error_log` akışı
+  sürer; çift kayıt kabul), istisna işleyicisi PHP'nin varsayılanını taklit
+  eder (500, `DEBUG` açıksa mesaj, değilse `lang('An unexpected error
+  occurred.')`, CLI'da stderr, `exit(255)`). Önceden kurulu işleyici varsa
+  zincirlenir. `error_reporting` ayarı ve `mysqli_report(MYSQLI_REPORT_OFF)`
+  sözleşmesi değişmedi; DB'ye dokunulmaz (`log_activity()` yok) — kapanış
+  işleyicisi bağlantının gitmiş olabileceği anda çalışır.
+- **Susturma ölçütü:** `@` `error_reporting()`'i PHP 7'de 0'a, PHP 8'de ölümcül
+  maskeye (4437) düşürür; ikisi de "susturulmuş" sayılır ve kaydedilmez
+  (kod tabanında binlerce `@mysqli_query` var). `error_reporting`'de olmayan
+  hata kaydedilmez; tek istisna `DEBUG` açıkken susturulmamış
+  `E_DEPRECATED`/`E_USER_DEPRECATED`.
+- **Sel tavanı:** uyarı/bildirim/deprecation için aynı `file:line` istek
+  başına bir kez, istek başına toplam 50 satır. Ölümcül kayıtlar tavana
+  girmez; `E_USER_ERROR` hem işleyiciden hem `error_get_last()`'ten
+  geldiği için anahtarla tekilleştirilir.
+- **Sızıntı:** sorgu dizesinde `password`, `token`, `k`, `sig`, `key`
+  (`x[]` biçimi dahil, büyük/küçük harf duyarsız) değerleri `***`; yığın
+  kareleri argümansız (`getTraceAsString()` kullanılmaz); `error_get_last()`
+  mesajındaki PHP'nin kendi "Stack trace:" kısmı kesilir.
+- **Biçim:** `[Y-m-d H:i:s] {json}` — `view_log.php`'nin mevcut tarih
+  önekli satır ayrıştırıcısı değişmeden okur. 5 MB'ta döner, üç dosya
+  (`.log`, `.1`, `.2`).
+- `view_log.php`: `php_errors`, `php_errors_1`, `php_errors_2` aday
+  dosyaları silinebilir; `ini_get('error_log')` mutlak bir dosyaysa
+  `php_ini` olarak **yalnız okunur** (site dışı/paylaşımlı olabilir, "Hata
+  günlüklerini sil" atlar; 10 MB'tan büyükse yalnız son 10 MB okunur —
+  `file()` bütün dosyada bellek sınırına takılır). JSON satırı
+  `pg_error_describe_line()` ile düz metne çevrilir.
+
+**Çözüm.**
+- Yeni modül `includes/fn/errors.php` (manifestin sonunda):
+  `pg_error_install()` (idempotent; `init.php`'de `functions.php`'den hemen
+  sonra, CLI dahil), `pg_error_record()`, `pg_error_uncaught()`,
+  `pg_error_shutdown()`; saf yardımcılar `pg_error_format_line()`,
+  `pg_error_trace_short()`, `pg_error_level_name()`, `pg_error_mask_url()`,
+  `pg_error_rotate_plan()`, `pg_error_describe_line()`; yollar
+  `pg_error_log_path()`, `pg_error_log_files()`.
+- `output_error()`'un `RuntimeException` yolu (`pg_seo_rendering()` /
+  `pg_error_throws()`) çağıranlarda yakalanır (`seo_structure.php`
+  `catch (Exception)`, `designer.php` ve `settings_pane.php`
+  `catch (Throwable)`); işleyiciye yalnız yakalanmadığında düşer.
+- Testler `tests/errors_test.php` (7 test). `tr.json`: 4 anahtar.
+
+**Açık kalan.** `router.php`'nin `init.php`'den önceki yolu (DB/config
+hatası) ve `get_file.php` işleyicisiz kalır. Tarih, işleyici kurulduğu anda
+geçerli saat diliminde yazılır; `init.php` site saat dilimini daha sonra
+ayarladığı için ondan önceki bir hata sunucu saat diliminde damgalanır.
+
+---
+
+## 2026.4.8 — Otomatik yedek: haftalık zip arşivi, saklama sayısı, FTP / S3 uzak kopya (2026-10-08)
+
+**Sorun.** `auto_backup.php` her hafta `data/backups/auto_backup_<Y-m-W>/`
+klasörüne veritabanı dökümünü ve `data/files`, `data/layouts` kopyasını
+yazıyordu. Hiçbir şey silinmiyordu: yıllık 52 tam kopya diskte birikiyordu.
+Yedek yalnız korunan sunucunun kendisinde duruyordu; sunucu kaybında yedek
+de kayboluyordu.
+
+**Çözüm.** Yeni modül `includes/fn/backup.php` (`functions.php` manifestinin
+sonunda). `auto_backup.php`'nin kapısı, `pg_cron_ran()`, `pdo_mysql` kontrolü
+ve 24 saat eşiği yerinde; gövde `pg_backup_run_auto()`'ya taşındı.
+
+- ZipArchive varsa yedek tek dosya: `data/backups/auto_backup_<Y-m-W>.zip`
+  (`sql.sql`, `files/<ad>`, `layouts/<ad>`). Döküm ve arşiv
+  `data/temp/auto_backup_<damga>_<rastgele>/` içinde hazırlanır, doğrulanır
+  (`close()` + `pg_looks_like_zip()`), sonra `rename()` ile yerine geçer —
+  başarısız çalışma haftanın önceki arşivini bozmaz. Öldürülen çalışmanın
+  bir günden eski çalışma klasörü sonraki çalışmada silinir. ZipArchive
+  yoksa eski klasör yedeği aynen (pclzip denenmez).
+- Saklama `config.backup_keep` (varsayılan 4, 0 = sınırsız):
+  `pg_backup_prune_list()` saf fonksiyondur ve yalnız
+  `^auto_backup_\d{4}-\d{2}-\d{2}(\.zip)?$` adlarını görür; silme anında ad
+  ikinci kez sınanır. `english_default` / `turkish_default`, elle adlandırılan
+  yedekler ve `pre_upgrade_*` dökümleri hiçbir koşulda listeye girmez.
+  Kolonlar yokken (kod gelmiş, yükseltme koşmamış) hiçbir şey silinmez.
+- Uzak kopya `config.backup_remote_type` (`''|ftp|s3`) +
+  `backup_remote_settings` (şifreli JSON `"<ciphertext>:<iv>"`,
+  `{ftp:{…}, s3:{…}}` — iki hedef ayrı anahtarda, tür değiştirmek ötekinin
+  parolasını kaybettirmez; "Hiçbiri" kaydı blob'u siler). FTP:
+  `ftp_ssl_connect`/`ftp_connect`, pasif kip, `<ad>.part` olarak yükle,
+  sonra `ftp_rename` (yarım yükleme gerçek adla kalmaz). S3: tek SigV4 imzalı
+  PUT, gövde diskten akar (`CURLOPT_INFILE`), `x-amz-content-sha256` dosyanın
+  sha256'sı, `pg_curl_tls()` + `pinegrap_user_agent()`; uç nokta boşsa
+  `https://s3.<bölge>.amazonaws.com`, şemasız uç nokta https sayılır,
+  path-style / virtual-host seçilebilir. Sonuç `backup_remote_error` /
+  `backup_remote_sent_at`'e yazılır, hata `log_activity(…, 'SYSTEM')`.
+- Ayarlar → Genel → Yedeklemeler kartı (`pgset-backup`): saklama sayısı,
+  hedef türü, FTP / S3 alanları (türe göre gösterilir), parola ve gizli
+  anahtar geri basılmaz (boş kutu = kayıtlıyı koru), son gönderim / son
+  hata satırı, "Kaydet ve bağlantıyı test et" (`backup_remote_test`:
+  kaydeder, sonra küçük bir deneme dosyası gönderir; sonuç notice — ayar
+  diyaloğu warning taşımıyor). Kolonlar yokken kart "yükseltmeyi çalıştırın"
+  der, kayıt modülü o kartın kolonlarını yazmaz.
+- Yedek Yöneticisi (`backups.php`) klasörlerin yanında `*.zip` dosyalarını
+  da listeler (tür rozeti, boyut `filesize`, tarih `filemtime`); arşiv olduğu
+  gibi indirilir / `unlink` edilir. Ad doğrulaması değişmedi: işlem yalnız
+  `backup_list()`'in döndürdüğü adla eşleşirse yapılır.
+- Sistem Durumu "Son Yedek": otomatik yedek adlı zip dosyaları da sayılır;
+  uzak kopya hata verdiyse kart sarıya döner (yeşilse) ve ağırlığın yarısı
+  düşer, hata metni ayrıntı satırında.
+
+**Gerekçe ve ödünler.**
+- Haftalık ad (`Y-m-W`) korunur: aynı haftadaki her çalışma o haftanın
+  arşivinin yerine yazar, saklama "hafta" sayar. ISO haftası yılbaşında
+  takvim yılıyla ayrışır (1 Ocak = 53. hafta, 29 Aralık = 1. hafta);
+  `pg_backup_auto_sort_key()` bu haftaları doğru sıraya koyar — düz sözlük
+  sırası yeni yedeği eski sanıyordu.
+- Aynı haftanın klasörü ve zip'i birlikte varsa (yükseltme haftası) hafta
+  bir kez sayılır, klasör zip'in eski kopyası olarak silinir.
+- Uzak kopya yalnız zip için: klasör yedeği uzağa gönderilmez (kartta
+  yazıyor). Uzak taraftaki eski kopyalar silinmez; saklama yalnız yereldir.
+- Çok parçalı S3 yüklemesi yok: tek PUT'un sınırı (AWS'de 5 GB) aşan site
+  için hata mesajı servisten gelir.
+- PHP'nin `ftp_ssl_connect()`'i sunucu sertifikasını doğrulamaz; FTPS
+  dinlemeye karşı korur, ortadaki adama karşı korumaz.
+
+**Şema.** 8.33 `_backup_settings`: `config.backup_keep`,
+`backup_remote_type`, `backup_remote_settings` (TEXT), `backup_remote_error`
+(TEXT), `backup_remote_sent_at`.
+
+**Doğrulama.** `tests/backup_test.php` (ad kapısı, saklama listesi,
+yılbaşı sıralaması, AWS SigV4 IAM örneğinin imza anahtarı / imza /
+kanonik istek özeti, URL kurulumu, hata ayıklama). Yerel alıcılarla
+`php` üzerinden: SigV4'ü bağımsız doğrulayan Python HTTP alıcısına
+path-style ve virtual-host PUT (3 MB'lık dosyada `Expect: 100-continue`
+dahil), yanlış gizli anahtarla 403 + `<Code>/<Message>` ayıklama;
+`pyftpdlib` ile düz FTP ve zorunlu TLS'li FTPS'e yükleme, üzerine yazma,
+yanlış parola, olmayan klasör, kapalı port. Sandbox kurulmadı: migration'ın
+iki kez koşturulması, gerçek `pg_backup_run_auto()` çalışması, ayar
+kaydı ve gerçek S3 / FTP servisleri doğrulanmadı.
+
+---
+
 ## 2026.4.8 — İki adımlı oturum açma: doğrulama uygulaması (TOTP) ve yedek kodlar (8.40) (2026-10-08)
 
 **Sorun.** Oturum yalnız parolayla açılıyordu. Parolası sızan bir yönetici

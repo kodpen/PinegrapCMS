@@ -1335,6 +1335,10 @@ function install_heavy_tables() {
 		// `files` takes two columns and an index for the documents the ERP keeps
 		// (4.65); it is a MyISAM table on older installations, rebuilt whole.
 		'2026.4.4' => array('user', 'products', 'product_groups', 'orders', 'page', 'style', 'notifications', 'files'),
+		// 2026.4.8 adds six columns and an index to `email_recipients` for the
+		// campaign job's retries (8.30). It keeps one row per recipient of
+		// every campaign ever sent, and on MyISAM each ALTER copies it whole.
+		'2026.4.8' => array('email_recipients'),
 	);
 
 }

@@ -1,6 +1,17 @@
 # Plan 4 — E-posta kuyruğu, cron, dış API/webhook ve operasyon (ana ajan Fable 5.1, alt ajanlar Opus 5.5)
 
-Durum: plan (2026-10-08). Kaynak keşif: `docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` maddeler 17, 18, 19, 20, 15, 22. Satır numaraları `development` @ `0294c42`'ye göre; kaymışsa grep ile bul, yeniden keşif yapma.
+Durum: uygulandı (2026-10-08) — sapmalar: Faz 8 ayrı ekran, `cron_runs.lane` yok, kuyruk kararı şaltersiz, kampanya sahiplenmesi koşullu UPDATE, tık başına tek iş, uzak yedek yalnız zip (ayrıntı aşağıda "Uygulama notu"). Kaynak keşif: `docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` maddeler 17, 18, 19, 20, 15, 22. Satır numaraları `development` @ `0294c42`'ye göre; kaymışsa grep ile bul, yeniden keşif yapma.
+
+## Uygulama notu (2026-10-08)
+
+Dört dalda uygulandı (`claude/mq-part-a` Faz 1–4 + 8, `-b` Faz 5, `-c` Faz 6, `-d` Faz 7), `claude/mail-queue-cron-webhook` dalında birleştirildi. Plandan sapmalar:
+
+1. **Faz 8:** posta kuyruğu `api_settings.php` sekmesi yerine ayrı `mail_queue.php` ekranı (Ayarlar › İşler'den bağlı). `api_settings.php` Plan 1 / dış API sahipliğinde; ayrı ekran o dosyaya dokunmadan aynı işi görür.
+2. **Faz 5:** `cron_runs.lane` kolonu eklenmedi; şerit `pg_cron_jobs()` girdisindeki `'lane'` anahtarında. DB'de onu okuyacak kod yok. Şema 8.32 yalnız `cron_runs.locked_until`.
+3. **Faz 2:** kuyruğa yazma kararı bir operatör şalteri değil: `job` ya da `mail_job` son 15 dakikada koştuysa (`pg_mail_job_alive()`) kuyruk, değilse senkron. `mail_job` katalogda `dispatch => false`; `job.php` kuyruğu her tıkta koşulsuz işler. Şalter kapatılırsa satır yazılıp hiç gönderilmezdi.
+4. **Faz 1:** kampanya alıcı sahiplenmesi `LOCK TABLES` yerine tek koşullu `UPDATE … WHERE claimed_at = 0` (+ `claim_token`); 8.30'a `claimed_at`, `claim_token`, `failed` ve `idx_pending` da eklendi.
+5. **Faz 5:** tık başına yine tek dağıtılmış iş (dağıtılan betikler kendi akışlarında `exit()` çağırabiliyor); şeritler ayrı tıklarda eşzamanlılık sınıfıdır — ağır şeritte bir iş kilitliyken sonraki tıklar hafif işleri dağıtır.
+6. **Faz 7:** uzak kopya yalnız zip arşivine yapılır; `ZipArchive` yoksa yedek klasör kalır ve uzağa gönderilmez. `pclzip` denenmedi.
 
 ## 0. Sabit bağlam
 

@@ -8321,6 +8321,7 @@ function get_tables() {
 		'key_codes',
 		'log',
 		'login_regions',
+		'mail_outbox',
 		'marketplace_accounts',
 		'marketplace_categories',
 		'marketplace_category_attributes',

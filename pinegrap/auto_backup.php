@@ -15,8 +15,6 @@
  *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
-//required for software backup mysql dumb
-use Ifsnop\Mysqldump as IMysqldump;
 include('init.php');
 
 // A background run (crontab, or the general job's dispatcher) has no user.
@@ -72,98 +70,8 @@ if(defined('LAST_SOFTWARE_AUTO_BACKUP') && ( !defined('SOFTWARE_AUTO_BACKUP') ||
     }
 }
 
+// The run itself -- the archive, the retention and the remote copy -- lives in
+// includes/fn/backup.php.
 function software_auto_backup(){
-    $backup_location = dirname(__FILE__) . '/data/backups/';
-    
-    $backup_folder_name = 'auto_backup_' . date('Y-m-W');
-    if (!file_exists($backup_location.$backup_folder_name)) {
-        mkdir($backup_location.$backup_folder_name, 0777, true);
-    }
-    
-    
-    include_once('mysqldump.php');
-                    
-    //Create mysql dump file named slq.sql and save it in backup directory
-    // first backup Mysql because, if there is timeout when file copy mysql important for us. so even timeout to copy files or layouts we have mysql dump anyway.
-    try {
-        $dump = new IMysqldump\Mysqldump('mysql:host='.DB_HOST.';dbname='.DB_DATABASE.'', ''.DB_USERNAME.'', ''.DB_PASSWORD.'');
-        $dump->start($backup_location.$backup_folder_name .'/sql.sql');
-    } catch (\Exception $e) {
-        
-        $backups_error_message = $e->getMessage();
-    
-        //if mysql error and backup folder is empty, delete it.
-        if (is_dir($backup_location.$backup_folder_name) && count(glob($backup_location.$backup_folder_name.'/*')) === 0) {
-            rmdir($backup_location.$backup_folder_name);
-        }
-        // Scheduled job: there is no signed-in user to attribute the entry to.
-        log_activity(lang('Software Auto Backup error:') . $backups_error_message, 'SYSTEM');
-        return;
-    }
-    
-    //Prepare for files and layouts**
-    //if files directory not exist Create directory
-    if (!file_exists($backup_location.$backup_folder_name.'/files')) {
-        mkdir($backup_location.$backup_folder_name.'/files', 0777, true);
-    }
-    //if layouts directory not exist Create directory
-    if (!file_exists($backup_location.$backup_folder_name.'/layouts')) {
-        mkdir($backup_location.$backup_folder_name.'/layouts', 0777, true);
-    }
-    //CLEAR//
-    // delete all files from template files directory
-    $files = pg_glob_brace($backup_location.$backup_folder_name.'/files/{,.}*'); // get all file names
-    foreach($files as $file){ // iterate files
-        if(is_file($file))
-        unlink($file); // delete file
-    }
-    // delete all files from template layouts directory
-    $layouts = pg_glob_brace($backup_location.$backup_folder_name.'/layouts/{,.}*'); // get all layouts names
-    foreach($layouts as $layout){ // iterate layouts files
-        if(is_file($layout))
-        unlink($layout); // delete layouts files
-    }
-    
-    //WRITE//
-     // prepare path to template files
-     $backup_files_path = $backup_location.$backup_folder_name.'/files/';
-     $handle = opendir(FILE_DIRECTORY_PATH);
-     // copy files to backup directory
-     while (false !== ($file = readdir($handle))) {
-         if (($file != '.') && ($file != '..')) {
-             copy(FILE_DIRECTORY_PATH . '/' . $file,$backup_files_path . $file);
-         }
-     }
-     closedir($handle);
-    
-    //WRITE//
-    // prepare path to template layouts
-    $backup_layouts_path = $backup_location.$backup_folder_name.'/layouts/';
-    $handle = opendir(LAYOUT_DIRECTORY_PATH);
-    // copy files to backup directory
-    while (false !== ($file = readdir($handle))) {
-        if (($file != '.') && ($file != '..')) {
-            copy(LAYOUT_DIRECTORY_PATH . '/' . $file,$backup_layouts_path . $file);
-        }
-    }
-    closedir($handle);
-
-    //create .htaccess file to make directory unaccessable.
-    file_put_contents($backup_location.$backup_folder_name.'/.htaccess','deny from all');
-    
-    if (file_exists($backup_location.$backup_folder_name)) {
-                        
-        if (file_exists($backup_location.$backup_folder_name.'/sql.sql')) {
-            if (file_exists($backup_location.$backup_folder_name.'/files')) {
-                if (file_exists($backup_location.$backup_folder_name.'/layouts')) {
-                    $query ="UPDATE config SET last_software_auto_backup = UNIX_TIMESTAMP()";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    log_activity(lang('Software Auto Backup Success'), 'SYSTEM');
-                    return;
-                }
-            }
-        }
-        
-    }
+    pg_backup_run_auto();
 }
-

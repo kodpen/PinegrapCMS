@@ -63,6 +63,7 @@ require_once(dirname(__FILE__) . '/includes/db_guard.php');
 pg_db_guard_check();
 
 require(dirname(__FILE__) . '/functions.php');
+pg_error_install(); // Record uncaught exceptions and fatal errors in data/temp/php_errors.log.
 
 // Capture per-request performance baseline as early as possible.
 // The actual recording happens in a register_shutdown_function() handler

@@ -1366,7 +1366,8 @@ if ($liveform->check_form_errors() == false) {
                     'from_email_address' => $from_email_address,
                     'subject' => $submitter_email_subject,
                     'format' => $submitter_email_format,
-                    'body' => $body));
+                    'body' => $body,
+                    'queue' => true));
 
             }
         }
@@ -1469,7 +1470,8 @@ if ($liveform->check_form_errors() == false) {
             'reply_to' => $submitter_email_address,
             'subject' => $administrator_email_subject,
             'format' => $administrator_email_format,
-            'body' => $body));
+            'body' => $body,
+            'queue' => true));
 
     }
     

@@ -272,6 +272,24 @@ if (!$_POST) {
         $output_progress_percentage = '100';
     }
 
+    // Recipients the job gave up on after its last attempt. They count as
+    // complete above, so the campaign can finish; this says how many of them
+    // never received the message.
+    $output_failed_email_recipients = '';
+
+    if (pg_email_retry_ready()) {
+        $number_of_failed_email_recipients = (int) db_value(
+            "SELECT COUNT(*)
+            FROM email_recipients
+            WHERE
+                (email_campaign_id = '" . e($_GET['id']) . "')
+                AND (failed = '1')");
+
+        if ($number_of_failed_email_recipients > 0) {
+            $output_failed_email_recipients = '<p class="small text-danger mb-0">' . lang(array('string' => '{var:1} could not be delivered', 'vars' => array(pg_format_number($number_of_failed_email_recipients, 0)))) . '</p>';
+        }
+    }
+
     $output_format = '';
     $output_body = '';
 
@@ -478,6 +496,7 @@ if (!$_POST) {
                         <div class="alert border-4 alert-secondary" role="alert">
                             <h4 class="alert-heading">' . lang('Progress') . '</h4>
                             <p>' . $output_progress_percentage . '% (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
+                            ' . $output_failed_email_recipients . '
                         </div>
                     </div> 
                     ' . $output_auto_campaign . '
