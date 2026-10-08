@@ -191,14 +191,18 @@ Hata verdirmeden yanlış çalıştıkları için burada duruyorlar; ayrıntıs�
 
 ## Bir iş ne zaman biter
 
-Birim test takımı ve CI kapısı **yoktur**; "testler geçti" denemez. Bunun yerine
-denetim betikleri vardır ve temiz çıkmadan iş bitmiş sayılmaz:
+Denetim betikleri ve küçük bir birim test takımı vardır (Composer'sız,
+veritabanısız; yalnız saf fonksiyonlar — `tools/test.php` başlık yorumu nasıl
+test yazılacağını anlatır). CI (`.github/workflows/php-checks.yml`) hepsini
+koşar. Temiz çıkmadan iş bitmiş sayılmaz; "testler geçti" yalnız bu takım için
+denebilir, çalışma zamanı davranışı sandbox'ta elle doğrulanır:
 
 ```bash
 php tools/lint.php             # tum agacta php -l
 php tools/check_lang.php       # lang() / _sdT() anahtarlari tr.json ile ortusuyor mu
 php tools/check_bindings.php   # tasarimci acilir listesi ile renderer tokenlari ortusuyor mu
 php tools/check_api_schema.php # dis API alanlari sema ile ortusuyor mu
+php tools/test.php [filtre]    # tests/*_test.php birim testleri (saf fonksiyonlar)
 ```
 
 1. `php tools/lint.php` temiz.
@@ -208,6 +212,9 @@ php tools/check_api_schema.php # dis API alanlari sema ile ortusuyor mu
 4. Dış API'ye dokunduysan `php tools/check_api_schema.php` temiz;
    `style_designer.js`'e dokunduysan `node --check` temiz.
    (Dokunup dokunmadığından emin değilsen koştur — betikler ucuzdur.)
+4a. `php tools/test.php` temiz; saf bir fonksiyona dokunduysan ya da yenisini
+   yazdıysan `tests/<konu>_test.php`'ye test ekledin (davranışı değiştiriyorsan
+   önce test kırmızı, sonra yeşil).
 5. Yeni dosyada başlık bloğu, include ise kapı sabiti var.
 6. Yeni ve dokunulan yorumlar İngilizce, süreç/AI izi taşımıyor.
 7. Şema değişikliği varsa migration üzerinden ve tekrar koşulabilir; dev DB'de
@@ -233,6 +240,7 @@ bağlı geliştirme klasöründe okunur (yukarı bak).
 | Tam bağlam arşivi | `docs/CLAUDE-tam.md` |
 | Değişiklik günlüğü | `docs/degisiklikler.md` |
 | API ile ERP aynı depoda: dikiş yeri ve ortak dosya kuralları | `dev/_handoff/API-ERP-koordinasyon.md` |
+| 2026-10-08 keşif raporları ve beş paralel uygulama planı | `docs/_tespit_2026_10_08/`, `docs/_plan_{panel_api_widget,innodb,kargo,posta_kuyrugu_cron_webhook,csrf_2fa}.md` |
 
 Önemli değişiklikler `docs/degisiklikler.md`'ye, proje bağlamını etkileyen
 değişiklikler `docs/CLAUDE-tam.md`'ye yazılır; kalıcı bir kural ortaya çıktıysa
