@@ -599,8 +599,8 @@ function pg_mfa_begin_setup($user_id)
 /**
  * Confirm the key being set up with the first code the app shows. On success
  * the key becomes the account's second factor, a fresh set of recovery codes
- * replaces any earlier one, and every remember-me token and API device of
- * the account is revoked: they were issued without a second step.
+ * replaces any earlier one, and the account's other remember-me tokens and
+ * its API devices are revoked: they were issued without a second step.
  *
  * @param int    $user_id
  * @param string $code
@@ -643,7 +643,7 @@ function pg_mfa_confirm_setup($user_id, $code)
 
     $codes = pg_mfa_recovery_regenerate($user_id);
 
-    pg_auth_token_revoke_user($user_id);
+    pg_mfa_revoke_other_sessions($user_id);
 
     log_activity(lang('user turned on two-step verification'),
         (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $user_id . "'"));
@@ -653,7 +653,7 @@ function pg_mfa_confirm_setup($user_id, $code)
 
 /**
  * Remove the account's second factor and recovery codes, and revoke its
- * remember-me tokens and API devices.
+ * other remember-me tokens and its API devices.
  *
  * @param int $user_id
  */
@@ -666,7 +666,47 @@ function pg_mfa_disable($user_id)
     db("DELETE FROM user_mfa WHERE user_id = '" . (int) $user_id . "'");
     db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
 
-    pg_auth_token_revoke_user($user_id);
+    pg_mfa_revoke_other_sessions($user_id);
+}
+
+/**
+ * Revoke every remember-me token and API device of the account except the
+ * token of the browser making this request, when that token is the
+ * account's own.
+ *
+ * Revoking that one too and minting a fresh one (what a password change
+ * does) races the browser's own requests in flight: one that still carries
+ * the old cookie finds its token gone and ends the session - with the
+ * recovery codes the account screen was about to show in it. The person
+ * just proved the second factor in this browser, so its token stays.
+ *
+ * @param int $user_id
+ */
+function pg_mfa_revoke_other_sessions($user_id)
+{
+    $keep = '';
+
+    if (isset($_COOKIE['software']['auth'])) {
+        $parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
+
+        if (preg_match('/^[a-f0-9]{24}$/', (string) $parts[0])
+            && ((int) db_value("SELECT user_id FROM auth_tokens WHERE selector = '" . e($parts[0]) . "'") === (int) $user_id)) {
+            $keep = (string) $parts[0];
+        }
+    }
+
+    if ($keep === '') {
+        pg_auth_token_revoke_user($user_id);
+        return;
+    }
+
+    db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "' AND selector != '" . e($keep) . "'");
+
+    // Same as pg_auth_token_revoke_user(): devices signed in to the external
+    // API are sessions of the same person.
+    require_once(PG_FUNCTIONS_DIR . '/includes/api/devices.php');
+
+    api_devices_revoke_user($user_id);
 }
 
 /**

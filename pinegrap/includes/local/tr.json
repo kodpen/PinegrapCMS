@@ -18648,5 +18648,10 @@
     "user turned off two-step verification": "kullanıcı iki adımlı doğrulamayı kapattı",
     "Code from your authenticator app or a recovery code": "Doğrulama uygulamanızdaki kod ya da bir kurtarma kodu",
     "The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.": "Site doğrulama uygulaması anahtarlarını şu anda okuyamıyor; kurtarma kodlarınızdan birini kullanın ya da site sahibine başvurun.",
-    "Turn off two-step verification from your own account page, where your password and a code are asked for.": "Kendi iki adımlı doğrulamanızı, parolanızın ve bir kodun istendiği hesap sayfanızdan kapatın."
+    "Turn off two-step verification from your own account page, where your password and a code are asked for.": "Kendi iki adımlı doğrulamanızı, parolanızın ve bir kodun istendiği hesap sayfanızdan kapatın.",
+    "The verification code is not correct.": "Doğrulama kodu doğru değil.",
+    "This account uses two-step verification and cannot sign in with a password here. Sign in on the website, or use an application key.": "Bu hesap iki adımlı doğrulama kullanıyor ve burada parolayla oturum açamaz. Web sitesinden oturum açın ya da bir uygulama anahtarı kullanın.",
+    "This account uses two-step verification. Send the code from the authenticator app in otp.": "Bu hesap iki adımlı doğrulama kullanıyor. Doğrulama uygulamasındaki kodu otp alanında gönderin.",
+    "Too many verification attempts. Please wait ten minutes.": "Çok fazla doğrulama denemesi yapıldı. Lütfen on dakika bekleyin.",
+    "access denied from a device (two-step code invalid)": "bir cihazdan erişim reddedildi (iki adımlı doğrulama kodu geçersiz)"
 }

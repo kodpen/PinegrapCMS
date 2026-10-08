@@ -152,14 +152,6 @@ if (strpos($action, 'mfa_') === 0) {
         output_error(lang('Two-step verification cannot be turned on because the site has no encryption key. Please ask the site owner.'));
     }
 
-    // Revoking the account's tokens (turning it on or off does) took this
-    // browser's too; it gets a fresh one so it stays signed in, as after a
-    // password change.
-    $mfa_keep_this_browser = function () use ($user_id) {
-        $keep_remembered = ((REMEMBER_ME == true) && isset($_COOKIE['software']['auth']));
-        pg_login_set_device_cookie($user_id, $keep_remembered);
-    };
-
     if ($action === 'mfa_begin') {
         if (!pg_mfa_enabled($user_id)) {
             pg_mfa_begin_setup($user_id);
@@ -196,7 +188,6 @@ if (strpos($action, 'mfa_') === 0) {
 
         pg_mfa_attempt_clear($user_id);
         $_SESSION['software']['mfa_codes_show'] = $codes;
-        $mfa_keep_this_browser();
         go($mfa_back);
     }
 
@@ -240,7 +231,6 @@ if (strpos($action, 'mfa_') === 0) {
         pg_mfa_attempt_clear($user_id);
         pg_mfa_disable($user_id);
         unset($_SESSION['software']['mfa_codes_show']);
-        $mfa_keep_this_browser();
         log_activity(lang('user turned off two-step verification'), $mfa_username);
         go($mfa_back);
     }

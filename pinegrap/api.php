@@ -251,6 +251,19 @@ if (
 
 ) {
 
+    // The password was right but the account has a second step, which a
+    // request carrying a password cannot give (initialize_user() loaded no
+    // user). Said apart from "Invalid login." so the client can tell the
+    // person what to do instead of asking for the password again.
+    if (defined('API_MFA_REQUIRED')) {
+        header('HTTP/1.1 401 Unauthorized');
+        respond(array(
+            'status' => 'error',
+            'code' => 'mfa_required',
+            'message' => lang('This account uses two-step verification and cannot sign in with a password here. Sign in on the website, or use an application key.')
+        ));
+    }
+
     // If a user was not found then respond with an error.
     if (!USER_LOGGED_IN) {
         respond(array(

@@ -100,10 +100,12 @@ TOTP, base32 ya da QR için hazır bir parça yoktu.
 - **Google ile giriş muaf değil.** `google_auth.php` doğrulanmış e-postayla
   personel hesabına da bağlanabildiği için muafiyet, parola yerine Google
   hesabını tek adım yapardı.
-- **Parola kabul eden API yolları 2FA'lı hesabı reddeder** (istek başına
-  `API_USERNAME`/`API_PASSWORD` gibi): bu yollarda kod
-  sorulacak bir ekran yok; kabul etmek ikinci adımı yan kapıdan açmak olurdu.
-  Kurulum ekranı kilidi (`install/index.php`) dokunulmadı.
+- **Parola kabul eden API yolları 2FA'lı hesabı reddeder:** istek başına
+  parola taşıyan `api.php` (`username`/`password`) ve `shipworks.php`; bu
+  yollarda kod sorulacak bir ekran yok, kabul etmek ikinci adımı yan kapıdan
+  açmak olurdu. Cihazdan giriş (`POST /auth/login`) kodu alabildiği için
+  reddetmez, `otp` ister (TOTP ya da kurtarma kodu). Kurulum ekranı kilidi
+  (`install/index.php`) dokunulmadı.
 - **Kurtarma:** yedek kodlar; ikisi de kaybolursa yönetici kullanıcı
   düzenleme ekranından sıfırlar (kendi rolünden düşük hesap için). Son çare
   `user_mfa` satırını veritabanından silmek; config sabiti yok.
@@ -156,6 +158,18 @@ Sınır aşımı `waf_log`'a `rate-mfa` olarak da yazılır.
 reddeder. `delete_users.php` hesabın 2FA satırlarını siler. `init.php`
 `MFA_REQUIRED_ROLE` sabitini tanımlar (sütun yokken 99).
 
+**API yolları.** `initialize_user()` API dalında parola doğru ve hesap
+2FA'lıysa `API_MFA_REQUIRED` tanımlanır, kullanıcı yüklenmez,
+`API_AUTHENTICATED` tanımlanmaz (CSRF muafiyeti de yok), başarısızlık sayacı
+temizlenir. `api.php` genel kapısı bunu 401 `mfa_required` olarak söyler;
+genel kapının dışındaki uçlar zaten oturumlu kullanıcı istediği için
+reddeder. `POST /auth/login`: `otp` yoksa 401 `mfa_required`, deneme sınırı
+aşılınca 429 `rate_limited` (Retry-After 600, `mfa.php` ile aynı kova),
+yanlış kod 401 `unauthorized`; şemaya `otp` parametresi ve hata kataloğuna
+`mfa_required` eklendi. `shipworks.php` 2FA'lı hesaba Code 1 hatası döner,
+parola doğru olduğu için başarısızlık sayılmaz. `barcode_*_inventory.php`
+`API_USERNAME` tanımlamaz (oturumla çalışır); değişiklik gerekmedi.
+
 **Ekranlar.** Hesap güvenliği bölümü (`pg_account_security_section()`,
 profil sayfası ve özel düzenlerde `$account_security`) cihaz listesinin
 altında "İki adımlı doğrulama" parçasını basar (`pg_mfa_account_section()`):
@@ -166,7 +180,11 @@ kalan kod sayısı, "Yeni kurtarma kodları" (geçerli TOTP ister) ve "Kapat"
 tutuyorsa bir sonraki girişte yeniden kurulacağı söylenir). Eylemler
 `account_security.php`'de (`mfa_*`), hepsi POST + CSRF, profil sayfasına
 döner; reddedilen kod profil formunun hata kutusunda görünür. Açma ve
-kapatma hesabın jetonlarını düşürdüğü için bu tarayıcıya yeni jeton basılır.
+kapatma hesabın diğer jetonlarını ve API cihazlarını düşürür, bu tarayıcının
+jetonu kalır (`pg_mfa_revoke_other_sessions()`): parola değişimindeki gibi
+hepsini düşürüp yenisini basmak, tarayıcının yoldaki eski çerezli bir
+isteğiyle yarışıyor, oturumu (ve içindeki kurtarma kodlarını) kapatıyordu —
+sandbox'ta yaklaşık üç denemede bir kodlar hiç görünmedi.
 Kapatmadaki parola alanı giriş sayacına bağlı (`pg_login_throttle_guard` /
 `pg_login_record_failure`). Başka kullanıcı olarak oturum açılmışken parça
 yalnız durumu gösterir, eylemler reddedilir. Ayarlar › Güvenlik'te
@@ -201,8 +219,10 @@ oturum çalınmış olsa bile parola ve kod istemeli (hesap sayfası ister).
 - Zorunlu roldeki ve henüz 2FA kurmamış bir hesabın parolasını ele geçiren
   kişi kurulumu kendisi yapıp gerçek sahibini kilitleyebilir; çözüm yönetici
   sıfırlaması.
-- Böyle bir hesabın parolasıyla çalışan API entegrasyonu, 2FA açılınca
-  çalışmayı bırakır.
+- Böyle bir hesabın parolasıyla çalışan `api.php` ya da ShipWorks
+  entegrasyonu, 2FA açılınca çalışmayı bırakır (`api.php` 401
+  `mfa_required`, ShipWorks Code 1 ile açıklama); cihaz uygulaması `otp`
+  göndermeyi öğrenmelidir.
 
 **Şema.** 8.40 `upgrade_2026_4_8_mfa()`: `user_mfa` (hesap başına bir satır:
 `method`, şifreli `totp_secret`, `enabled_at`, `last_step`, onaylanmamış
@@ -248,6 +268,13 @@ kurtarma kodu geçiyor; hesap parçasında yalnız "Kapat" var, TOTP ile
 kapatma reddediliyor, kurtarma koduyla kapanıyor ve tarayıcı içeride
 kalıyor; `mfa_begin` / `mfa_recovery_regenerate` reddediliyor.
 `edit_user.php`'de kendi hesabında sıfırlama düğmesi yok, POST reddediliyor.
+API: `api.php` parolalı istek 2FA'lı hesapta 401 `mfa_required`, 2FA'sız
+hesapta genel kapıdan geçiyor; `POST /auth/login` 2FA'lı hesapta `otp`'siz
+401 `mfa_required`, yanlış kodla 401, doğru TOTP ve kurtarma koduyla 201
+(aynı kurtarma kodu ikinci kez 401), altı yanlış koddan sonra 429 +
+Retry-After 600; 2FA'sız hesap değişmedi; `shipworks.php` 2FA'lı hesaba Code 1
+açıklaması, 2FA'sıza modül cevabı. Kurtarma kodlarının görünmesi sekiz
+denemenin sekizinde (önceden yaklaşık üçte birinde kayboluyordu).
 
 **Açık.** Hazır başlangıç sitesinin (`turkish_default`) "my account profile"
 sayfası özel düzenle gelir ve `$account_security`'yi basmaz: o sitelerde

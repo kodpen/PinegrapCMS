@@ -3550,8 +3550,22 @@ function initialize_user()
             $cred = db_item("SELECT " . pg_password_select_columns() . " FROM user
                 WHERE (user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "') LIMIT 1");
 
-            if (is_array($cred) && isset($cred['user_id'])
-                && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred))) {
+            $api_password_ok = is_array($cred) && isset($cred['user_id'])
+                && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred));
+
+            if ($api_password_ok && pg_mfa_enabled($cred['user_id'])) {
+
+                // The password was right, but the account asks for a second
+                // step and a request carrying a password has nowhere to give
+                // one. No user is loaded (USER_LOGGED_IN stays false) and
+                // API_AUTHENTICATED is not set, so the request cannot act and
+                // cannot waive the CSRF token; api.php answers mfa_required.
+                // The failure counter is still cleared: this was not a guess.
+                define('API_MFA_REQUIRED', true);
+
+                pg_login_throttle_pass(API_USERNAME);
+
+            } elseif ($api_password_ok) {
 
                 $user = pg_load_user_row($cred['user_id']);
 
