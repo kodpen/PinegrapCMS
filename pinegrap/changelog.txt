@@ -497,9 +497,12 @@
          telefondaki bir doğrulama uygulamasının (Google
          Authenticator, Microsoft Authenticator, Aegis,
          1Password gibi) ürettiği 6 haneli kodu isteyebilir.
-         Kişi bunu hesap sayfasından kendisi açar: ekranda
-         gösterilen anahtar uygulamaya elle girilir (QR kod
-         yoktur), uygulamanın gösterdiği ilk kodla onaylanır.
+         Kişi bunu hesap sayfasından kendisi açar: ekrandaki QR
+         kodu doğrulama uygulamasıyla taranır (taranamazsa
+         anahtar elle girilebilir), uygulamanın gösterdiği ilk
+         kodla onaylanır. QR kodu sitenin kendi sunucusunda
+         çizilir; anahtar hiçbir dış servise ve hiçbir adrese
+         gitmez.
          Açılırken 10 kurtarma kodu verilir; telefon kaybolursa
          her biri bir kez oturum açtırır ve bir daha
          gösterilmez. Kod e-postayla gönderilmez; bu sürümde

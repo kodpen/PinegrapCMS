@@ -44,6 +44,10 @@ Pinegrap için yazılan hiçbir dosya LiveSite başlığı taşımaz. Yeni PHP/J
 - Kütüphane gömerken `composer.json`'daki `php` kısıtına bak ve sürümü **taban
   7.1 ya da altı** kalacak şekilde sabitle; tabanı yükseltmek ürün sahibinin
   kararıdır.
+- QR kodu gerekirse `pg_qr_svg()` / `pg_qr_svg_data_uri()`
+  (`includes/fn/qr.php`; kütüphane `includes/qrcode/`, 1000 bayt sınırı,
+  inline SVG). Yeni üreteç gömme; dış QR servisi kullanma (metin — TOTP sırrı
+  dahil — üçüncü tarafa gider).
 - Yeni pano widget'ı `includes/dashboard/widgets/widget_<id>.php` dosyasına
   girer (kapı `PG_DASHBOARD_WIDGETS`); `pg_dashboard_widget_<id>($request,
   $user)` echo/exit yapmaz, `status`/`message`/`data` dizisi döndürür. Id

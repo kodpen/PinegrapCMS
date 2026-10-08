@@ -65,7 +65,7 @@ Durum: plan (2026-10-08). Kaynak keşif: `docs/_tespit_2026_10_08/2fa_kesif_rapo
 - `method='email'`, 6 haneli kod sha256 + 10 dk + 5 deneme, gönderim `email()` (Plan 4 kuyruğu merge olduysa `queue=false` — kod gecikmemeli), `pg_password_reset_guard()` deseniyle gönderim limiti. `pg_demo()` e-posta göndermez → demo sitede e-posta yöntemi kapalı.
 
 ## 3. Varsayılan kararlar (itiraz yoksa böyle)
-- Yöntem: **TOTP + 10 yedek kod**; QR yok (otpauth URI + anahtar); e-posta ikinci tur.
+- Yöntem: **TOTP + 10 yedek kod**; QR yok (otpauth URI + anahtar) (2026-10-08: ürün sahibi kararıyla QR eklendi, `docs/degisiklikler.md` → "QR kodu" bölümü); e-posta ikinci tur.
 - Zorunluluk ayarı **kapalı başlar**; isteğe bağlı herkese açık (üyeler dahil).
 - Google ile giriş **muaf değil**.
 - Parola kabul eden API yolları 2FA'lı hesaba **red**; kurulum kilidi dokunulmaz.

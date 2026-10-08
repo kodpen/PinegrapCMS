@@ -602,6 +602,22 @@ bunları kurcalama sayıyordu (ayrıntı `docs/degisiklikler.md`, aynı tarih). 
 kuralı: etiket yayından sonra taşınmaz, paket etiketten üretilir; kodpen.com'a
 referans yüklenmez.
 
+**QR kodu (2026-10-08).** Üreteç `includes/qrcode/qrcode.php`
+(kazuhikoarase/qrcode-generator PHP portu, MIT, olduğu gibi gömülü; içine
+dokunulmaz, güncellemede dosya bütün olarak değişir). Doğrudan çağrılmaz:
+`includes/fn/qr.php` → `pg_qr_matrix($text, $level)`, `pg_qr_svg($text,
+$size, ['level','label','id','class'])` (inline SVG, 4 modül sessiz bölge,
+`$size` 0 ise kutusuna ölçeklenir), `pg_qr_svg_data_uri()`. Sınırlar: en çok
+1000 bayt (`pg_qr_max_length()`; aşan metin `''`/`array()` döner, çağıran
+elle yolu göstermeli), daima bayt kipi (UTF-8 olduğu gibi), sürüm 1–40 RS
+blok tablosundan seçilir. Kütüphanenin `getMinimumQRCode()` /
+`getMaxLength()` yolu sürüm 11+ için ölümcül hata verir — kullanılmaz;
+`getMode()` UTF-8'i Kanji sanabilir — kullanılmaz. GD gerekmez. Sır taşıyan
+metnin (TOTP anahtarı) QR'ı yalnız inline SVG olarak basılır; `<img
+src="qr.php?…">` gibi bir uç ve dış QR servisi yok (günlük, Referer, üçüncü
+taraf). Kullanan yer: iki adımlı doğrulama kurulumu (`mfa.php` `setup`,
+`pg_mfa_account_section()`). Ayrıntı `docs/degisiklikler.md`, aynı tarih.
+
 ---
 
 ## Önemli Sabitler (init.php'de tanımlanır)

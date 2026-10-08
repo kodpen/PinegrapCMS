@@ -182,7 +182,7 @@ if (strpos($action, 'mfa_') === 0) {
         $codes = pg_mfa_confirm_setup($user_id, $mfa_code);
 
         if ($codes === false) {
-            $mfa_messages->add_error(lang('That code was not accepted. Check the time on your phone and try again.'));
+            $mfa_messages->add_error(lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.'));
             go($mfa_back);
         }
 
@@ -193,7 +193,7 @@ if (strpos($action, 'mfa_') === 0) {
 
     if ($action === 'mfa_recovery_regenerate') {
         if (pg_mfa_verify_code($user_id, $mfa_code) !== 'totp') {
-            $mfa_messages->add_error(lang('That code was not accepted. Check the time on your phone and try again.'));
+            $mfa_messages->add_error(lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.'));
             go($mfa_back);
         }
 
@@ -224,7 +224,7 @@ if (strpos($action, 'mfa_') === 0) {
         }
 
         if (pg_mfa_verify_code($user_id, $mfa_code) === false) {
-            $mfa_messages->add_error(lang('That code was not accepted. Check the time on your phone and try again.'));
+            $mfa_messages->add_error(lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.'));
             go($mfa_back);
         }
 

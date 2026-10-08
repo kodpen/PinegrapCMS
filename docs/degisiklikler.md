@@ -72,6 +72,150 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — QR kodu: gömülü üreteç (includes/qrcode), pg_qr_svg(), iki adımlı doğrulama kurulumunda QR (2026-10-08)
+
+**Sorun.** İki adımlı doğrulamanın kurulum ekranları (giriş sonrası
+`mfa.php` `setup` kipi ve hesap sayfasındaki `pg_mfa_account_section()`)
+anahtarı yalnız elle girilecek metin olarak veriyordu (aşağıda "İki adımlı
+oturum açma" → Karar: "QR yok"). Ürün sahibi ekrandaki anahtarı doğrulama
+uygulamasına girip giriş yapmayı denedi, olmadı; o değişikliğin kaydı
+"gerçek bir doğrulama uygulamasına anahtarın elle girilmesi denenmedi"
+diyordu.
+
+**Karar (ürün sahibi, 2026-10-08).** Kurulumda QR kodu gösterilir; elle
+anahtar ve `otpauth://` kutusu yedek yol olarak kalır. QR sunucuda inline
+SVG olarak çizilir: sır hiçbir URL'e girmez (`<img src="qr.php?text=…">`
+gibi bir uç yok — erişim günlüğü, Referer ve tarayıcı geçmişi), dış QR
+servisi kullanılmaz (metin üçüncü tarafa gider). GD'ye bağımlılık yok.
+
+**Karar (ürün sahibi, 2026-10-08): reddedilen kodun mesajı.** Kurulumu
+onaylayan kodun aynı 30 sn içinde yeniden girilmesi (aşağıda kanıtlı) eski
+"Telefonunuzun saatini kontrol edip yeniden deneyin." mesajıyla saat sorunu
+gibi görünüyordu. Mesaj beş yerde (`mfa.php` doğrulama ve kurulum,
+`account_security.php` kurulum onayı, yeni kurtarma kodları, kapatma) tek
+anahtarla değişti: "Kod kabul edilmedi. Her kod bir kez geçerlidir: bir
+sonraki kodu bekleyin ve telefonunuzun saatini kontrol edin." "Bu kod zaten
+kullanıldı" ayrımı **bilerek yapılmadı**: doğrulama ekranındaki bir yabancıya
+kodun geçerli olduğunu söylerdi (bilgi sızdırır).
+
+**Çözüm.**
+- Kütüphane `includes/qrcode/qrcode.php`: kazuhikoarase/qrcode-generator
+  PHP portu (MIT, tek dosya, PHP 5+, uzantı istemez), olduğu gibi gömüldü —
+  git blob `ff14f0c0…`, upstream `master`'daki dosyayla aynı (son commit
+  `95af9c2`, 2021-12-10). Yanında `LICENSE` ve `README.md`. Kendi başlığını
+  taşır, kapı sabiti yoktur; `includes/` altında olduğu için bütünlük
+  denetimi kapsar, çalışma anında hiçbir şey yazmaz. `tools/lint.php` onu
+  satıcı listesine almadan tarar (temiz).
+- Kütüphanenin iki tuzağı sarmalayıcıda dolaşılır, dosyaya dokunulmaz:
+  `QRCode::getMinimumQRCode()` / `QRUtil::getMaxLength()` yalnız sürüm 1–10'u
+  bilir, üstünde "Undefined array key" + `trigger_error(E_USER_ERROR)`
+  (ölümcül) verir; `QRUtil::getMode()` UTF-8 bayt çiftlerini Kanji
+  sanabilir. Sürüm, RS blok tablosundan (`QRRSBlock::getRSBlocks()`, 1–40
+  tam) bayt kipi kapasitesiyle seçilir; veri daima `QR_MODE_8BIT_BYTE`.
+- `includes/fn/qr.php` (yeni modül, manifestte `mfa.php`'den sonra; yükleme
+  anında bir şey çalıştırmaz, kütüphaneyi ilk çağrıda `PG_FUNCTIONS_DIR`
+  yoluyla yükler): `pg_qr_max_length()` (1000 bayt), `pg_qr_matrix($text,
+  $level)` (0/1 satırları; boş, 1000 baytı aşan ya da kodlanamayan metinde
+  `array()`; bilinmeyen seviye `M`), `pg_qr_svg($text, $size, $options)`
+  (viewBox = modül + her yanda 4 modül sessiz bölge, `$size` 0 ise
+  width/height yok, `crispEdges`, tek beyaz `<rect>` + satır başına koyu
+  koşulardan tek `<path>`; `label` varsa `role="img"` + `h()`'den geçmiş
+  `aria-label`, yoksa `aria-hidden="true"`; isteğe bağlı `id` / `class`),
+  `pg_qr_svg_data_uri()`. Kütüphane çağrısı `pg_qr_error_handler()` altında
+  koşar: yalnız `E_USER_ERROR` (kütüphanenin taşma / geçersiz parametre
+  yolu) `ErrorException`'a çevrilir ve sonuç boş matristir; diğer önem
+  dereceleri `false` ile PHP'nin normal işleyişine bırakılır (günlüğe düşer,
+  kod üretimi sürer — ileride bir PHP sürümünün kütüphane içinde vereceği
+  bir E_DEPRECATED / E_NOTICE QR'ı sessizce kaybettirmesin). Çağıranın
+  işleyicisi `finally` ile geri kurulur.
+- `mfa.php` `setup`: "QR kodu … tarayın" → QR (208 px, ortalanmış beyaz
+  kutu) → "Tarayamıyorsanız anahtarı elle ekleyin:" → mevcut anahtar,
+  `otpauth://` kutusu ve Kopyala aynen. QR boş dönerse eski "anahtarı elle
+  ekleyin" metni ve elle yol kalır. `pg_mfa_account_section()` bekleyen
+  anahtar bloğu aynı düzende (192 px, bölümün düz markup'ı). Saf TOTP ve
+  doğrulama mantığına dokunulmadı.
+- `tr.json`: üç yeni anahtar (tarama yönergesi, "elle ekleyin" başlığı, QR'ın
+  erişilebilir adı); eski "by hand" anahtarı yedek yol için duruyor. Red
+  mesajının yeni anahtarı eklendi, başka yerde kullanılmayan eski anahtarın
+  satırı kaldırıldı.
+- `changelog.txt`: 2FA maddesi nihai duruma göre düzeltildi (QR ile kurulum,
+  taranamazsa elle anahtar, QR'ın sunucuda çizildiği); ayrı madde yok.
+
+**"Neden olmadı" araştırması (sandbox, 2026-10-08).** Sunucu tarafı,
+üründen bağımsız bir TOTP uygulamasıyla (Python `pyotp`; `pg_totp_code()`
+kullanılmadı) Chromium (Playwright) üzerinden denendi. Ortam: PHP 8.3.6,
+MariaDB, `tools/setup_sandbox.sh`; sandbox saati `date -u` 18:05:47 UTC,
+github.com'un `Date` başlığıyla saniyeler içinde aynı.
+
+Kanıtlı (sandbox'ta gözlendi):
+- `mfa_required_role = 0` ile giriş → kurulum ekranı. Ekrandaki boşluklu
+  anahtardan (`#mfa_key`) pyotp'un ürettiği kod kurulumu onayladı (10
+  kurtarma kodu), "kaydettim" sonrası oturum açık (`software[auth]` çerezi,
+  panel 200).
+- Ekrandaki QR (Chromium'un çizdiği SVG'nin ekran görüntüsü) zxing-cpp ile
+  çözüldü: çözülen metin `otpauth://` kutusuyla bayt bayt aynı, `secret=`
+  ekrandaki anahtarın boşluksuz hâline eşit; sayfada sır hiçbir `src` /
+  `href` içinde yok. O secret'tan pyotp'un ürettiği kod girişte kabul
+  edildi. Hesap sayfasındaki bekleyen blokta da aynı sonuç (çözülen secret
+  = ekrandaki anahtar, pyotp koduyla açıldı).
+- Çıkış → giriş → doğrulama ekranı: yeni pencerenin kodu kabul; aynı kod
+  ikinci kez red; bir sonraki 30 sn penceresinin kodu kabul.
+- Kurulumu onaylayan kod, **aynı 30 sn penceresinde** çıkış/giriş yapılıp
+  yeniden yazılınca reddedildi (o anki mesaj: "Kod kabul edilmedi.
+  Telefonunuzun saatini kontrol edip yeniden deneyin."). Sebep: kurulumu
+  onaylayan adım `last_step` olarak yazılır (tekrar kullanım koruması,
+  tasarım gereği); mesaj saat sorunu ima ediyordu (yukarıda Karar).
+- Saat kayması: telefon saati 30 sn geri ya da ileri → kabul; 90 sn geri ya
+  da ileri → red (±1 adım penceresi).
+- Kurulum anahtarı 30 dk içinde ekran yenilense de aynı; `pending_at` 1801
+  sn geri çekilince ekran **yeni anahtar** gösterdi, eski anahtardan üretilen
+  kod reddedildi, yenisininki kabul.
+- 5 yanlış koddan sonra 6. deneme, kod doğru olsa da 429 ve "Çok fazla
+  deneme yapıldı" (10 dk).
+
+Sonuç: sunucunun ürettiği anahtar, `otpauth://` adresi ve doğrulaması RFC
+6238'i bağımsız uygulamayla birebir tutuyor; anahtarın kendisi doğru.
+Ürün sahibinin denemesinin hangi yoldan başarısız olduğu sandbox'ta
+gözlenemez (cihazı, uygulaması ve sitesi elimizde değil).
+
+Çıkarım (kod incelemesi, sandbox'ta uygulama tarafı denenmedi):
+- `otpauth://` adresi uygulamanın anahtar alanına yapıştırılırsa uygulama ya
+  reddeder ya da başka bir sır hesaplar (Google / Microsoft Authenticator'ın
+  elle girişinde adres alanı yok, yalnız QR ya da anahtar) — QR'ın gerekçesi.
+- Kurulum ekranı 30 dakikadan sonra yenilenirse yeni anahtar üretilir
+  (yukarıda kanıtlı); uygulamaya önceki anahtar girilmişse her kod reddedilir.
+  Bekleyen giriş 10 dakikada (`pg_mfa_pending_lifetime()`) düşer ve giriş
+  ekranına döner.
+- Sunucu saati 30 sn'den fazla kayıksa her kod reddedilir (pencere yukarıda
+  kanıtlı; canlı sunucunun saati bilinmiyor).
+- Beş yanlış denemeden sonra 10 dakika boyunca doğru kod da reddedilir
+  (yukarıda kanıtlı).
+- Kurulumdan hemen sonra aynı pencerede çıkış/giriş yapıp aynı kodu yazmak
+  red alır (yukarıda kanıtlı); eski mesaj kişiyi saati aramaya
+  yönlendiriyordu, yeni mesaj "her kod bir kez geçerlidir" diyor.
+
+**Doğrulama.** `php tools/test.php qr`: 10 test, 67 doğrulama (boş metin,
+1000/1001 bayt sınırı, sürüm seçimi — `'A'` v1; 146 baytlık `otpauth://` L
+v7 / M v8 / Q v10 / H v12; 300 bayt M v13; 1000 bayt M v26 — kare matris ve
+üç köşede bulucu deseni, UTF-8, SVG öznitelikleri ve escape, data URI,
+hata işleyicisinin geri kurulması; işleyicinin yalnız `E_USER_ERROR`'da
+istisna fırlatıp `E_USER_NOTICE` / `E_USER_WARNING` / `E_USER_DEPRECATED` /
+`E_NOTICE` / `E_WARNING` / `E_DEPRECATED`'da `false` döndürmesi). Tüm takım, `lint`, `check_lang`,
+`check_copies`, `check_bindings`, `check_api_schema` temiz. Kod çözme CI'da
+yok, yerelde: `pg_qr_matrix()` GD ile PNG'ye basılıp zxing-cpp ile çözüldü —
+dört seviyede `otpauth://` adresi, 1000 baytlık metin, UTF-8 metin, 300
+bayt ve tek karakter, 20/20 bayt bayt aynı; `pg_qr_svg()` çıktısı
+Chromium'da çizilip (192–600 px) 5/5 çözüldü.
+
+**Açık kalan.**
+- Gerçek bir telefon uygulamasıyla (Google Authenticator, Aegis,
+  1Password, Microsoft Authenticator) tarama denenmedi; çözücü zxing-cpp.
+- Hazır başlangıç sitesinin profil sayfası `$account_security`'yi basmadığı
+  için (aşağıda 2FA bölümü → Açık) hesap sayfası bloğu sandbox'ta sayfa
+  sistem düzenine alınarak denendi.
+
+---
+
 ## 2026.4.8 — Panel eylem tablosu (includes/panel): software, system, explorer, search grupları (2026-10-08)
 
 **Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 2 ve
@@ -956,7 +1100,8 @@ TOTP, base32 ya da QR için hazır bir parça yoktu.
 **Karar.**
 - **Yöntem: TOTP (RFC 6238) + 10 yedek kod.** Kişi hesap sayfasından açar;
   ekranda base32 anahtar (dörtlü gruplar) ve `otpauth://` adresi gösterilir,
-  anahtar doğrulama uygulamasına **elle** girilir. **QR yok**: depoda QR
+  anahtar doğrulama uygulamasına **elle** girilir. **QR yok** (2026-10-08:
+  ürün sahibi kararıyla QR eklendi, yukarıdaki "QR kodu" bölümü): depoda QR
   kütüphanesi yok, gömülecek bir PHP/JS kütüphanesinin 7.1 uyumu ve bakım
   yükü bu sürüme alınmadı; dış QR servisi sırrı üçüncü tarafa vereceği için
   kullanılmaz. Yedek kodlar `XXXX-XXXX` (I, O, 0, 1 yok), bir kez
@@ -1089,7 +1234,8 @@ oturum çalınmış olsa bile parola ve kod istemeli (hesap sayfası ister).
   sırlarını yeniden şifrelemez, doğrulaması açık kişiler yalnız kurtarma
   kodlarıyla girebilir ve doğrulama uygulaması için yöneticinin sıfırlaması
   gerekir. Ekrana uyarı yazılır; yeniden şifreleme ayrı bir iş.
-- QR olmadığı için kurulum elle anahtar girmeyi ister.
+- QR olmadığı için kurulum elle anahtar girmeyi ister. (2026-10-08: QR
+  eklendi, yukarıdaki "QR kodu" bölümü.)
 - Zorunlu roldeki ve henüz 2FA kurmamış bir hesabın parolasını ele geçiren
   kişi kurulumu kendisi yapıp gerçek sahibini kilitleyebilir; çözüm yönetici
   sıfırlaması.
