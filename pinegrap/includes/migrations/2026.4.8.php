@@ -28,6 +28,8 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_channel_shares();          // 8.82
 	upgrade_2026_4_8_threads();                 // 8.83
 	upgrade_2026_4_8_bulk_changes();            // 8.84
+	upgrade_2026_4_8_email_retry();             // 8.30
+	upgrade_2026_4_8_mail_outbox();             // 8.31
 
 }
 
@@ -151,5 +153,60 @@ function upgrade_2026_4_8_bulk_changes() {
 	install_add_column('config', 'ws_ai_bulk_delete', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('Workspace: Pinegrap AI and Claude can propose one change for many records at once; deleting in bulk stays off until an administrator allows it.');
+
+}
+
+// Retries for the e-mail campaign job (2026.4.8, 8.30; email_campaign_job.php).
+// The job used to send under LOCK TABLES and mark every recipient complete
+// whether or not the message left. A run now claims its recipients with one
+// conditional UPDATE (claimed_at, claim_token: the time and the run's random
+// token) and sends with no table locked. A failed send counts an attempt,
+// keeps the error and waits next_attempt_at out before the next one (60 s,
+// 5 min, 30 min, 2 h, 6 h, 24 h); after six the recipient is complete and
+// failed, so the campaign can finish and the campaign screen counts it.
+// idx_pending serves the job's look for due recipients.
+function upgrade_2026_4_8_email_retry() {
+
+	install_add_column('email_recipients', 'claimed_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('email_recipients', 'claim_token', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('email_recipients', 'attempts', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('email_recipients', 'last_error', "VARCHAR(500) NOT NULL DEFAULT ''");
+	install_add_column('email_recipients', 'next_attempt_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('email_recipients', 'failed', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_index('email_recipients', 'idx_pending', "INDEX idx_pending (complete, next_attempt_at)");
+
+	install_note('E-mail campaigns: a message that cannot be sent is tried again up to six times over about a day and a half; the campaign screen shows how many could not be delivered.');
+
+}
+
+// The outgoing mail queue (2026.4.8, 8.31; includes/fn/mail_queue.php,
+// mail_job.php). email() with 'queue' => true writes a row here instead of
+// talking to the SMTP server inside the visitor's request, as long as the
+// general job has run in the last fifteen minutes; the general job sends it
+// and retries on the campaign job's schedule. properties is the email()
+// call as JSON (attachment bytes base64-encoded); mail_type, recipient and
+// subject are copies for the mail queue screen. InnoDB, so the claim
+// (UPDATE ... WHERE status = 'queued') is a row lock, not a table lock.
+function upgrade_2026_4_8_mail_outbox() {
+
+	install_create_table('mail_outbox', "CREATE TABLE mail_outbox (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		send_after  INT UNSIGNED NOT NULL DEFAULT 0,
+		status      ENUM('queued','sending','sent','failed') NOT NULL DEFAULT 'queued',
+		attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error  VARCHAR(500) NOT NULL DEFAULT '',
+		claimed_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		mail_type   VARCHAR(16) NOT NULL DEFAULT 'system',
+		recipient   VARCHAR(255) NOT NULL DEFAULT '',
+		subject     VARCHAR(255) NOT NULL DEFAULT '',
+		properties  MEDIUMTEXT NOT NULL,
+		PRIMARY KEY (id),
+		KEY idx_due (status, send_after),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('E-mail: password reset, order, form and comment e-mails are handed to the scheduled general job when it is running, so a slow mail server no longer holds up the visitor; the queue is under Settings › Jobs › Mail queue.');
 
 }

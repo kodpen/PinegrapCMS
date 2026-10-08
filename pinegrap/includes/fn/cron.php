@@ -250,6 +250,27 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'inline'      => true,
         ),
+        // Queued e-mail (includes/fn/mail_queue.php). Inline, and with no
+        // switch: job.php works the queue on every run unconditionally.
+        //
+        // email() only queues a message while the general job has finished
+        // in the last fifteen minutes, and sends it at once otherwise. The
+        // queue therefore exists exactly when the general job runs, and the
+        // general job is what empties it. A switch an operator could turn off
+        // would break that promise: rows would keep being written and never
+        // sent. dispatch false keeps it off the settings screen's switches
+        // and out of the rotation.
+        //
+        // mail_job.php remains a script of its own for an operator who wants
+        // a dedicated cron entry for mail.
+        'mail_job' => array(
+            'label'       => lang('Mail queue'),
+            'script'      => 'mail_job.php',
+            'interval'    => 60,
+            'stale_after' => 3600,
+            'dispatch'    => false,
+            'inline'      => true,
+        ),
         // Overdue receivable reminders. Once a day is the finest the setting
         // offers; the script itself decides whether this period's digest is
         // still owed, so the tick it lands on does not matter.

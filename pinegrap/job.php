@@ -421,6 +421,24 @@ if (pg_cron_job_is_enabled('push_job')) {
 
 }
 
+// Queued e-mail (includes/fn/mail_queue.php): password resets, order receipts,
+// form and comment notifications that email() handed over instead of sending
+// inside the visitor's request.
+//
+// Unconditional, unlike the two passes above: email() queues a message only
+// while this job keeps finishing, so this pass is the only thing that sends
+// those rows and must not depend on a setting. With nothing due it is one
+// indexed read. The budget is kept small for the same reason as the webhook
+// pass: an SMTP server that does not answer costs its full timeout per
+// message, and what is left over waits for the next tick.
+if (pg_mail_queue_ready()) {
+
+    pg_mail_queue_run(25, 20);
+
+    pg_cron_ran('mail_job');
+
+}
+
 // Workspace task reminders by e-mail (includes/workspace/reminders.php). The
 // look is one indexed read; the workspace is loaded only when one is due, so
 // the general job stays as light as it was on every other tick.

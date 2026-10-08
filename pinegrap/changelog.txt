@@ -382,6 +382,45 @@
 
   [ŞEMA] config.ws_ai_bulk_delete sütunu.
 
+  E-POSTA
+  --------------------------------------------------------
+
+  [YENİ] Şifre sıfırlama, sipariş, form ve yorum e-postaları
+         zamanlanmış genel iş (job.php) çalışıyorsa bir kuyruğa
+         yazılır ve genel iş tarafından gönderilir. Yavaş ya da
+         yanıt vermeyen bir e-posta sunucusu artık ziyaretçinin
+         sayfasını bekletmez; gönderilemeyen e-posta kaybolmaz,
+         bir buçuk gün boyunca altı kez yeniden denenir. Genel
+         iş son 15 dakikada çalışmadıysa (cron kurulmamış
+         sitelerde) e-postalar eskisi gibi hemen gönderilir.
+
+  [YENİ] Ayarlar › İşler › Posta kuyruğu ekranı: bekleyen,
+         son bir haftada gönderilen ve son bir ayda bırakılan
+         e-postalar, son hata, tek tek yeniden deneme ve silme,
+         "Şimdi çalıştır" düğmesi.
+
+  [YENİ] E-posta kampanyaları gönderilemeyen alıcıyı artık
+         "gönderildi" saymaz: e-posta altı kez yeniden denenir,
+         sonunda gönderilemeyen alıcılar kampanya ekranındaki
+         ilerleme kutusunda "teslim edilemedi" olarak sayılır.
+         Gönderen, alıcı başına tek bildirim alır (son denemede).
+         Kampanya işi gönderim sırasında tabloları kilitlemez;
+         yavaş bir e-posta sunucusu kişi ve kayıt ekranlarını
+         bekletmez.
+
+  [YENİ] Ticari kampanya e-postaları List-Unsubscribe ve
+         List-Unsubscribe-Post başlıklarını taşır: Gmail, Yahoo
+         ve Outlook'taki "Abonelikten çık" düğmesi alıcıyı tek
+         tıkla listeden çıkarır. Başlıklar DKIM imzasına dahil
+         edilir; config.php'de ENCRYPTION_KEY yoksa başlık
+         eklenmez.
+
+  [ŞEMA] email_recipients tablosuna claimed_at, claim_token,
+         attempts, last_error, next_attempt_at ve failed
+         sütunları, idx_pending dizini; yeni mail_outbox
+         tablosu. Çok sayıda kampanya göndermiş sitelerde
+         email_recipients büyüktür, yükseltme uzun sürebilir.
+
 
 
   2026.4.7

@@ -72,6 +72,101 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Posta kuyruğu (`mail_outbox`), kampanya işinde yeniden deneme ve kilitsiz gönderim, List-Unsubscribe tek tık (2026-10-08)
+
+**Sorun.**
+- `email()` SMTP konuşmasını isteğin içinde yapıyordu. Yavaş ya da yanıt
+  vermeyen sunucu ziyaretçinin isteğini (şifre sıfırlama, sipariş fişi, form
+  bildirimi) PHPMailer'ın zaman aşımı boyunca bekletiyor, DB bağlantısını o
+  süre tutuyordu (`includes/db_guard.php` başlığındaki forgot_password vakası);
+  gönderilemeyen e-posta yalnız günlüğe düşüp kayboluyordu.
+- `email_campaign_job.php` alıcı başına `LOCK TABLES email_recipients,
+  email_campaigns, contacts, log WRITE` (+ takvim tabloları) alıp SMTP'yi
+  kilit altında konuşuyordu: kampanya gönderilirken kişi ve günlük okuyan her
+  ekran bekliyordu. `email()` dönüşüne bakılmadığı için gönderilemeyen alıcı
+  da `complete='1'` oluyordu.
+- Ticari kampanyalarda `List-Unsubscribe` yoktu; Gmail/Yahoo toplu gönderici
+  kuralları (2024) tek tık abonelikten çıkmayı istiyor.
+
+**Karar.**
+- **(a) Kampanya işi kilitsiz.** Aday id'ler okunur, tek koşullu `UPDATE ...
+  SET claimed_at, claim_token WHERE id IN (...) AND claimed_at = 0` ile
+  sahiplenilir (MyISAM'da tek ifade atomik; iki iş aynı satırı alamaz),
+  sahiplenilenler PK + token ile yeniden okunur. Başarısız gönderim
+  `attempts`, `last_error`, `next_attempt_at` yazar (60 s, 5 dk, 30 dk, 2 sa,
+  6 sa, 24 sa — `api_webhook_backoff()` ile aynı takvim, ayrı fonksiyon
+  `pg_mail_backoff()`); altıncı denemede alıcı `complete='1', failed='1'` olur
+  ki kampanya kapanabilsin. `notify_sender` yalnız son denemede: aksi hâlde
+  SMTP düşükken alıcı başına altı "teslim edilemedi" bildirimi çıkardı.
+  15 dakikadan eski sahiplenme geri alınır. Yükseltilmemiş kurulumda
+  (`pg_email_retry_ready()` altı kolonu birden yoklar) eski LOCK TABLES akışı
+  aynen çalışır; hazırlık (opt-out, mail merge, altbilgi)
+  `email_campaign_job_prepare()`'e taşındı, iki akış da onu çağırır.
+  Motor değişikliği (InnoDB) bu işin konusu değil.
+- **(b) `email(['queue' => true])`.** Genel iş (`cron_runs.job`) son 15
+  dakikada bittiyse ileti `mail_outbox`'a yazılır ve `true` döner; değilse
+  bugünkü gibi senkron gönderilir — cron kurmamış site hiçbir e-postayı
+  beklemez. Kuyruğu `job.php` her tıkta **koşulsuz** işler
+  (`pg_mail_queue_run(25, 20)`; `pg_cron_jobs()`'ta `mail_job`
+  `dispatch => false`, `inline => true`): kuyruğa yazma kararı genel işin
+  canlılığına bağlı olduğundan operatör şalteri olamaz — şalter kapalıyken
+  satır yazılıp hiç gönderilmezdi. `mail_job.php` ayrı cron girdisi isteyen
+  için. Sahiplenme InnoDB satır kilidiyle (`UPDATE ... WHERE status='queued'`,
+  etkilenen satır yoksa atla); 15 dk'dan eski `sending` geri döner (ölen bir
+  koşunun gönderdiği ileti ikinci kez gidebilir — kaybolmasından iyidir).
+  Gönderilen 7, bırakılan 30 gün tutulur. Ekler JSON'da `content_base64`
+  (geçersiz UTF-8 bayt `json_encode`'u sessizce `false` yapar); `path` eki
+  gönderim anında okunur, silinmez. `INSERT` `mysqli_query` ile — `db()`
+  başarısız sorguda isteği öldürür, kuyruk reddederse ileti senkron gider.
+  Kuyruğa alınanlar: şifre sıfırlama, sipariş fişi, ürün formu gönderici /
+  yönetici e-postaları, ürün sipariş e-postası, ödül programı, özel form
+  gönderici / yönetici (ikişer yol), üç yorum bildirimi. Hediye kartı ve
+  tekrarlayan ödeme hata e-postaları (operatör uyarısı) senkron kaldı.
+- **(c) List-Unsubscribe (RFC 8058).** `type='campaign'` +
+  `purpose='commercial'` iletide `<mailto:reply_to|from?subject=unsubscribe>,
+  <.../email_preferences.php?id=…&sig=…&unsubscribe=1>` ve
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click`; DKIM varsa iki başlık
+  `DKIM_extraHeaders` ile imzaya girer (RFC şartı). `ENCRYPTION_KEY` yoksa
+  imza üretilemez, başlık eklenmez. `email_preferences.php` POST
+  `List-Unsubscribe=One-Click`'i `validate_token_field()`'dan önce karşılar:
+  imza yetkidir, CSRF istenmez (RFC 8058 istemciden token beklemeyi yasaklar);
+  aynı adresin tüm kişileri `opt_in='0'`, düz metin 200, yönlendirme yok.
+  Yanlış imza 403.
+- **(d) Posta kuyruğu ekranı** `mail_queue.php` (manager): sayaçlar, genel
+  işin son koşusu, kuyruk etkin mi, son 100 satır, satır başına yeniden dene /
+  sil, "Şimdi çalıştır". Ayarlar › İşler'e bağlandı.
+
+**Ödün / açık.**
+- WAF her POST'u hassas sayar (`waf_is_sensitive_request`), adres başına
+  30/dk; tek tık POST'ları da bu sınıra girer. Değiştirilmedi.
+- Genel iş panelden elle bir kez koşturulursa 15 dakika boyunca e-postalar
+  kuyruğa yazılır; cron yoksa bir sonraki elle koşuya kadar bekler.
+- Kampanya işinde SMTP tamamen düşükken her alıcı PHPMailer zaman aşımını
+  ayrı ayrı bekler (önceki davranış); parti erken kesilmiyor.
+
+**Şema.** 8.30 `_email_retry`: `email_recipients.claimed_at`, `claim_token`,
+`attempts`, `last_error`, `next_attempt_at`, `failed`, `idx_pending
+(complete, next_attempt_at)`; `install_heavy_tables()`'a
+`'2026.4.8' => email_recipients`. 8.31 `_mail_outbox`: yeni `mail_outbox`
+(InnoDB), `get_tables()`'a eklendi.
+
+**Doğrulama.** Sandbox (MariaDB, PHP 8.3): yükseltme iki kez (17 ifade, ilk
+koşuda 9'u, ikincide 17'si yerindeydi); kampanya işi SMTP'siz → `attempts=1`,
+60 s bekleme, ikinci koşu atladı, `attempts=5` → `complete=1, failed=1`,
+kampanya `complete`, tek günlük satırı ve tek gönderici bildirimi; `failed`
+kolonu düşürülünce eski LOCK TABLES akışı. Kuyruk: `cron_runs.job` tazeyken
+`email(['queue'=>true])` satır yazdı (ikili ek dahil), `job.php` denedi
+(`attempts=1`, hata, `send_after` ileri); `job` 20 dk geride → senkron;
+6. denemede `failed` + günlük. Yerel SMTP (Python smtpd) ile kuyruk `sent`,
+`forgot_password.php` web isteği kuyruğa yazdı ve `job.php` gönderdi;
+kampanya iletisinde iki List-Unsubscribe başlığı. Tek tık: doğru imza 200 +
+`opt_in=0` + günlük, yanlış imza 403, tokensız normal form POST'u yine
+reddedildi. `mail_queue.php`: sayfa, tokensız POST reddi, retry / delete /
+run_now. DKIM imzasının başlıkları kapsadığı ve gerçek bir posta
+sağlayıcısının tek tık düğmesi sandbox'ta denenemedi.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve

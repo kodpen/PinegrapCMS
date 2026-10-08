@@ -404,6 +404,8 @@ function pg_settings_tool_groups($user)
         'confirm' => lang('All server-side caches will be cleared.'),
     );
 
+    $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope', 'url' => 'mail_queue.php');
+
     // Reinstall needs the installer to still be on disk; once it is deleted
     // (which the panel recommends) the link would 404.
     if (is_dir(PG_FUNCTIONS_DIR . '/install')) {
