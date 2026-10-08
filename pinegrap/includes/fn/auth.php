@@ -1076,10 +1076,14 @@ function pg_account_security_section()
         $devices_html = '<p>' . h(lang('No remembered devices.')) . '</p>';
     }
 
+    // Two-step verification (includes/fn/mfa.php) comes last: it carries its
+    // own heading, so it does not read as part of the device list.
+    $mfa_html = pg_mfa_account_section($user_id, $algo, $action_url, $token);
+
     return
         '<div class="pg-account-security" style="margin-top:2em;max-width:640px">'
         . '<div class="heading" style="margin-bottom:10px">' . h(lang('Sign-in and devices')) . '</div>'
-        . $google_html . $devices_html . '</div>';
+        . $google_html . $devices_html . $mfa_html . '</div>';
 }
 
 // The configured cap on concurrent "remember me" devices per account (Settings).

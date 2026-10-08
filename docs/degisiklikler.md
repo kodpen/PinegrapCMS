@@ -156,12 +156,47 @@ Sınır aşımı `waf_log`'a `rate-mfa` olarak da yazılır.
 reddeder. `delete_users.php` hesabın 2FA satırlarını siler. `init.php`
 `MFA_REQUIRED_ROLE` sabitini tanımlar (sütun yokken 99).
 
+**Ekranlar.** Hesap güvenliği bölümü (`pg_account_security_section()`,
+profil sayfası ve özel düzenlerde `$account_security`) cihaz listesinin
+altında "İki adımlı doğrulama" parçasını basar (`pg_mfa_account_section()`):
+aç → anahtar + `otpauth://` adresi + ilk kod → kurtarma kodları ("Kaydettim"
+denene kadar oturumda durur, yenilemede kaybolmaz) → açık durumda tarih ve
+kalan kod sayısı, "Yeni kurtarma kodları" (geçerli TOTP ister) ve "Kapat"
+(parola + kod; Google'a bağlı parolasız hesapta yalnız kod; rolü zorunlu
+tutuyorsa bir sonraki girişte yeniden kurulacağı söylenir). Eylemler
+`account_security.php`'de (`mfa_*`), hepsi POST + CSRF, profil sayfasına
+döner; reddedilen kod profil formunun hata kutusunda görünür. Açma ve
+kapatma hesabın jetonlarını düşürdüğü için bu tarayıcıya yeni jeton basılır.
+Kapatmadaki parola alanı giriş sayacına bağlı (`pg_login_throttle_guard` /
+`pg_login_record_failure`). Başka kullanıcı olarak oturum açılmışken parça
+yalnız durumu gösterir, eylemler reddedilir. Ayarlar › Güvenlik'te
+"İki Adımlı Doğrulama" kartı (`mfa_required_role`: zorunlu değil /
+yöneticiler / + tasarımcılar / + menejerler / oturum açan herkes);
+`pg_mfa_available()` yanlışsa seçim kapalıdır ve kayıt sütunu olduğu gibi
+bırakır (kapalı kontrol gönderilmez; boş değeri 0 okumak yöneticilere
+zorunluluk getirirdi). `edit_user.php` "Oturum açma ve oturumlar" kartında
+durum satırı, yan panelde "İki adımlı doğrulamayı sıfırla" (Google
+bağlantısını kaldırmayla aynı rol kuralı). Ayarlar › Ticaret'teki şifreleme
+anahtarı sıfırlama satırı, 2FA'sı açık en az bir hesap varsa anahtarların
+okunamaz olacağını yazar.
+
+**Anahtar okunamazsa kapalı taraf.** `pg_mfa_enabled()` yalnız tabloya
+ve satıra bakar, `pg_mfa_available()`'a bakmaz: `ENCRYPTION_KEY` silinir ya
+da openssl kalkarsa 2FA'lı hesap yine ikinci adıma gönderilir (yalnız
+parolayla girmez). O durumda TOTP doğrulanamaz ama kurtarma kodları yalnız
+hash'li olduğu için çalışır; `mfa.php` ve hesap parçası bunu söyler, hesap
+parçası "Yeni kurtarma kodları"nı gizler, "Kapat" kurtarma koduyla çalışır;
+kurulum ve kod gerektiren eylemler reddedilir. Zorunluluk
+(`pg_mfa_required_for_user`) anahtar yokken uygulanmaz: kurulum dayatılamaz.
+`edit_user.php` kişinin kendi hesabını sıfırlamaz — ikinci adımı kaldırmak,
+oturum çalınmış olsa bile parola ve kod istemeli (hesap sayfası ister).
+
 **Ödün.**
 - `ENCRYPTION_KEY` sıfırlanırsa (Ayarlar › Ticaret › "Şifreleme Anahtarını
   Sıfırla") 2FA anahtarları **okunamaz** olur: sıfırlama ekranı TOTP
-  sırlarını yeniden şifrelemez, doğrulaması açık kişiler giremez ve
-  yöneticinin sıfırlaması gerekir. Ekrana uyarı yazılır; yeniden şifreleme
-  ayrı bir iş.
+  sırlarını yeniden şifrelemez, doğrulaması açık kişiler yalnız kurtarma
+  kodlarıyla girebilir ve doğrulama uygulaması için yöneticinin sıfırlaması
+  gerekir. Ekrana uyarı yazılır; yeniden şifreleme ayrı bir iş.
 - QR olmadığı için kurulum elle anahtar girmeyi ister.
 - Zorunlu roldeki ve henüz 2FA kurmamış bir hesabın parolasını ele geçiren
   kişi kurulumu kendisi yapıp gerçek sahibini kilitleyebilir; çözüm yönetici
@@ -197,7 +232,27 @@ ikinci kez red; bekleyen kaydın zamanı oturum dosyasında 601 sn geri
 geliyor ve onayla tamamlanıyor; `mfa_passed` taşımayan cihaz-sınırı kaydı
 reddediliyor; rol 3 hesap zorunluluk 0'da kapısız, 3'te kurulum ekranına
 düşüyor; üyelik ve kayıt girişlerinde İptal kendi ekranına dönüyor;
-`delete_users.php` 2FA satırlarını siliyor.
+`delete_users.php` 2FA satırlarını siliyor. Hesap ekranından tam akış:
+aç → yanlış kod reddi → kod → kurtarma kodları (yenilemede duruyor, tarayıcı
+içeride kalıyor) → TOTP ile giriş → kurtarma koduyla giriş → "9 kurtarma
+kodu kaldı" → yeni kurtarma kodları (yanlış kodla red) → kapatma (yanlış
+parola ve yanlış kodla red) → kapısız giriş. `edit_user.php`: menejer rol 3
+hesabı sıfırlayabiliyor, eşit ve üst rolde reddediliyor. Ayar kartı
+99/0/1/2/3 kaydedip geri okuyor. `login_as_user` kipinde parça salt okunur,
+`mfa_begin` / `mfa_disable` POST'ları reddediliyor. `ENCRYPTION_KEY`
+config'den kaldırılınca parça "anahtar yok" diyor, açma reddediliyor, ayar
+seçimi kapalı ve kaydetmek `mfa_required_role`'ü değiştirmiyor. Ticaret
+uyarısı yalnız açık 2FA varken çıkıyor. Anahtar kaldırılmışken 2FA'lı
+hesap: parola sonrası `mfa.php` (uyarı notuyla), doğru TOTP reddediliyor,
+kurtarma kodu geçiyor; hesap parçasında yalnız "Kapat" var, TOTP ile
+kapatma reddediliyor, kurtarma koduyla kapanıyor ve tarayıcı içeride
+kalıyor; `mfa_begin` / `mfa_recovery_regenerate` reddediliyor.
+`edit_user.php`'de kendi hesabında sıfırlama düğmesi yok, POST reddediliyor.
+
+**Açık.** Hazır başlangıç sitesinin (`turkish_default`) "my account profile"
+sayfası özel düzenle gelir ve `$account_security`'yi basmaz: o sitelerde
+hesap güvenliği bölümü (cihazlar, Google, 2FA) görünmez; sandbox'ta sayfa
+sistem düzenine alınarak denendi.
 
 **Doğrulanamayanlar.** Google ile giriş (sandbox'ta Google yok; kapı satırı
 kod incelemesiyle). Sıfırlama bağlantısıyla parola belirleme

@@ -38,10 +38,12 @@ if (pg_session_signed_in()) {
     send_user_to_login_home();
 }
 
-// The tables went away or the encryption key was removed after the gate
-// wrote the record. The gate only writes 'setup' while the feature is
-// available, so neither mode can be completed without a second step here.
-if (!pg_mfa_available()) {
+// The tables went away after the gate wrote the record, or setup was owed
+// while the key could still be encrypted and no longer can: neither can be
+// completed here. Verification goes on without the encryption key - the
+// stored key cannot be read then, but the recovery codes are only hashed -
+// so a missing ENCRYPTION_KEY never turns into a sign-in by password alone.
+if (!pg_mfa_table_exists() || (!pg_mfa_available() && ($pending['mode'] === 'setup'))) {
     pg_mfa_pending_clear();
     output_error(lang('Two-step verification is not available on this site right now. Please ask the site owner for help.'));
 }
@@ -246,6 +248,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
 
     $body =
         '<p class="text-muted mb-3">' . h(lang('Enter the 6-digit code from your authenticator app, or one of your recovery codes.')) . '</p>
+        ' . (pg_mfa_available() ? '' : '<div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
         ' . $messages . '
         <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
             ' . $hidden . '

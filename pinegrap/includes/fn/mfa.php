@@ -402,15 +402,16 @@ function pg_mfa_row($user_id)
  * Whether the account has a confirmed second factor that sign-in must ask
  * for.
  *
+ * Deliberately not tied to pg_mfa_available(): a key that cannot be read
+ * (ENCRYPTION_KEY or openssl gone) is still a key the account asked for, so
+ * sign-in keeps asking rather than falling back to the password alone. The
+ * recovery codes are hashed, not encrypted, so they keep working then.
+ *
  * @param int $user_id
  * @return bool
  */
 function pg_mfa_enabled($user_id)
 {
-    if (!pg_mfa_available()) {
-        return false;
-    }
-
     $row = pg_mfa_row($user_id);
 
     return ($row !== null) && ((int) $row['enabled_at'] > 0) && ((string) $row['totp_secret'] !== '');
@@ -470,6 +471,11 @@ function pg_mfa_secret_encode($secret_bytes)
  */
 function pg_mfa_secret_decode($blob)
 {
+    // decode_ssl_keys() reads the constant and calls openssl directly.
+    if (!defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '') || !extension_loaded('openssl')) {
+        return '';
+    }
+
     $parts = explode(':', (string) $blob, 2);
 
     if ((count($parts) !== 2) || ($parts[0] === '') || ($parts[1] === '')) {
@@ -826,4 +832,148 @@ function pg_mfa_issuer()
     }
 
     return defined('HOSTNAME') ? (string) HOSTNAME : '';
+}
+
+// ── Account screen ──────────────────────────────────────────────────────────
+
+/**
+ * Where the account screen's two-step actions return to: the page that shows
+ * pg_account_security_section(), which is the profile page.
+ *
+ * @return string
+ */
+function pg_mfa_account_url()
+{
+    $url = get_page_type_url('my account profile');
+
+    return ($url !== '') ? $url : get_page_type_url('my account');
+}
+
+/**
+ * The two-step verification part of the account security section. Plain
+ * markup in the style of the rest of that section, which is printed on the
+ * front-end profile page and in custom layouts alike. Every form posts to
+ * account_security.php with pg_security_action.
+ *
+ * @param int    $user_id
+ * @param int    $password_algo user.user_password_algo; 3 is a Google-only
+ *                              account, which has no password to ask for.
+ * @param string $action_url
+ * @param string $token         The CSRF field.
+ * @return string
+ */
+function pg_mfa_account_section($user_id, $password_algo, $action_url, $token)
+{
+    if (!pg_mfa_table_exists()) {
+        return '';
+    }
+
+    $heading = '<div class="heading" style="margin:1.5em 0 10px">' . h(lang('Two-step verification')) . '</div>';
+    $enabled = pg_mfa_enabled($user_id);
+
+    // An operator signed in as this person sees the state and nothing to
+    // press; account_security.php refuses the actions in that mode as well.
+    if (!empty($_SESSION['software']['logged_in_as_different_user'])) {
+        return $heading . '<p>' . h(lang(array(
+            'string' => 'Two-step verification is {var:1}.',
+            'vars'   => array($enabled ? lang('on') : lang('off'))))) . '</p>';
+    }
+
+    $available = pg_mfa_available();
+
+    $form = function ($action, $inner) use ($action_url, $token) {
+        return '<form method="post" action="' . h($action_url) . '" style="margin:0 0 1em" autocomplete="off">' . $token
+            . '<input type="hidden" name="pg_security_action" value="' . h($action) . '"/>' . $inner . '</form>';
+    };
+
+    $code_field = function ($id, $label = '') {
+        return '<label for="' . h($id) . '" style="display:block;margin-bottom:.25em">' . h(($label !== '') ? $label : lang('Code from your authenticator app')) . '</label>'
+            . '<input type="text" id="' . h($id) . '" name="code" class="software_input_text" required="required" inputmode="numeric" autocomplete="one-time-code" maxlength="20" spellcheck="false" style="margin-bottom:.5em"/> ';
+    };
+
+    // Recovery codes just issued: shown until the person says they saved
+    // them, so a reload does not lose them.
+    $codes = $_SESSION['software']['mfa_codes_show'] ?? null;
+
+    if (is_array($codes) && $codes) {
+        $codes_text = implode("\n", $codes);
+
+        return $heading
+            . '<p>' . h(lang('Save your recovery codes')) . '. ' . h(lang('Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.')) . '</p>'
+            . '<pre style="padding:.75em 1em;border:1px solid #dadce0;border-radius:6px;letter-spacing:.08em">' . h($codes_text) . '</pre>'
+            . '<p><a download="recovery-codes.txt" href="data:text/plain;charset=utf-8,' . h(rawurlencode($codes_text . "\n")) . '">' . h(lang('Download')) . '</a></p>'
+            . $form('mfa_codes_seen', '<button type="submit" class="software_input_submit_primary">' . h(lang('I have saved them')) . '</button>');
+    }
+
+    if ($enabled) {
+        $row = pg_mfa_row($user_id);
+
+        $required_note = pg_mfa_required_for_user($user_id)
+            ? ' ' . h(lang('Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.'))
+            : '';
+
+        $password_field = ((int) $password_algo !== 3)
+            ? '<label for="pg_mfa_current_password" style="display:block;margin-bottom:.25em">' . h(lang('Current password')) . '</label>'
+                . '<input type="password" id="pg_mfa_current_password" name="current_password" class="software_input_password" required="required" autocomplete="current-password" style="margin-bottom:.5em"/><br/>'
+            : '';
+
+        // Without a readable key (ENCRYPTION_KEY or openssl gone) no TOTP
+        // code can be checked: new recovery codes, which need one, are not
+        // offered, and turning it off takes a recovery code instead.
+        $unreadable_note = $available
+            ? ''
+            : '<p><strong>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</strong></p>';
+
+        $regenerate_html = $available
+            ? '<p style="margin-bottom:.5em"><strong>' . h(lang('New recovery codes')) . '</strong></p>'
+                . $form('mfa_recovery_regenerate', $code_field('pg_mfa_regenerate_code')
+                    . '<button type="submit" class="software_input_submit_secondary">' . h(lang('New recovery codes')) . '</button>')
+            : '';
+
+        $disable_code_label = $available ? '' : lang('Code from your authenticator app or a recovery code');
+
+        return $heading
+            . '<p>' . h(lang(array(
+                'string' => 'Two-step verification is on since {var:1}. {var:2} recovery codes left.',
+                'vars'   => array(
+                    // get_absolute_time() wraps the date in a <time> element;
+                    // the sentence is escaped as a whole, so only the text goes in.
+                    strip_tags(get_absolute_time(array('timestamp' => (int) $row['enabled_at'], 'type' => 'date'))),
+                    (string) pg_mfa_recovery_remaining($user_id))))) . '</p>'
+            . $unreadable_note
+            . $regenerate_html
+            . '<p style="margin-bottom:.5em"><strong>' . h(lang('Turn off')) . '</strong></p>'
+            . '<p>' . h(lang('Turning it off also signs out your other devices.')) . $required_note . '</p>'
+            . $form('mfa_disable', $password_field . $code_field('pg_mfa_disable_code', $disable_code_label)
+                . '<button type="submit" class="software_input_submit_secondary">' . h(lang('Turn off')) . '</button>');
+    }
+
+    if (!$available) {
+        return $heading . '<p>' . h(lang('Two-step verification cannot be turned on because the site has no encryption key. Please ask the site owner.')) . '</p>';
+    }
+
+    $row = pg_mfa_row($user_id);
+
+    $pending_fresh = ($row !== null)
+        && ((string) $row['pending_secret'] !== '')
+        && ((time() - (int) $row['pending_at']) <= pg_mfa_setup_lifetime());
+
+    if ($pending_fresh) {
+        $secret = pg_mfa_secret_decode($row['pending_secret']);
+        $account = (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+        return $heading
+            . '<p>' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>'
+            . '<p><code id="pg_mfa_key" style="font-size:1.15em;user-select:all">' . h(pg_mfa_format_secret($secret)) . '</code></p>'
+            . '<p><input type="text" id="pg_mfa_uri" class="software_input_text" readonly="readonly" style="width:100%" onclick="this.select()"'
+                . ' value="' . h(pg_totp_uri(pg_mfa_issuer(), ($account !== '') ? $account : (string) ($_SESSION['sessionusername'] ?? ''), $secret)) . '"'
+                . ' aria-label="' . h(lang('Key link')) . '"/></p>'
+            . $form('mfa_confirm', $code_field('pg_mfa_confirm_code')
+                . '<button type="submit" class="software_input_submit_primary">' . h(lang('Confirm and turn on')) . '</button>')
+            . $form('mfa_cancel_setup', '<button type="submit" class="software_input_submit_secondary">' . h(lang('Cancel')) . '</button>');
+    }
+
+    return $heading
+        . '<p>' . h(lang('Add a second step to your sign-in: after your password, a code from an authenticator app on your phone.')) . '</p>'
+        . $form('mfa_begin', '<button type="submit" class="software_input_submit_primary">' . h(lang('Turn on two-step verification')) . '</button>');
 }
