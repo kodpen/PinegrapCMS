@@ -825,9 +825,11 @@ function pg_mfa_attempt_clear($user_id)
  * Check what a person must prove to turn off their own second factor: the
  * current password (unless the account is Google-only, algo 3, which has no
  * password) and a TOTP or recovery code. Counts the attempt and clears the
- * counters on success; does not disable anything. Shared by the account
- * page and the panel's user screen, so a stolen session cannot remove the
- * second step from either.
+ * counters on success; does not disable anything. Used by the account
+ * page (account_security.php), which every member reaches with a session
+ * alone, so a stolen session cannot remove the second step there. The
+ * panel's user screen turns it off without these proofs; that screen is
+ * behind the panel's own role gate.
  *
  * The password check goes through the sign-in throttle like the sign-in
  * forms. pg_login_throttle_guard() does not return while the name or the

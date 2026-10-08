@@ -205,8 +205,7 @@ if (strpos($action, 'mfa_') === 0) {
     }
 
     if ($action === 'mfa_disable') {
-        // The password (none for a Google-only account) and a code, checked
-        // the same way as on the panel's user screen.
+        // The password (none for a Google-only account) and a code.
         $mfa_refused = pg_mfa_self_disable_check($user_id, $mfa_username,
             (isset($_POST['current_password']) && is_scalar($_POST['current_password'])) ? (string) $_POST['current_password'] : '',
             $mfa_code);
