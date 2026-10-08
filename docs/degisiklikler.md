@@ -140,6 +140,37 @@ kodun geçerli olduğunu söylerdi (bilgi sızdırır).
   satırı kaldırıldı.
 - `changelog.txt`: 2FA maddesi nihai duruma göre düzeltildi (QR ile kurulum,
   taranamazsa elle anahtar, QR'ın sunucuda çizildiği); ayrı madde yok.
+- **Kullanan yerler** (2FA'dan sonra, aynı gün):
+  - Adlı kısa link (`edit_short_link.php`): "QR Kodu" kartı (sağ sütunda
+    "Main Informations"ın altında, 160 px) ve "SVG indir" bağlantısı
+    (`pg_qr_svg_data_uri()`, `download="<ad>-qr.svg"`, ad
+    `pg_ascii_file_name()` ile). Adres `URL_SCHEME . HOSTNAME_SETTING . PATH
+    . name`: QR isteğin dışına çıktığı için Host başlığından (`HOSTNAME`)
+    değil yapılandırılmış hosttan kurulur (`init.php`'deki kural); ad kayıtta
+    zaten URL güvenli karakterlerle sınırlı. QR `''` dönerse kart basılmaz.
+  - Dosya Yöneticisi tek kullanımlık link: `explorer_short_link_create`
+    yanıtında `token_url`'ün yanına `token_qr` (`pg_qr_svg(…, 0)`,
+    `d-block w-100`); `view_folders.php` `showShortLinkAddress(address, qr)`
+    adres kutusunun üstünde 200 px'lik kutuda gösterir. Token yalnız bu bir
+    yanıtta vardır (sunucuda hash'i kalır); QR da yalnız orada.
+  - Çalışma Alanı misafir bağlantısı: `includes/workspace/actions.php`
+    `ws_guest_start`, `ws_guest_relink` / `ws_guest_end`, `ws_channel_share`,
+    `ws_share_relink` / `ws_share_end` yanıtlarına `qr`
+    (`ws_action_link_qr()`; bağlantı boşsa — sona erdirmede — `''`).
+    `workspace.js` `guestLinkShow(url, qr)` bağlantının bir kez gösterildiği
+    pencerede input-group'un üstüne koyar; dört çağıran yer `result.qr`
+    geçirir, önceki pencere kapanırken kendini yeniden çağıran yer `qr`'ı
+    taşır.
+  - İki tarayıcı yolunda SVG sunucunun ürettiği markup olarak `innerHTML`
+    ile girer; dizgeye başka hiçbir kullanıcı verisi girmez (metin
+    `pg_qr_svg()`'de yalnız modüllere dönüşür, etiket `h()`'den geçer).
+  - Sandbox'ta (Chromium + zxing-cpp) doğrulandı: kısa link kartındaki QR
+    ve indirilen `yaz-kampanya_2026-qr.svg` adresi veriyor (dosya data
+    URI'yle bayt bayt aynı); tek kullanımlık linkte ve misafir görüşmesi
+    başlatmada QR'dan çözülen adres kutudaki adresle aynı, QR kutunun
+    üstünde; `ws_guest_start` / `ws_guest_relink` / `ws_channel_share` /
+    `ws_share_relink` yanıtlarında `qr` bir `<svg>`, `ws_guest_end` /
+    `ws_share_end` yanıtlarında `''`.
 
 **"Neden olmadı" araştırması (sandbox, 2026-10-08).** Sunucu tarafı,
 üründen bağımsız bir TOTP uygulamasıyla (Python `pyotp`; `pg_totp_code()`

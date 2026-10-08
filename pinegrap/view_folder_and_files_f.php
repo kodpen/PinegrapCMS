@@ -7760,6 +7760,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 // The whole address of a one-time link, this once: only its
                 // hash is kept.
                 'token_url' => ($short_link_token !== '') ? URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link_token : '',
+                // The same address as an inline SVG QR code, drawn here so the
+                // token is never put into an image URL.
+                'token_qr' => ($short_link_token !== '')
+                    ? pg_qr_svg(URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link_token, 0, array('label' => lang('QR code for the link'), 'class' => 'd-block w-100'))
+                    : '',
                 'message' => lang('The short link has been created.')));
 
             break;

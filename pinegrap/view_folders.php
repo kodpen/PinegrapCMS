@@ -8694,13 +8694,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     var shortLinkResult = false;
 
     // The address of a one-time link is shown once, when it is made: the
-    // server keeps only its hash. Copied from here, or lost.
-    function showShortLinkAddress(address) {
+    // server keeps only its hash. Copied from here, or lost. qr is the same
+    // address as SVG markup drawn by the server (pg_qr_svg()); nothing else
+    // goes into that string, so it is inserted as it is.
+    function showShortLinkAddress(address, qr) {
 
         var body = document.getElementById('short_link_modal_body');
 
         body.innerHTML =
             '<p class="mb-2">' + esc(L.link_once_note) + '</p>' +
+            (qr ? '<div class="text-center mb-3"><div class="d-inline-block border rounded p-2 bg-white" style="width:200px">' + qr + '</div></div>' : '') +
             '<div class="input-group">' +
                 '<input type="text" class="form-control font-monospace" id="sl_address" readonly value="' + esc(address) + '" />' +
                 '<button type="button" class="btn btn-outline-primary" id="sl_address_copy"><span class="bi bi-clipboard me-1"></span>' + esc(L.link_copy) + '</button>' +
@@ -9251,7 +9254,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // A one-time link: its address, this once, in the same window.
             if (response.token_url) {
-                showShortLinkAddress(response.token_url);
+                showShortLinkAddress(response.token_url, response.token_qr || '');
                 return;
             }
 

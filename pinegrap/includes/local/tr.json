@@ -18771,5 +18771,9 @@
     "Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.": "QR kodu doğrulama uygulamanızla (Google Authenticator, Aegis, 1Password, Microsoft Authenticator) tarayın, sonra uygulamanın gösterdiği kodu girin.",
     "If you cannot scan it, add the key by hand:": "Tarayamıyorsanız anahtarı elle ekleyin:",
     "QR code for the authenticator app": "Doğrulama uygulaması için QR kodu",
-    "That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.": "Kod kabul edilmedi. Her kod bir kez geçerlidir: bir sonraki kodu bekleyin ve telefonunuzun saatini kontrol edin."
+    "That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.": "Kod kabul edilmedi. Her kod bir kez geçerlidir: bir sonraki kodu bekleyin ve telefonunuzun saatini kontrol edin.",
+    "QR Code": "QR Kodu",
+    "QR code for the short link": "Kısa link için QR kodu",
+    "QR code for the link": "Bağlantı için QR kodu",
+    "Download SVG": "SVG indir"
 }
