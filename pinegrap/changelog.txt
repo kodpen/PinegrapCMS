@@ -236,6 +236,11 @@
          silinmez) da listeler. Hata ayıklama açıkken PHP'nin
          kullanımdan kalkacak özellik uyarıları da kaydedilir.
 
+  [HIZ] Pano ve panel daha hafif çalışıyor. Panelin arka
+         plandaki istekleri artık her seferinde yedekleme
+         (MySQL dökümü) kütüphanesini yüklemiyor; pano
+         kartlarının her biri yalnız kendi kodunu yüklüyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

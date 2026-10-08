@@ -1,6 +1,7 @@
 # Plan 1 — Panel `api.php` ve pano widget'ları (ana ajan Fable 5.1, alt ajanlar Opus 5.5)
 
 Durum: plan (2026-10-08). Kaynak keşif: `docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` maddeler 1, 2, 4, 5, 7, 6.
+Durum (2026-10-08): Faz 0–2 tamamlandı (PR'da), Faz 3 sırada. Faz 2'de widget'lar `echo`+`exit` yerine dizi döndürüyor; `api.php` `respond()` ediyor.
 Satır numaraları `development` @ `0294c42`'ye göre; kaymışsa grep ile bul, yeniden keşif yapma.
 
 ## 0. Sabit bağlam (her oturumda, kısaca)

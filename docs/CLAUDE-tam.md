@@ -7162,7 +7162,7 @@ bir hata değil, formun boş satırı); kalan her kod operatöre söylenir.
 - `calculate_optimizable_percent($path)` → tam decode + yeniden sıkıştırma yapar.
 - `OPTIMIZE_PERCENT_THRESHOLD = 30` (view_files.php) → optimize edilmemiş görsel
   sayısı ≤ 30 ise hesapla, üstündeyse düğmeyi yüzdesiz göster.
-- Pano widget'ı (api.php) **hiç hesaplamaz**, yalnız önbelleklenmiş sütunu okur.
+- Pano widget'ı (includes/dashboard/widgets/widget_18.php) **hiç hesaplamaz**, yalnız önbelleklenmiş sütunu okur.
 - Desteklenen tipler: `jpg`, `jpeg`, `png`, `gif`, `bmp`, `tiff`, `tif`, `webp`.
   `tif` yalnız küçük resim/ölçü listesinde — `optimize_image()` o yazımı
   reddeder, düğme sunmak garantili hata vermek olur.

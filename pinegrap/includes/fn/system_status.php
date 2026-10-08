@@ -1345,7 +1345,8 @@ function pg_write_permission_repair()
  * It returns the checks as data, not as markup. The bar this used to print was
  * the only thing that could be done with a string of <span>s; the dashboard now
  * draws a gauge and a card per check from the same results, and settings.php
- * draws the same widget. Rendering lives in api.php, the checks live here.
+ * draws the same widget. Rendering lives in
+ * includes/dashboard/widgets/widget_2.php, the checks live here.
  *
  * Returned shape:
  *   array(
