@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the General cards: where the site is, what the software is, which releases it takes, the time it keeps and what runs on a schedule.
+ * Site Settings - the General cards: where the site is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -195,6 +195,185 @@ $pg_settings_cards[] = '
                                 sync();
                             })();
                         </script>';
+
+// ── Backups ──
+//
+// What the automatic backup keeps and where its copy goes. The controls exist
+// only once the 2026.4.8 columns do; before that the card says so, and the
+// save module writes nothing for it either.
+$output_backup_settings = '<div class="col-12"><div class="alert alert-secondary mb-0">' . lang('Run the upgrade to use this setting.') . '</div></div>';
+
+if ($backup_settings_ready) {
+
+    $backup_secret_placeholder_ftp = $backup_ftp_password_stored ? lang('Saved') : '';
+    $backup_secret_placeholder_s3  = $backup_s3_secret_stored ? lang('Saved') : '';
+    $backup_secret_help = ($backup_ftp_password_stored || $backup_s3_secret_stored)
+        ? lang('The secret and the password are stored and are not shown. Leave these boxes empty to keep them.')
+        : lang('The secret and the password are stored encrypted and are never shown again after saving.');
+
+    $backup_remote_status = '';
+
+    if ($backup_remote_type !== '') {
+
+        if ($backup_remote_error !== '') {
+            $backup_remote_status = '<div class="alert alert-warning mb-0 py-2 small">' . lang('The last remote backup copy failed.') . ' ' . h($backup_remote_error) . '</div>';
+        } elseif ($backup_remote_sent_at > 0) {
+            $backup_remote_status = '<div class="alert alert-success mb-0 py-2 small">' . lang(array('string' => 'The last remote copy was sent {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $backup_remote_sent_at, 'format' => 'plain_text'))))) . '</div>';
+        } else {
+            $backup_remote_status = '<div class="alert alert-secondary mb-0 py-2 small">' . lang('No remote copy has been sent yet.') . '</div>';
+        }
+    }
+
+    $output_backup_settings = '
+                    <div class="pg-f-xs">
+                        <label for="backup_keep" class="form-label">' . lang('Automatic backups to keep') . '</label>
+                        <input type="number" name="backup_keep" id="backup_keep" min="0" step="1" class="form-control" value="' . h($backup_keep) . '" />
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">' . lang('The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.') . '</div>
+                    </div>' . (class_exists('ZipArchive') ? '' : '
+                    <div class="col-12">
+                        <div class="alert alert-warning mb-0 py-2 small">' . lang('The ZipArchive extension of PHP is not available: automatic backups stay folders and no remote copy is made.') . '</div>
+                    </div>') . '
+                    <div class="pg-f-md">
+                        <label for="backup_remote_type" class="form-label">' . lang('Remote copy') . '</label>
+                        <select name="backup_remote_type" id="backup_remote_type" class="form-select">
+                            <option value=""' . (($backup_remote_type === '') ? ' selected="selected"' : '') . '>' . lang('None') . '</option>
+                            <option value="ftp"' . (($backup_remote_type === 'ftp') ? ' selected="selected"' : '') . '>FTP</option>
+                            <option value="s3"' . (($backup_remote_type === 's3') ? ' selected="selected"' : '') . '>' . lang('S3-compatible storage') . '</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">' . lang('After every automatic backup the archive is sent here as well. A backup kept in a folder is not sent. Choosing None forgets the saved connection details.') . '</div>
+                    </div>
+                    <div class="col-12" id="backup_remote_ftp_fields">
+                        <div class="row gy-3">' . (extension_loaded('ftp') ? '' : '
+                            <div class="col-12">
+                                <div class="alert alert-warning mb-0 py-2 small">' . lang('The FTP extension of PHP is not available on this server.') . '</div>
+                            </div>') . '
+                            <div class="pg-f-md">
+                                <label for="backup_ftp_host" class="form-label">' . lang('FTP server') . '</label>
+                                <input type="text" name="backup_ftp_host" id="backup_ftp_host" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['host']) . '" placeholder="ftp.example.com" />
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="backup_ftp_port" class="form-label">' . lang('Port') . '</label>
+                                <input type="number" name="backup_ftp_port" id="backup_ftp_port" min="1" max="65535" class="form-control" value="' . h($backup_remote_ftp['port']) . '" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_ftp_user" class="form-label">' . lang('Username') . '</label>
+                                <input type="text" name="backup_ftp_user" id="backup_ftp_user" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['user']) . '" autocomplete="off" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_ftp_password" class="form-label">' . lang('Password') . '</label>
+                                <input type="password" name="backup_ftp_password" id="backup_ftp_password" class="form-control" value="" autocomplete="new-password" placeholder="' . h($backup_secret_placeholder_ftp) . '" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_ftp_path" class="form-label">' . lang('Folder on the server') . '</label>
+                                <input type="text" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . ($backup_remote_ftp['tls'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="backup_ftp_tls" name="backup_ftp_tls"/>
+                                    <label class="form-check-label" for="backup_ftp_tls">' . lang('Encrypted connection (explicit FTPS)') . '</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12" id="backup_remote_s3_fields">
+                        <div class="row gy-3">
+                            <div class="pg-f-lg">
+                                <label for="backup_s3_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
+                                <input type="text" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" />
+                                <div class="form-text">' . lang('Leave empty for Amazon S3 in the region below.') . '</div>
+                            </div>
+                            <div class="pg-f-sm">
+                                <label for="backup_s3_region" class="form-label">' . lang('Region') . '</label>
+                                <input type="text" name="backup_s3_region" id="backup_s3_region" maxlength="64" class="form-control" value="' . h($backup_remote_s3['region']) . '" placeholder="us-east-1" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_s3_bucket" class="form-label">' . lang('Bucket name') . '</label>
+                                <input type="text" name="backup_s3_bucket" id="backup_s3_bucket" maxlength="255" class="form-control" value="' . h($backup_remote_s3['bucket']) . '" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_s3_prefix" class="form-label">' . lang('Folder in the bucket') . '</label>
+                                <input type="text" name="backup_s3_prefix" id="backup_s3_prefix" maxlength="255" class="form-control" value="' . h($backup_remote_s3['prefix']) . '" placeholder="backups" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_s3_access_key" class="form-label">' . lang('Access Key') . '</label>
+                                <input type="text" name="backup_s3_access_key" id="backup_s3_access_key" maxlength="255" class="form-control" value="' . h($backup_remote_s3['access_key']) . '" autocomplete="off" />
+                            </div>
+                            <div class="pg-f-md">
+                                <label for="backup_s3_secret_key" class="form-label">' . lang('Secret Key') . '</label>
+                                <input type="password" name="backup_s3_secret_key" id="backup_s3_secret_key" class="form-control" value="" autocomplete="new-password" placeholder="' . h($backup_secret_placeholder_s3) . '" />
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . ($backup_remote_s3['path_style'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="backup_s3_path_style" name="backup_s3_path_style"/>
+                                    <label class="form-check-label" for="backup_s3_path_style">' . lang('Path-style addresses') . '<br/><span class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12" id="backup_remote_shared">
+                        <div class="row gy-3">
+                            <div class="col-12">
+                                <div class="form-text">' . h($backup_secret_help) . '</div>
+                            </div>' . (($backup_remote_status !== '') ? '
+                            <div class="col-12">' . $backup_remote_status . '</div>' : '') . '
+                            <div class="col-12">
+                                <button type="submit" name="backup_remote_test" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                            </div>
+                        </div>
+                    </div>';
+
+    // Shows the fields of the destination that is chosen. The others stay in
+    // the form and are posted, so switching back does not lose them.
+    $pg_settings_scripts[] = '
+    <script>
+        (function () {
+            var type = document.getElementById("backup_remote_type");
+
+            if (!type) {
+                return;
+            }
+
+            function sync() {
+                var groups = {
+                    ftp: document.getElementById("backup_remote_ftp_fields"),
+                    s3: document.getElementById("backup_remote_s3_fields"),
+                    shared: document.getElementById("backup_remote_shared")
+                };
+
+                if (groups.ftp) {
+                    groups.ftp.style.display = (type.value === "ftp") ? "" : "none";
+                }
+                if (groups.s3) {
+                    groups.s3.style.display = (type.value === "s3") ? "" : "none";
+                }
+                if (groups.shared) {
+                    groups.shared.style.display = (type.value === "") ? "none" : "";
+                }
+            }
+
+            type.addEventListener("change", sync);
+            sync();
+        })();
+    </script>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-backup" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Backups') . '</span>
+                <a href="backups.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Backup Manager') . '</a>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">' . $output_backup_settings . '
+                </div>
+            </div>
+        </div>
+    </div>';
 
 // The modal explains every job the card can switch on. It is printed outside
 // the form, so it travels in its own variable.

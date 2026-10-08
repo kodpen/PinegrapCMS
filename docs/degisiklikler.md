@@ -282,6 +282,89 @@ ayarladığı için ondan önceki bir hata sunucu saat diliminde damgalanır.
 
 ---
 
+## 2026.4.8 — Otomatik yedek: haftalık zip arşivi, saklama sayısı, FTP / S3 uzak kopya (2026-10-08)
+
+**Sorun.** `auto_backup.php` her hafta `data/backups/auto_backup_<Y-m-W>/`
+klasörüne veritabanı dökümünü ve `data/files`, `data/layouts` kopyasını
+yazıyordu. Hiçbir şey silinmiyordu: yıllık 52 tam kopya diskte birikiyordu.
+Yedek yalnız korunan sunucunun kendisinde duruyordu; sunucu kaybında yedek
+de kayboluyordu.
+
+**Çözüm.** Yeni modül `includes/fn/backup.php` (`functions.php` manifestinin
+sonunda). `auto_backup.php`'nin kapısı, `pg_cron_ran()`, `pdo_mysql` kontrolü
+ve 24 saat eşiği yerinde; gövde `pg_backup_run_auto()`'ya taşındı.
+
+- ZipArchive varsa yedek tek dosya: `data/backups/auto_backup_<Y-m-W>.zip`
+  (`sql.sql`, `files/<ad>`, `layouts/<ad>`). Döküm ve arşiv
+  `data/temp/auto_backup_<damga>_<rastgele>/` içinde hazırlanır, doğrulanır
+  (`close()` + `pg_looks_like_zip()`), sonra `rename()` ile yerine geçer —
+  başarısız çalışma haftanın önceki arşivini bozmaz. Öldürülen çalışmanın
+  bir günden eski çalışma klasörü sonraki çalışmada silinir. ZipArchive
+  yoksa eski klasör yedeği aynen (pclzip denenmez).
+- Saklama `config.backup_keep` (varsayılan 4, 0 = sınırsız):
+  `pg_backup_prune_list()` saf fonksiyondur ve yalnız
+  `^auto_backup_\d{4}-\d{2}-\d{2}(\.zip)?$` adlarını görür; silme anında ad
+  ikinci kez sınanır. `english_default` / `turkish_default`, elle adlandırılan
+  yedekler ve `pre_upgrade_*` dökümleri hiçbir koşulda listeye girmez.
+  Kolonlar yokken (kod gelmiş, yükseltme koşmamış) hiçbir şey silinmez.
+- Uzak kopya `config.backup_remote_type` (`''|ftp|s3`) +
+  `backup_remote_settings` (şifreli JSON `"<ciphertext>:<iv>"`,
+  `{ftp:{…}, s3:{…}}` — iki hedef ayrı anahtarda, tür değiştirmek ötekinin
+  parolasını kaybettirmez; "Hiçbiri" kaydı blob'u siler). FTP:
+  `ftp_ssl_connect`/`ftp_connect`, pasif kip, `<ad>.part` olarak yükle,
+  sonra `ftp_rename` (yarım yükleme gerçek adla kalmaz). S3: tek SigV4 imzalı
+  PUT, gövde diskten akar (`CURLOPT_INFILE`), `x-amz-content-sha256` dosyanın
+  sha256'sı, `pg_curl_tls()` + `pinegrap_user_agent()`; uç nokta boşsa
+  `https://s3.<bölge>.amazonaws.com`, şemasız uç nokta https sayılır,
+  path-style / virtual-host seçilebilir. Sonuç `backup_remote_error` /
+  `backup_remote_sent_at`'e yazılır, hata `log_activity(…, 'SYSTEM')`.
+- Ayarlar → Genel → Yedeklemeler kartı (`pgset-backup`): saklama sayısı,
+  hedef türü, FTP / S3 alanları (türe göre gösterilir), parola ve gizli
+  anahtar geri basılmaz (boş kutu = kayıtlıyı koru), son gönderim / son
+  hata satırı, "Kaydet ve bağlantıyı test et" (`backup_remote_test`:
+  kaydeder, sonra küçük bir deneme dosyası gönderir; sonuç notice — ayar
+  diyaloğu warning taşımıyor). Kolonlar yokken kart "yükseltmeyi çalıştırın"
+  der, kayıt modülü o kartın kolonlarını yazmaz.
+- Yedek Yöneticisi (`backups.php`) klasörlerin yanında `*.zip` dosyalarını
+  da listeler (tür rozeti, boyut `filesize`, tarih `filemtime`); arşiv olduğu
+  gibi indirilir / `unlink` edilir. Ad doğrulaması değişmedi: işlem yalnız
+  `backup_list()`'in döndürdüğü adla eşleşirse yapılır.
+- Sistem Durumu "Son Yedek": otomatik yedek adlı zip dosyaları da sayılır;
+  uzak kopya hata verdiyse kart sarıya döner (yeşilse) ve ağırlığın yarısı
+  düşer, hata metni ayrıntı satırında.
+
+**Gerekçe ve ödünler.**
+- Haftalık ad (`Y-m-W`) korunur: aynı haftadaki her çalışma o haftanın
+  arşivinin yerine yazar, saklama "hafta" sayar. ISO haftası yılbaşında
+  takvim yılıyla ayrışır (1 Ocak = 53. hafta, 29 Aralık = 1. hafta);
+  `pg_backup_auto_sort_key()` bu haftaları doğru sıraya koyar — düz sözlük
+  sırası yeni yedeği eski sanıyordu.
+- Aynı haftanın klasörü ve zip'i birlikte varsa (yükseltme haftası) hafta
+  bir kez sayılır, klasör zip'in eski kopyası olarak silinir.
+- Uzak kopya yalnız zip için: klasör yedeği uzağa gönderilmez (kartta
+  yazıyor). Uzak taraftaki eski kopyalar silinmez; saklama yalnız yereldir.
+- Çok parçalı S3 yüklemesi yok: tek PUT'un sınırı (AWS'de 5 GB) aşan site
+  için hata mesajı servisten gelir.
+- PHP'nin `ftp_ssl_connect()`'i sunucu sertifikasını doğrulamaz; FTPS
+  dinlemeye karşı korur, ortadaki adama karşı korumaz.
+
+**Şema.** 8.33 `_backup_settings`: `config.backup_keep`,
+`backup_remote_type`, `backup_remote_settings` (TEXT), `backup_remote_error`
+(TEXT), `backup_remote_sent_at`.
+
+**Doğrulama.** `tests/backup_test.php` (ad kapısı, saklama listesi,
+yılbaşı sıralaması, AWS SigV4 IAM örneğinin imza anahtarı / imza /
+kanonik istek özeti, URL kurulumu, hata ayıklama). Yerel alıcılarla
+`php` üzerinden: SigV4'ü bağımsız doğrulayan Python HTTP alıcısına
+path-style ve virtual-host PUT (3 MB'lık dosyada `Expect: 100-continue`
+dahil), yanlış gizli anahtarla 403 + `<Code>/<Message>` ayıklama;
+`pyftpdlib` ile düz FTP ve zorunlu TLS'li FTPS'e yükleme, üzerine yazma,
+yanlış parola, olmayan klasör, kapalı port. Sandbox kurulmadı: migration'ın
+iki kez koşturulması, gerçek `pg_backup_run_auto()` çalışması, ayar
+kaydı ve gerçek S3 / FTP servisleri doğrulanmadı.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve

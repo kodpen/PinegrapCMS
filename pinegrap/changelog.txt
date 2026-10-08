@@ -442,6 +442,41 @@
          tablosu. Çok sayıda kampanya göndermiş sitelerde
          email_recipients büyüktür, yükseltme uzun sürebilir.
 
+  YEDEKLEME
+  --------------------------------------------------------
+
+  [YENİ] Otomatik yedek artık her hafta için tek bir zip arşivi
+         olarak yazılır (data/backups/auto_backup_<yıl-ay-hafta>.zip;
+         içinde veritabanı dökümü, dosyalar ve şablonlar). Arşiv
+         geçici klasörde tamamlanıp yerine taşınır; yarıda kalan bir
+         çalışma o haftanın önceki yedeğini bozmaz. Sunucuda PHP'nin
+         ZipArchive eklentisi yoksa yedek eskisi gibi klasör olarak
+         kalır.
+
+  [YENİ] Saklama: Ayarlar → Genel → Yedeklemeler'de kaç haftalık
+         otomatik yedeğin tutulacağı seçilir (varsayılan 4, 0 = hepsi).
+         Daha eskileri her otomatik yedeklemeden sonra silinir ve
+         etkinlik kaydına yazılır. Elle alınan yedeklere, kurulum
+         dökümlerine ve yükseltme öncesi dökümlere hiç dokunulmaz.
+
+  [YENİ] Uzak kopya: her otomatik yedeklemeden sonra arşiv bir FTP
+         sunucusuna (isteğe bağlı şifreli FTPS) ya da S3 uyumlu bir
+         depoya (Amazon S3, MinIO, Cloudflare R2, Wasabi vb.)
+         gönderilebilir. Parola ve gizli anahtar şifreli saklanır,
+         ekranda gösterilmez. "Kaydet ve bağlantıyı test et" küçük bir
+         deneme dosyası gönderir. Gönderilemeyen kopya etkinlik
+         kaydına yazılır, ayar kartında ve Sistem Durumu'ndaki "Son
+         Yedek" kutusunda uyarı olarak görünür. Klasör olarak
+         tutulan yedek uzağa gönderilmez.
+
+  [YENİ] Yedek Yöneticisi zip arşivlerini de listeler; her satırda
+         türü (arşiv / klasör) ve boyutu görünür, arşiv olduğu gibi
+         indirilir ya da silinir.
+
+  [ŞEMA] config tablosuna backup_keep, backup_remote_type,
+         backup_remote_settings, backup_remote_error,
+         backup_remote_sent_at sütunları.
+
 
 
   2026.4.7

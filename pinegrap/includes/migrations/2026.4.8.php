@@ -31,6 +31,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_email_retry();             // 8.30
 	upgrade_2026_4_8_mail_outbox();             // 8.31
 	upgrade_2026_4_8_cron_locks();              // 8.32
+	upgrade_2026_4_8_backup_settings();         // 8.33
 
 }
 
@@ -228,5 +229,25 @@ function upgrade_2026_4_8_cron_locks() {
 	install_add_column('cron_runs', 'locked_until', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Scheduled jobs: each job run with the general job takes a lock of its own, so a long backup no longer holds up campaigns and the other short jobs.');
+
+}
+
+// Automatic backup retention and remote copy (2026.4.8, 8.33;
+// includes/fn/backup.php). backup_keep is how many weekly automatic backups
+// stay in data/backups (0 keeps all of them). backup_remote_type is '' (none),
+// 'ftp' or 's3'; backup_remote_settings holds that destination's address and
+// credentials as encrypted JSON ("<ciphertext>:<iv>"), TEXT because the
+// config row is near the row size limit. backup_remote_error is the message
+// of the last failed copy, emptied by the next one that succeeds, and
+// backup_remote_sent_at when a copy last succeeded.
+function upgrade_2026_4_8_backup_settings() {
+
+	install_add_column('config', 'backup_keep', "INT UNSIGNED NOT NULL DEFAULT 4");
+	install_add_column('config', 'backup_remote_type', "VARCHAR(8) NOT NULL DEFAULT ''");
+	install_add_column('config', 'backup_remote_settings', "TEXT NULL");
+	install_add_column('config', 'backup_remote_error', "TEXT NULL");
+	install_add_column('config', 'backup_remote_sent_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Backups: the automatic backup is written as one zip archive per week, keeps the last four weeks by default, and can send a copy to an FTP server or an S3-compatible bucket (Settings › General › Backups).');
 
 }

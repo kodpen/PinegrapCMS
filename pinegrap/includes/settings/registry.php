@@ -84,6 +84,7 @@ function pg_settings_categories()
                 'pgset-channel'  => lang('Update Channel'),
                 'pgset-datetime' => lang('Date & Time'),
                 'pgset-cron'     => lang('Cron Jobs'),
+                'pgset-backup'   => lang('Backups'),
             ),
             'keywords' => array(
                 'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
@@ -91,6 +92,7 @@ function pg_settings_categories()
                 'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
                 'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
+                'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
             ),
         ),
 
@@ -322,6 +324,7 @@ function pg_settings_legacy_anchors()
         'pgsub-payments'   => array('commerce',   'pgset-payments'),
         'pgset-affiliate'  => array('commerce',   'pgset-affiliate'),
         'pgset-cron'       => array('general',    'pgset-cron'),
+        'pgset-backup'     => array('general',    'pgset-backup'),
     );
 }
 
