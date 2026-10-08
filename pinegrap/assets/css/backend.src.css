@@ -10299,6 +10299,19 @@ body.workspace_settings .ws-shell-main > #button_bar {
   margin: .15rem 0;
   color: var(--bs-body-color);
 }
+/* A card reads as its flow: each line hangs on a thin rail. */
+.ws-sa-card > .ws-sa-line {
+  position: relative;
+  padding-left: .15rem;
+}
+.ws-sa-card > .ws-sa-line + .ws-sa-line::before {
+  content: "";
+  position: absolute;
+  left: .42rem;
+  top: -.35rem;
+  height: .4rem;
+  border-left: 1px dashed rgba(var(--ws-accent-rgb), .4);
+}
 .ws-sa-line > .bi {
   flex: none;
   color: var(--bs-secondary-color);
@@ -10364,6 +10377,125 @@ body.workspace_settings .ws-shell-main > #button_bar {
   font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .04em;
+  color: var(--bs-secondary-color);
+}
+/* The form as a flow: its steps down the step rail (Admin screen step rail
+   above), each a box; the outline above them says in words what it will do. */
+.ws-sa-flow {
+  margin-top: .75rem;
+}
+.ws-sa-flow .pg-step {
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+}
+.ws-sa-flow .pg-step + .pg-step {
+  margin-top: .5rem;
+}
+.ws-sa-flow .pg-step-rail::before {
+  bottom: -.5rem;
+}
+.ws-sa-flow .pg-step-node {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+  color: var(--ws-accent);
+}
+.ws-sa-flow .ws-sa-section {
+  margin-top: 0;
+  padding: .6rem .75rem .7rem;
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: var(--ws-radius);
+  background: var(--bs-body-bg);
+}
+.ws-sa-step-number {
+  display: inline-block;
+  margin-right: .35rem;
+  color: var(--ws-accent);
+}
+.ws-sa-when-join {
+  max-width: 24rem;
+}
+.ws-sa-outline {
+  margin-top: .5rem;
+  padding: .55rem .7rem;
+  border-radius: var(--ws-radius);
+  background: var(--ws-soft);
+  font-size: .8rem;
+}
+.ws-sa-outline:empty {
+  display: none;
+}
+.ws-sa-outline-row {
+  display: grid;
+  grid-template-columns: 1.1rem auto minmax(0, 1fr);
+  gap: .35rem;
+  align-items: baseline;
+}
+.ws-sa-outline-row + .ws-sa-outline-row {
+  margin-top: .2rem;
+}
+.ws-sa-outline-row .bi {
+  color: var(--ws-accent);
+}
+.ws-sa-outline-row b {
+  white-space: nowrap;
+}
+.ws-sa-outline.ws-sa-outline-error {
+  background: rgba(var(--bs-danger-rgb), .08);
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-sa-gallery-wrap {
+  margin-bottom: .75rem;
+}
+.ws-sa-gallery-wrap > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.ws-sa-gallery-wrap > summary::-webkit-details-marker {
+  display: none;
+}
+.ws-sa-gallery-title {
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--bs-secondary-color);
+}
+.ws-sa-gallery-wrap > summary .ws-sa-gallery-title::after {
+  content: " ▾";
+}
+.ws-sa-gallery-wrap[open] > summary .ws-sa-gallery-title::after {
+  content: " ▴";
+}
+.ws-sa-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: .45rem;
+  margin: .5rem 0 .75rem;
+}
+.ws-sa-template {
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+  padding: .5rem .6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .7rem;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  text-align: left;
+  font-size: .8rem;
+}
+.ws-sa-template:hover,
+.ws-sa-template.active {
+  border-color: var(--ws-accent);
+  background: var(--ws-soft);
+}
+.ws-sa-template-icon {
+  flex: none;
+  font-size: 1.05rem;
+  color: var(--ws-accent);
+}
+.ws-sa-template-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ws-sa-template-text small {
   color: var(--bs-secondary-color);
 }
 .ws-sa-when {
@@ -11198,6 +11330,82 @@ a.ws-chip:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Scheduled messages (scheduled_messages.php): the send button's second
+   half, the line above the box that says some wait, and their cards. */
+.ws-composer-tools > .ws-send-group {
+  margin-left: auto;
+}
+.ws-send-group .ws-send-later {
+  padding-left: .55rem;
+  padding-right: .65rem;
+  border-left: 1px solid rgba(255, 255, 255, .35);
+}
+.ws-sm-bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  margin: 0 0 .35rem;
+  padding: .3rem .6rem;
+  border: 1px dashed rgba(var(--ws-accent-rgb), .45);
+  border-radius: .6rem;
+  background: var(--ws-soft);
+  color: var(--bs-body-color);
+  font-size: .8rem;
+  text-align: left;
+}
+.ws-sm-bar:hover {
+  border-style: solid;
+}
+.ws-sm-bar .bi {
+  color: var(--ws-accent);
+}
+.ws-sm-bar-link {
+  color: var(--ws-accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-sm-list {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.ws-sm-card {
+  padding: .6rem .75rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--ws-accent);
+  border-radius: var(--ws-radius);
+  background: var(--bs-body-bg);
+}
+.ws-sm-card.ws-sm-failed {
+  border-left-color: var(--bs-danger);
+}
+.ws-sm-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+}
+.ws-sm-icon {
+  color: var(--ws-accent);
+}
+.ws-sm-failed .ws-sm-icon {
+  color: var(--bs-danger);
+}
+.ws-sm-where {
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+}
+.ws-sm-body {
+  margin-top: .35rem;
+}
+.ws-sm-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15rem;
+  margin-top: .4rem;
 }
 .ws-picker {
   position: absolute;

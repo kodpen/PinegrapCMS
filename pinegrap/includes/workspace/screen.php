@@ -588,9 +588,10 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
-    // Scheduled actions (includes/workspace/scheduled.php).
+    // Scheduled actions (includes/workspace/scheduled.php) and the messages
+    // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
-        $strings = array_merge($strings, ws_scheduled_js_strings());
+        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
 
     // Colours and groups of channels, versions of a conversation.
@@ -624,6 +625,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),
         'reminders'    => function_exists('ws_task_reminders_js_config') ? ws_task_reminders_js_config() : array('ready' => false),
         'scheduled'    => function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null,
+        'scheduled_messages' => function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer),
         'palette'      => ws_channel_colors_ready() ? ws_palette_js() : array(),
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),

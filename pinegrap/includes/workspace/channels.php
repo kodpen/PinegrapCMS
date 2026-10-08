@@ -202,6 +202,13 @@ function ws_channel_detail($viewer, $channel)
 
     $brief['tab_counts'] = ws_channel_tab_counts($channel);
 
+    // The reader's own messages waiting to be posted here
+    // (scheduled_messages.php).
+    $brief['scheduled_mine'] = (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer))
+        ? (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
+            WHERE channel_id = '" . (int) $channel['id'] . "' AND kind = 'message' AND created_by = '" . (int) $viewer['id'] . "' AND status IN ('active', 'failed')")
+        : 0;
+
     return $brief;
 }
 
@@ -308,6 +315,12 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
             'string' => '{var:1} added {var:2}',
             'vars'   => array('<@user:' . (int) $viewer['id'] . '>', implode(', ', $mentions)),
         )));
+
+        // The scheduled actions that greet newcomers (scheduled.php). Not for
+        // the people a channel is made with.
+        if (function_exists('ws_scheduled_joined')) {
+            ws_scheduled_joined(ws_channel($channel['id']), $added);
+        }
     }
 
     return $added;
@@ -603,6 +616,10 @@ function ws_channel_join($viewer, $channel)
 
         ws_channel_membership_forget();
         ws_channel_folder_access($channel, array((int) $viewer['id']), true);
+
+        if (function_exists('ws_scheduled_joined')) {
+            ws_scheduled_joined($channel, array((int) $viewer['id']));
+        }
     }
 
     return array('ok' => true, 'error' => '');

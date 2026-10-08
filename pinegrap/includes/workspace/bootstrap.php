@@ -56,6 +56,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/tour.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_messages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/timeline.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/home.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');

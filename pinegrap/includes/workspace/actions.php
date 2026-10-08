@@ -210,7 +210,7 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('items' => ws_scheduled_targets($viewer)));
 
         case 'ws_scheduled_get':
-            $scheduled = ws_can_schedule($viewer) ? ws_scheduled((int) ($request['id'] ?? 0)) : null;
+            $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 
             if (!$scheduled) {
                 return ws_action_error(lang('That scheduled action could not be found.'));
@@ -239,8 +239,29 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('id' => $result['id'], 'message_id' => $result['message_id'], 'item' => ws_scheduled_present($viewer, ws_scheduled($result['id']), true)));
 
+        // What the form would save, in words, as it is filled in.
+        case 'ws_scheduled_preview':
+            $result = ws_scheduled_preview($viewer, array(
+                'id'          => (int) ($request['id'] ?? 0),
+                'name'        => (string) ($request['name'] ?? ''),
+                'rules'       => is_array($request['rules'] ?? null) ? $request['rules'] : array(),
+                'action'      => is_array($request['main_action'] ?? null) ? $request['main_action'] : null,
+                'then_action' => is_array($request['then_action'] ?? null) ? $request['then_action'] : null,
+                'follow'      => is_array($request['follow'] ?? null) ? $request['follow'] : null,
+                'channel_id'  => (int) ($request['channel_id'] ?? 0),
+                'note_id'     => (int) ($request['note_id'] ?? 0),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            unset($result['ok'], $result['error'], $result['field']);
+
+            return ws_action_ok($result);
+
         case 'ws_scheduled_status':
-            $scheduled = ws_can_schedule($viewer) ? ws_scheduled((int) ($request['id'] ?? 0)) : null;
+            $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 
             if (!$scheduled) {
                 return ws_action_error(lang('That scheduled action could not be found.'));
@@ -251,7 +272,7 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok(array('item' => ws_scheduled_present($viewer, ws_scheduled($scheduled['id']), true))) : ws_action_error($result['error']);
 
         case 'ws_scheduled_run_now':
-            $scheduled = ws_can_schedule($viewer) ? ws_scheduled((int) ($request['id'] ?? 0)) : null;
+            $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 
             if (!$scheduled) {
                 return ws_action_error(lang('That scheduled action could not be found.'));
@@ -264,6 +285,54 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('result' => $ran, 'item' => ws_scheduled_present($viewer, ws_scheduled($scheduled['id']), true)));
+
+        // Messages written now and posted later (scheduled_messages.php):
+        // anybody in the team, each their own.
+        case 'ws_scheduled_message_save':
+            $result = ws_scheduled_message_save($viewer, array(
+                'id'         => (int) ($request['id'] ?? 0),
+                'channel_id' => (int) ($request['channel_id'] ?? 0),
+                'body'       => (string) ($request['body'] ?? ''),
+                'parent_id'  => isset($request['parent_id']) ? (int) $request['parent_id'] : null,
+                'date'       => (string) ($request['date'] ?? ''),
+                'time'       => (string) ($request['time'] ?? ''),
+                'in_minutes' => (int) ($request['in_minutes'] ?? 0),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            $saved = ws_scheduled_message_mine($viewer, $result['id']);
+
+            return ws_action_ok(array('item' => $saved ? ws_scheduled_message_present($viewer, $saved) : null));
+
+        case 'ws_scheduled_messages':
+            return ws_action_ok(array('items' => ws_scheduled_messages_list($viewer, (int) ($request['channel_id'] ?? 0))));
+
+        case 'ws_scheduled_message_delete':
+        case 'ws_scheduled_message_send':
+            $scheduled = ws_scheduled_message_mine($viewer, (int) ($request['id'] ?? 0));
+
+            if (!$scheduled) {
+                return ws_action_error(lang('That scheduled message could not be found.'));
+            }
+
+            if ($action === 'ws_scheduled_message_delete') {
+                $result = ws_scheduled_message_delete($viewer, $scheduled);
+
+                return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
+            }
+
+            $ran = ws_scheduled_execute($scheduled['id'], true);
+
+            if ($ran !== 'ran') {
+                $again = ws_scheduled_message_mine($viewer, $scheduled['id']);
+
+                return ws_action_error(($again && ($again['status'] === 'failed')) ? ws_scheduled_message_present($viewer, $again)['error'] : lang('It is being posted right now.'));
+            }
+
+            return ws_action_ok();
 
         // Works out a table as it is typed (the table window), the lines of a
         // writing box that end with "=", or draws a text the way a message
@@ -709,6 +778,12 @@ function ws_handle_action($action, $request)
                     // The marks on the tabs, every so often (the screen asks).
                     if (!empty($request['counts'])) {
                         $out['tab_counts'] = ws_channel_tab_counts($channel);
+                    }
+
+                    // The reader's own messages waiting to be posted here.
+                    if (ws_can_schedule_messages($viewer)) {
+                        $out['scheduled_mine'] = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
+                            WHERE channel_id = '" . (int) $channel_id . "' AND kind = 'message' AND created_by = '" . (int) $viewer['id'] . "' AND status IN ('active', 'failed')");
                     }
 
                     // A guest's link and whether they are here (guests.php).

@@ -339,6 +339,11 @@ switch ($action) {
     case 'ws_scheduled_save':
     case 'ws_scheduled_status':
     case 'ws_scheduled_run_now':
+    case 'ws_scheduled_preview':
+    case 'ws_scheduled_message_save':
+    case 'ws_scheduled_messages':
+    case 'ws_scheduled_message_delete':
+    case 'ws_scheduled_message_send':
     case 'ws_sync':
     case 'ws_messages_before':
     case 'ws_send':

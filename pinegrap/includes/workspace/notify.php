@@ -277,6 +277,16 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-alarm',
             );
 
+        // A message scheduled from the writing box that could not be posted
+        // (scheduled_messages.php): it waits on the scheduled screen.
+        case 'scheduled_message':
+            return array(
+                'title' => lang('A message you scheduled could not be posted'),
+                'body'  => $channel_name,
+                'url'   => $base . 'workspace.php?view=scheduled',
+                'icon'  => 'bi-send-exclamation',
+            );
+
         case 'note_answer':
             $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
 

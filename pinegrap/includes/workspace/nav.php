@@ -53,9 +53,12 @@ function ws_nav_groups($viewer)
         $groups['records'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit', 'rail' => false);
     }
 
-    // Scheduled actions are staff's (scheduled.php).
+    // Scheduled actions are staff's (scheduled.php); everybody else finds
+    // their own scheduled messages on the same screen.
     if (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+    } elseif (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer)) {
+        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
 
     if ($viewer['settings']) {

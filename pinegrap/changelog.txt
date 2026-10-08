@@ -203,6 +203,53 @@
          karar işaretlenince ya da görev açılınca hemen, başkası
          değiştirdiğinde yarım dakika içinde tazelenir.
 
+  [YENİ] Zamanlanmış mesaj: kanaldaki Gönder düğmesinin yanındaki
+         saat düğmesiyle yazılan mesaj hemen değil, seçilen
+         zamanda paylaşılır ("Bir saat sonra", "Yarın 09:00",
+         "Pazartesi 09:00" ya da istenen tarih ve saat). Mesaj
+         gönderilene kadar yalnız yazan kişi görür: kanalda
+         yazı kutusunun üstündeki satır bekleyen mesajları
+         gösterir; buradan ya da Programlanmış işler ekranındaki
+         "Zamanlanmış mesajlar" sekmesinden mesaj hemen
+         gönderilir, zamanı ya da metni değiştirilir, silinir.
+         Zamanı gelen mesaj kanala yazanın adıyla düşer, olay
+         etkinlik kaydına yazılır ve zamanlama silinir;
+         gönderilemeyen mesaj (kanaldan çıkılmış, kanal arşivde)
+         bekler ve yazana gelen kutusunda haber verilir. Özelliği
+         User rolü dahil ekipteki herkes kullanır; User rolü
+         Programlanmış işler ekranında yalnız kendi zamanlanmış
+         mesajlarını görür, yeni programlanmış işlem yazamaz.
+
+  [YENİ] Programlanmış işler iş akışı gibi kurulur: form
+         "Ne zaman → Yalnızca şu durumda → Yap → Sonrasında"
+         adımlarıyla numaralı bir ray üzerinde ilerler; doldurulan
+         işlem formun üstünde sözle özetlenir ve zamanlıysa
+         sonraki üç çalışma zamanı gösterilir, eksik ya da hatalı
+         alan kaydetmeden önce söylenir. Hazır şablonlar simgeli
+         kartlar olarak seçilir; işlem kartında "Çoğalt" ile bir
+         kopyadan yeni işlem başlatılır.
+
+  [YENİ] Programlanmış işlemin yeni başlangıcı "Biri katıldığında":
+         belirli bir kanala ya da herkese açık herhangi bir kanala
+         katılan veya eklenen her kişi için işlem bir kez çalışır.
+         Hazır "Karşılama mesajı" şablonu kanala geleni
+         {{newcomer}} etiketiyle karşılar ve kendini tanıtmasını
+         ister; metinlerde {{newcomer}}, {{newcomer_name}} ve
+         {{channel}} kullanılabilir.
+
+  [YENİ] Programlanmış işlemin yeni eylemi "Kişilere görevlerini
+         e-postayla gönder": herkese üzerindeki açık görevler (tüm
+         kanallardan ya da bir kanaldan) ya da bir kanalın açık
+         görevleri, istenen kişilere veya kanalın üyelerine
+         e-postayla gider; tüm açık görevler, bir hafta içinde
+         bitecekler ya da yalnız gecikenler seçilebilir. Listesi
+         boş olana e-posta gitmez. Hazır "Her pazartesi e-postayla
+         görevler" şablonu her pazartesi sabahı çalışır.
+
+  [ŞEMA] ws_scheduled_actions.kind sütunu (işlem ya da zamanlanmış
+         mesaj) ve idx_kind dizini; ws_scheduled_queue.context
+         sütunu (katılan kişi).
+
 
 
   2026.4.7

@@ -24,6 +24,7 @@ if (!defined('INSTALL_OR_UPDATE')) {
 function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_ai_license();              // 8.80
+	upgrade_2026_4_8_scheduled_messages();      // 8.81
 
 }
 
@@ -42,5 +43,27 @@ function upgrade_2026_4_8_ai_license() {
 	}
 
 	install_note('Workspace: Pinegrap AI works with the subscription key under Settings › General; it no longer has a licence key of its own.');
+
+}
+
+// Scheduled messages and greetings in the workspace (2026.4.8, 8.81;
+// includes/workspace/scheduled.php, scheduled_messages.php).
+//
+// ws_scheduled_actions.kind says what a row is: 'action' (every row before
+// this step: a scheduled action, staff's) or 'message' (one message written
+// in a channel's writing box to be posted at a time, by anybody in the team,
+// seen by its writer alone until it is posted and deleted then). idx_kind
+// serves each writer's list.
+//
+// ws_scheduled_queue.context carries what a start is about when something
+// other than another action wrote it: the join rule queues an action for
+// each person who joins a channel, as JSON {newcomer, channel_id}.
+function upgrade_2026_4_8_scheduled_messages() {
+
+	install_add_column('ws_scheduled_actions', 'kind', "ENUM('action','message') NOT NULL DEFAULT 'action' AFTER name");
+	install_add_index('ws_scheduled_actions', 'idx_kind', "INDEX idx_kind (kind, created_by, status)");
+	install_add_column('ws_scheduled_queue', 'context', "TEXT NULL");
+
+	install_note('Workspace: a message can be scheduled from the writing box by anybody in the team, and a scheduled action can greet the people who join a channel.');
 
 }
