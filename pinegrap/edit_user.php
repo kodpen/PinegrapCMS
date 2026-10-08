@@ -142,18 +142,22 @@ if (isset($_POST['pg_unlink_google'])) {
     exit();
 }
 
-// Turn off another person's two-step verification: the way back in for a
-// person who lost both the authenticator app and the recovery codes.
-// Removes the second factor and its codes and signs the account out
-// everywhere; the person signs in with the password alone afterwards (and is
-// asked to set it up again if their role requires it). Turning it on is not
-// offered here: the key has to be confirmed on the person's own device.
-// Handled ahead of the save, like the two above.
+// Turn off two-step verification, another person's or one's own: the way
+// back in for a person who lost both the authenticator app and the recovery
+// codes. Removes the second factor and its codes and signs the account out
+// everywhere else; the person signs in with the password alone afterwards
+// (and is asked to set it up again if their role requires it). No password
+// or code is asked for here: this is already a signed-in panel session, and
+// for an administrator who lost the device this screen is the only way out.
+// The account page, open to every member, keeps asking for both. Turning it
+// on is not offered here: the key has to be confirmed on the person's own
+// device. Handled ahead of the save, like the two above.
 if (isset($_POST['pg_mfa_reset'])) {
 
     validate_token_field();
 
     $mfa_reset_user_id = (int) ($_POST['id'] ?? 0);
+    $mfa_reset_self = ($mfa_reset_user_id === (int) USER_ID);
     $mfa_reset_user = db_item(
         "SELECT user_username, user_role
         FROM user
@@ -161,26 +165,31 @@ if (isset($_POST['pg_mfa_reset'])) {
 
     if ($mfa_reset_user) {
 
-        // Not for one's own account: that goes through pg_mfa_self_disable
-        // below, which asks for the password and a code, so a stolen session
-        // cannot remove the second step on its own.
-        if ($mfa_reset_user_id === (int) USER_ID) {
-            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        // An operator signed in as this person cannot change the person's
+        // second factor, here or on the account page.
+        if ($mfa_reset_self && !empty($_SESSION['software']['logged_in_as_different_user'])) {
+            output_error(lang('Two-step verification cannot be changed while signed in as another user.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        // Same rule as disconnecting Google.
-        if (($mfa_reset_user_id !== (int) USER_ID) && (USER_ROLE > 0) && (USER_ROLE >= (int) $mfa_reset_user['user_role'])) {
+        // Same rule as disconnecting Google: one's own account always, another
+        // one only below one's own role (administrators: any).
+        if (!$mfa_reset_self && (USER_ROLE > 0) && (USER_ROLE >= (int) $mfa_reset_user['user_role'])) {
             log_activity(lang(array(
-                'string' => 'access denied to reset two-step verification for a higher-role user ({var:1})',
+                'string' => 'access denied to turn off two-step verification for a higher-role user ({var:1})',
                 'vars'   => array($mfa_reset_user['user_username']))), USER_USERNAME);
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
         pg_mfa_reset($mfa_reset_user_id);
 
-        log_activity(lang(array(
-            'string' => 'two-step verification reset for user ({var:1})',
-            'vars'   => array($mfa_reset_user['user_username']))), $_SESSION['sessionusername'] ?? '');
+        if ($mfa_reset_self) {
+            unset($_SESSION['software']['mfa_codes_show']);
+            log_activity(lang('user turned off two-step verification'), USER_USERNAME);
+        } else {
+            log_activity(lang(array(
+                'string' => 'two-step verification turned off for user ({var:1})',
+                'vars'   => array($mfa_reset_user['user_username']))), $_SESSION['sessionusername'] ?? '');
+        }
     }
 
     $mfa_reset_send_to = '';
@@ -191,50 +200,6 @@ if (isset($_POST['pg_mfa_reset'])) {
 
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
         . '/edit_user.php?id=' . urlencode($_POST['id'] ?? '') . $mfa_reset_send_to);
-
-    exit();
-}
-
-// Turn off one's own two-step verification from this screen: the same proof
-// the account page asks for (the password, unless the account is Google-only,
-// and a code), checked by pg_mfa_self_disable_check().
-if (isset($_POST['pg_mfa_self_disable'])) {
-
-    validate_token_field();
-
-    if ((int) ($_POST['id'] ?? 0) !== (int) USER_ID) {
-        output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-    }
-
-    // An operator signed in as this person cannot change the person's
-    // second factor, here or on the account page.
-    if (!empty($_SESSION['software']['logged_in_as_different_user'])) {
-        output_error(lang('Two-step verification cannot be changed while signed in as another user.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-    }
-
-    if (pg_mfa_table_exists() && pg_mfa_enabled((int) USER_ID)) {
-
-        $mfa_self_refused = pg_mfa_self_disable_check((int) USER_ID, USER_USERNAME,
-            (isset($_POST['current_password']) && is_scalar($_POST['current_password'])) ? (string) $_POST['current_password'] : '',
-            (isset($_POST['code']) && is_scalar($_POST['code'])) ? (string) $_POST['code'] : '');
-
-        if ($mfa_self_refused !== '') {
-            output_error(h($mfa_self_refused) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        pg_mfa_disable((int) USER_ID);
-        unset($_SESSION['software']['mfa_codes_show']);
-        log_activity(lang('user turned off two-step verification'), USER_USERNAME);
-    }
-
-    $mfa_self_send_to = '';
-
-    if ((isset($_POST['send_to'])) && ($_POST['send_to'] != '')) {
-        $mfa_self_send_to = '&send_to=' . urlencode($_POST['send_to']);
-    }
-
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
-        . '/edit_user.php?id=' . (int) USER_ID . $mfa_self_send_to);
 
     exit();
 }
@@ -1065,30 +1030,11 @@ if (!$_POST) {
             </div>'
         : '';
 
-    // Another person's account: turned off at once, without their codes.
-    // One's own: the password (unless Google-only) and a code, like the
-    // account page; see the handlers above.
+    // Turned off at once, one's own account included; see the handler above.
+    // Not offered on one's own account while signed in as another user.
     $output_mfa_panel = '';
 
-    if ($edit_user_mfa_on && !$edit_user_mfa_self) {
-        $output_mfa_panel =
-            '<div class="pg-perm-block">
-                <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
-                <div class="d-flex align-items-start gap-3 border rounded p-3">
-                    <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
-                    <div class="flex-grow-1">
-                        <p class="small mb-0">' . h(lang('Turns off the person\'s second step and signs them out everywhere. Use it when they lost their authenticator app and recovery codes; they sign in with the password alone afterwards and can set it up again.')) . '</p>
-                    </div>
-                    <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
-                        . '<input type="hidden" name="pg_mfa_reset" value="1"/>'
-                        . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
-                        . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Turn off two-step verification')) . '</button>'
-                    . '</form>
-                </div>
-            </div>';
-
-    } elseif ($edit_user_mfa_on && !empty($_SESSION['software']['logged_in_as_different_user'])) {
+    if ($edit_user_mfa_on && $edit_user_mfa_self && !empty($_SESSION['software']['logged_in_as_different_user'])) {
         $output_mfa_panel =
             '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
@@ -1096,34 +1042,23 @@ if (!$_POST) {
             </div>';
 
     } elseif ($edit_user_mfa_on) {
-        // The field keeps the account page's name and id, so a password
-        // manager offers the same saved password on both.
-        $edit_user_mfa_password_field = ((int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . (int) USER_ID . "'") !== 3)
-            ? '<div class="mb-2">
-                    <label for="pg_mfa_current_password" class="form-label small mb-1">' . h(lang('Current password')) . '</label>
-                    <input type="password" id="pg_mfa_current_password" name="current_password" class="form-control form-control-sm" required="required" autocomplete="current-password"/>
-                </div>'
-            : '';
-
-        $edit_user_mfa_code_label = pg_mfa_available()
-            ? lang('Code from your authenticator app')
-            : lang('Code from your authenticator app or a recovery code');
+        $output_mfa_note = $edit_user_mfa_self
+            ? lang('Turning it off also signs out your other devices.')
+                . (pg_mfa_required_for_user((int) USER_ID) ? ' ' . lang('Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.') : '')
+            : lang('Turns off the person\'s second step and signs them out everywhere. Use it when they lost their authenticator app and recovery codes; they sign in with the password alone afterwards and can set it up again.');
 
         $output_mfa_panel =
             '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
-                <div class="border rounded p-3">
-                    <p class="small mb-2">' . h(lang('Turning it off also signs out your other devices.'))
-                        . (pg_mfa_required_for_user((int) USER_ID) ? ' ' . h(lang('Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.')) : '') . '</p>
-                    <form method="post" action="edit_user.php" autocomplete="off" class="disable_shortcut" style="margin:0">' . get_token_field()
-                        . '<input type="hidden" name="pg_mfa_self_disable" value="1"/>'
-                        . '<input type="hidden" name="id" value="' . (int) USER_ID . '"/>'
+                <div class="d-flex align-items-start gap-3 border rounded p-3">
+                    <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
+                    <div class="flex-grow-1">
+                        <p class="small mb-0">' . h($output_mfa_note) . '</p>
+                    </div>
+                    <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
+                        . '<input type="hidden" name="pg_mfa_reset" value="1"/>'
+                        . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . $edit_user_mfa_password_field
-                        . '<div class="mb-2">
-                            <label for="pg_mfa_disable_code" class="form-label small mb-1">' . h($edit_user_mfa_code_label) . '</label>
-                            <input type="text" id="pg_mfa_disable_code" name="code" class="form-control form-control-sm" required="required" inputmode="numeric" autocomplete="one-time-code" maxlength="20" spellcheck="false"/>
-                        </div>'
                         . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Turn off two-step verification')) . '</button>'
                     . '</form>
                 </div>

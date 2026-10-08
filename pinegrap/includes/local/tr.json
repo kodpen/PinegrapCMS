@@ -18640,8 +18640,6 @@
     "Two-step verification is {var:1}.": "İki adımlı doğrulama {var:1}.",
     "Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.": "İki adımlı doğrulama için config.php'de bir şifreleme anahtarı gerekir; önce Ayarlar › Ticaret'ten (Şifreleme Anahtarını Sıfırla) bir anahtar oluşturun.",
     "Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.": "Rolünüz iki adımlı doğrulama gerektiriyor; kapattıktan sonra bir sonraki girişinizde yeniden kurmanız istenir.",
-    "access denied to reset two-step verification for a higher-role user ({var:1})": "daha yüksek rollü bir kullanıcının iki adımlı doğrulamasını sıfırlama erişimi reddedildi ({var:1})",
-    "two-step verification reset for user ({var:1})": "kullanıcının iki adımlı doğrulaması sıfırlandı ({var:1})",
     "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu",
     "user created new two-step recovery codes": "kullanıcı yeni iki adımlı doğrulama kurtarma kodları oluşturdu",
     "user turned off two-step verification": "kullanıcı iki adımlı doğrulamayı kapattı",
@@ -18804,5 +18802,7 @@
     "Steel": "Çelik",
     "Turn off two-step verification": "İki adımlı doğrulamayı kapat",
     "Turns off the person's second step and signs them out everywhere. Use it when they lost their authenticator app and recovery codes; they sign in with the password alone afterwards and can set it up again.": "Kişinin ikinci adımını kapatır ve tüm cihazlardaki oturumlarını sonlandırır. Doğrulama uygulamasını ve kurtarma kodlarını kaybettiğinde kullanın; kişi sonra yalnız parolasıyla girer ve isterse yeniden kurar.",
-    "Turn it on from your account page.": "Hesabım sayfasından açabilirsiniz."
+    "Turn it on from your account page.": "Hesabım sayfasından açabilirsiniz.",
+    "access denied to turn off two-step verification for a higher-role user ({var:1})": "daha yüksek rollü bir kullanıcının iki adımlı doğrulamasını kapatma erişimi reddedildi ({var:1})",
+    "two-step verification turned off for user ({var:1})": "kullanıcının iki adımlı doğrulaması kapatıldı ({var:1})"
 }

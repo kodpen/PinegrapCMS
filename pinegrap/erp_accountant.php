@@ -213,40 +213,57 @@ $new_link = $_SESSION['software']['erp_accountant_link'] ?? null;
 unset($_SESSION['software']['erp_accountant_link']);
 
 if (is_array($new_link) && !empty($new_link['url'])) {
-    // The same link as a QR code, drawn here as inline SVG so the token never
-    // goes into an image URL; the download is a data: URI for the same reason.
-    $link_qr_options = array('label' => lang('QR code for the link'), 'class' => 'd-block mx-auto');
-    $link_qr = pg_qr_svg((string) $new_link['url'], 160, $link_qr_options);
+    // Shown in a window that opens by itself, like the File Manager's
+    // one-time link. The QR code is drawn here as inline SVG so the token
+    // never goes into an image URL; the download is a data: URI for the same
+    // reason. Closing the window leaves nothing behind: the session copy was
+    // spent above.
+    $link_url = (string) $new_link['url'];
+    $link_qr_options = array('label' => lang('QR code for the link'), 'class' => 'd-block w-100');
+    $link_qr = pg_qr_svg($link_url, 0, $link_qr_options);
 
     $output_link_qr = ($link_qr !== '')
-        ? '<div class="col-12 col-sm-auto text-center">
-                <div class="d-inline-block border rounded p-2 bg-white">' . $link_qr . '</div>
-                <div class="mt-1"><a class="small link-success" download="accountant-pack-qr.svg" href="' . h(pg_qr_svg_data_uri((string) $new_link['url'], 0, $link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a></div>
-            </div>'
+        ? '<div class="text-center mb-3"><div class="d-inline-block border rounded p-2 bg-white" style="width:200px">' . $link_qr . '</div></div>'
+        : '';
+
+    $output_link_download = ($link_qr !== '')
+        ? '<a class="small" download="accountant-pack-qr.svg" href="' . h(pg_qr_svg_data_uri($link_url, 0, $link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>'
         : '';
 
     $output_link = '
-            <div class="alert alert-success my-4" role="status">
-                <div class="fw-bold mb-2"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang(array(
-                    'string' => 'A new link to the pack. It works until {var:1}, without a login; the link made before it no longer works.',
-                    'vars' => prepare_form_data_for_output(date('Y-m-d', (int) $new_link['expires']), 'date', false),
-                ))) . '</div>
-                <div class="row g-3 align-items-center">
-                    ' . $output_link_qr . '
-                    <div class="col">
-                        <div class="input-group">
-                            <input type="text" class="form-control font-monospace" id="erp_accountant_link" value="' . h((string) $new_link['url']) . '" readonly aria-label="' . h(lang('Link')) . '" />
-                            <button type="button" class="btn btn-success" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>
+            <div class="modal fade" id="erp_accountant_link_modal" tabindex="-1" aria-labelledby="erp_accountant_link_modal_label" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="erp_accountant_link_modal_label"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>' . h(lang('Link')) . '</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
                         </div>
-                        <div class="form-text">' . lang('It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.') . '</div>
+                        <div class="modal-body">
+                            <p class="mb-3">' . h(lang(array(
+                                'string' => 'A new link to the pack. It works until {var:1}, without a login; the link made before it no longer works.',
+                                'vars' => prepare_form_data_for_output(date('Y-m-d', (int) $new_link['expires']), 'date', false),
+                            ))) . '</p>
+                            ' . $output_link_qr . '
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" id="erp_accountant_link" value="' . h($link_url) . '" readonly aria-label="' . h(lang('Link')) . '" />
+                                <button type="button" class="btn btn-outline-primary" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                            </div>
+                            <div class="form-text">' . h(lang('It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.')) . '</div>
+                            ' . (($output_link_download !== '') ? '<div class="mt-2">' . $output_link_download . '</div>' : '') . '
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">' . h(lang('Done')) . '</button>
+                        </div>
                     </div>
                 </div>
             </div>
             <script>
             (function () {
+                var modal = document.getElementById("erp_accountant_link_modal");
                 var button = document.getElementById("erp_accountant_link_copy");
                 var input = document.getElementById("erp_accountant_link");
-                if (!button || !input) { return; }
+                if (!modal || !button || !input) { return; }
+                input.addEventListener("focus", function () { input.select(); });
                 button.addEventListener("click", function () {
                     var done = function () {
                         var original = button.innerHTML;
@@ -261,6 +278,18 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                     input.select();
                     try { document.execCommand("copy"); done(); } catch (e) {}
                 });
+                // The link exists only in this page; once the window is closed
+                // it is taken out of the page as well.
+                modal.addEventListener("hidden.bs.modal", function () {
+                    bootstrap.Modal.getOrCreateInstance(modal).dispose();
+                    modal.parentNode.removeChild(modal);
+                });
+                var open = function () { bootstrap.Modal.getOrCreateInstance(modal).show(); };
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", open);
+                } else {
+                    open();
+                }
             })();
             </script>';
 }

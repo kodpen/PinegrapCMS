@@ -228,10 +228,11 @@
          yardımcıyla açılıyor; sabitin olduğu sunucularda
          davranış değişmedi.
 
-  [YENİ] Muhasebeci paketi bağlantısı oluşturulduğunda adresin
-         yanında QR kodu da gösterilir ve SVG olarak indirilebilir.
-         QR kodu sitenin kendi sunucusunda çizilir; bağlantı hiçbir
-         dış servise gitmez.
+  [YENİ] Muhasebeci paketi bağlantısı oluşturulduğunda kendiliğinden
+         açılan bir pencerede gösterilir: QR kodu, kopyalanacak adres
+         ve QR kodunu SVG olarak indirme bağlantısı. QR kodu sitenin
+         kendi sunucusunda çizilir; bağlantı hiçbir dış servise
+         gitmez.
 
   ZAMANLANMIŞ GÖREVLER
   --------------------------------------------------------
@@ -583,15 +584,16 @@
          kendi hesabında yine açabilir.
 
   [YENİ] İki adımlı doğrulama iki yerden kapatılır. Hesap
-         sayfasında ve paneldeki kullanıcı ekranında kişi kendi
-         doğrulamasını parolası ve bir kodla (doğrulama
-         uygulamasının kodu ya da kurtarma kodu) son bir kez
-         doğrulayarak kapatır. Yönetici, kullanıcı ekranından
-         başka bir kişinin doğrulamasını istediği zaman kapatabilir
-         (doğrulama uygulamasını ve kurtarma kodlarını birlikte
-         kaybeden kişi için); kişi sonra yalnız parolasıyla girer
-         ve isterse yeniden kurar. Panelden açılamaz: açmak, kişinin
-         kendi telefonuyla hesap sayfasından yaptığı iştir.
+         sayfasında kişi kendi doğrulamasını parolası ve bir kodla
+         (doğrulama uygulamasının kodu ya da kurtarma kodu) son bir
+         kez doğrulayarak kapatır. Paneldeki kullanıcı ekranından
+         bir kişinin doğrulaması (yönetici için kendi hesabı dahil)
+         tek düğmeyle, parola ve kod istenmeden kapatılır —
+         telefonunu ya da doğrulama uygulamasındaki kaydı kaybeden
+         yönetici için tek çıkış yolu budur. Kişi sonra yalnız
+         parolasıyla girer ve isterse yeniden kurar. Panelden
+         açılamaz: açmak, kişinin kendi telefonuyla hesap sayfasından
+         yaptığı iştir.
 
   [DÜZELTME] Hesap sayfasındaki "Oturum açma ve cihazlar"
          bölümü (cihazlar, Google bağlantısı, iki adımlı
