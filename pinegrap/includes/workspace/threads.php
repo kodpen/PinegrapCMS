@@ -748,6 +748,8 @@ function ws_threads_js_strings()
         'th_about'          => lang('The message it is about'),
         'th_go_message'     => lang('Show it in the channel'),
         'th_close_panel'    => lang('Close the discussion panel'),
+        'th_widen'          => lang('Widen the discussion panel'),
+        'th_narrow'         => lang('Narrow the discussion panel'),
         'th_conclude'       => lang('Conclude the discussion'),
         'th_conclude_confirm' => lang('Conclude the discussion? It is kept, read only, for 30 days and then deleted. The decisions and tasks it produced stay in the channel.'),
         'th_concluded'      => lang('The discussion was concluded.'),
