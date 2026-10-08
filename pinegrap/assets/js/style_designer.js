@@ -3572,6 +3572,15 @@ const StyleDesigner = (function () {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && !isInput) { e.preventDefault(); undo(); }
             if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey)) && !isInput) { e.preventDefault(); redo(); }
 
+            // Ctrl/Cmd + '+', '-', '0' — canvas zoom, as on the designer
+            // document (initZoomBlock()); in the canvas the browser would
+            // zoom the whole panel.
+            if ((e.ctrlKey || e.metaKey) && !e.altKey && !isInput) {
+                if (e.key === '+' || e.key === '=') { e.preventDefault(); setCanvasZoom(canvasZoom + 0.1); }
+                else if (e.key === '-' || e.key === '_') { e.preventDefault(); setCanvasZoom(canvasZoom - 0.1); }
+                else if (e.key === '0') { e.preventDefault(); setCanvasZoom(1.0); }
+            }
+
             // Command Palette (Ctrl+Shift+P) — forward from iframe to main document handler
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p' && !isInput) { e.preventDefault(); openCommandPalette(); }
 
@@ -6279,6 +6288,18 @@ const StyleDesigner = (function () {
         canvasDoc.addEventListener('drop', function () { _sdMotionHold(false); }, true);
         canvasDoc.addEventListener('mousemove', _sdMotionHoldLeftover, true);
 
+        // Ctrl/Cmd+wheel over the canvas zooms the canvas. A wheel event
+        // inside the iframe never reaches the designer document, so without
+        // this binding the browser zooms the whole panel instead. Non-passive
+        // so preventDefault() can stop the browser zoom; bound per canvas
+        // document, so a realm reset gets it again.
+        canvasDoc.addEventListener('wheel', function (e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                setCanvasZoom(canvasZoom + (e.deltaY < 0 ? 0.1 : -0.1));
+            }
+        }, { passive: false });
+
         // The guards are bound to this document: a timer or load event of a
         // document that has since been replaced does nothing.
         var _thisDoc = canvasDoc;
@@ -7891,6 +7912,7 @@ const StyleDesigner = (function () {
         // rebuilt without them); the debounced pass below refreshes them.
         applyIssueBadges();
         scheduleValidation();
+        _sdLivePreviewSchedule();
     }
 
     // Track whether the current selection is inside a shared component;
@@ -35464,6 +35486,7 @@ const StyleDesigner = (function () {
     function _setCustomField(id, val) {
         var el = document.getElementById(id);
         if (el) el.value = val;
+        _sdLivePreviewSchedule();
     }
 
     function initAssetsPanel() {
@@ -38423,6 +38446,92 @@ const StyleDesigner = (function () {
         // ── Refresh dynamic values on modal open ──
         phpModal.addEventListener('show.bs.modal', function() {
             renderMetaRows();
+        });
+        // Page and design settings reach an open preview window once the
+        // modal is closed (Apply has written them by then).
+        phpModal.addEventListener('hidden.bs.modal', function() {
+            _sdLivePreviewSchedule();
+        });
+
+        _sdMakeTemplateBind();
+    }
+
+    // ── Settings > Design: turn this design into a template ──
+    // The server makes the template from the saved pages
+    // (designer/template_from_design): a design never saved has nothing to
+    // make it from, and changes not saved yet are left out.
+    function _sdMakeTemplateBind() {
+        var btn     = document.getElementById('sd-make-template');
+        var modalEl = document.getElementById('sdMakeTemplateModal');
+        var nameEl  = document.getElementById('sd-make-template-name');
+        var descEl  = document.getElementById('sd-make-template-description');
+        var runBtn  = document.getElementById('sd-make-template-run');
+        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || typeof bootstrap === 'undefined') return;
+
+        var styleId = function () { return (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0; };
+
+        // The settings modal is full screen; it steps aside rather than
+        // stacking a second dialog on top of it.
+        var open = function () {
+            var designName = document.getElementById('sd-style-name');
+            nameEl.value = designName ? designName.value.trim() : '';
+            nameEl.classList.remove('is-invalid');
+            descEl.value = '';
+            var show = function () { bootstrap.Modal.getOrCreateInstance(modalEl).show(); };
+            var settings = document.getElementById('styleSettingsModal');
+            if (settings && settings.classList.contains('show')) {
+                settings.addEventListener('hidden.bs.modal', show, { once: true });
+                bootstrap.Modal.getOrCreateInstance(settings).hide();
+            } else {
+                show();
+            }
+        };
+        modalEl.addEventListener('shown.bs.modal', function () { nameEl.focus(); nameEl.select(); });
+
+        btn.addEventListener('click', function () {
+            if (styleId() <= 0) {
+                sdToast(esc(_sdT('Save the design first; a template is made from the saved pages.')), 'warning', 5000);
+                return;
+            }
+            if (!isDirty()) { open(); return; }
+            var msg = _sdT('There are unsaved changes. The template is made from the pages as they were last saved. Continue?');
+            if (typeof window.pgConfirm === 'function') {
+                window.pgConfirm({ title: _sdT('There are unsaved changes'), message: msg,
+                                   confirmText: _sdT('Continue'), cancelText: _sdT('Cancel'), variant: 'warning' })
+                    .then(function (ok) { if (ok) open(); });
+            } else if (window.confirm(msg)) {
+                open();
+            }
+        });
+
+        var busy = false;
+        var submit = function () {
+            if (busy) return;
+            var name = nameEl.value.trim();
+            if (!name) { nameEl.classList.add('is-invalid'); nameEl.focus(); return; }
+            busy = true;
+            var label = runBtn.innerHTML;
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>' + esc(_sdT('Create template'));
+            var done = function () { busy = false; runBtn.disabled = false; runBtn.innerHTML = label; };
+            _pgApiPost('template_from_design', { style_id: styleId(), name: name, description: descEl.value.trim() })
+                .then(function (res) {
+                    done();
+                    if (!res || res.status !== 'success') {
+                        sdToast(esc((res && res.message) ? res.message : _sdT('Sorry, we could not accept your request.')), 'error');
+                        return;
+                    }
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    if (res.message) sdToast(esc(res.message), 'success', 6000);
+                })
+                .catch(function () { done(); sdToast(esc(_sdT('Network error.')), 'error'); });
+        };
+        runBtn.addEventListener('click', submit);
+        nameEl.addEventListener('input', function () { nameEl.classList.remove('is-invalid'); });
+        nameEl.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            submit();
         });
     }
 
@@ -43224,7 +43333,9 @@ const StyleDesigner = (function () {
         var fonts = {
             sans:    'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
             serif:   '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif',
-            rounded: '"Nunito", ui-rounded, "SF Pro Rounded", system-ui, sans-serif'
+            rounded: '"Nunito", ui-rounded, "SF Pro Rounded", system-ui, sans-serif',
+            mono:    'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            grotesk: '"Space Grotesk", "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif'
         };
         var r  = Math.min(pv.radius || 0, 14), br = Math.min(pv.btn_radius || 0, 99);
         var bw = pv.border == null ? 1 : pv.border;
@@ -43572,14 +43683,21 @@ const StyleDesigner = (function () {
     // and their HTML takes the place of the markers generateHTML() leaves.
     var _sdPreviewWidgetMarkers = false;
 
-    function _sdPreviewDocHtml(widgetHtml) {
-        var nameEl = document.querySelector('[name="name"]');
-        var bcEl   = document.querySelector('[name="additional_body_classes"]');
-        var styleName = nameEl ? nameEl.value.trim() : '';
-        var addBc     = bcEl   ? bcEl.value.trim()   : '';
-        _sdPreviewWidgetMarkers = true;
+    // Without widgetHtml: the page markup with the widget markers left in.
+    // With it: the finished preview document. `raw` is a markup from an
+    // earlier call without widgetHtml, so the page is not generated twice.
+    function _sdPreviewDocHtml(widgetHtml, raw) {
         var html;
-        try { html = generateHTML(styleName, addBc); } finally { _sdPreviewWidgetMarkers = false; }
+        if (typeof raw === 'string') {
+            html = raw;
+        } else {
+            var nameEl = document.querySelector('[name="name"]');
+            var bcEl   = document.querySelector('[name="additional_body_classes"]');
+            var styleName = nameEl ? nameEl.value.trim() : '';
+            var addBc     = bcEl   ? bcEl.value.trim()   : '';
+            _sdPreviewWidgetMarkers = true;
+            try { html = generateHTML(styleName, addBc); } finally { _sdPreviewWidgetMarkers = false; }
+        }
         if (widgetHtml === undefined) return html;
         html = html.replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
             return (widgetHtml && widgetHtml[id] != null) ? String(widgetHtml[id]) : '';
@@ -43740,31 +43858,63 @@ const StyleDesigner = (function () {
         return html;
     }
 
-    function _sdShowPreview(html, w) {
-        var blob = new Blob([html], { type: 'text/html' });
-        var url  = URL.createObjectURL(blob);
-        if (w && !w.closed) {
-            w.location.href = url;
-        } else {
-            w = window.open(url, 'pinegrap_preview', 'width=1400,height=900,resizable=yes,scrollbars=yes');
-        }
-        // Revoke blob URL after the window has had time to load it
-        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
-        if (!w) alert(_sdT('A pop-up blocker may be on. Please allow pop-ups for this site.'));
-    }
-
-    function openPreview() {
+    // The request body of designer/preview_widgets for the system widgets
+    // in a marked-up page, or null when the page has none.
+    function _sdPreviewWidgetPayload(raw) {
         var ids = [];
-        _sdPreviewDocHtml().replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
+        raw.replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
             if (ids.indexOf(id) === -1) ids.push(id);
             return m;
         });
-        if (!ids.length) { _sdShowPreview(_sdPreviewDocHtml(null)); return; }
+        if (!ids.length) return null;
+        var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        return {
+            page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0,
+            widgets: ids.map(function (id) {
+                var c = _sharedCache[id] || {};
+                return { id: parseInt(id, 10), tree_json: c.tree ? JSON.stringify(c.tree) : '', system_region_config: c.system_region_config || '' };
+            })
+        };
+    }
+
+    var _sdPreviewWin  = null;  // the preview window this editor opened
+    var _sdPreviewUrl  = '';    // the blob URL it was last sent
+    var _sdPreviewSent = '';    // the markup behind that URL
+
+    // Loads a preview document into the window, opening it when there is
+    // none. replace() keeps the window's history at a single entry however
+    // often the live preview reloads it. The blob URL on show stays valid
+    // (a reload in the preview window works); the one it replaces is
+    // released.
+    function _sdShowPreview(html, w) {
+        var url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        if (w && !w.closed) {
+            w.location.replace(url);
+        } else {
+            w = window.open(url, 'pinegrap_preview', 'width=1400,height=900,resizable=yes,scrollbars=yes');
+        }
+        if (!w) {
+            URL.revokeObjectURL(url);
+            alert(_sdT('A pop-up blocker may be on. Please allow pop-ups for this site.'));
+            return null;
+        }
+        if (_sdPreviewUrl) URL.revokeObjectURL(_sdPreviewUrl);
+        _sdPreviewUrl  = url;
+        _sdPreviewSent = html;
+        _sdPreviewWin  = w;
+        return w;
+    }
+
+    function openPreview() {
+        var raw = _sdPreviewDocHtml();
+        var payload = _sdPreviewWidgetPayload(raw);
+        if (!payload) { _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
 
         // The window opens now, inside the click - one opened when the
         // widgets arrive would meet the pop-up blocker - and waits for them.
         var w = window.open('', 'pinegrap_preview', 'width=1400,height=900,resizable=yes,scrollbars=yes');
         if (!w) { alert(_sdT('A pop-up blocker may be on. Please allow pop-ups for this site.')); return; }
+        _sdPreviewWin = w;
         try {
             w.document.open();
             w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(_sdT('Preview')) + '</title></head>' +
@@ -43773,24 +43923,139 @@ const StyleDesigner = (function () {
             w.document.close();
         } catch (e) {}
 
-        var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
-        var widgets = ids.map(function (id) {
-            var c = _sharedCache[id] || {};
-            return { id: parseInt(id, 10), tree_json: c.tree ? JSON.stringify(c.tree) : '', system_region_config: c.system_region_config || '' };
+        // An explicit Preview always asks the server again; the answer seeds
+        // the live preview's widget cache.
+        var sig = JSON.stringify(payload);
+        _sdLive.busy++;
+        _pgApiPost('preview_widgets', payload).then(function (res) {
+            var ok = !!(res && res.status === 'success' && res.html);
+            var widgetHtml = ok ? res.html : {};
+            _sdLive.sig = ok ? sig : null;
+            _sdLive.widgetHtml = ok ? widgetHtml : null;
+            _sdLive.busy--;
+            _sdShowPreview(_sdPreviewDocHtml(widgetHtml, raw), w);
+            _sdLivePreviewAgain();
+        }, function () {
+            _sdLive.busy--;
+            _sdShowPreview(_sdPreviewDocHtml({}, raw), w);
+            _sdLivePreviewAgain();
         });
-        _pgApiPost('preview_widgets', { page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0, widgets: widgets })
-            .then(function (res) {
-                _sdShowPreview(_sdPreviewDocHtml((res && res.status === 'success' && res.html) ? res.html : {}), w);
-            })
-            .catch(function () {
-                _sdShowPreview(_sdPreviewDocHtml({}), w);
-            });
     }
+
+    // ── Live preview ──
+    // While the preview window is open, every change in the editor (tree,
+    // shared components and widgets, assets, theme, page settings, the
+    // active tab) reaches it after a short pause. The cost is kept off the
+    // editor:
+    //   • no preview window → every hook returns after one property read;
+    //   • open → 800 ms debounce, since generateHTML() walks the whole page;
+    //   • designer/preview_widgets is asked only when the widget payload
+    //     (ids, trees, settings, page) differs from the last answered one;
+    //   • a document whose markup did not change is not reloaded;
+    //   • one refresh at a time: a change arriving while the server is
+    //     drawing the widgets queues exactly one more pass.
+    // busy counts the preview_widgets requests in flight (the live pass and
+    // an explicit Preview may overlap once).
+    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null };
+
+    // Whether the preview window is still open; forgets it once closed.
+    function _sdLivePreviewOpen() {
+        if (!_sdPreviewWin) return false;
+        if (!_sdPreviewWin.closed) return true;
+        _sdPreviewWin = null;
+        clearTimeout(_sdLive.timer);
+        _sdLive.timer = 0;
+        _sdLive.again = false;
+        _sdLive.sig = null;
+        _sdLive.widgetHtml = null;
+        if (_sdPreviewUrl) URL.revokeObjectURL(_sdPreviewUrl);
+        _sdPreviewUrl = '';
+        _sdPreviewSent = '';
+        return false;
+    }
+
+    function _sdLivePreviewSchedule() {
+        if (!_sdPreviewWin || !_sdLivePreviewOpen()) return;
+        clearTimeout(_sdLive.timer);
+        _sdLive.timer = setTimeout(_sdLivePreviewRefresh, 800);
+    }
+
+    function _sdLivePreviewAgain() {
+        if (!_sdLive.again || _sdLive.busy > 0) return;
+        _sdLive.again = false;
+        _sdLivePreviewRefresh();
+    }
+
+    function _sdLivePreviewRefresh() {
+        _sdLive.timer = 0;
+        if (!_sdLivePreviewOpen()) return;
+        if (_sdLive.busy > 0) { _sdLive.again = true; return; }
+        var raw = _sdPreviewDocHtml();
+        var payload = _sdPreviewWidgetPayload(raw);
+        var finish = function (widgetHtml, requested) {
+            if (requested) _sdLive.busy--;
+            if (_sdLivePreviewOpen()) _sdLivePreviewWrite(_sdPreviewDocHtml(widgetHtml, raw));
+            _sdLivePreviewAgain();
+        };
+        if (!payload) { finish(null); return; }
+        var sig = JSON.stringify(payload);
+        if (sig === _sdLive.sig && _sdLive.widgetHtml) { finish(_sdLive.widgetHtml); return; }
+        _sdLive.busy++;
+        // Two-handler then(): a failure inside finish() must not reach the
+        // error handler and count the request twice.
+        _pgApiPost('preview_widgets', payload).then(function (res) {
+            // A failed answer is not cached: the next pass asks again.
+            var ok = !!(res && res.status === 'success' && res.html);
+            _sdLive.sig = ok ? sig : null;
+            _sdLive.widgetHtml = ok ? res.html : null;
+            finish(ok ? res.html : {}, true);
+        }, function () { finish({}, true); });
+    }
+
+    // Reloads the preview window with new markup and puts it back where the
+    // operator was reading. A window that has followed a link to another
+    // site cannot be read; it is simply brought back to the preview.
+    function _sdLivePreviewWrite(html) {
+        if (html === _sdPreviewSent) return;
+        var w = _sdPreviewWin;
+        var x = 0, y = 0, oldDoc = null;
+        try {
+            if (w.location.href === _sdPreviewUrl) {
+                x = w.scrollX || 0;
+                y = w.scrollY || 0;
+                oldDoc = w.document;
+            }
+        } catch (e) {}
+        if (!_sdShowPreview(html, w)) return;
+        if (oldDoc && (x || y)) _sdPreviewRestoreScroll(w, oldDoc, x, y);
+    }
+
+    // The new document is polled for (a navigation leaves no callback that
+    // survives into the next document). The position is applied again a
+    // frame and a little later, because stylesheets and images arriving
+    // late change the height of the page.
+    function _sdPreviewRestoreScroll(w, oldDoc, x, y) {
+        var tries = 0;
+        var go = function () { try { if (!w.closed) w.scrollTo(x, y); } catch (e) {} };
+        (function poll() {
+            if (w.closed || ++tries > 100) return;
+            var d = null;
+            try { d = w.document; } catch (e) { return; }
+            if (!d || d === oldDoc || d.readyState === 'loading') { setTimeout(poll, 30); return; }
+            go();
+            try { w.requestAnimationFrame(go); } catch (e) {}
+            setTimeout(go, 150);
+            setTimeout(go, 600);
+        })();
+    }
+
+    document.addEventListener('pg-design-theme-change', function () { _sdLivePreviewSchedule(); });
 
     // ========================= AUTOSAVE =========================
     function scheduleAutosave() {
         clearTimeout(_autosaveTimer);
         _autosaveTimer = setTimeout(_doAutosave, 2500);
+        _sdLivePreviewSchedule();
     }
 
     function _doAutosave() {
@@ -45077,6 +45342,7 @@ const StyleDesigner = (function () {
         // Remember which tab was open so a reload lands on the same page.
         _pgTabsSyncUrl();
         if (leaving !== _collabPageId()) _collabHandOver(leaving);
+        _sdLivePreviewSchedule();
     }
 
     function _pgTabsAddNew() {
@@ -49176,7 +49442,7 @@ const StyleDesigner = (function () {
 
         // Ctrl+Wheel → canvas zoom (both directions)
         document.addEventListener('wheel', function (e) {
-            if (e.ctrlKey) {
+            if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
                 setCanvasZoom(canvasZoom + (e.deltaY < 0 ? 0.1 : -0.1));
             }

@@ -340,11 +340,14 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `_pg_tpl_shared_row()` yazar (`category = 'template:<şablon>/<anahtar>'`
   işareti, çünkü düz ortak bileşenin `system_region_config`'i yok). Menüde
   aktif bağlantıyı `smartActive` bulur; sayfaya göre değişen `active`
-  yazma. Şablonun `'shared'` ağacındaki `templateWidget` bağlanmaz
-  (`_pg_tpl_link_widgets()` yalnız sayfa ağaçlarında koşar): widget'ları
-  sayfa düzeyinde tut ya da önce o bağlamayı ekle. Yayınlamadan editörden çıkılınca `pagehide`
-  beacon'ı `designer/template_discard` ile şablon satırlarını siler
-  (hiçbir sayfa kullanmıyorsa); kalan satır 12 saat sonra aynı şablon
+  yazma. Shared ve widget ağaçlarındaki `templateWidget`/`templateShared`
+  de bağlanır: prepare iç içe shared'ı da açar, bütün satırlar yazıldıktan
+  sonra ikinci geçişte widget/shared ağaçlarını `_pg_tpl_link_widgets()`'ten
+  geçirip değişen satırı yeniden yazar. Yayınlamadan editörden çıkılınca
+  `pagehide` beacon'ı `designer/template_discard` ile şablon satırlarını
+  siler (hiçbir sayfa ya da başka bileşen kullanmıyorsa —
+  `_pg_tpl_row_in_use()` bileşen ağaçlarına da bakar, discard bir tur
+  hiçbir şey silmeyene kadar döner); kalan satır 12 saat sonra aynı şablon
   açılınca yeniden kullanılır (`_pg_tpl_reuse_cutoff()`). Form ayarında
   `'sample_records' => 'blog'`: form ilk yayında oluşunca sitenin örnek
   blog yazıları kopyalanır (`pg_cf_seed_sample_records()`). E-posta
@@ -372,6 +375,17 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   şablon kimliğiyle). Koyu bölüm `data-bs-theme="dark"` ile birlikte
   `bg-body text-body` ister: tema değişkeni değişir ama `color` gövdeden
   miras kalır. Bootstrap'te `ratio-3x4` yok (1x1, 4x3, 16x9, 21x9).
+- Tasarımdan şablon (2026.4.8): `includes/fn/design_templates_custom.php`,
+  tablo `design_template`, id `custom-<n>`. `pg_design_templates()` dosya
+  şablonlarını (`'builtin' => true`) ve tablodakileri (`builtin` false;
+  yalnız bunlar silinir) aynı şekilde birleştirir; dizi şekli şablon
+  dosyasınınkiyle birebir aynı kalır (prepare/install ayırt etmez). Yer
+  tutucuları `pg_dtc_*` üretir: `_pg_tpl_fill()`'in tersi, yalnız tam
+  eşleşme. Tasarımın CSS/JS/font/head/body sınıfı `'assets'` girdisindedir
+  (`add_system_style.php` gizli alanlara, install `save_system_style()`'a).
+  Şablon dizisine yeni anahtar eklersen dışa aktarmaya da ekle. Aynı
+  istekte yazılan şablon `pg_design_templates()`'in static önbelleğinde
+  yoktur: `pg_design_template_custom_get()`.
 - Sunucunun düşürdüğü bağlantı (`_pg_member_drop_empty_links`, boş token'lı
   `_bindings.href`) yalnız o düğümü atar: ızgarada hücre boş kalmasın diye
   bağlamayı hücrenin kendisine (`a.col-*`) koy.
@@ -392,6 +406,14 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `pg_sw_preview_overrides()` ile `_expand_system_widgets()`'e girer. Arka plan
   render'ıdır (`pg_seo_rendering(true)`): yeni bir renderer oturum, durum kodu
   ya da yönlendirme yazıyorsa bu bayrağa bakmalı.
+- Canlı önizleme: pencere açıkken değişiklik `_sdLivePreviewSchedule()` ile
+  yansır (800 ms debounce; `preview_widgets` yalnız yük imzası değişince;
+  `location.replace(blob)` + kaydırma geri yükleme, `document.write` değil).
+  Kancalar: `render()` sonu, `scheduleAutosave()`, `pg-design-theme-change`,
+  `_setCustomField()`, `_pgTabsSwitch()`, ayarlar modalının
+  `hidden.bs.modal`'ı. Pencere kapalıyken kanca tek özellik okur; önizlemeye
+  giren yeni bir durumu bu kancalardan birinden geçmeyen yolla
+  değiştiriyorsan çağrıyı ekle.
 - Tuvaldeki hayalet kayıtlar (`_sdAppendGhosts`, `designer/widget_ghosts`)
   yalnız DOM'dur: `data-sd-id` taşımaz, `inert`, ağaca girmez. Yeni bir liste
   türü eklenecekse sunucuda `pg_designer_widget_ghosts()` tür listesine ve JS'te

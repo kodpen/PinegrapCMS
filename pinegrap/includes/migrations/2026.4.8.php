@@ -36,6 +36,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_perf_queries();            // 8.15
 
+	upgrade_2026_4_8_design_templates();        // 8.16
+
 	upgrade_2026_4_8_innodb_orders();           // 8.10
 
 	upgrade_2026_4_8_innodb_products();         // 8.11
@@ -597,5 +599,43 @@ function upgrade_2026_4_8_perf_queries() {
 	}
 
 	install_note('Performance Log: the number of database queries a request sends is recorded per page and for every slow request.');
+
+}
+
+// Design templates made from a design (2026.4.8, 8.16;
+// includes/fn/design_templates_custom.php). The operator turns a visual
+// design into a template, offered under Choose a Template beside the ones
+// that ship with the software and opened the same way. template_json is the
+// whole template - pages, widgets, shared components, folders, form
+// settings, assets - in the shape a file under includes/design_templates/
+// returns, so it can be carried to another site as it is. template_key is
+// the id the template is offered under ('custom-<id>'); name, description,
+// version, framework, look_key and palette_key are the parts the gallery
+// lists without reading the document; source_style_id the design it was
+// made from (kept for reference only: the design may be deleted since).
+function upgrade_2026_4_8_design_templates() {
+
+	install_create_table('design_template', "CREATE TABLE IF NOT EXISTS design_template (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		template_key    VARCHAR(64)  NOT NULL DEFAULT '',
+		name            VARCHAR(255) NOT NULL DEFAULT '',
+		description     TEXT         NOT NULL,
+		version         VARCHAR(20)  NOT NULL DEFAULT '1.0.0',
+		framework       VARCHAR(32)  NOT NULL DEFAULT 'bootstrap5',
+		look_key        VARCHAR(100) NOT NULL DEFAULT '',
+		palette_key     VARCHAR(100) NOT NULL DEFAULT '',
+		source_style_id INT UNSIGNED NOT NULL DEFAULT 0,
+		template_json   LONGTEXT     NOT NULL,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		UNIQUE KEY uk_template_key (template_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (function_exists('pg_schema_cache_clear')) {
+		pg_schema_cache_clear();
+	}
+
+	install_note('Visual editor: a design can be turned into a template (Design settings › Turn this design into a template); it is listed under Choose a Template with the built-in ones.');
 
 }

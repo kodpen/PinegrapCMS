@@ -117,6 +117,17 @@ $bind = function ($token) {
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
 };
+// The language switcher button: the server draws it for each request and
+// leaves it out while the site has a single language, so it can stay in the
+// header of every site.
+$lang_switcher = function ($class = '', $variant = 'secondary') {
+    return array('type' => 'component', 'props' => array(
+        'componentType' => 'language_switcher',
+        'variant' => $variant, 'outline' => true, 'size' => 'sm',
+        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'cssClass' => $class,
+    ), 'children' => array());
+};
 // A Bootstrap button component.
 $button = function ($text, $variant, $class = '', $extra = array()) {
     return array('type' => 'component', 'props' => array_merge(array('componentType' => 'btn', 'btnElement' => 'button', 'btnType' => 'submit',
@@ -193,15 +204,16 @@ $notice = function () use ($el, $icon, $span) {
     ));
 };
 
-// The bar above the header: the notice on the left, the basket and the
-// login region on the right. Those two are system widgets and a shared
-// component cannot hold one yet, so the bar is part of each page.
-$account_bar = function () use ($el, $widget, $shared) {
+// The bar above the header: the notice on the left, the language switcher,
+// the basket and the login region on the right. The last two are system
+// widgets and a shared component cannot hold one yet, so the bar is part of
+// each page.
+$account_bar = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-primary-subtle', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', 'd-none d-md-block', lang('Announcement Area'), array($shared('notice'))),
             $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $widget('cart_link'), $widget('login_region'),
+                $lang_switcher(), $widget('cart_link'), $widget('login_region'),
             )),
         )),
     ));
@@ -1941,7 +1953,7 @@ $catalog = array(
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

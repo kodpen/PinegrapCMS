@@ -35,7 +35,7 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.84 ve 8.10–8.15). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.16). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -69,6 +69,267 @@ Aşağıdaki bölümlerin `İç tur` ve `(iç tur 4.x)` başlıkları **çalış
 numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başlıkları
 2026.4.2 birleştirmesine, `2026.4.4 (iç tur 4.x)` başlıkları 2026.4.4
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
+
+---
+
+## 2026.4.8 — Görsel tasarımcı: tasarımdan şablon, canlı önizleme, dil seçici, yeni görünüm ve paletler (2026-10-08)
+
+Dört iş bir arada: (1) bir tasarım şablona çevrilip "Şablondan Seç"te
+yerleşiklerin yanında sunulur (şema 8.16, `design_template`); (2) önizleme
+penceresi açıkken editördeki değişiklikler pencereye yansır; (3) beş
+yerleşik şablonun üst bilgisine dil seçici girdi; (4) beş yeni görünüm ve
+beş yeni renk paleti. Yan düzeltme: tuvalin içinde Ctrl+tekerlek.
+
+### Tasarımdan şablon
+
+**Karar: şablon veritabanında, tek JSON belgesi.** `design_template`
+tablosu (8.16): `template_key` (`custom-<id>`, UNIQUE), `name`,
+`description`, `version`, `framework`, `look_key`, `palette_key`,
+`source_style_id`, `template_json` (LONGTEXT), `created_by`, `created_at`,
+`updated_at`. Dosya olarak yazmak reddedildi: `includes/` altı dosya
+bütünlük denetimine girer (çalışma anında yazılan şablon dosyası orada
+sapma olur), `data/` altına yazılan dosya ise yedeğe girmez. Veritabanı
+satırı SQL dökümüyle yedeğe girer. Galerinin listelediği alanlar (ad,
+sürüm, çatı, görünüm, palet) ayrı kolonlardır; satırın kolonları
+belgedeki kopyalarının önüne geçer (yeniden adlandırma kolonu değiştirir).
+
+**Karar: dizi şekli yerleşik şablon dosyasıyla birebir aynı.**
+`pg_design_template_from_style()` (`includes/fn/design_templates_custom.php`)
+yerleşik bir dosyanın döndürdüğü diziyi üretir: `name, version, framework,
+description, icon, look, palette, highlights, folders, contact_groups,
+pages[], widgets{}, shared{}` ve yeni `assets` (`css, js, fonts, head,
+body_classes`). Böylece `pg_design_template_prepare()` ve
+`pg_design_template_install()` iki kaynağı ayırt etmez; aynı belge ileride
+dışa/içe aktarmayla başka siteye taşınabilir. `pg_design_templates()` dosya
+şablonlarına `'builtin' => true` koyar, sonra `pg_design_templates_custom()`
+satırlarını aynı `_pg_tpl_requirement_met()` süzgecinden ve yeni
+`_pg_tpl_normalize()`'dan geçirip ekler; yerleşik bir id ile çakışan özel
+şablon atlanır, özel şablonlar `order = 1000 + id` ile sona düşer. Özet
+(`pg_design_template_summary()`) `builtin`, `row_id` ve
+`framework_version` taşır (`pg_design_frameworks()`'e `'version' =>
+'5.3.8'`; CDN adresleriyle birlikte değişir).
+
+**Yer tutucu üretimi `_pg_tpl_fill()`'in tersidir, kural tam eşleşme.**
+Tasarımın sayfa adresi (prepare'in yazdığı biçimde, `OUTPUT_PATH .
+encode_url_path(page_name)`) yalnız değerin tamamıysa ya da ardından `?`/`#`
+geliyorsa `{{page:<key>}}` olur — `/blog` ile `/blog-post` karışmaz.
+Widget ayarlarında adı `page_id` içeren tasarım sayfası id'leri
+`{{tab:<key>}}`, `folder_id` `{{folder:<key>}}`, `contact_group_id`
+`{{contact_group:<key>}}` (iç içe dizi ve listeler dahil); form ayarlarında
+`notify/confirm/confirmation_page_id` ve `contact_group_id`; site adı yalnız
+değerin tamamıysa `{{site_name}}`; yıl yalnız `©`/`&copy;` komşuluğunda
+`{{year}}`; site e-postasına tam eşit bildirim adresi `{{site_email}}`.
+`_bindings` hiç değişmez; editör durumu (`_id`, `_expanded`,
+`_sharedDirty`) ve widget ayarındaki `template_origin` silinir. Her
+`shared_ref` şablondaki girdisine döner (`templateWidget` /
+`templateShared`); silinmiş bir bileşene işaret eden yerleşim atılır ve
+sayılır (`dropped`). Ana sayfa `home` anahtarını önce alır (başka bir
+"home" adlı sayfa `home-2`). Boş yer tutucu ağaçlı widget (`root` + boş
+`loop_area`) yerleşiklerdeki gibi `'tree' => 'starter'` yazılır. Saf
+yardımcılar (`pg_dtc_*`) veritabanına dokunmaz, `$ctx` ile çalışır;
+`tests/design_templates_test.php` 16 test. Gidiş-dönüş denetimi: beş
+yerleşik şablonun 214 ağacı `_pg_tpl_fill()` ile doldurulup geri
+çevrildi; farklar yalnız aşağıdaki bilinçli sınırlamalar.
+
+**Bilinçli sınırlamalar.**
+- Ürün grubu / ürün id'leri, tasarım dışındaki sayfaların id'leri ve sayfa
+  klasörü olmayan klasör id'leri ham kalır: aynı sitede çalışır, başka siteye
+  taşınınca boşa düşer. Katalog verisi (yerleşiklerdeki `catalog`) dışa
+  aktarılmaz; `{{product_group_path:x}}` gibi kısmi adresler kısmi eşleşme
+  yasağı gereği geri üretilmez.
+- Zengin metin içindeki `<a href>` bağlantıları, mutlak adresler ve kök
+  (`/`) bağlantısı tokenlanmaz.
+- `© 2026 Acme` → `© {{year}} Acme`; site adı yalnız tam değerde
+  değiştirildiği için yerleşikteki `© {{year}} {{site_name}}` geri gelmez.
+- Özel görünüm/palet (`file-<id>`) anahtarı kayda geçer ama dosyanın kendisi
+  şablona taşınmaz; galeri özeti bunu tanımadığı için seçiciler kendi
+  varsayılanında açılır.
+- `custom_php` içerik düğümleri olduğu gibi taşınır.
+- `pg_design_templates()` özel şablonların bütün JSON'unu istek başına bir
+  kez okur (static önbellek). Aynı istekte yeni yazılan şablon bu listede
+  yoktur — API cevabı bu yüzden kartı `pg_design_template_custom_get()` ile
+  satırdan okur. Çok sayıda büyük şablonda galeri ve editör açılışı bunu
+  öder; gerekirse tek satır okuyan bir `pg_design_template($id)` yolu
+  eklenir.
+- `template_key` önce geçici benzersiz anahtarla (`new-<hex>`) yazılır,
+  sonra `custom-<id>` olur: UNIQUE kolonda iki eşzamanlı kayıt `''` ile
+  çakışırdı.
+
+**`_pg_tpl_row_in_use()` artık bileşen ağaçlarına da bakar; discard çok
+turlu.** Tasarımdan yapılan şablon bir header'ın içine giriş bölgesi gibi
+bir widget koyabilir. Eski kontrol yalnız sayfa ağaçlarına baktığı için
+header'ın içindeki widget'ı "kullanılmıyor" sayıyordu: 12 saatlik yeniden
+kullanım eşiğinden sonra aynı şablon açıldığında yayındaki tasarımın widget
+satırı yeniden alınıp üstüne yazılabilir, yayınlamadan çıkıldığında
+`pg_design_template_discard()` onu silebilirdi (yayındaki header bozulur).
+Kontrol diğer `shared_components` ağaçlarını da sorar. Bunun bedeli:
+şablonun bıraktığı kümede header ile içindeki widget birlikte geldiğinde
+widget ilk turda "kullanımda" görünür; discard bu yüzden bir tur hiçbir şey
+silmeyene kadar (en çok 8) döner. Yerleşik şablonlarda bileşen içinde
+bileşen yok; ilk tur eskisiyle aynı sonucu verir.
+
+**Prepare'in ikinci geçişi.** Shared toplama geçişlidir: sayfa ağaçlarından
+başlayıp shared ve widget ağaçlarına iner (ziyaret kümesi, derinlik
+sınırı), iç içe shared'ın satırı da açılır. Bütün widget/shared satırları
+yazıldıktan sonra her widget ve shared ağacı `_pg_tpl_link_widgets()`'ten
+geçer; ağaç değiştiyse satırın `tree_json`'u güncellenir ve editöre giden
+`widgets`/`shared` listesi de bağlanmış ağacı taşır. Değişmeyen ağaç
+(`===`) için yazma yok — yerleşik şablonlar için ikinci geçiş no-op'tur.
+
+**Varlıklar (assets).** Prepare `assets` döndürür (yoksa boş string'ler).
+Editör yolu: `add_system_style.php` şablonun varlıklarını
+`pg_designer_screen_render()`'a giden `style` dizisine
+(`style_custom_css/js/fonts`, `style_head`, `additional_body_classes`)
+koyar; editörün gizli alanları onları ilk kayda taşır. Sunucu yolu:
+`pg_design_template_install()` aynı alanları `save_system_style()`'a verir,
+CSS/JS doluysa `pg_designer_sync_asset_files()` dosya yöneticisi kopyasını
+yazar. Yerleşikte hepsi boş; davranış değişmedi. Varlık dosya adları
+kopyada aynı kalır (`duplicate_style.php` ile aynı davranış).
+
+**Uçlar ve ekran.** `api.php` › `designer`: `template_from_design`
+(`style_id`, `name`, `description`) ve `template_delete` (`template`:
+`custom-<n>` ya da satır id'si). İkisi de yalnız tam tasarımcı (rol ≤ 1;
+`$content_ok` listesinde değil). Yerleşik id silinemez ("Yalnız bir
+tasarımdan oluşturulan şablonlar silinebilir."). Silme, şablonun açılıp
+yayınlanmadan bıraktığı ve hiçbir sayfanın/bileşenin kullanmadığı
+satırları da `pg_design_template_discard()` ile temizler; o şablondan
+kurulmuş tasarımlar etkilenmez. Ayarlar › Tasarım'da "Bu tasarımı şablona
+çevir" bölümü yalnız `pg_designer_is_full($user)` için basılır; tam ekran
+ayarlar modalı kapanıp ayrı modal açılır (iç içe modal yok). Şablon
+sunucudaki kaydedilmiş hâlden yapılır: hiç kaydedilmemiş tasarımda uyarı,
+kaydedilmemiş değişiklik varsa onay. Şablon penceresi `modal-xl` +
+`--bs-modal-width: min(96vw, 1600px)`, kartlar `col-12 col-md-6 col-xl-4
+col-xxl-3`; sürüm rozeti (`v<sürüm> · <çatı> <çatı sürümü>`) görselin
+köşesinde, görsel yoksa açıklamanın altında. Özel şablonda "Tasarımdan
+oluşturuldu" rozeti ve çöp düğmesi.
+
+### Canlı önizleme
+
+Önizleme penceresi açıkken editördeki her değişiklik kısa bir beklemeden
+sonra pencereye yansır. Tasarım, maliyeti editörden uzak tutar:
+- Pencere yokken her kanca tek bir özellik okumasıyla döner
+  (`_sdLivePreviewSchedule()`); kapanan pencere ilk okumada unutulur
+  (zamanlayıcı, önbellek, blob URL temizlenir).
+- Açıkken 800 ms debounce: `generateHTML()` bütün sayfayı yürür.
+- `preview_widgets` yalnız widget yükünün imzası (id'ler, ağaçlar, ayarlar,
+  sayfa) son cevaplanandan farklıysa sorulur; başarısız cevap önbelleğe
+  alınmaz. Aynı anda tek istek; istek sürerken gelen değişiklik bitince bir
+  tur daha koşar. Markup'ı değişmeyen belge yeniden yüklenmez.
+- Kancalar: `render()` sonu, `scheduleAutosave()`, `pg-design-theme-change`
+  olayı, `_setCustomField()` (varlık panelinin gizli alanları), sekme
+  değişimi (`_pgTabsSwitch()`), ayarlar modalının `hidden.bs.modal`'ı.
+- Yazma: `location.replace(blobURL)` (pencere tarihçesi tek kayıtta kalır),
+  ardından yeni belge yoklanıp kaydırma konumu geri yüklenir (hemen, bir
+  kare sonra, 150 ms ve 600 ms — geç gelen stil ve görseller yüksekliği
+  değiştirir). Blob URL artık 60 sn sonra değil, yerine yenisi geçince
+  bırakılır (pencerede F5 çalışır, bellekte en çok bir blob).
+
+**Neden `document.write` değil.** `document.open()` pencereyi, global'leri
+ve zamanlayıcıları korur: tasarımın JS'i her yenilemede aynı realm'de
+yeniden koşar (üst düzey `let/const` yeniden bildirim hatası, çift
+`setInterval`). `_sdCanvasRealmReset()` tuval için aynı gerekçeyle belgeyi
+değiştiriyor. Pencere başka bir siteye gitmişse (okuma istisna atar)
+kaydırma 0 kabul edilir ve pencere önizlemeye geri getirilir; değişiklik
+yoksa dokunulmaz.
+
+### Ctrl+tekerlek (düzeltme)
+
+Belirti: tuvalin içinde Ctrl+tekerlek editörün yakınlaştırmasını değil
+tarayıcının sayfa yakınlaştırmasını değiştiriyordu; tuvalin dışında
+(kenar boşluğu, araç çubuğu) doğru çalışıyordu. Kök sebep: wheel
+dinleyicisi (`initZoomBlock()`) yalnız editör belgesindeydi; tuval bir
+iframe, içindeki wheel olayı editör belgesine ulaşmaz ve `preventDefault()`
+çağrılmadığı için tarayıcı yakınlaştırır. `_sdInitCanvasDoc()` tuval
+belgesine `{ passive: false }` bir wheel dinleyicisi bağlar (`ctrlKey ||
+metaKey`); realm reset her yeni belge için `_sdInitCanvasDoc()`'u yeniden
+koştuğu için yeniden bağlanır. Editör belgesindeki dinleyiciye `metaKey`
+eklendi; tuval belgesindeki kısayol işleyicisine Ctrl/Cmd `+` `-` `0` dalları
+eklendi (olay iframe sınırını geçmediği için çift tetiklenme yok).
+2026.4.7'de de vardı; changelog'da [DÜZELTME].
+
+### Şablonlarda dil seçici
+
+Beş yerleşik şablona "Dil Seçici Düğme" bileşeni (`language_switcher`,
+`variant` / `outline` / `size sm` / `align end` / `display name` / `icon
+translate`): hello-pinegrap ve playground'da shared `header`'daki navbar'ın
+sağ ucuna, bookshop / boutique / store'da her sayfanın hesap çubuğuna
+(bu üçünde hesap çubuğu shared değil). Görünürlük kodu yazılmadı: tek
+dilli sitede `pg_language_switcher_html()` zaten `''` döner. Karakter
+prop'la verildi, sınıfla değil: `cssClass` düğmeye değil sarmalayıcı
+`div.dropdown`'a gider; playground `variant 'dark'`, boutique'in koyu
+çubuğunda `variant 'light'` (`btn-outline-secondary` koyu zeminde ~3:1).
+Navbar yerleşimlerinde `d-inline-block`: Bootstrap navbar içinde Popper'ı
+kapatır, blok sarmalayıcıda menü telefonda düğmeden kopuyordu. Sürümler:
+hello 2.4.1 → 2.4.2, playground / boutique / bookshop 1.0.0 → 1.0.1, store
+1.0.1 → 1.0.2. Daha önce şablondan kurulmuş tasarımlar eski sürümü
+kaydetmiştir; yeni sürüm yalnız yeni açılışlarda gelir.
+
+### Yeni görünümler ve paletler
+
+Görünümler (`pg_design_looks()`): Editorial, Technical, Organic, Luxe,
+Glass. Her dosya `base.css`'in okuduğu 87 belirtecin tamamını tanımlar
+(mevcut yedisi 41–64 tanımlayıp gerisini varsayılandan alıyor); böylece
+üstüne kurulan özel görünüm (`pg_design_custom_look_css()`) de tam set
+yazar. Renk sabitlenmez: gölgelerde yalnız `rgba(0, 0, 0, …)`, çizgilerde
+`var(--bs-border-color)` ve `rgba(var(--bs-*-rgb), …)`. Organic'te
+"sıcak gölge" yerine "katmanlı yumuşak gölge": sıcak gölge kahverengi bir
+rgba, yani renk sabitlemesi isterdi. `preview.heading` için yeni `mono` ve
+`grotesk` değerleri `_sdThemeLookDemo()` font haritasına eklendi.
+
+Paletler (`pg_design_palettes()`, dosyalar yalnız
+`tools/build_theme_palettes.php` ile üretildi): Cobalt `#0047ab` /
+`#0f172a`, Crimson `#b91c1c` / `#1f2937`, Sage `#4a6b53` / `#9a3412`,
+Cocoa `#6f4e37` / `#0f766e`, Steel `#3e5c76` / `#0f766e`. Plandaki
+tonlardan sapmalar: Cobalt'ın `#1d4ed8`'i Classic Blue ile aynı tondaydı;
+Sage'in `#15803d`'i Emerald ile çakışıyordu ve adaçayı değildi; Cocoa'nın
+`#78350f`'i Forest'ın ikincil rengiyle birebir aynıydı; Steel'in `#334155`'i
+Classic'in ikincil rengine ve Graphite'e çok yakındı, ikincil `#0d9488`
+beyaz metinde 3.74:1 kalıyordu (fonksiyon yorumu 4.5:1 diyor) — bir ton
+koyusu. Beşinde de üreteç `--pg-on-primary` / `--pg-on-secondary` için
+beyaz yazdı.
+
+### Doğrulama
+
+- Denetimler temiz: `lint`, `check_lang`, `check_bindings`,
+  `check_api_schema`, `check_copies`, `test.php` (126 test; yeni 16'sı
+  `design_templates`), `node --check style_designer.js`,
+  `build_theme_palettes.php --check`.
+- Sandbox (`tools/setup_sandbox.sh`, MariaDB, `turkish_default`):
+  temiz kurulum tabloyu açtı. `config.version` `2026.4.7`'ye çekilip
+  `php install/index.php automated_upgrade` iki kez koşuldu (tablo
+  silinmişken "created", sonra "already exists"); alt adım tek başına da iki
+  kez koşuldu (executed 1 / skipped 1).
+- PHP CLI ile uçtan uca: `hello-pinegrap` sunucudan kuruldu (32 sayfa) →
+  tasarıma font / head / body sınıfı verildi → `pg_design_template_from_style()`
+  (`{{page:}}` 41, `{{tab:}}` 46, `templateShared` 70, `templateWidget` 85,
+  `{{site_name}}`, `{{year}}`, `{{site_email}}`; ham `sharedId`, `_id`,
+  `template_origin` 0) → yeni süreçte listede `builtin: false` →
+  `pg_design_template_prepare()` (bağlanmamış ref ve kalan yer tutucu 0,
+  `assets` dolu) → yayınlamadan çıkma (`discard` 37/37) →
+  `pg_design_template_install()` 32 sayfa, varlıklar tasarımda, 155 sayfa
+  ref'inin hepsi var olan satırlara → `pg_design_template_custom_delete()`
+  (yerleşik ve rol 2 reddedildi; kurulan tasarımın sayfaları ve ref'leri
+  yerinde). Aynısı header'ın içine giriş bölgesi widget'ı ve bir shared
+  konarak tekrarlandı: şablonda header'da `templateWidget` 1 /
+  `templateShared` 1, prepare'in ikinci geçişi iki iç içe ref'i gerçek
+  satırlara bağladı, discard çok turla 37/37 sildi, şablon silindikten sonra
+  kurulan tasarımın header'ındaki iç içe ref'ler yerinde. Hiçbir adımda PHP
+  notice/warning yok. Kurulan sayfalar HTTP ile 200, tek dilli sitede dil
+  seçici basılmıyor.
+
+**Açık kalan.**
+- Tarayıcıda denenmedi: canlı önizleme (yenileme, kaydırma geri yükleme,
+  pencere dış siteye gidince dönüş), tuvalde Ctrl/Cmd+tekerlek ve Mac
+  trackpad kıstırması, realm reset sonrası; şablon penceresinin geniş/dar
+  düzeni ve silme akışı; "şablona çevir" modalı; `_pgTemplateApply()`'ın
+  iç içe bağlanmış shared/widget satırlarını önbelleğe doğru alması;
+  yeni görünümlerin ve paletlerin gerçek görünüşü; çok dilli sitede çizilen
+  dil seçici.
+- `pgConfirm` şablon modalı açıkken onun üstünde açılıyor; Bootstrap iç içe
+  modal desteklemediği için onay kapanınca `body.modal-open` düşebilir
+  (görsel, işlevsel değil).
+- `api.php` uçları HTTP üzerinden denenmedi (oturum gerekiyor); arkalarındaki
+  fonksiyonlar CLI'da koşuldu.
 
 ---
 

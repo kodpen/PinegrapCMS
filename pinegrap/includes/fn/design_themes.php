@@ -93,6 +93,31 @@ function pg_design_looks()
             'description' => lang('Thick outlines, hard offset shadows and heavy type.'),
             'preview'     => array('radius' => 8, 'btn_radius' => 8, 'shadow' => 'hard', 'border' => 2, 'heading' => 'sans', 'weight' => 900, 'caps' => false),
         ),
+        'editorial' => array(
+            'name'        => lang('Editorial'),
+            'description' => lang('Magazine page: serif text, heavy headings, hairlines, square corners.'),
+            'preview'     => array('radius' => 2, 'btn_radius' => 2, 'shadow' => 'none', 'border' => 1, 'heading' => 'serif', 'weight' => 800, 'caps' => false),
+        ),
+        'technical' => array(
+            'name'        => lang('Technical'),
+            'description' => lang('Monospace headings, square corners, thin outlines, capitals on the buttons.'),
+            'preview'     => array('radius' => 0, 'btn_radius' => 0, 'shadow' => 'crisp', 'border' => 1, 'heading' => 'mono', 'weight' => 600, 'caps' => true),
+        ),
+        'organic' => array(
+            'name'        => lang('Organic'),
+            'description' => lang('Rounded type, big soft corners, soft layered shadows, no card outline.'),
+            'preview'     => array('radius' => 16, 'btn_radius' => 14, 'shadow' => 'soft', 'border' => 0, 'heading' => 'rounded', 'weight' => 700, 'caps' => false),
+        ),
+        'luxe' => array(
+            'name'        => lang('Luxe'),
+            'description' => lang('Light serif headings, widely spaced capitals, deep shadows, slim lines.'),
+            'preview'     => array('radius' => 4, 'btn_radius' => 0, 'shadow' => 'deep', 'border' => 1, 'heading' => 'serif', 'weight' => 300, 'caps' => true),
+        ),
+        'glass' => array(
+            'name'        => lang('Glass'),
+            'description' => lang('Large corners, pill buttons, no outlines, deep layered shadows, grotesque headings.'),
+            'preview'     => array('radius' => 14, 'btn_radius' => 99, 'shadow' => 'deep', 'border' => 0, 'heading' => 'grotesk', 'weight' => 600, 'caps' => false),
+        ),
     );
 }
 
@@ -122,6 +147,11 @@ function pg_design_palettes()
         'fuchsia'    => array('name' => lang('Fuchsia'),         'primary' => '#a21caf', 'secondary' => '#312e81'),
         'graphite'   => array('name' => lang('Graphite'),        'primary' => '#18181b', 'secondary' => '#71717a'),
         'aurora'     => array('name' => lang('Northern Lights'), 'primary' => '#4f46e5', 'secondary' => '#0e7490'),
+        'cobalt'     => array('name' => lang('Cobalt'),          'primary' => '#0047ab', 'secondary' => '#0f172a'),
+        'crimson'    => array('name' => lang('Crimson'),         'primary' => '#b91c1c', 'secondary' => '#1f2937'),
+        'sage'       => array('name' => lang('Sage'),            'primary' => '#4a6b53', 'secondary' => '#9a3412'),
+        'cocoa'      => array('name' => lang('Cocoa'),           'primary' => '#6f4e37', 'secondary' => '#0f766e'),
+        'steel'      => array('name' => lang('Steel'),           'primary' => '#3e5c76', 'secondary' => '#0f766e'),
     );
 }
 

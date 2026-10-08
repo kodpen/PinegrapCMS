@@ -1,0 +1,107 @@
+/*!
+ * Pinegrap look: Editorial.
+ * A magazine page: serif text and heavy serif headings, hairline rules,
+ * square corners, no shadows at rest and small capitals on the labels.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --pg-font-heading: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --pg-font-size: 1.0625rem;
+    --pg-line-height: 1.7;
+    --pg-heading-weight: 800;
+    --pg-heading-tracking: -0.02em;
+    --pg-heading-transform: none;
+    --pg-heading-line-height: 1.1;
+    --pg-display-weight: 800;
+    --pg-lead-weight: 400;
+    --pg-brand-weight: 800;
+    --pg-nav-link-weight: 600;
+    --pg-quote-font: var(--pg-font-heading);
+    --pg-quote-style: italic;
+
+    --pg-link-decoration: underline;
+    --pg-link-underline-offset: 0.18em;
+    --pg-link-thickness: 1px;
+
+    --pg-radius-sm: 0;
+    --pg-radius: 0.125rem;
+    --pg-radius-lg: 0.125rem;
+    --pg-radius-xl: 0.25rem;
+    --pg-radius-xxl: 0.25rem;
+    --pg-radius-btn: 0.125rem;
+    --pg-radius-btn-sm: 0.125rem;
+    --pg-radius-btn-lg: 0.125rem;
+    --pg-radius-input: 0.125rem;
+    --pg-radius-card: 0.125rem;
+    --pg-radius-badge: 0;
+    --pg-radius-menu: 0.125rem;
+    --pg-radius-modal: 0.25rem;
+    --pg-radius-progress: 0;
+    --pg-radius-check: 0;
+
+    --pg-border-width: 1px;
+    --pg-control-border-width: 1px;
+    --pg-control-border-color: var(--bs-border-color);
+    --pg-card-border-width: 1px;
+    --pg-card-border-color: var(--bs-border-color);
+    --pg-card-hover-border-color: var(--bs-emphasis-color);
+    --pg-menu-border-color: var(--bs-border-color);
+    --pg-hr-opacity: 0.3;
+
+    --pg-shadow-sm: none;
+    --pg-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --pg-shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.12);
+    --pg-card-shadow: none;
+    --pg-card-shadow-hover: none;
+    --pg-card-hover-transform: none;
+    --pg-menu-shadow: var(--pg-shadow);
+    --pg-menu-padding: 0;
+    --pg-menu-item-radius: 0;
+    --pg-list-shadow: none;
+
+    --pg-btn-weight: 700;
+    --pg-btn-transform: none;
+    --pg-btn-tracking: normal;
+    --pg-btn-font-size: 0.9375rem;
+    --pg-btn-py: 0.625rem;
+    --pg-btn-px: 1.375rem;
+    --pg-btn-shadow: none;
+    --pg-btn-shadow-hover: none;
+    --pg-btn-shadow-active: none;
+    --pg-btn-hover-transform: none;
+    --pg-btn-active-transform: none;
+
+    --pg-input-py: 0.625rem;
+    --pg-input-px: 0.875rem;
+    --pg-focus-ring-width: 0.1875rem;
+
+    --pg-card-py: 1.5rem;
+    --pg-card-px: 1.5rem;
+    --pg-card-cap-bg: transparent;
+
+    --pg-tabs-underline: 2px;
+    --pg-tabs-border-color: var(--bs-border-color);
+    --pg-tabs-active-border-color: transparent;
+    --pg-pagination-joined: 0;
+    --pg-pagination-gap: 0.25rem;
+    --pg-pagination-border-width: 0px;
+
+    --pg-alert-border-width: 0px;
+    --pg-alert-accent: 3px;
+    --pg-alert-accent-color: currentColor;
+
+    --pg-badge-weight: 700;
+    --pg-badge-transform: uppercase;
+    --pg-badge-tracking: 0.06em;
+    --pg-th-weight: 700;
+    --pg-th-transform: uppercase;
+    --pg-th-tracking: 0.08em;
+    --pg-th-size: 0.75rem;
+    --pg-th-bg: transparent;
+
+    --pg-progress-height: 0.25rem;
+
+    --pg-duration: 0.15s;
+    --pg-ease: ease;
+}

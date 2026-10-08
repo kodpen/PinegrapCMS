@@ -112,6 +112,17 @@ $bind = function ($token) {
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
 };
+// The language switcher button: the server draws it for each request and
+// leaves it out while the site has a single language, so it can stay in the
+// header of every site.
+$lang_switcher = function ($class = '', $variant = 'secondary') {
+    return array('type' => 'component', 'props' => array(
+        'componentType' => 'language_switcher',
+        'variant' => $variant, 'outline' => true, 'size' => 'sm',
+        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'cssClass' => $class,
+    ), 'children' => array());
+};
 
 // The sample photos (picsum.photos gives the same picture for the same seed).
 $photo = function ($seed, $w, $h) {
@@ -122,10 +133,11 @@ $avatar = 'https://placehold.co/96x96/a21caf/ffffff?text=JC';
 // ── The parts every page repeats ────────────────────────────────────────
 
 // The header: the round avatar, the name and an "open to projects" sticker
-// on the left, the menu on the right, folded behind a toggler on a phone.
+// on the left, the menu and the language switcher on the right, folded
+// behind a toggler on a phone.
 // The link to the current page is marked active on the server (smart active
 // state), which is what lets one header serve every page.
-$header = function () use ($el, $link, $image, $span, $attr, $avatar) {
+$header = function () use ($el, $link, $image, $span, $attr, $avatar, $lang_switcher) {
     $item = function ($key, $text) use ($el, $link) {
         return $el('li', 'nav-item', lang('Nav Item'), array(
             $link($text, '{{page:' . $key . '}}', 'nav-link px-md-1 px-lg-2 text-nowrap'),
@@ -161,6 +173,7 @@ $header = function () use ($el, $link, $image, $span, $attr, $avatar) {
                         $item('guestbook', lang('Guest book')),
                         $item('say_hi', lang('Say hi')),
                     )),
+                    $lang_switcher('d-inline-block ms-md-2 mt-3 mt-md-0', 'dark'),
                 ), array('id' => 'pl-nav')),
             )),
         ), array('smartActive' => true)),
@@ -1364,7 +1377,7 @@ $widgets = array(
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

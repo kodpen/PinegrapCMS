@@ -68,6 +68,12 @@ $look = isset($_GET['look']) ? pg_design_look_key($_GET['look'])
                              : ($template ? pg_design_default_look() : '');
 $palette = isset($_GET['palette']) ? pg_design_palette_key($_GET['palette']) : '';
 
+// One of the template's assets ('css', 'js', 'fonts', 'head',
+// 'body_classes'), '' when it has none.
+$tpl_asset = function ($key) use ($template) {
+    return ($template && isset($template['assets'][$key]) && is_string($template['assets'][$key])) ? $template['assets'][$key] : '';
+};
+
 if (!$_POST) {
     if (isset($_SESSION['software']['liveforms']['add_system_style'][0]) == FALSE) {
         $liveform->add_fields_to_session();
@@ -89,12 +95,14 @@ if (!$_POST) {
             'theme_id'                          => $liveform->get_field_value('theme_id'),
             'collection'                        => $liveform->get_field_value('collection'),
             'social_networking_position'        => $liveform->get_field_value('social_networking_position'),
-            'additional_body_classes'           => '',
-            'style_head'                        => '',
+            // A template made from a design brings the design's assets;
+            // the editor's hidden fields carry them to the first save.
+            'additional_body_classes'           => $tpl_asset('body_classes'),
+            'style_head'                        => $tpl_asset('head'),
             'style_empty_cell_width_percentage' => '',
-            'style_custom_css'                  => '',
-            'style_custom_js'                   => '',
-            'style_custom_fonts'                => '',
+            'style_custom_css'                  => $tpl_asset('css'),
+            'style_custom_js'                   => $tpl_asset('js'),
+            'style_custom_fonts'                => $tpl_asset('fonts'),
             'last_modified_timestamp'           => 0,
             'last_modified_username'            => '',
             'framework'                         => $framework,

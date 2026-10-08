@@ -139,6 +139,54 @@
          besleme verilir: önce Form Kaydı, sonra Form Listesi,
          sonra katalog widget'ları.
 
+  [YENİ] Bir tasarım şablona çevrilebiliyor: Ayarlar ›
+         Tasarım › "Bu tasarımı şablona çevir". Tasarımın
+         kaydedilmiş bütün sayfaları; ortak bileşenleri, sistem
+         widget'ları, klasörleri, form ve yorum ayarları,
+         CSS, JavaScript ve yazı tipi dosyalarıyla birlikte
+         "Şablondan Seç" penceresinde yerleşik şablonların
+         yanında listelenir ve onlar gibi açılır. Şablon,
+         tasarımın son kaydedilmiş hâlinden yapılır.
+         Tasarımdan yapılan şablonlar kartındaki çöp kutusu
+         düğmesiyle silinebilir; yazılımla gelen şablonlar
+         silinemez. Silmek, o şablondan kurulmuş tasarımları
+         etkilemez.
+
+  [ŞEMA] Tasarımdan yapılan şablonlar için yeni
+         design_template tablosu.
+
+  [YENİ] "Şablondan Seç" penceresi genişledi; geniş ekranda
+         yan yana üç ya da dört kart sığıyor. Her kart
+         şablonun sürümünü ve çatısının sürümünü (ör.
+         Bootstrap 5.3.8) görselin köşesinde gösteriyor.
+
+  [YENİ] Canlı önizleme. Önizleme penceresi açıkken tasarımda
+         yapılan değişiklikler (içerik, stil, tema, CSS ve
+         JavaScript dosyaları, sekmeler, tasarım ayarları)
+         kısa bir beklemeden sonra pencereye yansıyor; pencere
+         kaydırıldığı yerde kalıyor. Sistem widget'ları yalnız
+         değiştiklerinde yeniden çiziliyor. Önizleme penceresi
+         kapalıyken editöre hiçbir yük getirmez.
+
+  [YENİ] Bütün yerleşik şablonların üst bilgisinde ya da
+         hesap çubuğunda dil seçici düğmesi var. Site tek
+         dilliyken düğme ziyaretçiye gösterilmez. Şablon
+         sürümleri: Pinegrap'a merhaba deyin 2.4.2, Oyun
+         Bahçesi 1.0.1, Online Mağaza 1.0.2, Butik 1.0.1,
+         Kitapçı 1.0.1. Bu şablonlardan daha önce kurulmuş
+         tasarımlar değişmez.
+
+  [YENİ] Tema seçicide beş yeni görünüm: Editoryal, Teknik,
+         Organik, Lüks ve Cam; beş yeni renk paleti: Kobalt,
+         Kızıl, Adaçayı, Kakao ve Çelik.
+
+  [DÜZELTME] Tuvalin içinde Ctrl+tekerlek editörü değil
+         tarayıcıyı büyütüyordu; editörün yakınlaştırması
+         yalnız tuvalin dışında çalışıyordu. Artık tuvalin
+         içinde de (Mac'te Cmd+tekerlek ile) editörü
+         yakınlaştırıyor; Ctrl + / Ctrl - / Ctrl 0 kısayolları
+         da tuval odaktayken çalışıyor.
+
   SAYFA TASARIMCISI
   --------------------------------------------------------
 

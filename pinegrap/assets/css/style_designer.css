@@ -2566,18 +2566,22 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-sm-del-meta:hover { color: var(--sd-danger); }
 
-/* Fullscreen Style Settings Modal — dark theme for Bootstrap form controls */
+/* Fullscreen Style Settings Modal — dark theme for Bootstrap form controls
+   (and the "Turn this design into a template" dialog it opens) */
 #styleSettingsModal .form-control,
 #styleSettingsModal .form-select,
-#styleSettingsModal textarea.form-control {
+#styleSettingsModal textarea.form-control,
+#sdMakeTemplateModal .form-control {
     background-color: #0d1117;
     color: #c9d1d9;
     border-color: #30363d;
 }
-#styleSettingsModal .form-control::placeholder { color: #6e7681; }
+#styleSettingsModal .form-control::placeholder,
+#sdMakeTemplateModal .form-control::placeholder { color: #6e7681; }
 #styleSettingsModal .form-control:focus,
 #styleSettingsModal .form-select:focus,
-#styleSettingsModal textarea.form-control:focus {
+#styleSettingsModal textarea.form-control:focus,
+#sdMakeTemplateModal .form-control:focus {
     background-color: #0d1117;
     color: #c9d1d9;
     border-color: #58a6ff;
