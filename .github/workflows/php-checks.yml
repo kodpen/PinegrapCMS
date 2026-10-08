@@ -1,7 +1,8 @@
 # Static checks and unit tests that gate every pull request: PHP syntax across
 # the product tree, translation-key consistency, designer binding tokens, the
-# external API schema, the unit tests under tests/ and a JavaScript syntax
-# check of the large panel scripts. None of them needs a database.
+# external API schema, the unit tests under tests/, the function copies in
+# get_file.php and a JavaScript syntax check of the large panel scripts. None
+# of them needs a database.
 name: PHP checks
 
 on:
@@ -42,6 +43,9 @@ jobs:
 
       - name: Unit tests (tests/*_test.php)
         run: php tools/test.php
+
+      - name: get_file.php copies (only the intended ones)
+        run: php tools/check_copies.php
 
       - name: Set up Node
         uses: actions/setup-node@v4

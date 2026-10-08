@@ -72,6 +72,54 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Klasör erişim kontrolü `get_file.php` ile tek kopya (2026-10-08)
+
+**Sorun.** `get_file.php` `functions.php`'yi yüklemediği için klasör erişim
+fonksiyonlarının (`get_access_control_type`, `check_view_access`,
+`check_edit_access`, `check_private_access`) kendi kopyalarını taşıyordu ve
+iki kopya ayrışmıştı: önbellek (`folder` tablosu bir kez okunur) ve
+`folder_parent` döngüsüne karşı koruma yalnız panel tarafındaydı; `isset`
+korumaları ve `pg_folder_edit_access()` ayrımı 2026.4.4'te yalnız
+`includes/fn/auth.php`'ye girmişti. Döngülü bir klasör ağacında dosya isteği
+sonsuz özyinelemeye giriyordu (sandbox'ta istek 30 sn'de cevapsız kaldı),
+ACL satırı olmayan rol-3 kullanıcının her dosya isteği PHP uyarısı
+üretiyordu.
+
+**Karar.** Beş fonksiyon (`pg_folder_edit_access` dahil) asıl
+(`includes/fn/auth.php`) sürümleriyle `includes/authentication.php`'ye tek
+kopya olarak taşındı; `get_file.php` sözleşmesi korundu: yalnız
+`db/db_value/db_item/db_items/escape` + PHP, `lang()` ve `output_error()`
+yok. Başlıktaki izin listesine `db_value()` ve `db_items()` eklendi (iki
+includer'da da tanımlı). `get_access_control_type` sorgusu
+`mysqli_query(...) or output_error(lang(...))` yerine `db_items()` ile;
+`check_private_access` tarih karşılaştırmasından önce
+`function_exists('initialize_timezone')` ile `get_file.php`'nin tembel saat
+dilimi kurulumunu çağırır (`init.php` yolu saat dilimini zaten kurar).
+Kalan 11 kopya bilerek bırakıldı (`output_error`'un dosya sunumuna özgü
+davranışı, küçük `initialize_user`, `log_activity`, `db*`, URL/TLS
+yardımcıları); tablo ve gerekçe `docs/_get_file_kopyalar.md`.
+
+**Çözüm.**
+- `includes/authentication.php`: "Folder access - shared with get_file.php"
+  bölümü; `includes/fn/auth.php` ve `get_file.php`'den kopyalar silindi.
+  Çağıranlar değişmedi.
+- `tools/check_copies.php` (yeni, CI adımı): `get_file.php`'deki fonksiyon
+  adlarını `functions.php`, `includes/authentication.php` ve
+  `includes/fn/*.php` içinde arar; `$intended` listesi dışındaki kopya
+  `FAIL` (çıkış 1), listede olup artık kopya olmayan ad `WARN`.
+- Doğrulama: sandbox'ta 6 klasör (herkese açık, kayıt, özel, özelin
+  mirasçı alt klasörü, misafir, üyelik) × 6 aktör (oturumsuz, ACL'li /
+  ACL'siz / süresi geçmiş ACL'li / düzenleme ACL'li rol 3, yönetici) için
+  dosya ve sayfa HTTP kodu, yönlendirme hedefi ve dosya gövdesi önce/sonra
+  birebir aynı.
+
+**Ödün.** `get_file.php` klasörün erişim türü için artık `folder` tablosunun
+tamamını tek sorguda okur (önceden klasör derinliği kadar tek satırlık
+sorgu); panel tarafı bunu zaten yapıyordu. Döngülü ağaçta dosya isteği artık
+`public` kararı verir — panel tarafıyla aynı.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve
