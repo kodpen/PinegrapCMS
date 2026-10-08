@@ -1359,6 +1359,19 @@ function pg_login_set_device_cookie($user_id, $remember)
     return strtok($auth_cookie, ':');
 }
 
+// Sign the browser in after it has just set the account's password through a
+// reset link. Returns true when the session was opened, false when the
+// account must go through the sign-in screen instead (an account that asks
+// for a second factor cannot be opened by a password alone).
+function pg_post_password_signin($user_id, $username)
+{
+    if (function_exists('pg_mfa_enabled') && pg_mfa_enabled($user_id)) {
+        return false;
+    }
+    pg_session_sign_in($user_id, $username);
+    return true;
+}
+
 // ── Upgrade bridge ──────────────────────────────────────────────────────────
 //
 // Code lands before the database does. software_update.php swaps the files and

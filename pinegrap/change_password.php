@@ -164,14 +164,22 @@ $query =
     WHERE user_id = '" . (int) $change_user_id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
+// Verifying the current password is not a sign-in. This form is reachable
+// without a session, so the session is only renewed when it already belongs
+// to the account whose password changed; anyone else (no session, or a
+// session of another account) goes through the sign-in screen, which is where
+// every check of a real sign-in happens.
+$pg_keep_session = (isset($_SESSION['sessionuserid']) && ((int) $_SESSION['sessionuserid'] === (int) $change_user_id));
+
 // A password change invalidates every remembered session: drop them all, then
 // mint one fresh token below for the browser doing the change so it stays in.
 //
 // If this browser's session was pinned, the replacement is pinned too. The pin
 // is the operator's decision about which device this account may use, and a
-// routine password change is not the member's way to overturn it.
+// routine password change is not the member's way to overturn it. Only this
+// account's own session can carry its pin over.
 $pinned_before = false;
-if (isset($_COOKIE['software']['auth'])) {
+if ($pg_keep_session && isset($_COOKIE['software']['auth'])) {
     $pinned_parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
     if ($pinned_parts[0] !== '') {
         $pinned_before = pg_auth_token_pinned($pinned_parts[0]);
@@ -180,9 +188,38 @@ if (isset($_COOKIE['software']['auth'])) {
 
 pg_auth_token_revoke_user($change_user_id);
 
-// keep this browser signed in under the same user id
-pg_session_sign_in($change_user_id, $username);
 log_activity("user changed password", $username);
+
+if (!$pg_keep_session) {
+    $liveform->remove();
+
+    // pg_sw_account_done() leads to the my account page or the widget's
+    // send_to, both behind a sign-in, with the notice on a form the login
+    // screen does not print. The visitor goes to the login screen instead;
+    // the widget's send_to rides along so the sign-in still lands there.
+    $pg_login_url = get_page_type_url('login');
+    if (!$pg_login_url) {
+        $pg_login_url = PATH . SOFTWARE_DIRECTORY . '/';
+    }
+
+    $pg_send_to = (isset($_POST['send_to']) && is_scalar($_POST['send_to']) && ((string) $_POST['send_to'] !== '')) ? pg_safe_redirect_path((string) $_POST['send_to'], '/__none__') : '/__none__';
+    if ($pg_send_to !== '/__none__') {
+        $pg_login_url .= ((strpos($pg_login_url, '?') === false) ? '?' : '&') . 'send_to=' . urlencode($pg_send_to);
+    }
+
+    // Another account signed in on this browser would only be bounced to its
+    // own home by the login screen; a "please sign in" notice left in its
+    // session would then surface on a later screen and mislead that person.
+    if (!pg_session_signed_in()) {
+        $login = new liveform('login');
+        $login->add_notice(lang('Your password has been changed. Please sign in with your new password.'));
+    }
+
+    go($pg_login_url);
+}
+
+// keep this browser signed in under the same user id (with a fresh session id)
+pg_session_sign_in($change_user_id, $username);
 
 // The revoke above took THIS browser's token with it, so a fresh one has to
 // replace it or the session is unbound and the next request signs it out.
