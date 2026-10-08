@@ -36,6 +36,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/server_config.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/qr.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/forms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo.php');
