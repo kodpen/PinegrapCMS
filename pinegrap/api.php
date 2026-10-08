@@ -4107,6 +4107,42 @@ switch ($action) {
                 respond($tp);
                 break;
 
+            // Design settings › "Turn this design into a template": the
+            // design's saved pages, with everything they place, become a
+            // template under Choose a Template
+            // (pg_design_template_from_style()). The card is read from the
+            // new row itself: the template list may already be cached in
+            // this request.
+            case 'template_from_design':
+                $tf = pg_design_template_from_style(
+                    isset($request['style_id']) ? (int)$request['style_id'] : 0,
+                    array(
+                        'name'        => isset($request['name']) && is_scalar($request['name']) ? (string)$request['name'] : '',
+                        'description' => isset($request['description']) && is_scalar($request['description']) ? (string)$request['description'] : '',
+                    ),
+                    $user
+                );
+                if (empty($tf['ok'])) {
+                    respond(array('status' => 'error', 'message' => isset($tf['error']) ? $tf['error'] : lang('An error occurred')));
+                }
+                $tf_tpl = pg_design_template_custom_get($tf['template_id']);
+                respond(array(
+                    'status'   => 'success',
+                    'template' => $tf_tpl ? pg_design_template_summary($tf_tpl) : null,
+                    'message'  => lang(array('string' => 'The template "{var:1}" is ready. You will find it under Choose a Template.', 'vars' => array((string)$tf['template']['name']))),
+                ));
+                break;
+
+            // A template made from a design, deleted from the template
+            // dialog. The shipped ones cannot be (pg_design_template_custom_delete()).
+            case 'template_delete':
+                $tdel = pg_design_template_custom_delete(isset($request['template']) && is_scalar($request['template']) ? (string)$request['template'] : '', $user);
+                if (empty($tdel['ok'])) {
+                    respond(array('status' => 'error', 'message' => $tdel['error']));
+                }
+                respond(array('status' => 'success', 'message' => lang('The template was deleted.')));
+                break;
+
             // Leaving the editor without publishing a template's tabs: the
             // widgets and shared components it made for them go, unless a
             // page places them (pg_design_template_discard()). Sent as a

@@ -466,6 +466,7 @@ function pg_designer_screen_render($ctx)
                 ' . pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_switches, $output_noindex_hint) . '
                 ' . pg_designer_pick_page_modal() . '
                 ' . pg_designer_import_modal() . '
+                ' . pg_designer_make_template_modal() . '
             </form>
         </main>
         ' . get_codemirror_includes() . '
@@ -799,7 +800,10 @@ function pg_designer_start_screen($ctx)
             .sd-design-thumb-cell { width: 96px; }
             .sd-design-thumb { display: block; width: 88px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--bs-border-color); background: var(--bs-body-bg); }
             .sd-design-thumb-blank { display: flex; align-items: center; justify-content: center; width: 88px; aspect-ratio: 8 / 5; border-radius: 6px; border: 1px dashed var(--bs-border-color); color: var(--bs-secondary-color); }
-            .sd-tpl-thumb { border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+            #sdTemplateModal .sd-tpl-dialog { --bs-modal-width: min(96vw, 1600px); }
+            .sd-tpl-thumb { position: relative; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+            .sd-tpl-ver { font-size: .6875rem; line-height: 1.4; white-space: nowrap; }
+            .sd-tpl-thumb .sd-tpl-ver { position: absolute; right: .5rem; bottom: .5rem; padding: .1rem .45rem; border-radius: 999px; background: rgba(var(--bs-body-bg-rgb), .82); color: var(--bs-secondary-color); box-shadow: 0 0 0 1px var(--bs-border-color-translucent); }
             .sd-tpl-title { min-width: 0; }
             .sd-tpl-look .btn { --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .8125rem; }
             .sd-tpl-pal { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
@@ -1020,8 +1024,12 @@ function pg_designer_template_modal($templates, $from_pages)
     $cards = '';
     foreach ((array)$templates as $tpl) {
         $s = pg_design_template_summary($tpl);
+        // Template and framework version, readable at a glance: on the
+        // picture when there is one, under the description otherwise.
+        $fw_version = isset($s['framework_version']) ? (string)$s['framework_version'] : '';
+        $ver_badge  = '<span class="sd-tpl-ver">' . h('v' . $s['version'] . ' · ' . $s['framework_label'] . ($fw_version !== '' ? ' ' . $fw_version : '')) . '</span>';
         $thumb = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
-            ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name'])), $s['thumb']) . '</div>'
+            ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name'])), $s['thumb']) . $ver_badge . '</div>'
             : '';
         // The theme the template is made for: offered on the card, applied
         // to the picker above only when the operator asks. The picker is
@@ -1063,9 +1071,16 @@ function pg_designer_template_modal($templates, $from_pages)
                 . '<br><strong>' . h(lang('Template version')) . '</strong> ' . h($s['version']);
         $info_btn = '<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" aria-label="' . h(lang('Template details')) . '"'
                   . ' title="' . h(implode('<br>', $info)) . '"><i class="bi bi-info-circle" aria-hidden="true"></i></button>';
+        // A template made from a design (builtin false) can be deleted; the
+        // ones the installation ships cannot.
+        $custom = isset($s['builtin']) && !$s['builtin'];
+        $custom_badge = $custom ? '<span class="badge text-bg-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
+        $delete_btn = $custom
+            ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
-            '<div class="col-12 col-md-6">
+            '<div class="col-12 col-md-6 col-xl-4 col-xxl-3">
                 <div class="card h-100 overflow-hidden sd-tpl-card"' . $theme_attrs . '>
                     ' . $thumb . '
                     <div class="card-body d-flex flex-column gap-1 p-3">
@@ -1073,21 +1088,24 @@ function pg_designer_template_modal($templates, $from_pages)
                             <div class="d-flex align-items-center gap-2 flex-grow-1 sd-tpl-title">
                                 <i class="bi ' . h($s['icon']) . ' fs-5 text-primary" aria-hidden="true"></i>
                                 <span class="h6 mb-0 text-truncate">' . h($s['name']) . '</span>
+                                ' . $custom_badge . '
                                 ' . $info_btn . '
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
                                 ' . $theme_apply . '
+                                ' . $delete_btn . '
                                 <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small text-muted text-truncate">' . h($s['description']) . '</span>
+                        ' . ($thumb === '' ? '<div class="text-body-secondary">' . $ver_badge . '</div>' : '') . '
                     </div>
                 </div>
             </div>';
     }
     return '
         <div class="modal fade" id="sdTemplateModal" tabindex="-1" aria-labelledby="sdTemplateModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable sd-tpl-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2 class="modal-title fs-5" id="sdTemplateModalLabel"><i class="bi bi-grid-1x2 me-2" aria-hidden="true"></i>' . lang('Choose a Template') . '</h2>
@@ -1096,11 +1114,49 @@ function pg_designer_template_modal($templates, $from_pages)
                     <div class="modal-body">
                         <p class="small text-muted mb-3">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
                         ' . pg_designer_template_theme_picker() . '
-                        <div class="row g-3">' . $cards . '</div>
+                        <div class="row g-3" id="sd-tpl-cards">' . $cards . '</div>
+                        <p class="small text-muted mb-0' . ($cards !== '' ? ' d-none' : '') . '" id="sd-tpl-empty">' . lang('There are no templates.') . '</p>
                     </div>
                 </div>
             </div>
-        </div>';
+        </div>
+        <script>
+            // Delete a template made from a design. The shipped ones carry no
+            // button. api.php reads a JSON body.
+            document.addEventListener("click", function (e) {
+                var btn = e.target.closest ? e.target.closest(".sd-tpl-delete") : null;
+                if (!btn) return;
+                e.preventDefault();
+                var tpl = btn.dataset.template || "", name = btn.dataset.name || "";
+                var msg = ' . json_encode(lang('Delete the template "{var:1}"? Designs made from it are not affected.')) . '.replace("{var:1}", name);
+                var fail = function (text) {
+                    btn.disabled = false;
+                    if (typeof pgToast === "function") pgToast({ message: text, variant: "danger" });
+                    else alert(text);
+                };
+                var run = function () {
+                    btn.disabled = true;
+                    fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                           body: JSON.stringify({ action: "designer", sub_action: "template_delete", template: tpl, token: (typeof software_token !== "undefined" ? software_token : "") }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || res.status !== "success") { fail((res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . '); return; }
+                        var col = btn.closest(".sd-tpl-card");
+                        col = col ? col.parentNode : null;
+                        if (col && col.parentNode) col.parentNode.removeChild(col);
+                        var cards = document.getElementById("sd-tpl-cards");
+                        var empty = document.getElementById("sd-tpl-empty");
+                        if (cards && empty && !cards.querySelector(".sd-tpl-card")) empty.classList.remove("d-none");
+                        if (typeof pgToast === "function" && res.message) pgToast({ message: res.message, variant: "success" });
+                    })
+                    .catch(function () { fail(' . json_encode(lang('Network error.')) . '); });
+                };
+                if (typeof window.pgConfirm === "function") {
+                    window.pgConfirm({ title: ' . json_encode(lang('Delete template')) . ', message: msg, confirmText: ' . json_encode(lang('Yes, delete')) . ', cancelText: ' . json_encode(lang('No')) . ', variant: "danger" })
+                        .then(function (ok) { if (ok) run(); });
+                } else if (window.confirm(msg)) { run(); }
+            });
+        </script>';
 }
 
 /**
@@ -1279,6 +1335,11 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                                         ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'sd-style-name', 'class'=>'form-control form-control-sm', 'maxlength'=>'100', 'placeholder'=>lang('Defaults to the first page name'))) . '
                                     </div>
                                     ' . pg_designer_settings_framework_rows($ctx) . '
+                                    ' . (pg_designer_is_full($user) ? '<div class="mb-3" id="sd-template-from-design">
+                                        <label class="form-label small">' . lang('Template') . '</label>
+                                        <div><button type="button" class="btn btn-sm btn-outline-secondary" id="sd-make-template"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>' . lang('Turn this design into a template') . '</button></div>
+                                        <small class="form-text">' . lang('Every saved page of the design, with its shared components, widgets, folders and assets, becomes a template under Choose a Template. Save first: the template is made from what is on the server.') . '</small>
+                                    </div>' : '') . '
                                 </div>
 
                                 <!-- Look and colour palette: filled by the editor
@@ -1485,6 +1546,41 @@ function pg_designer_import_modal()
                     <div class="modal-footer" style="border-color:#30363d;">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
                         <button type="button" class="btn btn-sm btn-primary" id="sd-import-run"><span class="bi bi-upload me-1"></span>' . lang('Import') . '</button>
+                    </div>
+                </div>
+            </div>
+        </div>';
+}
+
+/**
+ * "Turn this design into a template" (Settings > Design): the name and the
+ * description the template is listed with. The fields carry no name: the
+ * modal sits inside the design form, and the editor posts them to api.php
+ * (designer/template_from_design) itself.
+ */
+function pg_designer_make_template_modal()
+{
+    return '
+        <div class="modal fade" id="sdMakeTemplateModal" tabindex="-1" aria-labelledby="sdMakeTemplateModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+                    <div class="modal-header" style="border-color:#30363d;">
+                        <h5 class="modal-title fs-6" id="sdMakeTemplateModalLabel"><span class="bi bi-grid-1x2 me-2" aria-hidden="true"></span>' . lang('Turn this design into a template') . '</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small" for="sd-make-template-name">' . lang('Name') . '</label>
+                            <input type="text" class="form-control form-control-sm" id="sd-make-template-name" maxlength="255" autocomplete="off">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small" for="sd-make-template-description">' . lang('Description') . '</label>
+                            <textarea class="form-control form-control-sm" id="sd-make-template-description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-color:#30363d;">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-sm btn-primary" id="sd-make-template-run"><span class="bi bi-grid-1x2 me-1" aria-hidden="true"></span>' . lang('Create template') . '</button>
                     </div>
                 </div>
             </div>

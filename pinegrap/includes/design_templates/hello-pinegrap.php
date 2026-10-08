@@ -120,6 +120,17 @@ $bind = function ($token) {
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
 };
+// The language switcher button: the server draws it for each request and
+// leaves it out while the site has a single language, so it can stay in the
+// header of every site.
+$lang_switcher = function ($class = '', $variant = 'secondary') {
+    return array('type' => 'component', 'props' => array(
+        'componentType' => 'language_switcher',
+        'variant' => $variant, 'outline' => true, 'size' => 'sm',
+        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'cssClass' => $class,
+    ), 'children' => array());
+};
 // The record's Edit button, shown to whoever may edit the submissions of
 // its form; it opens the record in the control panel and comes back.
 $edit_button = function () use ($link) {
@@ -127,11 +138,11 @@ $edit_button = function () use ($link) {
         array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
 };
 
-// The navigation bar every page opens with: a shared component, so a new
-// menu item or another brand is written once. The link to the page being
-// viewed is marked active on the server (smart active state), which is what
-// lets one header serve every page.
-$navbar = function () use ($el, $link, $shop) {
+// The navigation bar every page opens with, the language switcher at its
+// end: a shared component, so a new menu item or another brand is written
+// once. The link to the page being viewed is marked active on the server
+// (smart active state), which is what lets one header serve every page.
+$navbar = function () use ($el, $link, $shop, $lang_switcher) {
     $item = function ($key, $text) use ($el, $link) {
         return $el('li', 'nav-item', lang('Nav Item'), array(
             $link($text, '{{page:' . $key . '}}', 'nav-link'),
@@ -160,6 +171,7 @@ $navbar = function () use ($el, $link, $shop) {
             ))),
             $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
                 $el('ul', 'navbar-nav ms-auto mb-2 mb-lg-0', lang('Nav Menu'), $items),
+                $lang_switcher('d-inline-block ms-lg-2 mb-2 mb-lg-0'),
             ), array('id' => 'hp-nav')),
         )),
     ), array('smartActive' => true));
@@ -1984,7 +1996,7 @@ $widgets = array(
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.1',
+    'version'     => '2.4.2',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

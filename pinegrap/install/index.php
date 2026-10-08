@@ -8512,6 +8512,7 @@ function get_tables() {
 		'designer_presence',
 		'designer_page_lock',
 		'design_proposals',
+		'design_template',
 		'site_languages',
 		'translation_strings',
 		'translations',

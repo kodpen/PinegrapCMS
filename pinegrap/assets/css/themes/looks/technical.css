@@ -1,0 +1,108 @@
+/*!
+ * Pinegrap look: Technical.
+ * Monospace headings over a plain sans-serif, square corners, thin
+ * outlines, crisp small shadows and spaced capitals on the buttons: the
+ * look of documentation and instruments.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    --pg-font-heading: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --pg-font-size: 0.9375rem;
+    --pg-line-height: 1.6;
+    --pg-heading-weight: 600;
+    --pg-heading-tracking: normal;
+    --pg-heading-transform: none;
+    --pg-heading-line-height: 1.25;
+    --pg-display-weight: 600;
+    --pg-lead-weight: 400;
+    --pg-brand-weight: 700;
+    --pg-nav-link-weight: 500;
+    --pg-quote-font: var(--pg-font-heading);
+    --pg-quote-style: normal;
+
+    --pg-link-decoration: underline;
+    --pg-link-underline-offset: 0.2em;
+    --pg-link-thickness: 1px;
+
+    --pg-radius-sm: 0;
+    --pg-radius: 0;
+    --pg-radius-lg: 0;
+    --pg-radius-xl: 0;
+    --pg-radius-xxl: 0;
+    --pg-radius-btn: 0;
+    --pg-radius-btn-sm: 0;
+    --pg-radius-btn-lg: 0;
+    --pg-radius-input: 0;
+    --pg-radius-card: 0;
+    --pg-radius-badge: 0;
+    --pg-radius-menu: 0;
+    --pg-radius-modal: 0;
+    --pg-radius-progress: 0;
+    --pg-radius-check: 0;
+
+    --pg-border-width: 1px;
+    --pg-control-border-width: 1px;
+    --pg-control-border-color: rgba(var(--bs-emphasis-color-rgb), 0.25);
+    --pg-card-border-width: 1px;
+    --pg-card-border-color: var(--bs-border-color);
+    --pg-card-hover-border-color: rgba(var(--bs-primary-rgb), 0.6);
+    --pg-menu-border-color: var(--bs-border-color);
+    --pg-hr-opacity: 0.2;
+
+    --pg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --pg-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    --pg-shadow-lg: 0 10px 26px rgba(0, 0, 0, 0.14);
+    --pg-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --pg-card-shadow-hover: var(--pg-shadow);
+    --pg-card-hover-transform: none;
+    --pg-menu-shadow: var(--pg-shadow);
+    --pg-menu-padding: 0.25rem;
+    --pg-menu-item-radius: 0;
+    --pg-list-shadow: none;
+
+    --pg-btn-weight: 600;
+    --pg-btn-transform: uppercase;
+    --pg-btn-tracking: 0.08em;
+    --pg-btn-font-size: 0.75rem;
+    --pg-btn-py: 0.6875rem;
+    --pg-btn-px: 1.25rem;
+    --pg-btn-shadow: none;
+    --pg-btn-shadow-hover: none;
+    --pg-btn-shadow-active: none;
+    --pg-btn-hover-transform: none;
+    --pg-btn-active-transform: translateY(1px);
+
+    --pg-input-py: 0.5rem;
+    --pg-input-px: 0.75rem;
+    --pg-focus-ring-width: 0.1875rem;
+
+    --pg-card-py: 1.25rem;
+    --pg-card-px: 1.25rem;
+    --pg-card-cap-bg: var(--bs-tertiary-bg);
+
+    --pg-tabs-underline: 2px;
+    --pg-tabs-border-color: var(--bs-border-color);
+    --pg-tabs-active-border-color: transparent;
+    --pg-pagination-joined: 1;
+    --pg-pagination-gap: 0.375rem;
+    --pg-pagination-border-width: 1px;
+
+    --pg-alert-border-width: 1px;
+    --pg-alert-accent: 3px;
+    --pg-alert-accent-color: currentColor;
+
+    --pg-badge-weight: 600;
+    --pg-badge-transform: uppercase;
+    --pg-badge-tracking: 0.06em;
+    --pg-th-weight: 600;
+    --pg-th-transform: uppercase;
+    --pg-th-tracking: 0.06em;
+    --pg-th-size: 0.75rem;
+    --pg-th-bg: rgba(var(--bs-emphasis-color-rgb), 0.03);
+
+    --pg-progress-height: 0.5rem;
+
+    --pg-duration: 0.1s;
+    --pg-ease: linear;
+}

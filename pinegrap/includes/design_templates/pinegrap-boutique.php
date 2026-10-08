@@ -117,6 +117,17 @@ $bind = function ($token) {
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
 };
+// The language switcher button: the server draws it for each request and
+// leaves it out while the site has a single language, so it can stay in the
+// header of every site.
+$lang_switcher = function ($class = '', $variant = 'secondary') {
+    return array('type' => 'component', 'props' => array(
+        'componentType' => 'language_switcher',
+        'variant' => $variant, 'outline' => true, 'size' => 'sm',
+        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'cssClass' => $class,
+    ), 'children' => array());
+};
 $lazy = array('_attrs' => array(array('name' => 'loading', 'value' => 'lazy')));
 // A Bootstrap button component.
 $button = function ($text, $variant, $class = '', $extra = array()) {
@@ -162,17 +173,18 @@ $announcement = function () use ($el, $icon, $span) {
     ));
 };
 
-// The dark bar above the header: the announcement, the cart link and the
-// login region. Those two are system widgets and a shared component of the
-// template cannot place one, so the bar is part of each page.
-$account_bar = function () use ($el, $widget, $shared, $container, $row, $col, $attr) {
+// The dark bar above the header: the announcement, the language switcher,
+// the cart link and the login region. The last two are system widgets and a
+// shared component of the template cannot place one, so the bar is part of
+// each page.
+$account_bar = function () use ($el, $widget, $shared, $container, $row, $col, $attr, $lang_switcher) {
     return $el('div', 'py-2 small bg-body text-body', lang('Account Bar'), array(
         $container(array(
             $row(array(
                 $col(array($shared('announcement')), '', '', '', '12', 'col-md'),
                 $col(array(
                     $el('div', 'd-flex align-items-center justify-content-center gap-3', lang('Account Links'), array(
-                        $widget('cart_link'), $widget('login_region'),
+                        $lang_switcher('', 'light'), $widget('cart_link'), $widget('login_region'),
                     )),
                 ), 'auto'),
             ), '2', '', 'align-items-center'),
@@ -1810,7 +1822,7 @@ $catalog = array(
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

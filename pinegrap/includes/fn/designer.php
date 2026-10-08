@@ -5159,6 +5159,8 @@ function pg_design_frameworks()
             'label'     => 'Bootstrap 5',
             'css'       => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css',
             'js'        => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js',
+            // The version in the two addresses above; it changes with them.
+            'version'   => '5.3.8',
             // The grid, the Bootstrap components and the blocks are written
             // against this version.
             'bootstrap' => true,
@@ -5167,6 +5169,7 @@ function pg_design_frameworks()
             'label'     => lang('Custom'),
             'css'       => '',
             'js'        => '',
+            'version'   => '',
             'bootstrap' => false,
         ),
     );
@@ -5220,16 +5223,29 @@ function pg_style_framework_ready($recheck = false)
 // one left behind anyway (a closed browser) is used again the next time the
 // same template is opened, instead of piling up.
 
-// Every template, keyed by id, in the order they are offered.
+// A template's id, version and framework as the gallery and the editor read
+// them: a version that is not x.y.z reads as 1.0.0, an unknown framework as
+// Bootstrap 5.
+function _pg_tpl_normalize($tpl, $id)
+{
+    $tpl['id']        = $id;
+    $tpl['version']   = (isset($tpl['version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$tpl['version'])) ? (string)$tpl['version'] : '1.0.0';
+    $tpl['framework'] = pg_design_framework_key(isset($tpl['framework']) ? $tpl['framework'] : '');
+    return $tpl;
+}
+
+// Every template, keyed by id, in the order they are offered: the ones that
+// ship with the software (includes/design_templates/), then the ones made
+// from a design (includes/fn/design_templates_custom.php), which share the
+// shape and are opened the same way.
 function pg_design_templates()
 {
     static $templates = null;
     if ($templates !== null) return $templates;
     $templates = array();
     $files = glob(PG_FUNCTIONS_DIR . '/includes/design_templates/*.php');
-    if (!$files) return $templates;
-    sort($files);
-    foreach ($files as $file) {
+    if ($files) sort($files);
+    foreach ($files ? $files : array() as $file) {
         $id = basename($file, '.php');
         if (!preg_match('/^[a-z0-9-]{1,64}$/', $id)) continue;
         $tpl = include $file;
@@ -5237,10 +5253,16 @@ function pg_design_templates()
         // A template made for a feature the site does not use (a store
         // without the shop) is not offered at all.
         if (!_pg_tpl_requirement_met(isset($tpl['requires']) ? $tpl['requires'] : '')) continue;
-        $tpl['id']        = $id;
-        $tpl['version']   = (isset($tpl['version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$tpl['version'])) ? (string)$tpl['version'] : '1.0.0';
-        $tpl['framework'] = pg_design_framework_key(isset($tpl['framework']) ? $tpl['framework'] : '');
-        $templates[$id] = $tpl;
+        $tpl['builtin'] = true;
+        $templates[$id] = _pg_tpl_normalize($tpl, $id);
+    }
+    if (function_exists('pg_design_templates_custom') && pg_design_template_custom_ready()) {
+        foreach (pg_design_templates_custom() as $id => $tpl) {
+            // A shipped template keeps its id.
+            if (isset($templates[$id])) continue;
+            if (!_pg_tpl_requirement_met(isset($tpl['requires']) ? $tpl['requires'] : '')) continue;
+            $templates[$id] = _pg_tpl_normalize($tpl, $id);
+        }
     }
     uasort($templates, function ($a, $b) {
         return (isset($a['order']) ? (int)$a['order'] : 100) - (isset($b['order']) ? (int)$b['order'] : 100);
@@ -5272,6 +5294,11 @@ function pg_design_template_summary($tpl)
         'version'     => $tpl['version'],
         'framework'   => $fw['key'],
         'framework_label' => $fw['label'],
+        'framework_version' => isset($fw['version']) ? (string)$fw['version'] : '',
+        // Shipped with the software (cannot be deleted), or made from a
+        // design (row_id: its design_template row).
+        'builtin'     => !empty($tpl['builtin']),
+        'row_id'      => isset($tpl['row_id']) ? (int)$tpl['row_id'] : 0,
         'description' => isset($tpl['description']) ? (string)$tpl['description'] : '',
         'icon'        => isset($tpl['icon']) ? (string)$tpl['icon'] : 'bi-grid-1x2',
         // The drawing it is shown with (pg_design_thumb_svg()).
@@ -5685,9 +5712,9 @@ function _pg_tpl_assign_ids(&$node, $prefix, &$n)
 // Point every shared_ref that names a template widget (props.templateWidget)
 // or a template shared component (props.templateShared) at the row made for
 // it.
-function _pg_tpl_link_widgets($node, $widgets, $shared = array())
+function _pg_tpl_link_widgets($node, $widgets, $shared = array(), $depth = 0)
 {
-    if (!is_array($node)) return $node;
+    if (!is_array($node) || $depth > 80) return $node;
     if (isset($node['type']) && $node['type'] === 'shared_ref'
         && (isset($node['props']['templateWidget']) || isset($node['props']['templateShared']))) {
         $row = null;
@@ -5705,7 +5732,7 @@ function _pg_tpl_link_widgets($node, $widgets, $shared = array())
         return $node;
     }
     if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as $i => $child) $node['children'][$i] = _pg_tpl_link_widgets($child, $widgets, $shared);
+        foreach ($node['children'] as $i => $child) $node['children'][$i] = _pg_tpl_link_widgets($child, $widgets, $shared, $depth + 1);
     }
     return $node;
 }
@@ -5719,15 +5746,22 @@ function _pg_tpl_reuse_cutoff()
 }
 
 // Whether a shared_components row is placed on any page, the recycle bin
-// included (a page brought back from the bin must find it where it left it).
+// included (a page brought back from the bin must find it where it left it),
+// or inside another shared component or widget (a login region in a header).
 function _pg_tpl_row_in_use($sid)
 {
     $sid = (int)$sid;
-    return (int)db_value(
+    if ((int)db_value(
         "SELECT COUNT(*) FROM page
          LEFT JOIN style ON page.page_style = style.style_id
          WHERE " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . ",%'
-            OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'") > 0;
+            OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'") > 0) {
+        return true;
+    }
+    return (int)db_value(
+        "SELECT COUNT(*) FROM shared_components
+         WHERE id <> '$sid'
+           AND (tree_json LIKE '%\"sharedId\":" . $sid . ",%' OR tree_json LIKE '%\"sharedId\":" . $sid . "}%')") > 0;
 }
 
 // The row for one template shared component (a header, a footer, a band
@@ -5788,7 +5822,7 @@ function pg_design_template_discard($ids)
     }
     if (!$clean) return 0;
     $rows = db_items("SELECT id, category, system_region_config FROM shared_components WHERE id IN (" . implode(',', $clean) . ")");
-    $deleted = 0;
+    $made_rows = array();
     foreach ((array)$rows as $row) {
         $sid = (int)$row['id'];
         $made = (strpos((string)$row['category'], 'template:') === 0) || (strpos((string)$row['category'], 'import:') === 0);
@@ -5796,9 +5830,21 @@ function pg_design_template_discard($ids)
             $cfg = json_decode((string)$row['system_region_config'], true);
             $made = is_array($cfg) && !empty($cfg['template_origin']);
         }
-        if (!$made || _pg_tpl_row_in_use($sid)) continue;
-        db("DELETE FROM shared_components WHERE id = '$sid' LIMIT 1");
-        $deleted++;
+        if ($made) $made_rows[$sid] = $sid;
+    }
+    // A row placed inside another row of the same set (a widget in a
+    // header) is free once that one is gone, so the set is gone over again
+    // until a pass deletes nothing.
+    $deleted = 0;
+    for ($pass = 0; $made_rows && $pass < 8; $pass++) {
+        $before = $deleted;
+        foreach ($made_rows as $sid) {
+            if (_pg_tpl_row_in_use($sid)) continue;
+            db("DELETE FROM shared_components WHERE id = '$sid' LIMIT 1");
+            unset($made_rows[$sid]);
+            $deleted++;
+        }
+        if ($deleted === $before) break;
     }
     return $deleted;
 }
@@ -5921,6 +5967,9 @@ function pg_design_template_prepare($template_id, $user)
     // one page, like the header's login region, after the template).
     $widgets = array();
     $widget_out = array();
+    // The widget and shared component trees as written, for the second pass
+    // below: 'w:<key>' / 's:<key>' => tree.
+    $row_trees = array();
     foreach ($tpl_widgets as $wkey => $w) {
         $page_key  = isset($w['page']) ? (string)$w['page'] : '';
         $page_name = isset($names[$page_key]) ? $names[$page_key] : $tpl['id'];
@@ -5939,8 +5988,8 @@ function pg_design_template_prepare($template_id, $user)
         $row  = _pg_tpl_widget_row($cfg['template_origin'], $wname, $tree, $cfg, (int)$user['id']);
         if (!$row) return array('ok' => false, 'error' => lang('The template\'s widgets could not be created.'));
         $widgets[$wkey] = $row;
-        pg_designer_tree_objects($tree);
-        $widget_out[] = array(
+        if (!$starter) $row_trees['w:' . $wkey] = $tree;
+        $widget_out[$wkey] = array(
             'id'                   => (int)$row['id'],
             'name'                 => $row['name'],
             'tree'                 => $starter ? null : $tree,
@@ -5952,21 +6001,31 @@ function pg_design_template_prepare($template_id, $user)
     // Shared components: the parts several pages carry, one row each, so an
     // edit to the header or the footer is made once for every page. Only
     // the ones some page of this site places are made (the shop's pages are
-    // not there without the shop).
+    // not there without the shop). One placed inside another shared
+    // component or inside a widget (a template made from a design carries
+    // what the design nested) counts as placed too; each tree is walked once.
     $shared = array();
     $shared_out = array();
     $shared_used = array();
-    $collect_shared = function ($node) use (&$collect_shared, &$shared_used) {
-        if (!is_array($node)) return;
+    $tpl_shared = (isset($tpl['shared']) && is_array($tpl['shared'])) ? $tpl['shared'] : array();
+    $collect_shared = function ($node, $depth = 0) use (&$collect_shared, &$shared_used, $tpl_shared) {
+        if (!is_array($node) || $depth > 80) return;
         if (isset($node['type']) && $node['type'] === 'shared_ref' && isset($node['props']['templateShared'])) {
-            $shared_used[(string)$node['props']['templateShared']] = true;
+            $skey = (string)$node['props']['templateShared'];
+            if (isset($shared_used[$skey])) return;
+            $shared_used[$skey] = true;
+            if (isset($tpl_shared[$skey]['tree']) && is_array($tpl_shared[$skey]['tree'])) $collect_shared($tpl_shared[$skey]['tree'], $depth + 1);
+            return;
         }
         if (!empty($node['children']) && is_array($node['children'])) {
-            foreach ($node['children'] as $child) $collect_shared($child);
+            foreach ($node['children'] as $child) $collect_shared($child, $depth + 1);
         }
     };
     foreach ($tpl_pages as $p) $collect_shared($p['tree']);
-    foreach ((isset($tpl['shared']) && is_array($tpl['shared'])) ? $tpl['shared'] : array() as $skey => $sdef) {
+    foreach ($tpl_widgets as $w) {
+        if (isset($w['tree']) && is_array($w['tree'])) $collect_shared($w['tree']);
+    }
+    foreach ($tpl_shared as $skey => $sdef) {
         if (!isset($shared_used[$skey]) || empty($sdef['tree']) || !is_array($sdef['tree'])) continue;
         $stree = _pg_tpl_fill($sdef['tree'], $vars);
         $id_count = 0;
@@ -5975,9 +6034,37 @@ function pg_design_template_prepare($template_id, $user)
         $row = _pg_tpl_shared_row($tpl['id'] . '/' . $skey, $sname !== '' ? $sname : $skey, $stree, (int)$user['id']);
         if (!$row) return array('ok' => false, 'error' => lang('The template\'s shared components could not be created.'));
         $shared[$skey] = $row;
-        pg_designer_tree_objects($stree);
-        $shared_out[] = array('id' => (int)$row['id'], 'name' => $row['name'], 'tree' => $stree);
+        $row_trees['s:' . $skey] = $stree;
+        $shared_out[$skey] = array('id' => (int)$row['id'], 'name' => $row['name'], 'tree' => $stree);
     }
+
+    // Second pass, once every row exists: a widget or shared component
+    // placed inside another one's tree is pointed at its row the way the
+    // pages are below, and the row is written again. The shipped templates
+    // place none there, so for them nothing changes.
+    foreach ($row_trees as $rkey => $rtree) {
+        $linked = _pg_tpl_link_widgets($rtree, $widgets, $shared);
+        if ($linked === $rtree) continue;
+        $rjson = pg_designer_tree_encode($linked);
+        if ($rjson === '') continue;
+        $is_widget = (strpos($rkey, 'w:') === 0);
+        $ekey = substr($rkey, 2);
+        $rid = $is_widget ? (int)$widgets[$ekey]['id'] : (int)$shared[$ekey]['id'];
+        db("UPDATE shared_components SET tree_json = '" . e($rjson) . "', updated_at = '" . time() . "' WHERE id = '$rid' LIMIT 1");
+        if ($is_widget) {
+            $widget_out[$ekey]['tree'] = $linked;
+        } else {
+            $shared_out[$ekey]['tree'] = $linked;
+        }
+    }
+    foreach ($widget_out as $wkey => $wo) {
+        if (is_array($wo['tree'])) pg_designer_tree_objects($widget_out[$wkey]['tree']);
+    }
+    foreach ($shared_out as $skey => $so) {
+        pg_designer_tree_objects($shared_out[$skey]['tree']);
+    }
+    $widget_out = array_values($widget_out);
+    $shared_out = array_values($shared_out);
 
     $pages = array();
     foreach ($tpl_pages as $p) {
@@ -6031,6 +6118,13 @@ function pg_design_template_prepare($template_id, $user)
         $style_name = $base . ' [' . $n . ']';
     }
 
+    // The design's own files, head code and body classes: a template made
+    // from a design carries them, a shipped one has none.
+    $assets = array();
+    foreach (array('css', 'js', 'fonts', 'head', 'body_classes') as $asset_key) {
+        $assets[$asset_key] = (isset($tpl['assets'][$asset_key]) && is_string($tpl['assets'][$asset_key])) ? $tpl['assets'][$asset_key] : '';
+    }
+
     return array(
         'ok'         => true,
         'template'   => array('id' => $tpl['id'], 'name' => $base, 'version' => $tpl['version'], 'framework' => $tpl['framework']),
@@ -6039,6 +6133,7 @@ function pg_design_template_prepare($template_id, $user)
         'widgets'    => $widget_out,
         'shared'     => $shared_out,
         'folders'    => $folders,
+        'assets'     => $assets,
     );
 }
 
@@ -6261,15 +6356,21 @@ function pg_design_template_install($template_id, $user, $opts = array())
         return array('ok' => false, 'error' => implode(' ', $errors));
     }
 
+    // The design's assets: a template made from a design carries its CSS,
+    // JS and fonts, head code and body classes; a shipped template carries
+    // none, and the design starts without them as before.
     $style_data = array(
         'style_id'                          => 0,
         'name'                              => (string)$tp['style_name'],
         'theme_id'                          => 0,
-        'additional_body_classes'           => '',
+        'additional_body_classes'           => (string)$tp['assets']['body_classes'],
         'collection'                        => 'a',
         'social_networking_position'        => (defined('SOCIAL_NETWORKING') && SOCIAL_NETWORKING == TRUE) ? 'bottom_left' : '',
-        'style_head'                        => '',
+        'style_head'                        => (string)$tp['assets']['head'],
         'style_empty_cell_width_percentage' => '',
+        'style_custom_css'                  => (string)$tp['assets']['css'],
+        'style_custom_js'                   => (string)$tp['assets']['js'],
+        'style_custom_fonts'                => (string)$tp['assets']['fonts'],
         'user_id'                           => (int)$user['id'],
         'framework'                         => $tp['template']['framework'],
         'template'                          => $tp['template']['id'],
@@ -6285,6 +6386,11 @@ function pg_design_template_install($template_id, $user, $opts = array())
         $style_id = 0;
         $undo();
         return array('ok' => false, 'error' => lang('The design could not be saved. Please try again.'));
+    }
+    // The inline asset files in the file manager, as the editor's save
+    // writes them.
+    if ($style_data['style_custom_css'] !== '' || $style_data['style_custom_js'] !== '') {
+        pg_designer_sync_asset_files($style_data['style_custom_css'], $style_data['style_custom_js'], (int)$user['id']);
     }
 
     $tab_ids = array();
