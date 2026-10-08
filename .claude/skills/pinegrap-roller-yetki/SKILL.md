@@ -33,7 +33,8 @@ Hiyerarşide **Designer (1), Manager'ın (2) üstündedir.**
   uçları içerik rolüne açık, yazan her şey rol ≤ 1).
 - Yeni `explorer_*` alt eylemini iki yere yaz: `pg_explorer_handle()` switch'i
   **ve** `file_explorer` izin listesi (`includes/panel/explorer.php`); yoksa
-  HTTP 200 + boş gövde.
+  istek `pg_explorer_handle()`'a hiç ulaşmaz, `"Unknown type."` JSON hatası
+  döner.
 
 ## İzin sütunları
 

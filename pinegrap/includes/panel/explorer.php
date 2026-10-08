@@ -850,6 +850,12 @@ function pg_panel_file_explorer($request, $action)
             echo encode_json($response);
             break;
 
-
+        // A type that is not listed above never reaches pg_explorer_handle(),
+        // so it is answered here rather than with an empty 200.
+        default:
+            respond(array(
+                'status' => 'error',
+                'request' => (string) ($request['type'] ?? ''),
+                'message' => 'Unknown type.'));
     }
 }

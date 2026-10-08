@@ -6656,11 +6656,11 @@ ucu) açık kalır; yazan her şey rol ≤ 1'dir.
 'explorer_tree': …`). Listede olmayan tip `pg_explorer_handle()`'a hiç
 ulaşmaz.
 
-Belirti tanıdık olmayan bir belirtidir: istek **HTTP 200** döner ve **gövdesi
-boştur**. Ne hata sayfası, ne JSON, ne de error.log'da bir satır — çünkü
-ortada hata yok, yalnızca hiçbir dalın eşleşmediği bir switch var. İstemci
-tarafında bu `$.ajax`'ın `error` dalına düşer ve ekranda "İstek başarısız
-oldu" yazar, yani yanlış yere baktırır.
+Belirti: istek `{"status":"error","request":"<tip>","message":"Unknown
+type."}` döner (2026.4.8'den beri switch'in `default`'u). Daha önce `default`
+yoktu ve istek **HTTP 200 + boş gövde** dönüyordu; istemci `$.ajax`'ın `error`
+dalına düşüp "İstek başarısız oldu" yazıyordu — eski bir kurulumda bu belirti
+aynı nedeni gösterir.
 
 Adı `explorer_catalog_` ile başlayan tip ayrıca ticaret kapısından geçer
 (rol ≤ 2 ya da `manage_ecommerce`); adlandırma bu yüzden anlamlıdır.
