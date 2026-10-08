@@ -68,6 +68,8 @@ function pg_panel_actions()
         'write_permissions_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_write_permissions_repair', 'exempt' => true, 'token' => true, 'write' => true),
         'purge_cache' => array('file' => 'system.php', 'handler' => 'pg_panel_purge_cache', 'exempt' => true, 'token' => true, 'write' => true),
         'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),
+
+        'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),
     );
 }
 
