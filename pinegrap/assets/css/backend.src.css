@@ -8744,6 +8744,11 @@ body.workspace_settings .ws-shell-main > #button_bar {
   border-left: 1px solid var(--bs-border-color);
   background: var(--bs-body-bg);
 }
+@media (min-width: 768px) {
+  .ws-app.ws-thread-open.ws-thread-wide {
+    grid-template-columns: 17rem minmax(0, 1fr) minmax(32rem, 48rem);
+  }
+}
 .ws-app.ws-thread-open .ws-composer-hint {
   display: none !important;
 }
