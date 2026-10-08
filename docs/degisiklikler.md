@@ -196,10 +196,22 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
    muaf; barkod uçlarının kendi `validate_ecommerce_access`'i rol 2/3'e hiç
    ulaşmıyor. Bilinçli mi, yoksa muafiyet listesi mi eksik? Ürün sahibine
    soru (envanter soru 1). Davranış aynen korundu.
-2. `software_update` `check` adımı cURL yoksa tanımsız `$liveform` üzerinde
-   metot çağırıyor; bugün de ölümcül hata. Taşımada dokunulmadı.
-3. `file_explorer`: bilinmeyen `type` boş 200 döndürüyor; `get_tables` dalı
-   `echo` + `break` ile sona akıyor (exit yok). İkisi de aynen korundu.
+2. **Çözüldü.** `software_update` `check` adımı cURL yoksa tanımsız
+   `$liveform` üzerinde metot çağırıyordu (ölümcül hata). Artık
+   `software_update.php`'nin aynı durum için kullandığı metinle
+   (`lang('Software update check could not communicate … because cURL is not
+   installed …')`, anahtar `tr.json`'da zaten var) JSON hata döner;
+   `software_update.php`'nin betiği hata yanıtının `message`'ını günlük
+   kutusunda gösterip "Retry Update" sunar.
+3. **Çözüldü.** `file_explorer`'ın `switch ($request['type'])`'ına `default`
+   eklendi: listede olmayan tip artık boş 200 yerine `{"status":"error",
+   "request":"<type>","message":"Unknown type."}` döner (`explorer_catalog_*`
+   reddiyle aynı biçim). `pg_explorer_handle()`'ın kendi switch'i zaten
+   sonunda `respond(… 'Invalid request.')` ile bitiyor, ona dokunulmadı.
+   Golden'da yalnız `gate_file_explorer.json`'un `admin_unknown` durumu
+   değişti (beklenen). `get_tables` dalının `echo` + `break`'i (exit yok)
+   aynen kaldı. `pinegrap-roller-yetki` skill'indeki "yoksa HTTP 200 + boş
+   gövde" cümlesi güncellendi.
 4. Sıradaki PR'lar: önce `designer`, `designer_file`, `shared_component`;
    sonra kalan ~60 case ve muafiyet zincirinin tablonun `exempt`
    sütunundan üretilmesi.
@@ -307,10 +319,23 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 **Açık kalan.**
 
-1. Widget 6'nın "en çok satan ürünler" sorgusu `ORDER BY total_qty DESC
-   LIMIT 5` eşitlik bozucu olmadan sıralıyor: eşit adetlerde her çağrıda
-   farklı ürün gelebiliyor (sandbox'ta görüldü). Gövde aynen taşındığı için
-   dokunulmadı; ikincil sıralama eklenip eklenmeyeceği ürün sahibine soru.
+1. **Çözüldü.** Widget 6'nın "en çok satan ürünler" sorgusu eşitlik
+   bozucusuz sıralıyordu (`ORDER BY total_qty DESC LIMIT 5`; eşit adetlerde
+   her çağrıda farklı ürün). `dbcea85` ile `p.id ASC` eklendi. Karar (ürün
+   sahibi) sonra genişletildi: **sayaç/toplam ve gün çözünürlüklü tarih**
+   üzerinden `LIMIT`'le kesilen sıralamalar sorgunun kendi gruplama
+   anahtarıyla ikincil sıralama aldı — `pg_visitor_top_content()`
+   (`includes/fn/seo.php`, widget 5 ve 6: `page_id, item_type, item_id,
+   page_name`), widget 22 (`source, category`), widget 23 (üç sorgu:
+   `label` / `label, area`), widget 18 (iki sorgu: `files.id`), widget 15
+   (`offers.id`; `usort()` karşılaştırıcısı da eşit tarihte `id`'ye bakar,
+   PHP 8 öncesi sıralama kararsız), widget 16 (`currencies.id DESC`).
+   **Saniye çözünürlüklü zaman damgası** listeleri (widget 4, 7, 8, 10–13,
+   17, 19, 25) bilinçli olarak bırakıldı: aynı saniyedeki iki kaydın sırası
+   kullanıcı için anlamsız, 20+ sorguya dokunmaya değmez. Golden: widget
+   yanıtları boşluk dışında aynı; çıkan iki fark (widget 5'te saat dilimi
+   ilerlemesi, widget 2'de klasör sayısı) sıralamayla ilgisiz, sandbox
+   verisinin değişmesi.
 2. Widget 14'ün başarı dalı (`SUBSCRIPTION_ID` ile Kodpen API çağrısı)
    sandbox'ta kapsanmadı.
 3. Faz 3 (panel eylem tablosu) ayrı PR.

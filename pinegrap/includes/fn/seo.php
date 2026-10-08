@@ -2024,7 +2024,7 @@ function pg_visitor_top_content($start_date, $end_date, $limit = 5)
          FROM visitor_content_hourly
          WHERE stat_date >= '" . e($start_date) . "' AND stat_date <= '" . e($end_date) . "'
          GROUP BY page_id, item_type, item_id, page_name
-         ORDER BY views DESC
+         ORDER BY views DESC, page_id ASC, item_type ASC, item_id ASC, page_name ASC
          LIMIT " . $limit
     );
 

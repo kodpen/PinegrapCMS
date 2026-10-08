@@ -145,7 +145,7 @@ function pg_dashboard_widget_23($request, $user)
                AND area = 'frontend'
              GROUP BY label
              HAVING SUM(hits) >= 3
-             ORDER BY floor_ms DESC
+             ORDER BY floor_ms DESC, label ASC
              LIMIT 1"
         ));
 
@@ -159,7 +159,7 @@ function pg_dashboard_widget_23($request, $user)
                  WHERE hour_start >= " . (int) $pf_day_ago . "
                    AND area = 'frontend'
                  GROUP BY label
-                 ORDER BY floor_ms DESC
+                 ORDER BY floor_ms DESC, label ASC
                  LIMIT 1"
             ));
         }
@@ -303,7 +303,7 @@ function pg_dashboard_widget_23($request, $user)
              WHERE hour_start >= " . (int) $pf_day_ago . "
                AND area = 'frontend'
              GROUP BY label, area
-             ORDER BY avg_ms DESC
+             ORDER BY avg_ms DESC, label ASC, area ASC
              LIMIT 5"
         );
 

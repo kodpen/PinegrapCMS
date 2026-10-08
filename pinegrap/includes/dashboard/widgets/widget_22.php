@@ -104,7 +104,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
              FROM waf_log
              WHERE log_timestamp >= " . (int) $td_day_ago . "
              GROUP BY source, category
-             ORDER BY hits DESC
+             ORDER BY hits DESC, source ASC, category ASC
              LIMIT 6"
         );
 
