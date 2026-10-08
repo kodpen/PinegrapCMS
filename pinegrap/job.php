@@ -465,8 +465,14 @@ if (
 // the very last thing this script does. Several of those scripts call exit()
 // from inside their own control flow, which ends this process too - harmless
 // here, because there is nothing left to run and the completion above is
-// already recorded. Nothing happens at all until an operator selects jobs on
-// the settings screen.
+// already recorded. That is also why a tick never includes a second job.
+// Nothing happens at all until an operator selects jobs on the settings
+// screen.
+//
+// The lock is the chosen job's own, and jobs share two lanes: while a heavy
+// job such as the backup holds its lane, the next ticks still hand out the
+// light jobs, and the same job is never started twice. See
+// pg_cron_dispatch_next().
 //
 // The include is at global scope on purpose. Done from inside a function, the
 // job's top-level code would run in that function's local scope, and every
@@ -479,8 +485,10 @@ $dispatch_script = pg_cron_dispatch_next();
 
 if ($dispatch_script !== '') {
 
-    // Registered before the include so the lock is released even when the job
-    // exits from the middle of its own flow: shutdown handlers still run.
+    // Registered before the include so the job's lock is released even when
+    // the job exits from the middle of its own flow: shutdown handlers still
+    // run. Only a process killed outright skips it, and the lock then expires
+    // on its own.
     register_shutdown_function('pg_cron_dispatch_finished');
 
     // Each of these scripts is written to be a whole request, and some print an

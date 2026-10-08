@@ -72,6 +72,59 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Cron dağıtıcısı: iş başına kilit, iki şerit (light / heavy); şema 8.32 `cron_runs.locked_until` (2026-10-08)
+
+**Sorun.** `pg_cron_dispatch_next()` her tıkta bir iş seçip
+`config.job_dispatch_lock_until` ile **site geneli** kilit alıyordu
+(varsayılan 3600 sn). `auto_backup` (`max_execution_time 0`) sürerken
+kampanya (300 sn), `api_sync_job`, `translation_job`,
+`workspace_recurring_job` ve günlük ERP işleri yedeğin sonunu bekliyordu.
+
+**Karar.**
+- Tık başına yine **tek** iş. Dağıtılan betikler kendi akışlarının ortasında
+  `exit()` çağırabiliyor ve her biri tam bir istek gibi yazılmış; aynı
+  süreçte ikinci bir `include` güvenli değil. Paralellik tıklardan gelir:
+  tık N yedeği başlatır, tık N+1 yedek sürerken bir hafif işi seçer.
+- Kilit **iş başına**: `cron_runs.locked_until` (8.32). Sahiplenme tek
+  ifade: `INSERT … VALUES (name, 0, now+lock) ON DUPLICATE KEY UPDATE
+  locked_until = IF(locked_until < now, VALUES(locked_until), locked_until)`;
+  `mysqli_affected_rows` 1 (insert) / 2 (update) → sahip, 0 → başka tık
+  tutuyor. Hiç koşmamış işin satırı yoktur, SELECT-sonra-INSERT yarış
+  taşırdı. Yeni satırın `last_run_at = 0` değeri "hiç çalışmadı" anlamını
+  korur (Sistem Durumu `< 1` → Never; API meta `0` → stale).
+- **Şerit** = eşzamanlılık sınıfı, katalogda (`pg_cron_jobs()` `'lane'`):
+  `heavy` = `auto_backup`, `seo_score_job`, `seo_analyze_job`,
+  `update_search_index`; geri kalanı `light` (eksik anahtar `light`
+  sayılır). Bir şeritte aynı anda en fazla bir iş kilitli olur. İki şerit de
+  aday verirse en uzun bekleyen seçilir, eşitlikte `light`.
+- `lane` için **kolon eklenmedi**: şerit katalogun özelliğidir, DB'de onu
+  okuyan hiçbir kod yok; okuyucusu olmayan kolon tutulmaz.
+- `auto_backup` için kilit `'lock' => 14400` (yedek bir saati aşabilir;
+  kilit yalnız öldürülen süreç için emniyet ağıdır, koşudan kısa kilit aynı
+  işi ikinci kez başlatırdı). Diğerleri `JOB_DISPATCH_LOCK_SECONDS`
+  (varsayılan 3600, en az 60).
+- Seçim saf fonksiyonda: `pg_cron_pick($jobs, $runs, $now, $allowed)`
+  (`tests/cron_test.php`). Şerit kilidi `$allowed`'dan bağımsız bakılır:
+  koşarken kapatılan iş hâlâ koşuyordur ve şeridini tutar.
+- Şerit denetimi bir okumadır, iş sahiplenmesi atomik. Aynı anda okuyan iki
+  tık aynı şeritten iki ayrı işi sahiplenebilirdi; sahiplenen tık şerit
+  arkadaşlarından birinin kilidini görürse kendi kilidini geri bırakır
+  (ikisi de bırakabilir — o tıkta hiçbir şey koşmaz, güvenli yön).
+- `config.job_dispatch_lock_until` **kaldırılmadı** (yayınlanmış şema):
+  kolon yokken (`pg_cron_lock_ready()` false) dağıtıcı eski gövdeyi
+  (`pg_cron_dispatch_next_legacy()`) aynen çalıştırır, `pg_cron_dispatch_finished()`
+  eski kilidi bırakır.
+
+**Ödün.** Sitede aynı anda iki dağıtılmış iş koşabilir (bir hafif, bir ağır);
+sunucu yükü yedek sırasında artar. Ağır işlerin kendi aralarındaki sırası
+değişmedi.
+
+**Açık kalan.** Ağır kilit süresi (14400) ve şerit listesi ürün sahibinin
+onayında. Çalışma zamanı doğrulaması (iki paralel `php job.php`, kilit
+dolunca geri alma) entegrasyon sandbox'ında yapılacak.
+
+---
+
 ## 2026.4.8 — Üç yeni tasarım şablonu (Playground, Boutique, Bookshop); şablon kartları kısaldı; şablon ağaçlarında _label (2026-10-08)
 
 **Sorun.** "Şablondan Seç" iki şablon sunuyordu (başlangıç sitesi ve

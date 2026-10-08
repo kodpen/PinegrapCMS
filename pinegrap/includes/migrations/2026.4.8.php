@@ -28,6 +28,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_channel_shares();          // 8.82
 	upgrade_2026_4_8_threads();                 // 8.83
 	upgrade_2026_4_8_bulk_changes();            // 8.84
+	upgrade_2026_4_8_cron_locks(); // 8.32
 
 }
 
@@ -151,5 +152,24 @@ function upgrade_2026_4_8_bulk_changes() {
 	install_add_column('config', 'ws_ai_bulk_delete', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('Workspace: Pinegrap AI and Claude can propose one change for many records at once; deleting in bulk stays off until an administrator allows it.');
+
+}
+
+// A dispatch lock per scheduled job (2026.4.8, 8.32; includes/fn/cron.php).
+// The general job locked the whole rotation with config.job_dispatch_lock_until,
+// so a backup running for an hour held up campaigns, synchronisation and every
+// daily job behind it. cron_runs.locked_until is now each job's own lock, and
+// the catalogue puts every job in a lane, light or heavy, with at most one
+// locked job per lane: a running backup no longer stops the short jobs, two
+// heavy jobs never overlap and no job runs twice.
+//
+// The lane lives in pg_cron_jobs(), not in a column: nothing would read it
+// from the table. config.job_dispatch_lock_until stays, a released schema, and
+// is what the dispatcher falls back to until this column is there.
+function upgrade_2026_4_8_cron_locks() {
+
+	install_add_column('cron_runs', 'locked_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Scheduled jobs: each job run with the general job takes a lock of its own, so a long backup no longer holds up campaigns and the other short jobs.');
 
 }
