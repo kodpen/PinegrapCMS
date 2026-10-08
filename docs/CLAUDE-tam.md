@@ -268,6 +268,7 @@ lazy yükleme yok — 313 giriş noktasının hiçbirine dokunulmadı.
 | `output` | `output_header/footer/menu/toolbar`, `pg_page_shell`, lisans, varlık sürümleme |
 | `system_status` | sistem durumu kartı ve denetimleri, önbellek temizleme, dosya bütünlüğü, yazma izinleri, changelog okuma, tablo onarımı |
 | `image` · `parasut` · `update` | görsel işleme · Paraşüt · güncelleme kanalı, cURL TLS, arşiv açma |
+| `errors` | merkezî hata kaydı (2026.4.8): `pg_error_install()` `init.php`'de kurulur; istisna/ölümcül/uyarı `data/temp/php_errors.log`'a JSON satır olarak yazılır, `view_log.php` gösterir. İşleyici yalnız kaydeder (`return false`), DB'ye dokunmaz; geçici `set_error_handler` kuran kod `restore_error_handler()` ile geri bırakır, yoksa kayıt o istekte susar |
 
 Kurallar:
 

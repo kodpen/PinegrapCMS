@@ -215,6 +215,17 @@
   [YENİ] Karşılama satırı yarı saydam bir kartta, solunda saatin
          renginde ince bir şeritle gösterilir.
 
+  [YENİ] Yakalanmamış hatalar, sayfayı yarıda kesen ölümcül PHP
+         hataları ve PHP uyarıları artık yazılımın kendi hata
+         günlüğüne yazılır (data/temp/php_errors.log): hata, dosya
+         ve satır, istek adresi (parola ve anahtar değerleri
+         gizlenerek), kullanıcı ve kısa çağrı yığını. Günlük 5
+         MB'ta döner, en fazla üç dosya tutulur. Site Günlükleri
+         ekranındaki "Hata Günlüklerini Göster" bu günlüğü ve
+         php.ini'nin gösterdiği hata dosyasını (yalnız okunur,
+         silinmez) da listeler. Hata ayıklama açıkken PHP'nin
+         kullanımdan kalkacak özellik uyarıları da kaydedilir.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
