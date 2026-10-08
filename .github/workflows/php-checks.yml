@@ -1,5 +1,7 @@
-# Static checks that gate every pull request: PHP syntax across the product
-# tree and translation-key consistency. Neither needs a database.
+# Static checks and unit tests that gate every pull request: PHP syntax across
+# the product tree, translation-key consistency, designer binding tokens, the
+# external API schema, the unit tests under tests/ and a JavaScript syntax
+# check of the large panel scripts. None of them needs a database.
 name: PHP checks
 
 on:
@@ -12,7 +14,7 @@ permissions:
 
 jobs:
   checks:
-    name: lint and check_lang (PHP 8.3)
+    name: lint, consistency checks, unit tests and JS syntax (PHP 8.3, Node 20)
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -31,3 +33,23 @@ jobs:
 
       - name: Translation keys (lang / _sdT against tr.json)
         run: php tools/check_lang.php
+
+      - name: Designer bindings (dropdown tokens against renderer tokens)
+        run: php tools/check_bindings.php
+
+      - name: External API schema (endpoint fields against the schema)
+        run: php tools/check_api_schema.php
+
+      - name: Unit tests (tests/*_test.php)
+        run: php tools/test.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: JavaScript syntax (node --check)
+        run: |
+          node --check pinegrap/assets/js/style_designer.js
+          node --check pinegrap/assets/js/workspace.js
+          node --check pinegrap/assets/js/backend.src.js
