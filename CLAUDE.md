@@ -63,11 +63,12 @@ zaten verilmiş kararlar listeleniyor.
 - Dil dosyası `includes/local/tr.json`, yapılandırma `data/config.php` (çalışma
   anında `CONFIG_FILE_PATH`). Gerçek `config.php` asla commit'lenmez; depodaki
   boş taslaktır, örnek değerler `data/config(default).php` içindedir.
-- **`CLAUDE.md`, `.claude/`, `docs/` ve `dev/` depoya girmez** (`.gitignore`);
-  geliştirme makinasında dururlar ve oradaki klasör bağlıyken okunabilirler.
-  Bu dosyaya ve skill'lere yazılmış `docs/...` atıfları o kopyayı gösterir.
-  Depoyu yalnız klonlayarak çalışan bir oturumda bu dosyalar **yoktur**:
-  yokluklarını sorun sanma, içeriklerini tahmin etme — gereken parçayı iste.
+- **`CLAUDE.md`, `.claude/` ve `docs/` yalnız `development` dalında izlenir**,
+  `main`'e ve sürümlere girmez. `dev/` ile `.gitignore`'da adı geçen iç notlar
+  (`docs/_software_create_hash.php`, `docs/_plan_barindirma.md` gibi) hiçbir
+  dalda yoktur; yalnız geliştirme makinasında durur. Klonlanmış bir oturumda
+  bunlar **yoktur**: yokluklarını sorun sanma, içeriklerini tahmin etme —
+  gereken parçayı iste.
 
 ---
 
@@ -103,13 +104,16 @@ olan oturum hazırlar.
 Ortak dosyalarda yalnız **ekleme** yap, tam yeniden yazma ve kendi alanının
 bölümüne yaz:
 
-- **Depodakiler** (`includes/local/tr.json`, `pinegrap/changelog.txt`, açık
-  sürümün migration dosyası, `init.php`): yazmadan hemen önce
-  `git fetch && git merge origin/main` çalıştır ki en güncel kopyayı düzenle;
-  push'tan hemen önce `main` üzerine rebase et.
-- **Depo dışındakiler** (`docs/CLAUDE-tam.md`, `docs/degisiklikler.md`): git
-  akışı yoktur, yalnız ekleme kuralı geçerlidir.
-  github üzerinden geliştirmeler `main`'e değil `development`'a girer.
+- **Ortak dosyalar** (`includes/local/tr.json`, `pinegrap/changelog.txt`, açık
+  sürümün migration dosyası, `init.php`, `docs/CLAUDE-tam.md`,
+  `docs/degisiklikler.md`): yazmadan hemen önce
+  `git fetch origin development && git merge origin/development` çalıştır ki
+  en güncel kopyayı düzenle; push'tan hemen önce `development` üzerine rebase et.
+
+**Dallar:** iş dalı `development`'tan açılır, PR'ın tabanı `development`'tır.
+`main` yalnız yayınlanmış sürümleri taşır; ajan `main`'e PR açmaz, `main`'i
+merge ya da rebase etmez — sürüm PR'ını depo sahibi açar.
+
 ---
 
 ## Değişmez kurallar
@@ -218,8 +222,8 @@ doğrulayamadığını** yaz (çalışan örnek kurulmadıysa bunu açıkça bel
 
 ## Ayrıntı nerede
 
-`docs/` ve `dev/` depoda değildir (yukarı bak); bağlı geliştirme klasöründe
-okunurlar, klonlanmış depoda bulunmazlar.
+`docs/` `development` dalında izlenir; `dev/` hiçbir dalda yoktur, yalnız
+bağlı geliştirme klasöründe okunur (yukarı bak).
 
 | Konu | Dosya |
 |---|---|
@@ -233,6 +237,6 @@ okunurlar, klonlanmış depoda bulunmazlar.
 Önemli değişiklikler `docs/degisiklikler.md`'ye, proje bağlamını etkileyen
 değişiklikler `docs/CLAUDE-tam.md`'ye yazılır; kalıcı bir kural ortaya çıktıysa
 ilgili skill'e **de** işlenir — skill kısa kalır, vaka anlatısı arşive gider.
-Konu planları (`docs/_plan_*.md`) ve `dev/` ağacı bilerek depo dışındadır.
+`dev/` ağacı ve `.gitignore`'daki iç notlar bilerek depo dışındadır.
 Bir kararın gerekçesi gerçekten gerekiyorsa PR açıklamasına soru olarak yaz,
 uydurma.

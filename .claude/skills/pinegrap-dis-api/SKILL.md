@@ -110,9 +110,9 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   önce runner listesine bak.
 - Ortak dosyalarda **yalnız ekleme** yap, tam yeniden yazma (`tr.json`,
   `changelog.txt`, açık sürümün migration dosyası, `init.php`,
-  `docs/CLAUDE-tam.md`, `docs/degisiklikler.md`). Depodakilerde yazmadan önce
-  `git fetch && git merge origin/main`, push'tan önce rebase — `docs/` depoda
-  değildir, orada yalnız ekleme kuralı geçerlidir.
+  `docs/CLAUDE-tam.md`, `docs/degisiklikler.md`). Yazmadan önce
+  `git fetch origin development && git merge origin/development`, push'tan önce
+  `development` üzerine rebase; PR'ın tabanı `development`'tır, `main` değil.
 
 ## Pazaryeri
 
