@@ -363,6 +363,13 @@ function ws_claude_channel_allowed($channel)
         return false;
     }
 
+    // A discussion follows its channel (threads.php).
+    if (($channel['kind'] ?? '') === 'thread') {
+        $parent = ws_thread_parent_channel($channel);
+
+        return $parent ? ws_claude_channel_allowed($parent) : false;
+    }
+
     $access = (int) ($channel['claude_access'] ?? 0);
 
     if ($access === 1) {

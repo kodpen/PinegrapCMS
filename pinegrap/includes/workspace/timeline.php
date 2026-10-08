@@ -53,6 +53,7 @@ function ws_timeline_channels($viewer)
     foreach ((array) db_items("SELECT c.id, c.name, c.kind, c.department_id, c.contact_id, c.archived_at, m.user_id AS my_member
         FROM ws_channels c
         LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
+        WHERE c.kind <> 'thread'
         ORDER BY (c.archived_at > 0), c.name") as $row) {
 
         $readable = ($row['kind'] === 'public')

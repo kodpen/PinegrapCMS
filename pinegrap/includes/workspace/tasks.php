@@ -389,6 +389,12 @@ function ws_task_validate($viewer, $data, $current = null)
             if (!ws_can_post_channel($viewer, $channel)) {
                 return $fail(lang('You cannot post in that channel.'), 'channel_id');
             }
+
+            // Opened in a discussion, a task is a task of its channel
+            // (threads.php): it stays when the discussion is gone.
+            if (function_exists('ws_thread_parent_id') && (ws_thread_parent_id($channel) > 0)) {
+                $channel_id = ws_thread_parent_id($channel);
+            }
         }
 
         $clean['channel_id'] = $channel_id;

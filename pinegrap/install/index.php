@@ -8467,6 +8467,8 @@ function get_tables() {
 		'ws_blocks',
 		'ws_guests',
 		'ws_guest_sessions',
+		'ws_threads',
+		'ws_thread_copies',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',

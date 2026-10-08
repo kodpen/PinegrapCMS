@@ -188,6 +188,11 @@ function ws_handle_action($action, $request)
                 ws_task_reminders_run();
             }
 
+            // Concluded discussions whose time is up (threads.php).
+            if (function_exists('ws_threads_purge')) {
+                ws_threads_purge();
+            }
+
             return ws_action_ok();
 
         // Scheduled actions (includes/workspace/scheduled.php): staff only.
@@ -660,6 +665,7 @@ function ws_handle_action($action, $request)
                 'departments' => array_values(ws_departments(true)),
                 'channels'    => ws_channels_for($viewer),
                 'groups'      => ws_groups_for($viewer),
+                'threads'     => ws_threads_for($viewer),
                 'inbox'       => ws_inbox_unread_count($viewer['id']),
                 'statuses'    => ws_task_statuses(),
                 'priorities'  => ws_task_priorities(),
@@ -677,6 +683,7 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array(
                 'channels' => ws_channels_for($viewer),
                 'groups'   => ws_groups_for($viewer),
+                'threads'  => ws_threads_for($viewer),
                 'archived' => !empty($request['archived']) ? ws_channels_for($viewer, true) : array(),
             ));
 
@@ -696,6 +703,16 @@ function ws_handle_action($action, $request)
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
+            }
+
+            // A discussion opens beside its channel (threads.php): asked for
+            // as a channel - a link, a search, a mention - it says where.
+            if (ws_channel_is_thread($channel) && empty($request['as_thread'])) {
+                return ws_action_ok(array('thread_of' => array(
+                    'channel_id' => ws_thread_parent_id($channel),
+                    'thread_id'  => (int) $channel['id'],
+                    'message_id' => (int) ($request['message_id'] ?? 0),
+                )));
             }
 
             ws_polls_autoclose($channel['id']);
@@ -829,9 +846,14 @@ function ws_handle_action($action, $request)
                 }
             }
 
-            $out['channels'] = ws_channels_for($viewer);
-            $out['groups'] = ws_groups_for($viewer);
-            $out['inbox'] = ws_inbox_unread_count($viewer['id']);
+            // The discussion panel beside a channel leaves the sidebar to the
+            // channel screen's own look.
+            if (empty($request['panel'])) {
+                $out['channels'] = ws_channels_for($viewer);
+                $out['groups'] = ws_groups_for($viewer);
+                $out['threads'] = ws_threads_for($viewer);
+                $out['inbox'] = ws_inbox_unread_count($viewer['id']);
+            }
 
             // A scheduled action is due: the screen starts a run (ws_tick)
             // rather than this answer waiting for an e-mail to go out.
@@ -919,6 +941,11 @@ function ws_handle_action($action, $request)
 
             if ($result['ok'] && function_exists('ws_ai_after_send')) {
                 $ai = ws_ai_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
+            }
+
+            // Asked in a discussion: its channel's message says so.
+            if (($claude || $ai) && ws_channel_is_thread($channel)) {
+                ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
             }
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $claude, 'ai' => $ai)) : ws_action_error($result['error']);
@@ -1153,6 +1180,55 @@ function ws_handle_action($action, $request)
                 : ws_guest_end($viewer, $channel);
 
             return $result['ok'] ? ws_action_ok(array('url' => (string) ($result['url'] ?? ''))) : ws_action_error($result['error']);
+
+        // Discussions (threads.php): started from a message, joined by staff
+        // who read the channel, concluded, renamed, left.
+        case 'ws_thread_start':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_thread_start($viewer, $message, (string) ($request['title'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('thread_id' => $result['thread_id'], 'existing' => $result['existing'])) : ws_action_error($result['error']);
+
+        case 'ws_thread_join':
+        case 'ws_thread_close':
+        case 'ws_thread_rename':
+        case 'ws_thread_leave':
+            $channel = ws_channel((int) ($request['thread_id'] ?? 0));
+
+            if (!ws_channel_is_thread($channel) || !ws_can_read_channel($viewer, ws_thread_parent_channel($channel))) {
+                return ws_action_error(lang('That discussion could not be found.'));
+            }
+
+            if ($action === 'ws_thread_join') {
+                $result = ws_thread_join($viewer, $channel);
+            } elseif ($action === 'ws_thread_close') {
+                $result = ws_thread_close($viewer, $channel);
+            } elseif ($action === 'ws_thread_rename') {
+                $result = ws_thread_rename($viewer, $channel, (string) ($request['title'] ?? ''));
+            } else {
+                $result = ws_channel_leave($viewer, $channel);
+                $thread = ws_thread($channel['id']);
+
+                // Nobody left in it: concluded, as if the last one had.
+                if ($result['ok'] && $thread && ((int) $thread['closed_at'] === 0)
+                    && ((int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'") === 0)) {
+                    db("UPDATE ws_threads SET closed_at = '" . time() . "', closed_by = '" . (int) $viewer['id'] . "',
+                            purge_at = '" . strtotime('+' . WS_THREAD_KEEP_DAYS . ' days') . "'
+                        WHERE channel_id = '" . (int) $channel['id'] . "'");
+                    db("UPDATE ws_channels SET archived_at = '" . time() . "' WHERE id = '" . (int) $channel['id'] . "'");
+                }
+
+                if ($result['ok'] && $thread) {
+                    ws_message_touch((int) $thread['message_id']);
+                }
+            }
+
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // A channel of the team shared with a guest (guests.php): shared, a
         // guest given a new link, a share ended.
@@ -1827,7 +1903,9 @@ function ws_handle_action($action, $request)
                 $parent_id = (($list_id > 0) && ((int) db_value("SELECT channel_id FROM ws_messages WHERE id = '" . $list_id . "'") === $channel_id)) ? $list_id : 0;
                 $sent = ws_message_send($viewer, $channel, '', array('kind' => 'task', 'task_id' => $result['task_id'], 'parent_id' => $parent_id));
 
-                if ($sent['ok']) {
+                // In a discussion the task's message is the channel's copy
+                // of the card (threads.php), which outlives the discussion.
+                if ($sent['ok'] && !ws_channel_is_thread($channel)) {
                     db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
                 }
             }

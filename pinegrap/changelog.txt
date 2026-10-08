@@ -266,6 +266,33 @@
 
   [ŞEMA] ws_guests.access sütunu (okuma / okuma ve yazma).
 
+  [YENİ] Tartışmalar: kanaldaki bir mesaj (mesaj, karar, not ya da
+         görev kartı) sağ tık menüsündeki "Tartışma başlat" ile
+         kanalın yanında kendi odasında konuşulur; kanalın sohbeti
+         uzayıp önemli mesajları ezmez, bildirim yalnız tartışmaya
+         katılanlara gider. Tartışmayı başlatan ve mesajı yazan
+         içindedir; kanalı okuyabilen yöneticiler (rol 0-2) "Katıl"
+         ile girer, katılanlar kanalı okuyan başka kişileri ekler.
+         Kanalda mesajın altında tartışmanın sürdüğünü, kimlerin
+         içinde olduğunu ve kaç mesaj yazıldığını gösteren bir şerit
+         durur; içindekiler şeride tıklayınca tartışmaya geçer.
+         Tartışma sağda bir panelde açılır, kanalda ve tartışmada
+         aynı anda yazılır; telefonda panel kanalı kaplar ve
+         kapatılınca kanala dönülür. Sol menüde "Tartışmalar"
+         bölümü kişinin içinde olduğu açık tartışmaları okunmamış
+         sayılarıyla listeler (hiç yoksa görünmez).
+
+         Tartışmada karar ya da not olarak işaretlenen mesaj ve
+         açılan görev kanala da işlenir ("... tartışmasından"
+         etiketiyle); görev kanalın görevidir. Kanalda asistanlara
+         sorulabiliyorsa tartışmada da sorulur; sorulduğunda
+         kanaldaki şerit bunu not eder. Tartışmadaki herkes
+         tartışmayı sonuçlandırabilir: 30 gün salt okunur saklanır,
+         sonra silinir; kararlar ve görevler kanalda kalır.
+
+  [ŞEMA] ws_channels.kind alanına 'thread' değeri; ws_threads ve
+         ws_thread_copies tabloları.
+
 
 
   2026.4.7

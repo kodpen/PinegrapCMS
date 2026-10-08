@@ -45,7 +45,7 @@ function ws_channels_for($viewer, $archived = false)
         FROM ws_channels c
         LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . $me . "'
         WHERE c.archived_at " . ($archived ? '> 0' : '= 0') . "
-        AND (c.kind = 'public' OR m.user_id IS NOT NULL)
+        AND (c.kind = 'public' OR m.user_id IS NOT NULL) AND c.kind <> 'thread'
         ORDER BY " . ($ordered ? "(m.pinned = 1) DESC, (COALESCE(m.sort, 0) = 0), m.sort, " : '') . "c.name");
 
     // Unread messages and unread mentions for every joined channel, two
@@ -207,6 +207,14 @@ function ws_channel_detail($viewer, $channel)
 
     $brief['tab_counts'] = ws_channel_tab_counts($channel);
 
+    // A discussion (threads.php): what it is about, and no pin of its own.
+    if (ws_channel_is_thread($channel)) {
+        $thread = ws_thread($channel['id']);
+        $brief['thread'] = $thread ? ws_thread_present($viewer, $thread, $channel) : null;
+        $brief['can_pin'] = false;
+        $brief['can_share'] = false;
+    }
+
     // The reader's own messages waiting to be posted here
     // (scheduled_messages.php).
     $brief['scheduled_mine'] = (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer))
@@ -263,8 +271,9 @@ function ws_channel_clean_name($name)
  */
 function ws_channel_name_taken($name, $except_id = 0)
 {
+    // A discussion is named after what it talks over, not as a place to look.
     return (int) db_value("SELECT COUNT(*) FROM ws_channels
-        WHERE archived_at = 0 AND LOWER(name) = LOWER('" . e($name) . "') AND id <> '" . (int) $except_id . "'") > 0;
+        WHERE archived_at = 0 AND kind <> 'thread' AND LOWER(name) = LOWER('" . e($name) . "') AND id <> '" . (int) $except_id . "'") > 0;
 }
 
 /**
@@ -290,6 +299,11 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
 
         // A room with a guest in it has staff in it and nobody else.
         if (((string) $channel['kind'] === 'guest') && ((int) (ws_rights_for_id($user_id)['role'] ?? 3) > 2)) {
+            continue;
+        }
+
+        // A discussion takes in only people who read its channel.
+        if (((string) $channel['kind'] === 'thread') && !ws_can_read_channel(ws_rights_for_id($user_id), ws_thread_parent_channel($channel))) {
             continue;
         }
 
@@ -533,7 +547,7 @@ function ws_can_change_channel_kind($viewer, $channel)
 {
     return is_array($channel) && $viewer['member'] && ($viewer['role'] < 3)
         && ((int) $channel['archived_at'] === 0)
-        && ((string) $channel['kind'] !== 'guest')
+        && in_array((string) $channel['kind'], array('public', 'private'), true)
         && (bool) ws_channel_membership($channel['id'], $viewer['id']);
 }
 

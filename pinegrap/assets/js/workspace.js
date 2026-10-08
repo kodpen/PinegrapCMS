@@ -4068,6 +4068,11 @@
                 target = pinned.length ? pinned[0].id : 0;
             }
 
+            // A discussion asked for in the address opens beside its channel.
+            if (target && query.thread) {
+                self.pendingThread = { id: parseInt(query.thread, 10), message: 0 };
+            }
+
             if (target) {
                 self.open(target, parseInt(query.message || 0, 10), parseInt(query.era || 0, 10));
             } else if ((query.view === 'scheduled') && (CFG.scheduled || CFG.scheduled_messages)) {
@@ -4409,6 +4414,45 @@
 
             if (pinned.length) {
                 section(t('pinned'), pinned, true, 'bi-pin-angle');
+            }
+
+            // The open discussions the person is in (threads.php); none, no
+            // section.
+            var threads = BOOT.threads || [];
+
+            if (threads.length) {
+                var talks = el('div', 'ws-side-section ws-side-threads');
+                var talksHead = el('div', 'ws-side-title');
+                var talksLabel = el('span');
+
+                talksLabel.appendChild(icon('bi-chat-square-dots', 'me-1'));
+                talksLabel.appendChild(document.createTextNode(t('th_section')));
+                talksHead.appendChild(talksLabel);
+                talks.appendChild(talksHead);
+
+                threads.forEach(function (thread) {
+                    var item = el('button', 'ws-channel-link ws-thread-link' + (self.openThreadId() === thread.id ? ' active' : '') + (thread.unread ? ' ws-unread' : ''));
+                    item.type = 'button';
+                    item.title = thread.title + ' · #' + thread.channel;
+                    item.appendChild(icon('bi-chat-square-dots', 'ws-ch-icon'));
+
+                    var names = el('span', 'ws-channel-name');
+                    names.appendChild(el('span', 'ws-thread-link-title', thread.title));
+                    names.appendChild(el('small', 'ws-thread-link-channel', '#' + thread.channel));
+                    item.appendChild(names);
+
+                    if (thread.unread) {
+                        item.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
+                    }
+
+                    item.addEventListener('click', function () {
+                        self.root.classList.remove('ws-show-side');
+                        self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true });
+                    });
+                    talks.appendChild(item);
+                });
+
+                scroll.appendChild(talks);
             }
 
             if ((children[0] || []).length || manage) {
@@ -6027,6 +6071,147 @@
             }
         },
 
+        // ── Discussions (threads.php) ──
+
+        // The address says which channel, and which discussion beside it.
+        syncAddress: function () {
+            if (!this.channel || this.era || !window.history || !window.history.replaceState) {
+                return;
+            }
+
+            var thread = this.openThreadId();
+
+            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + (thread ? '&thread=' + thread : ''));
+        },
+
+        // The discussion open beside the channel, 0 for none.
+        openThreadId: function () {
+            return (this.threadView && this.threadView.channel) ? this.threadView.channel.id : 0;
+        },
+
+        // Starts a discussion about a message: a title (the first words of
+        // the message when left empty), then the discussion opens beside the
+        // channel.
+        startThread: function (message) {
+            var self = this;
+            var box = el('div');
+            var title = el('input', 'form-control');
+
+            title.maxLength = 80;
+            title.placeholder = self.plain(message.html).slice(0, 80);
+            title.id = nextId('ws-thread-title-');
+            box.appendChild(el('p', 'small text-body-secondary', t('th_start_help')));
+            box.appendChild(formRow(t('th_title'), title, t('th_title_help')));
+
+            ask(t('th_start'), t('th_create'), false, box).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_start', { message_id: message.id, title: title.value }).then(function (data) {
+                    self.openThread(data.thread_id, 0);
+                    self.sync();
+                }).catch(fail);
+            });
+
+            setTimeout(function () { title.focus(); }, 300);
+        },
+
+        // To a discussion from the bar under its message or the sidebar:
+        // joined first when the reader is staff not yet in it; its channel
+        // first when another one is open.
+        threadGo: function (thread) {
+            var self = this;
+
+            if (!thread.mine && thread.can_join) {
+                api('ws_thread_join', { thread_id: thread.id }).then(function () {
+                    toast(t('th_joined'), 'success');
+                    self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true });
+                    self.sync();
+                }).catch(fail);
+                return;
+            }
+
+            if (!self.channel || (self.channel.id !== thread.channel_id)) {
+                self.pendingThread = { id: thread.id, message: 0 };
+                self.open(thread.channel_id, 0);
+                return;
+            }
+
+            self.openThread(thread.id, 0);
+        },
+
+        openThread: function (threadId, messageId) {
+            if (!this.threadView) {
+                this.threadView = makeThreadView(this);
+            }
+
+            this.threadView.load(threadId, messageId || 0);
+        },
+
+        closeThread: function () {
+            if (this.threadView) {
+                this.threadView.close();
+            }
+        },
+
+        // Under a message: the discussion about it, how far it has got, and
+        // the way in.
+        threadBar: function (message) {
+            var self = this;
+            var thread = message.thread;
+            var bar = el(thread.mine || thread.can_join ? 'button' : 'div', 'ws-thread-bar' + (thread.closed ? ' ws-thread-bar-closed' : '') + (thread.unread ? ' ws-thread-bar-news' : ''));
+
+            if (thread.mine || thread.can_join) {
+                bar.type = 'button';
+                bar.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    self.threadGo(thread);
+                });
+            }
+
+            var faces = el('span', 'ws-avatars ws-thread-faces');
+            (thread.people || []).slice(0, 4).forEach(function (person) { faces.appendChild(avatar(person)); });
+            bar.appendChild(faces);
+
+            var text = el('span', 'ws-thread-bar-text');
+            text.appendChild(el('b', '', t('th_bar', thread.title)));
+
+            var facts = [t('th_bar_count', thread.count)];
+
+            if (thread.last) {
+                facts.push(t('th_bar_last', thread.last));
+            }
+
+            text.appendChild(el('span', 'ws-thread-bar-facts', facts.join(' · ')));
+            bar.appendChild(text);
+
+            if (thread.closed) {
+                bar.appendChild(el('span', 'badge rounded-pill text-bg-secondary', t('th_bar_closed')));
+            } else if (thread.unread) {
+                bar.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
+            }
+
+            if (thread.mine) {
+                bar.appendChild(el('span', 'ws-thread-bar-go', t('th_open')));
+            } else if (thread.can_join) {
+                bar.appendChild(el('span', 'ws-thread-bar-go', t('th_join')));
+            }
+
+            var wrap = el('div', 'ws-thread-wrap');
+            wrap.appendChild(bar);
+
+            // An assistant was asked in it: said here, where the channel reads.
+            if ((thread.assistants || []).length) {
+                var note = el('div', 'ws-thread-ai');
+                note.appendChild(icon('bi-stars', 'me-1'));
+                note.appendChild(document.createTextNode(t('th_bar_assistants', thread.assistants.join(', '))));
+                wrap.appendChild(note);
+            }
+
+            return wrap;
+        },
+
         drawEmptyCenter: function () {
             var center = clear(this.center);
             var empty = el('div', 'ws-empty m-auto');
@@ -6050,6 +6235,19 @@
             self.labels = [];
 
             api('ws_channel_open', { channel_id: channelId, message_id: messageId || 0, era_id: eraId || 0 }).then(function (data) {
+                // A discussion asked for as a channel: its channel, with the
+                // discussion beside it.
+                if (data.thread_of) {
+                    self.pendingThread = { id: data.thread_of.thread_id, message: data.thread_of.message_id };
+                    self.open(data.thread_of.channel_id, 0);
+                    return;
+                }
+
+                // Another channel: a discussion of the one before closes.
+                if (self.threadView && self.threadView.channel && (self.threadView.channel.thread || {}).channel_id !== channelId) {
+                    self.closeThread();
+                }
+
                 self.view = 'channel';
                 self.channel = data.channel;
                 self.era = data.era || null;
@@ -6090,6 +6288,13 @@
                 }
 
                 self.flashAfterOpen = null;
+
+                if (self.pendingThread) {
+                    var asked = self.pendingThread;
+
+                    self.pendingThread = null;
+                    self.openThread(asked.id, asked.message);
+                }
 
                 // A scheduled message picked on the scheduled screen to be
                 // changed: its text goes into this channel's box.
@@ -6923,6 +7128,23 @@
                 meta.appendChild(flag);
             }
 
+            // A decision, a note or a task that was decided in a discussion.
+            if (message.from_thread) {
+                var origin = el(message.from_thread.open ? 'button' : 'span', 'ws-msg-from-thread');
+                origin.appendChild(icon('bi-chat-square-dots', 'me-1'));
+                origin.appendChild(document.createTextNode(t('th_from', message.from_thread.title)));
+
+                if (message.from_thread.open) {
+                    origin.type = 'button';
+                    origin.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        app.openThread(message.from_thread.thread_id, 0);
+                    });
+                }
+
+                meta.appendChild(origin);
+            }
+
             // The message pinned to the top of the channel.
             if (self.channel && self.channel.pin && self.channel.pin.id === message.id) {
                 var pinned = icon('bi-pin-angle-fill', 'ws-msg-pinned');
@@ -7070,6 +7292,11 @@
                 main.appendChild(self.claudeStateNode(message));
             }
 
+            // A discussion about this message (threads.php).
+            if (message.thread && !self.isThread) {
+                main.appendChild(self.threadBar(message));
+            }
+
             node.appendChild(main);
 
             if (!message.deleted && message.kind !== 'task') {
@@ -7174,6 +7401,16 @@
                         department_id: self.channel.department ? self.channel.department.id : 0
                     }, function () { self.sync(); });
                 } });
+            }
+
+            // A room of its own beside the channel to talk this message over.
+            if (CFG.threads && !self.isThread && !self.era && !message.deleted && !message.past
+                && ['message', 'decision', 'note', 'task'].indexOf(message.kind) !== -1) {
+                if (message.thread && (message.thread.mine || message.thread.can_join)) {
+                    items.push({ icon: 'bi-chat-square-dots', label: message.thread.mine ? t('th_open') : t('th_join'), tool: true, action: function () { self.threadGo(message.thread); } });
+                } else if (!message.thread && self.channel.can_post) {
+                    items.push({ icon: 'bi-chat-square-dots', label: t('th_start'), tool: true, action: function () { self.startThread(message); } });
+                }
             }
 
             // Anybody's message, kept as a copy in the person's own notes.
@@ -9422,7 +9659,7 @@
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
-                    CFG.scheduled ? { icon: 'bi-alarm', label: t('sa_new'), action: function () {
+                    (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_new'), action: function () {
                         scheduledForm({ channel_id: self.channel.id }, null, function () { self.sync(true); });
                     } } : null
                 ], true);
@@ -11159,12 +11396,19 @@
                 since_ts: self.sinceTs,
                 era_id: self.era ? self.era.id : 0,
                 read: (document.hasFocus() && !self.era) ? 1 : 0,
-                counts: counts ? 1 : 0
+                counts: (counts && !self.isThread) ? 1 : 0,
+                panel: self.isThread ? 1 : 0
             }).then(function (data) {
                 self.syncing = false;
 
                 if (data.gone) {
                     toast(t('channel_gone'), 'warning');
+
+                    if (self.isThread) {
+                        self.close();
+                        return;
+                    }
+
                     self.channel = null;
                     self.reloadChannels(0);
                     self.drawEmptyCenter();
@@ -11265,23 +11509,28 @@
                     }
                 }
 
-                BOOT.channels = data.channels;
-                BOOT.groups = data.groups || [];
-                BOOT.inbox = data.inbox;
-
                 // A scheduled action's time has come: the screen starts the run.
                 if (data.scheduled_due) {
                     scheduledTick();
                 }
 
-                // The channel list is drawn again only when it changed: every
-                // few seconds from scratch it dropped a half-typed search, the
-                // list's scroll and the pointer's hover.
-                var sideKey = JSON.stringify([data.channels, data.groups || [], data.inbox, self.channel ? self.channel.id : 0]);
+                // The sidebar is the channel screen's: a discussion beside it
+                // leaves it alone.
+                if (!self.isThread) {
+                    BOOT.channels = data.channels;
+                    BOOT.groups = data.groups || [];
+                    BOOT.threads = data.threads || [];
+                    BOOT.inbox = data.inbox;
 
-                if (!self.dragging && (sideKey !== self.sideKey)) {
-                    self.sideKey = sideKey;
-                    self.drawSide();
+                    // The channel list is drawn again only when it changed: every
+                    // few seconds from scratch it dropped a half-typed search, the
+                    // list's scroll and the pointer's hover.
+                    var sideKey = JSON.stringify([data.channels, data.groups || [], data.threads || [], data.inbox, self.channel ? self.channel.id : 0, self.openThreadId()]);
+
+                    if (!self.dragging && (sideKey !== self.sideKey)) {
+                        self.sideKey = sideKey;
+                        self.drawSide();
+                    }
                 }
 
                 // Down to the newest line only when there is a new line (or
@@ -11318,6 +11567,387 @@
             self.schedule();
         }
     };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // A discussion beside the channel (includes/workspace/threads.php)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // The panel on the right of the channel screen: a discussion's own
+    // conversation, drawn and kept current by the channel screen's own
+    // methods (it is made from the screen with Object.create, so a message,
+    // the writing box, the pickers and the polls work there as they do in
+    // the channel). Its state is its own; the sidebar stays the screen's.
+    // On a phone it covers the channel until it is closed.
+    function makeThreadView(main) {
+        var view = Object.create(main);
+        var panel = el('aside', 'ws-thread-panel');
+
+        panel.setAttribute('aria-label', t('th_section'));
+        main.root.appendChild(panel);
+
+        // Everything a channel screen keeps while it is open, the panel's own.
+        var fresh = {
+            isThread: true,
+            main: main,
+            panel: panel,
+            center: panel,
+            channel: null,
+            messages: [],
+            lastId: 0,
+            sinceTs: 0,
+            hasMore: false,
+            tab: 'messages',
+            reply: null,
+            replyMore: null,
+            editing: null,
+            editingScheduled: null,
+            labels: [],
+            pending: null,
+            timer: null,
+            busy: false,
+            era: null,
+            view: 'thread',
+            briefing: null,
+            pinHolder: null,
+            pane: null,
+            composerWrap: null,
+            input: null,
+            rich: null,
+            picker: null,
+            pickerMode: null,
+            pickerItems: null,
+            selecting: null,
+            syncing: false,
+            syncAgain: false,
+            syncAgainScroll: false,
+            atEnd: true,
+            unseenBelow: 0,
+            localAt: {},
+            sideKey: null,
+            dragging: false,
+            countsAt: 0,
+            scheduledBar: null,
+            previewBox: null,
+            replyBar: null,
+            tabsNode: null,
+            jump: null,
+            jumpCount: null,
+            flashAfterOpen: null,
+            pendingThread: null,
+            pendingScheduledEdit: null
+        };
+
+        Object.keys(fresh).forEach(function (key) { view[key] = fresh[key]; });
+
+        view.load = function (threadId, messageId) {
+            var self = this;
+
+            self.stop();
+            self.reply = null;
+            self.replyMore = null;
+            self.editing = null;
+            self.editingScheduled = null;
+            self.selecting = null;
+            self.labels = [];
+
+            api('ws_channel_open', { channel_id: threadId, message_id: messageId || 0, as_thread: 1 }).then(function (data) {
+                self.channel = data.channel;
+                self.messages = data.messages;
+                self.lastId = data.last_id;
+                self.sinceTs = data.now;
+                self.hasMore = data.has_more;
+                main.root.classList.add('ws-thread-open');
+                self.drawCenter();
+
+                var target = messageId ? panel.querySelector('[data-ws-message="' + messageId + '"]') : null;
+
+                if (target) {
+                    target.classList.add('ws-msg-highlight');
+                    target.scrollIntoView({ block: 'center' });
+                } else {
+                    self.scrollToEnd();
+                }
+
+                // What it was about has been read; the sidebar says so.
+                (BOOT.threads || []).forEach(function (item) {
+                    if (item.id === threadId) {
+                        item.unread = 0;
+                    }
+                });
+
+                main.drawSide();
+                main.syncAddress();
+                self.schedule();
+            }).catch(function (error) {
+                fail(error);
+                self.close();
+            });
+        };
+
+        view.close = function () {
+            this.stop();
+            this.channel = null;
+            this.messages = [];
+            clear(panel);
+            main.root.classList.remove('ws-thread-open');
+            main.drawSide();
+            main.syncAddress();
+        };
+
+        // Another channel or another discussion asked for from inside the
+        // panel goes to the channel screen.
+        view.open = function (channelId, messageId) {
+            if (this.channel && (channelId === this.channel.id)) {
+                this.load(channelId, messageId);
+                return;
+            }
+
+            main.open(channelId, messageId);
+        };
+
+        view.reloadChannels = function () {
+            var self = this;
+
+            main.reloadChannels(0);
+
+            if (self.channel) {
+                self.load(self.channel.id, 0);
+            }
+        };
+
+        view.drawCenter = function () {
+            var self = this;
+            var channel = self.channel;
+            var thread = channel.thread || {};
+            var center = clear(panel);
+
+            // Head: what it is about, who is in it, its tools.
+            var head = el('div', 'ws-head ws-thread-head');
+            var title = el('div', 'ws-head-title');
+            var h = el('h2');
+            h.appendChild(icon('bi-chat-square-dots', 'me-1 text-body-secondary'));
+            h.appendChild(document.createTextNode(channel.name));
+            title.appendChild(h);
+
+            var where = el('div', 'ws-topic');
+            var parent = (BOOT.channels || []).filter(function (item) { return item.id === thread.channel_id; })[0];
+            where.textContent = t('th_in', parent ? parent.name : '');
+            title.appendChild(where);
+            head.appendChild(title);
+
+            var actions = el('div', 'ws-head-actions');
+            var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('th_people'));
+            var stack = el('span', 'ws-avatars');
+
+            (channel.members || []).slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
+            faces.appendChild(stack);
+            faces.appendChild(el('span', 'small', (channel.members || []).length));
+            faces.addEventListener('click', function () { self.showPeople(); });
+            actions.appendChild(faces);
+            actions.appendChild(self.threadMenu());
+
+            var shut = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('th_close_panel'));
+            shut.addEventListener('click', function () { self.close(); });
+            actions.appendChild(shut);
+            head.appendChild(actions);
+            center.appendChild(head);
+
+            if (thread.closed) {
+                var closed = el('div', 'alert alert-secondary rounded-0 m-0 py-2 small');
+                closed.appendChild(icon('bi-archive', 'me-1'));
+                closed.appendChild(document.createTextNode(thread.closed_text));
+                center.appendChild(closed);
+            }
+
+            // The message it talks over, as the channel shows it.
+            var about = main.findMessage(thread.message_id);
+            var source = el('div', 'ws-thread-source');
+            var sourceHead = el('div', 'ws-thread-source-head');
+
+            sourceHead.appendChild(el('span', '', t('th_about')));
+
+            var go = button('btn btn-sm btn-link p-0', t('th_go_message'), 'bi-arrow-left-short');
+            go.addEventListener('click', function () {
+                if (window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
+                    self.close();
+                }
+
+                main.jumpTo(thread.message_id, true);
+            });
+            sourceHead.appendChild(go);
+            source.appendChild(sourceHead);
+
+            if (about && !about.deleted) {
+                var quote = el('div', 'ws-thread-source-body');
+                quote.appendChild(el('b', '', about.sender ? about.sender.name : ''));
+                quote.appendChild(el('span', 'ws-thread-source-time', about.time));
+
+                var text = el('div', 'ws-msg-body');
+                setHtml(text, about.html);
+                quote.appendChild(text);
+                source.appendChild(quote);
+            } else {
+                source.appendChild(el('div', 'small text-body-secondary', channel.name));
+            }
+
+            center.appendChild(source);
+
+            var pane = el('div', 'ws-pane ws-pane-messages ws-thread-pane');
+            center.appendChild(pane);
+            self.pane = pane;
+            self.atEnd = true;
+            self.unseenBelow = 0;
+            pane.addEventListener('scroll', function () {
+                self.atEnd = self.nearEnd();
+                self.drawJump();
+            }, { passive: true });
+
+            self.drawMessages();
+
+            if (!self.messages.filter(function (message) { return message.kind !== 'system'; }).length) {
+                pane.appendChild(el('div', 'ws-empty small', t('th_empty')));
+            }
+
+            if (channel.can_post) {
+                center.appendChild(self.composer());
+                self.composerWrap.appendChild(self.jumpButton());
+            } else {
+                var readonly = el('div', 'ws-composer-wrap');
+                readonly.appendChild(el('div', 'small text-body-secondary text-center py-2', thread.closed ? t('th_readonly') : t('cannot_post')));
+                center.appendChild(readonly);
+            }
+        };
+
+        view.threadMenu = function () {
+            var self = this;
+            var channel = self.channel;
+            var thread = channel.thread || {};
+            var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots-vertical', t('more'));
+
+            more.addEventListener('click', function (event) {
+                var place = more.getBoundingClientRect();
+
+                event.stopPropagation();
+                ctxMenu(Math.max(8, place.right - 240), place.bottom + 4, [
+                    (channel.can_post && !thread.closed) ? { icon: 'bi-pencil', label: t('th_rename'), action: function () { self.rename(); } } : null,
+                    (channel.can_post && !thread.closed) ? { icon: 'bi-person-plus', label: t('th_add_people'), action: function () { self.showPeople(); } } : null,
+                    '-',
+                    (thread.mine && !thread.closed) ? { icon: 'bi-check2-circle', label: t('th_conclude'), action: function () { self.conclude(); } } : null,
+                    thread.mine ? { icon: 'bi-box-arrow-right', label: t('th_leave'), danger: true, action: function () { self.leave(); } } : null
+                ]);
+            });
+
+            return more;
+        };
+
+        view.rename = function () {
+            var self = this;
+            var field = el('input', 'form-control');
+
+            field.maxLength = 80;
+            field.value = self.channel.name;
+
+            ask(t('th_rename_title'), t('save'), false, field).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_rename', { thread_id: self.channel.id, title: field.value }).then(function () {
+                    self.load(self.channel.id, 0);
+                    main.sync();
+                }).catch(fail);
+            });
+        };
+
+        view.conclude = function () {
+            var self = this;
+
+            ask(t('th_conclude_confirm'), t('th_conclude'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_close', { thread_id: self.channel.id }).then(function () {
+                    toast(t('th_concluded'), 'success');
+                    self.load(self.channel.id, 0);
+                    main.sync();
+                }).catch(fail);
+            });
+        };
+
+        view.leave = function () {
+            var self = this;
+
+            ask(t('th_leave_confirm'), t('th_leave'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_thread_leave', { thread_id: self.channel.id }).then(function () {
+                    self.close();
+                    main.sync();
+                }).catch(fail);
+            });
+        };
+
+        // The people in it, and the people of the channel who could be
+        // brought in.
+        view.showPeople = function () {
+            var self = this;
+            var channel = self.channel;
+            var node = offcanvas('ws-thread-people', t('th_people'));
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+
+            footer.classList.add('d-none');
+
+            (channel.members || []).forEach(function (member) {
+                var row = el('div', 'd-flex align-items-center gap-2 py-2 border-bottom');
+                var face = avatar(member, '2rem');
+
+                face.style.borderRadius = '50%';
+                row.appendChild(face);
+                row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
+                body.appendChild(row);
+            });
+
+            var parent = main.channel;
+
+            if (channel.can_post && parent && (parent.id === (channel.thread || {}).channel_id)) {
+                var inside = (channel.members || []).map(function (member) { return member.id; });
+                var readers = (parent.kind === 'public') ? BOOT.people : (parent.members || []);
+                var outside = readers.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
+
+                if (outside.length) {
+                    body.appendChild(el('div', 'form-label mt-3', t('th_add_people')));
+                    body.appendChild(el('div', 'form-text mt-0 mb-2', t('th_add_people_help')));
+
+                    var picker = peoplePicker([], outside);
+                    body.appendChild(picker);
+                    footer.classList.remove('d-none');
+
+                    var add = button('btn btn-sm btn-primary rounded-pill px-3', t('th_add_people'), 'bi-person-plus');
+                    add.addEventListener('click', function () {
+                        var ids = picker.value();
+
+                        if (!ids.length) {
+                            return;
+                        }
+
+                        api('ws_channel_members_add', { channel_id: channel.id, user_ids: ids }).then(function () {
+                            hideOffcanvas(node);
+                            self.load(channel.id, 0);
+                        }).catch(fail);
+                    });
+                    footer.appendChild(add);
+                }
+            }
+
+            showOffcanvas(node);
+        };
+
+        return view;
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Scheduled actions (includes/workspace/scheduled.php): staff only

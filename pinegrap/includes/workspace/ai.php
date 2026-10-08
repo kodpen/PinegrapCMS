@@ -734,6 +734,13 @@ function ws_ai_channel_allowed($channel)
         return false;
     }
 
+    // A discussion follows its channel (threads.php).
+    if (($channel['kind'] ?? '') === 'thread') {
+        $parent = ws_thread_parent_channel($channel);
+
+        return $parent ? ws_ai_channel_allowed($parent) : false;
+    }
+
     $access = (int) ($channel['ai_access'] ?? 0);
 
     if ($access === 1) {
@@ -2932,6 +2939,19 @@ function ws_ai_start($row)
         $tries = (int) ($row['ai_attempts'] ?? 0);
         $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500));
         $parts[] = '';
+
+        // A discussion (threads.php) talks over one message of a channel:
+        // that message, and where it was written.
+        $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
+        $about = $thread ? ws_message((int) $thread['message_id']) : null;
+        $parent = $thread ? ws_thread_parent_channel($channel) : null;
+
+        if ($about && $parent && ((int) $about['deleted_at'] === 0)) {
+            $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ', by ' . ws_ai_author($about) . ': '
+                . ws_ai_text($asker, (string) $about['body'], null, 2000);
+            $parts[] = 'Decisions marked and tasks opened here go into #' . $parent['name'] . ' as well.';
+            $parts[] = '';
+        }
         $parts[] = 'People in the workspace:';
         $parts[] = ws_ai_team_text();
         $parts[] = '';

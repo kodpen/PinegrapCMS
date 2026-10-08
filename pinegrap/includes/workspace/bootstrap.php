@@ -32,6 +32,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calc.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/eras.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/pins.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/forward.php');

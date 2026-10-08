@@ -277,6 +277,17 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-alarm',
             );
 
+        // A discussion was started about one's message (threads.php).
+        case 'thread':
+            $thread = function_exists('ws_thread') ? ws_thread((int) $row['channel_id']) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} started a discussion about your message', 'vars' => $actor)),
+                'body'  => $channel ? (string) $channel['name'] : '',
+                'url'   => $base . 'workspace.php?channel=' . ($thread ? (int) $thread['parent_channel_id'] . '&thread=' . (int) $row['channel_id'] : (int) $row['channel_id']),
+                'icon'  => 'bi-chat-square-dots',
+            );
+
         // A message scheduled from the writing box that could not be posted
         // (scheduled_messages.php): it waits on the scheduled screen.
         case 'scheduled_message':

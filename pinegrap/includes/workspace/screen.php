@@ -594,6 +594,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
 
+    // Discussions (includes/workspace/threads.php).
+    $strings = array_merge($strings, ws_threads_js_strings());
+
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
 
@@ -626,6 +629,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'reminders'    => function_exists('ws_task_reminders_js_config') ? ws_task_reminders_js_config() : array('ready' => false),
         'scheduled'    => function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null,
         'scheduled_messages' => function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer),
+        'threads'      => ws_threads_ready(),
         'palette'      => ws_channel_colors_ready() ? ws_palette_js() : array(),
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),

@@ -448,6 +448,11 @@ switch ($action) {
     case 'ws_guest_relink':
     case 'ws_guest_end':
     case 'ws_channel_share':
+    case 'ws_thread_start':
+    case 'ws_thread_join':
+    case 'ws_thread_close':
+    case 'ws_thread_rename':
+    case 'ws_thread_leave':
     case 'ws_share_relink':
     case 'ws_share_end':
 

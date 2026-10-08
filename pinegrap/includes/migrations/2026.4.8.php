@@ -26,6 +26,7 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_ai_license();              // 8.80
 	upgrade_2026_4_8_scheduled_messages();      // 8.81
 	upgrade_2026_4_8_channel_shares();          // 8.82
+	upgrade_2026_4_8_threads();                 // 8.83
 
 }
 
@@ -81,5 +82,59 @@ function upgrade_2026_4_8_channel_shares() {
 	install_add_column('ws_guests', 'access', "ENUM('write','read') NOT NULL DEFAULT 'write' AFTER name");
 
 	install_note('Workspace: a channel can be shared with somebody outside the team through a one-time or timed link, to read only or to read and write.');
+
+}
+
+// Discussions in the workspace (2026.4.8, 8.83; includes/workspace/threads.php).
+//
+// A discussion is a channel row of kind 'thread' (ws_channels.kind widened
+// to carry it; the enum is read first and only widened when the value is
+// missing, keeping the values it has) talking over one message of another
+// channel: ws_threads ties the two - parent_channel_id and message_id - with
+// who started it and when, closed_at / closed_by when somebody concluded it,
+// purge_at when it is deleted (30 days after), and assistants, the
+// assistants asked in it ('ai', 'claude', comma-separated). ws_thread_copies
+// is the channel's copy of a decision, a note or a task card of a
+// discussion: channel_message_id the copy in the channel, thread_message_id
+// the original, title the discussion's title, kept when the discussion is
+// deleted so the copy can still say where it came from.
+function upgrade_2026_4_8_threads() {
+
+	$kind = install_column_info('ws_channels', 'kind');
+
+	if (is_array($kind) && (strpos((string) $kind['Type'], "'thread'") === false)) {
+		install_modify_column('ws_channels', 'kind', "ENUM('public','private','guest','thread') NOT NULL DEFAULT 'public'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_channels.kind thread')));
+	}
+
+	install_create_table('ws_threads', "CREATE TABLE ws_threads (
+		channel_id        INT UNSIGNED NOT NULL,
+		parent_channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		purge_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		assistants        VARCHAR(20) NOT NULL DEFAULT '',
+		PRIMARY KEY (channel_id),
+		KEY idx_parent (parent_channel_id, closed_at),
+		KEY idx_message (message_id),
+		KEY idx_purge (purge_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_thread_copies', "CREATE TABLE ws_thread_copies (
+		channel_message_id INT UNSIGNED NOT NULL,
+		thread_channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		thread_message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		title              VARCHAR(80) NOT NULL DEFAULT '',
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (channel_message_id),
+		KEY idx_thread (thread_channel_id),
+		KEY idx_source (thread_message_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a message can be talked over in a discussion of its own beside the channel; its decisions and tasks go into the channel.');
 
 }

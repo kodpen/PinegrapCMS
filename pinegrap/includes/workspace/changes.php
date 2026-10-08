@@ -2205,6 +2205,11 @@ function ws_change_apply($viewer, $change_id)
 
     if ($decision_id > 0) {
         db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $decision_id . "'");
+
+        // Applied in a discussion: the channel's copy is locked as well.
+        if (function_exists('ws_thread_copy_sync')) {
+            ws_thread_copy_sync($decision_id);
+        }
     }
 
     db("UPDATE ws_ai_changes SET status = 'applied', error = '', record_id = '" . $record_id . "', decision_message_id = '" . $decision_id . "',
