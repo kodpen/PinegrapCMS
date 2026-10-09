@@ -1305,7 +1305,7 @@ function ws_handle_action($action, $request)
 
             $data = array();
 
-            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color') as $field) {
+            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color', 'watch') as $field) {
                 if (array_key_exists($field, $request)) {
                     $data[$field] = $request[$field];
                 }

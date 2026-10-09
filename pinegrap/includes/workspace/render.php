@@ -257,9 +257,13 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
 {
     $body = (string) $body;
 
+    // A submitted form tagged in the text gets its card under it, for a
+    // reader who may open it (includes/workspace/watch.php).
+    $cards = function_exists('ws_form_cards_html') ? ws_form_cards_html($body, $refs) : '';
+
     // Running text only - nearly every message - is drawn in one piece.
     if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body)) {
-        return ws_render_text($body, $refs);
+        return ws_render_text($body, $refs) . $cards;
     }
 
     $lines = preg_split('/\r\n|\r|\n/', $body);
@@ -414,7 +418,7 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
 
     $flush();
 
-    return $html;
+    return $html . $cards;
 }
 
 /**

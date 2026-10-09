@@ -597,6 +597,12 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
 
+    // The event rule of a scheduled action and a channel's watch switch
+    // (includes/workspace/watch.php, assets/js/workspace_events.js).
+    if (function_exists('ws_events_js_strings')) {
+        $strings = array_merge($strings, ws_events_js_strings());
+    }
+
     // Discussions (includes/workspace/threads.php) and the assistants' bulk
     // changes (includes/workspace/bulk.php).
     $strings = array_merge($strings, ws_threads_js_strings(), ws_bulk_js_strings());
@@ -682,6 +688,7 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <script type="application/json" id="ws-config">' . $json . '</script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_events.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_events.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
         . (($mode === 'channels') ? '
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');

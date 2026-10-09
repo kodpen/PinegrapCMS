@@ -14658,3 +14658,50 @@ button.ws-home-row:hover,
     color: var(--bs-warning-text-emphasis);
 }
 /* ── /Workspace ── */
+/* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */
+.ws-sa-when-event {
+    max-width: 24rem;
+}
+.ws-sa-when-event-filter {
+    margin-top: .5rem;
+}
+.ws-form-card {
+    max-width: 34rem;
+    margin-top: .4rem;
+    padding: .45rem .65rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+    font-size: .8125rem;
+}
+.ws-form-card-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .3rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+a.ws-form-card-head:hover span {
+    text-decoration: underline;
+}
+.ws-form-card-head small {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+}
+.ws-form-card-fields {
+    display: grid;
+    grid-template-columns: minmax(6rem, max-content) 1fr;
+    gap: .15rem .75rem;
+    margin: 0;
+}
+.ws-form-card-fields dt {
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+}
+.ws-form-card-fields dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
