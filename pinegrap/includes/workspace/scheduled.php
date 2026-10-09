@@ -13,7 +13,8 @@
  *
  * The actions are ones the workspace already does safely, and a few that
  * look outwards: write in a channel, send an e-mail, let people know in
- * their inbox, open a task, change a record the way a change proposed by
+ * their inbox, open a task, ask people of a channel to approve something
+ * (approvals.php), change a record the way a change proposed by
  * Claude is applied (includes/workspace/changes.php), post a summary of the
  * counts, call a webhook, check that a web address answers or how long its
  * certificate has left, and start another scheduled action.
@@ -49,7 +50,9 @@
  * something due), by the general job on every tick (job.php) and by the
  * workspace's scheduled job, so an action is late by at most the time until
  * somebody opens the workspace or the general job next runs - a minute on a
- * site that schedules it every minute.
+ * site that schedules it every minute. The same run lets approval requests
+ * expire and reminds about them and about read receipts (approvals.php,
+ * acks.php); ws_scheduled_due() reports those as due too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -744,6 +747,7 @@ function ws_scheduled_js_config($viewer)
     return array(
         'ready'        => true,
         'chains'       => ws_scheduled_chains_ready(),
+        'approvals'    => function_exists('ws_approvals_ready') && ws_approvals_ready(),
         'join'         => ws_scheduled_join_ready(),
         // What an event rule offers (watch.php): null where it cannot be had.
         'events'       => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
@@ -1534,6 +1538,36 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
 
             return array('ok' => true, 'error' => '', 'action' => array('type' => 'trigger', 'target_id' => $target_id, 'delay' => $delay));
 
+        // An approval request in a channel (approvals.php): its title, its
+        // text, the people asked and the rule. The people are checked
+        // against the channel now and again when it runs.
+        case 'approval':
+            $channel = ws_channel((int) ($action['channel_id'] ?? 0));
+
+            if (!$channel || !function_exists('ws_approval_input')) {
+                return $fail(lang('Choose a channel you can write in.'));
+            }
+
+            $checked = ws_approval_input($viewer, $channel, array(
+                'title'     => (string) ($action['title'] ?? ''),
+                'text'      => (string) ($action['text'] ?? ''),
+                'approvers' => (array) ($action['approvers'] ?? array()),
+                'rule'      => (string) ($action['rule'] ?? 'any'),
+            ));
+
+            if (!$checked['ok']) {
+                return $fail($checked['error']);
+            }
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'       => 'approval',
+                'channel_id' => (int) $channel['id'],
+                'title'      => $checked['title'],
+                'text'       => mb_substr($checked['text'], 0, WS_MESSAGE_MAX),
+                'approvers'  => $checked['approvers'],
+                'rule'       => $checked['rule'],
+            ));
+
         case 'change':
             $types = ws_change_types();
             $record_type = (string) ($action['record'] ?? '');
@@ -2164,6 +2198,14 @@ function ws_scheduled_action_text($viewer, $action)
             }
 
             return lang(array('string' => 'Post a summary to {var:1}: {var:2}', 'vars' => array(implode(' · ', $where), implode(', ', $names))));
+
+        case 'approval':
+            $channel = ((int) ($action['channel_id'] ?? 0) > 0) ? ws_channel((int) $action['channel_id']) : null;
+
+            return lang(array('string' => 'Ask {var:1} to approve “{var:2}” in {var:3}', 'vars' => array(
+                implode(', ', array_filter(array_map('ws_person_name', (array) ($action['approvers'] ?? array())))),
+                (string) ($action['title'] ?? ''),
+                $channel ? '#' . $channel['name'] : lang('a channel that is gone'))));
 
         case 'trigger':
             return ((int) ($action['delay'] ?? 0) > 0)
@@ -2829,6 +2871,12 @@ function ws_scheduled_due()
         return true;
     }
 
+    // A deadline of an approval request, a read receipt to remind about
+    // (approvals.php, acks.php): one indexed row each, run below.
+    if ((function_exists('ws_approvals_due') && ws_approvals_due()) || (function_exists('ws_acks_due') && ws_acks_due())) {
+        return true;
+    }
+
     if (!ws_scheduled_ready()) {
         return false;
     }
@@ -2863,6 +2911,16 @@ function ws_scheduled_run($limit = WS_SCHEDULED_BATCH)
     // (watch.php).
     if (function_exists('ws_events_process')) {
         ws_events_process();
+    }
+
+    // Approval requests whose deadline passed or is a day away, and read
+    // receipts a day old (approvals.php, acks.php).
+    if (function_exists('ws_approvals_run')) {
+        ws_approvals_run();
+    }
+
+    if (function_exists('ws_acks_run')) {
+        ws_acks_run();
     }
 
     if (!ws_scheduled_ready()) {
@@ -3483,6 +3541,28 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
 
         case 'change':
             return ws_scheduled_change($viewer, $row, $action);
+
+        // An approval request, with the creator's rights; somebody who left
+        // the channel since is no longer asked.
+        case 'approval':
+            $channel = ws_channel((int) $action['channel_id']);
+
+            if (!$channel || !function_exists('ws_approval_create')) {
+                return $fail(lang('The channel to write in is gone.'));
+            }
+
+            $created = ws_approval_create($viewer, $channel, array(
+                'title'     => mb_substr(ws_scheduled_fill((string) $action['title'], $context), 0, 255),
+                'text'      => mb_substr(ws_scheduled_fill((string) $action['text'], $context), 0, WS_MESSAGE_MAX),
+                'approvers' => (array) $action['approvers'],
+                'rule'      => (string) $action['rule'],
+            ), 0, false);
+
+            if (!$created['ok']) {
+                return $fail(lang(array('string' => 'Could not ask for approval in #{var:1}: {var:2}', 'vars' => array($channel['name'], $created['error']))));
+            }
+
+            return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id']);
     }
 
     return $fail(lang('Nothing to do.'));

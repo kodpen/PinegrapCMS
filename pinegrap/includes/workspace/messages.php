@@ -169,6 +169,9 @@ function ws_message_payloads($viewer, $rows)
         'reactions'  => ws_reactions_map($ids, $viewer),
         'checks'     => ws_checks_map($ids),
         'polls'      => ws_polls_map($ids, $viewer),
+        // Approval requests and read receipts (approvals.php, acks.php).
+        'approvals'  => function_exists('ws_approvals_map') ? ws_approvals_map($ids, $viewer) : array(),
+        'acks'       => function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array(),
         'list_tasks' => ws_checklist_tasks_map($viewer, $ids),
         'can_post'   => $can_post,
         // Requests to Claude, and the tasks and record changes its answers
@@ -286,7 +289,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // A scheduled action's card is changed in its own form.
         'past'        => $past,
         // A copy of a decision of a discussion follows the original there.
-        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]),
+        // An approval request stays what the people were asked to approve.
+        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]),
         'can_delete'  => !$past && !$deleted && ((($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)))
             || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
         // Deleted for the person alone, whoever wrote it.
@@ -295,6 +299,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'can_react'   => !$deleted && $can_post && ($row['kind'] !== 'system') && ws_interact_ready(),
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
+        'approval'    => $deleted ? null : ($extra['approvals'][$id] ?? null),
+        // A read receipt asked for, and whether the reader may ask for one.
+        'ack'         => $deleted ? null : ($extra['acks'][$id] ?? null),
+        // The same test as ws_ack_can_request(), from what is known already.
+        'ack_can_request' => $can_post && !$deleted && function_exists('ws_acks_ready') && ws_acks_ready()
+            && in_array($row['kind'], array('message', 'note', 'decision'), true) && in_array($row['sender_kind'], array('user', 'app'), true)
+            && ($mine || ($viewer['role'] < 3)),
         // The tasks this message's checklist became, with their progress.
         'list_tasks'  => $deleted ? array() : ($extra['list_tasks'][$id] ?? array()),
         'has_list'    => !$deleted && ws_task_work_ready() && (strpos((string) $row['body'], '[') !== false) && !empty(ws_checklist_items($row['body'])),
@@ -775,6 +786,10 @@ function ws_message_edit($viewer, $message, $body)
 
     if (!empty($message['locked'])) {
         return array('ok' => false, 'error' => lang('This decision records a change to a record and cannot be edited.'));
+    }
+
+    if (function_exists('ws_approval_of_message') && ws_approval_of_message($message['id'])) {
+        return array('ok' => false, 'error' => lang('An approval request cannot be edited; take it back and ask again.'));
     }
 
     $channel = ws_channel($message['channel_id']);

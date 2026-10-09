@@ -57,6 +57,9 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_workspace_task_time();     // 8.86
 
 	upgrade_2026_4_8_workspace_task_links();    // 8.110
+	upgrade_2026_4_8_workspace_approvals();     // 8.87
+
+	upgrade_2026_4_8_workspace_acks();          // 8.89
 
 }
 
@@ -923,5 +926,83 @@ function upgrade_2026_4_8_workspace_task_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a task can wait for other tasks; it shows what it waits for, and its people hear when it can start.');
+
+}
+
+// Approval requests in the workspace (2026.4.8, 8.87;
+// includes/workspace/approvals.php). A request is a message of a channel
+// with a card under it: ws_approvals holds the card - message_id the request
+// (one card per message), title, rule ('any': the first approval settles it,
+// 'all': everybody has to approve), record_type / record_id the first record
+// tagged in the text, closes_at the optional deadline, reminded_at when the
+// people still waiting were reminded the day before it, closed_at / closed_by
+// / outcome once it is settled, result_message_id the locked decision (or
+// the system line) it wrote into the channel. ws_approval_people is one row
+// per approver with their decision, its optional note and when it was given.
+// idx_open serves a channel's open cards, idx_due the scheduled run's look
+// for deadlines that come or have passed, idx_user what waits for a person.
+function upgrade_2026_4_8_workspace_approvals() {
+
+	install_create_table('ws_approvals', "CREATE TABLE ws_approvals (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		title             VARCHAR(255) NOT NULL DEFAULT '',
+		rule              ENUM('any','all') NOT NULL DEFAULT 'any',
+		record_type       VARCHAR(20) NOT NULL DEFAULT '',
+		record_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		closes_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		outcome           ENUM('open','approved','rejected','withdrawn','expired') NOT NULL DEFAULT 'open',
+		result_message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_message (message_id),
+		KEY idx_open (channel_id, closed_at, closes_at),
+		KEY idx_due (closed_at, closes_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_approval_people', "CREATE TABLE ws_approval_people (
+		approval_id INT UNSIGNED NOT NULL,
+		user_id     INT UNSIGNED NOT NULL,
+		decision    ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+		note        VARCHAR(255) NOT NULL DEFAULT '',
+		decided_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (approval_id, user_id),
+		KEY idx_user (user_id, decision)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a channel can ask chosen people to approve something; the result is written into the channel as a locked decision.');
+
+}
+
+// Read receipts in the workspace (2026.4.8, 8.89; includes/workspace/acks.php).
+// ws_ack_requests marks a message whose readers are asked to say they read
+// it: who asked and when, reminded_at when the people who had not read it
+// a day later were reminded. A table of its own rather than a column of
+// ws_messages, which is wide already. ws_acks is one row per person who said
+// so. idx_remind serves the scheduled run's look for reminders that are due.
+function upgrade_2026_4_8_workspace_acks() {
+
+	install_create_table('ws_ack_requests', "CREATE TABLE ws_ack_requests (
+		message_id   INT UNSIGNED NOT NULL,
+		requested_by INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_at INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id),
+		KEY idx_remind (reminded_at, requested_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_acks', "CREATE TABLE ws_acks (
+		message_id INT UNSIGNED NOT NULL,
+		user_id    INT UNSIGNED NOT NULL,
+		acked_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.');
 
 }

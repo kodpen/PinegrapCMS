@@ -69,5 +69,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/palette.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_board.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/task_time.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/task_links.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approvals.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/acks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');

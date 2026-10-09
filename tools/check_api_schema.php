@@ -83,6 +83,7 @@ $presenters = array(
 	'ws_api_note_schema'              => 'ws_api_note_present',
 	'ws_api_template_schema'          => 'ws_api_template_present',
 	'ws_api_template_applied_schema'  => 'ws_api_template_applied_present',
+	'ws_api_approval_schema'          => 'ws_api_approval_present',
 	'api_device_schema'               => 'api_device_present',
 	'api_notification_schema'         => 'api_notification_present',
 	'api_auth_session_schema'         => 'api_auth_session_present',

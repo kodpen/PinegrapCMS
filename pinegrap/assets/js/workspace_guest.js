@@ -247,6 +247,10 @@
             bubble.appendChild(drawPoll(message.poll));
         }
 
+        if (message.approval) {
+            bubble.appendChild(drawApproval(message.approval));
+        }
+
         if (message.task) {
             bubble.appendChild(drawTask(message.task));
         }
@@ -465,6 +469,22 @@
 
             apply(data);
         }).catch(function () { toast(t('error')); });
+    }
+
+    // An approval request staff made in the room, to read: the guest is
+    // never one of the people asked.
+    function drawApproval(approval) {
+        var box = el('div', 'pg-guest-task' + (approval.open ? '' : ' done'));
+        box.appendChild(icon(approval.open ? 'bi-patch-question' : 'bi-patch-check'));
+
+        var text = el('div', 'pg-guest-task-text');
+        text.appendChild(el('b', '', approval.title));
+        text.appendChild(el('span', '', [t('approval'), approval.state].concat((approval.people || []).map(function (person) {
+            return person.name + (person.decision === 'approved' ? ' ✓' : (person.decision === 'rejected' ? ' ✗' : ''));
+        }).join(', ')).filter(Boolean).join(' · ')));
+        box.appendChild(text);
+
+        return box;
     }
 
     // A task staff made in the room, to read.

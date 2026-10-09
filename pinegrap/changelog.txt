@@ -679,6 +679,41 @@
          olay: workspace.task.time_logged.
 
   [ŞEMA] ws_task_time ve ws_task_links tabloları.
+  [YENİ] Onay iste: yazı kutusundaki + menüsünden kanalın
+         kişilerinden (en fazla on) bir şey için onay istenir;
+         başlık, açıklama (@ ve # etiketleriyle), "herhangi
+         biri" ya da "hepsi" kuralı ve isteğe bağlı son tarih
+         seçilir. Mesajın altındaki kartta onaylayanlar, her
+         birinin yanıtı ve zamanı görünür; Onayla / Reddet
+         düğmeleri yalnız sorulan kişilere çıkar, ret gerekçe
+         alabilir. Kural sağlanınca, biri reddedince ya da son
+         tarih geçince kart kapanır ve sonuç kanala kilitli bir
+         karar olarak yazılır ("Onaylandı: ... — Ayşe"); Karar
+         Zaman Çizelgesi'nde görünür. İsteyen kişi isteği geri
+         çekebilir, yöneticiler kapatabilir. Sorulanlara gelen
+         kutusu ve telefon bildirimi gider; son tarihten bir gün
+         önce yanıt vermeyenlere bir kez hatırlatılır. Genel
+         Bakış'ta "Beni bekleyen onaylar" listelenir. Tartışmada
+         verilen karar kanala da kopyalanır; misafir kartı
+         yalnız okur. Programlanmış işlere "Bir kanalda onay
+         iste" eylemi eklendi (ör. her ayın 1'i gider raporu
+         onayı). Dış API'de kanalın onay istekleri okunur ve
+         yeni istek açılır; onay ve ret yalnız cihazında oturum
+         açmış kişinin kendisi tarafından verilir.
+
+  [YENİ] Okundu onayı: mesajı yazan ya da bir yönetici, mesajın
+         menüsünden (sabit mesajın çubuğundan da) okundu onayı
+         ister. Kanalın o anki üyeleri mesajın altında "Okudum"
+         düğmesini görür; "N / M okudu" etiketi herkes okuyunca
+         yeşile döner, yazan kişi tıklayınca kimin okuduğunu
+         (saatiyle) ve kimin okumadığını görür. Kanaldan çıkan
+         sayımdan düşer, misafir sayılmaz. 24 saat sonra hâlâ
+         okumayanlara gelen kutusunda bir kez hatırlatılır;
+         Genel Bakış'ta "Onayını bekleyen duyurular" görünür.
+
+  [ŞEMA] Yeni ws_approvals ve ws_approval_people tabloları
+         (onay istekleri), ws_ack_requests ve ws_acks tabloları
+         (okundu onayları).
 
   E-POSTA
   --------------------------------------------------------

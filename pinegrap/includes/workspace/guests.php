@@ -1149,6 +1149,11 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
     $checks = function_exists('ws_checks_map') ? ws_checks_map($ids) : array();
     $polls = function_exists('ws_polls_map') ? ws_polls_map($ids, array('id' => 0, 'role' => 3, 'member' => false, 'guest_id' => $guest_id)) : array();
 
+    // Approval requests staff made in the room, to read: a guest is never
+    // asked (approvals.php).
+    $approvals = function_exists('ws_approvals_map') ? ws_approvals_map($ids, array('id' => 0, 'role' => 3, 'member' => false, 'guest_id' => $guest_id,
+        'ecommerce' => false, 'contacts' => false, 'erp' => false, 'erp_cash' => false, 'forms' => false, 'calendars' => false, 'users' => false)) : array();
+
     // A checklist that became tasks is ticked by staff: the ticks move them.
     $listed = empty($ids) || !function_exists('ws_task_work_ready') || !ws_task_work_ready() ? array()
         : array_flip(array_map('intval', (array) db_values("SELECT DISTINCT checklist_message_id FROM ws_tasks WHERE checklist_message_id IN (" . implode(',', $ids) . ")")));
@@ -1176,6 +1181,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             'parent'    => null,
             'file'      => null,
             'poll'      => null,
+            'approval'  => null,
             'task'      => null,
             'reactions' => array_values($reactions[$id] ?? array()),
         );
@@ -1234,6 +1240,19 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             );
         }
 
+        if (isset($approvals[$id])) {
+            $approval = $approvals[$id];
+
+            $message['approval'] = array(
+                'title'  => (string) $approval['title'],
+                'state'  => $approval['open'] ? lang('Approval pending') : ws_guest_approval_outcome($approval['outcome']),
+                'open'   => !empty($approval['open']),
+                'people' => array_map(function ($person) {
+                    return array('name' => (string) $person['name'], 'decision' => (string) $person['decision']);
+                }, (array) $approval['people']),
+            );
+        }
+
         // A task staff made in the room: what it is and where it stands, to
         // read; the task itself is the staff's.
         if (($row['kind'] === 'task') && ((int) $row['task_id'] > 0) && function_exists('ws_task')) {
@@ -1253,6 +1272,24 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
     }
 
     return $out;
+}
+
+/**
+ * How a settled approval request ended, in the words of the guest's page.
+ *
+ * @param string $outcome
+ * @return string
+ */
+function ws_guest_approval_outcome($outcome)
+{
+    $labels = array(
+        'approved'  => lang('Approved'),
+        'rejected'  => lang('Rejected'),
+        'expired'   => lang('Expired'),
+        'withdrawn' => lang('Closed without a decision'),
+    );
+
+    return $labels[$outcome] ?? '';
 }
 
 /**
@@ -1740,6 +1777,7 @@ function ws_guest_page_strings()
         'poll_closed'  => lang('The poll is closed.'),
         'poll_closes'  => ws_js_template('Closes {var:1}', 1),
         'poll_multiple' => lang('You can choose more than one.'),
+        'approval'     => lang('Approval request'),
         'privacy'      => lang('Only the people of the site in this conversation read what you write here.'),
         'read_only'    => lang('This conversation was shared with you to read only.'),
         'readonly_badge' => lang('Read only'),
