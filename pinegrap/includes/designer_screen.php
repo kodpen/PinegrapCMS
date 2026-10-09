@@ -737,8 +737,9 @@ function pg_designer_start_screen($ctx)
     $templates = $can_create ? pg_design_templates() : array();
 
     // Rows of the standard admin DataTable (same table as view_styles.php,
-    // without the bulk-select column: designs are deleted from the editor's
-    // toolbar, one at a time, after their pages).
+    // without the bulk-select column). A design is deleted from its row or
+    // from the editor's toolbar, one at a time: its pages go to the recycle
+    // bin and the folders using it are cleared (pg_designer_delete_design()).
     $output_rows = '';
     foreach ($designs as $d) {
         $count = (int)$d['page_count'];
@@ -747,7 +748,7 @@ function pg_designer_start_screen($ctx)
         <tr>
             <td class="align-middle text-start" nowrap>
                 <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_system_style.php?id=' . (int)$d['style_id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>
+                ' . ($can_create ? '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>' : '') . '
             </td>
             <td class="align-middle chart_label" nowrap>' . h($d['style_name']) . ($count == 0 ? ' <span class="badge text-bg-secondary ms-1" title="' . lang('No pages — open it to add one, or delete it from the toolbar') . '">' . lang('Empty') . '</span>' : '') . '</td>
             <td class="align-middle sd-design-thumb-cell">' . pg_designer_list_thumb($d) . '</td>
@@ -810,6 +811,8 @@ function pg_designer_start_screen($ctx)
             .sd-tpl-pal i { flex: 1; }
             .btn-check:checked + .sd-tpl-pal { border-color: var(--bs-body-bg); box-shadow: 0 0 0 2px var(--bs-emphasis-color); }
             .btn-check:focus-visible + .sd-tpl-pal { box-shadow: 0 0 0 3px var(--bs-focus-ring-color, rgba(13,110,253,.25)), 0 0 0 1px var(--bs-border-color); }
+            /* pgConfirm escapes its message; the list of rows to delete is one line each. */
+            .modal[aria-labelledby="pg-confirm-title"] .modal-body { white-space: pre-line; }
         </style>
         <main id="content" class="container-fluid">
             ' . $liveform->output_errors() . '
@@ -843,6 +846,7 @@ function pg_designer_start_screen($ctx)
                     </table>
                 </div>
             </div>
+            ' . pg_designer_components_card($ctx['user']) . '
         </main>
         ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
         <script>
@@ -876,6 +880,74 @@ function pg_designer_start_screen($ctx)
                         .then(function (ok) { if (ok) run(); });
                 } else if (window.confirm(msg)) { run(); }
             });
+
+            // Shared components and system widgets (pg_designer_components_card()):
+            // tick rows, delete them in one go. Rows still placed on a page are
+            // deleted too (force) once the operator has seen where.
+            (function () {
+                var card = document.getElementById("sd-comp-card");
+                if (!card) return;
+                var all = document.getElementById("sd-comp-all"), del = document.getElementById("sd-comp-delete"), counter = document.getElementById("sd-comp-count");
+                var boxes = function () { return Array.prototype.slice.call(card.querySelectorAll(".sd-comp-pick")); };
+                var sync = function () {
+                    var list = boxes(), n = list.filter(function (b) { return b.checked; }).length;
+                    counter.textContent = String(n);
+                    del.disabled = (n === 0);
+                    all.checked = list.length > 0 && n === list.length;
+                    all.indeterminate = n > 0 && n < list.length;
+                };
+                all.addEventListener("change", function () {
+                    boxes().forEach(function (b) { b.checked = all.checked; });
+                    sync();
+                });
+                card.addEventListener("change", function (e) {
+                    if (e.target.classList.contains("sd-comp-pick")) sync();
+                });
+                del.addEventListener("click", function () {
+                    var rows = boxes().filter(function (b) { return b.checked; }).map(function (b) { return b.closest("tr"); });
+                    if (!rows.length) return;
+                    // The rows still in use lead the list, where they are read.
+                    rows.sort(function (a, b) { return (b.dataset.used === "1" ? 1 : 0) - (a.dataset.used === "1" ? 1 : 0); });
+                    var used = 0, lines = [];
+                    rows.forEach(function (tr) {
+                        var where = [];
+                        try { where = JSON.parse(tr.dataset.usage || "[]"); } catch (err) {}
+                        if (where.length) used++;
+                        lines.push("• " + (tr.dataset.name || "") + (where.length ? " — " + ' . json_encode(lang('Used on: ')) . ' + where.join(", ") : ""));
+                    });
+                    var msg = ' . json_encode(lang('{var} shared components and system widgets will be deleted for good:')) . '.replace("{var}", rows.length) + "\n" + lines.join("\n") + "\n\n" +
+                              (used ? ' . json_encode(lang('{var} of them are still in use: their places on those pages are left empty.')) . '.replace("{var}", used) + " " : "") +
+                              ' . json_encode(lang('This cannot be undone.')) . ';
+                    var ids = rows.map(function (tr) { return parseInt(tr.dataset.id, 10); });
+                    var run = function () {
+                        del.disabled = true;
+                        fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                               body: JSON.stringify({ action: "shared_component", sub_action: "delete_many", ids: ids, force: used > 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })
+                        .then(function (r) { return r.json(); })
+                        .then(function (res) {
+                            if (!res || res.status !== "success") {
+                                sync();
+                                var fail = (res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . ';
+                                if (typeof pgToast === "function") pgToast({ message: fail, variant: "danger" }); else alert(fail);
+                                return;
+                            }
+                            var gone = (res.deleted || []).map(function (s) { return parseInt(s, 10); });
+                            rows.forEach(function (tr) { if (gone.indexOf(parseInt(tr.dataset.id, 10)) !== -1) tr.remove(); });
+                            if (boxes().length) sync(); else card.remove();
+                            if (typeof pgToast === "function") {
+                                pgToast({ message: ' . json_encode(lang('{var} deleted.')) . '.replace("{var}", gone.length), variant: "success" });
+                                if (res.kept && res.kept.length) pgToast({ message: ' . json_encode(lang('{var} kept: a saved page uses them.')) . '.replace("{var}", res.kept.length), variant: "warning" });
+                            }
+                        })
+                        .catch(function () { sync(); alert(' . json_encode(lang('Network error.')) . '); });
+                    };
+                    if (typeof window.pgConfirm === "function") {
+                        window.pgConfirm({ title: ' . json_encode(lang('Delete shared components and system widgets')) . ', message: msg,
+                                           confirmText: ' . json_encode(lang('Delete ({var})')) . '.replace("{var}", rows.length), cancelText: ' . json_encode(lang('No')) . ', variant: "danger" })
+                            .then(function (ok) { if (ok) run(); });
+                    } else if (window.confirm(msg)) { run(); }
+                });
+            })();
 
             // Take every page of a design off the site, or put its drafts
             // back on it, from its row. The home page stays on the site. The
@@ -926,6 +998,124 @@ function pg_designer_start_screen($ctx)
         </script>
         ';
     print output_footer();
+}
+
+/**
+ * The shared components and system widgets on file, with where each one is
+ * placed, under the design list. These rows do not belong to one design: a
+ * template's header and widgets outlive the design that opened them, and
+ * the next template opened then names its own rows "[1]". Here they can be
+ * deleted without opening a design. Editing them needs the canvas, so the
+ * card only lists and deletes (shared_component/delete_many, the editor's
+ * bulk delete).
+ *
+ * '' below designer, before the table exists and when there are no rows.
+ */
+function pg_designer_components_card($user)
+{
+    require_once(dirname(__FILE__) . '/designer_access.php');
+    if (!pg_designer_is_full($user)) return '';
+    if (!db_value("SHOW TABLES LIKE 'shared_components'")) return '';
+
+    $comp_rows = db_items("SELECT id, name, category, updated_at, system_region_config FROM shared_components ORDER BY name");
+    if (!is_array($comp_rows) || count($comp_rows) === 0) return '';
+
+    $comp_usage     = pg_shared_component_usage(null);
+    $comp_types     = pg_sw_type_labels();
+    $comp_templates = pg_design_templates();
+
+    $comp_output_rows = '';
+    foreach ($comp_rows as $r) {
+        $sid = (int)$r['id'];
+        $cfg_raw = trim((string)$r['system_region_config']);
+        $is_widget = ($cfg_raw !== '');
+        $cfg = $is_widget ? json_decode($cfg_raw, true) : null;
+        if (!is_array($cfg)) $cfg = array();
+
+        $type_cell = h($is_widget ? lang('System Widget') : lang('Shared Component'));
+        $kind = isset($cfg['regionType']) ? (string)$cfg['regionType'] : '';
+        if ($is_widget && $kind !== '') {
+            $type_cell .= '<div class="small text-muted">' . h(isset($comp_types[$kind]) ? $comp_types[$kind] : $kind) . '</div>';
+        }
+
+        // A template's shared component carries "template:<template>/<key>"
+        // in category; its widgets carry the same origin in their settings.
+        // An import's rows carry "import:<project>".
+        $category = (string)$r['category'];
+        $origin   = '';
+        if (strpos($category, 'template:') === 0) {
+            $origin = substr($category, 9);
+        } elseif (isset($cfg['template_origin']) && is_string($cfg['template_origin'])) {
+            $origin = $cfg['template_origin'];
+        }
+        if ($origin !== '') {
+            $tpl_id = strstr($origin, '/', true);
+            if ($tpl_id === false) $tpl_id = $origin;
+            $tpl_name = isset($comp_templates[$tpl_id]['name']) ? (string)$comp_templates[$tpl_id]['name'] : $tpl_id;
+            $source_cell = h(lang('Template')) . '<div class="small text-muted">' . h($tpl_name) . '</div>';
+        } elseif (strpos($category, 'import:') === 0) {
+            $source_cell = h(lang('Import')) . '<div class="small text-muted">' . h(substr($category, 7)) . '</div>';
+        } else {
+            $source_cell = '<span class="text-muted">—</span>';
+        }
+
+        // Where it is placed: page (design), the recycle bin marked. The
+        // confirmation reads the same lines from data-usage.
+        $usage_lines = array();
+        $usage_cell  = '';
+        foreach ((isset($comp_usage[$sid]) ? $comp_usage[$sid] : array()) as $u) {
+            // A binned page of a deleted design has no design name left: the
+            // page alone, never "page ()".
+            $page = (string)$u['page_name'];
+            if ($page === '') $page = (string)$u['style_name'];
+            if ($page === '') $page = '#' . (int)$u['page_id'];
+            $line = ((int)$u['page_id'] > 0 && (string)$u['style_name'] !== '') ? $page . ' (' . $u['style_name'] . ')' : $page;
+            $usage_lines[] = $line;
+            $usage_cell .= '<div>' . h($line)
+                . (!empty($u['binned']) ? ' <span class="badge text-bg-secondary">' . h(lang('Recycle Bin')) . '</span>' : '')
+                . '</div>';
+        }
+        if ($usage_cell === '') {
+            $usage_cell = '<span class="badge text-bg-success">' . h(lang('Not used')) . '</span>';
+        }
+
+        $comp_output_rows .= '
+                    <tr data-id="' . $sid . '" data-name="' . h($r['name']) . '" data-used="' . ($usage_lines ? '1' : '0') . '" data-usage="' . h(json_encode($usage_lines)) . '">
+                        <td><input type="checkbox" class="form-check-input sd-comp-pick" value="' . $sid . '" aria-label="' . h(lang('Select')) . '"></td>
+                        <td class="fw-semibold">' . h($r['name']) . '</td>
+                        <td>' . $type_cell . '</td>
+                        <td>' . $source_cell . '</td>
+                        <td class="small">' . $usage_cell . '</td>
+                        <td nowrap>' . get_relative_time(array('timestamp' => (int)$r['updated_at'])) . '</td>
+                    </tr>';
+    }
+
+    return '
+            <div class="card mb-5" id="sd-comp-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Shared components and system widgets')) . '</span>
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
+                </div>
+                <div class="card-body pb-0">
+                    <p class="small text-muted mb-3">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" class="form-check-input" id="sd-comp-all" aria-label="' . h(lang('Select all')) . '"></th>
+                                <th>' . h(lang('Name')) . '</th>
+                                <th>' . h(lang('Type')) . '</th>
+                                <th>' . h(lang('Source')) . '</th>
+                                <th>' . h(lang('Used on')) . '</th>
+                                <th nowrap>' . h(lang('Last Modified')) . '</th>
+                            </tr>
+                        </thead>
+                        <tbody>' . $comp_output_rows . '
+                        </tbody>
+                    </table>
+                </div>
+            </div>';
 }
 
 /**

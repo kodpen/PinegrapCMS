@@ -74,6 +74,86 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Görsel editör: tasarım klasör kullanırken de silinir, ortak bileşen / widget paneli; varsayılan giriş ekranı kart oldu (2026-10-09)
+
+**Sorun (şikâyet).** (1) Görsel editörde yapılmış bir tasarım "En az bir
+klasör veya sayfa tarafından kullanıldığı için…" iletisiyle silinemiyordu;
+mevcut tasarımı kaldırıp yenisini koymanın yolu yoktu. (2) Giriş sayfası tipi
+ya da giriş widget'ı olmayan sitede panelin açtığı varsayılan giriş ekranı
+biçimsiz bir tabloydu ve `type="email"` alan kullanıcı adıyla girişi
+engelliyordu. (3) Bütün tasarımlar silinince geride kalan ortak bileşen ve
+sistem widget satırları yeni şablonda adlara `[1]` ekletiyordu ve editör
+açılmadan (yani bir tasarım oluşturmadan) silinemiyordu.
+
+**Kök neden.** (1) İki kapı vardı: editör araç çubuğu
+`pg_designer_style_live_usage() > 0` ise düğmeyi kapatıyor ve POST'u
+reddediyordu — çok sayfalı tasarımda sayfalar tasarımın kendisi olduğu için bu
+"sayfası olan tasarım silinemez" demekti; liste ekranının `design_delete`
+ucu sayfaları kutuya gönderiyordu ama `folder.folder_style` /
+`folder.mobile_style_id` bu stili gösteriyorsa reddediyordu. Kurulum
+(`install_design_template.php`) tasarımı kök klasöre yazdığı için şablondan
+kurulan her sitede tasarım kilitliydi. Ayrıca editör POST yolunda hiç rol
+denetimi yoktu: içerik düzeyindeki operatör (rol 2–3) düğmeyi görmese de
+`submit_delete` göndererek tasarımı silebilirdi. (2) `get_login()` sayfasız
+çağrıyı (`page_id = 0`) legacy `system` sayfa düzeniyle aynı dalda çiziyordu.
+(3) `shared_components` satırları tasarımdan bağımsızdır; tasarım silinince
+kalır ve tek silme arayüzü editörün palet sekmesiydi.
+
+**Çözüm.** (1) Tek sunucu fonksiyonu `pg_designer_delete_design($style_id,
+$user, $collab_key = '')` (`includes/fn/designer.php`,
+`pg_designer_style_live_usage()`'ın yerinde; o fonksiyon kaldırıldı). Sıra:
+stil var mı → `pg_designer_is_full()` (değilse ret; rol 3 + `delete_pages`
+kuralı korundu) → `pg_collab_peers($collab_key, $id)` doluysa ret (başka
+sekmede açık tasarımın sonraki kaydı hayalet sayfa yazar; editörün kendi
+sekmesi `collab_key` ile sayılmaz) → kutu yoksa ve sayfa varsa ret → yayındaki
+sayfalar kutuya (`api.php`'deki blok taşındı) → `page.mobile_style_id`,
+`folder.folder_style` / `folder.mobile_style_id` 0'a (klasör sayısı tek
+`UPDATE` ile, iki stili birden taşıyan klasör bir kez sayılır) → `style`,
+`system_style_cells`, `preview_styles` satırları. Dönüş `ok, error, binned,
+home, folders, name`; iki çağıran da (editör POST'u ve `design_delete`) aynı
+iletiyi kurar. Editörün çöp düğmesi kullanım sayısına göre kapanmaz, yalnız
+tam erişime basılır; onay metni sayfa ve klasör sayısını söyler. Liste
+ekranındaki satır silme düğmesi de yalnız tam erişime basılır.
+(2) `get_login()`'de `page_id == 0` ayrı dal: `mfa.php` ile aynı kart
+iskeleti, `type="text"` + `autocomplete="username"` alan, etiket "E-posta veya
+kullanıcı adı", mesajlar kartın içinde. Alan adları, gizli alanlar, düğme
+ad/değeri aynı (`index.php` bunları okur). Legacy giriş sayfasının `system`
+dalı aynen kaldı (çıktısı değişiklikten önceki dosyayla karşılaştırıldı,
+bayt bayt aynı). (3) `pg_designer_components_card($user)`
+(`includes/designer_screen.php`) tasarım listesinin altında: ad, tür (widget
+çeşidi `pg_sw_type_labels()` — `SW_TYPES`'ın PHP aynası,
+`tests/designer_components_test.php` iki listeyi karşılaştırır), kaynak
+(`category` `template:`/`import:`, widget'ta `template_origin`), kullanım
+(`pg_shared_component_usage()` kayıtlarına `binned` eklendi; kutudaki sayfa
+rozetli), son değişiklik. `pg_shared_component_usage()` sayfaları artık
+`LEFT JOIN style` ile okur: tasarımı silinmiş, kutudaki sayfa widget'ı hâlâ
+referanslıyor ve kullanım sayılır (`style_id` sayfanın taşıdığı id,
+`style_name` `''`; panel adı parantezsiz yazar). Önceki `INNER JOIN` bu
+sayfaları düşürüyordu: tasarım silinince widget'ları "kullanılmıyor" görünüp
+kutudan dönecek sayfanın widget'ı sorusuz silinebiliyordu. Seçim + toplu silme mevcut
+`shared_component/delete_many` ucuna gider; kullanımda olan seçiliyse
+`force`. Düzenleme bu ekrandan yapılmaz (tuval gerekir).
+
+**Ödünler.** Klasörün stili 0'a çekilir: alt klasör üstünkine düşer. Kök
+klasör stilsiz kalır (kabul edilen ödün) — kökteki eski (stil atanmamış,
+`page_style = 0`) sayfalar ancak başka bir stil atanınca çizilir; görsel
+editör sayfaları kendi `page_style`'ını taşıdığı için etkilenmez.
+`LEFT JOIN`'in yan etkisi (kabul): editör paletinde kutudaki sayfaların
+widget'ları "kullanımda" görünür ve `force`'suz `delete_many` onları `kept`
+döndürür; `page_style = 0` olup ağaç taşıyan sayfalar da artık kullanım
+sayılır. Ana sayfa kutuya gidebilir
+(dosya yöneticisinin kutu yolu da engellemiyor); ileti söyler. Toplu silmede
+kullanımda olan widget'ın sayfadaki yeri boş kalır (editördeki davranış);
+bu ekranda yazılı onay istenmez.
+
+**Doğrulama.** lint, check_lang, check_bindings, `php tools/test.php`,
+`node --check style_designer.js` temiz; liste ekranının satır içi betiği
+ayrıca `node --check` ve başsız Chromium'da sahte veriyle (seçim, sayaç,
+onay metni, istek gövdesi, satır kaldırma) denendi. Sandbox kurulmadı:
+silme, kutu, klasör temizliği ve giriş akışı çalışma zamanında doğrulanmadı.
+
+---
+
 ## 2026.4.8 — Çalışma Alanı: olay başlatıcılı programlanmış işlem, kaydı izle, web formu → kanal (8.85) (2026-10-09)
 
 **İstenen.** Programlanmış işlem yalnız zamanla (`at`), kanala katılmayla

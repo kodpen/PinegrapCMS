@@ -1434,7 +1434,7 @@ function get_login_screen()
             exit();
         }
         require_once(PG_FUNCTIONS_DIR . '/get_login.php');
-        $output = output_header_secure() . get_login() . output_footer_secure();
+        $output = output_header_secure(array('title' => lang('Login'))) . get_login() . output_footer_secure();
     }
     return $output;
 }

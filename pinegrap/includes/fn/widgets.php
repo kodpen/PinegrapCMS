@@ -35,6 +35,46 @@ function pg_widget_month_name($month)
     return lang(date('F', mktime(0, 0, 0, $month, 1, 2000)));
 }
 
+/**
+ * A system widget's kind (system_region_config.regionType) => its name, for
+ * panel screens outside the editor.
+ *
+ * Mirror of SW_TYPES in assets/js/style_designer.js: same kinds, same English
+ * keys. Keep the two in step when a kind is added.
+ */
+function pg_sw_type_labels()
+{
+    return array(
+        'form_list_view'      => lang('Form List View'),
+        'form_item_view'      => lang('Form Item View'),
+        'catalog_listing'     => lang('Catalog'),
+        'catalog_item_view'   => lang('Catalog Detail'),
+        'my_account'          => lang('My Account'),
+        'login_form'          => lang('Login'),
+        'login_region'        => lang('Login Region'),
+        'cart_link'           => lang('Cart Link'),
+        'forgot_password'     => lang('Forgot Password'),
+        'search_results'      => lang('Search Results'),
+        'registration'        => lang('Registration Entrance'),
+        'shopping_cart'       => lang('Shopping Cart'),
+        'express_order'       => lang('Express Order'),
+        'order_view'          => lang('View Order'),
+        'membership'          => lang('Membership Entrance'),
+        'custom_form'         => lang('Custom Form'),
+        'calendar_view'       => lang('Calendar View'),
+        'calendar_event_view' => lang('Calendar Event'),
+        'account_profile'     => lang('Account Profile'),
+        'change_password'     => lang('Change Password'),
+        'set_password'        => lang('Set Password'),
+        'email_preferences'   => lang('Email Preferences'),
+        'address_book'        => lang('Address Book'),
+        'account_security'    => lang('Account Security'),
+        'logout'              => lang('Logout'),
+        'error_page'          => lang('Error Page (404)'),
+        'language_switcher'   => lang('Language Switcher'),
+    );
+}
+
 // ============================================================================
 // Standard (system) fields of a submitted form
 //

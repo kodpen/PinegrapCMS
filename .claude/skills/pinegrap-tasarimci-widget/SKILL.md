@@ -231,6 +231,15 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
 - Düzenleme inline yapılır; kayıtta önce `shared_components` güncellenir, sonra
   stil kaydedilir.
 - `_render_tree_node()` çağrılarında `$depth` taşınır ve 8'i aşınca durulur.
+- Editör dışında silme: tasarım listesinin altındaki panel
+  (`pg_designer_components_card()`, tür adları `pg_sw_type_labels()` —
+  `SW_TYPES`'ın aynası, `tests/designer_components_test.php`) kullanımı
+  `pg_shared_component_usage()`'tan okur (`binned` = kutudaki sayfa; tasarımı
+  silinmişse de sayılır, `style_name` `''` — "sayfa ()" yazma) ve
+  `delete_many` ile siler; düzenleme yalnız editörde.
+- Tasarım silme tek yoldan: `pg_designer_delete_design()` (sayfalar kutuya,
+  klasör/mobil stil 0, editörde açıksa ret). Ortak bileşen satırlarına
+  dokunmaz; onlar bu panelden temizlenir.
 - Renk şeması: kilit `#f07820` turuncu, ortak bileşen `#22c55e` yeşil.
 - `prefetchShared()` her sekme açılışında sayfanın bütün widget'larını
   okur ama `_sharedDirty` işaretli girişin üstüne yazmaz: kayda kadar

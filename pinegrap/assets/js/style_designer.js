@@ -45463,7 +45463,7 @@ const StyleDesigner = (function () {
                     var f = document.createElement('form');
                     f.method = 'post';
                     f.action = main ? main.action : 'edit_system_style.php';
-                    ['token', 'id', 'send_to'].forEach(function (n) {
+                    ['token', 'id', 'send_to', 'collab_key'].forEach(function (n) {
                         var src = main ? main.querySelector('[name="' + n + '"]') : null;
                         if (!src) return;
                         var i = document.createElement('input');

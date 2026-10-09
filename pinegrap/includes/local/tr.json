@@ -19429,5 +19429,19 @@
     "Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.": "Çalışma Alanı: bir mesaj için okundu onayı istenebilir; yazan kimin okuduğunu ve okumadığını görür.",
     "Cookie window": "Çerez penceresi",
     "Cookie window of the website (the cookie notice and its settings)": "Web sitesinin çerez penceresi (çerez bildirimi ve ayarları)",
-    "The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software's wording is not translated here.": "Çerez penceresinin metinleri: bildirim, ayarları ve her çerezin ne için kullanıldığı. Bu dilin dil dosyası olmadığı için pencere burada çevrilir; bir metin çevrilene kadar İngilizcesi gösterilir. Yazılımın diğer metinleri burada çevrilmez."
+    "The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software's wording is not translated here.": "Çerez penceresinin metinleri: bildirim, ayarları ve her çerezin ne için kullanıldığı. Bu dilin dil dosyası olmadığı için pencere burada çevrilir; bir metin çevrilene kadar İngilizcesi gösterilir. Yazılımın diğer metinleri burada çevrilmez.",
+    "You do not have access to delete this design.": "Bu tasarımı silme yetkiniz yok.",
+    "The home page was among them: the site has no home page until another page is marked as home.": "Ana sayfa da bunların arasındaydı: başka bir sayfa ana sayfa olarak işaretlenene kadar sitenin ana sayfası yok.",
+    "{var:1} folder(s) used it as their default design; that setting was cleared.": "{var:1} klasör bu tasarımı varsayılan tasarımı olarak kullanıyordu; bu ayar temizlendi.",
+    "{var:1} folder(s) use it as their default design; that setting will be cleared.": "{var:1} klasör bu tasarımı varsayılan tasarımı olarak kullanıyor; bu ayar temizlenecek.",
+    "Email or username": "E-posta veya kullanıcı adı",
+    "Sign in with your email address or username.": "E-posta adresiniz ya da kullanıcı adınızla giriş yapın.",
+    "Not used": "Kullanılmıyor",
+    "Delete selected": "Seçilenleri sil",
+    "Used on": "Kullanıldığı yer",
+    "Shared components and system widgets": "Ortak bileşenler ve sistem widget'ları",
+    "These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.": "Bunlar tek bir tasarıma ait değildir: bir tasarım silindiğinde yerinde kalır ve sonradan açılan bir şablon kendi kopyalarına numaralı ad verir. Artık gerekmeyenleri buradan silin; düzenlemeleri editörde yapılır.",
+    "{var} shared components and system widgets will be deleted for good:": "{var} ortak bileşen ve sistem widget'ı kalıcı olarak silinecek:",
+    "{var} of them are still in use: their places on those pages are left empty.": "{var} tanesi hâlâ kullanılıyor: o sayfalardaki yerleri boş kalır.",
+    "Delete shared components and system widgets": "Ortak bileşenleri ve sistem widget'larını sil"
 }
