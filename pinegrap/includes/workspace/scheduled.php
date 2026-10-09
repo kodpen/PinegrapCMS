@@ -2008,7 +2008,7 @@ function ws_scheduled_rule_text($viewer, $rule)
         case 'metric':
             $operators = ws_scheduled_operators();
             $metric = ws_scheduled_metrics()[$rule['metric']] ?? null;
-            $value = ($metric && ($metric['kind'] === 'money')) ? ws_money_out((int) $rule['value']) : (string) (int) $rule['value'];
+            $value = ($metric && ($metric['kind'] === 'money')) ? ws_money_out((int) $rule['value']) : (($metric && ($metric['kind'] === 'minutes')) ? ws_minutes_label((int) $rule['value']) : (string) (int) $rule['value']);
 
             return lang(array('string' => 'If {var:1} {var:2} {var:3}', 'vars' => array(
                 ws_scheduled_metric_label($rule['metric'], (int) ($rule['param'] ?? 0)), $operators[$rule['op']] ?? $rule['op'], $value)));
