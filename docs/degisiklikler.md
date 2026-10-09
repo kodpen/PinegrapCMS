@@ -173,6 +173,7 @@ Alanı kapalıyken form hatasız, satır yok. Tarayıcı yok: JS yalnız
 `node --check` ve okuma ile.
 
 ---
+
 ## 2026.4.8 — Çalışma Alanı: kanal / proje şablonları (2026-10-09)
 
 **İstenen.** "Yeni müşteri", "Site teslimi", "Aylık kapanış" gibi tekrar eden
@@ -295,6 +296,9 @@ mesaj hızı ön denetimi; SQL hatasıyla yarıda kesilme satırı;
 penceresi, "Şablon uygula" penceresi, "Bu kanaldan şablon yap" ve şablon
 ekranı. Denenemeyen: gerçek API anahtarıyla dış API çağrısı (anahtar
 üretilmedi; OpenAPI belgesinde uçlar ve nesneler görüldü), webhook teslimi.
+
+---
+
 ## 2026.4.8 — Çalışma Alanı: tek arama kutusu (Ctrl+K) ve kanal panosu (2026-10-09)
 
 **İstenen.** (1) Çalışma Alanı'nda üç ayrı arama vardı (`ws_search` mesaj,
@@ -431,6 +435,7 @@ görevler ekranında şerit büyüteci ve Enter'la görev çekmecesi; 390 px
 genişlikte tek sütun.
 
 ---
+
 ## 2026.4.8 — Çalışma Alanı: görevde harcanan süre (→ ERP fatura taslağı) ve görev bağımlılığı (2026-10-09)
 
 **İstenen.** Görevin tahmini (`ws_tasks.estimate_minutes`) vardı, gerçekleşen
@@ -543,6 +548,9 @@ iki eşzamanlı istekte tek taslak; bağımlılık A←B, B←A ve üç adımlı
 reddi, A bitince B'nin kişisine gelen kutusu; API uçları (kimlik adımı
 dışında) ve dry-run; başsız Chromium'da çekmece, Özet kartı, Zamanım, Pano
 etiketi, bloklu başlatma sorusu. Ayrıntı ve denenemeyenler PR açıklamasında.
+
+---
+
 ## 2026.4.8 — Çalışma Alanı: onay isteği kartı ve okundu onayı (8.87, 8.89) (2026-10-09)
 
 **İstenen.** (E) Bir kanalda seçilen kişilerden bir şey için onay istemek:

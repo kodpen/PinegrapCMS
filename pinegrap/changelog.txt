@@ -580,6 +580,7 @@
 
   [ŞEMA] ws_events_in tablosu (Çalışma Alanı'nın işleyeceği site
          olayları); ws_channels.watch sütunu.
+
   [YENİ] Kanal şablonları: "Yeni müşteri", "Web sitesi teslimi",
          "Aylık kapanış" gibi tekrar eden işler için hazır kanal.
          Şablon görevleri (başlangıç ve bitişi uygulandığı günden
@@ -610,6 +611,7 @@
          workspace.template.applied.
 
   [ŞEMA] ws_templates tablosu.
+
   [YENİ] Tek arama kutusu: Çalışma Alanı'nın her ekranında
          Ctrl+K (Mac'te ⌘K) ya da soldaki şeritteki büyüteç tek
          bir arama penceresi açar. Yazdıkça kanallar, mesajlar,
@@ -641,6 +643,7 @@
          kartlar kendiliğinden yenilenir. Misafirli kanallarda ve
          tartışmalarda pano yoktur. Çalışma Alanı turu bu sekmeyi
          de anlatır ve herkese bir kez daha gösterilir.
+
   [YENİ] Görevde harcanan süre: görev penceresinde "Harcanan
          süre" bölümü. Sayaç başlatılıp durdurulur (sayfa
          kapansa da süre başlangıç anından sayılır; bir
@@ -691,6 +694,7 @@
          olay: workspace.task.time_logged.
 
   [ŞEMA] ws_task_time ve ws_task_links tabloları.
+
   [YENİ] Onay iste: yazı kutusundaki + menüsünden kanalın
          kişilerinden (en fazla on) bir şey için onay istenir;
          başlık, açıklama (@ ve # etiketleriyle), "herhangi
