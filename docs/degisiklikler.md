@@ -236,6 +236,31 @@ listede adıyla görünür; `pg_consent_page_services()` sayfadan toplar,
 durdurulamaz). `window.gtag` varsa Consent Mode `consent update` çağrılır,
 `pg:consent` DOM olayı yayılır.
 
+**Çerez simgesi ve geri dönüş yolu (2026-10-09, ikinci tur).** İstek
+"seçimden sonra simge gizlensin" idi. GDPR m. 7(3) izni geri almanın vermek
+kadar kolay olmasını ister; simge tek yolsa gizlemek bunu bozar. Karar:
+simge, sayfada ayarlara giden başka bir yol varsa gizlenir —
+`data-pg-cc-open` taşıyan bir öğe ya da `#cookie-settings`'e bir bağlantı
+(alt bilgide "Çerez ayarları"). Bağlantı tıklanınca ya da adres
+`#cookie-settings` ile açılınca (yükleme + `hashchange`) bildirim açılır.
+Bağlantı sonradan çizilirse diye `load`'da yeniden bakılır. Yerleşik
+şablonların alt bilgisine bu bağlantı henüz eklenmedi; o siteler simgeyi
+görmeye devam eder.
+
+**Arayüz metinleri grubuna önden alma.** Arayüz metinleri yalnız bir
+ziyaretçi dosyasız dilde (`/ko/`) sayfayı görünce kaydoluyordu; bildirim o
+dilde hiç gösterilmediyse Çeviriler ekranında yoktu, "Bu metinleri güncelle"
+gönderecek bir şey bulmuyordu. `pg_consent_ui_keys()` bildirimin bütün
+`lang()` anahtarlarını listeler (`tests/consent_test.php` listeyi
+dosyadaki `lang()` çağrılarıyla karşılaştırır); `pg_tr_ui_seed()`
+(`includes/translate/content.php`) onları `pg_tr_ui_string()` ile —
+`pg_tr_ui_translate()`'in kullandığı aynı şablon/karma — kaydeder ve hemen
+yazar (bekleyenler aynı istekte sorulur). `pg_tr_extract_group('ui')` artık
+bunu yapar, böylece grubun güncelleme düğmesi 32 metni bulur; Çeviriler
+ekranı dosyasız bir dille açılınca da çağrılır, grup ziyaretçi beklemeden
+listelenir. Tüm site kapsamı arayüz metinlerini 2026.4.7'deki karar gereği
+yine dışarıda bırakır: bildirim grubun kendi düğmesiyle çevrilir.
+
 **Yerleşim.** `get_page_content()` içinde, e-posta değilken ve düzenleme
 kipi dışında, en son `pg_consent_inject()` son `</body>`'den önce ekler
 (`substr_replace`, `preg_replace` yedek başvuru tuzağı yok). Bot

@@ -367,6 +367,53 @@ function pg_consent_markup($content)
 }
 
 /**
+ * Every lang() key the notice can print, in the order it appears in this
+ * file. The Translations screen takes them into the "Interface texts" group
+ * of a language with no language file before any visitor has seen them
+ * (pg_tr_ui_seed()), so "Update translations" translates the notice at once.
+ * tests/consent_test.php keeps the list in step with the lang() calls above.
+ *
+ * @return array
+ */
+function pg_consent_ui_keys()
+{
+    return array(
+        'Keeps your visit together: the cart, signing in and the steps of a form.',
+        'Keeps you signed in.',
+        'Remembers whether you chose to stay signed in.',
+        'Remembers the desktop or mobile view you picked.',
+        'Remembers your cookie choices.',
+        'Counts your visits, to tell new visitors from returning ones.',
+        'Remembers the tracking code of the link you arrived with.',
+        'Remembers the campaign (UTM) that brought you to the site.',
+        'Google Analytics: tells visits apart to measure how the site is used.',
+        'Remembers the partner who referred you, so the partner can be credited.',
+        'Other services',
+        'A service added by this site. It starts only if you allow it.',
+        'Necessary',
+        'Needed for the site to work, so they cannot be turned off.',
+        'Statistics',
+        'Show us how visitors use the site, so we can improve it.',
+        'Marketing',
+        'Credit the partner or campaign that brought you here and measure advertising.',
+        'Always on',
+        'Show cookies',
+        'Cookie policy',
+        'This site uses the cookies it needs to work. Other cookies are used only if you allow them; you can choose them in Settings.',
+        'Accept all',
+        'Only necessary',
+        'Save choices',
+        'This site only uses the cookies it needs to work.',
+        'OK',
+        'Close and keep only the necessary cookies',
+        'Close',
+        'Cookie settings',
+        'Cookies',
+        'Settings',
+    );
+}
+
+/**
  * The notice added to a visitor page, just before its last </body>. Nothing
  * for a crawler, and nothing for a document that is not a whole HTML page.
  *

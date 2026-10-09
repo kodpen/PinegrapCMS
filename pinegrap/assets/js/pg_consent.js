@@ -12,6 +12,12 @@
  * same format pg_consent_parse() reads on the server. Answers for categories
  * this page does not show are carried over untouched.
  *
+ * After an answer the notice folds into the cookie button in the corner,
+ * which reopens it. Withdrawing consent has to stay as easy as giving it, so
+ * the button is hidden only when the page itself links to the settings: any
+ * element with data-pg-cc-open, or a link to #cookie-settings (a footer
+ * "Cookie settings" link, say), opens the notice instead.
+ *
  * Plain ES5 and no jQuery: the notice must work on every page whatever the
  * design loads.
  *
@@ -35,6 +41,7 @@
     var COOKIE = 'pg_consent';
     var LETTERS = { analytics: 'a', marketing: 'm' };
     var MAX_AGE = 180 * 86400;
+    var OPENER = '[data-pg-cc-open], a[href="#cookie-settings"]';
 
     var path = root.getAttribute('data-path') || '/';
     var categories = (root.getAttribute('data-categories') || '').split(',').filter(function (c) {
@@ -275,6 +282,12 @@
         });
     }
 
+    // The corner button is needed only while the page offers no other way
+    // back to the settings.
+    function rest() {
+        fab.hidden = !!document.querySelector(OPENER);
+    }
+
     function show(focus) {
         sync();
         view('intro');
@@ -295,13 +308,29 @@
         var had_focus = card.contains(document.activeElement);
 
         card.hidden = true;
-        fab.hidden = false;
+        rest();
         fab.setAttribute('aria-expanded', 'false');
 
         if (had_focus) {
-            fab.focus();
+            if (!fab.hidden) {
+                fab.focus();
+            } else if (opener && document.contains(opener)) {
+                opener.focus();
+            }
         }
     }
+
+    var opener = null;
+
+    document.addEventListener('click', function (event) {
+        var link = event.target.closest ? event.target.closest(OPENER) : null;
+
+        if (link) {
+            event.preventDefault();
+            opener = link;
+            show(true);
+        }
+    });
 
     root.addEventListener('click', function (event) {
         var target = event.target.closest ? event.target.closest('[data-pg-cc], .pg-cc-fab') : null;
@@ -368,12 +397,30 @@
         }
     });
 
+    // A link the page adds after this script ran (a footer drawn by a
+    // script) still takes the button's place.
+    window.addEventListener('load', function () {
+        if (card.hidden) {
+            rest();
+        }
+    });
+
+    window.addEventListener('hashchange', function () {
+        if (location.hash === '#cookie-settings') {
+            show(true);
+        }
+    });
+
     var stored = read();
 
-    if (answered(stored)) {
+    if (answered(stored) && location.hash !== '#cookie-settings') {
         start(stored);
-        fab.hidden = false;
+        rest();
     } else {
-        show(false);
+        if (answered(stored)) {
+            start(stored);
+        }
+
+        show(location.hash === '#cookie-settings');
     }
 })();
