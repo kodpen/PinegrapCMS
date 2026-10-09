@@ -2076,16 +2076,98 @@ function pg_page_edit_url_by_id($page_id)
 }
 
 /**
- * How many folders and LIVE pages use a style. Pages waiting in the
- * recycle bin do not count: as far as the operator is concerned they are
- * deleted, and a design they were the last pages of is empty.
+ * Delete a design: the one path behind the editor's toolbar and the design
+ * list (api.php design_delete).
+ *
+ * The design's live pages go to the recycle bin; pages already there stay
+ * there (each carries its own tree, so a restored page joins another design
+ * through "Select Page"). Pages that only use it as their mobile style and
+ * folders that use it as their default (desktop or mobile) are cleared to 0
+ * rather than blocking the delete: get_style() then looks in the parent
+ * folder (the root folder is left with none).
+ *
+ * $collab_key is the caller's own editor tab (the toolbar posts it), so the
+ * tab that asks is not counted as somebody else having the design open. Any
+ * other open tab refuses the delete: its next save would write pages of a
+ * design that no longer exists.
+ *
+ * @return array ok, error, binned (pages sent to the bin), home (how many of
+ *               them were the home page), folders (folders cleared), name
  */
-function pg_designer_style_live_usage($style_id)
+function pg_designer_delete_design($style_id, $user, $collab_key = '')
 {
     $style_id = (int)$style_id;
-    return (int)db_value(
-        "SELECT (SELECT COUNT(folder_id) FROM folder WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id')
-              + (SELECT COUNT(page_id)   FROM page   WHERE (page_style = '$style_id' OR mobile_style_id = '$style_id')" . pg_designer_not_binned_sql('page_folder') . ")");
+    $out = array('ok' => false, 'error' => '', 'binned' => 0, 'home' => 0, 'folders' => 0, 'name' => '');
+
+    $style = $style_id > 0 ? db_item("SELECT style_id, style_name FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
+    if (!$style) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+    $out['name'] = (string)$style['style_name'];
+
+    // The design is the designer's: a content-level operator never sees the
+    // button, and this is what refuses the POST that does not need it.
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+    if (!pg_designer_is_full($user)) {
+        $out['error'] = lang('You do not have access to delete this design.');
+        return $out;
+    }
+    if (((int)$user['role'] == 3) && !$user['delete_pages']) {
+        $out['error'] = lang('You do not have access to delete pages.');
+        return $out;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    $peers = pg_collab_peers($collab_key, $style_id);
+    if ($peers) {
+        $names = array();
+        foreach ($peers as $peer) $names[$peer['name']] = true;
+        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+                                   'vars'   => implode(', ', array_keys($names))));
+        return $out;
+    }
+
+    // Everything that can refuse is checked before anything is written.
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $bin_ready = pg_recycle_ready();
+    if (!$bin_ready) {
+        if ((int)db_value("SELECT COUNT(page_id) FROM page WHERE page_style = '$style_id'") > 0) {
+            $out['error'] = lang('The recycle bin is not available. Delete the page from the pages list instead.');
+            return $out;
+        }
+    } else {
+        $uid    = (int)$user['id'];
+        $bin_id = (int)pg_recycle_folder_id(true);
+        $live   = db_items("SELECT page_id, page_folder, page_home FROM page WHERE page_style = '$style_id'" . pg_designer_not_binned_sql('page_folder'));
+        foreach ((is_array($live) ? $live : array()) as $lp) {
+            $pid = (int)$lp['page_id'];
+            db("UPDATE page SET page_folder = '$bin_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
+            pg_recycle_park_name('page', $pid, $user);
+            db("DELETE FROM recycle_bin WHERE item_type = 'page' AND item_id = '$pid'");
+            db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+                VALUES ('page', '$pid', '" . (int)$lp['page_folder'] . "', UNIX_TIMESTAMP(), '$uid')");
+            $out['binned']++;
+            if ((string)$lp['page_home'] === 'yes') $out['home']++;
+        }
+    }
+
+    db("UPDATE page SET mobile_style_id = 0 WHERE mobile_style_id = '$style_id'");
+
+    // One statement so a folder that had it as both styles counts once.
+    db("UPDATE folder
+        SET folder_style    = IF(folder_style = '$style_id', 0, folder_style),
+            mobile_style_id = IF(mobile_style_id = '$style_id', 0, mobile_style_id)
+        WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
+    $out['folders'] = max(0, (int)mysqli_affected_rows(db::$con));
+
+    db("DELETE FROM style WHERE style_id = '$style_id'");
+    db("DELETE FROM system_style_cells WHERE style_id = '$style_id'");
+    db("DELETE FROM preview_styles WHERE style_id = '$style_id'");
+    log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($out['name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    $out['ok'] = true;
+    return $out;
 }
 
 function pg_designer_load_pages($style_id, $style_name = '')
@@ -6647,11 +6729,15 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
  * Where shared components and system widgets are placed.
  *
  * sid → the pages whose tree references it, each with the design it belongs
- * to ({page_id, page_name, style_id, style_name}). Every page counts, the
- * recycle bin included: a page brought back from the bin must find its
- * widget where it left it. Trees live on the page since the multi-page
- * designer; an un-migrated database falls back to the per-style scan and
- * page_id is 0. $ids limits the answer to those rows (null = every row).
+ * to ({page_id, page_name, style_id, style_name, binned}). Every page counts,
+ * the recycle bin included: a page brought back from the bin must find its
+ * widget where it left it; `binned` tells such a page apart. That includes
+ * a binned page whose design has since been deleted: its style row is gone
+ * (LEFT JOIN), style_name is then '' and style_id the id it still carries.
+ * A binned page's page_name is the name it had before the bin parked it
+ * (pg_recycle_parked_original()). Trees live on the page since the multi-page designer; an un-migrated
+ * database falls back to the per-style scan and page_id is 0. $ids limits
+ * the answer to those rows (null = every row).
  *
  * A component placed inside another one (a widget in a header) is used on
  * every page that places that one, through any number of levels.
@@ -6672,20 +6758,22 @@ function pg_shared_component_usage($ids = null)
 
     if (pg_multi_page_design_ready()) {
         $trees = db_items(
-            "SELECT page.page_id, page.page_name, style.style_id, style.style_name,
+            "SELECT page.page_id, page.page_name, page.page_folder, page.page_style AS style_id, style.style_name,
                     " . pg_page_tree_sql_expr() . " AS tree_json
              FROM page
-             INNER JOIN style ON page.page_style = style.style_id
+             LEFT JOIN style ON page.page_style = style.style_id
              WHERE page.layout_type = 'system'
              HAVING tree_json IS NOT NULL AND tree_json != ''"
         );
     } else {
         $trees = db_items(
-            "SELECT 0 AS page_id, style_name AS page_name, style_id, style_name, style_tree_json AS tree_json
+            "SELECT 0 AS page_id, style_name AS page_name, 0 AS page_folder, style_id, style_name, style_tree_json AS tree_json
              FROM style
              WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
         );
     }
+    $bin_folders = array_flip(pg_recycle_bin_folder_ids());
+    if ($bin_folders) require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
     // Placements on the pages themselves, for every component named — the
     // ones asked about and the ones that may contain them.
     $direct = array();
@@ -6694,12 +6782,19 @@ function pg_shared_component_usage($ids = null)
         if (strpos($json, '"sharedId"') === false) continue;
         // The whole digit run, so id 1 never matches a reference to 10.
         if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
+        $binned    = isset($bin_folders[(int)$row['page_folder']]);
+        $page_name = (string)$row['page_name'];
+        if ($binned) {
+            $original = pg_recycle_parked_original($page_name, (int)$row['page_id']);
+            if ($original !== '') $page_name = $original;
+        }
         foreach (array_unique($m[1]) as $sid) {
             $direct[(int)$sid][] = array(
                 'page_id'    => (int)$row['page_id'],
-                'page_name'  => (string)$row['page_name'],
+                'page_name'  => $page_name,
                 'style_id'   => (int)$row['style_id'],
                 'style_name' => (string)$row['style_name'],
+                'binned'     => $binned,
             );
         }
     }
@@ -6938,4 +7033,180 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     }
     // The first record's place is the card's.
     return array_slice($rows, 1);
+}
+
+// ========================= PAGE TAB LAYOUT ======================================================
+//
+// The order of a design's page tabs in the editor and the named, coloured
+// groups they sit in (2026.4.8; style.style_tab_layout). The layout is an
+// editor preference, not page content: it is written by its own endpoint
+// (designer/tab_layout) the moment it changes, never by Save, and the site
+// does not read it. Collapsing a group is kept per browser (localStorage).
+//
+// Stored shape, version 1:
+//   {"v":1,
+//    "groups":{"g1":{"name":"Docs","color":"orange"}},
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+// `id` is a page_id of the design. The editor keeps a twin of the
+// normaliser (_pgTabsNormalizeGroups()); the two are changed together.
+
+/**
+ * Whether style.style_tab_layout exists (2026.4.8, 8.19). Without it the
+ * editor shows the plain tab strip and the endpoint refuses.
+ */
+function pg_style_tab_layout_ready($recheck = false)
+{
+    static $cached = null;
+    if ($cached !== null && !$recheck) return $cached;
+    $cached = false;
+    if (!isset(db::$con) || !db::$con) return false;
+    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM style WHERE Field = 'style_tab_layout'");
+    $cached = ($result && @mysqli_num_rows($result) == 1);
+    return $cached;
+}
+
+/**
+ * The colours a tab group may wear, in the order a new group takes them.
+ * The editor's palette (_PG_TAB_GROUP_COLORS, style_designer.css) uses the
+ * same keys.
+ */
+function pg_designer_tab_layout_colors()
+{
+    return array('grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange');
+}
+
+/**
+ * Brings a tab layout into its valid shape for the given pages.
+ *
+ * Anything that is not part of the shape is dropped; ids that are not among
+ * $page_ids, and repeated ids, are dropped; pages missing from the list are
+ * added at the end in page_id order; a tab pointing at a group that does not
+ * exist loses the group; a group left without tabs is dropped. The tabs of a
+ * group are made consecutive: they are pulled together where the group's
+ * first tab stands, in the order they were listed. Names are cut to 60
+ * characters, an unknown colour becomes grey, at most 50 groups are kept and
+ * a group id has to match ^[a-z0-9_-]{1,20}$.
+ *
+ * @param array|string|null $layout   decoded layout or its JSON
+ * @param int[]             $page_ids the pages of the design
+ * @return array {v: 1, groups: {id: {name, color}}, tabs: [{id[, g]}]}
+ */
+function pg_designer_tab_layout_normalize($layout, $page_ids)
+{
+    if (is_string($layout)) {
+        $layout = ($layout === '') ? null : json_decode($layout, true);
+    }
+    if (!is_array($layout)) $layout = array();
+
+    $known = array();
+    foreach ((array)$page_ids as $pid) {
+        $pid = (int)$pid;
+        if ($pid > 0) $known[$pid] = true;
+    }
+
+    $colors = pg_designer_tab_layout_colors();
+    $groups = array();
+    if (isset($layout['groups']) && is_array($layout['groups'])) {
+        foreach ($layout['groups'] as $gid => $g) {
+            if (count($groups) >= 50) break;
+            $gid = (string)$gid;
+            if (!preg_match('/^[a-z0-9_-]{1,20}$/', $gid) || !is_array($g)) continue;
+            $name = (isset($g['name']) && is_scalar($g['name'])) ? (string)$g['name'] : '';
+            $name = trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name));
+            $name = mb_substr($name, 0, 60);
+            $color = (isset($g['color']) && is_string($g['color']) && in_array($g['color'], $colors, true)) ? $g['color'] : 'grey';
+            $groups[$gid] = array('name' => $name, 'color' => $color);
+        }
+    }
+
+    // Listed tabs, then the pages the list does not name.
+    $listed = array();
+    $seen   = array();
+    if (isset($layout['tabs']) && is_array($layout['tabs'])) {
+        foreach ($layout['tabs'] as $t) {
+            if (!is_array($t) || !isset($t['id']) || !is_numeric($t['id'])) continue;
+            $id = (int)$t['id'];
+            if (!isset($known[$id]) || isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $g = (isset($t['g']) && is_scalar($t['g'])) ? (string)$t['g'] : '';
+            $listed[] = array('id' => $id, 'g' => isset($groups[$g]) ? $g : '');
+        }
+    }
+    $missing = array_diff(array_keys($known), array_keys($seen));
+    sort($missing, SORT_NUMERIC);
+    foreach ($missing as $id) $listed[] = array('id' => (int)$id, 'g' => '');
+
+    // A group's tabs stand together where its first tab stands.
+    $members = array();
+    foreach ($listed as $t) {
+        if ($t['g'] !== '') $members[$t['g']][] = $t['id'];
+    }
+    $tabs = array();
+    $placed = array();
+    foreach ($listed as $t) {
+        if ($t['g'] === '') {
+            $tabs[] = array('id' => $t['id']);
+            continue;
+        }
+        if (isset($placed[$t['g']])) continue;
+        $placed[$t['g']] = true;
+        foreach ($members[$t['g']] as $id) $tabs[] = array('id' => $id, 'g' => $t['g']);
+    }
+
+    // Groups nobody is in are gone.
+    foreach (array_keys($groups) as $gid) {
+        if (!isset($members[$gid])) unset($groups[$gid]);
+    }
+
+    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+}
+
+/**
+ * A normalised layout as it is stored and handed to the editor: `groups`
+ * stays a JSON object when it is empty or its ids look like numbers.
+ */
+function pg_designer_tab_layout_export($layout)
+{
+    $layout['groups'] = (object)$layout['groups'];
+    return $layout;
+}
+
+/**
+ * Stores the tab layout of a design (designer/tab_layout). The caller has
+ * checked that the operator is a full designer.
+ *
+ * @return array {ok, error, layout}
+ */
+function pg_designer_tab_layout_save($style_id, $layout, $user)
+{
+    $style_id = (int)$style_id;
+    $out = array('ok' => false, 'error' => '', 'layout' => null);
+
+    if (!pg_style_tab_layout_ready()) {
+        $out['error'] = lang('Page tab groups are not available on this site yet.');
+        return $out;
+    }
+    if ($style_id <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$style_id'")) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+
+    // The pages the editor shows as tabs: the design's own, not the ones
+    // waiting in the Recycle Bin.
+    $ids = db_items(
+        "SELECT page.page_id
+         FROM page
+         WHERE page.page_style = '$style_id'
+           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+         ORDER BY page.page_id ASC");
+    $page_ids = array();
+    foreach ((array)$ids as $row) $page_ids[] = (int)$row['page_id'];
+
+    $norm = pg_designer_tab_layout_normalize($layout, $page_ids);
+    $json = json_encode(pg_designer_tab_layout_export($norm), JSON_UNESCAPED_UNICODE);
+    db("UPDATE style SET style_tab_layout = '" . e($json) . "' WHERE style_id = '$style_id'");
+
+    $out['ok'] = true;
+    $out['layout'] = pg_designer_tab_layout_export($norm);
+    return $out;
 }

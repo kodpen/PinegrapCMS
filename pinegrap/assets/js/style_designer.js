@@ -709,8 +709,9 @@ const StyleDesigner = (function () {
     // operator nothing about which tab to look at.
     function _sharedUsageText(u) {
         var page = u.page_name || u.style_name || ('#' + (u.page_id || u.style_id));
+        if (u.binned) page += ' — ' + _sdT('Recycle Bin');
         var mine = _design && parseInt(_design.styleId, 10) === parseInt(u.style_id, 10);
-        return mine ? page : (page + ' (' + (u.style_name || '') + ')');
+        return (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
     }
     function _sharedUsageTip(usage) {
         return usage.length
@@ -11837,6 +11838,9 @@ const StyleDesigner = (function () {
                 var liveTextObs = new _MutObs(function() {
                     if (!item.el.isConnected) { liveTextObs.disconnect(); return; }
                     node.props[item.prop] = _sdInlineEditValue(item.el, isRichText);
+                    // Typing changes the tree without render() or saveState(),
+                    // so the open preview window is told here (debounced).
+                    _sdLivePreviewSchedule();
                 });
                 liveTextObs.observe(item.el, { characterData: true, childList: true, subtree: true });
 
@@ -11869,6 +11873,7 @@ const StyleDesigner = (function () {
                         node.props[item.prop] = newText;
                         renderProperties();
                         renderTree();
+                        _sdLivePreviewSchedule();
                     } else {
                         // No real change \u2192 drop the pre-emptive snapshot so
                         // an idle dblclick doesn't pollute the undo history.
@@ -11898,6 +11903,8 @@ const StyleDesigner = (function () {
                         // pre-emptive saveState so the cancellation doesn't
                         // pollute the undo history.
                         node.props[item.prop] = origText;
+                        // The preview may already show the cancelled text.
+                        _sdLivePreviewSchedule();
                         _restoreChrome();
                         if (_chrome.length) {
                             // Writing the text back would wipe the children
@@ -34540,6 +34547,8 @@ const StyleDesigner = (function () {
                     renderStatusBar();
                     renderAttrsPanel();
                     renderHtmlTree();
+                    // Neither render() nor saveState() runs on a keystroke here.
+                    _sdLivePreviewSchedule();
                 }
             });
         });
@@ -44179,7 +44188,8 @@ const StyleDesigner = (function () {
     // ── Live preview ──
     // While the preview window is open, every change in the editor (tree,
     // shared components and widgets, assets, theme, page settings, the
-    // active tab) reaches it after a short pause. The cost is kept off the
+    // active tab, inline text editing on the canvas and text typed into the
+    // properties panel) reaches it after a short pause. The cost is kept off the
     // editor:
     //   • no preview window → every hook returns after one property read;
     //   • open → 800 ms debounce, since generateHTML() walks the whole page;
@@ -45288,10 +45298,24 @@ const StyleDesigner = (function () {
     function _pgTabsRender() {
         var list = document.getElementById('sd-tabs-list');
         if (!list) return;
+        // Every path that adds, removes or moves a tab ends here, so this is
+        // where a group's tabs are pulled together and an empty group goes.
+        _pgTabsNormalizeGroups();
+        var editable = _pgTabLayoutEditable();
+        var chipDone = {};
         var html = '';
         _pages.forEach(function (p) {
             var name  = p.page_name ? p.page_name : _sdT('New Page');
             var dirty = _pgPageDirty(p);
+            // A group's chip leads its tabs. The tabs of a folded group stay
+            // in the strip, hidden, so folding is a class change; the open
+            // page stays visible inside a folded group.
+            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
+            if (gid && !chipDone[gid]) {
+                chipDone[gid] = true;
+                html += _pgTabGroupChipHtml(gid, editable);
+            }
+            var folded = !!(gid && _pgTabGroupsCollapsed[gid] && p.key !== _activeKey);
             // Active tab: a ⋮ menu (rename, settings, duplicate, detach,
             // delete). Inactive unsaved tab: an × that discards it. Only the
             // active tab carries the menu so the strip stays quiet; every
@@ -45318,8 +45342,10 @@ const StyleDesigner = (function () {
             // A page kept off the site says so on its tab.
             var draft = _pgDraftsReady() && !!p.page_draft;
             html += '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
-                    (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + '"' +
-                    ' data-key="' + esc(p.key) + '" role="tab" tabindex="0" title="' + esc(name) + '">' +
+                    (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + (folded ? ' sd-tab-folded' : '') + '"' +
+                    ' data-key="' + esc(p.key) + '"' +
+                    (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
+                    ' role="tab" tabindex="0" title="' + esc(name) + '">' +
                     '<span class="sd-tab-dot" aria-hidden="true"></span>' +
                     '<span class="sd-tab-name">' + esc(name) + '</span>' +
                     (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '') +
@@ -45355,13 +45381,29 @@ const StyleDesigner = (function () {
                     _pgTabsOpenMenu(menu, menu.dataset.menu);
                     return;
                 }
+                var groupMenu = e.target.closest('.sd-tab-group-menu');
+                if (groupMenu) {
+                    e.stopPropagation();
+                    _pgTabGroupOpenMenu(groupMenu.dataset.groupMenu, groupMenu);
+                    return;
+                }
                 if (e.target.closest('.sd-tab-rename')) return;
+                var chip = e.target.closest('.sd-tab-group');
+                if (chip) { _pgTabGroupToggle(chip.dataset.group); return; }
                 var tab = e.target.closest('.sd-tab');
                 if (tab && tab.dataset.key && tab.dataset.key !== _activeKey) _pgTabsSwitch(tab.dataset.key);
             });
             // Double-click on a tab name renames it in place.
             list.addEventListener('dblclick', function (e) {
-                if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close')) return;
+                if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
+                // On a group chip: rename the group (its two clicks folded
+                // and unfolded it, leaving it as it was).
+                var chip = e.target.closest('.sd-tab-group');
+                if (chip) {
+                    e.preventDefault();
+                    _pgTabGroupRename(chip.dataset.group);
+                    return;
+                }
                 var tab = e.target.closest('.sd-tab');
                 if (!tab || !tab.dataset.key) return;
                 e.preventDefault();
@@ -45371,7 +45413,21 @@ const StyleDesigner = (function () {
             // Tabs are <div>s; Enter / Space activate like a button would.
             list.addEventListener('keydown', function (e) {
                 if (e.target.closest('.sd-tab-rename')) return;
+                var chip = e.target.closest('.sd-tab-group');
+                if (chip) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _pgTabGroupToggle(chip.dataset.group); }
+                    return;
+                }
                 var tab = e.target.closest('.sd-tab');
+                // Alt+Left / Alt+Right move the focused tab one place, into
+                // and out of groups the way dragging does.
+                if (tab && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
+                    && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (_pgTabLayoutEditable()) _pgTabsStep(tab.dataset.key, e.key === 'ArrowRight' ? 1 : -1);
+                    return;
+                }
                 if (!tab || (e.key !== 'Enter' && e.key !== ' ')) return;
                 e.preventDefault();
                 if (tab.dataset.key !== _activeKey) _pgTabsSwitch(tab.dataset.key);
@@ -45380,12 +45436,25 @@ const StyleDesigner = (function () {
             // same menu at the cursor. Switching first keeps the menu about
             // the page the operator is looking at.
             list.addEventListener('contextmenu', function (e) {
+                var chip = e.target.closest('.sd-tab-group');
+                if (chip) {
+                    e.preventDefault();
+                    _pgTabGroupOpenMenu(chip.dataset.group, null, { x: e.clientX, y: e.clientY });
+                    return;
+                }
                 var tab = e.target.closest('.sd-tab');
                 if (!tab || !tab.dataset.key) return;
                 e.preventDefault();
                 if (tab.dataset.key !== _activeKey) _pgTabsSwitch(tab.dataset.key);
                 _pgTabsOpenMenu(null, tab.dataset.key, { x: e.clientX, y: e.clientY });
             });
+            _pgTabsDragBind(list);
+        }
+        // A rearrangement still waiting for its debounce goes out with the
+        // page rather than being lost.
+        if (!window._pgTabLayoutFlushBound) {
+            window._pgTabLayoutFlushBound = true;
+            window.addEventListener('pagehide', function () { if (_pgTabLayoutTimer) _pgTabsLayoutSave(true); });
         }
         var addNew = document.getElementById('sd-tab-new-page');
         if (addNew && !addNew._pgBound) { addNew._pgBound = true; addNew.addEventListener('click', _pgTabsAddNew); }
@@ -45463,7 +45532,7 @@ const StyleDesigner = (function () {
                     var f = document.createElement('form');
                     f.method = 'post';
                     f.action = main ? main.action : 'edit_system_style.php';
-                    ['token', 'id', 'send_to'].forEach(function (n) {
+                    ['token', 'id', 'send_to', 'collab_key'].forEach(function (n) {
                         var src = main ? main.querySelector('[name="' + n + '"]') : null;
                         if (!src) return;
                         var i = document.createElement('input');
@@ -45551,6 +45620,7 @@ const StyleDesigner = (function () {
         clearTimeout(_autosaveTimer);
 
         _activeKey    = key;
+        _pgTabGroupRevealActive();
         tree          = next.tree || createDefaultTree();
         next.tree     = tree;
         undoStack     = next.undoStack || [];
@@ -45593,7 +45663,7 @@ const StyleDesigner = (function () {
             formSettings: {}
         };
         p.baseline = _pgBaselineOf(p);
-        _pages.push(p);
+        _pgTabsInsertAfterActive(p);
         _pgTabsSwitch(p.key);
         // The name is typed on the tab itself.
         _pgTabsRename(p.key);
@@ -45645,7 +45715,7 @@ const StyleDesigner = (function () {
         (function reId(nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); })(p.tree);
         p.nodeIdCounter = reindex(p.tree);
         p.baseline = _pgBaselineOf(p);
-        _pages.push(p);
+        _pgTabsInsertAfterActive(p);
         _pgTabsSwitch(p.key);
         sdToast('<strong>' + esc(src.page_name || '') + '</strong> ' + esc(_sdT('was duplicated as')) + ' <strong>' + esc(name) + '</strong> — ' + esc(_sdT('save to keep it.')), 'info', 5000);
     }
@@ -45735,8 +45805,10 @@ const StyleDesigner = (function () {
         var item = function (act, icon, label, opts) {
             opts = opts || {};
             return '<button type="button" class="sd-tab-popmenu-item' + (opts.danger ? ' danger' : '') + '" data-act="' + act + '"' +
+                   (opts.group ? ' data-group="' + esc(opts.group) + '"' : '') +
                    (opts.disabled ? ' disabled title="' + esc(opts.title || '') + '"' : '') + '>' +
-                   '<span class="bi ' + icon + ' me-2"></span>' + esc(label) + '</button>';
+                   (opts.color ? '<span class="sd-tab-color-dot me-2" data-color="' + esc(opts.color) + '" aria-hidden="true"></span>'
+                               : '<span class="bi ' + icon + ' me-2"></span>') + esc(label) + '</button>';
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
@@ -45751,12 +45823,27 @@ const StyleDesigner = (function () {
                     disabled: !!p.page_home, title: _sdT('The home page stays on the site.') });
             }
         }
+        // Groups: a new one, the first eight others in strip order, out.
+        var groupItems = '';
+        if (_pgTabLayoutEditable()) {
+            if (Object.keys(_pgTabGroups).length < 50) groupItems += item('group-new', 'bi-plus-square', _sdT('Add to new group'));
+            var listed = {}, shown = 0;
+            _pages.forEach(function (q) {
+                var g = q.tabGroup;
+                if (!g || !_pgTabGroups[g] || listed[g] || g === p.tabGroup || shown >= 8) return;
+                listed[g] = true;
+                shown++;
+                groupItems += item('group-add', '', _sdT('Add to group: {var}', _pgTabGroupLabel(g)), { group: g, color: _pgTabGroups[g].color });
+            });
+            if (p.tabGroup) groupItems += item('group-remove', 'bi-dash-square', _sdT('Remove from group'));
+        }
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
             stateItem +
+            (groupItems ? '<div class="sd-tab-popmenu-sep"></div>' + groupItems : '') +
             '<div class="sd-tab-popmenu-sep"></div>';
         if (p.pickedPending) {
             // Picked from another design and not saved here yet. On the
@@ -45803,7 +45890,7 @@ const StyleDesigner = (function () {
             var act = b.dataset.act;
             _pgTabsCloseMenu();
             if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view'
-                && act !== 'draft' && act !== 'publish') _pgTabsSwitch(key);
+                && act !== 'draft' && act !== 'publish' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'draft':    _pgSetDraft([key], true); break;
@@ -45815,6 +45902,9 @@ const StyleDesigner = (function () {
                 case 'delete':   _pgTabsDelete(key); break;
                 case 'discard':  _pgTabsDiscardNew(key); break;
                 case 'unpick':   _pgTabsUnpick(key); break;
+                case 'group-new':    _pgTabGroupCreate(key); break;
+                case 'group-add':    _pgTabGroupAdd(key, b.dataset.group); break;
+                case 'group-remove': _pgTabGroupRemove(key); break;
             }
         });
         setTimeout(function () {
@@ -45943,6 +46033,645 @@ const StyleDesigner = (function () {
     }
     function _pgTabsMenuKey(e) { if (e.key === 'Escape') _pgTabsCloseMenu(); }
 
+    // ── Tab order and groups ──────────────────────────────────────────────
+    // The strip follows _pages: their order is the tab order, and
+    // `p.tabGroup` ('' or a key of _pgTabGroups) puts a tab in a named,
+    // coloured group. A group's tabs always stand together behind a chip
+    // that names the group; clicking the chip folds it. The layout is kept
+    // on the design (style.style_tab_layout) through designer/tab_layout,
+    // apart from Save: it is how the editor looks, so it does not wait for
+    // Publish and is not an unsaved change. Folding is kept per browser
+    // (localStorage), so one operator folding a group does not fold it for
+    // another. _pgTabsNormalizeGroups() is the twin of
+    // pg_designer_tab_layout_normalize() on the server; change them together.
+    var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
+    var _pgTabGroups = {};            // gid → { name, color }
+    var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabLayoutTimer = 0;
+    var _pgTabDrag = null;
+    var _pgTabDragClickBlock = 0;
+
+    function _pgTabColorLabel(c) {
+        switch (c) {
+            case 'blue':   return _sdT('Blue');
+            case 'red':    return _sdT('Red');
+            case 'yellow': return _sdT('Yellow');
+            case 'green':  return _sdT('Green');
+            case 'pink':   return _sdT('Pink');
+            case 'purple': return _sdT('Purple');
+            case 'cyan':   return _sdT('Cyan');
+            case 'orange': return _sdT('Orange');
+            default:       return _sdT('Grey');
+        }
+    }
+
+    // Without the column the strip is the plain one; a content-level
+    // operator sees the layout and folds groups but does not rearrange.
+    function _pgTabLayoutReady()    { return !!(_design && _design.tabLayout && _design.tabLayout.ready); }
+    function _pgTabLayoutEditable() { return _pgTabLayoutReady() && !_sdIsContentLevel(); }
+
+    function _pgTabGroupsStorageKey() {
+        return (_design && _design.styleId) ? 'pg_sd_tabgroups_' + _design.styleId : '';
+    }
+    function _pgTabGroupsLoadCollapsed() {
+        _pgTabGroupsCollapsed = {};
+        var k = _pgTabGroupsStorageKey();
+        if (!k) return;
+        try {
+            var o = JSON.parse(localStorage.getItem(k) || '{}');
+            if (o && typeof o === 'object') Object.keys(o).forEach(function (g) { if (o[g] === true) _pgTabGroupsCollapsed[g] = true; });
+        } catch (e) {}
+    }
+    function _pgTabGroupsStoreCollapsed() {
+        var k = _pgTabGroupsStorageKey();
+        if (!k) return;
+        try {
+            if (Object.keys(_pgTabGroupsCollapsed).length) localStorage.setItem(k, JSON.stringify(_pgTabGroupsCollapsed));
+            else localStorage.removeItem(k);
+        } catch (e) {}
+    }
+
+    // The stored layout onto the tabs the server sent: their order, their
+    // groups. A page the layout does not name keeps its place after the
+    // named ones.
+    function _pgTabsApplyLayout(layout) {
+        _pgTabGroups = {};
+        _pages.forEach(function (p) { p.tabGroup = ''; });
+        if (!_pgTabLayoutReady() || !layout || typeof layout !== 'object') return;
+        var groups = (layout.groups && typeof layout.groups === 'object') ? layout.groups : {};
+        Object.keys(groups).forEach(function (gid) {
+            var g = groups[gid];
+            if (!g || typeof g !== 'object') return;
+            _pgTabGroups[gid] = {
+                name:  String(g.name || ''),
+                color: (_PG_TAB_GROUP_COLORS.indexOf(g.color) !== -1) ? g.color : 'grey'
+            };
+        });
+        var order = [];
+        (Array.isArray(layout.tabs) ? layout.tabs : []).forEach(function (t) {
+            var p = (t && t.id) ? _pgPageByKey('p' + t.id) : null;
+            if (!p || order.indexOf(p) !== -1) return;
+            p.tabGroup = (t.g && _pgTabGroups[t.g]) ? String(t.g) : '';
+            order.push(p);
+        });
+        _pages.forEach(function (p) { if (order.indexOf(p) === -1) order.push(p); });
+        _pages = order;
+        _pgTabGroupsLoadCollapsed();
+        _pgTabsNormalizeGroups();
+    }
+
+    // A group's tabs are pulled together where its first tab stands; a tab
+    // of an unknown group leaves it; a group without tabs is dropped.
+    function _pgTabsNormalizeGroups() {
+        var members = {};
+        _pages.forEach(function (p) {
+            if (!p.tabGroup || !_pgTabGroups[p.tabGroup]) { p.tabGroup = ''; return; }
+            (members[p.tabGroup] = members[p.tabGroup] || []).push(p);
+        });
+        var out = [], placed = {};
+        _pages.forEach(function (p) {
+            if (!p.tabGroup) { out.push(p); return; }
+            if (placed[p.tabGroup]) return;
+            placed[p.tabGroup] = true;
+            Array.prototype.push.apply(out, members[p.tabGroup]);
+        });
+        _pages = out;
+        Object.keys(_pgTabGroups).forEach(function (gid) { if (!members[gid]) delete _pgTabGroups[gid]; });
+        var stale = Object.keys(_pgTabGroupsCollapsed).filter(function (gid) { return !_pgTabGroups[gid]; });
+        if (stale.length) {
+            stale.forEach(function (gid) { delete _pgTabGroupsCollapsed[gid]; });
+            _pgTabGroupsStoreCollapsed();
+        }
+    }
+
+    // Only saved pages are stored: a new tab has no id yet, and takes its
+    // place in the layout with the save that gives it one.
+    function _pgTabsLayoutSerialize() {
+        var groups = {}, tabs = [];
+        _pages.forEach(function (p) {
+            if (!(p.page_id > 0)) return;
+            var t = { id: p.page_id };
+            var g = p.tabGroup && _pgTabGroups[p.tabGroup];
+            if (g) {
+                t.g = p.tabGroup;
+                groups[p.tabGroup] = { name: g.name, color: g.color };
+            }
+            tabs.push(t);
+        });
+        return { v: 1, groups: groups, tabs: tabs };
+    }
+
+    // `now`: no debounce (the editor is about to navigate).
+    function _pgTabsLayoutSave(now) {
+        clearTimeout(_pgTabLayoutTimer);
+        _pgTabLayoutTimer = 0;
+        if (!_pgTabLayoutEditable() || !(_design && _design.styleId)) return;
+        var send = function () {
+            _pgTabLayoutTimer = 0;
+            var fail = function (msg) { sdToast(esc(msg || _sdT('The tab order could not be saved.')), 'warning', 5000); };
+            _pgApiPost('tab_layout', { style_id: _design.styleId, layout: _pgTabsLayoutSerialize() }, { keepalive: true })
+                .then(function (res) { if (!res || res.status !== 'success') fail(res && res.message); },
+                      function () { fail(''); });
+        };
+        if (now) send();
+        else _pgTabLayoutTimer = setTimeout(send, 600);
+    }
+
+    function _pgTabsLayoutChanged() {
+        _pgTabsRender();
+        _pgTabsLayoutSave();
+    }
+
+    // A new tab opens right of the one it came from, in that tab's group,
+    // the way a browser opens a tab from a tab.
+    function _pgTabsInsertAfter(p, afterKey) {
+        var ref = afterKey ? _pgPageByKey(afterKey) : null;
+        var idx = ref ? _pages.indexOf(ref) : -1;
+        p.tabGroup = (ref && ref.tabGroup) ? ref.tabGroup : '';
+        if (idx === -1) _pages.push(p);
+        else _pages.splice(idx + 1, 0, p);
+    }
+    function _pgTabsInsertAfterActive(p) { _pgTabsInsertAfter(p, _activeKey); }
+
+    function _pgTabGroupMembers(gid) { return _pages.filter(function (p) { return p.tabGroup === gid; }); }
+    function _pgTabGroupLabel(gid) {
+        var g = _pgTabGroups[gid];
+        return (g && g.name) ? g.name : _sdT('Group');
+    }
+    // The first colour no group wears; a random one once all are taken.
+    function _pgTabGroupNextColor() {
+        var used = {};
+        Object.keys(_pgTabGroups).forEach(function (gid) { used[_pgTabGroups[gid].color] = true; });
+        for (var i = 0; i < _PG_TAB_GROUP_COLORS.length; i++) {
+            if (!used[_PG_TAB_GROUP_COLORS[i]]) return _PG_TAB_GROUP_COLORS[i];
+        }
+        return _PG_TAB_GROUP_COLORS[Math.floor(Math.random() * _PG_TAB_GROUP_COLORS.length)];
+    }
+    // The page on the canvas is never inside a folded group.
+    function _pgTabGroupRevealActive() {
+        var a = _pgActivePage();
+        if (a && a.tabGroup && _pgTabGroupsCollapsed[a.tabGroup]) {
+            delete _pgTabGroupsCollapsed[a.tabGroup];
+            _pgTabGroupsStoreCollapsed();
+        }
+    }
+
+    function _pgTabGroupChipHtml(gid, editable) {
+        var g = _pgTabGroups[gid];
+        var folded = !!_pgTabGroupsCollapsed[gid];
+        var label = _pgTabGroupLabel(gid);
+        return '<div class="sd-tab-group' + (folded ? ' collapsed' : '') + '" data-group="' + esc(gid) + '" data-color="' + esc(g.color) + '"' +
+               ' role="button" tabindex="0" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' + esc(label) + '">' +
+               '<span class="sd-tab-group-dot" aria-hidden="true"></span>' +
+               '<span class="sd-tab-group-name">' + esc(label) + '</span>' +
+               '<span class="sd-tab-group-count">' + _pgTabGroupMembers(gid).length + '</span>' +
+               (editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
+               '</div>';
+    }
+
+    // Folds or unfolds in place, without redrawing the strip: the chip a
+    // double-click lands on has to be the one its first click hit.
+    function _pgTabGroupToggle(gid, fold) {
+        if (!_pgTabGroups[gid]) return;
+        if (typeof fold !== 'boolean') fold = !_pgTabGroupsCollapsed[gid];
+        if (fold) _pgTabGroupsCollapsed[gid] = true;
+        else delete _pgTabGroupsCollapsed[gid];
+        _pgTabGroupsStoreCollapsed();
+        var list = document.getElementById('sd-tabs-list');
+        if (!list) return;
+        var chip = list.querySelector('.sd-tab-group[data-group="' + gid + '"]');
+        if (chip) {
+            chip.classList.toggle('collapsed', fold);
+            chip.setAttribute('aria-expanded', fold ? 'false' : 'true');
+        }
+        list.querySelectorAll('.sd-tab[data-group="' + gid + '"]').forEach(function (t) {
+            t.classList.toggle('sd-tab-folded', fold && t.dataset.key !== _activeKey);
+        });
+    }
+
+    function _pgTabGroupCreate(key) {
+        var p = _pgPageByKey(key);
+        if (!p || !_pgTabLayoutEditable()) return;
+        var gid = '';
+        for (var n = 1; !gid; n++) if (!_pgTabGroups['g' + n]) gid = 'g' + n;
+        _pgTabGroups[gid] = { name: '', color: _pgTabGroupNextColor() };
+        // Out of the group it was in first, to that group's right.
+        if (p.tabGroup) _pgTabGroupMoveOut(p);
+        p.tabGroup = gid;
+        _pgTabsLayoutChanged();
+        // Named right away; left empty it reads "Group".
+        _pgTabGroupRename(gid);
+    }
+
+    // Joins at the end of the group.
+    function _pgTabGroupAdd(key, gid) {
+        var p = _pgPageByKey(key);
+        if (!p || !_pgTabGroups[gid] || p.tabGroup === gid || !_pgTabLayoutEditable()) return;
+        var members = _pgTabGroupMembers(gid);
+        _pages.splice(_pages.indexOf(p), 1);
+        _pages.splice(_pages.indexOf(members[members.length - 1]) + 1, 0, p);
+        p.tabGroup = gid;
+        _pgTabsLayoutChanged();
+    }
+
+    // Leaves to the right of what is left of the group.
+    function _pgTabGroupMoveOut(p) {
+        var gid = p.tabGroup;
+        p.tabGroup = '';
+        var rest = _pgTabGroupMembers(gid);
+        if (!rest.length) return;
+        _pages.splice(_pages.indexOf(p), 1);
+        _pages.splice(_pages.indexOf(rest[rest.length - 1]) + 1, 0, p);
+    }
+    function _pgTabGroupRemove(key) {
+        var p = _pgPageByKey(key);
+        if (!p || !p.tabGroup || !_pgTabLayoutEditable()) return;
+        _pgTabGroupMoveOut(p);
+        _pgTabsLayoutChanged();
+    }
+
+    // The tabs stay where they are, without the group.
+    function _pgTabGroupUngroup(gid) {
+        if (!_pgTabGroups[gid] || !_pgTabLayoutEditable()) return;
+        _pgTabGroupMembers(gid).forEach(function (p) { p.tabGroup = ''; });
+        delete _pgTabGroups[gid];
+        _pgTabsLayoutChanged();
+    }
+
+    function _pgTabGroupSetColor(gid, color) {
+        if (!_pgTabGroups[gid] || _PG_TAB_GROUP_COLORS.indexOf(color) === -1 || !_pgTabLayoutEditable()) return;
+        if (_pgTabGroups[gid].color === color) return;
+        _pgTabGroups[gid].color = color;
+        _pgTabsLayoutChanged();
+    }
+
+    // In place on the chip, like a tab's rename: Enter or a click elsewhere
+    // keeps it, Escape restores it.
+    function _pgTabGroupRename(gid) {
+        var g = _pgTabGroups[gid];
+        var chip = document.querySelector('#sd-tabs-list .sd-tab-group[data-group="' + gid + '"]');
+        var label = chip ? chip.querySelector('.sd-tab-group-name') : null;
+        if (!g || !label || label.querySelector('input') || !_pgTabLayoutEditable()) return;
+        var old = g.name || '';
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'sd-tab-rename sd-tab-group-rename';
+        inp.value = old;
+        inp.maxLength = 60;
+        inp.setAttribute('aria-label', _sdT('Group name'));
+        label.textContent = '';
+        label.appendChild(inp);
+        var done = false;
+        var outside = function (e) { if (!inp.contains(e.target)) finish(true); };
+        var finish = function (commit) {
+            if (done) return;
+            done = true;
+            document.removeEventListener('mousedown', outside, true);
+            if (!inp.isConnected) return;
+            var val = commit ? inp.value.replace(/\s+/g, ' ').trim().slice(0, 60) : old;
+            if (_pgTabGroups[gid]) _pgTabGroups[gid].name = val;
+            _pgTabsRender();
+            if (val !== old) _pgTabsLayoutSave();
+        };
+        document.addEventListener('mousedown', outside, true);
+        inp.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+            if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+            e.stopPropagation();
+        });
+        inp.addEventListener('keyup', function (e) { e.stopPropagation(); });
+        inp.addEventListener('blur', function () { finish(true); });
+        inp.addEventListener('click', function (e) { e.stopPropagation(); });
+        inp.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+        inp.focus();
+        inp.select();
+    }
+
+    // The chip's menu (⋮ or right-click). It changes the group, never its
+    // pages: there is no delete here.
+    function _pgTabGroupOpenMenu(gid, anchor, at) {
+        _pgTabsCloseMenu();
+        var g = _pgTabGroups[gid];
+        if (!g || !_pgTabLayoutEditable()) return;
+        var folded = !!_pgTabGroupsCollapsed[gid];
+        var item = function (act, icon, label) {
+            return '<button type="button" class="sd-tab-popmenu-item" data-act="' + act + '">' +
+                   '<span class="bi ' + icon + ' me-2"></span>' + esc(label) + '</button>';
+        };
+        var dots = _PG_TAB_GROUP_COLORS.map(function (c) {
+            var name = _pgTabColorLabel(c);
+            return '<button type="button" class="sd-tab-color' + (c === g.color ? ' active' : '') + '" data-act="color" data-color="' + c + '"' +
+                   ' title="' + esc(name) + '" aria-label="' + esc(name) + '" aria-pressed="' + (c === g.color ? 'true' : 'false') + '"></button>';
+        }).join('');
+        var m = document.createElement('div');
+        m.className = 'sd-tab-popmenu';
+        m.innerHTML =
+            item('rename', 'bi-pencil', _sdT('Rename group')) +
+            '<div class="sd-tab-popmenu-hint">' + esc(_sdT('Group colour')) + '</div>' +
+            '<div class="sd-tab-colors" role="group" aria-label="' + esc(_sdT('Group colour')) + '">' + dots + '</div>' +
+            item('fold', folded ? 'bi-arrows-expand' : 'bi-arrows-collapse', folded ? _sdT('Expand group') : _sdT('Collapse group')) +
+            '<div class="sd-tab-popmenu-sep"></div>' +
+            item('ungroup', 'bi-x-square', _sdT('Ungroup'));
+        document.body.appendChild(m);
+        var left, top;
+        if (at) {
+            left = at.x; top = at.y;
+        } else {
+            var r = (anchor || document.querySelector('#sd-tabs-list .sd-tab-group[data-group="' + gid + '"]') || document.body).getBoundingClientRect();
+            left = r.left; top = r.bottom + 4;
+        }
+        m.style.left = Math.max(4, Math.min(left, window.innerWidth  - m.offsetWidth  - 8)) + 'px';
+        m.style.top  = Math.max(4, Math.min(top,  window.innerHeight - m.offsetHeight - 8)) + 'px';
+        m.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-act]');
+            if (!b) return;
+            var act = b.dataset.act;
+            _pgTabsCloseMenu();
+            if (act === 'color')        _pgTabGroupSetColor(gid, b.dataset.color);
+            else if (act === 'rename')  _pgTabGroupRename(gid);
+            else if (act === 'fold')    _pgTabGroupToggle(gid);
+            else if (act === 'ungroup') _pgTabGroupUngroup(gid);
+        });
+        setTimeout(function () {
+            document.addEventListener('mousedown', _pgTabsMenuOutside, true);
+            document.addEventListener('keydown', _pgTabsMenuKey, true);
+        }, 0);
+        window._pgTabMenuEl = m;
+    }
+
+    // Alt+Left / Alt+Right on a tab: one place over. At the end of its group
+    // a tab steps out of it; next to an open group it steps in; a folded
+    // group is stepped over whole.
+    function _pgTabsStep(key, dir) {
+        var p = _pgPageByKey(key);
+        if (!p) return;
+        var swap = function (a, b) {
+            var ia = _pages.indexOf(a), ib = _pages.indexOf(b);
+            _pages[ia] = b;
+            _pages[ib] = a;
+        };
+        if (p.tabGroup) {
+            var members = _pgTabGroupMembers(p.tabGroup);
+            var next = members[members.indexOf(p) + dir];
+            if (next) swap(p, next);
+            else p.tabGroup = '';
+        } else {
+            var i = _pages.indexOf(p);
+            var nb = _pages[i + dir];
+            if (!nb) return;
+            if (!nb.tabGroup) {
+                swap(p, nb);
+            } else if (!_pgTabGroupsCollapsed[nb.tabGroup]) {
+                p.tabGroup = nb.tabGroup;
+            } else {
+                var gm = _pgTabGroupMembers(nb.tabGroup);
+                _pages.splice(i, 1);
+                var edge = (dir > 0) ? _pages.indexOf(gm[gm.length - 1]) + 1 : _pages.indexOf(gm[0]);
+                _pages.splice(edge, 0, p);
+            }
+        }
+        _pgTabsLayoutChanged();
+        var el = document.querySelector('#sd-tabs-list .sd-tab[data-key="' + key + '"]');
+        if (el) el.focus();
+    }
+
+    // ── Dragging tabs and groups ──
+    // Pointer events with capture rather than HTML5 drag and drop: the strip
+    // sits above the canvas iframe, which swallows native drag events, and
+    // Firefox draws its own drag image over the tabs. A drag starts after
+    // 4 px, so a click still switches tabs. Where a tab lands decides its
+    // group, as in a browser: between two tabs of one group, or right after
+    // an open group's chip, it joins that group; dropped on a chip it joins
+    // too (a folded group takes it at its end); anywhere else it is on its
+    // own. A chip carries its whole group and lands only between groups.
+    function _pgTabsDragBind(list) {
+        list.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || _pgTabDrag || !_pgTabLayoutEditable()) return;
+            if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
+            var el = e.target.closest('.sd-tab, .sd-tab-group');
+            if (!el) return;
+            _pgTabDrag = { list: list, el: el, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, on: false };
+        });
+        list.addEventListener('pointermove', function (e) {
+            var d = _pgTabDrag;
+            if (!d || e.pointerId !== d.id) return;
+            d.x = e.clientX;
+            if (!d.on) {
+                if (Math.abs(e.clientX - d.x0) < 4 && Math.abs(e.clientY - d.y0) < 4) return;
+                _pgTabsDragStart(d);
+            }
+            e.preventDefault();
+            _pgTabsDragMove(d);
+        });
+        list.addEventListener('pointerup', function (e) {
+            var d = _pgTabDrag;
+            if (!d || e.pointerId !== d.id) return;
+            if (d.on) _pgTabsDragEnd(true);
+            else _pgTabDrag = null;
+        });
+        list.addEventListener('pointercancel', function (e) {
+            var d = _pgTabDrag;
+            if (!d || e.pointerId !== d.id) return;
+            if (d.on) _pgTabsDragEnd(false);
+            else _pgTabDrag = null;
+        });
+        // The click a drop ends with is not a tab switch or a fold.
+        list.addEventListener('click', function (e) {
+            if (_pgTabDragClickBlock && Date.now() - _pgTabDragClickBlock < 400) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            _pgTabDragClickBlock = 0;
+        }, true);
+    }
+
+    // Keys and groups of the strip, to tell whether a drop changed anything.
+    function _pgTabsLayoutSig() {
+        return _pages.map(function (p) { return p.key + ':' + (p.tabGroup || ''); }).join(',');
+    }
+
+    function _pgTabsDragStart(d) {
+        d.on = true;
+        _pgTabsCloseMenu();
+        d.gid = d.el.classList.contains('sd-tab-group') ? d.el.dataset.group : '';
+        d.keys = d.gid ? _pgTabGroupMembers(d.gid).map(function (p) { return p.key; }) : [d.el.dataset.key];
+        d.sig = _pgTabsLayoutSig();
+        d.dragEls = [d.el];
+        if (d.gid) {
+            [].forEach.call(d.list.querySelectorAll('.sd-tab[data-group="' + d.gid + '"]'), function (t) { d.dragEls.push(t); });
+        }
+        d.dragEls.forEach(function (el) { el.classList.add('sd-tab-dragging'); });
+        try { d.list.setPointerCapture(d.id); } catch (e) {}
+        var r = d.el.getBoundingClientRect();
+        d.dx = d.x0 - r.left;
+        var ghost = d.el.cloneNode(true);
+        ghost.classList.remove('sd-tab-dragging');
+        ghost.classList.add('sd-tab-ghost');
+        ghost.removeAttribute('tabindex');
+        ghost.setAttribute('aria-hidden', 'true');
+        ghost.style.width  = r.width + 'px';
+        ghost.style.height = r.height + 'px';
+        ghost.style.top    = r.top + 'px';
+        document.body.appendChild(ghost);
+        d.ghost = ghost;
+        var lr = d.list.getBoundingClientRect();
+        d.line = document.createElement('div');
+        d.line.className = 'sd-tab-drop';
+        d.line.style.top = lr.top + 'px';
+        d.line.style.height = lr.height + 'px';
+        document.body.appendChild(d.line);
+        d.esc = function (ev) {
+            if (ev.key !== 'Escape') return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            _pgTabsDragEnd(false);
+        };
+        document.addEventListener('keydown', d.esc, true);
+        // Near either end of the strip it scrolls under the pointer.
+        var edge = function () {
+            if (_pgTabDrag !== d) return;
+            var b = d.list.getBoundingClientRect();
+            var step = (d.x < b.left + 24) ? -8 : ((d.x > b.right - 24) ? 8 : 0);
+            if (step) {
+                var was = d.list.scrollLeft;
+                d.list.scrollLeft = was + step;
+                if (d.list.scrollLeft !== was) _pgTabsDragMove(d);
+            }
+            d.raf = requestAnimationFrame(edge);
+        };
+        d.raf = requestAnimationFrame(edge);
+    }
+
+    function _pgTabsDragMove(d) {
+        d.ghost.style.left = (d.x - d.dx) + 'px';
+        var t = _pgTabsDropTarget(d);
+        d.target = t;
+        [].forEach.call(d.list.querySelectorAll('.sd-tab-group-drop'), function (c) { if (c !== t.chip) c.classList.remove('sd-tab-group-drop'); });
+        if (t.chip) t.chip.classList.add('sd-tab-group-drop');
+        if (t.lineX === null) {
+            d.line.style.display = 'none';
+        } else {
+            var b = d.list.getBoundingClientRect();
+            d.line.style.display = '';
+            d.line.style.left = (Math.max(b.left, Math.min(t.lineX, b.right)) - 1) + 'px';
+        }
+    }
+
+    // Where the pointer would drop: { group, before: element|null, after:
+    // gid (end of a folded group), lineX, chip }.
+    function _pgTabsDropTarget(d) {
+        var items = [].filter.call(d.list.children, function (el) {
+            return d.dragEls.indexOf(el) === -1 && !el.classList.contains('sd-tab-folded')
+                && (el.classList.contains('sd-tab') || el.classList.contains('sd-tab-group'));
+        });
+        var x = d.x;
+        var isChip = function (el) { return !!el && el.classList.contains('sd-tab-group'); };
+        var tabGroupOf = function (el) { return (el && !isChip(el)) ? (el.dataset.group || '') : ''; };
+        var i, r;
+        if (!d.gid) {
+            for (i = 0; i < items.length; i++) {
+                if (!isChip(items[i])) continue;
+                r = items[i].getBoundingClientRect();
+                if (x < r.left || x > r.right) continue;
+                var gid = items[i].dataset.group;
+                if (_pgTabGroupsCollapsed[gid]) return { group: gid, before: null, after: gid, lineX: null, chip: items[i] };
+                return { group: gid, before: items[i], after: '', lineX: r.right, chip: null };
+            }
+        }
+        var slot = items.length;
+        for (i = 0; i < items.length; i++) {
+            r = items[i].getBoundingClientRect();
+            if (x < r.left + r.width / 2) { slot = i; break; }
+        }
+        var L = items[slot - 1] || null, R = items[slot] || null;
+        var group = '';
+        if (isChip(L) && !_pgTabGroupsCollapsed[L.dataset.group]) group = L.dataset.group;
+        else if (tabGroupOf(L) && tabGroupOf(L) === tabGroupOf(R)) group = tabGroupOf(L);
+        if (d.gid && group) {
+            // A group does not go inside another one: in front of it instead.
+            var host = d.list.querySelector('.sd-tab-group[data-group="' + group + '"]');
+            return { group: '', before: host, after: '', lineX: host ? host.getBoundingClientRect().left : null, chip: null };
+        }
+        var lineX = R ? R.getBoundingClientRect().left : (L ? L.getBoundingClientRect().right : d.list.getBoundingClientRect().left);
+        return { group: group, before: R, after: '', lineX: lineX, chip: null };
+    }
+
+    function _pgTabsDragEnd(drop) {
+        var d = _pgTabDrag;
+        _pgTabDrag = null;
+        if (!d) return;
+        cancelAnimationFrame(d.raf);
+        document.removeEventListener('keydown', d.esc, true);
+        try { d.list.releasePointerCapture(d.id); } catch (e) {}
+        if (d.ghost) d.ghost.remove();
+        if (d.line) d.line.remove();
+        d.dragEls.forEach(function (el) { el.classList.remove('sd-tab-dragging'); });
+        [].forEach.call(d.list.querySelectorAll('.sd-tab-group-drop'), function (c) { c.classList.remove('sd-tab-group-drop'); });
+        _pgTabDragClickBlock = Date.now();
+        var t = d.target;
+        if (!drop || !t) return;
+
+        var moving = _pages.filter(function (p) { return d.keys.indexOf(p.key) !== -1; });
+        var rest   = _pages.filter(function (p) { return d.keys.indexOf(p.key) === -1; });
+        // The index in `rest` in front of a strip element: a tab is itself,
+        // a chip is its group's first remaining tab (or whatever follows).
+        var indexBefore = function (el) {
+            while (el) {
+                if (d.dragEls.indexOf(el) === -1) {
+                    var at = -1;
+                    if (el.classList.contains('sd-tab-group')) {
+                        for (var k = 0; k < rest.length; k++) if (rest[k].tabGroup === el.dataset.group) { at = k; break; }
+                    } else if (el.classList.contains('sd-tab')) {
+                        at = rest.indexOf(_pgPageByKey(el.dataset.key));
+                    }
+                    if (at !== -1) return at;
+                }
+                el = el.nextElementSibling;
+            }
+            return rest.length;
+        };
+        var at;
+        if (t.after) {
+            var gm = rest.filter(function (p) { return p.tabGroup === t.after; });
+            at = gm.length ? rest.indexOf(gm[gm.length - 1]) + 1 : indexBefore(t.chip);
+        } else {
+            at = indexBefore(t.before);
+        }
+        if (!d.gid) moving.forEach(function (p) { p.tabGroup = t.group; });
+        _pages = rest.slice(0, at).concat(moving, rest.slice(at));
+        if (_pgTabsLayoutSig() === d.sig) return;
+        _pgTabsLayoutChanged();
+    }
+
+    // A page renamed by a save no longer answers at its old address. The
+    // editor's return address (?send_to=, which the site's "Edit page" link
+    // sets to the page) is moved with it, or leaving the editor lands on a
+    // page that is not there.
+    function _pgFollowRename(oldName, newName) {
+        var base = window.OUTPUT_PATH || '/';
+        var swap = function (url) {
+            if (!url || url.charAt(0) !== '/') return url;
+            var cut = url.search(/[?#]/);
+            var path = (cut === -1) ? url : url.slice(0, cut);
+            var plain = path;
+            try { plain = decodeURIComponent(path); } catch (e) {}
+            if (plain !== base + oldName) return url;
+            return base + encodeURIComponent(newName).replace(/%2F/g, '/') + ((cut === -1) ? '' : url.slice(cut));
+        };
+        if (_design && _design.exitUrl) _design.exitUrl = swap(_design.exitUrl);
+        var field = document.querySelector('#style_designer_form input[name="send_to"]');
+        if (field && field.value) field.value = swap(field.value);
+        try {
+            var u = new URL(window.location.href);
+            var st = u.searchParams.get('send_to');
+            var moved = st ? swap(st) : st;
+            if (moved !== st) {
+                u.searchParams.set('send_to', moved);
+                history.replaceState(null, '', u.toString());
+            }
+        } catch (e) {}
+    }
+
     // Detach = the page leaves this design and becomes one of its own, taking
     // a copy of the shared assets so it renders unchanged. Server-side, one
     // call; the tab simply disappears here. Unsaved edits on that tab would
@@ -45986,11 +46715,13 @@ const StyleDesigner = (function () {
     // ── "Select Page" picker ──────────────────────────────────────────────
     // api.php reads its request as a JSON body (json_decode(php://input)),
     // not as form fields — a multipart POST arrives as "Null" action.
-    function _pgApiPost(sub, extra) {
+    // opts.keepalive: the request outlives the page (sent right before the
+    // editor navigates away).
+    function _pgApiPost(sub, extra, opts) {
         var body = { action: 'designer', sub_action: sub, token: _pgToken() };
         if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
         var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
-        return fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
+        return fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin', keepalive: !!(opts && opts.keepalive),
                             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                .then(function (r) { return r.json(); });
     }
@@ -46706,7 +47437,7 @@ const StyleDesigner = (function () {
         p.pickedPending = true;
         p.pickedFromId   = (owner && owner.current_style_id)   ? owner.current_style_id   : 0;
         p.pickedFromName = (owner && owner.current_style_name) ? owner.current_style_name : '';
-        _pages.push(p);
+        _pgTabsInsertAfterActive(p);
         _pgTabsSwitch(p.key);
         sdToast(_sdT('<strong>{var}</strong> was opened as a tab. When you save, it moves into this design and starts using this design\'s styles, scripts and fonts.', esc(p.page_name)), 'info', 6000);
     }
@@ -47039,8 +47770,9 @@ const StyleDesigner = (function () {
                     fsel.appendChild(fo);
                 }
             }
-            // Pages as unsaved tabs.
+            // Pages as unsaved tabs, in their order right of the open one.
             var firstKey = null;
+            var afterKey = _activeKey;
             (d.pages || []).forEach(function (sp) {
                 _pgNewTabSeq++;
                 var tree = sp.tree || createDefaultTree();
@@ -47056,7 +47788,8 @@ const StyleDesigner = (function () {
                     tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree),
                     baseline: null, treeLoadWarning: false
                 };
-                _pages.push(p);
+                _pgTabsInsertAfter(p, afterKey);
+                afterKey = p.key;
                 if (!firstKey) firstKey = p.key;
             });
             var im = document.getElementById('sdImportModal');
@@ -47410,6 +48143,7 @@ const StyleDesigner = (function () {
     // After a successful save: adopt ids handed out for new tabs, reset
     // every baseline, and move the URL to the edit screen if this was "add".
     function _pgTabsAfterSave(data) {
+        var layoutFresh = false;
         if (data && Array.isArray(data.pages)) {
             // Page pickers that named an unsaved tab (`tab:<key>`) now get
             // the id the server handed out — in the widget configs and in
@@ -47424,6 +48158,9 @@ const StyleDesigner = (function () {
                 // The state the server left the page in: a draft of the home
                 // page is refused (pg_designer_page_draft_plan()).
                 if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
+                // A page that joined the design with this save has its place
+                // in the tab layout stored below.
+                if (p && m.page_id > 0 && (!(p.page_id > 0) || p.pickedPending)) layoutFresh = true;
                 if (p && m.page_id > 0) {
                     p.page_id = m.page_id;
                     var newKey = 'p' + m.page_id;
@@ -47448,10 +48185,20 @@ const StyleDesigner = (function () {
         }
         if (data && data.style_id && _design) _design.styleId = data.style_id;
         _pgSyncDraftBox(_pgActivePage());
+        // A rename changes the page's address; a return address that pointed
+        // at the old one (the site's "Edit page" link sends it) follows it.
+        _pages.forEach(function (p) {
+            if (p.page_id > 0 && p.savedName && p.savedName !== p.page_name) _pgFollowRename(p.savedName, p.page_name);
+        });
         _pages.forEach(function (p) { p.baseline = _pgBaselineOf(p); if (p.page_id > 0) p.savedName = p.page_name; });
         _styleBaseline = _pgStyleJSON();
         _pgTabsRender();
         _pgTabsSyncUrl();
+        // The design may have just been created: folding is now kept under
+        // its id, and the tabs that got ids keep their places. Sent at once,
+        // since a new design's editor reloads moments after this.
+        _pgTabGroupsStoreCollapsed();
+        if (layoutFresh) _pgTabsLayoutSave(true);
         // A page picker on screen may have named a tab that now has an id;
         // redraw so it reads "page" rather than "page (unsaved)".
         if (selectedNode && typeof renderProperties === 'function') renderProperties();
@@ -47734,6 +48481,7 @@ const StyleDesigner = (function () {
             p.savedName = p.page_id > 0 ? p.page_name : '';
             _pages.push(p);
         });
+        _pgTabsApplyLayout(design && design.tabLayout ? design.tabLayout.layout : null);
         if (!_pages.length) {
             _pages.push({
                 key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '',
@@ -47748,6 +48496,7 @@ const StyleDesigner = (function () {
         // _pgTabsSwitch — nothing to park yet, and render() needs the canvas
         // iframe that init() creates afterwards.
         _activeKey = (design && design.activeKey && _pgPageByKey(design.activeKey)) ? design.activeKey : _pages[0].key;
+        _pgTabGroupRevealActive();
         var a = _pgActivePage();
         tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = a.nodeIdCounter || reindex(tree);
         _pages.forEach(function (p) { p.baseline = (p.page_id === 0) ? null : _pgBaselineOf(p); });

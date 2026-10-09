@@ -4173,6 +4173,21 @@ switch ($action) {
                 respond(array('status' => 'success', 'deleted' => $td_deleted));
                 break;
 
+            // ── TAB LAYOUT ───────────────────────────────────────────────
+            // The order of the page tabs and their groups (2026.4.8). Written
+            // the moment the operator rearranges the strip, apart from Save:
+            // it is how the editor looks, not what the site shows.
+            case 'tab_layout':
+                $tl = pg_designer_tab_layout_save(
+                    isset($request['style_id']) ? (int)$request['style_id'] : 0,
+                    isset($request['layout']) ? $request['layout'] : null,
+                    $user);
+                if (!$tl['ok']) {
+                    respond(array('status' => 'error', 'message' => $tl['error']));
+                }
+                respond(array('status' => 'success', 'layout' => $tl['layout']));
+                break;
+
             // Every page of a design off the site, or its drafts back on it,
             // from the designs list (pg_designer_design_set_draft()). The
             // answer carries the row's new Status cell.
@@ -4211,48 +4226,27 @@ switch ($action) {
 
             case 'design_delete':
                 $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
-                $style = $style_id > 0 ? db_item("SELECT style_id, style_name, style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
+                $style = $style_id > 0 ? db_item("SELECT style_id, style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
                 if (!$style) {
                     respond(array('status' => 'error', 'message' => lang('The style could not be found.')));
                 }
                 if ($style['style_layout'] !== 'visual_designer') {
                     respond(array('status' => 'error', 'message' => lang('Only designs made with the visual editor can be deleted here.')));
                 }
-                if (($user['role'] == 3) && !$user['delete_pages']) {
-                    respond(array('status' => 'error', 'message' => lang('You do not have access to delete pages.')));
+                $dd = pg_designer_delete_design($style_id, $user);
+                if (!$dd['ok']) {
+                    respond(array('status' => 'error', 'message' => $dd['error']));
                 }
-                $folders_using = (int)db_value("SELECT COUNT(folder_id) FROM folder WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
-                if ($folders_using > 0) {
-                    respond(array('status' => 'error', 'message' => lang('You may not delete this page style because it is being used by at least one folder or page.')));
+                $dd_message = $dd['binned'] > 0
+                    ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
+                    : lang('The style has been deleted.');
+                if ($dd['home'] > 0) {
+                    $dd_message .= ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.');
                 }
-                require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
-                $binned = 0;
-                if (pg_recycle_ready()) {
-                    $bin_id = (int)pg_recycle_folder_id(true);
-                    $live = db_items("SELECT page_id, page_folder FROM page WHERE page_style = '$style_id'" . pg_designer_not_binned_sql('page_folder'));
-                    foreach ((is_array($live) ? $live : array()) as $lp) {
-                        $pid = (int)$lp['page_id'];
-                        db("UPDATE page SET page_folder = '$bin_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "' WHERE page_id = '$pid'");
-                        pg_recycle_park_name('page', $pid, $user);
-                        db("DELETE FROM recycle_bin WHERE item_type = 'page' AND item_id = '$pid'");
-                        db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                            VALUES ('page', '$pid', '" . (int)$lp['page_folder'] . "', UNIX_TIMESTAMP(), '" . (int)$user['id'] . "')");
-                        $binned++;
-                    }
-                } else {
-                    $live_count = (int)db_value("SELECT COUNT(page_id) FROM page WHERE page_style = '$style_id'");
-                    if ($live_count > 0) {
-                        respond(array('status' => 'error', 'message' => lang('The recycle bin is not available. Delete the page from the pages list instead.')));
-                    }
+                if ($dd['folders'] > 0) {
+                    $dd_message .= ' ' . lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared.', 'vars' => $dd['folders']));
                 }
-                db("DELETE FROM style WHERE style_id = '$style_id'");
-                db("DELETE FROM system_style_cells WHERE style_id = '$style_id'");
-                db("DELETE FROM preview_styles WHERE style_id = '$style_id'");
-                log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($style['style_name']))), $_SESSION['sessionusername']);
-                respond(array('status' => 'success', 'binned' => $binned,
-                    'message' => $binned > 0
-                        ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $binned))
-                        : lang('The style has been deleted.')));
+                respond(array('status' => 'success', 'binned' => $dd['binned'], 'folders' => $dd['folders'], 'message' => $dd_message));
                 break;
 
             // Save a stylesheet as a theme: a design CSS file in the file

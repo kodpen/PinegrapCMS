@@ -25,6 +25,31 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Sayfa sekmeleri sıralanıp gruplanabiliyor, tarayıcıdaki
+         sekme grupları gibi. Sekmeler sürükleyerek ya da Alt+← / Alt+→
+         ile istenen sıraya dizilir. Sekmenin menüsünden "Yeni gruba
+         ekle" ile adlı ve renkli bir grup kurulur; grubun çipine
+         tıklayınca grup daralır ya da açılır, çift tıklayınca adı
+         değişir, çipin menüsünden rengi seçilir ya da grup dağıtılır
+         (sayfalar yerinde kalır). Sekme bir grubun içine ya da
+         dışına sürüklenebilir, çip sürüklenince grup bütün olarak
+         taşınır. Sıra ve gruplar tasarımda saklanır ve Kaydet'i
+         beklemez; hangi grubun daraltıldığı her tarayıcıda ayrı
+         hatırlanır. Yeni, çoğaltılan, seçilen ve içe aktarılan
+         sayfalar artık şeridin sonuna değil, açık sekmenin hemen
+         sağına (o bir gruptaysa aynı gruba) açılır. İçerik
+         düzeyindeki kullanıcılar düzeni görür, değiştirmez.
+
+  [ŞEMA] Sayfa sekmelerinin sırası ve grupları için style
+         tablosuna style_tab_layout sütunu.
+
+  [DÜZELTME] Editör sitedeki "Sayfayı Düzenle" bağlantısıyla
+         açılıp sayfanın adı değiştirildiğinde (ör. "hakkimizda"
+         → "dizinadi/hakkimizda") kayıttan sonra editörden çıkmak
+         (Ctrl+G) eski adrese, siteadi.com/hakkimizda'ya
+         götürüyor ve "sayfa bulunamadı" çıkıyordu. Dönüş adresi
+         artık sayfanın yeni adını izliyor.
+
   [YENİ] "Hesap Güvenliği" sistem widget'ı: üyenin Google
          bağlantısı, hatırlanan cihazları (tek tek ya da hepsinden
          çıkış) ve iki adımlı doğrulaması (QR koduyla açma, kurtarma
@@ -179,7 +204,8 @@
 
   [YENİ] Canlı önizleme. Önizleme penceresi açıkken tasarımda
          yapılan değişiklikler (içerik, stil, tema, CSS ve
-         JavaScript dosyaları, sekmeler, tasarım ayarları)
+         JavaScript dosyaları, sekmeler, tasarım ayarları; tuvalde
+         yerinde ve özellik panelinde yazılan metin, yazarken)
          kısa bir beklemeden sonra pencereye yansıyor; pencere
          kaydırıldığı yerde kalıyor. Sistem widget'ları yalnız
          değiştiklerinde yeniden çiziliyor. Önizleme penceresi
@@ -203,6 +229,40 @@
          içinde de (Mac'te Cmd+tekerlek ile) editörü
          yakınlaştırıyor; Ctrl + / Ctrl - / Ctrl 0 kısayolları
          da tuval odaktayken çalışıyor.
+
+  [DÜZELTME] Bir tasarım, bir klasöre (kurulumda kök klasöre)
+         varsayılan tasarım olarak atanmışsa ya da yayında
+         sayfası varsa "En az bir klasör veya sayfa tarafından
+         kullanıldığı için…" iletisiyle silinemiyordu; mevcut
+         tasarımı kaldırıp yerine yenisini koymanın yolu yoktu.
+         Artık hem tasarım listesinden hem editörün araç
+         çubuğundan silinebiliyor: sayfaları Geri Dönüşüm
+         Kutusu'na gider, onu varsayılan tasarım olarak
+         kullanan klasörlerde ve onu mobil tasarım olarak
+         kullanan sayfalarda bu ayar temizlenir. Onay penceresi
+         kaç sayfanın kutuya gideceğini ve kaç klasörün
+         etkileneceğini söyler; ana sayfa da kutuya gittiyse
+         ileti bunu belirtir. Tasarım başka bir sekmede ya da
+         başka biri tarafından editörde açıksa silme reddedilir.
+
+  [YENİ] Görsel Sayfa Editörü ana ekranında, tasarım listesinin
+         altında "Ortak bileşenler ve sistem widget'ları"
+         paneli: her satırın türü (widget'ın çeşidiyle), nereden
+         geldiği (şablon ya da içe aktarma), hangi sayfada ve
+         tasarımda kullanıldığı (Geri Dönüşüm Kutusu'ndaki
+         sayfalar işaretli) ve son değişikliği görünür;
+         seçilenler tek seferde silinir. Bütün tasarımlar
+         silindikten sonra geride kalan bu satırlar artık bir
+         tasarım açmadan temizlenebiliyor; temizlenince yeni
+         açılan şablonun bileşenleri adlarının sonuna "[1]"
+         almıyor. Düzenleme yine editörde yapılır.
+
+  [GÜVENLİK] Tasarım silme isteği sunucuda rol denetiminden
+         geçmiyordu: editöre yalnız içerik düzenlemek için giren
+         bir menejer ya da kullanıcı, düğmeyi görmese de isteği
+         elle göndererek tasarımı silebilirdi. Silme artık
+         yalnız yönetici ve tasarımcıya açık; içerik düzeyindeki
+         kullanıcıya silme düğmesi gösterilmiyor.
 
   SAYFA TASARIMCISI
   --------------------------------------------------------
@@ -872,6 +932,18 @@
 
   [ŞEMA] user_mfa ve user_mfa_recovery tabloları;
          config.mfa_required_role sütunu.
+
+  [DÜZELTME] Sitede giriş sayfası ya da giriş widget'ı taşıyan
+         bir sayfa yokken panelin ya da erişim isteyen bir
+         sayfanın açtığı varsayılan giriş ekranı biçimsiz bir
+         tabloydu ve kimlik alanı e-posta türündeydi: tarayıcı
+         kullanıcı adıyla girişe izin vermiyordu. Ekran artık
+         iki adımlı doğrulama ekranıyla aynı kart görünümünde;
+         alan e-posta adresini ya da kullanıcı adını kabul
+         ediyor, hata iletileri kartın içinde, "Beni Hatırla",
+         "Parolanızı mı unuttunuz?" ve Google ile giriş kartta.
+         Giriş sayfası tipiyle kurulmuş sitelerin giriş sayfası
+         değişmez.
 
   ÇEREZ İZNİ
   --------------------------------------------------------

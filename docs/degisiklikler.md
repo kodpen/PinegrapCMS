@@ -36,7 +36,7 @@ adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde k
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
 8.80 adımıyla açıldı (bugün 8.80–8.89, 8.110, 8.30–8.33, 8.40 ve
-8.10–8.18). Çalışma Alanı'nın 8.80–8.89 aralığı doldu ve 8.110 kullanıldı;
+8.10–8.19). Çalışma Alanı'nın 8.80–8.89 aralığı doldu ve 8.110 kullanıldı;
 sıradaki Çalışma Alanı adımı 8.111–8.119 aralığından alınır. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
@@ -71,6 +71,187 @@ Aşağıdaki bölümlerin `İç tur` ve `(iç tur 4.x)` başlıkları **çalış
 numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başlıkları
 2026.4.2 birleştirmesine, `2026.4.4 (iç tur 4.x)` başlıkları 2026.4.4
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
+
+---
+
+## 2026.4.8 — Görsel editör: tasarım klasör kullanırken de silinir, ortak bileşen / widget paneli; varsayılan giriş ekranı kart oldu (2026-10-09)
+
+**Sorun (şikâyet).** (1) Görsel editörde yapılmış bir tasarım "En az bir
+klasör veya sayfa tarafından kullanıldığı için…" iletisiyle silinemiyordu;
+mevcut tasarımı kaldırıp yenisini koymanın yolu yoktu. (2) Giriş sayfası tipi
+ya da giriş widget'ı olmayan sitede panelin açtığı varsayılan giriş ekranı
+biçimsiz bir tabloydu ve `type="email"` alan kullanıcı adıyla girişi
+engelliyordu. (3) Bütün tasarımlar silinince geride kalan ortak bileşen ve
+sistem widget satırları yeni şablonda adlara `[1]` ekletiyordu ve editör
+açılmadan (yani bir tasarım oluşturmadan) silinemiyordu.
+
+**Kök neden.** (1) İki kapı vardı: editör araç çubuğu
+`pg_designer_style_live_usage() > 0` ise düğmeyi kapatıyor ve POST'u
+reddediyordu — çok sayfalı tasarımda sayfalar tasarımın kendisi olduğu için bu
+"sayfası olan tasarım silinemez" demekti; liste ekranının `design_delete`
+ucu sayfaları kutuya gönderiyordu ama `folder.folder_style` /
+`folder.mobile_style_id` bu stili gösteriyorsa reddediyordu. Kurulum
+(`install_design_template.php`) tasarımı kök klasöre yazdığı için şablondan
+kurulan her sitede tasarım kilitliydi. Ayrıca editör POST yolunda hiç rol
+denetimi yoktu: içerik düzeyindeki operatör (rol 2–3) düğmeyi görmese de
+`submit_delete` göndererek tasarımı silebilirdi. (2) `get_login()` sayfasız
+çağrıyı (`page_id = 0`) legacy `system` sayfa düzeniyle aynı dalda çiziyordu.
+(3) `shared_components` satırları tasarımdan bağımsızdır; tasarım silinince
+kalır ve tek silme arayüzü editörün palet sekmesiydi.
+
+**Çözüm.** (1) Tek sunucu fonksiyonu `pg_designer_delete_design($style_id,
+$user, $collab_key = '')` (`includes/fn/designer.php`,
+`pg_designer_style_live_usage()`'ın yerinde; o fonksiyon kaldırıldı). Sıra:
+stil var mı → `pg_designer_is_full()` (değilse ret; rol 3 + `delete_pages`
+kuralı korundu) → `pg_collab_peers($collab_key, $id)` doluysa ret (başka
+sekmede açık tasarımın sonraki kaydı hayalet sayfa yazar; editörün kendi
+sekmesi `collab_key` ile sayılmaz) → kutu yoksa ve sayfa varsa ret → yayındaki
+sayfalar kutuya (`api.php`'deki blok taşındı) → `page.mobile_style_id`,
+`folder.folder_style` / `folder.mobile_style_id` 0'a (klasör sayısı tek
+`UPDATE` ile, iki stili birden taşıyan klasör bir kez sayılır) → `style`,
+`system_style_cells`, `preview_styles` satırları. Dönüş `ok, error, binned,
+home, folders, name`; iki çağıran da (editör POST'u ve `design_delete`) aynı
+iletiyi kurar. Editörün çöp düğmesi kullanım sayısına göre kapanmaz, yalnız
+tam erişime basılır; onay metni sayfa ve klasör sayısını söyler. Liste
+ekranındaki satır silme düğmesi de yalnız tam erişime basılır.
+(2) `get_login()`'de `page_id == 0` ayrı dal: `mfa.php` ile aynı kart
+iskeleti, `type="text"` + `autocomplete="username"` alan, etiket "E-posta veya
+kullanıcı adı", mesajlar kartın içinde. Alan adları, gizli alanlar, düğme
+ad/değeri aynı (`index.php` bunları okur). Legacy giriş sayfasının `system`
+dalı aynen kaldı (çıktısı değişiklikten önceki dosyayla karşılaştırıldı,
+bayt bayt aynı). (3) `pg_designer_components_card($user)`
+(`includes/designer_screen.php`) tasarım listesinin altında: ad, tür (widget
+çeşidi `pg_sw_type_labels()` — `SW_TYPES`'ın PHP aynası,
+`tests/designer_components_test.php` iki listeyi karşılaştırır), kaynak
+(`category` `template:`/`import:`, widget'ta `template_origin`), kullanım
+(`pg_shared_component_usage()` kayıtlarına `binned` eklendi; kutudaki sayfa
+rozetli), son değişiklik. `pg_shared_component_usage()` sayfaları artık
+`LEFT JOIN style` ile okur: tasarımı silinmiş, kutudaki sayfa widget'ı hâlâ
+referanslıyor ve kullanım sayılır (`style_id` sayfanın taşıdığı id,
+`style_name` `''`; panel adı parantezsiz yazar). Önceki `INNER JOIN` bu
+sayfaları düşürüyordu: tasarım silinince widget'ları "kullanılmıyor" görünüp
+kutudan dönecek sayfanın widget'ı sorusuz silinebiliyordu. Seçim + toplu silme mevcut
+`shared_component/delete_many` ucuna gider; kullanımda olan seçiliyse
+`force`. Düzenleme bu ekrandan yapılmaz (tuval gerekir).
+
+**Ödünler.** Klasörün stili 0'a çekilir: alt klasör üstünkine düşer. Kök
+klasör stilsiz kalır (kabul edilen ödün) — kökteki eski (stil atanmamış,
+`page_style = 0`) sayfalar ancak başka bir stil atanınca çizilir; görsel
+editör sayfaları kendi `page_style`'ını taşıdığı için etkilenmez.
+`LEFT JOIN`'in yan etkisi (kabul): editör paletinde kutudaki sayfaların
+widget'ları "kullanımda" görünür ve `force`'suz `delete_many` onları `kept`
+döndürür; `page_style = 0` olup ağaç taşıyan sayfalar da artık kullanım
+sayılır. Ana sayfa kutuya gidebilir
+(dosya yöneticisinin kutu yolu da engellemiyor); ileti söyler. Toplu silmede
+kullanımda olan widget'ın sayfadaki yeri boş kalır (editördeki davranış);
+bu ekranda yazılı onay istenmez.
+
+**Doğrulama.** lint, check_lang, check_bindings, `php tools/test.php`,
+`node --check style_designer.js` temiz; liste ekranının satır içi betiği
+ayrıca `node --check` ve başsız Chromium'da sahte veriyle (seçim, sayaç,
+onay metni, istek gövdesi, satır kaldırma) denendi. Sandbox kurulmadı:
+silme, kutu, klasör temizliği ve giriş akışı çalışma zamanında doğrulanmadı.
+
+---
+
+## 2026.4.8 — Görsel editör: sekme sırası ve grupları (8.19), canlı önizlemede yerinde metin, yeniden adlandırılan sayfanın dönüş adresi (2026-10-09)
+
+**İstenen.** (1) Tuvalde yerinde metin düzenlemesi açık canlı önizleme
+penceresine 15–20 sn sonra yansıyordu. (2) Sayfa adı `hakkimizda` →
+`dizinadi/hakkimizda` yapılıp kaydedilince "sayfayı görüntüle" ile
+`siteadi.com/hakkimizda` (404) açılıyordu. (3) Üst şeritteki sayfa sekmeleri
+`page_id` sırasında ve grupsuzdu; tarayıcı sekme grupları gibi sıralama,
+adlı-renkli, daraltılabilen gruplar, sürükle-bırak ve kalıcılık istendi.
+
+**(1) Kök sebep.** Yerinde düzenleme oturum başında `saveState()` alır →
+`scheduleAutosave()` → önizleme 800 ms sonra yenilenir; o anda ağaçta ancak
+o 800 ms içinde yazılan metin vardır. Yazmanın kalanını `liveTextObs`
+(MutationObserver) yalnız `node.props`'a yazıyordu, `commit` de
+`renderProperties()` + `renderTree()` çağırıyordu: `render()`'dan ya da
+`saveState()`'ten geçmeyen bu yol önizlemeye hiç haber vermiyordu; metin
+ancak ilgisiz bir sonraki kanca (başka bir tık) gelince yansıyordu. Çare:
+gözlemcinin geri çağrısına, `commit`'in değişti dalına ve Escape'in geri
+alma dalına `_sdLivePreviewSchedule()`. Aynı boşluk özellik panelindeki
+`[data-prop]` metin/textarea kutularında da vardı (`input` olayında yalnız
+`renderCanvas()` …; `saveState()` yok) — oraya da eklendi. Sandbox'ta
+(Playwright, 150 ms/tuş) eski kodla önizleme oturumun 800. ms'indeki "Yen"de
+kaldı, yenisiyle son tuştan ~0,8 sn sonra tam metin göründü. Pencere
+kapalıyken kanca tek özellik okur.
+
+**(2) Kök sebep.** Editörün üç "görüntüle" girişi (`#sd-view-page`,
+`#sd-vb-live`, sekme menüsü) sandbox'ta doğru adresi açıyor
+(`/dizinadi/hakkimizda`, 200; boş tasarım, şablon tasarımı, sitedeki
+"Sayfayı Düzenle"den açılış — üçü de denendi). 404 üreten yol, editör
+sitedeki "Sayfayı Düzenle" bağlantısıyla açılınca gelen dönüş adresi:
+`send_to=/hakkimizda` (`_design.exitUrl`, adres çubuğu, formun gizli
+`send_to` alanı). Ad değişip kaydedildikten sonra Ctrl+G / dönüş bu eski
+adrese gidiyordu → 404. Çare: `_pgTabsAfterSave()` `savedName`'i
+güncellemeden önce adı değişen her sayfa için `_pgFollowRename(eski, yeni)`;
+yalnız yolu eski sayfa adresine eşit olan (`decodeURIComponent` ile
+karşılaştırılır, sorgu/parça korunur) dönüş adresi yeni ada
+(`encodeURIComponent(ad).replace(/%2F/g,'/')`, `encode_url_path()` ile aynı)
+çevrilir. Panel gezgininin `preview_page()` çağrısı (`includes/panel/explorer.php`)
+hiçbir JS dosyasında tanımlı değil (tıklama bir şey yapmıyor) — ayrı bir
+konu, dokunulmadı. Şablonun menü bağlantıları sayfa adına düz `href`
+olarak yazılıyor (`/hakkimizda`); ad değişince menüdeki bağlantı da 404'e
+gider — o da ayrı bir konu (sayfaya id ile bağlantı), dokunulmadı.
+
+**(3) Nasıl çözüldü.**
+
+- *Şema (8.19).* `style.style_tab_layout TEXT NULL`
+  (`upgrade_2026_4_8_tab_layout()`). Taze kurulum şemayı migration
+  runner'dan kurar; `install/index.php`'de `style` için ayrı bir CREATE
+  yok, `get_tables()` değişmedi (yeni tablo yok). Hazırlık
+  `pg_style_tab_layout_ready()` (`SHOW COLUMNS … WHERE Field =`, static);
+  kolon yokken editör düz şeridi gösterir, uç hata döner.
+- *Biçim.* `{"v":1,"groups":{"g1":{"name":"Docs","color":"orange"}},
+  "tabs":[{"id":12},{"id":13,"g":"g1"}]}`. Saf normalleştirici
+  `pg_designer_tab_layout_normalize($layout, $page_ids)` (bilinmeyen alan,
+  yabancı/tekrar id düşer; eksik sayfa sona `page_id` sırasıyla; grup üyeleri
+  ilk üyenin yerinde ardışık; üyesiz grup düşer; ad 60 karakter; palet
+  dışı renk `grey`; ≤ 50 grup; id `^[a-z0-9_-]{1,20}$`); JS ikizi
+  `_pgTabsNormalizeGroups()`. `pg_designer_tab_layout_export()` `groups`'u
+  boşken ve sayısal anahtarlıyken de JSON nesnesi tutar. Test:
+  `tests/designer_tab_layout_test.php`.
+- *Okuma.* `edit_system_style.php` `$style['tab_layout']`;
+  `pg_designer_screen_render()` `sdDesign.tabLayout = {ready, layout}`,
+  `$page_ids` = editöre giden kayıtlı sayfalar.
+- *Yazma.* Ayrı uç `designer/tab_layout` → `pg_designer_tab_layout_save()`;
+  Kaydet'e bağlı değil (sıralama arayüz durumu, Yayınla'yı beklemesin; kirli
+  kontrolüne girmez). Tam yetkili tasarımcı: `case 'designer'`'ın allow-list'i
+  içerik seviyesini zaten dışarıda bırakır (listeye eklenmedi); sandbox'ta
+  içerik seviyesinden POST → "İzin reddedildi". Sayfa kümesi o stilin
+  `layout_type='system'` sayfaları, Geri Dönüşüm Kutusu hariç.
+- *Editör.* Sıra = `_pages` sırası, grup `p.tabGroup`, gruplar
+  `_pgTabGroups`, daraltma `localStorage` `pg_sd_tabgroups_<styleId>`
+  (DB'ye yazılmaz: iki kişiden birinin daraltması ötekini etkilemesin).
+  `_pgTabsRender()` her çizimde önce normalleştirir (ekleme/silme/taşıma
+  yollarının hepsi oradan geçer). Daraltılmış grubun sekmeleri DOM'da kalır,
+  `sd-tab-folded` ile gizlenir: daralt/aç sınıf değişikliğidir, çipteki çift
+  tık ilk tıkın çipini bulur. Açık sayfa daraltılmış grupta görünür kalır;
+  ona geçiş (ya da açılış) grubu açar. Kaydetme 600 ms debounce, `pagehide`'da
+  bekleyen gönderilir; `_pgTabsAfterSave()` yeni id alan sayfa varsa hemen
+  (`keepalive`) gönderir — yeni tasarım 400 ms sonra yönlenir.
+- *Sürükle-bırak.* jQuery UI `sortable` yerine pointer olayları: bir çipi
+  sürüklemek grubun bütün sekmelerini taşımak, daraltılmış çipe bırakmak
+  gruba sona eklemek demek; sortable tek DOM öğesi taşır ve ikisini
+  karşılamaz. Hedef: görünür öğelerin yatay ortası; grup kuralı tarayıcınınki
+  (iki yanı aynı grubun sekmesi ya da açık çipin hemen arkası → o grup;
+  çipin üstü → o grup; başka her yer → grupsuz); çip başka grubun içine
+  girmez, o grubun önüne konur. 4 px eşik (tık sekme değiştirmeye devam
+  eder), kenarda otomatik kaydırma, Escape/`pointercancel` iptal.
+- *Davranış değişikliği.* Yeni sekme, çoğaltma, seçilen sayfa ve içe
+  aktarma artık şeridin sonuna değil aktif sekmenin sağına (o gruptaysa
+  aynı gruba) açılır (`_pgTabsInsertAfter()`); şablonun sayfaları boş
+  tasarıma sırasıyla eklenmeye devam eder.
+- *Kopya.* `duplicate_style.php` stil satırını kolon kolon kopyalar;
+  `style_tab_layout` taşınmaz (yeni sayfa id'leri farklı, düzen anlamsız
+  olurdu) — kopya `page_id` sırasıyla açılır.
+
+**Ödünler / açık kalan.** Klasör erişimi yüzünden editöre gitmeyen
+(`hidden`) sayfalar düzende yer alamaz; tasarımcı düzeni kaydedince sunucu
+onları sona ekler. Silinen sayfa kayıtlı JSON'da bir sonraki düzen
+kaydına kadar kalır; okumada normalleştirici düşürür.
 
 ---
 

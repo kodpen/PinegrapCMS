@@ -69,6 +69,8 @@ $style = array(
     // Absent before 2026.4.5 (5.3): plain Bootstrap.
     'look'                              => pg_design_look_key(isset($row['style_look']) ? $row['style_look'] : ''),
     'palette'                           => pg_design_palette_key(isset($row['style_palette']) ? $row['style_palette'] : ''),
+    // Absent before 2026.4.8 (8.19): the tabs follow page_id.
+    'tab_layout'                        => isset($row['style_tab_layout']) ? (string)$row['style_tab_layout'] : '',
 );
 
 // Every page on this design, in creation order. Also performs the legacy
@@ -106,15 +108,20 @@ if (!$_POST) {
         }
     }
 
-    // Delete is offered once nothing LIVE uses the style: a design whose
-    // pages were all sent to the recycle bin counts as empty, and deleting
-    // it purges those binned pages with it (they could only ever come back
-    // onto this design).
-    $in_use = pg_designer_style_live_usage($style_id);
-    if ($in_use > 0) {
-        $delete_button = '<button type="button" class="sd-icon-btn sd-icon-btn-danger disabled" title="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '"><span class="bi bi-trash"></span></button>';
-    } else {
-        $delete_button = '<button type="button" id="sd-delete-style" class="sd-icon-btn sd-icon-btn-danger" title="' . lang('Delete') . '" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('page style')))) . '"><span class="bi bi-trash"></span></button>';
+    // Deleting the design sends its live pages to the recycle bin and clears
+    // the folders that use it (pg_designer_delete_design()); the button is
+    // there for those who may do that, and the warning says what will happen.
+    $delete_button = '';
+    if (pg_designer_is_full($user)) {
+        $del_folders = (int)db_value("SELECT COUNT(folder_id) FROM folder WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
+        $del_message = str_replace('{name}', $style['name'], lang('The design "{name}" will be deleted.')) . ' '
+            . (count($pages) > 0
+                ? str_replace('{n}', count($pages), lang('Its {n} page(s) will be moved to the Recycle Bin.'))
+                : lang('It has no pages.'));
+        if ($del_folders > 0) {
+            $del_message .= ' ' . lang(array('string' => '{var:1} folder(s) use it as their default design; that setting will be cleared.', 'vars' => $del_folders));
+        }
+        $delete_button = '<button type="button" id="sd-delete-style" class="sd-icon-btn sd-icon-btn-danger" title="' . lang('Delete') . '" data-confirm-content="' . h($del_message) . '"><span class="bi bi-trash"></span></button>';
     }
 
     $active = isset($_GET['page']) ? (int)$_GET['page'] : 0;
@@ -139,23 +146,26 @@ if (!$_POST) {
     validate_token_field();
     $liveform->add_fields_to_session();
 
-    // Delete the design. Reachable only when no page or folder uses it (the
-    // button is disabled otherwise), but re-checked here — the POST does not
-    // have to come from that screen.
+    // Delete the design. The POST does not have to come from the toolbar,
+    // so every check is the function's own; collab_key is this editor tab,
+    // which must not count as somebody else having the design open.
     if (!empty($_POST['submit_delete'])) {
-        if (pg_designer_style_live_usage($style_id) > 0) {
-            output_error(lang('You may not delete this page style because it is being used by at least one folder or page.'));
+        $dd = pg_designer_delete_design($style_id, $user, isset($_POST['collab_key']) ? (string)$_POST['collab_key'] : '');
+        if (!$dd['ok']) {
+            output_error(h($dd['error']));
         }
-        // Pages of this design that sit in the recycle bin stay there: each
-        // carries its own tree, so a restored page can join another design
-        // through "Select Page".
-        db("DELETE FROM style WHERE style_id = '$style_id'");
-        db("DELETE FROM system_style_cells WHERE style_id = '$style_id'");
-        db("DELETE FROM preview_styles WHERE style_id = '$style_id'");
-        log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($style['name']))), $_SESSION['sessionusername']);
+        $dd_message = $dd['binned'] > 0
+            ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
+            : lang('The style has been deleted.');
+        if ($dd['home'] > 0) {
+            $dd_message .= ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.');
+        }
+        if ($dd['folders'] > 0) {
+            $dd_message .= ' ' . lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared.', 'vars' => $dd['folders']));
+        }
         $liveform->remove_form();
         $lf_view = new liveform('view_system_styles');
-        $lf_view->add_notice(lang('The style has been deleted.'));
+        $lf_view->add_notice($dd_message);
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_system_styles.php');
         exit();
     }

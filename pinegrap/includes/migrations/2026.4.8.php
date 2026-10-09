@@ -52,6 +52,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_cookie_consent();          // 8.18
 
+	upgrade_2026_4_8_tab_layout();              // 8.19
+
 	upgrade_2026_4_8_workspace_events();        // 8.85
 	upgrade_2026_4_8_workspace_templates();     // 8.88
 	upgrade_2026_4_8_workspace_task_time();     // 8.86
@@ -798,6 +800,19 @@ function upgrade_2026_4_8_cookie_consent() {
 	install_add_column('config', 'cookie_consent_policy_url', "TEXT NULL");
 
 	install_note('Cookie consent: visitor pages ask before setting optional cookies; Google Analytics and the visitor statistics cookies start only after the visitor allows them (Settings › SEO › Cookie Consent).');
+
+}
+
+// The order and the groups of a design's page tabs in the visual editor
+// (2026.4.8, 8.19; pg_designer_tab_layout_normalize() in
+// includes/fn/designer.php). style_tab_layout holds them as JSON, written by
+// the designer/tab_layout endpoint; NULL until the operator rearranges the
+// tabs, which then follow page_id as before.
+function upgrade_2026_4_8_tab_layout() {
+
+	install_add_column('style', 'style_tab_layout', "TEXT NULL");
+
+	install_note('Visual editor: the page tabs can be put in any order and gathered into named, coloured groups that fold up.');
 
 }
 
