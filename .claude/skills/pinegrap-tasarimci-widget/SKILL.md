@@ -422,7 +422,9 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `location.replace(blob)` + kaydırma geri yükleme, `document.write` değil).
   Kancalar: `render()` sonu, `scheduleAutosave()`, `pg-design-theme-change`,
   `_setCustomField()`, `_pgTabsSwitch()`, ayarlar modalının
-  `hidden.bs.modal`'ı. Pencere kapalıyken kanca tek özellik okur; önizlemeye
+  `hidden.bs.modal`'ı, tuvalde yerinde metin düzenlemesi (`liveTextObs`,
+  `commit`, Escape) ve özellik panelinin `[data-prop]` metin kutuları
+  (ikisi de `render()`/`saveState()`'ten geçmez). Pencere kapalıyken kanca tek özellik okur; önizlemeye
   giren yeni bir durumu bu kancalardan birinden geçmeyen yolla
   değiştiriyorsan çağrıyı ekle.
 - Tuvaldeki hayalet kayıtlar (`_sdAppendGhosts`, `designer/widget_ghosts`)
@@ -495,6 +497,26 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `pg_designer_design_draft_counts()` / `pg_designer_design_state()`;
   toplu yayından kaldır / yayına al `designer/design_publish` →
   `pg_designer_design_set_draft()` (editörde açık tasarımı reddeder).
+
+## Sayfa sekmelerinin sırası ve grupları (2026.4.8)
+
+- Sıra = `_pages` sırası; grup `p.tabGroup` (`''` ya da `_pgTabGroups`
+  anahtarı). Kalıcılık `style.style_tab_layout` (JSON `{v:1, groups:{gid:
+  {name,color}}, tabs:[{id[,g]}]}`, yalnız kayıtlı sayfalar), yazan tek yer
+  `designer/tab_layout` → `pg_designer_tab_layout_save()`: Kaydet'e
+  bağlanmaz, kirli kontrolüne girmez. Kolon yoksa
+  (`pg_style_tab_layout_ready()`, `sdDesign.tabLayout.ready`) düz şerit.
+- Normalleştiricinin iki yüzü lockstep: `pg_designer_tab_layout_normalize()`
+  (PHP, test `tests/designer_tab_layout_test.php`) ve
+  `_pgTabsNormalizeGroups()` (JS; `_pgTabsRender()` her çizimde çağırır).
+  Renk paleti üç yerde aynı anahtarlar: `pg_designer_tab_layout_colors()`,
+  `_PG_TAB_GROUP_COLORS`, `style_designer.css` `[data-color]` kuralları.
+- Daraltma DB'ye yazılmaz: `localStorage` `pg_sd_tabgroups_<styleId>`.
+  Daraltılmış grubun sekmeleri DOM'da `sd-tab-folded` ile gizlenir;
+  açık sayfa görünür kalır, ona geçiş grubu açar.
+- Sekme açan yeni bir yol `_pages.push` değil `_pgTabsInsertAfterActive(p)`
+  kullanır (aktifin sağı, aynı grup). Sürükle-bırak pointer olaylarıyla
+  (`_pgTabsDragBind()`), içerik seviyesinde ve kolon yokken kapalı.
 
 ## Dil Seçici Düğme ve şablon resmi (2026.4.7)
 

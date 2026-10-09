@@ -6939,3 +6939,179 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     // The first record's place is the card's.
     return array_slice($rows, 1);
 }
+
+// ========================= PAGE TAB LAYOUT ======================================================
+//
+// The order of a design's page tabs in the editor and the named, coloured
+// groups they sit in (2026.4.8; style.style_tab_layout). The layout is an
+// editor preference, not page content: it is written by its own endpoint
+// (designer/tab_layout) the moment it changes, never by Save, and the site
+// does not read it. Collapsing a group is kept per browser (localStorage).
+//
+// Stored shape, version 1:
+//   {"v":1,
+//    "groups":{"g1":{"name":"Docs","color":"orange"}},
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+// `id` is a page_id of the design. The editor keeps a twin of the
+// normaliser (_pgTabsNormalizeGroups()); the two are changed together.
+
+/**
+ * Whether style.style_tab_layout exists (2026.4.8, 8.19). Without it the
+ * editor shows the plain tab strip and the endpoint refuses.
+ */
+function pg_style_tab_layout_ready($recheck = false)
+{
+    static $cached = null;
+    if ($cached !== null && !$recheck) return $cached;
+    $cached = false;
+    if (!isset(db::$con) || !db::$con) return false;
+    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM style WHERE Field = 'style_tab_layout'");
+    $cached = ($result && @mysqli_num_rows($result) == 1);
+    return $cached;
+}
+
+/**
+ * The colours a tab group may wear, in the order a new group takes them.
+ * The editor's palette (_PG_TAB_GROUP_COLORS, style_designer.css) uses the
+ * same keys.
+ */
+function pg_designer_tab_layout_colors()
+{
+    return array('grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange');
+}
+
+/**
+ * Brings a tab layout into its valid shape for the given pages.
+ *
+ * Anything that is not part of the shape is dropped; ids that are not among
+ * $page_ids, and repeated ids, are dropped; pages missing from the list are
+ * added at the end in page_id order; a tab pointing at a group that does not
+ * exist loses the group; a group left without tabs is dropped. The tabs of a
+ * group are made consecutive: they are pulled together where the group's
+ * first tab stands, in the order they were listed. Names are cut to 60
+ * characters, an unknown colour becomes grey, at most 50 groups are kept and
+ * a group id has to match ^[a-z0-9_-]{1,20}$.
+ *
+ * @param array|string|null $layout   decoded layout or its JSON
+ * @param int[]             $page_ids the pages of the design
+ * @return array {v: 1, groups: {id: {name, color}}, tabs: [{id[, g]}]}
+ */
+function pg_designer_tab_layout_normalize($layout, $page_ids)
+{
+    if (is_string($layout)) {
+        $layout = ($layout === '') ? null : json_decode($layout, true);
+    }
+    if (!is_array($layout)) $layout = array();
+
+    $known = array();
+    foreach ((array)$page_ids as $pid) {
+        $pid = (int)$pid;
+        if ($pid > 0) $known[$pid] = true;
+    }
+
+    $colors = pg_designer_tab_layout_colors();
+    $groups = array();
+    if (isset($layout['groups']) && is_array($layout['groups'])) {
+        foreach ($layout['groups'] as $gid => $g) {
+            if (count($groups) >= 50) break;
+            $gid = (string)$gid;
+            if (!preg_match('/^[a-z0-9_-]{1,20}$/', $gid) || !is_array($g)) continue;
+            $name = (isset($g['name']) && is_scalar($g['name'])) ? (string)$g['name'] : '';
+            $name = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name));
+            $name = mb_substr($name, 0, 60);
+            $color = (isset($g['color']) && is_string($g['color']) && in_array($g['color'], $colors, true)) ? $g['color'] : 'grey';
+            $groups[$gid] = array('name' => $name, 'color' => $color);
+        }
+    }
+
+    // Listed tabs, then the pages the list does not name.
+    $listed = array();
+    $seen   = array();
+    if (isset($layout['tabs']) && is_array($layout['tabs'])) {
+        foreach ($layout['tabs'] as $t) {
+            if (!is_array($t) || !isset($t['id']) || !is_numeric($t['id'])) continue;
+            $id = (int)$t['id'];
+            if (!isset($known[$id]) || isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $g = (isset($t['g']) && is_scalar($t['g'])) ? (string)$t['g'] : '';
+            $listed[] = array('id' => $id, 'g' => isset($groups[$g]) ? $g : '');
+        }
+    }
+    $missing = array_diff(array_keys($known), array_keys($seen));
+    sort($missing, SORT_NUMERIC);
+    foreach ($missing as $id) $listed[] = array('id' => (int)$id, 'g' => '');
+
+    // A group's tabs stand together where its first tab stands.
+    $members = array();
+    foreach ($listed as $t) {
+        if ($t['g'] !== '') $members[$t['g']][] = $t['id'];
+    }
+    $tabs = array();
+    $placed = array();
+    foreach ($listed as $t) {
+        if ($t['g'] === '') {
+            $tabs[] = array('id' => $t['id']);
+            continue;
+        }
+        if (isset($placed[$t['g']])) continue;
+        $placed[$t['g']] = true;
+        foreach ($members[$t['g']] as $id) $tabs[] = array('id' => $id, 'g' => $t['g']);
+    }
+
+    // Groups nobody is in are gone.
+    foreach (array_keys($groups) as $gid) {
+        if (!isset($members[$gid])) unset($groups[$gid]);
+    }
+
+    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+}
+
+/**
+ * A normalised layout as it is stored and handed to the editor: `groups`
+ * stays a JSON object when it is empty or its ids look like numbers.
+ */
+function pg_designer_tab_layout_export($layout)
+{
+    $layout['groups'] = (object)$layout['groups'];
+    return $layout;
+}
+
+/**
+ * Stores the tab layout of a design (designer/tab_layout). The caller has
+ * checked that the operator is a full designer.
+ *
+ * @return array {ok, error, layout}
+ */
+function pg_designer_tab_layout_save($style_id, $layout, $user)
+{
+    $style_id = (int)$style_id;
+    $out = array('ok' => false, 'error' => '', 'layout' => null);
+
+    if (!pg_style_tab_layout_ready()) {
+        $out['error'] = lang('Page tab groups are not available on this site yet.');
+        return $out;
+    }
+    if ($style_id <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$style_id'")) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+
+    // The pages the editor shows as tabs: the design's own, not the ones
+    // waiting in the Recycle Bin.
+    $ids = db_items(
+        "SELECT page.page_id
+         FROM page
+         WHERE page.page_style = '$style_id'
+           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+         ORDER BY page.page_id ASC");
+    $page_ids = array();
+    foreach ((array)$ids as $row) $page_ids[] = (int)$row['page_id'];
+
+    $norm = pg_designer_tab_layout_normalize($layout, $page_ids);
+    $json = json_encode(pg_designer_tab_layout_export($norm), JSON_UNESCAPED_UNICODE);
+    db("UPDATE style SET style_tab_layout = '" . e($json) . "' WHERE style_id = '$style_id'");
+
+    $out['ok'] = true;
+    $out['layout'] = pg_designer_tab_layout_export($norm);
+    return $out;
+}

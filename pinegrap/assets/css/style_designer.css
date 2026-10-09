@@ -166,6 +166,96 @@
     font-size: .68rem;
     line-height: 1.35;
 }
+
+/* ── Tab groups ──
+   A chip leads a group's tabs and wears its colour; the tabs carry the
+   colour as a line along their top. Colours are read on the dark panel. */
+.sd-tab-group[data-color="grey"],   .sd-tab[data-color="grey"],   .sd-tab-color[data-color="grey"],   .sd-tab-color-dot[data-color="grey"]   { --sd-tg: #8b949e; }
+.sd-tab-group[data-color="blue"],   .sd-tab[data-color="blue"],   .sd-tab-color[data-color="blue"],   .sd-tab-color-dot[data-color="blue"]   { --sd-tg: #58a6ff; }
+.sd-tab-group[data-color="red"],    .sd-tab[data-color="red"],    .sd-tab-color[data-color="red"],    .sd-tab-color-dot[data-color="red"]    { --sd-tg: #f85149; }
+.sd-tab-group[data-color="yellow"], .sd-tab[data-color="yellow"], .sd-tab-color[data-color="yellow"], .sd-tab-color-dot[data-color="yellow"] { --sd-tg: #d29922; }
+.sd-tab-group[data-color="green"],  .sd-tab[data-color="green"],  .sd-tab-color[data-color="green"],  .sd-tab-color-dot[data-color="green"]  { --sd-tg: #3fb950; }
+.sd-tab-group[data-color="pink"],   .sd-tab[data-color="pink"],   .sd-tab-color[data-color="pink"],   .sd-tab-color-dot[data-color="pink"]   { --sd-tg: #db61a2; }
+.sd-tab-group[data-color="purple"], .sd-tab[data-color="purple"], .sd-tab-color[data-color="purple"], .sd-tab-color-dot[data-color="purple"] { --sd-tg: #a371f7; }
+.sd-tab-group[data-color="cyan"],   .sd-tab[data-color="cyan"],   .sd-tab-color[data-color="cyan"],   .sd-tab-color-dot[data-color="cyan"]   { --sd-tg: #39c5cf; }
+.sd-tab-group[data-color="orange"], .sd-tab[data-color="orange"], .sd-tab-color[data-color="orange"], .sd-tab-color-dot[data-color="orange"] { --sd-tg: #f0883e; }
+.sd-tab, .sd-tab-group { user-select: none; -webkit-user-select: none; }
+.sd-tab-group {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    max-width: 160px;
+    margin: .3rem .25rem .3rem .35rem;
+    padding: 0 .55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--sd-tg, #8b949e) 18%, transparent);
+    color: var(--sd-tg, #8b949e);
+    font-size: .72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.sd-tab-group:hover { background: color-mix(in srgb, var(--sd-tg, #8b949e) 28%, transparent); }
+.sd-tab-group:focus-visible { outline: 1px solid var(--sd-tg, #8b949e); outline-offset: 1px; }
+.sd-tab-group-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--sd-tg, #8b949e); }
+.sd-tab-group-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sd-tab-group-count {
+    flex: 0 0 auto;
+    min-width: 1.1rem;
+    padding: 0 .3rem;
+    border-radius: 999px;
+    background: var(--sd-tg, #8b949e);
+    color: #0d1117;
+    font-size: .64rem;
+    line-height: 1.35;
+    text-align: center;
+    display: none;
+}
+.sd-tab-group.collapsed .sd-tab-group-count { display: inline-block; }
+.sd-tab-group-menu { flex: 0 0 auto; padding: 0 .1rem; border-radius: 3px; font-size: .75rem; line-height: 1; opacity: .6; }
+.sd-tab-group-menu:hover { opacity: 1; background: rgba(255,255,255,.08); }
+.sd-tab-group .sd-tab-rename { width: 7rem; }
+.sd-tab[data-group] { box-shadow: inset 0 2px 0 var(--sd-tg, #8b949e); }
+.sd-tab.sd-tab-folded { display: none; }
+.sd-tab-dragging { opacity: .4; }
+.sd-tab-ghost {
+    position: fixed;
+    z-index: 1070;
+    pointer-events: none;
+    opacity: .9;
+    background: var(--sd-panel-bg, #161b22);
+    border: 1px solid var(--sd-panel-border, #30363d);
+    box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.sd-tab-drop {
+    position: fixed;
+    z-index: 1070;
+    width: 2px;
+    pointer-events: none;
+    background: var(--sd-accent, #58a6ff);
+}
+.sd-tab-group.sd-tab-group-drop { outline: 2px solid var(--sd-accent, #58a6ff); outline-offset: 1px; }
+/* Colour row of the group menu. */
+.sd-tab-colors { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0 .6rem .45rem; }
+.sd-tab-color {
+    width: 18px; height: 18px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: var(--sd-tg, #8b949e);
+    cursor: pointer;
+}
+.sd-tab-color.active { border-color: var(--sd-text, #e0e0e0); }
+.sd-tab-color:focus-visible { outline: 1px solid var(--sd-accent, #58a6ff); outline-offset: 1px; }
+.sd-tab-color-dot { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--sd-tg, #8b949e); }
+/* Narrow screens: the chip keeps its dot and its count. */
+@media (max-width: 991.98px) {
+    .sd-tab-group-name { display: none; }
+    .sd-tab-group-name:has(> .sd-tab-rename) { display: block; }
+    .sd-tab-group .sd-tab-group-count { display: inline-block; }
+    .sd-tab-group .sd-tab-rename { width: 6rem; }
+}
 .sd-tabs-add { flex: 0 0 auto; display: flex; align-items: center; }
 .sd-tabs-add-btn {
     display: inline-flex;
