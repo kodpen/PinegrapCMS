@@ -211,6 +211,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $stats_url = $row['stats_url'];
     $google_analytics = $row['google_analytics'];
     $google_analytics_web_property_id = $row['google_analytics_web_property_id'];
+    $cookie_consent = (int) ($row['cookie_consent'] ?? 0);
+    $cookie_consent_policy_url = (string) ($row['cookie_consent_policy_url'] ?? '');
     $page_editor_version = $row['page_editor_version'];
     $page_editor_font = $row['page_editor_font'];
     $page_editor_font_size = $row['page_editor_font_size'];

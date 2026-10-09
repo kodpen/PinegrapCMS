@@ -149,3 +149,17 @@ WAF'ın kendisi ayrı: `pinegrap-waf`.
   `API_AUTHENTICATED` varsa atlar.
 - JSON konuşan uçta reddi de JSON + doğru statü ile ver; `validate_area_access()`
   ve `validate_token_field()` HTML basar ("unexpected token <").
+
+## Çerez izni (`includes/fn/consent.php`)
+
+- Ön yüzde yeni bir çerez yazıyorsan önce sor: kesin gerekli mi (oturum,
+  giriş, sepet, ziyaretçinin kendi seçtiği görünüm)? Değilse `setcookie()`
+  değil `pg_consent_setcookie('analytics'|'marketing', …)`; değeri oturumda da
+  tut ki izin yokken ziyaret yine çalışsın. Yeni çerezi `pg_consent_catalogue()`
+  listesine (ve geri alınca silinecekse `pg_consent_revoke_names()`'e) ekle —
+  listede olmayan çerez bildirimde görünmez.
+- Yazılımın bastığı üçüncü taraf etiketi (analitik, piksel) izin yokken
+  `pg_consent_hold_scripts($html, $kategori)` ile bekletilir; doğrudan
+  `<script src>` basma.
+- `pg_consent` çerezini JS yazar (PHP 7.1–7.2 `setcookie()` SameSite bilmez);
+  PHP yalnız `pg_consent_parse()` ile okur.

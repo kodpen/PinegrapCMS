@@ -665,6 +665,45 @@
   [ŞEMA] user_mfa ve user_mfa_recovery tabloları;
          config.mfa_required_role sütunu.
 
+  ÇEREZ İZNİ
+  --------------------------------------------------------
+
+  [YENİ] Ziyaretçi sayfalarında çerez izni. Sol alt köşedeki
+         küçük bildirim sitenin hangi çerezleri ne için
+         kullandığını anlatır: Ayarlar ve Tümünü kabul et
+         düğmeleri, kapatma düğmesi. Ayarlar'da gerekli çerezler
+         (oturum, sepet, giriş, çerez tercihi) her zaman açık
+         gösterilir ve kapatılamaz; İstatistik ve Pazarlama
+         kategorileri açık olarak gelir, ziyaretçi istediğini
+         kapatır. Seçimden sonra bildirim sol alttaki çerez
+         simgesine küçülür; tercih oradan her zaman
+         değiştirilebilir.
+
+  [YENİ] Google Analytics, ziyaretçi istatistiği çerezleri
+         (ziyaret sayısı, izleme kodu, UTM kampanyası) ve satış
+         ortaklığı çerezi artık ziyaretçi izin verdikten sonra
+         çalışır. İzin verilmeyen ziyarette bu bilgiler yalnız o
+         ziyaret boyunca tutulur. İzin geri alındığında ilgili
+         çerezler silinir. Kapatma düğmesi yalnız gerekli
+         çerezleri bırakır.
+
+  [YENİ] Bildirim çok dilli sitede sayfanın diliyle gösterilir:
+         /en/ İngilizce; dil dosyası olmayan dillerde (/ko/ gibi)
+         metinler Çeviriler ekranının "Arayüz metinleri"
+         grubunda çevrilir.
+
+  [YENİ] Ayarlar → SEO → Çerez İzni: bildirimi açıp kapatma ve
+         bildirimde bağlantı olarak gösterilecek çerez politikası
+         sayfası. Tasarıma eklenen kendi betiklerinizi de
+         <script type="text/plain" data-pg-consent="analytics">
+         (ya da "marketing") olarak yazarak izne
+         bağlayabilirsiniz; bildirim onları
+         data-pg-consent-name ile verdiğiniz adla listeler.
+         Güncellemeyle birlikte açık gelir.
+
+  [ŞEMA] config tablosuna cookie_consent ve
+         cookie_consent_policy_url sütunları.
+
   VERİTABANI
   --------------------------------------------------------
 

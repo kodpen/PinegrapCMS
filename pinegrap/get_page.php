@@ -3276,7 +3276,7 @@ function init_tracking()
 			define('TRACKING_CODE_DURATION', db("SELECT tracking_code_duration FROM config"));
 		}
 		// Set tracking code cookie.
-		setcookie('software[tracking_code]', $tracking_code, time() + (86400 * TRACKING_CODE_DURATION) , '/');
+		pg_consent_setcookie('analytics', 'software[tracking_code]', $tracking_code, time() + (86400 * TRACKING_CODE_DURATION));
 		// else there is not a tracking code in the query string, so get tracking code
 		
 	}
@@ -3290,7 +3290,7 @@ function init_tracking()
 		$affiliate_code = trim($_GET['a']);
 		$_SESSION['software']['affiliate_code'] = $affiliate_code;
 		// set affiliate code cookie for 10 years
-		setcookie('software[affiliate_code]', $affiliate_code, time() + 315360000, '/');
+		pg_consent_setcookie('marketing', 'software[affiliate_code]', $affiliate_code, time() + 315360000);
 		// else there is not an affiliate code in the query string, so get affiliate code
 		
 	}
@@ -3398,14 +3398,14 @@ function init_tracking()
 			if (!empty($_COOKIE['software']['number_of_visits']))
 			{
 				$first_visit = 0;
-				setcookie('software[number_of_visits]', $_COOKIE['software']['number_of_visits'] + 1, time() + 315360000, '/');
+				pg_consent_setcookie('analytics', 'software[number_of_visits]', $_COOKIE['software']['number_of_visits'] + 1, time() + 315360000);
 				// else number of visits cookie is not set
 				
 			}
 			else
 			{
 				$first_visit = 1;
-				setcookie('software[number_of_visits]', '1', time() + 315360000, '/');
+				pg_consent_setcookie('analytics', 'software[number_of_visits]', '1', time() + 315360000);
 			}
 			// if there is an http referer
 			if ($referer)
@@ -3707,7 +3707,7 @@ function init_tracking()
 			// Set cookie in visitor's browser for 10 years.  Even though we only care about the
 			// UTM data for 30 days, we store the cookie for 10 years, because we might eventually
 			// use this same cookie to store data for other features.
-			setcookie('lsid', $lsid, time() + 315360000, '/');
+			pg_consent_setcookie('analytics', 'lsid', $lsid, time() + 315360000);
 			// For 1 in 100 chance, delete cookies that have not been modified in a year.
 			// The 1 in 100 chance is just added for performance reasons.
 			if (rand(1, 100) == 1)
