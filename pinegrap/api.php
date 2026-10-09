@@ -395,6 +395,9 @@ switch ($action) {
     case 'ws_mark':
     case 'ws_attach':
     case 'ws_channel_create':
+    case 'ws_templates':
+    case 'ws_template_apply':
+    case 'ws_template_from_channel':
     case 'ws_channel_update':
     case 'ws_customer_links':
     case 'ws_channel_members_add':

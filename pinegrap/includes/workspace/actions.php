@@ -1281,6 +1281,18 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok(array('url' => (string) $result['url'], 'qr' => ws_action_link_qr($result['url']))) : ws_action_error($result['error']);
 
         case 'ws_channel_create':
+            // Made from a template (templates.php): the template is looked up
+            // before the channel is made, and applied once it is.
+            $template = null;
+
+            if (((string) ($request['template_id'] ?? '') !== '') && ((string) $request['template_id'] !== '0')) {
+                $template = ws_template((string) $request['template_id']);
+
+                if (!$template || $template['archived']) {
+                    return ws_action_error(lang('That template could not be found.'));
+                }
+            }
+
             $result = ws_channel_create($viewer, array(
                 'name'       => $request['name'] ?? '',
                 'kind'       => $request['kind'] ?? 'public',
@@ -1294,7 +1306,71 @@ function ws_handle_action($action, $request)
                 'group_id'   => $request['group_id'] ?? 0,
             ));
 
-            return $result['ok'] ? ws_action_ok(array('channel_id' => $result['channel_id'])) : ws_action_error($result['error'], $result['field']);
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            $made = array('channel_id' => $result['channel_id']);
+
+            if ($template) {
+                $applied = ws_template_apply($viewer, ws_channel($result['channel_id']), $template, array('new_channel' => true));
+                $made[($applied['ok'] && !$applied['warning']) ? 'notice' : 'warning'] = $applied['ok'] ? $applied['message'] : $applied['error'];
+            }
+
+            return ws_action_ok($made);
+
+        // Channel templates (includes/workspace/templates.php): the list for
+        // the pickers, applying one to an open channel, and the draft a
+        // channel makes for the template screen.
+        case 'ws_templates':
+            return ws_action_ok(array(
+                'templates' => array_map('ws_template_present', ws_templates_list($viewer)),
+                'manage'    => ws_can_write_templates($viewer),
+            ));
+
+        case 'ws_template_apply':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $template = ws_template((string) ($request['template_id'] ?? ''));
+
+            if (!$template || $template['archived']) {
+                return ws_action_error(lang('That template could not be found.'));
+            }
+
+            $result = ws_template_apply($viewer, $channel, $template);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array(
+                'message'    => $result['message'],
+                'warning'    => $result['warning'],
+                'tasks'      => $result['tasks'],
+                'notes'      => $result['notes'],
+                'unassigned' => $result['unassigned'],
+                'task_ids'   => $result['task_ids'],
+            ));
+
+        case 'ws_template_from_channel':
+            if (!ws_can_write_templates($viewer)) {
+                return ws_action_error(lang('Only staff and the people who may change the workspace settings can keep templates.'));
+            }
+
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array(
+                'draft' => ws_template_from_channel($viewer, $channel),
+                'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_template.php?channel=' . (int) $channel['id'],
+            ));
 
         case 'ws_channel_update':
             $channel = ws_action_channel($viewer, $request, 'manage');
