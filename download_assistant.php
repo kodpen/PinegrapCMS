@@ -19,9 +19,7 @@ $is_installed   = false;
 $is_existing    = false;
 $output_install_button = '';
 $output_update_button  = '';
-$output_repair_button  = '';
 $output_update_disable_class = '';
-$output_repair_disable_class = '';
 $output_install_disable_class = '';
 $version = '';
 $message = '';
@@ -36,7 +34,7 @@ $message = '';
  *
  * Sending nothing is what breaks: a request with no User-Agent looks like an
  * anonymous client to the software server's own firewall and is rejected, so
- * install, repair and update all fail with an error that points nowhere near
+ * install and update both fail with an error that points nowhere near
  * the real cause.
  */
 function da_user_agent()
@@ -177,13 +175,11 @@ if (is_dir('pinegrap')) {
     } else {
         $output_install_button = '<a href="pinegrap/install/index.php" class="col-12 w-100 btn btn-primary my-2 rounded-pill">Complete Install</a>';
         $output_update_disable_class = ' disabled';
-        $output_repair_disable_class = ' disabled';
     }
 
 } else {
     $output_install_button = '<button type="submit" name="action" value="install" class="col-12 w-100 btn btn-primary my-2 rounded-pill" onclick="return confirm(\'Are you sure to download and install the Pinegrap Software?\')">Install</button>';
     $output_update_disable_class = ' disabled';
-    $output_repair_disable_class = ' disabled';
 
     unset($_SESSION['software']['download_assistant']['update']['avaliable']);
     unset($_SESSION['software']['download_assistant']['update']['version']);
@@ -223,8 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
     $output_update_button = '<button type="submit" name="action" value="' . $output_update_btn_value . '" class="col-12 w-100 btn btn-primary my-2  rounded-pill ' . $output_update_disable_class . '">' . $output_update_btn_label . '</button>';
 
-    $output_repair_button = '<button type="submit" name="action" value="repair" class="col-12 w-100 btn btn-primary my-2  rounded-pill ' . $output_repair_disable_class . '" onclick="return confirm(\'Do you accept the repair process? The software will be updated with the latest released software file and any custom changes will be deleted.\')">Repair</button>';
-
     if ($is_existing) {
         $message = 'The Pinegrap Software already exists';
         $message .= $is_installed ? ' and installed.' : ' but not installed.';
@@ -234,7 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $output_header,
         $output_footer,
         $output_install_button,
-        $output_repair_button,
         $output_update_button,
         $message,
         $version
@@ -243,16 +236,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 } else {
     $action = $_POST['action'] ?? '';
 
-    // Repair, update and the update check work on an existing installation,
+    // Update and the update check work on an existing installation,
     // so they are only accepted from the signed-in administrator validated
     // above, and only when the form carries that session's token. A
     // half-installed copy (the directory exists but the database does not)
     // has neither a user nor a token, so those actions are refused there;
     // all it can do is finish the install wizard. A fresh install is only
     // accepted while there is no software directory at all.
-    if (in_array($action, ['repair', 'update', 'check'], true)) {
+    if (in_array($action, ['update', 'check'], true)) {
         if (!$is_installed) {
-            $_SESSION['software']['download_assistant']['message'] = 'Complete the installation before you run a repair, an update or an update check.';
+            $_SESSION['software']['download_assistant']['message'] = 'Complete the installation before you run an update or an update check.';
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
         }
@@ -264,7 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         exit;
     }
 
-    if (in_array($action, ['install', 'repair', 'update'])) {
+    if (in_array($action, ['install', 'update'])) {
 
         $software_file = ($action === 'install') ? 'pinegrap_software.zip' : 'pinegrap_software_update.zip';
 
@@ -338,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     ? 'Extraction failed. Check that the web server can write to this directory and that the disk is not full.'
                     : count($missing) . '+ file(s) were not written (for example: '
                         . implode(', ', array_slice($missing, 0, 3))
-                        . '). The installation is partially updated — run repair again.';
+                        . '). The installation is partially updated — run the update again, or Settings › Jobs › Repair Software in the control panel.';
 
                 header('Location: ' . $_SERVER['REQUEST_URI']);
                 exit;
@@ -356,11 +349,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
                 include_once('pinegrap/liveform.class.php');
                 $liveform_welcome = new liveform('welcome');
-
-                if ($action === 'repair') {
-                    log_activity(lang('Software Repair Successful'), $_SESSION['sessionusername']);
-                    $liveform_welcome->add_notice(lang('Software Repair Successful'));
-                }
 
                 if ($action === 'update') {
                     log_activity(lang('Software Updated Successfully'), $_SESSION['sessionusername']);
@@ -382,7 +370,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 $output_header,
                 $output_footer,
                 $output_install_button,
-                $output_repair_button,
                 $output_update_button,
                 $message,
                 $version
@@ -487,7 +474,6 @@ function output_download_assistant_html_content(
     string $header,
     string $footer,
     string $install_btn,
-    string $repair_btn,
     string $update_btn,
     string $message,
     string $version
@@ -579,9 +565,10 @@ function output_download_assistant_html_content(
                         <form method="post">
                             ' . (function_exists('get_token_field') ? get_token_field() : '') . '
                             <div class="d-inline-block">
-                                ' . $install_btn . $update_btn . $repair_btn . '
+                                ' . $install_btn . $update_btn . '
                             </div>
                         </form>
+                        <p class="small text-muted mt-3 mb-0">Repairing an installed copy is done from the control panel: Settings › Jobs › Repair Software.</p>
                     </div>
                     <div class="card-footer text-center small text-muted border-0 d-flex">
                         <span class="badge me-auto bg-body text-dark border  rounded-pill" title="downloader version">Installer v2.0b</span>

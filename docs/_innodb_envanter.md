@@ -47,7 +47,7 @@ gerçek şemadan okundu (`information_schema.COLUMNS` / `STATISTICS`).
   reddediliyordu; MySQL 5.7'de 6988, MariaDB'de 5868. İlk doğrulama
   sandbox'ı MariaDB olduğu için geçmişti (33 TEXT kolona 2000 bayt yazan
   UPDATE de MariaDB'de denendi). Ayrıca sunucunun 65.535 baytlık satır
-  sınırında 64.069 bayt (1,46 KB pay) vardı. 8.16
+  sınırında 64.069 bayt (1,46 KB pay) vardı. 8.17
   (`upgrade_2026_4_8_config_text_columns()`) her VARCHAR kolonu TEXT yapar:
   MySQL 8.0'da 7064 / 8126, SQL katmanında 2126 / 65.535. Tahmin:
   `pg_innodb_row_estimate()`; ayrıntı `docs/degisiklikler.md`.

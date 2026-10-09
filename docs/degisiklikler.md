@@ -35,7 +35,7 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.16). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.17). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -330,6 +330,120 @@ beyaz yazdı.
   (görsel, işlevsel değil).
 - `api.php` uçları HTTP üzerinden denenmedi (oturum gerekiyor); arkalarındaki
   fonksiyonlar CLI'da koşuldu.
+## 2026.4.8 — Yazılımı Onar ekranı, yükseltme adımlarını yeniden koşma, download_assistant'tan repair kaldırıldı (2026-10-08)
+
+**Sorun.** Kurulu bir yazılımı paketle onarmanın tek yolu web kökündeki
+`download_assistant.php` idi. Paneli kullanan operatör bu yolu bilmiyordu.
+Onarım her zaman stable paketi indiriyordu, sunucunun sürümüne bakmıyordu
+(daha eski bir paket daha yeni kodun üzerine yazılabilirdi) ve
+`SOFTWARE_UPDATE_CHECK = false` ayarını yok sayıyordu. Yükseltme
+adımlarını yeniden koşmak (yarım kalmış bir yükseltme, eski yedekten geri
+yüklenmiş bir tablo) için `config.version`'ı elle geri çekmek
+gerekiyordu. Bu yalnız `docs/`'ta "Dağıtım durumu" altında anlatılan bir
+geliştirici pratiğiydi.
+
+**Çözüm.**
+
+- Yeni ekran `software_repair.php` (Ayarlar › İşler › Yazılımı Onar,
+  yalnız rol 0; `pg_hosted()` reddeder).
+  - **Kart A — Yazılımı Onar:** güvenlik uyarısı (beş madde) ve durum
+    satırları: kanal + sürüm, güncelleme denetimi, yazma izinleri,
+    barındırılan site değil. İlerleme çubuğu ve düğme (`btn-outline-warning`,
+    onay diyaloğu). Inline betik `software_update` eyleminin üç adımını
+    `repair: true` ile zincirler. Başarıda `?mode=done`: etkinlik kaydı
+    (sürüm oturumdan), `software_update_available = 0`,
+    `system_status_cache.json` ve `hash_reference_state.json` silinir,
+    karşılama ekranı notu, `install/index.php?automated_upgrade=true`.
+  - **Kart B — Veritabanı yükseltme adımlarını yeniden koş** (`id="rerun"`):
+    `pg_upgrade_rerun_choices()` seçenekleri (en yeni üstte, "N sürüm
+    yeniden koşulur"). POST `action=rerun_upgrades` + token. Sürüm listede
+    değilse "Bu sürüm seçilemez."; `install/` yoksa uyarı ve düğme kapalı.
+    Sonra `UPDATE config SET version`, etkinlik kaydı, yükseltme ekranı.
+- `includes/panel/software.php` `pg_panel_software_update()`'e
+  `repair` kipi:
+  - rol 0 değilse "Erişim reddedildi.";
+  - `check` adımı önce `SOFTWARE_UPDATE_CHECK === false`'u reddeder, sonra
+    `pg_update_server_version()` ve `pg_update_repair_decision()`;
+  - onaylanan sürüm `$_SESSION['software']['repair']['version']`'a yazılır;
+  - `download` / `replace` adımları aynen.
+
+  Normal akış değişmedi. Yalnız sunucu sorgusu `pg_update_server_version()`'a
+  taşındı; hata metinleri ve günlük satırları aynı.
+- `includes/fn/update.php` yeni fonksiyonlar:
+  - `pg_update_server_version()`;
+  - `pg_update_repair_decision($server, $installed, $checks_enabled)` (saf);
+  - `pg_upgrade_versions_from_source($source)` (saf);
+  - `pg_upgrade_versions_list()`;
+  - `pg_upgrade_rerun_choices($versions = null, $installed = null)`;
+  - `pg_update_permissions_block($user)`;
+  - `pg_update_permissions_script()`.
+
+  `software_update.php` yazma izni bloğunu ve betiğini bu fonksiyonlardan
+  basar (çıktı aynı).
+- `download_assistant.php`: repair düğmesi, `repair` dalı ve
+  `$repair_btn` parametresi kaldırıldı. Sayfaya "Repairing an installed
+  copy is done from the control panel: Settings › Jobs › Repair Software."
+  notu eklendi. Yarım çıkarma mesajı panele yönlendiriyor. Install, update
+  ve check aynı.
+- Bağlantılar:
+  - Ayarlar › İşler'de "Yazılımı Onar" (rol 0);
+  - Sistem Durumu "Directory File Integrity" kırmızı satırının `href`'i;
+  - Veritabanı Motoru araç çubuğunda "Yükseltme adımlarını yeniden koş"
+    (rol 0).
+
+**Kararlar.**
+
+- **Yönetici kapısı:** onarım çalıştırılabilir kodu değiştirir.
+  `download_assistant` da yönetici istiyordu; ekran ve API kipi aynı kapıda
+  (`validate_area_access('administrator')` ve `role === 0`).
+- **İki reddetme kuralı** (ürün sahibi):
+  - `SOFTWARE_UPDATE_CHECK === false` ise onarım aynı sunucuyu sormaz.
+  - Sunucu sürüm vermiyorsa ya da sürümü kurulu sürümden eskiyse onarım
+    yapılmaz: eski kod yeni şemanın üzerine yazılırdı.
+
+  Eşit sürüm yerinde onarır. Yeni sürüm hem onarır hem günceller; ardından
+  yükseltme ekranı şemayı ilerletir. Karşılaştırma `version_compare()`
+  (`2026.4.10 > 2026.4.9` doğru). 'check' adımındaki elle parça
+  karşılaştırmasına dokunulmadı.
+- **2026 öncesi yok:** `legacy.php` adımları ham `ALTER … ADD` yazar ve var
+  olan kolonda düşer. 2026 adımları `install_add_column()` ailesiyle önce
+  sorar.
+- **`versions.php` metinden okunur:** `INSTALL_OR_UPDATE` kapısı panelde
+  `exit` eder. Sabiti tanımlamak `db()`'nin hata davranışını değiştirir
+  (runner'da fırlatır). Yalnız `return array(...)` gövdesindeki tek
+  tırnaklı numaralar alınır.
+- `pg_upgrade_rerun_choices()` test edilebilsin diye iki isteğe bağlı
+  parametre aldı (varsayılanlar: dosyadaki liste ve `VERSION`).
+
+**Doğrulama.**
+
+- `tests/update_test.php`: gerçek ve sahte `versions.php` metni,
+  yeniden koşma seçenekleri, `version_compare` sırası, onarım kararı (beş
+  dal). `panel_actions_test` değişmeden geçti.
+- Sandbox (MariaDB 10.11, PHP 8.3, ağ açık):
+  - `software_repair.php` GET (rol 0) hatasız: 56 seçenek (2026.4.7 …
+    2026), düğme açık.
+  - `rerun_upgrades` 2017.2 ile "Bu sürüm seçilemez." verdi.
+  - 2026.4.7 ile `config.version` 2026.4.7'ye geçti ve yükseltme ekranına
+    yönlendi. Ekranın `upgrade_step` isteği 2026.4.8'i "174 ifade, 174
+    tanesi zaten yerindeydi" ile geçti (8.17 dahil); sürüm 2026.4.8.
+  - `SOFTWARE_UPDATE_CHECK=false`: API `check` + `repair` reddetti, ekran
+    düğmesi kapalı.
+  - Denetim açıkken gerçek güncelleme sunucusu 2026.4.7 verdi. Onarım
+    "kurulu sürümden eski" diye reddedildi. Normal `check` adımı yine
+    "There is no update available." dedi.
+  - Rol 2'ye çekilen kullanıcı: API repair "Erişim reddedildi.", ekran
+    açılmadı, Veritabanı Motoru'nda bağlantı görünmedi.
+
+**Doğrulanamadı.**
+
+- Uçtan uca onarım: indir + üzerine yaz + `?mode=done`. Sunucunun sürümü
+  kurulu sürümden eski olduğu için reddedildi. Sandbox'ta zaten
+  çalıştırılmamalıydı: web kökü deponun çalışma ağacı.
+- Beta kanalı.
+- Gerçek bir yükseltme ekranında JS akışı. Adım isteği curl ile sürüldü.
+- `download_assistant.php`'nin yeni hâli bir sunucuda çalıştırılmadı (lint
+  temiz).
 
 ---
 
@@ -1098,6 +1212,228 @@ ve eşiğin yeterliliği; MySQL 5.7 / 8.0'da yetenek kapısı ve
 küçük `innodb_buffer_pool_size`'lı paylaşımlı barındırmada performans;
 InnoDB dökümüyle yedek/geri yükleme; mağaza siparişi, tezgâh satışı, ERP
 fatura + tahsilat, kampanya işi uçtan uca (sandbox'ta koşulmadı).
+
+---
+
+## 2026.4.8 — Veritabanı Motoru ekranı: satır boyutu tahmini (`too_wide`), `config` metin sütunları TEXT (8.17), tablo sağlığı, OPTIMIZE, sunucu bilgisi (2026-10-08)
+
+**Sorun.** Canlı bir sitede Veritabanı Motoru ekranından `config`
+dönüştürülürken MySQL 1118 geldi: "Row size too large (> 8126) … In current
+row format, BLOB prefix of 0 bytes is stored inline". "Prefix of 0 bytes"
+DYNAMIC satır biçimi demektir; `pg_innodb_capability()` kapısı doğru
+çalışmış, satır yine de sığmamış.
+
+**Kök sebep.** InnoDB'nin DDL sırasındaki satır boyutu denetimi
+(16 KB sayfa, DYNAMIC, kümelenmiş indeks) satırı en kötü hâliyle sayar: 5
+bayt başlık + nullable sütun başına 1 bit + gizli sütunlar (PK varsa 13, yoksa
+19 bayt) + her sütun. Sabit uzunluklu sütun tam boyunu tutar. Değişken
+uzunluklu sütunda belirleyici olan oktet uzunluğudur:
+
+- **≤ 255 oktet** (utf8mb4'te VARCHAR(63) ve altı) sütun sayfa dışına
+  **çıkamaz** (bir baytlık uzunluk alanında "dışarıda" bayrağına yer yok):
+  L + 1 bayt.
+- **≥ 256 oktet** ya da TEXT/BLOB/JSON sütun sayfa dışına çıkabilir. Sunucular
+  bunu farklı sayar: MySQL 8.0 41 bayt (`get_field_max_size()`), MariaDB
+  10.4+ 21 bayt (`record_size_info()`, 20 bayt işaretçi + 1). MySQL 5.7
+  (`dict_index_too_big_for_tree()`) 40 baytı aşan **her** değişken sütunu,
+  kısa olanları da, 41 sayar: daha gevşektir, ALTER geçer, gerçekten dolan
+  satır yazmada düşer.
+- Sınır `(sayfa − 132) / 2` = 8126 bayt (64 KB sayfada MySQL 16383);
+  `toplam >= sınır` reddedilir.
+
+Stok `config` (döküm + migration'lar = 410 sütun, utf8mb4, PK yok) bu kuralla
+**MySQL 8.0'da 8468 / 8126** eder ve reddedilir. Aynı tablo MySQL 5.7'de 6988,
+MariaDB'de 5868 eder ve geçer. 2026.4.8 InnoDB geçişinin sandbox doğrulaması
+MariaDB'de yapıldığı için sorun görünmedi. Kullanıcının sunucusu büyük
+olasılıkla MySQL 8.0. Latin1 ya da stok şemada olmayan sütun gerekmiyor:
+satırı 30 kısa sütun (2,6 KB) ve 130 uzun sütun × 41 (5,3 KB) dolduruyor.
+
+İkinci bir sınır daha var: sunucunun motordan bağımsız **65.535 baytlık**
+satır sınırı. Bu sınır VARCHAR'ı en uzun hâliyle (utf8mb4 VARCHAR(255) = 1022
+bayt), TEXT'i 10 bayt sayar. Stok `config` burada **64.069** bayt ediyordu.
+Taze sandbox kurulumunda ölçüldü: en büyük eklenebilen sütun VARBINARY(1464),
+yani 1,46 KB pay vardı. Kısa VARCHAR'ları 256 okteta genişletmek (VARCHAR(64))
+InnoDB'yi çözerdi ama yaklaşık 5 KB ister. Sandbox'ta config kopyasında tek
+ALTER, hem InnoDB'de hem MyISAM'da, "maximum row size … 65535" 1118'i verdi.
+Kolon kolon denendiğinde 13'üncüden sonra durdu. Ayrıca `config`e eklenecek
+ikinci bir VARCHAR(255) bugün her sunucuda yükseltmeyi düşürürdü.
+
+**Çözüm.**
+
+- `includes/fn/innodb.php`:
+  - `pg_innodb_row_limit($page_size)`;
+  - `pg_innodb_fixed_column_size($column)`;
+  - `pg_innodb_row_estimate_from_columns($columns, $has_primary_key, $page_size, $rule)`
+    (saf; `$rule` `mysql80` / `mysql57` / `mariadb`; döner: bytes, limit,
+    fits, columns, inline_columns, external_columns, fixed_columns, nullable,
+    widest);
+  - `pg_innodb_sql_row_estimate_from_columns($columns)` (saf, 65.535 sayımı);
+  - `pg_innodb_server_rule($version)` (MariaDB ≥ 10.4 → `mariadb`, altı →
+    `mysql57`; MySQL ≥ 8.0 → `mysql80`, altı → `mysql57`; okunamayan →
+    `mysql80`);
+  - `pg_innodb_row_estimate($table)`: `information_schema.COLUMNS` +
+    `TABLE_CONSTRAINTS` + `@@innodb_page_size` + `VERSION()`, ham
+    `@mysqli_query`; ekler: `charsets`, `rule`, `server`.
+- `pg_innodb_convert_table()` yeni durum **`too_wide`**: sıra missing →
+  already → unsupported → too_wide → deferred → running → aborted → ALTER.
+  Tahmin "bu sunucu reddeder" diyorsa ALTER başlatılmaz. ALTER yine de 1118
+  ile düşerse durum gene `too_wide` olur. Sonuçta `row_estimate` anahtarı var.
+  `pg_innodb_state_text()` `too_wide` metni; tahmin yoksa ya da "sığar"
+  diyorsa sunucunun mesajına (default dal) düşer. `pg_innodb_pending_tables()`
+  imzası değişmedi.
+- **Şema 8.17 `upgrade_2026_4_8_config_text_columns()`**, 8.13'ten
+  (`_innodb_site`) hemen önce: `config`teki **her** VARCHAR sütun TEXT olur.
+  Tanım `SHOW FULL COLUMNS` satırından kurulur (CHARACTER SET / COLLATE,
+  NULL / NOT NULL, COMMENT). DEFAULT yazılmaz. Kolon başına
+  `install_modify_column()`. İkinci koşuda VARCHAR kalmadığı için skipped.
+  Sonunda iki not: kaç sütun çevrildi ve `pg_innodb_row_estimate('config')`.
+  Sonuç (stok): MySQL 8.0 sayımıyla 7064 / 8126, MariaDB 3884, SQL katmanı
+  2126 / 65.535.
+- Yeni modül `includes/fn/db_maintenance.php` (`functions.php` listesinde
+  `innodb.php`'den sonra):
+  - `pg_db_table_catalog()`;
+  - `pg_db_server_facts()`;
+  - `pg_db_running_statement($table, $verbs)` (`''` = herhangi bir tablo;
+    `pg_innodb_running_alter()` artık buna devreder);
+  - `pg_db_optimize_marker()` (`data/temp/db_optimize.json`);
+  - `pg_db_run_table_statement()` (OPTIMIZE / CHECK / REPAIR'ın ortak kalıbı:
+    ad regex + katalog, PROCESSLIST, `lock_wait_timeout = 20` geri konur,
+    sonuç satırları `messages`);
+  - `pg_db_forget_health_caches()`;
+  - `pg_db_optimize_table()`, `pg_db_check_table()` (MEDIUM),
+    `pg_db_repair_table()` (yalnız MyISAM ailesi);
+  - `pg_db_health_report()`;
+  - `pg_db_optimize_candidates($catalog, $facts)` (saf);
+  - `pg_db_table_findings($catalog, $pending, $health, $facts)` (saf).
+- `database_engine.php`:
+  - POST `action` + `table` (`convert` / `optimize` / `check` / `repair` /
+    `check_all`). Tablo adı convert için `pg_innodb_core_tables()`, diğerleri
+    için regex + katalogdan geçer.
+  - Araç çubuğu: Tüm tabloları denetle, Yedekleme Yöneticisi, Sistem Durumu.
+  - Ana sütun: Bulgular; MyISAM listesinde "Not" sütunu (fazla geniş rozeti,
+    Dönüştür kapalı); Tablo sağlığı; Tüm tablolar (sayfadaki tek `.chart`).
+  - Yan sütun: sayaçlar, Sunucu kartı, not kartı.
+  - Tek gizli form + `document` delegate. Herhangi bir bakım ifadesi
+    sürüyorsa düğmeler kapalı; sahipsiz OPTIMIZE işareti bir kez bildirilir.
+- Sistem Durumu "Storage Engine" ayrıntısında fazla geniş tablo `warn`
+  satırı: "… — too wide for InnoDB (bytes / limit)".
+
+**Tasarım kararları.**
+
+- Sayım sunucuya göre seçilir: `too_wide` "bu sunucu reddeder" demektir.
+  Üç sunucunun en kötüsünü (41) her yerde kullanmak, MariaDB ve 5.7'de bugün
+  geçen `config` dönüşümünü engellerdi.
+- Kısa/uzun sınıflandırması (`inline_columns` / `external_columns`) yapısal
+  kalır, kurala göre değişmez. 5.7'nin gevşek sayımı yalnız bayt toplamını
+  etkiler.
+- VARCHAR(64) değil TEXT: InnoDB'de ikisi de 41 sayılır, ama 65.535
+  sınırında TEXT 10 bayt. `config` tek satır, yalnız UPDATE edilir (kodda
+  `INSERT INTO config` yok), indeksi yok, kod sütun tipine bakmıyor. TEXT
+  VARCHAR'ın tuttuğu her şeyi tutar. Uzun VARCHAR'lar da çevrildi: 65.535'i
+  dolduranlar onlar, ve bir sonraki migration'ın kopyalayacağı VARCHAR
+  kalmasın. Kural zaten `pinegrap-sema-adimi` skill'inde: "`config`e geniş
+  alan TEXT açılır".
+- DEFAULT yazılmaz: MySQL 8.0.13 öncesi TEXT'e DEFAULT kabul etmez, sonrası
+  yalnız `DEFAULT ('x')` ifade biçimini. Satır bir kez dökümden gelir, sonra
+  yalnız güncellenir; varsayılan hiç kullanılmaz.
+- OPTIMIZE işareti dönüşüm işaretinden ayrı dosya: aynı dosya olsaydı yarım
+  kalan bir OPTIMIZE dönüşüm ekranında "aborted" görünürdü.
+- OPTIMIZE / CHECK / REPAIR hataların çoğunu sonuç satırı (`Msg_type
+  error`) olarak döndürür; bunlar da sonuca girer. InnoDB'nin "Table does not
+  support optimize, doing recreate + analyze instead" satırı `note`'tur, hata
+  sayılmaz. "Lock wait timeout" satırı `busy` sayılır.
+- `innodb_file_per_table` kapalıyken InnoDB tabloları OPTIMIZE adayı değil
+  (hepsi ortak tablo alanının boş alanını kendi boş alanı gibi bildirir) ve
+  `fragmented` bulgusu çıkmaz.
+
+**Ödünler.**
+
+- 8.13'ü bu düzeltmeden önce koşmuş MySQL 8.0 sitelerinde `config` MyISAM
+  kaldı. 8.17 koşunca config sığar ama yükseltme 8.13'ü yeniden koşmaz (sürüm
+  geçilmiş). Operatör Veritabanı Motoru ekranından dönüştürür; bekleyen bir
+  2026.4.8 yükseltmesinde ise 8.17 8.13'ten önce koştuğu için config aynı
+  geçişte InnoDB'ye geçer.
+- 64 KB sayfada sınır MySQL'in 16383'ü; MariaDB orada 32702 kabul eder
+  (tahmin MariaDB'de gereğinden sıkı, nadir yapılandırma).
+- PK sütunları her zaman satır içinde tutulur; tahmin VARCHAR PK'yi uzun
+  sütun gibi sayar (yazılımın tablolarında VARCHAR PK yok).
+- MyISAM'da DATA_LENGTH boşlukları da içerir. Bulgudaki yüzde,
+  `free / (bytes + free)`, MyISAM'da gerçeğin altında kalır.
+- `too_wide` metnindeki "may use {limit}" sınırı gösterir; gerçekte en çok
+  `limit − 1` sığar.
+- backend.src.js DataTables'ı `ordering=false` ile kurar. "Tüm tablolar"
+  listesindeki `data-order` öznitelikleri etkisiz; satırlar sunucuda büyükten
+  küçüğe sıralı gelir.
+
+**Şema.** 8.17 `upgrade_2026_4_8_config_text_columns()`: `config`'in
+VARCHAR sütunları TEXT (stokta 124 sütun). Yeni tablo yok; `get_tables()`
+değişmedi; `install_heavy_tables()` gerekmez (tek satır).
+
+**Testler.**
+
+- `tests/innodb_test.php`:
+  - `test_innodb_row_limit`;
+  - `test_innodb_row_estimate_counts_inline_and_external` (el hesabı
+    260/254; MariaDB 220, 5.7 200);
+  - `test_innodb_server_rule`;
+  - `test_innodb_row_estimate_latin1_config_does_not_fit`;
+  - `test_innodb_stock_config_row_fits` (410 sütun; 8.17 öncesi MySQL 8.0
+    8468 ve sığmaz; sonrası üç kuralda sığar, MySQL 8.0'da ≥ 410 bayt pay);
+  - `test_innodb_stock_config_sql_row_size` (öncesi 64.069; sonrası
+    65.535'in en az 20 KB altında);
+  - `test_innodb_sql_row_estimate_counts`;
+  - `test_innodb_config_has_no_varchar_columns_in_sources` (8.17'nın
+    çevirdiği 124 adın sabit listesi; yeni `config` metin sütunu TEXT
+    açılır);
+  - `test_innodb_state_text_too_wide`.
+- Testin şema ayrıştırıcısı döküm + `install_add_column` + çok satırlı
+  `ALTER TABLE config ADD a, ADD b` + `install_modify_column` +
+  `install_drop_column` okur. Taze sandbox kurulumuyla aynı 410 adı ve aynı
+  baytları veriyor. `erp_seller_vkn` bir liste döngüsünde genişletildiği için
+  elle düzeltildi.
+- `tests/db_maintenance_test.php`: aday eşikleri; bulgu sırası ve `large`
+  sınırı 5; `too_wide` bulgusu.
+
+**Doğrulama (sandbox, MariaDB 10.11.14, PHP 8.3).**
+
+- Taze kurulumda canlı `config` için `pg_innodb_row_estimate` = 5868 (mariadb).
+  Test ayrıştırıcısıyla birebir aynı. SQL katmanı tahmini 64.069, ölçülen pay
+  ile aynı. Kısa VARCHAR'lar TEXT'e çevrildiğinde 61.766; bu da ölçülen payla
+  aynı.
+- Sınır testi iki tabloyla yapıldı (32 × VARCHAR(250) latin1 + kuyruk; 100 ×
+  TEXT + 23 × VARCHAR(250) latin1 + kuyruk): tahmin 8125 → ALTER geçti;
+  tahmin 8126 → MariaDB, kullanıcının gördüğü 1118 metniyle reddetti.
+  `pg_innodb_convert_table()` → `too_wide`.
+- `config` MyISAM'a çekilip `config.version` 2026.4.7'ye alındı, ardından
+  `php install/index.php automated_upgrade` koşturuldu: 124 sütun TEXT,
+  `SHOW CREATE TABLE config`'te VARCHAR yok, değerler aynı, `config` InnoDB.
+  İkinci koşu: 8.17 skipped ("every text column is already TEXT").
+  Dökümdeki `config`e yorum içeren bir sütunla ayrı koşu: 82 sütun çevrildi,
+  COMMENT (tırnaklı) korundu; ikinci koşu skipped.
+  `pg_innodb_convert_table('config', retry)` → converted.
+- Ekran GET hatasız (sunucu günlüğü temiz). POST:
+  - optimize orders → note satırı + OK;
+  - check orders → ok;
+  - repair (MyISAM) → repaired; repair (InnoDB) → unsupported;
+  - check_all → "275 tablo denetlendi";
+  - geçersiz action → "Bilinmeyen işlem.";
+  - ``orders`; DROP TABLE x; --`` → "Bu tablo bu veritabanında yok.";
+  - etkinlik kaydına yazıldı.
+- Parçalanmış MyISAM tablosu (16 MB boş): bulgu ve vurgulu Optimize; optimize
+  sonrası 16 MB boşaldı.
+- Fazla geniş bir çekirdek tablo: bulgu, "InnoDB için fazla geniş" rozeti,
+  Dönüştür kapalı. Gerçek ALTER 1118 verdi. Sistem Durumu widget'ında satır
+  doğru.
+
+**Elle doğrulanacaklar.**
+
+- MySQL 8.0 ve 5.7 üzerinde (sandbox yalnız MariaDB):
+  - stok `config`in 8.17 öncesi 1118 vermesi;
+  - 8.17 sonrası dönüşümün geçmesi;
+  - TEXT DEFAULT davranışı;
+  - `transaction_isolation` / `tx_isolation` okuması.
+- Kullanıcının canlı sitesinde 8.17 ve ardından ekrandan `config` dönüşümü.
+- Büyük bir InnoDB tablosunda OPTIMIZE süresi ve disk ihtiyacı.
 
 ---
 

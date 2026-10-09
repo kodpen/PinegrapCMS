@@ -44,7 +44,7 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_innodb_people();           // 8.12
 
-	upgrade_2026_4_8_config_text_columns();     // 8.16
+	upgrade_2026_4_8_config_text_columns();     // 8.17
 
 	upgrade_2026_4_8_innodb_site();             // 8.13
 
@@ -513,7 +513,7 @@ function upgrade_2026_4_8_innodb_group($group, $label) {
 
 }
 
-// The text columns of `config` become TEXT (2026.4.8, 8.16), before the
+// The text columns of `config` become TEXT (2026.4.8, 8.17), before the
 // site group moves `config` to InnoDB (8.13).
 //
 // `config` is one row of some 410 columns and sits against two row limits.
