@@ -52,6 +52,10 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_cookie_consent();          // 8.18
 
+	upgrade_2026_4_8_workspace_task_time();     // 8.86
+
+	upgrade_2026_4_8_workspace_task_links();    // 8.110
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -789,5 +793,59 @@ function upgrade_2026_4_8_cookie_consent() {
 	install_add_column('config', 'cookie_consent_policy_url', "TEXT NULL");
 
 	install_note('Cookie consent: visitor pages ask before setting optional cookies; Google Analytics and the visitor statistics cookies start only after the visitor allows them (Settings › SEO › Cookie Consent).');
+
+}
+
+// Time spent on workspace tasks (2026.4.8, 8.86; includes/workspace/task_time.php).
+// One row is one stretch of work by one person on one task: minutes on the
+// day worked_on, with an optional note. A timer started in the task drawer
+// is a row with started_at set and minutes 0 until it is stopped (a person
+// has one running at most); time written by hand has started_at 0. billable
+// says whether the time may be invoiced; invoice_id is the ERP invoice draft
+// it went on (0 for none), so the same hour is not billed twice. InnoDB: the
+// rows are locked while the invoice draft is written in one transaction.
+// idx_task serves the drawer and the channel's card, idx_user a person's own
+// time and the planning board, idx_invoice the tie to a draft.
+function upgrade_2026_4_8_workspace_task_time() {
+
+	install_create_table('ws_task_time', "CREATE TABLE ws_task_time (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		task_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		minutes     INT UNSIGNED NOT NULL DEFAULT 0,
+		worked_on   DATE NOT NULL,
+		note        VARCHAR(255) NOT NULL DEFAULT '',
+		billable    TINYINT(1) NOT NULL DEFAULT 1,
+		invoice_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_task (task_id, worked_on),
+		KEY idx_user (user_id, worked_on),
+		KEY idx_invoice (invoice_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the time spent on a task can be written in its drawer, with a timer or by hand; a channel adds it up, and with the ERP it becomes an invoice draft for the channel\'s customer.');
+
+}
+
+// Tasks that wait for other tasks (2026.4.8, 8.110;
+// includes/workspace/task_links.php). A row says task_id cannot start until
+// blocked_by_task_id is done; created_by and created_at say who linked them
+// and when. The primary key keeps a pair once; idx_blocker finds the tasks
+// that wait for a task when it is done. A loop of links is refused by the
+// code, not the schema.
+function upgrade_2026_4_8_workspace_task_links() {
+
+	install_create_table('ws_task_links', "CREATE TABLE ws_task_links (
+		task_id            INT UNSIGNED NOT NULL,
+		blocked_by_task_id INT UNSIGNED NOT NULL,
+		created_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (task_id, blocked_by_task_id),
+		KEY idx_blocker (blocked_by_task_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a task can wait for other tasks; it shows what it waits for, and its people hear when it can start.');
 
 }

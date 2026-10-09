@@ -8501,6 +8501,8 @@ function get_tables() {
 		'ws_guest_sessions',
 		'ws_threads',
 		'ws_thread_copies',
+		'ws_task_time',
+		'ws_task_links',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',
