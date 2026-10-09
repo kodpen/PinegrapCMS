@@ -530,6 +530,38 @@
          pencerede QR kodu da çıkar; misafir telefonuyla tarayarak
          katılabilir. QR kodu sitenin kendi sunucusunda çizilir.
 
+  [YENİ] Tek arama kutusu: Çalışma Alanı'nın her ekranında
+         Ctrl+K (Mac'te ⌘K) ya da soldaki şeritteki büyüteç tek
+         bir arama penceresi açar. Yazdıkça kanallar, mesajlar,
+         kararlar, görevler, notlar, kanallarda paylaşılan
+         dosyalar ve kayıtlar (sipariş, ürün, kişi, fatura...)
+         gruplar hâlinde gelir; aranan sözcük vurgulanır. Oklarla
+         gezilir, Enter seçileni açar. # ile yalnız kayıtlarda
+         ("#sip 1042" yalnız siparişlerde), @ ile ekipteki
+         kişilerde aranır; / yazı kutusunun komutlarını listeler
+         ve seçilen komut açık kanalın yazı kutusuna yazılır.
+         Kanal ekranında arama tek tıkla o kanalla sınırlanır;
+         son beş arama tarayıcıda hatırlanır. Herkes yalnız
+         görebildiği kanalların, görevlerin ve notların
+         sonuçlarını görür. Çalışma Alanı ekranlarında Ctrl+K
+         panelin genel araması yerine bu pencereyi açar.
+
+  [YENİ] Kanal panosu: kanalın sekmelerine "Pano" eklendi
+         (adres: workspace.php?channel=N&view=board). Kanalın
+         görevleri, kararları ve dosyaları sütunlarda kart olarak
+         görünür; duruma, türe, kişiye ya da bitiş tarihine
+         (gecikmiş, bugün, bu hafta, daha sonra, tarihsiz) göre
+         gruplanır. Kart sürüklenerek başka sütuna taşınır: durum,
+         sorumlu kişi ya da bitiş tarihi değişir; çakışma ve
+         tekrarlayan görev soruları Plan Panosu'ndakiyle aynıdır.
+         Klavyeyle de taşınır (Boşluk tut, oklar, Enter bırak).
+         Aciliyet, kişi, "yalnız benimkiler" ve metin süzgeçleri
+         vardır; "Bitti" sütunu son 14 günü gösterir, öncesi bir
+         tıkla açılır. Pano açıkken başka biri görevi değiştirirse
+         kartlar kendiliğinden yenilenir. Misafirli kanallarda ve
+         tartışmalarda pano yoktur. Çalışma Alanı turu bu sekmeyi
+         de anlatır ve herkese bir kez daha gösterilir.
+
   E-POSTA
   --------------------------------------------------------
 
