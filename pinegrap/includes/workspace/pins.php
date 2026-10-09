@@ -119,7 +119,7 @@ function ws_channel_pin_hide($viewer, $channel)
  * @param array      $viewer
  * @param array      $channel
  * @param array|null $membership
- * @return array|null id, sender, text, time, pinned_by, hidden
+ * @return array|null id, sender, text, time, pinned_by, hidden, ack, ack_can_request
  */
 function ws_channel_pin_present($viewer, $channel, $membership)
 {
@@ -157,6 +157,9 @@ function ws_channel_pin_present($viewer, $channel, $membership)
         'time'      => ws_time_label($message['created_at']),
         'pinned_by' => ws_person_name($channel['pinned_by'] ?? 0),
         'hidden'    => is_array($membership) && ((int) ($membership['pin_hidden'] ?? 0) === (int) $message['id']),
+        // Its read receipt, and whether the reader may ask for one (acks.php).
+        'ack'       => function_exists('ws_acks_map') ? (ws_acks_map(array($message), $viewer)[(int) $message['id']] ?? null) : null,
+        'ack_can_request' => function_exists('ws_ack_can_request') && ws_ack_can_request($viewer, $message),
     );
 }
 

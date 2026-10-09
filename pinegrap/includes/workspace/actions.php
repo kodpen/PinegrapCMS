@@ -158,12 +158,15 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check'), true)
+        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
             $poll = db_item("SELECT message_id FROM ws_polls WHERE id = '" . (int) ($request['poll_id'] ?? 0) . "'");
             $touched = is_array($poll) ? ws_message((int) $poll['message_id']) : null;
+        } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close'), true)) {
+            $approval = function_exists('ws_approval') ? ws_approval((int) ($request['approval_id'] ?? 0)) : null;
+            $touched = $approval ? ws_message((int) $approval['message_id']) : null;
         }
 
         if ($touched && ws_message_in_past($touched)) {
@@ -735,6 +738,7 @@ function ws_handle_action($action, $request)
             }
 
             ws_polls_autoclose($channel['id']);
+            ws_approvals_autoclose($channel['id']);
 
             $around = (int) ($request['message_id'] ?? 0);
 
@@ -804,6 +808,7 @@ function ws_handle_action($action, $request)
 
                 if ($channel && ws_can_read_channel($viewer, $channel)) {
                     ws_polls_autoclose($channel_id);
+                    ws_approvals_autoclose($channel_id);
 
                     // An earlier version open on the screen takes nothing new.
                     $rows = ((int) ($request['era_id'] ?? 0) > 0) ? array() : ws_messages_since($channel_id, (int) ($request['since_id'] ?? 0));
@@ -1150,6 +1155,87 @@ function ws_handle_action($action, $request)
             }
 
             $payload = ws_message_payloads($viewer, array(ws_message($poll['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // Approval requests (includes/workspace/approvals.php).
+        case 'ws_approval_create':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            // The deadline comes as a day and a time, as the form asks.
+            $closes_at = 0;
+            $closes_day = ws_date_or_null((string) ($request['closes_date'] ?? ''));
+
+            if ($closes_day === false) {
+                return ws_action_error(lang('Write the date as day.month.year.'), 'closes_date');
+            }
+
+            if ($closes_day !== null) {
+                $closes_time = preg_match('/^[0-9]{1,2}:[0-9]{2}$/', (string) ($request['closes_time'] ?? '')) ? $request['closes_time'] : '18:00';
+                $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
+            }
+
+            $result = ws_approval_create($viewer, $channel, array(
+                'title'     => (string) ($request['title'] ?? ''),
+                'text'      => (string) ($request['text'] ?? ''),
+                'approvers' => (array) ($request['approvers'] ?? array()),
+                'rule'      => (string) ($request['rule'] ?? 'any'),
+                'closes_at' => $closes_at,
+            ));
+
+            return $result['ok']
+                ? ws_action_ok(array('message_id' => $result['message_id'], 'approval_id' => $result['approval_id']))
+                : ws_action_error($result['error'], $result['field']);
+
+        case 'ws_approval_decide':
+        case 'ws_approval_close':
+            $approval = ws_approval((int) ($request['approval_id'] ?? 0));
+
+            if (!$approval || !ws_can_read_channel($viewer, ws_channel($approval['channel_id']))) {
+                return ws_action_error(lang('That approval request could not be found.'));
+            }
+
+            $result = ($action === 'ws_approval_decide')
+                ? ws_approval_decide($viewer, $approval, (string) ($request['decision'] ?? ''), (string) ($request['note'] ?? ''))
+                : ws_approval_close($viewer, $approval);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($approval['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // Read receipts (includes/workspace/acks.php).
+        case 'ws_ack_request':
+        case 'ws_ack':
+        case 'ws_ack_people':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            if ($action === 'ws_ack_people') {
+                $result = ws_ack_people($viewer, $message);
+
+                return $result['ok'] ? ws_action_ok(array('read' => $result['read'], 'unread' => $result['unread'])) : ws_action_error($result['error']);
+            }
+
+            $result = ($action === 'ws_ack')
+                ? ws_ack_set($viewer, $message)
+                : ws_ack_request($viewer, $message, !empty($request['on']));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
 
             return ws_action_ok(array('message' => $payload[0]));
 

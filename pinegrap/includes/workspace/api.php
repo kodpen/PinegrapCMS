@@ -94,6 +94,8 @@ function ws_webhook_events()
         'workspace.message.created'     => 'A message was written in a public workspace channel. Private channels are never announced',
         'workspace.task.note_added'     => 'A note was added to a workspace task (text is null for a task of a private channel)',
         'workspace.poll.closed'         => 'A poll in a public workspace channel closed, by hand or when its time ran out: the counts, and the winner or a tie',
+        'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked and the record it is about',
+        'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer',
     );
 }
 
@@ -123,6 +125,7 @@ function ws_openapi_objects()
         'WorkspaceChange'         => 'ws_api_change_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
+        'WorkspaceApproval'       => 'ws_api_approval_schema',
     );
 }
 
@@ -297,6 +300,72 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'required' => true),
                 array('name' => 'on', 'in' => 'body', 'type' => 'bool', 'description' => 'true (the default) leaves the emoji, false takes it back.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.ack',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/ack',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_ack',
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Say a message was read',
+            'description' => 'Gives the read receipt a message asks for, in the name of the person signed in. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since an integration saying its owner read something would be a receipt nobody gave. The person has to be in the message\'s channel and not its writer. ack on the message says how many of the channel\'s members have read it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.approvals.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/approvals',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_approvals_list',
+            'returns'     => array('list' => 'WorkspaceApproval'),
+            'summary'     => 'List the approval requests of a channel',
+            'description' => 'The approval requests of a channel the owner of the application may read, newest first: the people asked and each one\'s answer, the rule, the deadline and, once settled, the outcome and the decision it wrote into the channel.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.approvals.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/approvals',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_approvals_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceApproval',
+            'summary'     => 'Ask for approval in a channel',
+            'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application, and the people asked are told. approvers have to be members of the channel who may write in it, one to ten. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision. Send an Idempotency-Key so a retried call does not ask twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'What is to be approved, in a line.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3800, 'description' => 'The details. Tags such as <#invoice:88> are kept; the first record tagged is the record the request is about.'),
+                array('name' => 'approvers', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 10, 'required' => true, 'description' => 'User ids of the people asked.'),
+                array('name' => 'rule', 'in' => 'body', 'type' => 'enum', 'values' => array('any', 'all'), 'default' => 'any'),
+                array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'The deadline. Left out, it waits until it is answered.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.approvals.decide',
+            'method'      => 'POST',
+            'path'        => '/workspace/approvals/{id}/decide',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_approvals_decide',
+            'returns'     => 'WorkspaceApproval',
+            'summary'     => 'Approve or reject a request',
+            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'decision', 'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject'), 'required' => true),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Why, shown beside the answer; a refusal\'s note goes into the decision.'),
             ),
         ),
 

@@ -604,6 +604,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
 
+    // Approval requests and read receipts (approvals.php, acks.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_acks_js_strings());
+
     return array_merge(array(
         'mode'         => (string) $mode,
         'api_url'      => $base . 'api.php',
@@ -638,6 +641,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),
         'pins'         => ws_pins_ready(),
+        'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE) : null,
+        'acks'         => ws_acks_ready(),
         'blocks'       => ws_blocks_ready(),
         'customer'     => ws_customer_ready(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
@@ -682,6 +687,8 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <script type="application/json" id="ws-config">' . $json . '</script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_approvals.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_approvals.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_acks.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_acks.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
         . (($mode === 'channels') ? '
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');

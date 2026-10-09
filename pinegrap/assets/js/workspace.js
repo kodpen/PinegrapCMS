@@ -4052,6 +4052,19 @@
         return { node: node, body: body };
     }
 
+    // What the feature files draw with (workspace_approvals.js,
+    // workspace_acks.js): the screen's own helpers, so their parts look like
+    // the rest of it.
+    function featureHelpers() {
+        return {
+            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
+            offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
+            formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
+            richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
+            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG
+        };
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Channels screen
     // ═══════════════════════════════════════════════════════════════════
@@ -4690,6 +4703,13 @@
 
             if (pin.pinned_by) {
                 bar.appendChild(el('span', 'ws-pin-by', t('pin_by', pin.pinned_by)));
+            }
+
+            // Its read receipt, or a way to ask for one (workspace_acks.js).
+            var pinAck = window.PGWsAcks ? window.PGWsAcks.pinNode(pin, self, featureHelpers()) : null;
+
+            if (pinAck) {
+                bar.appendChild(pinAck);
             }
 
             var close = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('pin_close'));
@@ -6103,6 +6123,16 @@
 
             talkCol.appendChild(talk.node);
 
+            // Approvals and read receipts waiting for the person, when there
+            // are any (workspace_approvals.js, workspace_acks.js).
+            [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
+                var waiting = feature ? feature.home(data, self, featureHelpers()) : null;
+
+                if (waiting) {
+                    main.appendChild(waiting);
+                }
+            });
+
             // What this place is for: open for somebody who has not written
             // anything yet, folded for the others.
             var about = el('details', 'card ws-home-about');
@@ -7404,6 +7434,11 @@
                 main.appendChild(self.pollNode(message));
             }
 
+            // An approval request (workspace_approvals.js).
+            if (message.approval && window.PGWsApprovals) {
+                main.appendChild(window.PGWsApprovals.card(message, self, featureHelpers()));
+            }
+
             if (message.list_tasks && message.list_tasks.length) {
                 main.appendChild(self.listTasksNode(message));
             }
@@ -7447,6 +7482,11 @@
                 main.appendChild(self.reactionRow(message));
             }
 
+            // A read receipt asked for (workspace_acks.js).
+            if (message.ack && window.PGWsAcks) {
+                main.appendChild(window.PGWsAcks.node(message, self, featureHelpers()));
+            }
+
             // Somebody mentioned here who is not in the channel: one click
             // brings them in, and the mention reaches them.
             if (message.invite && message.invite.length && !message.deleted) {
@@ -7485,7 +7525,7 @@
                         return;
                     }
 
-                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll')) {
+                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll, .ws-approval, .ws-ack')) {
                         return;
                     }
 
@@ -7598,6 +7638,13 @@
                 } });
                 items.push({ icon: 'bi-sticky', label: message.kind === 'note' ? t('unmark') : t('mark_channel_note'), action: function () {
                     self.mark(message, message.kind === 'note' ? 'message' : 'note');
+                } });
+            }
+
+            // Read receipts asked for, or no longer (workspace_acks.js).
+            if (message.ack_can_request && window.PGWsAcks && !self.era) {
+                items.push({ icon: message.ack ? 'bi-eye-slash' : 'bi-eye', label: message.ack ? t('ack_unrequest') : t('ack_request'), action: function () {
+                    window.PGWsAcks.request(message, !message.ack, self, featureHelpers());
                 } });
             }
 
@@ -9884,6 +9931,9 @@
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
                     self.rich ? { icon: 'bi-code-slash', label: t('insert_code'), action: function () { self.insertCode(); } } : null,
                     BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null,
+                    (CFG.approvals && window.PGWsApprovals) ? { icon: 'bi-patch-question', label: t('apv_new'), action: function () {
+                        window.PGWsApprovals.form(self, featureHelpers());
+                    } } : null,
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
@@ -12767,7 +12817,8 @@
         var config = CFG.scheduled || {};
         var chains = !!config.chains;
         var groups = [
-            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])],
+            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])
+                .concat((config.approvals && window.PGWsApprovals) ? [['approval', t('sa_do_approval')]] : [])],
             [t('sa_group_records'), Object.keys(config.changes || {}).length ? [['change', t('sa_do_change')]] : []],
             [t('sa_group_web'), chains ? [['report', t('sa_do_report')], ['web_check', t('sa_do_web_check')], ['webhook', t('sa_do_webhook')]] : []],
             [t('sa_group_chain'), chains ? [['trigger', t('sa_do_trigger')]] : []]
@@ -13285,7 +13336,12 @@
             };
         }
 
-        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change };
+        // An approval request in a channel (workspace_approvals.js).
+        function approval() {
+            reader = window.PGWsApprovals.scheduledEditor(detail, given('approval', null), featureHelpers());
+        }
+
+        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change, approval: approval };
 
         function draw() {
             clear(detail);

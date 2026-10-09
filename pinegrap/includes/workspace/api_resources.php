@@ -467,11 +467,18 @@ function ws_api_channel_members_remove($params)
    Messages
    --------------------------------------------------------------------------- */
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null)
 {
     if ($reactions === null) {
         $reactions = ws_reactions_map(array($row['id']), $viewer);
     }
+
+    // The read receipt it asks for (acks.php).
+    if ($acks === null) {
+        $acks = function_exists('ws_acks_map') ? ws_acks_map(array($row), $viewer) : array();
+    }
+
+    $ack = $acks[(int) $row['id']] ?? null;
 
     $emoji = array();
 
@@ -515,6 +522,12 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null)
         'deleted'     => $deleted,
         'edited'      => ((int) $row['edited_at'] > 0),
         'reactions'   => $deleted ? array() : $emoji,
+        'ack'         => array(
+            'wanted' => ($ack !== null),
+            'count'  => ($ack !== null) ? (int) $ack['count'] : 0,
+            'total'  => ($ack !== null) ? (int) $ack['total'] : 0,
+            'mine'   => ($ack !== null) && !empty($ack['mine']),
+        ),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -535,6 +548,7 @@ function ws_api_message_schema()
         'deleted'     => 'boolean',
         'edited'      => 'boolean',
         'reactions'   => array(array('emoji' => 'string', 'count' => 'integer')),
+        'ack'         => array('wanted' => 'boolean', 'count' => 'integer', 'total' => 'integer', 'mine' => 'boolean'),
         'created_at'  => 'string',
     );
 }
@@ -583,10 +597,11 @@ function ws_api_messages_list($params)
     }
 
     $reactions = ws_reactions_map($ids, $viewer);
+    $acks = function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array();
     $out = array();
 
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks);
     }
 
     api_ok_list($out, $limit);
@@ -634,6 +649,237 @@ function ws_api_messages_react($params)
     $row = ws_message($message['id']);
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+/**
+ * Answers that must be the person's own - a read receipt, an approval - are
+ * given from a device session only: an application key acts for its owner,
+ * and an integration does not read or approve in their name.
+ */
+function ws_api_person_only()
+{
+    if (!function_exists('api_current_device') || (api_current_device() === null)) {
+        api_fail(403, 'forbidden', lang('Only the person, signed in on a device, can give this answer; an application cannot give it for them.'));
+    }
+}
+
+function ws_api_messages_ack($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    ws_api_person_only();
+
+    $result = function_exists('ws_ack_set') ? ws_ack_set($viewer, $message) : array('ok' => false, 'error' => lang('Invalid request.'));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+/* ---------------------------------------------------------------------------
+   Approval requests (approvals.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * One request as the API shows it.
+ *
+ * @param array $viewer
+ * @param array $row ws_approvals row
+ * @return array
+ */
+function ws_api_approval_present($viewer, $row)
+{
+    $answers = ws_approval_people($row['id']);
+    $people = array();
+    $names = array((int) $row['created_by'], (int) $row['closed_by']);
+
+    foreach ($answers as $answer) {
+        $names[] = (int) $answer['user_id'];
+    }
+
+    $briefs = ws_people($names);
+
+    foreach ($answers as $answer) {
+        $people[] = ws_api_approval_person_present($answer, $briefs);
+    }
+
+    $message = ws_message($row['message_id']);
+
+    return array(
+        'id'                => (int) $row['id'],
+        'message_id'        => (int) $row['message_id'],
+        'channel_id'        => (int) $row['channel_id'],
+        'title'             => (string) $row['title'],
+        // The details: the message without the title line it starts with.
+        'text'              => $message ? ws_plain_text($viewer, preg_replace('/^\*\*[^\n]*\*\*\n*/u', '', (string) $message['body'])) : '',
+        'rule'              => (string) $row['rule'],
+        'record'            => ((string) $row['record_type'] !== '') ? array('type' => (string) $row['record_type'], 'id' => (int) $row['record_id']) : null,
+        'people'            => $people,
+        'outcome'           => (string) $row['outcome'],
+        'requested_by'      => ws_api_person_ref($row['created_by'], $briefs),
+        'closed_by'         => ws_api_person_ref($row['closed_by'], $briefs),
+        'result_message_id' => ((int) $row['result_message_id'] > 0) ? (int) $row['result_message_id'] : null,
+        'closes_at'         => api_time($row['closes_at']),
+        'closed_at'         => api_time($row['closed_at']),
+        'created_at'        => api_time($row['created_at']),
+    );
+}
+
+/**
+ * One person asked, with their answer.
+ *
+ * @param array $answer ws_approval_people row
+ * @param array $briefs ws_people()
+ * @return array
+ */
+function ws_api_approval_person_present($answer, $briefs)
+{
+    return array(
+        'user_id'    => (int) $answer['user_id'],
+        'name'       => (string) ($briefs[(int) $answer['user_id']]['name'] ?? ''),
+        'decision'   => (string) $answer['decision'],
+        'note'       => ((string) $answer['note'] !== '') ? (string) $answer['note'] : null,
+        'decided_at' => api_time($answer['decided_at']),
+    );
+}
+
+// What ws_api_approval_present() returns.
+function ws_api_approval_schema()
+{
+    return array(
+        'id'                => 'integer',
+        'message_id'        => 'integer',
+        'channel_id'        => 'integer',
+        'title'             => 'string',
+        'text'              => 'string',
+        'rule'              => 'string',
+        'record'            => array('type' => 'string', 'id' => 'integer'),
+        'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
+        'outcome'           => 'string',
+        'requested_by'      => array('user_id' => 'integer', 'name' => 'string'),
+        'closed_by'         => array('user_id' => 'integer', 'name' => 'string'),
+        'result_message_id' => 'integer?',
+        'closes_at'         => 'string?',
+        'closed_at'         => 'string?',
+        'created_at'        => 'string',
+    );
+}
+
+function ws_api_approval_or_404($viewer, $id)
+{
+    $approval = function_exists('ws_approval') ? ws_approval((int) $id) : null;
+
+    if (!$approval) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    // The channel it is in decides who reads it, as for its messages.
+    ws_api_channel_or_404($viewer, $approval['channel_id']);
+
+    $message = ws_message($approval['message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0)) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    return $approval;
+}
+
+function ws_api_approvals_list($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+    $limit = (int) ($params['limit'] ?? 50);
+    $state = (string) ($params['state'] ?? 'all');
+
+    if (!function_exists('ws_approvals_ready') || !ws_approvals_ready()) {
+        api_ok_list(array(), $limit);
+    }
+
+    // What has run out is settled before it is read.
+    ws_approvals_autoclose($channel['id']);
+
+    $where = array("a.channel_id = '" . (int) $channel['id'] . "'", "m.deleted_at = 0");
+
+    if ($state === 'open') {
+        $where[] = "a.closed_at = 0";
+    } elseif ($state === 'closed') {
+        $where[] = "a.closed_at > 0";
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT a.* FROM ws_approvals a
+        INNER JOIN ws_messages m ON m.id = a.message_id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY a.id DESC LIMIT " . max(1, $limit)) as $row) {
+        $out[] = ws_api_approval_present($viewer, $row);
+    }
+
+    api_ok_list($out, $limit);
+}
+
+function ws_api_approvals_create($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $data = array(
+        'title'     => (string) ($params['title'] ?? ''),
+        'text'      => (string) ($params['text'] ?? ''),
+        'approvers' => (array) ($params['approvers'] ?? array()),
+        'rule'      => (string) ($params['rule'] ?? 'any'),
+        'closes_at' => (int) ($params['closes_at'] ?? 0),
+    );
+
+    // The checks ws_approval_create() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_approval_input($viewer, $channel, $data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], (($checked['field'] ?? '') !== '') ? $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers']));
+
+    $result = ws_approval_create($viewer, $channel, $data, ws_api_app_id());
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], (($result['field'] ?? '') !== '') ? $result['field'] : null);
+    }
+
+    ws_api_log(lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])));
+
+    api_ok(ws_api_approval_present($viewer, ws_approval($result['approval_id'])), 201);
+}
+
+function ws_api_approvals_decide($params)
+{
+    $viewer = ws_api_viewer();
+    $approval = ws_api_approval_or_404($viewer, $params['id']);
+
+    ws_api_person_only();
+
+    $result = ws_approval_decide($viewer, $approval, (string) $params['decision'], (string) ($params['note'] ?? ''));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'decision');
+    }
+
+    api_ok(ws_api_approval_present($viewer, ws_approval($approval['id'])));
 }
 
 /* ---------------------------------------------------------------------------

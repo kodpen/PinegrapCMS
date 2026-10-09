@@ -14658,3 +14658,163 @@ button.ws-home-row:hover,
     color: var(--bs-warning-text-emphasis);
 }
 /* ── /Workspace ── */
+/* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
+.ws-approval {
+  max-width: 34rem;
+  margin-top: .4rem;
+  padding: .55rem .65rem .45rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid rgb(var(--ws-accent-rgb));
+  border-radius: .6rem;
+  background: var(--bs-body-bg);
+}
+.ws-approval-approved {
+  border-left-color: var(--bs-success);
+}
+.ws-approval-rejected {
+  border-left-color: var(--bs-danger);
+}
+.ws-approval-expired,
+.ws-approval-withdrawn {
+  border-left-color: var(--bs-secondary-color);
+}
+.ws-approval-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .45rem;
+  font-size: .8rem;
+}
+.ws-approval-head > .bi {
+  color: rgb(var(--ws-accent-rgb));
+}
+.ws-approval-tag {
+  padding: 0 .4rem;
+  border-radius: .35rem;
+  font-size: .68rem;
+  font-weight: 600;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+}
+.ws-approval-asker,
+.ws-approval-when {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-when {
+  margin-left: auto;
+}
+.ws-approval-record {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  margin-bottom: .45rem;
+  padding: .2rem .55rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .45rem;
+  background: var(--bs-tertiary-bg);
+  font-size: .82rem;
+  color: var(--bs-body-color);
+}
+.ws-approval-record:hover {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+}
+.ws-approval-record-label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-approval-record-meta {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-people {
+  display: grid;
+  gap: .25rem;
+  margin: 0 0 .4rem;
+  padding: 0;
+  list-style: none;
+}
+.ws-approval-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+  font-size: .85rem;
+}
+.ws-approval-face {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ws-approval-name {
+  font-weight: 600;
+}
+.ws-approval-state {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-person.ws-approval-approved .ws-approval-state {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-approval-person.ws-approval-rejected .ws-approval-state {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-approval-note {
+  flex-basis: 100%;
+  padding-left: 1.95rem;
+  font-size: .78rem;
+  font-style: italic;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  font-size: .78rem;
+  color: var(--bs-secondary-color);
+}
+/* ── Workspace: read receipts (assets/js/workspace_acks.js) ── */
+.ws-ack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .35rem;
+  font-size: .78rem;
+}
+.ws-ack-count {
+  padding: 0 .45rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--bs-secondary-bg);
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+button.ws-ack-count:hover {
+  color: var(--bs-body-color);
+}
+.ws-ack-done .ws-ack-count {
+  background: var(--bs-success-bg-subtle);
+  color: var(--bs-success-text-emphasis);
+}
+.ws-ack-mine {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-pin-bar .ws-ack {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.ws-ack-person {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}

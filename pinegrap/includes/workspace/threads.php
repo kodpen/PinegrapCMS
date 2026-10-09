@@ -709,6 +709,18 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
         db("DELETE FROM ws_poll_votes WHERE poll_id IN (" . $polls . ")");
         db("DELETE FROM ws_poll_options WHERE poll_id IN (" . $polls . ")");
 
+        // Approval requests and read receipts (approvals.php, acks.php); the
+        // decisions they wrote stay in the channel as copies.
+        if (function_exists('ws_approvals_ready') && ws_approvals_ready()) {
+            db("DELETE FROM ws_approval_people WHERE approval_id IN (SELECT id FROM ws_approvals WHERE channel_id = '" . $thread_id . "')");
+            db("DELETE FROM ws_approvals WHERE channel_id = '" . $thread_id . "'");
+        }
+
+        if (function_exists('ws_acks_ready') && ws_acks_ready()) {
+            db("DELETE FROM ws_acks WHERE message_id IN (" . $messages . ")");
+            db("DELETE FROM ws_ack_requests WHERE message_id IN (" . $messages . ")");
+        }
+
         foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_inbox', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
             db("DELETE FROM " . $table . " WHERE channel_id = '" . $thread_id . "'");
         }

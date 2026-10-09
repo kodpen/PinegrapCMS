@@ -470,6 +470,12 @@ switch ($action) {
     case 'ws_poll_vote':
     case 'ws_poll_close':
     case 'ws_poll_edit':
+    case 'ws_approval_create':
+    case 'ws_approval_decide':
+    case 'ws_approval_close':
+    case 'ws_ack_request':
+    case 'ws_ack':
+    case 'ws_ack_people':
     case 'ws_task_tick':
     case 'ws_task_item_add':
     case 'ws_task_note_add':
