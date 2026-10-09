@@ -530,6 +530,37 @@
          pencerede QR kodu da çıkar; misafir telefonuyla tarayarak
          katılabilir. QR kodu sitenin kendi sunucusunda çizilir.
 
+  [YENİ] Kanal şablonları: "Yeni müşteri", "Web sitesi teslimi",
+         "Aylık kapanış" gibi tekrar eden işler için hazır kanal.
+         Şablon görevleri (başlangıç ve bitişi uygulandığı günden
+         itibaren takvim günüyle, öncelik, tahmini süre, kontrol
+         listesi, "şu görevden sonra" sırası; uygulayana, departman
+         liderine, bir departmanın havuzuna ya da bir kişiye),
+         kanalda paylaşılacak notları, özeti, sabitlenmiş mesajı
+         ve karşılama mesajını taşır. Yeni kanal penceresinin
+         üstündeki "Şablondan" kartlarından biri seçilince ad,
+         görünürlük, departman ve renk önerilir; kanal açılınca
+         şablon uygulanır. Var olan kanala kanal menüsündeki
+         "Şablon uygula" ile eklenir: özet ve sabitlenmiş mesaj
+         yalnız boşsa doldurulur. Görevler uygulayan kişinin
+         yetkisiyle açılır; atama yetkisi yetmeyen ya da kişisi
+         bulunamayan görevler kimseye verilmeden açılır ve kaç
+         tane olduğu söylenir. Kanala "Şablon uygulandı" satırı
+         düşer.
+
+  [YENİ] Çalışma Alanı Ayarları › Kanal şablonları: üç yerleşik
+         şablon (kopyalanıp değiştirilebilir) ve sitenin kendi
+         şablonları; yeni şablon, düzenleme, arşivleme, kaç kez
+         kullanıldığı. Yöneticiler kanal menüsündeki "Bu kanaldan
+         şablon yap" ile kanalın açık görevlerini, paylaşılan
+         notlarını, özetini ve sabitlenmiş mesajını taslak olarak
+         şablon ekranına taşır; kaydedilene kadar hiçbir şey
+         saklanmaz. Dış API: GET /workspace/templates ve POST
+         /workspace/channels/{id}/apply-template, olay
+         workspace.template.applied.
+
+  [ŞEMA] ws_templates tablosu.
+
   E-POSTA
   --------------------------------------------------------
 

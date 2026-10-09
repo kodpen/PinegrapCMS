@@ -72,6 +72,129 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Çalışma Alanı: kanal / proje şablonları (2026-10-09)
+
+**İstenen.** "Yeni müşteri", "Site teslimi", "Aylık kapanış" gibi tekrar eden
+işler için kanal şablonu: yeni kanal açılırken (ya da var olan kanala "Şablon
+uygula" ile) hazır görev seti (göreli tarihler, departman / rol bazlı atama,
+kontrol listeleri), not iskeleti, özet, sabit mesaj ve isteğe bağlı karşılama
+mesajı; var olan bir kanaldan şablon üretme; kodda üç yerleşik şablon; dış API.
+
+**Nasıl çözüldü.**
+
+- Şema 8.88 `upgrade_2026_4_8_workspace_templates()`: `ws_templates` (`name`,
+  `description`, `icon` — Bootstrap Icons sınıfı, `color` — kanal paletinde
+  yer, 0 yok, `kind`, `department_id`, `summary`, `pinned`, `welcome`, `body`
+  — görevler ve notlar JSON, `created_by/_at`, `updated_at`, `archived`,
+  `uses`; `idx_live (archived, name)`). `get_tables()`'a eklendi.
+- `includes/workspace/templates.php` (yeni): `ws_templates_ready()`,
+  `ws_can_write_templates()` (yönetici ya da `manage_workspace_settings`,
+  yani `$viewer['settings']`), `ws_template_body_clean()` (saf: bilinmeyen
+  anahtarı atar, sayıları aralığında tutar — gün 0–3650, tahmin 0–100000 dk,
+  en çok 50 görev / 10 not / görev başına 30 madde; başlıksız görevi, bitişten
+  sonra başlayan görevi ve 60 000 baytı aşan gövdeyi reddeder; `depends_on`
+  yalnız **önceki** görevleri tutar, döngü olmaz), `ws_template_relative_date()`
+  / `ws_template_days_until()` (takvim günü, öğlen 12:00 üzerinden — saat
+  değişimi günü kaydırmaz), `ws_template_split_checklist()` /
+  `ws_template_task_description()` (kontrol listesi görev açıklamasındaki
+  `- [ ]` satırları olarak yazılır; görevin kendi listesi `task_work.php`'nin
+  saydığı yerdir), `ws_templates_builtin()`, `ws_template()`,
+  `ws_templates_list()`, `ws_template_present()`, `ws_template_save()`,
+  `ws_template_archive()`, `ws_template_assignees()`, `ws_template_apply()`,
+  `ws_template_from_channel()`, ekran yardımcıları.
+- Uygulama (`ws_template_apply()`): önce her görev `ws_task_validate()` ile,
+  atamalar `ws_can_assign_to()` ile, not sınırı (`WS_NOTE_LIMIT`) ve dakikada
+  20 mesaj sınırı (`ws_rate_limited()` ile aynı sorgu, yazılacak mesaj
+  sayısıyla) denetlenir; sonra yazılır: karşılama (yalnız şablondan yeni
+  açılan kanalda), görevler `ws_task_create()` ile uygulayanın yetkisiyle,
+  sıra bağları, notlar `ws_note_save()` + `ws_note_share_channel()` (not
+  uygulayanın kendi notu olur), özet `ws_channel_set_summary()` (yalnız
+  boşsa), sabit mesaj `ws_message_send()` + `ws_channel_pin_message()`
+  (`pins.php`; `channels.php`'deki `ws_channel_pin` kenar çubuğunda kanal
+  sabitlemedir, kullanılmadı; yalnız kanalda sabit mesaj yoksa). Sonda kanala
+  "Şablon uygulandı: Yeni müşteri — 5 görev, 1 not" sistem satırı, `uses + 1`
+  (yalnız DB şablonu), `pg_announce('workspace.template.applied')`,
+  `log_activity`. Kişiye dönen metin atanamayan görevleri iki ayrı cümleyle
+  söyler: yetki yetmedi ("3 görev atanamadı…") ya da kişi bulunamadı
+  (lideri olmayan departman, ekipte olmayan kişi).
+- Atama kuralları: `creator` uygulayan, `department_lead` şablonun (yoksa
+  kanalın) departmanının ilk lideri — görevin departmanı da o olur,
+  `department:ID` departman havuzu (kişisiz, departmanlı; sayılmaz),
+  `user:ID` o kişi, `none`.
+- Bölünmezlik: `db()` transaction kullanmıyor (modülde de yok) ve başarısız
+  sorguda `output_error()` ile isteği bitiriyor. Bu yüzden her şey yazmadan
+  önce denetlenir; fonksiyon düzeyinde bir ret yarıda olursa ve istek bir
+  SQL hatasıyla kesilirse (`register_shutdown_function`) kanala "… şablonu
+  yarıda kaldı: … Durmadan önce açılanlar: G-29, G-30." satırı yazılır.
+  Yazılanlar geri alınmaz.
+- Görev bağımlılığı: `ws_task_links` bu dalda yok. `depends_on` JSON'da
+  saklanır; uygularken yalnız `function_exists('ws_task_link_add')` ise
+  `ws_task_link_add($viewer, $task, $blocker_task_id)` çağrılır, yoksa
+  atlanır (sonuçta `links_skipped` sayılır, kişiye söylenmez).
+- Eylemler (`includes/workspace/actions.php` + `pinegrap/api.php` listesi):
+  `ws_templates`, `ws_template_apply`, `ws_template_from_channel`;
+  `ws_channel_create` artık isteğe bağlı `template_id` alır — şablon kanal
+  açılmadan önce bulunur, kanal açılınca uygulanır, sonuç `notice` / `warning`
+  olarak döner.
+- Ekranlar: `workspace_template.php` (yeni kök dosya; `?id=`, `?copy=`
+  yerleşik ya da DB şablonunun kopyası, `?channel=` kanaldan taslak;
+  kapı `workspace_settings.php` ile aynı: `ws_screen_gate()` +
+  `ws_can_write_templates()`; kayıt form token'lı POST + `go()`; ret
+  durumunda yazılanlar formda kalır). Ayarlar'da "Kanal şablonları" kartı
+  (`ws_templates_settings_card()`, arşivle / geri getir POST'u
+  `template_archive`). `assets/js/workspace_templates.js` (`window.PGWsTemplates`:
+  `picker`, `suggest`, `applyDialog`, `fromChannel`; şablon ekranının görev
+  ve not satırları — ekle/sil/sürükle, "şu görevlerden sonra" çipleri,
+  kontrol listesi alanları; özet/sabit mesaj/karşılama için
+  `workspace_editor.js`'in yazı kutusu, etiketler sunucuda çözülüp verilir).
+  `workspace.js`'e yalnız çağrı noktaları: yeni kanal penceresinin üstüne
+  seçici, `colorPicker`'a `set()`, `template_id`, kanal menüsüne iki madde,
+  toast'ta `result.notice`.
+- Dış API (`includes/workspace/api_templates.php`, `api.php`):
+  `GET /workspace/templates` (`workspace:read`, `WorkspaceTemplate`),
+  `POST /workspace/channels/{id}/apply-template` (`workspace:write`,
+  `template_id`, dry-run, `WorkspaceTemplateApplied`); olay
+  `workspace.template.applied`. `tools/check_api_schema.php` sunucu–şema
+  çiftlerine iki satır eklendi.
+- Yerleşik şablonlar kodda (`lang()` ile): "Yeni müşteri" (başlangıç
+  toplantısı, ihtiyaç listesi, teklif, sözleşme, işin başlaması), "Web sitesi
+  teslimi" (içerik, tasarım onayı, test, yayına alma, eğitim), "Aylık
+  kapanış" (fatura kontrolü, vadesi gelen ödemelerin takibi, ayın raporu).
+  Kimlikleri `builtin:new_customer` gibi; DB'ye yazılmaz, `uses` sayılmaz.
+
+**Kararlar ve ödünler.**
+
+- Tarihler iş günü değil takvim günüdür (`ws_is_workday` kullanılmadı); hafta
+  sonuna düşen bitiş elle kaydırılır.
+- Şablondan açılan görevler kanala ayrı görev kartı olarak basılmaz (8
+  görevlik şablon dakikada 20 mesaj sınırını zorlardı); Görevler sekmesinde
+  görünür, kanala tek özet satırı düşer.
+- Karşılama mesajı yalnız şablondan yeni açılan kanalda yazılır; var olan
+  kanala uygulamada "ilk mesaj" olamayacağı için yazılmaz.
+- Şablondan kanal açarken şablonun bulunup arşivde olmadığı kanaldan önce
+  denetlenir; not sınırı / mesaj hızı gibi kanala bağlı denetimler kanal
+  açıldıktan sonra yapılır — reddedilirse kanal açık kalır, sebep `warning`
+  olarak söylenir.
+- Dış API'de sabit mesaj uygulamanın adına (`app_id`) yazılır; notlar sahibin
+  kendi notu olur ve sahibin adına paylaşılır (`ws_note_share_channel()`
+  uygulama adına yazmayı bilmiyor).
+- "Bu kanaldan şablon yap" atamayı görevin ilk sorumlusundan `user:ID`
+  olarak, sorumlusu yoksa departmanından `department:ID` olarak taşır; sıra
+  bağlarını taşımaz (tablo bu dalda yok).
+
+**Denenenler (sandbox, port 8005).** Şema adımı iki kez (ikincisinde "table
+ws_templates already exists"); yerleşik "Yeni müşteri" ile kanal (5 görev,
+göreli tarihler, kontrol listeleri, not paylaşıldı, özet, sabit mesaj,
+sistem satırı); şablon ekranında POST ile kayıt ve yeniden açma, ret
+durumunda formun korunması; rol 3, atama yetkisiz üyenin uygulaması
+(2 görev atanamadı); var olan kanala uygulama (özet/sabit mesaj korundu);
+"Bu kanaldan şablon yap" taslağı; arşivle / geri getir; yetki retleri;
+mesaj hızı ön denetimi; SQL hatasıyla yarıda kesilme satırı;
+`ws_task_link_add` taklidiyle bağ çağrıları; headless Chromium ile yeni kanal
+penceresi, "Şablon uygula" penceresi, "Bu kanaldan şablon yap" ve şablon
+ekranı. Denenemeyen: gerçek API anahtarıyla dış API çağrısı (anahtar
+üretilmedi; OpenAPI belgesinde uçlar ve nesneler görüldü), webhook teslimi.
+
 ## 2026.4.8 — Sistem widget'larının mesaj düğümü adlandırıldı: hata kendi widget'ında çıkıyor (2026-10-09)
 
 **Sorun (şikâyet).** Hesabım sayfasında "Hesap Güvenliği" widget'ında yanlış
