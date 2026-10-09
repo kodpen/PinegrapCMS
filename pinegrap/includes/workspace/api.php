@@ -33,6 +33,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -94,6 +95,7 @@ function ws_webhook_events()
         'workspace.message.created'     => 'A message was written in a public workspace channel. Private channels are never announced',
         'workspace.task.note_added'     => 'A note was added to a workspace task (text is null for a task of a private channel)',
         'workspace.poll.closed'         => 'A poll in a public workspace channel closed, by hand or when its time ran out: the counts, and the winner or a tie',
+        'workspace.template.applied'    => 'A channel template was applied to a channel, when the channel was made from it or later: the template, the tasks made and how many could not be assigned',
     );
 }
 
@@ -123,6 +125,8 @@ function ws_openapi_objects()
         'WorkspaceChange'         => 'ws_api_change_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
+        'WorkspaceTemplate'        => 'ws_api_template_schema',
+        'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
     );
 }
 
@@ -580,6 +584,34 @@ function ws_api_routes()
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Monday of this week when left out.'),
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 31, 'default' => 7),
                 array('name' => 'department_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.templates.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/templates',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_templates_list',
+            'returns'     => array('list' => 'WorkspaceTemplate'),
+            'summary'     => 'List channel templates',
+            'description' => 'The templates a channel can be set up with: the three built-in ones (ids such as builtin:new_customer, in the language of the site) and the site\'s own that are not archived (numeric ids as strings). tasks and notes count what a template brings; summary, pinned and welcome say whether it carries those texts.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.apply_template',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/apply-template',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_apply_template',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceTemplateApplied',
+            'summary'     => 'Apply a template to a channel',
+            'description' => 'Adds the template\'s tasks and notes to a public or private channel the owner of the application may write in, the way the channel menu does. The tasks are made by the owner, their dates counted in calendar days from today; a task meant for somebody the owner may not give work to is made with nobody on it and counted in unassigned. The notes become the owner\'s own and are shared in the channel. The summary and the pinned message are written only where the channel has none (summary_kept and pinned_kept say when it had); the pinned message is written as the application\'s. The channel gets a line saying the template was applied, and workspace.template.applied is announced.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'template_id', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'required' => true, 'description' => 'An id from GET /workspace/templates.'),
             ),
         ),
 
