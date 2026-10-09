@@ -72,6 +72,102 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Sistem widget'larının mesaj düğümü adlandırıldı: hata kendi widget'ında çıkıyor (2026-10-09)
+
+**Sorun (şikâyet).** Hesabım sayfasında "Hesap Güvenliği" widget'ında yanlış
+kod girilince hata güvenlik kartında değil sayfanın tepesinde çıkıyordu.
+
+**Kök neden.** Widget ağacındaki Messages düğümü (`_render_tree_node`
+`case 'messages'`) `formName`'e göre basar ve bastığını **tüketir**; ad boşsa
+oturumdaki her liveform'u basar. `my_account` renderer'ı düğümü
+`_pg_inject_messages_node($tree, '')` ile adsız bırakıyordu ve sayfada
+güvenlik widget'ından önce çizildiği için onun `my_account_profile`
+hatasını alıp tüketiyordu; güvenlik widget'ının kendi düğümüne bir şey
+kalmıyordu. Aynı kalıp sekiz renderer'da daha vardı: altısı `''` veriyordu
+(`form_list_view`, `form_item_view`, `search_results`, `order_view`,
+`calendar_view`, `catalog_listing`), ikisi düğümü hiç damgalamıyordu
+(`logout`, `error_page` — editör başlangıç ağacına düğümü koyuyor, sunucu
+adsız çiziyordu). Şablonlarda gerçek çakışmalar: dört şablonun Hesabım sayfası
+(`my_account` + `account_security`), Playground'un ziyaretçi defteri
+(`custom_form` + duvar `form_list_view`) ve her sayfanın altındaki bülten
+bandı (`custom_form`) — katalog, arama, sipariş sayfasında içerik widget'ı
+bandın hatasını sayfanın ortasında yutuyordu.
+
+**Çözüm.** Her renderer düğümünü adlandırır; ad legacy sayfanın liveform
+adıdır, legacy sayfa mesaj basmıyorsa widget'ın kendi adıdır (kimsenin
+göndermediği ad, `cart_link` deseni):
+
+| Widget | Ad | Yazan |
+|---|---|---|
+| `my_account` | `my_account` | `change_password.php`, `my_account_profile.php`, `order_history_*`, `pg_sw_account_done()` |
+| `form_list_view` | `form_list_view` | `edit_submitted_form.php` (silinen kayıt) |
+| `form_item_view` | `form_item_view` | `edit_submitted_form.php` (`send_to`) |
+| `catalog_listing` | `catalog_detail` | kartın sepete ekleme formu `catalog_detail.php`'ye gider, ret `current_url`'ye (liste) döner |
+| `search_results` | `search_results` | yok (legacy adı) |
+| `order_view` | `order_receipt` | yok (legacy adı) |
+| `calendar_view` | `calendar_view` | yok |
+| `logout` | `logout` | yok |
+| `error_page` | `error_page` | yok — bekleyen mesaj ziyaretçinin göreceği sonraki sayfanındır |
+
+Sunucu damgası olduğu için kurulu sitelerde ağaç yeniden kaydedilmeden
+geçerlidir; migration yok.
+
+**Yetim bildirim taraması.** Adsız `my_account` düğümü Hesabım sayfasına
+başka adla gelen bildirimleri de basıyordu; artık yalnız `my_account`'ı
+basar. Hesabım sayfasına (ya da widget'ın `send_to`'suna) yönlendiren
+yazanlar tarandı: `change_password.php` / `my_account_profile.php`
+(`pg_sw_account_done()`: uzağa `my_account`, kendine widget'ın adı),
+`order_history_*` (`my_account`), `membership_entrance.php` /
+`registration_entrance.php` (bildirim yalnız widget'a dönerken),
+`email_preferences.php` / `set_password.php` (widget'a döner),
+`account_security.php` (2FA `my_account_profile`, güvenlik widget'ı basar),
+`remove_recipient.php` ve giriş (bildirim yok). Tek istisna
+`update_address_book.php`: `send_to`'ya (widget'ın "kayıttan sonra" sayfası,
+çoğunlukla Hesabım) giderken bildirimi `update_address_book` adıyla
+yazıyordu — orada basılmaz, oturumda kalıp sonraki Adres Defteri ziyaretinde
+bayat çıkardı. Artık `pg_sw_account_done()` gibi: uzağa `my_account`,
+kendine `update_address_book`. JS'e dokunulmadı (yalnız palet `messages`
+bileşenindeki bayat yorum): adı ölü olan içerik widget'ları
+`_SW_NO_MESSAGES`'a alınmadı, düğümleri tuvalde kalır — o liste başlıktaki
+hesap bandı içindir.
+
+`tests/designer_messages_test.php`: (1) `my_account` adlı düğüm
+`my_account_profile` hatasını basmaz ve tüketmez, `my_account_profile` adlı
+düğüm basar ve tüketir; (2) `includes/fn/widgets*.php`'deki her
+`_render_system_widget_*` gövdesi `_pg_inject_messages_node(` çağırır ve hiçbiri
+`''` vermez. Düzeltme öncesi ağaçta (2) dokuz renderer için kırmızı.
+
+**Ödünler.** `catalog_listing` ile `catalog_item_view` aynı adı taşır; ikisi
+bir sayfadaysa (ürün sayfasında "benzer ürünler") ilk çizilen basar.
+`account_security` ile `account_profile` ikisi de `my_account_profile`
+damgalı (`account_security.php` 2FA iletisini legacy profil bölümüyle aynı
+liveform'a yazar); şablonlarda ayrı sayfalardadır, aynı sayfaya konursa ilk
+çizilen basar. `form_list_view` düğümü indekse bakmaz: aynı sayfada iki liste
+varsa ilki ikisinin bildirimini basar.
+
+**Doğrulama.** lint, check_lang, check_bindings (366 / 96, iki taraf aynı),
+`php tools/test.php` (146 test), `node --check style_designer.js` temiz.
+Sandbox'ta uçtan uca koşulmadı; mekanizma `_render_tree_node`'un kendisiyle
+test edildi.
+
+**Açık — sayfa düzeyindeki Messages düğümü PHP'de kaydedilirken çiziliyor.**
+Yol boyunca bulundu, dokunulmadı. JS `toHTML` sayfa düzeyindeki düğümü
+`<!--pg-messages-placeholder-->` yazar ve `get_page_content.php` onu
+widget'lardan sonra salt okunur doldurur. Ama `pg_designer_save_page()`
+`page_tree_code`'u `generate_style_code_from_tree()` ile sunucuda üretir; o da
+düğümü `_render_tree_node` `case 'messages'`'tan geçirir: yer tutucu yerine
+**kaydedenin o anki oturum mesajları** sayfaya gömülür (çoğunlukla boş;
+kaydedenin bekleyen bir mesajı varsa her ziyaretçiye görünür) ve tüketilir.
+Aynı yol düz ortak bileşende (`_expand_shared_refs()`, widget'lardan önce
+çizilir) adsız düğümü canlı çizer: başlığa konan bir Messages düğümü
+sayfadaki her widget'ın mesajını alır. Olası düzeltme: `case 'messages'`
+adsızsa yer tutucu yazsın (widget'ların hepsi artık adlı olduğu için adsız
+düğüm yalnız sayfa ve ortak bileşen düzeyinde kalır). Davranış değişir:
+bugün kayıt anının mesajını (çoğunlukla hiçbir şey) basan sayfa düzeyindeki düğümler, kalan mesajı
+salt okunur (tüketmeden) basmaya başlar — karar ürün sahibinde.
+
+---
+
 ## 2026.4.8 — Çerez izni: sol alt bildirim, kategori bazlı izin, Google Analytics ve kendi istatistik çerezlerimiz izne bağlı (8.18) (2026-10-09)
 
 Ürünün ön yüzü şimdiye kadar çerez için izin istemiyordu; sitelerde yaygın
@@ -160,6 +256,9 @@ GA'nın izinle yüklenmesi, izin yok/var/kapalıyken `Set-Cookie` başlıkları,
 panel kartının kaydı ve geçersiz adres reddi denendi; adım iki kez koşuldu
 (ikincisinde "already exists"). Görsel tasarımcı temalı bir sayfada
 görünüm denenmedi (sandbox teması CSS'siz).
+
+---
+
 ## 2026.4.8 — "Hesap Güvenliği" sistem widget'ı (`account_security`): cihazlar, Google, iki adımlı doğrulama; dört şablonda Hesabım sayfasında (2026-10-08)
 
 **Sorun.** Görsel tasarımcıyla kurulan sitelerde üyenin cihaz / Google / iki
@@ -259,7 +358,8 @@ profil sayfasındaki `pg_account_security_section()` ile aç (QR'lı) → onay �
 görünüyor.
 
 **Açık.** Hata iletilerinin yeri (yukarıda) — `my_account` widget'ının mesaj
-düğümünü adlandırmak ayrı iş. Çıkış yapmış ziyaretçi Hesabım sayfasına
+düğümünü adlandırmak ayrı iş. (2026-10-09: giderildi — yukarıda "Sistem
+widget'larının mesaj düğümü adlandırıldı".) Çıkış yapmış ziyaretçi Hesabım sayfasına
 klasör kapısı yüzünden hiç ulaşmıyor (giriş sayfasına yönleniyor); widget'ın
 çıkış yapmış görünümü yalnız başka bir sayfaya konduğunda görünür.
 `logout_all` sonrası legacy `registration_entrance.php`'ye gidiş değişmedi.

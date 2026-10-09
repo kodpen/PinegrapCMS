@@ -35,6 +35,13 @@
          Bookshop ve Online Mağaza şablonlarında Hesabım sayfasına
          eklendi (bu şablonlarla yeni açılan tasarımlarda).
 
+  [DÜZELTME] Aynı sayfada birden çok sistem widget'ı varken bir
+         formun hata ya da bilgi iletisi o formun yanında değil,
+         sayfada önce gelen başka bir widget'ın üstünde
+         çıkabiliyordu (ör. alt bilgideki bülten formunun hatası
+         ürün listesinin tepesinde). Her widget artık yalnız
+         kendi iletilerini gösteriyor.
+
   [YENİ] Üç yeni tasarım şablonu. Playground: eğlenceli bir
          kişisel site; herkesin yorum yapabildiği bir blog,
          yeni merhabaları bir duvarda gösteren ziyaretçi

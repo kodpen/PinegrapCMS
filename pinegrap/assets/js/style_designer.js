@@ -4607,10 +4607,10 @@ const StyleDesigner = (function () {
             // PHP session messages — errors + notices from the liveform system.
             // Replaces the legacy <?=$messages?> layout variable. On the canvas a styled
             // placeholder is shown; at PHP render time the real session messages appear.
-            // (`formName` prop removed — get_page_content.php's resolver always
-            // shows messages from every active liveform on the page; per-form
-            // filtering wasn't actually wired up and the input only confused
-            // designers.)
+            // (No `formName` input: inside a system widget the server stamps
+            // the node with the widget's liveform name (_pg_inject_messages_node());
+            // at page level get_page_content.php fills the placeholder with
+            // what the widgets left.)
             label: _sdT('Messages (PHP)'), icon: 'bi-chat-square-text',
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
