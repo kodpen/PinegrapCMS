@@ -46,7 +46,7 @@
 
             row.appendChild(h.icon(other.open ? 'bi-lock' : 'bi-check2-circle', other.open ? 'text-warning' : 'text-success'));
 
-            var label = h.el(other.visible ? 'a' : 'span', 'ws-grow text-truncate', other.visible ? (other.number + ' · ' + other.title) : (other.number + ' · ' + h.t('tl_hidden')));
+            var label = h.el(other.visible ? 'a' : 'span', 'ws-grow text-truncate', other.visible ? (other.number + ' · ' + other.title) : (other.number + ' · ' + h.t('tl_task_hidden')));
 
             if (other.visible) {
                 label.href = '#';

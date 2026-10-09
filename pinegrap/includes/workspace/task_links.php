@@ -457,7 +457,7 @@ function ws_task_links_js_strings()
         'tl_none'           => lang('None'),
         'tl_add'            => lang('Find a task by its number or title'),
         'tl_remove'         => lang('Take the link off'),
-        'tl_hidden'         => lang('A task you cannot see'),
+        'tl_task_hidden'    => lang('A task you cannot see'),
         'tl_waits'          => ws_js_template('Waiting for {var:1}', 1),
         'tl_start_confirm'  => ws_js_template('This task is waiting for {var:1}, which is not done yet. Start it anyway?', 1),
         'tl_start_anyway'   => lang('Start anyway'),
