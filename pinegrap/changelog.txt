@@ -310,6 +310,36 @@
          araç çubuğunun açık ya da kapalı bırakıldığı da artık
          her kullanıcı için hatırlanıyor.
 
+  YAZILIM
+  --------------------------------------------------------
+
+  [YENİ] Ayarlar › İşler › Yazılımı Onar: sitenin kanalının
+         (Kararlı ya da Beta) güncel sürüm paketini güncelleme
+         sunucusundan indirir ve her yazılım dosyasının üzerine
+         yazar; ardından yükseltme ekranı açılır. Elle
+         değiştirilmiş yazılım dosyaları kaybolur; data klasörü
+         ve veritabanı korunur. Sistem Durumu'nda dosya
+         bütünlüğü kırmızıysa satır bu ekrana götürür. Yalnız
+         yöneticiler kullanabilir. Güncelleme denetimi
+         config.php'de (SOFTWARE_UPDATE_CHECK) kapalıysa, sunucu
+         bir sürüm vermiyorsa ya da sunucunun sürümü kurulu
+         sürümden eskiyse onarım başlamaz. Yazma izni olmayan
+         klasörler önce gösterilir. İşlem etkinlik kaydına
+         yazılır.
+
+  [YENİ] Aynı ekranda "Veritabanı yükseltme adımlarını yeniden
+         koş": seçilen 2026 sürümü kurulu sürüm olarak yazılır
+         ve yükseltme ekranı ondan sonraki her sürümü yeniden
+         uygular. Zaten yapılmış adımlar atlanır; yarıda kalmış
+         bir yükseltmede ya da eski bir yedekten geri yüklenmiş
+         bir tabloda eksik kalan adımlar tamamlanır. 2026
+         öncesi sürümler listede yoktur. Veritabanı Motoru
+         ekranının araç çubuğundan da açılır.
+
+  [YENİ] İndirme Yardımcısı (download_assistant.php) artık
+         onarım yapmaz; kurulum, güncelleme ve güncelleme
+         denetimi kalır. Kurulu bir yazılım panelden onarılır.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
@@ -655,6 +685,40 @@
          sırada tabloya yazma bekler; dönüştürmeden önce yedek
          alın, sitenin sakin olduğu bir saati seçin. İşlem
          etkinlik kaydına yazılır.
+
+  [YENİ] Veritabanı Motoru ekranı genişledi. "Bulgular"
+         kartı ilgilenmeye değer ne varsa sıralar: tanımı
+         okunamayan ya da son denetimde hata çıkan tablolar,
+         içinde çok boş alan kalmış tablolar, büyük tablolar,
+         MyISAM'da kalanlar ve dikkat isteyen sunucu
+         ayarları. "Tablo sağlığı" kartı saatlik denetimin
+         sonucunu gösterir; sorunlu tablo tek düğmeyle
+         denetlenir, MyISAM tablosu onarılır. "Tüm tablolar"
+         listesi her tablonun motorunu, satır sayısını,
+         boyutunu ve boş alanını verir; tablo OPTIMIZE TABLE
+         ile sıkıştırılabilir. Yan sütunda sunucunun sürümü,
+         karakter seti, InnoDB ayarları ve çalışma süresi
+         var. Araç çubuğundan tüm tablolar tek seferde
+         denetlenir. Her işlem etkinlik kaydına yazılır.
+
+  [YENİ] Satırı InnoDB'ye sığmayacak bir tablo artık
+         dönüştürülmeye çalışılmaz, ekranda ve Sistem
+         Durumu'nda "InnoDB için fazla geniş" diye işaretlenir.
+         Satırın en geniş hâli veritabanı sunucusunun kendi
+         sayımıyla (MySQL 8.0, MySQL 5.7 ya da MariaDB)
+         hesaplanır ve sebebi yazılır: 255 bayttan kısa
+         sütunlar satırın içinde kalmak zorundadır.
+
+  [ŞEMA] Ayarlar tablosunun (config) metin sütunları VARCHAR
+         yerine TEXT olur. MySQL 8.0'da bu tablo InnoDB'ye
+         taşınırken "Row size too large (> 8126)" hatasıyla
+         MyISAM'da kalıyordu; tablo aynı zamanda MySQL'in
+         65.535 baytlık satır sınırına dayanmıştı ve bir
+         sonraki yeni ayar sütunu her sunucuda yükseltmeyi
+         durdurabilirdi. TEXT her iki sınırda da az yer tutar;
+         değerler aynen korunur. Bu sürümün önceki bir
+         yükseltmesinde ayarlar tablosu MyISAM'da kaldıysa
+         Veritabanı Motoru ekranından dönüştürün.
 
   [YENİ] Sistem Durumu'nda "Depolama Motoru" satırı: MyISAM'da
          kalan tablo varsa sayısını ve boyutlarını gösterir,

@@ -320,6 +320,19 @@ function pg_panel_software_update($request, $action)
         ));
     }
 
+    // The same three steps run for Repair Software (software_repair.php),
+    // which writes the channel's current package over the software whether
+    // or not it is newer. That replaces executable code on request, so it is
+    // an administrator's, like the screen that starts it.
+    $repair = !empty($request['repair']);
+
+    if ($repair && ((int) $user['role'] !== 0)) {
+        respond(array(
+            'status' => 'error',
+            'message' => lang('Access denied.')
+        ));
+    }
+
     // This feature can take a long time to run for a large site,
     // so increase the allowed execution time for the PHP script.
     ini_set('max_execution_time', '9999');
@@ -337,67 +350,33 @@ function pg_panel_software_update($request, $action)
             // now if try software update after an update user get error message and update stop.
             // The caller is software_update.php's script, which shows the
             // message of an error answer in its log box and offers a retry.
-            if (!function_exists('curl_init')) {
+            if ($repair) {
+                // Refused while update checks are off (the repair asks the
+                // same server), when the server names no version, and when
+                // it offers an older one: pg_update_repair_decision().
+                $checks_enabled = !(defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK === false));
+
+                if (!$checks_enabled) {
+                    $decision = pg_update_repair_decision('', VERSION, false);
+                    respond(array(
+                        'status' => 'error',
+                        'message' => $decision['message']
+                    ));
+                }
+            }
+
+            $server = pg_update_server_version();
+
+            if ($server['error'] === 'curl_missing') {
                 respond(array(
                     'status' => 'error',
                     'message' => lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.')
                 ));
             }
-            $request = array();
-            $request['hostname'] = HOSTNAME_SETTING;
-            $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
-            $request['version'] = VERSION;
-            $request['edition'] = EDITION;
-            $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
-            $request['os'] = PHP_OS;
-            $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
-            $request['php_version'] = phpversion();
-            $request['mysql_version'] = db("SELECT VERSION()");
-            $request['installer'] = INSTALLER;
-            $request['private_label'] = PRIVATE_LABEL;
-            $data = encode_json($request);
-            $API = '59593DS72233483322T669223344';
-            // Beta sites ask their own question; see pg_update_channel().
-            $REQUEST = pg_update_request_key();
 
-            $ch = curl_init();
-            // Identify this installation on outgoing requests. Sent with no
-            // User-Agent, a request looks like an anonymous client to the receiving
-            // server's firewall and gets rejected — which is how Pinegrap ended up
-            // blocking its own licence and update checks.
-            curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-            curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-            // Verify the certificate. See pg_curl_tls() for why this matters most
-            // on the update and licence channel.
-            pg_curl_tls($ch);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-            curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($data)
-            ));
-
-            // if there is a proxy address, then send cURL request through proxy
-            if (PROXY_ADDRESS != '') {
-                curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-                curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-            }
-
-            $response = curl_exec($ch);
-            $curl_errno = curl_errno($ch);
-            $curl_error = curl_error($ch);
-            curl_close($ch);
-
-            if ($response === false) {
+            if ($server['error'] === 'curl_error') {
                 log_activity(
-                    'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.'
+                    'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.'
                 );
                 //return error json output
                 $response = array(
@@ -408,9 +387,7 @@ function pg_panel_software_update($request, $action)
                 exit();
             }
 
-            $response = decode_json($response);
-
-            if (!isset($response['version'])) {
+            if ($server['error'] === 'invalid_response') {
                 log_activity('software update check received an invalid response from the software update server, so it is not known if there is a software update available');
                 //return error json output
                 $response = array(
@@ -421,6 +398,24 @@ function pg_panel_software_update($request, $action)
                 exit();
 
             }
+
+            if ($repair) {
+                $decision = pg_update_repair_decision($server['version'], VERSION, true);
+
+                if ($decision['ok']) {
+                    // software_repair.php?mode=done names the version in the
+                    // activity log.
+                    $_SESSION['software']['repair']['version'] = $server['version'];
+                }
+
+                respond(array(
+                    'status' => $decision['ok'] ? 'success' : 'error',
+                    'message' => $decision['message']
+                ));
+            }
+
+            $response = array('version' => $server['version']);
+
             // If the software update check is not disabled in the config.php file,
             // then continue to determine if there is a software update.
             if (

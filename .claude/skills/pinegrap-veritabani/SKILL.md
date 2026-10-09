@@ -25,6 +25,13 @@ description: "Pinegrap CMS'te SQL yazarken, tablo/kolon okurken veya yüksek hac
   kendin güvenceye al (önce doğrula, sonra yaz). 2026.4.8'den itibaren çekirdek
   tablolar InnoDB'dir; eşik üstü büyük tablolar operatör çevirene kadar MyISAM
   kalabilir — çok adımlı yazmada yine önce doğrula sonra yaz.
+- **InnoDB satır sınırı (8126 bayt / 16 KB sayfa):** ≤255 oktetlik VARCHAR
+  (utf8mb4'te VARCHAR(63) ve altı) satır dışına çıkamaz, tam boyuyla sayılır;
+  ≥256 oktet ve TEXT 41 bayt sayılır. Çok kolonlu tabloda kısa VARCHAR yerine
+  TEXT ya da VARCHAR(64+) aç. Tahmin: `pg_innodb_row_estimate($table)`
+  (`includes/fn/innodb.php`, sunucu kuralına göre); dönüşüm sığmayan tabloya
+  `too_wide` der. Bakım (OPTIMIZE / CHECK / REPAIR, katalog, sunucu bilgisi)
+  `includes/fn/db_maintenance.php`, ekranı `database_engine.php`.
 
 ## Tablo adları tekildir
 

@@ -79,7 +79,10 @@ alt adımlar `upgrade_2026_4_8_<konu>()` gibi (2026.4.4'te
   korur; okumadan yazmak o kolondaki satırları `''` yapar.
 - `config` tablosuna geniş alan **TEXT** olarak açılır, `VARCHAR(500)` değil —
   satır utf8mb4'te 65535 bayt sınırına dayalı, MySQL 1118 verir.
-  (TINYINT/INT/ENUM sorun değil.)
+  (TINYINT/INT/ENUM sorun değil.) 2026.4.8 (8.17)'dan beri `config`'te hiç
+  VARCHAR yok: kısa VARCHAR da InnoDB'nin 8126 baytlık satırında tam boyuyla
+  sayılır (≤255 oktet satır dışına çıkamaz) ve MySQL 8.0 dönüşümü reddeder.
+  `config`'e VARCHAR ekleyen migration `tests/innodb_test.php`'yi kırmızı yapar.
 - Host'un kaldırabileceği PHP fonksiyonları (`set_time_limit`,
   `ignore_user_abort`, `disk_free_space`, `getmypid`, `php_uname`, `error_log`,
   `mail`, `fsockopen`, `exec`/`proc_*`/`posix_*`) `function_exists()` ile

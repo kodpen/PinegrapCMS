@@ -44,6 +44,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_innodb_people();           // 8.12
 
+	upgrade_2026_4_8_config_text_columns();     // 8.17
+
 	upgrade_2026_4_8_innodb_site();             // 8.13
 
 	upgrade_2026_4_8_innodb_search();           // 8.14
@@ -332,6 +334,8 @@ function upgrade_2026_4_8_mfa() {
 //  - leaves a table over the limits of upgrade_2026_4_8_innodb_limits() on
 //    MyISAM: no upgrade request copies a table of that size. The operator
 //    converts it from the Database Engine screen, when the site is quiet;
+//  - leaves a table whose widest possible row is over InnoDB's row limit on
+//    MyISAM without starting the copy ('too_wide', pg_innodb_row_estimate());
 //  - does not start while an ALTER on the same table is still running from
 //    an earlier request, and leaves alone a table whose earlier attempt never
 //    finished;
@@ -504,6 +508,135 @@ function upgrade_2026_4_8_innodb_group($group, $label) {
 		$warned = true;
 
 		install_note(lang('Large tables are rewritten whole while they are converted; writes to a table wait until its conversion ends.'));
+
+	}
+
+}
+
+// The text columns of `config` become TEXT (2026.4.8, 8.17), before the
+// site group moves `config` to InnoDB (8.13).
+//
+// `config` is one row of some 410 columns and sits against two row limits.
+//
+//  - The server's own: 65,535 bytes, whatever the engine, counting every
+//    VARCHAR at its longest (VARCHAR(255) is 1022 bytes in utf8mb4) and a
+//    TEXT column as 10. The stock table came to 64,069 bytes; one more
+//    VARCHAR(255) would refuse the next install_add_column() on every server.
+//  - InnoDB's: 8126 bytes on a 16 KB page. A column of 256 bytes or more, and
+//    every TEXT column, can leave the page and counts 41 bytes (21 on
+//    MariaDB 10.4+); a VARCHAR of 255 bytes or less - VARCHAR(63) and below
+//    in utf8mb4 - never leaves it and counts in full. MySQL 8.0 counted the
+//    stock table at 8468 bytes and refused to convert it with error 1118;
+//    MySQL 5.7 (6988) and MariaDB (5868) took it.
+//
+// Widening the short VARCHAR columns to 256 bytes would satisfy InnoDB but
+// adds some 5 KB under the first limit, which has 1.4 KB left: the ALTER is
+// refused there instead. TEXT satisfies both: 41 bytes in InnoDB's count
+// like a long VARCHAR (MySQL 8.0: 7064 bytes), 10 in the server's (2126
+// bytes). Every VARCHAR of the table changes, the long ones too: they are
+// what fills the server's row, and no VARCHAR is left for the next
+// migration to copy.
+// TEXT holds all a VARCHAR held; the table has no index, the code asks only
+// whether a column exists, never its type.
+//
+// No DEFAULT is written. MySQL accepts none on TEXT before 8.0.13 and only
+// the expression form DEFAULT ('x') after it. The row is created once, by
+// the installer's dump, and only ever updated, so a default would never be
+// used.
+//
+// Asking first: only VARCHAR columns are picked, so a second run finds none
+// and changes nothing.
+function upgrade_2026_4_8_config_text_columns() {
+
+	if (!install_table_exists('config')) {
+
+		install_skipped(lang(array('string' => 'table {var:1} does not exist, skipped', 'vars' => 'config')));
+
+		return;
+
+	}
+
+	$columns = db_items(
+		"SELECT COLUMN_NAME AS column_name
+		FROM information_schema.COLUMNS
+		WHERE
+			(TABLE_SCHEMA = DATABASE())
+			AND (TABLE_NAME = 'config')
+			AND (DATA_TYPE = 'varchar')
+		ORDER BY ORDINAL_POSITION");
+
+	if (count($columns) == 0) {
+
+		install_skipped(lang('config: every text column is already TEXT'));
+
+		return;
+
+	}
+
+	// The rest of each definition as the table has it now.
+	$definitions = array();
+
+	foreach (db_items("SHOW FULL COLUMNS FROM `config`") as $row) {
+
+		$definitions[(string) $row['Field']] = $row;
+
+	}
+
+	$changed = 0;
+
+	foreach ($columns as $column) {
+
+		$name = (string) $column['column_name'];
+
+		if (!isset($definitions[$name])) {
+
+			continue;
+
+		}
+
+		$row = $definitions[$name];
+
+		$definition = 'TEXT';
+
+		// utf8mb4_unicode_ci: the character set is the part before the first
+		// underscore. Both names come from the server and are checked all
+		// the same before they go into the statement.
+		$collation = isset($row['Collation']) ? (string) $row['Collation'] : '';
+
+		if (preg_match('/^([a-z0-9]+)_[a-z0-9_]+$/', $collation, $match)) {
+
+			$definition .= ' CHARACTER SET ' . $match[1] . ' COLLATE ' . $collation;
+
+		}
+
+		$definition .= (strtoupper((string) $row['Null']) === 'YES') ? ' NULL' : ' NOT NULL';
+
+		if (isset($row['Comment']) && ((string) $row['Comment'] !== '')) {
+
+			$definition .= " COMMENT '" . e((string) $row['Comment']) . "'";
+
+		}
+
+		install_modify_column('config', $name, $definition);
+
+		$changed++;
+
+	}
+
+	install_note(lang(array('string' => '{var:1} config columns changed from VARCHAR to TEXT', 'vars' => $changed)));
+
+	if (function_exists('pg_innodb_row_estimate')) {
+
+		$estimate = pg_innodb_row_estimate('config');
+
+		if (is_array($estimate)) {
+
+			install_note(lang(array(
+				'string' => 'config: the widest possible row is now {var:1} of {var:2} bytes on InnoDB ({var:3} count)',
+				'vars' => array($estimate['bytes'], $estimate['limit'], $estimate['rule'])
+			)));
+
+		}
 
 	}
 

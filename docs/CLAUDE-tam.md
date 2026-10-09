@@ -1781,6 +1781,11 @@ başına tek özet, yalnız eşiği **ilk kez** geçen belgeler; duyurulan belge
   bayt kaldı. `erp_overdue_notify_recipients VARCHAR(500)` yükseltmede 1118
   (Row size too large) verdi, `TEXT DEFAULT NULL` yapıldı (`waf_exclusions`
   deseni). Kısa sabit alanlar (TINYINT/INT/ENUM) sorun değil.
+  **2026.4.8 (8.17)'dan itibaren `config`'te hiç VARCHAR yok**; mevcut 124
+  sütun TEXT'e çevrildi (iki sınır: sunucunun 65.535'i ve InnoDB'nin 8126'sı —
+  ≤255 oktet VARCHAR satır dışına çıkamaz, MySQL 8.0 stok tabloyu 8468 ile
+  reddediyordu). `tests/innodb_test.php` config'e VARCHAR ekleyen migration'ı
+  kırmızı yapar.
 - **2. tur (2026-09-20, migration 4.56):** adaylar `new / second / known /
   snoozed`. İkinci ve son duyuru gecikme ≥ eşik + 30 günde
   (`erp_overdue_second_notice_days()` sabit 30, ayar yok), damgası
@@ -2482,6 +2487,22 @@ yazmak yasaktır.
 çıkmıyor" → dev veritabanı sürümü zaten geçmiş; yukarıdaki gibi geri çek.
 Yeni numara **açma**.
 
+**Panelden aynı iş (2026.4.8):** Ayarlar → İşler → **Yazılımı Onar**
+(`software_repair.php`, yalnız yönetici) ekranındaki "Veritabanı yükseltme
+adımlarını yeniden koş" kartı seçilen sürümü `config.version`'a yazar ve
+`install/index.php?automated_upgrade=true`'ya gider. Liste
+`pg_upgrade_rerun_choices()` (`includes/fn/update.php`): `versions.php`
+**metin olarak** okunur (`pg_upgrade_versions_from_source()`; dosya
+`INSTALL_OR_UPDATE` kapılı, include edilemez), yalnız `'2026'` ile başlayan ilk
+sürümden `VERSION`'ın öncesine kadar — 2026 öncesi `legacy.php` adımları ham
+`ALTER … ADD` yazar, tekrar koşamaz. Aynı ekranın "Yazılımı Onar" kartı
+kanalın güncel paketini indirip tüm dosyaların üzerine yazar (`api.php`
+`software_update` eylemi, `repair: true`, rol 0); sunucu sürüm vermiyorsa ya
+da verdiği sürüm `VERSION`'dan düşükse ve `SOFTWARE_UPDATE_CHECK === false`
+ise çalışmaz (`pg_update_repair_decision()`, saf, testli).
+`download_assistant.php`'den repair kaldırıldı (install / update / check
+kaldı).
+
 Adlandırma: sürüm girişi `upgrade_to_2026_4_5()` (sistemin kurduğu tek isim
 budur), alt adımlar `upgrade_2026_4_5_<konu>()` gibi (2026.4.4'te
 `upgrade_2026_4_4_recycle_bin()`) `to_` almaz —
@@ -2769,6 +2790,7 @@ eklendi.
 | `2026.4.8` (8.12) | `_innodb_people`: `people` grubunun 27 tablosu (`contacts`, `log`, `email_recipients`, `form_data`, `comments`, `notifications`…), 8.10 ile aynı yol; büyük `log` / `email_recipients` ertelenmeye en aday tablolar. Yeniden koşturulabilir; dev'de iki kez koşuldu |
 | `2026.4.8` (8.13) | `_innodb_site`: `site` grubunun 71 tablosu (`config`, `page`, `style`, bölgeler, klasör, menü, takvim, bölge/vergi…). Yetenek kapısı `pg_innodb_capability()`: InnoDB var ve `@@innodb_default_row_format = dynamic` (yoksa tek not, tablolar MyISAM kalır) — `config` ~400 kolon / 33 TEXT, COMPACT'ta 1118. Yeniden koşturulabilir; dev'de iki kez koşuldu |
 | `2026.4.8` (8.14) | `_innodb_search`: `search_items` (4 FULLTEXT, `url(250)` 1000 bayt indeks) en son, tek başına. InnoDB FT: min token 3, kısa stopword listesi, %50 eşiği yok → daha çok sonuç; 12 `MATCH … AGAINST` sorgusu değişmedi (altın kayıtta eksilen sonuç yok). Yeniden koşturulabilir; dev'de iki kez koşuldu |
+| `2026.4.8` (8.17) | `_config_text_columns`: `config`'in **her VARCHAR sütunu TEXT** olur (8.12'den sonra, 8.13'ten önce çağrılır). İki satır sınırı: sunucunun 65.535 baytı (VARCHAR(255) utf8mb4 = 1022, TEXT = 10; stok tablo 64.069 → 1,4 KB pay kalmıştı) ve InnoDB'nin 8126'sı (≤255 oktet VARCHAR satır içinde tam boyuyla sayılır, ≥256 ve TEXT 41 — MySQL 8.0 stok `config`'i 8468 ile reddetti; 5.7 6988, MariaDB 10.4+ 5868 kabul). Kolonlar `information_schema.COLUMNS`'tan okunur, tanım `SHOW FULL COLUMNS` satırından (charset/collation, NULL, COMMENT korunur; **DEFAULT yazılmaz** — MySQL TEXT'e DEFAULT kabul etmez, satır yalnız UPDATE edilir). İkinci koşuda VARCHAR kalmaz → skipped. Koruma: `tests/innodb_test.php` config'e yeni VARCHAR eklenirse kırmızı. `pg_innodb_row_estimate()` / `pg_innodb_row_estimate_from_columns()` (`includes/fn/innodb.php`) sunucu kuralına göre (`pg_innodb_server_rule()`) tahmin; `pg_innodb_convert_table()` sığmayan tabloya `too_wide` der, ALTER'ı başlatmaz. Yeniden koşturulabilir; sandbox'ta iki kez koşuldu |
 
 ---
 
@@ -4211,7 +4233,8 @@ iki taraf ayrışırsa açma adımı olmayan dosyayı arar.
 
 **`download_assistant.php` kararlıda kalır, kanalı hiç okumaz.** Yazılımı
 bozulmuş bir siteyi elle kurtarma yolu; oranın cevabı herkesin çalıştırdığı
-yayındır.
+yayındır. Onarım (dosyaların üzerine yazma) 2026.4.8'den itibaren orada
+**yoktur**; panelde `software_repair.php`'dedir (yukarıda "Panelden aynı iş").
 
 Kanal Ayarlar → Genel'den değişir (güncelleyici ekranı güncelleme yokken
 ayarlara geri attığı için oradan değiştirilemez). Değişince

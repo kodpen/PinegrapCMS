@@ -391,8 +391,15 @@ function pg_settings_tool_groups($user)
     // icon and by the confirmation, not by a tint.
     $tools = array(
         array('label' => lang('Check for Updates'),   'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php'),
-        array('label' => lang('System Informations'), 'icon' => 'bi-info-circle',  'url' => 'si.php', 'target' => '_blank'),
     );
+
+    // Writing the release package over the software is an administrator's
+    // job, like the screen's own door.
+    if ($role === 0) {
+        $tools[] = array('label' => lang('Repair Software'), 'icon' => 'bi-bandaid', 'url' => 'software_repair.php');
+    }
+
+    $tools[] = array('label' => lang('System Informations'), 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank');
 
     // Only while monitoring is on: with it off the screen is empty, and a
     // control that leads nowhere is worse than no control.
