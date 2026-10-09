@@ -94,6 +94,7 @@ function ws_webhook_events()
         'workspace.message.created'     => 'A message was written in a public workspace channel. Private channels are never announced',
         'workspace.task.note_added'     => 'A note was added to a workspace task (text is null for a task of a private channel)',
         'workspace.poll.closed'         => 'A poll in a public workspace channel closed, by hand or when its time ran out: the counts, and the winner or a tie',
+        'workspace.task.time_logged'    => 'Time spent on a workspace task was written: a stopped timer or minutes written by hand (minutes, worked_on, billable, user_id)',
     );
 }
 
@@ -123,6 +124,7 @@ function ws_openapi_objects()
         'WorkspaceChange'         => 'ws_api_change_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
+        'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
     );
 }
 
@@ -145,6 +147,7 @@ function ws_api_routes()
         array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
         array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, form, calendar_event, file or page.'),
         array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Hand the work over even though somebody on it is away on those days. Refused unless the owner may override the board.'),
+        array('name' => 'blocked_by', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'Ids of the tasks this one cannot start before; replaces the list (links to tasks the owner cannot see are kept). A list that would make tasks wait for each other is refused with 422. Not enforced: a blocked task can still be started.'),
     );
 
     $routes = array(
@@ -490,6 +493,56 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.tasks.time.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/tasks/{id}/time',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_task_time_list',
+            'returns'     => array('list' => 'WorkspaceTaskTime'),
+            'summary'     => 'The time spent on a task',
+            'description' => 'Every entry of time written on the task, newest day first: a stopped timer or minutes written by hand. A timer still running is listed with running true and minutes 0. invoice_id is the ERP invoice draft the entry went on.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.tasks.time.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/time',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_task_time_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTaskTime',
+            'summary'     => 'Write time spent on a task',
+            'description' => 'Written as the owner of the application\'s time: the owner must be on the task, have created it, or be staff. Announced as workspace.task.time_logged.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'minutes', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000, 'required' => true),
+                array('name' => 'worked_on', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, today or earlier. Today when left out.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+                array('name' => 'billable', 'in' => 'body', 'type' => 'bool', 'default' => true, 'description' => 'Whether the time may go on an invoice of the channel\'s customer.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.tasks.time.delete',
+            'method'       => 'DELETE',
+            'also_accepts' => array('POST'),
+            'path'         => '/workspace/tasks/{id}/time/{entry_id}',
+            'scope'        => 'tasks:write',
+            'handler'      => 'ws_api_task_time_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceTaskTime',
+            'summary'      => 'Delete an entry of time',
+            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 

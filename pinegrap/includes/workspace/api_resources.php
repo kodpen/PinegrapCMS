@@ -671,6 +671,11 @@ function ws_api_task_present($viewer, $task, $warnings = array())
         'checklist_done'   => (int) ($task['items_done'] ?? 0),
         'checklist_total'  => (int) ($task['items_total'] ?? 0),
         'notes_count'      => (int) ($task['notes_count'] ?? 0),
+        // The tasks it cannot start before, and the ones that wait for it
+        // (task_links.php); the minutes spent on it (task_time.php).
+        'blocked_by'       => ws_task_link_ids($task['id']),
+        'blocks'           => ws_task_link_waiting_ids($task['id']),
+        'time_minutes'     => (int) (ws_task_time_totals(array($task['id']))[(int) $task['id']] ?? 0),
         'created_at'       => api_time($task['created_at']),
         'updated_at'       => api_time($task['updated_at']),
         'warnings'         => array_values($warnings),
@@ -700,6 +705,9 @@ function ws_api_task_schema()
         'checklist_done'   => 'integer',
         'checklist_total'  => 'integer',
         'notes_count'      => 'integer',
+        'blocked_by'       => array('integer'),
+        'blocks'           => array('integer'),
+        'time_minutes'     => 'integer',
         'created_at'       => 'string',
         'updated_at'       => 'string',
         'warnings'         => array('string'),
@@ -861,10 +869,21 @@ function ws_api_tasks_create($params)
 
     $warnings = ws_api_task_check($viewer, $after, $data['assignees'], !empty($params['force']));
 
+    // The tasks it waits for are checked before anything is written.
+    $blocked_by = array_key_exists('blocked_by', $params) ? (array) $params['blocked_by'] : null;
+
+    if (($blocked_by !== null) && (($refused = ws_task_links_check($viewer, 0, $blocked_by)) !== '')) {
+        api_fail_validation($refused, 'blocked_by');
+    }
+
     $result = ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    if ($blocked_by !== null) {
+        ws_task_links_set($viewer, ws_task($result['task_id']), $blocked_by);
     }
 
     if (!empty($data['channel_id'])) {
@@ -893,6 +912,12 @@ function ws_api_tasks_update($params)
     $people = array_key_exists('assignees', $data) ? $data['assignees'] : ws_task_assignee_ids($task['id']);
     $warnings = ws_api_task_check($viewer, $after, $people, !empty($params['force']));
 
+    $blocked_by = array_key_exists('blocked_by', $params) ? (array) $params['blocked_by'] : null;
+
+    if (($blocked_by !== null) && (($refused = ws_task_links_check($viewer, $task['id'], $blocked_by)) !== '')) {
+        api_fail_validation($refused, 'blocked_by');
+    }
+
     $result = ws_task_update($viewer, $task, $data);
 
     if (!$result['ok']) {
@@ -901,6 +926,14 @@ function ws_api_tasks_update($params)
         }
 
         api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    if ($blocked_by !== null) {
+        $linked = ws_task_links_set($viewer, ws_task($task['id']), $blocked_by);
+
+        if (!$linked['ok']) {
+            api_fail_validation($linked['error'], 'blocked_by');
+        }
     }
 
     api_ok(ws_api_task_present($viewer, ws_task($task['id']), $warnings));
@@ -2052,4 +2085,140 @@ function ws_api_notes_get($params)
     $note = ws_api_note_or_404($viewer, $params['id']);
 
     api_ok(ws_api_note_present($viewer, ws_note_present($viewer, $note)));
+}
+
+/* ---------------------------------------------------------------------------
+   Time spent on tasks (includes/workspace/task_time.php)
+   --------------------------------------------------------------------------- */
+
+function ws_api_task_time_present($row)
+{
+    $running = ((int) $row['minutes'] === 0) && ((int) $row['started_at'] > 0);
+
+    return array(
+        'id'         => (int) $row['id'],
+        'task_id'    => (int) $row['task_id'],
+        'user_id'    => (int) $row['user_id'],
+        'minutes'    => (int) $row['minutes'],
+        'worked_on'  => (string) $row['worked_on'],
+        'note'       => (string) $row['note'],
+        'billable'   => ((int) $row['billable'] === 1),
+        'invoice_id' => ((int) $row['invoice_id'] > 0) ? (int) $row['invoice_id'] : null,
+        'running'    => $running,
+        'started_at' => ((int) $row['started_at'] > 0) ? api_time($row['started_at']) : null,
+        'created_at' => api_time($row['created_at']),
+    );
+}
+
+// What ws_api_task_time_present() returns.
+function ws_api_task_time_schema()
+{
+    return array(
+        'id'         => 'integer',
+        'task_id'    => 'integer',
+        'user_id'    => 'integer',
+        'minutes'    => 'integer',
+        'worked_on'  => 'string',
+        'note'       => 'string',
+        'billable'   => 'boolean',
+        'invoice_id' => 'integer?',
+        'running'    => 'boolean',
+        'started_at' => 'string?',
+        'created_at' => 'string',
+    );
+}
+
+/**
+ * The task of a time request, with the schema there.
+ *
+ * @return array viewer, task
+ */
+function ws_api_task_time_task($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_task_time_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    return array($viewer, ws_api_task_or_404($viewer, $params['id']));
+}
+
+function ws_api_task_time_list($params)
+{
+    list(, $task) = ws_api_task_time_task($params);
+    $out = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_task_time WHERE task_id = '" . (int) $task['id'] . "' ORDER BY worked_on DESC, id DESC LIMIT 500") as $row) {
+        $out[] = ws_api_task_time_present($row);
+    }
+
+    api_ok_list($out, 500);
+}
+
+function ws_api_task_time_create($params)
+{
+    list($viewer, $task) = ws_api_task_time_task($params);
+
+    if (!ws_task_time_may_log($viewer, $task, ws_task_assignee_ids($task['id']))) {
+        api_fail(403, 'forbidden', lang('Only the people on a task, the one who created it and staff can write time on it.'));
+    }
+
+    $data = array(
+        'minutes'   => (int) $params['minutes'],
+        'worked_on' => (string) ($params['worked_on'] ?? ''),
+        'note'      => (string) ($params['note'] ?? ''),
+        'billable'  => array_key_exists('billable', $params) ? !empty($params['billable']) : true,
+    );
+
+    // The checks ws_task_time_add() makes, before the rehearsal stops.
+    $day = ws_date_or_null($data['worked_on']);
+
+    if ($day === false) {
+        api_fail_validation(lang('Write the date as day.month.year.'), 'worked_on');
+    }
+
+    if (($day !== null) && ($day > date('Y-m-d'))) {
+        api_fail_validation(lang('Time cannot be written for a day that has not come yet.'), 'worked_on');
+    }
+
+    api_dry_run_stop('created', 'workspace_task_time', array('task_id' => (int) $task['id'], 'minutes' => $data['minutes']));
+
+    $result = ws_task_time_add($viewer, $task, $data);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    ws_api_log(lang(array('string' => 'time was written on workspace task ({var:1})', 'vars' => ws_task_number($task['id']))));
+
+    api_ok(ws_api_task_time_present(ws_task_time_entry($result['id'])), 201);
+}
+
+function ws_api_task_time_delete($params)
+{
+    list($viewer, $task) = ws_api_task_time_task($params);
+    $entry = ws_task_time_entry((int) $params['entry_id']);
+
+    if (!$entry || ((int) $entry['task_id'] !== (int) $task['id'])) {
+        api_fail_not_found(lang('Time entry'));
+    }
+
+    if (((int) $entry['user_id'] !== (int) $viewer['id']) && !ws_task_time_is_manager($viewer)) {
+        api_fail(403, 'forbidden', lang('Only the one who wrote the time, or staff, can delete it.'));
+    }
+
+    if ((int) $entry['invoice_id'] > 0) {
+        api_fail_validation(lang('This time is on an invoice draft. Undo the tie on the channel\'s Summary tab first.'), 'entry_id');
+    }
+
+    api_dry_run_stop('deleted', 'workspace_task_time', array('id' => (int) $entry['id']));
+
+    $result = ws_task_time_delete($viewer, $entry);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    api_ok(ws_api_task_time_present($entry));
 }
