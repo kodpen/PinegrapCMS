@@ -13,7 +13,8 @@
  *
  * The actions are ones the workspace already does safely, and a few that
  * look outwards: write in a channel, send an e-mail, let people know in
- * their inbox, open a task, change a record the way a change proposed by
+ * their inbox, open a task, ask people of a channel to approve something
+ * (approvals.php), change a record the way a change proposed by
  * Claude is applied (includes/workspace/changes.php), post a summary of the
  * counts, call a webhook, check that a web address answers or how long its
  * certificate has left, and start another scheduled action.
@@ -22,6 +23,12 @@
  * channel (the "join" rule): the join puts it in the queue with the newcomer
  * named, which is how a channel greets the people who come in and asks them
  * to say who they are.
+ *
+ * Or it waits for something to happen on the site (the "event" rule): a new
+ * order, an order that changed status, a submitted form, a product low in
+ * stock. The event is kept where it happened and the run picks it up
+ * (includes/workspace/watch.php), putting the action in the queue with the
+ * event carried, so its texts can name the record ({{record}}).
  *
  * A scheduled message (kind "message", scheduled_messages.php) is the plain
  * bridge from the writing box: one message written now and posted later, by
@@ -43,7 +50,9 @@
  * something due), by the general job on every tick (job.php) and by the
  * workspace's scheduled job, so an action is late by at most the time until
  * somebody opens the workspace or the general job next runs - a minute on a
- * site that schedules it every minute.
+ * site that schedules it every minute. The same run lets approval requests
+ * expire and reminds about them and about read receipts (approvals.php,
+ * acks.php); ws_scheduled_due() reports those as due too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -376,7 +385,7 @@ function ws_scheduled_record_types()
  * hourly rollup, never from the raw log. "Since the last run" counts from the
  * action's previous run, or the last day for one that has not run.
  *
- * kind: count | money. scope: '' | channel (a channel's tasks only) |
+ * kind: count | money | minutes. scope: '' | channel (a channel's tasks only) |
  * threshold (a number the count is measured against). right: what the
  * creator must be able to see.
  *
@@ -400,6 +409,11 @@ function ws_scheduled_metrics()
         'visitors_yesterday' => array('label' => lang('Visitors yesterday'), 'kind' => 'count', 'scope' => '', 'right' => '', 'group' => 'web'),
         'views_yesterday'   => array('label' => lang('Page views yesterday'), 'kind' => 'count', 'scope' => '', 'right' => '', 'group' => 'web'),
     );
+
+    // Minutes written on tasks this week, from Monday (task_time.php).
+    if (function_exists('ws_task_time_ready') && ws_task_time_ready()) {
+        $metrics['time_logged_week'] = array('label' => lang('Time spent on tasks this week'), 'kind' => 'minutes', 'scope' => 'channel', 'right' => '', 'group' => 'work');
+    }
 
     if (defined('ECOMMERCE') && (ECOMMERCE === true)) {
         $metrics += array(
@@ -466,6 +480,10 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
             $value = (int) db_value("SELECT COUNT(*) FROM ws_tasks WHERE status = 'done' AND completed_at >= '" . $midnight . "'" . $channel);
             break;
 
+        case 'time_logged_week':
+            $value = ws_task_time_week_minutes(($channel !== '') ? (int) $param : 0);
+            break;
+
         case 'forms_new':
             $value = (int) db_value("SELECT COUNT(*) FROM forms WHERE complete = '1' AND submitted_timestamp > '" . $since . "'");
             break;
@@ -526,6 +544,11 @@ function ws_scheduled_metric_show($key, $value)
         return ws_money_out((int) $value);
     }
 
+    // Minutes, the way the planning screens say them ("9 h 30 min").
+    if ($metric && ($metric['kind'] === 'minutes')) {
+        return ws_minutes_label((int) $value);
+    }
+
     return function_exists('pg_format_number') ? (string) pg_format_number((int) $value, 0) : number_format((int) $value);
 }
 
@@ -580,6 +603,14 @@ function ws_scheduled_placeholders()
         '{{newcomer}}'      => lang('the person who joined the channel, tagged'),
         '{{newcomer_name}}' => lang('the name of the person who joined'),
         '{{channel}}'       => lang('the channel they joined'),
+        '{{event}}'         => lang('what happened, for an action started by an event'),
+        '{{record}}'        => lang('the record it happened to, tagged'),
+        '{{record_title}}'  => lang('the name of the record'),
+        '{{record_link}}'   => lang('the address of the record in the panel'),
+        '{{record_status}}' => lang('the status of the order'),
+        '{{customer}}'      => lang('the customer of the order, the contact or the form'),
+        '{{amount}}'        => lang('the amount of the order'),
+        '{{form_fields}}'   => lang('the fields of the submitted form, a line each. Members who may not see forms read the values too.'),
         '{{count:tasks_overdue}}' => lang('a count, by its key'),
     );
 }
@@ -615,6 +646,15 @@ function ws_scheduled_fill($text, $context)
         '{{newcomer_name}}' => ((int) ($context['newcomer'] ?? 0) > 0) ? ws_person_name((int) $context['newcomer']) : '',
         '{{channel}}'       => ((int) ($context['join_channel_id'] ?? 0) > 0) ? '#' . (string) db_value("SELECT name FROM ws_channels WHERE id = '" . (int) $context['join_channel_id'] . "'") : '',
     );
+
+    // An action started by an event: the record and what is known of it,
+    // read only when the text asks for one of them (watch.php). Run by hand
+    // or by another action, there is no event and they are left empty.
+    if (preg_match_all('/\{\{(event|record|record_title|record_link|record_status|customer|amount|form_fields)\}\}/', $text, $asked)) {
+        $values += (!empty($context['event']) && function_exists('ws_events_fill_values'))
+            ? ws_events_fill_values(is_array($context['viewer'] ?? null) ? $context['viewer'] : array(), (string) $context['event'], (array) ($context['event_payload'] ?? array()))
+            : array_fill_keys($asked[0], '');
+    }
 
     $text = strtr($text, $values);
 
@@ -707,7 +747,10 @@ function ws_scheduled_js_config($viewer)
     return array(
         'ready'        => true,
         'chains'       => ws_scheduled_chains_ready(),
+        'approvals'    => function_exists('ws_approvals_ready') && ws_approvals_ready(),
         'join'         => ws_scheduled_join_ready(),
+        // What an event rule offers (watch.php): null where it cannot be had.
+        'events'       => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
         'digest_only'  => ws_scheduled_digest_filters(),
         'records'      => $records,
         'changes'      => $changes,
@@ -765,7 +808,7 @@ function ws_scheduled_input($viewer, $data, $existing = null)
             return $fail($checked['error'], 'rules');
         }
 
-        if (in_array($checked['rule']['type'], array('at', 'trigger', 'join'), true)) {
+        if (in_array($checked['rule']['type'], array('at', 'trigger', 'join', 'event'), true)) {
             if ($when !== null) {
                 return $fail(lang('A scheduled action has one time; add the other rules as conditions.'), 'rules');
             }
@@ -780,7 +823,8 @@ function ws_scheduled_input($viewer, $data, $existing = null)
         return $fail(lang('Say when it should run.'), 'rules');
     }
 
-    if ((($when['type'] === 'trigger') && !ws_scheduled_chains_ready()) || (($when['type'] === 'join') && !ws_scheduled_join_ready())) {
+    if ((($when['type'] === 'trigger') && !ws_scheduled_chains_ready()) || (($when['type'] === 'join') && !ws_scheduled_join_ready())
+        || (($when['type'] === 'event') && (!ws_scheduled_join_ready() || !function_exists('ws_events_ready') || !ws_events_ready()))) {
         return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), 'rules');
     }
 
@@ -973,6 +1017,41 @@ function ws_scheduled_rule_input($viewer, $rule)
             }
 
             return array('ok' => true, 'error' => '', 'rule' => array('type' => 'join', 'channel_id' => $join_channel));
+
+        // No time either: something happening on the site starts it - an
+        // event the creator may see the records of, narrowed to one form or
+        // to one status an order moves to.
+        case 'event':
+            $event = (string) ($rule['event'] ?? '');
+            $info = function_exists('ws_events_catalog') ? (ws_events_catalog()[$event] ?? null) : null;
+
+            if (($info === null) || empty($viewer[$info['right']])) {
+                return $fail(lang('Choose what happens.'));
+            }
+
+            $out = array('type' => 'event', 'event' => $event);
+
+            if ($info['filter'] === 'page') {
+                $page_id = max(0, (int) ($rule['page_id'] ?? 0));
+
+                if (($page_id > 0) && !db_value("SELECT page_id FROM custom_form_pages WHERE page_id = '" . $page_id . "'")) {
+                    return $fail(lang('That form could not be found.'));
+                }
+
+                $out['page_id'] = $page_id;
+            }
+
+            if ($info['filter'] === 'status') {
+                $status = (string) ($rule['status'] ?? '');
+
+                if (($status !== '') && !isset(ws_events_order_statuses()[$status])) {
+                    return $fail(lang('Choose one of the values the field takes.'));
+                }
+
+                $out['status'] = $status;
+            }
+
+            return array('ok' => true, 'error' => '', 'rule' => $out);
 
         case 'workday':
             return array('ok' => true, 'error' => '', 'rule' => array('type' => 'workday'));
@@ -1459,6 +1538,36 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
 
             return array('ok' => true, 'error' => '', 'action' => array('type' => 'trigger', 'target_id' => $target_id, 'delay' => $delay));
 
+        // An approval request in a channel (approvals.php): its title, its
+        // text, the people asked and the rule. The people are checked
+        // against the channel now and again when it runs.
+        case 'approval':
+            $channel = ws_channel((int) ($action['channel_id'] ?? 0));
+
+            if (!$channel || !function_exists('ws_approval_input')) {
+                return $fail(lang('Choose a channel you can write in.'));
+            }
+
+            $checked = ws_approval_input($viewer, $channel, array(
+                'title'     => (string) ($action['title'] ?? ''),
+                'text'      => (string) ($action['text'] ?? ''),
+                'approvers' => (array) ($action['approvers'] ?? array()),
+                'rule'      => (string) ($action['rule'] ?? 'any'),
+            ));
+
+            if (!$checked['ok']) {
+                return $fail($checked['error']);
+            }
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'       => 'approval',
+                'channel_id' => (int) $channel['id'],
+                'title'      => $checked['title'],
+                'text'       => mb_substr($checked['text'], 0, WS_MESSAGE_MAX),
+                'approvers'  => $checked['approvers'],
+                'rule'       => $checked['rule'],
+            ));
+
         case 'change':
             $types = ws_change_types();
             $record_type = (string) ($action['record'] ?? '');
@@ -1720,7 +1829,8 @@ function ws_scheduled_trigger_only($row)
 
 /**
  * The rule that starts an action with no time of its own: trigger (another
- * action) or join (somebody joining a channel).
+ * action), join (somebody joining a channel) or event (something happening
+ * on the site).
  *
  * @param array $row decoded
  * @return array|null
@@ -1728,7 +1838,7 @@ function ws_scheduled_trigger_only($row)
 function ws_scheduled_event_rule($row)
 {
     foreach ((array) $row['rules'] as $rule) {
-        if (in_array(($rule['type'] ?? ''), array('trigger', 'join'), true)) {
+        if (in_array(($rule['type'] ?? ''), array('trigger', 'join', 'event'), true)) {
             return $rule;
         }
     }
@@ -1867,6 +1977,25 @@ function ws_scheduled_rule_text($viewer, $rule)
                 ? lang(array('string' => 'When somebody joins {var:1}', 'vars' => $join_channel ? '#' . $join_channel['name'] : lang('a channel that is gone')))
                 : lang('When somebody joins a public channel');
 
+        case 'event':
+            $info = function_exists('ws_events_catalog') ? (ws_events_catalog()[$rule['event'] ?? ''] ?? null) : null;
+
+            if ($info === null) {
+                return lang('When something happens that this site no longer tells');
+            }
+
+            if ((int) ($rule['page_id'] ?? 0) > 0) {
+                $forms = ws_events_forms();
+
+                return lang(array('string' => 'When a form is submitted: {var:1}', 'vars' => $forms[(int) $rule['page_id']] ?? lang('a form that is gone')));
+            }
+
+            if ((string) ($rule['status'] ?? '') !== '') {
+                return lang(array('string' => 'When the status of an order becomes “{var:1}”', 'vars' => ws_events_order_statuses()[$rule['status']] ?? $rule['status']));
+            }
+
+            return (string) $info['when'];
+
         case 'workday':
             return lang('Only on a working day');
 
@@ -1879,7 +2008,7 @@ function ws_scheduled_rule_text($viewer, $rule)
         case 'metric':
             $operators = ws_scheduled_operators();
             $metric = ws_scheduled_metrics()[$rule['metric']] ?? null;
-            $value = ($metric && ($metric['kind'] === 'money')) ? ws_money_out((int) $rule['value']) : (string) (int) $rule['value'];
+            $value = ($metric && ($metric['kind'] === 'money')) ? ws_money_out((int) $rule['value']) : (($metric && ($metric['kind'] === 'minutes')) ? ws_minutes_label((int) $rule['value']) : (string) (int) $rule['value']);
 
             return lang(array('string' => 'If {var:1} {var:2} {var:3}', 'vars' => array(
                 ws_scheduled_metric_label($rule['metric'], (int) ($rule['param'] ?? 0)), $operators[$rule['op']] ?? $rule['op'], $value)));
@@ -2070,6 +2199,14 @@ function ws_scheduled_action_text($viewer, $action)
 
             return lang(array('string' => 'Post a summary to {var:1}: {var:2}', 'vars' => array(implode(' · ', $where), implode(', ', $names))));
 
+        case 'approval':
+            $channel = ((int) ($action['channel_id'] ?? 0) > 0) ? ws_channel((int) $action['channel_id']) : null;
+
+            return lang(array('string' => 'Ask {var:1} to approve “{var:2}” in {var:3}', 'vars' => array(
+                implode(', ', array_filter(array_map('ws_person_name', (array) ($action['approvers'] ?? array())))),
+                (string) ($action['title'] ?? ''),
+                $channel ? '#' . $channel['name'] : lang('a channel that is gone'))));
+
         case 'trigger':
             return ((int) ($action['delay'] ?? 0) > 0)
                 ? lang(array('string' => 'Start {var:1} {var:2} minutes later', 'vars' => array(ws_scheduled_name($action['target_id']), (int) $action['delay'])))
@@ -2197,6 +2334,7 @@ function ws_scheduled_present($viewer, $row, $full = false)
         'next'        => (((string) $row['status'] === 'active') && ((int) $row['next_run_at'] > 0)) ? ws_scheduled_moment($row['next_run_at']) : '',
         'when'        => $time ? ws_scheduled_rule_text($viewer, $time) : ($trigger_only ? ws_scheduled_rule_text($viewer, ws_scheduled_event_rule($row)) : ''),
         'joins'       => (($event = ws_scheduled_event_rule($row)) !== null) && ($event['type'] === 'join'),
+        'on_event'    => ($event !== null) && ($event['type'] === 'event'),
         'repeats'     => $time && (($time['repeat'] ?? 'none') !== 'none'),
         'trigger_only' => $trigger_only,
         'runs'        => (int) $row['run_count'],
@@ -2216,7 +2354,7 @@ function ws_scheduled_present($viewer, $row, $full = false)
     $rules = array();
 
     foreach ((array) $row['rules'] as $rule) {
-        if (!in_array(($rule['type'] ?? ''), array('at', 'trigger', 'join'), true)) {
+        if (!in_array(($rule['type'] ?? ''), array('at', 'trigger', 'join', 'event'), true)) {
             $rules[] = ws_scheduled_rule_text($viewer, $rule);
         }
     }
@@ -2628,7 +2766,7 @@ function ws_scheduled_preview($viewer, $data)
     $next = array();
 
     foreach ($row['rules'] as $rule) {
-        if (in_array($rule['type'], array('at', 'trigger', 'join'), true)) {
+        if (in_array($rule['type'], array('at', 'trigger', 'join', 'event'), true)) {
             $when = ws_scheduled_rule_text($viewer, $rule);
         } else {
             $conditions[] = ws_scheduled_rule_text($viewer, $rule);
@@ -2727,6 +2865,18 @@ function ws_scheduled_set_status($viewer, $row, $to)
  */
 function ws_scheduled_due()
 {
+    // Events from the site waiting to be taken (watch.php): the channels
+    // that watch a record hear about them even where nothing is scheduled.
+    if (function_exists('ws_events_due') && ws_events_due()) {
+        return true;
+    }
+
+    // A deadline of an approval request, a read receipt to remind about
+    // (approvals.php, acks.php): one indexed row each, run below.
+    if ((function_exists('ws_approvals_due') && ws_approvals_due()) || (function_exists('ws_acks_due') && ws_acks_due())) {
+        return true;
+    }
+
     if (!ws_scheduled_ready()) {
         return false;
     }
@@ -2755,6 +2905,23 @@ function ws_scheduled_due()
 function ws_scheduled_run($limit = WS_SCHEDULED_BATCH)
 {
     $result = array('ran' => 0, 'skipped' => 0, 'failed' => 0);
+
+    // What happened on the site since the last run: the actions it starts
+    // are queued and read below, the channels watching its records are told
+    // (watch.php).
+    if (function_exists('ws_events_process')) {
+        ws_events_process();
+    }
+
+    // Approval requests whose deadline passed or is a day away, and read
+    // receipts a day old (approvals.php, acks.php).
+    if (function_exists('ws_approvals_run')) {
+        ws_approvals_run();
+    }
+
+    if (function_exists('ws_acks_run')) {
+        ws_acks_run();
+    }
 
     if (!ws_scheduled_ready()) {
         return $result;
@@ -2835,6 +3002,13 @@ function ws_scheduled_queue_take($item)
     if (is_array($carried)) {
         $context['newcomer'] = (int) ($carried['newcomer'] ?? 0);
         $context['join_channel_id'] = (int) ($carried['channel_id'] ?? 0);
+
+        // A start an event wrote (watch.php): what happened, to what.
+        if ((string) ($carried['event'] ?? '') !== '') {
+            $context['event'] = (string) $carried['event'];
+            $context['event_payload'] = is_array($carried['payload'] ?? null) ? $carried['payload'] : array();
+            $context['event_id'] = (int) ($carried['event_id'] ?? 0);
+        }
     }
 
     if (!$target || ($target['status'] !== 'active')) {
@@ -2963,6 +3137,13 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
             ws_person_name($fill['newcomer']), '#' . (string) db_value("SELECT name FROM ws_channels WHERE id = '" . $fill['join_channel_id'] . "'")))));
     }
 
+    if ($triggered && ((string) ($context['event'] ?? '') !== '')) {
+        $fill['event'] = (string) $context['event'];
+        $fill['event_payload'] = (array) ($context['event_payload'] ?? array());
+        $info = function_exists('ws_events_catalog') ? (ws_events_catalog()[$fill['event']] ?? null) : null;
+        $steps[] = array('step' => 'source', 'ok' => true, 'text' => $info ? (string) $info['label'] : $fill['event']);
+    }
+
     // The run is written first, so a start it hands on can name it.
     $run_id = ws_scheduled_record_run($row, 'done', array(), $context, 0, $now);
     db("UPDATE ws_scheduled_runs SET finished_at = 0 WHERE id = '" . $run_id . "'");
@@ -3053,7 +3234,7 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
     // action: a check every five minutes that keeps going well is not, and
     // nor is a greeting that went well for the next newcomer.
     $event = ws_scheduled_event_rule($row);
-    $every_time = $repeats || ($event && ($event['type'] === 'join'));
+    $every_time = $repeats || ($event && in_array($event['type'], array('join', 'event'), true));
     $news = !$every_time || ($previous === null) || ($previous === false) || ((string) $previous !== $status) || $by_hand;
 
     ws_scheduled_report($row, $status, $steps, $news);
@@ -3118,6 +3299,17 @@ function ws_scheduled_rules_hold($viewer, $rules, $row = array())
 {
     foreach ((array) $rules as $rule) {
         switch ($rule['type'] ?? '') {
+
+            // The creator has to be able to see the records of the event
+            // still: a right taken away since stops the action.
+            case 'event':
+                $info = function_exists('ws_events_catalog') ? (ws_events_catalog()[$rule['event'] ?? ''] ?? null) : null;
+
+                if (($info === null) || empty($viewer[$info['right']])) {
+                    return array('ok' => false, 'reason' => lang('The one who wrote it may no longer see the records of this event.'));
+                }
+
+                break;
 
             case 'workday':
                 $off = function_exists('ws_day_off') ? ws_day_off(date('Y-m-d')) : '';
@@ -3349,6 +3541,28 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
 
         case 'change':
             return ws_scheduled_change($viewer, $row, $action);
+
+        // An approval request, with the creator's rights; somebody who left
+        // the channel since is no longer asked.
+        case 'approval':
+            $channel = ws_channel((int) $action['channel_id']);
+
+            if (!$channel || !function_exists('ws_approval_create')) {
+                return $fail(lang('The channel to write in is gone.'));
+            }
+
+            $created = ws_approval_create($viewer, $channel, array(
+                'title'     => mb_substr(ws_scheduled_fill((string) $action['title'], $context), 0, 255),
+                'text'      => mb_substr(ws_scheduled_fill((string) $action['text'], $context), 0, WS_MESSAGE_MAX),
+                'approvers' => (array) $action['approvers'],
+                'rule'      => (string) $action['rule'],
+            ), 0, false);
+
+            if (!$created['ok']) {
+                return $fail(lang(array('string' => 'Could not ask for approval in #{var:1}: {var:2}', 'vars' => array($channel['name'], $created['error']))));
+            }
+
+            return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id']);
     }
 
     return $fail(lang('Nothing to do.'));

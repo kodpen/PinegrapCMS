@@ -158,12 +158,15 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check'), true)
+        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
             $poll = db_item("SELECT message_id FROM ws_polls WHERE id = '" . (int) ($request['poll_id'] ?? 0) . "'");
             $touched = is_array($poll) ? ws_message((int) $poll['message_id']) : null;
+        } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close'), true)) {
+            $approval = function_exists('ws_approval') ? ws_approval((int) ($request['approval_id'] ?? 0)) : null;
+            $touched = $approval ? ws_message((int) $approval['message_id']) : null;
         }
 
         if ($touched && ws_message_in_past($touched)) {
@@ -735,6 +738,7 @@ function ws_handle_action($action, $request)
             }
 
             ws_polls_autoclose($channel['id']);
+            ws_approvals_autoclose($channel['id']);
 
             $around = (int) ($request['message_id'] ?? 0);
 
@@ -804,6 +808,7 @@ function ws_handle_action($action, $request)
 
                 if ($channel && ws_can_read_channel($viewer, $channel)) {
                     ws_polls_autoclose($channel_id);
+                    ws_approvals_autoclose($channel_id);
 
                     // An earlier version open on the screen takes nothing new.
                     $rows = ((int) ($request['era_id'] ?? 0) > 0) ? array() : ws_messages_since($channel_id, (int) ($request['since_id'] ?? 0));
@@ -814,6 +819,12 @@ function ws_handle_action($action, $request)
                     // The marks on the tabs, every so often (the screen asks).
                     if (!empty($request['counts'])) {
                         $out['tab_counts'] = ws_channel_tab_counts($channel);
+                    }
+
+                    // The board open on the screen: a mark that moves when a
+                    // card of it would (channel_board.php).
+                    if (!empty($request['board']) && ws_channel_board_available($channel)) {
+                        $out['board_stamp'] = ws_channel_board_stamp($channel);
                     }
 
                     // The reader's own messages waiting to be posted here.
@@ -1153,6 +1164,87 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // Approval requests (includes/workspace/approvals.php).
+        case 'ws_approval_create':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            // The deadline comes as a day and a time, as the form asks.
+            $closes_at = 0;
+            $closes_day = ws_date_or_null((string) ($request['closes_date'] ?? ''));
+
+            if ($closes_day === false) {
+                return ws_action_error(lang('Write the date as day.month.year.'), 'closes_date');
+            }
+
+            if ($closes_day !== null) {
+                $closes_time = preg_match('/^[0-9]{1,2}:[0-9]{2}$/', (string) ($request['closes_time'] ?? '')) ? $request['closes_time'] : '18:00';
+                $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
+            }
+
+            $result = ws_approval_create($viewer, $channel, array(
+                'title'     => (string) ($request['title'] ?? ''),
+                'text'      => (string) ($request['text'] ?? ''),
+                'approvers' => (array) ($request['approvers'] ?? array()),
+                'rule'      => (string) ($request['rule'] ?? 'any'),
+                'closes_at' => $closes_at,
+            ));
+
+            return $result['ok']
+                ? ws_action_ok(array('message_id' => $result['message_id'], 'approval_id' => $result['approval_id']))
+                : ws_action_error($result['error'], $result['field']);
+
+        case 'ws_approval_decide':
+        case 'ws_approval_close':
+            $approval = ws_approval((int) ($request['approval_id'] ?? 0));
+
+            if (!$approval || !ws_can_read_channel($viewer, ws_channel($approval['channel_id']))) {
+                return ws_action_error(lang('That approval request could not be found.'));
+            }
+
+            $result = ($action === 'ws_approval_decide')
+                ? ws_approval_decide($viewer, $approval, (string) ($request['decision'] ?? ''), (string) ($request['note'] ?? ''))
+                : ws_approval_close($viewer, $approval);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($approval['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // Read receipts (includes/workspace/acks.php).
+        case 'ws_ack_request':
+        case 'ws_ack':
+        case 'ws_ack_people':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            if ($action === 'ws_ack_people') {
+                $result = ws_ack_people($viewer, $message);
+
+                return $result['ok'] ? ws_action_ok(array('read' => $result['read'], 'unread' => $result['unread'])) : ws_action_error($result['error']);
+            }
+
+            $result = ($action === 'ws_ack')
+                ? ws_ack_set($viewer, $message)
+                : ws_ack_request($viewer, $message, !empty($request['on']));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
         case 'ws_attach':
             $channel = ws_action_channel($viewer, $request, 'post');
 
@@ -1281,6 +1373,18 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok(array('url' => (string) $result['url'], 'qr' => ws_action_link_qr($result['url']))) : ws_action_error($result['error']);
 
         case 'ws_channel_create':
+            // Made from a template (templates.php): the template is looked up
+            // before the channel is made, and applied once it is.
+            $template = null;
+
+            if (((string) ($request['template_id'] ?? '') !== '') && ((string) $request['template_id'] !== '0')) {
+                $template = ws_template((string) $request['template_id']);
+
+                if (!$template || $template['archived']) {
+                    return ws_action_error(lang('That template could not be found.'));
+                }
+            }
+
             $result = ws_channel_create($viewer, array(
                 'name'       => $request['name'] ?? '',
                 'kind'       => $request['kind'] ?? 'public',
@@ -1294,7 +1398,71 @@ function ws_handle_action($action, $request)
                 'group_id'   => $request['group_id'] ?? 0,
             ));
 
-            return $result['ok'] ? ws_action_ok(array('channel_id' => $result['channel_id'])) : ws_action_error($result['error'], $result['field']);
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            $made = array('channel_id' => $result['channel_id']);
+
+            if ($template) {
+                $applied = ws_template_apply($viewer, ws_channel($result['channel_id']), $template, array('new_channel' => true));
+                $made[($applied['ok'] && !$applied['warning']) ? 'notice' : 'warning'] = $applied['ok'] ? $applied['message'] : $applied['error'];
+            }
+
+            return ws_action_ok($made);
+
+        // Channel templates (includes/workspace/templates.php): the list for
+        // the pickers, applying one to an open channel, and the draft a
+        // channel makes for the template screen.
+        case 'ws_templates':
+            return ws_action_ok(array(
+                'templates' => array_map('ws_template_present', ws_templates_list($viewer)),
+                'manage'    => ws_can_write_templates($viewer),
+            ));
+
+        case 'ws_template_apply':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $template = ws_template((string) ($request['template_id'] ?? ''));
+
+            if (!$template || $template['archived']) {
+                return ws_action_error(lang('That template could not be found.'));
+            }
+
+            $result = ws_template_apply($viewer, $channel, $template);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array(
+                'message'    => $result['message'],
+                'warning'    => $result['warning'],
+                'tasks'      => $result['tasks'],
+                'notes'      => $result['notes'],
+                'unassigned' => $result['unassigned'],
+                'task_ids'   => $result['task_ids'],
+            ));
+
+        case 'ws_template_from_channel':
+            if (!ws_can_write_templates($viewer)) {
+                return ws_action_error(lang('Only staff and the people who may change the workspace settings can keep templates.'));
+            }
+
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array(
+                'draft' => ws_template_from_channel($viewer, $channel),
+                'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_template.php?channel=' . (int) $channel['id'],
+            ));
 
         case 'ws_channel_update':
             $channel = ws_action_channel($viewer, $request, 'manage');
@@ -1305,7 +1473,7 @@ function ws_handle_action($action, $request)
 
             $data = array();
 
-            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color') as $field) {
+            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color', 'watch') as $field) {
                 if (array_key_exists($field, $request)) {
                     $data[$field] = $request[$field];
                 }
@@ -1783,6 +1951,39 @@ function ws_handle_action($action, $request)
         case 'ws_search':
             return ws_action_ok(array('messages' => ws_message_search($viewer, (string) ($request['q'] ?? ''), (int) ($request['channel_id'] ?? 0))));
 
+        // The search box of every workspace screen (palette.php): channel_id
+        // keeps it to one channel, here is the channel open on the screen.
+        case 'ws_palette':
+            return ws_action_ok(ws_palette_search($viewer, (string) ($request['q'] ?? ''), array(
+                'channel_id' => (int) ($request['channel_id'] ?? 0),
+                'here'       => (int) ($request['here'] ?? 0),
+                'types'      => is_array($request['types'] ?? null) ? $request['types'] : array(),
+                'limit'      => (int) ($request['limit'] ?? WS_PALETTE_LIMIT),
+            )));
+
+        // A channel's tasks, decisions and files as a board
+        // (channel_board.php).
+        case 'ws_channel_board':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (!ws_channel_board_available($channel)) {
+                return ws_action_error(lang('This channel has no board.'));
+            }
+
+            return ws_action_ok(ws_channel_board($viewer, $channel, array(
+                'group_by'  => (string) ($request['group_by'] ?? 'status'),
+                'priority'  => (string) ($request['priority'] ?? ''),
+                'person'    => (int) ($request['person'] ?? 0),
+                'mine'      => !empty($request['mine']),
+                'q'         => (string) ($request['q'] ?? ''),
+                'cancelled' => !empty($request['cancelled']),
+                'done_all'  => !empty($request['done_all']),
+            )));
+
         case 'ws_ref_search':
             $only = is_array($request['types'] ?? null) ? array_values(array_map('strval', $request['types'])) : null;
 
@@ -2021,6 +2222,132 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id']))));
+
+        // The time spent on a task (includes/workspace/task_time.php): the
+        // timer, time written by hand, a row deleted.
+        case 'ws_task_time_start':
+        case 'ws_task_time_add':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            if ($action === 'ws_task_time_start') {
+                $result = ws_task_time_start($viewer, $task);
+                $result['field'] = '';
+            } else {
+                $result = ws_task_time_add($viewer, $task, array(
+                    'text'      => (string) ($request['text'] ?? ''),
+                    'worked_on' => (string) ($request['worked_on'] ?? ''),
+                    'note'      => (string) ($request['note'] ?? ''),
+                    'billable'  => !empty($request['billable']),
+                    'user_id'   => (int) ($request['user_id'] ?? 0),
+                ));
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            return ws_action_ok(array(
+                'stopped' => (string) ($result['stopped'] ?? ''),
+                'time'    => ws_task_time_detail($viewer, ws_task($task['id']), ws_task_assignee_ids($task['id'])),
+            ));
+
+        case 'ws_task_time_stop':
+            $result = ws_task_time_stop($viewer);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $task = ws_task((int) ($request['task_id'] ?? 0) ?: $result['task_id']);
+
+            return ws_action_ok(array(
+                'minutes' => $result['minutes'],
+                'time'    => ($task && ws_can_see_task($viewer, $task)) ? ws_task_time_detail($viewer, $task, ws_task_assignee_ids($task['id'])) : null,
+            ));
+
+        case 'ws_task_time_delete':
+            $entry = ws_task_time_ready() ? ws_task_time_entry((int) ($request['entry_id'] ?? 0)) : null;
+            $task = $entry ? ws_task($entry['task_id']) : null;
+
+            if (!$entry || !$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That time entry could not be found.'));
+            }
+
+            $result = ws_task_time_delete($viewer, $entry);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('time' => ws_task_time_detail($viewer, $task, ws_task_assignee_ids($task['id']))));
+
+        // The time on a channel's tasks, for its Summary tab; the invoice
+        // draft made of it, and the tie to a draft undone (staff).
+        case 'ws_task_time_channel':
+        case 'ws_task_time_invoice':
+        case 'ws_task_time_unlink':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if ($action === 'ws_task_time_invoice') {
+                $result = ws_task_time_invoice($viewer, $user, $channel, array(
+                    'from'     => (string) ($request['from'] ?? ''),
+                    'to'       => (string) ($request['to'] ?? ''),
+                    'rate'     => (string) ($request['rate'] ?? ''),
+                    'tax_rate' => (string) ($request['tax_rate'] ?? ''),
+                ));
+
+                if (!$result['ok']) {
+                    return ws_action_error($result['error'], $result['field']);
+                }
+
+                return ws_action_ok(array(
+                    'invoice_id' => $result['invoice_id'],
+                    'entries'    => $result['entries'],
+                    'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id'],
+                    'card'       => ws_task_time_channel($viewer, $user, $channel),
+                ));
+            }
+
+            if ($action === 'ws_task_time_unlink') {
+                $result = ws_task_time_unlink($viewer, $channel, (int) ($request['invoice_id'] ?? 0));
+
+                if (!$result['ok']) {
+                    return ws_action_error($result['error']);
+                }
+            }
+
+            return ws_action_ok(array('card' => ws_task_time_channel($viewer, $user, $channel)));
+
+        // The reader's own time, week by week (My time on the tasks screen).
+        case 'ws_task_time_mine':
+            return ws_action_ok(array('mine' => ws_task_time_mine($viewer, (int) ($request['weeks'] ?? 8))));
+
+        // Tasks that wait for other tasks (includes/workspace/task_links.php).
+        case 'ws_task_link_add':
+        case 'ws_task_link_remove':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            $result = ($action === 'ws_task_link_add')
+                ? ws_task_link_add($viewer, $task, (int) ($request['blocker_id'] ?? 0))
+                : ws_task_link_remove($viewer, $task, (int) ($request['blocker_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('links' => ws_task_links_detail($viewer, $task, ws_can_edit_task($viewer, $task))));
 
         case 'ws_task_status':
             $task = ws_task((int) ($request['task_id'] ?? 0));

@@ -177,6 +177,11 @@ function ws_task_brief($task, $assignees)
     $due = (string) ($task['due_date'] ?? '');
     $start = (string) ($task['start_date'] ?? '');
 
+    // The time spent (task_time.php) and the open tasks it waits for
+    // (task_links.php); a list hands both in, worked out for all its rows.
+    $time = array_key_exists('_ws_time', $task) ? (int) $task['_ws_time'] : (int) (ws_task_time_totals(array($task['id']))[(int) $task['id']] ?? 0);
+    $blockers = array_key_exists('_ws_blockers', $task) ? (array) $task['_ws_blockers'] : (ws_task_links_open_map(array($task['id']))[(int) $task['id']] ?? array());
+
     return array(
         'id'               => (int) $task['id'],
         'number'           => ws_task_number($task['id']),
@@ -201,6 +206,9 @@ function ws_task_brief($task, $assignees)
         'updated_at'       => (int) $task['updated_at'],
         'progress'         => ws_task_progress($task),
         'notes_count'      => (int) ($task['notes_count'] ?? 0),
+        'time_minutes'     => $time,
+        'time_label'       => ($time > 0) ? ws_task_time_label($time) : '',
+        'blocked_by'       => $blockers,
     );
 }
 
@@ -267,6 +275,8 @@ function ws_task_detail($viewer, $task)
     $detail['checklist'] = ws_task_checklist_detail($viewer, $task, $detail['can_edit']);
     $detail['notes'] = ws_task_notes($viewer, $task);
     $detail['recurrence'] = function_exists('ws_recurrence_detail') ? ws_recurrence_detail($task) : null;
+    $detail['time'] = ws_task_time_detail($viewer, $task, $assignees);
+    $detail['links'] = ws_task_links_detail($viewer, $task, $detail['can_edit']);
 
     // The time on the due date and the e-mail reminder (reminders.php).
     if (function_exists('ws_task_reminder_detail')) {
@@ -745,6 +755,9 @@ function ws_task_set_status($viewer, $task, $status)
                 'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . (int) $task['id'] . '>'),
             )), $task['id']);
         }
+
+        // The tasks that waited for this one and wait for nothing now.
+        ws_task_links_done($viewer, $updated);
     }
 
     return array('ok' => true, 'error' => '');
@@ -877,6 +890,8 @@ function ws_tasks_list($viewer, $filters)
     }
 
     $assignees = ws_task_assignees_map($ids);
+    $times = ws_task_time_totals($ids);
+    $blockers = ws_task_links_open_map($ids);
     $out = array();
 
     foreach ($rows as $row) {
@@ -885,6 +900,9 @@ function ws_tasks_list($viewer, $filters)
         if (!ws_can_see_task($viewer, $row, $assignees[$task_id] ?? array())) {
             continue;
         }
+
+        $row['_ws_time'] = $times[$task_id] ?? 0;
+        $row['_ws_blockers'] = $blockers[$task_id] ?? array();
 
         $brief = ws_task_brief($row, $assignees[$task_id] ?? array());
         $brief['can_edit'] = ws_can_edit_task($viewer, $row, $assignees[$task_id] ?? array());
@@ -945,11 +963,26 @@ function ws_task_card_html($viewer, $task, $assignees)
         $progress .= '<div class="ws-task-card-notes"><i class="bi bi-journal-text me-1"></i>' . h(lang(array('string' => '{var:1} notes', 'vars' => (int) $task['notes_count']))) . '</div>';
     }
 
+    // Waiting for open tasks (task_links.php): said on the card, and asked
+    // about before it is started.
+    $waits = '';
+
+    if ($brief['open'] && !empty($brief['blocked_by'])) {
+        $numbers = array();
+
+        foreach ($brief['blocked_by'] as $blocker) {
+            $numbers[] = $blocker['number'];
+        }
+
+        $waits = implode(', ', $numbers);
+        $progress .= '<div class="ws-task-card-blocked"><i class="bi bi-lock me-1"></i>' . h(lang(array('string' => 'Waiting for {var:1}', 'vars' => $waits))) . '</div>';
+    }
+
     $buttons = '';
 
     if ($can_edit && $brief['open']) {
         if ($task['status'] === 'todo') {
-            $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-status="doing" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-play-circle me-1"></i>' . h(lang('Start work')) . '</button>';
+            $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-status="doing" data-ws-task="' . (int) $task['id'] . '"' . (($waits !== '') ? ' data-ws-blocked="' . h($waits) . '"' : '') . '><i class="bi bi-play-circle me-1"></i>' . h(lang('Start work')) . '</button>';
         }
 
         $buttons .= '<button type="button" class="btn btn-sm btn-outline-success" data-ws-task-status="done" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-check2-circle me-1"></i>' . h(lang('Mark done')) . '</button>';
@@ -967,6 +1000,7 @@ function ws_task_card_html($viewer, $task, $assignees)
             <div class="ws-task-card-meta">
                 <span class="' . ($brief['overdue'] ? 'text-danger' : '') . '"><i class="bi bi-calendar-event me-1"></i>' . h($brief['due_label']) . '</span>
                 ' . (($brief['estimate_label'] !== '') ? '<span><i class="bi bi-hourglass-split me-1"></i>' . h($brief['estimate_label']) . '</span>' : '') . '
+                ' . (($brief['time_label'] !== '') ? '<span class="ws-task-time-tag" title="' . h(lang('Time spent')) . '"><i class="bi bi-stopwatch me-1"></i>' . h($brief['time_label']) . '</span>' : '') . '
                 ' . ($brief['recurring'] ? '<span title="' . h(lang('Repeating task')) . '"><i class="bi bi-arrow-repeat"></i></span>' : '') . '
             </div>
             ' . $progress . '

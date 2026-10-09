@@ -589,14 +589,25 @@ function ws_refs_resolve($viewer, $tokens)
             LEFT JOIN custom_form_pages c ON c.page_id = f.page_id
             WHERE f.id IN (" . $in('form') . ")");
 
+        $opened = array();
+
         foreach ($rows as $row) {
             if ($viewer['forms'] && $folder_open($row['page_folder'])) {
                 $name = ((string) $row['form_name'] !== '') ? $row['form_name'] : lang('Form');
 
                 $put('form', $row['id'], trim($name . ' ' . $row['reference_code']), $base . 'edit_submitted_form.php?id=' . (int) $row['id'],
                     $date_out($row['submitted_timestamp']), ((int) $row['complete'] === 1) ? '' : lang('Incomplete'), true, 'bi-ui-checks');
+                $opened[] = (int) $row['id'];
             } else {
                 $put('form', $row['id'], lang('Form'), '', '', '', false, 'bi-ui-checks');
+            }
+        }
+
+        // The first fields of the ones the reader may open, for the card
+        // drawn under a message that tags them (watch.php).
+        if (!empty($opened) && function_exists('ws_events_form_values')) {
+            foreach (ws_events_form_values($opened, WS_FORM_CARD_FIELDS) as $form_id => $fields) {
+                $out['form:' . (int) $form_id]['fields'] = $fields;
             }
         }
     }

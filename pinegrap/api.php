@@ -395,6 +395,9 @@ switch ($action) {
     case 'ws_mark':
     case 'ws_attach':
     case 'ws_channel_create':
+    case 'ws_templates':
+    case 'ws_template_apply':
+    case 'ws_template_from_channel':
     case 'ws_channel_update':
     case 'ws_customer_links':
     case 'ws_channel_members_add':
@@ -448,6 +451,8 @@ switch ($action) {
     case 'ws_channel_files':
     case 'ws_channel_tasks':
     case 'ws_search':
+    case 'ws_palette':
+    case 'ws_channel_board':
     case 'ws_ref_search':
     case 'ws_record_refs':
     case 'ws_task_get':
@@ -470,6 +475,12 @@ switch ($action) {
     case 'ws_poll_vote':
     case 'ws_poll_close':
     case 'ws_poll_edit':
+    case 'ws_approval_create':
+    case 'ws_approval_decide':
+    case 'ws_approval_close':
+    case 'ws_ack_request':
+    case 'ws_ack':
+    case 'ws_ack_people':
     case 'ws_task_tick':
     case 'ws_task_item_add':
     case 'ws_task_note_add':
@@ -499,6 +510,16 @@ switch ($action) {
     case 'ws_thread_leave':
     case 'ws_share_relink':
     case 'ws_share_end':
+    case 'ws_task_time_start':
+    case 'ws_task_time_stop':
+    case 'ws_task_time_add':
+    case 'ws_task_time_delete':
+    case 'ws_task_time_channel':
+    case 'ws_task_time_invoice':
+    case 'ws_task_time_unlink':
+    case 'ws_task_time_mine':
+    case 'ws_task_link_add':
+    case 'ws_task_link_remove':
 
         if (!USER_LOGGED_IN) {
             respond(array(

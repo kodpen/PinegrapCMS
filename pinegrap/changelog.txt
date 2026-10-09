@@ -542,6 +542,195 @@
          pencerede QR kodu da çıkar; misafir telefonuyla tarayarak
          katılabilir. QR kodu sitenin kendi sunucusunda çizilir.
 
+  [YENİ] Programlanmış işlemin yeni başlangıcı "Bir şey olduğunda":
+         işlem sitede bir şey olunca çalışır: yeni sipariş, sipariş
+         durumunun değişmesi (istenirse yalnız belirli bir duruma),
+         siparişin kargoya verilmesi, teslimi ya da iptali, ürünün
+         stoğunun azalması, yeni ya da değişen kişi, form
+         gönderilmesi (istenirse yalnız belirli bir form). Olay
+         ziyaretçinin sayfasını bekletmez: kaydedilir, açık bir
+         ekran ya da genel iş onu en çok bir dakika içinde işler.
+         Metinlerde {{record}} (kaydın etiketi), {{record_title}},
+         {{record_link}}, {{customer}}, {{amount}},
+         {{record_status}}, {{event}} ve {{form_fields}}
+         kullanılabilir. Hazır şablonlar: "Yeni sipariş kanala",
+         "Web formu kanala" ve "Stok azalınca görev". Bir işlem
+         saatte en çok 60 kez başlar.
+
+  [YENİ] Kanala yazılan form etiketinin altında küçük bir kart
+         çıkar: gönderilen formun ilk dört alanı ve kayda
+         bağlantı. Kartı yalnız formları görme hakkı olan okur;
+         mesajdaki "Görev yap" ile form göreve çevrilir.
+
+  [YENİ] Kaydı izle: kanalın müşterisinin siparişleri ile kanalda
+         etiketlenen sipariş, ürün ve kişilerde bir şey olunca
+         (sipariş verildi, durumu değişti, kargoya verildi, teslim
+         edildi, iptal edildi; kişi ya da ürün değişti; ürünün
+         stoğu azaldı) kanala bir sistem satırı düşer. Satırda
+         yalnız kaydın etiketi ve olan şey yazar; tutar ve adres
+         yazılmaz, etiketin ayrıntısını her üye kendi hakkı kadar
+         görür. Aynı satır on dakika içinde ikinci kez yazılmaz.
+         Kanal ayarlarındaki "Bağlı kayıtların olaylarını kanala
+         yaz" anahtarıyla kapatılır (varsayılan açık).
+
+  [YENİ] Sipariş ekranında iptal edilmiş siparişi "Siparişi Geri
+         Al" ile tamamlanmışa döndürmek artık sipariş durumu
+         değişikliği olarak duyurulur (webhook order.status_changed
+         ve Çalışma Alanı).
+
+  [ŞEMA] ws_events_in tablosu (Çalışma Alanı'nın işleyeceği site
+         olayları); ws_channels.watch sütunu.
+
+  [YENİ] Kanal şablonları: "Yeni müşteri", "Web sitesi teslimi",
+         "Aylık kapanış" gibi tekrar eden işler için hazır kanal.
+         Şablon görevleri (başlangıç ve bitişi uygulandığı günden
+         itibaren takvim günüyle, öncelik, tahmini süre, kontrol
+         listesi, "şu görevden sonra" sırası; uygulayana, departman
+         liderine, bir departmanın havuzuna ya da bir kişiye),
+         kanalda paylaşılacak notları, özeti, sabitlenmiş mesajı
+         ve karşılama mesajını taşır. Yeni kanal penceresinin
+         üstündeki "Şablondan" kartlarından biri seçilince ad,
+         görünürlük, departman ve renk önerilir; kanal açılınca
+         şablon uygulanır. Var olan kanala kanal menüsündeki
+         "Şablon uygula" ile eklenir: özet ve sabitlenmiş mesaj
+         yalnız boşsa doldurulur. Görevler uygulayan kişinin
+         yetkisiyle açılır; atama yetkisi yetmeyen ya da kişisi
+         bulunamayan görevler kimseye verilmeden açılır ve kaç
+         tane olduğu söylenir. Kanala "Şablon uygulandı" satırı
+         düşer.
+
+  [YENİ] Çalışma Alanı Ayarları › Kanal şablonları: üç yerleşik
+         şablon (kopyalanıp değiştirilebilir) ve sitenin kendi
+         şablonları; yeni şablon, düzenleme, arşivleme, kaç kez
+         kullanıldığı. Yöneticiler kanal menüsündeki "Bu kanaldan
+         şablon yap" ile kanalın açık görevlerini, paylaşılan
+         notlarını, özetini ve sabitlenmiş mesajını taslak olarak
+         şablon ekranına taşır; kaydedilene kadar hiçbir şey
+         saklanmaz. Dış API: GET /workspace/templates ve POST
+         /workspace/channels/{id}/apply-template, olay
+         workspace.template.applied.
+
+  [ŞEMA] ws_templates tablosu.
+
+  [YENİ] Tek arama kutusu: Çalışma Alanı'nın her ekranında
+         Ctrl+K (Mac'te ⌘K) ya da soldaki şeritteki büyüteç tek
+         bir arama penceresi açar. Yazdıkça kanallar, mesajlar,
+         kararlar, görevler, notlar, kanallarda paylaşılan
+         dosyalar ve kayıtlar (sipariş, ürün, kişi, fatura...)
+         gruplar hâlinde gelir; aranan sözcük vurgulanır. Oklarla
+         gezilir, Enter seçileni açar. # ile yalnız kayıtlarda
+         ("#sip 1042" yalnız siparişlerde), @ ile ekipteki
+         kişilerde aranır; / yazı kutusunun komutlarını listeler
+         ve seçilen komut açık kanalın yazı kutusuna yazılır.
+         Kanal ekranında arama tek tıkla o kanalla sınırlanır;
+         son beş arama tarayıcıda hatırlanır. Herkes yalnız
+         görebildiği kanalların, görevlerin ve notların
+         sonuçlarını görür. Çalışma Alanı ekranlarında Ctrl+K
+         panelin genel araması yerine bu pencereyi açar.
+
+  [YENİ] Kanal panosu: kanalın sekmelerine "Pano" eklendi
+         (adres: workspace.php?channel=N&view=board). Kanalın
+         görevleri, kararları ve dosyaları sütunlarda kart olarak
+         görünür; duruma, türe, kişiye ya da bitiş tarihine
+         (gecikmiş, bugün, bu hafta, daha sonra, tarihsiz) göre
+         gruplanır. Kart sürüklenerek başka sütuna taşınır: durum,
+         sorumlu kişi ya da bitiş tarihi değişir; çakışma ve
+         tekrarlayan görev soruları Plan Panosu'ndakiyle aynıdır.
+         Klavyeyle de taşınır (Boşluk tut, oklar, Enter bırak).
+         Aciliyet, kişi, "yalnız benimkiler" ve metin süzgeçleri
+         vardır; "Bitti" sütunu son 14 günü gösterir, öncesi bir
+         tıkla açılır. Pano açıkken başka biri görevi değiştirirse
+         kartlar kendiliğinden yenilenir. Misafirli kanallarda ve
+         tartışmalarda pano yoktur. Çalışma Alanı turu bu sekmeyi
+         de anlatır ve herkese bir kez daha gösterilir.
+
+  [YENİ] Görevde harcanan süre: görev penceresinde "Harcanan
+         süre" bölümü. Sayaç başlatılıp durdurulur (sayfa
+         kapansa da süre başlangıç anından sayılır; bir
+         dakikadan kısası bir dakika yazılır, kişi başına tek
+         sayaç çalışır, yenisi eskisini durdurup kaydeder) ya
+         da süre elle yazılır: "90", "1:30" ya da "1s 30d";
+         tarih, not ve faturalanabilir anahtarıyla. Görevin
+         üzerindekiler ve oluşturan kendi süresini,
+         yöneticiler herkesin süresini yazar. Pencerede toplam
+         tahminle karşılaştırılır ("3 sa 20 dk / 5 sa"); görev
+         kartında ve listelerde süre etiketi görünür.
+
+  [YENİ] Kanalın Özet sekmesinde "Harcanan süre" kartı:
+         kanalın görevlerindeki toplam, bu ay, faturalanmamış
+         süre ve kişiye göre dağılım. Görevlerim'de "Zamanım":
+         kişinin süresi hafta hafta, görev görev. Plan
+         Panosu'nda yöneticiler kişi satırında planlanan ve
+         harcanan süreyi görür. Programlanmış işlemlere "Bu
+         hafta görevlerde harcanan süre" sayacı eklendi.
+
+  [YENİ] Süreden fatura taslağı: ERP açıkken ve kanalın
+         müşterisi bir cari hesapken, fatura hakkı olan
+         kullanıcı Harcanan süre kartından iki tarih
+         arasındaki faturalanmamış süreyi ERP fatura
+         taslağına çevirir: görev başına bir satır, miktar
+         saat, saatlik ücret ve KDV oranı formdan. Taslak
+         kesilmez; kayıtlar taslağa bağlanır, aynı saat ikinci
+         kez faturalanmaz, kanala kilitli bir karar satırı
+         düşer. Taslak silinirse yönetici kartta "Bağı çöz"
+         ile süreyi yeniden faturalanabilir yapar.
+
+  [YENİ] Görev bağımlılığı: görev penceresinde "Bağımlılıklar"
+         bölümü. "Şu görevler bitmeden başlayamaz" listesine
+         görev numarası ya da başlığıyla arayıp görev eklenir;
+         "Bu görevi bekleyenler" ters listede görünür.
+         Birbirini bekleyen görevler (döngü) kaydedilmez.
+         Bekleyen görev kartta ve listede kilitle "Bekliyor:
+         G-12" der; başlatılmak istenince sorulur,
+         engellenmez. Son engelleyen bitince bekleyen görevin
+         üzerindekilere "G-12 bitti, G-15 başlayabilir"
+         bildirimi gider.
+
+  [YENİ] Dış API: GET/POST /workspace/tasks/{id}/time ve
+         DELETE /workspace/tasks/{id}/time/{entry_id} (POST da
+         olur); görev nesnesinde blocked_by, blocks ve
+         time_minutes; POST /workspace/tasks ve
+         /workspace/tasks/{id} blocked_by kabul eder. Yeni
+         olay: workspace.task.time_logged.
+
+  [ŞEMA] ws_task_time ve ws_task_links tabloları.
+
+  [YENİ] Onay iste: yazı kutusundaki + menüsünden kanalın
+         kişilerinden (en fazla on) bir şey için onay istenir;
+         başlık, açıklama (@ ve # etiketleriyle), "herhangi
+         biri" ya da "hepsi" kuralı ve isteğe bağlı son tarih
+         seçilir. Mesajın altındaki kartta onaylayanlar, her
+         birinin yanıtı ve zamanı görünür; Onayla / Reddet
+         düğmeleri yalnız sorulan kişilere çıkar, ret gerekçe
+         alabilir. Kural sağlanınca, biri reddedince ya da son
+         tarih geçince kart kapanır ve sonuç kanala kilitli bir
+         karar olarak yazılır ("Onaylandı: ... — Ayşe"); Karar
+         Zaman Çizelgesi'nde görünür. İsteyen kişi isteği geri
+         çekebilir, yöneticiler kapatabilir. Sorulanlara gelen
+         kutusu ve telefon bildirimi gider; son tarihten bir gün
+         önce yanıt vermeyenlere bir kez hatırlatılır. Genel
+         Bakış'ta "Beni bekleyen onaylar" listelenir. Tartışmada
+         verilen karar kanala da kopyalanır; misafir kartı
+         yalnız okur. Programlanmış işlere "Bir kanalda onay
+         iste" eylemi eklendi (ör. her ayın 1'i gider raporu
+         onayı). Dış API'de kanalın onay istekleri okunur ve
+         yeni istek açılır; onay ve ret yalnız cihazında oturum
+         açmış kişinin kendisi tarafından verilir.
+
+  [YENİ] Okundu onayı: mesajı yazan ya da bir yönetici, mesajın
+         menüsünden (sabit mesajın çubuğundan da) okundu onayı
+         ister. Kanalın o anki üyeleri mesajın altında "Okudum"
+         düğmesini görür; "N / M okudu" etiketi herkes okuyunca
+         yeşile döner, yazan kişi tıklayınca kimin okuduğunu
+         (saatiyle) ve kimin okumadığını görür. Kanaldan çıkan
+         sayımdan düşer, misafir sayılmaz. 24 saat sonra hâlâ
+         okumayanlara gelen kutusunda bir kez hatırlatılır;
+         Genel Bakış'ta "Onayını bekleyen duyurular" görünür.
+
+  [ŞEMA] Yeni ws_approvals ve ws_approval_people tabloları
+         (onay istekleri), ws_ack_requests ve ws_acks tabloları
+         (okundu onayları).
+
   E-POSTA
   --------------------------------------------------------
 

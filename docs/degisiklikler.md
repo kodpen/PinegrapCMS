@@ -35,7 +35,9 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.18). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.89, 8.110, 8.30–8.33, 8.40 ve
+8.10–8.18). Çalışma Alanı'nın 8.80–8.89 aralığı doldu ve 8.110 kullanıldı;
+sıradaki Çalışma Alanı adımı 8.111–8.119 aralığından alınır. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -69,6 +71,602 @@ Aşağıdaki bölümlerin `İç tur` ve `(iç tur 4.x)` başlıkları **çalış
 numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başlıkları
 2026.4.2 birleştirmesine, `2026.4.4 (iç tur 4.x)` başlıkları 2026.4.4
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: olay başlatıcılı programlanmış işlem, kaydı izle, web formu → kanal (8.85) (2026-10-09)
+
+**İstenen.** Programlanmış işlem yalnız zamanla (`at`), kanala katılmayla
+(`join`) ve başka işlemle (`trigger`) başlıyordu; sitenin duyurduğu olaylar
+(`order.*`, `stock.low`, `customer.*`, `form.submitted`) yalnız dış webhook'a
+gidiyordu. Üç şey: (1) işlem "şu olay olunca" başlasın; (2) kanalın müşterisine
+ya da kanalda etiketlenen kayda ait olay kanala sistem satırı olarak düşsün;
+(3) web formu kanala kart olarak gelsin, karttan görev yapılsın.
+
+**Nasıl çözüldü.**
+
+- *Yakalama — ön yüzü yavaşlatmadan.* `includes/fn/events.php`'ye
+  `pg_event_record($event, $payload)`: Çalışma Alanı açıksa
+  (`WORKSPACE_ENABLED`), olay `pg_event_workspace_events()` sabit listesindeyse
+  ve tablo varsa (`pg_schema_has('ws_events_in')`) tek INSERT; Çalışma Alanı
+  dosyalarını yüklemez. İki giriş: `pg_announce()` önce kaydeder, sonra
+  `api_webhook_enqueue($event, $data, true)` çağırır; `api_webhook_enqueue()`
+  yeni `$recorded = false` parametresiyle, **webhook yokken erken dönüşten
+  önce** kaydeder. İki INSERT olmaz (sandbox'ta webhook varken de yokken de tek
+  satır görüldü).
+- *Liste.* `workspace.*` (her açık kanal mesajı duyuruluyor) ve `erp.*`
+  yakalanmaz; yalnız tüketilenler: `order.created/status_changed/shipped/
+  delivered/cancelled`, `stock.low`, `customer.created/updated`,
+  `product.updated`, `form.submitted`.
+- *İşleme.* `includes/workspace/watch.php` → `ws_events_process()`,
+  `ws_scheduled_run()`'un başında (ekranın `ws_tick`'i, `job.php`,
+  `workspace_recurring_job.php`); `ws_scheduled_due()` açık olay görünce de
+  doğru döner, böylece `ws_sync` ekrana tick'i başlatır ve genel iş koşar.
+  Satırlar id sırasıyla, koşullu UPDATE (`taken_at = 0`) ile alınır; turda en
+  çok `WS_EVENTS_BATCH` = 200; alınmış satır 7 gün sonra süpürülür.
+- *Olay → işlem: kuyruk yoluyla.* Brief doğrudan `ws_scheduled_execute()`
+  diyordu; mimar onayıyla `join` deseni kullanıldı: eşleşen her işlem için
+  `ws_scheduled_queue` satırı (`source_action_id = 0`, `depth = 0`, context
+  `{event, payload, event_id}`), `ws_scheduled_queue_take()` context'i açıp
+  `execute()`'a geçirir. Gerekçe: `execute()` kilidi tutuluyken `''` döner ve
+  olay kaybolurdu; kuyrukta 30 sn sonra yeniden denenir ve saatte 60 sınırı
+  (`WS_SCHEDULED_CHAIN_HOURLY`, kuyruk satırı sayımı) hazır gelir.
+- *Kural `event`.* `ws_scheduled_rule_input()` `case 'event'`
+  (`ws_events_catalog()`: etiket, kural metni, kayıt türü, hak — sipariş/stok
+  `ecommerce`, kişi `contacts`, form `forms`; süzgeç `page_id` (form sayfası,
+  `custom_form_pages`'ten seçim listesi) ya da `status`); "tek başlatıcı"
+  denetimi, `ws_scheduled_event_rule()`, `rule_text`, `present`
+  (`on_event`), `preview`, `rules_hold` (yaratıcının hakkı koşu anında yeniden
+  sorulur) genişletildi. `next_run_at` 0 kalır.
+- *Yer tutucular.* `{{event}}`, `{{record}}` (`<#order:ID>` gibi token; ref
+  zinciri kendisi çizer ve `ws_refs_store` mesajı kayda bağlar),
+  `{{record_title}}`, `{{record_link}}` (mutlak adres), `{{customer}}`,
+  `{{amount}}` (`ws_money_out`), `{{record_status}}`, `{{form_fields}}` —
+  `ws_events_fill_values()`, yalnız yaratıcının görebildiği kayıt için dolar;
+  elle ya da zincirle koşuda boş kalır.
+- *Kaydı izle.* `ws_watch_write()`: kayıt `ws_events_record_of()` ile
+  bulunur; kanallar = `ws_refs`'te etiketlendiği kanallar + sipariş/kişi için
+  müşterinin kanalları (`orders.contact_id/user_id/erp_account_id` →
+  `ws_channels.contact_id` / `customer_type+customer_id`); yalnız
+  `public/private`, arşivsiz, `watch = 1`; en çok 20 kanal. Satır
+  `ws_message_system()` ile, yalnız etiket + olan şey ("<#order:423> kargoya
+  verildi"); aynı kanal + aynı gövde 10 dakikada bir kez. Anahtar kanal
+  ayarlarında (`ws_channel_update` → `watch`, `ws_channel_detail` → `watch`).
+- *Form kartı.* `ws_refs_resolve()` form ref'ine, okuyan açabiliyorsa, ilk 4
+  alanı (`fields`) ekler; `ws_render_body()` bilinen her form ref'i için
+  mesajın altına `.ws-form-card` basar (sunucuda, okuyanın hakkıyla).
+  "Görev yap" mevcut "Make a task of it" menüsüdür; ek iş yapılmadı.
+- *JS.* `assets/js/workspace_events.js` → `window.PGWsEvents` (`whenBox`,
+  `templates`, `watchField`); `workspace.js`'e yalnız çağrı noktaları.
+- *view_order.php.* "Siparişi Geri Al" (iptal → tamamlandı) artık
+  `order.status_changed` duyurur; payload API ve `changes.php` ile aynı
+  (`id`, `order_number`, `status`, `previous`).
+
+**Kararlar ve ödünler.**
+
+- `{{status}}` zaten "işlemin nasıl gittiği" (takip eylemi) anlamında vardı;
+  sipariş durumu için `{{record_status}}` açıldı.
+- "Web formu kanala" ve "Yeni sipariş kanala" şablonlarının metni yalnız
+  etiket (`{{record}}`); alan değerleri, tutar ve müşteri adı düz metne
+  girerse hakkı olmayan üyeler de okur. `{{form_fields}}` yer tutucusu duruyor,
+  açıklamasında bu uyarı yazılı.
+- Formun dosya alanı hiçbir yerde değer olarak yazılmaz (`(dosya eklendi)`),
+  imza alanı da (`(imzalandı)`); `files.name` sitenin adresi olduğu için dosya
+  adı da yazılmaz. "Ofis kullanımı" alanları ve boş alanlar atlanır.
+- view_order.php'nin tam iade yolundaki `status = 'cancelled'` dokunulmadı:
+  iptal `order.cancelled`'ın işi, `order.status_changed` iptali taşımaz (API
+  sözleşmesi). `view_orders.php` / `shipworks.php` dışa aktarımı
+  (`exported`) duyurmuyor; dokunulmadı.
+- Gönderilen olay bir `post` eylemiyle yaratıcının adıyla yazılır; mevcut
+  `ws_rate_limited()` (dakikada 20 mesaj) bir olay fırtınasında koşuları
+  başarısız yapabilir — saatte 60 sınırı bunu sınırlar ama ortadan kaldırmaz.
+
+**Denenenler (sandbox, port 8001).** Adım iki kez (ikincisi "already
+exists"); view_order "Siparişi Geri Al" → `ws_events_in` → `ws_tick` →
+müşteri kanalında sistem satırı; aynı olay ×3 → tek satır; webhook varken tek
+satır + tek webhook kuyruğu satırı; `workspace.*`/`erp.*` yazılmadı; watch=0
+iken satır yok; rol 3 (e-ticaret/form hakkı yok) üyede chip yalnız etiket
+(tutar, müşteri, bağlantı yok), form kartı yok; `custom_form.php`'ye gerçek POST → form kuralı → kanalda
+`<#form:740>` + 4 alanlı kart; durum süzgeci ve form süzgeci eşleşmeyince
+kuyruk yok; 70 olayda kuyruk 60'ta durdu; süpürme; `job.php` yolu; Çalışma
+Alanı kapalıyken form hatasız, satır yok. Tarayıcı yok: JS yalnız
+`node --check` ve okuma ile.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: kanal / proje şablonları (2026-10-09)
+
+**İstenen.** "Yeni müşteri", "Site teslimi", "Aylık kapanış" gibi tekrar eden
+işler için kanal şablonu: yeni kanal açılırken (ya da var olan kanala "Şablon
+uygula" ile) hazır görev seti (göreli tarihler, departman / rol bazlı atama,
+kontrol listeleri), not iskeleti, özet, sabit mesaj ve isteğe bağlı karşılama
+mesajı; var olan bir kanaldan şablon üretme; kodda üç yerleşik şablon; dış API.
+
+**Nasıl çözüldü.**
+
+- Şema 8.88 `upgrade_2026_4_8_workspace_templates()`: `ws_templates` (`name`,
+  `description`, `icon` — Bootstrap Icons sınıfı, `color` — kanal paletinde
+  yer, 0 yok, `kind`, `department_id`, `summary`, `pinned`, `welcome`, `body`
+  — görevler ve notlar JSON, `created_by/_at`, `updated_at`, `archived`,
+  `uses`; `idx_live (archived, name)`). `get_tables()`'a eklendi.
+- `includes/workspace/templates.php` (yeni): `ws_templates_ready()`,
+  `ws_can_write_templates()` (yönetici ya da `manage_workspace_settings`,
+  yani `$viewer['settings']`), `ws_template_body_clean()` (saf: bilinmeyen
+  anahtarı atar, sayıları aralığında tutar — gün 0–3650, tahmin 0–100000 dk,
+  en çok 50 görev / 10 not / görev başına 30 madde; başlıksız görevi, bitişten
+  sonra başlayan görevi ve 60 000 baytı aşan gövdeyi reddeder; `depends_on`
+  yalnız **önceki** görevleri tutar, döngü olmaz), `ws_template_relative_date()`
+  / `ws_template_days_until()` (takvim günü, öğlen 12:00 üzerinden — saat
+  değişimi günü kaydırmaz), `ws_template_split_checklist()` /
+  `ws_template_task_description()` (kontrol listesi görev açıklamasındaki
+  `- [ ]` satırları olarak yazılır; görevin kendi listesi `task_work.php`'nin
+  saydığı yerdir), `ws_templates_builtin()`, `ws_template()`,
+  `ws_templates_list()`, `ws_template_present()`, `ws_template_save()`,
+  `ws_template_archive()`, `ws_template_assignees()`, `ws_template_apply()`,
+  `ws_template_from_channel()`, ekran yardımcıları.
+- Uygulama (`ws_template_apply()`): önce her görev `ws_task_validate()` ile,
+  atamalar `ws_can_assign_to()` ile, not sınırı (`WS_NOTE_LIMIT`) ve dakikada
+  20 mesaj sınırı (`ws_rate_limited()` ile aynı sorgu, yazılacak mesaj
+  sayısıyla) denetlenir; sonra yazılır: karşılama (yalnız şablondan yeni
+  açılan kanalda), görevler `ws_task_create()` ile uygulayanın yetkisiyle,
+  sıra bağları, notlar `ws_note_save()` + `ws_note_share_channel()` (not
+  uygulayanın kendi notu olur), özet `ws_channel_set_summary()` (yalnız
+  boşsa), sabit mesaj `ws_message_send()` + `ws_channel_pin_message()`
+  (`pins.php`; `channels.php`'deki `ws_channel_pin` kenar çubuğunda kanal
+  sabitlemedir, kullanılmadı; yalnız kanalda sabit mesaj yoksa). Sonda kanala
+  "Şablon uygulandı: Yeni müşteri — 5 görev, 1 not" sistem satırı, `uses + 1`
+  (yalnız DB şablonu), `pg_announce('workspace.template.applied')`,
+  `log_activity`. Kişiye dönen metin atanamayan görevleri iki ayrı cümleyle
+  söyler: yetki yetmedi ("3 görev atanamadı…") ya da kişi bulunamadı
+  (lideri olmayan departman, ekipte olmayan kişi).
+- Atama kuralları: `creator` uygulayan, `department_lead` şablonun (yoksa
+  kanalın) departmanının ilk lideri — görevin departmanı da o olur,
+  `department:ID` departman havuzu (kişisiz, departmanlı; sayılmaz),
+  `user:ID` o kişi, `none`.
+- Bölünmezlik: `db()` transaction kullanmıyor (modülde de yok) ve başarısız
+  sorguda `output_error()` ile isteği bitiriyor. Bu yüzden her şey yazmadan
+  önce denetlenir; fonksiyon düzeyinde bir ret yarıda olursa ve istek bir
+  SQL hatasıyla kesilirse (`register_shutdown_function`) kanala "… şablonu
+  yarıda kaldı: … Durmadan önce açılanlar: G-29, G-30." satırı yazılır.
+  Yazılanlar geri alınmaz.
+- Görev bağımlılığı: `ws_task_links` bu dalda yok. `depends_on` JSON'da
+  saklanır; uygularken yalnız `function_exists('ws_task_link_add')` ise
+  `ws_task_link_add($viewer, $task, $blocker_task_id)` çağrılır, yoksa
+  atlanır (sonuçta `links_skipped` sayılır, kişiye söylenmez).
+- Eylemler (`includes/workspace/actions.php` + `pinegrap/api.php` listesi):
+  `ws_templates`, `ws_template_apply`, `ws_template_from_channel`;
+  `ws_channel_create` artık isteğe bağlı `template_id` alır — şablon kanal
+  açılmadan önce bulunur, kanal açılınca uygulanır, sonuç `notice` / `warning`
+  olarak döner.
+- Ekranlar: `workspace_template.php` (yeni kök dosya; `?id=`, `?copy=`
+  yerleşik ya da DB şablonunun kopyası, `?channel=` kanaldan taslak;
+  kapı `workspace_settings.php` ile aynı: `ws_screen_gate()` +
+  `ws_can_write_templates()`; kayıt form token'lı POST + `go()`; ret
+  durumunda yazılanlar formda kalır). Ayarlar'da "Kanal şablonları" kartı
+  (`ws_templates_settings_card()`, arşivle / geri getir POST'u
+  `template_archive`). `assets/js/workspace_templates.js` (`window.PGWsTemplates`:
+  `picker`, `suggest`, `applyDialog`, `fromChannel`; şablon ekranının görev
+  ve not satırları — ekle/sil/sürükle, "şu görevlerden sonra" çipleri,
+  kontrol listesi alanları; özet/sabit mesaj/karşılama için
+  `workspace_editor.js`'in yazı kutusu, etiketler sunucuda çözülüp verilir).
+  `workspace.js`'e yalnız çağrı noktaları: yeni kanal penceresinin üstüne
+  seçici, `colorPicker`'a `set()`, `template_id`, kanal menüsüne iki madde,
+  toast'ta `result.notice`.
+- Dış API (`includes/workspace/api_templates.php`, `api.php`):
+  `GET /workspace/templates` (`workspace:read`, `WorkspaceTemplate`),
+  `POST /workspace/channels/{id}/apply-template` (`workspace:write`,
+  `template_id`, dry-run, `WorkspaceTemplateApplied`); olay
+  `workspace.template.applied`. `tools/check_api_schema.php` sunucu–şema
+  çiftlerine iki satır eklendi.
+- Yerleşik şablonlar kodda (`lang()` ile): "Yeni müşteri" (başlangıç
+  toplantısı, ihtiyaç listesi, teklif, sözleşme, işin başlaması), "Web sitesi
+  teslimi" (içerik, tasarım onayı, test, yayına alma, eğitim), "Aylık
+  kapanış" (fatura kontrolü, vadesi gelen ödemelerin takibi, ayın raporu).
+  Kimlikleri `builtin:new_customer` gibi; DB'ye yazılmaz, `uses` sayılmaz.
+
+**Kararlar ve ödünler.**
+
+- Tarihler iş günü değil takvim günüdür (`ws_is_workday` kullanılmadı); hafta
+  sonuna düşen bitiş elle kaydırılır.
+- Şablondan açılan görevler kanala ayrı görev kartı olarak basılmaz (8
+  görevlik şablon dakikada 20 mesaj sınırını zorlardı); Görevler sekmesinde
+  görünür, kanala tek özet satırı düşer.
+- Karşılama mesajı yalnız şablondan yeni açılan kanalda yazılır; var olan
+  kanala uygulamada "ilk mesaj" olamayacağı için yazılmaz.
+- Şablondan kanal açarken şablonun bulunup arşivde olmadığı kanaldan önce
+  denetlenir; not sınırı / mesaj hızı gibi kanala bağlı denetimler kanal
+  açıldıktan sonra yapılır — reddedilirse kanal açık kalır, sebep `warning`
+  olarak söylenir.
+- Dış API'de sabit mesaj uygulamanın adına (`app_id`) yazılır; notlar sahibin
+  kendi notu olur ve sahibin adına paylaşılır (`ws_note_share_channel()`
+  uygulama adına yazmayı bilmiyor).
+- "Bu kanaldan şablon yap" atamayı görevin ilk sorumlusundan `user:ID`
+  olarak, sorumlusu yoksa departmanından `department:ID` olarak taşır; sıra
+  bağlarını taşımaz (tablo bu dalda yok).
+
+**Denenenler (sandbox, port 8005).** Şema adımı iki kez (ikincisinde "table
+ws_templates already exists"); yerleşik "Yeni müşteri" ile kanal (5 görev,
+göreli tarihler, kontrol listeleri, not paylaşıldı, özet, sabit mesaj,
+sistem satırı); şablon ekranında POST ile kayıt ve yeniden açma, ret
+durumunda formun korunması; rol 3, atama yetkisiz üyenin uygulaması
+(2 görev atanamadı); var olan kanala uygulama (özet/sabit mesaj korundu);
+"Bu kanaldan şablon yap" taslağı; arşivle / geri getir; yetki retleri;
+mesaj hızı ön denetimi; SQL hatasıyla yarıda kesilme satırı;
+`ws_task_link_add` taklidiyle bağ çağrıları; headless Chromium ile yeni kanal
+penceresi, "Şablon uygula" penceresi, "Bu kanaldan şablon yap" ve şablon
+ekranı. Denenemeyen: gerçek API anahtarıyla dış API çağrısı (anahtar
+üretilmedi; OpenAPI belgesinde uçlar ve nesneler görüldü), webhook teslimi.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: tek arama kutusu (Ctrl+K) ve kanal panosu (2026-10-09)
+
+**İstenen.** (1) Çalışma Alanı'nda üç ayrı arama vardı (`ws_search` mesaj,
+`ws_block_search` başlıklı blok, `ws_ref_search` kayıt); notlar ve görevler
+kendi ekranlarında aranıyordu. Her ekranda Ctrl+K / ⌘K ve şeritteki büyüteçle
+açılan tek bir palet istendi: gruplu sonuç (Kanallar · Mesajlar · Kararlar ·
+Görevler · Notlar · Dosyalar · Kayıtlar), ok tuşları ve Enter, `#` kayıt,
+`@` kişi, `/` komut ön ekleri, "bu kanalda" kapsamı, son aramalar.
+(2) `docs/calisma-alani-kanal-pano-plani.md` (plan maddesi 24) aşama 1–4:
+kanalın görevleri, kararları ve dosyaları sütunlarda kart olarak; duruma,
+türe, kişiye, tarihe göre gruplama, süzgeçler, sürükle-bırak ve klavye.
+Şema yok.
+
+**Arama kutusu.** Yeni `includes/workspace/palette.php`, eylem `ws_palette`
+(`q`, `channel_id`, `here`, `types[]`, `limit`, grup başına 8).
+`ws_palette_search($viewer, $q, $options)` her grubu kendi ekranının
+fonksiyonuyla doldurur, görünürlük orada kalır: kanallar `ws_channels_for()`,
+mesajlar `ws_message_search()` (kararlar ayrı grupta olduğu için dışarıda),
+görevler `ws_tasks_list()` (`ws_can_see_task()`; kanalı okunamayan görevde
+kanal adı yazılmaz), notlar `ws_notes_list()`, kayıtlar
+`ws_ref_search($viewer, 'all', …, $kayıt_türleri)` + `ws_refs_resolve()`
+(kaydın ekran adresi için). Kararlar (`kind = 'decision'`) ve dosyalar
+(`file_id > 0`, `ws_channel_files` kaynağı) için yazılan SQL
+(`ws_palette_message_rows()`) `ws_message_search()`'ün süzme biçimini aynen
+uygular: en yeni 200 satır, her satırın kanalına `ws_can_read_channel()`,
+kişinin kendinden sildikleri (`ws_message_hidden_ids()`) hariç. Okunamayan
+bir kanala sınırlanan arama "her yer"e genişlemez, boş döner.
+`ws_palette_mode()` ön eki okur; `#sip 1042` gibi tür önekli arama
+`ws_palette_record_type()` ile yalnız o türde arar. `@` ekip üyelerini (açık
+kanalın üyeleri önce), `/` `ws_command_names()` listesini döndürür (açıklama
+`ws_command_help()`'ten). Uzun metinde eşleşmenin çevresi
+`ws_palette_snippet()` ile kesilir. İstemci `assets/js/workspace_palette.js`
+→ `window.PGWsPalette` (`open()`, `close()`, `isOpen()`): Bootstrap modal,
+300 ms bekleme, en az 2 harf, gruplu liste (`role=listbox`, ok tuşları,
+`aria-activedescendant`), vurgu `<mark>` düğümleriyle istemcide kurulur
+(sunucu düz metin gönderir; `textContent`), son 5 arama `localStorage`
+`pg-ws-palette-recent-<kullanıcı>`. Enter: kanal/mesaj/karar kanal
+ekranındaysa yerinde açılır, değilse `workspace.php?channel=N&message=M`;
+görev → görev çekmecesi; not → `workspace_notes.php?note=N`; dosya → dosya
+bağlantısı yeni sekmede; kayıt → kaydın ekranı; kişi → panel sohbeti
+(`pgChatOpenWith`), yoksa hesabı; komut → açık kanalın yazı kutusuna.
+Şeritte büyüteç düğmesi ve mobil çekmecede "Çalışma Alanında ara" satırı
+(`nav.php`), kanal ekranında kenar çubuğu başlığında büyüteç
+(`data-ws-palette`).
+
+**Kanal panosu.** Yeni `includes/workspace/channel_board.php`, eylem
+`ws_channel_board` (`channel_id`, `group_by`, `priority`, `person`, `mine`,
+`q`, `cancelled`, `done_all`) → `{group_by, columns:[{key, title, icon,
+drop, add, items, more}], counts, members, can_post, stamp}`. Görevler
+`ws_tasks_list($viewer, ['scope' => 'channel', …])`; kartın ek bilgisi
+(bitiş zamanı, hatırlatma, serinin en yeni kopyası) tek sorguyla. Kararlar
+`kind = 'decision'`, dosyalar `file_id > 0`; sabit mesaj
+`ws_channel_pin_present()`, özet kanal satırından. Gruplama: durum
+(Yapılacak · Sürüyor · Bekliyor · Bitti; İptal süzgeçle; Bitti son
+`WS_CHANNEL_BOARD_DONE_DAYS` = 14 gün, öncesi "daha önce biten N görev"
+düğmesiyle), tür (Görevler · Kararlar · Dosyalar · Sabit mesaj ve özet), kişi
+(kanal üyeleri, kanala üye olmayan sorumlular, "Henüz kimse yok"), tarih
+(`ws_channel_board_date_bucket($due, $today)`: Gecikmiş · Bugün · Bu hafta
+(yarından pazara) · Daha sonra · Tarihsiz). Sıra
+`ws_channel_board_compare()`: öncelik, sonra bitiş (tarihsiz sonda), sonra
+yeni olan. İstemci `assets/js/workspace_board_channel.js` →
+`window.PGWsChannelBoard` (`mount()`, `stamp()`, `isOpen()`). Taşıma mevcut
+eylemlerle: durum `ws_task_status`; kişi `ws_task_save` (`assignees`) —
+çakışma denetimi ve "yine de taşı" sorusu Plan Panosu'nun `moveTask()`
+yardımcısıyla; tarih `ws_task_move` (`ws_channel_board_drop_date()`: Bugün →
+bugün, Bu hafta → yarın, Daha sonra → gelecek pazartesi, Tarihsiz → tarih
+kalkar `ws_task_save due_date ''`; Gecikmiş'e ve pazar günü Bu hafta'ya
+bırakılmaz), serinin en yeni kopyasında Plan Panosu'nun "yalnız bu kopya /
+sonrakiler" sorusu. Klavye: Boşluk tut, ←/→ sütun, Enter bırak, Esc vazgeç
+(`aria-live` duyurusu); ↑/↓ ve ←/→ kartlar arasında gezinir. Sütun başındaki
+"+" sütunun değeriyle yeni görev açar (durum sütununda kayıttan sonra
+`ws_task_status`). 768 px altında tek sütun ve sütun seçici. Yenileme:
+`ws_sync` pano açıkken (`board=1`) `board_stamp` döndürür
+(`ws_channel_board_stamp()`: kanal görevlerinin sayısı ve en son
+`updated_at`'i, karar/dosya mesajlarının sayısı, en büyük id'si ve
+`marked_at`'i, sabit mesaj, özet zamanı — iki dizinli okuma); değişince pano
+yeniden çekilir.
+
+**`workspace.js`'teki çağrı noktaları.** Plan Panosu'nun `askSeries()`
+yardımcısı `startBoard()`'un içinden modül düzeyine taşındı (kopyalanmadı),
+`moveTask()` isteğe bağlı bir `action` parametresi aldı (varsayılan
+`ws_task_move`; pano kişi taşımada `ws_task_save` verir). İki yeni dosya
+yardımcıları `window.PGWsKit` üzerinden alır (`shareKit()`: `t`, `el`,
+`api`, `ask`, `taskMenu`, `moveTask`, `askSeries`, `priorityFilter`, görev
+çekmecesi, `here()` — açık kanal, kanal açma, yazı kutusuna yazma). Kanal
+sekmelerine `board` (misafir odası, tartışma ve eski sürüm görünümünde yok),
+`?view=board` adresiyle açılış (`pendingTab`) ve sekme değişince adresin
+güncellenmesi (`syncAddress()`); `ws_sync` isteğine `board`, cevabında
+`board_stamp`; Ctrl+K yakalayıcısı (pencere üzerinde capture, `record`
+kipinde yok) ve `[data-ws-palette]` tıklaması.
+
+**Kararlar ve ödünler.**
+- Brief'teki `ws_palette()` adı `includes/workspace/groups.php`'deki kanal
+  renk paletinin `ws_palette()` fonksiyonuyla çakışıyordu ("Cannot redeclare",
+  500). Arama fonksiyonu `ws_palette_search()` oldu; eylem `ws_palette`,
+  dosya `palette.php`, `ws_palette_js_strings()` ve `window.PGWsPalette`
+  brief'teki gibi kaldı.
+- Panelin kendi Ctrl+K araması (`backend.src.js`) Çalışma Alanı ekranlarında
+  bu pencereye bırakıldı; panelin araması başlıktaki kutudan açılmaya devam
+  eder. Başlıktaki kutunun "Ctrl+K" ipucu bu ekranlarda değişmedi.
+- "Bu kanalda" kapsamında yalnız kanala ait gruplar (mesaj, karar, görev,
+  dosya) aranır; kanallar, notlar ve kayıtlar o kapsamda aranmaz.
+- Kişi, tarih ve tür gruplamaları açık görevleri gösterir; biten görevler
+  yalnız durum panosunun Bitti sütunundadır.
+- Tekrarlayan görev "Tarihsiz" sütununa bırakılamaz (tekrar bitiş tarihinden
+  sayılır); uyarı verilir.
+- Pano sekmesi her kanalda, ayarsız; misafir odasında (`kind = 'guest'`) ve
+  tartışmada yok, misafir görünümünde (`workspace_guest.php`) hiç yok.
+- Gruplama ve süzgeç tercihi yalnız sayfa açıkken hatırlanır (kişiye özel
+  kalıcı görünüm plan §4'te şemalı ileri iş).
+- `ws_message_search()` mesajları her satırın kanalını okuyarak süzüyor ve
+  özel kanalı sızdırmıyor (aşağıda deneme); değiştirilmedi.
+- Kayıtlar grubunda dosya türü (`ws_ref_search` `file`) dosya yöneticisini
+  arar: yönetici (rol 0–2) üyesi olmadığı özel kanalın ekinin adını burada
+  görür — dosya yöneticisinde de görüyor; mevcut `#` seçicisinin davranışı,
+  değiştirilmedi.
+- Tur: "Kanal" adımına pano cümlesi, anahtar `workspace.2`.
+
+**Denenenler (sandbox, `pinegrap_searchboard`).** Yönetici + iki rol-3 üye
+(ayse, mert); ayse'nin özel kanalı `#gizli-proje`. `ws_palette q=deneme`:
+yöneticide yedi grubun yedisi; mert'te `#gizli-proje`'nin mesajı, kararı,
+dosyası, görevi ve ayse'nin notu yok; ayse'de var; mert'in `channel_id=3`
+kapsamlı araması boş. `ws_channel_board` dört gruplamada beklenen sütunlar;
+mert'e `#gizli-proje` panosu "kanal bulunamadı", tartışma ve misafir odası
+"panosu yok". Tarayıcı (headless Chromium, puppeteer): `?view=board`
+doğrudan açılınca Pano sekmesi seçili; dört gruplama; klavyeyle ve
+sürükleyerek durum değişimi; tarih sütunlarına taşıma, tekrarlayan görevde
+seri sorusu ve "sonrakiler" seçimiyle serinin kayması; izinli kişiye taşımada
+çakışma sorusu ve "yine de taşı"; "+" ile Sürüyor sütununda görev; başka
+oturumdan değişen görevin 2,5 sn içinde panoda yer değiştirmesi; Ctrl+K'da
+panelin araması açılmadan palet, `<mark>` vurgusu, Enter'la mesaja gitme,
+son aramalar, `/gor` → yazı kutusuna `/gorev `, `@`, `#`, kanal kapsamı;
+görevler ekranında şerit büyüteci ve Enter'la görev çekmecesi; 390 px
+genişlikte tek sütun.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: görevde harcanan süre (→ ERP fatura taslağı) ve görev bağımlılığı (2026-10-09)
+
+**İstenen.** Görevin tahmini (`ws_tasks.estimate_minutes`) vardı, gerçekleşen
+süresi yoktu. (D) Görevde harcanan süre: sayaç ve elle giriş, kanal ve kişi
+toplamları, ERP'ye fatura taslağı köprüsü, programlanmış işlem sayacı, dış API
+ve olay. (I) Görev bağımlılığı: bir görevin başka görevleri beklemesi, döngü
+yasağı, engelleyen bitince haber.
+
+**Şema.** 8.86 `upgrade_2026_4_8_workspace_task_time()` → `ws_task_time`;
+8.110 `upgrade_2026_4_8_workspace_task_links()` → `ws_task_links`. İkisi de
+`install_create_table` + `install_note`, `get_tables()`'ta. `ws_task_time`
+InnoDB olmak zorunda: fatura taslağı kayıtları `FOR UPDATE` ile kilitleyip
+taslakla aynı işlemde bağlar. Sandbox'ta iki kez koşuldu.
+
+**Süre (`includes/workspace/task_time.php`, `assets/js/workspace_task_time.js`).**
+- Satır = bir kişinin bir görevde bir gündeki süresi. Sayaç `started_at` dolu,
+  `minutes = 0` satırdır; kişi başına tek (`ws_task_time_running()`): yeni
+  sayaç eskisini `ws_task_time_close()` ile durdurup kaydeder. Durdurmada
+  dakikayı sunucu `started_at`'ten sayar (`ws_task_time_elapsed()`:
+  `round(sn/60)`, en az 1) — sekme kapansa da süre kaybolmaz ya da şişmez.
+- Elle giriş `ws_task_time_parse()`: `90`, `1:30`, `1s 30d`, `1sa 30dk`,
+  `1h 30m`, `1,5s`, önde `~` olabilir. Birim sözcükleri `ws_parse_estimate()`
+  ile aynı, **tek fark bu alanda `d` = dakika** ve gün birimi yok (harcanan
+  süre gün yazılmaz; `ws_parse_estimate()`'te `d` gündür ve ona
+  dokunulmadı — mimar onayı). Gelecek gün reddedilir, en çok 100000 dk.
+- Kim yazar: `ws_task_time_may_log($viewer, $task, $assignees, $user_id)` (saf):
+  görevin üzerindeki kişi ya da oluşturan kendi süresini; yönetici (rol 0–2)
+  herkesinkini (çekmecede kişi seçici). Okuma `ws_task($id)` +
+  `ws_can_see_task()` (brief'teki `ws_task_for` ağaçta yok). Silme: kendi
+  kaydı ya da yönetici; faturaya bağlı kayıt silinmez.
+- Gösterim `ws_minutes_label()` ("1 sa 30 dk"): planlama ekranları ve
+  programlanmış işlemin dakika gösterimi aynı yardımcıdan geçer.
+- Çekmece: başlat/durdur (sayaç JS'te sunucu saatine göre sayar), elle giriş
+  formu, kayıt listesi, toplam ↔ tahmin çubuğu. Görev kartı
+  (`ws_task_card_html`) ve listeler (`ws_task_brief` → `time_minutes`,
+  `time_label`) süre etiketi taşır; `ws_tasks_list()` toplamları tek sorguyla
+  (`ws_task_time_totals()`) verir.
+- Kanal: Özet sekmesinde "Harcanan süre" kartı ayrı eylemle
+  (`ws_task_time_channel`) tembel yüklenir — `ws_channel_detail()` her
+  açılışta ağırlaşmasın; sekme işaretine dokunulmadı. Bu ay / toplam /
+  faturalanmamış, kişiye göre, bağlı taslaklar.
+- Görevlerim'de "Zamanım" kapsam düğmesi (`ws_task_time_mine()`: son 8 hafta,
+  hafta hafta, görev görev). Plan Panosu'nda yöneticiye kişi satırında
+  "Planlanan … · harcanan …" (`ws_board()` satırına `time`).
+- `ws_scheduled_metrics()`'e `time_logged_week` (`kind` `minutes`, kanal
+  kapsamlı); `ws_scheduled_metric_show()` dakikayı `ws_minutes_label()` ile
+  yazar.
+
+**ERP köprüsü (`ws_task_time_invoice()`).** Kapı
+`ws_task_time_can_invoice()`: `ERP_ENABLED`, kanal müşterisi `erp_account`,
+kullanıcı rol 0–2 ya da `manage_erp` ve `manage_erp_readonly` değil, kanala
+yazabiliyor. Kapalıyken düğme çizilmez, eylem `ws_action_error` döner.
+Akış: `erp_tx_begin()` → kanalın faturalanabilir, `invoice_id = 0`, tarih
+aralığındaki kayıtları `FOR UPDATE` → görev başına satır (açıklama görev no +
+başlık, miktar `ws_task_time_hours()` = `round(dk/60, 2)`, birim `HUR`, birim
+fiyat formdaki saatlik ücret `erp_kurus()` ile kuruş, KDV formdan) →
+`erp_invoice_draft_save()` (satış, ana para birimi, bugünün tarihi; taslak
+numara almaz, deftere yazmaz) → kayıtlara `invoice_id` (`erp_query()` ile:
+`db()` hata verince isteği bitirir, `erp_query()` `false` döner ve işlem geri
+alınabilir) → `erp_tx_commit()`. Herhangi bir adımda ret → `erp_tx_rollback()`,
+kayıtlar 0'da kalır. Kanala kilitli karar satırı ("3 kayıt, 2,02 saat →
+fatura taslağı <#invoice:…>"). "Bağı çöz" (`ws_task_time_unlink()`, yönetici)
+yalnız taslak / silinmiş / iptal faturada; kesilmiş faturanın süresi kalır.
+`erp_invoice_draft_delete()`'e dokunulmadı.
+
+**Bağımlılık (`includes/workspace/task_links.php`, `assets/js/workspace_task_links.js`).**
+- `ws_task_link_add($viewer, $task, $blocker_task_id)` (başka bir özelliğin
+  `function_exists` ile aradığı ad): görevi değiştirebilen, engelleyeni
+  görebilen bağlar; en çok 20 engelleyen.
+- Döngü denetimi saf `ws_task_link_cycle($map, $task_id, $blocker_id, 50)`:
+  engelleyenin önündeki zinciri seviye seviye yürür; görevin kendisine
+  varırsa `cycle`, 50 adımı aşarsa `too_deep`, kendine bağ `self`. Harita
+  veritabanından `ws_task_link_map_from()` ile okunur; test haritayla yapılır.
+- Bloklu görev (açık engelleyeni olan): kartta kilit + "Bekliyor: G-12",
+  listede etiket; `doing`'e geçerken (çekmece, kart düğmesi, sağ tık) soru
+  sorulur, engellenmez.
+- Engelleyen `done` olunca (`ws_task_set_status()` → `ws_task_links_done()`)
+  bekleyen görev hâlâ açıksa ve **son** açık engelleyeni buysa üzerindeki
+  kişilere gelen kutusu satırı (`ws_inbox.kind = 'unblocked'`, VARCHAR —
+  şema gerekmez): "G-12 bitti, G-15 başlayabilir".
+- API: görev nesnesine `blocked_by`, `blocks` (ve `time_minutes`);
+  `POST /workspace/tasks` ve `/workspace/tasks/{id}` `blocked_by` alır
+  (listeyi değiştirir; görülemeyen görevlere bağ korunur), yazmadan önce
+  `ws_task_links_check()` ile denetlenir, ret 422.
+
+**Dış API (süre).** `GET /workspace/tasks/{id}/time`, `POST` (`minutes`,
+`worked_on`, `note`, `billable`; dry-run), `DELETE …/time/{entry_id}`
+(`also_accepts` POST — IIS; dry-run). Nesne `WorkspaceTaskTime`. Olay
+`workspace.task.time_logged` (sayaç durunca ya da elle yazılınca).
+
+**Kararlar ve ödünler.**
+- Sayaç ve elle giriş için tavan 100000 dk (tahminle aynı); unutulmuş bir
+  sayaç durdurulana kadar sayar, kesilmez.
+- "G-… bitti" satırının ilk numarası okunurken hesaplanır (bekleyen görevin
+  en son biten engelleyeni); `ws_inbox`'ta ikinci görev sütunu yok. Aynı görev
+  için okunmuş eski satır da en son biteni gösterir.
+- Taslak çip etiketi `refs.php`'nin fatura çözümünden gelir ("Fatura
+  Taslak"); numarasız taslak için değiştirilmedi.
+- ERP izine (`erp_audit_log`) düşmez: `log_activity()` kancası yalnız ERP
+  dosyalarından gelen satırı izler; çalışma alanı mevcut "erp invoice draft
+  (…) was saved" anahtarıyla etkinlik günlüğüne yazar.
+
+**Denenenler (sandbox, 8003).** Şema adımları iki kez (created / already
+exists) ve tam yükseltme iki kez; sayaç 2 sn → 1 dk; `1s 15d` → 75, toplam
+76; rol 3 üzerinde değilken ret, atanınca kabul; ERP kapalıyken ret, ERP
+açıkken taslak (`erp_invoices` `_D` serisi, `erp_invoice_items` `HUR`, kuruş
+tutarlar), kayıtların `invoice_id`'si; saatlik ücret 0 ve KDV 150 reddi;
+bağ yazımı zorla düşürülünce (sandbox tetikleyicisi) taslak dahil geri alma;
+iki eşzamanlı istekte tek taslak; bağımlılık A←B, B←A ve üç adımlı döngü
+reddi, A bitince B'nin kişisine gelen kutusu; API uçları (kimlik adımı
+dışında) ve dry-run; başsız Chromium'da çekmece, Özet kartı, Zamanım, Pano
+etiketi, bloklu başlatma sorusu. Ayrıntı ve denenemeyenler PR açıklamasında.
+
+---
+
+## 2026.4.8 — Çalışma Alanı: onay isteği kartı ve okundu onayı (8.87, 8.89) (2026-10-09)
+
+**İstenen.** (E) Bir kanalda seçilen kişilerden bir şey için onay istemek:
+başlık, açıklama (@ ve # çalışır), 1–10 onaylayan, "herhangi biri / hepsi"
+kuralı, isteğe bağlı son tarih. Kartta her onaylayanın durumu görünür;
+Onayla / Reddet düğmeleri yalnız onaylayanlara çıkar, isteyen geri çeker,
+yönetici (rol 0–2) kapatır. Sonuç kanala kilitli karar mesajı olarak
+düşer. Ayrıca bildirim, son tarihten bir gün önce hatırlatma, Genel Bakış
+satırı, tartışma ve misafir davranışı, programlanmış işlem eylemi, olaylar
+ve dış API. (H) Bir mesaja "okundu onayı" bayrağı: kanalın o anki üyeleri
+için "Okudum" düğmesi, "N / M okudu" etiketi ve kim okudu listesi, 24 saat
+sonra bir kez hatırlatma, Genel Bakış satırı, API'de `ack`.
+
+**Nasıl.** İkisi de anket desenine biner: `interact.php`, mesajın `poll`
+ekstrası, `pollNode` / `pollForm`.
+
+- `includes/workspace/approvals.php` (yeni). İstek bir mesajdır: gövdesi
+  `**başlık**` ve açıklamadır, `ws_message_send()` ile yazılır. Böylece
+  etiketler, @ bildirimleri, `ws_refs`, tartışma kopyası ve
+  `workspace.message.created` olduğu gibi çalışır. Kart,
+  `ws_approvals` + `ws_approval_people` satırlarıdır. Oluşturmadan önceki
+  bütün denetim `ws_approval_input()`'tadır; form, API dry-run ve
+  programlanmış işlem aynı reddi görür. Onaylayan `ws_approval_eligible()`
+  ile denetlenir: kanal üyesi ve kanala yazabilen bir ekip üyesi olmalıdır.
+  Misafir kanal üyesi olmadığı için hiçbir yoldan onaylayan olamaz.
+  `record_type` / `record_id` açıklamadaki ilk kayıt etiketinden
+  (`ws_record_type_keys()`) doldurulur. Kartta o kaydın çipi
+  `data-ws-record` taşır ve tıklanınca mevcut kayıt çekmecesi ("Nerede
+  geçti") açılır. Kural, `ws_approval_outcome($rule, $decisions, $now,
+  $closes_at)` saf fonksiyonundadır: ret her kuralda isteği kapatır, "any"
+  ilk onayla, "all" herkesin onayıyla sağlanır, kural sağlanmadan son tarih
+  geçerse sonuç `expired` olur, sağlanmış kural geçmiş son tarihe üstün
+  gelir. Testleri `tests/approvals_test.php`'de.
+  `ws_approval_decide()` sunucuda kişinin `ws_approval_people`'da `pending`
+  satırı olmasını ve kanala yazabilmesini ister. Güncelleme
+  `decision = 'pending'` koşuluyla yapılır, böylece çift tıklama bir kez
+  sayılır. `ws_approval_settle()` anketin `ws_poll_close()` desenini izler:
+  önce `closed_at = 0` koşullu `UPDATE` ile kapatır (iki karar aynı anda
+  gelirse sonuç bir kez yazılır). Sonra isteyenin adına `kind='decision'`,
+  `parent_id = istek` olan bir mesaj yazar ve `locked = 1` yapar
+  (`ws_change_apply()` deseni). Tartışmada `ws_thread_copy_sync()` kopyayı
+  kilidiyle birlikte ana kanala taşır. Geri çekme ve kapatma karar
+  sayılmaz, sistem satırı olarak düşer. İsteyen artık yazamıyorsa
+  (kanaldan çıkmışsa) sonuç anketteki gibi sistem satırına düşer; o
+  durumda Karar Zaman Çizelgesi'nde görünmez.
+- `includes/workspace/acks.php` (yeni). Bayrak `ws_ack_requests`'te,
+  yanıtlar `ws_acks`'te durur. Kimin sayılacağı her okumada
+  `ws_ack_counted_ids()` ile bulunur: kanalın **o anki** üyeleri (ekip
+  üyeleri), yazan hariç. Kanaldan çıkan sayımdan düşer, katılan girer,
+  misafir üye olmadığı için hiç sayılmaz. Onayı yazan ya da bir yönetici
+  isteyebilir (`ws_ack_can_request()`). Listeyi yazan, isteyen ve
+  yöneticiler görür. Kişi "Okudum" deyince o mesajın `ack_reminder` gelen
+  kutusu satırı okunmuş sayılır.
+- Tetikleme. Anketin otomatik kapanması programlanmış işte değildir; kanal
+  açılınca ve `ws_sync` sırasında `ws_polls_autoclose()` ile yapılır. Onay
+  isteklerinin süre dolumu iki yerde yapılır: onun yanında
+  (`ws_approvals_autoclose()`) ve `ws_scheduled_run()`'ın başında
+  (`ws_approvals_run()`, `ws_acks_run()`). Hatırlatmalar yalnız bu turda
+  gider. Satır önce koşullu `UPDATE ... reminded_at` ile sahiplenildiği
+  için hatırlatma bir kez gider. `job.php` ve açık ekran turu yalnız
+  `ws_scheduled_due()` true iken başlattığından oraya iki indeksli
+  `LIMIT 1` okuma eklendi (`idx_due`, `idx_remind`; EXPLAIN: range,
+  rows 1).
+- Dokunulan yerler:
+  - `messages.php`: `approval`, `ack` ve `ack_can_request` ekstraları. Onay
+    isteği mesajı düzenlenemez; `ws_message_edit()` de reddeder.
+  - `actions.php` ve `api.php`: `ws_approval_create/decide/close`,
+    `ws_ack_request/ws_ack/ws_ack_people` eylemleri ve eski konuşma
+    sürümü koruması.
+  - `notify.php`: `approval_requested`, `approval_decided`,
+    `approval_reminder`, `ack_reminder`.
+  - `home.php`: `approvals`, `acks`. `pins.php`: sabit mesajın `ack`'i.
+    `guests.php`: salt okunur kart.
+  - `threads.php`: tartışma silinirken dört tablo temizlenir; kararın
+    kanaldaki kopyası kalır.
+  - `scheduled.php`: `approval` eylemi (girdi, metin, çalıştırma).
+    Çalışırken artık kanalda olmayan onaylayan atlanır; kimse kalmazsa
+    işlem başarısız olur.
+  - `screen.php`: metinler, `CFG.approvals/acks` ve iki yeni `<script>`.
+  - JS: `workspace_approvals.js` (`PGWsApprovals`: kart, form, Genel
+    Bakış, programlanmış işlem kutusu) ve `workspace_acks.js`
+    (`PGWsAcks`). `workspace.js`'te yalnız çağrı noktaları ve
+    `featureHelpers()` var.
+  - CSS: `.ws-approval-*`, `.ws-ack-*`.
+- Dış API: `GET /workspace/channels/{id}/approvals`;
+  `POST /workspace/channels/{id}/approvals` (workspace:write, dry-run;
+  mesaj uygulama adına düşer); `POST /workspace/approvals/{id}/decide`;
+  `POST /workspace/messages/{id}/ack`. Yeni `WorkspaceApproval` nesnesi
+  eklendi, mesaj nesnesine `ack {wanted,count,total,mine}` alanı girdi.
+  Olaylar `workspace.approval.requested` ve `workspace.approval.decided`
+  yalnız genel kanallarda duyurulur (anketin kuralı).
+
+**Kararlar ve ödünler.**
+- Karar verme ve okundu onayı API'de **yalnız cihaz oturumunda** (Bearer)
+  çalışır. Sunucu uygulaması (Basic) 403 `forbidden` alır: bir entegrasyon
+  sahibi adına onay veremez, "okudum" diyemez (mimar onayı).
+- Brief'teki şemaya `ws_approvals.reminded_at` eklendi; son tarihten bir
+  gün önceki hatırlatma bununla bir kez gider (mimar onayı). Ayrıca iki
+  dizin eklendi: genel vade okuması için `idx_due (closed_at, closes_at)`,
+  hatırlatma okuması için `ws_ack_requests.idx_remind (reminded_at,
+  requested_at)`.
+- Yeni ref türü eklenmedi. Kodda ERP teklifi ve gider etiketi yok;
+  `#teklif` öneki `offer`'a (kampanya/kupon) gider. Kart, mevcut kayıt
+  türlerinden etiketlenen ilk kaydı gösterir.
+- "Onaylanırsa → sonraki adım" zinciri yok (kapsam dışı).
+- Okundu sayımında yazan sayılmaz. Sayılan kimse yoksa etiket yeşile
+  dönmez.
+- İsteyen kişi kendini onaylayanlar arasına seçebilir; programlanmış
+  işlemde işlemi yazan yönetici de onaylayan olabilsin diye. Kişi kendine
+  bildirim almaz.
+
+**Denenenler.** Sandbox'ta (port 8004) iki şema adımı iki kez koşturuldu:
+ilk çalıştırma 4 tablo oluşturdu, ikincisi hepsi için "zaten var" dedi.
+Dört kullanıcıyla panel eylemleri ve dış API gerçek isteklerle denendi.
+Kart, form, okundu onayı, Genel Bakış ve programlanmış işlem kutusu başsız
+Chromium'la denendi. Ayrıntılar ve çıktılar mimarın raporunda.
 
 ---
 

@@ -14657,4 +14657,778 @@ button.ws-home-row:hover,
     font-size: .8125rem;
     color: var(--bs-warning-text-emphasis);
 }
+/* The search box of the whole workspace (assets/js/workspace_palette.js) */
+.ws-palette .modal-dialog {
+    margin-top: 8vh;
+}
+.ws-palette-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .55rem .9rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-palette-glass {
+    color: var(--bs-secondary-color);
+    font-size: 1.1rem;
+}
+.ws-palette-input,
+.ws-palette-input:focus {
+    padding: .35rem 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 1.05rem;
+}
+.ws-palette-esc {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: .7rem;
+}
+.ws-palette-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem .75rem;
+    padding: .45rem .9rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-palette-kinds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+}
+.ws-palette-kind {
+    --bs-btn-padding-y: .1rem;
+    --bs-btn-padding-x: .55rem;
+    --bs-btn-font-size: .75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    color: var(--bs-secondary-color);
+}
+.ws-palette-kind.active {
+    border-color: transparent;
+    background: rgba(var(--ws-accent-rgb), .14);
+    color: var(--ws-accent);
+}
+.ws-palette-list {
+    max-height: min(60vh, 34rem);
+    overflow-y: auto;
+    padding: .35rem 0;
+}
+.ws-palette-group {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .55rem .9rem .2rem;
+    color: var(--bs-secondary-color);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.ws-palette-count {
+    margin-left: .25rem;
+    font-weight: 400;
+}
+.ws-palette-forget {
+    font-size: .7rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.ws-palette-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .4rem .9rem;
+    cursor: pointer;
+}
+.ws-palette-item.active {
+    background: rgba(var(--ws-accent-rgb), .1);
+}
+.ws-palette-icon {
+    flex: 0 0 1.6rem;
+    color: var(--bs-secondary-color);
+    text-align: center;
+}
+.ws-palette-face {
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+.ws-palette-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.ws-palette-title,
+.ws-palette-sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-palette-sub {
+    color: var(--bs-secondary-color);
+    font-size: .78rem;
+}
+.ws-palette-done .ws-palette-title {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-palette-date {
+    flex: 0 0 auto;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+}
+.ws-palette-mark {
+    padding: 0;
+    border-radius: .15rem;
+    background: rgba(var(--bs-warning-rgb), .35);
+    color: inherit;
+}
+.ws-palette-empty,
+.ws-palette-note {
+    padding: .9rem;
+    color: var(--bs-secondary-color);
+    font-size: .875rem;
+}
+.ws-palette-note {
+    padding-bottom: .2rem;
+}
+.ws-palette-foot {
+    padding: .4rem .9rem;
+    border-top: 1px solid var(--bs-border-color);
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+}
+/* A channel's board (assets/js/workspace_board_channel.js) */
+.ws-cb-bar {
+    margin-bottom: .6rem;
+}
+.ws-cb-bar > .btn-group {
+    flex-wrap: wrap;
+}
+.ws-pane .ws-cb-picker {
+    display: none;
+}
+.ws-cb-cols {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding-bottom: .5rem;
+    overflow-x: auto;
+}
+.ws-cb-col {
+    display: flex;
+    flex: 0 0 17rem;
+    flex-direction: column;
+    min-width: 0;
+    border: 2px solid transparent;
+    border-radius: var(--ws-radius, .9rem);
+    background: var(--bs-tertiary-bg);
+}
+.ws-cb-col.ws-cb-drop {
+    border-color: rgba(var(--ws-accent-rgb), .55);
+    background: rgba(var(--ws-accent-rgb), .07);
+}
+.ws-cb-col-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem .6rem .35rem;
+    font-size: .8125rem;
+    font-weight: 600;
+}
+.ws-cb-col-icon {
+    color: var(--bs-secondary-color);
+}
+.ws-cb-col-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-cb-col-count {
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    font-weight: 400;
+}
+.ws-cb-face {
+    border-radius: 50%;
+}
+.ws-cb-add {
+    --bs-btn-padding-y: 0;
+    --bs-btn-padding-x: .3rem;
+}
+.ws-cb-list {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    min-height: 2.5rem;
+    padding: 0 .5rem .5rem;
+}
+.ws-cb-empty {
+    padding: .6rem .2rem;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    text-align: center;
+}
+.ws-cb-more {
+    align-self: flex-start;
+    margin: 0 .5rem .4rem;
+    font-size: .75rem;
+}
+.ws-cb-card {
+    position: relative;
+    padding: .5rem .6rem .5rem .75rem;
+    border: 1px solid var(--bs-border-color-translucent);
+    border-radius: .6rem;
+    background: var(--bs-body-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+    cursor: pointer;
+    font-size: .8125rem;
+}
+.ws-cb-card::before {
+    content: "";
+    position: absolute;
+    top: .4rem;
+    bottom: .4rem;
+    left: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: transparent;
+}
+.ws-cb-card.ws-cb-pri-urgent::before {
+    background: var(--bs-danger);
+}
+.ws-cb-card.ws-cb-pri-high::before {
+    background: var(--bs-warning);
+}
+.ws-cb-card.ws-cb-pri-low::before {
+    background: var(--bs-border-color);
+}
+.ws-cb-card:hover {
+    border-color: rgba(var(--ws-accent-rgb), .35);
+}
+/* The keyboard moves cards here, so the card it is on has to show. */
+.ws-cb-card:focus-visible {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-card.ws-cb-lifted {
+    outline: 2px dashed var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-card.ws-cb-dragging {
+    opacity: .5;
+}
+.ws-cb-closed .ws-cb-title {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-cb-card-top {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .15rem;
+    color: var(--bs-secondary-color);
+    font-size: .7rem;
+}
+.ws-cb-number {
+    font-weight: 600;
+}
+.ws-cb-priority {
+    background: var(--bs-danger-bg-subtle);
+    color: var(--bs-danger-text-emphasis);
+}
+.ws-cb-status {
+    margin-left: auto;
+}
+.ws-cb-title {
+    font-weight: 500;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.ws-cb-sub {
+    margin-top: .2rem;
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+}
+.ws-cb-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem .6rem;
+    margin-top: .35rem;
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+}
+.ws-cb-faces {
+    margin-left: auto;
+}
+.ws-cb-faces img {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+.ws-cb-more-faces {
+    margin-left: .2rem;
+    font-size: .68rem;
+}
+.ws-cb-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+}
+.ws-cb-progress-bar {
+    display: inline-block;
+    width: 2.6rem;
+    height: .3rem;
+    overflow: hidden;
+    border-radius: .3rem;
+    background: var(--bs-secondary-bg);
+}
+.ws-cb-progress-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--bs-success);
+}
+.ws-cb-thumb {
+    display: block;
+    width: 100%;
+    max-height: 7rem;
+    margin-bottom: .35rem;
+    border-radius: .4rem;
+    object-fit: cover;
+}
+.ws-cb-decision .ws-cb-kind-icon {
+    color: var(--bs-success);
+}
+/* A phone shows one column, picked above the board. */
+@media (max-width: 767.98px) {
+    .ws-pane .ws-cb-picker {
+        display: block;
+    }
+    .ws-cb-cols {
+        display: block;
+    }
+    .ws-cb-col {
+        display: none;
+    }
+    .ws-cb-col.ws-cb-col-current {
+        display: flex;
+    }
+}
 /* ── /Workspace ── */
+/* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */
+.ws-sa-when-event {
+    max-width: 24rem;
+}
+.ws-sa-when-event-filter {
+    margin-top: .5rem;
+}
+.ws-form-card {
+    max-width: 34rem;
+    margin-top: .4rem;
+    padding: .45rem .65rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+    font-size: .8125rem;
+}
+.ws-form-card-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .3rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+a.ws-form-card-head:hover span {
+    text-decoration: underline;
+}
+.ws-form-card-head small {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+}
+.ws-form-card-fields {
+    display: grid;
+    grid-template-columns: minmax(6rem, max-content) 1fr;
+    gap: .15rem .75rem;
+    margin: 0;
+}
+.ws-form-card-fields dt {
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+}
+.ws-form-card-fields dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+/* ── Workspace: channel templates (assets/js/workspace_templates.js) ── */
+.ws-tpl-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-tpl-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: .5rem;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+.ws-tpl-icon[style] {
+    color: #fff;
+}
+.ws-tpl-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: .5rem;
+}
+.ws-tpl-card {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .5rem .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    text-align: start;
+}
+.ws-tpl-card:hover {
+    border-color: var(--bs-primary-border-subtle);
+}
+.ws-tpl-card.active {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 .15rem var(--bs-primary-bg-subtle);
+}
+.ws-tpl-card-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.ws-tpl-card-name {
+    font-weight: 600;
+}
+.ws-tpl-card-desc,
+.ws-tpl-card-count {
+    font-size: .8125rem;
+    color: var(--bs-secondary-color);
+}
+.ws-tpl-item {
+    margin-bottom: .75rem;
+    padding: .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+}
+.ws-tpl-item-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.ws-tpl-item-n {
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+.ws-tpl-handle {
+    cursor: grab;
+}
+.ws-tpl-dragging {
+    opacity: .5;
+}
+.ws-tpl-after {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+}
+.ws-tpl-note-body {
+    font-family: var(--bs-font-monospace);
+    font-size: .8125rem;
+}
+.ws-tpl-rich {
+    min-height: 5rem;
+}
+/* ── Workspace: time spent on tasks (assets/js/workspace_task_time.js) ── */
+.ws-task-time,
+.ws-task-links {
+    margin: 1rem 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-time-head,
+.ws-task-links-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .9rem;
+}
+.ws-task-time-bar {
+    height: 4px;
+    margin: .35rem 0 .5rem;
+}
+.ws-task-time-over .progress-bar {
+    background-color: var(--bs-danger);
+}
+.ws-task-time-timer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin: .5rem 0;
+    font-size: .85rem;
+}
+.ws-task-time-clock {
+    font-family: var(--bs-font-monospace);
+    font-variant-numeric: tabular-nums;
+}
+.ws-task-time-add {
+    margin-bottom: .5rem;
+}
+.ws-task-time-list {
+    display: grid;
+    gap: .4rem;
+}
+.ws-task-time-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+}
+.ws-task-time-row img {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.ws-task-time-row-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+.ws-task-time-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.ws-task-time-total {
+    text-align: end;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.ws-task-time-tag,
+.ws-task-links-tag {
+    font-size: .75rem;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+.ws-task-time-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+}
+.ws-task-time-week {
+    display: flex;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: var(--bs-tertiary-bg);
+    font-size: .85rem;
+}
+.ws-task-time-board {
+    display: block;
+    color: var(--bs-secondary-color);
+}
+/* ── Workspace: tasks that wait for other tasks (workspace_task_links.js) ── */
+.ws-task-links-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .3rem;
+    font-size: .85rem;
+}
+.ws-task-links-done a,
+.ws-task-links-done span.ws-grow {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-task-links-results {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+.ws-task-card-blocked {
+    margin-top: .15rem;
+    font-size: .75rem;
+    color: var(--bs-warning-text-emphasis);
+}
+/* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
+.ws-approval {
+  max-width: 34rem;
+  margin-top: .4rem;
+  padding: .55rem .65rem .45rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid rgb(var(--ws-accent-rgb));
+  border-radius: .6rem;
+  background: var(--bs-body-bg);
+}
+.ws-approval-approved {
+  border-left-color: var(--bs-success);
+}
+.ws-approval-rejected {
+  border-left-color: var(--bs-danger);
+}
+.ws-approval-expired,
+.ws-approval-withdrawn {
+  border-left-color: var(--bs-secondary-color);
+}
+.ws-approval-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .45rem;
+  font-size: .8rem;
+}
+.ws-approval-head > .bi {
+  color: rgb(var(--ws-accent-rgb));
+}
+.ws-approval-tag {
+  padding: 0 .4rem;
+  border-radius: .35rem;
+  font-size: .68rem;
+  font-weight: 600;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+}
+.ws-approval-asker,
+.ws-approval-when {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-when {
+  margin-left: auto;
+}
+.ws-approval-record {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  margin-bottom: .45rem;
+  padding: .2rem .55rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .45rem;
+  background: var(--bs-tertiary-bg);
+  font-size: .82rem;
+  color: var(--bs-body-color);
+}
+.ws-approval-record:hover {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+}
+.ws-approval-record-label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-approval-record-meta {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-people {
+  display: grid;
+  gap: .25rem;
+  margin: 0 0 .4rem;
+  padding: 0;
+  list-style: none;
+}
+.ws-approval-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+  font-size: .85rem;
+}
+.ws-approval-face {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ws-approval-name {
+  font-weight: 600;
+}
+.ws-approval-state {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-person.ws-approval-approved .ws-approval-state {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-approval-person.ws-approval-rejected .ws-approval-state {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-approval-note {
+  flex-basis: 100%;
+  padding-left: 1.95rem;
+  font-size: .78rem;
+  font-style: italic;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  font-size: .78rem;
+  color: var(--bs-secondary-color);
+}
+/* ── Workspace: read receipts (assets/js/workspace_acks.js) ── */
+.ws-ack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .35rem;
+  font-size: .78rem;
+}
+.ws-ack-count {
+  padding: 0 .45rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--bs-secondary-bg);
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+button.ws-ack-count:hover {
+  color: var(--bs-body-color);
+}
+.ws-ack-done .ws-ack-count {
+  background: var(--bs-success-bg-subtle);
+  color: var(--bs-success-text-emphasis);
+}
+.ws-ack-mine {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-pin-bar .ws-ack {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.ws-ack-person {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}

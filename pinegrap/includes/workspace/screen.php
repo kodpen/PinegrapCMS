@@ -597,12 +597,30 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
 
+    // The event rule of a scheduled action and a channel's watch switch
+    // (includes/workspace/watch.php, assets/js/workspace_events.js).
+    if (function_exists('ws_events_js_strings')) {
+        $strings = array_merge($strings, ws_events_js_strings());
+    }
+
     // Discussions (includes/workspace/threads.php) and the assistants' bulk
     // changes (includes/workspace/bulk.php).
     $strings = array_merge($strings, ws_threads_js_strings(), ws_bulk_js_strings());
 
+    // Channel templates (includes/workspace/templates.php).
+    $strings = array_merge($strings, ws_templates_js_strings());
+
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
+
+    // The search box of every screen (palette.php) and a channel's board
+    // (channel_board.php).
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings());
+    // The time spent on tasks and the tasks they wait for
+    // (assets/js/workspace_task_time.js, workspace_task_links.js).
+    $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
+    // Approval requests and read receipts (approvals.php, acks.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_acks_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -638,8 +656,13 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),
         'pins'         => ws_pins_ready(),
+        'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE) : null,
+        'acks'         => ws_acks_ready(),
         'blocks'       => ws_blocks_ready(),
         'customer'     => ws_customer_ready(),
+        'templates'    => ws_templates_js_config($viewer),
+        'task_time'    => ws_task_time_ready() ? array('ready' => true, 'manager' => ws_task_time_is_manager($viewer)) : array('ready' => false),
+        'task_links'   => ws_task_links_ready(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
@@ -682,8 +705,18 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <script type="application/json" id="ws-config">' . $json . '</script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_events.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_events.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_templates.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_templates.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_time.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_time.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_links.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_links.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_approvals.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_approvals.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_acks.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_acks.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
+        // The search box, on every workspace screen but a record's drawer.
+        . (($mode !== 'record') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_palette.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js')) . '" defer></script>' : '')
         . (($mode === 'channels') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_board_channel.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');
 }
 

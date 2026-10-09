@@ -1594,7 +1594,14 @@
             items.push('-');
 
             if (task.status !== 'doing') {
-                items.push({ icon: 'bi-play-circle', label: t('start_work'), action: function () { status('doing'); } });
+                items.push({ icon: 'bi-play-circle', label: t('start_work'), action: function () {
+                    // Waiting for open tasks: asked first (workspace_task_links.js).
+                    (window.PGWsTaskLinks ? window.PGWsTaskLinks.confirmStart(task.blocked_by || [], partHelpers()) : Promise.resolve(true)).then(function (yes) {
+                        if (yes) {
+                            status('doing');
+                        }
+                    });
+                } });
             }
 
             if (task.status !== 'waiting') {
@@ -1622,11 +1629,12 @@
     }
 
     // Moves a task to another day (and person), asking first when that
-    // clashes with somebody's day.
-    function moveTask(move, force, onDone) {
+    // clashes with somebody's day. The channel board hands a task to other
+    // people the same way, through ws_task_save (action).
+    function moveTask(move, force, onDone, action) {
         move.force = force ? 1 : 0;
 
-        api('ws_task_move', move).then(function (result) {
+        api(action || 'ws_task_move', move).then(function (result) {
             if (result.needs_confirm) {
                 if (result.check.hard && !result.check.may_override) {
                     ask(t('leave_blocks'), t('ok'), false, warningList(result.check));
@@ -1635,7 +1643,7 @@
 
                 ask(t('move_despite'), t('move_anyway'), true, warningList(result.check)).then(function (yes) {
                     if (yes) {
-                        moveTask(move, true, onDone);
+                        moveTask(move, true, onDone, action);
                     }
                 });
                 return;
@@ -1647,6 +1655,43 @@
                 onDone();
             }
         }).catch(fail);
+    }
+
+    // The newest copy of a repeating task moved to another day: that copy
+    // only ('one'), or the copies after it as well ('following'); '' when
+    // the move was called off.
+    function askSeries() {
+        var box = el('div', 'ws-ask-choice');
+        var inputs = {};
+
+        [['one', t('move_repeat_one')], ['following', t('move_repeat_following')]].forEach(function (item, index) {
+            var line = el('div', 'form-check');
+            var input = el('input', 'form-check-input');
+            input.type = 'radio';
+            input.name = 'ws-series-choice';
+            input.value = item[0];
+            input.id = 'ws-series-' + item[0];
+            input.checked = (index === 0);
+
+            var label = el('label', 'form-check-label', item[1]);
+            label.htmlFor = input.id;
+
+            line.appendChild(input);
+            line.appendChild(label);
+            box.appendChild(line);
+            inputs[item[0]] = input;
+        });
+
+        box.appendChild(el('div', 'form-text', t('move_repeat_help')));
+
+        return ask(t('move_repeat_ask'), t('move_repeat_ok'), false, box).then(function (yes) {
+            var choice = yes ? (inputs.following.checked ? 'following' : 'one') : '';
+
+            // A clash on the new day asks again, in the same dialog.
+            return askClosed().then(function () {
+                return choice;
+            });
+        });
     }
 
     function person(id) {
@@ -2396,6 +2441,17 @@
         return box;
     }
 
+    // The helpers lent to the files that draw parts of the screens on their
+    // own (assets/js/workspace_task_time.js, workspace_task_links.js).
+    function partHelpers() {
+        return {
+            api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
+            clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            boot: function () { return BOOT; },
+            openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
+        };
+    }
+
     // ── The task drawer, shared by every screen ────────────────────────
 
     var taskDrawer = {
@@ -2701,6 +2757,16 @@
                 Array.prototype.forEach.call(body.querySelectorAll('input, textarea, select, .ws-person-toggle'), function (input) {
                     input.disabled = true;
                 });
+            }
+
+            // The time spent and the tasks it waits for: their own rights,
+            // their own requests (workspace_task_time.js, workspace_task_links.js).
+            if (task && task.time && window.PGWsTaskTime) {
+                body.appendChild(window.PGWsTaskTime.drawer(task, partHelpers(), function () { self.changed(); }));
+            }
+
+            if (task && task.links && window.PGWsTaskLinks) {
+                body.appendChild(window.PGWsTaskLinks.drawer(task, partHelpers(), function () { self.changed(); }));
             }
 
             // Notes: anyone who can see the task may add one.
@@ -3269,6 +3335,19 @@
         setStatus: function (status) {
             var self = this;
 
+            // Started while it waits for open tasks: asked, not refused.
+            if ((status === 'doing') && window.PGWsTaskLinks && self.task.blocked_by && self.task.blocked_by.length && !self.startAnyway) {
+                window.PGWsTaskLinks.confirmStart(self.task.blocked_by, partHelpers()).then(function (yes) {
+                    if (yes) {
+                        self.startAnyway = true;
+                        self.setStatus(status);
+                    }
+                });
+                return;
+            }
+
+            self.startAnyway = false;
+
             api('ws_task_status', { task_id: self.task.id, status: status }).then(function () {
                 toast(t('task_saved'), 'success');
                 self.open(self.task.id, null, self.onSaved);
@@ -3323,6 +3402,11 @@
 
         box.value = function () {
             return current;
+        };
+
+        box.set = function (value) {
+            current = parseInt(value, 10) || 0;
+            mark();
         };
 
         return box;
@@ -3618,6 +3702,13 @@
             body.insertBefore(el('div', 'alert alert-secondary small py-2', t('grp_new_channel_in', app.findGroup(defaults.group_id).name)), body.firstChild);
         }
 
+        // Hearing about the records tied to the channel (workspace_events.js).
+        var watch = (channel && window.PGWsEvents) ? window.PGWsEvents.watchField(channel) : null;
+
+        if (watch) {
+            body.appendChild(watch.node);
+        }
+
         if (channel && CFG.eras) {
             body.appendChild(eraSection(channel, node));
         }
@@ -3625,6 +3716,18 @@
         // Opened from a note, the note is its first message.
         if (!channel && defaults.note_id) {
             body.insertBefore(el('div', 'alert alert-info small py-2', t('notes_channel_help')), body.firstChild);
+        }
+
+        // A new channel can be made from a template
+        // (assets/js/workspace_templates.js): it suggests the fields above
+        // and is applied once the channel is made.
+        var template = null;
+
+        if (!channel && !defaults.note_id && window.PGWsTemplates && CFG.templates && CFG.templates.ready) {
+            template = window.PGWsTemplates.picker({ api: api }, function (picked) {
+                window.PGWsTemplates.suggest(picked, { name: name, kind: kind, department: dept, colors: colors });
+            });
+            body.insertBefore(template.node, body.firstChild);
         }
 
         var save = button('btn btn-sm btn-primary rounded-pill px-3', channel ? t('save') : t('create_channel'), 'bi-check2');
@@ -3651,6 +3754,10 @@
                 data.color = colors.value();
             }
 
+            if (watch) {
+                data.watch = watch.value();
+            }
+
             if (!channel && defaults.group_id) {
                 data.group_id = defaults.group_id;
             }
@@ -3669,6 +3776,10 @@
                     data.note_id = defaults.note_id;
                     request = api('ws_note_channel', data);
                 } else {
+                    if (template && template.value()) {
+                        data.template_id = template.value();
+                    }
+
                     request = api('ws_channel_create', data);
                 }
             }
@@ -3679,7 +3790,7 @@
                 if (result.warning) {
                     toast(result.warning, 'warning');
                 } else if (!defaults.note_id) {
-                    toast(channel ? t('channel_saved') : t('channel_created'), 'success');
+                    toast(result.notice || (channel ? t('channel_saved') : t('channel_created')), 'success');
                 }
 
                 if (onDone) {
@@ -4052,6 +4163,19 @@
         return { node: node, body: body };
     }
 
+    // What the feature files draw with (workspace_approvals.js,
+    // workspace_acks.js): the screen's own helpers, so their parts look like
+    // the rest of it.
+    function featureHelpers() {
+        return {
+            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
+            offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
+            formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
+            richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
+            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG
+        };
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Channels screen
     // ═══════════════════════════════════════════════════════════════════
@@ -4104,6 +4228,11 @@
                 target = pinned.length ? pinned[0].id : 0;
             }
 
+            // The channel's board asked for in the address (?view=board).
+            if (target && (query.view === 'board')) {
+                self.pendingTab = 'board';
+            }
+
             // A discussion asked for in the address opens beside its channel.
             if (target && query.thread) {
                 self.pendingThread = { id: parseInt(query.thread, 10), message: 0 };
@@ -4142,11 +4271,19 @@
 
                 if (statusButton && self.root.contains(statusButton)) {
                     var taskId = parseInt(statusButton.getAttribute('data-ws-task'), 10);
+                    var blocked = statusButton.getAttribute('data-ws-blocked') || '';
 
-                    api('ws_task_status', { task_id: taskId, status: statusButton.getAttribute('data-ws-task-status') }).then(function (data) {
-                        self.replaceTaskCard(taskId, data.html);
-                        self.sync();
-                    }).catch(fail);
+                    // A card that waits for open tasks asks before it starts.
+                    (window.PGWsTaskLinks ? window.PGWsTaskLinks.confirmStart(blocked, partHelpers()) : Promise.resolve(true)).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        api('ws_task_status', { task_id: taskId, status: statusButton.getAttribute('data-ws-task-status') }).then(function (data) {
+                            self.replaceTaskCard(taskId, data.html);
+                            self.sync();
+                        }).catch(fail);
+                    });
                 }
 
                 if (openButton && self.root.contains(openButton)) {
@@ -4204,6 +4341,14 @@
                     window.PgTour.start(window.PG_TOUR.key);
                 });
                 head.appendChild(tour);
+            }
+
+            // The search box of the whole workspace (workspace_palette.js).
+            if (window.PGWsPalette) {
+                var find = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-search', t('pal_shortcut'));
+
+                find.setAttribute('data-ws-palette', '1');
+                head.appendChild(find);
             }
 
             head.appendChild(add);
@@ -4690,6 +4835,13 @@
 
             if (pin.pinned_by) {
                 bar.appendChild(el('span', 'ws-pin-by', t('pin_by', pin.pinned_by)));
+            }
+
+            // Its read receipt, or a way to ask for one (workspace_acks.js).
+            var pinAck = window.PGWsAcks ? window.PGWsAcks.pinNode(pin, self, featureHelpers()) : null;
+
+            if (pinAck) {
+                bar.appendChild(pinAck);
             }
 
             var close = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('pin_close'));
@@ -6103,6 +6255,16 @@
 
             talkCol.appendChild(talk.node);
 
+            // Approvals and read receipts waiting for the person, when there
+            // are any (workspace_approvals.js, workspace_acks.js).
+            [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
+                var waiting = feature ? feature.home(data, self, featureHelpers()) : null;
+
+                if (waiting) {
+                    main.appendChild(waiting);
+                }
+            });
+
             // What this place is for: open for somebody who has not written
             // anything yet, folded for the others.
             var about = el('details', 'card ws-home-about');
@@ -6246,7 +6408,14 @@
 
             var thread = this.openThreadId();
 
-            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + (thread ? '&thread=' + thread : ''));
+            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + ((this.tab === 'board') ? '&view=board' : '') + (thread ? '&thread=' + thread : ''));
+        },
+
+        // Has the channel a Board tab (assets/js/workspace_board_channel.js)?
+        // Not a room a guest talks in, and not an earlier version of the
+        // conversation.
+        hasBoard: function (channel) {
+            return !!window.PGWsChannelBoard && !!channel && (channel.kind !== 'guest') && (channel.kind !== 'thread') && !channel.guest && !this.era;
         },
 
         // The discussion open beside the channel, 0 for none.
@@ -6432,7 +6601,8 @@
                 self.lastId = data.last_id;
                 self.sinceTs = data.now;
                 self.hasMore = data.has_more;
-                self.tab = 'messages';
+                self.tab = ((self.pendingTab === 'board') && !messageId && self.hasBoard(data.channel)) ? 'board' : 'messages';
+                self.pendingTab = null;
                 self.drawCenter();
                 self.drawSide();
 
@@ -6471,7 +6641,7 @@
                 }
 
                 if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : ''));
+                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : '') + ((self.tab === 'board') ? '&view=board' : ''));
                 }
 
                 self.schedule();
@@ -6784,13 +6954,20 @@
             tabs.setAttribute('role', 'tablist');
             self.tabsNode = tabs;
 
-            [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]].forEach(function (tab) {
+            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]];
+
+            if (self.hasBoard(channel)) {
+                tabList.push(['board', t('tab_board')]);
+            }
+
+            tabList.forEach(function (tab) {
                 var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
                 item.setAttribute('role', 'tab');
                 item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
                     self.drawCenter();
+                    self.syncAddress();
 
                     if (tab[0] === 'messages') {
                         self.scrollToEnd();
@@ -6854,6 +7031,17 @@
                 self.drawFiles();
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
+            } else if ((self.tab === 'board') && self.hasBoard(channel)) {
+                window.PGWsChannelBoard.mount(pane, channel, {
+                    openMessage: function (messageId) { self.open(channel.id, messageId); },
+                    openSummary: function () {
+                        self.tab = 'summary';
+                        self.drawCenter();
+                        self.syncAddress();
+                    },
+                    taskDefaults: function () { return self.taskDefaults(); },
+                    refresh: function () { self.sync(); }
+                });
             } else {
                 self.drawSummary();
             }
@@ -6985,6 +7173,21 @@
 
             if (channel.can_group) {
                 item(t('grp_move_channel'), 'bi-folder-symlink', function () { self.pickGroupFor(channel); });
+            }
+
+            // Channel templates (assets/js/workspace_templates.js).
+            if (window.PGWsTemplates && CFG.templates && CFG.templates.ready && !self.era && (channel.kind === 'public' || channel.kind === 'private')) {
+                if (channel.can_post && !channel.archived) {
+                    item(t('tpl_apply'), 'bi-layout-text-window', function () {
+                        window.PGWsTemplates.applyDialog(channel, { api: api, toast: toast, fail: fail, done: function () { self.reloadChannels(channel.id); } });
+                    });
+                }
+
+                if (CFG.templates.manage) {
+                    item(t('tpl_from_channel'), 'bi-box-arrow-in-down', function () {
+                        window.PGWsTemplates.fromChannel(channel, { api: api, fail: fail });
+                    });
+                }
             }
 
             // Shared with somebody outside the team (guests.php).
@@ -7404,6 +7607,11 @@
                 main.appendChild(self.pollNode(message));
             }
 
+            // An approval request (workspace_approvals.js).
+            if (message.approval && window.PGWsApprovals) {
+                main.appendChild(window.PGWsApprovals.card(message, self, featureHelpers()));
+            }
+
             if (message.list_tasks && message.list_tasks.length) {
                 main.appendChild(self.listTasksNode(message));
             }
@@ -7447,6 +7655,11 @@
                 main.appendChild(self.reactionRow(message));
             }
 
+            // A read receipt asked for (workspace_acks.js).
+            if (message.ack && window.PGWsAcks) {
+                main.appendChild(window.PGWsAcks.node(message, self, featureHelpers()));
+            }
+
             // Somebody mentioned here who is not in the channel: one click
             // brings them in, and the mention reaches them.
             if (message.invite && message.invite.length && !message.deleted) {
@@ -7485,7 +7698,7 @@
                         return;
                     }
 
-                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll')) {
+                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll, .ws-approval, .ws-ack')) {
                         return;
                     }
 
@@ -7505,6 +7718,13 @@
         plain: function (markup, full) {
             var box = document.createElement('div');
             box.innerHTML = markup || '';
+
+            // A form's card under the text is drawn from the submission
+            // (includes/workspace/watch.php); it is not part of what was written.
+            Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card'), function (card) {
+                card.parentNode.removeChild(card);
+            });
+
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
             return (!full && text.length > 90) ? text.slice(0, 89) + '…' : text;
         },
@@ -7598,6 +7818,13 @@
                 } });
                 items.push({ icon: 'bi-sticky', label: message.kind === 'note' ? t('unmark') : t('mark_channel_note'), action: function () {
                     self.mark(message, message.kind === 'note' ? 'message' : 'note');
+                } });
+            }
+
+            // Read receipts asked for, or no longer (workspace_acks.js).
+            if (message.ack_can_request && window.PGWsAcks && !self.era) {
+                items.push({ icon: message.ack ? 'bi-eye-slash' : 'bi-eye', label: message.ack ? t('ack_unrequest') : t('ack_request'), action: function () {
+                    window.PGWsAcks.request(message, !message.ack, self, featureHelpers());
                 } });
             }
 
@@ -9884,6 +10111,9 @@
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
                     self.rich ? { icon: 'bi-code-slash', label: t('insert_code'), action: function () { self.insertCode(); } } : null,
                     BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null,
+                    (CFG.approvals && window.PGWsApprovals) ? { icon: 'bi-patch-question', label: t('apv_new'), action: function () {
+                        window.PGWsApprovals.form(self, featureHelpers());
+                    } } : null,
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
@@ -11511,6 +11741,12 @@
                 });
                 pane.appendChild(edit);
             }
+
+            // The time spent on the channel's tasks, loaded when the tab is
+            // opened (workspace_task_time.js).
+            if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {
+                pane.appendChild(window.PGWsTaskTime.channelCard(channel, partHelpers()));
+            }
         },
 
         search: function (query) {
@@ -11625,6 +11861,7 @@
                 era_id: self.era ? self.era.id : 0,
                 read: (document.hasFocus() && !self.era) ? 1 : 0,
                 counts: (counts && !self.isThread) ? 1 : 0,
+                board: ((self.tab === 'board') && !self.isThread) ? 1 : 0,
                 panel: self.isThread ? 1 : 0
             }).then(function (data) {
                 self.syncing = false;
@@ -11705,6 +11942,12 @@
                 if (data.tab_counts && self.channel && (JSON.stringify(data.tab_counts) !== JSON.stringify(self.channel.tab_counts || null))) {
                     self.channel.tab_counts = data.tab_counts;
                     self.drawTabMarks();
+                }
+
+                // The board open on the tab is read again when one of its
+                // cards changed (workspace_board_channel.js).
+                if (data.board_stamp && (self.tab === 'board') && window.PGWsChannelBoard) {
+                    window.PGWsChannelBoard.stamp(data.board_stamp);
                 }
 
                 // The pinned message, as somebody may have changed it.
@@ -12767,7 +13010,8 @@
         var config = CFG.scheduled || {};
         var chains = !!config.chains;
         var groups = [
-            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])],
+            [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])
+                .concat((config.approvals && window.PGWsApprovals) ? [['approval', t('sa_do_approval')]] : [])],
             [t('sa_group_records'), Object.keys(config.changes || {}).length ? [['change', t('sa_do_change')]] : []],
             [t('sa_group_web'), chains ? [['report', t('sa_do_report')], ['web_check', t('sa_do_web_check')], ['webhook', t('sa_do_webhook')]] : []],
             [t('sa_group_chain'), chains ? [['trigger', t('sa_do_trigger')]] : []]
@@ -13285,7 +13529,12 @@
             };
         }
 
-        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change };
+        // An approval request in a channel (workspace_approvals.js).
+        function approval() {
+            reader = window.PGWsApprovals.scheduledEditor(detail, given('approval', null), featureHelpers());
+        }
+
+        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change, approval: approval };
 
         function draw() {
             clear(detail);
@@ -13396,6 +13645,11 @@
 
         var digest = ['tasks_open', 'tasks_overdue', 'tasks_due_today', 'orders_today', 'sales_today', 'forms_new', 'comments_pending', 'visitors_yesterday']
             .filter(has).map(function (key) { return { key: key, param: 0 }; });
+
+        // Started by something happening on the site (workspace_events.js).
+        if (window.PGWsEvents && window.PGWsEvents.ready) {
+            out = out.concat(window.PGWsEvents.templates({ channelId: channelId, me: me, tell: tell }));
+        }
 
         // A channel greets the people who join it and asks who they are.
         if (config.join) {
@@ -13601,6 +13855,8 @@
         var time = null;
         var whenMode = 'time';
         var joinRule = null;
+        var eventRule = null;
+        var events = !!(window.PGWsEvents && window.PGWsEvents.ready);
 
         (data.rules || []).forEach(function (rule) {
             if (rule.type === 'at') {
@@ -13615,9 +13871,14 @@
                 whenMode = 'join';
                 joinRule = rule;
             }
+
+            if (rule.type === 'event') {
+                whenMode = 'event';
+                eventRule = rule;
+            }
         });
 
-        if ((whenMode === 'join') && !config.join) {
+        if (((whenMode === 'join') && !config.join) || ((whenMode === 'event') && !events)) {
             whenMode = 'time';
         }
 
@@ -13631,6 +13892,7 @@
         if (config.chains) {
             [['time', t('sa_when_time'), 'bi-alarm'], ['trigger', t('sa_when_trigger'), 'bi-diagram-3']]
                 .concat(config.join ? [['join', t('sa_when_join'), 'bi-person-plus']] : [])
+                .concat(events ? [['event', t('sa_when_event'), window.PGWsEvents.icon]] : [])
                 .forEach(function (option) {
                     var toggle = button('btn btn-outline-secondary' + (whenMode === option[0] ? ' active' : ''), option[1], option[2]);
                     toggle.addEventListener('click', function () {
@@ -13690,6 +13952,13 @@
         rules.appendChild(triggerBox);
         rules.appendChild(joinBox);
 
+        // Something happens on the site: which event, for which form or status.
+        var eventBox = events ? window.PGWsEvents.whenBox(eventRule) : null;
+
+        if (eventBox) {
+            rules.appendChild(eventBox.node);
+        }
+
         var units = { minutes: 'sa_every_minutes', hourly: 'sa_every_hours', daily: 'sa_every_days', weekly: 'sa_every_weeks', monthly: 'sa_every_months', yearly: 'sa_every_years' };
         var actionEditors = [];
 
@@ -13699,6 +13968,11 @@
             timeBox.hidden = (whenMode !== 'time');
             triggerBox.hidden = (whenMode !== 'trigger');
             joinBox.hidden = (whenMode !== 'join');
+
+            if (eventBox) {
+                eventBox.node.hidden = (whenMode !== 'event');
+            }
+
             repeatRow.hidden = (value === 'none');
             everyBox.hidden = !units[value];
             everyUnit.textContent = units[value] ? t(units[value]) : '';
@@ -13722,7 +13996,7 @@
         checks.appendChild(conditions);
 
         (data.rules || []).forEach(function (rule) {
-            if (['at', 'trigger', 'join'].indexOf(rule.type) === -1) {
+            if (['at', 'trigger', 'join', 'event'].indexOf(rule.type) === -1) {
                 conditions.appendChild(saConditionRow(rule));
             }
         });
@@ -13817,6 +14091,8 @@
                 list.push({ type: 'trigger' });
             } else if (whenMode === 'join') {
                 list.push({ type: 'join', channel_id: parseInt(joinChannel.value, 10) || 0 });
+            } else if ((whenMode === 'event') && eventBox) {
+                list.push(eventBox.read());
             } else {
                 var at = { type: 'at', date: date.value, time: clock.value, repeat: repeat.value };
 
@@ -13966,7 +14242,8 @@
     function scheduledCard(item, onChange) {
         var card = el('div', 'ws-sa-card ws-sa-' + item.status);
         var head = el('div', 'ws-sa-card-head');
-        var whenIcon = item.joins ? 'bi-person-plus' : (item.trigger_only ? 'bi-diagram-3' : 'bi-alarm');
+        var eventIcon = (window.PGWsEvents && window.PGWsEvents.icon) || 'bi-broadcast';
+        var whenIcon = item.joins ? 'bi-person-plus' : (item.on_event ? eventIcon : (item.trigger_only ? 'bi-diagram-3' : 'bi-alarm'));
 
         head.appendChild(icon(whenIcon, 'ws-sa-card-icon'));
         head.appendChild(el('b', 'ws-sa-card-name', item.name));
@@ -13974,7 +14251,7 @@
         card.appendChild(head);
 
         var when = el('div', 'ws-sa-line ws-sa-when-line');
-        when.appendChild(icon(item.joins ? 'bi-person-plus' : (item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event')), 'me-1'));
+        when.appendChild(icon(item.joins ? 'bi-person-plus' : (item.on_event ? eventIcon : (item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event'))), 'me-1'));
         when.appendChild(document.createTextNode(item.when + (item.next ? ' · ' + t('sa_next') + ': ' + item.next : '')));
         card.appendChild(when);
 
@@ -14362,6 +14639,15 @@
             var sub = el('div', 'ws-row-sub');
             sub.appendChild(el('span', task.overdue ? 'text-danger' : '', task.due_label));
             sub.appendChild(document.createTextNode(' · ' + task.status_label + (task.estimate_label ? ' · ' + task.estimate_label : '')));
+
+            if (window.PGWsTaskTime) {
+                window.PGWsTaskTime.rowTags(sub, task, partHelpers());
+            }
+
+            if (window.PGWsTaskLinks) {
+                window.PGWsTaskLinks.rowTag(sub, task, partHelpers());
+            }
+
             main.appendChild(sub);
             row.appendChild(main);
 
@@ -14485,6 +14771,11 @@
             scopeList.push(['all', t('scope_all')]);
         }
 
+        // The reader's own time, week by week (workspace_task_time.js).
+        if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {
+            scopeList.push(['time', t('tt_my_time')]);
+        }
+
         scopeList.forEach(function (scope) {
             var item = button('btn btn-ghost' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
             item.addEventListener('click', function () {
@@ -14565,6 +14856,11 @@
 
         function load() {
             var mine = ++serial;
+
+            if (state.scope === 'time') {
+                window.PGWsTaskTime.myTime(listBody, partHelpers());
+                return;
+            }
 
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
@@ -14737,6 +15033,12 @@
                 var text = el('div', 'ws-grow');
                 text.appendChild(el('b', '', row.person.name));
                 text.appendChild(el('small', '', t('day_capacity', Math.round(row.capacity.day_minutes / 60 * 10) / 10) + (row.unscheduled ? ' · ' + t('undated', row.unscheduled) : '')));
+
+                // Staff see the time spent beside what was planned.
+                if (row.time && window.PGWsTaskTime) {
+                    text.appendChild(window.PGWsTaskTime.boardTag(row.time, partHelpers()));
+                }
+
                 who.appendChild(text);
                 onContext(who, function () { return personMenu(row.person); });
                 grid.appendChild(who);
@@ -14903,43 +15205,6 @@
                 var nameColumn = grid.firstChild ? grid.firstChild.offsetWidth : 0;
                 board.scrollLeft = Math.max(0, today.getBoundingClientRect().left - board.getBoundingClientRect().left + board.scrollLeft - nameColumn);
             }
-        }
-
-        // The newest copy of a repeating task moved to another day: that copy
-        // only ('one'), or the copies after it as well ('following'); '' when
-        // the move was called off.
-        function askSeries() {
-            var box = el('div', 'ws-ask-choice');
-            var inputs = {};
-
-            [['one', t('move_repeat_one')], ['following', t('move_repeat_following')]].forEach(function (item, index) {
-                var line = el('div', 'form-check');
-                var input = el('input', 'form-check-input');
-                input.type = 'radio';
-                input.name = 'ws-series-choice';
-                input.value = item[0];
-                input.id = 'ws-series-' + item[0];
-                input.checked = (index === 0);
-
-                var label = el('label', 'form-check-label', item[1]);
-                label.htmlFor = input.id;
-
-                line.appendChild(input);
-                line.appendChild(label);
-                box.appendChild(line);
-                inputs[item[0]] = input;
-            });
-
-            box.appendChild(el('div', 'form-text', t('move_repeat_help')));
-
-            return ask(t('move_repeat_ask'), t('move_repeat_ok'), false, box).then(function (yes) {
-                var choice = yes ? (inputs.following.checked ? 'following' : 'one') : '';
-
-                // A clash on the new day asks again, in the same dialog.
-                return askClosed().then(function () {
-                    return choice;
-                });
-            });
         }
 
         function moveTask(move, force) {
@@ -17804,7 +18069,83 @@
     // Start
     // ═══════════════════════════════════════════════════════════════════
 
+    // What the screens kept in files of their own lean on here
+    // (workspace_palette.js, workspace_board_channel.js): the small helpers,
+    // the dialogs and menus, the task drawer, the planning board's way of
+    // moving a task, and the channel screen as it stands.
+    function shareKit() {
+        window.PGWsKit = {
+            cfg: CFG,
+            t: t,
+            el: el,
+            icon: icon,
+            button: button,
+            select: select,
+            avatar: avatar,
+            api: api,
+            toast: toast,
+            fail: fail,
+            debounce: debounce,
+            onContext: onContext,
+            taskMenu: taskMenu,
+            moveTask: moveTask,
+            askSeries: askSeries,
+            priorityFilter: priorityFilter,
+            directMessage: directMessage,
+            openTask: function (taskId, defaults, onSaved) {
+                taskDrawer.open(taskId, defaults, onSaved);
+            },
+            // The channel open on the channel screen, with the screen's ways
+            // to open another and to write into its box; null elsewhere.
+            here: function () {
+                if ((CFG.mode !== 'channels') || !app.root || !app.channel || (app.view !== 'channel')) {
+                    return null;
+                }
+
+                return {
+                    id: app.channel.id,
+                    name: app.channel.name,
+                    canPost: !!app.channel.can_post && !app.era,
+                    openChannel: function (channelId, messageId) { app.open(channelId, messageId || 0); },
+                    insert: function (text) {
+                        if (app.tab !== 'messages') {
+                            app.tab = 'messages';
+                            app.drawCenter();
+                            app.syncAddress();
+                        }
+
+                        if (app.input) {
+                            app.insertText(text);
+                        }
+                    }
+                };
+            }
+        };
+    }
+
     function start() {
+        shareKit();
+
+        // Ctrl+K (⌘K) opens the workspace's own search box on its screens,
+        // in place of the panel's search; it is taken before the panel's
+        // handler on the document sees it.
+        if (CFG.mode !== 'record') {
+            window.addEventListener('keydown', function (event) {
+                if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || (String(event.key).toLowerCase() !== 'k') || !window.PGWsPalette) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (window.PGWsPalette.isOpen()) {
+                    window.PGWsPalette.close();
+                } else {
+                    window.PGWsPalette.open();
+                }
+            }, true);
+        }
+
         // The inbox links of the rail and its drawer are drawn with the page,
         // so they are taken over at once rather than once the screen has
         // loaded: a click before that would leave for the channels screen
@@ -17812,6 +18153,21 @@
         // needs nothing the start-up brings.
         document.addEventListener('click', function (event) {
             var inboxLink = event.target.closest('[data-ws-inbox]');
+            var paletteLink = event.target.closest('[data-ws-palette]');
+
+            // The magnifier of the rail, its drawer and the channel list.
+            if (paletteLink && window.PGWsPalette) {
+                event.preventDefault();
+
+                var navDrawer = document.getElementById('ws-nav-drawer');
+
+                if (navDrawer && window.bootstrap && navDrawer.classList.contains('show')) {
+                    window.bootstrap.Offcanvas.getOrCreateInstance(navDrawer).hide();
+                }
+
+                window.PGWsPalette.open();
+                return;
+            }
 
             if (!inboxLink) {
                 return;

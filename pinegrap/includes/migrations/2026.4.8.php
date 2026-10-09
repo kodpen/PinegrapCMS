@@ -52,6 +52,15 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_cookie_consent();          // 8.18
 
+	upgrade_2026_4_8_workspace_events();        // 8.85
+	upgrade_2026_4_8_workspace_templates();     // 8.88
+	upgrade_2026_4_8_workspace_task_time();     // 8.86
+
+	upgrade_2026_4_8_workspace_task_links();    // 8.110
+	upgrade_2026_4_8_workspace_approvals();     // 8.87
+
+	upgrade_2026_4_8_workspace_acks();          // 8.89
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -789,5 +798,211 @@ function upgrade_2026_4_8_cookie_consent() {
 	install_add_column('config', 'cookie_consent_policy_url', "TEXT NULL");
 
 	install_note('Cookie consent: visitor pages ask before setting optional cookies; Google Analytics and the visitor statistics cookies start only after the visitor allows them (Settings › SEO › Cookie Consent).');
+
+}
+
+// The site's events in the workspace (2026.4.8, 8.85;
+// includes/workspace/watch.php, includes/fn/events.php). ws_events_in is the
+// workspace's inbox of what happened on the site - a new order, a form
+// submitted, a product low in stock: pg_event_record() writes one row
+// (event, payload as JSON, created_at) where the event is announced, and the
+// workspace's run takes it later (taken_at, kept seven days then swept;
+// idx_open is how the run finds the ones not taken yet and the sweep the
+// old ones). ws_channels.watch is the channel's choice whether the events
+// of its customer and of the records tagged in it are written into it as a
+// line; on (1) by default.
+function upgrade_2026_4_8_workspace_events() {
+
+	install_create_table('ws_events_in', "CREATE TABLE ws_events_in (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		event      VARCHAR(60)  NOT NULL DEFAULT '',
+		payload    TEXT         NOT NULL,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		taken_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_open (taken_at, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_channels', 'watch', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	// pg_event_record() asks pg_schema_has() on every announced event, and
+	// the answer is cached on disk: a "missing" kept from before this step
+	// would leave the inbox unwritten.
+	if (function_exists('pg_schema_cache_clear')) {
+		pg_schema_cache_clear();
+	}
+
+	install_note('Workspace: a scheduled action can start when something happens on the site (a new order, a form submitted, a product low in stock), and a channel hears about the orders of its customer and the records tagged in it.');
+
+}
+
+// Channel templates in the workspace (2026.4.8, 8.88;
+// includes/workspace/templates.php). A template is what a new channel - or
+// one already open - is set up with: a set of tasks with dates relative to
+// the day it is applied, the rule for whom each goes to and their
+// checklists, notes to share, the summary, the message pinned to the top
+// and a first message. name, description, icon (a Bootstrap Icons class) and
+// color (a place in the channel palette, 0 for none) are what the pickers
+// show; kind and department_id the channel suggested; summary, pinned and
+// welcome the texts written into the channel; body the tasks and the notes
+// as JSON (ws_template_body_clean()). uses counts how often it was applied;
+// archived takes it out of the pickers. idx_live serves the pickers' list.
+// The built-in templates are kept in code, not here.
+function upgrade_2026_4_8_workspace_templates() {
+
+	install_create_table('ws_templates', "CREATE TABLE ws_templates (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name          VARCHAR(100) NOT NULL DEFAULT '',
+		description   VARCHAR(255) NOT NULL DEFAULT '',
+		icon          VARCHAR(40)  NOT NULL DEFAULT '',
+		color         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		kind          ENUM('public','private') NOT NULL DEFAULT 'public',
+		department_id INT UNSIGNED NOT NULL DEFAULT 0,
+		summary       TEXT NULL,
+		pinned        TEXT NULL,
+		welcome       TEXT NULL,
+		body          TEXT NULL,
+		created_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		archived      TINYINT(1) NOT NULL DEFAULT 0,
+		uses          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_live (archived, name)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: channel templates set a new or an open channel up with a ready set of tasks, notes, a summary, a pinned message and a welcome (Workspace Settings › Channel templates).');
+
+}
+
+// Time spent on workspace tasks (2026.4.8, 8.86; includes/workspace/task_time.php).
+// One row is one stretch of work by one person on one task: minutes on the
+// day worked_on, with an optional note. A timer started in the task drawer
+// is a row with started_at set and minutes 0 until it is stopped (a person
+// has one running at most); time written by hand has started_at 0. billable
+// says whether the time may be invoiced; invoice_id is the ERP invoice draft
+// it went on (0 for none), so the same hour is not billed twice. InnoDB: the
+// rows are locked while the invoice draft is written in one transaction.
+// idx_task serves the drawer and the channel's card, idx_user a person's own
+// time and the planning board, idx_invoice the tie to a draft.
+function upgrade_2026_4_8_workspace_task_time() {
+
+	install_create_table('ws_task_time', "CREATE TABLE ws_task_time (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		task_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		minutes     INT UNSIGNED NOT NULL DEFAULT 0,
+		worked_on   DATE NOT NULL,
+		note        VARCHAR(255) NOT NULL DEFAULT '',
+		billable    TINYINT(1) NOT NULL DEFAULT 1,
+		invoice_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_task (task_id, worked_on),
+		KEY idx_user (user_id, worked_on),
+		KEY idx_invoice (invoice_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the time spent on a task can be written in its drawer, with a timer or by hand; a channel adds it up, and with the ERP it becomes an invoice draft for the channel\'s customer.');
+
+}
+
+// Tasks that wait for other tasks (2026.4.8, 8.110;
+// includes/workspace/task_links.php). A row says task_id cannot start until
+// blocked_by_task_id is done; created_by and created_at say who linked them
+// and when. The primary key keeps a pair once; idx_blocker finds the tasks
+// that wait for a task when it is done. A loop of links is refused by the
+// code, not the schema.
+function upgrade_2026_4_8_workspace_task_links() {
+
+	install_create_table('ws_task_links', "CREATE TABLE ws_task_links (
+		task_id            INT UNSIGNED NOT NULL,
+		blocked_by_task_id INT UNSIGNED NOT NULL,
+		created_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (task_id, blocked_by_task_id),
+		KEY idx_blocker (blocked_by_task_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a task can wait for other tasks; it shows what it waits for, and its people hear when it can start.');
+
+}
+
+// Approval requests in the workspace (2026.4.8, 8.87;
+// includes/workspace/approvals.php). A request is a message of a channel
+// with a card under it: ws_approvals holds the card - message_id the request
+// (one card per message), title, rule ('any': the first approval settles it,
+// 'all': everybody has to approve), record_type / record_id the first record
+// tagged in the text, closes_at the optional deadline, reminded_at when the
+// people still waiting were reminded the day before it, closed_at / closed_by
+// / outcome once it is settled, result_message_id the locked decision (or
+// the system line) it wrote into the channel. ws_approval_people is one row
+// per approver with their decision, its optional note and when it was given.
+// idx_open serves a channel's open cards, idx_due the scheduled run's look
+// for deadlines that come or have passed, idx_user what waits for a person.
+function upgrade_2026_4_8_workspace_approvals() {
+
+	install_create_table('ws_approvals', "CREATE TABLE ws_approvals (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		title             VARCHAR(255) NOT NULL DEFAULT '',
+		rule              ENUM('any','all') NOT NULL DEFAULT 'any',
+		record_type       VARCHAR(20) NOT NULL DEFAULT '',
+		record_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		closes_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		outcome           ENUM('open','approved','rejected','withdrawn','expired') NOT NULL DEFAULT 'open',
+		result_message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_message (message_id),
+		KEY idx_open (channel_id, closed_at, closes_at),
+		KEY idx_due (closed_at, closes_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_approval_people', "CREATE TABLE ws_approval_people (
+		approval_id INT UNSIGNED NOT NULL,
+		user_id     INT UNSIGNED NOT NULL,
+		decision    ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+		note        VARCHAR(255) NOT NULL DEFAULT '',
+		decided_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (approval_id, user_id),
+		KEY idx_user (user_id, decision)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a channel can ask chosen people to approve something; the result is written into the channel as a locked decision.');
+
+}
+
+// Read receipts in the workspace (2026.4.8, 8.89; includes/workspace/acks.php).
+// ws_ack_requests marks a message whose readers are asked to say they read
+// it: who asked and when, reminded_at when the people who had not read it
+// a day later were reminded. A table of its own rather than a column of
+// ws_messages, which is wide already. ws_acks is one row per person who said
+// so. idx_remind serves the scheduled run's look for reminders that are due.
+function upgrade_2026_4_8_workspace_acks() {
+
+	install_create_table('ws_ack_requests', "CREATE TABLE ws_ack_requests (
+		message_id   INT UNSIGNED NOT NULL,
+		requested_by INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_at INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id),
+		KEY idx_remind (reminded_at, requested_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_acks', "CREATE TABLE ws_acks (
+		message_id INT UNSIGNED NOT NULL,
+		user_id    INT UNSIGNED NOT NULL,
+		acked_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.');
 
 }

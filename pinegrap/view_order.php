@@ -3060,6 +3060,15 @@ if (!$_POST) {
 
         log_activity('Restored cancelled order #' . $order_id . ' to complete.');
 
+        // The move back is a status change like any other: announced with the
+        // shape the API and the workspace give order.status_changed.
+        pg_announce('order.status_changed', array(
+            'id'           => (int) $order_id,
+            'order_number' => db_value("SELECT order_number FROM orders WHERE id = '" . e($order_id) . "'"),
+            'status'       => 'complete',
+            'previous'     => 'cancelled',
+        ));
+
         $liveform->add_notice(lang('The order has been restored to complete.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 

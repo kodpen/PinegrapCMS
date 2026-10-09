@@ -74,6 +74,10 @@ function ws_home($viewer)
         'tasks_open'    => (int) ($counts['open_count'] ?? 0),
         'tasks_overdue' => (int) ($counts['overdue_count'] ?? 0),
         'talk'          => ws_home_talk($viewer, 5),
+        // Approval requests and read receipts waiting for the person
+        // (approvals.php, acks.php).
+        'approvals'     => function_exists('ws_approvals_waiting') ? ws_approvals_waiting($viewer, 5) : array(),
+        'acks'          => function_exists('ws_acks_waiting') ? ws_acks_waiting($viewer, 5) : array(),
         'decisions'     => ws_timeline_items($viewer, $timeline['rows'], $timeline['channels']),
         'join'          => ws_home_joinable($viewer, 5),
         'newcomer'      => ($written === 0),
