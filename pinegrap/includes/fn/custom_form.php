@@ -1312,7 +1312,10 @@ function pg_cf_validation_script()
          . 'var bind=function(){var f=document.querySelectorAll(".pg-cf-form");'
          . 'Array.prototype.forEach.call(f,function(form){'
          . 'if(form.getAttribute("data-pg-validated"))return;form.setAttribute("data-pg-validated","1");'
+         // A button carrying formnovalidate (a Cancel beside a required
+         // field) submits without the check, as the browser itself would.
          . 'form.addEventListener("submit",function(e){'
+         . 'if(e.submitter&&e.submitter.hasAttribute("formnovalidate"))return;'
          . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();'
          . 'var bad=form.querySelector(":invalid");if(bad&&bad.focus)bad.focus();}'
          . 'form.classList.add("was-validated");},false);});};'

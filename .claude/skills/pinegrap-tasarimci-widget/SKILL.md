@@ -395,6 +395,12 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   alanının id'si korunur). Tasarlanmış form detay sayfasında yorumlar kayda
   aittir: `pg_sw_record_comment_context()`; görünürlük widget'la aynı
   (`pg_sw_submitted_form_visible()`).
+- Birden çok eylemli hesap widget'ı (`account_security`): blok başına
+  `semantic form` `_bindings.action='account_security_form'`, düğmeler
+  eylemine bağlı (`_pg_sec_apply_action_bindings()`). Tek sarmalayıcı +
+  düğme ad/değer kalıbı kullanılmaz: `pg_cf_validation_script()` formun
+  tamamını doğrular (zorunlu alan öteki düğmeleri durdurur) ve Enter ilk
+  submit düğmesini çalıştırır.
 - Hata sayfası widget'ı (`error_page`): `get_error_screen()` bu widget'ı taşıyan
   sayfayı eski `error` sayfa tipinden önce seçer. Tek ekranlı yeni widget
   türünü `_SW_ONE_SCREEN`'e yaz (loop alanı gizlenir).

@@ -932,13 +932,23 @@ function pg_mfa_issuer()
 // ── Account screen ──────────────────────────────────────────────────────────
 
 /**
- * Where the account screen's two-step actions return to: the page that shows
+ * Where the account screen's two-step actions return to: a designed page
+ * carrying the account security widget, else the page that shows
  * pg_account_security_section(), which is the profile page.
  *
- * @return string
+ * @return string '' when the site has none of them.
  */
 function pg_mfa_account_url()
 {
+    if (function_exists('pg_sw_widget_pages')
+        && (!function_exists('pg_multi_page_design_ready') || pg_multi_page_design_ready())) {
+        $pages = pg_sw_widget_pages('account_security');
+
+        if ($pages) {
+            return (defined('PATH') ? PATH : '/') . encode_url_path((string) $pages[0]['page_name']);
+        }
+    }
+
     // get_page_type_url() answers false, not '', for a site without the page.
     $url = (string) get_page_type_url('my account profile');
 
