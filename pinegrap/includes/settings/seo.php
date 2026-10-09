@@ -192,3 +192,33 @@ $pg_settings_cards[] = '
                                 </div>
                             </div>
                         </div>';
+
+// ── Cookie Consent ──
+// The notice itself is drawn by pg_consent_markup() (includes/fn/consent.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-cookies" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('Cookie Consent') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-3">
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($cookie_consent ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="cookie_consent" name="cookie_consent"/>
+                                                <label class="form-check-label" for="cookie_consent">' . lang('Ask visitors for cookie consent') . '</label>
+                                                <div class="form-text">' . lang('A small notice in the bottom-left corner lists the cookies the site uses. Necessary cookies are always on; Google Analytics, the visitor statistics cookies and the referral cookie start only after the visitor allows them. Turned off, every cookie is set as before.') . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="pg-f-lg">
+                                            <label for="cookie_consent_policy_url" class="form-label">' . lang('Cookie Policy Address') . '</label>
+                                            <input type="text" name="cookie_consent_policy_url" id="cookie_consent_policy_url" class="form-control" maxlength="500" value="' . h($cookie_consent_policy_url) . '" placeholder="/cookie-policy"/>
+                                            <div class="form-text">' . lang('A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.') . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text">' . lang(array('string' => 'To hold a script of your own until the visitor agrees, write its tag as {var:1} (or {var:2}). The notice lists it under that category with the name you give it.', 'vars' => array('<code>' . h('<script type="text/plain" data-pg-consent="analytics" data-pg-consent-name="Hotjar">') . '</code>', '<code>data-pg-consent="marketing"</code>'))) . '</div>
+                                        </div>
+                                   </div>
+                                </div>
+                            </div>
+                        </div>';
