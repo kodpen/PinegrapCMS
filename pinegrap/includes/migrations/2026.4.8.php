@@ -52,6 +52,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_cookie_consent();          // 8.18
 
+	upgrade_2026_4_8_workspace_templates();     // 8.88
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -789,5 +791,44 @@ function upgrade_2026_4_8_cookie_consent() {
 	install_add_column('config', 'cookie_consent_policy_url', "TEXT NULL");
 
 	install_note('Cookie consent: visitor pages ask before setting optional cookies; Google Analytics and the visitor statistics cookies start only after the visitor allows them (Settings › SEO › Cookie Consent).');
+
+}
+
+// Channel templates in the workspace (2026.4.8, 8.88;
+// includes/workspace/templates.php). A template is what a new channel - or
+// one already open - is set up with: a set of tasks with dates relative to
+// the day it is applied, the rule for whom each goes to and their
+// checklists, notes to share, the summary, the message pinned to the top
+// and a first message. name, description, icon (a Bootstrap Icons class) and
+// color (a place in the channel palette, 0 for none) are what the pickers
+// show; kind and department_id the channel suggested; summary, pinned and
+// welcome the texts written into the channel; body the tasks and the notes
+// as JSON (ws_template_body_clean()). uses counts how often it was applied;
+// archived takes it out of the pickers. idx_live serves the pickers' list.
+// The built-in templates are kept in code, not here.
+function upgrade_2026_4_8_workspace_templates() {
+
+	install_create_table('ws_templates', "CREATE TABLE ws_templates (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name          VARCHAR(100) NOT NULL DEFAULT '',
+		description   VARCHAR(255) NOT NULL DEFAULT '',
+		icon          VARCHAR(40)  NOT NULL DEFAULT '',
+		color         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		kind          ENUM('public','private') NOT NULL DEFAULT 'public',
+		department_id INT UNSIGNED NOT NULL DEFAULT 0,
+		summary       TEXT NULL,
+		pinned        TEXT NULL,
+		welcome       TEXT NULL,
+		body          TEXT NULL,
+		created_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		archived      TINYINT(1) NOT NULL DEFAULT 0,
+		uses          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_live (archived, name)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: channel templates set a new or an open channel up with a ready set of tasks, notes, a summary, a pinned message and a welcome (Workspace Settings › Channel templates).');
 
 }
