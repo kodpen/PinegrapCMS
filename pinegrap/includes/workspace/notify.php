@@ -31,6 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @param int    $user_id
  * @param string $kind     mention | assigned | completed | invited | note | note_shared | note_updated | note_answer
+ *                         | unblocked (a task waited for is done: task_links.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner
  * @return int the inbox row
  */
@@ -226,6 +227,17 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $task ? (string) $task['title'] : '',
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
                 'icon'  => 'bi-journal-text',
+            );
+
+        // The last task in front of this one is done (task_links.php).
+        case 'unblocked':
+            $done_id = ($task && function_exists('ws_task_links_last_done')) ? ws_task_links_last_done($task['id']) : 0;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} is done; {var:2} can start', 'vars' => array(($done_id > 0) ? ws_task_number($done_id) : lang('A task'), $task ? ws_task_number($task['id']) : ''))),
+                'body'  => $task ? (string) $task['title'] : '',
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => 'bi-unlock',
             );
 
         case 'invited':

@@ -376,7 +376,7 @@ function ws_scheduled_record_types()
  * hourly rollup, never from the raw log. "Since the last run" counts from the
  * action's previous run, or the last day for one that has not run.
  *
- * kind: count | money. scope: '' | channel (a channel's tasks only) |
+ * kind: count | money | minutes. scope: '' | channel (a channel's tasks only) |
  * threshold (a number the count is measured against). right: what the
  * creator must be able to see.
  *
@@ -400,6 +400,11 @@ function ws_scheduled_metrics()
         'visitors_yesterday' => array('label' => lang('Visitors yesterday'), 'kind' => 'count', 'scope' => '', 'right' => '', 'group' => 'web'),
         'views_yesterday'   => array('label' => lang('Page views yesterday'), 'kind' => 'count', 'scope' => '', 'right' => '', 'group' => 'web'),
     );
+
+    // Minutes written on tasks this week, from Monday (task_time.php).
+    if (function_exists('ws_task_time_ready') && ws_task_time_ready()) {
+        $metrics['time_logged_week'] = array('label' => lang('Time spent on tasks this week'), 'kind' => 'minutes', 'scope' => 'channel', 'right' => '', 'group' => 'work');
+    }
 
     if (defined('ECOMMERCE') && (ECOMMERCE === true)) {
         $metrics += array(
@@ -466,6 +471,10 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
             $value = (int) db_value("SELECT COUNT(*) FROM ws_tasks WHERE status = 'done' AND completed_at >= '" . $midnight . "'" . $channel);
             break;
 
+        case 'time_logged_week':
+            $value = ws_task_time_week_minutes(($channel !== '') ? (int) $param : 0);
+            break;
+
         case 'forms_new':
             $value = (int) db_value("SELECT COUNT(*) FROM forms WHERE complete = '1' AND submitted_timestamp > '" . $since . "'");
             break;
@@ -524,6 +533,11 @@ function ws_scheduled_metric_show($key, $value)
 
     if ($metric && ($metric['kind'] === 'money')) {
         return ws_money_out((int) $value);
+    }
+
+    // Minutes, the way the planning screens say them ("9 h 30 min").
+    if ($metric && ($metric['kind'] === 'minutes')) {
+        return ws_minutes_label((int) $value);
     }
 
     return function_exists('pg_format_number') ? (string) pg_format_number((int) $value, 0) : number_format((int) $value);

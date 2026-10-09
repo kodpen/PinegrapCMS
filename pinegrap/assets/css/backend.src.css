@@ -14658,3 +14658,118 @@ button.ws-home-row:hover,
     color: var(--bs-warning-text-emphasis);
 }
 /* ── /Workspace ── */
+/* ── Workspace: time spent on tasks (assets/js/workspace_task_time.js) ── */
+.ws-task-time,
+.ws-task-links {
+    margin: 1rem 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-time-head,
+.ws-task-links-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .9rem;
+}
+.ws-task-time-bar {
+    height: 4px;
+    margin: .35rem 0 .5rem;
+}
+.ws-task-time-over .progress-bar {
+    background-color: var(--bs-danger);
+}
+.ws-task-time-timer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin: .5rem 0;
+    font-size: .85rem;
+}
+.ws-task-time-clock {
+    font-family: var(--bs-font-monospace);
+    font-variant-numeric: tabular-nums;
+}
+.ws-task-time-add {
+    margin-bottom: .5rem;
+}
+.ws-task-time-list {
+    display: grid;
+    gap: .4rem;
+}
+.ws-task-time-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+}
+.ws-task-time-row img {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.ws-task-time-row-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+.ws-task-time-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.ws-task-time-total {
+    text-align: end;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.ws-task-time-tag,
+.ws-task-links-tag {
+    font-size: .75rem;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+.ws-task-time-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+}
+.ws-task-time-week {
+    display: flex;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: var(--bs-tertiary-bg);
+    font-size: .85rem;
+}
+.ws-task-time-board {
+    display: block;
+    color: var(--bs-secondary-color);
+}
+/* ── Workspace: tasks that wait for other tasks (workspace_task_links.js) ── */
+.ws-task-links-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .3rem;
+    font-size: .85rem;
+}
+.ws-task-links-done a,
+.ws-task-links-done span.ws-grow {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-task-links-results {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+.ws-task-card-blocked {
+    margin-top: .15rem;
+    font-size: .75rem;
+    color: var(--bs-warning-text-emphasis);
+}
