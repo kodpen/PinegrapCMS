@@ -69,6 +69,8 @@ $style = array(
     // Absent before 2026.4.5 (5.3): plain Bootstrap.
     'look'                              => pg_design_look_key(isset($row['style_look']) ? $row['style_look'] : ''),
     'palette'                           => pg_design_palette_key(isset($row['style_palette']) ? $row['style_palette'] : ''),
+    // Absent before 2026.4.8 (8.19): the tabs follow page_id.
+    'tab_layout'                        => isset($row['style_tab_layout']) ? (string)$row['style_tab_layout'] : '',
 );
 
 // Every page on this design, in creation order. Also performs the legacy

@@ -4173,6 +4173,21 @@ switch ($action) {
                 respond(array('status' => 'success', 'deleted' => $td_deleted));
                 break;
 
+            // ── TAB LAYOUT ───────────────────────────────────────────────
+            // The order of the page tabs and their groups (2026.4.8). Written
+            // the moment the operator rearranges the strip, apart from Save:
+            // it is how the editor looks, not what the site shows.
+            case 'tab_layout':
+                $tl = pg_designer_tab_layout_save(
+                    isset($request['style_id']) ? (int)$request['style_id'] : 0,
+                    isset($request['layout']) ? $request['layout'] : null,
+                    $user);
+                if (!$tl['ok']) {
+                    respond(array('status' => 'error', 'message' => $tl['error']));
+                }
+                respond(array('status' => 'success', 'layout' => $tl['layout']));
+                break;
+
             // Every page of a design off the site, or its drafts back on it,
             // from the designs list (pg_designer_design_set_draft()). The
             // answer carries the row's new Status cell.

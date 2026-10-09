@@ -65,7 +65,8 @@ function pg_designer_asset_stamp($relative_path)
  *                   social_networking_position, additional_body_classes,
  *                   style_head, style_empty_cell_width_percentage,
  *                   style_custom_css, style_custom_js, style_custom_fonts,
- *                   last_modified_timestamp, last_modified_username
+ *                   last_modified_timestamp, last_modified_username,
+ *                   tab_layout (style_tab_layout JSON; '' in add mode)
  *   pages           array from pg_designer_load_pages() (may be empty in add mode)
  *   active_page_id  int
  *   liveform        liveform instance (already populated)
@@ -233,6 +234,13 @@ function pg_designer_screen_render($ctx)
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
     $sd_ai = pg_design_ai_editor_config($user);
 
+    // The order and groups of the tabs, for the pages listed above.
+    $tab_page_ids = array();
+    foreach ($js_pages as $jp) {
+        if ($jp['page_id'] > 0) $tab_page_ids[] = $jp['page_id'];
+    }
+    $tab_layout = pg_designer_tab_layout_normalize(isset($style['tab_layout']) ? $style['tab_layout'] : '', $tab_page_ids);
+
     $design_js = json_encode(array(
         'mode'          => $mode,
         'styleId'       => $style_id,
@@ -277,6 +285,12 @@ function pg_designer_screen_render($ctx)
         'drafts'        => array(
             'ready'     => pg_page_draft_ready(),
             'canChange' => pg_page_draft_ready() && ($access === PG_DESIGNER_ACCESS_FULL),
+        ),
+        // Tab order and groups (2026.4.8): kept in style_tab_layout, written
+        // by designer/tab_layout. Without the column the strip is plain.
+        'tabLayout'     => array(
+            'ready'  => pg_style_tab_layout_ready(),
+            'layout' => pg_designer_tab_layout_export($tab_layout),
         ),
         // The site's languages, source first: what the language switcher
         // component lists on the canvas (pg_language_switcher_editor_languages()).
