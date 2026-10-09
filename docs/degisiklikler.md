@@ -35,7 +35,9 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.18). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.89, 8.110, 8.30–8.33, 8.40 ve
+8.10–8.18). Çalışma Alanı'nın 8.80–8.89 aralığı doldu ve 8.110 kullanıldı;
+sıradaki Çalışma Alanı adımı 8.111–8.119 aralığından alınır. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
