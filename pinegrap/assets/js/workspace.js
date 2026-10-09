@@ -1594,7 +1594,14 @@
             items.push('-');
 
             if (task.status !== 'doing') {
-                items.push({ icon: 'bi-play-circle', label: t('start_work'), action: function () { status('doing'); } });
+                items.push({ icon: 'bi-play-circle', label: t('start_work'), action: function () {
+                    // Waiting for open tasks: asked first (workspace_task_links.js).
+                    (window.PGWsTaskLinks ? window.PGWsTaskLinks.confirmStart(task.blocked_by || [], partHelpers()) : Promise.resolve(true)).then(function (yes) {
+                        if (yes) {
+                            status('doing');
+                        }
+                    });
+                } });
             }
 
             if (task.status !== 'waiting') {
@@ -2434,6 +2441,17 @@
         return box;
     }
 
+    // The helpers lent to the files that draw parts of the screens on their
+    // own (assets/js/workspace_task_time.js, workspace_task_links.js).
+    function partHelpers() {
+        return {
+            api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
+            clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            boot: function () { return BOOT; },
+            openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
+        };
+    }
+
     // ── The task drawer, shared by every screen ────────────────────────
 
     var taskDrawer = {
@@ -2739,6 +2757,16 @@
                 Array.prototype.forEach.call(body.querySelectorAll('input, textarea, select, .ws-person-toggle'), function (input) {
                     input.disabled = true;
                 });
+            }
+
+            // The time spent and the tasks it waits for: their own rights,
+            // their own requests (workspace_task_time.js, workspace_task_links.js).
+            if (task && task.time && window.PGWsTaskTime) {
+                body.appendChild(window.PGWsTaskTime.drawer(task, partHelpers(), function () { self.changed(); }));
+            }
+
+            if (task && task.links && window.PGWsTaskLinks) {
+                body.appendChild(window.PGWsTaskLinks.drawer(task, partHelpers(), function () { self.changed(); }));
             }
 
             // Notes: anyone who can see the task may add one.
@@ -3306,6 +3334,19 @@
 
         setStatus: function (status) {
             var self = this;
+
+            // Started while it waits for open tasks: asked, not refused.
+            if ((status === 'doing') && window.PGWsTaskLinks && self.task.blocked_by && self.task.blocked_by.length && !self.startAnyway) {
+                window.PGWsTaskLinks.confirmStart(self.task.blocked_by, partHelpers()).then(function (yes) {
+                    if (yes) {
+                        self.startAnyway = true;
+                        self.setStatus(status);
+                    }
+                });
+                return;
+            }
+
+            self.startAnyway = false;
 
             api('ws_task_status', { task_id: self.task.id, status: status }).then(function () {
                 toast(t('task_saved'), 'success');
@@ -4217,11 +4258,19 @@
 
                 if (statusButton && self.root.contains(statusButton)) {
                     var taskId = parseInt(statusButton.getAttribute('data-ws-task'), 10);
+                    var blocked = statusButton.getAttribute('data-ws-blocked') || '';
 
-                    api('ws_task_status', { task_id: taskId, status: statusButton.getAttribute('data-ws-task-status') }).then(function (data) {
-                        self.replaceTaskCard(taskId, data.html);
-                        self.sync();
-                    }).catch(fail);
+                    // A card that waits for open tasks asks before it starts.
+                    (window.PGWsTaskLinks ? window.PGWsTaskLinks.confirmStart(blocked, partHelpers()) : Promise.resolve(true)).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        api('ws_task_status', { task_id: taskId, status: statusButton.getAttribute('data-ws-task-status') }).then(function (data) {
+                            self.replaceTaskCard(taskId, data.html);
+                            self.sync();
+                        }).catch(fail);
+                    });
                 }
 
                 if (openButton && self.root.contains(openButton)) {
@@ -11635,6 +11684,12 @@
                 });
                 pane.appendChild(edit);
             }
+
+            // The time spent on the channel's tasks, loaded when the tab is
+            // opened (workspace_task_time.js).
+            if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {
+                pane.appendChild(window.PGWsTaskTime.channelCard(channel, partHelpers()));
+            }
         },
 
         search: function (query) {
@@ -14521,6 +14576,15 @@
             var sub = el('div', 'ws-row-sub');
             sub.appendChild(el('span', task.overdue ? 'text-danger' : '', task.due_label));
             sub.appendChild(document.createTextNode(' · ' + task.status_label + (task.estimate_label ? ' · ' + task.estimate_label : '')));
+
+            if (window.PGWsTaskTime) {
+                window.PGWsTaskTime.rowTags(sub, task, partHelpers());
+            }
+
+            if (window.PGWsTaskLinks) {
+                window.PGWsTaskLinks.rowTag(sub, task, partHelpers());
+            }
+
             main.appendChild(sub);
             row.appendChild(main);
 
@@ -14644,6 +14708,11 @@
             scopeList.push(['all', t('scope_all')]);
         }
 
+        // The reader's own time, week by week (workspace_task_time.js).
+        if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {
+            scopeList.push(['time', t('tt_my_time')]);
+        }
+
         scopeList.forEach(function (scope) {
             var item = button('btn btn-ghost' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
             item.addEventListener('click', function () {
@@ -14724,6 +14793,11 @@
 
         function load() {
             var mine = ++serial;
+
+            if (state.scope === 'time') {
+                window.PGWsTaskTime.myTime(listBody, partHelpers());
+                return;
+            }
 
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
@@ -14896,6 +14970,12 @@
                 var text = el('div', 'ws-grow');
                 text.appendChild(el('b', '', row.person.name));
                 text.appendChild(el('small', '', t('day_capacity', Math.round(row.capacity.day_minutes / 60 * 10) / 10) + (row.unscheduled ? ' · ' + t('undated', row.unscheduled) : '')));
+
+                // Staff see the time spent beside what was planned.
+                if (row.time && window.PGWsTaskTime) {
+                    text.appendChild(window.PGWsTaskTime.boardTag(row.time, partHelpers()));
+                }
+
                 who.appendChild(text);
                 onContext(who, function () { return personMenu(row.person); });
                 grid.appendChild(who);

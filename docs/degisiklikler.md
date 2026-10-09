@@ -429,6 +429,118 @@ görevler ekranında şerit büyüteci ve Enter'la görev çekmecesi; 390 px
 genişlikte tek sütun.
 
 ---
+## 2026.4.8 — Çalışma Alanı: görevde harcanan süre (→ ERP fatura taslağı) ve görev bağımlılığı (2026-10-09)
+
+**İstenen.** Görevin tahmini (`ws_tasks.estimate_minutes`) vardı, gerçekleşen
+süresi yoktu. (D) Görevde harcanan süre: sayaç ve elle giriş, kanal ve kişi
+toplamları, ERP'ye fatura taslağı köprüsü, programlanmış işlem sayacı, dış API
+ve olay. (I) Görev bağımlılığı: bir görevin başka görevleri beklemesi, döngü
+yasağı, engelleyen bitince haber.
+
+**Şema.** 8.86 `upgrade_2026_4_8_workspace_task_time()` → `ws_task_time`;
+8.110 `upgrade_2026_4_8_workspace_task_links()` → `ws_task_links`. İkisi de
+`install_create_table` + `install_note`, `get_tables()`'ta. `ws_task_time`
+InnoDB olmak zorunda: fatura taslağı kayıtları `FOR UPDATE` ile kilitleyip
+taslakla aynı işlemde bağlar. Sandbox'ta iki kez koşuldu.
+
+**Süre (`includes/workspace/task_time.php`, `assets/js/workspace_task_time.js`).**
+- Satır = bir kişinin bir görevde bir gündeki süresi. Sayaç `started_at` dolu,
+  `minutes = 0` satırdır; kişi başına tek (`ws_task_time_running()`): yeni
+  sayaç eskisini `ws_task_time_close()` ile durdurup kaydeder. Durdurmada
+  dakikayı sunucu `started_at`'ten sayar (`ws_task_time_elapsed()`:
+  `round(sn/60)`, en az 1) — sekme kapansa da süre kaybolmaz ya da şişmez.
+- Elle giriş `ws_task_time_parse()`: `90`, `1:30`, `1s 30d`, `1sa 30dk`,
+  `1h 30m`, `1,5s`, önde `~` olabilir. Birim sözcükleri `ws_parse_estimate()`
+  ile aynı, **tek fark bu alanda `d` = dakika** ve gün birimi yok (harcanan
+  süre gün yazılmaz; `ws_parse_estimate()`'te `d` gündür ve ona
+  dokunulmadı — mimar onayı). Gelecek gün reddedilir, en çok 100000 dk.
+- Kim yazar: `ws_task_time_may_log($viewer, $task, $assignees, $user_id)` (saf):
+  görevin üzerindeki kişi ya da oluşturan kendi süresini; yönetici (rol 0–2)
+  herkesinkini (çekmecede kişi seçici). Okuma `ws_task($id)` +
+  `ws_can_see_task()` (brief'teki `ws_task_for` ağaçta yok). Silme: kendi
+  kaydı ya da yönetici; faturaya bağlı kayıt silinmez.
+- Gösterim `ws_minutes_label()` ("1 sa 30 dk"): planlama ekranları ve
+  programlanmış işlemin dakika gösterimi aynı yardımcıdan geçer.
+- Çekmece: başlat/durdur (sayaç JS'te sunucu saatine göre sayar), elle giriş
+  formu, kayıt listesi, toplam ↔ tahmin çubuğu. Görev kartı
+  (`ws_task_card_html`) ve listeler (`ws_task_brief` → `time_minutes`,
+  `time_label`) süre etiketi taşır; `ws_tasks_list()` toplamları tek sorguyla
+  (`ws_task_time_totals()`) verir.
+- Kanal: Özet sekmesinde "Harcanan süre" kartı ayrı eylemle
+  (`ws_task_time_channel`) tembel yüklenir — `ws_channel_detail()` her
+  açılışta ağırlaşmasın; sekme işaretine dokunulmadı. Bu ay / toplam /
+  faturalanmamış, kişiye göre, bağlı taslaklar.
+- Görevlerim'de "Zamanım" kapsam düğmesi (`ws_task_time_mine()`: son 8 hafta,
+  hafta hafta, görev görev). Plan Panosu'nda yöneticiye kişi satırında
+  "Planlanan … · harcanan …" (`ws_board()` satırına `time`).
+- `ws_scheduled_metrics()`'e `time_logged_week` (`kind` `minutes`, kanal
+  kapsamlı); `ws_scheduled_metric_show()` dakikayı `ws_minutes_label()` ile
+  yazar.
+
+**ERP köprüsü (`ws_task_time_invoice()`).** Kapı
+`ws_task_time_can_invoice()`: `ERP_ENABLED`, kanal müşterisi `erp_account`,
+kullanıcı rol 0–2 ya da `manage_erp` ve `manage_erp_readonly` değil, kanala
+yazabiliyor. Kapalıyken düğme çizilmez, eylem `ws_action_error` döner.
+Akış: `erp_tx_begin()` → kanalın faturalanabilir, `invoice_id = 0`, tarih
+aralığındaki kayıtları `FOR UPDATE` → görev başına satır (açıklama görev no +
+başlık, miktar `ws_task_time_hours()` = `round(dk/60, 2)`, birim `HUR`, birim
+fiyat formdaki saatlik ücret `erp_kurus()` ile kuruş, KDV formdan) →
+`erp_invoice_draft_save()` (satış, ana para birimi, bugünün tarihi; taslak
+numara almaz, deftere yazmaz) → kayıtlara `invoice_id` (`erp_query()` ile:
+`db()` hata verince isteği bitirir, `erp_query()` `false` döner ve işlem geri
+alınabilir) → `erp_tx_commit()`. Herhangi bir adımda ret → `erp_tx_rollback()`,
+kayıtlar 0'da kalır. Kanala kilitli karar satırı ("3 kayıt, 2,02 saat →
+fatura taslağı <#invoice:…>"). "Bağı çöz" (`ws_task_time_unlink()`, yönetici)
+yalnız taslak / silinmiş / iptal faturada; kesilmiş faturanın süresi kalır.
+`erp_invoice_draft_delete()`'e dokunulmadı.
+
+**Bağımlılık (`includes/workspace/task_links.php`, `assets/js/workspace_task_links.js`).**
+- `ws_task_link_add($viewer, $task, $blocker_task_id)` (başka bir özelliğin
+  `function_exists` ile aradığı ad): görevi değiştirebilen, engelleyeni
+  görebilen bağlar; en çok 20 engelleyen.
+- Döngü denetimi saf `ws_task_link_cycle($map, $task_id, $blocker_id, 50)`:
+  engelleyenin önündeki zinciri seviye seviye yürür; görevin kendisine
+  varırsa `cycle`, 50 adımı aşarsa `too_deep`, kendine bağ `self`. Harita
+  veritabanından `ws_task_link_map_from()` ile okunur; test haritayla yapılır.
+- Bloklu görev (açık engelleyeni olan): kartta kilit + "Bekliyor: G-12",
+  listede etiket; `doing`'e geçerken (çekmece, kart düğmesi, sağ tık) soru
+  sorulur, engellenmez.
+- Engelleyen `done` olunca (`ws_task_set_status()` → `ws_task_links_done()`)
+  bekleyen görev hâlâ açıksa ve **son** açık engelleyeni buysa üzerindeki
+  kişilere gelen kutusu satırı (`ws_inbox.kind = 'unblocked'`, VARCHAR —
+  şema gerekmez): "G-12 bitti, G-15 başlayabilir".
+- API: görev nesnesine `blocked_by`, `blocks` (ve `time_minutes`);
+  `POST /workspace/tasks` ve `/workspace/tasks/{id}` `blocked_by` alır
+  (listeyi değiştirir; görülemeyen görevlere bağ korunur), yazmadan önce
+  `ws_task_links_check()` ile denetlenir, ret 422.
+
+**Dış API (süre).** `GET /workspace/tasks/{id}/time`, `POST` (`minutes`,
+`worked_on`, `note`, `billable`; dry-run), `DELETE …/time/{entry_id}`
+(`also_accepts` POST — IIS; dry-run). Nesne `WorkspaceTaskTime`. Olay
+`workspace.task.time_logged` (sayaç durunca ya da elle yazılınca).
+
+**Kararlar ve ödünler.**
+- Sayaç ve elle giriş için tavan 100000 dk (tahminle aynı); unutulmuş bir
+  sayaç durdurulana kadar sayar, kesilmez.
+- "G-… bitti" satırının ilk numarası okunurken hesaplanır (bekleyen görevin
+  en son biten engelleyeni); `ws_inbox`'ta ikinci görev sütunu yok. Aynı görev
+  için okunmuş eski satır da en son biteni gösterir.
+- Taslak çip etiketi `refs.php`'nin fatura çözümünden gelir ("Fatura
+  Taslak"); numarasız taslak için değiştirilmedi.
+- ERP izine (`erp_audit_log`) düşmez: `log_activity()` kancası yalnız ERP
+  dosyalarından gelen satırı izler; çalışma alanı mevcut "erp invoice draft
+  (…) was saved" anahtarıyla etkinlik günlüğüne yazar.
+
+**Denenenler (sandbox, 8003).** Şema adımları iki kez (created / already
+exists) ve tam yükseltme iki kez; sayaç 2 sn → 1 dk; `1s 15d` → 75, toplam
+76; rol 3 üzerinde değilken ret, atanınca kabul; ERP kapalıyken ret, ERP
+açıkken taslak (`erp_invoices` `_D` serisi, `erp_invoice_items` `HUR`, kuruş
+tutarlar), kayıtların `invoice_id`'si; saatlik ücret 0 ve KDV 150 reddi;
+bağ yazımı zorla düşürülünce (sandbox tetikleyicisi) taslak dahil geri alma;
+iki eşzamanlı istekte tek taslak; bağımlılık A←B, B←A ve üç adımlı döngü
+reddi, A bitince B'nin kişisine gelen kutusu; API uçları (kimlik adımı
+dışında) ve dry-run; başsız Chromium'da çekmece, Özet kartı, Zamanım, Pano
+etiketi, bloklu başlatma sorusu. Ayrıntı ve denenemeyenler PR açıklamasında.
 
 ## 2026.4.8 — Sistem widget'larının mesaj düğümü adlandırıldı: hata kendi widget'ında çıkıyor (2026-10-09)
 

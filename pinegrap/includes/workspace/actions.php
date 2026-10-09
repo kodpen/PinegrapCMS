@@ -2137,6 +2137,132 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id']))));
 
+        // The time spent on a task (includes/workspace/task_time.php): the
+        // timer, time written by hand, a row deleted.
+        case 'ws_task_time_start':
+        case 'ws_task_time_add':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            if ($action === 'ws_task_time_start') {
+                $result = ws_task_time_start($viewer, $task);
+                $result['field'] = '';
+            } else {
+                $result = ws_task_time_add($viewer, $task, array(
+                    'text'      => (string) ($request['text'] ?? ''),
+                    'worked_on' => (string) ($request['worked_on'] ?? ''),
+                    'note'      => (string) ($request['note'] ?? ''),
+                    'billable'  => !empty($request['billable']),
+                    'user_id'   => (int) ($request['user_id'] ?? 0),
+                ));
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            return ws_action_ok(array(
+                'stopped' => (string) ($result['stopped'] ?? ''),
+                'time'    => ws_task_time_detail($viewer, ws_task($task['id']), ws_task_assignee_ids($task['id'])),
+            ));
+
+        case 'ws_task_time_stop':
+            $result = ws_task_time_stop($viewer);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $task = ws_task((int) ($request['task_id'] ?? 0) ?: $result['task_id']);
+
+            return ws_action_ok(array(
+                'minutes' => $result['minutes'],
+                'time'    => ($task && ws_can_see_task($viewer, $task)) ? ws_task_time_detail($viewer, $task, ws_task_assignee_ids($task['id'])) : null,
+            ));
+
+        case 'ws_task_time_delete':
+            $entry = ws_task_time_ready() ? ws_task_time_entry((int) ($request['entry_id'] ?? 0)) : null;
+            $task = $entry ? ws_task($entry['task_id']) : null;
+
+            if (!$entry || !$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That time entry could not be found.'));
+            }
+
+            $result = ws_task_time_delete($viewer, $entry);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('time' => ws_task_time_detail($viewer, $task, ws_task_assignee_ids($task['id']))));
+
+        // The time on a channel's tasks, for its Summary tab; the invoice
+        // draft made of it, and the tie to a draft undone (staff).
+        case 'ws_task_time_channel':
+        case 'ws_task_time_invoice':
+        case 'ws_task_time_unlink':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if ($action === 'ws_task_time_invoice') {
+                $result = ws_task_time_invoice($viewer, $user, $channel, array(
+                    'from'     => (string) ($request['from'] ?? ''),
+                    'to'       => (string) ($request['to'] ?? ''),
+                    'rate'     => (string) ($request['rate'] ?? ''),
+                    'tax_rate' => (string) ($request['tax_rate'] ?? ''),
+                ));
+
+                if (!$result['ok']) {
+                    return ws_action_error($result['error'], $result['field']);
+                }
+
+                return ws_action_ok(array(
+                    'invoice_id' => $result['invoice_id'],
+                    'entries'    => $result['entries'],
+                    'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id'],
+                    'card'       => ws_task_time_channel($viewer, $user, $channel),
+                ));
+            }
+
+            if ($action === 'ws_task_time_unlink') {
+                $result = ws_task_time_unlink($viewer, $channel, (int) ($request['invoice_id'] ?? 0));
+
+                if (!$result['ok']) {
+                    return ws_action_error($result['error']);
+                }
+            }
+
+            return ws_action_ok(array('card' => ws_task_time_channel($viewer, $user, $channel)));
+
+        // The reader's own time, week by week (My time on the tasks screen).
+        case 'ws_task_time_mine':
+            return ws_action_ok(array('mine' => ws_task_time_mine($viewer, (int) ($request['weeks'] ?? 8))));
+
+        // Tasks that wait for other tasks (includes/workspace/task_links.php).
+        case 'ws_task_link_add':
+        case 'ws_task_link_remove':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            $result = ($action === 'ws_task_link_add')
+                ? ws_task_link_add($viewer, $task, (int) ($request['blocker_id'] ?? 0))
+                : ws_task_link_remove($viewer, $task, (int) ($request['blocker_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('links' => ws_task_links_detail($viewer, $task, ws_can_edit_task($viewer, $task))));
+
         case 'ws_task_status':
             $task = ws_task((int) ($request['task_id'] ?? 0));
 

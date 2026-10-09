@@ -629,6 +629,56 @@
          kartlar kendiliğinden yenilenir. Misafirli kanallarda ve
          tartışmalarda pano yoktur. Çalışma Alanı turu bu sekmeyi
          de anlatır ve herkese bir kez daha gösterilir.
+  [YENİ] Görevde harcanan süre: görev penceresinde "Harcanan
+         süre" bölümü. Sayaç başlatılıp durdurulur (sayfa
+         kapansa da süre başlangıç anından sayılır; bir
+         dakikadan kısası bir dakika yazılır, kişi başına tek
+         sayaç çalışır, yenisi eskisini durdurup kaydeder) ya
+         da süre elle yazılır: "90", "1:30" ya da "1s 30d";
+         tarih, not ve faturalanabilir anahtarıyla. Görevin
+         üzerindekiler ve oluşturan kendi süresini,
+         yöneticiler herkesin süresini yazar. Pencerede toplam
+         tahminle karşılaştırılır ("3 sa 20 dk / 5 sa"); görev
+         kartında ve listelerde süre etiketi görünür.
+
+  [YENİ] Kanalın Özet sekmesinde "Harcanan süre" kartı:
+         kanalın görevlerindeki toplam, bu ay, faturalanmamış
+         süre ve kişiye göre dağılım. Görevlerim'de "Zamanım":
+         kişinin süresi hafta hafta, görev görev. Plan
+         Panosu'nda yöneticiler kişi satırında planlanan ve
+         harcanan süreyi görür. Programlanmış işlemlere "Bu
+         hafta görevlerde harcanan süre" sayacı eklendi.
+
+  [YENİ] Süreden fatura taslağı: ERP açıkken ve kanalın
+         müşterisi bir cari hesapken, fatura hakkı olan
+         kullanıcı Harcanan süre kartından iki tarih
+         arasındaki faturalanmamış süreyi ERP fatura
+         taslağına çevirir: görev başına bir satır, miktar
+         saat, saatlik ücret ve KDV oranı formdan. Taslak
+         kesilmez; kayıtlar taslağa bağlanır, aynı saat ikinci
+         kez faturalanmaz, kanala kilitli bir karar satırı
+         düşer. Taslak silinirse yönetici kartta "Bağı çöz"
+         ile süreyi yeniden faturalanabilir yapar.
+
+  [YENİ] Görev bağımlılığı: görev penceresinde "Bağımlılıklar"
+         bölümü. "Şu görevler bitmeden başlayamaz" listesine
+         görev numarası ya da başlığıyla arayıp görev eklenir;
+         "Bu görevi bekleyenler" ters listede görünür.
+         Birbirini bekleyen görevler (döngü) kaydedilmez.
+         Bekleyen görev kartta ve listede kilitle "Bekliyor:
+         G-12" der; başlatılmak istenince sorulur,
+         engellenmez. Son engelleyen bitince bekleyen görevin
+         üzerindekilere "G-12 bitti, G-15 başlayabilir"
+         bildirimi gider.
+
+  [YENİ] Dış API: GET/POST /workspace/tasks/{id}/time ve
+         DELETE /workspace/tasks/{id}/time/{entry_id} (POST da
+         olur); görev nesnesinde blocked_by, blocks ve
+         time_minutes; POST /workspace/tasks ve
+         /workspace/tasks/{id} blocked_by kabul eder. Yeni
+         olay: workspace.task.time_logged.
+
+  [ŞEMA] ws_task_time ve ws_task_links tabloları.
 
   E-POSTA
   --------------------------------------------------------

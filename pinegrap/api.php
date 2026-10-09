@@ -504,6 +504,16 @@ switch ($action) {
     case 'ws_thread_leave':
     case 'ws_share_relink':
     case 'ws_share_end':
+    case 'ws_task_time_start':
+    case 'ws_task_time_stop':
+    case 'ws_task_time_add':
+    case 'ws_task_time_delete':
+    case 'ws_task_time_channel':
+    case 'ws_task_time_invoice':
+    case 'ws_task_time_unlink':
+    case 'ws_task_time_mine':
+    case 'ws_task_link_add':
+    case 'ws_task_link_remove':
 
         if (!USER_LOGGED_IN) {
             respond(array(

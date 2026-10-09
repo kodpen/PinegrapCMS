@@ -8503,6 +8503,8 @@ function get_tables() {
 		'ws_thread_copies',
 		'ws_events_in',
 		'ws_templates',
+		'ws_task_time',
+		'ws_task_links',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',
