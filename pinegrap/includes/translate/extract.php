@@ -590,8 +590,8 @@ function pg_tr_extract_all()
 
 /**
  * Extracts one of the groups the Translations screen lists below the pages.
- * The interface texts are recorded as pages draw them; only the cookie
- * notice's wording is taken in here, ahead of the first visitor.
+ * The interface texts are recorded as pages draw them and have nothing to
+ * extract.
  *
  * @param string $group catalog | forms | ui
  * @return array('owners' => int, 'segments' => int)
@@ -603,8 +603,6 @@ function pg_tr_extract_group($group)
             return pg_tr_extract_catalog();
         case 'forms':
             return pg_tr_extract_forms();
-        case 'ui':
-            return array('owners' => 0, 'segments' => pg_tr_ui_seed(pg_consent_ui_keys()));
     }
 
     return array('owners' => 0, 'segments' => 0);
