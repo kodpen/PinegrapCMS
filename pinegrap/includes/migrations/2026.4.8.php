@@ -52,6 +52,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_cookie_consent();          // 8.18
 
+	upgrade_2026_4_8_workspace_events();        // 8.85
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -789,5 +791,40 @@ function upgrade_2026_4_8_cookie_consent() {
 	install_add_column('config', 'cookie_consent_policy_url', "TEXT NULL");
 
 	install_note('Cookie consent: visitor pages ask before setting optional cookies; Google Analytics and the visitor statistics cookies start only after the visitor allows them (Settings › SEO › Cookie Consent).');
+
+}
+
+// The site's events in the workspace (2026.4.8, 8.85;
+// includes/workspace/watch.php, includes/fn/events.php). ws_events_in is the
+// workspace's inbox of what happened on the site - a new order, a form
+// submitted, a product low in stock: pg_event_record() writes one row
+// (event, payload as JSON, created_at) where the event is announced, and the
+// workspace's run takes it later (taken_at, kept seven days then swept;
+// idx_open is how the run finds the ones not taken yet and the sweep the
+// old ones). ws_channels.watch is the channel's choice whether the events
+// of its customer and of the records tagged in it are written into it as a
+// line; on (1) by default.
+function upgrade_2026_4_8_workspace_events() {
+
+	install_create_table('ws_events_in', "CREATE TABLE ws_events_in (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		event      VARCHAR(60)  NOT NULL DEFAULT '',
+		payload    TEXT         NOT NULL,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		taken_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_open (taken_at, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_channels', 'watch', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	// pg_event_record() asks pg_schema_has() on every announced event, and
+	// the answer is cached on disk: a "missing" kept from before this step
+	// would leave the inbox unwritten.
+	if (function_exists('pg_schema_cache_clear')) {
+		pg_schema_cache_clear();
+	}
+
+	install_note('Workspace: a scheduled action can start when something happens on the site (a new order, a form submitted, a product low in stock), and a channel hears about the orders of its customer and the records tagged in it.');
 
 }
