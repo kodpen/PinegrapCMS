@@ -72,6 +72,106 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Çalışma Alanı: olay başlatıcılı programlanmış işlem, kaydı izle, web formu → kanal (8.85) (2026-10-09)
+
+**İstenen.** Programlanmış işlem yalnız zamanla (`at`), kanala katılmayla
+(`join`) ve başka işlemle (`trigger`) başlıyordu; sitenin duyurduğu olaylar
+(`order.*`, `stock.low`, `customer.*`, `form.submitted`) yalnız dış webhook'a
+gidiyordu. Üç şey: (1) işlem "şu olay olunca" başlasın; (2) kanalın müşterisine
+ya da kanalda etiketlenen kayda ait olay kanala sistem satırı olarak düşsün;
+(3) web formu kanala kart olarak gelsin, karttan görev yapılsın.
+
+**Nasıl çözüldü.**
+
+- *Yakalama — ön yüzü yavaşlatmadan.* `includes/fn/events.php`'ye
+  `pg_event_record($event, $payload)`: Çalışma Alanı açıksa
+  (`WORKSPACE_ENABLED`), olay `pg_event_workspace_events()` sabit listesindeyse
+  ve tablo varsa (`pg_schema_has('ws_events_in')`) tek INSERT; Çalışma Alanı
+  dosyalarını yüklemez. İki giriş: `pg_announce()` önce kaydeder, sonra
+  `api_webhook_enqueue($event, $data, true)` çağırır; `api_webhook_enqueue()`
+  yeni `$recorded = false` parametresiyle, **webhook yokken erken dönüşten
+  önce** kaydeder. İki INSERT olmaz (sandbox'ta webhook varken de yokken de tek
+  satır görüldü).
+- *Liste.* `workspace.*` (her açık kanal mesajı duyuruluyor) ve `erp.*`
+  yakalanmaz; yalnız tüketilenler: `order.created/status_changed/shipped/
+  delivered/cancelled`, `stock.low`, `customer.created/updated`,
+  `product.updated`, `form.submitted`.
+- *İşleme.* `includes/workspace/watch.php` → `ws_events_process()`,
+  `ws_scheduled_run()`'un başında (ekranın `ws_tick`'i, `job.php`,
+  `workspace_recurring_job.php`); `ws_scheduled_due()` açık olay görünce de
+  doğru döner, böylece `ws_sync` ekrana tick'i başlatır ve genel iş koşar.
+  Satırlar id sırasıyla, koşullu UPDATE (`taken_at = 0`) ile alınır; turda en
+  çok `WS_EVENTS_BATCH` = 200; alınmış satır 7 gün sonra süpürülür.
+- *Olay → işlem: kuyruk yoluyla.* Brief doğrudan `ws_scheduled_execute()`
+  diyordu; mimar onayıyla `join` deseni kullanıldı: eşleşen her işlem için
+  `ws_scheduled_queue` satırı (`source_action_id = 0`, `depth = 0`, context
+  `{event, payload, event_id}`), `ws_scheduled_queue_take()` context'i açıp
+  `execute()`'a geçirir. Gerekçe: `execute()` kilidi tutuluyken `''` döner ve
+  olay kaybolurdu; kuyrukta 30 sn sonra yeniden denenir ve saatte 60 sınırı
+  (`WS_SCHEDULED_CHAIN_HOURLY`, kuyruk satırı sayımı) hazır gelir.
+- *Kural `event`.* `ws_scheduled_rule_input()` `case 'event'`
+  (`ws_events_catalog()`: etiket, kural metni, kayıt türü, hak — sipariş/stok
+  `ecommerce`, kişi `contacts`, form `forms`; süzgeç `page_id` (form sayfası,
+  `custom_form_pages`'ten seçim listesi) ya da `status`); "tek başlatıcı"
+  denetimi, `ws_scheduled_event_rule()`, `rule_text`, `present`
+  (`on_event`), `preview`, `rules_hold` (yaratıcının hakkı koşu anında yeniden
+  sorulur) genişletildi. `next_run_at` 0 kalır.
+- *Yer tutucular.* `{{event}}`, `{{record}}` (`<#order:ID>` gibi token; ref
+  zinciri kendisi çizer ve `ws_refs_store` mesajı kayda bağlar),
+  `{{record_title}}`, `{{record_link}}` (mutlak adres), `{{customer}}`,
+  `{{amount}}` (`ws_money_out`), `{{record_status}}`, `{{form_fields}}` —
+  `ws_events_fill_values()`, yalnız yaratıcının görebildiği kayıt için dolar;
+  elle ya da zincirle koşuda boş kalır.
+- *Kaydı izle.* `ws_watch_write()`: kayıt `ws_events_record_of()` ile
+  bulunur; kanallar = `ws_refs`'te etiketlendiği kanallar + sipariş/kişi için
+  müşterinin kanalları (`orders.contact_id/user_id/erp_account_id` →
+  `ws_channels.contact_id` / `customer_type+customer_id`); yalnız
+  `public/private`, arşivsiz, `watch = 1`; en çok 20 kanal. Satır
+  `ws_message_system()` ile, yalnız etiket + olan şey ("<#order:423> kargoya
+  verildi"); aynı kanal + aynı gövde 10 dakikada bir kez. Anahtar kanal
+  ayarlarında (`ws_channel_update` → `watch`, `ws_channel_detail` → `watch`).
+- *Form kartı.* `ws_refs_resolve()` form ref'ine, okuyan açabiliyorsa, ilk 4
+  alanı (`fields`) ekler; `ws_render_body()` bilinen her form ref'i için
+  mesajın altına `.ws-form-card` basar (sunucuda, okuyanın hakkıyla).
+  "Görev yap" mevcut "Make a task of it" menüsüdür; ek iş yapılmadı.
+- *JS.* `assets/js/workspace_events.js` → `window.PGWsEvents` (`whenBox`,
+  `templates`, `watchField`); `workspace.js`'e yalnız çağrı noktaları.
+- *view_order.php.* "Siparişi Geri Al" (iptal → tamamlandı) artık
+  `order.status_changed` duyurur; payload API ve `changes.php` ile aynı
+  (`id`, `order_number`, `status`, `previous`).
+
+**Kararlar ve ödünler.**
+
+- `{{status}}` zaten "işlemin nasıl gittiği" (takip eylemi) anlamında vardı;
+  sipariş durumu için `{{record_status}}` açıldı.
+- "Web formu kanala" ve "Yeni sipariş kanala" şablonlarının metni yalnız
+  etiket (`{{record}}`); alan değerleri, tutar ve müşteri adı düz metne
+  girerse hakkı olmayan üyeler de okur. `{{form_fields}}` yer tutucusu duruyor,
+  açıklamasında bu uyarı yazılı.
+- Formun dosya alanı hiçbir yerde değer olarak yazılmaz (`(dosya eklendi)`),
+  imza alanı da (`(imzalandı)`); `files.name` sitenin adresi olduğu için dosya
+  adı da yazılmaz. "Ofis kullanımı" alanları ve boş alanlar atlanır.
+- view_order.php'nin tam iade yolundaki `status = 'cancelled'` dokunulmadı:
+  iptal `order.cancelled`'ın işi, `order.status_changed` iptali taşımaz (API
+  sözleşmesi). `view_orders.php` / `shipworks.php` dışa aktarımı
+  (`exported`) duyurmuyor; dokunulmadı.
+- Gönderilen olay bir `post` eylemiyle yaratıcının adıyla yazılır; mevcut
+  `ws_rate_limited()` (dakikada 20 mesaj) bir olay fırtınasında koşuları
+  başarısız yapabilir — saatte 60 sınırı bunu sınırlar ama ortadan kaldırmaz.
+
+**Denenenler (sandbox, port 8001).** Adım iki kez (ikincisi "already
+exists"); view_order "Siparişi Geri Al" → `ws_events_in` → `ws_tick` →
+müşteri kanalında sistem satırı; aynı olay ×3 → tek satır; webhook varken tek
+satır + tek webhook kuyruğu satırı; `workspace.*`/`erp.*` yazılmadı; watch=0
+iken satır yok; rol 3 (e-ticaret/form hakkı yok) üyede chip yalnız etiket
+(tutar, müşteri, bağlantı yok), form kartı yok; `custom_form.php`'ye gerçek POST → form kuralı → kanalda
+`<#form:740>` + 4 alanlı kart; durum süzgeci ve form süzgeci eşleşmeyince
+kuyruk yok; 70 olayda kuyruk 60'ta durdu; süpürme; `job.php` yolu; Çalışma
+Alanı kapalıyken form hatasız, satır yok. Tarayıcı yok: JS yalnız
+`node --check` ve okuma ile.
+
+---
+
 ## 2026.4.8 — Sistem widget'larının mesaj düğümü adlandırıldı: hata kendi widget'ında çıkıyor (2026-10-09)
 
 **Sorun (şikâyet).** Hesabım sayfasında "Hesap Güvenliği" widget'ında yanlış
