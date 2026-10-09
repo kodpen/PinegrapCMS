@@ -110,7 +110,23 @@ göndermediği ad, `cart_link` deseni):
 | `error_page` | `error_page` | yok — bekleyen mesaj ziyaretçinin göreceği sonraki sayfanındır |
 
 Sunucu damgası olduğu için kurulu sitelerde ağaç yeniden kaydedilmeden
-geçerlidir; migration yok. JS'e dokunulmadı (yalnız palet `messages`
+geçerlidir; migration yok.
+
+**Yetim bildirim taraması.** Adsız `my_account` düğümü Hesabım sayfasına
+başka adla gelen bildirimleri de basıyordu; artık yalnız `my_account`'ı
+basar. Hesabım sayfasına (ya da widget'ın `send_to`'suna) yönlendiren
+yazanlar tarandı: `change_password.php` / `my_account_profile.php`
+(`pg_sw_account_done()`: uzağa `my_account`, kendine widget'ın adı),
+`order_history_*` (`my_account`), `membership_entrance.php` /
+`registration_entrance.php` (bildirim yalnız widget'a dönerken),
+`email_preferences.php` / `set_password.php` (widget'a döner),
+`account_security.php` (2FA `my_account_profile`, güvenlik widget'ı basar),
+`remove_recipient.php` ve giriş (bildirim yok). Tek istisna
+`update_address_book.php`: `send_to`'ya (widget'ın "kayıttan sonra" sayfası,
+çoğunlukla Hesabım) giderken bildirimi `update_address_book` adıyla
+yazıyordu — orada basılmaz, oturumda kalıp sonraki Adres Defteri ziyaretinde
+bayat çıkardı. Artık `pg_sw_account_done()` gibi: uzağa `my_account`,
+kendine `update_address_book`. JS'e dokunulmadı (yalnız palet `messages`
 bileşenindeki bayat yorum): adı ölü olan içerik widget'ları
 `_SW_NO_MESSAGES`'a alınmadı, düğümleri tuvalde kalır — o liste başlıktaki
 hesap bandı içindir.
