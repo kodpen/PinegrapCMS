@@ -133,10 +133,12 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
                 'pgset-analytics' => lang('Visitor Tracking'),
+                'pgset-cookies'   => lang('Cookie Consent'),
             ),
             'keywords' => array(
                 'pgset-seo'       => pg_settings_keywords(lang('seo, meta, robots, sitemap, title, description, jsonld, json-ld, canonical, indexnow, sharing, social, og, merchant, structured data')),
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
+                'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
             ),
         ),
 

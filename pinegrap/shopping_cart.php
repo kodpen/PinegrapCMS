@@ -842,7 +842,7 @@ if (isset($_POST['special_offer_code'])) {
                 // if visitor tracking is on then set affiliate code for visitor
                 if (VISITOR_TRACKING == TRUE) {
                     $_SESSION['software']['affiliate_code'] = $special_offer_code;
-                    setcookie('software[affiliate_code]', $special_offer_code, time() + 315360000, '/');
+                    pg_consent_setcookie('marketing', 'software[affiliate_code]', $special_offer_code, time() + 315360000);
                     
                     $query = "UPDATE visitors SET affiliate_code = '" . escape($special_offer_code) . "' WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

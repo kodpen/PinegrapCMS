@@ -35,7 +35,7 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.17). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.84, 8.30–8.33, 8.40 ve 8.10–8.18). Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -72,6 +72,94 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Çerez izni: sol alt bildirim, kategori bazlı izin, Google Analytics ve kendi istatistik çerezlerimiz izne bağlı (8.18) (2026-10-09)
+
+Ürünün ön yüzü şimdiye kadar çerez için izin istemiyordu; sitelerde yaygın
+"Bu sitede kalarak çerezleri kabul etmiş sayılırsınız" metni AB'de (GDPR +
+ePrivacy, Planet49 kararı) ve KVKK yorumunda geçerli izin sayılmıyor. Yeni
+modül `includes/fn/consent.php`, ön yüz varlıkları `assets/js/pg_consent.js`
+ve `assets/css/pg_consent.css`, ayar kartı Ayarlar › SEO › Çerez İzni
+(`pgset-cookies`).
+
+**Karar: kütüphane değil, kendi bileşenimiz.** Aday orestbida/vanilla-cookieconsent
+(MIT) idi; metinleri yine `lang()`'dan doldurulacak bir yapılandırma nesnesi
+ister, ~30 KB kendi CSS/JS'ini ve görünümünü getirir, `includes/` altına
+gömülüp güncellenmesi gerekir. Sunucuda `lang()` ile basılan işaretleme +
+~350 satır ES5 aynı işi görüyor ve çeviri sistemine hiçbir ek yük
+getirmiyor: `/en/` sayfasında `en.json`, dil dosyası olmayan dilde (`/ko/`)
+`pg_tr_ui_text()` → Çeviriler ekranının "Arayüz metinleri" grubu. Bütün
+anahtarlar `tr.json`'da (o yol yalnız orada olan anahtarı çevirir).
+
+**Kategoriler.** Gerekli (kilitli: oturum çerezi `session_name()`,
+`software[auth]`, `software[remember_me]`, `software[device_type]`,
+`pg_consent`), İstatistik (`VISITOR_TRACKING` açıkken
+`software[number_of_visits]`, `software[tracking_code]`, `lsid`; GA açıkken
+`_ga`, `_ga_*`), Pazarlama (`VISITOR_TRACKING` + `AFFILIATE_PROGRAM`
+açıkken `software[affiliate_code]`). Boş kategori gösterilmez; hiç isteğe
+bağlı kategori yoksa bildirim yalnız bilgi verir ("Tamam").
+
+**Karar: yazılımın kendi istatistik/ortaklık çerezleri de izne bağlı.**
+İstek "üçüncü taraf zorunlu olmayanlar" idi; ancak `lsid` (10 yıl, UTM),
+`number_of_visits`, `tracking_code`, `affiliate_code` birinci taraf olsa da
+"kesin gerekli" değildir. `setcookie()` çağrıları (`get_page.php` ×5,
+`shopping_cart.php`, `express_order.php`) `pg_consent_setcookie($kategori,
+…)` oldu. Değerler oturumda yine tutulur: izin vermeyen ziyaretçinin o
+ziyaretteki siparişi kampanyaya/ortağa yine yazılır, yalnız sonraki
+ziyarete taşınmaz. **Ödün:** izin vermeyen ziyaretçi günler sonra dönüp
+alışveriş yaparsa ortağa komisyon yazılmaz; izni sonradan veren
+ziyaretçinin oturumdaki kodu da çereze ancak yeni bir `?a=`/`?t=` ile
+yazılır. `cookies` tablosu satırı (UTM) izin yokken de oluşur, yalnız
+`lsid` çerezi gönderilmez.
+
+**Karar: varsayılan açık ama hiçbir şey eylemden önce çalışmaz.** Ürün
+sahibinin istediği gibi İstatistik/Pazarlama anahtarları açık çizilir;
+fakat `pg_consent` çerezi ziyaretçi "Tümünü kabul et" ya da "Seçimleri
+kaydet"e basana kadar yazılmaz, sunucu da izin yokken GA etiketini ve
+isteğe bağlı çerezleri basmaz. Kapatma (×) yanıtsız ziyarette "yalnız
+gerekli" demektir (CNIL "kabul etmeden devam et" yorumu); yanıttan sonra
+yalnız kapatır. Önceden işaretli kutu Planet49'a göre tartışmalıdır — risk
+istenirse varsayılanı kapalıya çevirmek tek satırdır (`checked`
+özniteliği, `pg_consent_markup()`).
+
+**Saklama: tek birinci taraf çerez, JS yazar.** `pg_consent=1.a1.m0`
+(sürüm + yanıtlanan kategori başına harf/bayrak), 180 gün, `SameSite=Lax`,
+https'te `Secure`, yol `PATH`. JS'in yazması PHP 7.1–7.2'de `setcookie()`'nin
+SameSite bilmemesini aşar; PHP yalnız okur (`pg_consent_parse()`, testli).
+Sayfada olup çerezde olmayan kategori "yanıtlanmamış" sayılır: siteye
+sonradan Pazarlama eklenirse bildirim yeniden açılır, eski yanıtlar korunur.
+Kaydederken bu sayfada olmayan kategorilerin yanıtı taşınır.
+
+**Bekletilen betikler.** GA bloğu izin yokken
+`pg_consent_hold_scripts()` ile `<script type="text/plain"
+data-pg-consent="analytics" data-pg-consent-builtin="1" data-pg-src=…>`
+olur; izin gelince JS aynı yerde canlı betik üretir (sayfa yenilenmez).
+Tasarımcı kendi betiğini aynı biçimde yazabilir (`data-pg-consent-name` ile
+listede adıyla görünür; `pg_consent_page_services()` sayfadan toplar,
+`-builtin` olanları saymaz). İzin geri alınınca kategori çerezleri host ve
+üst alan adlarında silinir ve sayfa yenilenir (çalışmış betik yerinde
+durdurulamaz). `window.gtag` varsa Consent Mode `consent update` çağrılır,
+`pg:consent` DOM olayı yayılır.
+
+**Yerleşim.** `get_page_content()` içinde, e-posta değilken ve düzenleme
+kipi dışında, en son `pg_consent_inject()` son `</body>`'den önce ekler
+(`substr_replace`, `preg_replace` yedek başvuru tuzağı yok). Bot
+(`IS_BOT`) ve `</body>` içermeyen yanıt atlanır. Tam sayfa önbelleği
+olmadığı için sunucunun çerezi okuması güvenli. CSS kendi içinde (`.pg-cc`
+öneki, tema `button`/`label` kurallarına karşı sıfırlama, özel
+özelliklerle `--pg-cc-*` yeniden renklendirme), ikon satır içi SVG.
+
+**Şema 8.18:** `config.cookie_consent` TINYINT DEFAULT 1 (yeni ve
+yükseltilen siteler açık gelir), `config.cookie_consent_policy_url` TEXT
+NULL. Sabitler `COOKIE_CONSENT`, `COOKIE_CONSENT_POLICY_URL` (`init.php`;
+kolon yokken 0 → her şey eskisi gibi). Politika adresi `escape_url()`
+geçmezse kayıt reddedilir (`mark_error`).
+
+**Doğrulama:** sandbox'ta (Playwright) bildirim, ayarlar, kaydet/geri alma
+akışı, mobil görünüm, `/en/` ve `/ko/` (UI metni kaydı ve çeviri uygulanışı),
+GA'nın izinle yüklenmesi, izin yok/var/kapalıyken `Set-Cookie` başlıkları,
+panel kartının kaydı ve geçersiz adres reddi denendi; adım iki kez koşuldu
+(ikincisinde "already exists"). Görsel tasarımcı temalı bir sayfada
+görünüm denenmedi (sandbox teması CSS'siz).
 ## 2026.4.8 — "Hesap Güvenliği" sistem widget'ı (`account_security`): cihazlar, Google, iki adımlı doğrulama; dört şablonda Hesabım sayfasında (2026-10-08)
 
 **Sorun.** Görsel tasarımcıyla kurulan sitelerde üyenin cihaz / Google / iki

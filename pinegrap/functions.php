@@ -68,6 +68,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/events.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/translate.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/errors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup.php');

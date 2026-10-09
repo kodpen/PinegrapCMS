@@ -1117,6 +1117,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $output_ecommerce_tracking_data .
                 '</script>';
 
+            // With cookie consent on, the tag waits as an inert script until
+            // the visitor allows statistics (includes/fn/consent.php).
+            if (!pg_consent_allows('analytics')) {
+                $output_google_analytics = pg_consent_hold_scripts($output_google_analytics, 'analytics');
+            }
+
             // We are using stristr instead of mb_stristr because mb_stristr requires PHP 5.2,
             // and we still have some sites on PHP 5.1 (probably won't cause any utf-8 issue).
             
@@ -1176,6 +1182,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
             
             $liveform_region_content->remove_form();
+        }
+
+        // The cookie notice, last, so it can see every script the page holds
+        // back for consent. Not while editing: the editor is staff's own view.
+        if ($mode != 'edit') {
+            $content = pg_consent_inject($content);
         }
     }
 

@@ -533,6 +533,10 @@ define('PAY_PER_CLICK_FLAG', $row['pay_per_click_flag']);
 define('STATS_URL', $row['stats_url']);
 define('GOOGLE_ANALYTICS', $row['google_analytics']);
 define('GOOGLE_ANALYTICS_WEB_PROPERTY_ID', $row['google_analytics_web_property_id']);
+// Cookie consent (2026.4.8): off until the columns exist, so an installation
+// that has the files but not the upgrade sets its cookies as before.
+define('COOKIE_CONSENT', isset($row['cookie_consent']) ? (int) $row['cookie_consent'] : 0);
+define('COOKIE_CONSENT_POLICY_URL', (string) ($row['cookie_consent_policy_url'] ?? ''));
 define('REGISTRATION_CONTACT_GROUP_ID', $row['registration_contact_group_id']);
 define('REGISTRATION_EMAIL_ADDRESS', $row['registration_email_address']);
 define('MEMBER_ID_LABEL', $row['member_id_label']);

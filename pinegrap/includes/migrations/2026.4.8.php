@@ -50,6 +50,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_innodb_search();           // 8.14
 
+	upgrade_2026_4_8_cookie_consent();          // 8.18
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -770,5 +772,22 @@ function upgrade_2026_4_8_design_templates() {
 	}
 
 	install_note('Visual editor: a design can be turned into a template (Design settings › Turn this design into a template); it is listed under Choose a Template with the built-in ones.');
+
+}
+
+// Cookie consent (2026.4.8, 8.18; includes/fn/consent.php). cookie_consent
+// turns on the notice in the bottom-left corner of visitor pages: necessary
+// cookies stay, Google Analytics and the statistics and referral cookies the
+// software sets itself wait until the visitor allows them. On by default,
+// for new and upgraded sites alike, because asking first is what the law of
+// most of the sites' visitors requires. cookie_consent_policy_url is the
+// optional "Cookie policy" link of the notice; TEXT, because the config row
+// is near the row size limit.
+function upgrade_2026_4_8_cookie_consent() {
+
+	install_add_column('config', 'cookie_consent', "TINYINT NOT NULL DEFAULT 1");
+	install_add_column('config', 'cookie_consent_policy_url', "TEXT NULL");
+
+	install_note('Cookie consent: visitor pages ask before setting optional cookies; Google Analytics and the visitor statistics cookies start only after the visitor allows them (Settings › SEO › Cookie Consent).');
 
 }
