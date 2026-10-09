@@ -613,6 +613,10 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
 
+    // The search box of every screen (palette.php) and a channel's board
+    // (channel_board.php).
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings());
+
     return array_merge(array(
         'mode'         => (string) $mode,
         'api_url'      => $base . 'api.php',
@@ -695,7 +699,11 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_events.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_events.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_templates.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_templates.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
+        // The search box, on every workspace screen but a record's drawer.
+        . (($mode !== 'record') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_palette.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js')) . '" defer></script>' : '')
         . (($mode === 'channels') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_board_channel.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');
 }
 

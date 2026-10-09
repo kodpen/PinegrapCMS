@@ -65,5 +65,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/file_edits.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/palette.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_board.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');

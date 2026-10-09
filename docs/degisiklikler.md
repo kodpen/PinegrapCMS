@@ -293,6 +293,142 @@ mesaj hızı ön denetimi; SQL hatasıyla yarıda kesilme satırı;
 penceresi, "Şablon uygula" penceresi, "Bu kanaldan şablon yap" ve şablon
 ekranı. Denenemeyen: gerçek API anahtarıyla dış API çağrısı (anahtar
 üretilmedi; OpenAPI belgesinde uçlar ve nesneler görüldü), webhook teslimi.
+## 2026.4.8 — Çalışma Alanı: tek arama kutusu (Ctrl+K) ve kanal panosu (2026-10-09)
+
+**İstenen.** (1) Çalışma Alanı'nda üç ayrı arama vardı (`ws_search` mesaj,
+`ws_block_search` başlıklı blok, `ws_ref_search` kayıt); notlar ve görevler
+kendi ekranlarında aranıyordu. Her ekranda Ctrl+K / ⌘K ve şeritteki büyüteçle
+açılan tek bir palet istendi: gruplu sonuç (Kanallar · Mesajlar · Kararlar ·
+Görevler · Notlar · Dosyalar · Kayıtlar), ok tuşları ve Enter, `#` kayıt,
+`@` kişi, `/` komut ön ekleri, "bu kanalda" kapsamı, son aramalar.
+(2) `docs/calisma-alani-kanal-pano-plani.md` (plan maddesi 24) aşama 1–4:
+kanalın görevleri, kararları ve dosyaları sütunlarda kart olarak; duruma,
+türe, kişiye, tarihe göre gruplama, süzgeçler, sürükle-bırak ve klavye.
+Şema yok.
+
+**Arama kutusu.** Yeni `includes/workspace/palette.php`, eylem `ws_palette`
+(`q`, `channel_id`, `here`, `types[]`, `limit`, grup başına 8).
+`ws_palette_search($viewer, $q, $options)` her grubu kendi ekranının
+fonksiyonuyla doldurur, görünürlük orada kalır: kanallar `ws_channels_for()`,
+mesajlar `ws_message_search()` (kararlar ayrı grupta olduğu için dışarıda),
+görevler `ws_tasks_list()` (`ws_can_see_task()`; kanalı okunamayan görevde
+kanal adı yazılmaz), notlar `ws_notes_list()`, kayıtlar
+`ws_ref_search($viewer, 'all', …, $kayıt_türleri)` + `ws_refs_resolve()`
+(kaydın ekran adresi için). Kararlar (`kind = 'decision'`) ve dosyalar
+(`file_id > 0`, `ws_channel_files` kaynağı) için yazılan SQL
+(`ws_palette_message_rows()`) `ws_message_search()`'ün süzme biçimini aynen
+uygular: en yeni 200 satır, her satırın kanalına `ws_can_read_channel()`,
+kişinin kendinden sildikleri (`ws_message_hidden_ids()`) hariç. Okunamayan
+bir kanala sınırlanan arama "her yer"e genişlemez, boş döner.
+`ws_palette_mode()` ön eki okur; `#sip 1042` gibi tür önekli arama
+`ws_palette_record_type()` ile yalnız o türde arar. `@` ekip üyelerini (açık
+kanalın üyeleri önce), `/` `ws_command_names()` listesini döndürür (açıklama
+`ws_command_help()`'ten). Uzun metinde eşleşmenin çevresi
+`ws_palette_snippet()` ile kesilir. İstemci `assets/js/workspace_palette.js`
+→ `window.PGWsPalette` (`open()`, `close()`, `isOpen()`): Bootstrap modal,
+300 ms bekleme, en az 2 harf, gruplu liste (`role=listbox`, ok tuşları,
+`aria-activedescendant`), vurgu `<mark>` düğümleriyle istemcide kurulur
+(sunucu düz metin gönderir; `textContent`), son 5 arama `localStorage`
+`pg-ws-palette-recent-<kullanıcı>`. Enter: kanal/mesaj/karar kanal
+ekranındaysa yerinde açılır, değilse `workspace.php?channel=N&message=M`;
+görev → görev çekmecesi; not → `workspace_notes.php?note=N`; dosya → dosya
+bağlantısı yeni sekmede; kayıt → kaydın ekranı; kişi → panel sohbeti
+(`pgChatOpenWith`), yoksa hesabı; komut → açık kanalın yazı kutusuna.
+Şeritte büyüteç düğmesi ve mobil çekmecede "Çalışma Alanında ara" satırı
+(`nav.php`), kanal ekranında kenar çubuğu başlığında büyüteç
+(`data-ws-palette`).
+
+**Kanal panosu.** Yeni `includes/workspace/channel_board.php`, eylem
+`ws_channel_board` (`channel_id`, `group_by`, `priority`, `person`, `mine`,
+`q`, `cancelled`, `done_all`) → `{group_by, columns:[{key, title, icon,
+drop, add, items, more}], counts, members, can_post, stamp}`. Görevler
+`ws_tasks_list($viewer, ['scope' => 'channel', …])`; kartın ek bilgisi
+(bitiş zamanı, hatırlatma, serinin en yeni kopyası) tek sorguyla. Kararlar
+`kind = 'decision'`, dosyalar `file_id > 0`; sabit mesaj
+`ws_channel_pin_present()`, özet kanal satırından. Gruplama: durum
+(Yapılacak · Sürüyor · Bekliyor · Bitti; İptal süzgeçle; Bitti son
+`WS_CHANNEL_BOARD_DONE_DAYS` = 14 gün, öncesi "daha önce biten N görev"
+düğmesiyle), tür (Görevler · Kararlar · Dosyalar · Sabit mesaj ve özet), kişi
+(kanal üyeleri, kanala üye olmayan sorumlular, "Henüz kimse yok"), tarih
+(`ws_channel_board_date_bucket($due, $today)`: Gecikmiş · Bugün · Bu hafta
+(yarından pazara) · Daha sonra · Tarihsiz). Sıra
+`ws_channel_board_compare()`: öncelik, sonra bitiş (tarihsiz sonda), sonra
+yeni olan. İstemci `assets/js/workspace_board_channel.js` →
+`window.PGWsChannelBoard` (`mount()`, `stamp()`, `isOpen()`). Taşıma mevcut
+eylemlerle: durum `ws_task_status`; kişi `ws_task_save` (`assignees`) —
+çakışma denetimi ve "yine de taşı" sorusu Plan Panosu'nun `moveTask()`
+yardımcısıyla; tarih `ws_task_move` (`ws_channel_board_drop_date()`: Bugün →
+bugün, Bu hafta → yarın, Daha sonra → gelecek pazartesi, Tarihsiz → tarih
+kalkar `ws_task_save due_date ''`; Gecikmiş'e ve pazar günü Bu hafta'ya
+bırakılmaz), serinin en yeni kopyasında Plan Panosu'nun "yalnız bu kopya /
+sonrakiler" sorusu. Klavye: Boşluk tut, ←/→ sütun, Enter bırak, Esc vazgeç
+(`aria-live` duyurusu); ↑/↓ ve ←/→ kartlar arasında gezinir. Sütun başındaki
+"+" sütunun değeriyle yeni görev açar (durum sütununda kayıttan sonra
+`ws_task_status`). 768 px altında tek sütun ve sütun seçici. Yenileme:
+`ws_sync` pano açıkken (`board=1`) `board_stamp` döndürür
+(`ws_channel_board_stamp()`: kanal görevlerinin sayısı ve en son
+`updated_at`'i, karar/dosya mesajlarının sayısı, en büyük id'si ve
+`marked_at`'i, sabit mesaj, özet zamanı — iki dizinli okuma); değişince pano
+yeniden çekilir.
+
+**`workspace.js`'teki çağrı noktaları.** Plan Panosu'nun `askSeries()`
+yardımcısı `startBoard()`'un içinden modül düzeyine taşındı (kopyalanmadı),
+`moveTask()` isteğe bağlı bir `action` parametresi aldı (varsayılan
+`ws_task_move`; pano kişi taşımada `ws_task_save` verir). İki yeni dosya
+yardımcıları `window.PGWsKit` üzerinden alır (`shareKit()`: `t`, `el`,
+`api`, `ask`, `taskMenu`, `moveTask`, `askSeries`, `priorityFilter`, görev
+çekmecesi, `here()` — açık kanal, kanal açma, yazı kutusuna yazma). Kanal
+sekmelerine `board` (misafir odası, tartışma ve eski sürüm görünümünde yok),
+`?view=board` adresiyle açılış (`pendingTab`) ve sekme değişince adresin
+güncellenmesi (`syncAddress()`); `ws_sync` isteğine `board`, cevabında
+`board_stamp`; Ctrl+K yakalayıcısı (pencere üzerinde capture, `record`
+kipinde yok) ve `[data-ws-palette]` tıklaması.
+
+**Kararlar ve ödünler.**
+- Brief'teki `ws_palette()` adı `includes/workspace/groups.php`'deki kanal
+  renk paletinin `ws_palette()` fonksiyonuyla çakışıyordu ("Cannot redeclare",
+  500). Arama fonksiyonu `ws_palette_search()` oldu; eylem `ws_palette`,
+  dosya `palette.php`, `ws_palette_js_strings()` ve `window.PGWsPalette`
+  brief'teki gibi kaldı.
+- Panelin kendi Ctrl+K araması (`backend.src.js`) Çalışma Alanı ekranlarında
+  bu pencereye bırakıldı; panelin araması başlıktaki kutudan açılmaya devam
+  eder. Başlıktaki kutunun "Ctrl+K" ipucu bu ekranlarda değişmedi.
+- "Bu kanalda" kapsamında yalnız kanala ait gruplar (mesaj, karar, görev,
+  dosya) aranır; kanallar, notlar ve kayıtlar o kapsamda aranmaz.
+- Kişi, tarih ve tür gruplamaları açık görevleri gösterir; biten görevler
+  yalnız durum panosunun Bitti sütunundadır.
+- Tekrarlayan görev "Tarihsiz" sütununa bırakılamaz (tekrar bitiş tarihinden
+  sayılır); uyarı verilir.
+- Pano sekmesi her kanalda, ayarsız; misafir odasında (`kind = 'guest'`) ve
+  tartışmada yok, misafir görünümünde (`workspace_guest.php`) hiç yok.
+- Gruplama ve süzgeç tercihi yalnız sayfa açıkken hatırlanır (kişiye özel
+  kalıcı görünüm plan §4'te şemalı ileri iş).
+- `ws_message_search()` mesajları her satırın kanalını okuyarak süzüyor ve
+  özel kanalı sızdırmıyor (aşağıda deneme); değiştirilmedi.
+- Kayıtlar grubunda dosya türü (`ws_ref_search` `file`) dosya yöneticisini
+  arar: yönetici (rol 0–2) üyesi olmadığı özel kanalın ekinin adını burada
+  görür — dosya yöneticisinde de görüyor; mevcut `#` seçicisinin davranışı,
+  değiştirilmedi.
+- Tur: "Kanal" adımına pano cümlesi, anahtar `workspace.2`.
+
+**Denenenler (sandbox, `pinegrap_searchboard`).** Yönetici + iki rol-3 üye
+(ayse, mert); ayse'nin özel kanalı `#gizli-proje`. `ws_palette q=deneme`:
+yöneticide yedi grubun yedisi; mert'te `#gizli-proje`'nin mesajı, kararı,
+dosyası, görevi ve ayse'nin notu yok; ayse'de var; mert'in `channel_id=3`
+kapsamlı araması boş. `ws_channel_board` dört gruplamada beklenen sütunlar;
+mert'e `#gizli-proje` panosu "kanal bulunamadı", tartışma ve misafir odası
+"panosu yok". Tarayıcı (headless Chromium, puppeteer): `?view=board`
+doğrudan açılınca Pano sekmesi seçili; dört gruplama; klavyeyle ve
+sürükleyerek durum değişimi; tarih sütunlarına taşıma, tekrarlayan görevde
+seri sorusu ve "sonrakiler" seçimiyle serinin kayması; izinli kişiye taşımada
+çakışma sorusu ve "yine de taşı"; "+" ile Sürüyor sütununda görev; başka
+oturumdan değişen görevin 2,5 sn içinde panoda yer değiştirmesi; Ctrl+K'da
+panelin araması açılmadan palet, `<mark>` vurgusu, Enter'la mesaja gitme,
+son aramalar, `/gor` → yazı kutusuna `/gorev `, `@`, `#`, kanal kapsamı;
+görevler ekranında şerit büyüteci ve Enter'la görev çekmecesi; 390 px
+genişlikte tek sütun.
+
+---
 
 ## 2026.4.8 — Sistem widget'larının mesaj düğümü adlandırıldı: hata kendi widget'ında çıkıyor (2026-10-09)
 

@@ -451,6 +451,8 @@ switch ($action) {
     case 'ws_channel_files':
     case 'ws_channel_tasks':
     case 'ws_search':
+    case 'ws_palette':
+    case 'ws_channel_board':
     case 'ws_ref_search':
     case 'ws_record_refs':
     case 'ws_task_get':
