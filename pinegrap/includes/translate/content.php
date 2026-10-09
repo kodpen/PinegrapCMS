@@ -8,8 +8,8 @@
  * the records of those a list or detail widget includes in the translation,
  * the texts a system widget's settings hold and the custom HTML blocks of the
  * visual pages. The software's own wording (lang()) comes from the language
- * files in includes/local/; for a language that has none, the wording a
- * visitor is shown is taken in here as well (pg_tr_ui_translate()).
+ * files in includes/local/; for a language that has none, the texts of the
+ * cookie window are taken in here as well (pg_tr_ui_translate()).
  *
  * Extraction puts them in the store like any page text; drawing them is one
  * pass over the finished page (pg_tr_render_db_texts()): every text node,
@@ -49,27 +49,30 @@ function pg_tr_owner_groups()
             'icon'  => 'bi-ui-checks',
             'types' => array('form', 'form_records'),
         ),
-        // The software's own wording a visitor was shown on a page in a
-        // language with no language file (pg_tr_ui_translate()). Listed for
-        // those languages only, and left out of the whole-site scope.
+        // The cookie window (pg_consent_ui_keys(), pg_tr_ui_translate()):
+        // the one part of the software's wording the site translates, and
+        // only for a language with no language file. Left out of the
+        // whole-site scope. The owner type keeps its old name, 'ui'.
         'ui' => array(
-            'label' => lang('Interface texts'),
-            'icon'  => 'bi-window',
+            'label' => lang('Cookie window'),
+            'icon'  => 'bi-shield-check',
             'types' => array('ui'),
         ),
     );
 }
 
 /* ---------------------------------------------------------------------------
-   The software's own wording, for a language with no language file
+   The cookie window, for a language with no language file
    ---------------------------------------------------------------------------
    lang() draws the software's wording from includes/local/<code>.json. The
-   software ships Turkish and English; a site may add any language. On a page
-   in a language with no file, lang() asks here: a key the software knows is
-   taken in as the template the site's source language has for it, with its
-   {var} placeholders, the first time a visitor is shown it, and its
-   translation - made on the Translations screen, in the "Interface texts"
-   group - is the wording from then on. Until there is one, the English
+   software ships Turkish and English; a site may add any language. The
+   software's interface is not part of the site's translations - on a page in
+   a language with no file it stays English - with one exception: the cookie
+   window, which every visitor reads first and which has to be understood.
+   For its keys (pg_consent_ui_keys()) lang() asks here: the template the
+   site's source language has for the key, with its {var} placeholders, is
+   taken into the "Cookie window" group of the Translations screen, and its
+   translation is the wording from then on. Until there is one, the English
    wording stays. A language with a file never comes here. */
 
 /**
@@ -92,6 +95,37 @@ function pg_tr_ui_translate($key)
 
     $memo[$key] = null;
 
+    $string = pg_tr_ui_string($key);
+
+    if ($string === null) {
+        return null;
+    }
+
+    list($hash, $normalized, $format) = $string;
+
+    pg_tr_ui_record($hash, $normalized, $format);
+
+    $map = pg_tr_map_load(pg_tr_language());
+
+    if (!isset($map[$hash]) || ((string) $map[$hash]['text'] === '')) {
+        return null;
+    }
+
+    $memo[$key] = (string) $map[$hash]['text'];
+
+    return $memo[$key];
+}
+
+/**
+ * A lang() key as the store keeps it: the source-language template,
+ * normalized, with its hash and format. Null for a key the software does not
+ * know or a template with nothing to translate.
+ *
+ * @param string $key
+ * @return array|null array(hash, normalized, format)
+ */
+function pg_tr_ui_string($key)
+{
     $template = pg_tr_ui_source_template($key);
 
     if ($template === null) {
@@ -105,19 +139,49 @@ function pg_tr_ui_translate($key)
         return null;
     }
 
-    $hash = pg_tr_hash($normalized, $format);
+    return array(pg_tr_hash($normalized, $format), $normalized, $format);
+}
 
-    pg_tr_ui_record($hash, $normalized, $format);
+/**
+ * The "Cookie window" group made to hold the cookie window and nothing else.
+ *
+ * Takes the window's texts in before a visitor has seen them, so the group
+ * lists them and "Update translations" sends them - written at once, because
+ * the caller asks for the pending texts right after. And lets go of what an
+ * earlier release took in under the same owner: every other text of the
+ * software a page drew in such a language (the toolbar, the dynamic code
+ * block, the widgets' labels). Their uses go, and the translations of a
+ * text left with no use at all; the source strings stay, as source texts
+ * always do. Runs on every extraction of the group, a few queries that
+ * change nothing once the group is clean.
+ *
+ * @return int the texts of the window in the group
+ */
+function pg_tr_ui_sync()
+{
+    $hashes = array();
 
-    $map = pg_tr_map_load(pg_tr_language());
+    foreach (pg_consent_ui_keys() as $key) {
+        $string = pg_tr_ui_string($key);
 
-    if (!isset($map[$hash]) || ((string) $map[$hash]['text'] === '')) {
-        return null;
+        if ($string !== null) {
+            pg_tr_ui_record($string[0], $string[1], $string[2]);
+            $hashes[$string[0]] = "'" . e($string[0]) . "'";
+        }
     }
 
-    $memo[$key] = (string) $map[$hash]['text'];
+    pg_tr_ui_record_flush();
 
-    return $memo[$key];
+    $keep = $hashes ? " AND string_id NOT IN (SELECT id FROM translation_strings WHERE hash IN (" . implode(',', $hashes) . "))" : '';
+
+    db("DELETE FROM translation_uses WHERE owner_type = 'ui'" . $keep);
+
+    db("DELETE t FROM translations t
+        INNER JOIN translation_strings s ON s.id = t.string_id
+        WHERE s.kind = 'ui'
+          AND NOT EXISTS (SELECT 1 FROM translation_uses u WHERE u.string_id = s.id)");
+
+    return count($hashes);
 }
 
 /**
@@ -151,7 +215,7 @@ function pg_tr_ui_source_template($key)
 
 /**
  * Notes a template a visitor was shown, so "Update translations" of the
- * Interface texts group finds it. The ones already in the store are read
+ * Cookie window group finds it. The ones already in the store are read
  * once a request; the new ones are written when the request ends, in one go.
  *
  * @param string $hash

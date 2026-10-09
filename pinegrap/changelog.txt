@@ -360,6 +360,18 @@
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
+  [DÜZELTME] Dil dosyası olmayan dillerde (/ko/ gibi) yazılımın
+         kendi metinleri de çeviriye giriyordu: Çeviriler
+         ekranının "Arayüz metinleri" grubu, sayfada gösterilen
+         her yazılım metnini (araç çubuğu, sayfanın dinamik kod
+         bloğundaki metinler, widget etiketleri) topluyor ve
+         "Bu metinleri güncelle" hepsini çeviriyordu. Yazılımın
+         arayüz dili ayarlardan gelir ve çeviriye girmez; bu
+         dillerde yalnız çerez penceresi çevrilir. Grubun adı
+         "Çerez penceresi" oldu; Çeviriler ekranı açıldığında
+         gruptaki eski yazılım metinleri ve onların çevirileri
+         kendiliğinden temizlenir.
+
   [DÜZELTME] Binlerce metni olan bir sitede Çeviriler ekranındaki
          "Çevirileri güncelle" Google ya da Pinegrap AI ile 15-20
          çeviri yapıp duruyordu: ilk istek bütün sitenin
@@ -698,8 +710,10 @@
 
   [YENİ] Bildirim çok dilli sitede sayfanın diliyle gösterilir:
          /en/ İngilizce; dil dosyası olmayan dillerde (/ko/ gibi)
-         metinler Çeviriler ekranının "Arayüz metinleri"
-         grubunda çevrilir.
+         metinler Çeviriler ekranının "Çerez penceresi"
+         grubunda çevrilir. Grup bildirimin bütün metinlerini
+         hiçbir ziyaretçi görmeden listeler; grubun "Bu metinleri
+         güncelle" düğmesi yalnız bunları dilin motoruna gönderir.
 
   [YENİ] Ayarlar → SEO → Çerez İzni: bildirimi açıp kapatma ve
          bildirimde bağlantı olarak gösterilecek çerez politikası
