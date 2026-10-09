@@ -15271,6 +15271,7 @@ a.ws-form-card-head:hover span {
     margin-top: .15rem;
     font-size: .75rem;
     color: var(--bs-warning-text-emphasis);
+}
 /* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
 .ws-approval {
   max-width: 34rem;
