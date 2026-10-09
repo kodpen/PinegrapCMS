@@ -168,6 +168,49 @@ salt okunur (tüketmeden) basmaya başlar — karar ürün sahibinde.
 
 ---
 
+## 2026.4.8 — Çeviriler: yazılımın arayüz metinleri çeviriye girmez, yalnız "Çerez penceresi" çevrilir (2026-10-09)
+
+**Belirti (dev.pinegrap.com).** ko dilinde Çeviriler › "Arayüz metinleri"
+grubunun "Bu metinleri güncelle"si 304 yazılım metnini çevirdi: araç
+çubuğu, `<!-- Start Pinegrap dynamic code -->` bloğundaki
+`software_translations` sözlüğü, widget etiketleri. Çeviriler temizlenip dil
+kaldırılıp yeniden eklense de aynısı oldu: dil silmek çevirileri siler,
+`translation_uses`'taki `ui` kullanımları dilden bağımsızdır ve kalır.
+
+**Kök sebep.** 2026.4.7'de dosyasız dilde `lang()`'tan geçen **her** bilinen
+anahtar ilk gösterimde `ui` olarak kaydediliyor ve gruptan çevriliyordu;
+oturum açık personelin gördüğü araç çubuğu ve düzenleme metinleri dahil.
+
+**Karar (ürün sahibi, 2026-10-09).** Yazılımın arayüz dili ayarlardan
+gelir, sitenin çevirisine girmez; çevrilecek olan yalnız çerez penceresi ve
+içeriğidir, ekranda da öyle adlandırılır. 2026.4.7'deki "arayüz metinleri
+çeviri deposundan" kararının yerini alır.
+
+- `pg_tr_ui_text()` (`includes/fn/translate.php`) yalnız
+  `pg_consent_ui_keys()` anahtarlarına bakar; başka anahtar için hiçbir şey
+  okumaz ve kaydetmez (testli: `Cancel`, `Deactivate Fullscreen Mode` →
+  null). Böylece daha önce yapılmış 304 çeviri de bir sonraki istekte
+  sayfada görünmez olur.
+- Grup `ui` (sahip türü adı korunur — `pg_tr_owner_where()`, bağlam paketi,
+  API aynı kalır) "Çerez penceresi" (`bi-shield-check`) oldu; ekran notu ve
+  bağlam paketindeki adı değişti.
+- `pg_tr_ui_sync()` (`includes/translate/content.php`): pencerenin
+  metinlerini önden kaydeder ve hemen yazar (ziyaretçi beklemeden
+  listelenir, güncelleme düğmesi bulur), listede olmayan `ui`
+  kullanımlarını ve kullanımı kalmayan `kind 'ui'` dizgilerinin
+  çevirilerini siler; kaynak dizgiler kalır. `pg_tr_extract_group('ui')`
+  ve Çeviriler ekranı (dosyasız dil seçiliyken) çağırır — temizlik migration
+  değil çalışma anında, çünkü 2026.4.8'i koşmuş kurulumlar (dev) yeni bir
+  alt adımı koşmaz.
+- PR #229'da geri alınan önden alma bu kez güvenli: grup yalnız pencerenin
+  metinlerini taşıdığı için düğme başka bir şey göndermez.
+
+**Doğrulama (sandbox).** Anonim ve personel `/ko/` ziyareti yalnız çerez
+metinlerini kaydetti; elle eklenen eski bir `ui` kullanımı ve çevirisi
+ekran açılınca silindi; grup 32 metin listeledi, `update` (`group:ui`)
+yalnız onları bekleyen saydı; `/ko/`'da çevrilmiş "Tümünü kabul et"
+uygulandı, çevirisi bulunan "Cancel" (dinamik kod) İngilizce kaldı.
+
 ## 2026.4.8 — Çerez izni: sol alt bildirim, kategori bazlı izin, Google Analytics ve kendi istatistik çerezlerimiz izne bağlı (8.18) (2026-10-09)
 
 Ürünün ön yüzü şimdiye kadar çerez için izin istemiyordu; sitelerde yaygın

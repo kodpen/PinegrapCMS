@@ -919,9 +919,9 @@ function pg_tr_pending_string_ids($language, $owners = array())
 
 /**
  * SQL for a set of owners. No owner is the whole site: every text but the
- * software's own wording (owner 'ui'), which is translated on its own, as
- * the "Interface texts" group, and only for a language with no language
- * file (pg_tr_ui_text()).
+ * cookie window (owner 'ui'), which is translated on its own, as the
+ * "Cookie window" group, and only for a language with no language file
+ * (pg_tr_ui_text()).
  */
 function pg_tr_owner_where($owners)
 {

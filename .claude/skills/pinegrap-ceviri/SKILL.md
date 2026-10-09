@@ -65,23 +65,26 @@ içeriği, başlangıç ağacının `text:` değeri.
 - Yeni anahtar yazmadan önce mevcut karşılığa bak: `Net` → "KDV Hariç",
   `From` → "Şundan" gibi tuzaklar var.
 
-## Ön yüz: dil dosyası olmayan diller (2026.4.7)
+## Ön yüz: dil dosyası olmayan diller
 
-- Yazılım yalnız `tr.json` ve `en.json` ile gelir. Siteye eklenen başka bir
-  dilin sayfasında (ko, de, …) `lang()` metni çeviri deposundan alır:
-  `pg_tr_ui_text()` → `pg_tr_ui_translate()`. Metin Çeviriler ekranının
-  "Arayüz metinleri" grubunda (`owner_type 'ui'`) çevrilir, çevrilene kadar
-  İngilizce kalır. Ürün sahibinin kararı (2026-10-06): deneme dilleri için
-  `includes/local/<kod>.json` eklenmez; dosyası olan dilde dosya her zaman
-  geçerlidir.
-- Bu yoldan yalnız `tr.json`'da olan anahtar çevrilir (`lang()`'ın
-  `if_known` seçeneği). `tr.json`'a eklenmeyen anahtar dosyasız dilde de
-  İngilizce kalır.
+- Yazılım yalnız `tr.json` ve `en.json` ile gelir. Ürün sahibinin kararı
+  (2026-10-09): **yazılımın arayüz dili ayarlardan gelir ve sitenin
+  çevirisine girmez.** Siteye eklenen başka bir dilin sayfasında (ko, de, …)
+  yazılım metinleri İngilizce kalır. Tek istisna çerez penceresidir: yalnız
+  `pg_consent_ui_keys()` listesindeki anahtarlar `pg_tr_ui_text()` →
+  `pg_tr_ui_translate()` yoluyla çeviri deposundan okunur ve Çeviriler
+  ekranında **"Çerez penceresi"** grubunda (`owner_type 'ui'`, adı tarihsel)
+  çevrilir. Bu listeyi genişletmek, araç çubuğunu ya da dinamik kod bloğunu
+  çeviriye sokmak bu kararı bozmaktır — sormadan yapma.
+- Deneme dilleri için `includes/local/<kod>.json` eklenmez; dosyası olan
+  dilde dosya her zaman geçerlidir.
+- `pg_tr_ui_sync()` (`pg_tr_extract_group('ui')`, Çeviriler ekranı açılınca)
+  grubu pencerenin metinleriyle eşitler: eksikleri önden kaydeder, listede
+  olmayan `ui` kullanımlarını ve yalnız onlara ait çevirileri siler.
+  Bildirime yeni metin eklersen listeye de ekle; `tests/consent_test.php`
+  listeyi dosyadaki `lang()` çağrılarıyla karşılaştırır.
 - `lang()`'tan geçen veritabanı metni (bir etiket, bir ürün adı) bu yoldan
   geçmez: içeriktir, sayfanın çevirisine aittir.
-- `{var:N}` yer tutucuları şablonun parçası olarak çevrilir. Değeri dışarıda
-  birleştirmek (yukarıdaki kural) burada her değer için ayrı bir metin
-  doğurur.
 - Lorem ipsum (`pg_tr_placeholder_latin()`) çeviriye girmez; örnek içerikte
   zaten yazılmaz.
 

@@ -501,8 +501,8 @@ function pg_tr_label($text)
 /**
  * Whether a language has a file of its own for the software's wording
  * (includes/local/<code>.json). One that has one speaks it; for one that has
- * none, the wording a visitor is shown comes from the site's translations
- * (pg_tr_ui_text()).
+ * none, the cookie window is translated through the site's translations
+ * (pg_tr_ui_text()) and the rest of the wording stays English.
  *
  * @param string $code
  * @return bool
@@ -522,11 +522,14 @@ function pg_tr_ui_has_file($code)
 }
 
 /**
- * The software's wording (a lang() key) on a page drawn in a language with
- * no language file: the site's translation of it, a template whose {var}
- * placeholders lang() fills in. Null while there is none - lang() keeps the
- * English wording - for a key the software does not know, and in every
- * other case: the source language, a language with a file, the panel.
+ * A text of the cookie window (a lang() key of pg_consent_ui_keys()) on a
+ * page drawn in a language with no language file: the site's translation of
+ * it, a template whose {var} placeholders lang() fills in. Null while there
+ * is none - lang() keeps the English wording - and for every other key: the
+ * software's own wording (the toolbar, the dynamic code block, the widgets'
+ * labels) is the interface language the settings choose, not part of the
+ * site's translations. Null as well in the source language, in a language
+ * with a file and in the panel.
  *
  * @param string $key
  * @return string|null
@@ -534,6 +537,15 @@ function pg_tr_ui_has_file($code)
 function pg_tr_ui_text($key)
 {
     static $busy = false;
+    static $keys = null;
+
+    if ($keys === null) {
+        $keys = function_exists('pg_consent_ui_keys') ? array_flip(pg_consent_ui_keys()) : array();
+    }
+
+    if (!isset($keys[(string) $key])) {
+        return null;
+    }
 
     // The lookup itself may print through lang() (a message of the store):
     // that one stays as it is. Before the configuration is read there is no

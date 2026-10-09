@@ -590,8 +590,8 @@ function pg_tr_extract_all()
 
 /**
  * Extracts one of the groups the Translations screen lists below the pages.
- * The interface texts are recorded as pages draw them and have nothing to
- * extract.
+ * The cookie window's group is brought in line with the window's texts
+ * (pg_tr_ui_sync()).
  *
  * @param string $group catalog | forms | ui
  * @return array('owners' => int, 'segments' => int)
@@ -603,6 +603,8 @@ function pg_tr_extract_group($group)
             return pg_tr_extract_catalog();
         case 'forms':
             return pg_tr_extract_forms();
+        case 'ui':
+            return array('owners' => 0, 'segments' => pg_tr_ui_sync());
     }
 
     return array('owners' => 0, 'segments' => 0);

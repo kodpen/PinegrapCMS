@@ -224,7 +224,7 @@ function pg_tr_context($string_ids, $language)
     }
 
     // The software's wording: one owner for all of it, so no neighbours.
-    $names['ui'] = array(0 => lang('Interface text of the website (a button, a label, a message)'));
+    $names['ui'] = array(0 => lang('Cookie window of the website (the cookie notice and its settings)'));
 
     // The neighbours: the texts just before and after in the same owner.
     $neighbour_where = array();
