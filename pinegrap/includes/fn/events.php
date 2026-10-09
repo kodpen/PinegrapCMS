@@ -30,6 +30,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 function pg_announce($event, $data = array())
 {
+    // The workspace hears about it first, and whether or not the API is here:
+    // a site with no webhooks still wants the new order in its channel.
+    pg_event_record($event, (array) $data);
+
     if (!function_exists('api_webhook_enqueue')) {
 
         $file = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';
@@ -45,7 +49,8 @@ function pg_announce($event, $data = array())
         return;
     }
 
-    api_webhook_enqueue($event, (array) $data);
+    // Recorded above already: the queue must not hold the event twice.
+    api_webhook_enqueue($event, (array) $data, true);
 }
 
 // A contact that did not exist a moment ago, whichever screen or form made it.
@@ -75,4 +80,55 @@ function pg_announce_contact_created($contact_id, $email = null)
         'id'    => $contact_id,
         'email' => (string) $email,
     ));
+}
+
+// The events the workspace listens to (includes/workspace/watch.php): what
+// starts a scheduled action with an event rule, and what is written into the
+// channels that watch a record. Only these are kept: the workspace's own
+// events (workspace.*) and the ERP's (erp.*) have nobody here to read them,
+// and a public channel announces every message.
+function pg_event_workspace_events()
+{
+    return array(
+        'order.created',
+        'order.status_changed',
+        'order.shipped',
+        'order.delivered',
+        'order.cancelled',
+        'stock.low',
+        'customer.created',
+        'customer.updated',
+        'product.updated',
+        'form.submitted',
+    );
+}
+
+// Keeps an event for the workspace to pick up (ws_events_in).
+//
+// One INSERT and nothing else: the visitor's checkout or form submission is
+// still waiting, so nothing here reads a channel or runs an action. The
+// workspace's own run (ws_events_process(), started by an open screen or by
+// the general job) works the rows off later. The workspace's files are not
+// loaded for this; front pages never load them.
+//
+// Silent when the workspace is switched off, when the event is not one it
+// listens to, and when the table is not there yet (2026.4.8, 8.85).
+function pg_event_record($event, $payload = array())
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return;
+    }
+
+    if (!in_array((string) $event, pg_event_workspace_events(), true)) {
+        return;
+    }
+
+    if (!function_exists('pg_schema_has') || !pg_schema_has('ws_events_in')) {
+        return;
+    }
+
+    $json = json_encode((array) $payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+    db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)
+        VALUES ('" . e((string) $event) . "', '" . e(($json === false) ? '{}' : $json) . "', UNIX_TIMESTAMP(), 0)");
 }

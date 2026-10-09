@@ -63,5 +63,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/timeline.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/home.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/file_edits.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');

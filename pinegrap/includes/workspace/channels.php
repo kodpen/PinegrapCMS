@@ -205,6 +205,10 @@ function ws_channel_detail($viewer, $channel)
         }
     }
 
+    // Whether the events of the records tied to it are written in it
+    // (watch.php): null where that cannot be had.
+    $brief['watch'] = function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null;
+
     $brief['tab_counts'] = ws_channel_tab_counts($channel);
 
     // A discussion (threads.php): what it is about, and no pin of its own.
@@ -488,6 +492,12 @@ function ws_channel_update($viewer, $channel, $data)
 
     if (array_key_exists('color', $data) && ws_channel_colors_ready()) {
         $set[] = "color = '" . ws_palette_place($data['color']) . "'";
+    }
+
+    // Whether the events of its records are written in it (watch.php); a
+    // discussion and a guest's room never hear them.
+    if (array_key_exists('watch', $data) && function_exists('ws_watch_channel_state') && (ws_watch_channel_state($channel) !== null)) {
+        $set[] = "watch = '" . (!empty($data['watch']) ? 1 : 0) . "'";
     }
 
     if (!empty($set)) {

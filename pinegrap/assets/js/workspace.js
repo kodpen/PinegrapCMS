@@ -3618,6 +3618,13 @@
             body.insertBefore(el('div', 'alert alert-secondary small py-2', t('grp_new_channel_in', app.findGroup(defaults.group_id).name)), body.firstChild);
         }
 
+        // Hearing about the records tied to the channel (workspace_events.js).
+        var watch = (channel && window.PGWsEvents) ? window.PGWsEvents.watchField(channel) : null;
+
+        if (watch) {
+            body.appendChild(watch.node);
+        }
+
         if (channel && CFG.eras) {
             body.appendChild(eraSection(channel, node));
         }
@@ -3649,6 +3656,10 @@
 
             if (colors) {
                 data.color = colors.value();
+            }
+
+            if (watch) {
+                data.watch = watch.value();
             }
 
             if (!channel && defaults.group_id) {
@@ -13397,6 +13408,11 @@
         var digest = ['tasks_open', 'tasks_overdue', 'tasks_due_today', 'orders_today', 'sales_today', 'forms_new', 'comments_pending', 'visitors_yesterday']
             .filter(has).map(function (key) { return { key: key, param: 0 }; });
 
+        // Started by something happening on the site (workspace_events.js).
+        if (window.PGWsEvents && window.PGWsEvents.ready) {
+            out = out.concat(window.PGWsEvents.templates({ channelId: channelId, me: me, tell: tell }));
+        }
+
         // A channel greets the people who join it and asks who they are.
         if (config.join) {
             out.push({ key: 'welcome', label: t('sa_tpl_welcome'), icon: 'bi-person-plus', help: t('sa_tpl_welcome_help'), data: {
@@ -13601,6 +13617,8 @@
         var time = null;
         var whenMode = 'time';
         var joinRule = null;
+        var eventRule = null;
+        var events = !!(window.PGWsEvents && window.PGWsEvents.ready);
 
         (data.rules || []).forEach(function (rule) {
             if (rule.type === 'at') {
@@ -13615,9 +13633,14 @@
                 whenMode = 'join';
                 joinRule = rule;
             }
+
+            if (rule.type === 'event') {
+                whenMode = 'event';
+                eventRule = rule;
+            }
         });
 
-        if ((whenMode === 'join') && !config.join) {
+        if (((whenMode === 'join') && !config.join) || ((whenMode === 'event') && !events)) {
             whenMode = 'time';
         }
 
@@ -13631,6 +13654,7 @@
         if (config.chains) {
             [['time', t('sa_when_time'), 'bi-alarm'], ['trigger', t('sa_when_trigger'), 'bi-diagram-3']]
                 .concat(config.join ? [['join', t('sa_when_join'), 'bi-person-plus']] : [])
+                .concat(events ? [['event', t('sa_when_event'), window.PGWsEvents.icon]] : [])
                 .forEach(function (option) {
                     var toggle = button('btn btn-outline-secondary' + (whenMode === option[0] ? ' active' : ''), option[1], option[2]);
                     toggle.addEventListener('click', function () {
@@ -13690,6 +13714,13 @@
         rules.appendChild(triggerBox);
         rules.appendChild(joinBox);
 
+        // Something happens on the site: which event, for which form or status.
+        var eventBox = events ? window.PGWsEvents.whenBox(eventRule) : null;
+
+        if (eventBox) {
+            rules.appendChild(eventBox.node);
+        }
+
         var units = { minutes: 'sa_every_minutes', hourly: 'sa_every_hours', daily: 'sa_every_days', weekly: 'sa_every_weeks', monthly: 'sa_every_months', yearly: 'sa_every_years' };
         var actionEditors = [];
 
@@ -13699,6 +13730,11 @@
             timeBox.hidden = (whenMode !== 'time');
             triggerBox.hidden = (whenMode !== 'trigger');
             joinBox.hidden = (whenMode !== 'join');
+
+            if (eventBox) {
+                eventBox.node.hidden = (whenMode !== 'event');
+            }
+
             repeatRow.hidden = (value === 'none');
             everyBox.hidden = !units[value];
             everyUnit.textContent = units[value] ? t(units[value]) : '';
@@ -13722,7 +13758,7 @@
         checks.appendChild(conditions);
 
         (data.rules || []).forEach(function (rule) {
-            if (['at', 'trigger', 'join'].indexOf(rule.type) === -1) {
+            if (['at', 'trigger', 'join', 'event'].indexOf(rule.type) === -1) {
                 conditions.appendChild(saConditionRow(rule));
             }
         });
@@ -13817,6 +13853,8 @@
                 list.push({ type: 'trigger' });
             } else if (whenMode === 'join') {
                 list.push({ type: 'join', channel_id: parseInt(joinChannel.value, 10) || 0 });
+            } else if ((whenMode === 'event') && eventBox) {
+                list.push(eventBox.read());
             } else {
                 var at = { type: 'at', date: date.value, time: clock.value, repeat: repeat.value };
 
@@ -13966,7 +14004,8 @@
     function scheduledCard(item, onChange) {
         var card = el('div', 'ws-sa-card ws-sa-' + item.status);
         var head = el('div', 'ws-sa-card-head');
-        var whenIcon = item.joins ? 'bi-person-plus' : (item.trigger_only ? 'bi-diagram-3' : 'bi-alarm');
+        var eventIcon = (window.PGWsEvents && window.PGWsEvents.icon) || 'bi-broadcast';
+        var whenIcon = item.joins ? 'bi-person-plus' : (item.on_event ? eventIcon : (item.trigger_only ? 'bi-diagram-3' : 'bi-alarm'));
 
         head.appendChild(icon(whenIcon, 'ws-sa-card-icon'));
         head.appendChild(el('b', 'ws-sa-card-name', item.name));
@@ -13974,7 +14013,7 @@
         card.appendChild(head);
 
         var when = el('div', 'ws-sa-line ws-sa-when-line');
-        when.appendChild(icon(item.joins ? 'bi-person-plus' : (item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event')), 'me-1'));
+        when.appendChild(icon(item.joins ? 'bi-person-plus' : (item.on_event ? eventIcon : (item.trigger_only ? 'bi-diagram-3' : (item.repeats ? 'bi-arrow-repeat' : 'bi-calendar-event'))), 'me-1'));
         when.appendChild(document.createTextNode(item.when + (item.next ? ' · ' + t('sa_next') + ': ' + item.next : '')));
         card.appendChild(when);
 
