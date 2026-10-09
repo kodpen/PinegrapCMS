@@ -180,7 +180,12 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   kapalı özellik hepsi budamadır); ağaç yerine düz `<div class="alert">`
   döndürme.
 - Her renderer `_pg_inject_messages_node($tree, '<liveform adı>')` çağırsın;
-  damgasız düğüm sayfadaki her formu basar. Hesap bandındaki widget'lar
+  damgasız düğüm sayfadaki her formu basar **ve tüketir**: aynı sayfada önce
+  çizilen widget öbürünün hatasını alır (Hesabım sayfasında `my_account`
+  güvenlik kartının hatasını tepede basıyordu). `''` verme. Ad legacy
+  sayfanın liveform adıdır; legacy sayfa mesaj basmıyorsa widget'ın kendi
+  adı (`calendar_view`, `logout`, `error_page`). Denetim
+  `tests/designer_messages_test.php`. Hesap bandındaki widget'lar
   (`cart_link`, `login_region`, `language_switcher`) kimsenin göndermediği
   bir adla damgalanır, mesaj göstermez; JS'te `_SW_NO_MESSAGES`'tadırlar:
   başlangıç ağacına "Mesajlar (PHP)" eklenmez, eski ağaçtaki yüklenirken

@@ -403,6 +403,9 @@ function _render_system_widget_logout($tree_json, $widget_id, $cfg = array(), $m
     if (!is_array($cfg)) $cfg = array();
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
+    // Nothing reports here (the legacy page prints no messages); the name
+    // keeps the node from taking the messages of a form beside it.
+    _pg_inject_messages_node($tree, 'logout');
 
     $signed_in = _pg_acct_signed_in();
     $self      = _pg_acct_url_without(function_exists('get_request_uri') ? (string)get_request_uri() : '', array('logged_out'));

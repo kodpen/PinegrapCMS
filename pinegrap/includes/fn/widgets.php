@@ -824,11 +824,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Decode + split the widget tree into static + loop-template halves.
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'form_list_view', as on the legacy page (a record
+    // deleted from its item view leaves its notice there). An unnamed node
+    // would print and use up every form's messages on the page.
+    _pg_inject_messages_node($tree_decoded, 'form_list_view');
     $split = _split_widget_tree($tree_decoded);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
@@ -1454,11 +1453,9 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // legacy fallback so designers without a loop_area still get output.
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'form_item_view', as on the legacy page (a record
+    // saved through send_to leaves its notice there).
+    _pg_inject_messages_node($tree_decoded, 'form_item_view');
     // Visibility flag has_new_account, known once the record is read.
     _pg_sw_mark_visibility($tree_decoded);
     $split = _split_widget_tree($tree_decoded);
@@ -1720,11 +1717,11 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // ── Decode + split the widget tree ────────────────────────────────────
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'my_account', as on the legacy page — the notices
+    // the account screens send here (password changed, order retrieved,
+    // reordered, deleted). Unnamed, this widget printed and used up the
+    // messages of every other widget on the page drawn after it.
+    _pg_inject_messages_node($tree_decoded, 'my_account');
 
     // Links to the other account pages and the order history
     // (widgets_account.php): a link with nowhere to go leaves with its node,
@@ -3448,9 +3445,10 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
-    // Read-only widget: no form of its own posts, so the Messages node shows
-    // whatever the session carries.
-    _pg_inject_messages_node($tree, '');
+    // Read-only widget: liveform 'search_results', as on the legacy page.
+    // An unnamed node would take the messages of a form beside it (the
+    // footer's sign-up form among them).
+    _pg_inject_messages_node($tree, 'search_results');
 
     $param      = 'query';
     $page_param = 'page_number';
@@ -3831,12 +3829,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content node
-    // when the designer has not placed one. Empty formName, like the other
-    // read-only widgets: this widget posts no form of its own, so it shows
-    // whatever the session is carrying. Without this the widget was simply
-    // silent — an error had nowhere to print.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'order_receipt', as on the legacy receipt page.
+    // This widget posts no form of its own; an unnamed node would take the
+    // messages of a form beside it (the footer's sign-up form among them).
+    _pg_inject_messages_node($tree_decoded, 'order_receipt');
 
     // NOTE: split + render are DEFERRED to AFTER order data is fetched and
     // visibility bindings are applied. Otherwise nodes with
@@ -5341,7 +5337,9 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     if (!is_array($cfg)) $cfg = array();
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
-    _pg_inject_messages_node($tree, '');
+    // Nothing posts to the calendar (the legacy page prints no messages); the
+    // name keeps the node from taking the messages of a form beside it.
+    _pg_inject_messages_node($tree, 'calendar_view');
 
     // The event page's "back" link returns here.
     $_SESSION['software']['last_calendar_view_url'] = get_request_uri();
