@@ -80,3 +80,21 @@ function test_consent_page_services_lists_tagged_scripts()
 
 	pg_assert_same(array('analytics' => array(), 'marketing' => array()), pg_consent_page_services('<p>none</p>'), 'nothing tagged');
 }
+
+// The list the Translations screen takes in is every lang() key the notice
+// prints: a key added to the notice and missing here would stay untranslated
+// until a visitor happened to see it.
+function test_consent_ui_keys_match_the_notice()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+
+	preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", $source, $matches);
+
+	$used = array_values(array_unique(array_map('stripslashes', $matches[1])));
+	$listed = pg_consent_ui_keys();
+
+	sort($used);
+	sort($listed);
+
+	pg_assert_same($used, $listed);
+}

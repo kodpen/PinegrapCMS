@@ -84,6 +84,11 @@ içeriği, başlangıç ağacının `text:` değeri.
   doğurur.
 - Lorem ipsum (`pg_tr_placeholder_latin()`) çeviriye girmez; örnek içerikte
   zaten yazılmaz.
+- Arayüz metni normalde ilk gösterimde kaydolur. Her ziyaretçinin ilk
+  gördüğü bir parça (çerez bildirimi) anahtarlarını bir listeyle verir ve
+  `pg_tr_ui_seed()` ile önden kaydedilir (`pg_tr_extract_group('ui')`);
+  listeyi `lang()` çağrılarıyla bir testte karşılaştır
+  (`tests/consent_test.php`).
 
 ## Bitirmeden önce
 

@@ -61,6 +61,9 @@ $owner_groups = pg_tr_owner_groups();
 
 if (($language !== '') && pg_tr_ui_has_file($language)) {
     unset($owner_groups['ui']);
+} elseif ($language !== '') {
+    // The cookie notice is listed in the group before a visitor has seen it.
+    pg_tr_extract_group('ui');
 }
 
 $group = isset($_GET['group']) ? (string) $_GET['group'] : '';
@@ -610,7 +613,7 @@ echo pg_page_shell(array(
                         <span class="text-uppercase h5 text-primary fw-bold mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</span>
                         <span class="small text-body-secondary">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
                     </div>
-                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('This language has no language file, so the software\'s own wording (buttons, labels, messages) is translated here. A text appears here once a visitor has been shown it on a page in this language; until it is translated, the English wording is shown.') . '</div>' : '') . $output_rows . '
+                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('This language has no language file, so the software\'s own wording (buttons, labels, messages) is translated here. The cookie notice is listed from the start; any other text appears once a visitor has been shown it on a page in this language. Until a text is translated, the English wording is shown.') . '</div>' : '') . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-3">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>

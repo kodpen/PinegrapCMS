@@ -216,6 +216,7 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.') . '</div>
                                         </div>
                                         <div class="col-12">
+                                            <div class="form-text mb-2">' . lang(array('string' => 'After a choice the notice folds into a cookie button in the bottom-left corner, so the visitor can change it later. Put a link to {var:1} on the site (in the footer, for example) and the link reopens the notice; the button is then hidden.', 'vars' => '<code>#cookie-settings</code>')) . '</div>
                                             <div class="form-text">' . lang(array('string' => 'To hold a script of your own until the visitor agrees, write its tag as {var:1} (or {var:2}). The notice lists it under that category with the name you give it.', 'vars' => array('<code>' . h('<script type="text/plain" data-pg-consent="analytics" data-pg-consent-name="Hotjar">') . '</code>', '<code>data-pg-consent="marketing"</code>'))) . '</div>
                                         </div>
                                    </div>
