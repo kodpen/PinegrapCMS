@@ -247,19 +247,21 @@ Bağlantı sonradan çizilirse diye `load`'da yeniden bakılır. Yerleşik
 şablonların alt bilgisine bu bağlantı henüz eklenmedi; o siteler simgeyi
 görmeye devam eder.
 
-**Arayüz metinleri grubuna önden alma.** Arayüz metinleri yalnız bir
-ziyaretçi dosyasız dilde (`/ko/`) sayfayı görünce kaydoluyordu; bildirim o
-dilde hiç gösterilmediyse Çeviriler ekranında yoktu, "Bu metinleri güncelle"
-gönderecek bir şey bulmuyordu. `pg_consent_ui_keys()` bildirimin bütün
-`lang()` anahtarlarını listeler (`tests/consent_test.php` listeyi
-dosyadaki `lang()` çağrılarıyla karşılaştırır); `pg_tr_ui_seed()`
-(`includes/translate/content.php`) onları `pg_tr_ui_string()` ile —
-`pg_tr_ui_translate()`'in kullandığı aynı şablon/karma — kaydeder ve hemen
-yazar (bekleyenler aynı istekte sorulur). `pg_tr_extract_group('ui')` artık
-bunu yapar, böylece grubun güncelleme düğmesi 32 metni bulur; Çeviriler
-ekranı dosyasız bir dille açılınca da çağrılır, grup ziyaretçi beklemeden
-listelenir. Tüm site kapsamı arayüz metinlerini 2026.4.7'deki karar gereği
-yine dışarıda bırakır: bildirim grubun kendi düğmesiyle çevrilir.
+**Geri alındı: bildirim metinlerini Arayüz metinleri grubuna önden alma
+(2026-10-09).** Bir tur `pg_tr_ui_seed()` ile bildirimin 32 anahtarı
+"Arayüz metinleri" grubuna önden yazılıyor ve grubun "Bu metinleri
+güncelle" düğmesiyle çevriliyordu. Düğme grubun **bütün** bekleyen
+metinlerini gönderir; grup, dosyasız dilde bir sayfa gösterilirken
+`lang()`'dan geçen her yazılım metnini toplar — `<!-- Start Pinegrap
+dynamic code -->` bloğundaki `software_translations` sözlüğü ve araç
+çubuğu metinleri dahil. Sonuç: o metinler de çevrildi. Ürün sahibinin
+kararı: yazılımın arayüz dili ayarlardan ayrı girilir, çeviriye
+girmez; çevrilecek olan yalnız çerez penceresi ve içeriğidir. Önden alma
+(`pg_consent_ui_keys()`, `pg_tr_ui_seed()`, `pg_tr_ui_string()`,
+`pg_tr_extract_group('ui')` dalı, Çeviriler ekranındaki çağrı) kaldırıldı.
+Daha önce çevrilmiş metinler veritabanında kalır; Çeviriler ekranında
+grubun ⋮ → "Çevirileri temizle" ile silinir. Bildirimin kendi başına
+çevrilme yolu ayrıca kararlaştırılacak.
 
 **Yerleşim.** `get_page_content()` içinde, e-posta değilken ve düzenleme
 kipi dışında, en son `pg_consent_inject()` son `</body>`'den önce ekler

@@ -92,37 +92,6 @@ function pg_tr_ui_translate($key)
 
     $memo[$key] = null;
 
-    $string = pg_tr_ui_string($key);
-
-    if ($string === null) {
-        return null;
-    }
-
-    list($hash, $normalized, $format) = $string;
-
-    pg_tr_ui_record($hash, $normalized, $format);
-
-    $map = pg_tr_map_load(pg_tr_language());
-
-    if (!isset($map[$hash]) || ((string) $map[$hash]['text'] === '')) {
-        return null;
-    }
-
-    $memo[$key] = (string) $map[$hash]['text'];
-
-    return $memo[$key];
-}
-
-/**
- * A lang() key as the store keeps it: the source-language template,
- * normalized, with its hash and format. Null for a key the software does not
- * know or a template with nothing to translate.
- *
- * @param string $key
- * @return array|null array(hash, normalized, format)
- */
-function pg_tr_ui_string($key)
-{
     $template = pg_tr_ui_source_template($key);
 
     if ($template === null) {
@@ -136,35 +105,19 @@ function pg_tr_ui_string($key)
         return null;
     }
 
-    return array(pg_tr_hash($normalized, $format), $normalized, $format);
-}
+    $hash = pg_tr_hash($normalized, $format);
 
-/**
- * Takes wording into the "Interface texts" group before a visitor has been
- * shown it, so the group lists it and "Update translations" sends it: the
- * cookie notice, which every visitor of a page in the language sees first.
- * Written at once, not at the end of the request, because the caller asks
- * for the pending texts right after.
- *
- * @param array $keys lang() keys
- * @return int the keys taken in (already known ones included)
- */
-function pg_tr_ui_seed($keys)
-{
-    $count = 0;
+    pg_tr_ui_record($hash, $normalized, $format);
 
-    foreach ((array) $keys as $key) {
-        $string = pg_tr_ui_string($key);
+    $map = pg_tr_map_load(pg_tr_language());
 
-        if ($string !== null) {
-            pg_tr_ui_record($string[0], $string[1], $string[2]);
-            $count++;
-        }
+    if (!isset($map[$hash]) || ((string) $map[$hash]['text'] === '')) {
+        return null;
     }
 
-    pg_tr_ui_record_flush();
+    $memo[$key] = (string) $map[$hash]['text'];
 
-    return $count;
+    return $memo[$key];
 }
 
 /**

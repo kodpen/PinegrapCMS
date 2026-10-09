@@ -699,9 +699,7 @@
   [YENİ] Bildirim çok dilli sitede sayfanın diliyle gösterilir:
          /en/ İngilizce; dil dosyası olmayan dillerde (/ko/ gibi)
          metinler Çeviriler ekranının "Arayüz metinleri"
-         grubunda çevrilir. Bildirimin metinleri bu grupta hiçbir
-         ziyaretçi görmeden listelenir; grubun "Bu metinleri
-         güncelle" düğmesi onları dilin motoruyla hemen çevirir.
+         grubunda çevrilir.
 
   [YENİ] Ayarlar → SEO → Çerez İzni: bildirimi açıp kapatma ve
          bildirimde bağlantı olarak gösterilecek çerez politikası
