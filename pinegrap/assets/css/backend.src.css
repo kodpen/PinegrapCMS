@@ -15156,6 +15156,7 @@ a.ws-form-card-head:hover span {
 }
 .ws-tpl-rich {
     min-height: 5rem;
+}
 /* ── Workspace: time spent on tasks (assets/js/workspace_task_time.js) ── */
 .ws-task-time,
 .ws-task-links {
