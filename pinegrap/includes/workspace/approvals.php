@@ -243,9 +243,13 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
 
     $now = time();
 
-    db("INSERT INTO ws_approvals (message_id, channel_id, title, rule, record_type, record_id, closes_at, created_by, created_at)
+    // A deadline less than a day away was just told to the people asked:
+    // the reminder is marked sent so it never goes (the expiry still runs).
+    $reminded_at = (((int) $checked['closes_at'] > 0) && ((int) $checked['closes_at'] - $now < WS_APPROVAL_REMIND_BEFORE)) ? $now : 0;
+
+    db("INSERT INTO ws_approvals (message_id, channel_id, title, rule, record_type, record_id, closes_at, reminded_at, created_by, created_at)
         VALUES ('" . (int) $sent['message_id'] . "', '" . (int) $channel['id'] . "', '" . e($title) . "', '" . e($checked['rule']) . "',
-            '" . e($record_type) . "', '" . $record_id . "', '" . (int) $checked['closes_at'] . "', '" . (int) $viewer['id'] . "', '" . $now . "')");
+            '" . e($record_type) . "', '" . $record_id . "', '" . (int) $checked['closes_at'] . "', '" . $reminded_at . "', '" . (int) $viewer['id'] . "', '" . $now . "')");
 
     $approval_id = (int) mysqli_insert_id(db::$con);
 
