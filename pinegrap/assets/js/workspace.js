@@ -1622,11 +1622,12 @@
     }
 
     // Moves a task to another day (and person), asking first when that
-    // clashes with somebody's day.
-    function moveTask(move, force, onDone) {
+    // clashes with somebody's day. The channel board hands a task to other
+    // people the same way, through ws_task_save (action).
+    function moveTask(move, force, onDone, action) {
         move.force = force ? 1 : 0;
 
-        api('ws_task_move', move).then(function (result) {
+        api(action || 'ws_task_move', move).then(function (result) {
             if (result.needs_confirm) {
                 if (result.check.hard && !result.check.may_override) {
                     ask(t('leave_blocks'), t('ok'), false, warningList(result.check));
@@ -1635,7 +1636,7 @@
 
                 ask(t('move_despite'), t('move_anyway'), true, warningList(result.check)).then(function (yes) {
                     if (yes) {
-                        moveTask(move, true, onDone);
+                        moveTask(move, true, onDone, action);
                     }
                 });
                 return;
@@ -1647,6 +1648,43 @@
                 onDone();
             }
         }).catch(fail);
+    }
+
+    // The newest copy of a repeating task moved to another day: that copy
+    // only ('one'), or the copies after it as well ('following'); '' when
+    // the move was called off.
+    function askSeries() {
+        var box = el('div', 'ws-ask-choice');
+        var inputs = {};
+
+        [['one', t('move_repeat_one')], ['following', t('move_repeat_following')]].forEach(function (item, index) {
+            var line = el('div', 'form-check');
+            var input = el('input', 'form-check-input');
+            input.type = 'radio';
+            input.name = 'ws-series-choice';
+            input.value = item[0];
+            input.id = 'ws-series-' + item[0];
+            input.checked = (index === 0);
+
+            var label = el('label', 'form-check-label', item[1]);
+            label.htmlFor = input.id;
+
+            line.appendChild(input);
+            line.appendChild(label);
+            box.appendChild(line);
+            inputs[item[0]] = input;
+        });
+
+        box.appendChild(el('div', 'form-text', t('move_repeat_help')));
+
+        return ask(t('move_repeat_ask'), t('move_repeat_ok'), false, box).then(function (yes) {
+            var choice = yes ? (inputs.following.checked ? 'following' : 'one') : '';
+
+            // A clash on the new day asks again, in the same dialog.
+            return askClosed().then(function () {
+                return choice;
+            });
+        });
     }
 
     function person(id) {
@@ -4104,6 +4142,11 @@
                 target = pinned.length ? pinned[0].id : 0;
             }
 
+            // The channel's board asked for in the address (?view=board).
+            if (target && (query.view === 'board')) {
+                self.pendingTab = 'board';
+            }
+
             // A discussion asked for in the address opens beside its channel.
             if (target && query.thread) {
                 self.pendingThread = { id: parseInt(query.thread, 10), message: 0 };
@@ -4204,6 +4247,14 @@
                     window.PgTour.start(window.PG_TOUR.key);
                 });
                 head.appendChild(tour);
+            }
+
+            // The search box of the whole workspace (workspace_palette.js).
+            if (window.PGWsPalette) {
+                var find = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-search', t('pal_shortcut'));
+
+                find.setAttribute('data-ws-palette', '1');
+                head.appendChild(find);
             }
 
             head.appendChild(add);
@@ -6246,7 +6297,14 @@
 
             var thread = this.openThreadId();
 
-            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + (thread ? '&thread=' + thread : ''));
+            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + ((this.tab === 'board') ? '&view=board' : '') + (thread ? '&thread=' + thread : ''));
+        },
+
+        // Has the channel a Board tab (assets/js/workspace_board_channel.js)?
+        // Not a room a guest talks in, and not an earlier version of the
+        // conversation.
+        hasBoard: function (channel) {
+            return !!window.PGWsChannelBoard && !!channel && (channel.kind !== 'guest') && (channel.kind !== 'thread') && !channel.guest && !this.era;
         },
 
         // The discussion open beside the channel, 0 for none.
@@ -6432,7 +6490,8 @@
                 self.lastId = data.last_id;
                 self.sinceTs = data.now;
                 self.hasMore = data.has_more;
-                self.tab = 'messages';
+                self.tab = ((self.pendingTab === 'board') && !messageId && self.hasBoard(data.channel)) ? 'board' : 'messages';
+                self.pendingTab = null;
                 self.drawCenter();
                 self.drawSide();
 
@@ -6471,7 +6530,7 @@
                 }
 
                 if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : ''));
+                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : '') + ((self.tab === 'board') ? '&view=board' : ''));
                 }
 
                 self.schedule();
@@ -6784,13 +6843,20 @@
             tabs.setAttribute('role', 'tablist');
             self.tabsNode = tabs;
 
-            [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]].forEach(function (tab) {
+            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]];
+
+            if (self.hasBoard(channel)) {
+                tabList.push(['board', t('tab_board')]);
+            }
+
+            tabList.forEach(function (tab) {
                 var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
                 item.setAttribute('role', 'tab');
                 item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
                     self.drawCenter();
+                    self.syncAddress();
 
                     if (tab[0] === 'messages') {
                         self.scrollToEnd();
@@ -6854,6 +6920,17 @@
                 self.drawFiles();
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
+            } else if ((self.tab === 'board') && self.hasBoard(channel)) {
+                window.PGWsChannelBoard.mount(pane, channel, {
+                    openMessage: function (messageId) { self.open(channel.id, messageId); },
+                    openSummary: function () {
+                        self.tab = 'summary';
+                        self.drawCenter();
+                        self.syncAddress();
+                    },
+                    taskDefaults: function () { return self.taskDefaults(); },
+                    refresh: function () { self.sync(); }
+                });
             } else {
                 self.drawSummary();
             }
@@ -11625,6 +11702,7 @@
                 era_id: self.era ? self.era.id : 0,
                 read: (document.hasFocus() && !self.era) ? 1 : 0,
                 counts: (counts && !self.isThread) ? 1 : 0,
+                board: ((self.tab === 'board') && !self.isThread) ? 1 : 0,
                 panel: self.isThread ? 1 : 0
             }).then(function (data) {
                 self.syncing = false;
@@ -11705,6 +11783,12 @@
                 if (data.tab_counts && self.channel && (JSON.stringify(data.tab_counts) !== JSON.stringify(self.channel.tab_counts || null))) {
                     self.channel.tab_counts = data.tab_counts;
                     self.drawTabMarks();
+                }
+
+                // The board open on the tab is read again when one of its
+                // cards changed (workspace_board_channel.js).
+                if (data.board_stamp && (self.tab === 'board') && window.PGWsChannelBoard) {
+                    window.PGWsChannelBoard.stamp(data.board_stamp);
                 }
 
                 // The pinned message, as somebody may have changed it.
@@ -14905,43 +14989,6 @@
             }
         }
 
-        // The newest copy of a repeating task moved to another day: that copy
-        // only ('one'), or the copies after it as well ('following'); '' when
-        // the move was called off.
-        function askSeries() {
-            var box = el('div', 'ws-ask-choice');
-            var inputs = {};
-
-            [['one', t('move_repeat_one')], ['following', t('move_repeat_following')]].forEach(function (item, index) {
-                var line = el('div', 'form-check');
-                var input = el('input', 'form-check-input');
-                input.type = 'radio';
-                input.name = 'ws-series-choice';
-                input.value = item[0];
-                input.id = 'ws-series-' + item[0];
-                input.checked = (index === 0);
-
-                var label = el('label', 'form-check-label', item[1]);
-                label.htmlFor = input.id;
-
-                line.appendChild(input);
-                line.appendChild(label);
-                box.appendChild(line);
-                inputs[item[0]] = input;
-            });
-
-            box.appendChild(el('div', 'form-text', t('move_repeat_help')));
-
-            return ask(t('move_repeat_ask'), t('move_repeat_ok'), false, box).then(function (yes) {
-                var choice = yes ? (inputs.following.checked ? 'following' : 'one') : '';
-
-                // A clash on the new day asks again, in the same dialog.
-                return askClosed().then(function () {
-                    return choice;
-                });
-            });
-        }
-
         function moveTask(move, force) {
             move.force = force ? 1 : 0;
 
@@ -17804,7 +17851,83 @@
     // Start
     // ═══════════════════════════════════════════════════════════════════
 
+    // What the screens kept in files of their own lean on here
+    // (workspace_palette.js, workspace_board_channel.js): the small helpers,
+    // the dialogs and menus, the task drawer, the planning board's way of
+    // moving a task, and the channel screen as it stands.
+    function shareKit() {
+        window.PGWsKit = {
+            cfg: CFG,
+            t: t,
+            el: el,
+            icon: icon,
+            button: button,
+            select: select,
+            avatar: avatar,
+            api: api,
+            toast: toast,
+            fail: fail,
+            debounce: debounce,
+            onContext: onContext,
+            taskMenu: taskMenu,
+            moveTask: moveTask,
+            askSeries: askSeries,
+            priorityFilter: priorityFilter,
+            directMessage: directMessage,
+            openTask: function (taskId, defaults, onSaved) {
+                taskDrawer.open(taskId, defaults, onSaved);
+            },
+            // The channel open on the channel screen, with the screen's ways
+            // to open another and to write into its box; null elsewhere.
+            here: function () {
+                if ((CFG.mode !== 'channels') || !app.root || !app.channel || (app.view !== 'channel')) {
+                    return null;
+                }
+
+                return {
+                    id: app.channel.id,
+                    name: app.channel.name,
+                    canPost: !!app.channel.can_post && !app.era,
+                    openChannel: function (channelId, messageId) { app.open(channelId, messageId || 0); },
+                    insert: function (text) {
+                        if (app.tab !== 'messages') {
+                            app.tab = 'messages';
+                            app.drawCenter();
+                            app.syncAddress();
+                        }
+
+                        if (app.input) {
+                            app.insertText(text);
+                        }
+                    }
+                };
+            }
+        };
+    }
+
     function start() {
+        shareKit();
+
+        // Ctrl+K (⌘K) opens the workspace's own search box on its screens,
+        // in place of the panel's search; it is taken before the panel's
+        // handler on the document sees it.
+        if (CFG.mode !== 'record') {
+            window.addEventListener('keydown', function (event) {
+                if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || (String(event.key).toLowerCase() !== 'k') || !window.PGWsPalette) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (window.PGWsPalette.isOpen()) {
+                    window.PGWsPalette.close();
+                } else {
+                    window.PGWsPalette.open();
+                }
+            }, true);
+        }
+
         // The inbox links of the rail and its drawer are drawn with the page,
         // so they are taken over at once rather than once the screen has
         // loaded: a click before that would leave for the channels screen
@@ -17812,6 +17935,21 @@
         // needs nothing the start-up brings.
         document.addEventListener('click', function (event) {
             var inboxLink = event.target.closest('[data-ws-inbox]');
+            var paletteLink = event.target.closest('[data-ws-palette]');
+
+            // The magnifier of the rail, its drawer and the channel list.
+            if (paletteLink && window.PGWsPalette) {
+                event.preventDefault();
+
+                var navDrawer = document.getElementById('ws-nav-drawer');
+
+                if (navDrawer && window.bootstrap && navDrawer.classList.contains('show')) {
+                    window.bootstrap.Offcanvas.getOrCreateInstance(navDrawer).hide();
+                }
+
+                window.PGWsPalette.open();
+                return;
+            }
 
             if (!inboxLink) {
                 return;

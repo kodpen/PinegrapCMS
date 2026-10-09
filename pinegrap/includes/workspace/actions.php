@@ -816,6 +816,12 @@ function ws_handle_action($action, $request)
                         $out['tab_counts'] = ws_channel_tab_counts($channel);
                     }
 
+                    // The board open on the screen: a mark that moves when a
+                    // card of it would (channel_board.php).
+                    if (!empty($request['board']) && ws_channel_board_available($channel)) {
+                        $out['board_stamp'] = ws_channel_board_stamp($channel);
+                    }
+
                     // The reader's own messages waiting to be posted here.
                     if (ws_can_schedule_messages($viewer)) {
                         $out['scheduled_mine'] = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
@@ -1782,6 +1788,39 @@ function ws_handle_action($action, $request)
 
         case 'ws_search':
             return ws_action_ok(array('messages' => ws_message_search($viewer, (string) ($request['q'] ?? ''), (int) ($request['channel_id'] ?? 0))));
+
+        // The search box of every workspace screen (palette.php): channel_id
+        // keeps it to one channel, here is the channel open on the screen.
+        case 'ws_palette':
+            return ws_action_ok(ws_palette_search($viewer, (string) ($request['q'] ?? ''), array(
+                'channel_id' => (int) ($request['channel_id'] ?? 0),
+                'here'       => (int) ($request['here'] ?? 0),
+                'types'      => is_array($request['types'] ?? null) ? $request['types'] : array(),
+                'limit'      => (int) ($request['limit'] ?? WS_PALETTE_LIMIT),
+            )));
+
+        // A channel's tasks, decisions and files as a board
+        // (channel_board.php).
+        case 'ws_channel_board':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (!ws_channel_board_available($channel)) {
+                return ws_action_error(lang('This channel has no board.'));
+            }
+
+            return ws_action_ok(ws_channel_board($viewer, $channel, array(
+                'group_by'  => (string) ($request['group_by'] ?? 'status'),
+                'priority'  => (string) ($request['priority'] ?? ''),
+                'person'    => (int) ($request['person'] ?? 0),
+                'mine'      => !empty($request['mine']),
+                'q'         => (string) ($request['q'] ?? ''),
+                'cancelled' => !empty($request['cancelled']),
+                'done_all'  => !empty($request['done_all']),
+            )));
 
         case 'ws_ref_search':
             $only = is_array($request['types'] ?? null) ? array_values(array_map('strval', $request['types'])) : null;

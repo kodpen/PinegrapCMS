@@ -32,7 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * everybody is shown the tour once more: what has to happen when the screen
  * changes underneath it.
  */
-define('WS_TOUR_KEY', 'workspace.1');
+define('WS_TOUR_KEY', 'workspace.2');
 
 /**
  * The key the channel screen names in its header.
@@ -83,7 +83,7 @@ function ws_tour_steps($viewer)
             'target'    => array('#ws-root .ws-head'),
             'placement' => 'bottom',
             'title'     => lang('The channel'),
-            'text'      => lang('The name of the channel, the people in it and its menu sit at the top. The tabs under them hold the channel\'s tasks, its summary and decisions, its files and notes.'),
+            'text'      => lang('The name of the channel, the people in it and its menu sit at the top. The tabs under them hold the channel\'s tasks, its summary and decisions, its files and notes. The Board tab lays its tasks, decisions and files out as cards in columns, by status, kind, person or date; a task moves to another column by dragging it.'),
         ),
         array(
             'art'       => 'composer',
