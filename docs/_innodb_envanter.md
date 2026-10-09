@@ -37,9 +37,20 @@ gerçek şemadan okundu (`information_schema.COLUMNS` / `STATISTICS`).
   `search_items.url(250)` = 1000 bayt ve `forms.address_name(250)` = 1000
   bayt. İkisi de DYNAMIC satır biçiminde geçer; `pg_innodb_capability()`
   bunu `@@innodb_default_row_format = dynamic` ile sorar.
-- **`config` satır boyutu:** ~400 kolon, 33 TEXT. DYNAMIC'te geçer (sandbox'ta
-  33 TEXT kolonun hepsine 2000 bayt yazan UPDATE denendi); COMPACT'ta satır
-  içi 768 baytlık önekler 8126 bayt sınırını aşar (1118).
+- **`config` satır boyutu:** 410 kolon (döküm + migration'lar), PK yok.
+  COMPACT'ta satır içi 768 baytlık önekler 8126 bayt sınırını aşar (1118).
+  DYNAMIC'te de sunucuya göre değişir. ≤ 255 oktetlik değişken kolon
+  (utf8mb4'te VARCHAR(63) ve altı) satırın içinde kalmak zorundadır, L + 1
+  sayılır. Uzun kolon ve TEXT MySQL 8.0'da 41, MariaDB 10.4+'da 21 sayılır;
+  MySQL 5.7 40 baytı aşan her değişken kolonu 41 sayar. 2026.4.8 öncesi stok
+  tablo MySQL 8.0'da **8468 / 8126** ediyordu ve dönüşümü 1118 ile
+  reddediliyordu; MySQL 5.7'de 6988, MariaDB'de 5868. İlk doğrulama
+  sandbox'ı MariaDB olduğu için geçmişti (33 TEXT kolona 2000 bayt yazan
+  UPDATE de MariaDB'de denendi). Ayrıca sunucunun 65.535 baytlık satır
+  sınırında 64.069 bayt (1,46 KB pay) vardı. 8.16
+  (`upgrade_2026_4_8_config_text_columns()`) her VARCHAR kolonu TEXT yapar:
+  MySQL 8.0'da 7064 / 8126, SQL katmanında 2126 / 65.535. Tahmin:
+  `pg_innodb_row_estimate()`; ayrıntı `docs/degisiklikler.md`.
 
 ## Kodda motora bağlı yerler
 

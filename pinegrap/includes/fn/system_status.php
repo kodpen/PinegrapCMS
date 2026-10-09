@@ -1719,7 +1719,9 @@ function get_system_status_checks()
                     'bi-file-earmark-x-fill',
                     'text-danger',
                     'Directory File Integrity',
-                    'Warning: Missing or tampered files detected!'
+                    'Warning: Missing or tampered files detected!',
+                    '',
+                    'software_repair.php'
                 );
                 $score -= $weights['file_integrity'];
                 break;
@@ -2141,6 +2143,30 @@ function get_system_status_checks()
 
                 foreach ($engine_pending as $engine_table => $engine_row) {
                     $engine_bytes += $engine_row['bytes'];
+
+                    // A table whose row cannot fit an InnoDB page stays on
+                    // MyISAM whatever the hour; it says so rather than
+                    // waiting for a quiet moment. Three information_schema
+                    // reads per pending table, behind this widget's cache.
+                    $engine_estimate = pg_innodb_row_estimate($engine_table);
+
+                    if (is_array($engine_estimate) && ($engine_estimate['fits'] === false)) {
+                        $engine_detail[] = array(
+                            'label' => $engine_table,
+                            'state' => 'warn',
+                            'when'  => lang(array(
+                                'string' => '{var:1} rows, {var:2} — too wide for InnoDB ({var:3} / {var:4} bytes)',
+                                'vars'   => array(
+                                    pg_format_number($engine_row['rows'], 0),
+                                    pg_innodb_size_label($engine_row['bytes']),
+                                    pg_format_number($engine_estimate['bytes'], 0),
+                                    pg_format_number($engine_estimate['limit'], 0),
+                                ),
+                            )),
+                        );
+                        continue;
+                    }
+
                     $engine_detail[] = array(
                         'label' => $engine_table,
                         'state' => 'info',
