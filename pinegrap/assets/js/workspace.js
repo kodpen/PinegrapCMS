@@ -7718,6 +7718,13 @@
         plain: function (markup, full) {
             var box = document.createElement('div');
             box.innerHTML = markup || '';
+
+            // A form's card under the text is drawn from the submission
+            // (includes/workspace/watch.php); it is not part of what was written.
+            Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card'), function (card) {
+                card.parentNode.removeChild(card);
+            });
+
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
             return (!full && text.length > 90) ? text.slice(0, 89) + '…' : text;
         },
