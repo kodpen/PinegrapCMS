@@ -19427,5 +19427,8 @@
     "{var:1} of {var:2} approved": "{var:2} kişiden {var:1} onayladı",
     "{var:1} took back the approval request: {var:2}": "{var:1} onay isteğini geri çekti: {var:2}",
     "Workspace: a channel can ask chosen people to approve something; the result is written into the channel as a locked decision.": "Çalışma Alanı: bir kanalda seçilen kişilerden onay istenebilir; sonuç kanala kilitli bir karar olarak yazılır.",
-    "Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.": "Çalışma Alanı: bir mesaj için okundu onayı istenebilir; yazan kimin okuduğunu ve okumadığını görür."
+    "Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.": "Çalışma Alanı: bir mesaj için okundu onayı istenebilir; yazan kimin okuduğunu ve okumadığını görür.",
+    "Cookie window": "Çerez penceresi",
+    "Cookie window of the website (the cookie notice and its settings)": "Web sitesinin çerez penceresi (çerez bildirimi ve ayarları)",
+    "The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software's wording is not translated here.": "Çerez penceresinin metinleri: bildirim, ayarları ve her çerezin ne için kullanıldığı. Bu dilin dil dosyası olmadığı için pencere burada çevrilir; bir metin çevrilene kadar İngilizcesi gösterilir. Yazılımın diğer metinleri burada çevrilmez."
 }
