@@ -15064,6 +15064,7 @@ a.ws-form-card-head:hover span {
 .ws-form-card-fields dd {
     margin: 0;
     overflow-wrap: anywhere;
+}
 /* ── Workspace: channel templates (assets/js/workspace_templates.js) ── */
 .ws-tpl-row {
     display: flex;
