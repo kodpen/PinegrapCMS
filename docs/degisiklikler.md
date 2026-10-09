@@ -72,6 +72,125 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Çalışma Alanı: onay isteği kartı ve okundu onayı (8.87, 8.89) (2026-10-09)
+
+**İstenen.** (E) Bir kanalda seçilen kişilerden bir şey için onay istemek:
+başlık, açıklama (@ ve # çalışır), 1–10 onaylayan, "herhangi biri / hepsi"
+kuralı, isteğe bağlı son tarih. Kartta her onaylayanın durumu görünür;
+Onayla / Reddet düğmeleri yalnız onaylayanlara çıkar, isteyen geri çeker,
+yönetici (rol 0–2) kapatır. Sonuç kanala kilitli karar mesajı olarak
+düşer. Ayrıca bildirim, son tarihten bir gün önce hatırlatma, Genel Bakış
+satırı, tartışma ve misafir davranışı, programlanmış işlem eylemi, olaylar
+ve dış API. (H) Bir mesaja "okundu onayı" bayrağı: kanalın o anki üyeleri
+için "Okudum" düğmesi, "N / M okudu" etiketi ve kim okudu listesi, 24 saat
+sonra bir kez hatırlatma, Genel Bakış satırı, API'de `ack`.
+
+**Nasıl.** İkisi de anket desenine biner: `interact.php`, mesajın `poll`
+ekstrası, `pollNode` / `pollForm`.
+
+- `includes/workspace/approvals.php` (yeni). İstek bir mesajdır: gövdesi
+  `**başlık**` ve açıklamadır, `ws_message_send()` ile yazılır. Böylece
+  etiketler, @ bildirimleri, `ws_refs`, tartışma kopyası ve
+  `workspace.message.created` olduğu gibi çalışır. Kart,
+  `ws_approvals` + `ws_approval_people` satırlarıdır. Oluşturmadan önceki
+  bütün denetim `ws_approval_input()`'tadır; form, API dry-run ve
+  programlanmış işlem aynı reddi görür. Onaylayan `ws_approval_eligible()`
+  ile denetlenir: kanal üyesi ve kanala yazabilen bir ekip üyesi olmalıdır.
+  Misafir kanal üyesi olmadığı için hiçbir yoldan onaylayan olamaz.
+  `record_type` / `record_id` açıklamadaki ilk kayıt etiketinden
+  (`ws_record_type_keys()`) doldurulur. Kartta o kaydın çipi
+  `data-ws-record` taşır ve tıklanınca mevcut kayıt çekmecesi ("Nerede
+  geçti") açılır. Kural, `ws_approval_outcome($rule, $decisions, $now,
+  $closes_at)` saf fonksiyonundadır: ret her kuralda isteği kapatır, "any"
+  ilk onayla, "all" herkesin onayıyla sağlanır, kural sağlanmadan son tarih
+  geçerse sonuç `expired` olur, sağlanmış kural geçmiş son tarihe üstün
+  gelir. Testleri `tests/approvals_test.php`'de.
+  `ws_approval_decide()` sunucuda kişinin `ws_approval_people`'da `pending`
+  satırı olmasını ve kanala yazabilmesini ister. Güncelleme
+  `decision = 'pending'` koşuluyla yapılır, böylece çift tıklama bir kez
+  sayılır. `ws_approval_settle()` anketin `ws_poll_close()` desenini izler:
+  önce `closed_at = 0` koşullu `UPDATE` ile kapatır (iki karar aynı anda
+  gelirse sonuç bir kez yazılır). Sonra isteyenin adına `kind='decision'`,
+  `parent_id = istek` olan bir mesaj yazar ve `locked = 1` yapar
+  (`ws_change_apply()` deseni). Tartışmada `ws_thread_copy_sync()` kopyayı
+  kilidiyle birlikte ana kanala taşır. Geri çekme ve kapatma karar
+  sayılmaz, sistem satırı olarak düşer. İsteyen artık yazamıyorsa
+  (kanaldan çıkmışsa) sonuç anketteki gibi sistem satırına düşer; o
+  durumda Karar Zaman Çizelgesi'nde görünmez.
+- `includes/workspace/acks.php` (yeni). Bayrak `ws_ack_requests`'te,
+  yanıtlar `ws_acks`'te durur. Kimin sayılacağı her okumada
+  `ws_ack_counted_ids()` ile bulunur: kanalın **o anki** üyeleri (ekip
+  üyeleri), yazan hariç. Kanaldan çıkan sayımdan düşer, katılan girer,
+  misafir üye olmadığı için hiç sayılmaz. Onayı yazan ya da bir yönetici
+  isteyebilir (`ws_ack_can_request()`). Listeyi yazan, isteyen ve
+  yöneticiler görür. Kişi "Okudum" deyince o mesajın `ack_reminder` gelen
+  kutusu satırı okunmuş sayılır.
+- Tetikleme. Anketin otomatik kapanması programlanmış işte değildir; kanal
+  açılınca ve `ws_sync` sırasında `ws_polls_autoclose()` ile yapılır. Onay
+  isteklerinin süre dolumu iki yerde yapılır: onun yanında
+  (`ws_approvals_autoclose()`) ve `ws_scheduled_run()`'ın başında
+  (`ws_approvals_run()`, `ws_acks_run()`). Hatırlatmalar yalnız bu turda
+  gider. Satır önce koşullu `UPDATE ... reminded_at` ile sahiplenildiği
+  için hatırlatma bir kez gider. `job.php` ve açık ekran turu yalnız
+  `ws_scheduled_due()` true iken başlattığından oraya iki indeksli
+  `LIMIT 1` okuma eklendi (`idx_due`, `idx_remind`; EXPLAIN: range,
+  rows 1).
+- Dokunulan yerler:
+  - `messages.php`: `approval`, `ack` ve `ack_can_request` ekstraları. Onay
+    isteği mesajı düzenlenemez; `ws_message_edit()` de reddeder.
+  - `actions.php` ve `api.php`: `ws_approval_create/decide/close`,
+    `ws_ack_request/ws_ack/ws_ack_people` eylemleri ve eski konuşma
+    sürümü koruması.
+  - `notify.php`: `approval_requested`, `approval_decided`,
+    `approval_reminder`, `ack_reminder`.
+  - `home.php`: `approvals`, `acks`. `pins.php`: sabit mesajın `ack`'i.
+    `guests.php`: salt okunur kart.
+  - `threads.php`: tartışma silinirken dört tablo temizlenir; kararın
+    kanaldaki kopyası kalır.
+  - `scheduled.php`: `approval` eylemi (girdi, metin, çalıştırma).
+    Çalışırken artık kanalda olmayan onaylayan atlanır; kimse kalmazsa
+    işlem başarısız olur.
+  - `screen.php`: metinler, `CFG.approvals/acks` ve iki yeni `<script>`.
+  - JS: `workspace_approvals.js` (`PGWsApprovals`: kart, form, Genel
+    Bakış, programlanmış işlem kutusu) ve `workspace_acks.js`
+    (`PGWsAcks`). `workspace.js`'te yalnız çağrı noktaları ve
+    `featureHelpers()` var.
+  - CSS: `.ws-approval-*`, `.ws-ack-*`.
+- Dış API: `GET /workspace/channels/{id}/approvals`;
+  `POST /workspace/channels/{id}/approvals` (workspace:write, dry-run;
+  mesaj uygulama adına düşer); `POST /workspace/approvals/{id}/decide`;
+  `POST /workspace/messages/{id}/ack`. Yeni `WorkspaceApproval` nesnesi
+  eklendi, mesaj nesnesine `ack {wanted,count,total,mine}` alanı girdi.
+  Olaylar `workspace.approval.requested` ve `workspace.approval.decided`
+  yalnız genel kanallarda duyurulur (anketin kuralı).
+
+**Kararlar ve ödünler.**
+- Karar verme ve okundu onayı API'de **yalnız cihaz oturumunda** (Bearer)
+  çalışır. Sunucu uygulaması (Basic) 403 `forbidden` alır: bir entegrasyon
+  sahibi adına onay veremez, "okudum" diyemez (mimar onayı).
+- Brief'teki şemaya `ws_approvals.reminded_at` eklendi; son tarihten bir
+  gün önceki hatırlatma bununla bir kez gider (mimar onayı). Ayrıca iki
+  dizin eklendi: genel vade okuması için `idx_due (closed_at, closes_at)`,
+  hatırlatma okuması için `ws_ack_requests.idx_remind (reminded_at,
+  requested_at)`.
+- Yeni ref türü eklenmedi. Kodda ERP teklifi ve gider etiketi yok;
+  `#teklif` öneki `offer`'a (kampanya/kupon) gider. Kart, mevcut kayıt
+  türlerinden etiketlenen ilk kaydı gösterir.
+- "Onaylanırsa → sonraki adım" zinciri yok (kapsam dışı).
+- Okundu sayımında yazan sayılmaz. Sayılan kimse yoksa etiket yeşile
+  dönmez.
+- İsteyen kişi kendini onaylayanlar arasına seçebilir; programlanmış
+  işlemde işlemi yazan yönetici de onaylayan olabilsin diye. Kişi kendine
+  bildirim almaz.
+
+**Denenenler.** Sandbox'ta (port 8004) iki şema adımı iki kez koşturuldu:
+ilk çalıştırma 4 tablo oluşturdu, ikincisi hepsi için "zaten var" dedi.
+Dört kullanıcıyla panel eylemleri ve dış API gerçek isteklerle denendi.
+Kart, form, okundu onayı, Genel Bakış ve programlanmış işlem kutusu başsız
+Chromium'la denendi. Ayrıntılar ve çıktılar mimarın raporunda.
+
+---
+
 ## 2026.4.8 — Sistem widget'larının mesaj düğümü adlandırıldı: hata kendi widget'ında çıkıyor (2026-10-09)
 
 **Sorun (şikâyet).** Hesabım sayfasında "Hesap Güvenliği" widget'ında yanlış
