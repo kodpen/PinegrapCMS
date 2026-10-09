@@ -3325,6 +3325,11 @@
             return current;
         };
 
+        box.set = function (value) {
+            current = parseInt(value, 10) || 0;
+            mark();
+        };
+
         return box;
     }
 
@@ -3627,6 +3632,18 @@
             body.insertBefore(el('div', 'alert alert-info small py-2', t('notes_channel_help')), body.firstChild);
         }
 
+        // A new channel can be made from a template
+        // (assets/js/workspace_templates.js): it suggests the fields above
+        // and is applied once the channel is made.
+        var template = null;
+
+        if (!channel && !defaults.note_id && window.PGWsTemplates && CFG.templates && CFG.templates.ready) {
+            template = window.PGWsTemplates.picker({ api: api }, function (picked) {
+                window.PGWsTemplates.suggest(picked, { name: name, kind: kind, department: dept, colors: colors });
+            });
+            body.insertBefore(template.node, body.firstChild);
+        }
+
         var save = button('btn btn-sm btn-primary rounded-pill px-3', channel ? t('save') : t('create_channel'), 'bi-check2');
         var cancel = button('btn btn-sm btn-ghost', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'offcanvas');
@@ -3669,6 +3686,10 @@
                     data.note_id = defaults.note_id;
                     request = api('ws_note_channel', data);
                 } else {
+                    if (template && template.value()) {
+                        data.template_id = template.value();
+                    }
+
                     request = api('ws_channel_create', data);
                 }
             }
@@ -3679,7 +3700,7 @@
                 if (result.warning) {
                     toast(result.warning, 'warning');
                 } else if (!defaults.note_id) {
-                    toast(channel ? t('channel_saved') : t('channel_created'), 'success');
+                    toast(result.notice || (channel ? t('channel_saved') : t('channel_created')), 'success');
                 }
 
                 if (onDone) {
@@ -6985,6 +7006,21 @@
 
             if (channel.can_group) {
                 item(t('grp_move_channel'), 'bi-folder-symlink', function () { self.pickGroupFor(channel); });
+            }
+
+            // Channel templates (assets/js/workspace_templates.js).
+            if (window.PGWsTemplates && CFG.templates && CFG.templates.ready && !self.era && (channel.kind === 'public' || channel.kind === 'private')) {
+                if (channel.can_post && !channel.archived) {
+                    item(t('tpl_apply'), 'bi-layout-text-window', function () {
+                        window.PGWsTemplates.applyDialog(channel, { api: api, toast: toast, fail: fail, done: function () { self.reloadChannels(channel.id); } });
+                    });
+                }
+
+                if (CFG.templates.manage) {
+                    item(t('tpl_from_channel'), 'bi-box-arrow-in-down', function () {
+                        window.PGWsTemplates.fromChannel(channel, { api: api, fail: fail });
+                    });
+                }
             }
 
             // Shared with somebody outside the team (guests.php).

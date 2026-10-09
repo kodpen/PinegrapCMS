@@ -14658,3 +14658,95 @@ button.ws-home-row:hover,
     color: var(--bs-warning-text-emphasis);
 }
 /* ── /Workspace ── */
+/* ── Workspace: channel templates (assets/js/workspace_templates.js) ── */
+.ws-tpl-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-tpl-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: .5rem;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+.ws-tpl-icon[style] {
+    color: #fff;
+}
+.ws-tpl-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: .5rem;
+}
+.ws-tpl-card {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .5rem .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    text-align: start;
+}
+.ws-tpl-card:hover {
+    border-color: var(--bs-primary-border-subtle);
+}
+.ws-tpl-card.active {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 .15rem var(--bs-primary-bg-subtle);
+}
+.ws-tpl-card-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.ws-tpl-card-name {
+    font-weight: 600;
+}
+.ws-tpl-card-desc,
+.ws-tpl-card-count {
+    font-size: .8125rem;
+    color: var(--bs-secondary-color);
+}
+.ws-tpl-item {
+    margin-bottom: .75rem;
+    padding: .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+}
+.ws-tpl-item-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.ws-tpl-item-n {
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+.ws-tpl-handle {
+    cursor: grab;
+}
+.ws-tpl-dragging {
+    opacity: .5;
+}
+.ws-tpl-after {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+}
+.ws-tpl-note-body {
+    font-family: var(--bs-font-monospace);
+    font-size: .8125rem;
+}
+.ws-tpl-rich {
+    min-height: 5rem;
+}

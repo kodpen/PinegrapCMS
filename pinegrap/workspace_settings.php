@@ -318,6 +318,13 @@ if ($_POST) {
             $anchor = '?feed=' . (int) ($_POST['feed_id'] ?? 0) . '#ws-feed-' . (int) ($_POST['feed_id'] ?? 0);
             break;
 
+        // Channel templates (includes/workspace/templates.php): archived or
+        // brought back; they are written on their own screen.
+        case 'template_archive':
+            ws_templates_settings_post($viewer, $liveform);
+            $anchor = '#ws-templates';
+            break;
+
         // Asking Claude in the channels (includes/workspace/claude.php).
         case 'claude':
         case 'claude_test':
@@ -566,6 +573,8 @@ pg_page_shell([
                     </div>
                 </div>
             </form>
+
+            ' . ws_templates_settings_card($self_url, $viewer) . '
 
             ' . ws_holidays_settings_card($self_url) . '
 
