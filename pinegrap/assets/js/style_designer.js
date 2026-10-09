@@ -9380,6 +9380,7 @@ const StyleDesigner = (function () {
                     account_profile:      _sdT('Account Profile'),
                     email_preferences:    _sdT('Email Preferences'),
                     address_book:         _sdT('Address Book'),
+                    account_security:     _sdT('Account Security'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -10965,6 +10966,20 @@ const StyleDesigner = (function () {
     }
 
     var _SD_HTML_PREVIEW_TOKENS = {
+        // The shape of the code pg_qr_svg() draws for the account security
+        // widget: three finder squares and a few modules. A sample, not a
+        // readable code; the page draws the real one.
+        '__mfa_qr': function () {
+            var f = function (x, y) {
+                return 'M' + x + ' ' + y + 'h7v7h-7zM' + (x + 1) + ' ' + (y + 1) + 'v5h5v-5zM' + (x + 2) + ' ' + (y + 2) + 'h3v3h-3z';
+            };
+            var dots = 'M9 1h1v1h-1zM11 3h2v1h-2zM9 6h1v2h-1zM8 9h3v1h-3zM12 10h1v3h-1zM15 9h2v1h-2zM18 11h1v2h-1z' +
+                       'M9 14h2v1h-2zM10 17h1v2h-1zM13 15h3v1h-3zM16 18h2v1h-2zM19 15h1v4h-1zM14 19h1v1h-1z';
+            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" width="200" height="200" class="d-block" shape-rendering="crispEdges"' +
+                   ' role="img" aria-label="' + esc(_sdT('QR code for the authenticator app')) + '">' +
+                   '<rect width="29" height="29" fill="#ffffff"/>' +
+                   '<path transform="translate(4 4)" fill-rule="evenodd" fill="#000000" d="' + f(0, 0) + f(14, 0) + f(0, 14) + dots + '"/></svg>';
+        },
         // Mirrors _pg_order_status_badge_class() — picks up the designer's own
         // class override so the canvas shows the colour they just chose.
         '__order_status_badge': function () {
@@ -24948,11 +24963,11 @@ const StyleDesigner = (function () {
                     _acRows += _acPage('forgot_password_page_id', _sdT('Forgot password page'), ['forgot_password'], _acAuto,
                         _sdT('Where a used or expired link sends the visitor to ask for a new email. Token: ^^__forgot_password_url^^'));
                 }
-                if (_regionType !== 'logout' && _regionType !== 'set_password') {
+                if (_regionType !== 'logout' && _regionType !== 'set_password' && _regionType !== 'account_security') {
                     _acRows += _acPage('my_account_page_id', _sdT('My account page'), ['my_account'], _acAuto,
                         _sdT('Token: ^^__my_account_url^^ — the link drops when there is none.'));
                 }
-                if (_regionType === 'account_profile' || _regionType === 'email_preferences' || _regionType === 'address_book') {
+                if (_regionType === 'account_profile' || _regionType === 'email_preferences' || _regionType === 'address_book' || _regionType === 'account_security') {
                     _acRows += _acPage('login_page_id', _sdT('Sign-in page'), ['login_form'], _acAuto,
                         _sdT('Linked for a visitor who is not signed in. Token: ^^__login_url^^'));
                     _acRows += row(_sdT('Signed-out message'),
@@ -24975,11 +24990,16 @@ const StyleDesigner = (function () {
                     set_password:      'new_password, password_hint',
                     account_profile:   'first_name, last_name, title, company, business_address_1, business_address_2, business_city, business_state, business_zip_code, business_country, business_phone, mobile_phone, home_phone, business_fax, salutation, suffix, tax_number, tax_office, timezone',
                     email_preferences: 'email_address, opt_in, contact_group_^^__group_id^^',
-                    address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number'
+                    address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number',
+                    account_security:  'code, current_password'
                 }[_regionType];
                 if (_acNames) {
                     _acRows += row(_sdT('Controls'),
                         _acHint(_sdT('The form reads its controls by name: {var}. A field you leave out keeps its stored value.', '<code>' + esc(_acNames) + '</code>')));
+                }
+                if (_regionType === 'account_security') {
+                    _acRows += row(_sdT('Forms'),
+                        _acHint(_sdT('Each block is its own form: a form element bound to the Account security form action, holding buttons bound to the action they take. A tree with no bound form is sent as one form.')));
                 }
                 systemSection += sect((_swTypeInfo(_regionType) || {}).icon || 'bi-person', _sdT('Account Page Settings'), _acRows);
             }
@@ -27425,6 +27445,36 @@ const StyleDesigner = (function () {
             ['__not_logged_in',          _sdT('Signed-out message')]
         ]}
     ];
+    // account_security token palette — mirrors
+    // _render_system_widget_account_security() in widgets_account.php.
+    var SW_ACCOUNT_SECURITY_TOKEN_GROUPS = [
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',                   _sdT('Site name')],
+            ['__device_count',                _sdT('Number of remembered devices')]
+        ]},
+        { label: _sdT('Device (loop_area)'), tokens: [
+            ['__device_label',                _sdT('Device (browser and system)')],
+            ['__device_user_agent',           _sdT('Browser identification, as sent')],
+            ['__device_ip',                   _sdT('IP address')],
+            ['__device_last_used',            _sdT('Last used (relative time)')],
+            ['__device_first_seen',           _sdT('First seen (date and time)')],
+            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')]
+        ]},
+        { label: _sdT('Two-step verification'), tokens: [
+            ['__mfa_status_text',             _sdT('Status sentence ("on since …, n recovery codes left")')],
+            ['__mfa_enabled_since',           _sdT('Turned on (date)')],
+            ['__mfa_recovery_remaining',      _sdT('Recovery codes left')],
+            ['__mfa_key',                     _sdT('Key to add by hand (groups of four)')],
+            ['__mfa_key_uri',                 _sdT('Key link (otpauth://)')],
+            ['__mfa_qr',                      _sdT('QR code of the key (HTML)')],
+            ['__recovery_codes',              _sdT('New recovery codes (one per line)')],
+            ['__recovery_codes_download_url', _sdT('Download the recovery codes (href)')]
+        ]},
+        { label: _sdT('Signed Out'), tokens: [
+            ['__login_url',                   _sdT('Sign-in page address (signed-out view)')],
+            ['__not_logged_in',               _sdT('Signed-out message')]
+        ]}
+    ];
     // error_page token palette — mirrors _render_system_widget_error_page()
     // in widgets_error.php. One screen, no loop.
     var SW_ERROR_PAGE_TOKEN_GROUPS = [
@@ -27509,7 +27559,8 @@ const StyleDesigner = (function () {
         set_password:      SW_SET_PASSWORD_TOKEN_GROUPS,
         account_profile:   SW_ACCOUNT_PROFILE_TOKEN_GROUPS,
         email_preferences: SW_EMAIL_PREFERENCES_TOKEN_GROUPS,
-        address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS
+        address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
+        account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -28337,6 +28388,30 @@ const StyleDesigner = (function () {
             ['is_editing',     _sdT('A recipient is being edited (?id=)')],
             ['is_adding',      _sdT('A new recipient is being added')]
         ],
+        account_security: [
+            ['is_signed_in',        _sdT('The visitor is signed in')],
+            ['is_signed_out',       _sdT('The visitor is signed out')],
+            ['is_impersonated',     _sdT('Signed in as this member by an operator (two-step verification is read only)')],
+            ['has_google',          _sdT('The account is connected to Google')],
+            ['has_password',        _sdT('The account has a password')],
+            ['password_not_set',    _sdT('The account has no password yet (signs in with Google)')],
+            ['has_devices',         _sdT('There are remembered devices')],
+            ['no_devices',          _sdT('There are no remembered devices')],
+            ['device_is_current',   _sdT('Row: this browser')],
+            ['device_online',       _sdT('Row: used in the last five minutes')],
+            ['device_offline',      _sdT('Row: not used in the last five minutes')],
+            ['device_is_locked',    _sdT('Row: locked by the site owner')],
+            ['device_can_sign_out', _sdT('Row: can be signed out here')],
+            ['mfa_ready',           _sdT('Two-step verification is installed on the site')],
+            ['mfa_off',             _sdT('Two-step verification is off')],
+            ['mfa_no_key',          _sdT('It is off and cannot be turned on (no encryption key)')],
+            ['mfa_pending',         _sdT('A key is being set up')],
+            ['mfa_codes',           _sdT('New recovery codes are shown')],
+            ['mfa_on',              _sdT('Two-step verification is on')],
+            ['mfa_key_unreadable',  _sdT('It is on but the key cannot be read (recovery codes only)')],
+            ['mfa_can_regenerate',  _sdT('New recovery codes can be made')],
+            ['mfa_required',        _sdT('The member\'s role requires two-step verification')]
+        ],
         cart_link: [
             ['cart_has_items',   _sdT('The cart has something in it')],
             ['cart_is_empty',    _sdT('The cart is empty')]
@@ -28416,6 +28491,17 @@ const StyleDesigner = (function () {
             if (region === 'search_results') {
                 aOpts.push(['submit_search',       _sdT('Submit the Search')]);
             }
+            if (region === 'account_security') {
+                aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
+                aOpts.push(['revoke_device',           _sdT('Sign out this device (loop_area)')]);
+                aOpts.push(['logout_all',              _sdT('Sign out of all devices')]);
+                aOpts.push(['mfa_begin',               _sdT('Turn on two-step verification')]);
+                aOpts.push(['mfa_confirm',             _sdT('Confirm the key and turn on')]);
+                aOpts.push(['mfa_cancel_setup',        _sdT('Cancel the setup')]);
+                aOpts.push(['mfa_codes_seen',          _sdT('Recovery codes saved')]);
+                aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
+                aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
+            }
             out += mkSelect('data-bind-action', cur.action || '', aOpts, _sdT('Action'),
                 _sdT('The backend wires up the submit or anchor behaviour and ignores conflicting values such as href.'));
         }
@@ -28425,6 +28511,7 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart')        fOpts.push(['coupon_form', _sdT('Offer Code Form (shopping_cart)')]);
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
+            else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
             out += mkSelect('data-bind-action', cur.action || '', fOpts, _sdT('Form action'),
                 _sdT('The backend adds the right action / method values and the hidden fields.'));
         }
@@ -38958,13 +39045,14 @@ const StyleDesigner = (function () {
         { type: 'set_password',      label: _sdT('Set Password'),      slug: _sdT('set-password'),      icon: 'bi-unlock' },
         { type: 'email_preferences', label: _sdT('Email Preferences'), slug: _sdT('email-preferences'), icon: 'bi-envelope-paper' },
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
+        { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
         { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
-    var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1 };
+    var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
     var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1 };
@@ -39051,7 +39139,7 @@ const StyleDesigner = (function () {
             if (cfg.number_of_upcoming_events === undefined) cfg.number_of_upcoming_events = 10;
         } else if (newType === 'calendar_event_view') {
             if (cfg.not_found_message === undefined) cfg.not_found_message = _sdT('The requested calendar event could not be found.');
-        } else if (newType === 'account_profile' || newType === 'email_preferences' || newType === 'address_book') {
+        } else if (newType === 'account_profile' || newType === 'email_preferences' || newType === 'address_book' || newType === 'account_security') {
             if (cfg.not_logged_in_message === undefined) cfg.not_logged_in_message = _sdT('You must be logged in to view this page.');
             if (newType === 'address_book' && cfg.address_type === undefined) cfg.address_type = false;
         } else if (newType === 'search_results') {
@@ -42434,6 +42522,152 @@ const StyleDesigner = (function () {
                                 _bindings: { href: '__add_url', eo_visible_if: 'is_editing' } }),
                             createNode('content', { contentType: 'link', text: _sdT('Back to my account'), href: '#', cssClass: '',
                                 _bindings: { href: '__my_account_url' } })
+                        ])
+                    ]),
+                    _swAcctSignedOut()
+                ], true);
+            }
+
+            case 'account_security': {
+                // The member's Google connection, remembered devices and
+                // two-step verification. Every block is its own form bound to
+                // account_security_form and its buttons to the action they
+                // take: a required code holds back only its own form, and
+                // Enter in a field submits that form's button. Mirrors
+                // _render_system_widget_account_security().
+                var asId = 'f_' + Math.random().toString(36).slice(2, 7);
+                var asForm = function (name, flag, css, kids) {
+                    var b = { action: 'account_security_form' };
+                    if (flag) b.eo_visible_if = flag;
+                    return createNode('semantic', { tag: 'form', cssClass: css || '', customName: name, _bindings: b }, kids);
+                };
+                var asButton = function (text, action, css, name) {
+                    return createNode('semantic', { tag: 'button', cssClass: css, text: text, customName: name,
+                        _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: action } });
+                };
+                var asCode = function (label, suffix) {
+                    return _swAcctField(label, asId + suffix, 'text', 'code', { required: true, autocomplete: 'one-time-code',
+                        attrs: [{ name: 'inputmode', value: 'numeric' }, { name: 'maxlength', value: '20' }, { name: 'spellcheck', value: 'false' }] });
+                };
+                var asDevice = createNode('loop_area', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group-item d-flex justify-content-between align-items-center gap-3', customName: _sdT('Device') }, [
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Device Info') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Device Name') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Chrome on Windows'), customName: _sdT('Device Label'),
+                                    _bindings: { text: '__device_label' } }),
+                                createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-success fw-normal', text: _sdT('This device'), customName: _sdT('This Device Badge'),
+                                    _bindings: { eo_visible_if: 'device_is_current' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-muted d-flex flex-wrap align-items-center gap-2', customName: _sdT('Device Details') }, [
+                                createNode('semantic', { tag: 'span', cssClass: '', text: '203.0.113.7', customName: _sdT('IP Address'),
+                                    _bindings: { text: '__device_ip' } }),
+                                createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-success fw-normal', text: _sdT('Online'), customName: _sdT('Online Badge'),
+                                    _bindings: { eo_visible_if: 'device_online' } }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('2 days ago'), customName: _sdT('Last Used'),
+                                    _bindings: { text: '__device_last_used', eo_visible_if: 'device_offline' } })
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0', customName: _sdT('Device Action') }, [
+                            createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Sign out'), customName: _sdT('Sign Out Button'),
+                                _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'revoke_device', eo_visible_if: 'device_can_sign_out' } }),
+                            createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-secondary fw-normal', text: _sdT('Locked'), customName: _sdT('Locked Badge'),
+                                _bindings: { eo_visible_if: 'device_is_locked' } })
+                        ])
+                    ])
+                ]);
+                return _swAcctPage(_sdT('Account Security Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Sign-in and devices'), cssClass: 'card-title mb-3' }),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Account Security'),
+                        _bindings: { eo_visible_if: 'is_signed_in' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Google'),
+                            _bindings: { eo_visible_if: 'has_google' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Sign in with Google'), cssClass: 'mb-2' }),
+                            asForm(_sdT('Google Form'), 'has_password', 'd-flex flex-wrap align-items-center gap-3', [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('This account is connected to Google.'), cssClass: 'mb-0' }),
+                                asButton(_sdT('Disconnect Google'), 'unlink_google', 'btn btn-sm btn-outline-secondary', _sdT('Disconnect Button'))
+                            ]),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mb-0',
+                                text: _sdT('This account signs in with Google. To disconnect Google, set a password first with Forgot Password, otherwise you would lose access.'),
+                                _bindings: { eo_visible_if: 'password_not_set' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Devices') }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Remembered devices'), cssClass: 'mb-2' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('No remembered devices.'), cssClass: 'text-muted mb-0',
+                                _bindings: { eo_visible_if: 'no_devices' } }),
+                            asForm(_sdT('Devices Form'), 'has_devices', '', [
+                                createNode('semantic', { tag: 'div', cssClass: 'list-group mb-3', customName: _sdT('Device List') }, [asDevice]),
+                                asButton(_sdT('Sign out of all devices'), 'logout_all', 'btn btn-sm btn-outline-danger', _sdT('Sign Out All Button'))
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'border-top pt-4', customName: _sdT('Two-step verification'),
+                            _bindings: { eo_visible_if: 'mfa_ready' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Two-step verification'), cssClass: 'mb-2' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Two-step verification is on.'), cssClass: 'mb-0',
+                                _bindings: { text: '__mfa_status_text', eo_visible_if: 'is_impersonated' } }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'text-muted mb-0',
+                                text: _sdT('Two-step verification cannot be turned on because the site has no encryption key. Please ask the site owner.'),
+                                _bindings: { eo_visible_if: 'mfa_no_key' } }),
+                            asForm(_sdT('Turn On Form'), 'mfa_off', '', [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('Add a second step to your sign-in: after your password, a code from an authenticator app on your phone.'), cssClass: 'mb-3' }),
+                                asButton(_sdT('Turn on two-step verification'), 'mfa_begin', 'btn btn-primary', _sdT('Turn On Button'))
+                            ]),
+                            asForm(_sdT('Setup Form'), 'mfa_pending', '', [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.'), cssClass: 'mb-3' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'd-inline-block border rounded p-2 mb-3 bg-white', customName: _sdT('QR Code'),
+                                    _bindings: { text: '__mfa_qr' } }),
+                                createNode('content', { contentType: 'paragraph', text: _sdT('If you cannot scan it, add the key by hand:'), cssClass: 'mb-1' }),
+                                createNode('semantic', { tag: 'p', cssClass: 'mb-1', customName: _sdT('Key') }, [
+                                    createNode('semantic', { tag: 'code', cssClass: 'fs-5 user-select-all', text: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP', customName: _sdT('Key Text'),
+                                        _bindings: { text: '__mfa_key' } })
+                                ]),
+                                createNode('semantic', { tag: 'p', cssClass: 'small text-break mb-3', customName: _sdT('Key link') }, [
+                                    createNode('semantic', { tag: 'code', cssClass: 'user-select-all', text: 'otpauth://totp/ACME:jane.cooper%40example.com?secret=JBSWY3DPEHPK3PXP', customName: _sdT('Key Link Text'),
+                                        _bindings: { text: '__mfa_key_uri' } })
+                                ]),
+                                asCode(_sdT('Code from your authenticator app'), '_setup'),
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2', customName: _sdT('Buttons') }, [
+                                    asButton(_sdT('Confirm and turn on'), 'mfa_confirm', 'btn btn-primary', _sdT('Confirm Button')),
+                                    asButton(_sdT('Cancel'), 'mfa_cancel_setup', 'btn btn-outline-secondary', _sdT('Cancel Button'))
+                                ])
+                            ]),
+                            asForm(_sdT('Recovery Codes Form'), 'mfa_codes', '', [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.'), cssClass: 'mb-3' }),
+                                createNode('semantic', { tag: 'pre', cssClass: 'border rounded p-3 mb-3 text-center fs-5', text: 'ABCD-EFGH\nJKLM-NPQR\nSTUV-WXYZ', customName: _sdT('Recovery Codes'),
+                                    _bindings: { text: '__recovery_codes' } }),
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2', customName: _sdT('Buttons') }, [
+                                    createNode('content', { contentType: 'link', text: _sdT('Download'), href: '#', cssClass: 'btn btn-outline-secondary',
+                                        _attrs: [{ name: 'download', value: 'recovery-codes.txt' }],
+                                        _bindings: { href: '__recovery_codes_download_url' } }),
+                                    asButton(_sdT('I have saved them'), 'mfa_codes_seen', 'btn btn-primary', _sdT('Saved Button'))
+                                ])
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Two-Step On'),
+                                _bindings: { eo_visible_if: 'mfa_on' } }, [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('Two-step verification is on since 01.10.2026. 10 recovery codes left.'), cssClass: 'mb-3',
+                                    _bindings: { text: '__mfa_status_text' } }),
+                                createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-3',
+                                    text: _sdT('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.'),
+                                    _bindings: { eo_visible_if: 'mfa_key_unreadable' } }),
+                                asForm(_sdT('New Codes Form'), 'mfa_can_regenerate', 'mb-4', [
+                                    createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('New recovery codes'), cssClass: 'mb-2' }),
+                                    asCode(_sdT('Code from your authenticator app'), '_regen'),
+                                    asButton(_sdT('New recovery codes'), 'mfa_recovery_regenerate', 'btn btn-outline-secondary', _sdT('New Codes Button'))
+                                ]),
+                                asForm(_sdT('Turn Off Form'), '', '', [
+                                    createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Turn off'), cssClass: 'mb-2' }),
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Turning it off also signs out your other devices.'), cssClass: 'mb-2' }),
+                                    createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mb-3',
+                                        text: _sdT('Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.'),
+                                        _bindings: { eo_visible_if: 'mfa_required' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Current password'),
+                                        _bindings: { eo_visible_if: 'has_password' } }, [
+                                        _swAcctField(_sdT('Current password'), asId + '_password', 'password', 'current_password',
+                                            { required: true, autocomplete: 'current-password' })
+                                    ]),
+                                    asCode(_sdT('Code from your authenticator app or a recovery code'), '_off'),
+                                    asButton(_sdT('Turn off'), 'mfa_disable', 'btn btn-outline-danger', _sdT('Turn Off Button'))
+                                ])
+                            ])
                         ])
                     ]),
                     _swAcctSignedOut()

@@ -25,6 +25,16 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] "Hesap Güvenliği" sistem widget'ı: üyenin Google
+         bağlantısı, hatırlanan cihazları (tek tek ya da hepsinden
+         çıkış) ve iki adımlı doğrulaması (QR koduyla açma, kurtarma
+         kodları, yeni kodlar, parola ve kodla kapatma) tasarımcıyla
+         kurulan sitelerde de hesap sayfasında görünür. Her blok
+         kendi formudur; kod alanında Enter yalnız o bloğun
+         düğmesine gider. "Pinegrap'a merhaba deyin", Boutique,
+         Bookshop ve Online Mağaza şablonlarında Hesabım sayfasına
+         eklendi (bu şablonlarla yeni açılan tasarımlarda).
+
   [YENİ] Üç yeni tasarım şablonu. Playground: eğlenceli bir
          kişisel site; herkesin yorum yapabildiği bir blog,
          yeni merhabaları bir duvarda gösteren ziyaretçi

@@ -1248,7 +1248,7 @@ $pages[] = array(
     'title'   => lang('My Account'),
     'search'  => false,
     'sitemap' => false,
-    'tree'    => $page(array($widget('my_account')), false),
+    'tree'    => $page(array($widget('my_account'), $widget('account_security')), false),
 );
 $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profile'), 'profile'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
@@ -1713,6 +1713,14 @@ $widgets = array(
         'config' => array('regionType' => 'email_preferences', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'   => 'starter',
     ),
+    // Google connection, remembered devices and two-step verification,
+    // under the account overview on the same page.
+    'account_security' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('security'),
+        'config' => array('regionType' => 'account_security', 'login_page_id' => '{{tab:login}}'),
+        'tree'   => 'starter',
+    ),
     'address_book' => array(
         'page'     => 'address_book',
         'requires' => 'ecommerce',
@@ -1953,7 +1961,7 @@ $catalog = array(
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

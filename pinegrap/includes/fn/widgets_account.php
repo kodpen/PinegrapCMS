@@ -9,9 +9,9 @@
  */
 
 // A module of functions.php: the account system widgets - logout, change
-// password, set password, profile, email preferences and address book - the
-// designed pages that stand in for the legacy page types, and the login
-// region a site header carries.
+// password, set password, profile, email preferences, address book and
+// account security - the designed pages that stand in for the legacy page
+// types, and the login region a site header carries.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -994,6 +994,267 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
         '__add_url'         => h($self),
         '__my_account_url'  => h($account_url),
     ));
+}
+
+// ============================================================================
+// account_security
+// ============================================================================
+
+// The actions an account security button can carry: the pg_security_action
+// values account_security.php reads.
+function pg_sw_account_security_actions()
+{
+    return array('logout_all', 'unlink_google', 'revoke_device', 'mfa_begin', 'mfa_confirm',
+        'mfa_cancel_setup', 'mfa_codes_seen', 'mfa_recovery_regenerate', 'mfa_disable');
+}
+
+// Wire the account security widget from its bindings. Every block is its own
+// form, so a required code field only holds back the form it is in and Enter
+// in a field submits that form's own button:
+//   form   _bindings.action = 'account_security_form' -> POST to
+//          account_security.php with the CSRF token and return_to
+//   button _bindings.action = a pg_sw_account_security_actions() value -> a
+//          submit button carrying it; revoke_device carries the row's device
+//          as pg_revoke_device, since a button holds one name and one value
+// The wiring attributes are rewritten from the binding whatever the node
+// carries. $found counts the bound forms.
+function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
+{
+    if (!is_array($node)) return;
+    $b      = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    $type   = isset($node['type']) ? $node['type'] : '';
+    $tag    = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    $action = isset($b['action']) ? (string)$b['action'] : '';
+
+    $set_attrs = function (&$n, $managed, $add) {
+        $kept = array();
+        foreach ((isset($n['props']['_attrs']) && is_array($n['props']['_attrs'])) ? $n['props']['_attrs'] : array() as $a) {
+            if (is_array($a) && isset($a['name']) && !isset($managed[strtolower((string)$a['name'])])) $kept[] = $a;
+        }
+        foreach ($add as $name => $value) $kept[] = array('name' => $name, 'value' => $value);
+        $n['props']['_attrs'] = $kept;
+    };
+
+    if ($type === 'semantic' && $tag === 'form' && $action === 'account_security_form') {
+        $found++;
+        $set_attrs($node, array('action' => 1, 'method' => 1, 'novalidate' => 1),
+            array('action' => $ctx['action_url'], 'method' => 'post', 'novalidate' => ''));
+        $classes = preg_split('/\s+/', trim((string)(isset($node['props']['cssClass']) ? $node['props']['cssClass'] : '')), -1, PREG_SPLIT_NO_EMPTY);
+        foreach (array('needs-validation', 'pg-cf-form', 'pg-account-security-form') as $c) {
+            if (!in_array($c, $classes, true)) $classes[] = $c;
+        }
+        $node['props']['cssClass'] = implode(' ', $classes);
+        if (!isset($node['children']) || !is_array($node['children'])) $node['children'] = array();
+        array_unshift($node['children'], array('type' => 'content',
+            'props' => array('contentType' => 'custom_html', 'html' => $ctx['hidden_html']), 'children' => array()));
+    } elseif ($action !== '' && in_array($action, pg_sw_account_security_actions(), true)) {
+        $add = ($action === 'revoke_device')
+            ? array('name' => 'pg_revoke_device', 'value' => '^^__device_selector^^')
+            : array('name' => 'pg_security_action', 'value' => $action);
+        // Cancelling a setup needs no code.
+        if ($action === 'mfa_cancel_setup') $add['formnovalidate'] = '';
+        $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'formnovalidate' => 1);
+        if ($type === 'semantic' && $tag === 'button') {
+            $set_attrs($node, $managed, array_merge(array('type' => 'submit'), $add));
+        } elseif ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn') {
+            $node['props']['btnElement'] = 'button';
+            $node['props']['btnType']    = 'submit';
+            $set_attrs($node, $managed, $add);
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) _pg_sec_apply_action_bindings($child, $ctx, $found);
+        unset($child);
+    }
+}
+
+// Render an 'account_security' system widget: the signed-in member's Google
+// connection, remembered devices and two-step verification - the designed
+// counterpart of pg_account_security_section(). Each block is a form bound
+// with _bindings.action = 'account_security_form' posting to
+// account_security.php; its buttons are bound to the action they take (see
+// _pg_sec_apply_action_bindings()). return_to brings every action back here.
+// A tree with no bound form is wrapped whole in one form, so its buttons
+// still post.
+//
+// Controls by name: code (a TOTP or recovery code), current_password.
+//
+// loop_area: one row per remembered device. Row tokens: ^^__device_label^^,
+// ^^__device_user_agent^^, ^^__device_ip^^, ^^__device_last_used^^,
+// ^^__device_first_seen^^, ^^__device_selector^^. Row flags:
+// device_is_current, device_online, device_offline, device_is_locked,
+// device_can_sign_out.
+//
+// Visibility flags: is_signed_in, is_signed_out, is_impersonated, has_google,
+// has_password, password_not_set, has_devices, no_devices, mfa_ready,
+// mfa_off, mfa_no_key, mfa_pending, mfa_codes, mfa_on, mfa_key_unreadable,
+// mfa_can_regenerate, mfa_required. Tokens: ^^__site_name^^,
+// ^^__device_count^^, ^^__mfa_status_text^^, ^^__mfa_enabled_since^^,
+// ^^__mfa_recovery_remaining^^, ^^__mfa_key^^, ^^__mfa_key_uri^^,
+// ^^__mfa_qr^^ (inline SVG), ^^__recovery_codes^^,
+// ^^__recovery_codes_download_url^^, ^^__login_url^^, ^^__not_logged_in^^.
+// Errors: liveform 'my_account_profile', where account_security.php puts the
+// two-step ones.
+// cfg: login_page_id, not_logged_in_message.
+function _render_system_widget_account_security($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    $widget_id = (int)$widget_id;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    $user_id = (int)(isset($_SESSION['sessionuserid']) ? $_SESSION['sessionuserid'] : 0);
+    if (!_pg_acct_signed_in() || $user_id <= 0) {
+        $sec_no_state = array(
+            'is_signed_in' => false, 'is_signed_out' => true, 'is_impersonated' => false,
+            'has_google' => false, 'has_password' => false, 'password_not_set' => false,
+            'has_devices' => false, 'no_devices' => false, 'mfa_ready' => false,
+        );
+        return _pg_acct_render_signed_out($tree, $cfg, $sec_no_state, array(), 'my_account_profile');
+    }
+
+    $self         = function_exists('get_request_uri') ? (string)get_request_uri() : '';
+    $impersonated = !empty($_SESSION['software']['logged_in_as_different_user']);
+    $user         = db_item("SELECT user_username, user_email, user_google_id, user_password_algo FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
+    if (!is_array($user)) $user = array('user_username' => '', 'user_email' => '', 'user_google_id' => '', 'user_password_algo' => 0);
+    $algo       = (int)$user['user_password_algo'];
+    $has_google = (string)$user['user_google_id'] !== '';
+
+    // This browser's own token, to mark "this device".
+    $current_selector = '';
+    if (isset($_COOKIE['software']['auth'])) {
+        $auth_parts = explode(':', (string)$_COOKIE['software']['auth'], 2);
+        $current_selector = (string)$auth_parts[0];
+    }
+    $pin_column = function_exists('pg_auth_tokens_have_pin') && pg_auth_tokens_have_pin();
+    $devices = (array)db_items(
+        "SELECT selector, user_agent, ip_address, created_at, last_used_at" . ($pin_column ? ", pinned" : "") . "
+         FROM auth_tokens WHERE user_id = '" . $user_id . "'
+         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC");
+
+    // Two-step verification: the same states pg_mfa_account_section() draws.
+    // An operator signed in as this person sees the state and nothing to
+    // press; fresh recovery codes come before every other state.
+    $mfa_ready = pg_mfa_table_exists();
+    $available = $mfa_ready && pg_mfa_available();
+    $enabled   = $mfa_ready && pg_mfa_enabled($user_id);
+    $live      = $mfa_ready && !$impersonated;
+    $codes     = isset($_SESSION['software']['mfa_codes_show']) ? $_SESSION['software']['mfa_codes_show'] : null;
+    $codes     = ($live && is_array($codes)) ? array_values(array_map('strval', $codes)) : array();
+    $show_codes = count($codes) > 0;
+    $row       = $mfa_ready ? pg_mfa_row($user_id) : null;
+    $secret    = '';
+    if ($live && !$show_codes && !$enabled && $available && $row !== null
+        && (string)$row['pending_secret'] !== ''
+        && (time() - (int)$row['pending_at']) <= pg_mfa_setup_lifetime()) {
+        $secret = pg_mfa_secret_decode($row['pending_secret']);
+    }
+    $pending = ($secret !== '');
+    $mfa_on  = $live && !$show_codes && $enabled;
+
+    $status_text = '';
+    $since       = '';
+    $remaining   = '';
+    if ($impersonated && $mfa_ready) {
+        $status_text = lang(array('string' => 'Two-step verification is {var:1}.', 'vars' => array($enabled ? lang('on') : lang('off'))));
+    } elseif ($mfa_on && is_array($row)) {
+        // get_absolute_time() wraps the date in a <time> element; the token
+        // carries the text alone.
+        $since     = strip_tags(get_absolute_time(array('timestamp' => (int)$row['enabled_at'], 'type' => 'date')));
+        $remaining = (string)pg_mfa_recovery_remaining($user_id);
+        $status_text = lang(array(
+            'string' => 'Two-step verification is on since {var:1}. {var:2} recovery codes left.',
+            'vars'   => array($since, $remaining)));
+    }
+
+    $key_uri = $pending
+        ? pg_totp_uri(pg_mfa_issuer(), ((string)$user['user_email'] !== '') ? (string)$user['user_email'] : (string)$user['user_username'], $secret)
+        : '';
+    // Drawn here as inline SVG, so the key is never part of an image URL.
+    $qr = $pending ? pg_qr_svg($key_uri, 200, array('label' => lang('QR code for the authenticator app'), 'class' => 'd-block')) : '';
+    $codes_text = implode("\n", $codes);
+    $codes_download = $show_codes ? 'data:text/plain;charset=utf-8,' . rawurlencode($codes_text . "\n") : '';
+
+    $found = 0;
+    _pg_sec_apply_action_bindings($tree, array(
+        'action_url'  => _pg_acct_software_path() . '/account_security.php',
+        'hidden_html' => get_token_field() . '<input type="hidden" name="return_to" value="' . h($self) . '">',
+    ), $found);
+    _pg_member_drop_empty_links($tree, array('__recovery_codes_download_url' => $codes_download, '__login_url' => ''));
+    pg_cf_link_labels($tree);
+    _pg_inject_messages_node($tree, 'my_account_profile');
+
+    $split = _split_widget_tree($tree);
+    _eo_apply_visibility_bindings($split['static_tree'], array(
+        'is_signed_in'       => true,
+        'is_signed_out'      => false,
+        'is_impersonated'    => $impersonated,
+        'has_google'         => $has_google,
+        'has_password'       => $algo !== 3,
+        'password_not_set'   => $algo === 3,
+        'has_devices'        => count($devices) > 0,
+        'no_devices'         => count($devices) === 0,
+        'mfa_ready'          => $mfa_ready,
+        'mfa_off'            => $live && !$show_codes && !$enabled && $available && !$pending,
+        'mfa_no_key'         => $live && !$show_codes && !$enabled && !$available,
+        'mfa_pending'        => $pending,
+        'mfa_codes'          => $show_codes,
+        'mfa_on'             => $mfa_on,
+        'mfa_key_unreadable' => $mfa_on && !$available,
+        'mfa_can_regenerate' => $mfa_on && $available,
+        'mfa_required'       => $mfa_on && pg_mfa_required_for_user($user_id),
+    ));
+
+    $rows = '';
+    if ($split['loop_children'] !== null) {
+        $row_tree = array('type' => 'root', 'props' => array(), 'children' => $split['loop_children']);
+        foreach ($devices as $i => $d) {
+            $fresh  = max((int)$d['last_used_at'], (int)$d['created_at']);
+            $locked = $pin_column && isset($d['pinned']) && (int)$d['pinned'] === 1;
+            $sec_row_flags = array(
+                'device_is_current'   => $current_selector !== '' && hash_equals((string)$d['selector'], $current_selector),
+                'device_online'       => (time() - $fresh) < 300,
+                'device_offline'      => (time() - $fresh) >= 300,
+                'device_is_locked'    => $locked,
+                'device_can_sign_out' => !$locked,
+            );
+            $t = $row_tree;
+            _eo_apply_visibility_bindings($t, $sec_row_flags);
+            $html = '';
+            foreach ($t['children'] as $child) $html .= _render_tree_node($child, 0, 0);
+            $html = _pg_sw_fill_tokens($html, pg_sw_escape_token_values(array(
+                '__device_label'      => pg_user_agent_label($d['user_agent']),
+                '__device_user_agent' => trim((string)$d['user_agent']),
+                '__device_ip'         => (string)$d['ip_address'],
+                '__device_last_used'  => strip_tags(get_relative_time(array('timestamp' => $fresh))),
+                '__device_first_seen' => date('Y-m-d H:i', (int)$d['created_at']),
+                '__device_selector'   => (string)$d['selector'],
+            )));
+            $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, (int)$i + 1);
+        }
+    }
+    $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
+
+    if ($found > 0) {
+        $rendered .= pg_cf_validation_script();
+    } else {
+        $rendered = _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/account_security.php',
+            array('return_to' => $self), 'pg-account-security-form');
+    }
+
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values(array(
+        '__site_name'                   => _pg_member_site_name(),
+        '__device_count'                => (string)count($devices),
+        '__mfa_status_text'             => $status_text,
+        '__mfa_enabled_since'           => $since,
+        '__mfa_recovery_remaining'      => $remaining,
+        '__mfa_key'                     => $pending ? pg_mfa_format_secret($secret) : '',
+        '__mfa_key_uri'                 => $key_uri,
+        '__mfa_qr'                      => $qr,
+        '__recovery_codes'              => $codes_text,
+        '__recovery_codes_download_url' => $codes_download,
+    ), array('__mfa_qr')));
 }
 
 // ============================================================================

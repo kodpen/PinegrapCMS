@@ -72,6 +72,114 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — "Hesap Güvenliği" sistem widget'ı (`account_security`): cihazlar, Google, iki adımlı doğrulama; dört şablonda Hesabım sayfasında (2026-10-08)
+
+**Sorun.** Görsel tasarımcıyla kurulan sitelerde üyenin cihaz / Google / iki
+adımlı doğrulama bölümü yoktu: legacy sayfada `pg_account_security_section()`
+var, widget tarafında karşılığı yoktu (2FA bölümündeki "Açık" maddesi).
+
+**Karar (ürün sahibi).** Ayrı bir sistem widget'ı geliştirilir ve tasarım
+şablonlarında Hesabım sayfasına (`my_account` widget'ının altına) konur.
+Üyenin kendi hesabında 2FA açma/kapatma ve Google bağlantısı bu widget'tan
+yürür; kapatma parola + kod ister (panel yolu ayrı, yöneticiye özel).
+Tuvalde tüm durum blokları birlikte görünür (durum çipi yok); aynı sayfadaki
+`my_account` widget'ının adsız mesaj düğümüne dokunulmadı.
+
+**Çözüm.**
+- `includes/fn/widgets_account.php` `_render_system_widget_account_security()`
+  (dispatch `designer.php` `$account_renderers`). Durumlar legacy
+  `pg_mfa_account_section()` ile aynı; ölçüt legacy çıktısıdır.
+- **Blok başına form, bağlamayla.** Tek form sarmalayıcı + düğmelerde
+  ad/değer kalıbı kullanılmadı: `pg_cf_validation_script()` formun tamamına
+  `checkValidity()` uyguladığı için zorunlu bir kod ya da parola alanı
+  "Çıkış yap", "Google bağlantısını kes", "Vazgeç" gibi düğmeleri de
+  durdururdu; kod alanında Enter formdaki ilk submit'i (ağaçta önce gelen
+  Google ya da cihaz düğmesi) çalıştırırdı; açık durumda iki eylem kod istiyor.
+  Ağaçta `semantic form` düğümleri `_bindings.action = 'account_security_form'`
+  taşır (sunucu: `account_security.php`, POST, `novalidate`,
+  `needs-validation pg-cf-form`, CSRF, `return_to`); düğmeler
+  `_bindings.action` ile eylemlerine bağlanır (`unlink_google`,
+  `revoke_device`, `logout_all`, `mfa_begin`, `mfa_confirm`,
+  `mfa_cancel_setup`, `mfa_codes_seen`, `mfa_recovery_regenerate`,
+  `mfa_disable`); `type/name/value` bağlamadan zorla yazılır
+  (`_pg_sec_apply_action_bindings()`, emsal arama formu). Bağlı form hiç
+  yoksa çıktının tamamı tek forma sarılır. Editörde `_sdBindingActionRows()`
+  form ve düğme seçenekleri.
+- `pg_cf_validation_script()`: `formnovalidate` taşıyan düğme (zorunlu kod
+  alanının yanındaki "Vazgeç") doğrulamasız gönderir — tarayıcının kendi
+  davranışı; betik bunu bilmiyordu.
+- Bayraklar: `is_signed_in/out`, `is_impersonated` (2FA salt okunur),
+  `has_google`, `has_password` / `password_not_set` (change_password ile aynı
+  adlar), `has_devices` / `no_devices`, `mfa_ready` (tablolar var), `mfa_off`,
+  `mfa_no_key`, `mfa_pending`, `mfa_codes`, `mfa_on`, `mfa_key_unreadable`,
+  `mfa_can_regenerate`, `mfa_required`; cihaz satırı (satır başına ağaç
+  kopyasına `_eo_apply_visibility_bindings()`): `device_is_current`,
+  `device_online`, `device_offline`, `device_is_locked`,
+  `device_can_sign_out`.
+- Token'lar: `__site_name`, `__device_count`; satır `__device_label`,
+  `__device_user_agent`, `__device_ip`, `__device_last_used`,
+  `__device_first_seen`, `__device_selector`; 2FA `__mfa_status_text`
+  (legacy cümlesi), `__mfa_enabled_since`, `__mfa_recovery_remaining`,
+  `__mfa_key`, `__mfa_key_uri`, `__mfa_qr` (ham HTML, `pg_qr_svg()` inline SVG;
+  harita `pg_sw_escape_token_values($v, array('__mfa_qr'))` ile tek yerde
+  kaçırılır), `__recovery_codes`, `__recovery_codes_download_url`
+  (`data:text/plain`); çıkış yapmış `__login_url`, `__not_logged_in`. Tarihler
+  sunucuda biçimlenir: hesap widget'ları `_pg_member_apply_tokens()` ile
+  doldurduğu için `_bindFormats` eki değerin arkasında kalırdı.
+- `account_security.php`: `pg_revoke_device` (cihaz satırı düğmesi tek ad/değer
+  taşır: değer seçicidir) ve `return_to` (`pg_sw_return_to()`; oturumu açık
+  bırakan her eylem widget'ın sayfasına döner). Legacy bölüm ikisini de
+  göndermez, yolları aynı.
+- `pg_mfa_account_url()` önce `account_security` widget'lı tasarım sayfasını
+  döndürür (`pg_sw_widget_pages()`), sonra legacy profil sayfasını: panelin
+  "Hesabım sayfasından açabilirsiniz" bağlantısı ve `return_to`'suz dönüş
+  tasarım sitesinde widget'a gider. Widget'ı olan sitede legacy bölümün 2FA
+  eylemleri de oraya döner.
+- JS: `SW_TYPES` (`account_security`, 'Account Security', `bi-shield-check`),
+  `_SW_ACCOUNT_TYPES` (loop kullanır), `_swTypeDefaults`, "Account Page
+  Settings" (giriş sayfası, oturum kapalı mesajı; `my_account_page_id` yok),
+  `SW_ACCOUNT_SECURITY_TOKEN_GROUPS`, `SW_VISIBILITY_FLAGS.account_security`,
+  başlangıç ağacı (`case 'account_security'`: Google formu, cihazlar formu +
+  loop satırı, 2FA kartında durum başına form), `_SD_HTML_PREVIEW_TOKENS`
+  `__mfa_qr` (sabit örnek desen).
+- Şablonlar: `hello-pinegrap` (2.4.3), `pinegrap-boutique` (1.0.2),
+  `pinegrap-bookshop` (1.0.2), `pinegrap-store` (1.0.3) — Hesabım sayfasına
+  ikinci widget, `'tree' => 'starter'`, `login_page_id` = giriş sayfası.
+  `pinegrap-playground`'da üyelik yok. Kurulu sitelere dokunulmaz.
+
+**Doğrulama.** lint, check_lang, check_bindings (366 token / 96 bayrak, iki
+taraf aynı), test, check_copies, check_api_schema, `node --check` temiz.
+Sandbox: `hello-pinegrap` editörün başlangıç ağaçlarıyla
+`pg_design_template_install()` üzerinden kuruldu; üye (rol 3) `/hesabim`:
+Google bloğu yok; iki cihaz satırı, yalnız bu tarayıcıda "Bu cihaz", ikisi de
+"Çevrimiçi"; öteki cihazın satırından çıkış o jetonu sildi; aç → boş kodla
+"Vazgeç" (formnovalidate) kurulumu iptal etti; yeniden aç → QR (200 px,
+zxing-cpp) çözülen secret ekrandaki anahtara eşit, metin `otpauth://`
+satırıyla aynı, sır hiçbir `src/href`'te yok; yanlış kod reddedildi; pyotp
+koduyla onay → 10 kod, indirme `data:text/plain`, "Kaydettim" → açık durum
+cümlesi; yeni kod formunda Enter (yanlış kod) yalnız o formu gönderdi (Google
+bağı ve 2FA yerinde); yeni kodlar; yanlış parolayla kapatma red, parola + kodla
+kapandı; başka kullanıcı olarak girilmişken 2FA bloğunda yalnız "İki adımlı
+doğrulama açık.", kod alanı yok; panelde yöneticinin bağlantısı `/hesabim`;
+"Tüm cihazlardan çıkış" jetonları sildi, oturum kapandı. Her eylem
+`return_to` ile `/hesabim`'e döndü. Hata iletileri güvenlik kartında değil
+sayfanın tepesinde (aynı sayfadaki `my_account` widget'ının adsız mesaj
+düğümü önce çizilip tüketiyor). Legacy regresyon: widget'sız sitede legacy
+profil sayfasındaki `pg_account_security_section()` ile aç (QR'lı) → onay →
+10 kod → kaydettim → parola + kodla kapat, hepsi profil sayfasına dönerek
+çalıştı. Editör: tuvalde widget çiziliyor, ham `^^token^^` yok, QR örneği
+görünüyor.
+
+**Açık.** Hata iletilerinin yeri (yukarıda) — `my_account` widget'ının mesaj
+düğümünü adlandırmak ayrı iş. Çıkış yapmış ziyaretçi Hesabım sayfasına
+klasör kapısı yüzünden hiç ulaşmıyor (giriş sayfasına yönleniyor); widget'ın
+çıkış yapmış görünümü yalnız başka bir sayfaya konduğunda görünür.
+`logout_all` sonrası legacy `registration_entrance.php`'ye gidiş değişmedi.
+Sandbox'ta ön yüz CSS'i CDN'den yüklenmediği için görünüm (Bootstrap)
+doğrulanmadı.
+
+---
+
 ## 2026.4.8 — Görsel tasarımcı: tasarımdan şablon, canlı önizleme, dil seçici, yeni görünüm ve paletler (2026-10-08)
 
 Dört iş bir arada: (1) bir tasarım şablona çevrilip "Şablondan Seç"te
@@ -2024,7 +2132,7 @@ fazla deneme".
 
 **Açık.** Görsel tasarımcının `account_profile` widget'ı bölümü basmıyor:
 tasarımcıyla kurulan sitelerde üyenin cihaz / Google / 2FA bölümü yok (ayrı
-widget mı, forma ek mi — ürün sahibine soru).
+widget mı, forma ek mi — ürün sahibine soru). (2026-10-08: ayrı widget — yukarıda "Hesap Güvenliği" bölümü.)
 
 ---
 

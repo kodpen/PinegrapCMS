@@ -44,6 +44,21 @@ if ($user_id <= 0) {
 
 $action = isset($_POST['pg_security_action']) ? (string) $_POST['pg_security_action'] : '';
 
+// The account security widget (widgets_account.php): a device row's Sign out
+// button carries the device itself, a button holding one name and one value.
+if (isset($_POST['pg_revoke_device']) && is_scalar($_POST['pg_revoke_device'])) {
+    $action = 'revoke_device';
+    $_POST['pg_selector'] = (string) $_POST['pg_revoke_device'];
+}
+
+// A widget names the page it was drawn on (return_to, a same-site path);
+// every action that leaves the visitor signed in goes back there. The legacy
+// section sends none and keeps its destinations.
+$back = pg_sw_return_to();
+$back_or = function ($url) use ($back) {
+    return ($back !== '') ? $back : $url;
+};
+
 // Sign out of all devices: revoke every remember-me token for this account,
 // clear this browser's cookie, end this session, and send the visitor back to
 // sign in. The clearest "sign out everywhere" - the current device included.
@@ -63,7 +78,7 @@ if ($action === 'logout_all') {
     log_activity(lang('user signed out of all devices'), $_SESSION['sessionusername'] ?? '');
 
     if (($current_selector !== '') && pg_auth_token_pinned($current_selector)) {
-        go(get_page_type_url('my account'));
+        go($back_or(get_page_type_url('my account')));
     }
 
     setcookie('software[auth]', '', time() - 1000, '/');
@@ -84,7 +99,7 @@ if ($action === 'unlink_google') {
     }
     db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $user_id . "'");
     log_activity(lang('user disconnected Google'), $_SESSION['sessionusername'] ?? '');
-    go(get_page_type_url('my account'));
+    go($back_or(get_page_type_url('my account')));
 }
 
 // Sign out one device: revoke a single token belonging to this account. If it
@@ -121,7 +136,7 @@ if ($action === 'revoke_device') {
             }
         }
     }
-    go(get_page_type_url('my account'));
+    go($back_or(get_page_type_url('my account')));
 }
 
 // Two-step verification (includes/fn/mfa.php). Each action returns to the
@@ -129,7 +144,7 @@ if ($action === 'revoke_device') {
 // controls; a refused code is reported through that page's form messages.
 if (strpos($action, 'mfa_') === 0) {
 
-    $mfa_back = pg_mfa_account_url();
+    $mfa_back = $back_or(pg_mfa_account_url());
     $mfa_messages = new liveform('my_account_profile');
     $mfa_username = (string) ($_SESSION['sessionusername'] ?? '');
     $mfa_code = (isset($_POST['code']) && is_scalar($_POST['code'])) ? (string) $_POST['code'] : '';
@@ -225,4 +240,4 @@ if (strpos($action, 'mfa_') === 0) {
 }
 
 // Unknown or missing action.
-go(get_page_type_url('my account'));
+go($back_or(get_page_type_url('my account')));
