@@ -709,8 +709,9 @@ const StyleDesigner = (function () {
     // operator nothing about which tab to look at.
     function _sharedUsageText(u) {
         var page = u.page_name || u.style_name || ('#' + (u.page_id || u.style_id));
+        if (u.binned) page += ' — ' + _sdT('Recycle Bin');
         var mine = _design && parseInt(_design.styleId, 10) === parseInt(u.style_id, 10);
-        return mine ? page : (page + ' (' + (u.style_name || '') + ')');
+        return (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
     }
     function _sharedUsageTip(usage) {
         return usage.length

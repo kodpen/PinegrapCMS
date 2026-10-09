@@ -6734,7 +6734,8 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
  * widget where it left it; `binned` tells such a page apart. That includes
  * a binned page whose design has since been deleted: its style row is gone
  * (LEFT JOIN), style_name is then '' and style_id the id it still carries.
- * Trees live on the page since the multi-page designer; an un-migrated
+ * A binned page's page_name is the name it had before the bin parked it
+ * (pg_recycle_parked_original()). Trees live on the page since the multi-page designer; an un-migrated
  * database falls back to the per-style scan and page_id is 0. $ids limits
  * the answer to those rows (null = every row).
  *
@@ -6772,6 +6773,7 @@ function pg_shared_component_usage($ids = null)
         );
     }
     $bin_folders = array_flip(pg_recycle_bin_folder_ids());
+    if ($bin_folders) require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
     // Placements on the pages themselves, for every component named — the
     // ones asked about and the ones that may contain them.
     $direct = array();
@@ -6780,13 +6782,19 @@ function pg_shared_component_usage($ids = null)
         if (strpos($json, '"sharedId"') === false) continue;
         // The whole digit run, so id 1 never matches a reference to 10.
         if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
+        $binned    = isset($bin_folders[(int)$row['page_folder']]);
+        $page_name = (string)$row['page_name'];
+        if ($binned) {
+            $original = pg_recycle_parked_original($page_name, (int)$row['page_id']);
+            if ($original !== '') $page_name = $original;
+        }
         foreach (array_unique($m[1]) as $sid) {
             $direct[(int)$sid][] = array(
                 'page_id'    => (int)$row['page_id'],
-                'page_name'  => (string)$row['page_name'],
+                'page_name'  => $page_name,
                 'style_id'   => (int)$row['style_id'],
                 'style_name' => (string)$row['style_name'],
-                'binned'     => isset($bin_folders[(int)$row['page_folder']]),
+                'binned'     => $binned,
             );
         }
     }
@@ -7104,7 +7112,7 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
             $gid = (string)$gid;
             if (!preg_match('/^[a-z0-9_-]{1,20}$/', $gid) || !is_array($g)) continue;
             $name = (isset($g['name']) && is_scalar($g['name'])) ? (string)$g['name'] : '';
-            $name = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name));
+            $name = trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name));
             $name = mb_substr($name, 0, 60);
             $color = (isset($g['color']) && is_string($g['color']) && in_array($g['color'], $colors, true)) ? $g['color'] : 'grey';
             $groups[$gid] = array('name' => $name, 'color' => $color);
