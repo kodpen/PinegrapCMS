@@ -1348,6 +1348,7 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                         <a class="btn btn-sm btn-outline-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
                         <a class="btn btn-sm btn-outline-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
+                        ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>' : '') . '
                         ' . $output_mail_button . '
                         ' . $output_waybill_button . '
                         ' . $output_workspace_button . '

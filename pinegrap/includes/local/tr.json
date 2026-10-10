@@ -19481,5 +19481,7 @@
     "Quote rejected": "Teklif reddedildi",
     "Quote cancelled": "Teklif iptal edildi",
     "Quote opened again": "Teklif yeniden açıldı",
-    "Quote turned into an invoice draft": "Teklif fatura taslağına dönüştürüldü"
+    "Quote turned into an invoice draft": "Teklif fatura taslağına dönüştürüldü",
+    "Not ready for e-documents": "e-Belgeye hazır olmayan",
+    "Copied from invoice {var:1}": "{var:1} numaralı faturadan kopyalandı"
 }

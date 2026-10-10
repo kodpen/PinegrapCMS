@@ -25,6 +25,7 @@ if (!validate_erp_access($user)) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_stock');
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if (!erp_stock_ready()) {
     $liveform->mark_error('', lang('Stock and cost come with the software update; run the update to use this screen.'));
@@ -151,12 +152,12 @@ pg_page_shell(array(
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?direction=purchase" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-bag-plus me-1"></i>' . lang('New purchase invoice') . '</a>' : '') . '
+                ' . ((function_exists('erp_stock_minimums_ready') && erp_stock_minimums_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_minimums.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-sliders me-1"></i>' . lang('Minimum stock') . '</a>' : '') . '
+                ' . ((function_exists('erp_stock_counts_ready') && erp_stock_counts_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_counts.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upc-scan me-1"></i>' . lang('Stock counts') . '</a>' : '') . '
                 <div class="pg-toolbar-grow small text-body-secondary text-truncate">
                     ' . h(lang(array('string' => '{var:1} product(s) with a cost; stock on hand worth {var:2}', 'vars' => array(count($products), erp_money_out($total_value))))) . '
                 </div>
-                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?direction=purchase" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-bag-plus me-1"></i>' . lang('New purchase invoice') . '</a>
-                ' . ((function_exists('erp_stock_minimums_ready') && erp_stock_minimums_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_minimums.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-sliders me-1"></i>' . lang('Minimum stock') . '</a>' : '') . '
-                ' . ((function_exists('erp_stock_counts_ready') && erp_stock_counts_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_counts.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upc-scan me-1"></i>' . lang('Stock counts') . '</a>' : '') . '
             </nav>
             ' . $output_low . '
 

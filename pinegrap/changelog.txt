@@ -391,6 +391,32 @@
          süzgeçleri ve dış API'nin durum süzgeci de aynı kuralla
          sayar.
 
+  [DÜZELTME] Cari Hesaplar, Çek ve senetler, Minimum stok,
+         Tekrarlayan faturalar, Stok ve maliyet, Denetim izi, Kasa
+         akışı, Gelen e-faturalar ve ERP Ayarları ekranlarının araç
+         çubukları tek düzene getirildi: oluşturma düğmesi başta,
+         ilgili ekranlara giden düğmeler yanında, arama kutusu ve
+         süzgeç düğmeleri sağda. Çek ve senetlerde araç çubuğu
+         özet kartlarının üstüne alındı ve sayfanın altındaki
+         forma götüren "Yeni çek ya da senet" düğmesi eklendi;
+         Denetim izinde araç çubuğu süzgeç kartının üstüne
+         taşındı. Carilerdeki "e-Belgeye hazır olmayan" ve
+         "Kredi limitini aşan" anahtarları sayılarıyla birlikte
+         tek bir süzgeç grubunda toplandı. Salt okunur ERP
+         kullanıcısına Cari Hesaplar, Stok ve maliyet ve Gelen
+         e-faturalar ekranlarında kayıt oluşturan düğmeler
+         gösterilmiyor.
+
+  [YENİ] Faturadan kopya: kesilmiş, iptal edilmiş ya da taslak
+         faturanın ekranındaki "Kopyala" düğmesi aynı yön, cari,
+         para birimi, not ve satırlarla yeni bir fatura formu
+         açar. Yeni fatura bugünün tarihini alır; vade carinin
+         vadesinden, kur günün kurundan gelir; tedarikçinin
+         fatura numarası ve tarihi kopyalanmaz. Form taslak
+         olarak saklanabilir ya da hemen kesilebilir. Siparişten
+         kesilen faturalar kopyalanmaz; satırları ve iadeleri
+         siparişe bağlıdır.
+
   ZAMANLANMIŞ GÖREVLER
   --------------------------------------------------------
 

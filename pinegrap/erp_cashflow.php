@@ -211,7 +211,7 @@ pg_page_shell(array(
                     ' . $quick($last_90, lang('Last 90 days')) . '
                     ' . $quick($this_year, lang('This year')) . '
                 </div>
-                <form method="get" action="erp_cashflow.php" class="d-flex flex-wrap flex-md-nowrap align-items-center gap-2 mb-0">
+                <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-2 mb-0">
                     <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
                     <label for="from" class="small text-body-secondary text-nowrap mb-0">' . lang('Start') . '</label>
                     <input type="date" id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
