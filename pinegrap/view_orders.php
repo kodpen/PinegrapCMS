@@ -2242,18 +2242,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $statuses[] = array('label' => lang('Awaiting Bank Transfer'), 'value' => 'awaiting_transfer');
     }
 
-    $output_status_options = '';
+    // The status filter in the toolbar (pg_filter_select()).
+    $status_filter_options = array();
 
-    // Loop through the statuses in order to prepare pick list options.
     foreach ($statuses as $status) {
-        $selected = '';
-
-        // If this is the selected status, then select it.
-        if ($status['value'] == ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? '')) {
-            $selected = ' selected="selected"';
-        }
-
-        $output_status_options .= '<option value="' . h($status['value']) . '"' . $selected . '>' . h($status['label']) . '</option>';
+        $status_filter_options[$status['value']] = $status['label'];
     }
 
     // Build type filter options (online / marketplace / local / any).
@@ -2272,13 +2265,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     $types[] = array('label' => lang('Local'),  'value' => 'local');
 
-    $output_type_options = '';
+    $type_filter_options = array();
+
     foreach ($types as $type) {
-        $selected = '';
-        if ($type['value'] == ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? '')) {
-            $selected = ' selected="selected"';
-        }
-        $output_type_options .= '<option value="' . h($type['value']) . '"' . $selected . '>' . h($type['label']) . '</option>';
+        $type_filter_options[$type['value']] = $type['label'];
     }
 
     // get oldest timestamp
@@ -2639,16 +2629,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
         $output_advanced_filters = '';
-        $advanced_filters_icon = 'filter_list';
-        $output_advanced_filters_class = 'btn-primary';
+        $advanced_filters_icon = 'bi-funnel';
+        $output_advanced_filters_class = '';
 
     // else the advanced filters are on
     } else {
    
         $output_advanced_filters_value = 'false';
         $output_advanced_filters_label = lang('Remove Advanced Filters');
-        $advanced_filters_icon = 'filter_list_off';
-        $output_advanced_filters_class = 'btn-danger';
+        $advanced_filters_icon = 'bi-funnel-fill';
+        $output_advanced_filters_class = ' active';
 
         // prepare selection for payment method field
         if (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'any') {
@@ -3031,6 +3021,160 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     $refund_pending_total_all = prepare_amount($refund_pending_total);
 
+    // ── Period navigator ── (pg_period_nav(): the unit is read off the range)
+    $vo = $_SESSION['software']['ecommerce']['view_orders'];
+    $period_start = mktime(0, 0, 0, (int) ($vo['start_month'] ?? 1), (int) ($vo['start_day'] ?? 1), (int) ($vo['start_year'] ?? date('Y')));
+    $period_stop = mktime(0, 0, 0, (int) ($vo['stop_month'] ?? 1), (int) ($vo['stop_day'] ?? 1), (int) ($vo['stop_year'] ?? date('Y')));
+    $period_days = (int) round(($period_stop - $period_start) / 86400) + 1;
+
+    $output_period_navigator = pg_period_nav('view_orders.php', $vo, array(
+        'day'   => array($decrease_day, $current_day, $increase_day),
+        'week'  => array($decrease_week, $current_week, $increase_week),
+        'month' => array($decrease_month, $current_month, $increase_month),
+        'year'  => array($decrease_year, $current_year, $increase_year),
+    ), $output_date_range_time);
+
+    // ── Statistics strip ──
+    // The orders the list shows (same joins and conditions as the count
+    // above), one row each: the joins for the advanced filters can repeat an
+    // order, so every figure below is taken over this distinct set.
+    $orders_filtered_sql =
+        "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method
+        FROM orders
+        LEFT JOIN user ON orders.user_id = user.user_id
+        LEFT JOIN contacts on orders.contact_id = contacts.id
+        $join_order_items
+        $join_ship_tos
+        $join_billing_states
+        $join_billing_countries
+        $join_shipping_states
+        $join_shipping_countries
+        $where
+        $sql_status
+        $sql_type";
+
+    // Daily buckets over the range on screen; a range longer than a year is
+    // drawn by month. The connection runs in the site's time zone (init.php),
+    // so FROM_UNIXTIME() and date() agree on where a day starts.
+    $spark_monthly = ($period_days > 366);
+    $spark_keys = array();
+
+    if ($spark_monthly) {
+        for ($i = 0; ($i < 240) && (($spark_time = mktime(0, 0, 0, (int) date('n', $period_start) + $i, 1, (int) date('Y', $period_start))) <= $period_stop); $i++) {
+            $spark_keys[date('Y-m', $spark_time)] = date('m.Y', $spark_time);
+        }
+    } else {
+        for ($i = 0; $i < max(1, $period_days); $i++) {
+            $spark_time = mktime(0, 0, 0, (int) date('n', $period_start), (int) date('j', $period_start) + $i, (int) date('Y', $period_start));
+            $spark_keys[date('Y-m-d', $spark_time)] = date('d.m', $spark_time);
+        }
+    }
+
+    $spark_counts = array_fill_keys(array_keys($spark_keys), 0);
+    $spark_totals = array_fill_keys(array_keys($spark_keys), 0);
+
+    foreach ((array) db_items(
+        "SELECT DATE_FORMAT(FROM_UNIXTIME(f.order_date), '" . ($spark_monthly ? '%Y-%m' : '%Y-%m-%d') . "') AS bucket, COUNT(*) AS n, SUM(f.total) AS t
+        FROM ($orders_filtered_sql) AS f
+        GROUP BY bucket") as $spark_row) {
+
+        if (isset($spark_counts[$spark_row['bucket']])) {
+            $spark_counts[$spark_row['bucket']] = (int) $spark_row['n'];
+            $spark_totals[$spark_row['bucket']] = round(((int) $spark_row['t']) / 100, 2);
+        }
+    }
+
+    // The best sellers by quantity, named as the catalog names them
+    // (order_items.product_name is the SKU).
+    $top_products = array();
+
+    foreach ((array) db_items(
+        "SELECT
+            order_items.product_id,
+            MAX(COALESCE(NULLIF(products.short_description, ''), order_items.product_name)) AS name,
+            SUM(order_items.quantity) AS quantity
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id IN (SELECT f.id FROM ($orders_filtered_sql) AS f)
+        GROUP BY order_items.product_id
+        ORDER BY quantity DESC
+        LIMIT 5") as $top_row) {
+
+        $top_name = trim(strip_tags((string) $top_row['name']));
+        $top_products[] = array(
+            'label'    => (mb_strlen($top_name) > 40) ? rtrim(mb_substr($top_name, 0, 39)) . '…' : $top_name,
+            'quantity' => (float) $top_row['quantity'],
+        );
+    }
+
+    // How the orders were paid, by number of orders.
+    $payment_split = array();
+
+    foreach ((array) db_items(
+        "SELECT f.payment_method, COUNT(*) AS n
+        FROM ($orders_filtered_sql) AS f
+        GROUP BY f.payment_method
+        ORDER BY n DESC") as $payment_row) {
+
+        $payment_split[] = array(
+            'label' => ((string) $payment_row['payment_method'] === '') ? lang('None') : lang((string) $payment_row['payment_method']),
+            'count' => (int) $payment_row['n'],
+        );
+    }
+
+    $orders_chart_data = array(
+        'labels'   => array_values($spark_keys),
+        'counts'   => array_values($spark_counts),
+        'totals'   => array_values($spark_totals),
+        'currency' => BASE_CURRENCY_SYMBOL,
+        'top'      => $top_products,
+        'payments' => $payment_split,
+        'quantity' => lang('Quantity'),
+    );
+
+    $stat_card = function ($icon, $value, $label, $canvas, $value_class = '') {
+        return '
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-3 pb-2">
+                                <div class="d-flex align-items-center gap-2 small text-body-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="text-truncate">' . $label . '</span></div>
+                                <div class="h5 mb-1 text-nowrap' . $value_class . '">' . $value . '</div>
+                                ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
+                            </div>
+                        </div>
+                    </div>';
+    };
+
+    $output_order_stats = '
+                <div class="row g-2 mb-2">'
+                    . $stat_card('bi-bank', $online_orders_total_all, h(lang('Total Sales Amount')) . ' (' . h(lang('Online')) . ')', '')
+                    . $stat_card('bi-funnel', $filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total')
+                    . $stat_card('bi-receipt', h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count')
+                    . $stat_card('bi-arrow-counterclockwise', $refund_pending_total_all, h(lang('Refund Pending')), '', ($refund_pending_total > 0) ? ' text-danger' : '') . '
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-3">
+                                <div class="small text-body-secondary mb-2"><i class="bi bi-trophy me-1" aria-hidden="true"></i>' . h(lang('Top 5 products')) . '</div>
+                                ' . (!empty($top_products)
+                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_top" role="img" aria-label="' . h(lang('Top 5 products')) . '"></canvas></div>'
+                                    : '<div class="text-muted small">' . h(lang('No orders in this range.')) . '</div>') . '
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-3">
+                                <div class="small text-body-secondary mb-2"><i class="bi bi-credit-card me-1" aria-hidden="true"></i>' . h(lang('Payment methods')) . '</div>
+                                ' . (!empty($payment_split)
+                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_payments" role="img" aria-label="' . h(lang('Payment methods')) . '"></canvas></div>'
+                                    : '<div class="text-muted small">' . h(lang('No orders in this range.')) . '</div>') . '
+                            </div>
+                        </div>
+                    </div>
+                </div>';
+
     $output .=
     pg_page_shell(
         array(
@@ -3049,94 +3193,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary rounded-pill px-3 m-1" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
-                            <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
-                                ' . get_token_field() . '
-                                ' . $output_gateway_buttons . '  
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-link link-secondary py-0 m-1"><span class="material-icons me-1">inventory_2</span>' . lang(array('string'=>'Export') ) . '</button>
-                                    <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-link link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
-                                </div>
-                            </form>
-                        </nav>
-                    </div> 
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-4 ">
-                        <div class="row justify-content-center justify-content-md-end">
-                            <form id="search_form" action="view_orders.php" method="get" class="search_form disable_shortcut col-auto">
-                                <div class="input-group input-group-sm">
-                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="status" name="status" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
-                                    <select id="type" name="type" class="form-select mt-1 mb-1" title="' . lang('Order Type') . '" onchange="submit_form(\'search_form\')">' . $output_type_options . '</select>
-                                </div>
-                                <div class="row justify-content-center justify-content-md-end">
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_orders.php?start_month=' . $decrease_year['start_month'] . '&start_day=' . $decrease_year['start_day'] . '&start_year=' . $decrease_year['start_year'] . '&stop_month=' . $decrease_year['stop_month'] . '&stop_day=' . $decrease_year['stop_day'] . '&stop_year=' . $decrease_year['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_orders.php?start_month=' . $current_year['start_month'] . '&start_day=' . $current_year['start_day'] . '&start_year=' . $current_year['start_year'] . '&stop_month=' . $current_year['stop_month'] . '&stop_day=' . $current_year['stop_day'] . '&stop_year=' . $current_year['stop_year'] . '">' . lang('Year') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_orders.php?start_month=' . $increase_year['start_month'] . '&start_day=' . $increase_year['start_day'] . '&start_year=' . $increase_year['start_year'] . '&stop_month=' . $increase_year['stop_month'] . '&stop_day=' . $increase_year['stop_day'] . '&stop_year=' . $increase_year['stop_year'] . '">></a>
-                                    </div>
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_orders.php?start_month=' . $decrease_month['start_month'] . '&start_day=' . $decrease_month['start_day'] . '&start_year=' . $decrease_month['start_year'] . '&stop_month=' . $decrease_month['stop_month'] . '&stop_day=' . $decrease_month['stop_day'] . '&stop_year=' . $decrease_month['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_orders.php?start_month=' . $current_month['start_month'] . '&start_day=' . $current_month['start_day'] . '&start_year=' . $current_month['start_year'] . '&stop_month=' . $current_month['stop_month'] . '&stop_day=' . $current_month['stop_day'] . '&stop_year=' . $current_month['stop_year'] . '">' . lang('Month') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_orders.php?start_month=' . $increase_month['start_month'] . '&start_day=' . $increase_month['start_day'] . '&start_year=' . $increase_month['start_year'] . '&stop_month=' . $increase_month['stop_month'] . '&stop_day=' . $increase_month['stop_day'] . '&stop_year=' . $increase_month['stop_year'] . '">></a>
-                                    </div>
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_orders.php?start_month=' . $decrease_week['start_month'] . '&start_day=' . $decrease_week['start_day'] . '&start_year=' . $decrease_week['start_year'] . '&stop_month=' . $decrease_week['stop_month'] . '&stop_day=' . $decrease_week['stop_day'] . '&stop_year=' . $decrease_week['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_orders.php?start_month=' . $current_week['start_month'] . '&start_day=' . $current_week['start_day'] . '&start_year=' . $current_week['start_year'] . '&stop_month=' . $current_week['stop_month'] . '&stop_day=' . $current_week['stop_day'] . '&stop_year=' . $current_week['stop_year'] . '">' . lang('Week') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_orders.php?start_month=' . $increase_week['start_month'] . '&start_day=' . $increase_week['start_day'] . '&start_year=' . $increase_week['start_year'] . '&stop_month=' . $increase_week['stop_month'] . '&stop_day=' . $increase_week['stop_day'] . '&stop_year=' . $increase_week['stop_year'] . '">></a>
-                                    </div>
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_orders.php?start_month=' . $decrease_day['start_month'] . '&start_day=' . $decrease_day['start_day'] . '&start_year=' . $decrease_day['start_year'] . '&stop_month=' . $decrease_day['stop_month'] . '&stop_day=' . $decrease_day['stop_day'] . '&stop_year=' . $decrease_day['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_orders.php?start_month=' . $current_day['start_month'] . '&start_day=' . $current_day['start_day'] . '&start_year=' . $current_day['start_year'] . '&stop_month=' . $current_day['stop_month'] . '&stop_day=' . $current_day['stop_day'] . '&stop_year=' . $current_day['stop_year'] . '">' . lang('Day') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_orders.php?start_month=' . $increase_day['start_month'] . '&start_day=' . $increase_day['start_day'] . '&start_year=' . $increase_day['start_year'] . '&stop_month=' . $increase_day['stop_month'] . '&stop_day=' . $increase_day['stop_day'] . '&stop_year=' . $increase_day['stop_year'] . '">></a>
-                                    </div>    
-                                </div>
-                                <p class="text-center text-md-end p-0 m-0">
-                                    <span class="badge text-dark fw-light border-2">    ' . $output_date_range_time . '</span>
-                                </p>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-12 col-md-6 col-lg-3 p-1">
-                       <div class="card border-0 border-4 h-100  shadow-sm">
-                            <div class="card-body">
-                                <h4 class="mb-0">' . $online_orders_total_all . '</h4>
-                                <span class="material-icons text-secondary" style="position: absolute;right: 0;bottom: 0;font-size: 5rem;opacity: 0.05;line-height: 5rem;">account_balance</span>
-                            </div>
-                            <div class="card-footer bg-reset border-0">
-                                <small>' . lang('Total Sales Amount') . ' (' . lang('Online') . ')</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 p-1">
-                        <div class="card border-0 border-4 h-100  shadow-sm">
-                            <div class="card-body">
-                                <h4 class="mb-0' . (($refund_pending_total > 0) ? ' text-danger' : '') . '">' . $refund_pending_total_all . '</h4>
-                                <span class="material-icons text-secondary" style="position: absolute;right: 0;bottom: 0;font-size: 5rem;opacity: 0.05;line-height: 5rem;">currency_exchange</span>
-                            </div>
-                            <div class="card-footer bg-reset border-0">
-                                <small>' . lang('Refund Pending') . '</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 offset-lg-3 p-1">
-                        <div class="card border-0 border-4 h-100  shadow-sm">
-                            <div class="card-body">
-                                <h4 class="mb-0">' . $filter_totals . '</h4>
-                                <span class="material-icons text-secondary" style="position: absolute;right: 0;bottom: 0;font-size: 5rem;opacity: 0.05;line-height: 5rem;">filter_list</span>
-                            </div>
-                            <div class="card-footer bg-reset border-0">
-                                <small>' . lang('Total Sales Amount') . ' (' . lang('Current filter') . ')</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
+                    <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
+                    <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
+                        ' . get_token_field() . '
+                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        ' . $output_gateway_buttons . '
+                    </form>
+                    <div class="pg-toolbar-grow"></div>
+                    ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
+                    ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
+                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    ' . $output_period_navigator . '
+                </nav>
+                ' . $output_order_stats . '
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_orders.php" method="post" class="view_orders"> 
@@ -3244,6 +3315,72 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     if (ok) submitCancel();
                 });
             });
+        })();
+        </script>
+        <script src="assets/lib/chartjs/chart.umd.min.js"></script>
+        <script>
+        // The statistics strip: sparklines under two of the figures, the best
+        // sellers and the payment split. Colours come from the theme
+        // variables, so the dark theme draws them too. Nothing here replaces
+        // the canvases later, so nothing has to be destroyed.
+        (function () {
+            if (typeof Chart === "undefined") { return; }
+            var data = ' . json_encode($orders_chart_data) . ';
+            var styles = getComputedStyle(document.documentElement);
+            var color = function (name, fallback) { return (styles.getPropertyValue(name) || "").trim() || fallback; };
+            var locale = document.documentElement.lang || undefined;
+            var money = function (value) { return data.currency + Number(value).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+            var count = function (value) { return Number(value).toLocaleString(locale); };
+            var primary = color("--bs-primary", "#0d6efd");
+            var spark = function (id, type, values, format) {
+                var canvas = document.getElementById(id);
+                if (!canvas) { return; }
+                new Chart(canvas, {
+                    type: type,
+                    data: { labels: data.labels, datasets: [{ data: values, borderColor: primary, backgroundColor: type === "bar" ? primary : "transparent",
+                        borderWidth: 1.5, pointRadius: 0, tension: 0.35, fill: false, barPercentage: 0.9, categoryPercentage: 1 }] },
+                    options: {
+                        maintainAspectRatio: false,
+                        animation: false,
+                        interaction: { mode: "index", intersect: false },
+                        plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { label: function (ctx) { return format(ctx.parsed.y); } } } },
+                        scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+                    }
+                });
+            };
+            spark("pg_orders_spark_total", "line", data.totals, money);
+            spark("pg_orders_spark_count", "bar", data.counts, count);
+
+            var palette = [primary, color("--bs-success", "#198754"), color("--bs-warning", "#ffc107"), color("--bs-info", "#0dcaf0"), color("--bs-danger", "#dc3545"), color("--bs-secondary", "#6c757d")];
+            var ink = color("--bs-secondary-color", "#6c757d");
+            var top = document.getElementById("pg_orders_top");
+            if (top && data.top.length) {
+                new Chart(top, {
+                    type: "bar",
+                    data: { labels: data.top.map(function (row) { return row.label; }),
+                            datasets: [{ label: data.quantity, data: data.top.map(function (row) { return row.quantity; }), backgroundColor: primary, borderRadius: 4, barThickness: 14 }] },
+                    options: {
+                        indexAxis: "y",
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return data.quantity + ": " + count(ctx.parsed.x); } } } },
+                        scales: { x: { beginAtZero: true, ticks: { color: ink, precision: 0 }, grid: { display: false } }, y: { ticks: { color: ink }, grid: { display: false } } }
+                    }
+                });
+            }
+            var payments = document.getElementById("pg_orders_payments");
+            if (payments && data.payments.length) {
+                new Chart(payments, {
+                    type: "doughnut",
+                    data: { labels: data.payments.map(function (row) { return row.label; }),
+                            datasets: [{ data: data.payments.map(function (row) { return row.count; }), backgroundColor: palette, borderColor: color("--bs-body-bg", "#fff"), borderWidth: 2 }] },
+                    options: {
+                        maintainAspectRatio: false,
+                        cutout: "62%",
+                        plugins: { legend: { position: "right", labels: { color: ink, boxWidth: 10, boxHeight: 10 } },
+                                   tooltip: { callbacks: { label: function (ctx) { return ctx.label + ": " + count(ctx.parsed); } } } }
+                    }
+                });
+            }
         })();
         </script>
     

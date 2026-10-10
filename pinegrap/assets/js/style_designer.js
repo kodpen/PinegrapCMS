@@ -4088,6 +4088,8 @@ const StyleDesigner = (function () {
         var label = function (l) { return (p.display === 'code') ? String(l.code).toUpperCase() : String(l.label); };
         var current = langs[0];
         var icon = (p.icon === 'none') ? '' : '<i class="bi bi-' + ((p.icon === 'globe') ? 'globe2' : 'translate') + ' me-1" aria-hidden="true"></i>';
+        // Same map as pg_language_switcher_options(): unknown values are 'end'.
+        var align = (['start', 'end', 'lg-end', 'md-end'].indexOf(p.align) !== -1) ? p.align : 'end';
         var items = langs.map(function (l, i) {
             return '<li><a class="dropdown-item' + (i === 0 ? ' active' : '') + '" href="#" hreflang="' + esc(l.code) + '" lang="' + esc(l.code) + '"' +
                 (i === 0 ? ' aria-current="page"' : '') + '>' + esc(label(l)) + '</a></li>';
@@ -4096,7 +4098,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="btn btn-' + ((outline && variant !== 'link') ? 'outline-' : '') + variant + (size ? ' btn-' + size : '') + ' dropdown-toggle"' +
             ' data-bs-toggle="dropdown" aria-expanded="false" aria-label="' + esc(_sdT('Language: {var:1}', current.label)) + '">' +
             icon + '<span lang="' + esc(current.code) + '" translate="no">' + esc(label(current)) + '</span></button>' +
-            '<ul class="dropdown-menu' + ((p.align === 'start') ? '' : ' dropdown-menu-end') + '" translate="no">' + items + '</ul>' +
+            '<ul class="dropdown-menu' + ((align === 'start') ? '' : ' dropdown-menu-' + align) + '" translate="no">' + items + '</ul>' +
             '</div>';
     }
 
@@ -4224,7 +4226,7 @@ const StyleDesigner = (function () {
         // while the site has one language.
         language_switcher: {
             label: _sdT('Language Switcher Button'), icon: 'bi-translate',
-            defaultProps: { variant: 'secondary', outline: true, size: 'sm', align: 'end', display: 'name', icon: 'translate' },
+            defaultProps: { variant: 'secondary', outline: true, size: 'sm', align: 'lg-end', display: 'name', icon: 'translate' },
             render: function (doc, p) {
                 var holder = doc.createElement('div');
                 holder.innerHTML = _sdLangSwitcherMarkup(p);
@@ -31639,7 +31641,8 @@ const StyleDesigner = (function () {
         h += row(esc(_sdT('Size')), sel('size', [['sm', esc(_sdT('Small'))], ['', esc(_sdT('Default'))], ['lg', esc(_sdT('Large'))]], String(v('size'))));
         h += row(esc(_sdT('Shows')), sel('display', [['name', esc(_sdT('Language name'))], ['code', esc(_sdT('Language code'))]], String(v('display'))));
         h += row(esc(_sdT('Icon')), sel('icon', [['translate', esc(_sdT('Translate'))], ['globe', esc(_sdT('Globe'))], ['none', esc(_sdT('None'))]], String(v('icon'))));
-        h += row(esc(_sdT('Menu')), sel('align', [['end', esc(_sdT('Aligned right'))], ['start', esc(_sdT('Aligned left'))]], String(v('align'))));
+        h += row(esc(_sdT('Menu')), sel('align', [['lg-end', esc(_sdT('Right on wide screens, left on phones'))], ['md-end', esc(_sdT('Right from tablets up, left on phones'))],
+            ['end', esc(_sdT('Aligned right'))], ['start', esc(_sdT('Aligned left'))]], String(v('align'))));
         var count = (typeof sdDesign !== 'undefined' && sdDesign && Array.isArray(sdDesign.siteLanguages)) ? sdDesign.siteLanguages.length : 1;
         h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
             esc(_sdT('Each language opens this page in that language. The button names the language the visitor is reading.')) + ' ' +
@@ -32252,6 +32255,7 @@ const StyleDesigner = (function () {
 
         var isExpanded  = menuCls.indexOf('show') !== -1;
         var alignment   = menuCls.indexOf('dropdown-menu-end') !== -1 ? 'end'
+                        : menuCls.indexOf('dropdown-menu-lg-end') !== -1 ? 'lg-end'
                         : menuCls.indexOf('dropdown-menu-start') !== -1 ? 'start' : '';
         var isDark      = menuCls.indexOf('dropdown-menu-dark') !== -1;
         var showArrow   = trigCls.indexOf('dropdown-toggle') !== -1;
@@ -32261,7 +32265,7 @@ const StyleDesigner = (function () {
         return sect('bi-chevron-down', _sdT('Dropdown Options'),
             row(_sdT('Type'),       selDD('type', [['dropdown',_sdT('Dropdown')],['dropup',_sdT('Dropup')],['dropend',_sdT('Dropend')],['dropstart',_sdT('Dropstart')]], type)) +
             row(_sdT('Expanded'),   swDD('expanded', isExpanded)) +
-            row(_sdT('Alignment'),  selDD('alignment', [['',_sdT('Default')],['start',_sdT('Start')],['end',_sdT('End')]], alignment)) +
+            row(_sdT('Alignment'),  selDD('alignment', [['',_sdT('Default')],['start',_sdT('Start')],['end',_sdT('End')],['lg-end',_sdT('Right on wide screens, left on phones')]], alignment)) +
             row(_sdT('Dark'),       swDD('dark', isDark)) +
             row(_sdT('Show Arrow'), swDD('show_arrow', showArrow)) +
             row(_sdT('Auto Close'), selDD('auto_close', [['true',_sdT('On Click')],['outside',_sdT('Outside')],['inside',_sdT('Inside')],['false',_sdT('Manual')]], autoClose))
@@ -32330,7 +32334,7 @@ const StyleDesigner = (function () {
                 }
                 break;
             case 'alignment':
-                if (menuNode) swapCls(menuNode, ['dropdown-menu-start','dropdown-menu-end'], val ? 'dropdown-menu-' + val : '');
+                if (menuNode) swapCls(menuNode, ['dropdown-menu-start','dropdown-menu-end','dropdown-menu-lg-end'], val ? 'dropdown-menu-' + val : '');
                 break;
             case 'dark':
                 if (menuNode) toggleCls(menuNode, 'dropdown-menu-dark', val);
@@ -41138,7 +41142,9 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'span', text: _sdT('English'), customName: _sdT('Label'),
                                 _bindings: { text: '__current_language_label' } })
                         ]),
-                        createNode('semantic', { tag: 'ul', cssClass: 'dropdown-menu dropdown-menu-end', customName: _sdT('Languages') }, [
+                        // lg-end: inside a collapsed navbar (no Popper there) the
+                        // menu opens rightwards from the button, not off screen.
+                        createNode('semantic', { tag: 'ul', cssClass: 'dropdown-menu dropdown-menu-lg-end', customName: _sdT('Languages') }, [
                             lsLoop
                         ])
                     ])

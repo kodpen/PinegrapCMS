@@ -290,7 +290,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'past'        => $past,
         // A copy of a decision of a discussion follows the original there.
         // An approval request stays what the people were asked to approve.
-        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]),
+        // A note card's text is only the card's caption; the note itself is
+        // edited on the notes screen.
+        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]) && !isset($extra['note_cards'][$id]),
         'can_delete'  => !$past && !$deleted && ((($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)))
             || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
         // Deleted for the person alone, whoever wrote it.

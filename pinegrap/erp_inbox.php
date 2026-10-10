@@ -123,13 +123,14 @@ foreach ($rows as $row) {
         </tr>';
 }
 
-$output_filter = '';
+// The states, each with how many documents stand in it.
+$filter_options = array();
 foreach (array_merge(array_keys($states), array('all')) as $key) {
     $label = ($key === 'all') ? lang('All') : $states[$key]['label'];
     $count = ($key === 'all') ? array_sum($counts) : (int) $counts[$key];
-    $output_filter .= '<a class="btn btn-sm btn-ghost' . (($state === $key) ? ' active' : '') . '" href="erp_inbox.php?state=' . $key . '">'
-        . h($label) . ' <span class="badge rounded-pill text-bg-light">' . $count . '</span></a>';
+    $filter_options[$key] = $label . ' (' . $count . ')';
 }
+$output_filter = pg_filter_select('state', $filter_options, $state, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_inbox.php'));
 
 $output_notice = '';
 
@@ -184,7 +185,7 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . $output_fetch . '
                 <div class="pg-toolbar-grow"></div>
-                <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . lang('Status') . '">' . $output_filter . '</div>
+                ' . $output_filter . '
             </nav>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">

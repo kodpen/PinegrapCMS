@@ -25,6 +25,22 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Tasarım listesindeki "Ortak bileşenler ve sistem
+         widget'ları" tablosu artık sayfanın altında değil, listenin
+         üstündeki düğmeyle sağdan açılan bir panelde. Düğme kaç
+         satır olduğunu gösterir; seçip toplu silme aynen çalışır.
+
+  [DÜZELTME] Şablonlardaki dil seçicinin menüsü telefonda,
+         daraltılmış menünün içinde sol kenardan ekran dışına
+         taşıyordu. Dil seçicinin "Menü" ayarına "Geniş ekranda
+         sağda, telefonda solda" ve "Tabletten itibaren sağda,
+         telefonda solda" seçenekleri geldi; yeni yerleştirilen dil
+         seçici ve beş şablon bunu kullanır.
+
+  [DÜZELTME] "Dil Seçici" sistem widget'ının başlangıç düzeni de
+         menüyü telefonda sola açar (yeni eklenen widget'larda;
+         kayıtlı olanlar aynen kalır).
+
   [YENİ] Sayfa sekmeleri sıralanıp gruplanabiliyor, tarayıcıdaki
          sekme grupları gibi. Sekmeler sürükleyerek ya da Alt+← / Alt+→
          ile istenen sıraya dizilir. Sekmenin menüsünden "Yeni gruba
@@ -295,6 +311,15 @@
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
+  [YENİ] Faturalar, teklifler, irsaliyeler, gelen e-faturalar,
+         cari eşitleme ve cari kartlar ekranlarındaki düğme
+         şeklindeki filtreler araç çubuğunda tek bir seçim kutusu
+         oldu; sayaçlar seçeneğin yanında yazar.
+
+  [YENİ] Çek ve senetler, minimum stok, tekrarlayan faturalar,
+         yaşlandırma (alacak/borç) ve nakit akışı (kova ve dönem)
+         ekranlarındaki düğme filtreleri de seçim kutusu oldu.
+
   [DÜZELTME] Dışa Aktarma ekranı, PHP'si GLOB_BRACE sabitini
          tanımlamayan sunucularda (Alpine tabanlı imajlar ve
          öteki GNU dışı sistemler) 500 hatasıyla açılmıyordu:
@@ -472,6 +497,25 @@
   YÖNETİM PANELİ
   --------------------------------------------------------
 
+  [DÜZELTME] Bazı ekranlarda araç çubuğundaki düğmeler ekranın
+         bir ucundan öbürüne yayılıyordu (dışa aktarma gibi bir
+         grubun ya da formun içindeki düğmeler). Düğmeler artık
+         kendi genişliğinde ve tek satırda durur; ürünler,
+         kullanıcılar ve dosyalar ekranlarında arama/filtre kutusu
+         çubuğun sağına taşındı.
+
+  [YENİ] Siparişler ekranının girişi toparlandı: yeni sipariş,
+         dışa aktarma, durum ve tür filtreleri, gelişmiş filtre ve
+         dönem gezgini (‹ Bugün / Bu hafta / Bu ay / Bu yıl ›) tek
+         araç çubuğunda. Altındaki özet kartlarına seçili aralığın
+         günlük satış ve sipariş grafikleri, en çok satan 5 ürün ve
+         ödeme yöntemi dağılımı eklendi.
+
+  [YENİ] Kişiler ve gönderilen formlar ekranlarında araç çubuğu
+         tam genişlikte; dört satırlık tarih okları yerine
+         siparişlerdeki dönem gezgini (‹ Bugün / Bu hafta / Bu ay /
+         Bu yıl ›) ve seçili aralık çubuğun sağında.
+
   [DÜZELTME] Düzenleme, görüntüleme ve yazdırma ekranları (vergi
          bölgesi, nakliye bölgesi, kullanıcı, kişi, takvim, takvim
          etkinliği, sipariş yazdırma, ziyaretçi, ürün grubu, e-posta
@@ -600,6 +644,15 @@
 
   ÇALIŞMA ALANI
   --------------------------------------------------------
+
+  [DÜZELTME] Kanalda paylaşılan not kartı notun ilk satırlarını
+         düz metin olarak gösteriyordu; tablo "| Öğe | Tutar |"
+         diye okunuyordu. Kart artık notu tablo ve kontrol
+         listesiyle birlikte çizer, uzun not kartın içinde kayar.
+         Kartın mesaj menüsündeki "Düzenle" kartın yazısını değil
+         notu düzenleyen "Notu düzenle" oldu (yalnız notu
+         değiştirebilenlere); anlamsız "Notlarıma kaydet" not
+         kartında çıkmaz.
 
   [YENİ] Pinegrap AI artık ayrı bir lisans anahtarı istemez:
          Ayarlar › Genel'deki abonelik anahtarıyla (Pinegrap

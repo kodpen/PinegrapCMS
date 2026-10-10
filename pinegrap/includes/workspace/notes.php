@@ -831,13 +831,20 @@ function ws_note_cards_map($viewer, $message_ids)
             continue;
         }
 
-        $present = ws_notes_present($viewer, array($note + array('access' => 'view')));
+        $access = ws_note_access($viewer, $note);
+        $present = ws_notes_present($viewer, array($note + array('access' => ($access !== '') ? $access : 'view')));
         $card = $present[0];
+        $body = (string) $note['body'];
 
+        // The card shows the note drawn - tables and checklists as such -
+        // the same way ws_notes_present() draws it in full; the excerpt
+        // stays for whatever reads the card as plain text.
         $out[(int) $share['message_id']] = array(
             'id'         => (int) $note['id'],
             'name'       => $card['name'],
             'excerpt'    => $card['excerpt'],
+            'html'       => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body))),
+            'access'     => $access,
             'owner'      => $card['owner'],
             'updated_by' => $card['updated_by'],
             'updated'    => $card['updated'],
@@ -1526,6 +1533,7 @@ function ws_notes_js_strings()
         'notes_card'            => lang('Note'),
         'notes_card_gone'       => lang('This note is no longer shared here.'),
         'notes_card_open'       => lang('Read the note'),
+        'notes_card_edit'       => lang('Edit note'),
         'notes_person'          => lang('Person'),
         'notes_not_ready'       => lang('The workspace is not installed yet: the database has to be updated first.'),
         'notes_claude_waiting'  => lang('Claude is working on it…'),

@@ -7794,9 +7794,17 @@
                 }
             }
 
-            // Anybody's message, kept as a copy in the person's own notes.
-            if (CFG.notes && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app')
+            // A note card is a note already: it opens, and those who may
+            // change the note edit it on the notes screen.
+            if (message.note_card && !message.deleted) {
+                items.push({ icon: 'bi-eye', label: t('notes_card_open'), tool: true, action: function () { openNoteView(message.note_card.id); } });
+
+                if (noteCardEditable(message.note_card)) {
+                    items.push({ icon: 'bi-pencil-square', label: t('notes_card_edit'), tool: true, action: function () { openNoteEdit(message.note_card.id); } });
+                }
+            } else if (CFG.notes && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app')
                 && ['message', 'note', 'decision'].indexOf(message.kind) !== -1) {
+                // Anybody's message, kept as a copy in the person's own notes.
                 items.push({ icon: 'bi-journal-plus', label: t('notes_save_message'), tool: true, action: function () { self.keepAsNote(message); } });
             }
 
@@ -8183,7 +8191,12 @@
             top.appendChild(el('b', 'ws-grow text-truncate', card.name));
             box.appendChild(top);
 
-            if (card.excerpt) {
+            if (card.html) {
+                var text = el('div', 'ws-nb-msg-card-text ws-nb-msg-card-html');
+                setHtml(text, card.html);
+                chipMenus(text);
+                box.appendChild(text);
+            } else if (card.excerpt) {
                 box.appendChild(el('div', 'ws-nb-msg-card-text', card.excerpt));
             }
 
@@ -8203,6 +8216,16 @@
                 openNoteView(card.id);
             });
             foot.appendChild(read);
+
+            if (noteCardEditable(card)) {
+                var edit = button('btn btn-sm btn-outline-secondary rounded-pill py-0 px-2', t('edit'), 'bi-pencil-square');
+                edit.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    openNoteEdit(card.id);
+                });
+                foot.appendChild(edit);
+            }
+
             box.appendChild(foot);
 
             return box;
@@ -16830,6 +16853,17 @@
         });
 
         return box;
+    }
+
+    // A note card whose note the person may change.
+    function noteCardEditable(card) {
+        return !!card && (card.access === 'owner' || card.access === 'edit');
+    }
+
+    // The note on the notes screen, open for writing (the link the read
+    // view's "Open the note" follows).
+    function openNoteEdit(noteId) {
+        window.location.href = CFG.urls.notes + '?note=' + noteId;
     }
 
     // A note shared in a channel, read where it was shared: as it is now.

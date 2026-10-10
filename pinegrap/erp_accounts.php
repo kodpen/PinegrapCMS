@@ -161,18 +161,22 @@ foreach ($accounts as $account) {
 }
 
 // The narrowing switches only show while there is something to narrow to,
-// or while one of them is on.
+// or while one of them is on; one filter, each choice with how many cards
+// it holds.
 $show_edoc = (!empty($edoc_gaps) || $edoc_only);
 $show_over_limit = (!empty($over_limit) || $over_limit_only);
 $output_filter = '';
 
 if ($show_edoc || $show_over_limit) {
-    $output_filter = '
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Show')) . '">
-                    <a class="btn btn-sm btn-ghost' . ((!$edoc_only && !$over_limit_only) ? ' active' : '') . '" href="erp_accounts.php" data-loading-content="' . lang(array('string' => 'Loading')) . '">' . lang('All') . '</a>
-                    ' . ($show_edoc ? '<a class="btn btn-sm btn-ghost' . ($edoc_only ? ' active' : '') . '" href="erp_accounts.php?filter=edoc" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('Not ready for e-documents') . ' <span class="badge rounded-pill text-bg-' . (!empty($edoc_gaps) ? 'warning' : 'light') . '">' . count($edoc_gaps) . '</span></a>' : '') . '
-                    ' . ($show_over_limit ? '<a class="btn btn-sm btn-ghost' . ($over_limit_only ? ' active' : '') . '" href="erp_accounts.php?filter=over_limit" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>' . lang('Over their credit limit') . ' <span class="badge rounded-pill text-bg-' . (!empty($over_limit) ? 'danger' : 'light') . '">' . count($over_limit) . '</span></a>' : '') . '
-                </div>';
+    $account_filter_options = array('' => lang('All'));
+    if ($show_edoc) {
+        $account_filter_options['edoc'] = lang('Not ready for e-documents') . ' (' . count($edoc_gaps) . ')';
+    }
+    if ($show_over_limit) {
+        $account_filter_options['over_limit'] = lang('Over their credit limit') . ' (' . count($over_limit) . ')';
+    }
+    $output_filter = pg_filter_select('filter', $account_filter_options, $edoc_only ? 'edoc' : ($over_limit_only ? 'over_limit' : ''),
+        array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_accounts.php'));
 }
 
 echo

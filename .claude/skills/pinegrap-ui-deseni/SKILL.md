@@ -56,6 +56,14 @@ ekrana özel yeni çubuk CSS'i yazma. Dar ekranda kontroller ilk satır,
 breadcrumb ve arama tam genişlikte alt satırlar. `.pg-toolbar` içinde çoklu
 `form-control` varsa forma `flex-wrap` verme, alanlara `w-auto` koy.
 
+`#button_bar` = `.pg-toolbar`: tam genişlikte `nav#button_bar.pg-toolbar`,
+`.row`/`.col-*` içine hapsedilmez, yanına ikinci bir araç sütunu açılmaz.
+Düğmeler çubuğun doğrudan çocuğudur; sarmalayıcı yalnız gereken `<form>`
+(dışa aktarma, filtre, arama) olur — CSS onu ve `.btn-group`'u çubuğun
+satırına açar (`#button_bar .btn { flex: 0 0 auto }`). Sağ küme
+`.pg-toolbar-grow`'dan sonra gelir. Liste filtresi düğme grubu değil
+`pg_filter_select()` (`includes/fn/output.php`) ile select olur.
+
 ## Düğme reçeteleri
 
 - Birincil iş → `btn-primary`

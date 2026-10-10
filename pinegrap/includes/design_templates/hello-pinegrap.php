@@ -127,7 +127,7 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
     return array('type' => 'component', 'props' => array(
         'componentType' => 'language_switcher',
         'variant' => $variant, 'outline' => true, 'size' => 'sm',
-        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'align' => 'lg-end', 'display' => 'name', 'icon' => 'translate',
         'cssClass' => $class,
     ), 'children' => array());
 };
@@ -2004,7 +2004,7 @@ $widgets = array(
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.3',
+    'version'     => '2.4.4',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

@@ -75,16 +75,11 @@ if ($account_id > 0) {
             </div>';
 }
 
-$filter_link = function ($value, $label) use ($state, $search, $account_id) {
-    $query = http_build_query(array_filter(array('state' => $value, 'search' => $search, 'account_id' => $account_id)));
-
-    return '<a class="btn btn-sm btn-ghost' . (($state === $value) ? ' active' : '') . '" href="erp_quotes.php' . (($query !== '') ? '?' . h($query) : '') . '">' . $label . '</a>';
-};
-
-$output_filters = $filter_link('', lang('All'));
+$filter_options = array('' => lang('All'));
 foreach ($statuses as $code => $status) {
-    $output_filters .= $filter_link($code, h($status[0]) . (($code === 'open') ? ' (' . (int) erp_quote_open_count($account_id) . ')' : ''));
+    $filter_options[$code] = $status[0] . (($code === 'open') ? ' (' . (int) erp_quote_open_count($account_id) . ')' : '');
 }
+$output_filters = pg_filter_select('state', $filter_options, $state, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_quotes.php', 'keep' => array('search', 'account_id')));
 
 echo
 pg_page_shell([
@@ -111,7 +106,7 @@ pg_page_shell([
                     <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Number or account')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
                 </form>
-                <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('Status')) . '">' . $output_filters . '</div>
+                ' . $output_filters . '
             </nav>
             ' . $output_filter_note . '
 

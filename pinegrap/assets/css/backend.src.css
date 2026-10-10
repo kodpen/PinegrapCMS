@@ -1908,15 +1908,51 @@ body:not(.toolbar) .software-content {
    !important only against the py-0, m-1 and mb-2 the markup carries on these
    buttons: those are utilities, they already win on !important, and they are
    what kept the target 17px tall and the gaps uneven. Scoped to this bar, so
-   nothing outside it is affected. */
-#button_bar > .btn {
+   nothing outside it is affected.
+
+   The flex rule is for every button in the bar, not only its direct
+   children: a dissolved group's buttons are items of the bar while still
+   matching .btn-group > .btn, and a child selector misses them. */
+#button_bar .btn {
   flex: 0 0 auto;
+}
+
+/* The same shape for the buttons a dissolved group or a wrapping form hands
+   to the bar. Not every .btn in it: a button inside an input group keeps the
+   group's corners. */
+#button_bar > .btn,
+#button_bar .btn-group > .btn,
+#button_bar > form > .btn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   margin: 0 !important;
   border-radius: var(--bs-border-radius-pill);
   white-space: nowrap;
+}
+
+/* A form (export, filter, search) or an inline wrapper in the bar lays its
+   controls out on the bar's own line instead of being one inline box.
+   inline-flex rather than display:contents keeps the form a box, so submit
+   and the hidden token fields behave as before. !important only against the
+   d-inline-block / d-flex utilities the markup carries. A form that is
+   itself an input group (the round search box) keeps its own layout. */
+#button_bar > form:not(.input-group):not(.d-none):not([hidden]),
+#button_bar > span:not(.d-none):not([hidden]),
+#button_bar > .d-inline-block:not(.d-none):not([hidden]) {
+  display: inline-flex !important;
+  align-items: center;
+  gap: inherit;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Only a wrapper of buttons wraps. A form with fields stays on one line -
+   its fields carry w-auto - or a date range splits from its label. */
+#button_bar > form:not(.input-group):not(:has(.form-control, .form-select)),
+#button_bar > span,
+#button_bar > .d-inline-block {
+  flex-wrap: wrap;
 }
 
 /* The real actions - Create and its siblings - keep the variant they were given
@@ -6257,6 +6293,16 @@ button.no-popover:focus-visible {
 
   .pg-toolbar-search { order: 10; }
 }
+
+/* The orders list's statistics strip (view_orders.php): a sparkline under a
+   figure, and the two small charts beside it. Chart.js draws with
+   maintainAspectRatio off, so the box sets the height. */
+.pg-orders-spark { position: relative; height: 56px; }
+.pg-orders-chart { position: relative; height: 160px; }
+
+/* The design list's shared components panel carries a six column table;
+   Bootstrap's 400px offcanvas would wrap every cell. */
+#sd-comp-offcanvas { --bs-offcanvas-width: min(100vw, 860px); }
 
 /* ── Settings screen section anchors ──────────────────────────────────────
    The settings cards carry an id (#pgset-security, #pgset-waf, …) so the
@@ -14516,6 +14562,18 @@ button.ws-home-row:hover,
     color: var(--bs-secondary-color);
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
+}
+/* The note drawn (tables, checklists): no line clamp, which would cut a
+   table mid-row; a long note scrolls inside the card instead. */
+.ws-nb-msg-card-text.ws-nb-msg-card-html {
+    display: block;
+    max-height: 18rem;
+    overflow: auto;
+    color: var(--bs-body-color);
+    -webkit-line-clamp: unset;
+}
+.ws-nb-msg-card-html > :last-child {
+    margin-bottom: 0;
 }
 .ws-nb-msg-card-foot {
     display: flex;
