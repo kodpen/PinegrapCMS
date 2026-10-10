@@ -339,7 +339,7 @@ function pg_test_innodb_column_from_definition($name, $definition)
 // ALTER TABLE config ADD and the dump does not have yet, changed by
 // install_modify_column('config', ...), less the ones dropped with
 // install_drop_column('config', ...). Checked against a fresh sandbox
-// install: the same 412 names.
+// install: the same 414 names.
 function pg_test_innodb_stock_config_columns()
 {
 	$columns = array();
@@ -448,8 +448,8 @@ function pg_test_innodb_config_after_text_columns($columns)
 	return $changed;
 }
 
-// Before 8.16 the stock `config` is too wide for MySQL 8.0 (8510 bytes of
-// 8126) while MySQL 5.7 (7030) and MariaDB 10.4+ (5890) take it. With every
+// Before 8.16 the stock `config` is too wide for MySQL 8.0 (8512 bytes of
+// 8126) while MySQL 5.7 (7032) and MariaDB 10.4+ (5892) take it. With every
 // VARCHAR turned into TEXT it fits all three, with room for ten more long
 // columns on MySQL 8.0: once `config` is on InnoDB, the first
 // install_add_column() that takes its row past the limit fails on the
@@ -463,11 +463,11 @@ function test_innodb_stock_config_row_fits()
 
 	pg_assert_same(array(), array_keys(array_filter($columns, 'is_null')), 'definitions that could not be read');
 
-	pg_assert_same(412, count($columns), 'columns of the stock config');
+	pg_assert_same(414, count($columns), 'columns of the stock config');
 
 	$before = array_values($columns);
 
-	pg_assert_same(8510, pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql80')['bytes'], 'stock config on MySQL 8.0 before 8.16');
+	pg_assert_same(8512, pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql80')['bytes'], 'stock config on MySQL 8.0 before 8.16');
 	pg_assert_false(pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql80')['fits'], 'stock config fits MySQL 8.0 before 8.16');
 	pg_assert_true(pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql57')['fits'], 'stock config fits MySQL 5.7 before 8.16');
 	pg_assert_true(pg_innodb_row_estimate_from_columns($before, false, 16384, 'mariadb')['fits'], 'stock config fits MariaDB before 8.16');
@@ -487,8 +487,8 @@ function test_innodb_stock_config_row_fits()
 }
 
 // The server's own row limit, 65,535 bytes, counts a VARCHAR at its longest
-// and a TEXT column as 10 bytes. The stock `config` came to 64,080 bytes
-// before 8.16 (the figure a fresh sandbox install measures: 1455 bytes of
+// and a TEXT column as 10 bytes. The stock `config` came to 64,082 bytes
+// before 8.16 (the figure a fresh sandbox install measures: 1453 bytes of
 // room), so one more VARCHAR(255) - 1022 bytes in utf8mb4 - would have
 // refused the next migration on every server. After 8.16 it is to stay at
 // least 20 KB under the limit.
@@ -498,7 +498,7 @@ function test_innodb_stock_config_sql_row_size()
 
 	$before = pg_innodb_sql_row_estimate_from_columns(array_values($columns));
 
-	pg_assert_same(64080, $before['bytes'], 'stock config before 8.16');
+	pg_assert_same(64082, $before['bytes'], 'stock config before 8.16');
 	pg_assert_true($before['fits'], 'stock config fits the server row before 8.16');
 
 	$after = pg_innodb_sql_row_estimate_from_columns(pg_test_innodb_config_after_text_columns($columns));

@@ -87,7 +87,7 @@ if ($output_rows === '') {
 $filter_link = function ($value, $label) use ($show, $search) {
     $query = http_build_query(array_filter(array('search' => $search, 'show' => ($value !== 'all') ? $value : '')));
 
-    return '<a class="btn btn-sm ' . (($show === $value) ? 'btn-secondary' : 'btn-outline-secondary') . '" href="erp_stock_minimums.php' . (($query !== '') ? '?' . $query : '') . '">' . $label . '</a>';
+    return '<a class="btn btn-sm btn-ghost' . (($show === $value) ? ' active' : '') . '" href="erp_stock_minimums.php' . (($query !== '') ? '?' . $query : '') . '">' . $label . '</a>';
 };
 
 echo
@@ -111,16 +111,17 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <div class="btn-group" role="group">
+                <div class="pg-toolbar-grow"></div>
+                <form method="get" action="erp_stock_minimums.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                    ' . (($show !== 'all') ? '<input type="hidden" name="show" value="' . h($show) . '" />' : '') . '
+                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
+                    <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                </form>
+                <div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Show')) . '">
                     ' . $filter_link('all', lang('All')) . '
                     ' . $filter_link('set', lang('With a minimum')) . '
                     ' . $filter_link('low', h(lang(array('string' => 'Low ({var:1})', 'vars' => $low_count)))) . '
                 </div>
-                <form method="get" action="erp_stock_minimums.php" class="d-flex gap-1 ms-auto" role="search">
-                    ' . (($show !== 'all') ? '<input type="hidden" name="show" value="' . h($show) . '" />' : '') . '
-                    <input type="search" class="form-control form-control-sm" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" />
-                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search" aria-hidden="true"></i></button>
-                </form>
             </nav>
 
             <form method="post" action="erp_stock_minimums.php' . (($query !== '') ? '?' . h($query) : '') . '" id="erp_minimum_form">

@@ -323,6 +323,13 @@ Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinas�
   Basım fatura şablonuyla `erp_invoice_document_data($id, $source)`;
   faturaya dönüşüm yalnız `erp_invoice_draft_save()` ile (taslak, bugünün
   tarihi). Durum ekranda `erp_quote_state()` ile hesaplanır (süresi doldu).
+- Teklif imzası (8.58, `includes/erp/signatures.php`): kayıt `erp_signatures`'ta
+  (`doc_type`, `doc_id`; belge başına bir), çizim `files`'ta `erp_doc_type =
+  'quote_signature'`. İmza **silinmez, yeniden çizilmez**; teklif sonradan
+  değişirse `document_hash` uyuşmaz, ekran uyarır ve PDF imzayı basmaz. Adi
+  elektronik imzadır, nitelikli değildir. Faturanın kaynağı
+  `erp_invoices.quote_id` (yalnız `array_key_exists` ise yazılır); süresi dolan
+  teklif bildirimi `erp_quotes.expiry_notified_at` ile bir kez.
 - Tekrarlayan fatura (`includes/erp/invoice_recurring.php`): yalnız ERP'de
   yazılmış (`order_id = 0`) kesilmiş satış faturası. Koşu gider tekrarıyla
   aynı: tarih koşullu `UPDATE` ile sahiplenilir, günlük iş + fatura listesi
@@ -563,6 +570,7 @@ Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinas�
 | Denetim izi | `includes/erp/audit.php`, `erp_audit.php` |
 | Anlık bildirim | `includes/erp/alerts.php`, `erp_stock_alert_job.php` |
 | Teklifler | `includes/erp/quotes.php`, `erp_quotes.php`, `add_erp_quote.php`, `edit_erp_quote.php`, `get_erp_quote_pdf.php` |
+| Belge imzası (teklif) | `includes/erp/signatures.php` |
 | Tekrarlayan faturalar | `includes/erp/invoice_recurring.php`, `erp_invoice_recurrences.php`, `erp_invoice_recurring_job.php` |
 | Cari fiyatları | `includes/erp/price_lists.php`, `erp_account_prices.php` |
 | Stok sayımı | `includes/erp/stock_counts.php`, `erp_stock_counts.php`, `erp_stock_count.php` |

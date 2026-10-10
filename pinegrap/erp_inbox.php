@@ -148,8 +148,9 @@ if (!$installed) {
 $output_fetch = '';
 
 if ($provider !== '') {
-    $output_fetch = '
-                <form action="erp_inbox.php" method="post" class="d-flex flex-wrap align-items-center gap-1">
+    // Reading writes rows, so a read-only user is shown when it last ran, not the button.
+    $output_fetch = ((defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '' : '
+                <form action="erp_inbox.php" method="post" class="d-flex align-items-center gap-1">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="state" value="' . h($state) . '" />
@@ -157,7 +158,7 @@ if ($provider !== '') {
                     <span class="text-body-secondary">&ndash;</span>
                     <input type="date" name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
                     <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
-                </form>
+                </form>') . '
                 ' . (($read_at > 0)
                     ? '<span class="small text-body-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
                     : '');

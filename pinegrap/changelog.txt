@@ -311,6 +311,146 @@
          kendi sunucusunda çizilir; bağlantı hiçbir dış servise
          gitmez.
 
+  [DÜZELTME] Fatura, teklif ve fatura taslağı formlarında Vade
+         Tarihi (teklifte Geçerlilik tarihi) ile Tedarikçi Fatura
+         Tarihi alanlarının, irsaliye formunda Sevk Tarihi alanının
+         takvimi açılmıyordu: takvimi bağlayan betik bu alanlar
+         sayfaya gelmeden çalışıyordu. Takvim artık formdaki bütün
+         tarih alanlarına bağlanıyor; elle yazılan tarihler eskisi
+         gibi okunuyor.
+
+  [DÜZELTME] Aynı adı taşıyan iki cari, fatura, teklif, irsaliye,
+         tahsilat/ödeme ve çek/senet formlarının cari listesinde tek
+         satıra iniyor, ilki hiç seçilemiyordu. Her cari artık kendi
+         satırıyla listelenir.
+
+  [YENİ] Cari listeleri aranabilir: fatura, teklif, fatura taslağı,
+         irsaliye, tahsilat/ödeme, çek/senet, çek cirosu ve banka
+         ekstresi satırı formlarında cari kutusuna yazarak süzülür.
+
+  [YENİ] Formdan ayrılmadan cari açma: fatura, teklif, fatura
+         taslağı, irsaliye, tahsilat/ödeme, yeni çek/senet, çek
+         cirosu ve banka ekstresi satırı formlarındaki "Yeni cari
+         hesap" bağlantısı küçük bir pencere açar (kişi/şirket, ad,
+         telefon, e-posta, isteğe bağlı vergi numarası). Açılan cari
+         listeye eklenip seçilir, yazılmakta olan belge kaybolmaz.
+         Cari türü formdan gelir: alış faturası, verilen çek, ödeme,
+         çek cirosu ve paradan çıkan ekstre satırı tedarikçi; öteki
+         formlar müşteri açar. Kontroller tezgâh satışındaki hızlı
+         cariyle aynıdır (TR'de kişide ad ve soyad, VKN/TCKN kontrol
+         hanesi, aynı vergi numarasıyla ikinci cari açılmaz).
+         Bağlantıya orta tıklamak tam cari formunu yeni sekmede açar.
+         Muhasebeci (salt okunur) yetkisinde bağlantı görünmez.
+         Formdan ya da tezgâhtan açılan cari artık işlem günlüğüne
+         de yazılır.
+
+  [YENİ] Teklif kopyalama: teklif ekranındaki "Kopyala" düğmesi
+         teklifin carisi, para birimi, notları ve satırlarıyla
+         (teklifteki fiyatlar, iskontolar ve vergi oranlarıyla)
+         dolu yeni bir teklif açar. Kopya bugünün tarihini ve
+         olağan geçerlilik süresini alır, numarasını yalnız
+         kaydedilince alır; kaynağın durumu ne olursa olsun
+         (açık, süresi dolmuş, onaylanmış, reddedilmiş,
+         faturalanmış) kopya her zaman yeni bir açık tekliftir.
+
+  [YENİ] Teklifler denetim izine ve webhook'lara giriyor. Teklifin
+         yazılması, onaylanması, reddedilmesi, iptali, yeniden
+         açılması ve faturaya dönüştürülmesi denetim izinde
+         "Teklifler" türüyle, teklife bağlantılı olarak görünür;
+         teklif ekranına "Denetim izi" düğmesi eklendi. Dış API
+         uygulamaları erp.quote.created, erp.quote.accepted,
+         erp.quote.rejected, erp.quote.cancelled,
+         erp.quote.reopened ve erp.quote.invoiced olaylarına
+         abone olabilir. Teklif para hareketi olmadığından anlık
+         bildirim üretmez.
+
+  [YENİ] ERP göstergesinde "Açık teklifler" kutusu: süresi
+         geçmemiş açık teklif sayısı ve bunlardan 7 gün içinde
+         süresi dolacakların sayısı; kutu açık teklif listesine
+         götürür.
+
+  [YENİ] Teklif listesi cariye göre süzülebiliyor. Cari kartına
+         "Açık faturalar", "Yeni Fatura" ve "Teklifler"
+         bağlantıları eklendi: carinin açık faturaları ve
+         teklifleri tek tıkla listelenir, yeni fatura o cari
+         seçili olarak açılır (tedarikçi carisinde alış
+         faturası olarak). Süzgeç açıkken listenin üstünde hangi
+         carinin gösterildiği ve süzgeci kaldırma bağlantısı
+         yazar; arama ve durum düğmeleri süzgeci korur.
+
+  [DÜZELTME] Teklif listesinin araç çubuğu öteki ERP listeleriyle
+         aynı düzene getirildi: "Yeni teklif" düğmesi başta,
+         arama kutusu ve durum düğmeleri sağda.
+
+  [DÜZELTME] Faturası iptal edilen teklif "Faturalandı" durumunda
+         kilitli kalıyor, yeniden faturalanamıyor ya da
+         durumu değiştirilemiyordu. İptal edilmiş fatura artık
+         yok hükmündedir: teklif yeniden "Onaylandı" okunur,
+         faturaya dönüştürülebilir ve teklif ekranı faturanın
+         iptal edildiğini, faturaya bağlantısıyla söyler. Liste
+         süzgeçleri ve dış API'nin durum süzgeci de aynı kuralla
+         sayar.
+
+  [DÜZELTME] Cari Hesaplar, Çek ve senetler, Minimum stok,
+         Tekrarlayan faturalar, Stok ve maliyet, Denetim izi, Kasa
+         akışı, Gelen e-faturalar ve ERP Ayarları ekranlarının araç
+         çubukları tek düzene getirildi: oluşturma düğmesi başta,
+         ilgili ekranlara giden düğmeler yanında, arama kutusu ve
+         süzgeç düğmeleri sağda. Çek ve senetlerde araç çubuğu
+         özet kartlarının üstüne alındı ve sayfanın altındaki
+         forma götüren "Yeni çek ya da senet" düğmesi eklendi;
+         Denetim izinde araç çubuğu süzgeç kartının üstüne
+         taşındı. Carilerdeki "e-Belgeye hazır olmayan" ve
+         "Kredi limitini aşan" anahtarları sayılarıyla birlikte
+         tek bir süzgeç grubunda toplandı. Salt okunur ERP
+         kullanıcısına Cari Hesaplar, Stok ve maliyet ve Gelen
+         e-faturalar ekranlarında kayıt oluşturan düğmeler
+         gösterilmiyor.
+
+  [YENİ] Faturadan kopya: kesilmiş, iptal edilmiş ya da taslak
+         faturanın ekranındaki "Kopyala" düğmesi aynı yön, cari,
+         para birimi, not ve satırlarla yeni bir fatura formu
+         açar. Yeni fatura bugünün tarihini alır; vade carinin
+         vadesinden, kur günün kurundan gelir; tedarikçinin
+         fatura numarası ve tarihi kopyalanmaz. Form taslak
+         olarak saklanabilir ya da hemen kesilebilir. Siparişten
+         kesilen faturalar kopyalanmaz; satırları ve iadeleri
+         siparişe bağlıdır.
+  [YENİ] Süresi dolmak üzere olan teklifler bildirilir: açık bir
+         teklifin geçerlilik tarihi seçilen gün sayısı içine
+         girince (varsayılan 3 gün) panel ziliyle ve bildirimlere
+         izin veren cihazlara tek bir bildirim gider; tek teklifte
+         numarası yazar ve bildirim teklife açılır. Her teklif bir
+         kez bildirilir; yeniden açılınca ya da tarihi değişince
+         yeniden. Saatlik stok bildirimi işiyle birlikte koşar.
+         Ayarlar › Ticaret › ERP'deki "Anlık bildirimler"
+         bölümünden kapatılır ve gün sayısı (1-30) seçilir.
+
+  [YENİ] Tekliften yapılan fatura, kendi ekranında kaynağı olan
+         teklife bağlantı gösterir ("… numaralı tekliften"); dış
+         API'nin fatura kaydı da quote_id alanını taşır. Güncellemeden
+         önce tekliften yapılmış faturalar da, teklif onları hâlâ
+         gösteriyorsa, bağlanır.
+
+  [YENİ] Teklife müşteri imzası: teklif ekranındaki "Müşteri
+         imzası" kartında müşteri teklifi ekranda ya da tablette
+         parmağıyla imzalar, imzalayanın adı yazılır ve teklif
+         "Onaylandı" olur; teklif listesinde ve ekranında durumun
+         yanında imza simgesi görünür. İmza teklifin PDF'ine ve
+         e-postayla giden kopyasına basılır. İmza kanıttır: silinemez,
+         yeniden çizilemez; tarih-saat, IP adresi, tarayıcı ve imzalandığı
+         andaki teklifin özeti ile mühürlenerek saklanır. Teklif
+         sonradan değiştirilirse ekran bunu uyarı olarak söyler ve
+         imza artık basılmaz. Bu adi bir elektronik imzadır,
+         nitelikli elektronik imza değildir. İmza görseli yalnız
+         ERP hakkı olanlara açılır.
+
+  [ŞEMA] Teklif bildirimi, faturadan teklife bağ ve teklif imzası
+         için: erp_quotes.expiry_notified_at,
+         config.erp_notify_quote_expiry ve
+         erp_notify_quote_expiry_days, erp_invoices.quote_id
+         sütunları ve yeni erp_signatures tablosu eklenir.
+
   ZAMANLANMIŞ GÖREVLER
   --------------------------------------------------------
 

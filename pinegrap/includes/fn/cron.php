@@ -330,9 +330,10 @@ function pg_cron_jobs()
         // Low stock notices: the products newly at or below their minimum,
         // to the bell and the subscribed devices. Hourly, so a sale anywhere
         // is told within the hour; with the notice off, or nothing new, a run
-        // is one or two indexed reads.
+        // is one or two indexed reads. The same run announces the open quotes
+        // about to run out (8.58).
         'erp_stock_alert_job' => array(
-            'label'       => lang('Low stock notices'),
+            'label'       => lang('Low stock and quote notices'),
             'script'      => 'erp_stock_alert_job.php',
             'interval'    => 3600,
             'stale_after' => 172800,

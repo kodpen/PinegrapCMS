@@ -63,6 +63,8 @@ function upgrade_to_2026_4_8() {
 
 	upgrade_2026_4_8_workspace_acks();          // 8.89
 
+	upgrade_2026_4_8_erp_quotes();              // 8.58
+
 }
 
 // Pinegrap AI works with the site's subscription key (2026.4.8, 8.80;
@@ -1019,5 +1021,79 @@ function upgrade_2026_4_8_workspace_acks() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.');
+
+}
+
+// ERP: quotes about to run out, the invoice's quote and the customer's
+// signature (2026.4.8, 8.58; includes/erp/alerts.php, quotes.php,
+// signatures.php).
+//
+// erp_quotes.expiry_notified_at is when an open quote was announced as about
+// to run out (0: not yet); the scheduled run announces each quote once, and
+// opening it again or changing its date clears the stamp. The run's look
+// for them is served by the idx_status (status, valid_until) index the
+// table was created with (4.92). config.erp_notify_quote_expiry switches the
+// notice (on by default) and erp_notify_quote_expiry_days says how many days
+// ahead it looks.
+//
+// erp_invoices.quote_id names the quote an invoice was made from, so the
+// invoice can lead back to it; erp_quotes.invoice_id, the other way, is
+// cleared when a quote is opened again and cannot serve. The invoices made
+// from a quote before this step are linked from erp_quotes.invoice_id where
+// it still names them.
+//
+// erp_signatures is a signature drawn under an ERP document - today a quote
+// signed on the screen by the customer. doc_type / doc_id name the document
+// (one signature each), file_id the drawing, a files row kept the way the
+// ERP keeps its documents (erp_doc_type 'quote_signature'). image_hash is the
+// SHA-256 of the drawing, document_hash that of what was signed (the lines
+// and totals), seal an HMAC over the record with the site's key. A row is
+// evidence and is never deleted.
+function upgrade_2026_4_8_erp_quotes() {
+
+	install_add_column('erp_quotes', 'expiry_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_quotes', 'idx_status', "INDEX idx_status (status, valid_until)");
+
+	install_add_column('config', 'erp_notify_quote_expiry', "TINYINT(1) NOT NULL DEFAULT 1");
+	install_add_column('config', 'erp_notify_quote_expiry_days', "TINYINT UNSIGNED NOT NULL DEFAULT 3");
+
+	install_add_column('erp_invoices', 'quote_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_invoices', 'idx_quote', "INDEX idx_quote (quote_id)");
+
+	install_create_table('erp_signatures', "CREATE TABLE erp_signatures (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		doc_type      VARCHAR(20) NOT NULL,
+		doc_id        INT UNSIGNED NOT NULL,
+		file_id       INT UNSIGNED NOT NULL,
+		image_hash    CHAR(64) NOT NULL DEFAULT '',
+		document_hash CHAR(64) NOT NULL DEFAULT '',
+		signer_name   VARCHAR(255) NOT NULL DEFAULT '',
+		signed_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		ip_address    VARCHAR(45) NOT NULL DEFAULT '',
+		user_agent    VARCHAR(255) NOT NULL DEFAULT '',
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		seal          CHAR(64) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_doc (doc_type, doc_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Invoices made from a quote before this step: the quote still names its
+	// invoice. Only links not yet set are written, so a second run changes
+	// nothing; a quote opened again had its invoice_id cleared and is not
+	// found.
+	db("UPDATE erp_invoices i
+		INNER JOIN erp_quotes q ON q.invoice_id = i.id
+		SET i.quote_id = q.id
+		WHERE i.quote_id = 0 AND q.invoice_id > 0");
+
+	$linked = (int) mysqli_affected_rows(db::$con);
+
+	if ($linked > 0) {
+		install_ran('erp_invoices.quote_id set for ' . $linked . ' invoice(s) made from a quote');
+	} else {
+		install_skipped('erp_invoices.quote_id: no invoice made from a quote left to link');
+	}
+
+	install_note('Quotes: a notice when open quotes are about to run out (Settings › Commerce › ERP), an invoice that leads back to the quote it was made from, and a quote the customer signs on the screen, printed with the signature.');
 
 }

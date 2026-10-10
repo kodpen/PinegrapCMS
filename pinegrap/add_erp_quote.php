@@ -8,6 +8,10 @@
  * offer runs to. Saving gives the quote its number; nothing is posted to the
  * account. The work lives in includes/erp/quotes.php.
  *
+ * ?copy=<id> opens the editor filled from another quote (account, currency,
+ * notes and lines), dated today with the usual run; it is a new open quote
+ * and takes its own number when saved.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -30,7 +34,33 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_quote.php';
 
 if (!$_POST) {
 
+    // Read before the prefill writes the form into the session: a form
+    // already there is one sent back with an error, and keeps what was typed.
+    $fresh = !$liveform->field_in_session('issue_date');
+
     erp_invoice_form_prefill($liveform, null, 'sales');
+
+    $card_options = array('quote' => true, 'valid_days' => ERP_QUOTE_VALID_DAYS);
+    $copy_id = max(0, (int) ($_GET['copy'] ?? 0));
+
+    if ($copy_id > 0) {
+        $source = erp_quote($copy_id);
+
+        if ($source === null) {
+            $liveform->mark_error('', lang('The quote could not be found.'));
+        } else {
+            // The stored lines (line_data), not the form as it was posted:
+            // they are what was priced and what an invoice would be made of.
+            $card_options['lines'] = erp_invoice_form_lines($liveform, erp_quote_editor_rows($source));
+
+            if ($fresh) {
+                $liveform->assign_field_value('account_id', (string) (int) $source['account_id']);
+                $liveform->assign_field_value('currency', strtoupper(trim((string) $source['currency'])));
+                $liveform->assign_field_value('notes', (string) $source['notes']);
+                $liveform->add_notice(h(lang(array('string' => 'Copied from quote {var:1}', 'vars' => (string) $source['full_number']))));
+            }
+        }
+    }
 
     // A quote started from an account's card opens on that account.
     if (((int) ($_GET['account_id'] ?? 0) > 0) && !$liveform->field_in_session('account_id')) {
@@ -63,13 +93,14 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_quote.php" method="post" autocomplete="off">
                 ' . get_token_field() . '
-                ' . erp_invoice_form_cards($liveform, array('quote' => true, 'valid_days' => ERP_QUOTE_VALID_DAYS)) . '
+                ' . erp_invoice_form_cards($liveform, $card_options) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <button type="submit" class="btn my-1 btn-success"' . (erp_quotes_ready() ? '' : ' disabled') . ' data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the quote') . '</span></button>
                     </div>
                 </nav>
             </form>
+            ' . erp_account_quick_modal() . '
         </div>
     </div>
 </main>' .

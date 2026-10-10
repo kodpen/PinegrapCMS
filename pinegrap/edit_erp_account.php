@@ -183,6 +183,9 @@ if (!$_POST) {
         $output_workspace_button = ws_record_button($user, 'erp_account', (int) $account_id, (string) $account['title']);
     }
 
+    // A sales quote is written to a customer, so a pure supplier gets no quote links.
+    $show_quotes = function_exists('erp_quotes_ready') && erp_quotes_ready() && ((string) $account['kind'] !== 'supplier');
+
     echo
     pg_page_shell([
         'title' => lang('Edit Account'),
@@ -206,7 +209,10 @@ if (!$_POST) {
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                         <a class="btn btn-sm btn-outline-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1"></i>' . lang('Reconciliation Letter') . '</a>
                         ' . ((function_exists('erp_price_lists_ready') && erp_price_lists_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge text-bg-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
-                        ' . ((function_exists('erp_quotes_ready') && erp_quotes_ready() && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                        <a class="btn btn-sm btn-outline-secondary" href="erp_invoices.php?filter=open&amp;account_id=' . $account_id . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Open invoices') . '</a>
+                        ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
+                        ' . ($show_quotes ? '<a class="btn btn-sm btn-outline-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
+                        ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                         ' . $output_einvoice_check . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '

@@ -187,6 +187,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $all_accounts = null;
     $categories = null;
+    $output_bank_quick = '';
     $output_rows = '';
 
     foreach ($lines as $line) {
@@ -214,8 +215,10 @@ if ((string) $statement['status'] === 'mapping') {
                     }
                 }
 
-                $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><select class="form-select form-select-sm" name="account_id" style="max-width:16rem" required><option value="">' . lang('Choose an account') . '</option>' . $all_accounts . '</select>',
-                    $in ? lang('Record as a collection') : lang('Record as a payment'), 'btn-primary') . '</div>';
+                $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><select class="form-select form-select-sm select2" id="erp_bank_line_account_id" name="account_id" style="max-width:16rem" required aria-label="' . h(lang('Account')) . '"><option value="">' . lang('Choose an account') . '</option>' . $all_accounts . '</select>',
+                    $in ? lang('Record as a collection') : lang('Record as a payment'), 'btn-primary')
+                    . erp_account_quick_link('#erp_bank_line_account_id', $in ? 'customer' : 'supplier') . '</div>';
+                $output_bank_quick = erp_account_quick_modal();
 
                 if (!$in) {
                     if ($categories === null) {
@@ -254,7 +257,7 @@ if ((string) $statement['status'] === 'mapping') {
         $output_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('The statement has no new lines.') . '</td></tr>';
     }
 
-    $output_body = '
+    $output_body = $output_bank_quick . '
             ' . (($suggested > 0 && !$readonly) ? '<div class="d-flex justify-content-end my-3">' . $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-success') . '</div>' : '') . '
             <div class="card my-4">
                 <div class="card-body p-0 table-responsive">

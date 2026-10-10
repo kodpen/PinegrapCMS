@@ -676,7 +676,18 @@ $pg_settings_cards[] = '
                                     <label class="form-check-label" for="erp_notify_low_stock">' . lang('A product drops to its minimum stock') . '</label>
                                 </div>
                                 <div class="form-text">' . lang('Checked every hour; each product is announced once each time it drops.') . '</div>' . $output_erp_overdue_push_hint . '
+                            </div>' . ($erp_quote_alert_ready ? '
+                            <div class="col-12 col-md-7">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . $erp_notify_quote_expiry_checked . ' class="form-check-input" type="checkbox" id="erp_notify_quote_expiry" name="erp_notify_quote_expiry" />
+                                    <label class="form-check-label" for="erp_notify_quote_expiry">' . lang('Announce quotes about to expire') . '</label>
+                                </div>
+                                <div class="form-text">' . lang('Checked every hour; each open quote is announced once, and again after it is opened again or its date changes.') . '</div>
                             </div>
+                            <div class="col-12 col-md-5">
+                                <label class="form-label" for="erp_notify_quote_expiry_days">' . lang('Days before it expires') . '</label>
+                                <input type="number" class="form-control pg-f-xs" id="erp_notify_quote_expiry_days" name="erp_notify_quote_expiry_days" value="' . (int) $erp_notify_quote_expiry_days . '" min="1" max="30" step="1" inputmode="numeric" autocomplete="off" />
+                            </div>' : '') . '
                         </div>
                     </div>' : '') . '
                 </div>

@@ -872,6 +872,8 @@ function erp_api_invoice_present($row, $lines)
         'account_tax_number' => (string) ($row['account_tax_number'] ?? ''),
         'order_id' => (int) $row['order_id'],
         'parent_invoice_id' => (int) $row['parent_invoice_id'],
+        // The quote the invoice was made from (8.58); 0 for none.
+        'quote_id' => (int) ($row['quote_id'] ?? 0),
         'supplier_invoice_no' => (string) $row['supplier_invoice_no'],
         'issue_date' => erp_api_date($row['issue_date']),
         'due_date' => erp_api_date($row['due_date']),
@@ -932,6 +934,7 @@ function erp_api_invoice_schema()
         'account_tax_number' => 'string',
         'order_id' => 'integer',
         'parent_invoice_id' => 'integer',
+        'quote_id' => 'integer',
         'supplier_invoice_no' => 'string',
         'issue_date' => 'string?',
         'due_date' => 'string?',
@@ -2525,10 +2528,10 @@ function erp_api_quotes_list($params)
             $where[] = "q.status = 'open' AND q.valid_until > '0000-00-00' AND q.valid_until < '" . $today . "'";
             break;
         case 'accepted':
-            $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND i.id IS NULL))";
+            $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND (i.id IS NULL OR i.status = 'cancelled')))";
             break;
         case 'invoiced':
-            $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL";
+            $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL AND i.status <> 'cancelled'";
             break;
         case 'rejected':
         case 'cancelled':

@@ -12,6 +12,13 @@
  * The figures shown while typing are a preview; the module works them out
  * again when the form is saved and the two must agree.
  *
+ * ?copy=<id> opens the form filled from another typed-in invoice - issued,
+ * cancelled or a draft - with its direction, account, currency, notes and
+ * lines. An invoice made from an order is not copied: its lines and returns
+ * belong to the order. The copy is dated today, the due date and the rate
+ * are left to the account's term and the day's rate, and the supplier's
+ * number is not carried over: it belongs to the other document.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -35,7 +42,43 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_manual_invoice.p
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
+    // Read before the prefill writes the form into the session: a form
+    // already there is one sent back with an error, and keeps what was typed.
+    $fresh = !$liveform->field_in_session('issue_date');
+
     erp_invoice_form_prefill($liveform, null, (string) ($_GET['direction'] ?? 'sales'));
+
+    $card_options = array();
+    $copy_id = max(0, (int) ($_GET['copy'] ?? 0));
+
+    if ($copy_id > 0) {
+        $source = db_item("SELECT * FROM erp_invoices WHERE id = '" . $copy_id . "' AND doc_type = 'invoice' AND order_id = 0 LIMIT 1");
+
+        if (!is_array($source)) {
+            $liveform->mark_error('', lang('The invoice could not be found.'));
+        } else {
+            // The stored lines; a form sent back with an error keeps its own
+            // (erp_invoice_form_lines() prefers what was posted).
+            $card_options['lines'] = erp_invoice_form_lines($liveform, (array) db_items("SELECT l.*, COALESCE(NULLIF(p.short_description, ''), p.name) AS product_name
+                FROM erp_invoice_items l
+                LEFT JOIN products p ON l.product_id = p.id
+                WHERE l.invoice_id = '" . $copy_id . "'
+                ORDER BY l.line_no ASC, l.id ASC"));
+
+            if ($fresh) {
+                $liveform->assign_field_value('direction', ((string) $source['direction'] === 'purchase') ? 'purchase' : 'sales');
+                $liveform->assign_field_value('account_id', (string) (int) $source['account_id']);
+                $liveform->assign_field_value('currency', strtoupper(trim((string) $source['currency'])));
+                $liveform->assign_field_value('notes', (string) $source['notes']);
+                $liveform->add_notice(h(lang(array('string' => 'Copied from invoice {var:1}', 'vars' => ((string) $source['full_number'] !== '') ? (string) $source['full_number'] : ('#' . $copy_id)))));
+            }
+        }
+    }
+
+    // An invoice started from an account's card opens on that account.
+    if (((int) ($_GET['account_id'] ?? 0) > 0) && !$liveform->field_in_session('account_id')) {
+        $liveform->assign_field_value('account_id', (string) (int) $_GET['account_id']);
+    }
 
     echo
     pg_page_shell([
@@ -59,7 +102,7 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_manual_invoice.php" method="post" autocomplete="off">
                 ' . get_token_field() . '
-                ' . erp_invoice_form_cards($liveform) . '
+                ' . erp_invoice_form_cards($liveform, $card_options) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
@@ -69,6 +112,7 @@ if (!$_POST) {
                     </div>
                 </nav>
             </form>
+            ' . erp_account_quick_modal() . '
         </div>
     </div>
 </main>' .

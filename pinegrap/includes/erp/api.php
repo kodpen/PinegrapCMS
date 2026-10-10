@@ -127,6 +127,13 @@ function erp_webhook_events()
         'erp.expense.created' => 'An ERP expense was recorded (from a screen, the API or a repeating expense)',
         'erp.expense.paid' => 'An ERP expense was paid from a till or bank account',
         'erp.expense.cancelled' => 'An ERP expense was cancelled',
+        'erp.quote.created' => 'An ERP sales quote was written and took its number',
+        'erp.quote.accepted' => 'An ERP sales quote was marked accepted by the customer',
+        'erp.quote.rejected' => 'An ERP sales quote was marked rejected by the customer',
+        'erp.quote.cancelled' => 'An ERP sales quote was cancelled',
+        'erp.quote.reopened' => 'An ERP sales quote was opened again (editable, running from today if it had expired)',
+        'erp.quote.invoiced' => 'An ERP sales quote was turned into an invoice draft at the prices quoted',
+        'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on',
     );
 }
 

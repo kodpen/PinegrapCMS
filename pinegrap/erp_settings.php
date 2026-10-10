@@ -262,6 +262,12 @@ $placeholders = array(
         'language' => lang('The language code of the site, for the html lang attribute'),
         'paper' => lang('Paper size for the @page rule: letter in the US, Canada and much of Latin America, A4 elsewhere'),
     ),
+    lang('Signature') => array(
+        'signature' => lang('Set on a quote the customer signed, empty otherwise; show a block with {{#signature}} ... {{/signature}}'),
+        'signature.image_data_uri' => lang('The signature embedded in the document, for the img src'),
+        'signature.signer_name' => lang('Name of the person signing'),
+        'signature.signed_at' => lang('The moment it was signed'),
+    ),
 );
 
 // The captions the built-in template prints, in the site language. They are
@@ -399,11 +405,11 @@ echo pg_page_shell(array(
                         </ul>
                     </div>
                     <div class="card-body">
-                        <nav id="button_bar" class="navigation mb-3" aria-label="Button Bar">
-                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-primary m-1" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-check2 me-2"></i><span class="btn-text">' . lang('Save') . '</span></button>
-                            <button type="submit" class="btn btn-sm btn-outline-secondary m-1" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-2"></i>' . lang('Preview') . '</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary m-1" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-2"></i>' . lang('Placeholder Reference') . '</button>
-                            <button type="submit" name="reset" value="1" class="btn btn-sm btn-outline-warning m-1" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-2"></i>' . lang('Reset to Default') . '</button>
+                        <nav id="button_bar" class="navigation mb-3" aria-label="' . lang('Button Bar') . '">
+                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-primary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-check2 me-2"></i><span class="btn-text">' . lang('Save') . '</span></button>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-2"></i>' . lang('Preview') . '</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-2"></i>' . lang('Placeholder Reference') . '</button>
+                            <button type="submit" name="reset" value="1" class="btn btn-sm btn-outline-warning" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-2"></i>' . lang('Reset to Default') . '</button>
                         </nav>
 
                         <div class="collapse mb-3" id="placeholder_reference">

@@ -26,6 +26,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_accounts');
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 // Open an account for every contact that has ordered and has none yet - the
 // same reading of the card the order bridge makes, one card per contact.
@@ -159,6 +160,21 @@ foreach ($accounts as $account) {
         </tr>';
 }
 
+// The narrowing switches only show while there is something to narrow to,
+// or while one of them is on.
+$show_edoc = (!empty($edoc_gaps) || $edoc_only);
+$show_over_limit = (!empty($over_limit) || $over_limit_only);
+$output_filter = '';
+
+if ($show_edoc || $show_over_limit) {
+    $output_filter = '
+                <div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Show')) . '">
+                    <a class="btn btn-sm btn-ghost' . ((!$edoc_only && !$over_limit_only) ? ' active' : '') . '" href="erp_accounts.php" data-loading-content="' . lang(array('string' => 'Loading')) . '">' . lang('All') . '</a>
+                    ' . ($show_edoc ? '<a class="btn btn-sm btn-ghost' . ($edoc_only ? ' active' : '') . '" href="erp_accounts.php?filter=edoc" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('Not ready for e-documents') . ' <span class="badge rounded-pill text-bg-' . (!empty($edoc_gaps) ? 'warning' : 'light') . '">' . count($edoc_gaps) . '</span></a>' : '') . '
+                    ' . ($show_over_limit ? '<a class="btn btn-sm btn-ghost' . ($over_limit_only ? ' active' : '') . '" href="erp_accounts.php?filter=over_limit" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>' . lang('Over their credit limit') . ' <span class="badge rounded-pill text-bg-' . (!empty($over_limit) ? 'danger' : 'light') . '">' . count($over_limit) . '</span></a>' : '') . '
+                </div>';
+}
+
 echo
 pg_page_shell([
         'title' => lang('Accounts'),
@@ -176,23 +192,17 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_account.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="erp_accounts_import.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>
-                        ' . ((!empty($edoc_gaps) || $edoc_only) ? '
-                        <a class="btn btn-sm ' . ($edoc_only ? 'btn-warning' : 'btn-outline-warning') . '" href="erp_accounts.php' . ($edoc_only ? '' : '?filter=edoc') . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-exclamation-triangle me-1"></i>' . h($edoc_only
-                            ? lang('Show every account')
-                            : lang(array('string' => '{var:1} account(s) not ready for e-documents', 'vars' => count($edoc_gaps)))) . '</a>' : '') . '
-                        ' . ((!empty($over_limit) || $over_limit_only) ? '
-                        <a class="btn btn-sm ' . ($over_limit_only ? 'btn-danger' : 'btn-outline-danger') . '" href="erp_accounts.php' . ($over_limit_only ? '' : '?filter=over_limit') . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-speedometer2 me-1"></i>' . h($over_limit_only
-                            ? lang('Show every account')
-                            : lang(array('string' => '{var:1} account(s) over their credit limit', 'vars' => count($over_limit)))) . '</a>' : '') . '
-                        ' . (($unlinked_contacts > 0) ? '
-                        <form method="post" action="erp_accounts.php" class="d-inline">
-                            ' . get_token_field() . '
-                            <input type="hidden" name="erp_action" value="sync_contacts" />
-                            <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
-                        </form>' : '') . '
-                    </nav>
+                ' . (!$readonly ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_account.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="erp_accounts_import.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>' : '') . '
+                ' . ((!$readonly && ($unlinked_contacts > 0)) ? '
+                <form method="post" action="erp_accounts.php" class="d-inline">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="erp_action" value="sync_contacts" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
+                </form>' : '') . '
+                <div class="pg-toolbar-grow"></div>
+                ' . $output_filter . '
+            </nav>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
