@@ -84,11 +84,11 @@ if ($output_rows === '') {
         . (($show === 'low') ? lang('No product on sale is at or below its minimum.') : lang('No product that tracks stock matches.')) . '</td></tr>';
 }
 
-$filter_link = function ($value, $label) use ($show, $search) {
-    $query = http_build_query(array_filter(array('search' => $search, 'show' => ($value !== 'all') ? $value : '')));
-
-    return '<a class="btn btn-sm btn-ghost' . (($show === $value) ? ' active' : '') . '" href="erp_stock_minimums.php' . (($query !== '') ? '?' . $query : '') . '">' . $label . '</a>';
-};
+$output_show_filter = pg_filter_select('show', array(
+    'all' => lang('All'),
+    'set' => lang('With a minimum'),
+    'low' => lang(array('string' => 'Low ({var:1})', 'vars' => $low_count)),
+), $show, array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_stock_minimums.php', 'keep' => array('search')));
 
 echo
 pg_page_shell([
@@ -117,11 +117,7 @@ pg_page_shell([
                     <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
                 </form>
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Show')) . '">
-                    ' . $filter_link('all', lang('All')) . '
-                    ' . $filter_link('set', lang('With a minimum')) . '
-                    ' . $filter_link('low', h(lang(array('string' => 'Low ({var:1})', 'vars' => $low_count)))) . '
-                </div>
+                ' . $output_show_filter . '
             </nav>
 
             <form method="post" action="erp_stock_minimums.php' . (($query !== '') ? '?' . h($query) : '') . '" id="erp_minimum_form">

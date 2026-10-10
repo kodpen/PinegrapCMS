@@ -557,6 +557,152 @@ function pg_settings_link($pane = '', $section = '')
     return ($section !== '') ? ($url . '#' . $section) : $url;
 }
 
+/**
+ * A list filter as a select in the screen's toolbar: a GET form of its own
+ * that submits when the choice changes (a button under <noscript>). It sits
+ * in #button_bar as a direct child; the bar's CSS lays the form out on its
+ * line. A row of buttons is not used for a filter: it spreads across the
+ * bar and wraps into a second row as soon as the labels carry counts.
+ *
+ * Options:
+ *   keep   names of $_GET values to carry along (a search, another filter);
+ *          nothing else is carried, so the filter reads as the links it
+ *          replaces, each a fresh address
+ *   label  the select's accessible name, also shown on the left when icon
+ *          is given; defaults to "Filter"
+ *   icon   a Bootstrap Icons name (without "bi-") drawn on the left
+ *   action the form's action; '' submits to the current address
+ *   id     the select's id; defaults to pg_filter_<name>
+ *
+ * @param string $name    the query parameter the screen reads
+ * @param array  $options value => label (plain text, escaped here)
+ * @param string $current the value in effect
+ * @param array  $opts
+ * @return string
+ */
+function pg_filter_select($name, $options, $current, $opts = array())
+{
+    $name = (string) $name;
+    $current = (string) $current;
+    $keep = isset($opts['keep']) ? (array) $opts['keep'] : array();
+    $label = (isset($opts['label']) && ((string) $opts['label'] !== '')) ? (string) $opts['label'] : lang('Filter');
+    $icon = isset($opts['icon']) ? (string) $opts['icon'] : '';
+    $action = isset($opts['action']) ? (string) $opts['action'] : '';
+    $id = isset($opts['id']) ? (string) $opts['id'] : 'pg_filter_' . preg_replace('/[^A-Za-z0-9_]/', '_', $name);
+
+    $hidden = '';
+
+    foreach ($keep as $key) {
+        $key = (string) $key;
+
+        if (($key === $name) || !isset($_GET[$key]) || !is_scalar($_GET[$key]) || ((string) $_GET[$key] === '')) {
+            continue;
+        }
+
+        $hidden .= '<input type="hidden" name="' . h($key) . '" value="' . h((string) $_GET[$key]) . '">';
+    }
+
+    $items = '';
+
+    foreach ($options as $value => $text) {
+        $value = (string) $value;
+        $items .= '<option value="' . h($value) . '"' . (($value === $current) ? ' selected' : '') . '>' . h((string) $text) . '</option>';
+    }
+
+    $select = '<select id="' . h($id) . '" name="' . h($name) . '" class="form-select form-select-sm w-auto" onchange="this.form.submit()" aria-label="' . h($label) . '">' . $items . '</select>';
+
+    if ($icon !== '') {
+        $select = '<div class="input-group input-group-sm w-auto flex-nowrap">'
+            . '<label class="input-group-text" for="' . h($id) . '" title="' . h($label) . '"><i class="bi bi-' . h($icon) . '" aria-hidden="true"></i></label>'
+            . $select . '</div>';
+    }
+
+    return '<form method="get"' . (($action !== '') ? ' action="' . h($action) . '"' : '') . ' class="pg-toolbar-filter disable_shortcut">'
+        . $hidden . $select
+        . '<noscript><button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button></noscript>'
+        . '</form>';
+}
+
+/**
+ * The unit a date range steps by: a single day, a Sunday-to-Saturday week, a
+ * calendar year, or - for a calendar month and any other range - a month.
+ *
+ * @param array $range start_month, start_day, start_year, stop_month, stop_day, stop_year
+ * @return string day | week | month | year
+ */
+function pg_period_unit($range)
+{
+    $start = mktime(0, 0, 0, (int) ($range['start_month'] ?? 1), (int) ($range['start_day'] ?? 1), (int) ($range['start_year'] ?? date('Y')));
+    $stop = mktime(0, 0, 0, (int) ($range['stop_month'] ?? 1), (int) ($range['stop_day'] ?? 1), (int) ($range['stop_year'] ?? date('Y')));
+
+    // Rounded: a range across a daylight saving change is an hour short or long.
+    $days = (int) round(($stop - $start) / 86400) + 1;
+
+    if ($days === 1) {
+        return 'day';
+    }
+
+    if (($days === 7) && (date('w', $start) === '0')) {
+        return 'week';
+    }
+
+    if ((date('m-d', $start) === '01-01') && (date('m-d', $stop) === '12-31') && (date('Y', $start) === date('Y', $stop))) {
+        return 'year';
+    }
+
+    return 'month';
+}
+
+/**
+ * The period navigator of a list screen's toolbar: ‹ [unit ▾] › and the
+ * range on screen. The arrows step by the unit pg_period_unit() reads off
+ * the range; the menu jumps to today, this week, this month or this year.
+ * Every link is the screen's own address with the six range values, which
+ * is what the screens read (and keep in their session).
+ *
+ * @param string $url        the screen, e.g. 'view_orders.php'
+ * @param array  $range      the range on screen (start_/stop_ month, day, year)
+ * @param array  $periods    unit => array(previous range, this range, next range),
+ *                           for day, week, month and year
+ * @param string $range_html the range as text, already escaped
+ * @param string $class      extra classes for the group (' d-none' hides it)
+ * @return string
+ */
+function pg_period_nav($url, $range, $periods, $range_html, $class = '')
+{
+    $link = function ($to) use ($url) {
+        return $url . '?' . http_build_query(array(
+            'start_month' => $to['start_month'], 'start_day' => $to['start_day'], 'start_year' => $to['start_year'],
+            'stop_month' => $to['stop_month'], 'stop_day' => $to['stop_day'], 'stop_year' => $to['stop_year'],
+        ));
+    };
+
+    $labels = array(
+        'day'   => array(lang('Day'), lang('Today')),
+        'week'  => array(lang('Week'), lang('This week')),
+        'month' => array(lang('Month'), lang('This month')),
+        'year'  => array(lang('Year'), lang('This year')),
+    );
+
+    $unit = pg_period_unit($range);
+    $items = '';
+
+    foreach ($labels as $key => $label) {
+        $items .= '<li><a class="dropdown-item link-body-emphasis' . (($key === $unit) ? ' active' : '') . '" href="' . h($link($periods[$key][1])) . '">' . h($label[1]) . '</a></li>';
+    }
+
+    return '
+                    <div class="d-inline-block' . h($class) . '" role="group" aria-label="' . h(lang('Period')) . '">
+                        <a class="btn btn-sm btn-ghost" href="' . h($link($periods[$unit][0])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm btn-ghost dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>' . h($labels[$unit][0]) . '</button>
+                            <ul class="dropdown-menu dropdown-menu-end">' . $items . '</ul>
+                        </div>
+                        <a class="btn btn-sm btn-ghost" href="' . h($link($periods[$unit][2])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                        <span class="small text-body-secondary text-nowrap">' . $range_html . '</span>
+                    </div>';
+}
+
 
 /**
  * Where to send a browser that has finished with a tool and wants the settings.

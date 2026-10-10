@@ -25,6 +25,22 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_cashflow');
 
+// The quick ranges of the toolbar's period select. A range picked there
+// arrives as ?range=<key> and stands for both ends of the period; it is
+// written into from/to before they are read, so everything below (and the
+// values the bucket select carries along) sees an ordinary from/to.
+$quick_ranges = array(
+    'this_month' => array(lang('This month'), date('Y-m-01'), date('Y-m-d')),
+    'last_month' => array(lang('Last month'), date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('first day of last month'))),
+    'last_90' => array(lang('Last 90 days'), date('Y-m-d', strtotime('-89 days')), date('Y-m-d')),
+    'this_year' => array(lang('This year'), date('Y-01-01'), date('Y-m-d')),
+);
+$quick_key = (string) ($_GET['range'] ?? '');
+if (isset($quick_ranges[$quick_key])) {
+    $_GET['from'] = $quick_ranges[$quick_key][1];
+    $_GET['to'] = $quick_ranges[$quick_key][2];
+}
+
 $options = erp_cashflow_options(array(
     'from' => $_GET['from'] ?? '',
     'to' => $_GET['to'] ?? '',
@@ -76,28 +92,6 @@ $signed = function ($kurus) {
 };
 
 // ----------------------------------------------------------------- toolbar
-$group_toggle = function ($value, $label) use ($options, $query_base) {
-    $active = ($options['group'] === $value);
-
-    return '<a class="btn btn-sm btn-ghost' . ($active ? ' active' : '') . '" href="erp_cashflow.php?' . h($query_base . '&group=' . $value) . '"' . ($active ? ' aria-current="page"' : '') . '>' . h($label) . '</a>';
-};
-
-$output_group_toggles = '';
-foreach ($groups as $value => $label) {
-    $output_group_toggles .= $group_toggle($value, $label);
-}
-
-// Quick ranges keep the till and let the group pick itself again.
-$this_month = array(date('Y-m-01'), date('Y-m-d'));
-$last_month = array(date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('first day of last month')));
-$this_year = array(date('Y-01-01'), date('Y-m-d'));
-$last_90 = array(date('Y-m-d', strtotime('-89 days')), date('Y-m-d'));
-
-$quick = function ($range, $label) use ($options) {
-    $active = ($options['from'] === $range[0]) && ($options['to'] === $range[1]);
-
-    return '<a class="btn btn-sm btn-ghost' . ($active ? ' active' : '') . '" href="erp_cashflow.php?from=' . $range[0] . '&amp;to=' . $range[1] . '&amp;till=' . (int) $options['till'] . '">' . h($label) . '</a>';
-};
 
 $output_till_options = '<option value="0"' . (((int) $options['till'] === 0) ? ' selected' : '') . '>' . lang('All tills') . '</option>';
 foreach ($tills as $till) {
@@ -105,6 +99,25 @@ foreach ($tills as $till) {
 }
 
 $period_text = prepare_form_data_for_output($options['from'], 'date', false) . ' – ' . prepare_form_data_for_output($options['to'], 'date', false);
+
+// Bucket and period as two selects that keep each other and the till. A
+// period that is not one of the quick ranges is listed by its dates.
+$output_group_filter = pg_filter_select('group', $groups, (string) $options['group'],
+    array('label' => lang('Bucket'), 'icon' => 'bar-chart-steps', 'action' => 'erp_cashflow.php', 'keep' => array('from', 'to', 'till')));
+
+$period_options = array();
+$period_current = '';
+foreach ($quick_ranges as $key => $range) {
+    $period_options[$key] = $range[0];
+    if (($options['from'] === $range[1]) && ($options['to'] === $range[2])) {
+        $period_current = $key;
+    }
+}
+if ($period_current === '') {
+    $period_options = array('' => $period_text) + $period_options;
+}
+$output_period_filter = pg_filter_select('range', $period_options, $period_current,
+    array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('from', 'to', 'till', 'group')));
 
 // ------------------------------------------------------------ period rows
 $output_rows = '';
@@ -202,15 +215,8 @@ pg_page_shell(array(
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . lang('Bucket') . '">
-                    ' . $output_group_toggles . '
-                </div>
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . lang('Period') . '">
-                    ' . $quick($this_month, lang('This month')) . '
-                    ' . $quick($last_month, lang('Last month')) . '
-                    ' . $quick($last_90, lang('Last 90 days')) . '
-                    ' . $quick($this_year, lang('This year')) . '
-                </div>
+                ' . $output_group_filter . '
+                ' . $output_period_filter . '
                 <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-2 mb-0">
                     <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
                     <label for="from" class="small text-body-secondary text-nowrap mb-0">' . lang('Start') . '</label>

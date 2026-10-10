@@ -801,6 +801,10 @@ function pg_designer_start_screen($ctx)
             </div>';
     };
 
+    // Button and panel come from one query: the button only shows when the
+    // panel has rows to list.
+    $comp = pg_designer_components_card($ctx['user']);
+
     print
         pg_page_shell(array(
             'title'               => lang('Visual Page Editor'),
@@ -841,7 +845,8 @@ function pg_designer_start_screen($ctx)
             <div class="alert alert-secondary py-2 small mb-4">
                 <span class="bi bi-info-circle me-1"></span>' . lang('Open a design to edit its text and the areas marked for you. New designs are created by designers.') . '
             </div>') . '
-            <div class="card my-4">
+            ' . ($comp['button'] !== '' ? '<div class="d-flex justify-content-end mt-4 mb-2">' . $comp['button'] . '</div>' : '') . '
+            <div class="card ' . ($comp['button'] !== '' ? 'mb-4' : 'my-4') . '">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table" style="width:100%;display:none">
                         <thead>
@@ -860,8 +865,8 @@ function pg_designer_start_screen($ctx)
                     </table>
                 </div>
             </div>
-            ' . pg_designer_components_card($ctx['user']) . '
         </main>
+        ' . $comp['panel'] . '
         ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
         <script>
             // Delete a design from its row: the design goes, its pages go to
@@ -896,12 +901,26 @@ function pg_designer_start_screen($ctx)
             });
 
             // Shared components and system widgets (pg_designer_components_card()):
-            // tick rows, delete them in one go. Rows still placed on a page are
-            // deleted too (force) once the operator has seen where.
+            // tick rows in the offcanvas panel, delete them in one go. Rows
+            // still placed on a page are deleted too (force) once the operator
+            // has seen where.
             (function () {
-                var card = document.getElementById("sd-comp-card");
+                var card = document.getElementById("sd-comp-offcanvas");
                 if (!card) return;
                 var all = document.getElementById("sd-comp-all"), del = document.getElementById("sd-comp-delete"), counter = document.getElementById("sd-comp-count");
+                var opener = document.getElementById("sd-comp-open"), total = document.getElementById("sd-comp-total");
+                // Nothing left to list: close the panel, then drop it and its
+                // button once the slide-out has finished.
+                var retire = function () {
+                    if (opener) opener.remove();
+                    var oc = (window.bootstrap && bootstrap.Offcanvas) ? bootstrap.Offcanvas.getInstance(card) : null;
+                    if (oc && card.classList.contains("show")) {
+                        card.addEventListener("hidden.bs.offcanvas", function () { oc.dispose(); card.remove(); }, { once: true });
+                        oc.hide();
+                    } else {
+                        card.remove();
+                    }
+                };
                 var boxes = function () { return Array.prototype.slice.call(card.querySelectorAll(".sd-comp-pick")); };
                 var sync = function () {
                     var list = boxes(), n = list.filter(function (b) { return b.checked; }).length;
@@ -947,7 +966,8 @@ function pg_designer_start_screen($ctx)
                             }
                             var gone = (res.deleted || []).map(function (s) { return parseInt(s, 10); });
                             rows.forEach(function (tr) { if (gone.indexOf(parseInt(tr.dataset.id, 10)) !== -1) tr.remove(); });
-                            if (boxes().length) sync(); else card.remove();
+                            if (total) total.textContent = String(boxes().length);
+                            if (boxes().length) sync(); else retire();
                             if (typeof pgToast === "function") {
                                 pgToast({ message: ' . json_encode(lang('{var} deleted.')) . '.replace("{var}", gone.length), variant: "success" });
                                 if (res.kept && res.kept.length) pgToast({ message: ' . json_encode(lang('{var} kept: a saved page uses them.')) . '.replace("{var}", res.kept.length), variant: "warning" });
@@ -1016,23 +1036,26 @@ function pg_designer_start_screen($ctx)
 
 /**
  * The shared components and system widgets on file, with where each one is
- * placed, under the design list. These rows do not belong to one design: a
+ * placed, in an offcanvas panel opened from above the design list. These
+ * rows do not belong to one design: a
  * template's header and widgets outlive the design that opened them, and
  * the next template opened then names its own rows "[1]". Here they can be
  * deleted without opening a design. Editing them needs the canvas, so the
  * card only lists and deletes (shared_component/delete_many, the editor's
  * bulk delete).
  *
- * '' below designer, before the table exists and when there are no rows.
+ * Returns array('button' => opener, 'panel' => offcanvas markup); both ''
+ * below designer, before the table exists and when there are no rows.
  */
 function pg_designer_components_card($user)
 {
+    $none = array('button' => '', 'panel' => '');
     require_once(dirname(__FILE__) . '/designer_access.php');
-    if (!pg_designer_is_full($user)) return '';
-    if (!db_value("SHOW TABLES LIKE 'shared_components'")) return '';
+    if (!pg_designer_is_full($user)) return $none;
+    if (!db_value("SHOW TABLES LIKE 'shared_components'")) return $none;
 
     $comp_rows = db_items("SELECT id, name, category, updated_at, system_region_config FROM shared_components ORDER BY name");
-    if (!is_array($comp_rows) || count($comp_rows) === 0) return '';
+    if (!is_array($comp_rows) || count($comp_rows) === 0) return $none;
 
     $comp_usage     = pg_shared_component_usage(null);
     $comp_types     = pg_sw_type_labels();
@@ -1104,15 +1127,19 @@ function pg_designer_components_card($user)
                     </tr>';
     }
 
-    return '
-            <div class="card mb-5" id="sd-comp-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Shared components and system widgets')) . '</span>
-                    <button type="button" class="btn btn-sm btn-outline-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
-                </div>
-                <div class="card-body pb-0">
-                    <p class="small text-muted mb-3">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
-                </div>
+    $comp_button = '<button type="button" class="btn btn-sm btn-outline-secondary" id="sd-comp-open" data-bs-toggle="offcanvas" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="badge rounded-pill text-bg-secondary ms-1" id="sd-comp-total">' . count($comp_rows) . '</span></button>';
+
+    $comp_panel = '
+        <div class="offcanvas offcanvas-end" id="sd-comp-offcanvas" tabindex="-1" aria-labelledby="sd-comp-offcanvas-title">
+            <div class="offcanvas-header border-bottom">
+                <h2 class="offcanvas-title text-uppercase h5 text-primary fw-bold mb-0" id="sd-comp-offcanvas-title">' . h(lang('Shared components and system widgets')) . '</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="d-flex justify-content-end px-3 py-2 border-bottom">
+                <button type="button" class="btn btn-sm btn-outline-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
+            </div>
+            <div class="offcanvas-body p-0">
+                <p class="small text-muted px-3 pt-3 mb-3">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
@@ -1129,7 +1156,10 @@ function pg_designer_components_card($user)
                         </tbody>
                     </table>
                 </div>
-            </div>';
+            </div>
+        </div>';
+
+    return array('button' => $comp_button, 'panel' => $comp_panel);
 }
 
 /**

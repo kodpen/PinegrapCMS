@@ -119,7 +119,7 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
     return array('type' => 'component', 'props' => array(
         'componentType' => 'language_switcher',
         'variant' => $variant, 'outline' => true, 'size' => 'sm',
-        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'align' => 'md-end', 'display' => 'name', 'icon' => 'translate',
         'cssClass' => $class,
     ), 'children' => array());
 };
@@ -1377,7 +1377,7 @@ $widgets = array(
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

@@ -19515,5 +19515,11 @@
     "Signing documents comes with the software update; run the update to use it.": "Belge imzalama yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",
     "Write the name of the person signing.": "İmzalayanın adını yazın.",
     "The document is signed already.": "Belge zaten imzalanmış.",
-    "The signature could not be saved.": "İmza kaydedilemedi."
+    "The signature could not be saved.": "İmza kaydedilemedi.",
+    "Right on wide screens, left on phones": "Geniş ekranda sağda, telefonda solda",
+    "Right from tablets up, left on phones": "Tabletten itibaren sağda, telefonda solda",
+    "Edit note": "Notu düzenle",
+    "Top 5 products": "En çok satan 5 ürün",
+    "Payment methods": "Ödeme yöntemleri",
+    "No orders in this range.": "Bu aralıkta sipariş yok."
 }

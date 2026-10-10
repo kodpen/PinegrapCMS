@@ -94,9 +94,6 @@ foreach ($buckets as $label) {
 }
 
 // The other direction keeps the date; the date form keeps the direction.
-$toggle = function ($value, $label, $icon) use ($direction, $as_of) {
-    return '<a class="btn btn-sm btn-ghost' . (($direction === $value) ? ' active' : '') . '" href="erp_aging.php?direction=' . $value . '&amp;as_of=' . h($as_of) . '"' . (($direction === $value) ? ' aria-current="page"' : '') . '><i class="bi ' . $icon . ' me-1"></i>' . h($label) . '</a>';
-};
 
 $output_fx_note = erp_fx_enabled()
     ? '<div class="form-text px-3 pb-3">' . lang('Foreign-currency documents are counted at the rate they were booked at.') . '</div>'
@@ -119,10 +116,7 @@ pg_page_shell(array(
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . lang('Direction') . '">
-                    ' . $toggle('sales', $direction_titles['sales'], 'bi-arrow-down-left-circle') . '
-                    ' . $toggle('purchase', $direction_titles['purchase'], 'bi-arrow-up-right-circle') . '
-                </div>
+                ' . pg_filter_select('direction', $direction_titles, $direction, array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_aging.php', 'keep' => array('as_of'))) . '
                 <form method="get" action="erp_aging.php" class="d-flex align-items-center gap-2 mb-0">
                     <input type="hidden" name="direction" value="' . h($direction) . '" />
                     <label for="as_of" class="small text-body-secondary text-nowrap mb-0">' . lang('As of') . '</label>

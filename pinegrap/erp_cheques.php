@@ -96,9 +96,14 @@ if ($output_rows === '') {
     $output_rows = '<tr data-pg-sort-fixed><td colspan="6" class="text-center text-body-secondary py-4">' . lang('No cheque or note here.') . '</td></tr>';
 }
 
-$link = function ($params, $label, $active) {
-    return '<a class="btn btn-sm btn-ghost' . ($active ? ' active' : '') . '" href="erp_cheques.php' . (!empty($params) ? '?' . h(http_build_query($params)) : '') . '">' . $label . '</a>';
-};
+// The two filters: each keeps the other, as the links they replace did.
+$status_options = array('open' => lang('Open'), 'all' => lang('All'));
+if (isset($statuses[$status])) {
+    $status_options[$status] = $statuses[$status][0];
+}
+$output_status_filter = pg_filter_select('status', $status_options, $status, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_cheques.php', 'keep' => array('direction')));
+$output_direction_filter = pg_filter_select('direction', array('' => lang('Both ways'), 'received' => lang('Received'), 'given' => lang('Given')), $direction,
+    array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_cheques.php', 'keep' => array('status')));
 
 $accounts = array(lang('Choose an account') => '');
 // Keyed by id with the title as the label, so two accounts of the same name stay two options.
@@ -207,15 +212,8 @@ pg_page_shell([
                     <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Serial, bank, drawer or account')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
                 </form>
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Status')) . '">
-                    ' . $link(array('status' => 'open') + (($direction !== '') ? array('direction' => $direction) : array()), lang('Open'), ($status === 'open')) . '
-                    ' . $link(array('status' => 'all') + (($direction !== '') ? array('direction' => $direction) : array()), lang('All'), ($status === 'all')) . '
-                </div>
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Direction')) . '">
-                    ' . $link(array('status' => $status), lang('Both ways'), ($direction === '')) . '
-                    ' . $link(array('status' => $status, 'direction' => 'received'), lang('Received'), ($direction === 'received')) . '
-                    ' . $link(array('status' => $status, 'direction' => 'given'), lang('Given'), ($direction === 'given')) . '
-                </div>
+                ' . $output_status_filter . '
+                ' . $output_direction_filter . '
             </nav>
 
             <div class="row g-3 my-1">

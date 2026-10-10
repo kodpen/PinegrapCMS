@@ -124,7 +124,7 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
     return array('type' => 'component', 'props' => array(
         'componentType' => 'language_switcher',
         'variant' => $variant, 'outline' => true, 'size' => 'sm',
-        'align' => 'end', 'display' => 'name', 'icon' => 'translate',
+        'align' => 'lg-end', 'display' => 'name', 'icon' => 'translate',
         'cssClass' => $class,
     ), 'children' => array());
 };
@@ -1831,7 +1831,7 @@ $catalog = array(
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.0.2',
+    'version'     => '1.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

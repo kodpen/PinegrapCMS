@@ -1583,10 +1583,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_product.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=variant_sets" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-grid me-2"></span>' . lang('Variant Sets') . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
@@ -1595,19 +1592,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                     <button type="submit" name="submit_data" value="Export Products" class="btn btn-link link-secondary py-0 m-1"><span class="material-icons me-1">file_download</span>' . lang(array('string'=>'Export') ) . '</button>
                                 </div>
                             </form>
-                        </nav>
-                    </div>
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                        <div class="row justify-content-center justify-content-md-end">
-                            <form id="search_form" action="view_products.php" method="get" class="search_form col-auto">
+                            <div class="pg-toolbar-grow"></div>
+                            <form id="search_form" action="view_products.php" method="get" class="search_form">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" name="filter" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
+                                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
+                                    <select id="filter_select" name="filter" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
+                </nav>
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_products.php" method="post"> 

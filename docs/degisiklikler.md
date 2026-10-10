@@ -74,6 +74,125 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — Panel arayüzü: ortak bileşen offcanvas'ı, dil seçici hizası, not kartı, `#button_bar` standardı, sipariş girişi, ERP filtre select'i (2026-10-10)
+
+**1. Ortak bileşenler paneli.** `pg_designer_components_card($user)` artık
+`array('button' => …, 'panel' => …)` döndürür (tek sorgu; boşsa ikisi de
+`''`). Panel `<main>` dışında `#sd-comp-offcanvas` (`offcanvas-end`,
+genişlik `backend.src.css`'te `min(100vw, 860px)`), açma düğmesi tasarım
+listesinin üstünde, satır sayısı rozetiyle. Son satır silinince offcanvas
+kapanır, panel ve düğme kaldırılır. pgConfirm modalı (1055) offcanvas'ın
+(1045) üstünde; z-index'e dokunulmadı.
+
+**2. Dil seçici mobilde taşıyordu.** Kök neden: Bootstrap `.navbar`
+içindeki dropdown'da Popper'ı kapatır; daraltılmış menüde sol kenardaki
+düğmenin `dropdown-menu-end` menüsü sola, ekran dışına açılıyordu. `align`
+izin listesi `start | end | lg-end | md-end` (PHP
+`pg_language_switcher_options()` + JS `_sdLangSwitcherMarkup()` aynı
+eşleme; bilinmeyen değer `end`). Editörde yeni yerleştirmenin varsayılanı
+`lg-end`; şablonlar `lg-end`, `navbar-expand-md` olan playground `md-end`.
+Beş şablonun sürümü artırıldı (sayfa ağacı değişti). Sunucu yedeği `end`
+kaldı: eski kayıtlı yerleşimler aynı çizilir. `language_switcher` **sistem
+widget'ının** başlangıç ağacındaki `dropdown-menu-end` bu işin dışında
+kaldı.
+
+**3. Not kartı.** `ws_note_cards_map()` karta `html`
+(`ws_render_body()` + `ws_refs_resolve()`, `ws_notes_present($full)` ile
+aynı yol) ve `access` (`ws_note_access()`) ekler; `workspace.js` `html`
+varsa kartı `.ws-nb-msg-card-html` (18rem, kayar) içinde çizer. Not kartı
+taşıyan mesajda `can_edit` false (`messages.php`); menüde "Notu oku" ve
+(sahip/düzenleyebilen için) "Notu düzenle" → mevcut
+`workspace_notes.php?note=<id>` yolu; "Notlarıma kaydet" not kartında yok.
+
+**4. `#button_bar`.** Kök neden: dağılan `.btn-group` içindeki düğmeler
+çubuğun flex öğesi olduğu hâlde `#button_bar > .btn` onları tutmuyordu ve
+Bootstrap'in `.btn-group > .btn { flex: 1 1 auto }` kuralı geçerli
+kalıyordu. Çözüm: `#button_bar .btn { flex: 0 0 auto }`, şekil kuralı grup
+ve form çocuklarına genişletildi, çubuktaki `form` / `span` /
+`.d-inline-block` sarmalayıcı `inline-flex` (+`!important`, `d-*`
+yardımcılarına karşı; `.d-none`/`[hidden]` hariç). `.pg-toolbar` sınıfının
+`#button_bar`'a eklenip eklenmemesi davranış farkı yaratmıyor (seçiciler
+ortak). Dar sütuna (`col-md-6 col-xl-8/9` + yanında arama sütunu) hapsedilmiş
+16 ekrandan `view_orders`, `view_products`, `view_users`, `view_files`
+tam genişlik çubuğa alındı; kalanlar (`view_contacts`,
+`view_submitted_forms`, `view_ads`, `product_builder`, `calendars`,
+`view_shipping_report`, `view_referral_sources`, `view_countries`,
+`view_arrival_dates`, `view_log`, `view_email_campaign_profiles`,
+`editor_select_page_or_file`, `includes/templates/view_auto_dialogs`)
+yalnız CSS düzeltmesini alır. Kural `pinegrap-ui-deseni`'ne yazıldı.
+
+**5. Siparişler girişi.** Tek `nav#button_bar.pg-toolbar`; durum/tür
+`pg_filter_select()`; dört 3'lü ok grubu yerine ‹ [birim ▾] › gezgini —
+birim aralıktan türetilir (tek gün / Pazar–Cumartesi / takvim ayı / takvim
+yılı, değilse ay), session'a yeni anahtar yazılmaz. Dört kompakt kart
+(online toplam, filtre toplamı + günlük çizgi, filtre sipariş sayısı +
+günlük çubuk, bekleyen iade), en çok satan 5 ürün (yatay çubuk, ad
+`products.short_description`, yoksa SKU) ve ödeme yöntemi dağılımı
+(halka, sipariş sayısıyla). Üç ek sorgu, hepsi listenin joinleri ve
+koşullarıyla kurulan `SELECT DISTINCT orders.id …` türetilmiş tablosu
+üstünde (advanced filter joinleri siparişi çoğaltabildiği için). 366 günü
+aşan aralık aylık kovalanır.
+
+**6. ERP filtreleri.** `pg_filter_select($name, $options, $current, $opts)`
+(`includes/fn/output.php`): kendi GET formu, `onchange` ile gönderir,
+`<noscript>` düğmesi; `keep` yalnız adı verilen `$_GET` değerlerini taşır
+(varsayılan hiçbiri — eski bağlantılar da her seferinde temiz adresti).
+Test `tests/output_test.php`. Dönüştürülen: `erp_invoices`, `erp_quotes`
+(arama `keep`; "Yeni teklif" çubuğun başına alındı), `erp_waybills`,
+`erp_inbox`, `erp_account_sync`, `erp_accounts` (iki uyarı-filtre tek
+select). `erp_aging` / `erp_dashboard` yalnız `erp_invoices`'a bağlantı
+verir, değişmedi. Planda adı geçmeyen düğme-grubu filtreler kaldı:
+`erp_cheques`, `erp_stock_minimums`, `erp_invoice_recurrences`,
+`erp_aging` (yön), `erp_cashflow` (kova, dönem).
+
+**Doğrulama.** `lint`, `check_lang`, `check_bindings`, `test.php`,
+`node --check` (style_designer.js, workspace.js) temiz. Sandbox kurulmadı:
+offcanvas, dropdown hizası, not kartı çizimi, çubuk düzeni, grafikler ve
+yeni SQL sorguları çalışma zamanında denenmedi.
+
+**Ek tur (aynı gün).** (a) Kalan ERP düğme-filtreleri select oldu:
+`erp_cheques` (durum ve yön; birbirini `keep` ile korur, eski bağlantılar
+da öyleydi; tek bir duruma bağlantıyla gelinirse o durum seçenek olarak
+eklenir), `erp_stock_minimums` (arama korunur), `erp_invoice_recurrences`
+(`all`), `erp_aging` (yön; `as_of` korunur), `erp_cashflow`. Nakit
+akışında dönem tek parametreyle iki ucu taşıyamadığı için `?range=<anahtar>`
+eklendi: `from`/`to` okunmadan önce hızlı aralığın uçlarıyla yazılır, okuma
+mantığı değişmedi. Kova select'i `from`, `to`, `till`'i; dönem select'i
+`till`'i ve açıkça seçilmiş kovayı (`group`) korur — eski hızlı bağlantılar
+kovayı bırakıp yeniden seçtiriyordu, bu davranış değişti. Hızlı aralıklardan
+biri olmayan dönem tarihleriyle seçenek olarak listelenir.
+(b) `pg_period_unit($range)` + `pg_period_nav($url, $range, $periods,
+$range_html, $class)` (`includes/fn/output.php`, test
+`tests/output_test.php`): gezgin üç ekranda aynıydı, yardımcıya alındı;
+`view_orders` de ona geçti (sparkline için gün sayısı ekranda kaldı).
+`view_contacts` ve `view_submitted_forms` tam genişlik
+`nav#button_bar.pg-toolbar`: dışa aktarma formu aynen, grow, filtre/grup ya
+da özel form select'i (`search_form` / `advanced_filters_form` id'leri
+korundu), gelişmiş filtre düğmesi ghost (açıkken `active`), gezgin. Kişilerde
+"tüm yinelenen kişiler" filtresinde aralık değişkenleri boş olduğu için
+gezgin hiç basılmaz (eskiden `d-none` idi).
+(c) `language_switcher` sistem widget'ının başlangıç ağacı
+`dropdown-menu-lg-end`. Bu widget'ın PHP varsayılan ağacı ya da sunucu
+fallback'i yok (ağaç yalnız editörün `starterTree()`'sinden gelir, sunucu
+kayıtlı ağacı çizer); değişiklik tek yerde. Genel dropdown özellik
+panelinin "Hizalama" seçimi `lg-end`'i tanır ve değiştirirken siler.
+Denetimler yine temiz; çalışma zamanında denenmedi.
+
+**#234 ile birleştirme.** `erp-donanim` aynı ERP ekranlarının araç
+çubuklarını ghost düğme grubu + yuvarlak arama kutusu (`input-group …
+pg-toolbar-search`) ve salt-okur kapılarıyla yeniden düzenlemişti. O düzen
+korundu; yalnız düğme grupları `pg_filter_select()` ile değişti:
+`erp_accounts` (#234'ün "e-Belgeye hazır olmayan" / "Kredi limitini aşan"
+etiketleri, sayaç `(n)`), `erp_cheques` (yeni "New cheque or note" düğmesi
+ve çubuğun kartların üstüne alınması korundu), `erp_quotes` (`account_id`
+kapsamı `keep`'e ve açık teklif sayacına girdi), `erp_stock_minimums`,
+`erp_invoice_recurrences`, `erp_cashflow` (formdaki `flex-wrap` kaldırımı
+korundu). `#button_bar > form` kuralı `input-group` formlarını dışarıda
+bırakır; alan taşıyan formlar sarmaz (`pinegrap-ui-deseni`: "forma
+`flex-wrap` verme"), yalnız düğme taşıyan sarmalayıcılar sarar.
+
+---
+
 ## 2026.4.8 — ERP: teklif hatırlatması, faturadan teklife bağ, teklif imzası (8.58) (2026-10-10)
 
 **Ne istendi (ürün sahibinin kararları).** (C1) Süresi dolmak üzere olan

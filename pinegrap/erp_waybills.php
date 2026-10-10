@@ -151,12 +151,7 @@ pg_page_shell([
                     <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . lang('Status') . '">
-                    <a class="btn btn-sm btn-ghost' . (($filter === '') ? ' active' : '') . '" href="erp_waybills.php">' . lang('All') . '</a>
-                    <a class="btn btn-sm btn-ghost' . (($filter === 'open') ? ' active' : '') . '" href="erp_waybills.php?filter=open">' . lang('Not yet invoiced') . '</a>
-                    <a class="btn btn-sm btn-ghost' . (($filter === 'invoiced') ? ' active' : '') . '" href="erp_waybills.php?filter=invoiced">' . lang('Invoiced') . '</a>
-                    <a class="btn btn-sm btn-ghost' . (($filter === 'cancelled') ? ' active' : '') . '" href="erp_waybills.php?filter=cancelled">' . lang('Cancelled') . '</a>
-                </div>
+                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_waybills.php')) . '
             </nav>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">

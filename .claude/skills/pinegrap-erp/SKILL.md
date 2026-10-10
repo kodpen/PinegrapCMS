@@ -540,6 +540,9 @@ Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinas�
     yetmez (yerel dinleyiciler çalışmaz); `dispatchEvent(new Event('change'))`.
   - Yeni çeviri anahtarı yazmadan önce `tr.json`'daki karşılığa bak
     (`Net` → "KDV Hariç" gibi tuzaklar var).
+  - Liste filtresi `pg_filter_select($ad, $secenekler, $gecerli, $opts)` ile
+    `#button_bar`'da select olur (sayaç seçenek metnine: `Açık (3)`); düğme
+    grubu filtre yazılmaz. Başka sorgu değerini (arama) `keep` ile taşı.
 
 ## Dosya haritası
 

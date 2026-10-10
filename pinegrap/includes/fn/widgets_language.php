@@ -299,7 +299,11 @@ function pg_language_switcher_options($props)
         'variant' => $pick('variant', array('primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark', 'link'), 'secondary'),
         'outline' => !array_key_exists('outline', $props) || !empty($props['outline']),
         'size'    => $pick('size', array('', 'sm', 'lg'), 'sm'),
-        'align'   => $pick('align', array('start', 'end'), 'end'),
+        // lg-end / md-end: right-aligned from that breakpoint up, left-aligned
+        // below it, for a switcher that folds into a collapsed navbar on the
+        // left edge (Bootstrap drops Popper inside .navbar, so nothing else
+        // keeps the menu on screen).
+        'align'   => $pick('align', array('start', 'end', 'lg-end', 'md-end'), 'end'),
         'display' => $pick('display', array('name', 'code'), 'name'),
         'icon'    => $pick('icon', array('translate', 'globe', 'none'), 'translate'),
         'class'   => isset($props['cssClass']) ? trim((string) $props['cssClass']) : (isset($props['class']) ? trim((string) $props['class']) : ''),
@@ -368,7 +372,7 @@ function pg_language_switcher_html($options, $rows)
         . '<button type="button" class="' . $button_class . '" data-bs-toggle="dropdown" aria-expanded="false"'
         . ' aria-label="' . h(lang(array('string' => 'Language: {var:1}', 'vars' => array($current['label'])))) . '">'
         . $icon . '<span lang="' . h($current['code']) . '" translate="no">' . h($label($current)) . '</span></button>'
-        . '<ul class="dropdown-menu' . (($options['align'] === 'end') ? ' dropdown-menu-end' : '') . '" translate="no">' . $items . '</ul>'
+        . '<ul class="dropdown-menu' . (($options['align'] !== 'start') ? ' dropdown-menu-' . $options['align'] : '') . '" translate="no">' . $items . '</ul>'
         . '</div>';
 }
 
