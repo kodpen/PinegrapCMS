@@ -270,3 +270,39 @@ function erp_event_expense($expense_id, $event)
         'cash_id' => (int) $expense['cash_id'],
     ));
 }
+
+/**
+ * Announce a quote: written, decided, opened again or invoiced. A quote moves
+ * no money, so it feeds the webhook queue and the audit trail only; the
+ * alerts (includes/erp/alerts.php) do not answer to it.
+ *
+ * @param int    $quote_id
+ * @param string $event  'erp.quote.created' | 'erp.quote.accepted' | 'erp.quote.rejected'
+ *                       | 'erp.quote.cancelled' | 'erp.quote.reopened' | 'erp.quote.invoiced'
+ * @return int
+ */
+function erp_event_quote($quote_id, $event)
+{
+    $quote = db_item("SELECT q.id, q.full_number, q.status, q.account_id, q.invoice_id, q.issue_date, q.valid_until,
+            q.currency, q.grand_total, i.status AS invoice_status
+        FROM erp_quotes q
+        LEFT JOIN erp_invoices i ON i.id = q.invoice_id
+        WHERE q.id = '" . (int) $quote_id . "' LIMIT 1");
+
+    if (!is_array($quote)) {
+        return 0;
+    }
+
+    return erp_event($event, array(
+        'id' => (int) $quote['id'],
+        'number' => (string) $quote['full_number'],
+        'status' => (string) $quote['status'],
+        'state' => function_exists('erp_quote_state') ? erp_quote_state($quote) : (string) $quote['status'],
+        'account_id' => (int) $quote['account_id'],
+        'invoice_id' => (int) $quote['invoice_id'],
+        'issue_date' => erp_event_date($quote['issue_date']),
+        'valid_until' => erp_event_date($quote['valid_until']),
+        'currency' => (string) $quote['currency'],
+        'grand_total' => (int) $quote['grand_total'],
+    ));
+}

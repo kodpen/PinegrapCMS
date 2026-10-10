@@ -2525,10 +2525,10 @@ function erp_api_quotes_list($params)
             $where[] = "q.status = 'open' AND q.valid_until > '0000-00-00' AND q.valid_until < '" . $today . "'";
             break;
         case 'accepted':
-            $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND i.id IS NULL))";
+            $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND (i.id IS NULL OR i.status = 'cancelled')))";
             break;
         case 'invoiced':
-            $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL";
+            $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL AND i.status <> 'cancelled'";
             break;
         case 'rejected':
         case 'cancelled':

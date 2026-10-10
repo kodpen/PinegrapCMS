@@ -156,7 +156,7 @@ function erp_audit_event($event, $payload)
     $label = '';
     $amount = 0;
 
-    if (($type === 'invoice') || ($type === 'waybill')) {
+    if (($type === 'invoice') || ($type === 'waybill') || ($type === 'quote')) {
         $label = (string) ($payload['number'] ?? '');
         $amount = (int) ($payload['grand_total'] ?? 0);
     } elseif ($type === 'receipt') {
@@ -233,6 +233,7 @@ function erp_audit_object_types()
         'account' => array(lang('Accounts'), 'edit_erp_account.php?id='),
         'waybill' => array(lang('Delivery Notes'), 'edit_erp_waybill.php?id='),
         'expense' => array(lang('Expenses'), 'edit_erp_expense.php?id='),
+        'quote' => array(lang('Quotes'), 'edit_erp_quote.php?id='),
     );
 }
 
@@ -263,6 +264,12 @@ function erp_audit_event_text($row)
         'erp.expense.created' => lang('Expense recorded'),
         'erp.expense.paid' => lang('Expense paid'),
         'erp.expense.cancelled' => lang('Expense cancelled'),
+        'erp.quote.created' => lang('Quote written'),
+        'erp.quote.accepted' => lang('Quote accepted'),
+        'erp.quote.rejected' => lang('Quote rejected'),
+        'erp.quote.cancelled' => lang('Quote cancelled'),
+        'erp.quote.reopened' => lang('Quote opened again'),
+        'erp.quote.invoiced' => lang('Quote turned into an invoice draft'),
     );
 
     return $texts[$event] ?? $event;

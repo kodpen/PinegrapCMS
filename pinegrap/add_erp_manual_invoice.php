@@ -37,6 +37,11 @@ if (!$_POST) {
 
     erp_invoice_form_prefill($liveform, null, (string) ($_GET['direction'] ?? 'sales'));
 
+    // An invoice started from an account's card opens on that account.
+    if (((int) ($_GET['account_id'] ?? 0) > 0) && !$liveform->field_in_session('account_id')) {
+        $liveform->assign_field_value('account_id', (string) (int) $_GET['account_id']);
+    }
+
     echo
     pg_page_shell([
         'title' => lang('New Invoice'),

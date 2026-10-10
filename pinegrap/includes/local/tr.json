@@ -19465,5 +19465,16 @@
     "Pink": "Pembe",
     "Purple": "Mor",
     "Cyan": "Camgöbeği",
-    "Orange": "Turuncu"
+    "Orange": "Turuncu",
+    "Open quotes": "Açık teklifler",
+    "{var:1} expiring within 7 days": "7 gün içinde süresi dolacak: {var:1}",
+    "Open invoices": "Açık faturalar",
+    "Copied from quote {var:1}": "{var:1} numaralı tekliften kopyalandı",
+    "The invoice made from this quote was cancelled; the quote can be invoiced again.": "Bu tekliften kesilen fatura iptal edildi; teklif yeniden faturalanabilir.",
+    "Quote written": "Teklif yazıldı",
+    "Quote accepted": "Teklif onaylandı",
+    "Quote rejected": "Teklif reddedildi",
+    "Quote cancelled": "Teklif iptal edildi",
+    "Quote opened again": "Teklif yeniden açıldı",
+    "Quote turned into an invoice draft": "Teklif fatura taslağına dönüştürüldü"
 }
