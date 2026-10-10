@@ -19465,5 +19465,10 @@
     "Pink": "Pembe",
     "Purple": "Mor",
     "Cyan": "Camgöbeği",
-    "Orange": "Turuncu"
+    "Orange": "Turuncu",
+    "erp account ({var:1}) was opened from a document form": "cari hesap ({var:1}) bir belge formundan açıldı",
+    "Only the name is needed. The rest can be completed on the account card later.": "Yalnız ad yeterli. Kalan bilgiler daha sonra cari kartında tamamlanabilir.",
+    "The account could not be opened. Check the connection and try again.": "Cari hesap açılamadı. Bağlantıyı kontrol edip yeniden deneyin.",
+    "Account “{var:1}” opened and picked.": "“{var:1}” carisi açıldı ve seçildi.",
+    "The request was larger than this server accepts.": "İstek, bu sunucunun kabul ettiğinden büyüktü."
 }

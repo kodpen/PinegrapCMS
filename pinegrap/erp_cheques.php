@@ -101,8 +101,9 @@ $link = function ($params, $label, $active) {
 };
 
 $accounts = array(lang('Choose an account') => '');
+// Keyed by id with the title as the label, so two accounts of the same name stay two options.
 foreach (erp_accounts(array('status' => 'active')) as $account) {
-    $accounts[h($account['title'])] = (string) (int) $account['id'];
+    $accounts['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
 }
 $tills = array(lang('Choose a till or bank account') => '');
 foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, id ASC") as $till) {
@@ -130,7 +131,8 @@ $output_new = (!$ready || $readonly) ? '' : '
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="account_id">' . lang('Account') . '</label>
-                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-select', 'options' => $accounts)) . '
+                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-select select2', 'options' => $accounts)) . '
+                        ' . erp_account_quick_link('#account_id', 'auto') . '
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label" for="amount">' . lang('Amount') . '</label>
@@ -177,7 +179,8 @@ $output_new = (!$ready || $readonly) ? '' : '
                         <span class="form-text ms-2">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
                     </div>
                 </div>
-            </form>';
+            </form>
+            ' . erp_account_quick_modal();
 
 echo
 pg_page_shell([

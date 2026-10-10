@@ -36,6 +36,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/ledger.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/lock.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cash.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/accounts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/account_quick.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/products.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/import.php');

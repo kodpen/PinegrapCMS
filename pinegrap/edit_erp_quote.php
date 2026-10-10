@@ -187,7 +187,8 @@ if ($editable) {
                         <button type="submit" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
-            </form>';
+            </form>
+            ' . erp_account_quick_modal();
 } else {
     $rows = '';
     foreach (erp_quote_editor_rows($quote) as $line) {

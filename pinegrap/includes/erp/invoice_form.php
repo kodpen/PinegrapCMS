@@ -292,8 +292,9 @@ function erp_invoice_form_cards($liveform, $options = array())
     $account_options = array();
     $account_options[lang('Choose an account')] = '';
     // liveform prints option labels as-is; account titles come from contact names typed at checkout.
+    // Keyed by id with the title as the label, so two accounts of the same name stay two options.
     foreach (erp_accounts(array('status' => 'active')) as $account) {
-        $account_options[h($account['title'])] = (string) (int) $account['id'];
+        $account_options['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
     }
 
     $direction_options = array();
@@ -390,8 +391,8 @@ function erp_invoice_form_cards($liveform, $options = array())
                     <label for="account_id" class="form-label">' . lang('Account') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                        'class' => 'form-select', 'options' => $account_options)) . '
-                    <div class="form-text"><a href="add_erp_account.php" class="link-body-emphasis">' . lang('New account') . '</a></div>
+                        'class' => 'form-select select2', 'options' => $account_options)) . '
+                    ' . erp_account_quick_link('#account_id', 'auto') . '
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="issue_date" class="form-label">' . lang('Date') . '</label>
@@ -399,8 +400,6 @@ function erp_invoice_form_cards($liveform, $options = array())
                         'type' => 'text', 'id' => 'issue_date', 'name' => 'issue_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
-                    ' . get_date_picker_format() . '
-                    <script>$("#issue_date, #due_date, #supplier_invoice_date").datepicker(datetimepicker_options);</script>
                 </div>
             </div>
             <div class="row">
@@ -443,6 +442,8 @@ function erp_invoice_form_cards($liveform, $options = array())
             </div>
         </div>
     </div>
+    ' . get_date_picker_format() . '
+    <script>$("#issue_date, #due_date, #supplier_invoice_date").datepicker(datetimepicker_options);</script>
 
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">

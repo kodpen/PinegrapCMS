@@ -69,6 +69,7 @@ if (!$_POST) {
                     </div>
                 </nav>
             </form>
+            ' . erp_account_quick_modal() . '
         </div>
     </div>
 </main>' .
