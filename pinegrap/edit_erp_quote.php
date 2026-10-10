@@ -149,7 +149,11 @@ if (!$readonly) {
 }
 
 $output_invoice = '';
-if (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') !== '')) {
+if (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') === 'cancelled')) {
+    $output_invoice = '<div class="alert alert-warning d-flex flex-wrap gap-2 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
+        . '<span>' . lang('The invoice made from this quote was cancelled; the quote can be invoiced again.') . '</span>'
+        . '<a class="ms-auto" href="edit_erp_invoice.php?id=' . (int) $quote['invoice_id'] . '">' . lang('Open the invoice') . '</a></div>';
+} elseif (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') !== '')) {
     $is_draft = ((string) $quote['invoice_status'] === 'draft');
     $output_invoice = '<div class="alert alert-info d-flex flex-wrap gap-2 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
         . '<span>' . ($is_draft ? lang('This quote became an invoice draft.') : h(lang(array('string' => 'This quote became invoice {var:1}.', 'vars' => (string) $quote['invoice_number'])))) . '</span>'
@@ -304,6 +308,16 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
 
 $status = $statuses[$state] ?? array($state, 'secondary');
 
+// A copy is always a new open quote, whatever became of this one.
+$output_copy_button = (!$readonly && erp_quotes_ready())
+    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?copy=' . $quote_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    : '';
+
+// The same gate as the audit trail screen: the ERP settings managers and the accountant.
+$output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $readonly)))
+    ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
+    : '';
+
 echo
 pg_page_shell([
     'title' => (string) $quote['full_number'],
@@ -328,6 +342,8 @@ pg_page_shell([
                 <a class="btn btn-sm btn-outline-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
                 <a class="btn btn-sm btn-outline-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
                 ' . $output_mail_button . '
+                ' . $output_copy_button . '
+                ' . $output_audit_button . '
                 <span class="ms-auto d-flex flex-wrap gap-1">' . $output_actions . '</span>
             </nav>
 

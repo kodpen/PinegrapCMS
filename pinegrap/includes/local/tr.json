@@ -19470,5 +19470,16 @@
     "Only the name is needed. The rest can be completed on the account card later.": "Yalnız ad yeterli. Kalan bilgiler daha sonra cari kartında tamamlanabilir.",
     "The account could not be opened. Check the connection and try again.": "Cari hesap açılamadı. Bağlantıyı kontrol edip yeniden deneyin.",
     "Account “{var:1}” opened and picked.": "“{var:1}” carisi açıldı ve seçildi.",
-    "The request was larger than this server accepts.": "İstek, bu sunucunun kabul ettiğinden büyüktü."
+    "The request was larger than this server accepts.": "İstek, bu sunucunun kabul ettiğinden büyüktü.",
+    "Open quotes": "Açık teklifler",
+    "{var:1} expiring within 7 days": "7 gün içinde süresi dolacak: {var:1}",
+    "Open invoices": "Açık faturalar",
+    "Copied from quote {var:1}": "{var:1} numaralı tekliften kopyalandı",
+    "The invoice made from this quote was cancelled; the quote can be invoiced again.": "Bu tekliften kesilen fatura iptal edildi; teklif yeniden faturalanabilir.",
+    "Quote written": "Teklif yazıldı",
+    "Quote accepted": "Teklif onaylandı",
+    "Quote rejected": "Teklif reddedildi",
+    "Quote cancelled": "Teklif iptal edildi",
+    "Quote opened again": "Teklif yeniden açıldı",
+    "Quote turned into an invoice draft": "Teklif fatura taslağına dönüştürüldü"
 }
