@@ -8324,6 +8324,7 @@ function get_tables() {
 		'erp_quotes',
 		'erp_reconciliation_log',
 		'erp_settlements',
+		'erp_signatures',
 		'erp_stock_count_items',
 		'erp_stock_counts',
 		'erp_stock_minimums',

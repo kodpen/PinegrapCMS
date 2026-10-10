@@ -568,6 +568,14 @@ $output_order = ((int) $invoice['order_id'] > 0)
     ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
     : '<span class="text-body-secondary">&mdash;</span>';
 
+// The quote the invoice was made from (8.58), when it is still there.
+$quote_number = ((int) ($invoice['quote_id'] ?? 0) > 0)
+    ? (string) db_value("SELECT full_number FROM erp_quotes WHERE id = '" . (int) $invoice['quote_id'] . "' LIMIT 1")
+    : '';
+$output_quote = ($quote_number !== '')
+    ? '<div class="col-12 my-2"><a href="edit_erp_quote.php?id=' . (int) $invoice['quote_id'] . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From quote {var:1}', 'vars' => $quote_number))) . '</a></div>'
+    : '';
+
 // The counterparty as it read when the document was issued; the live card
 // only for documents written before the copy existed.
 $has_snapshot = (trim((string) ($invoice['account_title'] ?? '')) !== '');
@@ -1527,6 +1535,7 @@ pg_page_shell([
                     </div>
                     <div class="card-body">
                         <div class="row">
+                            ' . $output_quote . '
                             <div class="col-6 col-sm-4 col-lg-12 my-2">
                                 <div class="form-label text-body-secondary">' . lang('Account') . '</div>
                                 <div>' . $output_account . '</div>

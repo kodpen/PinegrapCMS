@@ -872,6 +872,8 @@ function erp_api_invoice_present($row, $lines)
         'account_tax_number' => (string) ($row['account_tax_number'] ?? ''),
         'order_id' => (int) $row['order_id'],
         'parent_invoice_id' => (int) $row['parent_invoice_id'],
+        // The quote the invoice was made from (8.58); 0 for none.
+        'quote_id' => (int) ($row['quote_id'] ?? 0),
         'supplier_invoice_no' => (string) $row['supplier_invoice_no'],
         'issue_date' => erp_api_date($row['issue_date']),
         'due_date' => erp_api_date($row['due_date']),
@@ -932,6 +934,7 @@ function erp_api_invoice_schema()
         'account_tax_number' => 'string',
         'order_id' => 'integer',
         'parent_invoice_id' => 'integer',
+        'quote_id' => 'integer',
         'supplier_invoice_no' => 'string',
         'issue_date' => 'string?',
         'due_date' => 'string?',

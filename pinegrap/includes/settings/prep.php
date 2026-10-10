@@ -532,6 +532,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_notify_collections_checked = ((int) ($row['erp_notify_collections'] ?? 0) === 1) ? ' checked="checked"' : '';
     $erp_notify_collection_min = (int) floor(((int) ($row['erp_notify_collection_min'] ?? 0)) / 100);
     $erp_notify_low_stock_checked = ((int) ($row['erp_notify_low_stock'] ?? 0) === 1) ? ' checked="checked"' : '';
+    // Open quotes about to run out (8.58): on by default, days ahead 1-30.
+    $erp_quote_alert_ready = array_key_exists('erp_notify_quote_expiry', $row);
+    $erp_notify_quote_expiry_checked = ((int) ($row['erp_notify_quote_expiry'] ?? 1) === 1) ? ' checked="checked"' : '';
+    $erp_notify_quote_expiry_days = min(30, max(1, (int) ($row['erp_notify_quote_expiry_days'] ?? 3)));
     $erp_credit_limit_mode = ((string) ($row['erp_credit_limit_mode'] ?? 'warn') === 'block') ? 'block' : 'warn';
     // How an order's shipping and surcharge are taxed on its invoice (4.76);
     // empty lets the store's country decide.

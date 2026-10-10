@@ -133,6 +133,7 @@ function erp_webhook_events()
         'erp.quote.cancelled' => 'An ERP sales quote was cancelled',
         'erp.quote.reopened' => 'An ERP sales quote was opened again (editable, running from today if it had expired)',
         'erp.quote.invoiced' => 'An ERP sales quote was turned into an invoice draft at the prices quoted',
+        'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on',
     );
 }
 
