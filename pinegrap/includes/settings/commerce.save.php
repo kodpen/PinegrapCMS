@@ -255,6 +255,13 @@ function pg_parasut_credentials_for_save()
             erp_notify_low_stock = '" . ((post_value('erp_notify_low_stock') == 1) ? 1 : 0) . "',";
     }
 
+    // Open quotes about to run out (8.58): days ahead kept within 1-30.
+    if (waf_table_has_column('config', 'erp_notify_quote_expiry')) {
+        $sql_erp_due .= "
+            erp_notify_quote_expiry = '" . ((post_value('erp_notify_quote_expiry') == 1) ? 1 : 0) . "',
+            erp_notify_quote_expiry_days = '" . min(30, max(1, (int) post_value('erp_notify_quote_expiry_days'))) . "',";
+    }
+
     // How an order's shipping and surcharge are taxed on its invoice (4.76):
     // 'included', 'none', or empty for the store's country to decide.
     if (waf_table_has_column('config', 'erp_shipping_tax')) {

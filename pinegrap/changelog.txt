@@ -391,6 +391,41 @@
          süzgeçleri ve dış API'nin durum süzgeci de aynı kuralla
          sayar.
 
+  [YENİ] Süresi dolmak üzere olan teklifler bildirilir: açık bir
+         teklifin geçerlilik tarihi seçilen gün sayısı içine
+         girince (varsayılan 3 gün) panel ziliyle ve bildirimlere
+         izin veren cihazlara tek bir bildirim gider; tek teklifte
+         numarası yazar ve bildirim teklife açılır. Her teklif bir
+         kez bildirilir; yeniden açılınca ya da tarihi değişince
+         yeniden. Saatlik stok bildirimi işiyle birlikte koşar.
+         Ayarlar › Ticaret › ERP'deki "Anlık bildirimler"
+         bölümünden kapatılır ve gün sayısı (1-30) seçilir.
+
+  [YENİ] Tekliften yapılan fatura, kendi ekranında kaynağı olan
+         teklife bağlantı gösterir ("… numaralı tekliften"); dış
+         API'nin fatura kaydı da quote_id alanını taşır. Güncellemeden
+         önce tekliften yapılmış faturalar da, teklif onları hâlâ
+         gösteriyorsa, bağlanır.
+
+  [YENİ] Teklife müşteri imzası: teklif ekranındaki "Müşteri
+         imzası" kartında müşteri teklifi ekranda ya da tablette
+         parmağıyla imzalar, imzalayanın adı yazılır ve teklif
+         "Onaylandı" olur; teklif listesinde ve ekranında durumun
+         yanında imza simgesi görünür. İmza teklifin PDF'ine ve
+         e-postayla giden kopyasına basılır. İmza kanıttır: silinemez,
+         yeniden çizilemez; tarih-saat, IP adresi, tarayıcı ve imzalandığı
+         andaki teklifin özeti ile mühürlenerek saklanır. Teklif
+         sonradan değiştirilirse ekran bunu uyarı olarak söyler ve
+         imza artık basılmaz. Bu adi bir elektronik imzadır,
+         nitelikli elektronik imza değildir. İmza görseli yalnız
+         ERP hakkı olanlara açılır.
+
+  [ŞEMA] Teklif bildirimi, faturadan teklife bağ ve teklif imzası
+         için: erp_quotes.expiry_notified_at,
+         config.erp_notify_quote_expiry ve
+         erp_notify_quote_expiry_days, erp_invoices.quote_id
+         sütunları ve yeni erp_signatures tablosu eklenir.
+
   ZAMANLANMIŞ GÖREVLER
   --------------------------------------------------------
 

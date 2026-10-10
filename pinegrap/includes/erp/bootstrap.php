@@ -65,6 +65,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/credit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_levels.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/alerts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/quotes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/signatures.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_recurring.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/price_lists.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_counts.php');

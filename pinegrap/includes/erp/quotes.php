@@ -256,7 +256,7 @@ function erp_quote_save($data, $quote_id, $user_id)
     }
 
     if ((int) $quote_id > 0) {
-        $existing = db_item("SELECT id, status, full_number FROM erp_quotes WHERE id = '" . (int) $quote_id . "' LIMIT 1 FOR UPDATE");
+        $existing = db_item("SELECT id, status, full_number, valid_until FROM erp_quotes WHERE id = '" . (int) $quote_id . "' LIMIT 1 FOR UPDATE");
 
         if (!is_array($existing)) {
             erp_tx_rollback();
@@ -268,7 +268,13 @@ function erp_quote_save($data, $quote_id, $user_id)
             return $fail(lang('Only an open quote can be changed. Open it again first, or write a new one.'));
         }
 
-        if (erp_query("UPDATE erp_quotes SET " . $set . " WHERE id = '" . (int) $quote_id . "'") === false) {
+        // A new date is a new run: the quote may be announced again as it
+        // comes near (includes/erp/alerts.php).
+        $notified_sql = (((string) $existing['valid_until'] !== $valid_until) && waf_table_has_column('erp_quotes', 'expiry_notified_at'))
+            ? ", expiry_notified_at = 0"
+            : '';
+
+        if (erp_query("UPDATE erp_quotes SET " . $set . $notified_sql . " WHERE id = '" . (int) $quote_id . "'") === false) {
             $error = erp_db_error();
             erp_tx_rollback();
             return $fail($error);
@@ -358,6 +364,11 @@ function erp_quote_set_status($quote_id, $to, $user_id)
         $valid_sql = ", valid_until = '" . escape(date('Y-m-d', strtotime('+' . (int) ERP_QUOTE_VALID_DAYS . ' days'))) . "'";
     }
 
+    // An open quote again is announced again as its date comes near.
+    if (($to === 'open') && waf_table_has_column('erp_quotes', 'expiry_notified_at')) {
+        $valid_sql .= ", expiry_notified_at = 0";
+    }
+
     db("UPDATE erp_quotes SET status = '" . escape($to) . "', invoice_id = IF('" . escape($to) . "' = 'open', 0, invoice_id),
             decided_by = '" . (($to === 'open') ? 0 : (int) $user_id) . "', decided_at = " . (($to === 'open') ? '0' : 'UNIX_TIMESTAMP()') . $valid_sql . ",
             updated_at = UNIX_TIMESTAMP()
@@ -414,6 +425,7 @@ function erp_quote_to_invoice($quote_id, $user_id)
     $data['series'] = defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF';
     $data['created_by'] = (int) $user_id;
     $data['lines'] = erp_quote_lines($quote);
+    $data['quote_id'] = (int) $quote['id'];
 
     if (strtoupper((string) $quote['currency']) !== $base) {
         $recorded = erp_fx_rate_for((string) $quote['currency'], date('Y-m-d'));
@@ -507,6 +519,7 @@ function erp_quote_document_source($quote)
     return array(
         'invoice' => $row,
         'items' => erp_quote_lines($quote),
+        'signature' => function_exists('erp_signature_document_block') ? erp_signature_document_block('quote', (int) $quote['id'], erp_signature_document_hash_quote($quote)) : array(),
         'title' => lang('QUOTE'),
         'label' => array(
             'invoice_no' => lang('Quote No'),
@@ -736,12 +749,19 @@ function erp_quote_rows($filters = array())
         $where[] = "(q.full_number LIKE " . $like . " OR a.title LIKE " . $like . ")";
     }
 
+    // signed: 1 when the customer signed the quote (8.58); one signature per
+    // quote (uniq_doc), so the join adds no rows.
+    $signed = (function_exists('erp_signatures_ready') && erp_signatures_ready());
+
     return (array) db_items("SELECT q.id, q.full_number, q.account_id, q.issue_date, q.valid_until, q.currency, q.grand_total,
             q.status, q.invoice_id, a.title AS account_title,
-            i.status AS invoice_status, i.full_number AS invoice_number
+            i.status AS invoice_status, i.full_number AS invoice_number,
+            " . ($signed ? "(s.id IS NOT NULL)" : "0") . " AS signed
         FROM erp_quotes q
         LEFT JOIN erp_accounts a ON a.id = q.account_id
-        LEFT JOIN erp_invoices i ON i.id = q.invoice_id
+        LEFT JOIN erp_invoices i ON i.id = q.invoice_id"
+        . ($signed ? "
+        LEFT JOIN erp_signatures s ON s.doc_type = 'quote' AND s.doc_id = q.id" : "") . "
         WHERE " . implode(' AND ', $where) . "
         ORDER BY q.id DESC
         LIMIT " . max(1, min(1000, (int) ($filters['limit'] ?? 300))));

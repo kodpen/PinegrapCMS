@@ -74,6 +74,86 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.8 — ERP: teklif hatırlatması, faturadan teklife bağ, teklif imzası (8.58) (2026-10-10)
+
+**Ne istendi (ürün sahibinin kararları).** (C1) Süresi dolmak üzere olan
+teklif için hatırlatma, ayarlardan açılıp kapanır. (C2) Tekliften yapılan
+faturadan kaynağı olan teklife tıklanabilir bağ. (C2b) Teklife elle imza:
+yazılımın imza alanı altyapısı (`includes/fn/signature.php`,
+`assets/js/signature_pad.js`) teklife uygulanır; müşteri teklifi ekranda ya
+da tablette imzalar, teklif "Onaylandı" olur, imza belgeye basılır.
+
+**Kök sebep (neden şema gerekti).** (C1) Teklifte duyuru damgası yoktu; hiçbir
+iş `erp_quotes`'a bakmıyordu. Geciken alacak deseninde olduğu gibi duyurulan
+belge damgalanmazsa saatlik iş aynı teklifi her saat yeniden duyurur.
+(C2) İlişki yalnız `erp_quotes.invoice_id` yönündeydi ve teklif yeniden
+açılınca (`erp_quote_set_status(…, 'open')`) sıfırlanıyor; fatura tarafından
+geri okumak için kalıcı bir bağ gerekiyordu. (C2b) Form imzalarının tablosu
+(`form_signatures`) `form_id` / `form_field_id` / `page_id`'ye bağlı ve mührü
+(`pg_signature_seal()`) bu alanlarla kuruluyor; ERP belgesini taşıyamaz.
+
+**Ne yapıldı.**
+
+- Şema (`upgrade_2026_4_8_erp_quotes()`, 8.58): `erp_quotes.expiry_notified_at`;
+  `config.erp_notify_quote_expiry` (TINYINT, varsayılan 1 — açık) ve
+  `config.erp_notify_quote_expiry_days` (TINYINT UNSIGNED, varsayılan 3);
+  `erp_invoices.quote_id` + `idx_quote`; yeni `erp_signatures` tablosu
+  (`UNIQUE (doc_type, doc_id)`). Seçimi `idx_status (status, valid_until)`
+  karşılıyor (4.92'den beri var; adım "zaten var" der). `get_tables()`'a
+  `erp_signatures` eklendi; `tests/innodb_test.php`'deki stok `config` sayıları
+  iki TINYINT için güncellendi (414 sütun; sandbox'taki `config` de 414).
+- Hatırlatma: `erp_alert_quote_expiry()` (`includes/erp/alerts.php`,
+  `erp_alert_low_stock()` deseni): açık, tarihi bugün ile bugün+N arasında,
+  damgasız teklifler (en çok 200) → tek bildirim (`erp_quote_expiry`; title =
+  sayı, form_id = ilk teklif, order_total = gün) → damga. Saatlik
+  `erp_stock_alert_job` içinde koşar (yeni iş açılmadı; iş etiketi "Low stock
+  and quote notices"). Damga, teklif yeniden açılınca ve açık teklif farklı bir
+  geçerlilik tarihiyle kaydedilince sıfırlanır. Ayar: Ayarlar › Ticaret › ERP
+  › "Anlık bildirimler" (gün 1–30'a kırpılır).
+- Faturadan teklife: `erp_invoice_draft_save()` `quote_id`'yi yalnız `$data`
+  onu taşıyorsa yazar (`array_key_exists`) — formdan yeniden kaydedilen taslak
+  bağı korur; `erp_quote_to_invoice()` doldurur. `edit_erp_invoice.php` özet
+  kartında "… numaralı tekliften" bağlantısı; dış API fatura temsilinde
+  `quote_id`. Geriye dönük doldurma adımın içinde: `UPDATE erp_invoices i
+  INNER JOIN erp_quotes q ON q.invoice_id = i.id SET i.quote_id = q.id WHERE
+  i.quote_id = 0 AND q.invoice_id > 0` (tekrar koşulabilir; ikinci koşu 0
+  satır). Yeniden açılmış teklifin `invoice_id`'si sıfırlandığı için onun eski
+  faturası bağlanamaz.
+- İmza: `includes/erp/signatures.php`. Çizim `pg_signature_png_from_data_url()`
+  ile GD'den geçirilir, `erp_archive_store('quote_signature', …, 'png', …,
+  $again = true)` ile ERP belgesi olarak saklanır (`files.erp_doc_type =
+  'quote_signature'`; `get_file.php` yalnız ERP hakkına verir). Kayıt:
+  `image_hash`, `document_hash` (satırlar + toplamlar + cari + geçerlilik +
+  numara; `erp_signature_document_hash_quote()`), imzalayan adı, zaman, IP,
+  tarayıcı, oturumdaki kullanıcı ve `seal` (ENCRYPTION_KEY ile HMAC,
+  `erp_signature_seal()`). İmza sonrası teklif `accepted`'a geçer
+  (`erp.quote.accepted`) ve `erp.quote.signed` olayı atılır (webhook listesi,
+  denetim izi metni "Quote signed"). Ekran: imza kartı, başlıktaki ve teklif
+  listesindeki rozetin yanında kalem simgesi (`erp_quote_rows()` → `signed`,
+  `erp_signatures` LEFT JOIN, yalnız tablo varken), "kayıt bozulmamış / teklif değişmedi" denetimleri.
+  PDF: yerleşik şablona `{{#signature}}` bloğu (`label.signed_by`), ERP
+  Ayarları'ndaki yer tutucu listesine `signature.*`.
+
+**Ödünler / bilinçli kararlar.**
+
+- Bu **adi bir elektronik imzadır**: nitelikli elektronik imza değildir ve onun
+  hukuki ağırlığını taşımaz; değeri çizimin etrafındaki kayıttadır
+  (`includes/fn/signature.php` başlığındaki ifade). Ekran da bunu yazar.
+- İmza silinmez, yeniden çizilmez (kanıt). Yeniden açılıp değiştirilen teklif
+  imzayı korur; ekran uyuşmazlığı söyler ve **imza artık PDF'e basılmaz**
+  (müşterinin görmediği rakamların altında imzası görünmesin diye). Teklif
+  imzalandığı hâline geri getirilirse imza yeniden basılır.
+- Fırça izi (`strokes`) saklanmıyor: tabloda sütunu yok; form imzasında olan
+  zaman damgası otoritesi (`stamp_*`) de yok.
+- Dosya Yöneticisi'ne klasör eklenmedi: ERP klasörleri belge türüne göre
+  (fatura, irsaliye, gider fişi…) kurulu ve teklifin kendisinin bir klasörü yok;
+  imza görseli teklifin parçasıdır ve teklif ekranından görülür. `folder = 0`
+  ve `erp_doc_type` dolu olduğu için hiçbir dosya listesine düşmez.
+- `erp_invoices` yükseltmede ağır tablolar listesine eklenmedi: InnoDB ve
+  ziyaretle büyümüyor; önceki ERP sürümleri de eklememişti.
+
+---
+
 ## 2026.4.8 — Görsel editör: tasarım klasör kullanırken de silinir, ortak bileşen / widget paneli; varsayılan giriş ekranı kart oldu (2026-10-09)
 
 **Sorun (şikâyet).** (1) Görsel editörde yapılmış bir tasarım "En az bir

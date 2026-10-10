@@ -272,13 +272,14 @@ function erp_event_expense($expense_id, $event)
 }
 
 /**
- * Announce a quote: written, decided, opened again or invoiced. A quote moves
+ * Announce a quote: written, decided, signed, opened again or invoiced. A quote moves
  * no money, so it feeds the webhook queue and the audit trail only; the
  * alerts (includes/erp/alerts.php) do not answer to it.
  *
  * @param int    $quote_id
  * @param string $event  'erp.quote.created' | 'erp.quote.accepted' | 'erp.quote.rejected'
  *                       | 'erp.quote.cancelled' | 'erp.quote.reopened' | 'erp.quote.invoiced'
+ *                       | 'erp.quote.signed'
  * @return int
  */
 function erp_event_quote($quote_id, $event)

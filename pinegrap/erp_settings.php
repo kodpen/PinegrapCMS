@@ -262,6 +262,12 @@ $placeholders = array(
         'language' => lang('The language code of the site, for the html lang attribute'),
         'paper' => lang('Paper size for the @page rule: letter in the US, Canada and much of Latin America, A4 elsewhere'),
     ),
+    lang('Signature') => array(
+        'signature' => lang('Set on a quote the customer signed, empty otherwise; show a block with {{#signature}} ... {{/signature}}'),
+        'signature.image_data_uri' => lang('The signature embedded in the document, for the img src'),
+        'signature.signer_name' => lang('Name of the person signing'),
+        'signature.signed_at' => lang('The moment it was signed'),
+    ),
 );
 
 // The captions the built-in template prints, in the site language. They are

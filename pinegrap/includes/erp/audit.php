@@ -270,6 +270,7 @@ function erp_audit_event_text($row)
         'erp.quote.cancelled' => lang('Quote cancelled'),
         'erp.quote.reopened' => lang('Quote opened again'),
         'erp.quote.invoiced' => lang('Quote turned into an invoice draft'),
+        'erp.quote.signed' => lang('Quote signed'),
     );
 
     return $texts[$event] ?? $event;

@@ -395,6 +395,13 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
             notes = '" . escape($header['notes']) . "',
             updated_at = '" . time() . "'";
 
+    // The quote the draft was made from (8.58). Written only when the caller
+    // names it: rewriting a draft from its form leaves the link as it was.
+    if (array_key_exists('quote_id', $data) && waf_table_has_column('erp_invoices', 'quote_id')) {
+        $header_sql .= ",
+            quote_id = '" . (int) $data['quote_id'] . "'";
+    }
+
     // A withholding makes it a TEVKIFAT document; taking the last one off
     // makes it a sale again. Any other type (a purchase taken in from an
     // incoming e-invoice as IADE, say) is left as it was.

@@ -47,6 +47,10 @@
            .gift_card .internet_sale .sale_address .payment_method
            .payment_date .carrier .carrier_tax_id .shipment_date .note
            .generated_at .tax_inclusive .withholding .amount_payable .tax2
+           .signed_by
+  signature .image_data_uri .signer_name .signed_at (a signed quote only;
+           empty on an invoice, so a block opened with # on it prints
+           nothing there)
   language, paper (A4 or letter, by the store's country), generated_at
 -->
 <html lang="{{language}}">
@@ -88,6 +92,8 @@
     .box td { padding: 1px 12px 1px 0; }
     .box td.k { color: #666; white-space: nowrap; }
     .notes { margin-top: 14px; font-size: 8.5pt; }
+    .signature { width: auto; margin-left: auto; margin-top: 16px; text-align: center; font-size: 8.5pt; color: #444; }
+    .signature img { max-height: 70px; max-width: 220px; }
     .foot { position: fixed; bottom: -8mm; left: 0; right: 0; font-size: 7.5pt; color: #777; border-top: 1px solid #ccc; padding-top: 4px; }
     .foot td { padding: 0; }
     .foot td.r { text-align: right; }
@@ -194,6 +200,12 @@
     {{#invoice.is_foreign}}<tr class="muted"><td>{{label.grand_total_base}}</td><td class="v">{{totals.grand_total_base}}</td></tr>{{/invoice.is_foreign}}
     {{#totals.has_gift_card}}<tr class="muted"><td>{{label.gift_card}}</td><td class="v">{{totals.gift_card_total}}</td></tr>{{/totals.has_gift_card}}
 </table>
+
+{{#signature}}
+<table class="signature">
+    <tr><td>{{#signature.image_data_uri}}<img src="{{signature.image_data_uri}}" alt=""><br>{{/signature.image_data_uri}}{{label.signed_by}} {{signature.signer_name}} &middot; {{signature.signed_at}}</td></tr>
+</table>
+{{/signature}}
 
 {{#invoice.is_internet_sale}}
 <div class="box">
