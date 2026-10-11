@@ -11,7 +11,7 @@
  *
  * The status filter and the columns are the ones the Sales Report uses for its
  * "Billing State" summary (view_order_report.php), so the card and the report
- * cannot disagree. Rendering lives in api.php with the other dashboard widgets;
+ * cannot disagree. Rendering lives in includes/dashboard/widgets/widget_1.php;
  * this file only answers questions about the data.
  *
  * @author      Erdal Güral (Kodpen)
@@ -30,7 +30,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // Adding one is three things and no more: generate the SVG (see
 // docs/_tools/build_map_svg.js), add the row here, and add a code -> name table
-// for it below. Nothing else in this file or in api.php is country-specific.
+// for it below. Nothing else in this file or in widget_1.php is country-specific.
 function pg_sales_map_region_maps()
 {
     static $maps = array(

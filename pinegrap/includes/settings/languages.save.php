@@ -10,7 +10,8 @@
  * after post_value() is defined. Only the columns edited by the cards on this
  * screen are written, so a screen that was not submitted cannot have its
  * settings overwritten. A language is added only when nothing of the site is
- * named like it: the save is refused and the names listed otherwise.
+ * named like it: the save is refused and the names listed otherwise. A
+ * removed language takes its translations, jobs and glossary terms with it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -107,8 +108,8 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
         $translation_values = $translation_posted[$translation_code];
 
         if (!empty($translation_values['remove'])) {
-            db("DELETE FROM site_languages WHERE code = '" . e($translation_code) . "'");
-            db("DELETE FROM page_translations WHERE language = '" . e($translation_code) . "'");
+            pg_tr_language_purge($translation_code);
+            log_activity(lang(array('string' => 'the language {var:1} was removed with its translations', 'vars' => array($translation_code))), $_SESSION['sessionusername']);
             continue;
         }
 
@@ -163,11 +164,11 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     // ── the new language, with the defaults of the known list ──
     if ($translation_add !== '') {
         $translation_info = $translation_known[$translation_add];
-        // An engine that works without anything else to set up: Google when
-        // a key is stored, Claude when its routine is connected, otherwise
-        // the browser - "by hand" left nothing to press for a new language.
-        $translation_claude = pg_tr_engine('claude');
-        $translation_default_engine = (pg_tr_google_key() !== '') ? 'google' : (($translation_claude && $translation_claude['ready']) ? 'claude' : 'chrome');
+        // The browser engine: it needs no key and costs nothing, and "by
+        // hand" left nothing to press for a new language. An engine that is
+        // paid for or queued (Google, Claude, Pinegrap AI) is chosen on the
+        // language's row once it is added.
+        $translation_default_engine = 'chrome';
         $translation_order = (int) db_value("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM site_languages");
 
         db("INSERT INTO site_languages (code, label, enabled, prefix, engine, fallback_engine, index_policy, locale_number, locale_date, og_locale, sort_order, created_at, updated_at)

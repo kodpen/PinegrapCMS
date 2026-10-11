@@ -5,7 +5,8 @@
  * Design template "Say hello to Pinegrap": a whole starter site. Home, about,
  * services, a blog with its post page, a contact page whose messages become
  * conversations, the sign-in and account pages with an inbox and a staff
- * directory, a staff area, an error page and - when the shop is switched on -
+ * directory, a staff area, a support center that searches the whole site,
+ * an error page and - when the shop is switched on -
  * a small shop. The blog and the shop can be searched, the shop browsed by
  * category and filtered, and the about page's team is the staff directory.
  * Built on Bootstrap 5. Read by pg_design_templates()
@@ -120,18 +121,62 @@ $bind = function ($token) {
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
 };
+// A part of a page the site search can point a result at (Search and SERP in
+// the editor's options): its anchor, the switch, and the topics a visitor
+// may search for that the part does not say itself.
+$searchable = function ($id, $topics = '') {
+    $props = array('id' => $id, 'searchSection' => true);
+    if ($topics !== '') $props['searchKeywords'] = $topics;
+    return $props;
+};
+// The language switcher button: the server draws it for each request and
+// leaves it out while the site has a single language, so it can stay in the
+// header of every site.
+$lang_switcher = function ($class = '', $variant = 'secondary') {
+    return array('type' => 'component', 'props' => array(
+        'componentType' => 'language_switcher',
+        'variant' => $variant, 'outline' => true, 'size' => 'sm',
+        'align' => 'lg-end', 'display' => 'name', 'icon' => 'translate',
+        'cssClass' => $class,
+    ), 'children' => array());
+};
 // The record's Edit button, shown to whoever may edit the submissions of
 // its form; it opens the record in the control panel and comes back.
 $edit_button = function () use ($link) {
     return $link(lang('Edit'), '#', 'btn btn-sm btn-outline-secondary', array(),
         array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
 };
+// Summarize the post with AI: with the visitor's own assistant (each link
+// opens it with a question about the post's address) or with the browser's
+// built-in model, whose button the browser shows only where it can
+// summarize and whose points come into the box below. Shown for a post
+// anybody may open.
+$ai_summary = function () use ($el, $link, $icon, $span, $bind, $show_when) {
+    $assistant = function ($text, $token) use ($link) {
+        return $link($text, '#', 'btn btn-sm btn-outline-secondary', array(array('name' => 'rel', 'value' => 'noopener nofollow')),
+            array('target' => '_blank', '_bindings' => array('href' => $token)));
+    };
+    return $el('aside', 'border rounded-3 p-3 mb-4', lang('AI Summary'), array(
+        $el('div', 'd-flex flex-wrap align-items-center gap-2', lang('AI Buttons'), array(
+            $icon('bi-stars', 'text-primary'),
+            $span(lang('Summarize this post with AI'), 'small fw-semibold me-1', lang('Label')),
+            $assistant('ChatGPT', '__ai_chatgpt_url'),
+            $assistant('Claude', '__ai_claude_url'),
+            $assistant('Perplexity', '__ai_perplexity_url'),
+            $assistant('Google AI', '__ai_google_url'),
+            $el('button', 'btn btn-sm btn-primary', lang('Summarize Here Button'), array(), array(
+                'text' => lang('Summarize here'), '_bindings' => array('action' => 'ai_summarize'))),
+        )),
+        $el('div', 'small mt-3', lang('Summary Box'), array(), array_merge(
+            array('text' => lang('The main points of the post, written by the visitor\'s browser.')), $bind('__ai_summary'))),
+    ), $show_when('has_ai_links'));
+};
 
-// The navigation bar every page opens with: a shared component, so a new
-// menu item or another brand is written once. The link to the page being
-// viewed is marked active on the server (smart active state), which is what
-// lets one header serve every page.
-$navbar = function () use ($el, $link, $shop) {
+// The navigation bar every page opens with, the language switcher at its
+// end: a shared component, so a new menu item or another brand is written
+// once. The link to the page being viewed is marked active on the server
+// (smart active state), which is what lets one header serve every page.
+$navbar = function () use ($el, $link, $icon, $span, $shop, $lang_switcher) {
     $item = function ($key, $text) use ($el, $link) {
         return $el('li', 'nav-item', lang('Nav Item'), array(
             $link($text, '{{page:' . $key . '}}', 'nav-link'),
@@ -145,6 +190,14 @@ $navbar = function () use ($el, $link, $shop) {
     );
     if ($shop) $items[] = $item('shop', lang('Shop'));
     $items[] = $item('contact', lang('Contact us'));
+    // The support center searches the whole site: an icon on a wide screen,
+    // the icon and the word in the folded menu.
+    $items[] = $el('li', 'nav-item', lang('Nav Item'), array(
+        $el('a', 'nav-link d-flex align-items-center gap-2', lang('Search Link'), array(
+            $icon('bi-search', ''),
+            $span(lang('Search'), 'd-lg-none', lang('Text')),
+        ), array('href' => '{{page:search}}', '_attrs' => array(array('name' => 'aria-label', 'value' => lang('Search the site'))))),
+    ));
     return $el('nav', 'navbar navbar-expand-lg bg-body border-bottom', 'Navbar', array(
         $el('div', 'container', lang('Navbar Container'), array(
             $link('{{site_name}}', '{{page:home}}', 'navbar-brand fw-bold'),
@@ -160,19 +213,26 @@ $navbar = function () use ($el, $link, $shop) {
             ))),
             $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
                 $el('ul', 'navbar-nav ms-auto mb-2 mb-lg-0', lang('Nav Menu'), $items),
+                $lang_switcher('d-inline-block ms-lg-2 mb-2 mb-lg-0'),
             ), array('id' => 'hp-nav')),
         )),
     ), array('smartActive' => true));
 };
 
 // The account area above the header: the cart link and the login region.
-// System widgets, so it stays on each page (a shared component cannot hold
-// one yet); the bar itself is only a frame for them.
+// A shared component like the header under it, with the two system widgets
+// placed inside it.
 $account_bar = function () use ($el, $widget, $shop) {
     return $el('div', 'bg-body-tertiary border-bottom', lang('Account Bar'), array(
         $el('div', 'container d-flex justify-content-end align-items-center gap-2 py-1', lang('Account Area'),
             $shop ? array($widget('cart_link'), $widget('login_region')) : array($widget('login_region'))),
     ));
+};
+// Every page places the bar as one shared component, so a change to it is
+// made once for the whole site. The builder above is the component's tree.
+$account_bar_tree = $account_bar;
+$account_bar = function () use ($shared) {
+    return $shared('account_bar');
 };
 
 // The footer every page closes with.
@@ -185,6 +245,7 @@ $footer = function () use ($el, $para, $link) {
                 $link(lang('Our Services'), '{{page:services}}', 'link-secondary text-decoration-none'),
                 $link(lang('Blog'), '{{page:blog}}', 'link-secondary text-decoration-none'),
                 $link(lang('Contact us'), '{{page:contact}}', 'link-secondary text-decoration-none'),
+                $link(lang('Support Center'), '{{page:search}}', 'link-secondary text-decoration-none'),
             )),
         )),
     ));
@@ -261,10 +322,12 @@ $page_header = function ($title, $lead) use ($el, $heading, $para, $container) {
 
 // A link card: icon, title, one line; the whole card is the link, and the
 // link is the grid cell, so a card the server drops (its page is not on the
-// site) leaves no hole in the row.
-$link_card = function ($icon_name, $title, $text, $href, $href_token = '') use ($el, $heading, $para, $icon) {
+// site) leaves no hole in the row. $flag shows the card only while that
+// widget flag is on.
+$link_card = function ($icon_name, $title, $text, $href, $href_token = '', $flag = '') use ($el, $heading, $para, $icon) {
     $extra = array('href' => $href);
     if ($href_token !== '') $extra['_bindings'] = array('href' => $href_token);
+    if ($flag !== '') $extra['_bindings']['eo_visible_if'] = $flag;
     return $el('a', 'col-12 col-md-6 col-lg-4 text-decoration-none link-body-emphasis', $title, array(
         $el('div', 'card h-100 border-0 shadow-sm', lang('Card'), array(
             $el('div', 'card-body d-flex align-items-start gap-3', lang('Card Body'), array(
@@ -971,6 +1034,8 @@ if ($shop) {
     $account_cards[] = $link_card('bi-journal-bookmark', lang('Address Book'), lang('Where your orders are sent.'), '#', '__address_book_url');
 }
 $account_cards[] = $link_card('bi-people', lang('Staff Directory'), lang('The people you can reach, and how.'), '{{page:staff_directory}}');
+// The staff area: drawn only for the members its private folder lets in.
+$account_cards[] = $link_card('bi-person-badge', lang('Staff Area'), lang('Blog posts, the staff directory and every conversation, in one place.'), '#', '__staff_url', 'is_staff');
 
 $pages[] = array(
     'key'              => 'my_account',
@@ -979,7 +1044,7 @@ $pages[] = array(
     'title'            => lang('My Account'),
     'search'           => false,
     'sitemap'          => false,
-    'tree'             => $page('', array($widget('my_account'))),
+    'tree'             => $page('', array($widget('my_account'), $widget('account_security'))),
 );
 $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profile'), 'profile'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
@@ -1109,6 +1174,55 @@ $pages[] = array(
         $shared('footer'),
     )),
 );
+// The blog's first posts, written into its form when the form is made:
+// the template carries them, so they are there on every site. Each is
+// edited or deleted like any other post.
+$post_body = function ($paragraphs) {
+    return implode("\n\n", $paragraphs);
+};
+$sample_posts = array(
+    array(
+        'title'       => lang('Five small changes that make a site easier to use'),
+        'summary'     => lang('Bigger buttons, clearer headings, fewer steps. None of them takes a day, and visitors notice every one.'),
+        'content'     => $post_body(array(
+            lang('Most visitors decide in a few seconds whether a site is going to be easy. The good news is that the things that make the difference are small.'),
+            lang('Write headings that say what the section is about, not how clever it is. Make buttons look like buttons, and give the main one a colour of its own. Cut every form down to the fields you really need.'),
+            lang('Then check the site on a phone, one hand only. Whatever is hard to reach there is the next thing to fix.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-post-1/1200/675',
+    ),
+    array(
+        'title'       => lang('How we answer every message within a day'),
+        'summary'     => lang('Every message from the contact page becomes a conversation. This is how we keep the answers quick and personal.'),
+        'content'     => $post_body(array(
+            lang('When you write to us from the contact page, your message does not land in a crowded mailbox. It becomes a conversation that the whole team can see.'),
+            lang('Whoever is free picks it up and answers on the conversation page. You get an e-mail, read the answer in your inbox on this site, and write back in the same place, so nothing is lost between messages.'),
+            lang('Most questions are answered on the same day. If something takes longer, we say so, and tell you when to expect the answer.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-post-2/1200/675',
+    ),
+    array(
+        'title'       => lang('A week behind the scenes'),
+        'summary'     => lang('Planning on Monday, building in the middle of the week and a short look back on Friday: a week of our team.'),
+        'content'     => $post_body(array(
+            lang('Our week starts with a short planning meeting. Everybody says what they are working on, and the plan board shows what is next.'),
+            lang('The middle of the week is for the work itself: new pages, answers to customers and the small fixes that pile up. Questions go into the team channel instead of long e-mail threads.'),
+            lang('On Friday we look back for fifteen minutes. What went well stays, what slowed us down goes on next week\'s list.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-post-3/1200/675',
+    ),
+    array(
+        'title'       => lang('Say it in the first sentence'),
+        'summary'     => lang('People skim. A page that puts the point first is read; a page that saves it for the end is not.'),
+        'content'     => $post_body(array(
+            lang('On the web, the first sentence does most of the work. Start with what the reader came for, then add the details for those who want them.'),
+            lang('Short paragraphs help, and so do lists for steps. A clear heading every few paragraphs lets a visitor jump to the part they need.'),
+            lang('Read your text out loud before you publish it. Wherever you run out of breath, the sentence is too long.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-post-4/1200/675',
+    ),
+);
+
 $staff_form_page = function ($key, $name, $title, $lead, $widget_key, $form) use ($root, $account_bar, $shared, $el, $page_header, $container, $row, $col, $widget) {
     return array(
         'key'     => $key,
@@ -1147,10 +1261,10 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
         'form_name'            => lang('Blog Posts'),
         'confirmation_message' => lang('The post is published.'),
         'confirmation_page_id' => '{{tab:blog}}',
-        // The site's sample blog posts are copied in when the form is made,
+        // The template's sample posts are written in when the form is made,
         // so the blog and the home page do not open empty
         // (pg_cf_seed_sample_records()).
-        'sample_records'       => 'blog',
+        'sample_records'       => $sample_posts,
     ));
 $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
     lang('Signed-in members see the directory from their account.'), 'staff_form',
@@ -1159,6 +1273,88 @@ $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang(
         'confirmation_message' => lang('The person is in the staff directory.'),
         'confirmation_page_id' => '{{tab:staff_directory}}',
     ));
+
+// The support center: a search over the whole site - pages, posts, the
+// parts of pages marked as search sections and, with the shop on, the
+// products - with the common questions under it. Each question is a search
+// section of its own, so a search that matches one opens the page at it.
+$question = function ($n, $question, $answer, $topics) use ($el, $para, $searchable) {
+    $id = 'hp-help-' . $n;
+    return $el('div', 'accordion-item', lang('Question'), array(
+        $el('h3', 'accordion-header', lang('Question Header'), array(
+            $el('button', 'accordion-button collapsed', lang('Question'), array(), array(
+                'text'   => $question,
+                '_attrs' => array(
+                    array('name' => 'type', 'value' => 'button'),
+                    array('name' => 'data-bs-toggle', 'value' => 'collapse'),
+                    array('name' => 'data-bs-target', 'value' => '#' . $id),
+                    array('name' => 'aria-expanded', 'value' => 'false'),
+                    array('name' => 'aria-controls', 'value' => $id),
+                ),
+            )),
+        )),
+        $el('div', 'accordion-collapse collapse', lang('Answer'), array(
+            $el('div', 'accordion-body text-body-secondary', lang('Answer'), array($para($answer, 'mb-0'))),
+        ), array('id' => $id, '_attrs' => array(array('name' => 'data-bs-parent', 'value' => '#hp-help-faq')))),
+    ), $searchable($id . '-item', $topics));
+};
+$help_topic = function ($icon_name, $text, $href) use ($el, $icon, $span) {
+    return $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2', lang('Topic'), array(
+        $icon($icon_name, 'text-primary'),
+        $span($text, '', lang('Text')),
+    ), array('href' => $href));
+};
+$help_topics = array(
+    $help_topic('bi-briefcase', lang('Our Services'), '{{page:services}}'),
+    $help_topic('bi-journal-text', lang('Blog'), '{{page:blog}}'),
+    $help_topic('bi-person-circle', lang('My Account'), '{{page:my_account}}'),
+    $help_topic('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
+);
+if ($shop) $help_topics[] = $help_topic('bi-bag', lang('Shop'), '{{page:shop}}');
+$help_topics[] = $help_topic('bi-envelope', lang('Contact us'), '{{page:contact}}');
+$pages[] = array(
+    'key'              => 'search',
+    'name'             => lang('support-center'),
+    'folder'           => 'public',
+    'title'            => lang('Support Center'),
+    'meta_description' => lang('Search the whole site, and find the answers to the questions we hear most.'),
+    'tree'             => $page('', array(
+        $page_header(lang('Support Center'), lang('Search the whole site: pages, blog posts and answers. The part of a page that answers you opens with your words marked.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array($widget('site_search')), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 border rounded-3 bg-body-tertiary mb-4', lang('Popular Topics'), array(
+                            $heading('h2', lang('Popular topics'), 'h5 mb-3'),
+                            $el('div', 'list-group', lang('Topics'), $help_topics),
+                        )),
+                        $el('div', 'p-4 border rounded-3', lang('Still Need Help'), array(
+                            $heading('h2', lang('Still need help?'), 'h5 mb-2'),
+                            $para(lang('Write to us from the contact page; the answer comes to your inbox on this site.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-primary'),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+        $el('section', 'py-5 bg-body-tertiary', lang('Frequently Asked Questions'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $heading('h2', lang('Frequently asked questions'), 'h3 mb-4'),
+                        $el('div', 'accordion', lang('FAQ'), array(
+                            $question(1, lang('How do I get in touch?'), lang('Write to us from the contact page. Your message becomes a conversation, and our answer comes to your inbox on this site and by e-mail.'), lang('contact, message, e-mail, phone, write')),
+                            $question(2, lang('Where do I find your answer to my message?'), lang('In your inbox: sign in and open Inbox from the menu under your name. Every reply is on the conversation page, and you can write back there.'), lang('inbox, reply, answer, conversation')),
+                            $question(3, lang('I forgot my password. What now?'), lang('Press Forgot Password on the sign-in page and enter your e-mail address. We send you a link to choose a new password.'), lang('password, sign in, log in, account, reset')),
+                            $question(4, lang('How long does a project take?'), lang('It depends on the job. After the first call you get a plan with the steps, the dates and the price before any work starts.'), lang('price, cost, quote, time, plan, project')),
+                        ), array('id' => 'hp-help-faq')),
+                    ), '', '9'),
+                ), '', 'center'),
+            )),
+        )),
+    )),
+);
 
 // The site's error page: a page nobody can find, and every other error.
 $pages[] = array(
@@ -1440,6 +1636,7 @@ $widgets = array(
                                 $icon('bi-person', 'ms-2'),
                                 $span(lang('Jane Cooper'), '', lang('Author'), $bind('submitter')),
                             )),
+                            $ai_summary(),
                             $optional_image('cover_image', 'title', 'rounded-3 object-fit-cover', 'ratio ratio-16x9 mb-4',
                                 'https://picsum.photos/seed/pinegrap-post/1200/675', lang('Cover Image')),
                             $para(lang('A short summary of the post. It is what makes a visitor open it, so two sentences are enough.'), 'lead mb-4', $bind('summary')),
@@ -1671,6 +1868,7 @@ $widgets = array(
             'regionType'       => 'my_account',
             'login_page_id'    => '{{tab:login}}',
             'show_submissions' => false,
+            'staff_page_id'    => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
             $container(array(
@@ -1751,6 +1949,14 @@ $widgets = array(
         'config' => array('regionType' => 'email_preferences', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'   => 'starter',
     ),
+    // Google connection, remembered devices and two-step verification,
+    // under the account overview on the same page.
+    'account_security' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('security'),
+        'config' => array('regionType' => 'account_security', 'login_page_id' => '{{tab:login}}'),
+        'tree'   => 'starter',
+    ),
     'address_book' => array(
         'page'     => 'address_book',
         'requires' => 'ecommerce',
@@ -1758,6 +1964,56 @@ $widgets = array(
         'config'   => array('regionType' => 'address_book', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'     => 'starter',
     ),
+    // The support center's search: the whole site for ?query=, ten results
+    // a page. A result that matches a search section links to that part of
+    // its page (^^__result_section^^ names it).
+    'site_search' => array(
+        'page'   => 'search',
+        'slug'   => lang('search'),
+        'config' => array(
+            'regionType'             => 'search_results',
+            'search_scope'           => 'all',
+            'results_per_page'       => 10,
+            'empty_message'          => lang('Nothing matched your search. Try fewer or different words.'),
+            'product_group_id'       => '{{product_group:root}}',
+            'catalog_detail_page_id' => '{{tab:product}}',
+        ),
+        'tree'   => $widget_root(array(
+            $el('form', 'd-flex gap-2 mb-4', lang('Search Form'), array(
+                $el('input', 'form-control form-control-lg', '', array(), array(
+                    '_attrs'    => array(
+                        array('name' => 'type', 'value' => 'search'),
+                        array('name' => 'placeholder', 'value' => lang('Search the site…')),
+                        array('name' => 'aria-label', 'value' => lang('Search the site')),
+                    ),
+                    '_bindings' => array('value' => 'search_query'),
+                )),
+                $el('button', 'btn btn-primary btn-lg px-4', lang('Search Button'), array(), array(
+                    'text'      => lang('Search'),
+                    '_attrs'    => array(array('name' => 'type', 'value' => 'submit')),
+                    '_bindings' => array('action' => 'submit_search'),
+                )),
+            ), array('_bindings' => array('action' => 'search_form'))),
+            $para(lang('Results heading'), 'fw-semibold mb-2', $bind('__results_heading')),
+            $el('div', 'list-group list-group-flush border-top', lang('Results'), array(
+                $loop(array(
+                    $el('article', 'list-group-item px-0 py-3', lang('Result Row'), array(
+                        $el('h2', 'h5 mb-1', lang('Result Title'), array(
+                            $link(lang('Title'), '#', 'link-body-emphasis text-decoration-none', array(),
+                                array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
+                            $span(lang('Page'), 'badge text-bg-light border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
+                        )),
+                        $para(lang('Shipping and returns'), 'small text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
+                        $para(lang('Excerpt'), 'text-body-secondary mb-1', $bind('__result_excerpt')),
+                        $para('https://example.com/', 'small text-success text-break mb-0', $bind('__result_full_url')),
+                        $para(lang('Price'), 'fw-semibold mt-1 mb-0', $bind('__result_price')),
+                    )),
+                )),
+            )),
+            $el('div', 'mt-4', lang('Pagination'), array(), array('_bindings' => array('section' => 'pagination'))),
+        )),
+    ),
+
     'error_page' => array(
         'page'   => 'error',
         'slug'   => lang('error'),
@@ -1982,13 +2238,65 @@ $widgets = array(
     ),
 );
 
+// ── Search sections ─────────────────────────────────────────────────────
+// The parts of the pages the site search points a result at (Search and
+// SERP in the editor's options): a result that matches one links to it,
+// the words are marked when the visitor arrives, and the page's structured
+// data names it. A part is found by its id ('#…') or by the name it has in
+// the layer tree, once per page; it keeps an id it already has. The topics
+// are words a visitor may search for that the part does not say itself.
+// Parts inside a shared component or a widget belong to that, not to the
+// page, so only the page's own parts are listed here.
+$search_sections = array(
+    'about' => array(
+        lang('Our Story')   => array('our-story', lang('about us, who we are, company, history')),
+        lang('Our Values')  => array('our-values', lang('values, principles, quality, way of working')),
+        lang('Our Journey') => array('our-journey', lang('history, milestones, timeline, founded')),
+    ),
+    'services' => array(
+        lang('Our Services') => array('our-services', lang('services, consulting, design, development, marketing, site care, support')),
+        lang('How We Work')  => array('how-we-work', lang('process, steps, plan, price, quote, delivery')),
+    ),
+    'contact' => array(
+        lang('Contact Details') => array('contact-details', lang('address, phone, e-mail, opening hours, location')),
+    ),
+);
+$searchable_tree = function ($node, $marks, &$used) use (&$searchable_tree) {
+    if (!is_array($node)) return $node;
+    if (isset($node['props']) && is_array($node['props'])) {
+        $p = $node['props'];
+        $name = isset($p['customName']) ? (string)$p['customName'] : (isset($p['_label']) ? (string)$p['_label'] : '');
+        $key = null;
+        if (!empty($p['id']) && isset($marks['#' . $p['id']]) && !isset($used['#' . $p['id']])) {
+            $key = '#' . $p['id'];
+        } elseif ($name !== '' && isset($marks[$name]) && !isset($used[$name])) {
+            $key = $name;
+        }
+        if ($key !== null) {
+            $used[$key] = true;
+            if (empty($p['id'])) $node['props']['id'] = $marks[$key][0];
+            $node['props']['searchSection'] = true;
+            if ($marks[$key][1] !== '') $node['props']['searchKeywords'] = $marks[$key][1];
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) $node['children'][$i] = $searchable_tree($child, $marks, $used);
+    }
+    return $node;
+};
+foreach ($pages as $i => $p) {
+    if (!isset($search_sections[$p['key']])) continue;
+    $used = array();
+    $pages[$i]['tree'] = $searchable_tree($p['tree'], $search_sections[$p['key']], $used);
+}
+
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.1',
+    'version'     => '2.4.8',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',
-    'description' => lang('A whole starter site: home, about, services, a blog, a contact page whose messages become conversations, sign-in and account pages with an inbox, a staff area and, with the shop on, a small shop.'),
+    'description' => lang('A whole starter site: home, about, services, a blog, a contact page whose messages become conversations, sign-in and account pages with an inbox, a staff area, a support center that searches the whole site and, with the shop on, a small shop.'),
 
     // What the installer lists on the template's card, after the points
     // every template shares.
@@ -2015,6 +2323,7 @@ return array(
     // the template is opened (only the ones some page places), discarded
     // again when the editor is left without publishing.
     'shared'      => array(
+        'account_bar' => array('name' => lang('Site Account Bar'), 'tree' => $account_bar_tree()),
         'header'    => array('name' => lang('Site Header'), 'tree' => $navbar()),
         'footer'    => array('name' => lang('Site Footer'), 'tree' => $footer()),
         'cta'       => array('name' => lang('Contact Call to Action'), 'tree' => $cta()),

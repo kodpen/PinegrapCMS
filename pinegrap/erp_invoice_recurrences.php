@@ -79,10 +79,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <div class="btn-group" role="group">
-                    <a class="btn btn-sm ' . (!$show_stopped ? 'btn-secondary' : 'btn-outline-secondary') . '" href="erp_invoice_recurrences.php">' . lang('Running') . '</a>
-                    <a class="btn btn-sm ' . ($show_stopped ? 'btn-secondary' : 'btn-outline-secondary') . '" href="erp_invoice_recurrences.php?all=1">' . lang('All') . '</a>
-                </div>
+                <div class="pg-toolbar-grow"></div>
+                ' . pg_filter_select('all', array('' => lang('Running'), '1' => lang('All')), $show_stopped ? '1' : '', array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_invoice_recurrences.php')) . '
             </nav>
 
             <div class="card my-4">

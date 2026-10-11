@@ -40,6 +40,12 @@
     var S = CFG.strings || {};
     var OBJECT = '￼';
 
+    // Templates and function names for sums (includes/workspace/calc.php).
+    var CALC = CFG.calc || {};
+
+    // How many steps back Ctrl+Z goes in a writing box.
+    var HISTORY_MAX = 100;
+
     // ── Small helpers ──────────────────────────────────────────────────
 
     function t(key) {
@@ -203,9 +209,24 @@
         return parent;
     }
 
+    // The opening line of a fenced block: its language. Only a calculation
+    // takes settings after its language (```hesap ondalık=2).
+    var CALC_LANGUAGES = ['hesap', 'calc', 'math'];
+
     function fenceOpen(line) {
-        var match = /^\s*```\s*([A-Za-z0-9_+#.-]{0,20})\s*$/.exec(line);
-        return match ? match[1] : null;
+        var match = /^\s*```\s*([A-Za-z0-9_+#.-]{0,20})(?:[ \t]+([^`\r\n]{1,80}?))?\s*$/.exec(line || '');
+
+        if (!match || (match[2] && CALC_LANGUAGES.indexOf(match[1].toLowerCase()) === -1)) {
+            return null;
+        }
+
+        return match[1];
+    }
+
+    function fenceInfo(line) {
+        var match = /^\s*```\s*[A-Za-z0-9_+#.-]{1,20}[ \t]+([^`\r\n]{1,80}?)\s*$/.exec(line || '');
+
+        return match ? match[1] : '';
     }
 
     function fenceClose(line) {
@@ -561,7 +582,7 @@
     function isCalcBlock(markup) {
         var language = (fenceOpen(titleSplit(markup).markup.split('\n')[0]) || '').toLowerCase();
 
-        return ['hesap', 'calc', 'math'].indexOf(language) !== -1;
+        return CALC_LANGUAGES.indexOf(language) !== -1;
     }
 
     function blockNode(kind, markup) {
@@ -1043,13 +1064,18 @@
     /**
      * options: placeholder, previews (cards drawn as what they hold, see
      * drawPreviews), onInput(), onEnter(event), onKeydown(event) → true when
-     * handled, onBlockOpen(kind, markup, done)
+     * handled, onBlockOpen(kind, markup, done), onHistory(canUndo, canRedo)
+     *
+     * The box keeps its own undo history: the browser's own cannot follow
+     * the cards, chips and results the box draws into itself, and loses its
+     * steps as soon as one of them is redrawn.
      */
     function Editor(options) {
         var self = this;
 
         self.options = options || {};
         self.savedRange = null;
+        self.history = { states: [], at: -1, timer: 0, pending: false, since: 0, quiet: false };
 
         var node = el('div', 'ws-rich form-control');
         node.contentEditable = 'true';
@@ -1065,6 +1091,10 @@
         bindSurface(node, false);
 
         node.addEventListener('input', function () {
+            if (!self.history.quiet) {
+                self.recordLater();
+            }
+
             self.tidy();
             self.fenceCheck();
 
@@ -1078,7 +1108,24 @@
             }
         });
 
+        // Undo and redo from the menu or the keyboard of the browser.
+        node.addEventListener('beforeinput', function (event) {
+            if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') {
+                event.preventDefault();
+
+                if (event.inputType === 'historyUndo') {
+                    self.undo();
+                } else {
+                    self.redo();
+                }
+            }
+        });
+
         node.addEventListener('keydown', function (event) {
+            if (self.historyKey(event)) {
+                return;
+            }
+
             if (self.options.onKeydown && self.options.onKeydown(event)) {
                 return;
             }
@@ -1132,6 +1179,8 @@
                 self.savedRange = range.cloneRange();
             }
         });
+
+        self.resetHistory();
     }
 
     Editor.prototype = {
@@ -1159,6 +1208,247 @@
             this.node.innerHTML = '';
             this.savedRange = null;
             this.tidy();
+            this.resetHistory();
+        },
+
+        // ── Undo history ──
+
+        // The box as it stands, without what is drawn beside the text (the
+        // results of lines, the cards' drawings) and with the caret's place.
+        snapshot: function () {
+            var copy = this.node.cloneNode(true);
+
+            Array.prototype.forEach.call(copy.querySelectorAll('[data-ws-skip], .ws-rich-block-view'), function (node) {
+                node.remove();
+            });
+
+            Array.prototype.forEach.call(copy.querySelectorAll('.ws-rich-block-shown'), function (node) {
+                node.classList.remove('ws-rich-block-shown');
+            });
+
+            copy.normalize();
+
+            return { html: copy.innerHTML, caret: this.caretOffset() };
+        },
+
+        // The caret as a count of characters from the start, chips, cards
+        // and line breaks one each (as plainOf counts them).
+        caretOffset: function () {
+            var range = selectionRange();
+
+            if (!range || !this.node.contains(range.startContainer)) {
+                return null;
+            }
+
+            var head = document.createRange();
+
+            head.setStart(this.node, 0);
+            head.setEnd(range.startContainer, range.startOffset);
+
+            return plainOf(head.cloneContents()).length;
+        },
+
+        placeCaret: function (offset) {
+            if (offset === null || offset === undefined) {
+                this.caretToEnd();
+                return;
+            }
+
+            var left = offset;
+            var spot = null;
+
+            function walk(parent) {
+                for (var i = 0; i < parent.childNodes.length && !spot; i++) {
+                    var child = parent.childNodes[i];
+
+                    if (child.nodeType === 3) {
+                        if (left <= child.nodeValue.length) {
+                            spot = [child, left];
+                            return;
+                        }
+
+                        left -= child.nodeValue.length;
+                    } else if (child.nodeType === 1 && !child.hasAttribute('data-ws-skip')) {
+                        if (child.hasAttribute('data-token') || child.classList.contains('ws-rich-block') || child.tagName === 'BR') {
+                            if (left === 0) {
+                                spot = [parent, i];
+                                return;
+                            }
+
+                            left -= 1;
+                        } else {
+                            walk(child);
+                        }
+                    }
+                }
+            }
+
+            walk(this.node);
+
+            if (!spot) {
+                this.caretToEnd();
+                return;
+            }
+
+            var range = document.createRange();
+            var selection = window.getSelection();
+
+            range.setStart(spot[0], spot[1]);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            this.savedRange = range.cloneRange();
+        },
+
+        resetHistory: function () {
+            clearTimeout(this.history.timer);
+            this.history.timer = 0;
+            this.history.pending = false;
+            this.history.states = [this.snapshot()];
+            this.history.at = 0;
+            this.historyChanged();
+        },
+
+        // Typing is kept as one step until it pauses, or for two seconds of
+        // typing at most.
+        recordLater: function () {
+            var self = this;
+            var history = self.history;
+
+            if (history.pending && (Date.now() - history.since > 2000)) {
+                self.record();
+            }
+
+            if (!history.pending) {
+                history.pending = true;
+                history.since = Date.now();
+            }
+
+            clearTimeout(history.timer);
+            history.timer = setTimeout(function () { self.record(); }, 600);
+            self.historyChanged();
+        },
+
+        record: function () {
+            var history = this.history;
+            var state = this.snapshot();
+            var top = history.states[history.at];
+
+            clearTimeout(history.timer);
+            history.timer = 0;
+            history.pending = false;
+
+            if (top && top.html === state.html) {
+                top.caret = state.caret;
+                this.historyChanged();
+                return;
+            }
+
+            history.states = history.states.slice(0, history.at + 1);
+            history.states.push(state);
+
+            if (history.states.length > HISTORY_MAX) {
+                history.states.shift();
+            }
+
+            history.at = history.states.length - 1;
+            this.historyChanged();
+        },
+
+        canUndo: function () {
+            return this.history.pending || this.history.at > 0;
+        },
+
+        canRedo: function () {
+            return !this.history.pending && this.history.at < this.history.states.length - 1;
+        },
+
+        undo: function () {
+            var history = this.history;
+
+            if (history.pending) {
+                this.record();
+            }
+
+            if (history.at <= 0) {
+                return false;
+            }
+
+            history.at--;
+            this.applyState(history.states[history.at]);
+
+            return true;
+        },
+
+        redo: function () {
+            var history = this.history;
+
+            if (history.pending) {
+                this.record();
+            }
+
+            if (history.at >= history.states.length - 1) {
+                return false;
+            }
+
+            history.at++;
+            this.applyState(history.states[history.at]);
+
+            return true;
+        },
+
+        // A step put back: the box tells its owner it changed (a note saves
+        // it), without that change becoming a step of its own.
+        applyState: function (state) {
+            this.node.innerHTML = state.html;
+            this.savedRange = null;
+            this.tidy();
+            this.node.focus();
+            this.placeCaret(state.caret);
+            this.history.quiet = true;
+
+            try {
+                this.node.dispatchEvent(new Event('input', { bubbles: true }));
+            } finally {
+                this.history.quiet = false;
+            }
+
+            this.drawPreviews();
+            this.historyChanged();
+        },
+
+        historyChanged: function () {
+            if (this.options.onHistory) {
+                this.options.onHistory(this.canUndo(), this.canRedo());
+            }
+        },
+
+        // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (Cmd on a Mac), whatever the
+        // keyboard's letters.
+        historyKey: function (event) {
+            if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) {
+                return false;
+            }
+
+            var key = String(event.key || '').toLowerCase();
+
+            if (!/^[a-z]$/.test(key)) {
+                key = String(event.code || '').replace(/^Key/, '').toLowerCase();
+            }
+
+            if (key === 'z' && !event.shiftKey) {
+                event.preventDefault();
+                this.undo();
+                return true;
+            }
+
+            if (key === 'y' || (key === 'z' && event.shiftKey)) {
+                event.preventDefault();
+                this.redo();
+                return true;
+            }
+
+            return false;
         },
 
         markup: function () {
@@ -1166,10 +1456,16 @@
         },
 
         // A stored text back into the box, for an edit. labels: token →
-        // the name the tag had.
-        setMarkup: function (markup, labels) {
+        // the name the tag had. A text that replaces what the person was
+        // writing (an earlier version of a note) is a step they can undo;
+        // any other starts the history afresh.
+        setMarkup: function (markup, labels, asStep) {
             var node = this.node;
             var blocks = parseBlocks(markup);
+
+            if (asStep && this.history.pending) {
+                this.record();
+            }
 
             node.innerHTML = '';
 
@@ -1189,6 +1485,20 @@
             this.tidy();
             this.caretToEnd();
             this.drawPreviews();
+
+            if (!asStep) {
+                this.resetHistory();
+                return;
+            }
+
+            this.record();
+            this.history.quiet = true;
+
+            try {
+                node.dispatchEvent(new Event('input', { bubbles: true }));
+            } finally {
+                this.history.quiet = false;
+            }
         },
 
         // With options.previews (a note) the cards show what they hold, drawn
@@ -1203,12 +1513,19 @@
                 return;
             }
 
-            var cards = Array.prototype.filter.call(self.node.querySelectorAll('.ws-rich-block'), function (card) {
+            var all = Array.prototype.slice.call(self.node.querySelectorAll('.ws-rich-block'));
+            var cards = all.filter(function (card) {
                 return card.wsShown !== (card.getAttribute('data-markup') || '');
             });
 
             if (!cards.length) {
                 return;
+            }
+
+            // A calculation's names reach the tables and calculations around
+            // it: with one in the note, every card is drawn again together.
+            if (all.some(function (card) { return isCalcBlock(card.getAttribute('data-markup') || ''); })) {
+                cards = all;
             }
 
             var wanted = cards.map(function (card) {
@@ -1383,7 +1700,7 @@
 
                 self.tidy();
                 self.node.dispatchEvent(new Event('input', { bubbles: true }));
-            });
+            }, { scope: function () { return self.markup(); } });
         },
 
         // The lines of the box as text, each with the place its result goes:
@@ -1838,7 +2155,7 @@
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'ws_calc', token: CFG.token, grid: grid })
+                body: JSON.stringify({ action: 'ws_calc', token: CFG.token, grid: grid, scope: options.scope ? options.scope() : '' })
             }).then(function (response) {
                 return response.json();
             }).then(function (json) {
@@ -1959,6 +2276,114 @@
             model.align[column] = side;
             draw();
             focusCell(current.row, column);
+        }
+
+        // ── Formula patterns ──
+
+        // A formula into a cell, which then shows it for a last change.
+        function setFormula(row, column, formula) {
+            read();
+
+            if (row < 0) {
+                model.head[column] = formula;
+            } else if (model.rows[row]) {
+                model.rows[row][column] = formula;
+            }
+
+            draw();
+            focusCell(row, column);
+        }
+
+        function patternItems() {
+            var row = current.row;
+            var column = current.column;
+            var at = row + 2;
+            var body = row >= 0;
+            var above = row >= 1;
+            var last = model.rows.length + 1;
+            var cell = function (columnIndex, rowNumber) { return sheetLetter(columnIndex) + rowNumber; };
+            var left = (column >= 1) ? cell(column - 1, at) : '';
+            var left2 = (column >= 2) ? cell(column - 2, at) : '';
+            var columnAbove = above ? cell(column, 2) + ':' + cell(column, at - 1) : '';
+            var put = function (formula) {
+                return function () { setFormula(row, column, formula); };
+            };
+
+            return [
+                { icon: 'bi-arrow-up', label: t('table_fx_col_sum'), disabled: !above, action: put('=' + calcName('SUM') + '(' + columnAbove + ')') },
+                { icon: 'bi-arrow-up', label: t('table_fx_col_avg'), disabled: !above, action: put('=' + calcName('AVERAGE') + '(' + columnAbove + ')') },
+                { icon: 'bi-arrow-up', label: t('table_fx_col_max'), disabled: !above, action: put('=' + calcName('MAX') + '(' + columnAbove + ')') },
+                { icon: 'bi-arrow-up', label: t('table_fx_col_min'), disabled: !above, action: put('=' + calcName('MIN') + '(' + columnAbove + ')') },
+                '-',
+                { icon: 'bi-arrow-left', label: t('table_fx_row_sum'), disabled: !body || column < 1, action: put('=' + calcName('SUM') + '(' + cell(0, at) + ':' + left + ')') },
+                { icon: 'bi-x-lg', label: t('table_fx_mul'), disabled: !body || column < 2, action: put('=' + left2 + '*' + left) },
+                { icon: 'bi-dash-lg', label: t('table_fx_diff'), disabled: !body || column < 2, action: put('=' + left2 + '-' + left) },
+                { icon: 'bi-graph-up-arrow', label: t('table_fx_change'), disabled: !body || column < 2, action: put('=' + calcName('ROUND') + '((' + left + '-' + left2 + ')/' + left2 + '*100; 1)') },
+                '-',
+                { icon: 'bi-percent', label: t('table_fx_add_pct'), disabled: !body || column < 1, action: put('=' + left + '*(1+20%)') },
+                { icon: 'bi-tag', label: t('table_fx_discount'), disabled: !body || column < 1, action: put('=' + left + '*(1-10%)') },
+                { icon: 'bi-pie-chart', label: t('table_fx_share'), disabled: !body || column < 1, action: put('=' + calcName('ROUND') + '(' + left + '/' + calcName('SUM') + '(' + sheetLetter(column - 1) + '$2:' + sheetLetter(column - 1) + '$' + last + ')*100; 1)') },
+                { icon: 'bi-signpost-split', label: t('table_fx_if'), disabled: !body || column < 1, action: put('=' + calcName('IF') + '(' + left + '>1000; ' + left + '*5%; 0)') }
+            ];
+        }
+
+        // A last row that adds up every column holding figures; the first
+        // column names it when it holds words.
+        function addTotalRow() {
+            read();
+
+            if (model.rows.length >= MAX_ROWS) {
+                return;
+            }
+
+            var last = model.rows.length + 1;
+            var figure = /^[-+]?[\d.,\s]*\d[\d.,\s]*%?$/;
+            var row = model.head.map(function (head, column) {
+                var numbers = model.rows.some(function (cells) {
+                    var value = String(cells[column] || '').replace(/[₺$€£]|\bTL\b/g, '').trim();
+
+                    return /^=/.test(value) || figure.test(value);
+                });
+
+                return numbers ? '=' + calcName('SUM') + '(' + sheetLetter(column) + '2:' + sheetLetter(column) + last + ')' : '';
+            });
+
+            if (row[0] === '') {
+                row[0] = '**' + t('table_total') + '**';
+            }
+
+            model.rows.push(row);
+            draw();
+            focusCell(model.rows.length - 1, Math.max(0, row.findIndex(function (value) { return value !== '' && value.charAt(0) === '='; })));
+        }
+
+        // The formula of the cell copied to the cells under it, its row
+        // numbers moving with it ($2 stays where it is).
+        function shiftRows(formula, delta) {
+            return formula.replace(/(^|[^A-Za-z0-9_@$])(\$?)([A-Za-z]{1,2})(\$?)([0-9]{1,4})(?![A-Za-z0-9_(])/g, function (all, lead, columnMark, letters, rowMark, digits) {
+                return lead + columnMark + letters + rowMark + (rowMark ? digits : String(Math.max(1, +digits + delta)));
+            });
+        }
+
+        function fillDown() {
+            read();
+
+            var row = current.row;
+            var column = current.column;
+            var source = (row >= 0 && model.rows[row]) ? String(model.rows[row][column] || '') : '';
+
+            if (!/^\s*=/.test(source)) {
+                formulaInput.classList.add('is-invalid');
+                window.setTimeout(function () { formulaInput.classList.remove('is-invalid'); }, 1200);
+                return;
+            }
+
+            for (var below = row + 1; below < model.rows.length; below++) {
+                model.rows[below][column] = shiftRows(source, below - row);
+            }
+
+            draw();
+            focusCell(row, column);
         }
 
         function cellMenuItems(row, column) {
@@ -2133,6 +2558,32 @@
                 align.addEventListener('click', function () { setAlign(current.column, (model.align[current.column] === entry[0]) ? '' : entry[0]); });
                 tools.appendChild(align);
             });
+
+            tools.appendChild(el('span', 'ws-table-tools-gap'));
+
+            tools.appendChild(el('span', 'ws-table-tools-gap'));
+
+            // Formulas ready to use for the cell the caret is in.
+            var formulas = button('btn btn-sm btn-ghost', t('table_fx'), 'bi-plus-slash-minus');
+            formulas.addEventListener('mousedown', function (event) { event.preventDefault(); });
+            formulas.addEventListener('click', function () {
+                var box = formulas.getBoundingClientRect();
+
+                menu(box.left, box.bottom + 4, patternItems(), win.node.querySelector('.modal-content'));
+            });
+            tools.appendChild(formulas);
+
+            var totalRow = button('btn btn-sm btn-ghost', '', 'bi-calculator', t('table_total_row'));
+            totalRow.addEventListener('mousedown', function (event) { event.preventDefault(); });
+            totalRow.addEventListener('click', addTotalRow);
+            totalRow.disabled = model.rows.length >= MAX_ROWS;
+            tools.appendChild(totalRow);
+
+            var fill = button('btn btn-sm btn-ghost', '', 'bi-arrow-down-square', t('table_fill_down'));
+            fill.addEventListener('mousedown', function (event) { event.preventDefault(); });
+            fill.addEventListener('click', fillDown);
+            fill.disabled = current.row < 0 || current.row >= model.rows.length - 1;
+            tools.appendChild(fill);
 
             tools.appendChild(el('span', 'ws-table-tools-gap'));
 
@@ -2420,10 +2871,118 @@
 
     // ── The calculation window: a ```hesap block ──
 
+    // A function's name as the site writes it (TOPLA or SUM).
+    function calcName(canonical) {
+        var found = (CALC.functions || []).filter(function (entry) { return entry.canonical === canonical; })[0];
+
+        return found ? found.name : canonical;
+    }
+
+    // Where "Name = expression" splits: the first = that is not part of a
+    // comparison (as ws_calc_assignment_at() reads it).
+    function calcAssignmentAt(line) {
+        for (var i = 0; i < line.length; i++) {
+            if (line.charAt(i) !== '=') {
+                continue;
+            }
+
+            if (i > 0 && '<>!='.indexOf(line.charAt(i - 1)) !== -1) {
+                continue;
+            }
+
+            if (line.charAt(i + 1) === '=') {
+                i++;
+                continue;
+            }
+
+            return i;
+        }
+
+        return -1;
+    }
+
+    // The names a block gives, for the window to offer.
+    function calcNames(text) {
+        var names = [];
+
+        String(text || '').split('\n').forEach(function (line) {
+            line = line.trim();
+
+            if (line === '' || line.charAt(0) === '#' || line.indexOf('//') === 0) {
+                return;
+            }
+
+            if (line.charAt(0) === '_') {
+                line = line.slice(1).trim();
+            }
+
+            var at = calcAssignmentAt(line);
+
+            if (at === -1) {
+                var heading = /^([^:=()<>]*[^\s:=()<>][^:=()<>]*?)\s*:\s*[^\s:]*\s*$/.exec(line);
+
+                if (heading) {
+                    names.push(heading[1].trim());
+                }
+
+                return;
+            }
+
+            var label = line.slice(0, at).trim();
+
+            if (label !== '') {
+                names.push(label);
+            }
+        });
+
+        return names;
+    }
+
+    // The settings after the language: decimals and unit, in either language.
+    function calcOptions(info) {
+        var options = { decimals: '', unit: '' };
+
+        String(info || '').replace(/\s*([=:])\s*/g, '$1').split(/[\s;,]+/).forEach(function (pair) {
+            var match = /^([^=:]+)[=:](.+)$/.exec(pair);
+
+            if (!match) {
+                return;
+            }
+
+            var key = match[1].toLowerCase().replace(/ı/g, 'i');
+
+            if (['ondalik', 'decimals', 'decimal', 'places'].indexOf(key) !== -1 && /^[0-9]$/.test(match[2])) {
+                options.decimals = match[2];
+            } else if (['birim', 'unit'].indexOf(key) !== -1) {
+                options.unit = match[2].slice(0, 8);
+            }
+        });
+
+        return options;
+    }
+
+    function calcInfo(options) {
+        var keys = CALC.keys || { decimals: 'decimals', unit: 'unit' };
+        var parts = [];
+
+        if (options.decimals !== '') {
+            parts.push(keys.decimals + '=' + options.decimals);
+        }
+
+        var unit = String(options.unit || '').replace(/[\s=;,`<>"'&]/g, '').slice(0, 8);
+
+        if (unit !== '') {
+            parts.push(keys.unit + '=' + unit);
+        }
+
+        return parts.join(' ');
+    }
+
     function openCalc(markup, done, options) {
         options = options || {};
 
         var code = '';
+        var info = '';
         var titling = titled(markup, done);
 
         markup = titling.markup;
@@ -2431,29 +2990,268 @@
 
         if (markup) {
             var lines = markup.split('\n');
+            info = fenceInfo(lines[0]);
             code = lines.slice(1, fenceClose(lines[lines.length - 1]) ? -1 : undefined).join('\n');
         }
 
+        var settings = calcOptions(info);
         var win = modal(t('designer_calc'), 'modal-lg');
 
         titling.attach(win);
+
+        var tools = el('div', 'ws-calc-tools');
         var area = el('textarea', 'form-control ws-code-edit ws-calc-edit');
+        var namesRow = el('div', 'ws-calc-names');
         var shown = el('div', 'ws-calc-preview');
+        var outside = [];
         var serial = 0;
 
-        area.rows = 8;
+        area.rows = 10;
         area.spellcheck = false;
         area.value = code || (options.sample || '');
         area.placeholder = t('calc_placeholder');
         area.setAttribute('aria-label', t('designer_calc'));
+
+        // Text put in where the caret is, through the browser's own editing
+        // so that Ctrl+Z in the box takes it back.
+        function put(text, selectFrom, selectTo) {
+            area.focus();
+
+            var start = area.selectionStart;
+
+            if (!command('insertText', text)) {
+                area.setRangeText(text, area.selectionStart, area.selectionEnd, 'end');
+                area.dispatchEvent(new Event('input'));
+            }
+
+            if (selectFrom !== undefined) {
+                area.selectionStart = start + selectFrom;
+                area.selectionEnd = start + ((selectTo === undefined) ? selectFrom : selectTo);
+            }
+        }
+
+        // The whole lines the caret or the selection is on.
+        function selectLines() {
+            var value = area.value;
+            var from = value.lastIndexOf('\n', area.selectionStart - 1) + 1;
+            var to = value.indexOf('\n', Math.max(area.selectionStart, area.selectionEnd - ((area.selectionEnd > area.selectionStart) ? 1 : 0)));
+
+            if (to === -1) {
+                to = value.length;
+            }
+
+            area.focus();
+            area.selectionStart = from;
+            area.selectionEnd = to;
+
+            return value.slice(from, to);
+        }
+
+        function tool(iconName, label, title, action, extra) {
+            var node = button('btn btn-sm btn-ghost' + (extra ? ' ' + extra : ''), label, iconName, title);
+
+            node.addEventListener('mousedown', function (event) { event.preventDefault(); });
+            node.addEventListener('click', function (event) { action(node, event); });
+            tools.appendChild(node);
+
+            return node;
+        }
+
+        function gap() {
+            tools.appendChild(el('span', 'ws-table-tools-gap'));
+        }
+
+        function below(node) {
+            var box = node.getBoundingClientRect();
+
+            return { x: box.left, y: box.bottom + 4 };
+        }
+
+        // Templates: an empty box takes one whole, a written one gets it
+        // after what is there.
+        tool('bi-journal-text', t('calc_template'), '', function (node) {
+            var at = below(node);
+
+            menu(at.x, at.y, (CALC.templates || []).map(function (template) {
+                return {
+                    label: template.label,
+                    action: function () {
+                        if (area.value.trim() === '') {
+                            area.focus();
+                            area.select();
+                            put(template.body);
+                        } else {
+                            area.selectionStart = area.selectionEnd = area.value.length;
+                            put((/\n$/.test(area.value) ? '\n' : '\n\n') + template.body);
+                        }
+                    }
+                };
+            }), win.node.querySelector('.modal-content'));
+        });
+
+        tool('bi-plus-slash-minus', t('calc_functions'), '', function (node) {
+            var at = below(node);
+
+            menu(at.x, at.y, (CALC.functions || []).map(function (entry) {
+                return {
+                    label: entry.name + ' — ' + entry.help,
+                    action: function () {
+                        var selected = area.value.slice(area.selectionStart, area.selectionEnd);
+
+                        put(entry.name + '(' + selected + ')', entry.name.length + 1 + selected.length);
+                    }
+                };
+            }), win.node.querySelector('.modal-content'));
+        });
+
+        gap();
+
+        [['+', ' + ', t('calc_add')], ['−', ' - ', t('calc_subtract')], ['×', ' * ', t('calc_multiply')], ['÷', ' / ', t('calc_divide')], ['%', '%', t('calc_percent')]].forEach(function (entry) {
+            tool('', entry[0], entry[2], function () { put(entry[1]); }, 'ws-calc-op');
+        });
+
+        tool('', '( )', t('calc_brackets'), function () {
+            var selected = area.value.slice(area.selectionStart, area.selectionEnd);
+
+            put('(' + selected + ')', 1 + selected.length);
+        }, 'ws-calc-op');
+
+        gap();
+
+        // A group around the selected lines, or a heading above the caret's
+        // line; its name is selected to be typed over.
+        tool('bi-collection', t('calc_group'), t('calc_group_help'), function (node) {
+            var at = below(node);
+
+            menu(at.x, at.y, (CALC.groups || [{ name: '', label: t('calc_group') }]).map(function (entry, index) {
+                return {
+                    label: entry.label,
+                    action: function () {
+                        var name = t('calc_group_name');
+                        var heading = name + ':' + ((index > 0 && entry.name) ? ' ' + entry.name : '');
+                        var text = selectLines();
+                        var after = area.value.slice(area.selectionEnd);
+                        var close = (text.trim() !== '' && after !== '' && !/^\n\s*(\n|$)/.test(after)) ? '\n' : '';
+
+                        put(heading + '\n' + text + close, 0, name.length);
+                    }
+                };
+            }), win.node.querySelector('.modal-content'));
+        });
+
+        tool('bi-eye-slash', t('calc_hide'), t('calc_hide_help'), function () {
+            var text = selectLines();
+            var all = text.split('\n').filter(function (line) { return line.trim() !== ''; });
+            var hidden = all.length && all.every(function (line) { return /^\s*_/.test(line); });
+
+            put(text.split('\n').map(function (line) {
+                if (line.trim() === '' || /^\s*(#|\/\/)/.test(line)) {
+                    return line;
+                }
+
+                return hidden ? line.replace(/^(\s*)_\s*/, '$1') : line.replace(/^(\s*)/, '$1_');
+            }).join('\n'));
+        });
+
+        tool('bi-arrows-vertical', t('calc_gap'), t('calc_gap_help'), function () {
+            selectLines();
+            area.selectionStart = area.selectionEnd;
+            put('\n');
+        });
+
+        tool('bi-chat-left-text', t('calc_remark'), t('calc_remark_help'), function () {
+            var text = selectLines();
+
+            if (text.trim() === '') {
+                put('# ');
+            } else {
+                area.selectionStart = area.selectionEnd;
+                put('\n# ');
+            }
+        });
+
+        // How the values are shown.
+        var settingsRow = el('div', 'ws-calc-settings');
+        var decimals = el('select', 'form-select form-select-sm');
+        var unit = el('input', 'form-control form-control-sm');
+        var decimalsId = 'ws-calc-decimals-' + Date.now();
+
+        [['', t('calc_decimals_auto')], ['0', '0'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']].forEach(function (entry) {
+            var option = el('option', '', entry[1]);
+            option.value = entry[0];
+            decimals.appendChild(option);
+        });
+
+        decimals.id = decimalsId;
+        decimals.value = settings.decimals;
+        unit.id = decimalsId + '-unit';
+        unit.maxLength = 8;
+        unit.value = settings.unit;
+        unit.placeholder = t('calc_unit_placeholder');
+
+        var decimalsLabel = el('label', 'form-label small mb-0', t('calc_decimals'));
+        var unitLabel = el('label', 'form-label small mb-0', t('calc_unit'));
+
+        decimalsLabel.htmlFor = decimals.id;
+        unitLabel.htmlFor = unit.id;
+        settingsRow.appendChild(decimalsLabel);
+        settingsRow.appendChild(decimals);
+        settingsRow.appendChild(unitLabel);
+        settingsRow.appendChild(unit);
+
+        win.body.appendChild(tools);
+        win.body.appendChild(settingsRow);
         win.body.appendChild(el('div', 'form-text mt-0 mb-2', t('calc_hint')));
         win.body.appendChild(area);
+        win.body.appendChild(namesRow);
         win.body.appendChild(shown);
+
+        // The names of this block and of the rest of the text, a click
+        // away.
+        function drawNames() {
+            var seen = {};
+            var names = calcNames(area.value).concat(outside).filter(function (name) {
+                var key = name.toLowerCase();
+
+                if (seen[key]) {
+                    return false;
+                }
+
+                seen[key] = true;
+
+                return true;
+            });
+
+            namesRow.innerHTML = '';
+            namesRow.classList.toggle('d-none', !names.length);
+
+            if (!names.length) {
+                return;
+            }
+
+            namesRow.appendChild(el('span', 'ws-calc-names-label', t('calc_names')));
+
+            names.slice(0, 40).forEach(function (name) {
+                var chip = button('btn btn-sm ws-calc-name', name);
+
+                chip.addEventListener('mousedown', function (event) { event.preventDefault(); });
+                chip.addEventListener('click', function () { put(name); });
+                namesRow.appendChild(chip);
+            });
+        }
+
+        function fence() {
+            var written = calcInfo({ decimals: decimals.value, unit: unit.value });
+
+            return '```hesap' + (written ? ' ' + written : '');
+        }
 
         // Worked out by the code that works it out in the message itself.
         function preview() {
             var mine = ++serial;
             var body = area.value.replace(/\r\n?/g, '\n');
+
+            drawNames();
 
             if (!CFG.api_url || body.trim() === '') {
                 shown.innerHTML = '';
@@ -2464,28 +3262,33 @@
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'ws_calc', token: CFG.token, body: '```hesap\n' + body + '\n```' })
+                body: JSON.stringify({ action: 'ws_calc', token: CFG.token, body: fence() + '\n' + body + '\n```', scope: options.scope ? options.scope() : '' })
             }).then(function (response) {
                 return response.json();
             }).then(function (json) {
                 if ((mine === serial) && json && (json.status === 'success')) {
                     shown.innerHTML = json.data.html || '';
+                    outside = json.data.names || [];
+                    drawNames();
                 }
             }).catch(function () {});
         }
 
         var timer = 0;
-
-        area.addEventListener('input', function () {
+        var later = function () {
             clearTimeout(timer);
             timer = setTimeout(preview, 300);
-        });
+        };
+
+        area.addEventListener('input', later);
+        decimals.addEventListener('change', later);
+        unit.addEventListener('input', later);
 
         footerButtons(win, !markup, function () {
             var body = area.value.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
 
             win.hide();
-            done((body.trim() === '') ? '' : '```hesap\n' + body.replace(/^(\s*)```/gm, '$1\u200b```') + '\n```');
+            done((body.trim() === '') ? '' : fence() + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
         }, options.insertLabel);
 
         win.node.addEventListener('shown.bs.modal', function () { area.focus(); });
@@ -2556,6 +3359,216 @@
         }
 
         area.remove();
+    });
+
+    // ── A reader's own figures in a calculation ────────────────────────
+    //
+    // A plain figure of a calculation in a message or a note can be clicked
+    // and changed; the blocks and tables of the same text are worked out
+    // again with it by the server (ws_calc_live()). Nothing is stored, and
+    // the text goes back as written with the block's Reset button.
+
+    function liveUnits(root) {
+        return Array.prototype.filter.call(root.querySelectorAll('[data-ws-calc], [data-ws-calc-grid]'), function (node) {
+            return !node.closest('.ws-rich');
+        });
+    }
+
+    function liveRoot(node) {
+        return node.closest('.ws-msg-body') || node.parentNode || document.body;
+    }
+
+    function liveData(node) {
+        try {
+            return JSON.parse(node.getAttribute('data-ws-calc') || '{}') || {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function liveRun(root) {
+        var units = liveUnits(root);
+
+        if (!units.length || !CFG.api_url) {
+            return;
+        }
+
+        var payload = units.map(function (node) {
+            if (node.hasAttribute('data-ws-calc')) {
+                var data = liveData(node);
+
+                return { lines: data.lines || [], info: data.info || '' };
+            }
+
+            try {
+                return { grid: JSON.parse(node.getAttribute('data-ws-calc-grid') || '[]') };
+            } catch (error) {
+                return {};
+            }
+        });
+
+        fetch(CFG.api_url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ws_calc', token: CFG.token, live: payload })
+        }).then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            if (!json || (json.status !== 'success')) {
+                return;
+            }
+
+            (json.data.units || []).forEach(function (unit, index) {
+                var node = units[index];
+
+                if (!node || !node.parentNode) {
+                    return;
+                }
+
+                if ((unit.html !== undefined) && node.hasAttribute('data-ws-calc')) {
+                    var holder = el('div');
+                    holder.innerHTML = unit.html;
+
+                    var fresh = holder.firstElementChild;
+
+                    if (!fresh) {
+                        return;
+                    }
+
+                    var original = node.getAttribute('data-ws-calc-original') || node.getAttribute('data-ws-calc');
+                    var tried = fresh.getAttribute('data-ws-calc') !== original;
+
+                    fresh.setAttribute('data-ws-calc-original', original);
+                    fresh.classList.toggle('ws-calc-tried', tried);
+
+                    if (tried) {
+                        var reset = button('btn btn-sm btn-link ws-calc-reset', t('calc_live_reset'), 'bi-arrow-counterclockwise', t('calc_live_note'));
+                        reset.setAttribute('data-ws-calc-reset', '1');
+                        fresh.querySelector('.ws-calc-block-head').appendChild(reset);
+                    }
+
+                    node.replaceWith(fresh);
+                } else if (unit.cells && node.hasAttribute('data-ws-calc-grid')) {
+                    unit.cells.forEach(function (cell) {
+                        var span = node.querySelector('[data-ws-cell="' + cell.r + ':' + cell.c + '"]');
+
+                        if (!span) {
+                            return;
+                        }
+
+                        if (!span.hasAttribute('data-ws-shown')) {
+                            span.setAttribute('data-ws-shown', span.textContent);
+                        }
+
+                        span.textContent = cell.display;
+                        span.classList.toggle('ws-calc-error', !!cell.error);
+                        span.classList.toggle('ws-calc-tried', cell.display !== span.getAttribute('data-ws-shown'));
+                    });
+                }
+            });
+        }).catch(function () {});
+    }
+
+    function liveEdit(block, figure) {
+        var data = liveData(block);
+        var index = +figure.getAttribute('data-ws-calc-input');
+        var line = String((data.lines || [])[index] || '');
+        var at = line.indexOf('=');
+        var head = (at >= 0) ? line.slice(0, at).trim() : '';
+        var value = ((at >= 0) ? line.slice(at + 1) : line).trim();
+        var shown = figure.textContent;
+        var input = el('input', 'form-control form-control-sm ws-calc-live-input');
+        var finished = false;
+
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.value = value;
+        input.setAttribute('aria-label', head || t('calc_live_try'));
+        input.title = t('calc_live_note');
+
+        figure.textContent = '';
+        figure.appendChild(input);
+        input.focus();
+        input.select();
+
+        function finish(keep) {
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+
+            var typed = input.value.trim();
+
+            input.remove();
+            figure.textContent = shown;
+
+            if (!keep || typed === '' || typed === value || !data.lines) {
+                return;
+            }
+
+            data.lines[index] = ((head !== '') ? head + ' = ' : '') + typed;
+
+            if (!block.hasAttribute('data-ws-calc-original')) {
+                block.setAttribute('data-ws-calc-original', block.getAttribute('data-ws-calc'));
+            }
+
+            block.setAttribute('data-ws-calc', JSON.stringify(data));
+            liveRun(liveRoot(block));
+        }
+
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                finish(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                finish(false);
+            }
+        });
+
+        input.addEventListener('blur', function () { finish(true); });
+        input.addEventListener('click', function (event) { event.stopPropagation(); });
+    }
+
+    document.addEventListener('click', function (event) {
+        var target = event.target;
+
+        if (!target.closest || !CFG.api_url) {
+            return;
+        }
+
+        var reset = target.closest('[data-ws-calc-reset]');
+
+        if (reset) {
+            var root = liveRoot(reset);
+
+            event.preventDefault();
+
+            liveUnits(root).forEach(function (node) {
+                if (node.hasAttribute('data-ws-calc-original')) {
+                    node.setAttribute('data-ws-calc', node.getAttribute('data-ws-calc-original'));
+                }
+            });
+
+            liveRun(root);
+            return;
+        }
+
+        var figure = target.closest('[data-ws-calc-input]');
+
+        if (!figure || figure.closest('.ws-rich') || figure.querySelector('input')) {
+            return;
+        }
+
+        var block = figure.closest('[data-ws-calc]');
+
+        if (block) {
+            event.preventDefault();
+            liveEdit(block, figure);
+        }
     });
 
     window.PGWsEditor = {

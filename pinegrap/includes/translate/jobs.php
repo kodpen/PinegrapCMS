@@ -256,8 +256,13 @@ function pg_tr_job_run_server($job_id, $budget = 20)
     // then costs one call per request, a fast one goes round again within
     // the budget.
     $per_batch = ($job['engine'] === 'ai') ? PG_TR_AI_BATCH_ITEMS : 60;
+    // The slowest batch so far: a batch that would not end within the
+    // budget is left to the next run, so a request stays close to its budget
+    // instead of running into the server's or the proxy's time limit.
+    $slowest = 0.0;
 
-    while ((microtime(true) - $started) < $budget) {
+    while ((microtime(true) - $started + $slowest) < $budget) {
+        $batch_started = microtime(true);
         $strings = pg_tr_job_waiting($job_id, $per_batch);
 
         if (!$strings) {
@@ -307,6 +312,8 @@ function pg_tr_job_run_server($job_id, $budget = 20)
                 $result['failed']++;
             }
         }
+
+        $slowest = max($slowest, microtime(true) - $batch_started);
     }
 
     $result['finished'] = (pg_tr_job_close_if_complete($job_id) !== '');
@@ -373,8 +380,13 @@ function pg_tr_jobs_run_due($budget = 40)
 
 /**
  * "Update translations": extract the scope, open a job for what is pending,
- * and start on it right away: a server engine is run for twenty seconds, a
- * browser engine's job is handed to the panel, Claude is told there is work.
+ * and hand it on: a server engine's job is worked by the screen's run calls
+ * (and the scheduled job), a browser engine's job is handed to the panel,
+ * Claude is told there is work.
+ *
+ * Nothing is translated in this request. Extracting a large site takes a
+ * request of its own; translating on top of it ran that request into the
+ * server's time limit, and the screen's loop never started.
  *
  * @param string $language
  * @param string $scope    all | page:ID
@@ -397,10 +409,14 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
         return array('ok' => false, 'error' => lang('The engine is not known.'));
     }
 
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(120);
+    }
+
     $extracted = pg_tr_scope_extract($scope);
 
-    // The software's wording of a language with a language file comes from
-    // that file (pg_tr_ui_text()): nothing to send.
+    // The cookie window of a language with a language file comes from that
+    // file (pg_tr_ui_text()): nothing to send.
     $pending = (($scope === 'group:ui') && pg_tr_ui_has_file($language)) ? array() : pg_tr_pending_string_ids($language, pg_tr_scope_owners($scope));
 
     $result = array(
@@ -410,8 +426,6 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
         'pending'   => count($pending),
         'job_id'    => 0,
         'job'       => null,
-        'done'      => 0,
-        'failed'    => 0,
         'finished'  => true,
         'error'     => '',
     );
@@ -433,23 +447,16 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
 
     $job_id = pg_tr_job_create($language, $engine, $scope, $pending, $user_id);
     $result['job_id'] = $job_id;
+    $result['finished'] = false;
 
-    if ($spec['kind'] === 'server') {
-        $run = pg_tr_job_run_server($job_id, 20);
-        $result['done'] = $run['done'];
-        $result['failed'] = $run['failed'];
-        $result['finished'] = $run['finished'];
-        $result['error'] = $run['error'];
-    } elseif ($spec['kind'] === 'queue') {
+    if ($spec['kind'] === 'queue') {
         // The job waits for the routine; busy or held, the scheduled job
         // tells it again later.
         $dispatch = pg_tr_claude_dispatch();
-        $result['finished'] = false;
         $result['queue'] = $dispatch['status'];
         $result['error'] = $dispatch['ok'] ? '' : $dispatch['error'];
-    } else {
+    } elseif ($spec['kind'] !== 'server') {
         db("UPDATE translation_jobs SET status = 'sent', claimed_at = '" . time() . "' WHERE id = '$job_id'");
-        $result['finished'] = false;
     }
 
     $result['job'] = pg_tr_job_get($job_id);
@@ -512,10 +519,15 @@ function pg_tr_auto_update($languages, $scope, $user_id = 0)
 }
 
 /**
- * The next batch of a browser engine's job: the waiting texts split into the
- * runs the browser translates, with the source language it translates from.
+ * The next batch of a browser engine's job, with the source language it
+ * translates from. For the Translator API (chrome) the waiting texts are
+ * split into the runs it translates; the browser's language model
+ * (chrome_ai) takes each text whole, with where it stands and the glossary
+ * lines that touch it (pg_tr_package_items()), a few at a time because it
+ * answers in seconds rather than milliseconds.
  *
- * @return array('job' => row, 'items' => array of array(string_id, format, runs))
+ * @return array('job' => row, 'items' => array of array(string_id, format, runs)
+ *               or the items of pg_tr_package_items())
  */
 function pg_tr_job_package($job_id, $limit = 40)
 {
@@ -524,6 +536,12 @@ function pg_tr_job_package($job_id, $limit = 40)
 
     if (!$job) {
         return array('job' => null, 'items' => $items, 'source' => pg_tr_source_language());
+    }
+
+    if ($job['engine'] === 'chrome_ai') {
+        $waiting = pg_tr_job_waiting($job_id, min((int) $limit, 8));
+
+        return array('job' => $job, 'items' => $waiting ? pg_tr_package_items($waiting, $job['language']) : array(), 'source' => pg_tr_source_language());
     }
 
     $keep_terms = pg_tr_keep_terms($job['language']);
@@ -574,9 +592,27 @@ function pg_tr_job_results($job_id, $results, $user_id = 0)
             continue;
         }
 
-        if (!empty($item['error']) || !isset($item['runs']) || !is_array($item['runs'])) {
+        // The browser's language model answers with the whole text; the
+        // checks of pg_tr_accept_result() stand in for the joining.
+        $whole = ($job['engine'] === 'chrome_ai');
+
+        if (!empty($item['error']) || ($whole ? (!isset($item['text']) || !is_string($item['text'])) : (!isset($item['runs']) || !is_array($item['runs'])))) {
             pg_tr_job_item_done($job_id, $string_id, 'failed', !empty($item['error']) ? (string) $item['error'] : 'no answer');
             $summary['failed']++;
+            continue;
+        }
+
+        if ($whole) {
+            $accepted = pg_tr_accept_result($string, $job['language'], $item['text'], $job['engine'], $user_id);
+
+            if ($accepted['ok']) {
+                pg_tr_job_item_done($job_id, $string_id, 'done');
+                $summary['done']++;
+            } else {
+                pg_tr_job_item_done($job_id, $string_id, 'failed', $accepted['error']);
+                $summary['failed']++;
+            }
+
             continue;
         }
 

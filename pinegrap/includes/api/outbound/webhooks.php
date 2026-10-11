@@ -86,11 +86,22 @@ function api_webhook_event_is_valid($event) {
 // Called from wherever the thing actually happens - the checkout, the order
 // screen, the API's own writes - and deliberately cheap: a lookup and an insert
 // per subscriber, no network.
-function api_webhook_enqueue($event, $payload) {
+//
+// $recorded: the caller (pg_announce()) has kept the event for the workspace
+// already. Everybody else calls this directly, so it is kept here, before the
+// look for webhooks - a site with none is the usual case and its workspace
+// still wants to hear about the order.
+function api_webhook_enqueue($event, $payload, $recorded = false) {
 
 	if (!defined('DB_CONNECTED') || !api_webhook_event_is_valid($event)) {
 
 		return 0;
+
+	}
+
+	if (!$recorded && function_exists('pg_event_record')) {
+
+		pg_event_record($event, (array)$payload);
 
 	}
 

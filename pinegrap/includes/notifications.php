@@ -124,6 +124,11 @@ function pg_notification_visible($notification, $rights)
 		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
 	}
 
+	// Quotes about to run out: for whoever may use the ERP.
+	if ($action == 'erp_quote_expiry') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
+	}
+
 	// Anything else - a message written by the software itself - is for
 	// everybody who can sign in.
 	return true;
@@ -404,6 +409,29 @@ function pg_notification_display($notification)
 		$display['url']         = 'erp_stock_minimums.php?show=low';
 		$display['icon']        = 'assets/images/notification-order.png';
 		$display['badge']       = 'assets/images/notification-order-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'erp_quote_expiry') {
+
+		// title is the number of open quotes about to run out, form_id the
+		// first of them (named when it is the only one) and order_total the
+		// days the notice looked ahead (includes/erp/alerts.php).
+		$count    = (int) $notification['title'];
+		$quote_id = (int) ($notification['form_id'] ?? 0);
+		$days     = (int) ($notification['order_total'] ?? 0);
+		$number   = '';
+
+		if (($count === 1) && ($quote_id > 0)) {
+			$number = (string) db_value("SELECT full_number FROM erp_quotes WHERE id = '" . $quote_id . "' LIMIT 1");
+		}
+
+		$display['title']       = lang('Quotes about to expire');
+		$display['description'] = ($number !== '')
+			? lang(array('string' => 'Quote {var:1} expires within {var:2} days.', 'vars' => array(h($number), $days)))
+			: lang(array('string' => '{var:1} quote(s) expire within {var:2} days.', 'vars' => array($count, $days)));
+		$display['url']         = ($number !== '') ? 'edit_erp_quote.php?id=' . $quote_id : 'erp_quotes.php?state=open';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
 	}
 

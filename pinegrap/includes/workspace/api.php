@@ -33,6 +33,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -94,6 +96,10 @@ function ws_webhook_events()
         'workspace.message.created'     => 'A message was written in a public workspace channel. Private channels are never announced',
         'workspace.task.note_added'     => 'A note was added to a workspace task (text is null for a task of a private channel)',
         'workspace.poll.closed'         => 'A poll in a public workspace channel closed, by hand or when its time ran out: the counts, and the winner or a tie',
+        'workspace.template.applied'    => 'A channel template was applied to a channel, when the channel was made from it or later: the template, the tasks made and how many could not be assigned',
+        'workspace.task.time_logged'    => 'Time spent on a workspace task was written: a stopped timer or minutes written by hand (minutes, worked_on, billable, user_id)',
+        'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked and the record it is about',
+        'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer',
     );
 }
 
@@ -123,6 +129,13 @@ function ws_openapi_objects()
         'WorkspaceChange'         => 'ws_api_change_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
+        'WorkspaceTemplate'        => 'ws_api_template_schema',
+        'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
+        'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
+        'WorkspaceApproval'       => 'ws_api_approval_schema',
+        'WorkspaceThread'           => 'ws_api_thread_schema',
+        'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
+        'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
     );
 }
 
@@ -145,6 +158,7 @@ function ws_api_routes()
         array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
         array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, form, calendar_event, file or page.'),
         array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Hand the work over even though somebody on it is away on those days. Refused unless the owner may override the board.'),
+        array('name' => 'blocked_by', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'Ids of the tasks this one cannot start before; replaces the list (links to tasks the owner cannot see are kept). A list that would make tasks wait for each other is refused with 422. Not enforced: a blocked task can still be started.'),
     );
 
     $routes = array(
@@ -259,7 +273,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_list',
             'returns'     => array('list' => 'WorkspaceMessage'),
             'summary'     => 'Read a channel',
-            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. text is the message with every tag spelled out; body keeps the tags as written.',
+            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from; from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'since_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
@@ -276,11 +290,107 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_create',
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Write in a channel',
-            'description' => 'Writes a message into a channel the owner may post in; readers see it as written by the application. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. Send an Idempotency-Key so a retried call does not post twice.',
+            'description' => 'Writes a message into a channel the owner may post in; readers see it as written by the application. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; since the message is the application\'s, only an owner who is staff may ask, and anybody else is refused with 403 before anything is written. Send an Idempotency-Key so a retried call does not post twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('message', 'note', 'decision')),
+                array('name' => 'ack', 'in' => 'body', 'type' => 'bool', 'description' => 'Ask for read receipts on the message once it is written.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.ack_request',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/ack-request',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_ack_request',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Ask for read receipts on a message, or stop asking',
+            'description' => 'Asks the members of the message\'s channel to say they read it, the way the message menu does: they see a button under it, and those who have not answered a day later are reminded once. Only the person who wrote the message, or an owner who is staff, may ask - a message written by an application is asked about by staff only - and only while they may write in the channel; anybody else is refused with 403. on false stops asking and drops the answers given. ack on the message says how many have read it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'on', 'in' => 'body', 'type' => 'bool', 'default' => true, 'description' => 'true (the default) asks for read receipts, false stops asking.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.threads.start',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/thread',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_thread_start',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceThread',
+            'summary'     => 'Start a discussion about a message',
+            'description' => 'Opens a room of its own to talk over one message of a public or private channel the owner of the application may write in - a message, a decision, a note or a task card - the way the message menu does. The owner and the person who wrote the message are in it; staff who read the channel may join it in the panel. A message has one discussion: when it already has one, that one is answered with 200 instead of a second being made, and a new one is answered with 201. Its id is then read and written with GET and POST /workspace/channels/{id}/messages. A decision, a note or a task card written in it is copied into the channel. Concluded discussions are kept, read only, for 30 days and then deleted.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 80, 'description' => 'Left out, the first words of the message.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.threads.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/threads',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_threads_list',
+            'returns'     => array('list' => 'WorkspaceThread'),
+            'summary'     => 'List the discussions of a channel',
+            'description' => 'The discussions started from messages of a channel that the owner of the application may read - the ones they are in - the latest written in first: who is in them (the first eight), how many messages they hold, what the owner has not read and whether they were concluded. GET /workspace/channels/{id}/messages with a discussion\'s id reads it; a message of the channel says in its thread field that a discussion was started from it, also when the owner is not in it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all', 'description' => 'closed keeps the concluded ones.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/scheduled-messages',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_scheduled_messages_list',
+            'returns'     => array('list' => 'WorkspaceScheduledMessage'),
+            'summary'     => 'The owner\'s scheduled messages in a channel',
+            'description' => 'The messages the owner of the application wrote to be posted later in a channel, the next one first: nobody else sees them until they are posted, administrators included. status active waits for send_at; failed could not be posted when its time came (the owner left the channel, the channel was archived) and error says why - it stays until it is deleted. A message that was posted is no longer listed.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/scheduled-messages',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Schedule a message',
+            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a device session (a Bearer token from POST /auth/login) may schedule one: an application key is refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'Tags such as <#order:1045> or <@user:12> are kept as tags.'),
+                array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'When to post it, as an ISO-8601 moment; seconds are dropped.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.scheduled_messages.delete',
+            'method'       => 'DELETE',
+            'also_accepts' => array('POST'),
+            'path'         => '/workspace/scheduled-messages/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_scheduled_messages_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceScheduledMessage',
+            'summary'      => 'Delete a scheduled message',
+            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -297,6 +407,72 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'required' => true),
                 array('name' => 'on', 'in' => 'body', 'type' => 'bool', 'description' => 'true (the default) leaves the emoji, false takes it back.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.ack',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/ack',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_ack',
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Say a message was read',
+            'description' => 'Gives the read receipt a message asks for, in the name of the person signed in. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since an integration saying its owner read something would be a receipt nobody gave. The person has to be in the message\'s channel and not its writer. ack on the message says how many of the channel\'s members have read it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.approvals.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/approvals',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_approvals_list',
+            'returns'     => array('list' => 'WorkspaceApproval'),
+            'summary'     => 'List the approval requests of a channel',
+            'description' => 'The approval requests of a channel the owner of the application may read, newest first: the people asked and each one\'s answer, the rule, the deadline and, once settled, the outcome and the decision it wrote into the channel.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.approvals.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/approvals',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_approvals_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceApproval',
+            'summary'     => 'Ask for approval in a channel',
+            'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application, and the people asked are told. approvers have to be members of the channel who may write in it, one to ten. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision. Send an Idempotency-Key so a retried call does not ask twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'What is to be approved, in a line.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3800, 'description' => 'The details. Tags such as <#invoice:88> are kept; the first record tagged is the record the request is about.'),
+                array('name' => 'approvers', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 10, 'required' => true, 'description' => 'User ids of the people asked.'),
+                array('name' => 'rule', 'in' => 'body', 'type' => 'enum', 'values' => array('any', 'all'), 'default' => 'any'),
+                array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'The deadline. Left out, it waits until it is answered.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.approvals.decide',
+            'method'      => 'POST',
+            'path'        => '/workspace/approvals/{id}/decide',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_approvals_decide',
+            'returns'     => 'WorkspaceApproval',
+            'summary'     => 'Approve or reject a request',
+            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'decision', 'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject'), 'required' => true),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Why, shown beside the answer; a refusal\'s note goes into the decision.'),
             ),
         ),
 
@@ -384,6 +560,35 @@ function ws_api_routes()
             'description' => 'A note of the owner\'s, one shared with them, or one shared in a channel they may read. text is the note with every tag spelled out and every figure worked out; body keeps it as written. Reading it here does not mark it read.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.versions.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/notes/{id}/versions',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_note_versions_list',
+            'returns'     => array('list' => 'WorkspaceNoteVersion'),
+            'summary'     => 'The earlier versions of a note',
+            'description' => 'The states a note had before it was changed, the latest first, for whoever may read the note: when that state was saved (saved_at, to the minute) and by whom, its title and its length in characters (size). A state is kept when the note is changed after a pause, when somebody else changes it, or when a change takes away much of it; only the latest ones are kept. text and body are null in the listing; GET /workspace/notes/{id}/versions/{version_id} carries them.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.versions.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/notes/{id}/versions/{version_id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_note_versions_get',
+            'returns'     => 'WorkspaceNoteVersion',
+            'summary'     => 'One earlier version of a note, with its text',
+            'description' => 'text is that state of the note with every tag spelled out and every figure worked out, as the reader would see it today; body keeps it as written. Putting a version back is done on the notes screen.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'version_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -494,6 +699,56 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.tasks.time.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/tasks/{id}/time',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_task_time_list',
+            'returns'     => array('list' => 'WorkspaceTaskTime'),
+            'summary'     => 'The time spent on a task',
+            'description' => 'Every entry of time written on the task, newest day first: a stopped timer or minutes written by hand. A timer still running is listed with running true and minutes 0. invoice_id is the ERP invoice draft the entry went on.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.tasks.time.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/time',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_task_time_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTaskTime',
+            'summary'     => 'Write time spent on a task',
+            'description' => 'Written as the owner of the application\'s time: the owner must be on the task, have created it, or be staff. Announced as workspace.task.time_logged.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'minutes', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000, 'required' => true),
+                array('name' => 'worked_on', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, today or earlier. Today when left out.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+                array('name' => 'billable', 'in' => 'body', 'type' => 'bool', 'default' => true, 'description' => 'Whether the time may go on an invoice of the channel\'s customer.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.tasks.time.delete',
+            'method'       => 'DELETE',
+            'also_accepts' => array('POST'),
+            'path'         => '/workspace/tasks/{id}/time/{entry_id}',
+            'scope'        => 'tasks:write',
+            'handler'      => 'ws_api_task_time_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceTaskTime',
+            'summary'      => 'Delete an entry of time',
+            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.tasks.recurrence.get',
             'method'      => 'GET',
             'path'        => '/workspace/tasks/{id}/recurrence',
@@ -580,6 +835,34 @@ function ws_api_routes()
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Monday of this week when left out.'),
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 31, 'default' => 7),
                 array('name' => 'department_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.templates.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/templates',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_templates_list',
+            'returns'     => array('list' => 'WorkspaceTemplate'),
+            'summary'     => 'List channel templates',
+            'description' => 'The templates a channel can be set up with: the three built-in ones (ids such as builtin:new_customer, in the language of the site) and the site\'s own that are not archived (numeric ids as strings). tasks and notes count what a template brings; summary, pinned and welcome say whether it carries those texts.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.apply_template',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/apply-template',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_apply_template',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceTemplateApplied',
+            'summary'     => 'Apply a template to a channel',
+            'description' => 'Adds the template\'s tasks and notes to a public or private channel the owner of the application may write in, the way the channel menu does. The tasks are made by the owner, their dates counted in calendar days from today; a task meant for somebody the owner may not give work to is made with nobody on it and counted in unassigned. The notes become the owner\'s own and are shared in the channel. The summary and the pinned message are written only where the channel has none (summary_kept and pinned_kept say when it had); the pinned message is written as the application\'s. The channel gets a line saying the template was applied, and workspace.template.applied is announced.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'template_id', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'required' => true, 'description' => 'An id from GET /workspace/templates.'),
             ),
         ),
 

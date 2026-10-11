@@ -84,6 +84,7 @@ function pg_settings_categories()
                 'pgset-channel'  => lang('Update Channel'),
                 'pgset-datetime' => lang('Date & Time'),
                 'pgset-cron'     => lang('Cron Jobs'),
+                'pgset-backup'   => lang('Backups'),
             ),
             'keywords' => array(
                 'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
@@ -91,6 +92,7 @@ function pg_settings_categories()
                 'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
                 'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
+                'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
             ),
         ),
 
@@ -131,10 +133,12 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
                 'pgset-analytics' => lang('Visitor Tracking'),
+                'pgset-cookies'   => lang('Cookie Consent'),
             ),
             'keywords' => array(
                 'pgset-seo'       => pg_settings_keywords(lang('seo, meta, robots, sitemap, title, description, jsonld, json-ld, canonical, indexnow, sharing, social, og, merchant, structured data')),
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
+                'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
             ),
         ),
 
@@ -175,12 +179,14 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-device'     => lang('Device'),
+                'pgset-mfa'        => lang('Two-Step Verification'),
                 'pgset-signin'     => lang('Sign in with Google'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
+                'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
             ),
@@ -322,6 +328,7 @@ function pg_settings_legacy_anchors()
         'pgsub-payments'   => array('commerce',   'pgset-payments'),
         'pgset-affiliate'  => array('commerce',   'pgset-affiliate'),
         'pgset-cron'       => array('general',    'pgset-cron'),
+        'pgset-backup'     => array('general',    'pgset-backup'),
     );
 }
 
@@ -386,8 +393,15 @@ function pg_settings_tool_groups($user)
     // icon and by the confirmation, not by a tint.
     $tools = array(
         array('label' => lang('Check for Updates'),   'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php'),
-        array('label' => lang('System Informations'), 'icon' => 'bi-info-circle',  'url' => 'si.php', 'target' => '_blank'),
     );
+
+    // Writing the release package over the software is an administrator's
+    // job, like the screen's own door.
+    if ($role === 0) {
+        $tools[] = array('label' => lang('Repair Software'), 'icon' => 'bi-bandaid', 'url' => 'software_repair.php');
+    }
+
+    $tools[] = array('label' => lang('System Informations'), 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank');
 
     // Only while monitoring is on: with it off the screen is empty, and a
     // control that leads nowhere is worse than no control.
@@ -397,12 +411,16 @@ function pg_settings_tool_groups($user)
 
     $tools[] = array('label' => lang('Clean Up'), 'icon' => 'bi-eraser', 'url' => 'clean_up.php');
 
+    $tools[] = array('label' => lang('Database Engine'), 'icon' => 'bi-database-gear', 'url' => 'database_engine.php');
+
     $tools[] = array(
         'label'   => lang('Purge Cache'),
         'icon'    => 'bi-trash3',
         'url'     => 'purge_cache.php?token=' . urlencode((string) (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : '')),
         'confirm' => lang('All server-side caches will be cleared.'),
     );
+
+    $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope', 'url' => 'mail_queue.php');
 
     // Reinstall needs the installer to still be on disk; once it is deleted
     // (which the panel recommends) the link would 404.

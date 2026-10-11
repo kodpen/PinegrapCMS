@@ -37,6 +37,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
     
+    // The notice prints the cookie policy address as a link, so only a site
+    // path or a web address is taken (escape_url()); anything else is refused
+    // before a column of this screen is written.
+    $cookie_consent_policy_url_input = trim((string) post_value('cookie_consent_policy_url'));
+
+    if (($cookie_consent_policy_url_input !== '') && (escape_url($cookie_consent_policy_url_input) === false)) {
+        $liveform->mark_error('cookie_consent_policy_url', lang('The cookie policy address must start with / or https://.'));
+        return;
+    }
+
     // If old key exists and changed, delete old file and its DB record. A
     // stored key that does not fit the format is left alone rather than used
     // as a path.
@@ -192,6 +202,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             merchant_return_fees = '" . ((post_value('merchant_return_fees') == '1') ? 1 : 0) . "',
             custom_jsonld = '" . escape($site_custom_jsonld_input) . "',";
     }
+    $sql_cookie_consent_fields = '';
+
+    if (waf_table_has_column('config', 'cookie_consent')) {
+        $sql_cookie_consent_fields =
+            "cookie_consent = '" . ((post_value('cookie_consent') == '1') ? 1 : 0) . "',
+            cookie_consent_policy_url = '" . escape($cookie_consent_policy_url_input) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -201,6 +219,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             additional_robots_content = '" . escape(trim(post_value('additional_robots_content'))) . "',
             $sql_app_icon_field
             $sql_seo_jsonld_fields
+            $sql_cookie_consent_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
             indexnow_key = '" . escape(post_value('indexnow_key')) . "',
             visitor_tracking = '" . escape(post_value('visitor_tracking')) . "',

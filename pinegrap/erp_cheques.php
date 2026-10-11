@@ -96,13 +96,19 @@ if ($output_rows === '') {
     $output_rows = '<tr data-pg-sort-fixed><td colspan="6" class="text-center text-body-secondary py-4">' . lang('No cheque or note here.') . '</td></tr>';
 }
 
-$link = function ($params, $label, $active) {
-    return '<a class="btn btn-sm ' . ($active ? 'btn-secondary' : 'btn-outline-secondary') . '" href="erp_cheques.php' . (!empty($params) ? '?' . h(http_build_query($params)) : '') . '">' . $label . '</a>';
-};
+// The two filters: each keeps the other, as the links they replace did.
+$status_options = array('open' => lang('Open'), 'all' => lang('All'));
+if (isset($statuses[$status])) {
+    $status_options[$status] = $statuses[$status][0];
+}
+$output_status_filter = pg_filter_select('status', $status_options, $status, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_cheques.php', 'keep' => array('direction')));
+$output_direction_filter = pg_filter_select('direction', array('' => lang('Both ways'), 'received' => lang('Received'), 'given' => lang('Given')), $direction,
+    array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_cheques.php', 'keep' => array('status')));
 
 $accounts = array(lang('Choose an account') => '');
+// Keyed by id with the title as the label, so two accounts of the same name stay two options.
 foreach (erp_accounts(array('status' => 'active')) as $account) {
-    $accounts[h($account['title'])] = (string) (int) $account['id'];
+    $accounts['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
 }
 $tills = array(lang('Choose a till or bank account') => '');
 foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, id ASC") as $till) {
@@ -130,7 +136,8 @@ $output_new = (!$ready || $readonly) ? '' : '
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="account_id">' . lang('Account') . '</label>
-                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-select', 'options' => $accounts)) . '
+                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-select select2', 'options' => $accounts)) . '
+                        ' . erp_account_quick_link('#account_id', 'auto') . '
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label" for="amount">' . lang('Amount') . '</label>
@@ -177,7 +184,8 @@ $output_new = (!$ready || $readonly) ? '' : '
                         <span class="form-text ms-2">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
                     </div>
                 </div>
-            </form>';
+            </form>
+            ' . erp_account_quick_modal();
 
 echo
 pg_page_shell([
@@ -195,29 +203,24 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                ' . (($output_new !== '') ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="#erp_cheque_new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New cheque or note') . '</a>' : '') . '
+                <div class="pg-toolbar-grow"></div>
+                <form method="get" action="erp_cheques.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                    <input type="hidden" name="status" value="' . h($status) . '" />
+                    ' . (($direction !== '') ? '<input type="hidden" name="direction" value="' . h($direction) . '" />' : '') . '
+                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
+                    <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Serial, bank, drawer or account')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                </form>
+                ' . $output_status_filter . '
+                ' . $output_direction_filter . '
+            </nav>
+
             <div class="row g-3 my-1">
                 <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body"><div class="small text-body-secondary text-uppercase">' . lang('In the portfolio or at the bank') . '</div><div class="h4 mb-0">' . h(erp_money_out($totals['received'][1])) . '</div><div class="small text-body-secondary">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['received'][0]))) . '</div></div></div></div>
                 <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body"><div class="small text-body-secondary text-uppercase">' . lang('Given and not yet paid') . '</div><div class="h4 mb-0">' . h(erp_money_out($totals['given'][1])) . '</div><div class="small text-body-secondary">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['given'][0]))) . '</div></div></div></div>
                 <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body"><div class="small text-body-secondary text-uppercase">' . lang('Due within a week') . '</div><div class="h4 mb-0' . (($totals['due_week'] > 0) ? ' text-danger' : '') . '">' . (int) $totals['due_week'] . '</div></div></div></div>
             </div>
-
-            <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-2" aria-label="' . lang('Button Bar') . '">
-                <div class="btn-group" role="group">
-                    ' . $link(array('status' => 'open') + (($direction !== '') ? array('direction' => $direction) : array()), lang('Open'), ($status === 'open')) . '
-                    ' . $link(array('status' => 'all') + (($direction !== '') ? array('direction' => $direction) : array()), lang('All'), ($status === 'all')) . '
-                </div>
-                <div class="btn-group" role="group">
-                    ' . $link(array('status' => $status), lang('Both ways'), ($direction === '')) . '
-                    ' . $link(array('status' => $status, 'direction' => 'received'), lang('Received'), ($direction === 'received')) . '
-                    ' . $link(array('status' => $status, 'direction' => 'given'), lang('Given'), ($direction === 'given')) . '
-                </div>
-                <form method="get" action="erp_cheques.php" class="d-flex gap-1 ms-auto" role="search">
-                    <input type="hidden" name="status" value="' . h($status) . '" />
-                    ' . (($direction !== '') ? '<input type="hidden" name="direction" value="' . h($direction) . '" />' : '') . '
-                    <input type="search" class="form-control form-control-sm" name="search" value="' . h($search) . '" placeholder="' . h(lang('Serial, bank, drawer or account')) . '" aria-label="' . h(lang('Search')) . '" />
-                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search" aria-hidden="true"></i></button>
-                </form>
-            </nav>
 
             <div class="card my-4">
                 <div class="card-body p-0 table-responsive">

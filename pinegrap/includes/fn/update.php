@@ -967,3 +967,395 @@ function pg_extract_archive($archive_path, $destination)
 
     return array('ok' => true, 'message' => '', 'missing' => array(), 'stale' => array(), 'blocked' => array(), 'files' => $written);
 }
+
+// ----------------------------------------------------------------------------
+// Shared by the update screen and the Repair Software screen
+// ----------------------------------------------------------------------------
+
+/**
+ * The version the update server offers this installation's channel
+ * (pg_update_request_key()), asked the way the update's check step has always
+ * asked: the installation's details posted as JSON, the API key, a verified
+ * certificate (pg_curl_tls()), the proxy when there is one, and this
+ * installation's User-Agent - sent with none, a request looks like an
+ * anonymous client to the update server's firewall and is rejected.
+ *
+ * 'error' is '' on success, or:
+ *   curl_missing      cURL is not installed
+ *   curl_error        the server could not be reached ('curl_errno',
+ *                     'curl_error')
+ *   invalid_response  the answer named no version
+ *
+ * @return array('ok' => bool, 'version' => string, 'error' => string,
+ *               'curl_errno' => int, 'curl_error' => string)
+ */
+function pg_update_server_version()
+{
+    $result = array(
+        'ok' => false,
+        'version' => '',
+        'error' => '',
+        'curl_errno' => 0,
+        'curl_error' => '',
+    );
+
+    if (!function_exists('curl_init')) {
+        $result['error'] = 'curl_missing';
+        return $result;
+    }
+
+    $request = array();
+    $request['hostname'] = HOSTNAME_SETTING;
+    $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
+    $request['version'] = VERSION;
+    $request['edition'] = EDITION;
+    $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
+    $request['os'] = PHP_OS;
+    $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
+    $request['php_version'] = phpversion();
+    $request['mysql_version'] = db("SELECT VERSION()");
+    $request['installer'] = INSTALLER;
+    $request['private_label'] = PRIVATE_LABEL;
+    $data = encode_json($request);
+    $API = '59593DS72233483322T669223344';
+    // Beta sites ask their own question; see pg_update_channel().
+    $REQUEST = pg_update_request_key();
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
+    curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
+    // Verify the certificate. See pg_curl_tls() for why this matters most
+    // on the update and licence channel.
+    pg_curl_tls($ch);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'Content-Type: application/json',
+        'Content-Length: ' . strlen($data)
+    ));
+
+    // if there is a proxy address, then send cURL request through proxy
+    if (PROXY_ADDRESS != '') {
+        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
+        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
+    }
+
+    $response = curl_exec($ch);
+    $result['curl_errno'] = (int) curl_errno($ch);
+    $result['curl_error'] = (string) curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        $result['error'] = 'curl_error';
+        return $result;
+    }
+
+    $response = decode_json($response);
+
+    if (!is_array($response) || !isset($response['version'])) {
+        $result['error'] = 'invalid_response';
+        return $result;
+    }
+
+    $result['ok'] = true;
+    $result['version'] = trim((string) $response['version']);
+
+    return $result;
+}
+
+/**
+ * Whether the software may be repaired with the package the update server
+ * offers, and what to tell the person who asked.
+ *
+ * The repair downloads the channel's current package and writes it over the
+ * software, so it is refused when:
+ *   - update checks are off in data/config.php (SOFTWARE_UPDATE_CHECK false):
+ *     the repair talks to the same server the operator chose not to ask;
+ *   - the server names no version;
+ *   - the server's version is older than this installation: writing it over
+ *     newer files would take the code back below the database's schema.
+ * The same version repairs in place; a newer one also updates, and the
+ * upgrade screen that follows applies its schema steps.
+ *
+ * No database or network access.
+ *
+ * @param string $server_version  what the update server offers ('' if none)
+ * @param string $installed       VERSION
+ * @param bool   $checks_enabled  false when SOFTWARE_UPDATE_CHECK is false
+ * @return array('ok' => bool, 'message' => string, 'newer' => bool)
+ */
+function pg_update_repair_decision($server_version, $installed, $checks_enabled)
+{
+    $server_version = trim((string) $server_version);
+    $installed = (string) $installed;
+
+    if (!$checks_enabled) {
+        return array(
+            'ok' => false,
+            'message' => lang('Software update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), and the repair uses the same server. Turn them on to repair.'),
+            'newer' => false,
+        );
+    }
+
+    if (preg_match('/^\d+(\.\d+)*$/', $server_version) !== 1) {
+        return array(
+            'ok' => false,
+            'message' => lang('The update server did not offer a version for this channel, so the software cannot be repaired now.'),
+            'newer' => false,
+        );
+    }
+
+    if (version_compare($server_version, $installed, '<')) {
+        return array(
+            'ok' => false,
+            'message' => lang(array(
+                'string' => 'The update server offers {var:1}, which is older than this installation ({var:2}). The software cannot be repaired until the server carries this version or a newer one.',
+                'vars' => array($server_version, $installed),
+            )),
+            'newer' => false,
+        );
+    }
+
+    if (version_compare($server_version, $installed, '>')) {
+        return array(
+            'ok' => true,
+            'message' => lang(array(
+                'string' => 'The server has {var:1}; the files will be replaced with it and the site updated. Downloading...',
+                'vars' => array($server_version),
+            )),
+            'newer' => true,
+        );
+    }
+
+    return array(
+        'ok' => true,
+        'message' => lang(array('string' => 'Downloading {var:1}...', 'vars' => array($server_version))),
+        'newer' => false,
+    );
+}
+
+/**
+ * The version numbers of includes/migrations/versions.php, oldest first, read
+ * from the file's source: the single-quoted numbers of the array it returns.
+ *
+ * The file cannot be included from the panel. It exits unless
+ * INSTALL_OR_UPDATE is defined, and defining that constant in a panel request
+ * changes how db() reports a failed query (it throws for the upgrade runner
+ * instead of printing the error page).
+ *
+ * No database access.
+ *
+ * @param string $source
+ * @return array
+ */
+function pg_upgrade_versions_from_source($source)
+{
+    $source = (string) $source;
+
+    $start = strpos($source, 'return array(');
+
+    if ($start === false) {
+        return array();
+    }
+
+    $end = strpos($source, ');', $start);
+
+    $body = ($end === false) ? substr($source, $start) : substr($source, $start, $end - $start);
+
+    preg_match_all("/'(\\d{4}(?:\\.\\d+)*)'/", $body, $matches);
+
+    return $matches[1];
+}
+
+/**
+ * pg_upgrade_versions_from_source() for this installation's versions.php.
+ *
+ * @return array
+ */
+function pg_upgrade_versions_list()
+{
+    static $versions = null;
+
+    if ($versions === null) {
+        $versions = pg_upgrade_versions_from_source((string) @file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/versions.php'));
+    }
+
+    return $versions;
+}
+
+/**
+ * The versions the upgrade steps can be run again from: every version from
+ * the first 2026 one up to the one before this installation's VERSION, oldest
+ * first. Setting config.version to one of them makes the upgrade screen apply
+ * every version after it again.
+ *
+ * The steps from 2026 on ask before they change anything
+ * (install_add_column() and its family) and can run any number of times,
+ * whatever year they belong to. The steps before 2026, in legacy.php, write
+ * plain ALTER TABLE ... ADD and fail on a column that is already there, so
+ * those versions are not offered.
+ *
+ * No database access.
+ *
+ * @param array|null  $versions  pg_upgrade_versions_list() when null
+ * @param string|null $installed VERSION when null
+ * @return array version numbers, oldest first; empty when $installed is not
+ *               in the list
+ */
+function pg_upgrade_rerun_choices($versions = null, $installed = null)
+{
+    $versions = ($versions === null) ? pg_upgrade_versions_list() : array_values((array) $versions);
+    $installed = ($installed === null) ? (defined('VERSION') ? (string) VERSION : '') : (string) $installed;
+
+    $position = array_search($installed, $versions, true);
+
+    if ($position === false) {
+        return array();
+    }
+
+    // The list is in release order: everything from the first 2026 entry on
+    // is offered, later years included.
+    $first = false;
+
+    foreach ($versions as $key => $version) {
+        if (strpos($version, '2026') === 0) {
+            $first = $key;
+            break;
+        }
+    }
+
+    if (($first === false) || ($first >= $position)) {
+        return array();
+    }
+
+    return array_slice($versions, $first, $position - $first);
+}
+
+/**
+ * The folders of the software the web server cannot write into, as the block
+ * the update and repair screens show above their button.
+ *
+ * Both screens unpack a package over the tree as the web server, and a folder
+ * that refuses keeps its old files through every extraction - the site then
+ * runs new code on old files. So the folders are checked before anything is
+ * downloaded, the same way the System Status card checks them: while one
+ * refuses, the button stays off and a button beside the list opens them (0777
+ * folders, 0666 files, see pg_write_permission_repair()). That button changes
+ * who may write into the software directory, so it is an administrator's; a
+ * manager sees the list and the name of who to ask. Its script is
+ * pg_update_permissions_script().
+ *
+ * @param array $user validate_user()
+ * @return array('blocked' => bool, 'html' => string) html is '' when nothing
+ *               is blocked
+ */
+function pg_update_permissions_block($user)
+{
+    $block = array('blocked' => false, 'html' => '');
+
+    if (!function_exists('pg_write_permission_scan')) {
+        return $block;
+    }
+
+    $permissions = pg_write_permission_scan();
+
+    if ($permissions['directories_count'] == 0) {
+        return $block;
+    }
+
+    $block['blocked'] = true;
+
+    $permissions_rows = '';
+
+    foreach (array_slice($permissions['directories'], 0, 12, true) as $permissions_path => $permissions_mode) {
+        $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="text-body-secondary">' . h($permissions_mode) . '</span></li>';
+    }
+
+    if ($permissions['directories_count'] > 12) {
+        $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
+    }
+
+    if ((int) $user['role'] === 0) {
+        $permissions_action = '
+                <button type="button" class="btn btn-danger" id="write_permissions_fix"
+                        data-busy-label="' . h(lang('Fixing')) . '"
+                        data-idle-label="' . h(lang('Set the file permissions')) . '"
+                        data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
+                    <i class="bi bi-wrench-adjustable me-1"></i><span id="write_permissions_fix_state">' . h(lang('Set the file permissions')) . '</span>
+                </button>
+                <span class="form-text d-block mt-2">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
+                <div class="form-text mt-2 d-none" id="write_permissions_fix_result"></div>';
+    } else {
+        $permissions_action = '<span class="form-text d-block mt-2">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
+    }
+
+    $block['html'] = '
+            <div class="alert alert-danger">
+                <p class="form-text mb-2"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
+                    'string' => 'The web server cannot write into {var:1} folder(s) of the software. The update cannot add or replace files there, so it does not start until they are opened:',
+                    'vars' => pg_format_number($permissions['directories_count'], 0)
+                ))) . '</p>
+                <ul class="mb-2 small">' . $permissions_rows . '</ul>
+                ' . $permissions_action . '
+            </div>';
+
+    return $block;
+}
+
+/**
+ * The script behind the button of pg_update_permissions_block(): opens the
+ * folders, then reads the screen again - the list and the screen's own
+ * button are rendered from the scan, so a reload is what turns the button
+ * on. Harmless on a screen without the block.
+ *
+ * @return string a <script> element
+ */
+function pg_update_permissions_script()
+{
+    return '
+<script>
+    $(function(){
+        $("#write_permissions_fix").click(function(){
+            var button = $(this),
+                result = $("#write_permissions_fix_result");
+            if (button.prop("disabled")) {
+                return;
+            }
+            button.prop("disabled", true);
+            $("#write_permissions_fix_state").text(button.attr("data-busy-label"));
+            $.ajax({
+                contentType: "application/json",
+                url: "api.php",
+                type: "POST",
+                data: JSON.stringify({
+                    action: "write_permissions_repair",
+                    token: software_token
+                }),
+                success: function(response) {
+                    result.text(response.message || button.attr("data-failed-label")).removeClass("d-none");
+                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
+                    if (response.status == "success") {
+                        window.setTimeout(function(){
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        button.prop("disabled", false);
+                    }
+                },
+                error: function() {
+                    result.text(button.attr("data-failed-label")).removeClass("d-none");
+                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
+                    button.prop("disabled", false);
+                }
+            });
+        });
+    });
+</script>';
+}

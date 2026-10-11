@@ -871,15 +871,25 @@ function ws_board($viewer, $from, $days = 7, $department_id = 0, $only_me = fals
 
     $rows = array();
 
+    // Staff see the time spent beside what was planned (task_time.php).
+    $spent = ws_task_time_is_manager($viewer) ? ws_task_time_people($user_ids, $from, $to) : null;
+
     foreach ($user_ids as $user_id) {
         if (!isset($grid[$user_id])) {
             continue;
         }
 
         $cells = array();
+        $planned = 0;
 
         foreach ($grid[$user_id]['days'] as $cell) {
             $cells[] = $cell;
+
+            foreach ($cell['tasks'] as $item) {
+                if (empty($item['upcoming'])) {
+                    $planned += (int) $item['minutes'];
+                }
+            }
         }
 
         $rows[] = array(
@@ -888,6 +898,12 @@ function ws_board($viewer, $from, $days = 7, $department_id = 0, $only_me = fals
             'unscheduled' => $grid[$user_id]['unscheduled'],
             'cells'       => $cells,
             'departments' => ws_user_department_ids($user_id),
+            'time'        => (($spent !== null) && ws_task_time_ready()) ? array(
+                'planned'       => $planned,
+                'planned_label' => ws_minutes_label($planned),
+                'spent'         => (int) ($spent[$user_id] ?? 0),
+                'spent_label'   => ws_minutes_label($spent[$user_id] ?? 0),
+            ) : null,
         );
     }
 

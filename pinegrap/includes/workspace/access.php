@@ -324,6 +324,14 @@ function ws_can_read_channel($rights, $channel)
         return true;
     }
 
+    // A discussion (threads.php) is read by the people in it, while they
+    // read the channel it is about; it is never opened for inspection.
+    if ($channel['kind'] === 'thread') {
+        $parent = function_exists('ws_thread_parent_channel') ? ws_thread_parent_channel($channel) : null;
+
+        return $parent && ws_channel_membership($channel['id'], $rights['id']) && ws_can_read_channel($rights, $parent);
+    }
+
     if (ws_channel_membership($channel['id'], $rights['id'])) {
         return true;
     }
@@ -347,6 +355,11 @@ function ws_can_post_channel($rights, $channel)
 
     if ($channel['kind'] === 'public') {
         return true;
+    }
+
+    // Nothing is written in a discussion of an archived channel.
+    if (($channel['kind'] === 'thread') && ((int) (ws_thread_parent_channel($channel)['archived_at'] ?? 1) > 0)) {
+        return false;
     }
 
     return (bool) ws_channel_membership($channel['id'], $rights['id']);

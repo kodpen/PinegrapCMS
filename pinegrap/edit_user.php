@@ -23,6 +23,14 @@ $liveform_view_users = new liveform('view_users');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
+// of a half-empty form and PHP notices from the unchecked row below.
+$id = (int) ($_REQUEST['id'] ?? 0);
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM user WHERE user_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if editor is less than an administrator role, check to make sure that editor has access to edit user
 if ($user['role'] > 0) {
     // get role of user that is being edited
@@ -130,6 +138,68 @@ if (isset($_POST['pg_unlink_google'])) {
 
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
         . '/edit_user.php?id=' . urlencode($_POST['id'] ?? '') . $unlink_send_to);
+
+    exit();
+}
+
+// Turn off two-step verification, another person's or one's own: the way
+// back in for a person who lost both the authenticator app and the recovery
+// codes. Removes the second factor and its codes and signs the account out
+// everywhere else; the person signs in with the password alone afterwards
+// (and is asked to set it up again if their role requires it). No password
+// or code is asked for here: this is already a signed-in panel session, and
+// for an administrator who lost the device this screen is the only way out.
+// The account page, open to every member, keeps asking for both. Turning it
+// on is not offered here: the key has to be confirmed on the person's own
+// device. Handled ahead of the save, like the two above.
+if (isset($_POST['pg_mfa_reset'])) {
+
+    validate_token_field();
+
+    $mfa_reset_user_id = (int) ($_POST['id'] ?? 0);
+    $mfa_reset_self = ($mfa_reset_user_id === (int) USER_ID);
+    $mfa_reset_user = db_item(
+        "SELECT user_username, user_role
+        FROM user
+        WHERE user_id = '" . $mfa_reset_user_id . "'");
+
+    if ($mfa_reset_user) {
+
+        // An operator signed in as this person cannot change the person's
+        // second factor, here or on the account page.
+        if ($mfa_reset_self && !empty($_SESSION['software']['logged_in_as_different_user'])) {
+            output_error(lang('Two-step verification cannot be changed while signed in as another user.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // Same rule as disconnecting Google: one's own account always, another
+        // one only below one's own role (administrators: any).
+        if (!$mfa_reset_self && (USER_ROLE > 0) && (USER_ROLE >= (int) $mfa_reset_user['user_role'])) {
+            log_activity(lang(array(
+                'string' => 'access denied to turn off two-step verification for a higher-role user ({var:1})',
+                'vars'   => array($mfa_reset_user['user_username']))), USER_USERNAME);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        pg_mfa_reset($mfa_reset_user_id);
+
+        if ($mfa_reset_self) {
+            unset($_SESSION['software']['mfa_codes_show']);
+            log_activity(lang('user turned off two-step verification'), USER_USERNAME);
+        } else {
+            log_activity(lang(array(
+                'string' => 'two-step verification turned off for user ({var:1})',
+                'vars'   => array($mfa_reset_user['user_username']))), $_SESSION['sessionusername'] ?? '');
+        }
+    }
+
+    $mfa_reset_send_to = '';
+
+    if ((isset($_POST['send_to'])) && ($_POST['send_to'] != '')) {
+        $mfa_reset_send_to = '&send_to=' . urlencode($_POST['send_to']);
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
+        . '/edit_user.php?id=' . urlencode($_POST['id'] ?? '') . $mfa_reset_send_to);
 
     exit();
 }
@@ -858,6 +928,31 @@ if (!$_POST) {
                 ' . ((!empty($user_google_id)) ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
             </div>';
 
+    // Two-step verification: a fact row, and turning it off in the side
+    // panel. Absent until the 8.40 upgrade has created the tables. There is
+    // no way to turn it on here: the key is confirmed on the person's own
+    // device, from their account page.
+    $edit_user_mfa_on = pg_mfa_table_exists() && pg_mfa_enabled((int) $_GET['id']);
+    $edit_user_mfa_self = ((int) $_GET['id'] === (int) USER_ID);
+
+    $output_mfa_state = h($edit_user_mfa_on ? lang('On') : lang('Off'));
+
+    if (!$edit_user_mfa_on && $edit_user_mfa_self && pg_mfa_table_exists() && pg_mfa_available()) {
+        $edit_user_mfa_account_url = pg_mfa_account_url();
+
+        $output_mfa_state .= ' &middot; ' . (($edit_user_mfa_account_url !== '')
+            ? '<a href="' . h($edit_user_mfa_account_url) . '">' . h(lang('Turn it on from your account page.')) . '</a>'
+            : h(lang('Turn it on from your account page.')));
+    }
+
+    $output_mfa_row = pg_mfa_table_exists()
+        ? '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Two-step verification')) . '</b><span>' . $output_mfa_state . '</span></div>
+                ' . ($edit_user_mfa_on ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
+            </div>'
+        : '';
+
     $output_sign_in_card =
         '<div class="card mb-3">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
@@ -868,7 +963,7 @@ if (!$_POST) {
                     <span class="pg-fact-icon"><i class="bi bi-key"></i></span>
                     <div class="pg-fact-text"><b>' . h(lang('Password')) . '</b><span>' . h($output_password_note) . '</span></div>
                 </div>
-                ' . $output_google_row . $output_sessions_row . '
+                ' . $output_google_row . $output_mfa_row . $output_sessions_row . '
             </div>
         </div>';
 
@@ -935,6 +1030,41 @@ if (!$_POST) {
             </div>'
         : '';
 
+    // Turned off at once, one's own account included; see the handler above.
+    // Not offered on one's own account while signed in as another user.
+    $output_mfa_panel = '';
+
+    if ($edit_user_mfa_on && $edit_user_mfa_self && !empty($_SESSION['software']['logged_in_as_different_user'])) {
+        $output_mfa_panel =
+            '<div class="pg-perm-block">
+                <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
+                <p class="small text-body-secondary mb-0">' . h(lang('Two-step verification cannot be changed while signed in as another user.')) . '</p>
+            </div>';
+
+    } elseif ($edit_user_mfa_on) {
+        $output_mfa_note = $edit_user_mfa_self
+            ? lang('Turning it off also signs out your other devices.')
+                . (pg_mfa_required_for_user((int) USER_ID) ? ' ' . lang('Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.') : '')
+            : lang('Turns off the person\'s second step and signs them out everywhere. Use it when they lost their authenticator app and recovery codes; they sign in with the password alone afterwards and can set it up again.');
+
+        $output_mfa_panel =
+            '<div class="pg-perm-block">
+                <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
+                <div class="d-flex align-items-start gap-3 border rounded p-3">
+                    <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
+                    <div class="flex-grow-1">
+                        <p class="small mb-0">' . h($output_mfa_note) . '</p>
+                    </div>
+                    <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
+                        . '<input type="hidden" name="pg_mfa_reset" value="1"/>'
+                        . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
+                        . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
+                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Turn off two-step verification')) . '</button>'
+                    . '</form>
+                </div>
+            </div>';
+    }
+
     $output_sessions_list = ($edit_user_sessions_count > 0)
         ? '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => '{var:1} active session{suffix:1}', 'vars' => $edit_user_sessions_count, 'suffix' => (($edit_user_sessions_count == 1) ? '' : 's')))) . '</div>
@@ -957,7 +1087,7 @@ if (!$_POST) {
             </div>
             <div class="offcanvas-body">
                 <p class="pg-perm-panel-lead">' . h(lang('These act at once and do not wait for Save.')) . '</p>
-                ' . $output_sessions_list . $output_google_panel . '
+                ' . $output_sessions_list . $output_google_panel . $output_mfa_panel . '
             </div>
             <div class="offcanvas-footer">
                 <div class="pg-perm-panel-count">' . h(lang('Sessions expire on their own after 30 days.')) . '</div>

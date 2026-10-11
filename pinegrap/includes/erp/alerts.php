@@ -10,8 +10,11 @@
  *     the API or from an online payment.
  *   - Low stock: the products that have dropped to or below their minimum
  *     since the last notice, from the ERP's scheduled job.
+ *   - Quotes about to run out: the open quotes whose date comes within the
+ *     days the store chose, from the same job (8.58).
  *
- * Both are off until switched on in the ERP settings (4.91). Nothing here
+ * The first two are off until switched on in the ERP settings (4.91); the
+ * quote notice is on until switched off. Nothing here
  * delivers anything itself: the bell row goes through create_notification()
  * and the device banner through the push queue that row feeds, the channels
  * the overdue reminders use (includes/erp/notify.php). The person whose own
@@ -28,26 +31,35 @@ if (!defined('PG_ERP_ENTRY')) {
 }
 
 /**
- * The store's choices, or the defaults (all off) before 4.91.
+ * The store's choices, or the defaults (all off) before 4.91. The quote
+ * notice is off until its columns are there (8.58).
  *
- * @return array  collections (bool), collection_min (kurus), low_stock (bool)
+ * @return array  collections (bool), collection_min (kurus), low_stock (bool),
+ *                quote_expiry (bool), quote_expiry_days (int, 1-30)
  */
 function erp_alert_settings()
 {
     static $settings = null;
 
     if ($settings === null) {
-        $settings = array('collections' => false, 'collection_min' => 0, 'low_stock' => false);
+        $settings = array('collections' => false, 'collection_min' => 0, 'low_stock' => false, 'quote_expiry' => false, 'quote_expiry_days' => 3);
 
         if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'erp_notify_collections')) {
             $row = db_item("SELECT erp_notify_collections, erp_notify_collection_min, erp_notify_low_stock FROM config LIMIT 1");
 
             if (is_array($row)) {
-                $settings = array(
-                    'collections' => ((int) $row['erp_notify_collections'] === 1),
-                    'collection_min' => max(0, (int) $row['erp_notify_collection_min']),
-                    'low_stock' => ((int) $row['erp_notify_low_stock'] === 1),
-                );
+                $settings['collections'] = ((int) $row['erp_notify_collections'] === 1);
+                $settings['collection_min'] = max(0, (int) $row['erp_notify_collection_min']);
+                $settings['low_stock'] = ((int) $row['erp_notify_low_stock'] === 1);
+            }
+        }
+
+        if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'erp_notify_quote_expiry')) {
+            $row = db_item("SELECT erp_notify_quote_expiry, erp_notify_quote_expiry_days FROM config LIMIT 1");
+
+            if (is_array($row)) {
+                $settings['quote_expiry'] = ((int) $row['erp_notify_quote_expiry'] === 1);
+                $settings['quote_expiry_days'] = min(30, max(1, (int) $row['erp_notify_quote_expiry_days']));
             }
         }
     }
@@ -191,6 +203,64 @@ function erp_alert_low_stock()
     ), false);
 
     db("UPDATE erp_stock_minimums SET notified_at = UNIX_TIMESTAMP() WHERE product_id IN (" . implode(', ', $ids) . ")");
+
+    return $result;
+}
+
+/**
+ * The open quotes that run out within the days the store chose, today
+ * included, in one notice.
+ *
+ * A quote is announced once (erp_quotes.expiry_notified_at); opening it
+ * again, or changing the date of an open one, clears the stamp
+ * (includes/erp/quotes.php), so it is announced again when its new date
+ * comes near. Run from the ERP's hourly job.
+ *
+ * @return array ['ran' => bool, 'count' => int, 'notification_id' => int]
+ */
+function erp_alert_quote_expiry()
+{
+    $result = array('ran' => false, 'count' => 0, 'notification_id' => 0);
+    $settings = erp_alert_settings();
+
+    if (!$settings['quote_expiry'] || !function_exists('erp_quotes_ready') || !erp_quotes_ready()
+        || !waf_table_has_column('erp_quotes', 'expiry_notified_at')) {
+        return $result;
+    }
+
+    $result['ran'] = true;
+
+    $days = (int) $settings['quote_expiry_days'];
+    $today = date('Y-m-d');
+    $last = date('Y-m-d', strtotime($today . ' +' . $days . ' days'));
+
+    $rows = (array) db_items("SELECT id FROM erp_quotes
+        WHERE status = 'open' AND valid_until BETWEEN '" . escape($today) . "' AND '" . escape($last) . "' AND expiry_notified_at = 0
+        ORDER BY valid_until ASC, id ASC
+        LIMIT 200");
+
+    if (empty($rows)) {
+        return $result;
+    }
+
+    $ids = array();
+    foreach ($rows as $row) {
+        $ids[] = (int) $row['id'];
+    }
+
+    // title is the number of quotes, form_id the first of them (named when
+    // it is the only one) and order_total the days the notice looked ahead.
+    $result['count'] = count($ids);
+    $result['notification_id'] = erp_alert_create(array(
+        'action' => 'erp_quote_expiry',
+        'type' => 'warning',
+        'title' => (string) count($ids),
+        'form_id' => $ids[0],
+        'order_total' => (string) $days,
+        'user' => 'system',
+    ), false);
+
+    db("UPDATE erp_quotes SET expiry_notified_at = UNIX_TIMESTAMP() WHERE id IN (" . implode(', ', $ids) . ")");
 
     return $result;
 }

@@ -121,8 +121,9 @@ if (!$_POST) {
     $account_options[lang('Choose an account')] = '';
 
     // liveform prints option labels as-is; account titles come from contact names typed at checkout.
+    // Keyed by id with the title as the label, so two accounts of the same name stay two options.
     foreach (erp_accounts(array('status' => 'active')) as $account) {
-        $account_options[h($account['title'])] = (string) (int) $account['id'];
+        $account_options['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
     }
 
     $till_options = array();
@@ -237,7 +238,8 @@ if (!$_POST) {
                                     )) . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                                        'class' => 'form-select', 'options' => $account_options))) . '
+                                        'class' => 'form-select select2', 'options' => $account_options))
+                                    . erp_account_quick_link('#account_id', $is_collection ? 'customer' : 'supplier')) . '
                             </div>
                             <div class="col-12 col-lg-4 my-2">
                                 <label for="cash_account_id" class="form-label">' . lang('Till or Bank Account') . '</label>
@@ -313,6 +315,7 @@ if (!$_POST) {
                     </div>
                 </nav>
             </form>
+            ' . (($preset_invoice === null) ? erp_account_quick_modal() : '') . '
         </div>
     </div>
 </main>' .

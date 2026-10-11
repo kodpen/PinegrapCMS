@@ -146,6 +146,12 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                ' . (erp_audit_ready() ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?' . h(http_build_query($query + array('format' => 'csv'))) . '"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . lang('Download as CSV') . '</a>' : '') . '
+                ' . (!empty($query) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php">' . lang('Clear filters') . '</a>' : '') . '
+                <div class="pg-toolbar-grow small text-body-secondary">' . lang('Newest first; the lines one action wrote are shown together.') . '</div>
+            </nav>
+
             <form method="get" action="erp_audit.php" class="card my-4" role="search">
                 <div class="card-body row g-2 align-items-end">
                     <div class="col-6 col-md-2">
@@ -174,12 +180,6 @@ pg_page_shell([
                     </div>
                 </div>
             </form>
-
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <div class="pg-toolbar-grow small text-body-secondary">' . lang('Newest first; the lines one action wrote are shown together.') . '</div>
-                ' . (!empty($query) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php">' . lang('Clear filters') . '</a>' : '') . '
-                ' . (erp_audit_ready() ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?' . h(http_build_query($query + array('format' => 'csv'))) . '"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . lang('Download as CSV') . '</a>' : '') . '
-            </nav>
 
             ' . $output_record . '
 

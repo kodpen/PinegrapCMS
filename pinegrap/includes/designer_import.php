@@ -692,7 +692,14 @@ function pg_di_node($node, $ctx)
     if ($node->nodeType === XML_TEXT_NODE || $node->nodeType === XML_CDATA_SECTION_NODE) {
         $txt = preg_replace('/\s+/u', ' ', (string)$node->nodeValue);
         if (trim($txt) === '') return null;
-        return pg_di_mk('content', array('contentType' => 'span', 'text' => trim($txt), 'cssClass' => ''));
+        // Beside an element (an icon before "Devam"), the space between the
+        // two is part of the text: trimmed away, the icon ran into the word.
+        $text = trim($txt);
+        $prev = $node->previousSibling;
+        $next = $node->nextSibling;
+        if ($txt[0] === ' ' && $prev && $prev->nodeType === XML_ELEMENT_NODE) $text = ' ' . $text;
+        if (substr($txt, -1) === ' ' && $next && $next->nodeType === XML_ELEMENT_NODE) $text .= ' ';
+        return pg_di_mk('content', array('contentType' => 'span', 'text' => $text, 'cssClass' => ''));
     }
     if ($node->nodeType !== XML_ELEMENT_NODE) return null;
 
@@ -750,7 +757,21 @@ function pg_di_node($node, $ctx)
             'fluid' => false, 'rounded' => false, 'objectPosition' => '', 'aspectRatio' => '', 'cssClass' => $cls,
         ), $id !== '' ? array('id' => $id) : array(), $attrs ? array('_attrs' => $attrs) : array()));
     }
-    if ($tag === 'a' && pg_di_only_inline_children($node)) {
+    // Bootstrap Icons markup (<i class="bi bi-alarm">, the same on a <span>)
+    // becomes the icon node the palette makes, whatever framework the design
+    // is on: clicking it opens the icon picker instead of a bare element.
+    if ($tag === 'i' || $tag === 'span') {
+        $icon = pg_di_icon_props($node, $cls);
+        if ($icon !== null) {
+            if ($id !== '') $icon['id'] = $id;
+            if ($attrs) $icon['_attrs'] = $attrs;
+            return pg_di_mk('content', $icon);
+        }
+    }
+    // A link holding an icon of its own (<a class="btn"><i class="bi …"></i>
+    // Devam</a>) is built from nodes, so the icon is one the picker changes;
+    // as link text it was markup a text edit dropped.
+    if ($tag === 'a' && pg_di_only_inline_children($node) && !pg_di_has_icon_child($node)) {
         $attrs = pg_di_attrs($node, $ctx, array('class', 'id', 'href', 'target', 'rel'));
         return pg_di_mk('content', array_merge(array(
             'contentType' => 'link', 'text' => pg_di_inner_html($node, $ctx),
@@ -785,6 +806,36 @@ function pg_di_node($node, $ctx)
         }
     }
     return pg_di_mk('semantic', $props, $children);
+}
+
+/**
+ * Icon node props for an element that is a Bootstrap icon and nothing else:
+ * a bi-* class, no text and no child elements. null otherwise. The other
+ * classes stay on the node.
+ */
+function pg_di_icon_props($node, $cls)
+{
+    if (!preg_match('/(?:^|\s)(bi-[a-z0-9-]+)(?:\s|$)/', $cls, $m)) return null;
+    if (trim((string)$node->textContent) !== '') return null;
+    foreach ($node->childNodes as $cn) {
+        if ($cn->nodeType === XML_ELEMENT_NODE) return null;
+    }
+    $rest = array();
+    foreach (preg_split('/\s+/', $cls, -1, PREG_SPLIT_NO_EMPTY) as $c) {
+        if ($c !== 'bi' && $c !== $m[1]) $rest[] = $c;
+    }
+    return array('contentType' => 'icon', 'iconName' => $m[1], 'cssClass' => implode(' ', $rest));
+}
+
+// Whether one of the element's children is a Bootstrap icon (pg_di_icon_props()).
+function pg_di_has_icon_child($node)
+{
+    foreach ($node->childNodes as $cn) {
+        if ($cn->nodeType !== XML_ELEMENT_NODE) continue;
+        $t = strtolower($cn->nodeName);
+        if (($t === 'i' || $t === 'span') && pg_di_icon_props($cn, trim((string)$cn->getAttribute('class'))) !== null) return true;
+    }
+    return false;
 }
 
 function pg_di_only_text_children($node)

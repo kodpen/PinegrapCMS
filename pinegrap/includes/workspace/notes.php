@@ -47,6 +47,14 @@ define('WS_NOTE_MAX', 60000);
 define('WS_NOTE_LIMIT', 2000);
 
 /**
+ * How many earlier versions of a note are kept, and how long a note is
+ * written on before the state it had is kept again (seconds). A save that
+ * takes away much of a note keeps the state before it whatever the time.
+ */
+define('WS_NOTE_VERSIONS_KEEP', 30);
+define('WS_NOTE_VERSION_GAP', 600);
+
+/**
  * Are notes installed (4.110)?
  *
  * @return bool
@@ -63,6 +71,78 @@ function ws_notes_ready()
     }
 
     return $ready;
+}
+
+/**
+ * Are a note's earlier versions kept (2026.4.8, 8.111)?
+ *
+ * @return bool
+ */
+function ws_note_versions_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_notes_ready() && ((int) db_value("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_note_versions'") > 0);
+    }
+
+    return $ready;
+}
+
+/**
+ * Can a person pin My Notes to the panel menu (2026.4.8, 8.112)?
+ *
+ * @return bool
+ */
+function ws_notes_menu_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_notes_ready() && ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_profiles' AND COLUMN_NAME = 'notes_pinned'") > 0);
+    }
+
+    return $ready;
+}
+
+/**
+ * Has the person pinned My Notes to the panel menu? The menu then draws it as
+ * a row of its own right under the workspace (includes/fn/output.php).
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function ws_notes_menu_pinned($user_id)
+{
+    if (((int) $user_id <= 0) || !ws_notes_menu_ready()) {
+        return false;
+    }
+
+    return ((int) db_value("SELECT notes_pinned FROM ws_profiles WHERE user_id = '" . (int) $user_id . "'") === 1);
+}
+
+/**
+ * Pins My Notes to the person's menu, or takes it off. A person with no
+ * workspace profile yet gets one, its other fields at their defaults (0 is
+ * "the site's default" for each of them).
+ *
+ * @param array $viewer
+ * @param bool  $pinned
+ * @return bool done
+ */
+function ws_notes_menu_pin($viewer, $pinned)
+{
+    if (!ws_notes_menu_ready()) {
+        return false;
+    }
+
+    db("INSERT INTO ws_profiles (user_id, notes_pinned, updated_at)
+        VALUES ('" . (int) $viewer['id'] . "', '" . ($pinned ? 1 : 0) . "', '" . time() . "')
+        ON DUPLICATE KEY UPDATE notes_pinned = VALUES(notes_pinned)");
+
+    return true;
 }
 
 /**
@@ -359,6 +439,9 @@ function ws_notes_present($viewer, $rows, $full = false)
             'updated_by' => ((int) ($row['updated_by'] ?? 0) > 0) ? ($people[(int) $row['updated_by']] ?? null) : null,
             'updated'    => ws_time_label($row['updated_at']),
             'updated_at' => (int) $row['updated_at'],
+            'created'    => ws_time_label($row['created_at'] ?? 0),
+            'created_at' => (int) ($row['created_at'] ?? 0),
+            'versions'   => ws_note_versions_ready(),
             'source'     => $source,
             'with'       => $with,
             'in'         => $in,
@@ -370,20 +453,7 @@ function ws_notes_present($viewer, $rows, $full = false)
         );
 
         if ($full) {
-            $refs = ws_refs_resolve($viewer, ws_tokens($body));
-            $labels = array();
-
-            foreach (ws_tokens($body) as $token) {
-                $key = $token['type'] . ':' . $token['id'];
-
-                if (isset($refs[$key])) {
-                    $labels['<' . $token['sigil'] . $key . '>'] = $refs[$key]['label'];
-                }
-            }
-
-            $note['body'] = $body;
-            $note['labels'] = $labels;
-            $note['html'] = ws_render_body($body, $refs);
+            $note = array_merge($note, ws_note_body_view($viewer, $body));
             $note['claude'] = function_exists('ws_note_claude_state') ? ws_note_claude_state($viewer, $id) : array();
         }
 
@@ -391,6 +461,153 @@ function ws_notes_present($viewer, $rows, $full = false)
     }
 
     return $out;
+}
+
+/**
+ * A note's text for the screen: as written (for the writing box), the
+ * names its tags have for this reader, and drawn.
+ *
+ * @param array  $viewer
+ * @param string $body
+ * @return array body, labels, html
+ */
+function ws_note_body_view($viewer, $body)
+{
+    $body = (string) $body;
+    $refs = ws_refs_resolve($viewer, ws_tokens($body));
+    $labels = array();
+
+    foreach (ws_tokens($body) as $token) {
+        $key = $token['type'] . ':' . $token['id'];
+
+        if (isset($refs[$key])) {
+            $labels['<' . $token['sigil'] . $key . '>'] = $refs[$key]['label'];
+        }
+    }
+
+    return array('body' => $body, 'labels' => $labels, 'html' => ws_render_body($body, $refs));
+}
+
+/**
+ * Keeps the note as it stands before a save changes it, when that state is
+ * worth a version: the note has no version yet, it was last kept a while
+ * ago, somebody else wrote what it holds, or the save takes much of it away
+ * (a note emptied by mistake can always be brought back). The oldest
+ * versions beyond WS_NOTE_VERSIONS_KEEP go.
+ *
+ * @param array $viewer
+ * @param array $note the row before the save
+ * @param array $sets the fields the save writes
+ * @return void
+ */
+function ws_note_version_keep($viewer, $note, $sets)
+{
+    if (!ws_note_versions_ready()) {
+        return;
+    }
+
+    $old_body = (string) $note['body'];
+    $old_title = (string) $note['title'];
+    $body_changed = array_key_exists('body', $sets) && ((string) $sets['body'] !== $old_body);
+    $title_changed = array_key_exists('title', $sets) && ((string) $sets['title'] !== $old_title);
+
+    if ((!$body_changed && !$title_changed) || ((trim($old_body) === '') && (trim($old_title) === ''))) {
+        return;
+    }
+
+    $note_id = (int) $note['id'];
+    $last = db_item("SELECT id, title, body, created_at FROM ws_note_versions
+        WHERE note_id = '" . $note_id . "' ORDER BY id DESC LIMIT 1");
+
+    // The same state kept already.
+    if (is_array($last) && ((string) $last['body'] === $old_body) && ((string) $last['title'] === $old_title)) {
+        return;
+    }
+
+    $old_length = mb_strlen($old_body);
+    $new_length = $body_changed ? mb_strlen((string) $sets['body']) : $old_length;
+
+    $keep = !is_array($last)
+        || ((time() - (int) $last['created_at']) >= WS_NOTE_VERSION_GAP)
+        || ((int) $note['updated_by'] !== (int) $viewer['id'])
+        || ($body_changed && ($old_length >= 20) && ($new_length < $old_length * 0.6));
+
+    if (!$keep) {
+        return;
+    }
+
+    db("INSERT INTO ws_note_versions (note_id, title, body, saved_by, saved_at, created_at)
+        VALUES ('" . $note_id . "', '" . e($old_title) . "', '" . e($old_body) . "',
+            '" . (int) $note['updated_by'] . "', '" . (int) $note['updated_at'] . "', '" . time() . "')");
+
+    $old = db_values("SELECT id FROM ws_note_versions WHERE note_id = '" . $note_id . "'
+        ORDER BY id DESC LIMIT " . (int) WS_NOTE_VERSIONS_KEEP . ", 1000");
+
+    if (!empty($old)) {
+        db("DELETE FROM ws_note_versions WHERE id IN (" . implode(',', array_map('intval', (array) $old)) . ")");
+    }
+}
+
+/**
+ * A note's earlier versions, the latest first: when that state was saved,
+ * by whom, how long it was.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @return array[] id, title, saved, saved_full, by (person|null), size
+ */
+function ws_note_versions($viewer, $note)
+{
+    if (!ws_note_versions_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT id, title, saved_by, saved_at, CHAR_LENGTH(body) AS size FROM ws_note_versions
+        WHERE note_id = '" . (int) $note['id'] . "' ORDER BY id DESC LIMIT " . (int) WS_NOTE_VERSIONS_KEEP);
+
+    $people = ws_people(array_unique(array_filter(array_map(function ($row) { return (int) $row['saved_by']; }, $rows))));
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = array(
+            'id'         => (int) $row['id'],
+            'title'      => (string) $row['title'],
+            'saved'      => ws_time_label($row['saved_at']),
+            'saved_full' => ((int) $row['saved_at'] > 0) ? date('d.m.Y H:i', (int) $row['saved_at']) : '',
+            'by'         => $people[(int) $row['saved_by']] ?? null,
+            'size'       => (int) $row['size'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * One earlier version of a note, to look at or to put back.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @param int   $version_id
+ * @return array|null id, title, saved, body, labels, html
+ */
+function ws_note_version($viewer, $note, $version_id)
+{
+    if (!ws_note_versions_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT id, title, body, saved_at FROM ws_note_versions
+        WHERE id = '" . (int) $version_id . "' AND note_id = '" . (int) $note['id'] . "'");
+
+    if (!is_array($row)) {
+        return null;
+    }
+
+    return array_merge(array(
+        'id'    => (int) $row['id'],
+        'title' => (string) $row['title'],
+        'saved' => ws_time_label($row['saved_at']),
+    ), ws_note_body_view($viewer, (string) $row['body']));
 }
 
 /**
@@ -526,6 +743,9 @@ function ws_note_save($viewer, $data)
         return ($note_id > 0) ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false) : $fail(lang('The note could not be saved.'));
     }
 
+    // The state before this save, when it is worth keeping.
+    ws_note_version_keep($viewer, $note, $sets);
+
     $parts = array();
 
     foreach ($sets as $field => $value) {
@@ -591,6 +811,10 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+
+    if (ws_note_versions_ready()) {
+        db("DELETE FROM ws_note_versions WHERE note_id = '" . $id . "'");
+    }
 
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('note', $id, '');
@@ -831,13 +1055,20 @@ function ws_note_cards_map($viewer, $message_ids)
             continue;
         }
 
-        $present = ws_notes_present($viewer, array($note + array('access' => 'view')));
+        $access = ws_note_access($viewer, $note);
+        $present = ws_notes_present($viewer, array($note + array('access' => ($access !== '') ? $access : 'view')));
         $card = $present[0];
+        $body = (string) $note['body'];
 
+        // The card shows the note drawn - tables and checklists as such -
+        // the same way ws_notes_present() draws it in full; the excerpt
+        // stays for whatever reads the card as plain text.
         $out[(int) $share['message_id']] = array(
             'id'         => (int) $note['id'],
             'name'       => $card['name'],
             'excerpt'    => $card['excerpt'],
+            'html'       => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body))),
+            'access'     => $access,
             'owner'      => $card['owner'],
             'updated_by' => $card['updated_by'],
             'updated'    => $card['updated'],
@@ -1526,10 +1757,25 @@ function ws_notes_js_strings()
         'notes_card'            => lang('Note'),
         'notes_card_gone'       => lang('This note is no longer shared here.'),
         'notes_card_open'       => lang('Read the note'),
+        'notes_card_edit'       => lang('Edit note'),
         'notes_person'          => lang('Person'),
         'notes_not_ready'       => lang('The workspace is not installed yet: the database has to be updated first.'),
         'notes_claude_waiting'  => lang('Claude is working on it…'),
         'notes_claude_answer'   => lang('Claude'),
         'mark_channel_note'     => lang('Mark as a channel note'),
+        'notes_created'         => ws_js_template('Created {var:1}', 1),
+        'notes_undo'            => lang('Undo (Ctrl+Z)'),
+        'notes_redo'            => lang('Redo (Ctrl+Y)'),
+        'notes_versions'        => lang('Earlier versions'),
+        'notes_versions_none'   => lang('No earlier version yet. The note is kept as it was when it is changed after a pause, when somebody else changes it, or when much of it is removed.'),
+        'notes_version_size'    => ws_js_template('{var:1} characters', 1),
+        'notes_version_pick'    => lang('Pick a version to see it here.'),
+        'notes_version_restore' => lang('Put this version back'),
+        'notes_version_restored' => lang('The version is back in the note. Undo takes it back again.'),
+        'notes_menu_label'      => lang('My Notes'),
+        'notes_menu_pin'        => lang('Pin to the menu'),
+        'notes_menu_unpin'      => lang('Remove from the menu'),
+        'notes_menu_pinned'     => lang('My Notes is in the menu now, right under the workspace.'),
+        'notes_menu_unpinned'   => lang('My Notes is no longer in the menu; the workspace menu still has it.'),
     );
 }

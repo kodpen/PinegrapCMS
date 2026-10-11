@@ -1281,30 +1281,22 @@ echo
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_users.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                 </div>
                             </form>
-                        </nav>
-                    </div>
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                        <div class="row justify-content-center justify-content-md-end">
-                            <form id="search_form" action="view_users.php" method="get" class="search_form col-auto">
+                            <div class="pg-toolbar-grow"></div>
+                            <form id="search_form" action="view_users.php" method="get" class="search_form">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" name="filter" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
+                                    <select id="filter_select" name="filter" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
+                </nav>
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="delete_users.php" method="post" class="disable_shortcut"> 

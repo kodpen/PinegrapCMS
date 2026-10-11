@@ -169,6 +169,9 @@ function ws_message_payloads($viewer, $rows)
         'reactions'  => ws_reactions_map($ids, $viewer),
         'checks'     => ws_checks_map($ids),
         'polls'      => ws_polls_map($ids, $viewer),
+        // Approval requests and read receipts (approvals.php, acks.php).
+        'approvals'  => function_exists('ws_approvals_map') ? ws_approvals_map($ids, $viewer) : array(),
+        'acks'       => function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array(),
         'list_tasks' => ws_checklist_tasks_map($viewer, $ids),
         'can_post'   => $can_post,
         // Requests to Claude, and the tasks and record changes its answers
@@ -191,6 +194,10 @@ function ws_message_payloads($viewer, $rows)
         // carries (forward.php).
         'quotes'     => function_exists('ws_message_quotes_map') ? ws_message_quotes_map($viewer, $ids) : array(),
         'forwards'   => function_exists('ws_message_forwards_map') ? ws_message_forwards_map($viewer, $ids) : array(),
+        // The discussion about a message, and the copies of what was decided
+        // in one (threads.php).
+        'threads'    => ws_threads_map($viewer, $ids),
+        'copies'     => ws_thread_copies_map($ids),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -281,7 +288,11 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'locked'      => !empty($row['locked']),
         // A scheduled action's card is changed in its own form.
         'past'        => $past,
-        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]),
+        // A copy of a decision of a discussion follows the original there.
+        // An approval request stays what the people were asked to approve.
+        // A note card's text is only the card's caption; the note itself is
+        // edited on the notes screen.
+        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]) && !isset($extra['note_cards'][$id]),
         'can_delete'  => !$past && !$deleted && ((($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)))
             || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
         // Deleted for the person alone, whoever wrote it.
@@ -290,6 +301,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'can_react'   => !$deleted && $can_post && ($row['kind'] !== 'system') && ws_interact_ready(),
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
+        'approval'    => $deleted ? null : ($extra['approvals'][$id] ?? null),
+        // A read receipt asked for, and whether the reader may ask for one.
+        'ack'         => $deleted ? null : ($extra['acks'][$id] ?? null),
+        // The same test as ws_ack_can_request(), from what is known already.
+        'ack_can_request' => $can_post && !$deleted && function_exists('ws_acks_ready') && ws_acks_ready()
+            && in_array($row['kind'], array('message', 'note', 'decision'), true) && in_array($row['sender_kind'], array('user', 'app'), true)
+            && ($mine || ($viewer['role'] < 3)),
         // The tasks this message's checklist became, with their progress.
         'list_tasks'  => $deleted ? array() : ($extra['list_tasks'][$id] ?? array()),
         'has_list'    => !$deleted && ws_task_work_ready() && (strpos((string) $row['body'], '[') !== false) && !empty(ws_checklist_items($row['body'])),
@@ -303,6 +321,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),
         'forwards'    => $deleted ? array() : ($extra['forwards'][$id] ?? array()),
+        'thread'      => $deleted ? null : ($extra['threads'][$id] ?? null),
+        'from_thread' => $deleted ? null : ($extra['copies'][$id] ?? null),
     );
 
     if (!$deleted && ((int) $row['file_id'] > 0)) {
@@ -544,6 +564,21 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     }
     ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id);
 
+    // A decision, a note or a task card of a discussion goes into its
+    // channel too, and the bar under the message it talks over counts the
+    // new one (threads.php).
+    if ($channel['kind'] === 'thread') {
+        if (in_array($kind, array('decision', 'note', 'task'), true)) {
+            ws_thread_copy_sync($message_id);
+        }
+
+        $thread = ws_thread($channel['id']);
+
+        if ($thread) {
+            ws_message_touch((int) $thread['message_id']);
+        }
+    }
+
     // Announced for public channels only: a webhook receiver is not a member
     // of anything, and a private channel's words must not leave the site
     // through a subscription its members never agreed to.
@@ -755,6 +790,10 @@ function ws_message_edit($viewer, $message, $body)
         return array('ok' => false, 'error' => lang('This decision records a change to a record and cannot be edited.'));
     }
 
+    if (function_exists('ws_approval_of_message') && ws_approval_of_message($message['id'])) {
+        return array('ok' => false, 'error' => lang('An approval request cannot be edited; take it back and ask again.'));
+    }
+
     $channel = ws_channel($message['channel_id']);
 
     if (!ws_can_post_channel($viewer, $channel)) {
@@ -801,6 +840,10 @@ function ws_message_edit($viewer, $message, $body)
 
     ws_message_notify_mentions($viewer, $channel, $message['id'], $new);
 
+    if ($channel['kind'] === 'thread') {
+        ws_thread_copy_sync($message['id']);
+    }
+
     return array('ok' => true, 'error' => '');
 }
 
@@ -841,6 +884,9 @@ function ws_message_delete($viewer, $message)
     }
     db("DELETE FROM ws_inbox WHERE message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
     ws_message_touch($message['id']);
+
+    // A decision of a discussion takes its copy in the channel with it.
+    ws_thread_copy_sync($message['id']);
 
     if (!$mine) {
         log_activity(lang(array('string' => 'a workspace message by {var:1} was deleted', 'vars' => (($message['sender_kind'] === 'guest') && function_exists('ws_guest_sender'))
@@ -995,6 +1041,9 @@ function ws_message_mark($viewer, $message, $kind)
         WHERE id = '" . (int) $message['id'] . "'");
 
     ws_message_touch($message['id']);
+
+    // Marked in a discussion: the channel gets the decision (threads.php).
+    ws_thread_copy_sync($message['id']);
 
     return array('ok' => true, 'error' => '');
 }

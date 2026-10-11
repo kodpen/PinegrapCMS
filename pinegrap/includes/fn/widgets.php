@@ -35,6 +35,46 @@ function pg_widget_month_name($month)
     return lang(date('F', mktime(0, 0, 0, $month, 1, 2000)));
 }
 
+/**
+ * A system widget's kind (system_region_config.regionType) => its name, for
+ * panel screens outside the editor.
+ *
+ * Mirror of SW_TYPES in assets/js/style_designer.js: same kinds, same English
+ * keys. Keep the two in step when a kind is added.
+ */
+function pg_sw_type_labels()
+{
+    return array(
+        'form_list_view'      => lang('Form List View'),
+        'form_item_view'      => lang('Form Item View'),
+        'catalog_listing'     => lang('Catalog'),
+        'catalog_item_view'   => lang('Catalog Detail'),
+        'my_account'          => lang('My Account'),
+        'login_form'          => lang('Login'),
+        'login_region'        => lang('Login Region'),
+        'cart_link'           => lang('Cart Link'),
+        'forgot_password'     => lang('Forgot Password'),
+        'search_results'      => lang('Search Results'),
+        'registration'        => lang('Registration Entrance'),
+        'shopping_cart'       => lang('Shopping Cart'),
+        'express_order'       => lang('Express Order'),
+        'order_view'          => lang('View Order'),
+        'membership'          => lang('Membership Entrance'),
+        'custom_form'         => lang('Custom Form'),
+        'calendar_view'       => lang('Calendar View'),
+        'calendar_event_view' => lang('Calendar Event'),
+        'account_profile'     => lang('Account Profile'),
+        'change_password'     => lang('Change Password'),
+        'set_password'        => lang('Set Password'),
+        'email_preferences'   => lang('Email Preferences'),
+        'address_book'        => lang('Address Book'),
+        'account_security'    => lang('Account Security'),
+        'logout'              => lang('Logout'),
+        'error_page'          => lang('Error Page (404)'),
+        'language_switcher'   => lang('Language Switcher'),
+    );
+}
+
 // ============================================================================
 // Standard (system) fields of a submitted form
 //
@@ -824,11 +864,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Decode + split the widget tree into static + loop-template halves.
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'form_list_view', as on the legacy page (a record
+    // deleted from its item view leaves its notice there). An unnamed node
+    // would print and use up every form's messages on the page.
+    _pg_inject_messages_node($tree_decoded, 'form_list_view');
     $split = _split_widget_tree($tree_decoded);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
@@ -1454,13 +1493,13 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // legacy fallback so designers without a loop_area still get output.
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'form_item_view', as on the legacy page (a record
+    // saved through send_to leaves its notice there).
+    _pg_inject_messages_node($tree_decoded, 'form_item_view');
     // Visibility flag has_new_account, known once the record is read.
     _pg_sw_mark_visibility($tree_decoded);
+    // The in-browser summary's button and box.
+    _pg_sw_apply_ai_summary_bindings($tree_decoded);
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -1630,6 +1669,14 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         }
     }
 
+    // The AI assistants' links carry the record's address, so they are
+    // filled only for a record anybody may open, on the page itself: an
+    // assistant cannot open a page behind a sign-in, and an e-mail has no
+    // page of its own.
+    $ai_page_url = ($found_and_allowed && $access_control === 'public' && empty($sw_ctx['email']) && $self_url !== '')
+        ? pg_sw_ai_page_url($self_url) : '';
+    $extra = array_merge($extra, pg_sw_ai_tokens($ai_page_url, $cfg));
+
     // ── Apply tokens to template + static_html (single render, NO loop) ──
     $rendered = pg_sw_hide_empty_fields(pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, $form_row, $custom, $extra)));
     $static   = $static_html;
@@ -1647,6 +1694,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         'record_not_found'       => !$found_and_allowed,
         'submitted_this_session' => $found_and_allowed && in_array((string)$form_row['reference_code'], array_map('strval', $own_codes), true),
         'can_edit'               => $found_and_allowed && $extra['__edit_url'] !== '',
+        'has_ai_links'           => $ai_page_url !== '',
     );
     // The pencil on the record itself, for a design that places no Edit
     // button of its own.
@@ -1655,6 +1703,149 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     }
     if ($static === '') return _pg_sw_resolve_visibility($rendered, $flags);
     return _pg_sw_resolve_visibility(str_replace('<!--pg-loop-slot-->', $rendered, $static), $flags);
+}
+
+// The in-browser summary (assets/js/pg_ai_summary.js), bound rather than
+// hand-wired:
+//   button   _bindings.action = 'ai_summarize' → data-pg-ai-summarize; a
+//            plain button (a link keeps no address to follow), shown by the
+//            script only in a browser that can summarize
+//   any      _bindings.text   = '__ai_summary' → data-pg-ai-summary, the box
+//            the summary is written into, shown once there is one
+// Both start hidden twice over: by the attribute, and by d-none for a design
+// whose display utilities (d-flex and the like) would show a [hidden]
+// element anyway. The script takes both away.
+function _pg_sw_apply_ai_summary_bindings(&$node)
+{
+    if (!is_array($node)) return;
+    $b    = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    $type = isset($node['type']) ? $node['type'] : '';
+    $tag  = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+
+    $mark = function (&$n, $add) {
+        $kept = array();
+        foreach ((isset($n['props']['_attrs']) && is_array($n['props']['_attrs'])) ? $n['props']['_attrs'] : array() as $a) {
+            if (is_array($a) && isset($a['name']) && !array_key_exists(strtolower((string)$a['name']), $add)) $kept[] = $a;
+        }
+        foreach ($add as $name => $value) $kept[] = array('name' => $name, 'value' => $value);
+        $n['props']['_attrs'] = $kept;
+        $class = isset($n['props']['cssClass']) ? trim((string)$n['props']['cssClass']) : '';
+        if (!preg_match('/(^|\s)d-none(\s|$)/', $class)) $n['props']['cssClass'] = trim($class . ' d-none');
+    };
+
+    if (isset($b['action']) && $b['action'] === 'ai_summarize') {
+        $is_btn  = ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn');
+        $is_link = ($type === 'semantic' && $tag === 'a')
+                || ($type === 'content' && isset($node['props']['contentType']) && $node['props']['contentType'] === 'link');
+        if ($is_btn) {
+            $node['props']['btnElement'] = 'button';
+            $node['props']['btnType']    = 'button';
+            $mark($node, array('data-pg-ai-summarize' => '', 'hidden' => ''));
+        } elseif ($type === 'semantic' && $tag === 'button') {
+            $mark($node, array('type' => 'button', 'data-pg-ai-summarize' => '', 'hidden' => ''));
+        } elseif ($is_link) {
+            $node['props']['href'] = '#';
+            $mark($node, array('role' => 'button', 'data-pg-ai-summarize' => '', 'hidden' => ''));
+        }
+    }
+    if (isset($b['text']) && $b['text'] === '__ai_summary') {
+        $mark($node, array('data-pg-ai-summary' => '', 'aria-live' => 'polite', 'hidden' => ''));
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) _pg_sw_apply_ai_summary_bindings($child);
+        unset($child);
+    }
+}
+
+// The address of the page being drawn, absolute and in the language it is
+// shown in. $path is the page's address under PATH; on a language page the
+// router has cut the language's directory off the request (LANGUAGE_PATH),
+// so it is put back.
+function pg_sw_ai_page_url($path)
+{
+    $path = (string)$path;
+    if ($path === '' || !defined('URL_SCHEME') || !defined('HOSTNAME_SETTING')) return '';
+    $base = defined('PATH') ? (string)PATH : '/';
+    if (defined('LANGUAGE_PATH') && strpos($path, $base) === 0) {
+        $path = LANGUAGE_PATH . substr($path, strlen($base));
+    }
+    return URL_SCHEME . HOSTNAME_SETTING . $path;
+}
+
+// The question the AI assistants' links ask about a page: the widget's own
+// wording (ai_prompt_text, in the page's language when the Translations
+// screen has it) or the software's. {url} stands for the page's address; a
+// wording without it gets the address at its end.
+function pg_sw_ai_prompt($cfg, $page_url)
+{
+    $prompt = (is_array($cfg) && isset($cfg['ai_prompt_text']) && is_string($cfg['ai_prompt_text'])) ? trim($cfg['ai_prompt_text']) : '';
+    if ($prompt !== '' && function_exists('pg_tr_text')) $prompt = trim((string)pg_tr_text($prompt));
+    if ($prompt === '') $prompt = lang('Summarize the main points of this article: {url}');
+    return (strpos($prompt, '{url}') !== false) ? str_replace('{url}', $page_url, $prompt) : $prompt . ' ' . $page_url;
+}
+
+// The addresses that open an AI assistant with $prompt already typed in,
+// by service. Gemini takes no question from its address, so Google's AI
+// Mode answers for Google.
+function pg_ai_assistant_urls($prompt)
+{
+    $q = rawurlencode((string)$prompt);
+    return array(
+        'chatgpt'    => 'https://chatgpt.com/?q=' . $q,
+        'claude'     => 'https://claude.ai/new?q=' . $q,
+        'perplexity' => 'https://www.perplexity.ai/search/new?q=' . $q,
+        'google'     => 'https://www.google.com/search?udm=50&q=' . $q,
+    );
+}
+
+// A record's AI tokens: the assistants' links (empty without an address)
+// and the in-browser summary's box, which the page carries empty
+// (pg_ai_summary.js writes into it).
+function pg_sw_ai_tokens($page_url, $cfg = array())
+{
+    $links = ($page_url !== '') ? pg_ai_assistant_urls(pg_sw_ai_prompt($cfg, $page_url)) : array();
+    $link  = function ($service) use ($links) {
+        return isset($links[$service]) ? h($links[$service]) : '';
+    };
+    return array(
+        '__ai_summary'        => '',
+        '__ai_chatgpt_url'    => $link('chatgpt'),
+        '__ai_claude_url'     => $link('claude'),
+        '__ai_perplexity_url' => $link('perplexity'),
+        '__ai_google_url'     => $link('google'),
+    );
+}
+
+/**
+ * The in-browser summary's script, for a page whose HTML holds a button
+ * bound to the ai_summarize action (data-pg-ai-summarize). Asked once every
+ * shared component and system widget is drawn in (get_page_content.php), so
+ * the file follows the button wherever it was placed. The labels are in the
+ * page's language.
+ *
+ * @param string $content page HTML
+ * @return string
+ */
+function pg_ai_summary_inject($content)
+{
+    if (strpos($content, 'data-pg-ai-summarize') === false) return $content;
+    if (strpos($content, '/assets/js/pg_ai_summary.js') !== false) return $content;
+
+    // pg_ai_summary.js falls back to the English key.
+    $labels = array(
+        'The browser is summarizing the post...' => lang('The browser is summarizing the post...'),
+        'Downloading the AI model: {n}%'          => lang(array('string' => 'Downloading the AI model: {var:1}%', 'vars' => array('{n}'))),
+        'The summary could not be made in this browser.' => lang('The summary could not be made in this browser.'),
+        'Summarized on your device by the browser\'s built-in AI. It may contain mistakes.' => lang('Summarized on your device by the browser\'s built-in AI. It may contain mistakes.'),
+    );
+    $file = '<script>window.pgAiSummaryLabels = ' . encode_json($labels) . ';</script>' . "\n"
+          . '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ai_summary.js?v='
+          . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_summary.js') . '" defer></script>' . "\n";
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    return ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
 }
 
 // Render a system widget's my_account view.  Loop-area aware:
@@ -1701,6 +1892,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 //   show_submissions           bool    enable loop_area submission list
 //   filter_form_id             int     0 = all forms, >0 = one specific form
 //   submissions_detail_page_id int     page_id of the form_item_view detail page
+//   staff_page_id              int     page_id of the staff page (^^__staff_url^^, is_staff)
 function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
@@ -1720,17 +1912,17 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // ── Decode + split the widget tree ────────────────────────────────────
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'my_account', as on the legacy page — the notices
+    // the account screens send here (password changed, order retrieved,
+    // reordered, deleted). Unnamed, this widget printed and used up the
+    // messages of every other widget on the page drawn after it.
+    _pg_inject_messages_node($tree_decoded, 'my_account');
 
     // Links to the other account pages and the order history
     // (widgets_account.php): a link with nowhere to go leaves with its node,
     // the list lands in its section.
     $logged_in = (defined('USER_LOGGED_IN') && USER_LOGGED_IN === true);
-    $extras    = _pg_my_account_extras($logged_in);
+    $extras    = _pg_my_account_extras($logged_in, $cfg);
     _pg_member_drop_empty_links($tree_decoded, $extras['links']);
     pg_cf_apply_section_bindings($tree_decoded, $extras['sections']);
     _eo_apply_visibility_bindings($tree_decoded, $extras['flags']);
@@ -2644,6 +2836,223 @@ function pg_sw_catalog_detail_page_name($page_id = 0)
     return $auto;
 }
 
+// ============================================================================
+// RSS feed of the form widgets (Form List View, Form Item View)
+// ============================================================================
+// A legacy "form list view" page answers ?rss=true with the form's newest
+// records and announces the feed in its head; a page built in the visual
+// editor is page_type 'standard' and got neither. These helpers give such a
+// page one feed, chosen by the widget it carries, built from the same custom
+// form, filters and detail page the widget renders with.
+
+// The custom form a form widget shows, from its config: custom_form_page_id,
+// the older form_page_id, or the source_page name. 0 when it names none.
+function pg_sw_form_widget_form_page_id($cfg)
+{
+    if (!is_array($cfg)) return 0;
+    if (!empty($cfg['custom_form_page_id'])) return (int)$cfg['custom_form_page_id'];
+    if (!empty($cfg['form_page_id'])) return (int)$cfg['form_page_id'];
+    if (!empty($cfg['source_page'])) {
+        return (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($cfg['source_page']) . "' LIMIT 1");
+    }
+    return 0;
+}
+
+// The widget a page's feed is built from: the record page (form_item_view)
+// wins over a list (form_list_view, under any of its older type names), so
+// a page that shows one record and lists others feeds the record's form.
+// null when the page has no form widget, the widget is not public, or the
+// form has no field with an RSS element - then there is nothing to feed.
+// Returns array('type' => 'form_item_view' | 'form_list_view',
+//               'widget' => the pg_sw_page_widget() row,
+//               'custom_form_page_id' => int).
+function pg_sw_page_form_feed_widget($page_id)
+{
+    static $cache = array();
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return null;
+    if (array_key_exists($page_id, $cache)) return $cache[$page_id];
+    $cache[$page_id] = null;
+
+    $types = array(
+        'form_item_view'       => 'form_item_view',
+        'form_list_view'       => 'form_list_view',
+        'submitted_forms_list' => 'form_list_view',
+        'form_list'            => 'form_list_view',
+        'blog_list'            => 'form_list_view',
+    );
+    foreach ($types as $region_type => $kind) {
+        $widget = pg_sw_page_widget($page_id, $region_type);
+        if (!$widget) continue;
+        $cfg = $widget['cfg'];
+        $access = isset($cfg['access_control']) ? (string)$cfg['access_control'] : 'public';
+        if ($access !== '' && $access !== 'public') return null;
+        $form_page_id = pg_sw_form_widget_form_page_id($cfg);
+        if ($form_page_id <= 0) continue;
+        $rss_fields = (int)db_value(
+            "SELECT COUNT(*) FROM form_fields WHERE page_id = '" . $form_page_id . "' AND rss_field != ''"
+        );
+        if ($rss_fields === 0) continue;
+        return $cache[$page_id] = array(
+            'type'                => $kind,
+            'widget'              => $widget,
+            'custom_form_page_id' => $form_page_id,
+        );
+    }
+    return null;
+}
+
+// The RSS title and description of one record, from the form's fields whose
+// RSS element is "title" (every one, in field order, joined by a space, as
+// the page title does) and "description" (the first). Rich-text values are
+// flattened: neither tag takes markup.
+// Returns array('title' => string, 'description' => string).
+function pg_sw_submitted_form_rss_text($form_id)
+{
+    $out = array('title' => '', 'description' => '');
+    $rows = db_items(
+        "SELECT form_data.data, form_data.type, form_fields.rss_field
+         FROM form_data
+         INNER JOIN form_fields ON form_data.form_field_id = form_fields.id
+         WHERE form_data.form_id = '" . (int)$form_id . "'
+           AND form_fields.rss_field IN ('title', 'description')
+         ORDER BY form_fields.sort_order ASC, form_data.id ASC"
+    );
+    foreach ((array)$rows as $row) {
+        $text = (string)$row['data'];
+        if ($row['type'] == 'html' && $text != '') $text = trim(convert_html_to_text($text));
+        $text = trim($text);
+        if ($text === '') continue;
+        if ($row['rss_field'] == 'title') {
+            $out['title'] .= ($out['title'] !== '' ? ' ' : '') . $text;
+        } elseif ($out['description'] === '') {
+            $out['description'] = $text;
+        }
+    }
+    return $out;
+}
+
+// The channel and the items of a form widget page's feed: the newest fifty
+// complete records of the form, the list widget's own filters applied, each
+// with the fields whose RSS element is title, description, media or category.
+// An item links to the widget's detail page (?r=) when it has one, and to the
+// page itself for a record page; the channel describes the host page.
+// Same return shape as _pg_build_catalog_listing_rss_parts().
+function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
+{
+    $cfg          = $feed['widget']['cfg'];
+    $form_page_id = (int)$feed['custom_form_page_id'];
+    $base_path    = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $site         = URL_SCHEME . HOSTNAME_SETTING;
+
+    // Where an item links: the record page is its own detail page; a list
+    // links to its detail page when that page is bound to the same form.
+    $detail_page_name = '';
+    if ($feed['type'] === 'form_item_view') {
+        $detail_page_name = $page_name;
+    } else {
+        $detail_page_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
+        if ($detail_page_id > 0) {
+            $detail_page_name = (string)db_value(
+                "SELECT page.page_name
+                 FROM page
+                 INNER JOIN form_item_view_pages
+                         ON form_item_view_pages.page_id = page.page_id
+                        AND form_item_view_pages.collection = 'a'
+                        AND form_item_view_pages.custom_form_page_id = '" . $form_page_id . "'
+                 WHERE page.page_id = '" . $detail_page_id . "'
+                 LIMIT 1"
+            );
+            if ($detail_page_name === '' && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
+                return pg_sw_form_widget_form_page_id($c) === $form_page_id;
+            })) {
+                $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+            }
+        }
+    }
+
+    // The records, under the filters the designer set on the list.
+    $filter_where = '';
+    $filter_join  = '';
+    if ($feed['type'] === 'form_list_view') {
+        $filter_sql   = pg_sw_form_list_filter_sql($form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array());
+        $filter_where = $filter_sql['where'];
+        if ($filter_where !== '' && $filter_sql['tokens']) {
+            $standard    = pg_sw_standard_sql($filter_sql['tokens'], isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, array('reference_code'));
+            $filter_join = $standard['join'];
+        }
+    }
+    $records = db_items(
+        "SELECT forms.id, forms.reference_code, forms.submitted_timestamp
+         FROM forms
+         $filter_join
+         WHERE forms.page_id = '" . $form_page_id . "'
+           AND forms.complete = 1
+           $filter_where
+         ORDER BY forms.submitted_timestamp DESC
+         LIMIT 50"
+    );
+
+    // The category and media fields, read once; title and description per
+    // record through pg_sw_submitted_form_rss_text().
+    $category_field_id = (int)db_value("SELECT id FROM form_fields WHERE page_id = '" . $form_page_id . "' AND rss_field = 'category' ORDER BY sort_order ASC LIMIT 1");
+    $media_field_id    = (int)db_value("SELECT id FROM form_fields WHERE page_id = '" . $form_page_id . "' AND rss_field = 'media' ORDER BY sort_order ASC LIMIT 1");
+
+    $items = '';
+    foreach ((array)$records as $record) {
+        $form_id = (int)$record['id'];
+        $text    = pg_sw_submitted_form_rss_text($form_id);
+        $link    = ($detail_page_name !== '')
+            ? $site . $base_path . encode_url_path($detail_page_name) . '?r=' . rawurlencode((string)$record['reference_code'])
+            : $site . $base_path . encode_url_path($page_name);
+
+        $categories = '';
+        if ($category_field_id > 0) {
+            $values = db_items("SELECT data FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $category_field_id . "' ORDER BY id ASC");
+            foreach ((array)$values as $value) {
+                foreach (explode('||', (string)$value['data']) as $category) {
+                    $category = trim($category);
+                    if ($category !== '') $categories .= '<category>' . h($category) . '</category>';
+                }
+            }
+        }
+
+        $enclosure = '';
+        if ($media_field_id > 0) {
+            $media = db_item("SELECT data, file_id FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $media_field_id . "' LIMIT 1");
+            if (is_array($media) && !empty($media['file_id'])) {
+                $file = db_item("SELECT name, type, size FROM files WHERE id = '" . (int)$media['file_id'] . "' LIMIT 1");
+                if (is_array($file)) {
+                    $enclosure = '<enclosure url="' . $site . PATH . h(rawurlencode($file['name'])) . '" length="' . (int)$file['size'] . '" type="' . h(get_mime_type($file['type'])) . '"/>';
+                }
+            } elseif (is_array($media) && trim((string)$media['data']) !== '') {
+                // A URL typed into the field: its size and type are not known here.
+                $enclosure = '<enclosure url="' . h(trim((string)$media['data'])) . '" length="50000" type="image/jpeg"/>';
+            }
+        }
+
+        $items .= '
+        <item>
+            <title>' . h($text['title'] !== '' ? $text['title'] : lang('There is not an RSS title specified in the form.')) . '</title>
+            <link>' . h($link) . '</link>
+            <guid>' . h($link) . '</guid>
+            <description>' . h($text['description'] !== '' ? $text['description'] : lang('There is not an RSS description specified in the form.')) . '</description>
+            <pubDate>' . date('r', (int)$record['submitted_timestamp']) . '</pubDate>
+            ' . $categories . $enclosure . '
+        </item>';
+    }
+
+    $channel_title = trim((string)$page_title) !== '' ? trim((string)$page_title) : $page_name;
+    $channel_desc  = trim((string)$page_meta_description) !== '' ? trim((string)$page_meta_description) : $channel_title;
+
+    return array(
+        'title'       => h($channel_title),
+        'link'        => $site . $base_path . encode_url_path($page_name),
+        'description' => h($channel_desc),
+        'items'       => $items,
+    );
+}
+
 // Bootstrap pagination for a widget list: previous / next, a window of two
 // pages around the current one, the first and the last. '' for a single page.
 // Links keep every other query parameter (search text, filters).
@@ -2886,6 +3295,236 @@ function _pg_sw_snippet($text, $query, $length = 180)
 }
 
 // ============================================================================
+// Search sections
+// ============================================================================
+//
+// A part of a page the visual editor marked as a search section
+// (props.searchSection, Search and SERP in the options): the site search
+// points a matching result at it, the visitor lands on it with the words
+// marked (assets/js/pg_search_highlight.js), and the page's structured data
+// names it with its anchor (pg_search_sections_jsonld()). The element's id is
+// the anchor; the editor makes one when the switch goes on.
+
+// The first heading inside a node, as text: a heading content node, or an
+// h1-h6 element. '' when there is none.
+function _pg_search_first_heading($node, $depth = 0)
+{
+    if (!is_array($node) || $depth > 80) return '';
+    $type = isset($node['type']) ? $node['type'] : '';
+    if ($type === 'region' || $type === 'shared_ref') return '';
+    $p = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    if ($type === 'content' && isset($p['contentType']) && $p['contentType'] === 'heading') {
+        return trim(preg_replace('/\s+/u', ' ', _pg_sw_tree_text($node)));
+    }
+    if ($type === 'semantic' && isset($p['tag']) && preg_match('/^h[1-6]$/i', (string)$p['tag'])) {
+        return trim(preg_replace('/\s+/u', ' ', _pg_sw_tree_text($node)));
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $c) {
+            $h = _pg_search_first_heading($c, $depth + 1);
+            if ($h !== '') return $h;
+        }
+    }
+    return '';
+}
+
+// The search sections of a page's layout tree, in page order. Each:
+// ['id', 'title' (props.searchTitle, else the first heading inside, else ''),
+// 'keywords' (props.searchKeywords split on commas), 'text' (what a visitor
+// reads in it)]. A section without an id has no anchor and is left out; one
+// inside a shared component or a widget belongs to that, not to the page.
+function pg_search_sections($tree)
+{
+    $out = array();
+    $walk = function ($node, $depth) use (&$walk, &$out) {
+        if (!is_array($node) || $depth > 80) return;
+        $type = isset($node['type']) ? $node['type'] : '';
+        if ($type === 'region' || $type === 'shared_ref') return;
+        $p = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+        $id = isset($p['id']) ? trim((string)$p['id']) : '';
+        if (!empty($p['searchSection']) && $id !== '') {
+            $title = isset($p['searchTitle']) ? trim(strip_tags((string)$p['searchTitle'])) : '';
+            if ($title === '') $title = _pg_search_first_heading($node);
+            $keywords = array();
+            foreach (explode(',', isset($p['searchKeywords']) ? (string)$p['searchKeywords'] : '') as $k) {
+                $k = trim(strip_tags($k));
+                if ($k !== '') $keywords[] = $k;
+            }
+            $out[] = array(
+                'id'       => $id,
+                'title'    => $title,
+                'keywords' => $keywords,
+                'text'     => trim(preg_replace('/\s+/u', ' ', _pg_sw_tree_text($node))),
+            );
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $c) $walk($c, $depth + 1);
+        }
+    };
+    $walk($tree, 0);
+    return $out;
+}
+
+// The topics given to the search sections of a layout tree, as one text: they
+// are words of the page for the site search, as its promoted keywords are,
+// though nothing on the page shows them.
+function pg_search_section_topics($tree)
+{
+    $topics = array();
+    foreach (pg_search_sections($tree) as $s) {
+        foreach ($s['keywords'] as $k) $topics[] = $k;
+    }
+    return implode(', ', array_unique($topics));
+}
+
+// Lower case for matching, with the Turkish i's made one letter: "İade" is
+// lowered to an i with a combining dot, which "iade" would not find, and a
+// visitor types ı and i alike.
+function _pg_search_fold($text)
+{
+    return str_replace(array("\u{0307}", "\u{0131}"), array('', 'i'), mb_strtolower((string)$text, 'UTF-8'));
+}
+
+// The section that answers a search, or null. The whole phrase counts most -
+// in the title, then in the text - and a topic that is the phrase itself;
+// for a search of several words each word found adds a little, so "kargo
+// süresi" still reaches the shipping part.
+function pg_search_section_match($sections, $query)
+{
+    $needle = _pg_search_fold(trim(str_replace(array('"', '+'), ' ', (string)$query)));
+    $needle = trim(preg_replace('/\s+/u', ' ', $needle));
+    if ($needle === '' || !$sections) return null;
+    $words = array();
+    foreach (explode(' ', $needle) as $w) {
+        if (mb_strlen($w) >= 2) $words[] = $w;
+    }
+
+    $best = null;
+    $best_score = 0;
+    foreach ($sections as $s) {
+        $title = _pg_search_fold($s['title']);
+        $text  = _pg_search_fold($s['text']);
+        $score = 8 * mb_substr_count($title, $needle) + 4 * mb_substr_count($text, $needle);
+        foreach ($s['keywords'] as $k) {
+            $k = _pg_search_fold($k);
+            if ($k === $needle) {
+                $score += 10;
+            } elseif (mb_strpos($k, $needle) !== false) {
+                $score += 3;
+            } elseif (count($words) > 1 && mb_strpos($needle, $k) !== false) {
+                $score += 2;
+            }
+        }
+        if (count($words) > 1) {
+            foreach ($words as $w) $score += min(3, mb_substr_count($title . ' ' . $text, $w));
+        }
+        if ($score > $best_score) {
+            $best = $s;
+            $best_score = $score;
+        }
+    }
+    return $best;
+}
+
+// Point the page results of a search at the section that answers it: the
+// link carries the search (?highlight=) for the marking and the section's
+// anchor, the excerpt comes from the section, and 'section' names it
+// (^^__result_section^^). Rows of pages without a matching section are left
+// as they are. One query for every page of the list.
+function _pg_sw_search_attach_sections($rows, $query)
+{
+    if (!$rows || !function_exists('pg_multi_page_design_ready') || !pg_multi_page_design_ready()) return $rows;
+    $names = array();
+    foreach ($rows as $r) {
+        if (isset($r['name']) && (string)$r['name'] !== '') $names[(string)$r['name']] = true;
+    }
+    if (!$names) return $rows;
+
+    $list = array();
+    foreach (array_keys($names) as $n) $list[] = "'" . e($n) . "'";
+    $trees = array();
+    foreach ((array)db_items(
+        "SELECT page_name, page_tree_json FROM page
+         WHERE page_name IN (" . implode(',', $list) . ") AND page_tree_json LIKE '%searchSection%'") as $p) {
+        $trees[(string)$p['page_name']] = (string)$p['page_tree_json'];
+    }
+    if (!$trees) return $rows;
+
+    $mark = trim(preg_replace('/\s+/u', ' ', str_replace(array('"', '+'), ' ', (string)$query)));
+    foreach ($rows as $i => $r) {
+        if (!isset($r['name']) || !isset($trees[(string)$r['name']])) continue;
+        $section = pg_search_section_match(pg_search_sections(json_decode($trees[(string)$r['name']], true)), $query);
+        if (!$section) continue;
+        $url = (string)$r['url'];
+        $rows[$i]['url'] = $url . ((strpos($url, '?') === false) ? '?' : '&') . 'highlight=' . rawurlencode($mark)
+                         . '#' . rawurlencode($section['id']);
+        $rows[$i]['section'] = $section['title'];
+        // The excerpt comes from the section, around the phrase or the first
+        // of its words found there; a section reached through its topics
+        // alone shows its beginning.
+        $folded = _pg_search_fold($section['text']);
+        $anchor = '';
+        foreach (array_merge(array($mark), explode(' ', $mark)) as $w) {
+            if (mb_strlen($w) >= 2 && mb_strpos($folded, _pg_search_fold($w)) !== false) {
+                $anchor = $w;
+                break;
+            }
+        }
+        if ($section['text'] !== '') {
+            $rows[$i]['excerpt'] = _pg_sw_snippet($section['text'], ($anchor !== '') ? $anchor : mb_substr($section['text'], 0, 1));
+        }
+    }
+    return $rows;
+}
+
+// The page's search sections as structured data: a WebPage whose parts are
+// named, with the anchor of each - what lets a search engine point a result
+// at the part of the page that answers it. Null when the page has no named
+// section. $page_url is the canonical address.
+function pg_search_sections_jsonld($page_id, $page_url, $page_name)
+{
+    if (!function_exists('pg_page_tree_json')) return null;
+    $tree = json_decode((string)pg_page_tree_json((int)$page_id), true);
+    if (!is_array($tree)) return null;
+    $page_url = (string)strtok((string)$page_url, '#');
+    $parts = array();
+    foreach (pg_search_sections($tree) as $s) {
+        // A part without a name says nothing a search engine could show.
+        if ($s['title'] === '') continue;
+        $part = array(
+            '@type'       => 'WebPageElement',
+            'name'        => $s['title'],
+            'url'         => $page_url . '#' . rawurlencode($s['id']),
+            'cssSelector' => '#' . $s['id'],
+        );
+        if ($s['keywords']) $part['keywords'] = implode(', ', $s['keywords']);
+        $parts[] = $part;
+    }
+    if (!$parts) return null;
+    return array(
+        '@context' => 'https://schema.org',
+        '@type'    => 'WebPage',
+        '@id'      => $page_url,
+        'url'      => $page_url,
+        'name'     => (string)$page_name,
+        'hasPart'  => $parts,
+    );
+}
+
+// The marking of a search on the page the result led to: the words of
+// ?highlight= marked inside the section named by the address's anchor, the
+// section outlined (assets/js/pg_search_highlight.js). Only on such a request;
+// a page asked for without it gets nothing.
+function pg_search_highlight_inject($content)
+{
+    if (strpos($content, '/assets/js/pg_search_highlight.js') !== false) return $content;
+    $file = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_search_highlight.js?v='
+          . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_search_highlight.js') . '" defer></script>' . "\n";
+    $body = strripos($content, '</body>');
+    return ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
+}
+
+// ============================================================================
 // search_results
 // ============================================================================
 
@@ -2906,7 +3545,9 @@ function _pg_sw_snippet($text, $query, $length = 180)
 // The advanced search covers the whole site, within what the visitor may view.
 // Returns ['featured' => rows, 'catalog' => rows, 'pages' => rows,
 // 'limited' => bool]; every row is ['title', 'url', 'full_url', 'excerpt',
-// 'type', 'image', 'price'] with raw (unescaped) values, 'price' being HTML.
+// 'type', 'image', 'price'] with raw (unescaped) values, 'price' being HTML;
+// a page row adds 'name' and 'section' - a page with a search section that
+// answers the query links to it (_pg_sw_search_attach_sections()).
 // $advanced: null follows the site setting; true / false picks the search.
 function _pg_sw_search_collect($query, $cfg, $advanced = null)
 {
@@ -2938,6 +3579,10 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             'type'     => 'page',
             'image'    => '',
             'price'    => '',
+            // The page, for its search sections (_pg_sw_search_attach_sections());
+            // search_items keeps the address encoded.
+            'name'     => $is_url ? rawurldecode((string)$name_or_url) : (string)$name_or_url,
+            'section'  => '',
         );
     };
 
@@ -3063,6 +3708,8 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
         }
         $out['limited'] = (is_array($results) && count($results) === 100);
         $out['pages'] = _pg_sw_search_merge_pages($tr_pages, $out['pages']);
+        $out['featured'] = _pg_sw_search_attach_sections($out['featured'], $query);
+        $out['pages']    = _pg_sw_search_attach_sections($out['pages'], $query);
         return $out;
     }
 
@@ -3141,9 +3788,14 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
         $info[$pid] = $r;
         $hits = 0;
         if ($tree_ready && (string)$r['page_tree_json'] !== '') {
-            $tree_text = _pg_sw_tree_text(json_decode((string)$r['page_tree_json'], true));
+            $tree      = json_decode((string)$r['page_tree_json'], true);
+            $tree_text = _pg_sw_tree_text($tree);
             $hits += mb_substr_count(mb_strtolower($tree_text), $needle);
             if ($tree_text !== '') $texts[$pid] = (isset($texts[$pid]) ? $texts[$pid] . ' ' : '') . $tree_text;
+            // The topics of its search sections count as the page's words.
+            if (strpos((string)$r['page_tree_json'], 'searchSection') !== false) {
+                $hits += 2 * mb_substr_count(_pg_search_fold(pg_search_section_topics($tree)), _pg_search_fold($query));
+            }
         }
         $hits += 3 * mb_substr_count(mb_strtolower((string)$r['page_title']), $needle);
         $hits += 2 * mb_substr_count(mb_strtolower((string)$r['page_meta_description']), $needle);
@@ -3191,6 +3843,8 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
         $out['pages'][] = $page_row($r['page_title'], $r['page_name'], $excerpt);
     }
     $out['pages'] = _pg_sw_search_merge_pages($tr_pages, $out['pages']);
+    $out['featured'] = _pg_sw_search_attach_sections($out['featured'], $query);
+    $out['pages']    = _pg_sw_search_attach_sections($out['pages'], $query);
     return $out;
 }
 
@@ -3217,7 +3871,8 @@ function _pg_sw_search_merge_pages($first, $rest)
 // Row tokens: ^^__result_title^^, ^^__result_url^^, ^^__result_full_url^^,
 //   ^^__result_excerpt^^, ^^__result_type^^ (page | product | product group),
 //   ^^__result_type_label^^, ^^__result_image^^, ^^__result_price^^ (HTML),
-//   ^^__result_is_featured^^ ('1' or ''), ^^__result_number^^.
+//   ^^__result_is_featured^^ ('1' or ''), ^^__result_number^^,
+//   ^^__result_section^^ (the search section the result links to, or '').
 // Bindings: form action search_form, input value search_query, button action
 //   submit_search, section pagination; visibility (eo_visible_if) has_query,
 //   has_results, no_results.
@@ -3231,9 +3886,10 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
-    // Read-only widget: no form of its own posts, so the Messages node shows
-    // whatever the session carries.
-    _pg_inject_messages_node($tree, '');
+    // Read-only widget: liveform 'search_results', as on the legacy page.
+    // An unnamed node would take the messages of a form beside it (the
+    // footer's sign-up form among them).
+    _pg_inject_messages_node($tree, 'search_results');
 
     $param      = 'query';
     $page_param = 'page_number';
@@ -3297,6 +3953,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
                 '__result_price'        => $r['price'],
                 '__result_is_featured'  => $r['featured'],
                 '__result_number'       => (string)($offset + $i + 1),
+                '__result_section'      => isset($r['section']) ? (string)$r['section'] : '',
             ), array('__result_price'));
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $values));
             $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $offset + $i);
@@ -3614,12 +4271,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content node
-    // when the designer has not placed one. Empty formName, like the other
-    // read-only widgets: this widget posts no form of its own, so it shows
-    // whatever the session is carrying. Without this the widget was simply
-    // silent — an error had nowhere to print.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'order_receipt', as on the legacy receipt page.
+    // This widget posts no form of its own; an unnamed node would take the
+    // messages of a form beside it (the footer's sign-up form among them).
+    _pg_inject_messages_node($tree_decoded, 'order_receipt');
 
     // NOTE: split + render are DEFERRED to AFTER order data is fetched and
     // visibility bindings are applied. Otherwise nodes with
@@ -5124,7 +5779,9 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     if (!is_array($cfg)) $cfg = array();
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
-    _pg_inject_messages_node($tree, '');
+    // Nothing posts to the calendar (the legacy page prints no messages); the
+    // name keeps the node from taking the messages of a form beside it.
+    _pg_inject_messages_node($tree, 'calendar_view');
 
     // The event page's "back" link returns here.
     $_SESSION['software']['last_calendar_view_url'] = get_request_uri();

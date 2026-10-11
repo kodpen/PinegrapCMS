@@ -23,13 +23,20 @@ include_once('liveform.class.php');
 $liveform = new liveform('backups');
 
 //Backup Files Directory
+// Folders (hand-made backups, folder auto backups, the install dumps) and the
+// archives the automatic backup writes. Every download and delete below acts
+// only on a name this list returned, so nothing posted can reach outside it.
 function backup_list($directory){ 
 	$directory_path = 'data/backups/';
 	$l = array();
 	if (!is_dir($directory_path)) {
 		return $l;
 	}
-    foreach(array_diff(scandir($directory_path),array('..','.' )) as $backup_folder)if(is_dir($directory_path.'/'.$backup_folder))$l[]=$backup_folder; 
+    foreach(array_diff(scandir($directory_path),array('..','.' )) as $backup_folder){
+        if(is_dir($directory_path.'/'.$backup_folder) || (is_file($directory_path.'/'.$backup_folder) && (strtolower(substr($backup_folder, -4)) === '.zip'))){
+            $l[]=$backup_folder;
+        }
+    }
     return $l; 
 }
 
@@ -44,6 +51,7 @@ $directory = backup_list(getcwd());
 $output_rows =  '';
 if($directory){
 	foreach($directory as $backup_folder) {
+		$backup_is_archive = is_file('data/backups/'.$backup_folder);
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">
@@ -52,11 +60,12 @@ if($directory){
         	</td>
 			<td>
 				'.h($backup_folder).'
+				<span class="badge rounded-pill ' . ($backup_is_archive ? 'text-bg-primary' : 'text-bg-secondary') . ' ms-1">' . ($backup_is_archive ? lang('Archive') : lang('Folder')) . '</span>
 			</td>
 			<td>
-				<time>'.date('d F Y', filectime('data/backups/'.$backup_folder)).'</time>
+				<time>'.date('d F Y', filemtime('data/backups/'.$backup_folder)).'</time>
 			</td>
-			<td>' . h(convert_bytes_to_string(folderSize('data/backups/'.$backup_folder), 2)) . '</td>
+			<td>' . h(convert_bytes_to_string($backup_is_archive ? filesize('data/backups/'.$backup_folder) : folderSize('data/backups/'.$backup_folder), 2)) . '</td>
 		</tr>';
 	} 
 	   
@@ -187,7 +196,10 @@ if (!$_POST) {
 		if (isset($_POST['download_selected']) && $_POST['download_selected'] === 'Download ' . $backup_folder) {
 
 		    $dir = $backup_location . $backup_folder;
-		    $zip_file = $dir . '/' . $backup_folder . '.zip';
+
+		    // An archive is served as it is; a folder is zipped first, beside
+		    // its own files, as it always was.
+		    $zip_file = is_file($dir) ? $dir : $dir . '/' . $backup_folder . '.zip';
 				
 		    // Create ZIP if it doesn't exist
 		    if (!file_exists($zip_file)) {
@@ -256,6 +268,25 @@ if (!$_POST) {
 
 		    $delete_backup = $backup_folder;
 		    $dir = $backup_location.$delete_backup;
+
+		    // An archive is one file.
+		    if (is_file($dir)) {
+		        if (!unlink($dir)) {
+		            $liveform->add_warning(
+		                lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>$dir))
+		            );
+		        } else {
+		            $liveform->add_notice(
+		                lang(array('string'=>'Backup ({var:1}) is deleted','vars'=>array($backup_folder)))
+		            );
+		            log_activity(
+		                lang(array('string'=>'Backup ({var:1}) is deleted','vars'=>array($backup_folder))),
+		                $_SESSION['sessionusername']
+		            );
+		            db('UPDATE config SET last_software_auto_backup = 0');
+		        }
+		        continue;
+		    }
 		
 		    try {
 		        $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);

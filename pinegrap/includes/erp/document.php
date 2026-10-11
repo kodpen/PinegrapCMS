@@ -272,6 +272,7 @@ function erp_invoice_document_labels()
         'shipment_date' => lang('Shipment Date'),
         'note' => lang('Note'),
         'generated_at' => lang('Generated at'),
+        'signed_by' => lang('Signed by'),
     );
 }
 
@@ -288,10 +289,12 @@ function erp_invoice_document_labels()
  * A document that is not an invoice row - a quote (includes/erp/quotes.php)
  * - passes its own row and lines as $source, shaped like an erp_invoices row
  * with the live_* account columns and erp_invoice_items rows, and may name
- * its own title and captions.
+ * its own title and captions, and the signature it carries (signature:
+ * image_data_uri, signer_name, signed_at; a signed quote). An invoice
+ * carries none, and the template's signature block prints nothing.
  *
  * @param int        $invoice_id
- * @param array|null $source  ['invoice' => row, 'items' => rows, 'title' => string, 'label' => array]
+ * @param array|null $source  ['invoice' => row, 'items' => rows, 'title' => string, 'label' => array, 'signature' => array]
  * @return array|false  false when the invoice does not exist
  */
 function erp_invoice_document_data($invoice_id, $source = null)
@@ -530,6 +533,7 @@ function erp_invoice_document_data($invoice_id, $source = null)
         'invoice' => $document,
         'lines' => $lines,
         'totals' => $totals,
+        'signature' => is_array($source) ? (array) ($source['signature'] ?? array()) : array(),
         // A line's tax amount holds both taxes on a document that carries
         // the second one, and its column is named for both.
         'label' => array_merge(erp_invoice_document_labels(), array(

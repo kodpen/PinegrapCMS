@@ -360,11 +360,12 @@ if ($bulk !== '') {
     $form_close = '</form>';
 }
 
-$output_filter = '';
+// The tabs, each with how many cards stand in it.
+$filter_options = array();
 foreach ($tabs as $key => $item) {
-    $output_filter .= '<a class="btn btn-sm btn-ghost' . (($tab === $key) ? ' active' : '') . '" href="erp_account_sync.php?tab=' . $key . '">'
-        . h($item['label']) . ' <span class="badge rounded-pill text-bg-' . ((($counts[$key] > 0) && in_array($key, array('differ', 'provider_only', 'erp_only'), true)) ? $item['tone'] : 'light') . '">' . (int) $counts[$key] . '</span></a>';
+    $filter_options[$key] = $item['label'] . ' (' . (int) $counts[$key] . ')';
 }
+$output_filter = pg_filter_select('tab', $filter_options, $tab, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_account_sync.php'));
 
 $output_notice = '';
 
@@ -431,7 +432,7 @@ pg_page_shell([
                 ' . $output_fetch . '
                 ' . $bulk . '
                 <div class="pg-toolbar-grow"></div>
-                <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . lang('Status') . '">' . $output_filter . '</div>
+                ' . $output_filter . '
             </nav>
             ' . $output_tab_note . '
             ' . $form_open . '

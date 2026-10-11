@@ -81,6 +81,10 @@ if (!$_POST) {
             ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
                 ? '<div class="alert alert-warning"><i class="bi bi-speedometer2 me-2" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
                 : '') . '
+            ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
+            </nav>' : '') . '
 
             <form name="form" action="edit_erp_invoice_draft.php" method="post" autocomplete="off">
                 ' . get_token_field() . '
@@ -96,6 +100,7 @@ if (!$_POST) {
                     </div>
                 </nav>
             </form>
+            ' . erp_account_quick_modal() . '
         </div>
     </div>
 </main>' .

@@ -15,6 +15,9 @@
  * it at random would make it worth ignoring. Nothing is invented: a quiet
  * channel is called quiet.
  *
+ * And the few facts the dashboard greeting weighs: a person's own tasks, what
+ * was handed to them or asked of them, and what is on their calendar today.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -247,4 +250,178 @@ function ws_channel_briefing($viewer, $channel, $membership)
         'advice'   => $advice,
         'key'      => $channel_id . ':' . $today,
     );
+}
+
+/**
+ * What the dashboard greeting knows about one person's workspace.
+ *
+ * Counts and one or two rows, nothing rendered: the dashboard decides what is
+ * worth a sentence. Every key is there; a count is 0 and a row is null when
+ * there is nothing to say about it.
+ *
+ * @param array $viewer ws_rights() of the person
+ * @return array open, overdue, due_today, waiting, doing (id, title, progress),
+ *               done_week, team_done_week, new_task (id, title, by, due_label),
+ *               new_tasks, mentions, mention_url, inbox, events_today,
+ *               event_first (kind, title, starts_at, time, all_day)
+ */
+function ws_dashboard_signals($viewer)
+{
+    $me = (int) $viewer['id'];
+    $now = time();
+    $today = date('Y-m-d');
+    $week_ago = $now - 7 * 86400;
+
+    $out = array(
+        'open'           => 0,
+        'overdue'        => 0,
+        'due_today'      => 0,
+        'waiting'        => 0,
+        'doing'          => null,
+        'done_week'      => 0,
+        'team_done_week' => 0,
+        'new_task'       => null,
+        'new_tasks'      => 0,
+        'mentions'       => 0,
+        'mention_url'    => null,
+        'inbox'          => 0,
+        'events_today'   => 0,
+        'event_first'    => null,
+    );
+
+    // The open list in one pass, the same shape ws_home() reads. A due date of
+    // NULL or 0000-00-00 is no due date and is neither late nor due today.
+    $counts = db_item("SELECT COUNT(*) AS open_count,
+            SUM(CASE WHEN t.due_date > '0000-00-00' AND t.due_date < '" . e($today) . "' THEN 1 ELSE 0 END) AS overdue_count,
+            SUM(CASE WHEN t.due_date = '" . e($today) . "' THEN 1 ELSE 0 END) AS today_count,
+            SUM(CASE WHEN t.status = 'waiting' THEN 1 ELSE 0 END) AS waiting_count
+        FROM ws_tasks t
+        INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . $me . "'
+        WHERE t.status IN ('todo', 'doing', 'waiting')");
+
+    $out['open'] = (int) ($counts['open_count'] ?? 0);
+    $out['overdue'] = (int) ($counts['overdue_count'] ?? 0);
+    $out['due_today'] = (int) ($counts['today_count'] ?? 0);
+    $out['waiting'] = (int) ($counts['waiting_count'] ?? 0);
+
+    // Finished work is a different set of rows - done, by whoever ticked it
+    // off, assigned or not - so it is a second pass rather than a branch of
+    // the join above. The team's figure rides along and is kept only for
+    // whoever holds the board, which is where everybody's work is visible.
+    $done = db_item("SELECT COUNT(*) AS team_count,
+            SUM(CASE WHEN completed_by = '" . $me . "' THEN 1 ELSE 0 END) AS mine_count
+        FROM ws_tasks
+        WHERE status = 'done' AND completed_at >= '" . (int) $week_ago . "'");
+
+    $out['done_week'] = (int) ($done['mine_count'] ?? 0);
+
+    if (!empty($viewer['board'])) {
+        $out['team_done_week'] = (int) ($done['team_count'] ?? 0);
+    }
+
+    // The task being worked on. One with a checklist is preferred because it
+    // has a progress to show; the checklist columns come from a later schema
+    // step than the tables themselves, so they are asked about first.
+    $doing = null;
+
+    if (ws_task_work_ready()) {
+        $doing = db_item("SELECT t.id, t.title, t.items_total, t.items_done FROM ws_tasks t
+            INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . $me . "'
+            WHERE t.status = 'doing' AND t.items_total > 0
+            ORDER BY t.updated_at DESC LIMIT 1");
+    }
+
+    if (!is_array($doing)) {
+        $doing = db_item("SELECT t.id, t.title FROM ws_tasks t
+            INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . $me . "'
+            WHERE t.status = 'doing'
+            ORDER BY t.updated_at DESC LIMIT 1");
+    }
+
+    if (is_array($doing)) {
+        $out['doing'] = array(
+            'id'       => (int) $doing['id'],
+            'title'    => (string) $doing['title'],
+            'progress' => ws_task_progress($doing),
+        );
+    }
+
+    // The newest task handed over and not looked at yet. Checked against the
+    // same rule as the task screen, and dropped once it is no longer open: a
+    // task finished before its assignee saw the notice is not news to them.
+    $out['new_tasks'] = (int) db_value("SELECT COUNT(*) FROM ws_inbox
+        WHERE user_id = '" . $me . "' AND kind = 'assigned' AND read_at = 0");
+
+    if ($out['new_tasks'] > 0) {
+        $assigned = db_item("SELECT task_id, actor_id FROM ws_inbox
+            WHERE user_id = '" . $me . "' AND kind = 'assigned' AND read_at = 0
+            ORDER BY id DESC LIMIT 1");
+
+        $task = is_array($assigned) ? ws_task((int) $assigned['task_id']) : null;
+
+        if ($task && ws_task_is_open($task['status']) && ws_can_see_task($viewer, $task)) {
+            $due = (string) ($task['due_date'] ?? '');
+
+            $out['new_task'] = array(
+                'id'        => (int) $task['id'],
+                'title'     => (string) $task['title'],
+                'by'        => ws_person_name((int) $assigned['actor_id']),
+                // Null rather than "No due date", so a sentence can leave the
+                // date out instead of saying "due no due date".
+                'due_label' => (($due !== '') && ($due !== '0000-00-00')) ? ws_task_due_label($task) : null,
+            );
+        }
+    }
+
+    // Mentions not answered yet. The address of the newest one is offered only
+    // while its channel can still be read; the count stays, as the menu badge
+    // counts it.
+    $out['mentions'] = (int) db_value("SELECT COUNT(*) FROM ws_inbox
+        WHERE user_id = '" . $me . "' AND kind = 'mention' AND read_at = 0");
+
+    if ($out['mentions'] > 0) {
+        $mention = db_item("SELECT channel_id, message_id FROM ws_inbox
+            WHERE user_id = '" . $me . "' AND kind = 'mention' AND read_at = 0
+            ORDER BY id DESC LIMIT 1");
+
+        if (is_array($mention) && ((int) $mention['channel_id'] > 0)
+            && ws_can_read_channel($viewer, ws_channel($mention['channel_id']))
+        ) {
+            $out['mention_url'] = 'workspace.php?channel=' . (int) $mention['channel_id']
+                . (((int) $mention['message_id'] > 0) ? '&message=' . (int) $mention['message_id'] : '');
+        }
+    }
+
+    $out['inbox'] = ws_inbox_unread_count($me);
+
+    // Meetings and visits on today's calendar that are about this person and
+    // have not finished yet: one that ended at ten is not worth mentioning at
+    // three. The first of them is the one a sentence names.
+    $departments = ws_user_department_ids($me);
+
+    foreach (ws_events_between($today, $today) as $event) {
+        if (!in_array($event['kind'], array('meeting', 'visit'), true)
+            || ((int) $event['ends_at'] < $now)
+            || !ws_event_applies($event, $me, $departments)
+        ) {
+            continue;
+        }
+
+        $out['events_today']++;
+
+        if ($out['event_first'] === null) {
+            // A visit that began on an earlier day has no start time today.
+            $all_day = ((int) $event['all_day'] === 1) || ((int) $event['starts_at'] < strtotime($today));
+
+            $out['event_first'] = array(
+                'kind'      => (string) $event['kind'],
+                'title'     => (string) $event['title'],
+                'starts_at' => (int) $event['starts_at'],
+                'time'      => $all_day ? null : date('H:i', (int) $event['starts_at']),
+                'all_day'   => $all_day,
+            );
+        }
+    }
+
+    return $out;
 }

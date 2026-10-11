@@ -557,6 +557,152 @@ function pg_settings_link($pane = '', $section = '')
     return ($section !== '') ? ($url . '#' . $section) : $url;
 }
 
+/**
+ * A list filter as a select in the screen's toolbar: a GET form of its own
+ * that submits when the choice changes (a button under <noscript>). It sits
+ * in #button_bar as a direct child; the bar's CSS lays the form out on its
+ * line. A row of buttons is not used for a filter: it spreads across the
+ * bar and wraps into a second row as soon as the labels carry counts.
+ *
+ * Options:
+ *   keep   names of $_GET values to carry along (a search, another filter);
+ *          nothing else is carried, so the filter reads as the links it
+ *          replaces, each a fresh address
+ *   label  the select's accessible name, also shown on the left when icon
+ *          is given; defaults to "Filter"
+ *   icon   a Bootstrap Icons name (without "bi-") drawn on the left
+ *   action the form's action; '' submits to the current address
+ *   id     the select's id; defaults to pg_filter_<name>
+ *
+ * @param string $name    the query parameter the screen reads
+ * @param array  $options value => label (plain text, escaped here)
+ * @param string $current the value in effect
+ * @param array  $opts
+ * @return string
+ */
+function pg_filter_select($name, $options, $current, $opts = array())
+{
+    $name = (string) $name;
+    $current = (string) $current;
+    $keep = isset($opts['keep']) ? (array) $opts['keep'] : array();
+    $label = (isset($opts['label']) && ((string) $opts['label'] !== '')) ? (string) $opts['label'] : lang('Filter');
+    $icon = isset($opts['icon']) ? (string) $opts['icon'] : '';
+    $action = isset($opts['action']) ? (string) $opts['action'] : '';
+    $id = isset($opts['id']) ? (string) $opts['id'] : 'pg_filter_' . preg_replace('/[^A-Za-z0-9_]/', '_', $name);
+
+    $hidden = '';
+
+    foreach ($keep as $key) {
+        $key = (string) $key;
+
+        if (($key === $name) || !isset($_GET[$key]) || !is_scalar($_GET[$key]) || ((string) $_GET[$key] === '')) {
+            continue;
+        }
+
+        $hidden .= '<input type="hidden" name="' . h($key) . '" value="' . h((string) $_GET[$key]) . '">';
+    }
+
+    $items = '';
+
+    foreach ($options as $value => $text) {
+        $value = (string) $value;
+        $items .= '<option value="' . h($value) . '"' . (($value === $current) ? ' selected' : '') . '>' . h((string) $text) . '</option>';
+    }
+
+    $select = '<select id="' . h($id) . '" name="' . h($name) . '" class="form-select form-select-sm w-auto" onchange="this.form.submit()" aria-label="' . h($label) . '">' . $items . '</select>';
+
+    if ($icon !== '') {
+        $select = '<div class="input-group input-group-sm w-auto flex-nowrap">'
+            . '<label class="input-group-text" for="' . h($id) . '" title="' . h($label) . '"><i class="bi bi-' . h($icon) . '" aria-hidden="true"></i></label>'
+            . $select . '</div>';
+    }
+
+    return '<form method="get"' . (($action !== '') ? ' action="' . h($action) . '"' : '') . ' class="pg-toolbar-filter disable_shortcut">'
+        . $hidden . $select
+        . '<noscript><button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button></noscript>'
+        . '</form>';
+}
+
+/**
+ * The unit a date range steps by: a single day, a Sunday-to-Saturday week, a
+ * calendar year, or - for a calendar month and any other range - a month.
+ *
+ * @param array $range start_month, start_day, start_year, stop_month, stop_day, stop_year
+ * @return string day | week | month | year
+ */
+function pg_period_unit($range)
+{
+    $start = mktime(0, 0, 0, (int) ($range['start_month'] ?? 1), (int) ($range['start_day'] ?? 1), (int) ($range['start_year'] ?? date('Y')));
+    $stop = mktime(0, 0, 0, (int) ($range['stop_month'] ?? 1), (int) ($range['stop_day'] ?? 1), (int) ($range['stop_year'] ?? date('Y')));
+
+    // Rounded: a range across a daylight saving change is an hour short or long.
+    $days = (int) round(($stop - $start) / 86400) + 1;
+
+    if ($days === 1) {
+        return 'day';
+    }
+
+    if (($days === 7) && (date('w', $start) === '0')) {
+        return 'week';
+    }
+
+    if ((date('m-d', $start) === '01-01') && (date('m-d', $stop) === '12-31') && (date('Y', $start) === date('Y', $stop))) {
+        return 'year';
+    }
+
+    return 'month';
+}
+
+/**
+ * The period navigator of a list screen's toolbar: ‹ [unit ▾] › and the
+ * range on screen. The arrows step by the unit pg_period_unit() reads off
+ * the range; the menu jumps to today, this week, this month or this year.
+ * Every link is the screen's own address with the six range values, which
+ * is what the screens read (and keep in their session).
+ *
+ * @param string $url        the screen, e.g. 'view_orders.php'
+ * @param array  $range      the range on screen (start_/stop_ month, day, year)
+ * @param array  $periods    unit => array(previous range, this range, next range),
+ *                           for day, week, month and year
+ * @param string $range_html the range as text, already escaped
+ * @param string $class      extra classes for the group (' d-none' hides it)
+ * @return string
+ */
+function pg_period_nav($url, $range, $periods, $range_html, $class = '')
+{
+    $link = function ($to) use ($url) {
+        return $url . '?' . http_build_query(array(
+            'start_month' => $to['start_month'], 'start_day' => $to['start_day'], 'start_year' => $to['start_year'],
+            'stop_month' => $to['stop_month'], 'stop_day' => $to['stop_day'], 'stop_year' => $to['stop_year'],
+        ));
+    };
+
+    $labels = array(
+        'day'   => array(lang('Day'), lang('Today')),
+        'week'  => array(lang('Week'), lang('This week')),
+        'month' => array(lang('Month'), lang('This month')),
+        'year'  => array(lang('Year'), lang('This year')),
+    );
+
+    $unit = pg_period_unit($range);
+    $items = '';
+
+    foreach ($labels as $key => $label) {
+        $items .= '<li><a class="dropdown-item link-body-emphasis' . (($key === $unit) ? ' active' : '') . '" href="' . h($link($periods[$key][1])) . '">' . h($label[1]) . '</a></li>';
+    }
+
+    return '
+                    <div class="d-inline-block' . h($class) . '" role="group" aria-label="' . h(lang('Period')) . '">
+                        <a class="btn btn-sm btn-ghost" href="' . h($link($periods[$unit][0])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm btn-ghost dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>' . h($labels[$unit][0]) . '</button>
+                            <ul class="dropdown-menu dropdown-menu-end">' . $items . '</ul>
+                        </div>
+                        <a class="btn btn-sm btn-ghost" href="' . h($link($periods[$unit][2])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                        <span class="small text-body-secondary text-nowrap">' . $range_html . '</span>
+                    </div>';
+}
+
 
 /**
  * Where to send a browser that has finished with a tool and wants the settings.
@@ -1946,6 +2092,15 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
+        case 'notes':
+            $book = 'M7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13A2.5 2.5 0 0 1 7.5 3z';
+            $body =
+                '<path' . $d . ' d="' . $book . '"/>' .
+                '<path d="' . $book . '"/>' .
+                '<path d="M5 7.5H3.5M5 12H3.5M5 16.5H3.5" stroke-width="1.5"/>' .
+                '<path class="pg-mi-a" d="M9 8.5h6M9 12h6M9 15.5h3.5" stroke-width="1.6"/>';
+            break;
+
         case 'folders':
             $flap = 'M3 17.5v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
             $body =
@@ -2711,6 +2866,7 @@ function output_menu($properties = false)
         $menu_items[21]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
+        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php?start=template\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-grid-1x2 bi-me-2\'>' . lang('Choose a Template') . '</a>';
         // VISUAL PAGE EDITOR > Translations: the pages of a visual design in
         // the site's other languages (includes/translate/).
         $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
@@ -2835,6 +2991,11 @@ function output_menu($properties = false)
             $menu_items[23]['badge_title'] = lang(array('string' => '{var:1} new item(s) for you', 'vars' => $menu_items[23]['badge']));
             $menu_items[23]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-chat-square-text bi-me-2\'>' . lang('Channels') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_tasks.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-check2-square bi-me-2\'>' . lang('My Tasks') . '</a>';
+
+            if (function_exists('ws_notes_ready') && ws_notes_ready()) {
+                $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_notes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-journal-text bi-me-2\'>' . lang('My Notes') . '</a>';
+            }
+
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_board.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-week bi-me-2\'>' . lang('Planning Board') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar3 bi-me-2\'>' . lang('Work Calendar') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_timeline.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-clock-history bi-me-2\'>' . lang('Decision Timeline') . '</a>';
@@ -2842,6 +3003,17 @@ function output_menu($properties = false)
             if ($ws_menu_rights['settings']) {
                 $menu_items[23]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
                 $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('Workspace Settings') . '</a>';
+            }
+
+            // My Notes pinned to the menu by the person (the pin button of the
+            // notes screen): a row of its own, drawn right under the workspace.
+            // Slot 24, never reused, like 22 and 23.
+            if (function_exists('ws_notes_menu_pinned') && ws_notes_menu_pinned((int) $user['id'])) {
+                $menu_items[24]['id'] = 24;
+                $menu_items[24]['href'] = 'workspace_notes.php';
+                $menu_items[24]['menu_icon'] = 'notes';
+                $menu_items[24]['color_class'] = 'workspace-color';
+                $menu_items[24]['title'] = 'My Notes';
             }
         }
     }
@@ -3004,6 +3176,10 @@ function output_menu($properties = false)
         case 'workspace_settings.php':
             $active_menu = 23;
             break;
+        case 'workspace_notes.php':
+            // Pinned to the menu, My Notes lights its own row.
+            $active_menu = isset($menu_items[24]) ? 24 : 23;
+            break;
         case 'view_orders.php':
         case 'view_order.php':
         case 'view_orders_for_contact.php':
@@ -3154,13 +3330,15 @@ function output_menu($properties = false)
 
     }
 
-    // Where two rows sit in the rail: the workspace right under the
-    // dashboard, the ERP after the campaigns. The rows are built in the order
-    // of their ids above and drawn in the order of the array, so they are
-    // moved here; the ids, which the active-row switch reads, stay. When the
-    // row to follow is not there (no access to it), the nearest one before it
-    // is followed.
-    foreach (array(23 => array(0), 22 => array(9, 8, 7, 6, 5, 4, 3, 2, 1, 0)) as $move => $after_ids) {
+    // Where the moved rows sit in the rail: the workspace right under the
+    // dashboard and My Notes, when pinned, right under the workspace; the ERP
+    // after the campaigns, the Visual Page Editor between the file manager
+    // and the pages. The rows are built in the order of their ids above and
+    // drawn in the order of the array, so they are moved
+    // here; the ids, which the active-row switch reads, stay. When the row to
+    // follow is not there (no access to it), the nearest one before it is
+    // followed.
+    foreach (array(23 => array(0), 24 => array(23, 0), 22 => array(9, 8, 7, 6, 5, 4, 3, 2, 1, 0), 21 => array(1, 0)) as $move => $after_ids) {
         if (!isset($menu_items[$move])) {
             continue;
         }

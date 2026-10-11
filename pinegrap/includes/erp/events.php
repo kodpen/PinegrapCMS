@@ -83,6 +83,21 @@ function erp_event_date($value)
 }
 
 /**
+ * A unix moment as the wire wants it: ISO-8601 UTC, null for none - what
+ * api_time() gives, written here because a panel screen that announces an
+ * event has not loaded the API's response helpers.
+ *
+ * @param int $unix
+ * @return string|null
+ */
+function erp_event_time($unix)
+{
+    $unix = (int) $unix;
+
+    return ($unix > 0) ? gmdate('Y-m-d\TH:i:s\Z', $unix) : null;
+}
+
+/**
  * Announce an invoice: issued, paid or cancelled.
  *
  * @param int    $invoice_id
@@ -269,4 +284,52 @@ function erp_event_expense($expense_id, $event)
         'cash_account_id' => (int) $expense['cash_account_id'],
         'cash_id' => (int) $expense['cash_id'],
     ));
+}
+
+/**
+ * Announce a quote: written, decided, signed, opened again or invoiced. A quote moves
+ * no money, so it feeds the webhook queue and the audit trail only; the
+ * alerts (includes/erp/alerts.php) do not answer to it.
+ *
+ * @param int    $quote_id
+ * @param string $event  'erp.quote.created' | 'erp.quote.accepted' | 'erp.quote.rejected'
+ *                       | 'erp.quote.cancelled' | 'erp.quote.reopened' | 'erp.quote.invoiced'
+ *                       | 'erp.quote.signed'
+ * @return int
+ */
+function erp_event_quote($quote_id, $event)
+{
+    $quote = db_item("SELECT q.id, q.full_number, q.status, q.account_id, q.invoice_id, q.issue_date, q.valid_until,
+            q.currency, q.grand_total, i.status AS invoice_status
+        FROM erp_quotes q
+        LEFT JOIN erp_invoices i ON i.id = q.invoice_id
+        WHERE q.id = '" . (int) $quote_id . "' LIMIT 1");
+
+    if (!is_array($quote)) {
+        return 0;
+    }
+
+    $payload = array(
+        'id' => (int) $quote['id'],
+        'number' => (string) $quote['full_number'],
+        'status' => (string) $quote['status'],
+        'state' => function_exists('erp_quote_state') ? erp_quote_state($quote) : (string) $quote['status'],
+        'account_id' => (int) $quote['account_id'],
+        'invoice_id' => (int) $quote['invoice_id'],
+        'issue_date' => erp_event_date($quote['issue_date']),
+        'valid_until' => erp_event_date($quote['valid_until']),
+        'currency' => (string) $quote['currency'],
+        'grand_total' => (int) $quote['grand_total'],
+    );
+
+    // Who signed and when, as GET /erp/quotes shows it; the drawing and the
+    // rest of the evidence stay with the panel.
+    if ($event === 'erp.quote.signed') {
+        $signature = function_exists('erp_signature') ? erp_signature('quote', (int) $quote['id']) : null;
+
+        $payload['signer_name'] = is_array($signature) ? (string) $signature['signer_name'] : '';
+        $payload['signed_at'] = is_array($signature) ? erp_event_time($signature['signed_at']) : null;
+    }
+
+    return erp_event($event, $payload);
 }

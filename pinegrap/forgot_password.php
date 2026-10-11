@@ -188,7 +188,8 @@ email(array(
         "\n" .
         URL_SCHEME . HOSTNAME_SETTING . $set_password_url . '?k=' . $token['token'] . "\n" .
         "\n" .
-        lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.') ));
+        lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.'),
+    'queue' => true));
 
 log_activity(lang('User requested reset password email.'), $user['username']);
 

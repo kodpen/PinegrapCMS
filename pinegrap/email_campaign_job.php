@@ -64,358 +64,269 @@ db(
                 LIMIT 1)
         )");
 
-// get e-mail recipients to send e-mail campaign to
-$query = "SELECT
-            email_recipients.id,
-            email_recipients.email_campaign_id,
-            email_recipients.email_address,
-            email_recipients.contact_id,
-            email_campaigns.type,
-            email_campaigns.action,
-            email_campaigns.action_item_id,
-            email_campaigns.calendar_event_recurrence_number,
-            orders.reference_code AS order_reference_code,
-            email_campaigns.from_name,
-            email_campaigns.from_email_address,
-            email_campaigns.reply_email_address,
-            email_campaigns.bcc_email_address,
-            email_campaigns.subject,
-            email_campaigns.format,
-            email_campaigns.purpose,
-            email_campaigns.created_timestamp
-         FROM email_recipients
-         LEFT JOIN email_campaigns on email_recipients.email_campaign_id = email_campaigns.id
-         LEFT JOIN orders ON email_campaigns.order_id = orders.id
-         WHERE
-            (email_recipients.complete = '0')
-            AND (email_campaigns.status = 'ready')
-            AND (email_campaigns.start_time <= NOW())
-         ORDER BY email_campaigns.start_time, email_recipients.email_campaign_id, email_recipients.id
-         LIMIT $number_of_emails";
-$result = mysqli_query(db::$con, $query);
+// Mail merge and footer for one recipient: everything that happens between
+// reading the recipient and handing the message to email(). Returns the
+// email() properties and the reference code the recipient row is stamped
+// with, or null when the recipient of a commercial campaign has opted out
+// since the campaign was created; the caller deletes that recipient.
+function email_campaign_job_prepare($email_recipient)
+{
+    // If this is a commercial campaign and this contact is not the manually entered email
+    // address (i.e. "Also send message to the following e-mail address"), and we can't find
+    // and opted-in contact for this recipient's email address, then delete this recipient,
+    // and skip to the next.  This is necessary because a campaign might have been created and
+    // scheduled in the future, and then a contact might have opted-out after the campaign was
+    // created.  We look for any contact with the same email that is opted-in, because
+    // the original contact might have been deleted or merged.
 
-$email_recipients = array();
-$email_campaigns = array();
-
-// loop through e-mail recipients
-while ($row = mysqli_fetch_assoc($result)) {
-    $email_recipients[] = $row;
+    if (
+        ($email_recipient['purpose'] == 'commercial')
+        and $email_recipient['contact_id']
+        and !db_value(
+            "SELECT id
+            FROM contacts
+            WHERE
+                (email_address = '" . e($email_recipient['email_address']) . "')
+                AND (opt_in = '1')
+            LIMIT 1")
+    ) {
+        return null;
+    }
     
-    // if e-mail campaign has not already been added to array, add it
-    if (in_array($row['email_campaign_id'], $email_campaigns) == false) {
-        $email_campaigns[] = $row['email_campaign_id'];
-    }
-}
+    // Create an array that will store the fields for variables that need to be replaced.
+    $fields = array();
 
-$count = 0;
-
-foreach ($email_recipients as $email_recipient) {
-
-    // Lock tables, so no one can read tables, to prevent job(s) from sending duplicate e-mails to
-    // the same recipients.  Although we only care about locking the email_recipients &
-    // email_campaigns tables, we have to lock the other tables because MySQL requires that we lock
-    // additional tables that we read from or write to.  For example, the email() function might
-    // write to the log table, so that is why that lock is required.  We should consider moving to
-    // InnoDB so that we can lock or do transactions in a better way in the future.
-
-    $sql_calendar_event_locks = "";
-
-    // If this email campaign was created due to a calendar event being reserved, then lock extra tables.
-    // We have to do this because there are various tables that functions select from in order to deal with these types of campaigns.
-    if ($email_recipient['action'] == 'calendar_event_reserved') {
-        $sql_calendar_event_locks = ", calendar_events WRITE, products WRITE, remaining_reservation_spots WRITE, calendar_events_calendar_event_locations_xref WRITE, calendar_event_locations WRITE";
-    }
-
-    $query = "LOCK TABLES email_recipients WRITE, email_campaigns WRITE, contacts WRITE, log WRITE" . $sql_calendar_event_locks;
-    $result = mysqli_query(db::$con, $query);
-
-    // Never send without the lock: without it a concurrent job could deliver to
-    // the same recipient twice. The recipient stays incomplete and is retried
-    // by the next run.
-    if ($result === false) {
-        error_log('email_campaign_job: LOCK TABLES failed for recipient ' . $email_recipient['id'] . ': ' . mysqli_error(db::$con));
-        continue;
-    }
-
-    // get body for e-mail campaign (we can't get body in join query above for some reason because MySQL takes too long)
-    // this will also allow us to make sure this recipient is still not complete (i.e. to make sure another job hasn't recently sent to this recipient already).
+    // setup variables
+    $mail_merge_first_name = '';
+    $mail_merge_last_name = '';
+    $mail_merge_nickname = '';
+    $mail_merge_salutation = '';
+    $mail_merge_suffix = '';
+    
+    // get contact information for email recipient
     $query =
-        "SELECT email_campaigns.body
-        FROM email_recipients
-        LEFT JOIN email_campaigns on email_recipients.email_campaign_id = email_campaigns.id
-        WHERE
-           (email_recipients.id = '" . $email_recipient['id'] . "')
-           AND (email_recipients.complete = '0')
-           AND (email_campaigns.status = 'ready')
-           AND (email_campaigns.start_time <= NOW())";
-    $result = mysqli_query(db::$con, $query);
-    
-    // if data for recipient was found, continue with sending e-mail to recipient
-    if (mysqli_num_rows($result) > 0) {
-
+        "SELECT
+            first_name,
+            last_name,
+            nickname,
+            salutation,
+            suffix
+         FROM contacts
+         WHERE id = " . (int) $email_recipient['contact_id'];
+    $row = null;
+    // Manually entered recipients are stored with contact_id 0 and have no contact row.
+    if ((int) $email_recipient['contact_id'] > 0) {
+        $result = mysqli_query(db::$con, $query);
         $row = mysqli_fetch_assoc($result);
-        $email_recipient['body'] = $row['body'];
+    }
+    if (!$row) {
+        $row = array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');
+    }
 
-        // If this is a commercial campaign and this contact is not the manually entered email
-        // address (i.e. "Also send message to the following e-mail address"), and we can't find
-        // and opted-in contact for this recipient's email address, then delete this recipient,
-        // and skip to the next.  This is necessary because a campaign might have been created and
-        // scheduled in the future, and then a contact might have opted-out after the campaign was
-        // created.  We look for any contact with the same email that is opted-in, because
-        // the original contact might have been deleted or merged.
+    $first_name = trim($row['first_name']);
+    $last_name = trim($row['last_name']);
+    
+    // if there is a first name in the database, update the variable
+    if ($row['first_name'] != '') {
+        $mail_merge_first_name = ' ' . trim($row['first_name']);
+    }
+    
+    // if there is a last name in the database, update the variable
+    if ($row['last_name'] != '') {
+        $mail_merge_last_name = ' ' . trim($row['last_name']);
+    }
+    
+    // if there is a nickname in the database, update the variable
+    if ($row['nickname'] != '') {
+        $mail_merge_nickname = trim($row['nickname']);
+    }
+    
+    // if there is a salutation in the database, update the variable
+    if ($row['salutation'] != '') {
+        $mail_merge_salutation = trim($row['salutation']);
+    }
+    
+    // if there is a suffix in the database, update the variable
+    if ($row['suffix'] != '') {
+        $mail_merge_suffix = ', ' . trim($row['suffix']);
+    }
+    
+    // if there is a nickname for the current email recipient, use that for the dynamic data
+    if ($mail_merge_nickname != '') {
+        $mail_merge_dynamic_data = trim($mail_merge_nickname);
+    
+    // else, there was not a nickname, so display the users full name
+    } else {
+        $mail_merge_dynamic_data = trim($mail_merge_salutation . $mail_merge_first_name . $mail_merge_last_name . $mail_merge_suffix);
+    }
 
-        if (
-            ($email_recipient['purpose'] == 'commercial')
-            and $email_recipient['contact_id']
-            and !db_value(
-                "SELECT id
-                FROM contacts
-                WHERE
-                    (email_address = '" . e($email_recipient['email_address']) . "')
-                    AND (opt_in = '1')
-                LIMIT 1")
-        ) {
+    // Add name field so that variable is replaced.
+    $fields[] = array(
+        'name' => 'name',
+        'data' => $mail_merge_dynamic_data,
+        'type' => '');
 
-            db("DELETE FROM email_recipients WHERE id = '" . $email_recipient['id'] . "'");
+    // Add first_name field so that variable is replaced.
+    $fields[] = array(
+        'name' => 'first_name',
+        'data' => $first_name,
+        'type' => '');
 
-            db("UNLOCK TABLES");
+    // Add last_name field so that variable is replaced.
+    $fields[] = array(
+        'name' => 'last_name',
+        'data' => $last_name,
+        'type' => '');
 
-            // Skip to the next recipient.
-            continue;
-        }
-        
-        // Create an array that will store the fields for variables that need to be replaced.
-        $fields = array();
-
-        // setup variables
-        $mail_merge_first_name = '';
-        $mail_merge_last_name = '';
-        $mail_merge_nickname = '';
-        $mail_merge_salutation = '';
-        $mail_merge_suffix = '';
-        
-        // get contact information for email recipient
-        $query =
-            "SELECT
-                first_name,
-                last_name,
-                nickname,
-                salutation,
-                suffix
-             FROM contacts
-             WHERE id = " . (int) $email_recipient['contact_id'];
-        $row = null;
-        // Manually entered recipients are stored with contact_id 0 and have no contact row.
-        if ((int) $email_recipient['contact_id'] > 0) {
-            $result = mysqli_query(db::$con, $query);
-            $row = mysqli_fetch_assoc($result);
-        }
-        if (!$row) {
-            $row = array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');
-        }
-
-        $first_name = trim($row['first_name']);
-        $last_name = trim($row['last_name']);
-        
-        // if there is a first name in the database, update the variable
-        if ($row['first_name'] != '') {
-            $mail_merge_first_name = ' ' . trim($row['first_name']);
-        }
-        
-        // if there is a last name in the database, update the variable
-        if ($row['last_name'] != '') {
-            $mail_merge_last_name = ' ' . trim($row['last_name']);
-        }
-        
-        // if there is a nickname in the database, update the variable
-        if ($row['nickname'] != '') {
-            $mail_merge_nickname = trim($row['nickname']);
-        }
-        
-        // if there is a salutation in the database, update the variable
-        if ($row['salutation'] != '') {
-            $mail_merge_salutation = trim($row['salutation']);
-        }
-        
-        // if there is a suffix in the database, update the variable
-        if ($row['suffix'] != '') {
-            $mail_merge_suffix = ', ' . trim($row['suffix']);
-        }
-        
-        // if there is a nickname for the current email recipient, use that for the dynamic data
-        if ($mail_merge_nickname != '') {
-            $mail_merge_dynamic_data = trim($mail_merge_nickname);
-        
-        // else, there was not a nickname, so display the users full name
-        } else {
-            $mail_merge_dynamic_data = trim($mail_merge_salutation . $mail_merge_first_name . $mail_merge_last_name . $mail_merge_suffix);
-        }
-
-        // Add name field so that variable is replaced.
+    // If this is an auto email campaign, then add fields for that type of campaign.
+    if ($email_recipient['type'] == 'automatic') {
+        // Add field for action date and time.
         $fields[] = array(
-            'name' => 'name',
-            'data' => $mail_merge_dynamic_data,
-            'type' => '');
+            'name' => 'action_date_and_time',
+            'data' => date('Y-m-d H:i:s', $email_recipient['created_timestamp']),
+            'type' => 'date and time');
 
-        // Add first_name field so that variable is replaced.
-        $fields[] = array(
-            'name' => 'first_name',
-            'data' => $first_name,
-            'type' => '');
+        // If this email campaign was created due to a calendar event being reserved, then add fields for that.
+        if ($email_recipient['action'] == 'calendar_event_reserved') {
+            $calendar_event = get_calendar_event($email_recipient['action_item_id'], $email_recipient['calendar_event_recurrence_number']);
 
-        // Add last_name field so that variable is replaced.
-        $fields[] = array(
-            'name' => 'last_name',
-            'data' => $last_name,
-            'type' => '');
-
-        // If this is an auto email campaign, then add fields for that type of campaign.
-        if ($email_recipient['type'] == 'automatic') {
-            // Add field for action date and time.
+            // Add field for calendar event date and time range.
             $fields[] = array(
-                'name' => 'action_date_and_time',
-                'data' => date('Y-m-d H:i:s', $email_recipient['created_timestamp']),
+                'name' => 'calendar_event_date_and_time_range',
+                'data' => $calendar_event['date_and_time_range'],
+                'type' => '');
+
+            // Add field for calendar event start date and time.
+            $fields[] = array(
+                'name' => 'calendar_event_start_date_and_time',
+                'data' => $calendar_event['start_date_and_time'],
                 'type' => 'date and time');
 
-            // If this email campaign was created due to a calendar event being reserved, then add fields for that.
-            if ($email_recipient['action'] == 'calendar_event_reserved') {
-                $calendar_event = get_calendar_event($email_recipient['action_item_id'], $email_recipient['calendar_event_recurrence_number']);
+            // Add field for calendar event end date and time.
+            $fields[] = array(
+                'name' => 'calendar_event_end_date_and_time',
+                'data' => $calendar_event['end_date_and_time'],
+                'type' => 'date and time');
 
-                // Add field for calendar event date and time range.
-                $fields[] = array(
-                    'name' => 'calendar_event_date_and_time_range',
-                    'data' => $calendar_event['date_and_time_range'],
-                    'type' => '');
-
-                // Add field for calendar event start date and time.
-                $fields[] = array(
-                    'name' => 'calendar_event_start_date_and_time',
-                    'data' => $calendar_event['start_date_and_time'],
-                    'type' => 'date and time');
-
-                // Add field for calendar event end date and time.
-                $fields[] = array(
-                    'name' => 'calendar_event_end_date_and_time',
-                    'data' => $calendar_event['end_date_and_time'],
-                    'type' => 'date and time');
-
-            // Otherwise if this email campaign was created due to an order being
-            // abandoned, then add order reference code field.
-            } else if ($email_recipient['action'] == 'order_abandoned') {
-                $fields[] = array(
-                    'name' => 'order_reference_code',
-                    'data' => $email_recipient['order_reference_code'],
-                    'type' => '');
-            }
+        // Otherwise if this email campaign was created due to an order being
+        // abandoned, then add order reference code field.
+        } else if ($email_recipient['action'] == 'order_abandoned') {
+            $fields[] = array(
+                'name' => 'order_reference_code',
+                'data' => $email_recipient['order_reference_code'],
+                'type' => '');
         }
+    }
 
-        // Replace variables in subject (e.g. ^^name^^).
-        $email_recipient['subject'] = replace_variables(array(
-            'content' => $email_recipient['subject'],
-            'fields' => $fields,
-            'format' => 'plain_text'));
+    // Replace variables in subject (e.g. ^^name^^).
+    $email_recipient['subject'] = replace_variables(array(
+        'content' => $email_recipient['subject'],
+        'fields' => $fields,
+        'format' => 'plain_text'));
 
-        // Replace variables in body (e.g. ^^name^^).
-        $email_recipient['body'] = replace_variables(array(
-            'content' => $email_recipient['body'],
-            'fields' => $fields,
-            'format' => $email_recipient['format']));
-        
-        // create email address reference code
-        $email_recipient['reference_code'] = generate_email_recipient_reference_code();
+    // Replace variables in body (e.g. ^^name^^).
+    $email_recipient['body'] = replace_variables(array(
+        'content' => $email_recipient['body'],
+        'fields' => $fields,
+        'format' => $email_recipient['format']));
+    
+    // create email address reference code
+    $email_recipient['reference_code'] = generate_email_recipient_reference_code();
 
-        // if the format of the e-mail should be plain text, then prepare that
-        if ($email_recipient['format'] == 'plain_text') {
+    // if the format of the e-mail should be plain text, then prepare that
+    if ($email_recipient['format'] == 'plain_text') {
 
-            // If this is a commercial email, then prepare organization and email preferences info.
-            if ($email_recipient['purpose'] == 'commercial') {
-                
-                $organization = '';
-
-                // if there is an organization name, then add it to the organization
-                if (ORGANIZATION_NAME != '') {
-                    $organization .= ORGANIZATION_NAME;
-                }
-
-                // if there is an organization address 1, then add it to the organization
-                if (ORGANIZATION_ADDRESS_1 != '') {
-                    // if the organization is not blank, then add a space for separation
-                    if ($organization != '') {
-                        $organization .= ' ';
-                    }
-
-                    $organization .= ORGANIZATION_ADDRESS_1;
-                }
-
-                // if there is an organization address 2, then add it to the organization
-                if (ORGANIZATION_ADDRESS_2 != '') {
-                    // if the organization is not blank, then add a space for separation
-                    if ($organization != '') {
-                        $organization .= ' ';
-                    }
-                    
-                    $organization .= ORGANIZATION_ADDRESS_2;
-                }
-
-                // if there is an organization city, then add it to the organization
-                if (ORGANIZATION_CITY != '') {
-                    // if the organization is not blank, then add a space for separation
-                    if ($organization != '') {
-                        $organization .= ' ';
-                    }
-                    
-                    $organization .= ORGANIZATION_CITY;
-                }
-
-                // if there is an organization state, then add it to the organization
-                if (ORGANIZATION_STATE != '') {
-                    // if the organization is not blank, then add a space for separation
-                    if ($organization != '') {
-                        $organization .= ' ';
-                    }
-                    
-                    $organization .= ORGANIZATION_STATE;
-                }
-
-                // if there is an organization zip code, then add it to the organization
-                if (ORGANIZATION_ZIP_CODE != '') {
-                    // if the organization is not blank, then add a space for separation
-                    if ($organization != '') {
-                        $organization .= ' ';
-                    }
-                    
-                    $organization .= ORGANIZATION_ZIP_CODE;
-                }
-
-                // if there is an organization country, then add it to the organization
-                if (ORGANIZATION_COUNTRY != '') {
-                    // if the organization is not blank, then add a space for separation
-                    if ($organization != '') {
-                        $organization .= ' ';
-                    }
-                    
-                    $organization .= ORGANIZATION_COUNTRY;
-                }
-				$email_recipient['body'] .=
-				    "\n" .
-				    "\n" .
-				    "\n" .
-				    $organization . "\n" .
-				    "\n" .
-				    lang('Update email preferences or unsubscribe') . ':' . "\n" .
-				    "\n" .
-				    URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?' . pg_email_preferences_query($email_recipient['email_address']);
-			}
-
-        // else the format of the e-mail should be HTML, so prepare that
-        } else {
-
-            $email_recipient['body'] = preg_replace('/<reference_code><\/reference_code>/', $email_recipient['reference_code'], $email_recipient['body']);
-            $email_recipient['body'] = preg_replace('/<email_address_id><\/email_address_id>/', pg_email_preferences_placeholder_value($email_recipient['email_address']), $email_recipient['body']);
+        // If this is a commercial email, then prepare organization and email preferences info.
+        if ($email_recipient['purpose'] == 'commercial') {
             
+            $organization = '';
+
+            // if there is an organization name, then add it to the organization
+            if (ORGANIZATION_NAME != '') {
+                $organization .= ORGANIZATION_NAME;
+            }
+
+            // if there is an organization address 1, then add it to the organization
+            if (ORGANIZATION_ADDRESS_1 != '') {
+                // if the organization is not blank, then add a space for separation
+                if ($organization != '') {
+                    $organization .= ' ';
+                }
+
+                $organization .= ORGANIZATION_ADDRESS_1;
+            }
+
+            // if there is an organization address 2, then add it to the organization
+            if (ORGANIZATION_ADDRESS_2 != '') {
+                // if the organization is not blank, then add a space for separation
+                if ($organization != '') {
+                    $organization .= ' ';
+                }
+                
+                $organization .= ORGANIZATION_ADDRESS_2;
+            }
+
+            // if there is an organization city, then add it to the organization
+            if (ORGANIZATION_CITY != '') {
+                // if the organization is not blank, then add a space for separation
+                if ($organization != '') {
+                    $organization .= ' ';
+                }
+                
+                $organization .= ORGANIZATION_CITY;
+            }
+
+            // if there is an organization state, then add it to the organization
+            if (ORGANIZATION_STATE != '') {
+                // if the organization is not blank, then add a space for separation
+                if ($organization != '') {
+                    $organization .= ' ';
+                }
+                
+                $organization .= ORGANIZATION_STATE;
+            }
+
+            // if there is an organization zip code, then add it to the organization
+            if (ORGANIZATION_ZIP_CODE != '') {
+                // if the organization is not blank, then add a space for separation
+                if ($organization != '') {
+                    $organization .= ' ';
+                }
+                
+                $organization .= ORGANIZATION_ZIP_CODE;
+            }
+
+            // if there is an organization country, then add it to the organization
+            if (ORGANIZATION_COUNTRY != '') {
+                // if the organization is not blank, then add a space for separation
+                if ($organization != '') {
+                    $organization .= ' ';
+                }
+                
+                $organization .= ORGANIZATION_COUNTRY;
+            }
+            $email_recipient['body'] .=
+                "\n" .
+                "\n" .
+                "\n" .
+                $organization . "\n" .
+                "\n" .
+                lang('Update email preferences or unsubscribe') . ':' . "\n" .
+                "\n" .
+                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?' . pg_email_preferences_query($email_recipient['email_address']);
         }
 
-        email(array(
+    // else the format of the e-mail should be HTML, so prepare that
+    } else {
+
+        $email_recipient['body'] = preg_replace('/<reference_code><\/reference_code>/', $email_recipient['reference_code'], $email_recipient['body']);
+        $email_recipient['body'] = preg_replace('/<email_address_id><\/email_address_id>/', pg_email_preferences_placeholder_value($email_recipient['email_address']), $email_recipient['body']);
+        
+    }
+
+    return array(
+        'reference_code' => $email_recipient['reference_code'],
+        'properties' => array(
             'to' => $email_recipient['email_address'],
             'to_name' => $mail_merge_dynamic_data,
             'bcc' => $email_recipient['bcc_email_address'],
@@ -425,23 +336,334 @@ foreach ($email_recipients as $email_recipient) {
             'subject' => $email_recipient['subject'],
             'format' => $email_recipient['format'],
             'body' => $email_recipient['body'],
-            'type' => 'campaign'));
-        
-        // mark e-mail recipient as complete and set reference code
-        $query = 
-            "UPDATE email_recipients
-            SET 
-                complete = '1',
-                reference_code = '" . $email_recipient['reference_code'] . "'
-            WHERE id = '" . $email_recipient['id'] . "'";
-        $result = mysqli_query(db::$con, $query);
-        
-        $count++;
-    }
-    
-    // release lock on tables
-    $query = "UNLOCK TABLES";
+            'type' => 'campaign',
+            'purpose' => $email_recipient['purpose'])
+    );
+}
+
+// An installation that has not run the 2026.4.8 upgrade yet has none of the
+// retry columns, and keeps the flow it had: one recipient at a time under
+// LOCK TABLES.
+if (!pg_email_retry_ready()) {
+
+    // get e-mail recipients to send e-mail campaign to
+    $query = "SELECT
+                email_recipients.id,
+                email_recipients.email_campaign_id,
+                email_recipients.email_address,
+                email_recipients.contact_id,
+                email_campaigns.type,
+                email_campaigns.action,
+                email_campaigns.action_item_id,
+                email_campaigns.calendar_event_recurrence_number,
+                orders.reference_code AS order_reference_code,
+                email_campaigns.from_name,
+                email_campaigns.from_email_address,
+                email_campaigns.reply_email_address,
+                email_campaigns.bcc_email_address,
+                email_campaigns.subject,
+                email_campaigns.format,
+                email_campaigns.purpose,
+                email_campaigns.created_timestamp
+             FROM email_recipients
+             LEFT JOIN email_campaigns on email_recipients.email_campaign_id = email_campaigns.id
+             LEFT JOIN orders ON email_campaigns.order_id = orders.id
+             WHERE
+                (email_recipients.complete = '0')
+                AND (email_campaigns.status = 'ready')
+                AND (email_campaigns.start_time <= NOW())
+             ORDER BY email_campaigns.start_time, email_recipients.email_campaign_id, email_recipients.id
+             LIMIT $number_of_emails";
     $result = mysqli_query(db::$con, $query);
+
+    $email_recipients = array();
+    $email_campaigns = array();
+
+    // loop through e-mail recipients
+    while ($row = mysqli_fetch_assoc($result)) {
+        $email_recipients[] = $row;
+
+        // if e-mail campaign has not already been added to array, add it
+        if (in_array($row['email_campaign_id'], $email_campaigns) == false) {
+            $email_campaigns[] = $row['email_campaign_id'];
+        }
+    }
+
+    $count = 0;
+
+    foreach ($email_recipients as $email_recipient) {
+
+        // Lock tables, so no one can read tables, to prevent job(s) from sending duplicate e-mails to
+        // the same recipients.  Although we only care about locking the email_recipients &
+        // email_campaigns tables, we have to lock the other tables because MySQL requires that we lock
+        // additional tables that we read from or write to.  For example, the email() function might
+        // write to the log table, so that is why that lock is required.
+
+        $sql_calendar_event_locks = "";
+
+        // If this email campaign was created due to a calendar event being reserved, then lock extra tables.
+        // We have to do this because there are various tables that functions select from in order to deal with these types of campaigns.
+        if ($email_recipient['action'] == 'calendar_event_reserved') {
+            $sql_calendar_event_locks = ", calendar_events WRITE, products WRITE, remaining_reservation_spots WRITE, calendar_events_calendar_event_locations_xref WRITE, calendar_event_locations WRITE";
+        }
+
+        $query = "LOCK TABLES email_recipients WRITE, email_campaigns WRITE, contacts WRITE, log WRITE" . $sql_calendar_event_locks;
+        $result = mysqli_query(db::$con, $query);
+
+        // Never send without the lock: without it a concurrent job could deliver to
+        // the same recipient twice. The recipient stays incomplete and is retried
+        // by the next run.
+        if ($result === false) {
+            error_log('email_campaign_job: LOCK TABLES failed for recipient ' . $email_recipient['id'] . ': ' . mysqli_error(db::$con));
+            continue;
+        }
+
+        // get body for e-mail campaign (we can't get body in join query above for some reason because MySQL takes too long)
+        // this will also allow us to make sure this recipient is still not complete (i.e. to make sure another job hasn't recently sent to this recipient already).
+        $query =
+            "SELECT email_campaigns.body
+            FROM email_recipients
+            LEFT JOIN email_campaigns on email_recipients.email_campaign_id = email_campaigns.id
+            WHERE
+               (email_recipients.id = '" . $email_recipient['id'] . "')
+               AND (email_recipients.complete = '0')
+               AND (email_campaigns.status = 'ready')
+               AND (email_campaigns.start_time <= NOW())";
+        $result = mysqli_query(db::$con, $query);
+
+        // if data for recipient was found, continue with sending e-mail to recipient
+        if (mysqli_num_rows($result) > 0) {
+
+            $row = mysqli_fetch_assoc($result);
+            $email_recipient['body'] = $row['body'];
+
+            $prepared = email_campaign_job_prepare($email_recipient);
+
+            // Opted out since the campaign was created: drop the recipient and
+            // skip to the next.
+            if ($prepared === null) {
+
+                db("DELETE FROM email_recipients WHERE id = '" . $email_recipient['id'] . "'");
+
+                db("UNLOCK TABLES");
+
+                continue;
+            }
+
+            email($prepared['properties']);
+
+            // mark e-mail recipient as complete and set reference code
+            $query =
+                "UPDATE email_recipients
+                SET
+                    complete = '1',
+                    reference_code = '" . $prepared['reference_code'] . "'
+                WHERE id = '" . $email_recipient['id'] . "'";
+            $result = mysqli_query(db::$con, $query);
+
+            $count++;
+        }
+
+        // release lock on tables
+        $query = "UNLOCK TABLES";
+        $result = mysqli_query(db::$con, $query);
+    }
+
+} else {
+
+    $count = 0;
+
+    // Claims that a run left behind - it died, or was killed, between taking
+    // its recipients and finishing with them - are released after fifteen
+    // minutes, far longer than a run takes, and those recipients go back to
+    // the pool.
+    db(
+        "UPDATE email_recipients
+        SET claimed_at = 0, claim_token = ''
+        WHERE
+            (complete = '0')
+            AND (claimed_at > 0)
+            AND (claimed_at < (UNIX_TIMESTAMP() - 900))");
+
+    // Recipients that are due: not claimed by a run, and not waiting out the
+    // pause after a failed attempt.
+    $candidate_ids = db_values(
+        "SELECT email_recipients.id
+        FROM email_recipients
+        LEFT JOIN email_campaigns ON email_recipients.email_campaign_id = email_campaigns.id
+        WHERE
+            (email_recipients.complete = '0')
+            AND (email_campaigns.status = 'ready')
+            AND (email_campaigns.start_time <= NOW())
+            AND (email_recipients.claimed_at = 0)
+            AND (email_recipients.next_attempt_at <= UNIX_TIMESTAMP())
+        ORDER BY email_campaigns.start_time, email_recipients.email_campaign_id, email_recipients.id
+        LIMIT " . (int) $number_of_emails);
+
+    $candidate_ids = array_map('intval', $candidate_ids);
+
+    $email_recipients = array();
+    $email_campaigns = array();
+
+    if ($candidate_ids) {
+
+        if (function_exists('random_bytes')) {
+            $run = bin2hex(random_bytes(16));
+        } else {
+            $run = bin2hex(openssl_random_pseudo_bytes(16));
+        }
+
+        $sql_candidate_ids = implode(',', $candidate_ids);
+
+        // Claim the recipients with one UPDATE, conditional on nobody having
+        // claimed them since the SELECT above. A single statement is atomic
+        // even on MyISAM, which locks the whole table for it: when two runs
+        // overlap, each row is taken by whichever statement reaches it first,
+        // and the other statement no longer matches it. The token says which
+        // rows this run won. No table is locked while a message is sent, so a
+        // slow SMTP server no longer holds every other reader of
+        // email_recipients, contacts and log for the length of the batch.
+        db(
+            "UPDATE email_recipients
+            SET claimed_at = UNIX_TIMESTAMP(), claim_token = '" . e($run) . "'
+            WHERE
+                (id IN (" . $sql_candidate_ids . "))
+                AND (complete = '0')
+                AND (claimed_at = 0)
+                AND (next_attempt_at <= UNIX_TIMESTAMP())");
+
+        // Read what was won, by primary key. The campaign conditions are asked
+        // again: a campaign cancelled in the meantime sends nothing more.
+        $email_recipients = db_items(
+            "SELECT
+                email_recipients.id,
+                email_recipients.email_campaign_id,
+                email_recipients.email_address,
+                email_recipients.contact_id,
+                email_recipients.attempts,
+                email_campaigns.type,
+                email_campaigns.action,
+                email_campaigns.action_item_id,
+                email_campaigns.calendar_event_recurrence_number,
+                orders.reference_code AS order_reference_code,
+                email_campaigns.from_name,
+                email_campaigns.from_email_address,
+                email_campaigns.reply_email_address,
+                email_campaigns.bcc_email_address,
+                email_campaigns.subject,
+                email_campaigns.format,
+                email_campaigns.purpose,
+                email_campaigns.created_timestamp,
+                email_campaigns.body
+            FROM email_recipients
+            LEFT JOIN email_campaigns ON email_recipients.email_campaign_id = email_campaigns.id
+            LEFT JOIN orders ON email_campaigns.order_id = orders.id
+            WHERE
+                (email_recipients.id IN (" . $sql_candidate_ids . "))
+                AND (email_recipients.claim_token = '" . e($run) . "')
+                AND (email_recipients.complete = '0')
+                AND (email_campaigns.status = 'ready')
+                AND (email_campaigns.start_time <= NOW())
+            ORDER BY email_campaigns.start_time, email_recipients.email_campaign_id, email_recipients.id");
+    }
+
+    $max_attempts = pg_mail_max_attempts();
+
+    foreach ($email_recipients as $email_recipient) {
+
+        // if e-mail campaign has not already been added to array, add it
+        if (in_array($email_recipient['email_campaign_id'], $email_campaigns) == false) {
+            $email_campaigns[] = $email_recipient['email_campaign_id'];
+        }
+
+        $email_recipient_id = (int) $email_recipient['id'];
+
+        $prepared = email_campaign_job_prepare($email_recipient);
+
+        // Opted out since the campaign was created: drop the recipient.
+        if ($prepared === null) {
+            db("DELETE FROM email_recipients WHERE id = '" . $email_recipient_id . "'");
+            continue;
+        }
+
+        $attempt_number = (int) $email_recipient['attempts'] + 1;
+
+        // The sender is told about an undeliverable message once, on the
+        // last attempt. Told on every attempt, an SMTP outage would bring
+        // one notice per recipient per attempt.
+        $properties = $prepared['properties'];
+        $properties['notify_sender'] = ($attempt_number >= $max_attempts);
+
+        if (email($properties)) {
+
+            db(
+                "UPDATE email_recipients
+                SET
+                    complete = '1',
+                    reference_code = '" . e($prepared['reference_code']) . "',
+                    claimed_at = 0,
+                    claim_token = ''
+                WHERE
+                    (id = '" . $email_recipient_id . "')
+                    AND (claim_token = '" . e($run) . "')");
+
+            $count++;
+
+            continue;
+        }
+
+        $error = pg_mail_clip(pg_mail_last_error(), 500);
+
+        // Out of attempts: the recipient is complete as far as the campaign is
+        // concerned - the campaign can finish - and marked failed, which the
+        // campaign screen counts.
+        if ($attempt_number >= $max_attempts) {
+
+            db(
+                "UPDATE email_recipients
+                SET
+                    complete = '1',
+                    failed = '1',
+                    attempts = '" . $attempt_number . "',
+                    last_error = '" . e($error) . "',
+                    claimed_at = 0,
+                    claim_token = ''
+                WHERE
+                    (id = '" . $email_recipient_id . "')
+                    AND (claim_token = '" . e($run) . "')");
+
+            log_activity(lang(array(
+                'string' => 'A campaign e-mail to {var:1} was given up after {var:2} attempts: {var:3}',
+                'vars'   => array($email_recipient['email_address'], $attempt_number, $error),
+            )), 'UNKNOWN');
+
+        } else {
+
+            db(
+                "UPDATE email_recipients
+                SET
+                    attempts = '" . $attempt_number . "',
+                    last_error = '" . e($error) . "',
+                    next_attempt_at = UNIX_TIMESTAMP() + " . (int) pg_mail_backoff($attempt_number) . ",
+                    claimed_at = 0,
+                    claim_token = ''
+                WHERE
+                    (id = '" . $email_recipient_id . "')
+                    AND (claim_token = '" . e($run) . "')");
+        }
+    }
+
+    // Anything this run claimed and did not finish with - a recipient whose
+    // campaign was cancelled between the SELECT and the claim - goes straight
+    // back rather than waiting out the fifteen minutes.
+    if ($candidate_ids) {
+        db(
+            "UPDATE email_recipients
+            SET claimed_at = 0, claim_token = ''
+            WHERE
+                (id IN (" . $sql_candidate_ids . "))
+                AND (claim_token = '" . e($run) . "')");
+    }
 }
 
 // loop through all e-mail campaigns that were sent in order to check if e-mail campaign is complete

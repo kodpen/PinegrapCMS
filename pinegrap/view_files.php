@@ -543,28 +543,20 @@ echo
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        
-                        <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
                             <a class="btn btn-sm btn-primary m-1 " href="create_file.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-outline-primary m-1 " href="view_folders.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-folder2-open me-2"></span>' . lang(array('string'=>'File Manager') ) . '</a>
-                        </nav>
-                    </div>
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                        <div class="row justify-content-center justify-content-md-end">
-                            <form id="search_form" action="view_files.php" method="get" class="search_form col-auto">
+                            <div class="pg-toolbar-grow"></div>
+                            <form id="search_form" action="view_files.php" method="get" class="search_form">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" name="filter" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
+                                    <select id="filter_select" name="filter" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
+                </nav>
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_files.php" method="post"> 

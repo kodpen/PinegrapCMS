@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * ERP - one quote: changed while it is open, printed, e-mailed, marked
- * accepted or rejected, and turned into an invoice draft. The work lives in
- * includes/erp/quotes.php.
+ * accepted or rejected, signed by the customer on the screen, and turned
+ * into an invoice draft. The work lives in includes/erp/quotes.php and
+ * includes/erp/signatures.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -97,6 +98,49 @@ if ($_POST) {
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id']);
     }
 
+    // The customer signs on this screen (or a tablet showing it): the drawing
+    // is kept with the record around it, and the quote is accepted.
+    if ($action === 'sign') {
+        $signer_name = mb_substr(trim((string) ($_POST['signer_name'] ?? '')), 0, 255);
+        $_SESSION['software']['erp_quote_signer'][$quote_id] = $signer_name;
+
+        if (!in_array(erp_quote_state($quote), array('open', 'expired', 'accepted'), true)) {
+            $liveform->mark_error('_error', h(lang('Only an open or accepted quote can be signed.')));
+            go($self_url . '#erp-signature');
+        }
+
+        $png = pg_signature_png_from_data_url((string) ($_POST['signature'] ?? ''));
+
+        if ($png === false) {
+            $liveform->mark_error('_error', h(lang('The signature could not be read. Sign again.')));
+            go($self_url . '#erp-signature');
+        }
+
+        $stored = erp_signature_store('quote', $quote_id, $png, array(
+            'signer_name' => $signer_name,
+            'document_hash' => erp_signature_document_hash_quote($quote),
+            'label' => (string) $quote['full_number'],
+            'user_id' => (int) $user['id'],
+        ));
+
+        if (!$stored['success']) {
+            $liveform->mark_error('_error', h($stored['error']));
+            go($self_url . '#erp-signature');
+        }
+
+        unset($_SESSION['software']['erp_quote_signer'][$quote_id]);
+
+        if (erp_quote_state($quote) !== 'accepted') {
+            erp_quote_set_status($quote_id, 'accepted', (int) $user['id']);
+        }
+
+        erp_event_quote($quote_id, 'erp.quote.signed');
+
+        log_activity(lang(array('string' => 'erp quote ({var:1}) was signed by {var:2}', 'vars' => array($quote['full_number'], $stored['record']['signer_name']))), $_SESSION['sessionusername']);
+        $liveform->add_notice(h(lang('The quote was signed and is accepted.')));
+        go($self_url . '#erp-signature');
+    }
+
     if ($action === 'mail') {
         $sent = erp_quote_mail_send($quote_id, (string) ($_POST['mail_to'] ?? ''), (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id']);
 
@@ -149,7 +193,11 @@ if (!$readonly) {
 }
 
 $output_invoice = '';
-if (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') !== '')) {
+if (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') === 'cancelled')) {
+    $output_invoice = '<div class="alert alert-warning d-flex flex-wrap gap-2 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
+        . '<span>' . lang('The invoice made from this quote was cancelled; the quote can be invoiced again.') . '</span>'
+        . '<a class="ms-auto" href="edit_erp_invoice.php?id=' . (int) $quote['invoice_id'] . '">' . lang('Open the invoice') . '</a></div>';
+} elseif (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') !== '')) {
     $is_draft = ((string) $quote['invoice_status'] === 'draft');
     $output_invoice = '<div class="alert alert-info d-flex flex-wrap gap-2 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
         . '<span>' . ($is_draft ? lang('This quote became an invoice draft.') : h(lang(array('string' => 'This quote became invoice {var:1}.', 'vars' => (string) $quote['invoice_number'])))) . '</span>'
@@ -187,7 +235,8 @@ if ($editable) {
                         <button type="submit" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
-            </form>';
+            </form>
+            ' . erp_account_quick_modal();
 } else {
     $rows = '';
     foreach (erp_quote_editor_rows($quote) as $line) {
@@ -303,12 +352,88 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
 
 $status = $statuses[$state] ?? array($state, 'secondary');
 
+// The customer's signature: shown once given, never redrawn or removed; the
+// pad while the quote may still be signed.
+$signature = erp_signature('quote', $quote_id);
+$output_signature = '';
+$output_signature_icon = '';
+
+if ($signature !== null) {
+    $record_intact = erp_signature_verify($signature) && erp_signature_image_matches($signature);
+    $document_matches = erp_signature_document_matches($signature, erp_signature_document_hash_quote($quote));
+    $check = function ($ok, $good, $bad) {
+        return '<div class="small ' . ($ok ? 'text-success' : 'text-danger') . '"><i class="bi ' . ($ok ? 'bi-check-circle' : 'bi-exclamation-triangle') . ' me-1" aria-hidden="true"></i>' . ($ok ? $good : $bad) . '</div>';
+    };
+
+    $output_signature_icon = ' <i class="bi bi-pen text-success fs-6 align-middle" title="' . h(lang('Signed')) . '" aria-label="' . h(lang('Signed')) . '"></i>';
+    $output_signature = '
+            <div class="card my-4" id="erp-signature">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Customer signature') . '</div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-12 col-md-5">'
+                            . (((string) $signature['file_name'] !== '')
+                                ? '<img src="' . h(OUTPUT_PATH . (string) $signature['file_name']) . '" alt="' . h(lang('Customer signature')) . '" class="img-fluid border rounded bg-white p-2" style="max-height:10rem" />'
+                                : '<span class="text-danger">' . lang('The drawing of the signature is missing.') . '</span>') . '
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <div><span class="text-body-secondary">' . lang('Signed by') . '</span> <b>' . h((string) $signature['signer_name']) . '</b></div>
+                            <div class="small text-body-secondary mb-2">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $signature['signed_at']), 'date and time'))
+                                . (((string) ($signature['username'] ?? '') !== '') ? ' · ' . h(lang(array('string' => 'on the screen of {var:1}', 'vars' => (string) $signature['username']))) : '')
+                                . (((string) $signature['ip_address'] !== '') ? ' · ' . h((string) $signature['ip_address']) : '') . '</div>
+                            ' . $check($record_intact, lang('The signature record is intact.'), lang('The signature record or its drawing was changed after it was written.')) . '
+                            ' . $check($document_matches !== false, lang('The quote is unchanged since it was signed.'), lang('The quote was changed after it was signed; the signature is no longer printed on it.')) . '
+                            <div class="form-text">' . lang('An ordinary electronic signature drawn on the screen; it is not a qualified electronic signature.') . '</div>
+                        </div>
+                    </div>
+                </div>
+            </div>';
+} elseif (!$readonly && erp_signatures_ready() && in_array($state, array('open', 'expired', 'accepted'), true)) {
+    $signer_default = $_SESSION['software']['erp_quote_signer'][$quote_id] ?? (string) $quote['account_title'];
+    unset($_SESSION['software']['erp_quote_signer'][$quote_id]);
+
+    $output_signature = '
+            <div class="card my-4" id="erp-signature">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Customer signature') . '</div>
+                <div class="card-body">
+                    <form name="signature_form" action="edit_erp_quote.php" method="post" class="row g-3 disable_shortcut" autocomplete="off">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . $quote_id . '" />
+                        <input type="hidden" name="erp_action" value="sign" />
+                        <div class="col-12">
+                            <div class="form-text mt-0">' . lang('The customer signs below, on this screen or a tablet showing it. The quote is then accepted, and the signature is printed on it.') . '</div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="signer_name">' . lang('Name of the person signing') . '</label>
+                            <input type="text" class="form-control" id="signer_name" name="signer_name" value="' . h($signer_default) . '" maxlength="255" required />
+                        </div>
+                        <div class="col-12">
+                            ' . erp_signature_pad_markup('signature', array('id' => 'erp_quote_signature')) . '
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang('Keep this signature with the quote and mark it accepted? A signature cannot be removed.')) . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-pen me-1" aria-hidden="true"></i>' . lang('Sign and accept') . '</button>
+                        </div>
+                    </form>
+                </div>
+            </div>' . pg_signature_includes();
+}
+
+// A copy is always a new open quote, whatever became of this one.
+$output_copy_button = (!$readonly && erp_quotes_ready())
+    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?copy=' . $quote_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    : '';
+
+// The same gate as the audit trail screen: the ERP settings managers and the accountant.
+$output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $readonly)))
+    ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
+    : '';
+
 echo
 pg_page_shell([
     'title' => (string) $quote['full_number'],
     'extra classes' => 'erp erp_invoices',
     'icon' => 'erp',
-    'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge text-bg-' . h($status[1]) . ' ms-1 align-middle fs-6">' . h($status[0]) . '</span>',
+    'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge text-bg-' . h($status[1]) . ' ms-1 align-middle fs-6">' . h($status[0]) . '</span>' . $output_signature_icon,
     'heading_description' => (string) $quote['account_title'] . ' · ' . lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false))),
     'cancel' => array('enable' => 'true', 'url' => 'erp_quotes.php'),
     'breadcrumb' => array(
@@ -327,12 +452,15 @@ pg_page_shell([
                 <a class="btn btn-sm btn-outline-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
                 <a class="btn btn-sm btn-outline-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
                 ' . $output_mail_button . '
+                ' . $output_copy_button . '
+                ' . $output_audit_button . '
                 <span class="ms-auto d-flex flex-wrap gap-1">' . $output_actions . '</span>
             </nav>
 
             ' . $output_invoice . '
             ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly) ? '<div class="form-text mb-2">' . lang('Only an open quote can be changed; "Open again" makes it editable.') . '</div>' : '') . '
             ' . $output_body . '
+            ' . $output_signature . '
             ' . $output_mail . '
         </div>
     </div>

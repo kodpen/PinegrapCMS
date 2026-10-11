@@ -19,6 +19,1586 @@
 
 
 
+  2026.4.8
+  ==========================================================
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Bütün şablonlarda Destek Merkezi. Sayfanın arama kutusu
+         tüm sitede arar: sayfalar, arama bölümü olarak işaretli
+         kısımlar ve mağazalı şablonlarda ürünler. Sonuç sayfanın
+         soruyu yanıtlayan bölümüne gider, aranan kelimeler sarıyla
+         işaretlenir. Yanında popüler konular, altında sık sorulan
+         sorular var. Oyun Bahçesi'nde aynı sayfanın adı "Ne
+         ararsan bul". Online Mağaza, Butik ve Kitapçı'nın üst
+         bilgisindeki arama kutusu ürünlerde aramaya devam eder.
+         Destek Merkezi'ne Mağaza'da üst menüdeki "Yardım"dan,
+         Merhaba ve Oyun Bahçesi'nde menüdeki büyüteçten, Butik'te
+         ürün aramasının altındaki "Tüm sitede ara"dan, Kitapçı'da
+         üstteki hızlı bağlantılardan ve hepsinde alt bilgiden
+         gidilir. Site Ayarları'nda gelişmiş arama açıksa yeni
+         sayfalar arama dizini yenilendiğinde bulunur.
+
+  [YENİ] Şablonların içerik bölümleri arama bölümü olarak
+         işaretli: hakkımızda, hizmetler, iletişim bilgileri,
+         kargo ve iade, bakım rehberi, ziyaret bilgileri,
+         etkinlikler, kitap kulübü ve "Şimdi" sayfası; sık sorulan
+         soruların her biri ayrı bir bölüm. Her bölüme metinde
+         geçmeyen ama aranabilecek konular verildi (ör. "kargo
+         takibi", "parola", "rezervasyon").
+
+  [YENİ] Arama işareti kapalı alanı açar. Sonuçtan gelinen
+         sayfada aranan kelime kapalı bir akordeon cevabında ya da
+         kapalı bir açılır bölümde (details) kalıyorsa o alan
+         açılır; ziyaretçi bulunanı hemen görür.
+
+  [YENİ] Bütün şablonlarda hesap, personel ve blog sayfaları.
+         Online Mağaza, Butik ve Kitapçı şablonlarına blog
+         geldi: yazı listesi, yazı sayfası (yorumlar ve yapay
+         zekâ özeti kutusuyla), ana sayfada son üç yazı, üst
+         menüde ve alt bilgide bağlantı (Butik'te adı "Günce").
+         Personel alanı da geldi: personel sayfası, blog yazısı
+         formu, personel rehberine ekleme formu ve üyelerin
+         Hesabım'dan açtığı personel rehberi. İletişim formundan
+         gelen mesaj artık ziyaretçiyle bir görüşmeye dönüşür;
+         yanıtlar görüşme sayfasında ve gelen kutusunda
+         yazışılır, hesabı olmayan ziyaretçiye hesap açılır.
+         Oyun Bahçesi şablonuna giriş, kayıt, şifre ve Hesabım
+         sayfaları, üst bilgide giriş bölgesi, gelen kutusu ve
+         personel alanı eklendi; "Merhaba de" formunun mesajları
+         da görüşmeye dönüşür. Personel alanının bağlantısı
+         hesap menüsünde ("Personel alanı") ve Hesabım
+         sayfasında ("Personel Alanı" kartı) yalnız özel
+         klasöre erişimi olan kişilere görünür.
+
+  [YENİ] Şablonların blogu kendi örnek yazılarıyla açılır. Blog
+         formu önceden sitenin örnek verisindeki blog yazılarını
+         kopyalıyordu; şablonla kurulan sitede başlangıç
+         sitesinin sayfaları kaldırıldığı için kopyalanacak yazı
+         kalmıyor ve blog boş açılıyordu. Artık her şablon dört
+         örnek yazısını kendisi getirir; yazılar düzenlenip
+         silinebilir.
+
+  [YENİ] Hesabım widget'ında personel bağlantısı. Hesabım
+         Ayarları'nda "Personel sayfası" seçilince
+         ^^__staff_url^^ bağlantısı ve "Ziyaretçi personel
+         sayfasını açabilir" (is_staff) koşulu kullanılabilir;
+         ikisi de yalnız o sayfanın klasörünün içeri aldığı
+         üyelere görünür, Giriş Bölgesi'ndeki gibi.
+
+  [YENİ] Blog yazısında yapay zekâ özeti. "Pinegrap'a merhaba
+         deyin" ve "Oyun Bahçesi" şablonlarının yazı sayfasında
+         "Bu yazıyı yapay zekâyla özetle" kutusu var. ChatGPT,
+         Claude, Perplexity ve Google AI düğmeleri ziyaretçinin
+         kendi asistanını yazının adresi ve hazır bir soruyla
+         açar. "Burada özetle" düğmesi yazıyı tarayıcının
+         yerleşik yapay zekâsıyla (masaüstü Chrome ve Edge 138
+         ve üstü) ziyaretçinin cihazında özetler ve ana
+         fikirleri kutuya yazar. Sayfanın dilinde özet
+         yazamayan tarayıcı özeti İngilizce çıkarıp kendi
+         çevirmeniyle sayfanın diline çevirir; bunu da
+         yapamayan tarayıcıda düğme görünmez. Yazı hiçbir
+         sunucuya gönderilmez, ücret yoktur. Kutu yalnız
+         herkese açık yazıda görünür. Kendi tasarımınızda Form
+         Öğesi Görünümü widget'ında: bağlantılara
+         ^^__ai_chatgpt_url^^, ^^__ai_claude_url^^,
+         ^^__ai_perplexity_url^^ ya da ^^__ai_google_url^^,
+         düğmeye "Tarayıcının yapay zekâsıyla özetle" eylemi,
+         özetin yazılacağı öğeye ^^__ai_summary^^ bağlanır;
+         kutuyu "has_ai_links" koşuluyla gösterin. Asistanlara
+         sorulan soru Detay Görünümü Ayarları'nda değişir
+         ({url} yazının adresidir).
+
+  [DÜZELTME] Online Mağaza, Kitapçı ve Butik şablonlarının
+         oluşturduğu örnek ürünler hiçbir kargo bölgesine
+         bağlanmıyordu: ürün sepete giriyor, ama teslimat
+         adımında hiçbir adrese gönderilemiyordu. Şablonun
+         oluşturduğu ürünler artık sitedeki bütün kargo
+         bölgelerine (International dahil) bağlanıyor; bölgeleri
+         ürünün kargo ayarlarından daraltabilirsiniz. Daha önce
+         oluşmuş ürünler değişmez, bölgeleri ürün ekranından
+         seçilmelidir.
+
+  [YENİ] Arama bölümü: bir öğe seçilip Seçenekler → Arama ve
+         SERP'ten "Arama bölümü" açılınca site araması o kısmı
+         tanır. Aranan ifade bölümün başlığında, metninde ya da
+         ona verilen konularda geçiyorsa sonuç sayfanın başına
+         değil doğrudan o bölüme gider; ziyaretçi geldiğinde
+         aranan kelimeler sarıyla işaretlenir, bölüm kısa süre
+         çerçevelenir. Sonucun alıntısı bölümden gelir; Arama
+         Sonuçları widget'ında yeni ^^__result_section^^ alanı
+         bölümün adını verir. Konular sayfada görünmez ama
+         aranır (gelişmiş aramada arama dizini yenilenince).
+         Bölüm, sayfanın yapılandırılmış verisinde (WebPage →
+         hasPart) adı ve bağlantısıyla yer alır; arama
+         motorları sonucu doğrudan o kısma yönlendirebilir
+         (Ayarlar'da Yapılandırılmış Veri açık olmalı). Anahtar
+         açılınca öğeye başlığından bir kimlik (id) verilir.
+
+  [DÜZELTME] Bir görselin nesne konumu (Object Pos) ya da bir
+         ikonun boyutu seçeneklerden değiştirildiğinde sayfaya
+         yansımıyordu: değer Özellikler alanındaki style içine de
+         kopyalanıyor, eski kopya yeni değeri eziyordu; kopya elle
+         silinince yeni değer geliyordu. Değer artık yalnız
+         seçenekte tutuluyor, style satırında da görünüyor ve iki
+         yönlü eşleşiyor: seçenek değişince style güncelleniyor,
+         style'dan silinen ya da elle yazılan değer seçeneğe
+         yansıyor, style satırı silinince seçenek de temizleniyor.
+         Eski tasarımlarda kalan kopya, öğe seçildiğinde sayfada
+         görünen değerle seçeneğe aktarılıyor. Aynı sorun
+         arka plan gradyanında da vardı (style'dan silinen ya da
+         elle değiştirilen gradyanı panel eski hâliyle
+         gösteriyor, sonraki düzenlemede geri yazıyordu);
+         giderildi.
+
+  [YENİ] Bootstrap'sız (Custom) tasarımlarda Özellikler paneli
+         yalnız doğrudan style yazan ayarları gösteriyor:
+         genişlik, yükseklik, taşma, konum değerleri, z-index,
+         arka plan, yazı tipi, nesne konumu. Bootstrap
+         sınıflarıyla çalışan ayarlar (boşluklar, görüntüleme,
+         flex, metin ve renk sınıfları, kenarlık ve köşe,
+         gölge, en-boy oranı, ipucu, nesne sığdırma) bu
+         tasarımlarda gizli. Temalar sekmesindeki Bootstrap
+         değişkenleri (renkler, yazı tipleri, kenarlıklar) ve
+         açık/koyu blokları da gizleniyor; tema dosyası seçimi
+         kalıyor.
+
+  [YENİ] Hazır şablonlarda üst bilginin üstündeki hesap çubuğu
+         (duyuru, dil seçici, sepet ve giriş bağlantıları) artık
+         üst ve alt bilgi gibi bir ortak bileşen: bir kez
+         düzenlenince bütün sayfalarda değişir, her sayfada ayrı
+         ayrı düzenlemek gerekmez. Şablon sürümleri: Pinegrap'a
+         merhaba deyin 2.4.5, Online Mağaza 1.0.5, Butik 1.0.4,
+         Kitapçı 1.0.4. Bu şablonlardan daha önce kurulmuş
+         tasarımlar değişmez.
+
+  [YENİ] Tema değiştiriciler (açılır menü, düğme, anahtar)
+         sayfaya artık kendi kodlarını bırakmıyor. Yazılımla gelen
+         tek bir betik (pg_theme_switcher.js), sayfada bir tema
+         değiştirici göründüğünde o sayfaya kendiliğinden eklenir:
+         değiştirici sayfanın içinde, tasarımın bir ortak
+         bileşeninde ya da başka tasarımlarda da kullanılan bir
+         ortak bileşende olabilir. Değiştirici kaldırılınca betik
+         de gider. Ziyaretçinin seçimi sayfa çizilmeden uygulanır.
+         Daha önce yerleştirilmiş değiştiriciler kendi kodlarıyla
+         çalışmaya devam eder.
+
+  [DÜZELTME] Tema değiştiricinin açılır menüsünde "Açık"
+         seçeneği İngilizce arayüzde "Expanded" yazıyordu.
+
+  [YENİ] Bir sayfa başka bir tasarıma kopyalanabiliyor ya da
+         taşınabiliyor: sekme menüsünde "Başka tasarıma kopyala"
+         ve "Başka tasarıma taşı". Seçilen tasarım açılır; kopya
+         orada yeni bir taslak sekme olarak gelir, taşınan sayfa
+         ise yayınlanınca o tasarıma geçer.
+
+  [YENİ] Sayfa eklerken tasarım seçiliyor. Sayfalar listesinde
+         ve dosya yöneticisinin Yeni menüsünde "Sayfa Ekle",
+         sayfanın gireceği tasarımı sorar (klasörün tasarımı,
+         yoksa en son düzenlenen seçili gelir; "Yeni tasarım" da
+         seçilebilir). Tasarım bütün sayfalarıyla açılır, yeni
+         sayfa sekmesi adı yazılmaya hazır gelir; dosya
+         yöneticisinden eklenen sayfa açık olan klasöre girer.
+         Klasik sayfa ekranı "Sayfa Ekle (legacy)" adıyla
+         yanında duruyor. Daha önce bu düğme her seferinde yeni
+         bir tasarım başlatıyordu ve adı çevrilmemişti.
+
+  [YENİ] Menüde Görsel Sayfa Editörü, Dosya Yöneticisi ile
+         Sayfalar arasına alındı; alt menüsüne "Şablondan Seç"
+         eklendi.
+
+  [YENİ] Tasarım listesindeki "Ortak bileşenler ve sistem
+         widget'ları" tablosu artık sayfanın altında değil, listenin
+         üstündeki düğmeyle sağdan açılan bir panelde. Düğme kaç
+         satır olduğunu gösterir; seçip toplu silme aynen çalışır.
+
+  [DÜZELTME] Şablonlardaki dil seçicinin menüsü telefonda,
+         daraltılmış menünün içinde sol kenardan ekran dışına
+         taşıyordu. Dil seçicinin "Menü" ayarına "Geniş ekranda
+         sağda, telefonda solda" ve "Tabletten itibaren sağda,
+         telefonda solda" seçenekleri geldi; yeni yerleştirilen dil
+         seçici ve beş şablon bunu kullanır.
+
+  [DÜZELTME] "Dil Seçici" sistem widget'ının başlangıç düzeni de
+         menüyü telefonda sola açar (yeni eklenen widget'larda;
+         kayıtlı olanlar aynen kalır).
+
+  [YENİ] Sayfa sekmeleri sıralanıp gruplanabiliyor, tarayıcıdaki
+         sekme grupları gibi. Sekmeler sürükleyerek ya da Alt+← / Alt+→
+         ile istenen sıraya dizilir. Sekmenin menüsünden "Yeni gruba
+         ekle" ile adlı ve renkli bir grup kurulur; grubun çipine
+         tıklayınca grup daralır ya da açılır, çift tıklayınca adı
+         değişir, çipin menüsünden rengi seçilir ya da grup dağıtılır
+         (sayfalar yerinde kalır). Sekme bir grubun içine ya da
+         dışına sürüklenebilir, çip sürüklenince grup bütün olarak
+         taşınır. Sıra ve gruplar tasarımda saklanır ve Kaydet'i
+         beklemez; hangi grubun daraltıldığı her tarayıcıda ayrı
+         hatırlanır. Yeni, çoğaltılan, seçilen ve içe aktarılan
+         sayfalar artık şeridin sonuna değil, açık sekmenin hemen
+         sağına (o bir gruptaysa aynı gruba) açılır. İçerik
+         düzeyindeki kullanıcılar düzeni görür, değiştirmez.
+
+  [ŞEMA] Sayfa sekmelerinin sırası ve grupları için style
+         tablosuna style_tab_layout sütunu.
+
+  [DÜZELTME] Editör sitedeki "Sayfayı Düzenle" bağlantısıyla
+         açılıp sayfanın adı değiştirildiğinde (ör. "hakkimizda"
+         → "dizinadi/hakkimizda") kayıttan sonra editörden çıkmak
+         (Ctrl+G) eski adrese, siteadi.com/hakkimizda'ya
+         götürüyor ve "sayfa bulunamadı" çıkıyordu. Dönüş adresi
+         artık sayfanın yeni adını izliyor.
+
+  [YENİ] "Hesap Güvenliği" sistem widget'ı: üyenin Google
+         bağlantısı, hatırlanan cihazları (tek tek ya da hepsinden
+         çıkış) ve iki adımlı doğrulaması (QR koduyla açma, kurtarma
+         kodları, yeni kodlar, parola ve kodla kapatma) tasarımcıyla
+         kurulan sitelerde de hesap sayfasında görünür. Her blok
+         kendi formudur; kod alanında Enter yalnız o bloğun
+         düğmesine gider. "Pinegrap'a merhaba deyin", Boutique,
+         Bookshop ve Online Mağaza şablonlarında Hesabım sayfasına
+         eklendi (bu şablonlarla yeni açılan tasarımlarda).
+
+  [DÜZELTME] Aynı sayfada birden çok sistem widget'ı varken bir
+         formun hata ya da bilgi iletisi o formun yanında değil,
+         sayfada önce gelen başka bir widget'ın üstünde
+         çıkabiliyordu (ör. alt bilgideki bülten formunun hatası
+         ürün listesinin tepesinde). Her widget artık yalnız
+         kendi iletilerini gösteriyor.
+
+  [YENİ] Üç yeni tasarım şablonu. Playground: eğlenceli bir
+         kişisel site; herkesin yorum yapabildiği bir blog,
+         yeni merhabaları bir duvarda gösteren ziyaretçi
+         defteri, projeler ve "şimdi" sayfası. Boutique:
+         takı, çanta, gözlük ve hediye butiği; editoryal ana
+         sayfa, lookbook ve sekmeli hediye rehberi. Bookshop:
+         kitapçı ve kırtasiye; ekip seçimleri, çok satanlar,
+         etkinlikler ve hoş geldin e-postası gönderen kitap
+         kulübü. Boutique ve Bookshop kendi örnek
+         kataloglarıyla, görselleriyle birlikte gelir.
+
+  [YENİ] "Şablondan Seç" kartları kısaldı. Kartta şablonun
+         görseli, adı, tek satırlık açıklaması ve düğmeleri
+         kalıyor; sayfa listesi, öne çıkanlar, önerilen tema,
+         çatı ve sürüm ⓘ düğmesinin ipucunda. "Bu temayı
+         kullan" kartta duruyor.
+
+  [YENİ] Genel Bakış'taki arama, öğenin adıyla birlikte
+         tasarımcı etiketini ve #id'sini de buluyor. Uzun
+         etiketler ağaçta daha geç kesiliyor.
+
+  [HIZ] Ağır animasyonlu sayfalarda görsel editör takılmıyor.
+         Tuvalde ya da katmanlar panelinde bir öğeye tıklamak
+         artık sayfayı baştan çizmiyor: seçim yalnız
+         işaretleniyor, oynayan bir animasyon (ör. bir SVG
+         logo) her tıklamada baştan başlamıyor. Tasarımın
+         JavaScript dosyaları tuvalde bir kez çalışıyor; her
+         geri al, stil, yazı tipi ya da tema değişikliğinde
+         yeniden çalışıp zamanlayıcı ve dinleyici biriktirmiyor.
+         Bir JavaScript dosyası değişince tuval temiz bir
+         belgeyle yeniden açılıyor. Bootstrap paketi tuvale iki
+         kez yüklenmiyor, yalnız değişen stil dosyası
+         yenileniyor.
+
+  [YENİ] Tuval araç çubuğunda "Animasyonlar" düğmesi. Tuvalde
+         sayfanın animasyonları varsayılan olarak durur ve son
+         halleriyle görünür; düğmeyle oynatılır, seçim
+         tarayıcıda hatırlanır. Hareketi azaltma ayarına bakan
+         betikler de duraklatılmışken döngü başlatmaz. Paletten
+         ya da tuvalden bir öğe sürüklenirken animasyonlar
+         bekletilir, bırakma gecikmeden yerine oturur. Önizleme
+         penceresi ve site animasyonları her zaman oynatır.
+
+  [YENİ] Bootstrap ikonları her yerde ikon olarak düzenlenir.
+         HTML içe aktarmada ve yapıştırmada, tasarımın çatısı ne
+         olursa olsun, "bi bi-…" sınıflı <i> ve <span> öğeleri
+         ikon olarak gelir; içinde ikon olan bağlantı ve
+         düğmelerde ikon ayrı bir öğe olur. Elle "bi bi-house"
+         sınıfı verilen bir öğe (div, i, span) seçilince ikon
+         seçicisini gösterir; yalnız ikondan ibaretse çift
+         tıklamayla da değişir.
+
+  [YENİ] Ortak bileşenin içine başka bir ortak bileşen ya da
+         sistem widget'ı (ör. sepet bağlantısı) konabiliyor;
+         yayın artık "iç içe ortak bileşene izin yok" diye
+         durmuyor. Birbirini döngü halinde içeren bileşenler
+         kaydedilmez: editör böyle bir bırakmaya izin vermez ve
+         döngüyü bileşen adlarıyla bildirir. Bir bileşenin
+         kullanıldığı sayfalar, onu içeren bileşenin
+         sayfalarını da kapsar.
+
+  [DÜZELTME] Kendi CSS çatısıyla (Bootstrap dışında) kurulan
+         tasarımlarda tuval sitedeki görünümden ayrılıyordu: yan
+         yana durması gereken bloklar sütunlara yayılıyor,
+         çatının kuralları editörün kutuları yüzünden
+         tutmuyordu, yazı tipi değişiyordu, kaydırınca beliren
+         bölümler görünmüyordu. Tuval artık sayfanın düzenini
+         çiziyor; seçim çerçevesi, araç çubuğu ve sürükle-bırak
+         işaretleri öğenin kendisinde.
+
+  [DÜZELTME] Bootstrap 5 tasarımlarında satırdaki sütunlar
+         tuvalde sayfadakinden geniş çiziliyordu (sütun aralığı
+         yok sayılıyordu); yan yana dizilen liste öğeleri alt
+         alta düşüyordu.
+
+  [DÜZELTME] Liste widget'larının (blog, form kayıtları, ürün
+         kataloğu) tekrarlanan kartı tuvalde sayfadaki gibi
+         çiziliyor: tasarlanan kartın görsel yer tutucusu gerçek
+         kayıtların görseli kadar, kartlar satırın düzenini
+         alıyor, kartın tarih alanı kolayca seçiliyor. Kartın
+         ardından gelen gerçek kayıtların sayısı widget'ın
+         sayfada gösterdiği sayıyı izliyor (en çok on): üç kayıt
+         gösteren widget tuvalde de üç kart gösteriyor.
+
+  [DÜZELTME] Sepet bağlantısı, giriş bölgesi ve dil seçici
+         widget'larının düzenine eklenen "Mesajlar (PHP)" alanı
+         kaldırıldı. Bu widget'lar hiçbir zaman mesaj göstermez;
+         alan yalnız tuvalde, başlığın ortasında "PHP Mesajları"
+         kutusu çiziyordu. Yeni widget'lar bu alan olmadan
+         kurulur, eski düzende kalan alan editörde görünmez.
+
+  [HIZ] Tuvalde kaydırma takılmıyor. Her kaydırma adımında
+         tuvaldeki bütün öğeler yeniden ölçülüp düzeltiliyordu;
+         kendiliğinden dönen bir karusel bile bunu durmadan
+         tetikliyordu. Artık kaydırmada yalnız seçili ve fare
+         altındaki öğenin araç çubuğu güncelleniyor. Kendi CSS
+         çatısıyla kurulan tasarımlarda tuvalin stil hesabı da
+         birkaç kat hızlandı.
+
+  [DÜZELTME] Görsel editörde Form Listesi ya da Form Kaydı
+         widget'ıyla kurulan sayfalar RSS beslemesi vermiyordu;
+         katalog widget'lı sayfalar veriyordu. Sayfa artık
+         "?rss=true" ile formun en yeni elli kaydını (başlık,
+         açıklama, kategori ve medya alanları formun RSS öğesi
+         ayarından) sunuyor ve beslemeyi sayfa başlığında
+         duyuruyor; kayıt bağlantıları widget'ın ayrıntı
+         sayfasına gider. Form Kaydı widget'ıyla açılan kayıtta
+         sayfa başlığı ve açıklaması kaydın RSS başlığı ve
+         açıklamasından dolar (Open Graph "article" ve BlogPosting
+         yapısal verisiyle), eski "form kaydı" sayfa türündeki
+         gibi. Bir sayfada birden çok besleme widget'ı varsa tek
+         besleme verilir: önce Form Kaydı, sonra Form Listesi,
+         sonra katalog widget'ları.
+
+  [YENİ] Bir tasarım şablona çevrilebiliyor: Ayarlar ›
+         Tasarım › "Bu tasarımı şablona çevir". Tasarımın
+         kaydedilmiş bütün sayfaları; ortak bileşenleri, sistem
+         widget'ları, klasörleri, form ve yorum ayarları,
+         CSS, JavaScript ve yazı tipi dosyalarıyla birlikte
+         "Şablondan Seç" penceresinde yerleşik şablonların
+         yanında listelenir ve onlar gibi açılır. Şablon,
+         tasarımın son kaydedilmiş hâlinden yapılır.
+         Tasarımdan yapılan şablonlar kartındaki çöp kutusu
+         düğmesiyle silinebilir; yazılımla gelen şablonlar
+         silinemez. Silmek, o şablondan kurulmuş tasarımları
+         etkilemez.
+
+  [ŞEMA] Tasarımdan yapılan şablonlar için yeni
+         design_template tablosu.
+
+  [YENİ] "Şablondan Seç" penceresi genişledi; geniş ekranda
+         yan yana üç ya da dört kart sığıyor. Her kart
+         şablonun sürümünü ve çatısının sürümünü (ör.
+         Bootstrap 5.3.8) görselin köşesinde gösteriyor.
+
+  [YENİ] Sitede ana sayfa yokken editörde bir şablon açılırsa
+         şablonun ana sayfası, sitenin ana sayfası olarak
+         işaretli ve yayında (taslak değil) gelir; Yayınla'ya
+         basılınca site ana sayfasına kavuşur. Sitede zaten bir
+         ana sayfa varsa hiçbir şey değişmez. İşaret, sayfa
+         ayarlarındaki "Anasayfa Olarak Ayarla" kutusundan
+         kaldırılabilir.
+
+  [YENİ] Canlı önizleme. Önizleme penceresi açıkken tasarımda
+         yapılan değişiklikler (içerik, stil, tema, CSS ve
+         JavaScript dosyaları, sekmeler, tasarım ayarları; tuvalde
+         yerinde ve özellik panelinde yazılan metin, yazarken)
+         kısa bir beklemeden sonra pencereye yansıyor; pencere
+         kaydırıldığı yerde kalıyor. Sistem widget'ları yalnız
+         değiştiklerinde yeniden çiziliyor. Önizleme penceresi
+         kapalıyken editöre hiçbir yük getirmez.
+
+  [YENİ] Bütün yerleşik şablonların üst bilgisinde ya da
+         hesap çubuğunda dil seçici düğmesi var. Site tek
+         dilliyken düğme ziyaretçiye gösterilmez. Şablon
+         sürümleri: Pinegrap'a merhaba deyin 2.4.2, Oyun
+         Bahçesi 1.0.1, Online Mağaza 1.0.2, Butik 1.0.1,
+         Kitapçı 1.0.1. Bu şablonlardan daha önce kurulmuş
+         tasarımlar değişmez.
+
+  [YENİ] Tema seçicide beş yeni görünüm: Editoryal, Teknik,
+         Organik, Lüks ve Cam; beş yeni renk paleti: Kobalt,
+         Kızıl, Adaçayı, Kakao ve Çelik.
+
+  [DÜZELTME] Tuvalin içinde Ctrl+tekerlek editörü değil
+         tarayıcıyı büyütüyordu; editörün yakınlaştırması
+         yalnız tuvalin dışında çalışıyordu. Artık tuvalin
+         içinde de (Mac'te Cmd+tekerlek ile) editörü
+         yakınlaştırıyor; Ctrl + / Ctrl - / Ctrl 0 kısayolları
+         da tuval odaktayken çalışıyor.
+
+  [DÜZELTME] Bir tasarım, bir klasöre (kurulumda kök klasöre)
+         varsayılan tasarım olarak atanmışsa ya da yayında
+         sayfası varsa "En az bir klasör veya sayfa tarafından
+         kullanıldığı için…" iletisiyle silinemiyordu; mevcut
+         tasarımı kaldırıp yerine yenisini koymanın yolu yoktu.
+         Artık hem tasarım listesinden hem editörün araç
+         çubuğundan silinebiliyor: sayfaları Geri Dönüşüm
+         Kutusu'na gider, onu varsayılan tasarım olarak
+         kullanan klasörlerde ve onu mobil tasarım olarak
+         kullanan sayfalarda bu ayar temizlenir. Onay penceresi
+         kaç sayfanın kutuya gideceğini ve kaç klasörün
+         etkileneceğini söyler; ana sayfa da kutuya gittiyse
+         ileti bunu belirtir. Tasarım başka bir sekmede ya da
+         başka biri tarafından editörde açıksa silme reddedilir.
+
+  [YENİ] Görsel Sayfa Editörü ana ekranında, tasarım listesinin
+         altında "Ortak bileşenler ve sistem widget'ları"
+         paneli: her satırın türü (widget'ın çeşidiyle), nereden
+         geldiği (şablon ya da içe aktarma), hangi sayfada ve
+         tasarımda kullanıldığı (Geri Dönüşüm Kutusu'ndaki
+         sayfalar işaretli) ve son değişikliği görünür;
+         seçilenler tek seferde silinir. Bütün tasarımlar
+         silindikten sonra geride kalan bu satırlar artık bir
+         tasarım açmadan temizlenebiliyor; temizlenince yeni
+         açılan şablonun bileşenleri adlarının sonuna "[1]"
+         almıyor. Düzenleme yine editörde yapılır.
+
+  [GÜVENLİK] Tasarım silme isteği sunucuda rol denetiminden
+         geçmiyordu: editöre yalnız içerik düzenlemek için giren
+         bir menejer ya da kullanıcı, düğmeyi görmese de isteği
+         elle göndererek tasarımı silebilirdi. Silme artık
+         yalnız yönetici ve tasarımcıya açık; içerik düzeyindeki
+         kullanıcıya silme düğmesi gösterilmiyor.
+
+  SAYFA TASARIMCISI
+  --------------------------------------------------------
+
+  [DÜZELTME] Sayfa Tasarımcısı'nda kodu değiştirdikten sonra
+         basılan Ctrl+S "değişiklikleriniz kaybolabilir" uyarısı
+         çıkarıyor, İptal'e basılınca değişikliği kaydediyordu.
+         Panelin genel Ctrl+S kısayolu, imleç bir formun içinde
+         değilken kapalı duran Ayarlar penceresinin formunu
+         gönderiyor ve sayfayı yeniliyordu. Kısayol artık yalnız
+         görünen bir formu kaydeder; Ayarlar penceresi kendi
+         kısayolunu kullanır.
+
+  DOSYA YÖNETİCİSİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Geri Dönüşüm Kutusu'na giden bir ana sayfa (tek
+         başına, klasörüyle ya da tasarımı silinerek) ana sayfa
+         işaretini taşımaya devam ediyordu. Site, ana sayfa
+         işaretli sayfalar arasından rastgele seçtiği için
+         kutudaki sayfa birkaç yenilemede bir sitenin kökünde
+         açılıyordu — tasarımı silinmişse stilleri bozuk. Kutuya
+         giren sayfa artık ana sayfa olmaktan çıkar (geri
+         yüklenince de ana sayfa olmaz, gerekirse yeniden
+         işaretlenir) ve kutudaki hiçbir sayfa sitenin kökünde
+         gösterilmez. Güncelleme, kutuda bu işareti hâlâ taşıyan
+         sayfaları temizler.
+
+  [DÜZELTME] Tasarım Dosyası olarak işaretli bir görsel Görsel
+         Düzenleyici'de değiştirilip "Değiştir" denince "Erişim
+         reddedildi" diyor, yalnız "Yeni olarak kaydet" çalışıyordu.
+         Yönetici ve tasarımcı artık tasarım dosyasının üstüne
+         yazabilir; menejer ve kullanıcı için kural değişmedi.
+
+  [YENİ] Kısa linklerde QR kodu: adlı bir kısa linkin düzenleme
+         ekranında linkin QR kodu görünür ve SVG olarak
+         indirilebilir (afiş, broşür, masa kartı için). Tek
+         kullanımlık link oluşturulduğunda adresin yanında QR kodu
+         da bir kez gösterilir. QR kodu sitenin kendi sunucusunda
+         çizilir; adres hiçbir dış servise gitmez.
+
+  ERP (ÖN MUHASEBE)
+  --------------------------------------------------------
+
+  [YENİ] Faturalar, teklifler, irsaliyeler, gelen e-faturalar,
+         cari eşitleme ve cari kartlar ekranlarındaki düğme
+         şeklindeki filtreler araç çubuğunda tek bir seçim kutusu
+         oldu; sayaçlar seçeneğin yanında yazar.
+
+  [YENİ] Çek ve senetler, minimum stok, tekrarlayan faturalar,
+         yaşlandırma (alacak/borç) ve nakit akışı (kova ve dönem)
+         ekranlarındaki düğme filtreleri de seçim kutusu oldu.
+
+  [DÜZELTME] Dışa Aktarma ekranı, PHP'si GLOB_BRACE sabitini
+         tanımlamayan sunucularda (Alpine tabanlı imajlar ve
+         öteki GNU dışı sistemler) 500 hatasıyla açılmıyordu:
+         eski dışa aktarma dosyalarını süpüren adım bu sabitle
+         çağrılıyordu. Aynı sabit yedekleme (elle ve otomatik)
+         dosya temizliğinde de vardı. Süslü parantezli dosya
+         kalıpları artık her PHP derlemesinde çalışan ortak bir
+         yardımcıyla açılıyor; sabitin olduğu sunucularda
+         davranış değişmedi.
+
+  [YENİ] Muhasebeci paketi bağlantısı oluşturulduğunda kendiliğinden
+         açılan bir pencerede gösterilir: QR kodu, kopyalanacak adres
+         ve QR kodunu SVG olarak indirme bağlantısı. QR kodu sitenin
+         kendi sunucusunda çizilir; bağlantı hiçbir dış servise
+         gitmez.
+
+  [DÜZELTME] Fatura, teklif ve fatura taslağı formlarında Vade
+         Tarihi (teklifte Geçerlilik tarihi) ile Tedarikçi Fatura
+         Tarihi alanlarının, irsaliye formunda Sevk Tarihi alanının
+         takvimi açılmıyordu: takvimi bağlayan betik bu alanlar
+         sayfaya gelmeden çalışıyordu. Takvim artık formdaki bütün
+         tarih alanlarına bağlanıyor; elle yazılan tarihler eskisi
+         gibi okunuyor.
+
+  [DÜZELTME] Aynı adı taşıyan iki cari, fatura, teklif, irsaliye,
+         tahsilat/ödeme ve çek/senet formlarının cari listesinde tek
+         satıra iniyor, ilki hiç seçilemiyordu. Her cari artık kendi
+         satırıyla listelenir.
+
+  [YENİ] Cari listeleri aranabilir: fatura, teklif, fatura taslağı,
+         irsaliye, tahsilat/ödeme, çek/senet, çek cirosu ve banka
+         ekstresi satırı formlarında cari kutusuna yazarak süzülür.
+
+  [YENİ] Formdan ayrılmadan cari açma: fatura, teklif, fatura
+         taslağı, irsaliye, tahsilat/ödeme, yeni çek/senet, çek
+         cirosu ve banka ekstresi satırı formlarındaki "Yeni cari
+         hesap" bağlantısı küçük bir pencere açar (kişi/şirket, ad,
+         telefon, e-posta, isteğe bağlı vergi numarası). Açılan cari
+         listeye eklenip seçilir, yazılmakta olan belge kaybolmaz.
+         Cari türü formdan gelir: alış faturası, verilen çek, ödeme,
+         çek cirosu ve paradan çıkan ekstre satırı tedarikçi; öteki
+         formlar müşteri açar. Kontroller tezgâh satışındaki hızlı
+         cariyle aynıdır (TR'de kişide ad ve soyad, VKN/TCKN kontrol
+         hanesi, aynı vergi numarasıyla ikinci cari açılmaz).
+         Bağlantıya orta tıklamak tam cari formunu yeni sekmede açar.
+         Muhasebeci (salt okunur) yetkisinde bağlantı görünmez.
+         Formdan ya da tezgâhtan açılan cari artık işlem günlüğüne
+         de yazılır.
+
+  [YENİ] Teklif kopyalama: teklif ekranındaki "Kopyala" düğmesi
+         teklifin carisi, para birimi, notları ve satırlarıyla
+         (teklifteki fiyatlar, iskontolar ve vergi oranlarıyla)
+         dolu yeni bir teklif açar. Kopya bugünün tarihini ve
+         olağan geçerlilik süresini alır, numarasını yalnız
+         kaydedilince alır; kaynağın durumu ne olursa olsun
+         (açık, süresi dolmuş, onaylanmış, reddedilmiş,
+         faturalanmış) kopya her zaman yeni bir açık tekliftir.
+
+  [YENİ] Teklifler denetim izine ve webhook'lara giriyor. Teklifin
+         yazılması, onaylanması, reddedilmesi, iptali, yeniden
+         açılması ve faturaya dönüştürülmesi denetim izinde
+         "Teklifler" türüyle, teklife bağlantılı olarak görünür;
+         teklif ekranına "Denetim izi" düğmesi eklendi. Dış API
+         uygulamaları erp.quote.created, erp.quote.accepted,
+         erp.quote.rejected, erp.quote.cancelled,
+         erp.quote.reopened ve erp.quote.invoiced olaylarına
+         abone olabilir. Teklif para hareketi olmadığından anlık
+         bildirim üretmez.
+
+  [YENİ] ERP göstergesinde "Açık teklifler" kutusu: süresi
+         geçmemiş açık teklif sayısı ve bunlardan 7 gün içinde
+         süresi dolacakların sayısı; kutu açık teklif listesine
+         götürür.
+
+  [YENİ] Teklif listesi cariye göre süzülebiliyor. Cari kartına
+         "Açık faturalar", "Yeni Fatura" ve "Teklifler"
+         bağlantıları eklendi: carinin açık faturaları ve
+         teklifleri tek tıkla listelenir, yeni fatura o cari
+         seçili olarak açılır (tedarikçi carisinde alış
+         faturası olarak). Süzgeç açıkken listenin üstünde hangi
+         carinin gösterildiği ve süzgeci kaldırma bağlantısı
+         yazar; arama ve durum düğmeleri süzgeci korur.
+
+  [DÜZELTME] Teklif listesinin araç çubuğu öteki ERP listeleriyle
+         aynı düzene getirildi: "Yeni teklif" düğmesi başta,
+         arama kutusu ve durum düğmeleri sağda.
+
+  [DÜZELTME] Faturası iptal edilen teklif "Faturalandı" durumunda
+         kilitli kalıyor, yeniden faturalanamıyor ya da
+         durumu değiştirilemiyordu. İptal edilmiş fatura artık
+         yok hükmündedir: teklif yeniden "Onaylandı" okunur,
+         faturaya dönüştürülebilir ve teklif ekranı faturanın
+         iptal edildiğini, faturaya bağlantısıyla söyler. Liste
+         süzgeçleri ve dış API'nin durum süzgeci de aynı kuralla
+         sayar.
+
+  [DÜZELTME] Cari Hesaplar, Çek ve senetler, Minimum stok,
+         Tekrarlayan faturalar, Stok ve maliyet, Denetim izi, Kasa
+         akışı, Gelen e-faturalar ve ERP Ayarları ekranlarının araç
+         çubukları tek düzene getirildi: oluşturma düğmesi başta,
+         ilgili ekranlara giden düğmeler yanında, arama kutusu ve
+         süzgeç düğmeleri sağda. Çek ve senetlerde araç çubuğu
+         özet kartlarının üstüne alındı ve sayfanın altındaki
+         forma götüren "Yeni çek ya da senet" düğmesi eklendi;
+         Denetim izinde araç çubuğu süzgeç kartının üstüne
+         taşındı. Carilerdeki "e-Belgeye hazır olmayan" ve
+         "Kredi limitini aşan" anahtarları sayılarıyla birlikte
+         tek bir süzgeç grubunda toplandı. Salt okunur ERP
+         kullanıcısına Cari Hesaplar, Stok ve maliyet ve Gelen
+         e-faturalar ekranlarında kayıt oluşturan düğmeler
+         gösterilmiyor.
+
+  [YENİ] Faturadan kopya: kesilmiş, iptal edilmiş ya da taslak
+         faturanın ekranındaki "Kopyala" düğmesi aynı yön, cari,
+         para birimi, not ve satırlarla yeni bir fatura formu
+         açar. Yeni fatura bugünün tarihini alır; vade carinin
+         vadesinden, kur günün kurundan gelir; tedarikçinin
+         fatura numarası ve tarihi kopyalanmaz. Form taslak
+         olarak saklanabilir ya da hemen kesilebilir. Siparişten
+         kesilen faturalar kopyalanmaz; satırları ve iadeleri
+         siparişe bağlıdır.
+  [YENİ] Süresi dolmak üzere olan teklifler bildirilir: açık bir
+         teklifin geçerlilik tarihi seçilen gün sayısı içine
+         girince (varsayılan 3 gün) panel ziliyle ve bildirimlere
+         izin veren cihazlara tek bir bildirim gider; tek teklifte
+         numarası yazar ve bildirim teklife açılır. Her teklif bir
+         kez bildirilir; yeniden açılınca ya da tarihi değişince
+         yeniden. Saatlik stok bildirimi işiyle birlikte koşar.
+         Ayarlar › Ticaret › ERP'deki "Anlık bildirimler"
+         bölümünden kapatılır ve gün sayısı (1-30) seçilir.
+
+  [YENİ] Tekliften yapılan fatura, kendi ekranında kaynağı olan
+         teklife bağlantı gösterir ("… numaralı tekliften"); dış
+         API'nin fatura kaydı da quote_id alanını taşır. Güncellemeden
+         önce tekliften yapılmış faturalar da, teklif onları hâlâ
+         gösteriyorsa, bağlanır.
+
+  [YENİ] Teklife müşteri imzası: teklif ekranındaki "Müşteri
+         imzası" kartında müşteri teklifi ekranda ya da tablette
+         parmağıyla imzalar, imzalayanın adı yazılır ve teklif
+         "Onaylandı" olur; teklif listesinde ve ekranında durumun
+         yanında imza simgesi görünür. İmza teklifin PDF'ine ve
+         e-postayla giden kopyasına basılır. İmza kanıttır: silinemez,
+         yeniden çizilemez; tarih-saat, IP adresi, tarayıcı ve imzalandığı
+         andaki teklifin özeti ile mühürlenerek saklanır. Teklif
+         sonradan değiştirilirse ekran bunu uyarı olarak söyler ve
+         imza artık basılmaz. Bu adi bir elektronik imzadır,
+         nitelikli elektronik imza değildir. İmza görseli yalnız
+         ERP hakkı olanlara açılır.
+
+  [ŞEMA] Teklif bildirimi, faturadan teklife bağ ve teklif imzası
+         için: erp_quotes.expiry_notified_at,
+         config.erp_notify_quote_expiry ve
+         erp_notify_quote_expiry_days, erp_invoices.quote_id
+         sütunları ve yeni erp_signatures tablosu eklenir.
+
+  ZAMANLANMIŞ GÖREVLER
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Genel görevle çalışan işler artık tek bir
+         ortak kilit yerine her biri kendi kilidiyle çalışır
+         ve iki şeride ayrılır: uzun işler (otomatik yedek,
+         SEO skorları ve yapısı, arama dizini) ile kısa işler.
+         Saatler süren bir yedekleme sürerken kampanyalar,
+         pazaryeri eşitlemesi, çeviriler ve günlük işler
+         sırasını beklemeden çalışmaya devam eder; iki uzun iş
+         üst üste binmez, aynı iş iki kez başlatılmaz.
+         cron_runs tablosuna locked_until sütunu eklenir.
+
+  [DÜZELTME] mailchimp.php dosyasına doğrudan yapılan bir istek,
+         veritabanı katmanı yüklenmeden ayar okumaya çalıştığı
+         için 500 hatası veriyordu (hata ayıklama açıkken sunucu
+         yolunu da gösteriyordu). Dosya artık yalnız job.php
+         üzerinden çalışır, doğrudan istekte sessizce çıkar.
+  YÖNETİM PANELİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Bazı ekranlarda araç çubuğundaki düğmeler ekranın
+         bir ucundan öbürüne yayılıyordu (dışa aktarma gibi bir
+         grubun ya da formun içindeki düğmeler). Düğmeler artık
+         kendi genişliğinde ve tek satırda durur; ürünler,
+         kullanıcılar ve dosyalar ekranlarında arama/filtre kutusu
+         çubuğun sağına taşındı.
+
+  [YENİ] Siparişler ekranının girişi toparlandı: yeni sipariş,
+         dışa aktarma, durum ve tür filtreleri, gelişmiş filtre ve
+         dönem gezgini (‹ Bugün / Bu hafta / Bu ay / Bu yıl ›) tek
+         araç çubuğunda. Altındaki özet kartlarına seçili aralığın
+         günlük satış ve sipariş grafikleri, en çok satan 5 ürün ve
+         ödeme yöntemi dağılımı eklendi.
+
+  [YENİ] Kişiler ve gönderilen formlar ekranlarında araç çubuğu
+         tam genişlikte; dört satırlık tarih okları yerine
+         siparişlerdeki dönem gezgini (‹ Bugün / Bu hafta / Bu ay /
+         Bu yıl ›) ve seçili aralık çubuğun sağında.
+
+  [DÜZELTME] Düzenleme, görüntüleme ve yazdırma ekranları (vergi
+         bölgesi, nakliye bölgesi, kullanıcı, kişi, takvim, takvim
+         etkinliği, sipariş yazdırma, ziyaretçi, ürün grubu, e-posta
+         kampanyası, hediye kartı, anahtar kodu, kap, reklam, ürün
+         özelliği, klasör, para birimi, ülke, eyalet, yönlendirme
+         kaynağı, kısa bağlantı, nakliye yöntemi) geçersiz ya da
+         silinmiş bir kayıt kimliğiyle açıldığında yarı boş bir form
+         gösteriyor ve hata günlüğüne PHP uyarıları yazıyordu.
+         Artık "Kayıt bulunamadı." ekranı 404 koduyla gösterilir.
+
+  [YENİ] Panodaki karşılama satırı daha çok şey biliyor: kargo
+         bekleyen siparişler, iadesi yapılmamış iptaller, azalan
+         stok (stok uyarı eşiği tanımlıysa), bu hafta gelen
+         formlar, SEO puanı 30'un altındaki sayfalar, sıradaki
+         e-posta kampanyası, bu hafta biten teklifler, güvenlik
+         duvarının geri çevirdiği istekler, yedek, güncelleme ve
+         zamanlanmış görev durumu, oturum açmış çalışma
+         arkadaşları. Bu haftanın siparişleri geçen haftayla da
+         karşılaştırılır. Her bilgi, ait olduğu kartı görmeye
+         yetkisi olan kullanıcıya gösterilir.
+
+  [YENİ] Çalışma Alanı açıksa karşılama satırının altında küçük
+         bir şerit: size yeni verilen görev, kontrol listesiyle
+         ilerleme yüzdesi, gecikmiş görevler, sizi anan mesajlar,
+         bugün son günü olan görevler. Satır da görevlerinizi,
+         bugünkü toplantıları ve ekibin bu hafta kapattığı işleri
+         okur. Çalışma Alanı kapalıyken şerit görünmez.
+
+  [YENİ] Karşılama satırı yarı saydam bir kartta, solunda saatin
+         renginde ince bir şeritle gösterilir.
+
+  [YENİ] Yakalanmamış hatalar, sayfayı yarıda kesen ölümcül PHP
+         hataları ve PHP uyarıları artık yazılımın kendi hata
+         günlüğüne yazılır (data/temp/php_errors.log): hata, dosya
+         ve satır, istek adresi (parola ve anahtar değerleri
+         gizlenerek), kullanıcı ve kısa çağrı yığını. Günlük 5
+         MB'ta döner, en fazla üç dosya tutulur. Site Günlükleri
+         ekranındaki "Hata Günlüklerini Göster" bu günlüğü ve
+         php.ini'nin gösterdiği hata dosyasını (yalnız okunur,
+         silinmez) da listeler. Hata ayıklama açıkken PHP'nin
+         kullanımdan kalkacak özellik uyarıları da kaydedilir.
+
+  [HIZ] Pano ve panel daha hafif çalışıyor. Panelin arka
+         plandaki istekleri artık her seferinde yedekleme
+         (MySQL dökümü) kütüphanesini yüklemiyor; pano
+         kartlarının her biri yalnız kendi kodunu yüklüyor.
+
+  [DÜZELTME] Tarayıcı bildirimlerine abone olma, ürün barkodu
+         ekleme, üretme, silme ve barkod etiket şablonu artık
+         yönetici ve tasarımcı dışındaki panel kullanıcılarında
+         da çalışıyor (barkodlar, ürün ekranları gibi, mağazayı
+         yönetme yetkisi olanlara açık). Ön yüzdeki düzenleme
+         araç çubuğunun açık ya da kapalı bırakıldığı da artık
+         her kullanıcı için hatırlanıyor.
+
+  YAZILIM
+  --------------------------------------------------------
+
+  [YENİ] Ayarlar › İşler › Yazılımı Onar: sitenin kanalının
+         (Kararlı ya da Beta) güncel sürüm paketini güncelleme
+         sunucusundan indirir ve her yazılım dosyasının üzerine
+         yazar; ardından yükseltme ekranı açılır. Elle
+         değiştirilmiş yazılım dosyaları kaybolur; data klasörü
+         ve veritabanı korunur. Sistem Durumu'nda dosya
+         bütünlüğü kırmızıysa satır bu ekrana götürür. Yalnız
+         yöneticiler kullanabilir. Güncelleme denetimi
+         config.php'de (SOFTWARE_UPDATE_CHECK) kapalıysa, sunucu
+         bir sürüm vermiyorsa ya da sunucunun sürümü kurulu
+         sürümden eskiyse onarım başlamaz. Yazma izni olmayan
+         klasörler önce gösterilir. İşlem etkinlik kaydına
+         yazılır.
+
+  [YENİ] Aynı ekranda "Veritabanı yükseltme adımlarını yeniden
+         koş": seçilen 2026 sürümü kurulu sürüm olarak yazılır
+         ve yükseltme ekranı ondan sonraki her sürümü yeniden
+         uygular. Zaten yapılmış adımlar atlanır; yarıda kalmış
+         bir yükseltmede ya da eski bir yedekten geri yüklenmiş
+         bir tabloda eksik kalan adımlar tamamlanır. 2026
+         öncesi sürümler listede yoktur. Veritabanı Motoru
+         ekranının araç çubuğundan da açılır.
+
+  [YENİ] İndirme Yardımcısı (download_assistant.php) artık
+         onarım yapmaz; kurulum, güncelleme ve güncelleme
+         denetimi kalır. Kurulu bir yazılım panelden onarılır.
+
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [YENİ] Yeni çeviri motoru: "Tarayıcı yapay zekâsı (Gemini
+         Nano)". Chrome'un yerleşik dil modeliyle bu bilgisayarda
+         çevirir: her metni sitedeki yeriyle, sözlükle ve stil
+         notuyla birlikte gönderir, satır içi HTML'i korur.
+         Ücretsizdir, anahtar istemez; metin başına birkaç saniye
+         sürer, ilk çalıştırma modeli indirir (güncel masaüstü
+         Chrome). Model Türkçeyi resmî olarak desteklemediği için
+         çevirilerini onaylamadan önce gözden geçirin. Mevcut
+         "Tarayıcı (Chrome Translator API)" motoru değişmedi.
+
+  [YENİ] Yeni eklenen dil artık tarayıcı motoruyla (Chrome
+         Translator API) başlıyor: anahtar istemez, ücretsizdir.
+         Önceden Google anahtarı kayıtlıysa Google, Claude
+         rutini bağlıysa Claude seçiliyordu. Claude, Google ya
+         da Pinegrap AI dil eklendikten sonra dilin satırından
+         seçilir.
+
+  [DÜZELTME] Dil dosyası olmayan dillerde (/ko/ gibi) yazılımın
+         kendi metinleri de çeviriye giriyordu: Çeviriler
+         ekranının "Arayüz metinleri" grubu, sayfada gösterilen
+         her yazılım metnini (araç çubuğu, sayfanın dinamik kod
+         bloğundaki metinler, widget etiketleri) topluyor ve
+         "Bu metinleri güncelle" hepsini çeviriyordu. Yazılımın
+         arayüz dili ayarlardan gelir ve çeviriye girmez; bu
+         dillerde yalnız çerez penceresi çevrilir. Grubun adı
+         "Çerez penceresi" oldu; Çeviriler ekranı açıldığında
+         gruptaki eski yazılım metinleri ve onların çevirileri
+         kendiliğinden temizlenir.
+
+  [DÜZELTME] Binlerce metni olan bir sitede Çeviriler ekranındaki
+         "Çevirileri güncelle" Google ya da Pinegrap AI ile 15-20
+         çeviri yapıp duruyordu: ilk istek bütün sitenin
+         taranmasıyla ilk çeviri turunu bir arada yapıyor ve
+         sunucunun süre sınırına takılabiliyordu. Tarama artık
+         kendi isteğinde yapılır, çeviri ayrı turlarda sürer; bir
+         tur sunucuda ya da vekil sunucuda zaman aşımına uğrarsa
+         ekran işi bırakmaz, kısa bir beklemeden sonra kaldığı
+         yerden devam eder. Yavaş bir modelde her tur, süresine
+         sığmayacak yeni bir parti başlatmadan biter.
+
+  [YENİ] Çeviriler ekranının ⋮ menüsünde "Çevirileri temizle":
+         seçili sayfanın, grubun ya da tüm sayfaların o dildeki
+         makine çevirilerini siler; bir sonraki "Çevirileri
+         güncelle" bu metinleri motora yeniden gönderir. İsteğe
+         bağlı olarak gözden geçirilmiş çeviriler de silinir. Onay
+         penceresi silinecek çeviri sayısını gösterir, işlem
+         etkinlik kaydına yazılır.
+
+  [YENİ] Ayarlar → Diller ve Çeviri'de bir dil kaldırıldığında o
+         dilin çevirileri, güncelleme geçmişi ve yalnız o dile ait
+         sözlük terimleri de silinir. Önceden dil listeden
+         kalkıyor, çevirileri veritabanında kalıyordu. Dili bir
+         süreliğine siteden çekmek için "Yayında" anahtarı
+         kapatılır; o zaman çeviriler korunur.
+
+  ÇALIŞMA ALANI
+  --------------------------------------------------------
+
+  [YENİ] Hesap blokları gruplar, gizli satırlar ve boş satırlar
+         alır. "Giderler:" diye biten bir satır grup açar; altındaki
+         satırlar boş satıra kadar gruba girer, grubun adı onların
+         toplamı olur ve tabloda ara toplam satırı görünür
+         (Kalan = Gelir - Giderler). "Puanlar: ORTALAMA" toplam
+         yerine ortalama alır (MİN, MAKS, ADET, ÇARPIM, ORTANCA da
+         olur). _ ile başlayan satır hesaba girer ama tabloda
+         görünmez; boş satır tabloda boşluk bırakır. Ondalık
+         basamak ve birim (ör. ₺) hesap penceresinden seçilir;
+         %20 gibi yazılan değer yüzde olarak gösterilir.
+
+  [YENİ] Hesap penceresinde hazır şablonlar (aylık bütçe, KDV,
+         fatura kalemleri, indirim, kâr marjı, kredi taksiti,
+         ortalama, döviz çevirme), işlem ve fonksiyon düğmeleri,
+         Grup / Gizle / Boş satır / Not satırı düğmeleri ve
+         yazılmış adları tek tıkla ekleyen ad düğmeleri var.
+
+  [YENİ] Bir hesapta verilen ad, aynı mesajdaki ya da nottaki
+         tablolarda ve sonraki hesaplarda kullanılabilir
+         (=B2*Kur). Mesajı okuyan, hesaptaki bir sayıya tıklayıp
+         başka bir değer deneyebilir; hesap ve ona bağlı tablolar
+         yeniden hesaplanır, hiçbir şey kaydedilmez, Sıfırla ile
+         ilk hâline döner.
+
+  [YENİ] Formüllere EĞER, EĞERHATA, VE, YADA, DEĞİL,
+         karşılaştırmalar (> < >= <= = <>), YUKARIYUVARLA,
+         AŞAĞIYUVARLA, KAREKÖK, KUVVET, MOD, ÇARPIM, ORTANCA,
+         TAKSİT ve DEVRESEL_ÖDEME eklendi.
+
+  [YENİ] Tablo penceresinde Formül menüsü: üstteki sütunun
+         toplamı, ortalaması, en büyüğü ve en küçüğü; soldaki
+         satırın toplamı; iki hücrenin çarpımı, farkı ve değişim
+         yüzdesi; KDV ekleme, indirim, sütundaki pay ve koşul.
+         Toplam satırı tek tıkla eklenir; bir formül, satır
+         numaraları kayarak alttaki hücrelere kopyalanır.
+
+  [YENİ] Notlarda ve kanal yazım alanında Ctrl+Z ile geri alma,
+         Ctrl+Y (ya da Ctrl+Shift+Z) ile yineleme; notun araç
+         çubuğunda Geri al ve Yinele düğmeleri. Tamamı silinen bir
+         not Ctrl+Z ile geri gelir.
+
+  [YENİ] Notların önceki sürümleri saklanır: bir aradan sonra
+         yapılan değişiklikten, başkasının değişikliğinden ya da
+         notun büyük bölümünü silen kayıttan önceki hâli tutulur
+         (son 30 sürüm). Not başlığındaki saat düğmesinden
+         sürümler görülür ve biri geri yüklenebilir; geri yükleme
+         de Geri al ile geri alınır. Notun oluşturulma tarihi son
+         değişikliğin yanında gösterilir.
+
+  [YENİ] Notlarım, Çalışma Alanı menüsünde yer alır; Notlarım
+         sayfasındaki "Menüye sabitle" ile kişi isterse ana
+         menüye, Çalışma Alanı'nın hemen altına da sabitler.
+
+  [DÜZELTME] Yeni bir notta başlık yazılırken not ilk kez
+         kaydedildiğinde başlık kutusu boşalıyor, bir sonraki
+         kayıtta başlık siliniyordu.
+
+  [ŞEMA] Not sürümleri için ws_note_versions tablosu; menüye
+         sabitleme için ws_profiles.notes_pinned sütunu eklendi.
+
+  [DÜZELTME] Kanalda paylaşılan not kartı notun ilk satırlarını
+         düz metin olarak gösteriyordu; tablo "| Öğe | Tutar |"
+         diye okunuyordu. Kart artık notu tablo ve kontrol
+         listesiyle birlikte çizer, uzun not kartın içinde kayar.
+         Kartın mesaj menüsündeki "Düzenle" kartın yazısını değil
+         notu düzenleyen "Notu düzenle" oldu (yalnız notu
+         değiştirebilenlere); anlamsız "Notlarıma kaydet" not
+         kartında çıkmaz.
+
+  [YENİ] Pinegrap AI artık ayrı bir lisans anahtarı istemez:
+         Ayarlar › Genel'deki abonelik anahtarıyla (Pinegrap
+         Premium) çalışır. Çalışma Alanı Ayarları'ndaki Pinegrap AI
+         kartından lisans anahtarı alanı kaldırıldı. Sitede
+         geçerli bir lisans yoksa @ai ile seslenen kişi kanalda
+         "Bu özellikten faydalanmak için Pinegrap Premium lisansı
+         gerekir" yanıtını ve iletişim adresini görür. Abonelik
+         anahtarı değiştirildiğinde yeni anahtar yeniden
+         doğrulanır.
+
+  [ŞEMA] config.ws_ai_license sütunu kaldırıldı (eski, ayrı
+         Pinegrap AI anahtarı).
+
+  [YENİ] Kanalın sekmeleri açılmadan ne taşıdıklarını söyler:
+         Kararlar sekmesinin yanında karar ve not sayısı, Görevler
+         sekmesinin yanında açık görev sayısı, özet yazılmışsa
+         Özet sekmesinde bir nokta görünür. Sayılar kanalda bir
+         karar işaretlenince ya da görev açılınca hemen, başkası
+         değiştirdiğinde yarım dakika içinde tazelenir.
+
+  [YENİ] Zamanlanmış mesaj: kanaldaki Gönder düğmesinin yanındaki
+         saat düğmesiyle yazılan mesaj hemen değil, seçilen
+         zamanda paylaşılır ("Bir saat sonra", "Yarın 09:00",
+         "Pazartesi 09:00" ya da istenen tarih ve saat). Mesaj
+         gönderilene kadar yalnız yazan kişi görür: kanalda
+         yazı kutusunun üstündeki satır bekleyen mesajları
+         gösterir; buradan ya da Programlanmış işler ekranındaki
+         "Zamanlanmış mesajlar" sekmesinden mesaj hemen
+         gönderilir, zamanı ya da metni değiştirilir, silinir.
+         Zamanı gelen mesaj kanala yazanın adıyla düşer, olay
+         etkinlik kaydına yazılır ve zamanlama silinir;
+         gönderilemeyen mesaj (kanaldan çıkılmış, kanal arşivde)
+         bekler ve yazana gelen kutusunda haber verilir. Özelliği
+         User rolü dahil ekipteki herkes kullanır; User rolü
+         Programlanmış işler ekranında yalnız kendi zamanlanmış
+         mesajlarını görür, yeni programlanmış işlem yazamaz.
+
+  [YENİ] Programlanmış işler iş akışı gibi kurulur: form
+         "Ne zaman → Yalnızca şu durumda → Yap → Sonrasında"
+         adımlarıyla numaralı bir ray üzerinde ilerler; doldurulan
+         işlem formun üstünde sözle özetlenir ve zamanlıysa
+         sonraki üç çalışma zamanı gösterilir, eksik ya da hatalı
+         alan kaydetmeden önce söylenir. Hazır şablonlar simgeli
+         kartlar olarak seçilir; işlem kartında "Çoğalt" ile bir
+         kopyadan yeni işlem başlatılır.
+
+  [YENİ] Programlanmış işlemin yeni başlangıcı "Biri katıldığında":
+         belirli bir kanala ya da herkese açık herhangi bir kanala
+         katılan veya eklenen her kişi için işlem bir kez çalışır.
+         Hazır "Karşılama mesajı" şablonu kanala geleni
+         {{newcomer}} etiketiyle karşılar ve kendini tanıtmasını
+         ister; metinlerde {{newcomer}}, {{newcomer_name}} ve
+         {{channel}} kullanılabilir.
+
+  [YENİ] Programlanmış işlemin yeni eylemi "Kişilere görevlerini
+         e-postayla gönder": herkese üzerindeki açık görevler (tüm
+         kanallardan ya da bir kanaldan) ya da bir kanalın açık
+         görevleri, istenen kişilere veya kanalın üyelerine
+         e-postayla gider; tüm açık görevler, bir hafta içinde
+         bitecekler ya da yalnız gecikenler seçilebilir. Listesi
+         boş olana e-posta gitmez. Hazır "Her pazartesi e-postayla
+         görevler" şablonu her pazartesi sabahı çalışır.
+
+  [ŞEMA] ws_scheduled_actions.kind sütunu (işlem ya da zamanlanmış
+         mesaj) ve idx_kind dizini; ws_scheduled_queue.context
+         sütunu (katılan kişi).
+
+  [YENİ] Kanalı bağlantıyla paylaşma: misafirle görüşmedeki gibi
+         tek seferlik ya da süreli bir bağlantıyla, siteye üye
+         olmayan biri ekibin bir kanalının konuşmasını okur. İki
+         seçenek var: "Okuma" (yalnız okur; yazamaz, ifade
+         bırakamaz, oy veremez) ve "Okuma ve yazma" (misafir
+         odasındaki gibi yazar, yanıtlar, oy verir). Kanalı
+         yönetebilen yöneticiler kanal menüsündeki "Bağlantıyla
+         paylaş" ile paylaşır; kanalın üstündeki şerit kimlerin
+         okuduğunu herkese gösterir, "Yönet" ile yeni bağlantı
+         verilir ya da paylaşım bitirilir (kanal olduğu gibi
+         kalır). Misafir kanalın sekmelerini, tartışmalarını ve
+         başka bir yerini görmez; paylaşım sürerken kanalda
+         asistanlara sorulmaz.
+
+  [ŞEMA] ws_guests.access sütunu (okuma / okuma ve yazma).
+
+  [YENİ] Tartışmalar: kanaldaki bir mesaj (mesaj, karar, not ya da
+         görev kartı) sağ tık menüsündeki "Tartışma başlat" ile
+         kanalın yanında kendi odasında konuşulur; kanalın sohbeti
+         uzayıp önemli mesajları ezmez, bildirim yalnız tartışmaya
+         katılanlara gider. Tartışmayı başlatan ve mesajı yazan
+         içindedir; kanalı okuyabilen yöneticiler (rol 0-2) "Katıl"
+         ile girer, katılanlar kanalı okuyan başka kişileri ekler.
+         Kanalda mesajın altında tartışmanın sürdüğünü, kimlerin
+         içinde olduğunu ve kaç mesaj yazıldığını gösteren bir şerit
+         durur; içindekiler şeride tıklayınca tartışmaya geçer.
+         Tartışma sağda bir panelde açılır, kanalda ve tartışmada
+         aynı anda yazılır; telefonda panel kanalı kaplar ve
+         kapatılınca kanala dönülür. Sol menüde "Tartışmalar"
+         bölümü kişinin içinde olduğu açık tartışmaları okunmamış
+         sayılarıyla listeler (hiç yoksa görünmez).
+
+         Tartışmada karar ya da not olarak işaretlenen mesaj ve
+         açılan görev kanala da işlenir ("... tartışmasından"
+         etiketiyle); görev kanalın görevidir. Kanalda asistanlara
+         sorulabiliyorsa tartışmada da sorulur; sorulduğunda
+         kanaldaki şerit bunu not eder. Tartışmadaki herkes
+         tartışmayı sonuçlandırabilir: 30 gün salt okunur saklanır,
+         sonra silinir; kararlar ve görevler kanalda kalır.
+
+  [ŞEMA] ws_channels.kind alanına 'thread' değeri; ws_threads ve
+         ws_thread_copies tabloları.
+
+  [YENİ] Asistanlarla toplu işlem: Pinegrap AI'dan ya da Claude'dan
+         birçok kaydı birden değiştirmesi istenebilir ("@ai tüm
+         ürünlerin fiyatını %50 artır", "bu gruptaki ürünlere 200 TL
+         ekle", "sayfaların eksik meta açıklamalarını doldur", "tüm
+         ürünlerin başlık ve açıklamalarını SEO'ya uygun düzenle").
+         Asistan tek bir toplu değişiklik önerir: hangi kayıtlar (bir
+         türün tümü, bir ürün grubundakiler, adında bir sözcük
+         geçenler, bir liste; istenirse yalnız alanı boş olanlar) ve
+         ne yapılacağı (bir değer, yüzde ya da tutar artışı/azalışı,
+         her kayıt için Pinegrap AI'ın yazdığı metin ya da tek tek
+         verilen değerler). Kart kaç kayda dokunacağını ve birkaç
+         örneği önce/sonra gösterir; soran kişi tek tıkla, kendi
+         yetkileriyle uygular. Kayıtlar dilim dilim, paneldeki gibi
+         yazılır, kartta ilerleme görünür; ekran kapansa da iş
+         tamamlanır ve sonunda kanala kilitli bir karar düşer.
+         Ürünler, stok, ürün grupları, sayfalar, dosyalar, kişiler,
+         teklifler, takvim etkinlikleri ve cari hesaplar desteklenir.
+
+  [YENİ] Toplu silme (ör. "sitedeki tüm dosyaları sil") Çalışma
+         Alanı Ayarları'ndaki "Asistanlar kayıtları toplu silmeyi
+         önerebilir" anahtarı açılmadan çalışmaz; anahtar varsayılan
+         olarak kapalıdır ve yalnız yönetici değiştirir.
+
+  [ŞEMA] config.ws_ai_bulk_delete sütunu.
+
+  [YENİ] Misafir bağlantısında QR kodu: misafirle görüşme
+         başlatıldığında, kanal bağlantıyla paylaşıldığında ya da
+         yeni bağlantı verildiğinde, bağlantının bir kez gösterildiği
+         pencerede QR kodu da çıkar; misafir telefonuyla tarayarak
+         katılabilir. QR kodu sitenin kendi sunucusunda çizilir.
+
+  [YENİ] Programlanmış işlemin yeni başlangıcı "Bir şey olduğunda":
+         işlem sitede bir şey olunca çalışır: yeni sipariş, sipariş
+         durumunun değişmesi (istenirse yalnız belirli bir duruma),
+         siparişin kargoya verilmesi, teslimi ya da iptali, ürünün
+         stoğunun azalması, yeni ya da değişen kişi, form
+         gönderilmesi (istenirse yalnız belirli bir form). Olay
+         ziyaretçinin sayfasını bekletmez: kaydedilir, açık bir
+         ekran ya da genel iş onu en çok bir dakika içinde işler.
+         Metinlerde {{record}} (kaydın etiketi), {{record_title}},
+         {{record_link}}, {{customer}}, {{amount}},
+         {{record_status}}, {{event}} ve {{form_fields}}
+         kullanılabilir. Hazır şablonlar: "Yeni sipariş kanala",
+         "Web formu kanala" ve "Stok azalınca görev". Bir işlem
+         saatte en çok 60 kez başlar.
+
+  [YENİ] Kanala yazılan form etiketinin altında küçük bir kart
+         çıkar: gönderilen formun ilk dört alanı ve kayda
+         bağlantı. Kartı yalnız formları görme hakkı olan okur;
+         mesajdaki "Görev yap" ile form göreve çevrilir.
+
+  [YENİ] Kaydı izle: kanalın müşterisinin siparişleri ile kanalda
+         etiketlenen sipariş, ürün ve kişilerde bir şey olunca
+         (sipariş verildi, durumu değişti, kargoya verildi, teslim
+         edildi, iptal edildi; kişi ya da ürün değişti; ürünün
+         stoğu azaldı) kanala bir sistem satırı düşer. Satırda
+         yalnız kaydın etiketi ve olan şey yazar; tutar ve adres
+         yazılmaz, etiketin ayrıntısını her üye kendi hakkı kadar
+         görür. Aynı satır on dakika içinde ikinci kez yazılmaz.
+         Kanal ayarlarındaki "Bağlı kayıtların olaylarını kanala
+         yaz" anahtarıyla kapatılır (varsayılan açık).
+
+  [YENİ] Sipariş ekranında iptal edilmiş siparişi "Siparişi Geri
+         Al" ile tamamlanmışa döndürmek artık sipariş durumu
+         değişikliği olarak duyurulur (webhook order.status_changed
+         ve Çalışma Alanı).
+
+  [ŞEMA] ws_events_in tablosu (Çalışma Alanı'nın işleyeceği site
+         olayları); ws_channels.watch sütunu.
+
+  [YENİ] Kanal şablonları: "Yeni müşteri", "Web sitesi teslimi",
+         "Aylık kapanış" gibi tekrar eden işler için hazır kanal.
+         Şablon görevleri (başlangıç ve bitişi uygulandığı günden
+         itibaren takvim günüyle, öncelik, tahmini süre, kontrol
+         listesi, "şu görevden sonra" sırası; uygulayana, departman
+         liderine, bir departmanın havuzuna ya da bir kişiye),
+         kanalda paylaşılacak notları, özeti, sabitlenmiş mesajı
+         ve karşılama mesajını taşır. Yeni kanal penceresinin
+         üstündeki "Şablondan" kartlarından biri seçilince ad,
+         görünürlük, departman ve renk önerilir; kanal açılınca
+         şablon uygulanır. Var olan kanala kanal menüsündeki
+         "Şablon uygula" ile eklenir: özet ve sabitlenmiş mesaj
+         yalnız boşsa doldurulur. Görevler uygulayan kişinin
+         yetkisiyle açılır; atama yetkisi yetmeyen ya da kişisi
+         bulunamayan görevler kimseye verilmeden açılır ve kaç
+         tane olduğu söylenir. Kanala "Şablon uygulandı" satırı
+         düşer.
+
+  [YENİ] Çalışma Alanı Ayarları › Kanal şablonları: üç yerleşik
+         şablon (kopyalanıp değiştirilebilir) ve sitenin kendi
+         şablonları; yeni şablon, düzenleme, arşivleme, kaç kez
+         kullanıldığı. Yöneticiler kanal menüsündeki "Bu kanaldan
+         şablon yap" ile kanalın açık görevlerini, paylaşılan
+         notlarını, özetini ve sabitlenmiş mesajını taslak olarak
+         şablon ekranına taşır; kaydedilene kadar hiçbir şey
+         saklanmaz. Dış API: GET /workspace/templates ve POST
+         /workspace/channels/{id}/apply-template, olay
+         workspace.template.applied.
+
+  [ŞEMA] ws_templates tablosu.
+
+  [YENİ] Tek arama kutusu: Çalışma Alanı'nın her ekranında
+         Ctrl+K (Mac'te ⌘K) ya da soldaki şeritteki büyüteç tek
+         bir arama penceresi açar. Yazdıkça kanallar, mesajlar,
+         kararlar, görevler, notlar, kanallarda paylaşılan
+         dosyalar ve kayıtlar (sipariş, ürün, kişi, fatura...)
+         gruplar hâlinde gelir; aranan sözcük vurgulanır. Oklarla
+         gezilir, Enter seçileni açar. # ile yalnız kayıtlarda
+         ("#sip 1042" yalnız siparişlerde), @ ile ekipteki
+         kişilerde aranır; / yazı kutusunun komutlarını listeler
+         ve seçilen komut açık kanalın yazı kutusuna yazılır.
+         Kanal ekranında arama tek tıkla o kanalla sınırlanır;
+         son beş arama tarayıcıda hatırlanır. Herkes yalnız
+         görebildiği kanalların, görevlerin ve notların
+         sonuçlarını görür. Çalışma Alanı ekranlarında Ctrl+K
+         panelin genel araması yerine bu pencereyi açar.
+
+  [YENİ] Kanal panosu: kanalın sekmelerine "Pano" eklendi
+         (adres: workspace.php?channel=N&view=board). Kanalın
+         görevleri, kararları ve dosyaları sütunlarda kart olarak
+         görünür; duruma, türe, kişiye ya da bitiş tarihine
+         (gecikmiş, bugün, bu hafta, daha sonra, tarihsiz) göre
+         gruplanır. Kart sürüklenerek başka sütuna taşınır: durum,
+         sorumlu kişi ya da bitiş tarihi değişir; çakışma ve
+         tekrarlayan görev soruları Plan Panosu'ndakiyle aynıdır.
+         Klavyeyle de taşınır (Boşluk tut, oklar, Enter bırak).
+         Aciliyet, kişi, "yalnız benimkiler" ve metin süzgeçleri
+         vardır; "Bitti" sütunu son 14 günü gösterir, öncesi bir
+         tıkla açılır. Pano açıkken başka biri görevi değiştirirse
+         kartlar kendiliğinden yenilenir. Misafirli kanallarda ve
+         tartışmalarda pano yoktur. Çalışma Alanı turu bu sekmeyi
+         de anlatır ve herkese bir kez daha gösterilir.
+
+  [YENİ] Görevde harcanan süre: görev penceresinde "Harcanan
+         süre" bölümü. Sayaç başlatılıp durdurulur (sayfa
+         kapansa da süre başlangıç anından sayılır; bir
+         dakikadan kısası bir dakika yazılır, kişi başına tek
+         sayaç çalışır, yenisi eskisini durdurup kaydeder) ya
+         da süre elle yazılır: "90", "1:30" ya da "1s 30d";
+         tarih, not ve faturalanabilir anahtarıyla. Görevin
+         üzerindekiler ve oluşturan kendi süresini,
+         yöneticiler herkesin süresini yazar. Pencerede toplam
+         tahminle karşılaştırılır ("3 sa 20 dk / 5 sa"); görev
+         kartında ve listelerde süre etiketi görünür.
+
+  [YENİ] Kanalın Özet sekmesinde "Harcanan süre" kartı:
+         kanalın görevlerindeki toplam, bu ay, faturalanmamış
+         süre ve kişiye göre dağılım. Görevlerim'de "Zamanım":
+         kişinin süresi hafta hafta, görev görev. Plan
+         Panosu'nda yöneticiler kişi satırında planlanan ve
+         harcanan süreyi görür. Programlanmış işlemlere "Bu
+         hafta görevlerde harcanan süre" sayacı eklendi.
+
+  [YENİ] Süreden fatura taslağı: ERP açıkken ve kanalın
+         müşterisi bir cari hesapken, fatura hakkı olan
+         kullanıcı Harcanan süre kartından iki tarih
+         arasındaki faturalanmamış süreyi ERP fatura
+         taslağına çevirir: görev başına bir satır, miktar
+         saat, saatlik ücret ve KDV oranı formdan. Taslak
+         kesilmez; kayıtlar taslağa bağlanır, aynı saat ikinci
+         kez faturalanmaz, kanala kilitli bir karar satırı
+         düşer. Taslak silinirse yönetici kartta "Bağı çöz"
+         ile süreyi yeniden faturalanabilir yapar.
+
+  [YENİ] Görev bağımlılığı: görev penceresinde "Bağımlılıklar"
+         bölümü. "Şu görevler bitmeden başlayamaz" listesine
+         görev numarası ya da başlığıyla arayıp görev eklenir;
+         "Bu görevi bekleyenler" ters listede görünür.
+         Birbirini bekleyen görevler (döngü) kaydedilmez.
+         Bekleyen görev kartta ve listede kilitle "Bekliyor:
+         G-12" der; başlatılmak istenince sorulur,
+         engellenmez. Son engelleyen bitince bekleyen görevin
+         üzerindekilere "G-12 bitti, G-15 başlayabilir"
+         bildirimi gider.
+
+  [YENİ] Dış API: GET/POST /workspace/tasks/{id}/time ve
+         DELETE /workspace/tasks/{id}/time/{entry_id} (POST da
+         olur); görev nesnesinde blocked_by, blocks ve
+         time_minutes; POST /workspace/tasks ve
+         /workspace/tasks/{id} blocked_by kabul eder. Yeni
+         olay: workspace.task.time_logged.
+
+  [ŞEMA] ws_task_time ve ws_task_links tabloları.
+
+  [YENİ] Onay iste: yazı kutusundaki + menüsünden kanalın
+         kişilerinden (en fazla on) bir şey için onay istenir;
+         başlık, açıklama (@ ve # etiketleriyle), "herhangi
+         biri" ya da "hepsi" kuralı ve isteğe bağlı son tarih
+         seçilir. Mesajın altındaki kartta onaylayanlar, her
+         birinin yanıtı ve zamanı görünür; Onayla / Reddet
+         düğmeleri yalnız sorulan kişilere çıkar, ret gerekçe
+         alabilir. Kural sağlanınca, biri reddedince ya da son
+         tarih geçince kart kapanır ve sonuç kanala kilitli bir
+         karar olarak yazılır ("Onaylandı: ... — Ayşe"); Karar
+         Zaman Çizelgesi'nde görünür. İsteyen kişi isteği geri
+         çekebilir, yöneticiler kapatabilir. Sorulanlara gelen
+         kutusu ve telefon bildirimi gider; son tarihten bir gün
+         önce yanıt vermeyenlere bir kez hatırlatılır. Genel
+         Bakış'ta "Beni bekleyen onaylar" listelenir. Tartışmada
+         verilen karar kanala da kopyalanır; misafir kartı
+         yalnız okur. Programlanmış işlere "Bir kanalda onay
+         iste" eylemi eklendi (ör. her ayın 1'i gider raporu
+         onayı). Dış API'de kanalın onay istekleri okunur ve
+         yeni istek açılır; onay ve ret yalnız cihazında oturum
+         açmış kişinin kendisi tarafından verilir.
+
+  [YENİ] Okundu onayı: mesajı yazan ya da bir yönetici, mesajın
+         menüsünden (sabit mesajın çubuğundan da) okundu onayı
+         ister. Kanalın o anki üyeleri mesajın altında "Okudum"
+         düğmesini görür; "N / M okudu" etiketi herkes okuyunca
+         yeşile döner, yazan kişi tıklayınca kimin okuduğunu
+         (saatiyle) ve kimin okumadığını görür. Kanaldan çıkan
+         sayımdan düşer, misafir sayılmaz. 24 saat sonra hâlâ
+         okumayanlara gelen kutusunda bir kez hatırlatılır;
+         Genel Bakış'ta "Onayını bekleyen duyurular" görünür.
+
+  [ŞEMA] Yeni ws_approvals ve ws_approval_people tabloları
+         (onay istekleri), ws_ack_requests ve ws_acks tabloları
+         (okundu onayları).
+
+  DIŞ API
+  --------------------------------------------------------
+
+  [GÜVENLİK] Ayarlar › Güvenlik'te iki adımlı doğrulama bir rol
+         için zorunluysa, o roldeki kişi doğrulamayı kurmadan
+         ekip cihazlarından (POST /auth/login) yalnız parolasıyla
+         giremez: cevap 403 mfa_setup_required olur. Sitede aynı
+         kişi kurulum ekranına yönlendirilir; cihaz o ekranı
+         gösteremediği için giriş reddedilir. Kişi doğrulamayı
+         web sitesinde kurduktan sonra cihazdan kodla girer.
+
+  [YENİ] ERP teklifinde müşteri imzası: GET /erp/quotes ve
+         /erp/quotes/{id} cevabındaki signature alanı
+         imzalayanın adını, imza anını, teklifin imzadan sonra
+         değişip değişmediğini (document_changed) ve imza
+         mührünün hâlâ doğrulanıp doğrulanmadığını (seal_valid)
+         verir; imzasız teklifte null'dur. Listeye signed
+         süzgeci eklendi. erp.quote.signed olayı da signer_name
+         ve signed_at taşır. İmza görseli, IP adresi ve tarayıcı
+         bilgisi API'ye çıkmaz.
+
+  [YENİ] Çalışma Alanı tartışmaları API'de: POST
+         /workspace/messages/{id}/thread bir mesajdan tartışma
+         başlatır (varsa olanı döndürür), GET
+         /workspace/channels/{id}/threads kanalın tartışmalarını
+         listeler; tartışmanın kimliği mesaj okuma ve yazma
+         uçlarında kanal kimliği gibi kullanılır. Mesaj nesnesi
+         thread (mesajdan başlatılan tartışma) ve from_thread_id
+         (tartışmadan kanala kopyalanan karar, not ya da görev
+         kartı) alanlarını taşır.
+
+  [YENİ] Zamanlanmış mesaj API'de: GET ve POST
+         /workspace/channels/{id}/scheduled-messages, iptal için
+         DELETE /workspace/scheduled-messages/{id} (POST da
+         olur). Mesaj zamanı gelince kişinin kendi adıyla
+         gittiği için yalnız cihazında oturum açmış kişi
+         zamanlayabilir; uygulama anahtarı listeyi okur ve
+         iptal eder.
+
+  [YENİ] Okundu onayı isteme API'de: mesaj yazarken ack: true
+         ya da var olan mesaj için POST
+         /workspace/messages/{id}/ack-request (on: false isteği
+         geri çeker).
+
+  [YENİ] Not sürümleri API'de: GET /workspace/notes/{id}/versions
+         ve /workspace/notes/{id}/versions/{version_id} (salt
+         okunur; sürümü geri koymak notlar ekranında).
+
+  [HIZ] GET /workspace/tasks görevlerin bağımlılıklarını ve
+         harcanan süresini sayfa için toplu okur; görev başına
+         üç ek sorgu kalktı, cevap aynı.
+
+  [DÜZELTME] OpenAPI belgesi DELETE /webhooks/{id} için 200
+         yazıyordu; uç gövdesiz 204 döner, belge artık 204
+         yazıyor.
+
+  E-POSTA
+  --------------------------------------------------------
+
+  [YENİ] Şifre sıfırlama, sipariş, form ve yorum e-postaları
+         zamanlanmış genel iş (job.php) çalışıyorsa bir kuyruğa
+         yazılır ve genel iş tarafından gönderilir. Yavaş ya da
+         yanıt vermeyen bir e-posta sunucusu artık ziyaretçinin
+         sayfasını bekletmez; gönderilemeyen e-posta kaybolmaz,
+         bir buçuk gün boyunca altı kez yeniden denenir. Genel
+         iş son 15 dakikada çalışmadıysa (cron kurulmamış
+         sitelerde) e-postalar eskisi gibi hemen gönderilir.
+
+  [YENİ] Ayarlar › İşler › Posta kuyruğu ekranı: bekleyen,
+         son bir haftada gönderilen ve son bir ayda bırakılan
+         e-postalar, son hata, tek tek yeniden deneme ve silme,
+         "Şimdi çalıştır" düğmesi.
+
+  [YENİ] E-posta kampanyaları gönderilemeyen alıcıyı artık
+         "gönderildi" saymaz: e-posta altı kez yeniden denenir,
+         sonunda gönderilemeyen alıcılar kampanya ekranındaki
+         ilerleme kutusunda "teslim edilemedi" olarak sayılır.
+         Gönderen, alıcı başına tek bildirim alır (son denemede).
+         Kampanya işi gönderim sırasında tabloları kilitlemez;
+         yavaş bir e-posta sunucusu kişi ve kayıt ekranlarını
+         bekletmez.
+
+  [YENİ] Ticari kampanya e-postaları List-Unsubscribe ve
+         List-Unsubscribe-Post başlıklarını taşır: Gmail, Yahoo
+         ve Outlook'taki "Abonelikten çık" düğmesi alıcıyı tek
+         tıkla listeden çıkarır. Başlıklar DKIM imzasına dahil
+         edilir; config.php'de ENCRYPTION_KEY yoksa başlık
+         eklenmez.
+
+  [ŞEMA] email_recipients tablosuna claimed_at, claim_token,
+         attempts, last_error, next_attempt_at ve failed
+         sütunları, idx_pending dizini; yeni mail_outbox
+         tablosu. Çok sayıda kampanya göndermiş sitelerde
+         email_recipients büyüktür, yükseltme uzun sürebilir.
+
+  YEDEKLEME
+  --------------------------------------------------------
+
+  [YENİ] Otomatik yedek artık her hafta için tek bir zip arşivi
+         olarak yazılır (data/backups/auto_backup_<yıl-ay-hafta>.zip;
+         içinde veritabanı dökümü, dosyalar ve şablonlar). Arşiv
+         geçici klasörde tamamlanıp yerine taşınır; yarıda kalan bir
+         çalışma o haftanın önceki yedeğini bozmaz. Sunucuda PHP'nin
+         ZipArchive eklentisi yoksa yedek eskisi gibi klasör olarak
+         kalır.
+
+  [YENİ] Saklama: Ayarlar → Genel → Yedeklemeler'de kaç haftalık
+         otomatik yedeğin tutulacağı seçilir (varsayılan 4, 0 = hepsi).
+         Daha eskileri her otomatik yedeklemeden sonra silinir ve
+         etkinlik kaydına yazılır. Elle alınan yedeklere, kurulum
+         dökümlerine ve yükseltme öncesi dökümlere hiç dokunulmaz.
+
+  [YENİ] Uzak kopya: her otomatik yedeklemeden sonra arşiv bir FTP
+         sunucusuna (isteğe bağlı şifreli FTPS) ya da S3 uyumlu bir
+         depoya (Amazon S3, MinIO, Cloudflare R2, Wasabi vb.)
+         gönderilebilir. Parola ve gizli anahtar şifreli saklanır,
+         ekranda gösterilmez. "Kaydet ve bağlantıyı test et" küçük bir
+         deneme dosyası gönderir. Gönderilemeyen kopya etkinlik
+         kaydına yazılır, ayar kartında ve Sistem Durumu'ndaki "Son
+         Yedek" kutusunda uyarı olarak görünür. Klasör olarak
+         tutulan yedek uzağa gönderilmez.
+
+  [YENİ] Yedek Yöneticisi zip arşivlerini de listeler; her satırda
+         türü (arşiv / klasör) ve boyutu görünür, arşiv olduğu gibi
+         indirilir ya da silinir.
+
+  [ŞEMA] config tablosuna backup_keep, backup_remote_type,
+         backup_remote_settings, backup_remote_error,
+         backup_remote_sent_at sütunları.
+
+  OTURUM, HESAP VE GÜVENLİK
+  --------------------------------------------------------
+
+  [YENİ] İki adımlı oturum açma. Bir hesap, paroladan sonra
+         telefondaki bir doğrulama uygulamasının (Google
+         Authenticator, Microsoft Authenticator, Aegis,
+         1Password gibi) ürettiği 6 haneli kodu isteyebilir.
+         Kişi bunu hesap sayfasından kendisi açar: ekrandaki QR
+         kodu doğrulama uygulamasıyla taranır (taranamazsa
+         anahtar elle girilebilir), uygulamanın gösterdiği ilk
+         kodla onaylanır. QR kodu sitenin kendi sunucusunda
+         çizilir; anahtar hiçbir dış servise ve hiçbir adrese
+         gitmez.
+         Açılırken 10 kurtarma kodu verilir; telefon kaybolursa
+         her biri bir kez oturum açtırır ve bir daha
+         gösterilmez. Kod e-postayla gönderilmez; bu sürümde
+         yalnız doğrulama uygulaması desteklenir.
+
+  [YENİ] Ayarlar › Güvenlik'te "İki Adımlı Doğrulama": bir
+         rolden başlayarak zorunlu kılınabilir (yöneticiler;
+         yöneticiler ve tasarımcılar; yöneticiler, tasarımcılar
+         ve menejerler; oturum açan herkes). Zorunlu bir roldeki
+         kişi henüz kurmadıysa bir sonraki girişinde kurulum
+         ekranına yönlenir. Varsayılan "zorunlu değil"dir; herkes
+         kendi hesabında yine açabilir.
+
+  [YENİ] İki adımlı doğrulama iki yerden kapatılır. Hesap
+         sayfasında kişi kendi doğrulamasını parolası ve bir kodla
+         (doğrulama uygulamasının kodu ya da kurtarma kodu) son bir
+         kez doğrulayarak kapatır. Paneldeki kullanıcı ekranından
+         bir kişinin doğrulaması (yönetici için kendi hesabı dahil)
+         tek düğmeyle, parola ve kod istenmeden kapatılır —
+         telefonunu ya da doğrulama uygulamasındaki kaydı kaybeden
+         yönetici için tek çıkış yolu budur. Kişi sonra yalnız
+         parolasıyla girer ve isterse yeniden kurar. Panelden
+         açılamaz: açmak, kişinin kendi telefonuyla hesap sayfasından
+         yaptığı iştir.
+
+  [DÜZELTME] Hesap sayfasındaki "Oturum açma ve cihazlar"
+         bölümü (cihazlar, Google bağlantısı, iki adımlı
+         doğrulama) bu bölümden önce hazırlanmış özel profil
+         düzenlerinde, hazır başlangıç siteleri dahil, hiç
+         görünmüyordu; artık düzenin altında gösterilir.
+
+  [GÜVENLİK] Google ile oturum açma iki adımlı doğrulamadan
+         muaf değildir: doğrulaması açık hesap Google ile
+         girdiğinde de kod sorulur. İstek başına kullanıcı adı ve
+         parola gönderen API çağrıları ve ShipWorks, iki adımlı
+         doğrulaması açık hesabı reddeder; böyle bir hesabın
+         parolasıyla çalışan bir entegrasyon varsa çalışmayı
+         bırakır. Ekip cihazlarından giriş (POST /auth/login) bu
+         hesaplarda doğrulama uygulamasının kodunu ya da bir
+         kurtarma kodunu otp alanında ister.
+
+  [GÜVENLİK] İki adımlı doğrulama anahtarları config.php'deki
+         şifreleme anahtarıyla (ENCRYPTION_KEY) şifrelenerek
+         saklanır; şifreleme anahtarı olmayan sitede özellik
+         açılamaz. Ayarlar › Ticaret'teki "Şifreleme Anahtarını
+         Sıfırla" kullanılırsa bütün iki adımlı doğrulama
+         anahtarları okunamaz olur: doğrulaması açık kişiler
+         yalnız kurtarma kodlarıyla girebilir, doğrulama
+         uygulaması için yöneticinin kullanıcı ekranından
+         sıfırlaması gerekir. Şifreleme anahtarı config.php'den
+         silinse de iki adımlı doğrulama kendiliğinden kapanmaz.
+
+  [ŞEMA] user_mfa ve user_mfa_recovery tabloları;
+         config.mfa_required_role sütunu.
+
+  [DÜZELTME] Sitede giriş sayfası ya da giriş widget'ı taşıyan
+         bir sayfa yokken panelin ya da erişim isteyen bir
+         sayfanın açtığı varsayılan giriş ekranı biçimsiz bir
+         tabloydu ve kimlik alanı e-posta türündeydi: tarayıcı
+         kullanıcı adıyla girişe izin vermiyordu. Ekran artık
+         iki adımlı doğrulama ekranıyla aynı kart görünümünde;
+         alan e-posta adresini ya da kullanıcı adını kabul
+         ediyor, hata iletileri kartın içinde, "Beni Hatırla",
+         "Parolanızı mı unuttunuz?" ve Google ile giriş kartta.
+         Giriş sayfası tipiyle kurulmuş sitelerin giriş sayfası
+         değişmez.
+
+  ÇEREZ İZNİ
+  --------------------------------------------------------
+
+  [YENİ] Ziyaretçi sayfalarında çerez izni. Sol alt köşedeki
+         küçük bildirim sitenin hangi çerezleri ne için
+         kullandığını anlatır: Ayarlar ve Tümünü kabul et
+         düğmeleri, kapatma düğmesi. Ayarlar'da gerekli çerezler
+         (oturum, sepet, giriş, çerez tercihi) her zaman açık
+         gösterilir ve kapatılamaz; İstatistik ve Pazarlama
+         kategorileri açık olarak gelir, ziyaretçi istediğini
+         kapatır. Seçimden sonra bildirim sol alttaki çerez
+         simgesine küçülür; tercih oradan her zaman
+         değiştirilebilir. Sitede #cookie-settings adresine bir
+         bağlantı varsa (örneğin alt bilgide "Çerez ayarları")
+         bildirimi o bağlantı açar ve simge gizlenir.
+
+  [YENİ] Google Analytics, ziyaretçi istatistiği çerezleri
+         (ziyaret sayısı, izleme kodu, UTM kampanyası) ve satış
+         ortaklığı çerezi artık ziyaretçi izin verdikten sonra
+         çalışır. İzin verilmeyen ziyarette bu bilgiler yalnız o
+         ziyaret boyunca tutulur. İzin geri alındığında ilgili
+         çerezler silinir. Kapatma düğmesi yalnız gerekli
+         çerezleri bırakır.
+
+  [YENİ] Bildirim çok dilli sitede sayfanın diliyle gösterilir:
+         /en/ İngilizce; dil dosyası olmayan dillerde (/ko/ gibi)
+         metinler Çeviriler ekranının "Çerez penceresi"
+         grubunda çevrilir. Grup bildirimin bütün metinlerini
+         hiçbir ziyaretçi görmeden listeler; grubun "Bu metinleri
+         güncelle" düğmesi yalnız bunları dilin motoruna gönderir.
+
+  [YENİ] Ayarlar → SEO → Çerez İzni: bildirimi açıp kapatma ve
+         bildirimde bağlantı olarak gösterilecek çerez politikası
+         sayfası. Tasarıma eklenen kendi betiklerinizi de
+         <script type="text/plain" data-pg-consent="analytics">
+         (ya da "marketing") olarak yazarak izne
+         bağlayabilirsiniz; bildirim onları
+         data-pg-consent-name ile verdiğiniz adla listeler.
+         Güncellemeyle birlikte açık gelir.
+
+  [ŞEMA] config tablosuna cookie_consent ve
+         cookie_consent_policy_url sütunları.
+
+  VERİTABANI
+  --------------------------------------------------------
+
+  [ŞEMA] Hâlâ eski MyISAM motorunda duran tablolar (siparişler,
+         ürünler, kişiler, formlar, sayfalar, ayarlar, arama
+         dizini ve diğerleri; toplam 144 tablo) InnoDB'ye
+         taşınır. InnoDB'de bir yazma işlemi tüm tabloyu değil
+         yalnız ilgili satırı kilitler, sunucu beklenmedik
+         kapandığında tablolar onarım gerektirmez ve ERP
+         belgeleri siparişler ve ürünlerle birlikte tek işlem
+         olarak geri alınabilir. Tablolar küçükten büyüğe
+         taşınır. 250.000 satırı ya da 128 MB'ı aşan tablolar
+         yükseltme sırasında taşınmaz, MyISAM'da bırakılır ve
+         yükseltme notlarında adıyla listelenir. Yükseltme uzun
+         sürerse ekran sürümü duraklatıp yeni bir istekle aynı
+         sürümden devam eder; tek bir istek sunucunun süre
+         sınırına takılmaz. Veritabanında aynı tablo üzerinde
+         önceki bir istekten kalan dönüşüm hâlâ sürüyorsa yenisi
+         başlatılmaz, bitmesi beklenir. Taşınamayan bir tablo
+         yükseltmeyi durdurmaz; site her iki motorla da çalışır.
+         Ön kontrol kartının "Büyük tablolar" satırı bunu da
+         söyler.
+
+  [YENİ] Ayarlar → İşler altında "Veritabanı Motoru" ekranı:
+         MyISAM'da kalan tabloları satır sayısı ve boyutuyla
+         listeler; her tablo tek düğmeyle InnoDB'ye dönüştürülür.
+         Büyük bir tablonun dönüşümü dakikalar sürebilir ve o
+         sırada tabloya yazma bekler; dönüştürmeden önce yedek
+         alın, sitenin sakin olduğu bir saati seçin. İşlem
+         etkinlik kaydına yazılır.
+
+  [YENİ] Veritabanı Motoru ekranı genişledi. "Bulgular"
+         kartı ilgilenmeye değer ne varsa sıralar: tanımı
+         okunamayan ya da son denetimde hata çıkan tablolar,
+         içinde çok boş alan kalmış tablolar, büyük tablolar,
+         MyISAM'da kalanlar ve dikkat isteyen sunucu
+         ayarları. "Tablo sağlığı" kartı saatlik denetimin
+         sonucunu gösterir; sorunlu tablo tek düğmeyle
+         denetlenir, MyISAM tablosu onarılır. "Tüm tablolar"
+         listesi her tablonun motorunu, satır sayısını,
+         boyutunu ve boş alanını verir; tablo OPTIMIZE TABLE
+         ile sıkıştırılabilir. Yan sütunda sunucunun sürümü,
+         karakter seti, InnoDB ayarları ve çalışma süresi
+         var. Araç çubuğundan tüm tablolar tek seferde
+         denetlenir. Her işlem etkinlik kaydına yazılır.
+
+  [YENİ] Satırı InnoDB'ye sığmayacak bir tablo artık
+         dönüştürülmeye çalışılmaz, ekranda ve Sistem
+         Durumu'nda "InnoDB için fazla geniş" diye işaretlenir.
+         Satırın en geniş hâli veritabanı sunucusunun kendi
+         sayımıyla (MySQL 8.0, MySQL 5.7 ya da MariaDB)
+         hesaplanır ve sebebi yazılır: 255 bayttan kısa
+         sütunlar satırın içinde kalmak zorundadır.
+
+  [ŞEMA] Ayarlar tablosunun (config) metin sütunları VARCHAR
+         yerine TEXT olur. MySQL 8.0'da bu tablo InnoDB'ye
+         taşınırken "Row size too large (> 8126)" hatasıyla
+         MyISAM'da kalıyordu; tablo aynı zamanda MySQL'in
+         65.535 baytlık satır sınırına dayanmıştı ve bir
+         sonraki yeni ayar sütunu her sunucuda yükseltmeyi
+         durdurabilirdi. TEXT her iki sınırda da az yer tutar;
+         değerler aynen korunur. Bu sürümün önceki bir
+         yükseltmesinde ayarlar tablosu MyISAM'da kaldıysa
+         Veritabanı Motoru ekranından dönüştürün.
+
+  [YENİ] Sistem Durumu'nda "Depolama Motoru" satırı: MyISAM'da
+         kalan tablo varsa sayısını ve boyutlarını gösterir,
+         Veritabanı Motoru ekranına götürür. Puana etki etmez.
+
+  [YENİ] Performans Günlüğü her isteğin veritabanına kaç sorgu
+         gönderdiğini de kaydeder. Sayfa tablosunda "Ort. Sorgu"
+         ve "En Yüksek Sorgu", yavaş istekler listesinde "Sorgu"
+         sütunu var; sütunlara tıklayarak sıralanabilir. Çok
+         sorgu gönderen bir sayfa böylece yavaşlamadan önce de
+         görülür. Yükseltmeden önce kaydedilen satırlarda sayı 0
+         görünür.
+
+  [ŞEMA] perf_stats.total_queries ve perf_stats.max_queries,
+         perf_log.query_count sütunları.
+
+
+
   2026.4.7
   ==========================================================
 

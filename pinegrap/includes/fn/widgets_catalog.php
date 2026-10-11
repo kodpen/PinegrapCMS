@@ -695,11 +695,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Decode + split the widget tree into static + loop-template halves.
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages — catalog_listing has no dedicated POST handler /
-    // liveform of its own, so leave formName empty (collects every pending
-    // session message). Auto-prepends a fallback messages node when the
-    // designer hasn't placed one.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Messages: liveform 'catalog_detail' — a card's add-to-cart posts to
+    // catalog_detail.php, which sends a refusal (out of stock, bad quantity)
+    // back to this page under that name. An unnamed node would take the
+    // messages of a form beside it (the footer's sign-up form among them).
+    _pg_inject_messages_node($tree_decoded, 'catalog_detail');
 
     // ── Designer bindings pre-process ────────────────────────────────────
     // Convert section / action / value bindings on user-placed nodes into

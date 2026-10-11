@@ -24,7 +24,43 @@ if (!$_POST) {
 
 // else user has completed form, so process form
 } else {
-    
+
+    // One-click unsubscribe (RFC 8058). A mail client that found the
+    // List-Unsubscribe and List-Unsubscribe-Post headers on a commercial
+    // campaign POSTs "List-Unsubscribe=One-Click" to the address in the
+    // header, with no session, no page and no form token. The signature in
+    // the address is what authorises the request - it can only have come from
+    // a message this site sent to that address - so no CSRF token is asked
+    // for; the RFC forbids requiring one. The answer is plain text, never a
+    // redirect: the client does not follow it and nobody reads it.
+    if (($_POST['List-Unsubscribe'] ?? '') === 'One-Click') {
+
+        $one_click_address = str_rot13((string) base64_decode((string) ($_GET['id'] ?? '')));
+
+        header('Content-Type: text/plain; charset=utf-8');
+
+        if (
+            ($one_click_address === '')
+            || !pg_email_preferences_signature_valid($one_click_address, (string) ($_GET['sig'] ?? ''))
+        ) {
+            http_response_code(403);
+            print 'Invalid signature';
+            exit;
+        }
+
+        // Every contact with the address, as the preferences form does.
+        db(
+            "UPDATE contacts
+            SET opt_in = '0', timestamp = UNIX_TIMESTAMP()
+            WHERE email_address = '" . e($one_click_address) . "'");
+
+        log_activity(lang(array('string' => '{var:1} unsubscribed with one click.', 'vars' => array($one_click_address))), 'UNKNOWN');
+
+        http_response_code(200);
+        print 'Unsubscribed';
+        exit;
+    }
+
     validate_token_field();
     
     include_once('liveform.class.php');

@@ -318,11 +318,24 @@ if ($_POST) {
             $anchor = '?feed=' . (int) ($_POST['feed_id'] ?? 0) . '#ws-feed-' . (int) ($_POST['feed_id'] ?? 0);
             break;
 
+        // Channel templates (includes/workspace/templates.php): archived or
+        // brought back; they are written on their own screen.
+        case 'template_archive':
+            ws_templates_settings_post($viewer, $liveform);
+            $anchor = '#ws-templates';
+            break;
+
         // Asking Claude in the channels (includes/workspace/claude.php).
         case 'claude':
         case 'claude_test':
             ws_claude_settings_post($viewer, $action, $liveform);
             $anchor = '#ws-claude';
+            break;
+
+        // Bulk changes the assistants propose (includes/workspace/bulk.php).
+        case 'bulk':
+            ws_bulk_settings_post($viewer, $liveform);
+            $anchor = '#ws-bulk';
             break;
 
         // Pinegrap AI in the channels (includes/workspace/ai.php).
@@ -561,6 +574,8 @@ pg_page_shell([
                 </div>
             </form>
 
+            ' . ws_templates_settings_card($self_url, $viewer) . '
+
             ' . ws_holidays_settings_card($self_url) . '
 
             ' . ws_claude_settings_card($self_url, $viewer) . '
@@ -591,6 +606,8 @@ pg_page_shell([
                     <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
                 </div>
             </form>
+
+            ' . ws_bulk_settings_card($self_url, $viewer) . '
 
             <div class="card">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('Who is in the team')) . '</h2></div>

@@ -123,13 +123,14 @@ foreach ($rows as $row) {
         </tr>';
 }
 
-$output_filter = '';
+// The states, each with how many documents stand in it.
+$filter_options = array();
 foreach (array_merge(array_keys($states), array('all')) as $key) {
     $label = ($key === 'all') ? lang('All') : $states[$key]['label'];
     $count = ($key === 'all') ? array_sum($counts) : (int) $counts[$key];
-    $output_filter .= '<a class="btn btn-sm btn-ghost' . (($state === $key) ? ' active' : '') . '" href="erp_inbox.php?state=' . $key . '">'
-        . h($label) . ' <span class="badge rounded-pill text-bg-light">' . $count . '</span></a>';
+    $filter_options[$key] = $label . ' (' . $count . ')';
 }
+$output_filter = pg_filter_select('state', $filter_options, $state, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_inbox.php'));
 
 $output_notice = '';
 
@@ -148,8 +149,9 @@ if (!$installed) {
 $output_fetch = '';
 
 if ($provider !== '') {
-    $output_fetch = '
-                <form action="erp_inbox.php" method="post" class="d-flex flex-wrap align-items-center gap-1">
+    // Reading writes rows, so a read-only user is shown when it last ran, not the button.
+    $output_fetch = ((defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '' : '
+                <form action="erp_inbox.php" method="post" class="d-flex align-items-center gap-1">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="state" value="' . h($state) . '" />
@@ -157,7 +159,7 @@ if ($provider !== '') {
                     <span class="text-body-secondary">&ndash;</span>
                     <input type="date" name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
                     <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
-                </form>
+                </form>') . '
                 ' . (($read_at > 0)
                     ? '<span class="small text-body-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
                     : '');
@@ -183,7 +185,7 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . $output_fetch . '
                 <div class="pg-toolbar-grow"></div>
-                <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . lang('Status') . '">' . $output_filter . '</div>
+                ' . $output_filter . '
             </nav>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">

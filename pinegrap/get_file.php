@@ -27,9 +27,11 @@ if (!class_exists('db', false)) {
 }
 
 // Shared sign-in primitives (pg_auth_token_verify, pg_load_user_row and the
-// token revoke). This file still never loads functions.php; the token check
-// moved to includes/authentication.php so both sides run the same one, and
-// our local db()/db_item()/escape() below are exactly what it needs.
+// token revoke) and the folder access checks (get_access_control_type,
+// check_view_access, check_edit_access, check_private_access). This file
+// still never loads functions.php; both moved to includes/authentication.php
+// so both sides run the same code, and our local db()/db_value()/db_item()/
+// db_items()/escape() below are exactly what it needs.
 require_once(dirname(__FILE__) . '/includes/authentication.php');
 
 // Get config settings.
@@ -1273,24 +1275,6 @@ function escape($string) {
     return mysqli_real_escape_string(db::$con, $string);
 }
 
-function get_access_control_type($folder_id) {
-    $query = "SELECT folder_parent, folder_access_control_type FROM folder WHERE folder_id = '" . escape($folder_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-
-    if ($row['folder_access_control_type']) {
-        return $row['folder_access_control_type'];
-    }
-
-    // if this folder is the root folder, return public
-    if ($row['folder_parent'] == 0) {
-        return 'public';
-    // else this folder is not the root folder, so use recursion to find access control of folder parent
-    } else {
-        return get_access_control_type($row['folder_parent']);
-    }
-}
-
 function log_activity($description, $user)
 {
     $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) "
@@ -1380,213 +1364,6 @@ function initialize_user()
         define('USER_ID', '');
     }
 }
-
-// Create function that will check if a visitor has view access to a folder.
-// This does not just check private access.  It checks for all types of access control.
-// Since any visitor can get access to registration or guest content by registering or choosing to be a guest,
-// you can set $always_grant_access_for_registration_and_guest to true which will grant access
-// regardless of whether the visitor is logged in or not.
-function check_view_access($folder_id, $always_grant_access_for_registration_and_guest = false)
-{
-    // If the user is logged in and the user is an administrator, designer, or manager,
-    // then they have view access to all folders, so just grant access.
-    if (USER_LOGGED_IN && (USER_ROLE < 3)) {
-        return true;
-    }
-
-    // Assume that visitor does not have access until we find out otherwise.
-    $access = false;
-
-    // Check if visitor has access differently based on the access control type of the folder.
-    switch (get_access_control_type($folder_id)) {
-        case 'public':
-            $access = true;
-            break;
-        
-        case 'private':
-            $access_check = check_private_access($folder_id);
-
-            // If the visitor has private access to this folder, then visitor has access.
-            if ($access_check['access'] == true) {
-                $access = true;
-            }
-            
-            break;
-            
-        case 'guest':
-            // If the visitor should always be granted access for guest access control,
-            // or if the visitor has logged in, or if the visitor has selected to be a guest,
-            // then the visitor has access.
-            if (
-                ($always_grant_access_for_registration_and_guest == true)
-                || (USER_LOGGED_IN == true)
-                || ($_SESSION['software']['guest'] == true)
-            ) {
-                $access = true;
-            }
-            
-            break;
-
-        case 'registration':
-            // If the visitor should always be granted access for registration access control,
-            // or if the visitor has logged in, then the visitor has access.
-            if (
-                ($always_grant_access_for_registration_and_guest == true)
-                || (USER_LOGGED_IN == true)
-            ) {
-                $access = true;
-            }
-            
-            break;
-
-        case 'membership':
-            // If the visitor is logged in and is a member
-            // or has edit access, then the visitor has access.
-            if (
-                (USER_LOGGED_IN == true)
-                &&
-                (
-                    (USER_MEMBER == true)
-                    || (check_edit_access($folder_id) == true)
-                )
-            ) {
-                $access = true;
-            }
-            
-            break;
-    }
-
-    return $access;
-}
-
-// Create function in order to check if a visitor has edit access to a folder.
-// It returns true or false.
-function check_edit_access($folder_id)
-{
-    // Assume that the visitor does not have edit access until we find out otherwise.
-    $access = false;
-
-    // If the visitor is logged in, then continue to check if the visitor has edit access.
-    if (USER_LOGGED_IN == true) {
-        // If the user is a manager or above, then the user has edit access.
-        if (USER_ROLE < 3) {
-            $access = true;
-
-        // Otherwise the user has a user role, so continue to check if user has edit access.
-        } else {
-            // Determine what type of access user has to folder.
-            $row = db_item(
-                "SELECT
-                    aclfolder.aclfolder_rights AS rights,
-                    folder.folder_parent AS parent_folder_id
-                FROM aclfolder
-                LEFT JOIN folder ON aclfolder.aclfolder_folder = folder.folder_id
-                WHERE
-                    (aclfolder.aclfolder_user = '" . USER_ID . "')
-                    AND (aclfolder.aclfolder_folder = '" . escape($folder_id) . "')");
-
-            $rights = $row['rights'];
-            $parent_folder_id = $row['parent_folder_id'];
-
-            // If this user has edit rights to this folder, then remember that.
-            if ($rights == 2) {
-                $access = true;
-
-            // Otherwise we do not know if access has been granted, so if this is not the root folder
-            // then use recursion to check for access in parent folder.
-            } else {
-                // If the parent folder has not been found yet, then get it.
-                if ($parent_folder_id == '') {
-                    $parent_folder_id = db_value("SELECT folder_parent AS parent_folder_id FROM folder WHERE folder_id = '" . escape($folder_id) . "'");
-                }
-
-                // If this is not the root folder, then use recursion to check parent folder for access.
-                if ($parent_folder_id != 0) {
-                    $access = check_edit_access($parent_folder_id);
-                }
-            }
-        }
-    }
-
-    return $access;
-}
-
-// Create function in order to check if a visitor has access to a private folder.
-// This function returns an array with two properties: "access" (set to true
-// if the user has access and false if user does not have access) and "expired"
-// (set to true if the access has expired and false otherwise).
-// Visitors with edit rights to a folder also have private access to that folder.
-function check_private_access($folder_id)
-{
-    $result = array();
-
-    // Assume that the visitor does not have access and access has not expired until we find out otherwise.
-    $result['access'] = false;
-    $result['expired'] = false;
-
-    // If the visitor is logged in, then continue to check if the visitor has private access.
-    if (USER_LOGGED_IN == true) {
-        // If the user is a manager or above, then the user has private access.
-        if (USER_ROLE < 3) {
-            $result['access'] = true;
-
-        // Otherwise the user has a user role, so continue to check if user has private access.
-        } else {
-            // Determine what type of access user has to folder.
-            $row = db_item(
-                "SELECT
-                    aclfolder.aclfolder_rights AS rights,
-                    aclfolder.expiration_date,
-                    folder.folder_parent AS parent_folder_id
-                FROM aclfolder
-                LEFT JOIN folder ON aclfolder.aclfolder_folder = folder.folder_id
-                WHERE
-                    (aclfolder.aclfolder_user = '" . USER_ID . "')
-                    AND (aclfolder.aclfolder_folder = '" . escape($folder_id) . "')");
-
-            $rights = $row['rights'];
-            $expiration_date = $row['expiration_date'];
-            $parent_folder_id = $row['parent_folder_id'];
-
-            // If this user has edit rights to this folder, then they also have private access.
-            if ($rights == 2) {
-                $result['access'] = true;
-
-            // Otherwise if this user has private access, then determine if access has expired.
-            } else if ($rights == 1) {
-                initialize_timezone();
-
-                // If there is an expiration date and it has expired, then remember that.
-                if (
-                    ($expiration_date != '0000-00-00')
-                    && ($expiration_date < date('Y-m-d'))
-                ) {
-                    $result['expired'] = true;
-
-                // Otherwise the private access has not expired, so user has access.
-                } else {
-                    $result['access'] = true;
-                }
-
-            // Otherwise we do not know if access has been granted, so if this is not the root folder
-            // then use recursion to check for access in parent folder.
-            } else {
-                // If the parent folder has not been found yet, then get it.
-                if ($parent_folder_id == '') {
-                    $parent_folder_id = db_value("SELECT folder_parent AS parent_folder_id FROM folder WHERE folder_id = '" . escape($folder_id) . "'");
-                }
-
-                // If this is not the root folder, then use recursion to check parent folder for access.
-                if ($parent_folder_id != 0) {
-                    $result = check_private_access($parent_folder_id);
-                }
-            }
-        }
-    }
-
-    return $result;
-}
-
 
 function initialize_url_constants()
 {
