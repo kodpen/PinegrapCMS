@@ -58,7 +58,8 @@ zaten verilmiş kararlar listeleniyor.
   `upgrade_2026_4_9_<konu>()` alt adımı olarak girer (dosya ve `versions.php`
   satırı o adımla açılır); `changelog.txt`'de yeni maddeler en üste açılacak
   `2026.4.9` bölümüne yazılır. Geliştirme `development` dalında sürer; yayın,
-  `development`'ın ağacından `CLAUDE.md`, `.claude/` ve `docs/` çıkarılarak
+  `development`'ın ağacından `CLAUDE.md`, `.claude/`, `docs/`, `tools/` ve
+  `tests/` çıkarılarak
   main'in üstüne kurulan tek "Release <sürüm>" commit'li `release/<sürüm>`
   dalıyla, PR ve etiketle yapılır. Barındırma platformuna
   (pinegrap.site) özgü özellikler — `PG_HOSTED` / `PG_DEMO` kipleri —
@@ -67,7 +68,7 @@ zaten verilmiş kararlar listeleniyor.
 - Dil dosyası `includes/local/tr.json`, yapılandırma `data/config.php` (çalışma
   anında `CONFIG_FILE_PATH`). Gerçek `config.php` asla commit'lenmez; depodaki
   boş taslaktır, örnek değerler `data/config(default).php` içindedir.
-- **`CLAUDE.md`, `.claude/` ve `docs/` yalnız `development` dalında izlenir**,
+- **`CLAUDE.md`, `.claude/`, `docs/`, `tools/` ve `tests/` yalnız `development` dalında izlenir**,
   `main`'e ve sürümlere girmez. `dev/` ile `.gitignore`'da adı geçen iç notlar
   (`docs/_software_create_hash.php`, `docs/_plan_barindirma.md` gibi) hiçbir
   dalda yoktur; yalnız geliştirme makinasında durur. Klonlanmış bir oturumda

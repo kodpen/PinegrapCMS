@@ -24,11 +24,15 @@ root unless they start with `tools/`.
 ## Workflow
 
 1. Open or pick an issue first (see conventions below).
-2. Branch off current `main`, one branch per topic
+2. Branch off current `development`, one branch per topic
    (`fix/...`, `feature/...`, `docs/...`).
 3. Commit in English with a clear, descriptive message.
-4. Open a pull request against `main` and fill in the template. Draft PRs are
-   welcome while work is in progress.
+4. Open a pull request against `development` and fill in the template. Draft
+   PRs are welcome while work is in progress.
+
+`main` holds released versions only: every release is cut from `development`
+and carries the product alone, without `tools/` and `tests/`. The checks below
+run on `development`.
 
 ## Definition of done
 
@@ -75,9 +79,10 @@ Security findings are **not** filed as public issues; see
 Several contributors to this repository are automated agents. The same rules
 apply to them, plus these to keep parallel work from colliding:
 
-- One issue per fix package, one branch per topic, always off current `main`.
+- One issue per fix package, one branch per topic, always off current
+  `development`.
 - Before touching shared hot files (`includes/local/tr.json`,
-  `includes/migrations/`, the change log) merge `main` into the branch again.
+  `includes/migrations/`, the change log) merge `development` into the branch again.
 - Never force-push a branch someone else may have checked out.
 - Before opening a PR, check open issues and PRs for the same `file:line`
   ranges; mention overlaps in the PR body.

@@ -3,12 +3,17 @@
 # external API schema, the unit tests under tests/, the function copies in
 # get_file.php and a JavaScript syntax check of the large panel scripts. None
 # of them needs a database.
+#
+# tools/ and tests/ are tracked on the development branch only; main and the
+# release branches carry the product alone. There the PHP steps find no
+# tools/ and are skipped, so the job still reports and the JavaScript syntax
+# check still runs.
 name: PHP checks
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, development]
 
 permissions:
   contents: read
@@ -22,6 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up PHP
+        if: ${{ hashFiles('tools/lint.php') != '' }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
@@ -30,21 +36,27 @@ jobs:
           tools: none
 
       - name: Syntax check (php -l over the product tree)
+        if: ${{ hashFiles('tools/lint.php') != '' }}
         run: php tools/lint.php
 
       - name: Translation keys (lang / _sdT against tr.json)
+        if: ${{ hashFiles('tools/check_lang.php') != '' }}
         run: php tools/check_lang.php
 
       - name: Designer bindings (dropdown tokens against renderer tokens)
+        if: ${{ hashFiles('tools/check_bindings.php') != '' }}
         run: php tools/check_bindings.php
 
       - name: External API schema (endpoint fields against the schema)
+        if: ${{ hashFiles('tools/check_api_schema.php') != '' }}
         run: php tools/check_api_schema.php
 
       - name: Unit tests (tests/*_test.php)
+        if: ${{ hashFiles('tools/test.php') != '' }}
         run: php tools/test.php
 
       - name: get_file.php copies (only the intended ones)
+        if: ${{ hashFiles('tools/check_copies.php') != '' }}
         run: php tools/check_copies.php
 
       - name: Set up Node
