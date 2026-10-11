@@ -1040,6 +1040,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 /* The second colour of each icon. */
 #menu .pg-mi-dashboard { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-workspace { --pg-mi-a: var(--pg-mi-teal); }
+#menu .pg-mi-notes { --pg-mi-a: var(--pg-mi-teal); }
 #menu .pg-mi-folders { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-pages { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-files { --pg-mi-a: var(--pg-mi-amber); }
@@ -1908,15 +1909,51 @@ body:not(.toolbar) .software-content {
    !important only against the py-0, m-1 and mb-2 the markup carries on these
    buttons: those are utilities, they already win on !important, and they are
    what kept the target 17px tall and the gaps uneven. Scoped to this bar, so
-   nothing outside it is affected. */
-#button_bar > .btn {
+   nothing outside it is affected.
+
+   The flex rule is for every button in the bar, not only its direct
+   children: a dissolved group's buttons are items of the bar while still
+   matching .btn-group > .btn, and a child selector misses them. */
+#button_bar .btn {
   flex: 0 0 auto;
+}
+
+/* The same shape for the buttons a dissolved group or a wrapping form hands
+   to the bar. Not every .btn in it: a button inside an input group keeps the
+   group's corners. */
+#button_bar > .btn,
+#button_bar .btn-group > .btn,
+#button_bar > form > .btn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   margin: 0 !important;
   border-radius: var(--bs-border-radius-pill);
   white-space: nowrap;
+}
+
+/* A form (export, filter, search) or an inline wrapper in the bar lays its
+   controls out on the bar's own line instead of being one inline box.
+   inline-flex rather than display:contents keeps the form a box, so submit
+   and the hidden token fields behave as before. !important only against the
+   d-inline-block / d-flex utilities the markup carries. A form that is
+   itself an input group (the round search box) keeps its own layout. */
+#button_bar > form:not(.input-group):not(.d-none):not([hidden]),
+#button_bar > span:not(.d-none):not([hidden]),
+#button_bar > .d-inline-block:not(.d-none):not([hidden]) {
+  display: inline-flex !important;
+  align-items: center;
+  gap: inherit;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Only a wrapper of buttons wraps. A form with fields stays on one line -
+   its fields carry w-auto - or a date range splits from its label. */
+#button_bar > form:not(.input-group):not(:has(.form-control, .form-select)),
+#button_bar > span,
+#button_bar > .d-inline-block {
+  flex-wrap: wrap;
 }
 
 /* The real actions - Create and its siblings - keep the variant they were given
@@ -5758,14 +5795,54 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
    separated by a bullet. Weight does the separating -- the greeting is the
    darker half -- which costs no punctuation and no second row.
 
-   Capped at 62ch. Prose set across two thousand pixels is not read, it is
-   scanned, and the whole point of writing this as a sentence is that it gets
-   read. */
+   The sentence is capped at 62ch. Prose set across two thousand pixels is not
+   read, it is scanned, and the whole point of writing this as a sentence is
+   that it gets read. The card around it is allowed a little more, for its
+   padding and the mark.
+
+   A quiet card rather than bare text: a translucent surface over the panel
+   backdrop, so the line reads as one object sitting on the page instead of a
+   caption floating above the widgets. */
 .pg-brief {
+  position: relative;
   align-self: flex-start;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  max-width: min(100%, 68ch);
+  padding: 0.6rem 0.9rem 0.6rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--bs-body-bg) 72%, transparent);
+}
+html[data-bs-theme="dark"] .pg-brief {
+  background: color-mix(in srgb, var(--bs-body-bg) 55%, transparent);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .pg-brief {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+}
+/* A thin stroke of the clock's gradient down the left edge, inset from the
+   corners so it does not have to follow the radius. Positioned rather than
+   clipped: overflow on the card would also clip the mark's ring. */
+.pg-brief::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--clock-gradient);
+  pointer-events: none;
+}
+.pg-brief-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 /* The speaker. It carries the hour's own glyph -- sunrise, sun, dusk, moon --
@@ -5776,14 +5853,14 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 0.05rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0;
   border-radius: 50%;
   background: var(--clock-gradient);
   box-shadow: 0 1px 6px var(--clock-glow);
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1;
 }
 .pg-brief-mark .bi::before {
@@ -5792,6 +5869,7 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 }
 
 .pg-brief-text {
+  max-width: 62ch;
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
@@ -5833,10 +5911,103 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   .pg-brief-text {
     animation: pg-brief-in 0.45s ease-out both;
   }
+  /* The strip follows the sentence rather than arriving with it, so the eye
+     lands on the words first. */
+  .pg-brief-ws {
+    animation: pg-brief-in 0.45s ease-out 0.18s both;
+  }
+  /* One soft ring from the mark as the line arrives, once, and then still. */
+  .pg-brief-mark {
+    animation: pg-brief-ring 0.9s ease-out 1;
+  }
 }
 @keyframes pg-brief-in {
   from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: none; }
+}
+@keyframes pg-brief-ring {
+  from { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0 var(--clock-glow); }
+  to   { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0.55rem transparent; }
+}
+
+/* The workspace strip: what was handed over, what is under way, what is late.
+   Small pills under the sentence, the same few facts in the same place on
+   every load -- the glance, where the sentence is the read. */
+.pg-brief-ws {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+.pg-brief-ws-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.15rem 0.55rem 0.15rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bs-secondary-bg) 80%, transparent);
+  color: var(--bs-body-color);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.pg-brief-ws-item:hover,
+.pg-brief-ws-item:focus-visible {
+  color: var(--bs-body-color);
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  transform: translateY(-1px);
+}
+/* Something new: a small dot in the clock's colours ahead of the icon. */
+.pg-brief-ws-item.is-new::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clock-gradient);
+}
+.pg-brief-ws-item.is-late .bi,
+.pg-brief-ws-item.is-late .pg-brief-ws-label {
+  color: var(--bs-danger);
+}
+.pg-brief-ws-label {
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+.pg-brief-ws-text {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-brief-ws-bar {
+  flex: 0 0 auto;
+  width: 3.5rem;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--bs-border-color);
+  overflow: hidden;
+}
+.pg-brief-ws-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--clock-gradient);
+}
+.pg-brief-ws-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+@media (max-width: 575.98px) {
+  .pg-brief {
+    padding: 0.5rem 0.65rem;
+  }
+  .pg-brief-ws-text {
+    max-width: 14ch;
+  }
 }
 .pg-clockbar-now {
   display: flex;
@@ -6123,6 +6294,16 @@ button.no-popover:focus-visible {
 
   .pg-toolbar-search { order: 10; }
 }
+
+/* The orders list's statistics strip (view_orders.php): a sparkline under a
+   figure, and the two small charts beside it. Chart.js draws with
+   maintainAspectRatio off, so the box sets the height. */
+.pg-orders-spark { position: relative; height: 56px; }
+.pg-orders-chart { position: relative; height: 160px; }
+
+/* The design list's shared components panel carries a six column table;
+   Bootstrap's 400px offcanvas would wrap every cell. */
+#sd-comp-offcanvas { --bs-offcanvas-width: min(100vw, 860px); }
 
 /* ── Settings screen section anchors ──────────────────────────────────────
    The settings cards carry an id (#pgset-security, #pgset-waf, …) so the
@@ -8728,6 +8909,190 @@ body.workspace_settings .ws-shell-main > #button_bar {
 @supports (height: 100dvh) {
   .ws-app { height: calc(100dvh - 8.5rem); }
 }
+/* A discussion beside the channel (threads.php): a third column on a wide
+   screen; on a phone it covers the channel until it is closed (below). */
+.ws-thread-panel {
+  display: none;
+}
+.ws-app.ws-thread-open {
+  grid-template-columns: 17rem minmax(0, 1fr) var(--ws-thread-w, minmax(20rem, 26rem));
+}
+.ws-app.ws-thread-open .ws-thread-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+}
+/* The discussion panel is widened by dragging its left edge; the strip
+   sits over the border so the panel keeps its own padding. */
+.ws-thread-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.ws-thread-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  transition: background .15s;
+}
+.ws-thread-resizer:hover::after,
+.ws-thread-resizer:focus-visible::after,
+.ws-app.ws-thread-resizing .ws-thread-resizer::after {
+  background: var(--ws-accent);
+}
+.ws-app.ws-thread-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+.ws-app.ws-thread-resizing iframe {
+  pointer-events: none;
+}
+.ws-app.ws-thread-open .ws-composer-hint {
+  display: none !important;
+}
+.ws-send-group .btn {
+  white-space: nowrap;
+}
+.ws-thread-panel > .ws-head,
+.ws-thread-panel > .alert,
+.ws-thread-panel > .ws-thread-source,
+.ws-thread-panel > .ws-composer-wrap {
+  flex-shrink: 0;
+}
+.ws-thread-head .ws-head-title h2 {
+  font-size: 1rem;
+}
+.ws-thread-source {
+  max-height: 30%;
+  overflow-y: auto;
+  padding: .5rem 1rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  background: var(--ws-soft);
+  font-size: .85rem;
+}
+.ws-thread-source-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+.ws-thread-source-head .btn-link {
+  font-size: .75rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ws-thread-source-body b {
+  margin-right: .4rem;
+}
+.ws-thread-source-time {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+/* Under a message of the channel: the discussion about it. */
+.ws-thread-wrap {
+  margin-top: .35rem;
+}
+.ws-thread-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+  max-width: 100%;
+  padding: .3rem .6rem;
+  border: 1px solid rgba(var(--ws-accent-rgb), .35);
+  border-radius: .7rem;
+  background: var(--ws-soft);
+  color: var(--bs-body-color);
+  font-size: .8rem;
+  text-align: left;
+}
+button.ws-thread-bar:hover {
+  border-color: var(--ws-accent);
+}
+.ws-thread-bar.ws-thread-bar-news {
+  border-color: var(--ws-accent);
+}
+.ws-thread-bar.ws-thread-bar-closed {
+  border-style: dashed;
+  background: transparent;
+}
+.ws-thread-bar-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ws-thread-bar-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-thread-bar-facts {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-thread-bar-go {
+  color: var(--ws-accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-thread-faces img {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.ws-thread-ai {
+  margin-top: .2rem;
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-msg-from-thread {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 .45rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+  font-size: .7rem;
+  font-weight: 600;
+}
+/* The sidebar's discussions: the title, and under it the channel. */
+.ws-thread-link .ws-channel-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.ws-thread-link-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-thread-link-channel {
+  font-size: .68rem;
+  color: var(--bs-secondary-color);
+}
+@media (max-width: 1199.98px) {
+  .ws-app.ws-thread-open {
+    grid-template-columns: 14rem minmax(0, 1fr) var(--ws-thread-w, minmax(18rem, 22rem));
+  }
+}
 .ws-side {
   display: flex;
   flex-direction: column;
@@ -8764,6 +9129,37 @@ body.workspace_settings .ws-shell-main > #button_bar {
 .ws-side-title .btn {
   padding: 0 .35rem;
   line-height: 1.2;
+}
+/* A section heading that opens and closes the section, drawn like a
+   group's (below); a closed one keeps its count on the right. */
+.ws-side-toggle {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+}
+.ws-side-toggle:hover {
+  color: var(--bs-body-color);
+}
+.ws-side-toggle-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-side-more {
+  font-size: .78rem;
+  padding: .1rem .5rem;
+  text-decoration: none;
 }
 .ws-channel-link {
   display: flex;
@@ -9370,6 +9766,36 @@ body.workspace_settings .ws-shell-main > #button_bar {
 }
 .ws-tabs button:hover {
   color: var(--bs-emphasis-color);
+}
+/* What a tab holds, before it is opened: a count of the decisions and the
+   open tasks, a dot when the summary is written. */
+.ws-tab-mark {
+  display: inline-block;
+  min-width: 1.15rem;
+  margin-left: .35rem;
+  padding: 0 .35rem;
+  border-radius: 1rem;
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  text-align: center;
+  vertical-align: .05em;
+}
+.ws-tabs button.active .ws-tab-mark {
+  background: var(--ws-accent);
+  color: #fff;
+}
+.ws-tab-mark.ws-tab-dot {
+  min-width: 0;
+  width: .45rem;
+  height: .45rem;
+  padding: 0;
+  margin-left: .3rem;
+  line-height: 0;
+  vertical-align: .15em;
+  background: var(--ws-accent);
 }
 .ws-pane {
   flex: 1 1 auto;
@@ -10269,6 +10695,19 @@ body.workspace_settings .ws-shell-main > #button_bar {
   margin: .15rem 0;
   color: var(--bs-body-color);
 }
+/* A card reads as its flow: each line hangs on a thin rail. */
+.ws-sa-card > .ws-sa-line {
+  position: relative;
+  padding-left: .15rem;
+}
+.ws-sa-card > .ws-sa-line + .ws-sa-line::before {
+  content: "";
+  position: absolute;
+  left: .42rem;
+  top: -.35rem;
+  height: .4rem;
+  border-left: 1px dashed rgba(var(--ws-accent-rgb), .4);
+}
 .ws-sa-line > .bi {
   flex: none;
   color: var(--bs-secondary-color);
@@ -10334,6 +10773,125 @@ body.workspace_settings .ws-shell-main > #button_bar {
   font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .04em;
+  color: var(--bs-secondary-color);
+}
+/* The form as a flow: its steps down the step rail (Admin screen step rail
+   above), each a box; the outline above them says in words what it will do. */
+.ws-sa-flow {
+  margin-top: .75rem;
+}
+.ws-sa-flow .pg-step {
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+}
+.ws-sa-flow .pg-step + .pg-step {
+  margin-top: .5rem;
+}
+.ws-sa-flow .pg-step-rail::before {
+  bottom: -.5rem;
+}
+.ws-sa-flow .pg-step-node {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+  color: var(--ws-accent);
+}
+.ws-sa-flow .ws-sa-section {
+  margin-top: 0;
+  padding: .6rem .75rem .7rem;
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: var(--ws-radius);
+  background: var(--bs-body-bg);
+}
+.ws-sa-step-number {
+  display: inline-block;
+  margin-right: .35rem;
+  color: var(--ws-accent);
+}
+.ws-sa-when-join {
+  max-width: 24rem;
+}
+.ws-sa-outline {
+  margin-top: .5rem;
+  padding: .55rem .7rem;
+  border-radius: var(--ws-radius);
+  background: var(--ws-soft);
+  font-size: .8rem;
+}
+.ws-sa-outline:empty {
+  display: none;
+}
+.ws-sa-outline-row {
+  display: grid;
+  grid-template-columns: 1.1rem auto minmax(0, 1fr);
+  gap: .35rem;
+  align-items: baseline;
+}
+.ws-sa-outline-row + .ws-sa-outline-row {
+  margin-top: .2rem;
+}
+.ws-sa-outline-row .bi {
+  color: var(--ws-accent);
+}
+.ws-sa-outline-row b {
+  white-space: nowrap;
+}
+.ws-sa-outline.ws-sa-outline-error {
+  background: rgba(var(--bs-danger-rgb), .08);
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-sa-gallery-wrap {
+  margin-bottom: .75rem;
+}
+.ws-sa-gallery-wrap > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.ws-sa-gallery-wrap > summary::-webkit-details-marker {
+  display: none;
+}
+.ws-sa-gallery-title {
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--bs-secondary-color);
+}
+.ws-sa-gallery-wrap > summary .ws-sa-gallery-title::after {
+  content: " ▾";
+}
+.ws-sa-gallery-wrap[open] > summary .ws-sa-gallery-title::after {
+  content: " ▴";
+}
+.ws-sa-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: .45rem;
+  margin: .5rem 0 .75rem;
+}
+.ws-sa-template {
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+  padding: .5rem .6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .7rem;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  text-align: left;
+  font-size: .8rem;
+}
+.ws-sa-template:hover,
+.ws-sa-template.active {
+  border-color: var(--ws-accent);
+  background: var(--ws-soft);
+}
+.ws-sa-template-icon {
+  flex: none;
+  font-size: 1.05rem;
+  color: var(--ws-accent);
+}
+.ws-sa-template-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ws-sa-template-text small {
   color: var(--bs-secondary-color);
 }
 .ws-sa-when {
@@ -11168,6 +11726,99 @@ a.ws-chip:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A channel shared outside the team (guests.php): the people in the
+   manage drawer, and the two ways it can be shared. */
+.ws-bulk-reach {
+  margin: .15rem 0 .25rem;
+  font-size: .8rem;
+}
+.ws-bulk-progress {
+  height: .45rem;
+  margin: .4rem 0 .2rem;
+}
+.ws-share-row {
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.ws-share-choice + .ws-share-choice {
+  margin-top: .4rem;
+}
+/* Scheduled messages (scheduled_messages.php): the send button's second
+   half, the line above the box that says some wait, and their cards. */
+.ws-composer-tools > .ws-send-group {
+  margin-left: auto;
+}
+.ws-send-group .ws-send-later {
+  padding-left: .55rem;
+  padding-right: .65rem;
+  border-left: 1px solid rgba(255, 255, 255, .35);
+}
+.ws-sm-bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  margin: 0 0 .35rem;
+  padding: .3rem .6rem;
+  border: 1px dashed rgba(var(--ws-accent-rgb), .45);
+  border-radius: .6rem;
+  background: var(--ws-soft);
+  color: var(--bs-body-color);
+  font-size: .8rem;
+  text-align: left;
+}
+.ws-sm-bar:hover {
+  border-style: solid;
+}
+.ws-sm-bar .bi {
+  color: var(--ws-accent);
+}
+.ws-sm-bar-link {
+  color: var(--ws-accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-sm-list {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.ws-sm-card {
+  padding: .6rem .75rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--ws-accent);
+  border-radius: var(--ws-radius);
+  background: var(--bs-body-bg);
+}
+.ws-sm-card.ws-sm-failed {
+  border-left-color: var(--bs-danger);
+}
+.ws-sm-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+}
+.ws-sm-icon {
+  color: var(--ws-accent);
+}
+.ws-sm-failed .ws-sm-icon {
+  color: var(--bs-danger);
+}
+.ws-sm-where {
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+}
+.ws-sm-body {
+  margin-top: .35rem;
+}
+.ws-sm-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15rem;
+  margin-top: .4rem;
 }
 .ws-picker {
   position: absolute;
@@ -12649,6 +13300,19 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     display: flex;
     border-right: 0;
   }
+  /* A discussion covers the channel until it is closed. */
+  .ws-app.ws-thread-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-app.ws-thread-open .ws-thread-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    border-left: 0;
+  }
+  .ws-thread-resizer {
+    display: none;
+  }
   .ws-app.ws-show-side .ws-center {
     display: none;
   }
@@ -13546,6 +14210,149 @@ button.ws-home-row:hover,
   font-size: .8rem;
   color: var(--bs-secondary-color);
 }
+/* A hesap block's groups: the heading, the lines in it, the subtotal; a
+   blank line as a gap. */
+.ws-calc-group th {
+  padding-top: .45rem;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--bs-secondary-color);
+}
+.ws-calc-in th,
+.ws-calc-remark.ws-calc-in td {
+  padding-left: 1.25rem;
+}
+.ws-calc-total th,
+.ws-calc-total td {
+  font-weight: 700;
+  border-top: 1px solid var(--bs-border-color-translucent);
+  background: var(--bs-tertiary-bg);
+}
+.ws-calc-func {
+  margin-left: .25rem;
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+.ws-calc-gap td {
+  height: .6rem;
+  padding: 0;
+  border-bottom: 0;
+}
+/* A figure a reader may try another value for (assets/js/workspace_editor.js). */
+.ws-msg-body [data-ws-calc-input] {
+  cursor: text;
+  border-bottom-style: dashed;
+}
+.ws-msg-body [data-ws-calc-input]:hover {
+  background: rgba(var(--ws-accent-rgb), .08);
+}
+.ws-rich [data-ws-calc-input] {
+  cursor: inherit;
+}
+.ws-calc-live-input {
+  display: inline-block;
+  width: 7.5rem;
+  padding: 0 .35rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ws-calc-block.ws-calc-tried {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+}
+.ws-calc-block-head {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.ws-calc-reset {
+  margin-left: auto;
+  padding: 0;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ws-calc.ws-calc-tried,
+.ws-calc-tried .ws-calc-derived .ws-calc,
+.ws-calc-tried .ws-calc-total .ws-calc {
+  color: var(--ws-accent);
+}
+/* The calculation window: its tools, settings and the names to pick */
+.ws-calc-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .15rem;
+  margin-bottom: .4rem;
+}
+.ws-calc-tools .ws-calc-op {
+  min-width: 2rem;
+  font-family: var(--bs-font-monospace);
+  font-weight: 600;
+}
+.ws-calc-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .6rem;
+  margin-bottom: .4rem;
+}
+.ws-calc-settings .form-select {
+  width: auto;
+}
+.ws-calc-settings .form-control {
+  width: 7rem;
+}
+.ws-calc-names {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  margin-top: .5rem;
+}
+.ws-calc-names-label {
+  margin-right: .25rem;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-calc-name {
+  padding: .05rem .5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  font-size: .75rem;
+}
+.ws-calc-name:hover {
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+}
+/* A note's earlier versions */
+.ws-nb-versions-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.ws-nb-versions-list {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+.ws-nb-versions-view {
+  min-width: 0;
+  min-height: 8rem;
+  padding: .75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+}
+@media (max-width: 767.98px) {
+  .ws-nb-versions-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-nb-versions-list {
+    max-height: 30vh;
+  }
+}
 .ws-table-edit td[data-ws-result]::after,
 .ws-table-edit th[data-ws-result]::after {
   content: attr(data-ws-result);
@@ -13900,6 +14707,18 @@ button.ws-home-row:hover,
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
 }
+/* The note drawn (tables, checklists): no line clamp, which would cut a
+   table mid-row; a long note scrolls inside the card instead. */
+.ws-nb-msg-card-text.ws-nb-msg-card-html {
+    display: block;
+    max-height: 18rem;
+    overflow: auto;
+    color: var(--bs-body-color);
+    -webkit-line-clamp: unset;
+}
+.ws-nb-msg-card-html > :last-child {
+    margin-bottom: 0;
+}
 .ws-nb-msg-card-foot {
     display: flex;
     flex-wrap: wrap;
@@ -14040,4 +14859,778 @@ button.ws-home-row:hover,
     font-size: .8125rem;
     color: var(--bs-warning-text-emphasis);
 }
+/* The search box of the whole workspace (assets/js/workspace_palette.js) */
+.ws-palette .modal-dialog {
+    margin-top: 8vh;
+}
+.ws-palette-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .55rem .9rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-palette-glass {
+    color: var(--bs-secondary-color);
+    font-size: 1.1rem;
+}
+.ws-palette-input,
+.ws-palette-input:focus {
+    padding: .35rem 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 1.05rem;
+}
+.ws-palette-esc {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: .7rem;
+}
+.ws-palette-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem .75rem;
+    padding: .45rem .9rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-palette-kinds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+}
+.ws-palette-kind {
+    --bs-btn-padding-y: .1rem;
+    --bs-btn-padding-x: .55rem;
+    --bs-btn-font-size: .75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    color: var(--bs-secondary-color);
+}
+.ws-palette-kind.active {
+    border-color: transparent;
+    background: rgba(var(--ws-accent-rgb), .14);
+    color: var(--ws-accent);
+}
+.ws-palette-list {
+    max-height: min(60vh, 34rem);
+    overflow-y: auto;
+    padding: .35rem 0;
+}
+.ws-palette-group {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .55rem .9rem .2rem;
+    color: var(--bs-secondary-color);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.ws-palette-count {
+    margin-left: .25rem;
+    font-weight: 400;
+}
+.ws-palette-forget {
+    font-size: .7rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.ws-palette-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .4rem .9rem;
+    cursor: pointer;
+}
+.ws-palette-item.active {
+    background: rgba(var(--ws-accent-rgb), .1);
+}
+.ws-palette-icon {
+    flex: 0 0 1.6rem;
+    color: var(--bs-secondary-color);
+    text-align: center;
+}
+.ws-palette-face {
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+.ws-palette-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.ws-palette-title,
+.ws-palette-sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-palette-sub {
+    color: var(--bs-secondary-color);
+    font-size: .78rem;
+}
+.ws-palette-done .ws-palette-title {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-palette-date {
+    flex: 0 0 auto;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+}
+.ws-palette-mark {
+    padding: 0;
+    border-radius: .15rem;
+    background: rgba(var(--bs-warning-rgb), .35);
+    color: inherit;
+}
+.ws-palette-empty,
+.ws-palette-note {
+    padding: .9rem;
+    color: var(--bs-secondary-color);
+    font-size: .875rem;
+}
+.ws-palette-note {
+    padding-bottom: .2rem;
+}
+.ws-palette-foot {
+    padding: .4rem .9rem;
+    border-top: 1px solid var(--bs-border-color);
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+}
+/* A channel's board (assets/js/workspace_board_channel.js) */
+.ws-cb-bar {
+    margin-bottom: .6rem;
+}
+.ws-cb-bar > .btn-group {
+    flex-wrap: wrap;
+}
+.ws-pane .ws-cb-picker {
+    display: none;
+}
+.ws-cb-cols {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding-bottom: .5rem;
+    overflow-x: auto;
+}
+.ws-cb-col {
+    display: flex;
+    flex: 0 0 17rem;
+    flex-direction: column;
+    min-width: 0;
+    border: 2px solid transparent;
+    border-radius: var(--ws-radius, .9rem);
+    background: var(--bs-tertiary-bg);
+}
+.ws-cb-col.ws-cb-drop {
+    border-color: rgba(var(--ws-accent-rgb), .55);
+    background: rgba(var(--ws-accent-rgb), .07);
+}
+.ws-cb-col-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem .6rem .35rem;
+    font-size: .8125rem;
+    font-weight: 600;
+}
+.ws-cb-col-icon {
+    color: var(--bs-secondary-color);
+}
+.ws-cb-col-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-cb-col-count {
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    font-weight: 400;
+}
+.ws-cb-face {
+    border-radius: 50%;
+}
+.ws-cb-add {
+    --bs-btn-padding-y: 0;
+    --bs-btn-padding-x: .3rem;
+}
+.ws-cb-list {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    min-height: 2.5rem;
+    padding: 0 .5rem .5rem;
+}
+.ws-cb-empty {
+    padding: .6rem .2rem;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    text-align: center;
+}
+.ws-cb-more {
+    align-self: flex-start;
+    margin: 0 .5rem .4rem;
+    font-size: .75rem;
+}
+.ws-cb-card {
+    position: relative;
+    padding: .5rem .6rem .5rem .75rem;
+    border: 1px solid var(--bs-border-color-translucent);
+    border-radius: .6rem;
+    background: var(--bs-body-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+    cursor: pointer;
+    font-size: .8125rem;
+}
+.ws-cb-card::before {
+    content: "";
+    position: absolute;
+    top: .4rem;
+    bottom: .4rem;
+    left: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: transparent;
+}
+.ws-cb-card.ws-cb-pri-urgent::before {
+    background: var(--bs-danger);
+}
+.ws-cb-card.ws-cb-pri-high::before {
+    background: var(--bs-warning);
+}
+.ws-cb-card.ws-cb-pri-low::before {
+    background: var(--bs-border-color);
+}
+.ws-cb-card:hover {
+    border-color: rgba(var(--ws-accent-rgb), .35);
+}
+/* The keyboard moves cards here, so the card it is on has to show. */
+.ws-cb-card:focus-visible {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-card.ws-cb-lifted {
+    outline: 2px dashed var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-card.ws-cb-dragging {
+    opacity: .5;
+}
+.ws-cb-closed .ws-cb-title {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-cb-card-top {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .15rem;
+    color: var(--bs-secondary-color);
+    font-size: .7rem;
+}
+.ws-cb-number {
+    font-weight: 600;
+}
+.ws-cb-priority {
+    background: var(--bs-danger-bg-subtle);
+    color: var(--bs-danger-text-emphasis);
+}
+.ws-cb-status {
+    margin-left: auto;
+}
+.ws-cb-title {
+    font-weight: 500;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.ws-cb-sub {
+    margin-top: .2rem;
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+}
+.ws-cb-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem .6rem;
+    margin-top: .35rem;
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+}
+.ws-cb-faces {
+    margin-left: auto;
+}
+.ws-cb-faces img {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+.ws-cb-more-faces {
+    margin-left: .2rem;
+    font-size: .68rem;
+}
+.ws-cb-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+}
+.ws-cb-progress-bar {
+    display: inline-block;
+    width: 2.6rem;
+    height: .3rem;
+    overflow: hidden;
+    border-radius: .3rem;
+    background: var(--bs-secondary-bg);
+}
+.ws-cb-progress-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--bs-success);
+}
+.ws-cb-thumb {
+    display: block;
+    width: 100%;
+    max-height: 7rem;
+    margin-bottom: .35rem;
+    border-radius: .4rem;
+    object-fit: cover;
+}
+.ws-cb-decision .ws-cb-kind-icon {
+    color: var(--bs-success);
+}
+/* A phone shows one column, picked above the board. */
+@media (max-width: 767.98px) {
+    .ws-pane .ws-cb-picker {
+        display: block;
+    }
+    .ws-cb-cols {
+        display: block;
+    }
+    .ws-cb-col {
+        display: none;
+    }
+    .ws-cb-col.ws-cb-col-current {
+        display: flex;
+    }
+}
 /* ── /Workspace ── */
+/* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */
+.ws-sa-when-event {
+    max-width: 24rem;
+}
+.ws-sa-when-event-filter {
+    margin-top: .5rem;
+}
+.ws-form-card {
+    max-width: 34rem;
+    margin-top: .4rem;
+    padding: .45rem .65rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+    font-size: .8125rem;
+}
+.ws-form-card-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .3rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+a.ws-form-card-head:hover span {
+    text-decoration: underline;
+}
+.ws-form-card-head small {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+}
+.ws-form-card-fields {
+    display: grid;
+    grid-template-columns: minmax(6rem, max-content) 1fr;
+    gap: .15rem .75rem;
+    margin: 0;
+}
+.ws-form-card-fields dt {
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+}
+.ws-form-card-fields dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+/* ── Workspace: channel templates (assets/js/workspace_templates.js) ── */
+.ws-tpl-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.ws-tpl-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: .5rem;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+.ws-tpl-icon[style] {
+    color: #fff;
+}
+.ws-tpl-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: .5rem;
+}
+.ws-tpl-card {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .5rem .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    text-align: start;
+}
+.ws-tpl-card:hover {
+    border-color: var(--bs-primary-border-subtle);
+}
+.ws-tpl-card.active {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 .15rem var(--bs-primary-bg-subtle);
+}
+.ws-tpl-card-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.ws-tpl-card-name {
+    font-weight: 600;
+}
+.ws-tpl-card-desc,
+.ws-tpl-card-count {
+    font-size: .8125rem;
+    color: var(--bs-secondary-color);
+}
+.ws-tpl-item {
+    margin-bottom: .75rem;
+    padding: .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    background: var(--bs-body-bg);
+}
+.ws-tpl-item-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.ws-tpl-item-n {
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+.ws-tpl-handle {
+    cursor: grab;
+}
+.ws-tpl-dragging {
+    opacity: .5;
+}
+.ws-tpl-after {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+}
+.ws-tpl-note-body {
+    font-family: var(--bs-font-monospace);
+    font-size: .8125rem;
+}
+.ws-tpl-rich {
+    min-height: 5rem;
+}
+/* ── Workspace: time spent on tasks (assets/js/workspace_task_time.js) ── */
+.ws-task-time,
+.ws-task-links {
+    margin: 1rem 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-time-head,
+.ws-task-links-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .9rem;
+}
+.ws-task-time-bar {
+    height: 4px;
+    margin: .35rem 0 .5rem;
+}
+.ws-task-time-over .progress-bar {
+    background-color: var(--bs-danger);
+}
+.ws-task-time-timer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin: .5rem 0;
+    font-size: .85rem;
+}
+.ws-task-time-clock {
+    font-family: var(--bs-font-monospace);
+    font-variant-numeric: tabular-nums;
+}
+.ws-task-time-add {
+    margin-bottom: .5rem;
+}
+.ws-task-time-list {
+    display: grid;
+    gap: .4rem;
+}
+.ws-task-time-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+}
+.ws-task-time-row img {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.ws-task-time-row-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+.ws-task-time-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.ws-task-time-total {
+    text-align: end;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.ws-task-time-tag,
+.ws-task-links-tag {
+    font-size: .75rem;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+.ws-task-time-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+}
+.ws-task-time-week {
+    display: flex;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: var(--bs-tertiary-bg);
+    font-size: .85rem;
+}
+.ws-task-time-board {
+    display: block;
+    color: var(--bs-secondary-color);
+}
+/* ── Workspace: tasks that wait for other tasks (workspace_task_links.js) ── */
+.ws-task-links-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .3rem;
+    font-size: .85rem;
+}
+.ws-task-links-done a,
+.ws-task-links-done span.ws-grow {
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+}
+.ws-task-links-results {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+.ws-task-card-blocked {
+    margin-top: .15rem;
+    font-size: .75rem;
+    color: var(--bs-warning-text-emphasis);
+}
+/* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
+.ws-approval {
+  max-width: 34rem;
+  margin-top: .4rem;
+  padding: .55rem .65rem .45rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid rgb(var(--ws-accent-rgb));
+  border-radius: .6rem;
+  background: var(--bs-body-bg);
+}
+.ws-approval-approved {
+  border-left-color: var(--bs-success);
+}
+.ws-approval-rejected {
+  border-left-color: var(--bs-danger);
+}
+.ws-approval-expired,
+.ws-approval-withdrawn {
+  border-left-color: var(--bs-secondary-color);
+}
+.ws-approval-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .45rem;
+  font-size: .8rem;
+}
+.ws-approval-head > .bi {
+  color: rgb(var(--ws-accent-rgb));
+}
+.ws-approval-tag {
+  padding: 0 .4rem;
+  border-radius: .35rem;
+  font-size: .68rem;
+  font-weight: 600;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+}
+.ws-approval-asker,
+.ws-approval-when {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-when {
+  margin-left: auto;
+}
+.ws-approval-record {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  margin-bottom: .45rem;
+  padding: .2rem .55rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .45rem;
+  background: var(--bs-tertiary-bg);
+  font-size: .82rem;
+  color: var(--bs-body-color);
+}
+.ws-approval-record:hover {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+}
+.ws-approval-record-label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-approval-record-meta {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-people {
+  display: grid;
+  gap: .25rem;
+  margin: 0 0 .4rem;
+  padding: 0;
+  list-style: none;
+}
+.ws-approval-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+  font-size: .85rem;
+}
+.ws-approval-face {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ws-approval-name {
+  font-weight: 600;
+}
+.ws-approval-state {
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-person.ws-approval-approved .ws-approval-state {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-approval-person.ws-approval-rejected .ws-approval-state {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-approval-note {
+  flex-basis: 100%;
+  padding-left: 1.95rem;
+  font-size: .78rem;
+  font-style: italic;
+  color: var(--bs-secondary-color);
+}
+.ws-approval-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  font-size: .78rem;
+  color: var(--bs-secondary-color);
+}
+/* ── Workspace: read receipts (assets/js/workspace_acks.js) ── */
+.ws-ack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .35rem;
+  font-size: .78rem;
+}
+.ws-ack-count {
+  padding: 0 .45rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--bs-secondary-bg);
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+button.ws-ack-count:hover {
+  color: var(--bs-body-color);
+}
+.ws-ack-done .ws-ack-count {
+  background: var(--bs-success-bg-subtle);
+  color: var(--bs-success-text-emphasis);
+}
+.ws-ack-mine {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-pin-bar .ws-ack {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.ws-ack-person {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}

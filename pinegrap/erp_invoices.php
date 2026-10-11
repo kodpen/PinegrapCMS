@@ -437,11 +437,7 @@ pg_page_shell([
                 ' . $output_bulk_buttons . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_edoc_menu . '
-                <div class="btn-group btn-group-sm" role="group" aria-label="' . lang('Due date') . '">
-                    <a class="btn btn-sm btn-ghost' . (($filter === '') ? ' active' : '') . '" href="erp_invoices.php">' . lang('All') . '</a>
-                    <a class="btn btn-sm btn-ghost' . (($filter === 'overdue') ? ' active' : '') . '" href="erp_invoices.php?filter=overdue"><i class="bi bi-exclamation-circle me-1"></i>' . lang('Overdue') . '</a>
-                    <a class="btn btn-sm btn-ghost' . (($filter === 'due_week') ? ' active' : '') . '" href="erp_invoices.php?filter=due_week"><i class="bi bi-calendar-week me-1"></i>' . lang('Due this week') . '</a>
-                </div>
+                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php')) . '
             </nav>
             ' . $output_filter_note . '
             ' . ($edoc_bulk ? '<form id="erp_edoc_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() : '') . '

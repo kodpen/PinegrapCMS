@@ -31,6 +31,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @param int    $user_id
  * @param string $kind     mention | assigned | completed | invited | note | note_shared | note_updated | note_answer
+ *                         | unblocked (a task waited for is done: task_links.php)
+ *                         | approval_requested | approval_decided | approval_reminder | ack_reminder
  * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner
  * @return int the inbox row
  */
@@ -228,6 +230,17 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-journal-text',
             );
 
+        // The last task in front of this one is done (task_links.php).
+        case 'unblocked':
+            $done_id = ($task && function_exists('ws_task_links_last_done')) ? ws_task_links_last_done($task['id']) : 0;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} is done; {var:2} can start', 'vars' => array(($done_id > 0) ? ws_task_number($done_id) : lang('A task'), $task ? ws_task_number($task['id']) : ''))),
+                'body'  => $task ? (string) $task['title'] : '',
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => 'bi-unlock',
+            );
+
         case 'invited':
             return array(
                 'title' => lang(array('string' => '{var:1} added you to {var:2}', 'vars' => array($actor, $channel_name))),
@@ -277,6 +290,27 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-alarm',
             );
 
+        // A discussion was started about one's message (threads.php).
+        case 'thread':
+            $thread = function_exists('ws_thread') ? ws_thread((int) $row['channel_id']) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} started a discussion about your message', 'vars' => $actor)),
+                'body'  => $channel ? (string) $channel['name'] : '',
+                'url'   => $base . 'workspace.php?channel=' . ($thread ? (int) $thread['parent_channel_id'] . '&thread=' . (int) $row['channel_id'] : (int) $row['channel_id']),
+                'icon'  => 'bi-chat-square-dots',
+            );
+
+        // A message scheduled from the writing box that could not be posted
+        // (scheduled_messages.php): it waits on the scheduled screen.
+        case 'scheduled_message':
+            return array(
+                'title' => lang('A message you scheduled could not be posted'),
+                'body'  => $channel_name,
+                'url'   => $base . 'workspace.php?view=scheduled',
+                'icon'  => 'bi-send-exclamation',
+            );
+
         case 'note_answer':
             $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
 
@@ -290,17 +324,41 @@ function ws_inbox_describe($viewer, $row)
         // The guest of a room wrote (guests.php): one line until the room is
         // read, with the last of what they wrote.
         case 'guest_message':
-            $guest = function_exists('ws_guest_for_channel') ? ws_guest_for_channel((int) $row['channel_id']) : null;
             $last = (int) db_value("SELECT id FROM ws_messages
                 WHERE channel_id = '" . (int) $row['channel_id'] . "' AND sender_kind = 'guest' AND deleted_at = 0
                 ORDER BY id DESC LIMIT 1");
             $message = ($last > 0) ? ws_message($last) : null;
+
+            // The guest who wrote it: a shared channel may have more than one.
+            $guest = ($message && function_exists('ws_guest')) ? ws_guest((int) $message['sender_id']) : null;
 
             return array(
                 'title' => lang(array('string' => '{var:1} wrote in {var:2}', 'vars' => array($guest ? (string) $guest['name'] : lang('Guest'), $channel_name))),
                 'body'  => $message ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $message['body'])), 0, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . (($last > 0) ? '&message=' . $last : ''),
                 'icon'  => 'bi-door-open',
+            );
+
+        // Approval requests (approvals.php): asked, settled, a day before
+        // the deadline.
+        case 'approval_requested':
+        case 'approval_decided':
+        case 'approval_reminder':
+            if (function_exists('ws_approval_inbox_describe')) {
+                return ws_approval_inbox_describe($viewer, $row, $actor, $base);
+            }
+            break;
+
+        // A message a day old whose read receipt the person has not given
+        // (acks.php).
+        case 'ack_reminder':
+            $message = ((int) $row['message_id'] > 0) ? ws_message($row['message_id']) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} asked you to say you read a message in {var:2}', 'vars' => array($actor, $channel_name))),
+                'body'  => $message ? ws_plain_excerpt($viewer, $message['body'], 140) : '',
+                'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
+                'icon'  => 'bi-eye',
             );
 
         case 'note_answer_ai':

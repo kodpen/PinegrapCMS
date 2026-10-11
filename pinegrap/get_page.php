@@ -189,6 +189,11 @@ if (isset($page_name) && $page_name)
 }
 else
 {
+	// A page in the recycle bin never answers the site root. Sending a page to
+	// the bin clears its home flag (pg_recycle_drop_home()); this keeps a row
+	// that reached the bin some other way from being served, possibly drawn
+	// with a design that no longer exists.
+	$sql_not_binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
 	$query = "SELECT
             page.page_id,
             page.page_name,
@@ -199,7 +204,7 @@ else
             folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE page.page_home = 'yes'
+        WHERE page.page_home = 'yes'" . $sql_not_binned . "
         ORDER BY RAND()
         LIMIT 1";
 	$result = mysqli_query(db::$con, $query) or output_error('Query failed');
@@ -1193,7 +1198,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					{
 						$output_rss_categories = '';
 						// If there is at least one category, then output it.
-						if ($submitted_form['category'] != '')
+						if (($submitted_form['category'] ?? '') != '')
 						{
 							// If there are multiple categories, then output all of them.
 							if (mb_strpos($submitted_form['category'], '||') !== false)
@@ -1220,7 +1225,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						}
 						$output_rss_title = '';
 						// If there is a title, then output it.
-						if ($submitted_form['title'] != '')
+						if (($submitted_form['title'] ?? '') != '')
 						{
 							$output_rss_title = h($submitted_form['title']);
 							// Otherwise there is not a title, so output notice.
@@ -1232,7 +1237,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						}
 						$output_rss_description = '';
 						// If there is a description, then output it.
-						if ($submitted_form['description'] != '')
+						if (($submitted_form['description'] ?? '') != '')
 						{
 							$output_rss_description = h($submitted_form['description']);
 							// Otherwise there is not a description, so output notice.
@@ -2439,6 +2444,16 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 	// legacy check above. Look for such a widget and, if found, build the feed from it using
 	// the same product data the widget itself renders (see functions.php,
 	// _pg_build_catalog_listing_rss_parts / _pg_build_catalog_item_rss_parts).
+	// A form widget comes first: a page that shows one record (form_item_view)
+	// or lists them (form_list_view) feeds that form, whatever else sits on it.
+	elseif ($access_control_type == 'public' && function_exists('pg_sw_page_form_feed_widget') && ($_pg_rss_form_feed = pg_sw_page_form_feed_widget($page_id)))
+	{
+		$_pg_rss_parts = pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $_pg_rss_form_feed);
+		$output_channel_title = $_pg_rss_parts['title'];
+		$output_channel_link = $_pg_rss_parts['link'];
+		$output_channel_description = $_pg_rss_parts['description'];
+		$output_rss_items = $_pg_rss_parts['items'];
+	}
 	elseif ($access_control_type == 'public' && ($_pg_rss_widget = _pg_find_system_widget_on_page($page_id, 'catalog_listing')))
 	{
 		$output_google_declaration = ' xmlns:g="http://base.google.com/ns/1.0"';
@@ -3266,7 +3281,7 @@ function init_tracking()
 			define('TRACKING_CODE_DURATION', db("SELECT tracking_code_duration FROM config"));
 		}
 		// Set tracking code cookie.
-		setcookie('software[tracking_code]', $tracking_code, time() + (86400 * TRACKING_CODE_DURATION) , '/');
+		pg_consent_setcookie('analytics', 'software[tracking_code]', $tracking_code, time() + (86400 * TRACKING_CODE_DURATION));
 		// else there is not a tracking code in the query string, so get tracking code
 		
 	}
@@ -3280,7 +3295,7 @@ function init_tracking()
 		$affiliate_code = trim($_GET['a']);
 		$_SESSION['software']['affiliate_code'] = $affiliate_code;
 		// set affiliate code cookie for 10 years
-		setcookie('software[affiliate_code]', $affiliate_code, time() + 315360000, '/');
+		pg_consent_setcookie('marketing', 'software[affiliate_code]', $affiliate_code, time() + 315360000);
 		// else there is not an affiliate code in the query string, so get affiliate code
 		
 	}
@@ -3388,14 +3403,14 @@ function init_tracking()
 			if (!empty($_COOKIE['software']['number_of_visits']))
 			{
 				$first_visit = 0;
-				setcookie('software[number_of_visits]', $_COOKIE['software']['number_of_visits'] + 1, time() + 315360000, '/');
+				pg_consent_setcookie('analytics', 'software[number_of_visits]', $_COOKIE['software']['number_of_visits'] + 1, time() + 315360000);
 				// else number of visits cookie is not set
 				
 			}
 			else
 			{
 				$first_visit = 1;
-				setcookie('software[number_of_visits]', '1', time() + 315360000, '/');
+				pg_consent_setcookie('analytics', 'software[number_of_visits]', '1', time() + 315360000);
 			}
 			// if there is an http referer
 			if ($referer)
@@ -3697,7 +3712,7 @@ function init_tracking()
 			// Set cookie in visitor's browser for 10 years.  Even though we only care about the
 			// UTM data for 30 days, we store the cookie for 10 years, because we might eventually
 			// use this same cookie to store data for other features.
-			setcookie('lsid', $lsid, time() + 315360000, '/');
+			pg_consent_setcookie('analytics', 'lsid', $lsid, time() + 315360000);
 			// For 1 in 100 chance, delete cookies that have not been modified in a year.
 			// The 1 in 100 chance is just added for performance reasons.
 			if (rand(1, 100) == 1)

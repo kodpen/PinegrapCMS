@@ -93,7 +93,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                     <input value="1"' . (((int) $translation_row['auto_update'] === 1) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="tr_auto_' . h($translation_code) . '" name="' . $translation_name . '[auto_update]"/>
                                     <label class="form-check-label" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
                                 </div>' : '') . '
-                                <div class="form-check mb-0 ms-2">
+                                <div class="form-check mb-0 ms-2" title="' . h(lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.')) . '">
                                     <input value="1" class="form-check-input" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]"/>
                                     <label class="form-check-label text-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
                                 </div>
@@ -174,7 +174,7 @@ $output_translation_languages = '
                         <div class="pg-f-md">
                             <label for="translation_add_language" class="form-label">' . lang('Add a language') . '</label>
                             <select name="translation_add_language" id="translation_add_language" class="form-select">' . $output_translation_add_options . '</select>
-                            <div class="form-text">' . lang('The language is added when the settings are saved. A page, file or short link named like its code or prefix would be shadowed by the language directory, so the save stops and lists them when there are any.') . '</div>
+                            <div class="form-text">' . lang('The language is added when the settings are saved. A page, file or short link named like its code or prefix would be shadowed by the language directory, so the save stops and lists them when there are any.') . ' ' . lang('It starts with the browser engine, which needs no key; Claude or another engine can be chosen on its row afterwards.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">

@@ -423,6 +423,7 @@ function api_schema() {
 			'scope'   => 'webhooks:manage',
 			'handler' => 'api_webhooks_delete',
 			'dry_run' => true,
+			'status'  => 204,
 			'summary' => 'Remove a subscription',
 			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
 			'params'  => array(
@@ -948,14 +949,15 @@ function api_schema() {
 			'handler' => 'api_auth_login',
 			'returns' => 'AuthSession',
 			'summary' => 'Sign a person in on a device',
-			'description' => 'For an app a staff member signs in to with their own panel account, not for an integration: an integration uses its application key and secret. Needs a Team devices application switched on in API settings; client_key names one, and without it the site\'s first active one is used, so a general app only needs the site address. The sign-in screen\'s own limits apply in the same counters - after a few failures the answer is 429 until the wait is over or the person signs in on the website once. Only an account with panel rights can sign in. The answer holds an access token for the Authorization: Bearer header (one hour) and a refresh token for POST /auth/refresh (thirty days, replaced every time it is used). Every call made with the access token acts as this person, capped by the application\'s permissions.',
+			'description' => 'For an app a staff member signs in to with their own panel account, not for an integration: an integration uses its application key and secret. Needs a Team devices application switched on in API settings; client_key names one, and without it the site\'s first active one is used, so a general app only needs the site address. The sign-in screen\'s own limits apply in the same counters - after a few failures the answer is 429 until the wait is over or the person signs in on the website once. Only an account with panel rights can sign in. An account that uses two-step verification also sends the current code from its authenticator app, or one of its recovery codes, in otp; without it the answer is 401 mfa_required, and a wrong code is 401 unauthorized. An account whose role the site requires two-step verification for, and which has not set it up yet, is refused with 403 mfa_setup_required until the person sets it up on the website. The answer holds an access token for the Authorization: Bearer header (one hour) and a refresh token for POST /auth/refresh (thirty days, replaced every time it is used). Every call made with the access token acts as this person, capped by the application\'s permissions.',
 			'params'  => array(
 				array('name' => 'username',    'in' => 'body', 'type' => 'string', 'max_length' => 190, 'required' => true, 'description' => 'User name or e-mail address, as on the sign-in screen.'),
 				array('name' => 'password',    'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'required' => true),
 				array('name' => 'device_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'What the person will recognise in their device list, such as "Ayşe\'s phone".'),
 				array('name' => 'platform',    'in' => 'body', 'type' => 'enum', 'values' => array('ios', 'android', 'web', 'desktop', 'other'), 'default' => 'other'),
 				array('name' => 'app_version', 'in' => 'body', 'type' => 'string', 'max_length' => 40),
-				array('name' => 'client_key',  'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The key of the Team devices application to sign in through. Not a secret.')
+				array('name' => 'client_key',  'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The key of the Team devices application to sign in through. Not a secret.'),
+				array('name' => 'otp',         'in' => 'body', 'type' => 'string', 'max_length' => 20, 'description' => 'The current code from the authenticator app, or a recovery code, for an account that uses two-step verification. Without it such an account is answered 401 mfa_required.')
 			)
 		),
 
@@ -1199,12 +1201,14 @@ function api_error_catalogue() {
 		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
 		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),
 		'token_expired'            => array(401, 'The device\'s access token has run out. Renew it with POST /auth/refresh and repeat the call.'),
+		'mfa_required'             => array(401, 'The account uses two-step verification. POST /auth/login wants the code from the authenticator app, or a recovery code, in otp.'),
 
 		'insufficient_scope'       => array(403, 'The application does not hold the permission this endpoint needs.'),
 		'application_disabled'     => array(403, 'The application was switched off in the panel.'),
 		'application_expired'      => array(403, 'The application reached the date it was set to stop working.'),
 		'owner_unavailable'        => array(403, 'The account that owns the application is gone or cannot be used.'),
 		'device_signin_unavailable' => array(403, 'Signing in from a device is not switched on: no active Team devices application.'),
+		'mfa_setup_required'       => array(403, 'The site requires two-step verification for this account\'s role and the account has not set it up. The person sets it up on the website first, then signs in again.'),
 		'https_required'           => array(403, 'The site refuses API calls over plain HTTP.'),
 		'ip_not_allowed'           => array(403, 'The address the call came from is not on the application allow list.'),
 		'address_blocked'          => array(403, 'The firewall refused the address the call came from.'),

@@ -187,67 +187,18 @@ if($software_update_available == 0){
 	exit();
 }
 
-// Folders the web server cannot write into. The replace step opens the package
-// on the tree as the web server, and a folder that refuses keeps its old files
-// through every extraction - the site then runs new code on old files. So the
-// folders are checked here, before anything is downloaded, the same way the
-// System Status card checks them: while one refuses, the Update button stays
-// off and a button beside the list opens them (0777 folders, 0666 files, see
-// pg_write_permission_repair()). Once they are open the download and the
-// extraction run exactly as before.
+// Folders the web server cannot write into: while one refuses, the Update
+// button stays off (see pg_update_permissions_block()).
+$permissions_block = pg_update_permissions_block($user);
+
+$update_blocked = $permissions_block['blocked'];
+
 $output_permissions_block = '';
 
-$update_blocked = false;
-
-if (function_exists('pg_write_permission_scan')) {
-
-    $permissions = pg_write_permission_scan();
-
-    if ($permissions['directories_count'] > 0) {
-
-        $update_blocked = true;
-
-        $permissions_rows = '';
-
-        foreach (array_slice($permissions['directories'], 0, 12, true) as $permissions_path => $permissions_mode) {
-            $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="text-body-secondary">' . h($permissions_mode) . '</span></li>';
-        }
-
-        if ($permissions['directories_count'] > 12) {
-            $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
-        }
-
-        // The repair changes who may write into the software directory, so it
-        // is an administrator's button; a manager sees the list and the name of
-        // who to ask.
-        if ((int) $user['role'] === 0) {
-            $permissions_action = '
-                <button type="button" class="btn btn-danger" id="write_permissions_fix"
-                        data-busy-label="' . h(lang('Fixing')) . '"
-                        data-idle-label="' . h(lang('Set the file permissions')) . '"
-                        data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
-                    <i class="bi bi-wrench-adjustable me-1"></i><span id="write_permissions_fix_state">' . h(lang('Set the file permissions')) . '</span>
-                </button>
-                <span class="form-text d-block mt-2">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
-                <div class="form-text mt-2 d-none" id="write_permissions_fix_result"></div>';
-        } else {
-            $permissions_action = '<span class="form-text d-block mt-2">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
-        }
-
-        $output_permissions_block = '
-        <div class="col-12 col-md-8 offset-md-2">
-            <div class="alert alert-danger">
-                <p class="form-text mb-2"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
-                    'string' => 'The web server cannot write into {var:1} folder(s) of the software. The update cannot add or replace files there, so it does not start until they are opened:',
-                    'vars' => pg_format_number($permissions['directories_count'], 0)
-                ))) . '</p>
-                <ul class="mb-2 small">' . $permissions_rows . '</ul>
-                ' . $permissions_action . '
-            </div>
+if ($permissions_block['blocked']) {
+    $output_permissions_block = '
+        <div class="col-12 col-md-8 offset-md-2">' . $permissions_block['html'] . '
         </div>';
-
-    }
-
 }
 
 print
@@ -346,46 +297,9 @@ pg_page_shell([
                 update();
             }
         });
-
-        // Opening the folders the web server cannot write into, then reading
-        // the screen again: the list and the Update button are rendered from
-        // the scan, so a reload is what turns the button on.
-        $("#write_permissions_fix").click(function(){
-            var button = $(this),
-                result = $("#write_permissions_fix_result");
-            if (button.prop("disabled")) {
-                return;
-            }
-            button.prop("disabled", true);
-            $("#write_permissions_fix_state").text(button.attr("data-busy-label"));
-            $.ajax({
-                contentType: "application/json",
-                url: "api.php",
-                type: "POST",
-                data: JSON.stringify({
-                    action: "write_permissions_repair",
-                    token: software_token
-                }),
-                success: function(response) {
-                    result.text(response.message || button.attr("data-failed-label")).removeClass("d-none");
-                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
-                    if (response.status == "success") {
-                        window.setTimeout(function(){
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        button.prop("disabled", false);
-                    }
-                },
-                error: function() {
-                    result.text(button.attr("data-failed-label")).removeClass("d-none");
-                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
-                    button.prop("disabled", false);
-                }
-            });
-        });
     });
 </script>
+' . pg_update_permissions_script() . '
     <div class="row">
       <div class="col-12">
         ' . $liveform->output_errors() . '

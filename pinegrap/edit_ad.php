@@ -19,6 +19,14 @@
 include('init.php');
 $user = validate_user();
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
+// of a half-empty form and PHP notices from the unchecked row below.
+$id = (int) ($_REQUEST['id'] ?? 0);
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM ads WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if user has a user role and if they do not have access to edit any ad regions, output error
 if (($user['role'] == 3) && (count(get_items_user_can_edit('ad_regions', $user['id'])) == 0)) {
     log_activity(lang('access denied because user does not have access to ads'), $_SESSION['sessionusername']);

@@ -1894,24 +1894,24 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if ($advanced_filters == false) {
     
         $output_contact_group_selection = '
-        <div class="input-group input-group-sm'. $show_hide_contact_group_select .'">
-            <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
-            <select id="contact_group" name="contact_group" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
+        <div class="input-group input-group-sm w-auto'. $show_hide_contact_group_select .'">
+            <label class="input-group-text material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
+            <select id="contact_group" name="contact_group" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
         </div>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
         $output_advanced_filters = '';
-        $advanced_filters_icon = 'filter_list';
+        $advanced_filters_icon = 'bi-funnel';
     
         // if the all duplicate contacts filter is on then hide the contact group select list and the advanced filters button
         if ($filter == 'all_duplicate_contacts') {
             $show_hide_contact_group_select = ' d-none';
-            $output_advanced_filters_class = 'd-none';
+            $output_advanced_filters_class = ' d-none';
             
         // else show the contact groups pick list and advanced filters button
         } else {
             $show_hide_contact_group_select = '';
-            $output_advanced_filters_class = 'btn-primary';
+            $output_advanced_filters_class = '';
         }
 
     // else the advanced filters are on
@@ -1920,8 +1920,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_selection = '';
         $output_advanced_filters_value = 'false';
         $output_advanced_filters_label = lang('Remove Advanced Filters');
-        $advanced_filters_icon = 'filter_list_off';
-        $output_advanced_filters_class = 'btn-danger';
+        $advanced_filters_icon = 'bi-funnel-fill';
+        $output_advanced_filters_class = ' active';
         $output_contact_groups = '';
 
         // if user has a role that is greater than user role, then prepare to output [None] option
@@ -2369,10 +2369,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 ' . get_token_field() . '
                                 <a class="btn btn-sm btn-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
@@ -2382,47 +2379,23 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 </div>
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
                             </form>
-                        </nav>
-                    </div> 
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-4 ">
-                        <div class="row justify-content-center justify-content-md-end">
-                            <form id="search_form" action="view_contacts.php" method="get" class="search_form disable_shortcut col-auto">
+                            <div class="pg-toolbar-grow"></div>
+                            <form id="search_form" action="view_contacts.php" method="get" class="search_form disable_shortcut">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
-                                <div class="input-group input-group-sm">
-                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
-                                    <select id="filter" name="filter" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                <div class="input-group input-group-sm w-auto">
+                                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
+                                    <select id="filter" name="filter" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                                 ' . $output_contact_group_selection . '
-                                <div class="row justify-content-center justify-content-md-end' . $show_hide_date_range . '" >
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_contacts.php?start_month=' . $decrease_year['start_month'] . '&start_day=' . $decrease_year['start_day'] . '&start_year=' . $decrease_year['start_year'] . '&stop_month=' . $decrease_year['stop_month'] . '&stop_day=' . $decrease_year['stop_day'] . '&stop_year=' . $decrease_year['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_contacts.php?start_month=' . $current_year['start_month'] . '&start_day=' . $current_year['start_day'] . '&start_year=' . $current_year['start_year'] . '&stop_month=' . $current_year['stop_month'] . '&stop_day=' . $current_year['stop_day'] . '&stop_year=' . $current_year['stop_year'] . '">' . lang('Year') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_contacts.php?start_month=' . $increase_year['start_month'] . '&start_day=' . $increase_year['start_day'] . '&start_year=' . $increase_year['start_year'] . '&stop_month=' . $increase_year['stop_month'] . '&stop_day=' . $increase_year['stop_day'] . '&stop_year=' . $increase_year['stop_year'] . '">></a>
-                                    </div>
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_contacts.php?start_month=' . $decrease_month['start_month'] . '&start_day=' . $decrease_month['start_day'] . '&start_year=' . $decrease_month['start_year'] . '&stop_month=' . $decrease_month['stop_month'] . '&stop_day=' . $decrease_month['stop_day'] . '&stop_year=' . $decrease_month['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_contacts.php?start_month=' . $current_month['start_month'] . '&start_day=' . $current_month['start_day'] . '&start_year=' . $current_month['start_year'] . '&stop_month=' . $current_month['stop_month'] . '&stop_day=' . $current_month['stop_day'] . '&stop_year=' . $current_month['stop_year'] . '">' . lang('Month') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_contacts.php?start_month=' . $increase_month['start_month'] . '&start_day=' . $increase_month['start_day'] . '&start_year=' . $increase_month['start_year'] . '&stop_month=' . $increase_month['stop_month'] . '&stop_day=' . $increase_month['stop_day'] . '&stop_year=' . $increase_month['stop_year'] . '">></a>
-                                    </div>
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_contacts.php?start_month=' . $decrease_week['start_month'] . '&start_day=' . $decrease_week['start_day'] . '&start_year=' . $decrease_week['start_year'] . '&stop_month=' . $decrease_week['stop_month'] . '&stop_day=' . $decrease_week['stop_day'] . '&stop_year=' . $decrease_week['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_contacts.php?start_month=' . $current_week['start_month'] . '&start_day=' . $current_week['start_day'] . '&start_year=' . $current_week['start_year'] . '&stop_month=' . $current_week['stop_month'] . '&stop_day=' . $current_week['stop_day'] . '&stop_year=' . $current_week['stop_year'] . '">' . lang('Week') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_contacts.php?start_month=' . $increase_week['start_month'] . '&start_day=' . $increase_week['start_day'] . '&start_year=' . $increase_week['start_year'] . '&stop_month=' . $increase_week['stop_month'] . '&stop_day=' . $increase_week['stop_day'] . '&stop_year=' . $increase_week['stop_year'] . '">></a>
-                                    </div>
-                                    <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
-                                        <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_contacts.php?start_month=' . $decrease_day['start_month'] . '&start_day=' . $decrease_day['start_day'] . '&start_year=' . $decrease_day['start_year'] . '&stop_month=' . $decrease_day['stop_month'] . '&stop_day=' . $decrease_day['stop_day'] . '&stop_year=' . $decrease_day['stop_year'] . '"><</a>
-                                        <a class="btn py-0 px-1 border-bottom border-top" href="view_contacts.php?start_month=' . $current_day['start_month'] . '&start_day=' . $current_day['start_day'] . '&start_year=' . $current_day['start_year'] . '&stop_month=' . $current_day['stop_month'] . '&stop_day=' . $current_day['stop_day'] . '&stop_year=' . $current_day['stop_year'] . '">' . lang('Day') . '</a>
-                                        <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_contacts.php?start_month=' . $increase_day['start_month'] . '&start_day=' . $increase_day['start_day'] . '&start_year=' . $increase_day['start_year'] . '&stop_month=' . $increase_day['stop_month'] . '&stop_day=' . $increase_day['stop_day'] . '&stop_year=' . $increase_day['stop_year'] . '">></a>
-                                    </div>    
-                                </div>
-                                <p class="text-center text-md-end p-0 m-0' . $show_hide_date_range . '">
-                                    <span class="badge text-dark fw-light border-2">    ' . $output_date_range_time . '</span>
-                                </p>
                             </form>
-                        </div>
-                    </div>
-                </div>
+                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            ' . (($show_hide_date_range === '') ? pg_period_nav('view_contacts.php', ($_SESSION['software']['view_contacts'] ?? array()), array(
+                                'day'   => array($decrease_day, $current_day, $increase_day),
+                                'week'  => array($decrease_week, $current_week, $increase_week),
+                                'month' => array($decrease_month, $current_month, $increase_month),
+                                'year'  => array($decrease_year, $current_year, $increase_year),
+                            ), $output_date_range_time) : '') . '
+                </nav>
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_contacts.php" method="post" class="view_orders"> 

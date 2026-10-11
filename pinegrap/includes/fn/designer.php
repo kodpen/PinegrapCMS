@@ -487,24 +487,16 @@ function _validate_and_clean_tree_json($json)
     if (!empty($used_ids)) {
         $ids_str  = implode(',', array_map('intval', array_keys($used_ids)));
         $found    = array();
-        $rows     = db_items("SELECT id, tree_json FROM shared_components WHERE id IN ($ids_str)");
+        $rows     = db_items("SELECT id FROM shared_components WHERE id IN ($ids_str)");
         if ($rows) {
-            foreach ($rows as $r) {
-                $fid = (int)$r['id'];
-                $found[$fid] = true;
-                // Cycle/nesting check: shared_component must not itself contain shared_refs (Phase 1)
-                if ($r['tree_json'] !== '') {
-                    $inner = json_decode($r['tree_json'], true);
-                    $inner_ids = array();
-                    if ($inner) _vt_collect_shared_ids($inner, $inner_ids);
-                    if (!empty($inner_ids)) {
-                        $errors[] = lang(array('string' => 'Shared component id={var:1} contains nested shared references (not allowed in Phase 1).', 'vars' => $fid));
-                    }
-                }
-            }
+            foreach ($rows as $r) $found[(int)$r['id']] = true;
         }
-        if (!empty($errors)) {
-            return array('ok' => false, 'error' => implode('; ', $errors), 'warnings' => array(), 'cleaned_json' => '');
+        // A shared component may place other shared components (a widget in a
+        // header, a block in a footer). Only a loop — A placing B while B,
+        // directly or further down, places A — is refused: it cannot be drawn.
+        $loop = pg_shared_component_cycle(array_keys($found));
+        if (!empty($loop)) {
+            return array('ok' => false, 'error' => pg_shared_component_loop_message($loop), 'warnings' => array(), 'cleaned_json' => '');
         }
         // Mark orphans (referenced but not found in DB)
         foreach ($used_ids as $sid => $_) {
@@ -562,6 +554,98 @@ function _vt_walk(&$node, $depth, $valid_types, $required_props, &$errors)
     }
 }
 
+/**
+ * The first loop among nested shared components that can be reached from
+ * $start_ids, as the ids along it (A, B, A), or an empty array.
+ *
+ * A shared component places others through the shared_ref nodes of its
+ * tree_json; the rows are read breadth first in batches, a missing row being
+ * a leaf. $override (id => decoded tree) stands for rows whose new tree is
+ * not stored yet, so a save can be checked before it is written. The walk
+ * stops after a few hundred rows; deeper graphs are not checked further.
+ */
+function pg_shared_component_cycle($start_ids, $override = array())
+{
+    $children = array();
+    foreach ((array)$override as $oid => $otree) {
+        $acc = array();
+        if (is_array($otree)) _vt_collect_shared_ids($otree, $acc);
+        $children[(int)$oid] = array_map('intval', array_keys($acc));
+    }
+
+    $starts = array();
+    foreach ((array)$start_ids as $sid) {
+        $sid = (int)$sid;
+        if ($sid > 0) $starts[$sid] = $sid;
+    }
+    $frontier = $starts;
+    foreach ($children as $oid => $kids) {
+        foreach ($kids as $kid) $frontier[$kid] = $kid;
+    }
+    for ($round = 0; $round < 20 && !empty($frontier) && count($children) < 500; $round++) {
+        $need = array();
+        foreach ($frontier as $sid) {
+            if ($sid > 0 && !isset($children[$sid])) $need[$sid] = $sid;
+        }
+        $frontier = array();
+        if (empty($need)) break;
+        $rows = db_items("SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', $need) . ")");
+        foreach ((is_array($rows) ? $rows : array()) as $r) {
+            $rid  = (int)$r['id'];
+            $acc  = array();
+            $tree = ((string)$r['tree_json'] !== '') ? json_decode((string)$r['tree_json'], true) : null;
+            if (is_array($tree)) _vt_collect_shared_ids($tree, $acc);
+            $children[$rid] = array_map('intval', array_keys($acc));
+            foreach ($children[$rid] as $kid) {
+                if (!isset($children[$kid])) $frontier[$kid] = $kid;
+            }
+        }
+        foreach ($need as $sid) {
+            if (!isset($children[$sid])) $children[$sid] = array();
+        }
+    }
+
+    // Depth first over what was read; 1 = on the current path, 2 = done.
+    $state = array();
+    $path  = array();
+    $visit = function ($sid) use (&$visit, &$state, &$path, $children) {
+        if (isset($state[$sid])) {
+            if ($state[$sid] !== 1) return array();
+            $at = array_search($sid, $path, true);
+            return array_merge(array_slice($path, (int)$at), array($sid));
+        }
+        $state[$sid] = 1;
+        $path[] = $sid;
+        foreach ((isset($children[$sid]) ? $children[$sid] : array()) as $kid) {
+            $hit = $visit($kid);
+            if (!empty($hit)) return $hit;
+        }
+        array_pop($path);
+        $state[$sid] = 2;
+        return array();
+    };
+    foreach (array_merge(array_keys((array)$override), $starts) as $sid) {
+        $hit = $visit((int)$sid);
+        if (!empty($hit)) return $hit;
+    }
+    return array();
+}
+
+// The loop refusal, naming the components along it ("Header → Cart → Header").
+function pg_shared_component_loop_message($loop)
+{
+    $ids   = array_values(array_unique(array_map('intval', (array)$loop)));
+    $names = array();
+    $rows  = $ids ? db_items("SELECT id, name FROM shared_components WHERE id IN (" . implode(',', $ids) . ")") : array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) $names[(int)$r['id']] = (string)$r['name'];
+    $parts = array();
+    foreach ((array)$loop as $sid) {
+        $sid = (int)$sid;
+        $parts[] = isset($names[$sid]) ? $names[$sid] : ('#' . $sid);
+    }
+    return lang(array('string' => 'These shared components place each other in a loop: {var:1}', 'vars' => array(implode(' → ', $parts))));
+}
+
 // Collect all sharedId values from shared_ref nodes into $acc array (keyed by id).
 function _vt_collect_shared_ids($node, &$acc)
 {
@@ -603,15 +687,18 @@ function _vt_remove_orphans(&$node, $orphan_ids)
 //
 // Guarantees / invariants:
 //   * Single pass over the string — O(n) regex, batch SELECT for all ids referenced.
-//   * Cycle-safe: Phase-1 validation (`_validate_and_clean_tree_json`) already blocks shared
-//     components from containing nested shared_refs, so the rendered inner HTML will not
-//     contain any markers. A depth cap is kept as a safety net.
+//   * Nested components: a shared component may place others. Their markers in its
+//     rendered HTML are expanded recursively; $ancestors carries the ids being expanded
+//     above, so a loop that reached the database ends in an inert comment instead of
+//     repeating (saving refuses loops — pg_shared_component_cycle()). A depth cap is
+//     kept as a further safety net.
 //   * Missing / deleted shared components → marker is replaced with an empty string (layout
 //     is preserved).
+//   * System widgets are left as `<!--pg-system-widget:ID-->` for _expand_system_widgets().
 //
-function _expand_shared_refs($html, $depth = 0)
+function _expand_shared_refs($html, $depth = 0, $ancestors = array())
 {
-    if ($depth >= 8) return $html; // safety net — should never fire (nested refs blocked)
+    if ($depth >= 8) return $html; // safety net — nesting this deep is not expanded
     if (strpos($html, '<!--pg-shared-ref:') === false) return $html;
 
     // Collect every referenced id in one pass
@@ -640,6 +727,11 @@ function _expand_shared_refs($html, $depth = 0)
     // via _expand_system_widgets(), which wires them into the dynamic render pipeline.
     $replacements = array();
     foreach ($ids as $sid) {
+        // Placed inside itself, directly or through others: not drawn again.
+        if (isset($ancestors[$sid])) {
+            $replacements[$sid] = '<!-- pg-shared-ref:' . $sid . ' places itself (loop), not expanded -->';
+            continue;
+        }
         // Diagnostic comments are admin-visible only (view-source). They appear when:
         //   - shared_components row missing (deleted but still referenced)
         //   - tree_json column NULL/empty (widget never persisted its tree)
@@ -668,12 +760,11 @@ function _expand_shared_refs($html, $depth = 0)
             $replacements[$sid] = '<!-- pg-shared-ref:' . $sid . ' tree_json not valid JSON -->';
             continue;
         }
-        // _render_tree_node emits markers for any shared_ref it encounters. Phase-1 validation
-        // forbids nested shared_refs in shared_components.tree_json, so this *should* produce
-        // marker-free HTML. Still, recurse defensively with depth guard.
+        // _render_tree_node emits a marker for every shared_ref it meets: the components
+        // nested in this one, expanded here with this one counted as their ancestor.
         $rendered = _render_tree_node($sc_tree, 0);
         if (strpos($rendered, '<!--pg-shared-ref:') !== false) {
-            $rendered = _expand_shared_refs($rendered, $depth + 1);
+            $rendered = _expand_shared_refs($rendered, $depth + 1, $ancestors + array($sid => true));
         }
         if (trim($rendered) === '') {
             // Tree parsed fine but produced no visible output — most common cause:
@@ -939,6 +1030,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 'account_profile'   => '_render_system_widget_account_profile',
                 'email_preferences' => '_render_system_widget_email_preferences',
                 'address_book'      => '_render_system_widget_address_book',
+                'account_security'  => '_render_system_widget_account_security',
                 'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {
@@ -966,6 +1058,26 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         },
         $html
     );
+}
+
+/**
+ * The markers a system widget's render leaves behind. A widget's layout may
+ * place shared components and other widgets; their markers only appear in the
+ * widget's output, after the page's own pass of _expand_shared_refs() and
+ * _expand_system_widgets(). Resolved here, at most four levels deep.
+ */
+function pg_expand_nested_components($html, $mode = 'preview', $email = false)
+{
+    for ($level = 0; $level < 4; $level++) {
+        $has_refs    = strpos($html, '<!--pg-shared-ref:') !== false;
+        $has_widgets = strpos($html, '<!--pg-system-widget:') !== false;
+        if (!$has_refs && !$has_widgets) break;
+        if ($has_refs) $html = _expand_shared_refs($html);
+        if (strpos($html, '<!--pg-system-widget:') !== false) {
+            $html = _expand_system_widgets($html, $mode, $email);
+        }
+    }
+    return $html;
 }
 
 // Walk a widget tree (deep clone) and locate the FIRST loop_area node. Replaces it
@@ -1964,16 +2076,98 @@ function pg_page_edit_url_by_id($page_id)
 }
 
 /**
- * How many folders and LIVE pages use a style. Pages waiting in the
- * recycle bin do not count: as far as the operator is concerned they are
- * deleted, and a design they were the last pages of is empty.
+ * Delete a design: the one path behind the editor's toolbar and the design
+ * list (api.php design_delete).
+ *
+ * The design's live pages go to the recycle bin; pages already there stay
+ * there (each carries its own tree, so a restored page joins another design
+ * through "Select Page"). Pages that only use it as their mobile style and
+ * folders that use it as their default (desktop or mobile) are cleared to 0
+ * rather than blocking the delete: get_style() then looks in the parent
+ * folder (the root folder is left with none).
+ *
+ * $collab_key is the caller's own editor tab (the toolbar posts it), so the
+ * tab that asks is not counted as somebody else having the design open. Any
+ * other open tab refuses the delete: its next save would write pages of a
+ * design that no longer exists.
+ *
+ * @return array ok, error, binned (pages sent to the bin), home (how many of
+ *               them were the home page), folders (folders cleared), name
  */
-function pg_designer_style_live_usage($style_id)
+function pg_designer_delete_design($style_id, $user, $collab_key = '')
 {
     $style_id = (int)$style_id;
-    return (int)db_value(
-        "SELECT (SELECT COUNT(folder_id) FROM folder WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id')
-              + (SELECT COUNT(page_id)   FROM page   WHERE (page_style = '$style_id' OR mobile_style_id = '$style_id')" . pg_designer_not_binned_sql('page_folder') . ")");
+    $out = array('ok' => false, 'error' => '', 'binned' => 0, 'home' => 0, 'folders' => 0, 'name' => '');
+
+    $style = $style_id > 0 ? db_item("SELECT style_id, style_name FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
+    if (!$style) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+    $out['name'] = (string)$style['style_name'];
+
+    // The design is the designer's: a content-level operator never sees the
+    // button, and this is what refuses the POST that does not need it.
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+    if (!pg_designer_is_full($user)) {
+        $out['error'] = lang('You do not have access to delete this design.');
+        return $out;
+    }
+    if (((int)$user['role'] == 3) && !$user['delete_pages']) {
+        $out['error'] = lang('You do not have access to delete pages.');
+        return $out;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    $peers = pg_collab_peers($collab_key, $style_id);
+    if ($peers) {
+        $names = array();
+        foreach ($peers as $peer) $names[$peer['name']] = true;
+        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+                                   'vars'   => implode(', ', array_keys($names))));
+        return $out;
+    }
+
+    // Everything that can refuse is checked before anything is written.
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $bin_ready = pg_recycle_ready();
+    if (!$bin_ready) {
+        if ((int)db_value("SELECT COUNT(page_id) FROM page WHERE page_style = '$style_id'") > 0) {
+            $out['error'] = lang('The recycle bin is not available. Delete the page from the pages list instead.');
+            return $out;
+        }
+    } else {
+        $uid    = (int)$user['id'];
+        $bin_id = (int)pg_recycle_folder_id(true);
+        $live   = db_items("SELECT page_id, page_folder, page_home FROM page WHERE page_style = '$style_id'" . pg_designer_not_binned_sql('page_folder'));
+        foreach ((is_array($live) ? $live : array()) as $lp) {
+            $pid = (int)$lp['page_id'];
+            db("UPDATE page SET page_folder = '$bin_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
+            pg_recycle_park_name('page', $pid, $user);
+            db("DELETE FROM recycle_bin WHERE item_type = 'page' AND item_id = '$pid'");
+            db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+                VALUES ('page', '$pid', '" . (int)$lp['page_folder'] . "', UNIX_TIMESTAMP(), '$uid')");
+            $out['binned']++;
+            if ((string)$lp['page_home'] === 'yes') $out['home']++;
+        }
+    }
+
+    db("UPDATE page SET mobile_style_id = 0 WHERE mobile_style_id = '$style_id'");
+
+    // One statement so a folder that had it as both styles counts once.
+    db("UPDATE folder
+        SET folder_style    = IF(folder_style = '$style_id', 0, folder_style),
+            mobile_style_id = IF(mobile_style_id = '$style_id', 0, mobile_style_id)
+        WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
+    $out['folders'] = max(0, (int)mysqli_affected_rows(db::$con));
+
+    db("DELETE FROM style WHERE style_id = '$style_id'");
+    db("DELETE FROM system_style_cells WHERE style_id = '$style_id'");
+    db("DELETE FROM preview_styles WHERE style_id = '$style_id'");
+    log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($out['name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    $out['ok'] = true;
+    return $out;
 }
 
 function pg_designer_load_pages($style_id, $style_name = '')
@@ -2100,6 +2294,204 @@ function pg_designer_selectable_pages($style_id)
         );
     }
     return $out;
+}
+
+/**
+ * The designs a page can be added to, moved to or copied to - the design
+ * chooser of pg_designer_target_modal(). Every visual design, the one changed
+ * last first, with its pages outside the recycle bin, and the one to offer:
+ * the design the folder uses (get_style(), inherited from the parents) when
+ * it is a visual design, else the design most of the folder's pages are on,
+ * else the design changed last.
+ *
+ * @param int $folder_id        the folder the page is meant for; 0 = none
+ * @param int $exclude_style_id a design to leave out (the page's own)
+ * @return array designs => list of {style_id, name, pages},
+ *               default => style_id to offer (0 = none),
+ *               folder  => style_id the folder uses (0 = none)
+ */
+function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
+{
+    $folder_id        = (int)$folder_id;
+    $exclude_style_id = (int)$exclude_style_id;
+
+    $own_tree = pg_multi_page_design_ready()
+        ? " OR EXISTS (SELECT 1 FROM page p2 WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> '')"
+        : '';
+    $rows = db_items(
+        "SELECT style.style_id, style.style_name,
+                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . ") AS pages
+         FROM style
+         WHERE (style.style_layout = 'visual_designer'$own_tree)" . ($exclude_style_id > 0 ? " AND style.style_id <> '$exclude_style_id'" : '') . "
+         ORDER BY style.style_timestamp DESC, style.style_name ASC");
+
+    $designs = array();
+    $ids = array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) {
+        $designs[] = array('style_id' => (int)$r['style_id'], 'name' => (string)$r['style_name'], 'pages' => (int)$r['pages']);
+        $ids[(int)$r['style_id']] = true;
+    }
+
+    $folder_style = 0;
+    if ($folder_id > 0 && (int)db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '$folder_id'") > 0) {
+        $folder_style = (int)get_style($folder_id);
+        if (!isset($ids[$folder_style])) $folder_style = 0;
+        // A folder no design is assigned to - a template's folders, for one -
+        // belongs to the design most of its pages are on.
+        if ($folder_style === 0) {
+            foreach ((array)db_items("SELECT page_style, COUNT(*) AS n FROM page
+                                      WHERE page_folder = '$folder_id' AND layout_type = 'system'
+                                      GROUP BY page_style ORDER BY n DESC") as $fs) {
+                if (isset($ids[(int)$fs['page_style']])) { $folder_style = (int)$fs['page_style']; break; }
+            }
+        }
+    }
+
+    return array(
+        'designs' => $designs,
+        'default' => $folder_style > 0 ? $folder_style : ($designs ? $designs[0]['style_id'] : 0),
+        'folder'  => $folder_style,
+    );
+}
+
+/**
+ * The design chooser: a modal and window.pgDesignTarget.open(opts), for the
+ * screens that add a visual page (the pages list, the file manager) and for
+ * the editor's "Move to another design" / "Copy to another design".
+ *
+ * opts: mode    'add' | 'move' | 'copy'
+ *       folder  the folder the new page goes to (add)
+ *       exclude the design to leave out (move, copy: the page's own)
+ *       page    the page to move or copy
+ *       from    'pages' to come back to the pages list
+ *       go      function (url): how to leave (the editor passes its own,
+ *               which asks about unsaved changes); default: location.href
+ *
+ * The choice opens the editor: add - edit_system_style.php?new_page=1 with
+ * the design's pages and a new tab, or add_system_style.php for a new design;
+ * move - ?pick_page=, the page as a tab that moves on publish; copy -
+ * ?copy_page=, a copy of it as a new draft tab. The editor reads the
+ * parameters (pg_designer_start_action()).
+ *
+ * Printed once per screen; a second call returns ''.
+ */
+function pg_designer_target_modal()
+{
+    static $done = false;
+    if ($done) return '';
+    $done = true;
+
+    $text = array(
+        'add_title'  => lang('Add Page'),
+        'add_intro'  => lang('Choose the design the new page joins. The design opens with its pages, and the new page is ready to edit.'),
+        'move_title' => lang('Move to another design'),
+        'move_intro' => lang('The design opens with this page as a tab. The page moves there when you publish, and from then on uses that design\'s stylesheets, scripts and fonts.'),
+        'copy_title' => lang('Copy to another design'),
+        'copy_intro' => lang('The design opens with a copy of this page as a new draft tab. The page itself stays where it is.'),
+        'new_design' => lang('New design'),
+        'new_text'   => lang('Start an empty design with this page.'),
+        'folder'     => lang('Used by this folder'),
+        'pages'      => lang('Pages'),
+        'empty'      => lang('There is no visual design yet.'),
+        'loading'    => lang('Loading...'),
+        'failed'     => lang('The list could not be fetched.'),
+    );
+
+    return '
+    <div class="modal fade" id="pgDesignTargetModal" tabindex="-1" aria-labelledby="pgDesignTargetTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="pgDesignTargetTitle"></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-body-secondary" id="pgDesignTargetIntro"></p>
+                    <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var T = ' . encode_json($text) . ';
+            var modal = document.getElementById("pgDesignTargetModal");
+            var list = document.getElementById("pgDesignTargetList");
+            var go = document.getElementById("pgDesignTargetGo");
+            var opts = {};
+            var esc = function (v) { var d = document.createElement("div"); d.textContent = String(v == null ? "" : v); return d.innerHTML; };
+            var row = function (value, title, sub, checked, badge) {
+                return "<label class=\"list-group-item list-group-item-action d-flex gap-3 align-items-center\">" +
+                    "<input class=\"form-check-input flex-shrink-0 m-0\" type=\"radio\" name=\"pg_design_target\" value=\"" + esc(value) + "\"" + (checked ? " checked" : "") + ">" +
+                    "<span class=\"flex-grow-1 text-truncate\"><span class=\"fw-semibold\">" + esc(title) + "</span>" +
+                    (badge ? " <span class=\"badge text-bg-primary fw-normal ms-1\">" + esc(badge) + "</span>" : "") +
+                    (sub ? "<span class=\"d-block small text-body-secondary\">" + esc(sub) + "</span>" : "") + "</span></label>";
+            };
+            var target = function () {
+                var c = list.querySelector("input[name=pg_design_target]:checked");
+                if (!c) return "";
+                var from = opts.from === "pages" ? "&from=pages" : "";
+                if (c.value === "new") {
+                    var q = [];
+                    if (opts.folder) q.push("folder=" + encodeURIComponent(opts.folder));
+                    if (opts.from === "pages") q.push("from=pages");
+                    return "add_system_style.php" + (q.length ? "?" + q.join("&") : "");
+                }
+                var url = "edit_system_style.php?id=" + encodeURIComponent(c.value);
+                if (opts.mode === "move") return url + "&pick_page=" + encodeURIComponent(opts.page) + from;
+                if (opts.mode === "copy") return url + "&copy_page=" + encodeURIComponent(opts.page) + from;
+                return url + "&new_page=1" + (opts.folder ? "&folder=" + encodeURIComponent(opts.folder) : "") + from;
+            };
+            list.addEventListener("change", function () { go.disabled = !target(); });
+            list.addEventListener("dblclick", function (e) { if (e.target.closest("label") && target()) go.click(); });
+            go.addEventListener("click", function () {
+                var url = target();
+                if (!url) return;
+                window.bootstrap.Modal.getOrCreateInstance(modal).hide();
+                if (typeof opts.go === "function") opts.go(url); else window.location.href = url;
+            });
+            window.pgDesignTarget = {
+                open: function (o) {
+                    opts = o || {};
+                    var mode = (opts.mode === "move" || opts.mode === "copy") ? opts.mode : "add";
+                    document.getElementById("pgDesignTargetTitle").textContent = T[mode + "_title"];
+                    document.getElementById("pgDesignTargetIntro").textContent = T[mode + "_intro"];
+                    list.innerHTML = "<div class=\"list-group-item small text-body-secondary\">" + esc(T.loading) + "</div>";
+                    go.disabled = true;
+                    window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "designer", sub_action: "design_targets", folder_id: opts.folder || 0,
+                                               exclude_style_id: opts.exclude || 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || res.status !== "success") throw new Error("failed");
+                        var html = (res.designs || []).map(function (d) {
+                            return row(d.style_id, d.name, T.pages + ": " + d.pages, d.style_id === res["default"], d.style_id === res.folder ? T.folder : "");
+                        }).join("");
+                        if (mode === "add") html += row("new", T.new_design, T.new_text, !(res.designs || []).length, "");
+                        list.innerHTML = html || "<div class=\"list-group-item small text-body-secondary\">" + esc(T.empty) + "</div>";
+                        go.disabled = !target();
+                        var c = list.querySelector("input:checked");
+                        if (c) c.focus();
+                    })
+                    .catch(function () {
+                        list.innerHTML = "<div class=\"list-group-item small text-danger\">" + esc(T.failed) + "</div>";
+                    });
+                }
+            };
+            document.addEventListener("click", function (e) {
+                var b = e.target.closest ? e.target.closest("[data-pg-design-target]") : null;
+                if (!b) return;
+                e.preventDefault();
+                window.pgDesignTarget.open({ mode: b.getAttribute("data-pg-design-target"), folder: parseInt(b.getAttribute("data-folder"), 10) || 0,
+                                             from: b.getAttribute("data-from") || "" });
+            });
+        })();
+    </script>';
 }
 
 /**
@@ -2632,6 +3024,48 @@ function _pg_lightbox_assets_once()
 }
 
 /**
+ * The theme switchers' engine, for a page whose HTML holds one.
+ *
+ * The switchers the visual editor places (Theme: Dropdown, Toggle, Switch)
+ * carry only a data-pg-theme-switcher marker, no script. The page is asked
+ * once every shared component and system widget has been drawn in
+ * (get_page_content.php), so it makes no difference where a switcher was
+ * placed: on the page itself, in a shared component of the page's design or
+ * in one that also serves other designs. The file follows the switcher and
+ * goes with it, with nothing to keep in step on the design.
+ *
+ * The visitor's stored choice is applied by a few inline lines in <head>, so
+ * the first paint already wears it; assets/js/pg_theme_switcher.js binds the
+ * switchers at the end of <body>.
+ *
+ * @param string $content page HTML
+ * @return string
+ */
+function pg_theme_switcher_inject($content)
+{
+    if (strpos($content, 'data-pg-theme-switcher') === false) return $content;
+    if (strpos($content, '/assets/js/pg_theme_switcher.js') !== false) return $content;
+
+    // The resolution pg_theme_switcher.js makes, inline: "auto" or nothing
+    // stored follows the system.
+    $early = '<script>(function(){try{var t=localStorage.getItem("pg-theme");'
+           . 'if(!t||t==="auto"){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}'
+           . 'document.documentElement.setAttribute("data-bs-theme",t);}catch(e){}})();</script>' . "\n";
+    $file  = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_theme_switcher.js?v='
+           . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js') . '" defer></script>' . "\n";
+
+    $head = stripos($content, '</head>');
+    $content = ($head !== false) ? substr_replace($content, $early, $head, 0) : $early . $content;
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    $content = ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
+
+    return $content;
+}
+
+/**
  * Emit Fancybox v6 (Fancyapps) assets exactly once per request.
  *
  * Fancybox v6 replaces the legacy pg_lightbox custom build for the new
@@ -2986,6 +3420,8 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             $tag_lc = strtolower($tag);
             $attrs = '';
             if (!empty($props['id'])) $attrs .= ' id="' . h($props['id']) . '"';
+            // A search section (pg_search_sections()): see _render_extra_attrs().
+            if (!empty($props['id']) && !empty($props['searchSection'])) $attrs .= ' data-pg-search-section';
             // Combine cssClass + sizing classes into a single class attribute
             $sem_cls_parts = array();
             if (!empty($props['cssClass'])) $sem_cls_parts[] = $props['cssClass'];
@@ -3178,6 +3614,9 @@ function _render_extra_attrs($props, $skip_names = array())
     $out = '';
     if (empty($skip_map['id']) && !empty($props['id'])) {
         $out .= ' id="' . h($props['id']) . '"';
+        // A search section (pg_search_sections()) is marked, so the page
+        // render knows to describe its parts in the structured data.
+        if (!empty($props['searchSection'])) $out .= ' data-pg-search-section';
     }
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
@@ -5048,6 +5487,8 @@ function pg_design_frameworks()
             'label'     => 'Bootstrap 5',
             'css'       => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css',
             'js'        => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js',
+            // The version in the two addresses above; it changes with them.
+            'version'   => '5.3.8',
             // The grid, the Bootstrap components and the blocks are written
             // against this version.
             'bootstrap' => true,
@@ -5056,6 +5497,7 @@ function pg_design_frameworks()
             'label'     => lang('Custom'),
             'css'       => '',
             'js'        => '',
+            'version'   => '',
             'bootstrap' => false,
         ),
     );
@@ -5109,16 +5551,29 @@ function pg_style_framework_ready($recheck = false)
 // one left behind anyway (a closed browser) is used again the next time the
 // same template is opened, instead of piling up.
 
-// Every template, keyed by id, in the order they are offered.
+// A template's id, version and framework as the gallery and the editor read
+// them: a version that is not x.y.z reads as 1.0.0, an unknown framework as
+// Bootstrap 5.
+function _pg_tpl_normalize($tpl, $id)
+{
+    $tpl['id']        = $id;
+    $tpl['version']   = (isset($tpl['version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$tpl['version'])) ? (string)$tpl['version'] : '1.0.0';
+    $tpl['framework'] = pg_design_framework_key(isset($tpl['framework']) ? $tpl['framework'] : '');
+    return $tpl;
+}
+
+// Every template, keyed by id, in the order they are offered: the ones that
+// ship with the software (includes/design_templates/), then the ones made
+// from a design (includes/fn/design_templates_custom.php), which share the
+// shape and are opened the same way.
 function pg_design_templates()
 {
     static $templates = null;
     if ($templates !== null) return $templates;
     $templates = array();
     $files = glob(PG_FUNCTIONS_DIR . '/includes/design_templates/*.php');
-    if (!$files) return $templates;
-    sort($files);
-    foreach ($files as $file) {
+    if ($files) sort($files);
+    foreach ($files ? $files : array() as $file) {
         $id = basename($file, '.php');
         if (!preg_match('/^[a-z0-9-]{1,64}$/', $id)) continue;
         $tpl = include $file;
@@ -5126,10 +5581,16 @@ function pg_design_templates()
         // A template made for a feature the site does not use (a store
         // without the shop) is not offered at all.
         if (!_pg_tpl_requirement_met(isset($tpl['requires']) ? $tpl['requires'] : '')) continue;
-        $tpl['id']        = $id;
-        $tpl['version']   = (isset($tpl['version']) && preg_match('/^\d+\.\d+\.\d+$/', (string)$tpl['version'])) ? (string)$tpl['version'] : '1.0.0';
-        $tpl['framework'] = pg_design_framework_key(isset($tpl['framework']) ? $tpl['framework'] : '');
-        $templates[$id] = $tpl;
+        $tpl['builtin'] = true;
+        $templates[$id] = _pg_tpl_normalize($tpl, $id);
+    }
+    if (function_exists('pg_design_templates_custom') && pg_design_template_custom_ready()) {
+        foreach (pg_design_templates_custom() as $id => $tpl) {
+            // A shipped template keeps its id.
+            if (isset($templates[$id])) continue;
+            if (!_pg_tpl_requirement_met(isset($tpl['requires']) ? $tpl['requires'] : '')) continue;
+            $templates[$id] = _pg_tpl_normalize($tpl, $id);
+        }
     }
     uasort($templates, function ($a, $b) {
         return (isset($a['order']) ? (int)$a['order'] : 100) - (isset($b['order']) ? (int)$b['order'] : 100);
@@ -5161,6 +5622,11 @@ function pg_design_template_summary($tpl)
         'version'     => $tpl['version'],
         'framework'   => $fw['key'],
         'framework_label' => $fw['label'],
+        'framework_version' => isset($fw['version']) ? (string)$fw['version'] : '',
+        // Shipped with the software (cannot be deleted), or made from a
+        // design (row_id: its design_template row).
+        'builtin'     => !empty($tpl['builtin']),
+        'row_id'      => isset($tpl['row_id']) ? (int)$tpl['row_id'] : 0,
         'description' => isset($tpl['description']) ? (string)$tpl['description'] : '',
         'icon'        => isset($tpl['icon']) ? (string)$tpl['icon'] : 'bi-grid-1x2',
         // The drawing it is shown with (pg_design_thumb_svg()).
@@ -5332,6 +5798,11 @@ function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
  * with the template's SKU is placed in it rather than made again. The pictures go to a folder of their own under the site's root
  * folder ('folder'), found again by its name.
  *
+ * A product made here ships to every shipping zone the site has,
+ * International included: a shippable product with no zone cannot be
+ * shipped anywhere, so the sample sells wherever the shop delivers until the
+ * operator narrows it on the product's Shipping tab.
+ *
  * A group's parent is 'root' (the site's top product group, if any) or the
  * key of another group of the template, listed before it. A product's price
  * is per currency ('USD' => 89, 'TRY' => 3499): the site's base currency, or
@@ -5375,6 +5846,10 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
     if ($details !== '') $details = '<ul>' . $details . '</ul>';
     $base_path = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/');
     $today = date('Y-m-d');
+    $zone_ids = array();
+    foreach (pg_pb_zones() as $zone) {
+        $zone_ids[] = (int)$zone['id'];
+    }
 
     foreach ($def['groups'] as $key => $g) {
         $key   = (string)$key;
@@ -5436,7 +5911,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                     'google_product_category' => '', 'tax_rate' => null,
                 );
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
-                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'attributes' => array(), 'submit_form' => array()));
+                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $zone_ids, 'attributes' => array(), 'submit_form' => array()));
                 if ($pid <= 0) continue;
             }
             if ((int)db_value("SELECT COUNT(*) FROM products_groups_xref WHERE product = '$pid' AND product_group = '$gid'") === 0) {
@@ -5574,9 +6049,9 @@ function _pg_tpl_assign_ids(&$node, $prefix, &$n)
 // Point every shared_ref that names a template widget (props.templateWidget)
 // or a template shared component (props.templateShared) at the row made for
 // it.
-function _pg_tpl_link_widgets($node, $widgets, $shared = array())
+function _pg_tpl_link_widgets($node, $widgets, $shared = array(), $depth = 0)
 {
-    if (!is_array($node)) return $node;
+    if (!is_array($node) || $depth > 80) return $node;
     if (isset($node['type']) && $node['type'] === 'shared_ref'
         && (isset($node['props']['templateWidget']) || isset($node['props']['templateShared']))) {
         $row = null;
@@ -5594,7 +6069,7 @@ function _pg_tpl_link_widgets($node, $widgets, $shared = array())
         return $node;
     }
     if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as $i => $child) $node['children'][$i] = _pg_tpl_link_widgets($child, $widgets, $shared);
+        foreach ($node['children'] as $i => $child) $node['children'][$i] = _pg_tpl_link_widgets($child, $widgets, $shared, $depth + 1);
     }
     return $node;
 }
@@ -5608,15 +6083,22 @@ function _pg_tpl_reuse_cutoff()
 }
 
 // Whether a shared_components row is placed on any page, the recycle bin
-// included (a page brought back from the bin must find it where it left it).
+// included (a page brought back from the bin must find it where it left it),
+// or inside another shared component or widget (a login region in a header).
 function _pg_tpl_row_in_use($sid)
 {
     $sid = (int)$sid;
-    return (int)db_value(
+    if ((int)db_value(
         "SELECT COUNT(*) FROM page
          LEFT JOIN style ON page.page_style = style.style_id
          WHERE " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . ",%'
-            OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'") > 0;
+            OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'") > 0) {
+        return true;
+    }
+    return (int)db_value(
+        "SELECT COUNT(*) FROM shared_components
+         WHERE id <> '$sid'
+           AND (tree_json LIKE '%\"sharedId\":" . $sid . ",%' OR tree_json LIKE '%\"sharedId\":" . $sid . "}%')") > 0;
 }
 
 // The row for one template shared component (a header, a footer, a band
@@ -5677,7 +6159,7 @@ function pg_design_template_discard($ids)
     }
     if (!$clean) return 0;
     $rows = db_items("SELECT id, category, system_region_config FROM shared_components WHERE id IN (" . implode(',', $clean) . ")");
-    $deleted = 0;
+    $made_rows = array();
     foreach ((array)$rows as $row) {
         $sid = (int)$row['id'];
         $made = (strpos((string)$row['category'], 'template:') === 0) || (strpos((string)$row['category'], 'import:') === 0);
@@ -5685,9 +6167,21 @@ function pg_design_template_discard($ids)
             $cfg = json_decode((string)$row['system_region_config'], true);
             $made = is_array($cfg) && !empty($cfg['template_origin']);
         }
-        if (!$made || _pg_tpl_row_in_use($sid)) continue;
-        db("DELETE FROM shared_components WHERE id = '$sid' LIMIT 1");
-        $deleted++;
+        if ($made) $made_rows[$sid] = $sid;
+    }
+    // A row placed inside another row of the same set (a widget in a
+    // header) is free once that one is gone, so the set is gone over again
+    // until a pass deletes nothing.
+    $deleted = 0;
+    for ($pass = 0; $made_rows && $pass < 8; $pass++) {
+        $before = $deleted;
+        foreach ($made_rows as $sid) {
+            if (_pg_tpl_row_in_use($sid)) continue;
+            db("DELETE FROM shared_components WHERE id = '$sid' LIMIT 1");
+            unset($made_rows[$sid]);
+            $deleted++;
+        }
+        if ($deleted === $before) break;
     }
     return $deleted;
 }
@@ -5744,6 +6238,10 @@ function _pg_tpl_widget_row($origin, $name, $tree, $cfg, $user_id)
  * page ids. A widget whose tree is 'starter' opens with the layout the
  * editor gives a widget of its kind dropped from the palette - the editor
  * builds it, and publishing writes it.
+ *
+ * home_key names the page that opens marked as the site's home page - the
+ * page keyed 'home', else the first - and is set only while the site has no
+ * home page outside the recycle bin; a site that has one keeps it.
  *
  * Returns array('ok' => true, ...payload) or array('ok' => false, 'error' => text).
  */
@@ -5810,6 +6308,9 @@ function pg_design_template_prepare($template_id, $user)
     // one page, like the header's login region, after the template).
     $widgets = array();
     $widget_out = array();
+    // The widget and shared component trees as written, for the second pass
+    // below: 'w:<key>' / 's:<key>' => tree.
+    $row_trees = array();
     foreach ($tpl_widgets as $wkey => $w) {
         $page_key  = isset($w['page']) ? (string)$w['page'] : '';
         $page_name = isset($names[$page_key]) ? $names[$page_key] : $tpl['id'];
@@ -5828,8 +6329,8 @@ function pg_design_template_prepare($template_id, $user)
         $row  = _pg_tpl_widget_row($cfg['template_origin'], $wname, $tree, $cfg, (int)$user['id']);
         if (!$row) return array('ok' => false, 'error' => lang('The template\'s widgets could not be created.'));
         $widgets[$wkey] = $row;
-        pg_designer_tree_objects($tree);
-        $widget_out[] = array(
+        if (!$starter) $row_trees['w:' . $wkey] = $tree;
+        $widget_out[$wkey] = array(
             'id'                   => (int)$row['id'],
             'name'                 => $row['name'],
             'tree'                 => $starter ? null : $tree,
@@ -5841,21 +6342,31 @@ function pg_design_template_prepare($template_id, $user)
     // Shared components: the parts several pages carry, one row each, so an
     // edit to the header or the footer is made once for every page. Only
     // the ones some page of this site places are made (the shop's pages are
-    // not there without the shop).
+    // not there without the shop). One placed inside another shared
+    // component or inside a widget (a template made from a design carries
+    // what the design nested) counts as placed too; each tree is walked once.
     $shared = array();
     $shared_out = array();
     $shared_used = array();
-    $collect_shared = function ($node) use (&$collect_shared, &$shared_used) {
-        if (!is_array($node)) return;
+    $tpl_shared = (isset($tpl['shared']) && is_array($tpl['shared'])) ? $tpl['shared'] : array();
+    $collect_shared = function ($node, $depth = 0) use (&$collect_shared, &$shared_used, $tpl_shared) {
+        if (!is_array($node) || $depth > 80) return;
         if (isset($node['type']) && $node['type'] === 'shared_ref' && isset($node['props']['templateShared'])) {
-            $shared_used[(string)$node['props']['templateShared']] = true;
+            $skey = (string)$node['props']['templateShared'];
+            if (isset($shared_used[$skey])) return;
+            $shared_used[$skey] = true;
+            if (isset($tpl_shared[$skey]['tree']) && is_array($tpl_shared[$skey]['tree'])) $collect_shared($tpl_shared[$skey]['tree'], $depth + 1);
+            return;
         }
         if (!empty($node['children']) && is_array($node['children'])) {
-            foreach ($node['children'] as $child) $collect_shared($child);
+            foreach ($node['children'] as $child) $collect_shared($child, $depth + 1);
         }
     };
     foreach ($tpl_pages as $p) $collect_shared($p['tree']);
-    foreach ((isset($tpl['shared']) && is_array($tpl['shared'])) ? $tpl['shared'] : array() as $skey => $sdef) {
+    foreach ($tpl_widgets as $w) {
+        if (isset($w['tree']) && is_array($w['tree'])) $collect_shared($w['tree']);
+    }
+    foreach ($tpl_shared as $skey => $sdef) {
         if (!isset($shared_used[$skey]) || empty($sdef['tree']) || !is_array($sdef['tree'])) continue;
         $stree = _pg_tpl_fill($sdef['tree'], $vars);
         $id_count = 0;
@@ -5864,9 +6375,37 @@ function pg_design_template_prepare($template_id, $user)
         $row = _pg_tpl_shared_row($tpl['id'] . '/' . $skey, $sname !== '' ? $sname : $skey, $stree, (int)$user['id']);
         if (!$row) return array('ok' => false, 'error' => lang('The template\'s shared components could not be created.'));
         $shared[$skey] = $row;
-        pg_designer_tree_objects($stree);
-        $shared_out[] = array('id' => (int)$row['id'], 'name' => $row['name'], 'tree' => $stree);
+        $row_trees['s:' . $skey] = $stree;
+        $shared_out[$skey] = array('id' => (int)$row['id'], 'name' => $row['name'], 'tree' => $stree);
     }
+
+    // Second pass, once every row exists: a widget or shared component
+    // placed inside another one's tree is pointed at its row the way the
+    // pages are below, and the row is written again. The shipped templates
+    // place none there, so for them nothing changes.
+    foreach ($row_trees as $rkey => $rtree) {
+        $linked = _pg_tpl_link_widgets($rtree, $widgets, $shared);
+        if ($linked === $rtree) continue;
+        $rjson = pg_designer_tree_encode($linked);
+        if ($rjson === '') continue;
+        $is_widget = (strpos($rkey, 'w:') === 0);
+        $ekey = substr($rkey, 2);
+        $rid = $is_widget ? (int)$widgets[$ekey]['id'] : (int)$shared[$ekey]['id'];
+        db("UPDATE shared_components SET tree_json = '" . e($rjson) . "', updated_at = '" . time() . "' WHERE id = '$rid' LIMIT 1");
+        if ($is_widget) {
+            $widget_out[$ekey]['tree'] = $linked;
+        } else {
+            $shared_out[$ekey]['tree'] = $linked;
+        }
+    }
+    foreach ($widget_out as $wkey => $wo) {
+        if (is_array($wo['tree'])) pg_designer_tree_objects($widget_out[$wkey]['tree']);
+    }
+    foreach ($shared_out as $skey => $so) {
+        pg_designer_tree_objects($shared_out[$skey]['tree']);
+    }
+    $widget_out = array_values($widget_out);
+    $shared_out = array_values($shared_out);
 
     $pages = array();
     foreach ($tpl_pages as $p) {
@@ -5920,14 +6459,34 @@ function pg_design_template_prepare($template_id, $user)
         $style_name = $base . ' [' . $n . ']';
     }
 
+    // The design's own files, head code and body classes: a template made
+    // from a design carries them, a shipped one has none.
+    $assets = array();
+    foreach (array('css', 'js', 'fonts', 'head', 'body_classes') as $asset_key) {
+        $assets[$asset_key] = (isset($tpl['assets'][$asset_key]) && is_string($tpl['assets'][$asset_key])) ? $tpl['assets'][$asset_key] : '';
+    }
+
+    // A site without a home page gets the template's, chosen the way
+    // pg_design_template_install() chooses it. A page in the bin does not
+    // count: it is not served at the site root.
+    $home_key = '';
+    if ($pages && (int)db_value("SELECT COUNT(*) FROM page WHERE page_home = 'yes'" . pg_designer_not_binned_sql('page_folder')) === 0) {
+        foreach ($pages as $p) {
+            if ($p['key'] === 'home') { $home_key = 'home'; break; }
+        }
+        if ($home_key === '') $home_key = (string)$pages[0]['key'];
+    }
+
     return array(
         'ok'         => true,
         'template'   => array('id' => $tpl['id'], 'name' => $base, 'version' => $tpl['version'], 'framework' => $tpl['framework']),
         'style_name' => $style_name,
         'pages'      => $pages,
+        'home_key'   => $home_key,
         'widgets'    => $widget_out,
         'shared'     => $shared_out,
         'folders'    => $folders,
+        'assets'     => $assets,
     );
 }
 
@@ -6150,15 +6709,21 @@ function pg_design_template_install($template_id, $user, $opts = array())
         return array('ok' => false, 'error' => implode(' ', $errors));
     }
 
+    // The design's assets: a template made from a design carries its CSS,
+    // JS and fonts, head code and body classes; a shipped template carries
+    // none, and the design starts without them as before.
     $style_data = array(
         'style_id'                          => 0,
         'name'                              => (string)$tp['style_name'],
         'theme_id'                          => 0,
-        'additional_body_classes'           => '',
+        'additional_body_classes'           => (string)$tp['assets']['body_classes'],
         'collection'                        => 'a',
         'social_networking_position'        => (defined('SOCIAL_NETWORKING') && SOCIAL_NETWORKING == TRUE) ? 'bottom_left' : '',
-        'style_head'                        => '',
+        'style_head'                        => (string)$tp['assets']['head'],
         'style_empty_cell_width_percentage' => '',
+        'style_custom_css'                  => (string)$tp['assets']['css'],
+        'style_custom_js'                   => (string)$tp['assets']['js'],
+        'style_custom_fonts'                => (string)$tp['assets']['fonts'],
         'user_id'                           => (int)$user['id'],
         'framework'                         => $tp['template']['framework'],
         'template'                          => $tp['template']['id'],
@@ -6174,6 +6739,11 @@ function pg_design_template_install($template_id, $user, $opts = array())
         $style_id = 0;
         $undo();
         return array('ok' => false, 'error' => lang('The design could not be saved. Please try again.'));
+    }
+    // The inline asset files in the file manager, as the editor's save
+    // writes them.
+    if ($style_data['style_custom_css'] !== '' || $style_data['style_custom_js'] !== '') {
+        pg_designer_sync_asset_files($style_data['style_custom_css'], $style_data['style_custom_js'], (int)$user['id']);
     }
 
     $tab_ids = array();
@@ -6429,11 +6999,18 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
  * Where shared components and system widgets are placed.
  *
  * sid → the pages whose tree references it, each with the design it belongs
- * to ({page_id, page_name, style_id, style_name}). Every page counts, the
- * recycle bin included: a page brought back from the bin must find its
- * widget where it left it. Trees live on the page since the multi-page
- * designer; an un-migrated database falls back to the per-style scan and
- * page_id is 0. $ids limits the answer to those rows (null = every row).
+ * to ({page_id, page_name, style_id, style_name, binned}). Every page counts,
+ * the recycle bin included: a page brought back from the bin must find its
+ * widget where it left it; `binned` tells such a page apart. That includes
+ * a binned page whose design has since been deleted: its style row is gone
+ * (LEFT JOIN), style_name is then '' and style_id the id it still carries.
+ * A binned page's page_name is the name it had before the bin parked it
+ * (pg_recycle_parked_original()). Trees live on the page since the multi-page designer; an un-migrated
+ * database falls back to the per-style scan and page_id is 0. $ids limits
+ * the answer to those rows (null = every row).
+ *
+ * A component placed inside another one (a widget in a header) is used on
+ * every page that places that one, through any number of levels.
  */
 function pg_shared_component_usage($ids = null)
 {
@@ -6451,34 +7028,77 @@ function pg_shared_component_usage($ids = null)
 
     if (pg_multi_page_design_ready()) {
         $trees = db_items(
-            "SELECT page.page_id, page.page_name, style.style_id, style.style_name,
+            "SELECT page.page_id, page.page_name, page.page_folder, page.page_style AS style_id, style.style_name,
                     " . pg_page_tree_sql_expr() . " AS tree_json
              FROM page
-             INNER JOIN style ON page.page_style = style.style_id
+             LEFT JOIN style ON page.page_style = style.style_id
              WHERE page.layout_type = 'system'
              HAVING tree_json IS NOT NULL AND tree_json != ''"
         );
     } else {
         $trees = db_items(
-            "SELECT 0 AS page_id, style_name AS page_name, style_id, style_name, style_tree_json AS tree_json
+            "SELECT 0 AS page_id, style_name AS page_name, 0 AS page_folder, style_id, style_name, style_tree_json AS tree_json
              FROM style
              WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
         );
     }
+    $bin_folders = array_flip(pg_recycle_bin_folder_ids());
+    if ($bin_folders) require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    // Placements on the pages themselves, for every component named — the
+    // ones asked about and the ones that may contain them.
+    $direct = array();
     foreach ((is_array($trees) ? $trees : array()) as $row) {
         $json = (string)$row['tree_json'];
         if (strpos($json, '"sharedId"') === false) continue;
         // The whole digit run, so id 1 never matches a reference to 10.
         if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
+        $binned    = isset($bin_folders[(int)$row['page_folder']]);
+        $page_name = (string)$row['page_name'];
+        if ($binned) {
+            $original = pg_recycle_parked_original($page_name, (int)$row['page_id']);
+            if ($original !== '') $page_name = $original;
+        }
         foreach (array_unique($m[1]) as $sid) {
-            $sid = (int)$sid;
-            if (!isset($usage[$sid])) continue;
-            $usage[$sid][] = array(
+            $direct[(int)$sid][] = array(
                 'page_id'    => (int)$row['page_id'],
-                'page_name'  => (string)$row['page_name'],
+                'page_name'  => $page_name,
                 'style_id'   => (int)$row['style_id'],
                 'style_name' => (string)$row['style_name'],
+                'binned'     => $binned,
             );
+        }
+    }
+
+    // Which components place which: child id => parent ids.
+    $parents = array();
+    $nested  = db_items("SELECT id, tree_json FROM shared_components WHERE tree_json LIKE '%sharedId%'");
+    foreach ((is_array($nested) ? $nested : array()) as $row) {
+        $pid = (int)$row['id'];
+        if (!preg_match_all('/"sharedId":\s*"?(\d+)/', (string)$row['tree_json'], $m)) continue;
+        foreach (array_unique($m[1]) as $cid) {
+            $cid = (int)$cid;
+            if ($cid > 0 && $cid !== $pid) $parents[$cid][$pid] = true;
+        }
+    }
+
+    foreach (array_keys($usage) as $sid) {
+        $seen  = array($sid => true);
+        $queue = array($sid);
+        $keys  = array();
+        while (!empty($queue)) {
+            $cur = array_shift($queue);
+            foreach ((isset($direct[$cur]) ? $direct[$cur] : array()) as $u) {
+                $key = $u['page_id'] . ':' . $u['style_id'] . ':' . $u['page_name'];
+                if (isset($keys[$key])) continue;
+                $keys[$key] = true;
+                $usage[$sid][] = $u;
+            }
+            foreach ((isset($parents[$cur]) ? array_keys($parents[$cur]) : array()) as $pid) {
+                if (!isset($seen[$pid])) {
+                    $seen[$pid] = true;
+                    $queue[] = $pid;
+                }
+            }
         }
     }
     return $usage;
@@ -6580,6 +7200,8 @@ function pg_designer_preview_widgets($page_id, $widgets)
             ob_start();
             try {
                 $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
+                // What the widget's own layout places (nested components).
+                $html = pg_expand_nested_components($html, 'preview');
             } catch (Throwable $t) {
                 $html = '';
             }
@@ -6597,7 +7219,9 @@ function pg_designer_preview_widgets($page_id, $widgets)
 
 /**
  * Real records for the canvas: a listing widget's repeated part rendered by
- * the server for up to $limit records, one HTML string each.
+ * the server, one HTML string per record. The card on the canvas stands for
+ * the first record the page shows, so this returns the rest of the page's
+ * first page (its items per page, capped by its maximum), at most $limit.
  *
  * The widget renders from the editor's tree and settings (saved or not) with
  * a marker around every repetition of its loop area, and the repetitions are
@@ -6649,7 +7273,18 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     $mark($tree);
     if (!$marked) return array();
 
-    $cfg['items_per_page'] = $limit;
+    // The canvas holds as many cards as the page's first page: that page is
+    // rendered and everything after its first record follows the card, each
+    // record in the place it takes on the page. A widget set to three
+    // records shows the card and two records, not the card and ten.
+    $shown = isset($cfg['items_per_page']) ? (int)$cfg['items_per_page'] : 10;
+    if ($shown <= 0) $shown = 10;
+    $max = isset($cfg['max_results']) ? (int)$cfg['max_results'] : 0;
+    if ($max > 0 && $max < $shown) $shown = $max;
+    if ($shown < 2) return array();
+    $fetch = min($shown, $limit + 1);
+
+    $cfg['items_per_page'] = $fetch;
     unset($cfg['max_results']);
 
     $html = pg_designer_preview_widgets($page_id, array(array(
@@ -6664,7 +7299,184 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     foreach ($m[1] as $row) {
         $row = trim(preg_replace('/<!--pg-custom-php:[^>]*-->/', '', $row));
         if ($row !== '') $rows[] = $row;
-        if (count($rows) >= $limit) break;
+        if (count($rows) >= $fetch) break;
     }
-    return $rows;
+    // The first record's place is the card's.
+    return array_slice($rows, 1);
+}
+
+// ========================= PAGE TAB LAYOUT ======================================================
+//
+// The order of a design's page tabs in the editor and the named, coloured
+// groups they sit in (2026.4.8; style.style_tab_layout). The layout is an
+// editor preference, not page content: it is written by its own endpoint
+// (designer/tab_layout) the moment it changes, never by Save, and the site
+// does not read it. Collapsing a group is kept per browser (localStorage).
+//
+// Stored shape, version 1:
+//   {"v":1,
+//    "groups":{"g1":{"name":"Docs","color":"orange"}},
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+// `id` is a page_id of the design. The editor keeps a twin of the
+// normaliser (_pgTabsNormalizeGroups()); the two are changed together.
+
+/**
+ * Whether style.style_tab_layout exists (2026.4.8, 8.19). Without it the
+ * editor shows the plain tab strip and the endpoint refuses.
+ */
+function pg_style_tab_layout_ready($recheck = false)
+{
+    static $cached = null;
+    if ($cached !== null && !$recheck) return $cached;
+    $cached = false;
+    if (!isset(db::$con) || !db::$con) return false;
+    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM style WHERE Field = 'style_tab_layout'");
+    $cached = ($result && @mysqli_num_rows($result) == 1);
+    return $cached;
+}
+
+/**
+ * The colours a tab group may wear, in the order a new group takes them.
+ * The editor's palette (_PG_TAB_GROUP_COLORS, style_designer.css) uses the
+ * same keys.
+ */
+function pg_designer_tab_layout_colors()
+{
+    return array('grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange');
+}
+
+/**
+ * Brings a tab layout into its valid shape for the given pages.
+ *
+ * Anything that is not part of the shape is dropped; ids that are not among
+ * $page_ids, and repeated ids, are dropped; pages missing from the list are
+ * added at the end in page_id order; a tab pointing at a group that does not
+ * exist loses the group; a group left without tabs is dropped. The tabs of a
+ * group are made consecutive: they are pulled together where the group's
+ * first tab stands, in the order they were listed. Names are cut to 60
+ * characters, an unknown colour becomes grey, at most 50 groups are kept and
+ * a group id has to match ^[a-z0-9_-]{1,20}$.
+ *
+ * @param array|string|null $layout   decoded layout or its JSON
+ * @param int[]             $page_ids the pages of the design
+ * @return array {v: 1, groups: {id: {name, color}}, tabs: [{id[, g]}]}
+ */
+function pg_designer_tab_layout_normalize($layout, $page_ids)
+{
+    if (is_string($layout)) {
+        $layout = ($layout === '') ? null : json_decode($layout, true);
+    }
+    if (!is_array($layout)) $layout = array();
+
+    $known = array();
+    foreach ((array)$page_ids as $pid) {
+        $pid = (int)$pid;
+        if ($pid > 0) $known[$pid] = true;
+    }
+
+    $colors = pg_designer_tab_layout_colors();
+    $groups = array();
+    if (isset($layout['groups']) && is_array($layout['groups'])) {
+        foreach ($layout['groups'] as $gid => $g) {
+            if (count($groups) >= 50) break;
+            $gid = (string)$gid;
+            if (!preg_match('/^[a-z0-9_-]{1,20}$/', $gid) || !is_array($g)) continue;
+            $name = (isset($g['name']) && is_scalar($g['name'])) ? (string)$g['name'] : '';
+            $name = trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name));
+            $name = mb_substr($name, 0, 60);
+            $color = (isset($g['color']) && is_string($g['color']) && in_array($g['color'], $colors, true)) ? $g['color'] : 'grey';
+            $groups[$gid] = array('name' => $name, 'color' => $color);
+        }
+    }
+
+    // Listed tabs, then the pages the list does not name.
+    $listed = array();
+    $seen   = array();
+    if (isset($layout['tabs']) && is_array($layout['tabs'])) {
+        foreach ($layout['tabs'] as $t) {
+            if (!is_array($t) || !isset($t['id']) || !is_numeric($t['id'])) continue;
+            $id = (int)$t['id'];
+            if (!isset($known[$id]) || isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $g = (isset($t['g']) && is_scalar($t['g'])) ? (string)$t['g'] : '';
+            $listed[] = array('id' => $id, 'g' => isset($groups[$g]) ? $g : '');
+        }
+    }
+    $missing = array_diff(array_keys($known), array_keys($seen));
+    sort($missing, SORT_NUMERIC);
+    foreach ($missing as $id) $listed[] = array('id' => (int)$id, 'g' => '');
+
+    // A group's tabs stand together where its first tab stands.
+    $members = array();
+    foreach ($listed as $t) {
+        if ($t['g'] !== '') $members[$t['g']][] = $t['id'];
+    }
+    $tabs = array();
+    $placed = array();
+    foreach ($listed as $t) {
+        if ($t['g'] === '') {
+            $tabs[] = array('id' => $t['id']);
+            continue;
+        }
+        if (isset($placed[$t['g']])) continue;
+        $placed[$t['g']] = true;
+        foreach ($members[$t['g']] as $id) $tabs[] = array('id' => $id, 'g' => $t['g']);
+    }
+
+    // Groups nobody is in are gone.
+    foreach (array_keys($groups) as $gid) {
+        if (!isset($members[$gid])) unset($groups[$gid]);
+    }
+
+    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+}
+
+/**
+ * A normalised layout as it is stored and handed to the editor: `groups`
+ * stays a JSON object when it is empty or its ids look like numbers.
+ */
+function pg_designer_tab_layout_export($layout)
+{
+    $layout['groups'] = (object)$layout['groups'];
+    return $layout;
+}
+
+/**
+ * Stores the tab layout of a design (designer/tab_layout). The caller has
+ * checked that the operator is a full designer.
+ *
+ * @return array {ok, error, layout}
+ */
+function pg_designer_tab_layout_save($style_id, $layout, $user)
+{
+    $style_id = (int)$style_id;
+    $out = array('ok' => false, 'error' => '', 'layout' => null);
+
+    if (!pg_style_tab_layout_ready()) {
+        $out['error'] = lang('Page tab groups are not available on this site yet.');
+        return $out;
+    }
+    if ($style_id <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$style_id'")) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+
+    // The pages the editor shows as tabs: the design's own, not the ones
+    // waiting in the Recycle Bin.
+    $ids = db_items(
+        "SELECT page.page_id
+         FROM page
+         WHERE page.page_style = '$style_id'
+           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+         ORDER BY page.page_id ASC");
+    $page_ids = array();
+    foreach ((array)$ids as $row) $page_ids[] = (int)$row['page_id'];
+
+    $norm = pg_designer_tab_layout_normalize($layout, $page_ids);
+    $json = json_encode(pg_designer_tab_layout_export($norm), JSON_UNESCAPED_UNICODE);
+    db("UPDATE style SET style_tab_layout = '" . e($json) . "' WHERE style_id = '$style_id'");
+
+    $out['ok'] = true;
+    $out['layout'] = pg_designer_tab_layout_export($norm);
+    return $out;
 }

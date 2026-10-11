@@ -20,6 +20,14 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
+// of a half-empty form and PHP notices from the unchecked row below.
+$id = (int) ($_REQUEST['id'] ?? 0);
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM shipping_methods WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 if (!$_POST) {
     // get shipping method data
     $query = "SELECT * FROM shipping_methods WHERE id = '" . escape($_GET['id']) . "'";

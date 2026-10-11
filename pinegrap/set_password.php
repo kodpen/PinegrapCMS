@@ -120,8 +120,22 @@ db(
 // for this account; a fresh token is minted below for the browser doing it.
 pg_auth_token_revoke_user($user['id']);
 
-// Auto-login the user so they do not have to sign in manually.
-pg_session_sign_in($user['id'], $user['username']);
+// Auto-login the user so they do not have to sign in manually, unless the
+// account has to pass the sign-in screen (see pg_post_password_signin()).
+$pg_signed_in = pg_post_password_signin($user['id'], $user['username']);
+
+// No session was opened: nothing below may run (validate_user() would bounce
+// the visitor to the login screen, and there is no session to bind a device
+// token or an order to). The confirmation screen asks them to sign in.
+if (!$pg_signed_in) {
+    log_activity('User set password.', $user['username']);
+
+    $form->remove();
+    $form->set('screen', 'confirm');
+    $form->add_notice(lang('Your password has been set. Please sign in with your new password.'));
+
+    go(($pg_return_to !== '') ? $pg_return_to : get_page_type_url('set password'));
+}
 
 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
 connect_user_to_order();

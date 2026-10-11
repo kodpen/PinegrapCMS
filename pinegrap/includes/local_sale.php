@@ -685,8 +685,8 @@ function local_sale_clear_customer()
 /**
  * Open an account from the counter with the little a cashier can ask for -
  * a name, and a phone, e-mail or tax number if the buyer offers one - and
- * pick it for the sale. The same format rules as the account form, so the
- * card is not born broken for e-documents.
+ * pick it for the sale. The checks and the save are the document screens'
+ * (erp_account_quick_create(), includes/erp/account_quick.php).
  *
  * @param array $user
  * @param array $data  title, is_person, tax_number, phone, email
@@ -694,64 +694,21 @@ function local_sale_clear_customer()
  */
 function local_sale_quick_account($user, $data)
 {
-    if (!local_sale_can_erp($user)) {
+    if (!local_sale_can_erp($user) || !function_exists('erp_account_quick_create')) {
         return local_sale_fail(lang('Access denied.'));
     }
 
-    $title = trim(mb_substr((string) ($data['title'] ?? ''), 0, 255));
-    $is_person = ((string) ($data['is_person'] ?? '1') === '1');
-    // The account opens in the store's country, and that country's rules
-    // apply (erp_tax_number_check()): a Turkish number is digits with check
-    // digits (GİB), any other is taken as typed.
-    $is_tr = !function_exists('erp_account_country') || (erp_account_country('') === 'TR');
-    $tax = function_exists('erp_tax_number_check')
-        ? erp_tax_number_check(mb_substr((string) ($data['tax_number'] ?? ''), 0, 64))
-        : array('value' => preg_replace('/\D/', '', (string) ($data['tax_number'] ?? '')), 'error' => '');
-    $tax_number = $tax['value'];
-    $email = trim(mb_substr((string) ($data['email'] ?? ''), 0, 255));
-    $phone = trim(mb_substr((string) ($data['phone'] ?? ''), 0, 50));
-    $errors = array();
+    // The counter opens customers only; whatever kind was posted is ignored.
+    $data['kind'] = 'customer';
+    $created = erp_account_quick_create($user, $data);
 
-    if ($title === '') {
-        $errors['title'] = lang(array('string' => '{var:1} is required', 'vars' => array(lang('Name'))));
-    } elseif ($is_tr && $is_person && function_exists('erp_edoc_person_name') && (erp_edoc_person_name($title) === null)) {
-        $errors['title'] = lang('A person needs a first name and a surname. If this is a company, choose company as the taxpayer type.');
+    if (!$created['success']) {
+        return local_sale_fail($created['error'], !empty($created['field_errors']) ? array('field_errors' => $created['field_errors']) : array());
     }
 
-    if ($tax['error'] !== '') {
-        $errors['tax_number'] = $tax['error'];
-    } elseif ($tax_number !== '') {
-        $existing = db_item("SELECT id, title FROM erp_accounts WHERE tax_number = '" . escape($tax_number) . "' LIMIT 1");
-        if ($existing) {
-            $errors['tax_number'] = lang(array('string' => 'This number already belongs to the account “{var:1}”. Search for it instead.', 'vars' => array($existing['title'])));
-        }
-    }
+    $_SESSION['ecommerce']['local_sale_customer'] = array('contact_id' => 0, 'account_id' => (int) $created['id'], 'label' => $created['title']);
 
-    if (($email !== '') && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors['email'] = lang('Please enter a valid email address.');
-    }
-
-    if (!empty($errors)) {
-        return local_sale_fail(reset($errors), array('field_errors' => $errors));
-    }
-
-    $saved = erp_account_save(array(
-        'kind' => 'customer',
-        'title' => $title,
-        'is_person' => $is_person,
-        'tax_number' => $tax_number,
-        'email' => $email,
-        'phone' => $phone,
-        'created_by' => (int) $user['id'],
-    ));
-
-    if (empty($saved['success'])) {
-        return local_sale_fail((string) $saved['error']);
-    }
-
-    $_SESSION['ecommerce']['local_sale_customer'] = array('contact_id' => 0, 'account_id' => (int) $saved['id'], 'label' => $title);
-
-    return local_sale_ok(lang(array('string' => 'Account “{var:1}” opened and picked for this sale.', 'vars' => array($title))), array('customer_changed' => true));
+    return local_sale_ok(lang(array('string' => 'Account “{var:1}” opened and picked for this sale.', 'vars' => array($created['title']))), array('customer_changed' => true));
 }
 
 /**

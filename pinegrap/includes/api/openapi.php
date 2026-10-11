@@ -663,8 +663,18 @@ function api_openapi_responses($route) {
 
 	}
 
+	// A route that answers with no body at all declares 'status' => 204, and
+	// the document says so instead of promising a 200 with nothing in it.
+	$success_code = (isset($route['status']) && ((int)$route['status'] === 204)) ? '204' : '200';
+
+	if ($success_code === '204') {
+
+		$success = array('description' => 'Done. The answer has no body.');
+
+	}
+
 	$responses = array(
-		'200' => $success,
+		$success_code => $success,
 		'400' => array('description' => 'The request could not be read: the body is not JSON, or a cursor or header is not one this API issues.', 'content' => $error_content),
 		'401' => array('description' => 'The key or the secret is wrong, or none was sent.', 'content' => $error_content),
 		'403' => array('description' => 'The application is not allowed to do this.', 'content' => $error_content),

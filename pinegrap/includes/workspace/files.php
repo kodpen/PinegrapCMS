@@ -402,7 +402,11 @@ function ws_store_upload($viewer, $channel, $original_name, $data)
         return array('ok' => false, 'error' => lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576))));
     }
 
-    $folder_id = ws_channel_folder_id($channel, $viewer['id']);
+    // A file of a discussion is kept in its channel's folder: the people of
+    // a discussion are people who read the channel, and the file stays when
+    // the discussion is gone.
+    $folder_channel = (function_exists('ws_thread_parent_channel') && ws_thread_parent_channel($channel)) ? ws_thread_parent_channel($channel) : $channel;
+    $folder_id = ws_channel_folder_id($folder_channel, $viewer['id']);
 
     // In a folder the file keeps a name a person can read; without one (the
     // schema not updated yet) it keeps the old channel-marked name.

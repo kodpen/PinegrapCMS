@@ -141,6 +141,14 @@ if (!empty($over_limit_accounts)) {
         'bi-speedometer2', 'erp_accounts.php?filter=over_limit', 'text-danger');
 }
 
+// Offers waiting for the customer's answer, and how many of them run out
+// this week.
+if (function_exists('erp_quotes_ready') && erp_quotes_ready()) {
+    $output_cards_month .= $card(lang('Open quotes'), (string) erp_quote_open_count(),
+        lang(array('string' => '{var:1} expiring within 7 days', 'vars' => erp_quote_expiring_count(7))),
+        'bi-file-earmark-text', 'erp_quotes.php?state=open');
+}
+
 // ------------------------------------------------------------- cash and bank
 $output_tills = '';
 foreach ($cash['tills'] as $till) {

@@ -94,6 +94,10 @@ function _render_system_widget_error_page($tree_json, $widget_id, $cfg = array()
     if (!is_array($cfg)) $cfg = array();
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
+    // The error screen reports its error through its own tokens; the
+    // visitor's pending messages belong to the page they see next, so the
+    // node is named for no form and prints none of them.
+    _pg_inject_messages_node($tree, 'error_page');
 
     $error = pg_sw_error_context();
     if ($error === null) {

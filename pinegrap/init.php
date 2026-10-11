@@ -63,6 +63,7 @@ require_once(dirname(__FILE__) . '/includes/db_guard.php');
 pg_db_guard_check();
 
 require(dirname(__FILE__) . '/functions.php');
+pg_error_install(); // Record uncaught exceptions and fatal errors in data/temp/php_errors.log.
 
 // Capture per-request performance baseline as early as possible.
 // The actual recording happens in a register_shutdown_function() handler
@@ -427,6 +428,9 @@ define('BANNED_EMAIL_ADDRESSES', (string) ($row['banned_email_addresses'] ?? '')
 define('REMEMBER_ME_DEVICE_LIMIT_ENABLED', (int) ($row['remember_me_device_limit_enabled'] ?? 0));
 define('REMEMBER_ME_DEVICE_LIMIT', (int) ($row['remember_me_device_limit'] ?? 0));
 define('REMEMBER_ME_DEVICE_LIMIT_STRICT', (int) ($row['remember_me_device_limit_strict'] ?? 0));
+// Two-step sign-in: accounts whose role is <= this value must have a second
+// factor; 99 (also before the 8.40 upgrade adds the column) means none must.
+define('MFA_REQUIRED_ROLE', (int) ($row['mfa_required_role'] ?? 99));
 define('MOBILE', $row['mobile']);
 define('SEARCH_TYPE', $row['search_type']);
 define('SOCIAL_NETWORKING', $row['social_networking']);
@@ -529,6 +533,10 @@ define('PAY_PER_CLICK_FLAG', $row['pay_per_click_flag']);
 define('STATS_URL', $row['stats_url']);
 define('GOOGLE_ANALYTICS', $row['google_analytics']);
 define('GOOGLE_ANALYTICS_WEB_PROPERTY_ID', $row['google_analytics_web_property_id']);
+// Cookie consent (2026.4.8): off until the columns exist, so an installation
+// that has the files but not the upgrade sets its cookies as before.
+define('COOKIE_CONSENT', isset($row['cookie_consent']) ? (int) $row['cookie_consent'] : 0);
+define('COOKIE_CONSENT_POLICY_URL', (string) ($row['cookie_consent_policy_url'] ?? ''));
 define('REGISTRATION_CONTACT_GROUP_ID', $row['registration_contact_group_id']);
 define('REGISTRATION_EMAIL_ADDRESS', $row['registration_email_address']);
 define('MEMBER_ID_LABEL', $row['member_id_label']);

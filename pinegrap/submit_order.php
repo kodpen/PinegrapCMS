@@ -5739,7 +5739,8 @@ function submit_order($type) {
             'from_email_address' => EMAIL_ADDRESS,
             'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
             'format' => $order_receipt_email_format,
-            'body' => $body));
+            'body' => $body,
+            'queue' => true));
     }
 
     // If shipping is enabled, then update ship date & delivery date, and user's address book (for
@@ -7096,7 +7097,8 @@ function submit_order($type) {
                                     'from_email_address' => $from_email_address,
                                     'subject' => $submitter_email_subject,
                                     'format' => $submitter_email_format,
-                                    'body' => $body));
+                                    'body' => $body,
+                                    'queue' => true));
 
                             }
                         }
@@ -7148,7 +7150,8 @@ function submit_order($type) {
                                 'reply_to' => $billing_email_address,
                                 'subject' => $administrator_email_subject,
                                 'format' => $administrator_email_format,
-                                'body' => $body));
+                                'body' => $body,
+                                'queue' => true));
 
                         }
 
@@ -7611,7 +7614,8 @@ function submit_order($type) {
                 'from_email_address' => EMAIL_ADDRESS,
                 'subject' => $subject,
                 'format' => 'html',
-                'body' => $body
+                'body' => $body,
+                'queue' => true
             ));
         }
 
@@ -7767,7 +7771,8 @@ function submit_order($type) {
                     'from_email_address' => EMAIL_ADDRESS,
                     'subject' => ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT,
                     'format' => 'html',
-                    'body' => $body));
+                    'body' => $body,
+                    'queue' => true));
 
             }
         }

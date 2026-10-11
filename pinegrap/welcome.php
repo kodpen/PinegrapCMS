@@ -1078,6 +1078,28 @@ $sig = array(
     'version_pending' => null,
     'map_lead'        => null,
     'map_new'         => null,
+    'orders_week'       => null,
+    'orders_prev_week'  => null,
+    'pending_shipments' => null,
+    'pending_shipments_oldest' => null,
+    'refunds_pending'   => null,
+    'low_stock'         => null,
+    'forms_today'       => null,
+    'forms_week'        => null,
+    'seo_critical'      => null,
+    'campaign_next'     => null,
+    'offers_ending'     => null,
+    'waf_blocked'       => null,
+    'staff_online'      => null,
+    'backup_state'      => null,
+    'backup_href'       => null,
+    'update_state'      => null,
+    'update_href'       => null,
+    'cron_state'        => null,
+    'cron_href'         => null,
+    'waf_mode_state'    => null,
+    'waf_mode_href'     => null,
+    'ws'                => null,
 );
 
 // ── signals ──────────────────────────────────────────────────────────────────
@@ -1117,22 +1139,29 @@ if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] ==
     // table and they are worth a sentence of their own: somebody who filled a
     // basket and left got further than everybody who never started one.
     //
-    // A week for those, two days for the orders, so the scan is a week wide and
-    // every sum carries both of its own bounds -- without the lower bound the
-    // "yesterday" figure would quietly swallow the five days behind it.
+    // A week for those, two days for the orders, and this week against the
+    // week before it -- so the scan is two weeks wide and every sum carries
+    // both of its own bounds. Without the lower bound the "yesterday" figure
+    // would quietly swallow the days behind it, and the basket count would
+    // grow to a fortnight the moment the scan did.
     $greeting_week_start = $greeting_now - 604800;
+    $greeting_prev_week_start = $greeting_now - 1209600;
 
     $greeting_orders = db_item(
         "SELECT
             SUM(CASE WHEN status != 'incomplete' AND order_date >= " . (int) $greeting_day_start . " THEN 1 ELSE 0 END) AS orders_today,
             SUM(CASE WHEN status != 'incomplete' AND order_date >= " . (int) $greeting_day_before . " AND order_date < " . (int) $greeting_day_start . " THEN 1 ELSE 0 END) AS orders_before,
-            SUM(CASE WHEN status =  'incomplete' THEN 1 ELSE 0 END) AS carts_week
+            SUM(CASE WHEN status != 'incomplete' AND order_date >= " . (int) $greeting_week_start . " THEN 1 ELSE 0 END) AS orders_week,
+            SUM(CASE WHEN status != 'incomplete' AND order_date >= " . (int) $greeting_prev_week_start . " AND order_date < " . (int) $greeting_week_start . " THEN 1 ELSE 0 END) AS orders_prev_week,
+            SUM(CASE WHEN status =  'incomplete' AND order_date >= " . (int) $greeting_week_start . " THEN 1 ELSE 0 END) AS carts_week
          FROM orders
-         WHERE order_date >= " . (int) $greeting_week_start);
+         WHERE order_date >= " . (int) $greeting_prev_week_start);
 
-    $sig['orders_today']  = (int) ($greeting_orders['orders_today'] ?? 0);
-    $sig['orders_before'] = (int) ($greeting_orders['orders_before'] ?? 0);
-    $sig['carts_week']    = (int) ($greeting_orders['carts_week'] ?? 0);
+    $sig['orders_today']     = (int) ($greeting_orders['orders_today'] ?? 0);
+    $sig['orders_before']    = (int) ($greeting_orders['orders_before'] ?? 0);
+    $sig['orders_week']      = (int) ($greeting_orders['orders_week'] ?? 0);
+    $sig['orders_prev_week'] = (int) ($greeting_orders['orders_prev_week'] ?? 0);
+    $sig['carts_week']       = (int) ($greeting_orders['carts_week'] ?? 0);
 }
 
 // Where the orders came from, which is the one thing this screen knows and
@@ -1253,6 +1282,35 @@ if ($user['role'] < 3) {
             && (($greeting_now - (int) $greeting_health['ts']) < 3600)
         ) {
             $sig['health'] = (int) $greeting_health['score'];
+
+            // A few of the checks behind the score, by the untranslated key
+            // every check carries from shape version 6 on. Their state and the
+            // screen that acts on them come out of the same file, so these are
+            // free; an older cache simply does not offer them.
+            $greeting_health_keys = array(
+                'Last Backup'              => 'backup',
+                'Software Update'          => 'update',
+                'Scheduled Tasks'          => 'cron',
+                'Web Application Firewall' => 'waf_mode',
+            );
+
+            if (((int) ($greeting_health['v'] ?? 0) === 6) && !empty($greeting_health['checks'])
+                && is_array($greeting_health['checks'])
+            ) {
+                foreach ($greeting_health['checks'] as $greeting_check) {
+
+                    $greeting_check_key = (string) ($greeting_check['key'] ?? '');
+
+                    if (!isset($greeting_health_keys[$greeting_check_key])) {
+                        continue;
+                    }
+
+                    $greeting_check_name = $greeting_health_keys[$greeting_check_key];
+
+                    $sig[$greeting_check_name . '_state'] = (string) ($greeting_check['state'] ?? '');
+                    $sig[$greeting_check_name . '_href']  = (string) ($greeting_check['href'] ?? '');
+                }
+            }
         }
     }
 }
@@ -1312,6 +1370,171 @@ if (($user['role'] < 3) && (count($changelog_sections) > 0) && (VERSION != 'SETU
     $sig['version_pending'] = version_compare($greeting_newest_version, (string) VERSION, '>')
         ? $greeting_newest_version
         : false;
+}
+
+// Orders paid for and not yet sent. The same reading as the shipments card
+// (api.php, widget 9) and behind the same gate, cut down to one number: how
+// many orders still have a shippable line with quantity left to ship, over the
+// card's own thirty days from midnight. The reasons for each condition --
+// the ship_to_id marker, complete recipients, online orders only, the signed
+// subtraction -- are written out beside the card's query and hold here as they
+// are.
+if ((ECOMMERCE == true) && defined('ECOMMERCE_SHIPPING') && (ECOMMERCE_SHIPPING == true)
+    && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))
+) {
+
+    $greeting_saved_sql = '';
+
+    if (db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'") != '') {
+        $greeting_saved_sql = " AND (order_items.saved_for_later = 0)";
+    }
+
+    $greeting_ship_since = strtotime(date('Y-m-d')) - (30 * 86400);
+
+    $greeting_ship = db_item(
+        "SELECT COUNT(*) AS pending_count, MIN(order_date) AS oldest FROM (
+            SELECT orders.id, MIN(orders.order_date) AS order_date
+            FROM orders
+            INNER JOIN ship_tos ON (ship_tos.order_id = orders.id) AND (ship_tos.complete = '1')
+            INNER JOIN order_items ON order_items.ship_to_id = ship_tos.id
+            WHERE
+                (orders.status IN ('complete', 'exported'))
+                AND (orders.type = 'online')
+                AND (orders.order_date >= " . (int) $greeting_ship_since . ")
+                $greeting_saved_sql
+            GROUP BY orders.id
+            HAVING SUM(GREATEST(CAST(order_items.quantity AS SIGNED) - CAST(order_items.shipped_quantity AS SIGNED), 0)) > 0
+        ) AS pending");
+
+    $sig['pending_shipments'] = (int) ($greeting_ship['pending_count'] ?? 0);
+
+    // When the longest waiting of them was placed, so the advice can tell a
+    // normal day's packing from a parcel that has been left behind.
+    $sig['pending_shipments_oldest'] = (($sig['pending_shipments'] > 0) && !empty($greeting_ship['oldest']))
+        ? (int) $greeting_ship['oldest']
+        : null;
+}
+
+if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
+
+    // Cancelled orders whose money has not gone back yet: the same three
+    // states the orders list files under "Refund Pending". The column came
+    // with a later schema step, so it is asked about first.
+    if (db_value("SHOW COLUMNS FROM orders LIKE 'refund_status'") != '') {
+        $sig['refunds_pending'] = (int) db_value(
+            "SELECT COUNT(*) FROM orders WHERE refund_status IN ('manual_required', 'failed', 'pending')");
+    }
+
+    // Running low but not out yet -- the out of stock count above already
+    // covers zero. Only where the shop has set a threshold of its own; a
+    // made-up line would call a shop that keeps two of everything short of
+    // stock every single day. Products sold on backorder never run out, and
+    // ones that do not track stock have no level to run low on.
+    if (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int) ECOMMERCE_LOW_STOCK_THRESHOLD > 0)) {
+        $sig['low_stock'] = (int) db_value(
+            "SELECT COUNT(*) FROM products
+             WHERE inventory = '1' AND backorder != '1'
+             AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD);
+    }
+
+    // Offers that stop within the week. Switched off ones are left out: an
+    // offer nobody is running has nothing to end. The open-ended date sits
+    // decades out, so the upper bound keeps it out without naming it, and the
+    // dates come from PHP so they agree with the offers list on what today is.
+    $sig['offers_ending'] = (int) db_value(
+        "SELECT COUNT(*) FROM offers
+         WHERE status = 'enabled'
+         AND end_date > '0000-00-00'
+         AND end_date >= '" . e(date('Y-m-d')) . "'
+         AND end_date <= '" . e(date('Y-m-d', strtotime('+7 days'))) . "'");
+}
+
+// Form submissions, today and over the week, in one pass. Roles above User
+// only: for a User with the forms permission the submitted forms screen
+// narrows the list to the folders they may edit, and a site-wide count would
+// promise rows the link does not show.
+if ($user['role'] < 3) {
+
+    $greeting_forms = db_item(
+        "SELECT
+            SUM(CASE WHEN submitted_timestamp >= " . (int) ($greeting_now - 86400) . " THEN 1 ELSE 0 END) AS forms_today,
+            COUNT(*) AS forms_week
+         FROM forms
+         WHERE complete = '1' AND submitted_timestamp >= " . (int) ($greeting_now - 604800));
+
+    $sig['forms_today'] = (int) ($greeting_forms['forms_today'] ?? 0);
+    $sig['forms_week']  = (int) ($greeting_forms['forms_week'] ?? 0);
+}
+
+if ($user['role'] < 3) {
+
+    // The pages list's own "SEO Score Critical" filter, so the number and the
+    // list behind the link are the same rows. A score that is out of date is
+    // not counted: the page has changed since it was marked.
+    $sig['seo_critical'] = (int) db_value(
+        "SELECT COUNT(*) FROM page WHERE seo_score < 30 AND seo_analysis_current = 1");
+
+    // The next campaign due to go out. start_time is a DATETIME written by
+    // PHP, so "now" is PHP's too rather than the database server's clock.
+    $greeting_campaign = db_item(
+        "SELECT subject, start_time FROM email_campaigns
+         WHERE type = 'manual' AND status = 'ready'
+         AND start_time > '" . e(date('Y-m-d H:i:s')) . "'
+         ORDER BY start_time LIMIT 1");
+
+    if (is_array($greeting_campaign) && (strtotime($greeting_campaign['start_time']) > $greeting_now)) {
+        $sig['campaign_next'] = array(
+            'subject' => (string) $greeting_campaign['subject'],
+            'when'    => get_relative_time(array(
+                'timestamp' => strtotime($greeting_campaign['start_time']),
+                'format'    => 'plain_text')),
+        );
+    }
+
+    // Colleagues signed in in the last twenty minutes, the window the visitor
+    // count above uses. Presence is stamped for members browsing the public
+    // site as well, so only accounts with a back office role are counted;
+    // calling a shopper a colleague would make the line plainly wrong.
+    $sig['staff_online'] = (int) db_value(
+        "SELECT COUNT(*) FROM user
+         WHERE user_online_timestamp >= " . (int) ($greeting_now - 1200) . "
+         AND user_role < 3
+         AND user_id != '" . (int) $user['id'] . "'");
+}
+
+// What the firewall turned away over the last day. waf.php is loaded by
+// init.php on every request, so the function test only guards an install
+// where that has changed; nothing is included from here to make it true.
+// SUM(hit_count), because one row is a whole window of repeats.
+if (($user['role'] < 3) && function_exists('waf_mode') && (waf_mode() !== 'off')) {
+    $sig['waf_blocked'] = (int) db_value(
+        "SELECT COALESCE(SUM(hit_count), 0) FROM waf_log
+         WHERE action IN ('block', 'rate', 'ban')
+         AND log_timestamp >= " . (int) ($greeting_now - 86400));
+}
+
+// The workspace: the person's own tasks, what was handed to them, what is on
+// their calendar today.
+//
+// The module is loaded here because the menu loads it inside pg_page_shell(),
+// which runs after this; require_once makes the menu's own load a no-op. The
+// gate is ws_rights() and not USER_MANAGE_WORKSPACE alone, because a profile
+// can take a staff account out of the team and that flag is only read there.
+// With the module off, nothing below this is ever said about it.
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
+    && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))
+) {
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (ws_enabled()) {
+
+        $greeting_ws_rights = ws_rights($user);
+
+        if ($greeting_ws_rights['member']) {
+            $sig['ws'] = ws_dashboard_signals($greeting_ws_rights);
+        }
+    }
 }
 
 // ── directions ───────────────────────────────────────────────────────────────
@@ -1457,6 +1680,273 @@ if (($sig['map_new'] !== null) && (defined('USER_MANAGE_ECOMMERCE') && USER_MANA
         'vars' => $greeting_map_link)));
 }
 
+// The checks the system status widget has already run, taken one at a time.
+// Each of these screens is manager and above (validate_area_access 'manager',
+// role <= 2), so the advice is only offered to someone the link will let in.
+if (in_array($sig['backup_state'], array('warn', 'fail'), true) && ($user['role'] <= 2)) {
+
+    $greeting_backup_href = ($sig['backup_href'] !== '') ? $sig['backup_href'] : 'backups.php';
+
+    // 'warn' is a backup that is a few days old; 'fail' is one over a week old
+    // or none at all, and "older than it should be" would be untrue of none.
+    $greeting_options[] = array('tier' => 1, 'topic' => 'backup', 'text' => ($sig['backup_state'] === 'warn')
+        ? lang(array(
+            'string' => 'The last backup is older than it should be, and {var:1} is a five minute job.',
+            'vars' => $greeting_link($greeting_backup_href, lang('taking a fresh one'))))
+        : lang(array(
+            'string' => 'There is no backup from the last week, and {var:1} is a five minute job.',
+            'vars' => $greeting_link($greeting_backup_href, lang('taking a fresh one')))));
+    $greeting_options[] = array('tier' => 1, 'topic' => 'backup', 'text' => lang(array(
+        'string' => 'Nothing here has been backed up recently; {var:1} is where to fix that.',
+        'vars' => $greeting_link($greeting_backup_href, lang('the backup screen')))));
+}
+
+// A release waiting to be downloaded. The check also turns amber when the
+// software has simply never asked, and "a newer version is out" would be
+// untrue then, so the flag the check itself reads decides. Kept apart from
+// the version advice above: an upgrade uploaded but not run is the more
+// urgent of the two, and both at once would be one story told twice.
+if (in_array($sig['update_state'], array('warn', 'fail'), true) && empty($sig['version_pending'])
+    && defined('SOFTWARE_UPDATE_AVAILABLE') && SOFTWARE_UPDATE_AVAILABLE && ($user['role'] <= 2)
+) {
+
+    $greeting_update_link = $greeting_link(
+        ($sig['update_href'] !== '') ? $sig['update_href'] : 'software_update.php', lang('the update screen'));
+
+    $greeting_options[] = array('tier' => 1, 'topic' => 'update', 'text' => lang(array(
+        'string' => 'A newer version is out, and {var:1} will bring it in.',
+        'vars' => $greeting_update_link)));
+    $greeting_options[] = array('tier' => 1, 'topic' => 'update', 'text' => lang(array(
+        'string' => 'There is an update waiting; {var:1} says what it brings.',
+        'vars' => $greeting_update_link)));
+}
+
+// Stalled cron jobs. The check names no screen of its own -- the per-job
+// times are inside the status widget on this page -- so the sentence carries
+// a link only when the check offers one.
+if (($sig['cron_state'] === 'fail') && ($user['role'] <= 2)) {
+
+    $greeting_options[] = array('tier' => 1, 'topic' => 'cron', 'text' => ($sig['cron_href'] !== '')
+        ? lang(array(
+            'string' => 'The scheduled tasks have stopped running, which quietly stalls backups and mail; {var:1} says why.',
+            'vars' => $greeting_link($sig['cron_href'], lang('the status panel'))))
+        : h(lang('The scheduled tasks have stopped running, which quietly stalls backups and mail.')));
+    $greeting_options[] = array('tier' => 1, 'topic' => 'cron', 'text' => h(lang(
+        'Some scheduled tasks have stopped running, and backups and mail wait until they start again.')));
+}
+
+// Money owed back to customers. reset=true for the same reason as the basket
+// link below: a filter left in the session would hide the rows.
+if (((int) $sig['refunds_pending']) > 0) {
+
+    $greeting_refunds_count = (int) $sig['refunds_pending'];
+
+    $greeting_options[] = array('tier' => 1, 'topic' => 'refunds', 'text' => lang(array(
+        'string' => 'Money is still owed on {var:1}; the customers are waiting.',
+        'vars' => $greeting_link('view_orders.php?reset=true&status=refund_pending', lang(array(
+            'string' => 'the {var:1} cancelled order{suffix:1}',
+            'vars'   => pg_format_number($greeting_refunds_count, 0),
+            'suffix' => array(($greeting_refunds_count == 1) ? '' : 's')))))));
+    $greeting_options[] = array('tier' => 1, 'topic' => 'refunds', 'text' => lang(array(
+        'string' => 'Customers are waiting on {var:1}, and it is worth settling before anything new.',
+        'vars' => $greeting_link('view_orders.php?reset=true&status=refund_pending', lang(array(
+            'string' => '{var:1} refund{suffix:1}',
+            'vars'   => pg_format_number($greeting_refunds_count, 0),
+            'suffix' => array(($greeting_refunds_count == 1) ? '' : 's')))))));
+}
+
+// Orders waiting to leave. The orders list has no shipping filter, so the link
+// opens the list itself, cleared of whatever was left in the session.
+//
+// A shop with orders has orders to pack on any given day, and an order that
+// came in this morning and is not boxed yet is the ordinary state of things,
+// not something gone wrong. One that has waited two days is. So this is an
+// opportunity while the oldest waiting order is under 48 hours old, and only
+// outranks the other openings once something has actually been left behind.
+if (((int) $sig['pending_shipments']) > 0) {
+
+    $greeting_ship_count = (int) $sig['pending_shipments'];
+    $greeting_ship_tier = (($sig['pending_shipments_oldest'] !== null)
+        && ($sig['pending_shipments_oldest'] < ($greeting_now - 172800))) ? 1 : 2;
+
+    $greeting_ship_link = $greeting_link('view_orders.php?reset=true', lang(array(
+        'string' => '{var:1} order{suffix:1}',
+        'vars'   => pg_format_number($greeting_ship_count, 0),
+        'suffix' => array(($greeting_ship_count == 1) ? '' : 's'))));
+
+    $greeting_options[] = array('tier' => $greeting_ship_tier, 'topic' => 'shipments', 'text' => lang(array(
+        'string' => 'The customers behind {var:1} are still waiting for a parcel.',
+        'vars' => $greeting_ship_link)));
+    $greeting_options[] = array('tier' => $greeting_ship_tier, 'topic' => 'shipments', 'text' => lang(array(
+        'string' => 'There {suffix:1} {var:1} paid for and not shipped yet.',
+        'vars'   => $greeting_ship_link,
+        'suffix' => array(($greeting_ship_count == 1) ? 'is' : 'are'))));
+}
+
+// The workspace, where something was handed to this person or asked of them.
+// Every link here is a workspace screen, and $sig['ws'] is only filled for a
+// member of the team, which is all those screens ask.
+$greeting_ws = $sig['ws'];
+
+if (($greeting_ws !== null) && ($greeting_ws['new_task'] !== null)) {
+
+    $greeting_new_task = $greeting_ws['new_task'];
+    $greeting_new_task_link = $greeting_link(
+        'workspace_tasks.php?task=' . (int) $greeting_new_task['id'], $greeting_new_task['title']);
+
+    // The title goes last among the values: it is free text, and lang() fills
+    // the placeholders in order.
+    if ($greeting_new_task['by'] !== '') {
+
+        $greeting_options[] = array('tier' => 1, 'topic' => 'ws_task', 'text' => lang(array(
+            'string' => '{var:1} handed you a new task: {var:2}.',
+            'vars' => array(h($greeting_new_task['by']), $greeting_new_task_link))));
+
+        if ($greeting_new_task['due_label'] !== null) {
+            $greeting_options[] = array('tier' => 1, 'topic' => 'ws_task', 'text' => lang(array(
+                'string' => 'There is a new task on your list from {var:1}, due {var:2}: {var:3}.',
+                'vars' => array(h($greeting_new_task['by']), h($greeting_new_task['due_label']), $greeting_new_task_link))));
+        }
+
+    } else {
+        $greeting_options[] = array('tier' => 1, 'topic' => 'ws_task', 'text' => lang(array(
+            'string' => 'There is a new task on your list: {var:1}.',
+            'vars' => $greeting_new_task_link)));
+    }
+}
+
+if (($greeting_ws !== null) && ($greeting_ws['overdue'] > 0)) {
+
+    $greeting_options[] = array('tier' => 1, 'topic' => 'ws_overdue', 'text' => ($greeting_ws['overdue'] === 1)
+        ? lang(array(
+            'string' => 'One of {var:1} is past its due date, and it is the one to open first.',
+            'vars' => $greeting_link('workspace_tasks.php', lang('your tasks'))))
+        : lang(array(
+            'string' => '{var:1} are past their due date, and the oldest is the one to open first.',
+            'vars' => $greeting_link('workspace_tasks.php', lang(array(
+                'string' => '{var:1} of your tasks',
+                'vars' => pg_format_number($greeting_ws['overdue'], 0)))))));
+}
+
+if (($greeting_ws !== null) && ($greeting_ws['mentions'] > 0)) {
+
+    $greeting_mention_href = ($greeting_ws['mention_url'] !== null) ? $greeting_ws['mention_url'] : 'workspace.php';
+
+    $greeting_options[] = array('tier' => 1, 'topic' => 'ws_mention', 'text' => lang(array(
+        'string' => 'Somebody {var:1} and is waiting on an answer.',
+        'vars' => $greeting_link($greeting_mention_href, lang('mentioned you in a channel')))));
+    $greeting_options[] = array('tier' => 1, 'topic' => 'ws_mention', 'text' => lang(array(
+        'string' => '{var:1} {suffix:1} waiting for you in the channels.',
+        'vars' => $greeting_link($greeting_mention_href, lang(array(
+            'string' => '{var:1} mention{suffix:1}',
+            'vars'   => pg_format_number($greeting_ws['mentions'], 0),
+            'suffix' => array(($greeting_ws['mentions'] == 1) ? '' : 's')))),
+        'suffix' => array(($greeting_ws['mentions'] == 1) ? 'is' : 'are'))));
+}
+
+// ── opportunities ──
+
+if (((int) $sig['forms_week']) > 0) {
+
+    $greeting_forms_count = (int) $sig['forms_week'];
+
+    $greeting_forms_link = $greeting_link('view_submitted_forms.php', lang(array(
+        'string' => '{var:1} form{suffix:1}',
+        'vars'   => pg_format_number($greeting_forms_count, 0),
+        'suffix' => array(($greeting_forms_count == 1) ? '' : 's'))));
+
+    $greeting_options[] = array('tier' => 2, 'topic' => 'forms', 'text' => lang(array(
+        'string' => '{var:1} came in this week, and the people who filled them in are waiting to hear back.',
+        'vars' => $greeting_forms_link)));
+    $greeting_options[] = array('tier' => 2, 'topic' => 'forms', 'text' => lang(array(
+        'string' => 'Somebody is waiting on an answer to the {var:1} sent in this week.',
+        'vars' => $greeting_forms_link)));
+}
+
+// The pages list's own filter, so the link opens exactly the pages counted.
+if ((((int) $sig['seo_critical']) > 0) && ($user['role'] < 3)) {
+
+    $greeting_seo_count = (int) $sig['seo_critical'];
+
+    $greeting_seo_link = $greeting_link('view_pages.php?filter=seo_critical', lang(array(
+        'string' => '{var:1} page{suffix:1}',
+        'vars'   => pg_format_number($greeting_seo_count, 0),
+        'suffix' => array(($greeting_seo_count == 1) ? '' : 's'))));
+
+    $greeting_options[] = array('tier' => 2, 'topic' => 'seo', 'text' => lang(array(
+        'string' => '{var:1} score{suffix:1} under 30 on SEO, and the fix is usually a title and a description.',
+        'vars'   => $greeting_seo_link,
+        'suffix' => array(($greeting_seo_count == 1) ? 's' : ''))));
+    $greeting_options[] = array('tier' => 2, 'topic' => 'seo', 'text' => lang(array(
+        'string' => 'The weakest SEO on the site is on {var:1}, all under 30; a title and a description usually lift them.',
+        'vars' => $greeting_seo_link)));
+}
+
+if (((int) $sig['offers_ending']) > 0) {
+
+    $greeting_offers_count = (int) $sig['offers_ending'];
+
+    $greeting_offers_link = $greeting_link('view_offers.php', lang(array(
+        'string' => '{var:1} offer{suffix:1}',
+        'vars'   => pg_format_number($greeting_offers_count, 0),
+        'suffix' => array(($greeting_offers_count == 1) ? '' : 's'))));
+
+    $greeting_options[] = array('tier' => 2, 'topic' => 'offers', 'text' => lang(array(
+        'string' => '{var:1} end{suffix:1} within the week; extend or let go, but decide.',
+        'vars'   => $greeting_offers_link,
+        'suffix' => array(($greeting_offers_count == 1) ? 's' : ''))));
+    $greeting_options[] = array('tier' => 2, 'topic' => 'offers', 'text' => lang(array(
+        'string' => 'The clock runs out on {var:1} this week.',
+        'vars' => $greeting_offers_link)));
+}
+
+if (($greeting_ws !== null) && ($greeting_ws['due_today'] > 0)) {
+
+    $greeting_options[] = array('tier' => 2, 'topic' => 'ws_today', 'text' => lang(array(
+        'string' => '{var:1} on your list {suffix:1} due today.',
+        'vars'   => $greeting_link('workspace_tasks.php', lang(array(
+            'string' => '{var:1} task{suffix:1}',
+            'vars'   => pg_format_number($greeting_ws['due_today'], 0),
+            'suffix' => array(($greeting_ws['due_today'] == 1) ? '' : 's')))),
+        'suffix' => array(($greeting_ws['due_today'] == 1) ? 'is' : 'are'))));
+}
+
+// A task under way with a checklist, and how far along it is. "A few more
+// ticks" is only said when it is true.
+if (($greeting_ws !== null) && ($greeting_ws['doing'] !== null) && ($greeting_ws['doing']['progress'] !== null)
+    && ($greeting_ws['doing']['progress']['percent'] < 100)
+) {
+
+    $greeting_doing = $greeting_ws['doing'];
+    $greeting_doing_left = $greeting_doing['progress']['total'] - $greeting_doing['progress']['done'];
+    $greeting_doing_link = $greeting_link('workspace_tasks.php?task=' . (int) $greeting_doing['id'], $greeting_doing['title']);
+
+    $greeting_options[] = array('tier' => 2, 'topic' => 'ws_doing', 'text' => ($greeting_doing_left <= 3)
+        ? lang(array(
+            'string' => '{var:1}% of {var:2} is done; a few more ticks and it is finished.',
+            'vars' => array($greeting_doing['progress']['percent'], $greeting_doing_link)))
+        : lang(array(
+            'string' => '{var:1}% of {var:2} is done, with {var:3} items still to tick.',
+            'vars' => array($greeting_doing['progress']['percent'], $greeting_doing_link,
+                pg_format_number($greeting_doing_left, 0)))));
+}
+
+// The next meeting or visit still ahead today.
+if (($greeting_ws !== null) && ($greeting_ws['event_first'] !== null)) {
+
+    $greeting_event = $greeting_ws['event_first'];
+    $greeting_event_link = $greeting_link('workspace_calendar.php',
+        ($greeting_event['kind'] === 'visit') ? lang('a visit') : lang('a meeting'));
+
+    $greeting_options[] = array('tier' => 2, 'topic' => 'ws_event', 'text' => ($greeting_event['time'] !== null)
+        ? lang(array(
+            'string' => 'You have {var:1} at {var:2} today: {var:3}.',
+            'vars' => array($greeting_event_link, h($greeting_event['time']), h($greeting_event['title']))))
+        : lang(array(
+            'string' => 'You have {var:1} on the calendar today: {var:2}.',
+            'vars' => array($greeting_event_link, h($greeting_event['title'])))));
+}
+
 // Top occupied tier only.
 $greeting_tier = 0;
 
@@ -1491,6 +1981,12 @@ $greeting_tips = array_map('h', array(
     lang('Right click the Panel button in the menu and you will find the widget theme settings.'),
     lang('If you prefer the light theme, it is in the user menu at the top right.'),
 ));
+
+// Only for someone in the workspace team: a tip about a screen that will turn
+// the reader away is not a tip.
+if ($sig['ws'] !== null) {
+    $greeting_tips[] = h(lang('A message in a channel can become a task from its right-click menu.'));
+}
 
 // What the software gained lately, as opposed to how to work it.
 //
@@ -1568,6 +2064,17 @@ if ($user['role'] <= 2) {
         . $greeting_ask(pg_settings_link(), lang('Want to open them?'));
 }
 
+if ($sig['ws'] !== null) {
+
+    $greeting_features[] =
+        h(lang('The planning board shows how much of each person\'s day is already spoken for.'))
+        . $greeting_ask('workspace_board.php', lang('Want to see this week?'));
+
+    $greeting_features[] =
+        h(lang('Tasks carry a checklist these days and show how far along they are.'))
+        . $greeting_ask('workspace_tasks.php', lang('Want to look at yours?'));
+}
+
 // Two kinds of closing word, and the difference matters. The first three are
 // claims about the state of the site and are only true when nothing is open --
 // "nothing needs you right now" printed under a line that just said two
@@ -1585,6 +2092,14 @@ if (empty($greeting_advice_pool)) {
         lang('Everything here looks in good order.'),
         lang('All quiet on this side, so the day is yours.'),
     )));
+
+    // A claim like the three above, and true on the same terms: nothing on
+    // the list, nothing handed over unread, nobody waiting on an answer.
+    if (($sig['ws'] !== null) && ($sig['ws']['open'] === 0) && ($sig['ws']['new_tasks'] === 0)
+        && ($sig['ws']['mentions'] === 0)
+    ) {
+        $greeting_closers[] = h(lang('Your task list is clear.'));
+    }
 }
 
 // Something about the web itself, which is neither advice nor a manual.
@@ -1782,6 +2297,50 @@ if ($sig['map_new'] !== null) {
         'vars' => $sig['map_new']['name'])));
 }
 
+// This week against the week before it. Ahead needs a week before it to be
+// ahead of; behind needs one with a few orders in it, or one quiet week
+// against another would be reported as a slide.
+if (($sig['orders_week'] !== null) && ($sig['orders_prev_week'] > 0)
+    && ($sig['orders_week'] > $sig['orders_prev_week'])
+) {
+    $greeting_smart[] = array('topic' => 'orders', 'text' => lang(array(
+        'string' => 'This week is ahead of last week on orders, {var:1} to {var:2}.',
+        'vars' => array(pg_format_number($sig['orders_week'], 0), pg_format_number($sig['orders_prev_week'], 0)))));
+}
+
+if (($sig['orders_week'] !== null) && ($sig['orders_prev_week'] >= 3)
+    && ($sig['orders_week'] < $sig['orders_prev_week'])
+) {
+    $greeting_smart[] = array('topic' => 'orders', 'text' => lang(array(
+        'string' => 'Orders are behind last week\'s pace, {var:1} against {var:2}.',
+        'vars' => array(pg_format_number($sig['orders_week'], 0), pg_format_number($sig['orders_prev_week'], 0)))));
+}
+
+// Two readings of the same day side by side, and no more than that. The
+// traffic figure and the firewall log are counted in different places, so
+// nothing here knows whether the blocked requests are inside the rise, and the
+// line does not claim they caused it.
+if ((((int) $sig['waf_blocked']) > 0) && $traffic_up) {
+    $greeting_smart[] = array('topic' => 'waf', 'text' => lang(array(
+        'string' => 'Traffic is up on yesterday, and the firewall turned away {var:1} request{suffix:1} over the same day.',
+        'vars'   => pg_format_number($sig['waf_blocked'], 0),
+        'suffix' => array(($sig['waf_blocked'] == 1) ? '' : 's'))));
+}
+
+if (($sig['ws'] !== null) && ($sig['ws']['overdue'] > 0) && ($sig['ws']['done_week'] > 0)) {
+    $greeting_smart[] = array('topic' => 'ws_overdue', 'text' => lang(array(
+        'string' => 'You closed {var:1} task{suffix:1} this week, and {var:2} on your list {suffix:2} still past due.',
+        'vars'   => array(pg_format_number($sig['ws']['done_week'], 0), pg_format_number($sig['ws']['overdue'], 0)),
+        'suffix' => array(($sig['ws']['done_week'] == 1) ? '' : 's', ($sig['ws']['overdue'] == 1) ? 'is' : 'are'))));
+}
+
+if (($sig['ws'] !== null) && ($sig['ws']['open'] === 0) && ($sig['ws']['new_tasks'] === 0)
+    && $has_orders && ($sig['orders_today'] > 0)
+) {
+    $greeting_smart[] = array('topic' => 'ws_open',
+        'text' => lang('Orders are coming in and your task list is clear.'));
+}
+
 // ── the floor ──
 if ($has_orders && ($sig['orders_today'] > $sig['orders_before'])) {
     $greeting_plain[] = array('topic' => 'orders',
@@ -1844,6 +2403,116 @@ if (((int) $sig['new_contacts']) > 0) {
     $greeting_plain[] = array('topic' => 'contacts', 'text' => lang(array(
         'string' => '{var:1} new people joined your contacts this week.',
         'vars' => pg_format_number($sig['new_contacts'], 0))));
+}
+
+if (((int) $sig['low_stock']) > 0) {
+    $greeting_plain[] = array('topic' => 'stock', 'text' => lang(array(
+        'string' => '{var:1} product{suffix:1} {suffix:2} down to the last few, though not out yet.',
+        'vars'   => pg_format_number($sig['low_stock'], 0),
+        'suffix' => array(($sig['low_stock'] == 1) ? '' : 's', ($sig['low_stock'] == 1) ? 'is' : 'are'))));
+}
+
+if (((int) $sig['forms_today']) > 0) {
+    $greeting_plain[] = array('topic' => 'forms', 'text' => lang(array(
+        'string' => '{var:1} form{suffix:1} came in today.',
+        'vars'   => pg_format_number($sig['forms_today'], 0),
+        'suffix' => array(($sig['forms_today'] == 1) ? '' : 's'))));
+}
+
+if (((int) $sig['staff_online']) === 1) {
+    $greeting_plain[] = array('topic' => 'staff',
+        'text' => lang('One of your colleagues is signed in right now.'));
+} elseif (((int) $sig['staff_online']) > 1) {
+    $greeting_plain[] = array('topic' => 'staff', 'text' => lang(array(
+        'string' => '{var:1} of your colleagues are signed in right now.',
+        'vars' => pg_format_number($sig['staff_online'], 0))));
+}
+
+if ($sig['campaign_next'] !== null) {
+    $greeting_plain[] = array('topic' => 'campaign', 'text' => lang(array(
+        'string' => 'A campaign is scheduled to go out {var:1}: “{var:2}”.',
+        'vars' => array($sig['campaign_next']['when'], $sig['campaign_next']['subject']))));
+}
+
+if (((int) $sig['waf_blocked']) > 0) {
+    $greeting_plain[] = array('topic' => 'waf', 'text' => lang(array(
+        'string' => 'The firewall turned away {var:1} request{suffix:1} in the last day.',
+        'vars'   => pg_format_number($sig['waf_blocked'], 0),
+        'suffix' => array(($sig['waf_blocked'] == 1) ? '' : 's'))));
+}
+
+// Monitor mode, from the status check: it records what it would have stopped
+// and stops nothing, which an operator is worth reminding of now and then.
+if ($sig['waf_mode_state'] === 'warn') {
+    $greeting_plain[] = array('topic' => 'waf',
+        'text' => lang('The firewall is only watching at the moment, not blocking.'));
+}
+
+if ($sig['ws'] !== null) {
+
+    $greeting_ws_read = $sig['ws'];
+
+    if (($greeting_ws_read['open'] > 0) && ($greeting_ws_read['overdue'] === 0)) {
+        $greeting_plain[] = array('topic' => 'ws_open', 'text' => lang(array(
+            'string' => '{var:1} task{suffix:1} {suffix:2} open on your list and none of them is late.',
+            'vars'   => pg_format_number($greeting_ws_read['open'], 0),
+            'suffix' => array(($greeting_ws_read['open'] == 1) ? '' : 's', ($greeting_ws_read['open'] == 1) ? 'is' : 'are'))));
+    }
+
+    if ($greeting_ws_read['waiting'] > 0) {
+        $greeting_plain[] = array('topic' => 'ws_open', 'text' => lang(array(
+            'string' => '{var:1} of your tasks {suffix:1} waiting on somebody else.',
+            'vars'   => pg_format_number($greeting_ws_read['waiting'], 0),
+            'suffix' => array(($greeting_ws_read['waiting'] == 1) ? 'is' : 'are'))));
+    }
+
+    if ($greeting_ws_read['done_week'] > 0) {
+        $greeting_plain[] = array('topic' => 'ws_done', 'text' => lang(array(
+            'string' => 'You finished {var:1} task{suffix:1} in the last seven days.',
+            'vars'   => pg_format_number($greeting_ws_read['done_week'], 0),
+            'suffix' => array(($greeting_ws_read['done_week'] == 1) ? '' : 's'))));
+    }
+
+    if ($greeting_ws_read['team_done_week'] > 0) {
+        $greeting_plain[] = array('topic' => 'ws_done', 'text' => lang(array(
+            'string' => 'The team closed {var:1} task{suffix:1} this week.',
+            'vars'   => pg_format_number($greeting_ws_read['team_done_week'], 0),
+            'suffix' => array(($greeting_ws_read['team_done_week'] == 1) ? '' : 's'))));
+    }
+
+    if (($greeting_ws_read['doing'] !== null) && ($greeting_ws_read['doing']['progress'] !== null)) {
+        $greeting_plain[] = array('topic' => 'ws_doing', 'text' => lang(array(
+            'string' => '{var:1} of {var:2} items are done on {var:3}.',
+            'vars'   => array(
+                pg_format_number($greeting_ws_read['doing']['progress']['done'], 0),
+                pg_format_number($greeting_ws_read['doing']['progress']['total'], 0),
+                $greeting_ws_read['doing']['title']))));
+    }
+
+    // Counted from the meetings still ahead or under way, so the first of them
+    // is the next one to go to.
+    if (($greeting_ws_read['events_today'] > 0) && ($greeting_ws_read['event_first'] !== null)) {
+        $greeting_event_count = $greeting_ws_read['events_today'];
+        $greeting_event_time = $greeting_ws_read['event_first']['time'];
+
+        if (($greeting_event_count === 1) && ($greeting_event_time !== null)) {
+            $greeting_event_read = lang(array(
+                'string' => 'There is one meeting on your calendar today, at {var:1}.',
+                'vars' => $greeting_event_time));
+        } elseif ($greeting_event_count === 1) {
+            $greeting_event_read = lang('There is one meeting on your calendar today.');
+        } elseif ($greeting_event_time !== null) {
+            $greeting_event_read = lang(array(
+                'string' => 'You have {var:1} meetings on the calendar today, the first at {var:2}.',
+                'vars' => array(pg_format_number($greeting_event_count, 0), $greeting_event_time)));
+        } else {
+            $greeting_event_read = lang(array(
+                'string' => 'You have {var:1} meetings on the calendar today.',
+                'vars' => pg_format_number($greeting_event_count, 0)));
+        }
+
+        $greeting_plain[] = array('topic' => 'ws_event', 'text' => $greeting_event_read);
+    }
 }
 
 // A reading that holds two signals against each other is worth more than one
@@ -1916,6 +2585,94 @@ $_SESSION['software']['welcome']['greeting_seen'] = array_slice($greeting_seen, 
 $output_greeting_nudge =
     '<span class="pg-brief-line">' . h($greeting_read) . ' ' . $greeting_advice . '</span>';
 
+// The workspace strip under the sentence.
+//
+// The sentence rotates; the strip does not. It is the glance -- what was handed
+// over, what is under way, what is late -- and the sentence is the read. They
+// are allowed to touch the same task: the strip is not a chip repeating the
+// sentence's target, it is the same few facts in the same place every time.
+//
+// In order of how much each wants the reader, and three at most: a fourth
+// item turns a glance into a list.
+$output_greeting_ws = '';
+
+if ($sig['ws'] !== null) {
+
+    $greeting_strip = array();
+    $greeting_strip_ws = $sig['ws'];
+
+    $greeting_strip_title = function ($title) {
+        return h(mb_strimwidth((string) $title, 0, 48, '…', 'UTF-8'));
+    };
+
+    if ($greeting_strip_ws['new_task'] !== null) {
+        $greeting_strip[] =
+            '<a class="pg-brief-ws-item is-new" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['new_task']['id'] . '">'
+            . '<i class="bi bi-check2-square" aria-hidden="true"></i>'
+            . '<span class="pg-brief-ws-label">' . h(lang('New task')) . '</span>'
+            . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['new_task']['title']) . '</span>'
+            . '</a>';
+    }
+
+    if (($greeting_strip_ws['doing'] !== null) && ($greeting_strip_ws['doing']['progress'] !== null)) {
+
+        $greeting_strip_percent = (int) $greeting_strip_ws['doing']['progress']['percent'];
+
+        $greeting_strip[] =
+            '<a class="pg-brief-ws-item" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['doing']['id'] . '">'
+            . '<i class="bi bi-list-check" aria-hidden="true"></i>'
+            . '<span class="pg-brief-ws-label">' . h(lang('In progress')) . '</span>'
+            . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['doing']['title']) . '</span>'
+            . '<span class="pg-brief-ws-bar" role="progressbar" aria-valuenow="' . $greeting_strip_percent . '" aria-valuemin="0" aria-valuemax="100">'
+            . '<span style="width:' . $greeting_strip_percent . '%"></span></span>'
+            . '<span class="pg-brief-ws-pct">' . h(lang(array('string' => '{var:1}%', 'vars' => $greeting_strip_percent))) . '</span>'
+            . '</a>';
+    }
+
+    if ($greeting_strip_ws['overdue'] > 0) {
+        $greeting_strip[] =
+            '<a class="pg-brief-ws-item is-late" href="workspace_tasks.php">'
+            . '<i class="bi bi-alarm" aria-hidden="true"></i>'
+            . '<span class="pg-brief-ws-label">' . h(lang('Overdue')) . '</span>'
+            . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['overdue'], 0)) . '</span>'
+            . '</a>';
+    }
+
+    if ($greeting_strip_ws['mentions'] > 0) {
+        $greeting_strip[] =
+            '<a class="pg-brief-ws-item is-new" href="' . h(($greeting_strip_ws['mention_url'] !== null) ? $greeting_strip_ws['mention_url'] : 'workspace.php') . '">'
+            . '<i class="bi bi-at" aria-hidden="true"></i>'
+            . '<span class="pg-brief-ws-label">' . h(lang('Mentions')) . '</span>'
+            . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['mentions'], 0)) . '</span>'
+            . '</a>';
+    }
+
+    // Due today and the open count only when nothing is late: beside an
+    // overdue count they say less than it does.
+    if (($greeting_strip_ws['overdue'] === 0) && ($greeting_strip_ws['due_today'] > 0)) {
+        $greeting_strip[] =
+            '<a class="pg-brief-ws-item" href="workspace_tasks.php">'
+            . '<i class="bi bi-calendar-check" aria-hidden="true"></i>'
+            . '<span class="pg-brief-ws-label">' . h(lang('Due today')) . '</span>'
+            . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['due_today'], 0)) . '</span>'
+            . '</a>';
+    } elseif (($greeting_strip_ws['overdue'] === 0) && ($greeting_strip_ws['open'] > 0)) {
+        $greeting_strip[] =
+            '<a class="pg-brief-ws-item" href="workspace_tasks.php">'
+            . '<i class="bi bi-inbox" aria-hidden="true"></i>'
+            . '<span class="pg-brief-ws-label">' . h(lang('Open tasks')) . '</span>'
+            . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['open'], 0)) . '</span>'
+            . '</a>';
+    }
+
+    if (!empty($greeting_strip)) {
+        $output_greeting_ws =
+            '<div class="pg-brief-ws" role="group" aria-label="' . h(lang('Workspace')) . '">'
+            . implode('', array_slice($greeting_strip, 0, 3))
+            . '</div>';
+    }
+}
+
 // The system status bar that used to sit above the widget grid is gone: the
 // same checks are widget 2 now, so keeping the bar would have printed the same
 // score twice on one screen. The popover binding stays, because the widget's
@@ -1946,10 +2703,16 @@ $output_header_includes .
                  greeting; moving it into the chip makes it the speaker rather
                  than a decoration, and saves the line a second glyph. -->
             <span class="pg-brief-mark" aria-hidden="true"><i class="bi ' . h($output_greeting_icon) . '"></i></span>
-            <p class="pg-brief-text">
-                <span class="pg-brief-greet" data-bs-toggle="tooltip" title="' . lang('Role') . ': ' . h($role) . '">' . $output_greeting_message_text . '</span>
-                ' . $output_greeting_nudge . '
-            </p>
+            <div class="pg-brief-body">
+                <p class="pg-brief-text">
+                    <span class="pg-brief-greet" data-bs-toggle="tooltip" title="' . lang('Role') . ': ' . h($role) . '">' . $output_greeting_message_text . '</span>
+                    ' . $output_greeting_nudge . '
+                </p>
+                <!-- The sentence rotates and the strip stays put: the strip is
+                     the glance, the sentence is the read. It is not a chip
+                     repeating where the sentence points. -->
+                ' . $output_greeting_ws . '
+            </div>
         </div>
         <span class="pg-clockbar-now">
             <span id="welcome_time_clock" class="pg-clockbar-time">' . get_absolute_time(array(

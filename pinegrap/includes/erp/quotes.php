@@ -14,7 +14,8 @@
  *
  * Status: open (editable; shown as expired once its date has passed),
  * accepted, rejected, cancelled, invoiced. An invoiced quote whose draft was
- * deleted reads as accepted again and can be invoiced once more.
+ * deleted, or whose invoice was cancelled, reads as accepted again and can be
+ * invoiced once more.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -103,16 +104,20 @@ function erp_quote($quote_id)
 
 /**
  * What the quote is now: its status, except that an open quote past its date
- * is expired and an invoiced one whose draft is gone is accepted again.
+ * is expired and an invoiced one whose draft is gone, or whose invoice was
+ * cancelled, is accepted again. A cancelled invoice stays on the books as a
+ * cancelled document, so the quote behind it may be invoiced once more.
  *
- * @param array $quote
+ * @param array $quote  status, valid_until and invoice_status (the joined
+ *                      invoice's status, '' when there is none)
  * @return string  A key of erp_quote_statuses()
  */
 function erp_quote_state($quote)
 {
     $status = (string) $quote['status'];
+    $invoice_status = (string) ($quote['invoice_status'] ?? '');
 
-    if (($status === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') === '')) {
+    if (($status === 'invoiced') && (($invoice_status === '') || ($invoice_status === 'cancelled'))) {
         return 'accepted';
     }
 
@@ -251,7 +256,7 @@ function erp_quote_save($data, $quote_id, $user_id)
     }
 
     if ((int) $quote_id > 0) {
-        $existing = db_item("SELECT id, status, full_number FROM erp_quotes WHERE id = '" . (int) $quote_id . "' LIMIT 1 FOR UPDATE");
+        $existing = db_item("SELECT id, status, full_number, valid_until FROM erp_quotes WHERE id = '" . (int) $quote_id . "' LIMIT 1 FOR UPDATE");
 
         if (!is_array($existing)) {
             erp_tx_rollback();
@@ -263,7 +268,13 @@ function erp_quote_save($data, $quote_id, $user_id)
             return $fail(lang('Only an open quote can be changed. Open it again first, or write a new one.'));
         }
 
-        if (erp_query("UPDATE erp_quotes SET " . $set . " WHERE id = '" . (int) $quote_id . "'") === false) {
+        // A new date is a new run: the quote may be announced again as it
+        // comes near (includes/erp/alerts.php).
+        $notified_sql = (((string) $existing['valid_until'] !== $valid_until) && waf_table_has_column('erp_quotes', 'expiry_notified_at'))
+            ? ", expiry_notified_at = 0"
+            : '';
+
+        if (erp_query("UPDATE erp_quotes SET " . $set . $notified_sql . " WHERE id = '" . (int) $quote_id . "'") === false) {
             $error = erp_db_error();
             erp_tx_rollback();
             return $fail($error);
@@ -301,6 +312,10 @@ function erp_quote_save($data, $quote_id, $user_id)
     }
 
     $new_id = (int) mysqli_insert_id(db::$con);
+
+    // Announced inside the writer's transaction, the way expenses are: the
+    // queue row and the audit line roll back with the quote they announce.
+    erp_event_quote($new_id, 'erp.quote.created');
 
     if (!erp_tx_commit()) {
         $error = erp_db_error();
@@ -349,10 +364,23 @@ function erp_quote_set_status($quote_id, $to, $user_id)
         $valid_sql = ", valid_until = '" . escape(date('Y-m-d', strtotime('+' . (int) ERP_QUOTE_VALID_DAYS . ' days'))) . "'";
     }
 
+    // An open quote again is announced again as its date comes near.
+    if (($to === 'open') && waf_table_has_column('erp_quotes', 'expiry_notified_at')) {
+        $valid_sql .= ", expiry_notified_at = 0";
+    }
+
     db("UPDATE erp_quotes SET status = '" . escape($to) . "', invoice_id = IF('" . escape($to) . "' = 'open', 0, invoice_id),
             decided_by = '" . (($to === 'open') ? 0 : (int) $user_id) . "', decided_at = " . (($to === 'open') ? '0' : 'UNIX_TIMESTAMP()') . $valid_sql . ",
             updated_at = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $quote['id'] . "'");
+
+    $events = array(
+        'open' => 'erp.quote.reopened',
+        'accepted' => 'erp.quote.accepted',
+        'rejected' => 'erp.quote.rejected',
+        'cancelled' => 'erp.quote.cancelled',
+    );
+    erp_event_quote((int) $quote['id'], $events[$to]);
 
     return array('success' => true, 'error' => '');
 }
@@ -397,6 +425,7 @@ function erp_quote_to_invoice($quote_id, $user_id)
     $data['series'] = defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF';
     $data['created_by'] = (int) $user_id;
     $data['lines'] = erp_quote_lines($quote);
+    $data['quote_id'] = (int) $quote['id'];
 
     if (strtoupper((string) $quote['currency']) !== $base) {
         $recorded = erp_fx_rate_for((string) $quote['currency'], date('Y-m-d'));
@@ -419,6 +448,8 @@ function erp_quote_to_invoice($quote_id, $user_id)
             decided_at = IF(decided_at > 0, decided_at, UNIX_TIMESTAMP()),
             updated_at = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $quote['id'] . "'");
+
+    erp_event_quote((int) $quote['id'], 'erp.quote.invoiced');
 
     return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'error' => '');
 }
@@ -488,6 +519,7 @@ function erp_quote_document_source($quote)
     return array(
         'invoice' => $row,
         'items' => erp_quote_lines($quote),
+        'signature' => function_exists('erp_signature_document_block') ? erp_signature_document_block('quote', (int) $quote['id'], erp_signature_document_hash_quote($quote)) : array(),
         'title' => lang('QUOTE'),
         'label' => array(
             'invoice_no' => lang('Quote No'),
@@ -700,9 +732,9 @@ function erp_quote_rows($filters = array())
     } elseif ($state === 'expired') {
         $where[] = "q.status = 'open' AND q.valid_until > '0000-00-00' AND q.valid_until < '" . $today . "'";
     } elseif ($state === 'accepted') {
-        $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND i.id IS NULL))";
+        $where[] = "(q.status = 'accepted' OR (q.status = 'invoiced' AND (i.id IS NULL OR i.status = 'cancelled')))";
     } elseif ($state === 'invoiced') {
-        $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL";
+        $where[] = "q.status = 'invoiced' AND i.id IS NOT NULL AND i.status <> 'cancelled'";
     } elseif (in_array($state, array('rejected', 'cancelled'), true)) {
         $where[] = "q.status = '" . escape($state) . "'";
     }
@@ -717,12 +749,19 @@ function erp_quote_rows($filters = array())
         $where[] = "(q.full_number LIKE " . $like . " OR a.title LIKE " . $like . ")";
     }
 
+    // signed: 1 when the customer signed the quote (8.58); one signature per
+    // quote (uniq_doc), so the join adds no rows.
+    $signed = (function_exists('erp_signatures_ready') && erp_signatures_ready());
+
     return (array) db_items("SELECT q.id, q.full_number, q.account_id, q.issue_date, q.valid_until, q.currency, q.grand_total,
             q.status, q.invoice_id, a.title AS account_title,
-            i.status AS invoice_status, i.full_number AS invoice_number
+            i.status AS invoice_status, i.full_number AS invoice_number,
+            " . ($signed ? "(s.id IS NOT NULL)" : "0") . " AS signed
         FROM erp_quotes q
         LEFT JOIN erp_accounts a ON a.id = q.account_id
-        LEFT JOIN erp_invoices i ON i.id = q.invoice_id
+        LEFT JOIN erp_invoices i ON i.id = q.invoice_id"
+        . ($signed ? "
+        LEFT JOIN erp_signatures s ON s.doc_type = 'quote' AND s.doc_id = q.id" : "") . "
         WHERE " . implode(' AND ', $where) . "
         ORDER BY q.id DESC
         LIMIT " . max(1, min(1000, (int) ($filters['limit'] ?? 300))));
@@ -731,13 +770,33 @@ function erp_quote_rows($filters = array())
 /**
  * How many quotes are open and still running.
  *
+ * @param int $account_id  Only this account's quotes; 0 for all
  * @return int
  */
-function erp_quote_open_count()
+function erp_quote_open_count($account_id = 0)
 {
     if (!erp_quotes_ready()) {
         return 0;
     }
 
-    return (int) db_value("SELECT COUNT(*) FROM erp_quotes WHERE status = 'open' AND (valid_until = '0000-00-00' OR valid_until >= '" . escape(date('Y-m-d')) . "')");
+    return (int) db_value("SELECT COUNT(*) FROM erp_quotes WHERE status = 'open' AND (valid_until = '0000-00-00' OR valid_until >= '" . escape(date('Y-m-d')) . "')"
+        . (((int) $account_id > 0) ? " AND account_id = '" . (int) $account_id . "'" : ''));
+}
+
+/**
+ * How many open quotes run out within the next days, today included.
+ *
+ * @param int $days
+ * @return int
+ */
+function erp_quote_expiring_count($days = 7)
+{
+    if (!erp_quotes_ready()) {
+        return 0;
+    }
+
+    $today = date('Y-m-d');
+    $last = date('Y-m-d', strtotime($today . ' +' . max(0, (int) $days) . ' days'));
+
+    return (int) db_value("SELECT COUNT(*) FROM erp_quotes WHERE status = 'open' AND valid_until BETWEEN '" . escape($today) . "' AND '" . escape($last) . "'");
 }

@@ -1312,7 +1312,10 @@ function pg_cf_validation_script()
          . 'var bind=function(){var f=document.querySelectorAll(".pg-cf-form");'
          . 'Array.prototype.forEach.call(f,function(form){'
          . 'if(form.getAttribute("data-pg-validated"))return;form.setAttribute("data-pg-validated","1");'
+         // A button carrying formnovalidate (a Cancel beside a required
+         // field) submits without the check, as the browser itself would.
          . 'form.addEventListener("submit",function(e){'
+         . 'if(e.submitter&&e.submitter.hasAttribute("formnovalidate"))return;'
          . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();'
          . 'var bad=form.querySelector(":invalid");if(bad&&bad.focus)bad.focus();}'
          . 'form.classList.add("was-validated");},false);});};'
@@ -1845,17 +1848,26 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
     foreach ($widgets as $w) _pg_cf_stamp_ids($w, $page_id, $ids_by_name);
 
     // A design template's form can ask for sample records (the setting
-    // `sample_records`), so the pages listing it do not open empty. Only
-    // into the form this save created.
+    // `sample_records`: the records themselves, or 'blog' for the site's
+    // sample blog), so the pages listing it do not open empty. Only into the
+    // form this save created.
     if (!$had_form && is_array($settings) && !empty($settings['sample_records'])) {
-        $res['seeded'] = pg_cf_seed_sample_records($page_id, (string)$settings['sample_records'], (int)$user_id);
+        $sample = $settings['sample_records'];
+        $res['seeded'] = pg_cf_seed_sample_records($page_id, is_array($sample) ? $sample : (string)$sample, (int)$user_id);
     }
 
     return $res;
 }
 
 /**
- * Copy sample records into a new form from the site's own sample data.
+ * Copy sample records into a new form.
+ *
+ * An array: the records a design template brings along, each a list of
+ * field name => value (a file field takes the address of a picture). They
+ * are written newest first, dated over the last weeks, so the template's
+ * blog opens the same on every site - a site installed from a template has
+ * no sample data of its own to copy. At most twelve; a name the form has no
+ * field for is skipped.
  *
  * 'blog': the posts of the sample blog (the form the sample data names
  * BLOG) become posts of this form - title, a short summary, the body as
@@ -1869,7 +1881,9 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
 function pg_cf_seed_sample_records($page_id, $source, $user_id)
 {
     $page_id = (int)$page_id;
-    if ($page_id <= 0 || $source !== 'blog') return 0;
+    if ($page_id <= 0) return 0;
+    if (is_array($source)) return _pg_cf_seed_given_records($page_id, $source, $user_id);
+    if ($source !== 'blog') return 0;
     if ((int)db_value("SELECT COUNT(*) FROM forms WHERE page_id = '$page_id'") > 0) return 0;
 
     $src_page = (int)db_value(
@@ -1959,6 +1973,49 @@ function pg_cf_seed_sample_records($page_id, $source, $user_id)
         $put('content', $body);
         $put('cover_image', $cover_data, $cover_file);
 
+        if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
+        $copied++;
+    }
+    return $copied;
+}
+
+// The records a template hands pg_cf_seed_sample_records(), written into the
+// form of $page_id while it has none.
+function _pg_cf_seed_given_records($page_id, $records, $user_id)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || !$records) return 0;
+    if ((int)db_value("SELECT COUNT(*) FROM forms WHERE page_id = '$page_id'") > 0) return 0;
+
+    $fields = array();
+    foreach ((array)db_items("SELECT id, name FROM form_fields WHERE page_id = '$page_id'") as $f) {
+        $fields[mb_strtolower((string)$f['name'], 'UTF-8')] = $f;
+    }
+    if (!$fields) return 0;
+
+    $pretty = (bool)db_value("SELECT pretty_urls FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
+    $now = time();
+    $copied = 0;
+    foreach (array_slice(array_values($records), 0, 12) as $i => $record) {
+        if (!is_array($record)) continue;
+        $values = array();
+        foreach ($record as $name => $value) {
+            $key = mb_strtolower((string)$name, 'UTF-8');
+            if (!isset($fields[$key]) || !is_scalar($value)) continue;
+            $value = trim((string)$value);
+            if ($value !== '') $values[$key] = $value;
+        }
+        if (!$values) continue;
+
+        $when = $now - ($i * 4 + 1) * 86400;
+        db("INSERT INTO forms (page_id, complete, user_id, reference_code, submitted_timestamp, last_modified_user_id, last_modified_timestamp)
+            VALUES ('$page_id', '1', '" . (int)$user_id . "', '" . e(generate_form_reference_code()) . "', '$when', '" . (int)$user_id . "', '$when')");
+        $form_id = (int)mysqli_insert_id(db::$con);
+        if ($form_id <= 0) continue;
+        foreach ($values as $key => $value) {
+            db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
+                VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', 'standard')");
+        }
         if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
         $copied++;
     }

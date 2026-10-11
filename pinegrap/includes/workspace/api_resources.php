@@ -467,11 +467,76 @@ function ws_api_channel_members_remove($params)
    Messages
    --------------------------------------------------------------------------- */
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null)
+/**
+ * The discussions started from a set of messages, as the message object
+ * shows them, and the discussions the copies among them were decided in
+ * (threads.php): one read each for the whole set, and one more for the
+ * moment each discussion was last written in.
+ *
+ * @param array $viewer
+ * @param int[] $message_ids
+ * @return array threads (message id => array), copies (message id => thread id)
+ */
+function ws_api_message_threads($viewer, $message_ids)
+{
+    $out = array('threads' => array(), 'copies' => array());
+
+    if (!function_exists('ws_threads_ready') || !ws_threads_ready()) {
+        return $out;
+    }
+
+    $map = ws_threads_map($viewer, $message_ids);
+    $last = array();
+
+    if (!empty($map)) {
+        $thread_ids = array();
+
+        foreach ($map as $present) {
+            $thread_ids[] = (int) $present['id'];
+        }
+
+        foreach ((array) db_items("SELECT id, last_message_at FROM ws_channels WHERE id IN (" . implode(',', $thread_ids) . ")") as $channel) {
+            $last[(int) $channel['id']] = (int) $channel['last_message_at'];
+        }
+    }
+
+    foreach ($map as $message_id => $present) {
+        $out['threads'][(int) $message_id] = array(
+            'id'              => (int) $present['id'],
+            'title'           => (string) $present['title'],
+            'message_count'   => (int) $present['count'],
+            'last_message_at' => api_time($last[(int) $present['id']] ?? 0),
+            'closed'          => !empty($present['closed']),
+        );
+    }
+
+    // A copy whose discussion is gone says so with thread id 0.
+    foreach (ws_thread_copies_map($message_ids) as $message_id => $copy) {
+        if ((int) $copy['thread_id'] > 0) {
+            $out['copies'][(int) $message_id] = (int) $copy['thread_id'];
+        }
+    }
+
+    return $out;
+}
+
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null)
 {
     if ($reactions === null) {
         $reactions = ws_reactions_map(array($row['id']), $viewer);
     }
+
+    // The read receipt it asks for (acks.php).
+    if ($acks === null) {
+        $acks = function_exists('ws_acks_map') ? ws_acks_map(array($row), $viewer) : array();
+    }
+
+    // The discussion about it, or the one it was copied from (threads.php).
+    if ($threads === null) {
+        $threads = ws_api_message_threads($viewer, array($row['id']));
+    }
+
+    $ack = $acks[(int) $row['id']] ?? null;
 
     $emoji = array();
 
@@ -515,6 +580,14 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null)
         'deleted'     => $deleted,
         'edited'      => ((int) $row['edited_at'] > 0),
         'reactions'   => $deleted ? array() : $emoji,
+        'ack'         => array(
+            'wanted' => ($ack !== null),
+            'count'  => ($ack !== null) ? (int) $ack['count'] : 0,
+            'total'  => ($ack !== null) ? (int) $ack['total'] : 0,
+            'mine'   => ($ack !== null) && !empty($ack['mine']),
+        ),
+        'thread'         => $deleted ? null : ($threads['threads'][(int) $row['id']] ?? null),
+        'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -535,6 +608,9 @@ function ws_api_message_schema()
         'deleted'     => 'boolean',
         'edited'      => 'boolean',
         'reactions'   => array(array('emoji' => 'string', 'count' => 'integer')),
+        'ack'         => array('wanted' => 'boolean', 'count' => 'integer', 'total' => 'integer', 'mine' => 'boolean'),
+        'thread'         => array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean'),
+        'from_thread_id' => 'integer?',
         'created_at'  => 'string',
     );
 }
@@ -583,10 +659,12 @@ function ws_api_messages_list($params)
     }
 
     $reactions = ws_reactions_map($ids, $viewer);
+    $acks = function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array();
+    $threads = ws_api_message_threads($viewer, $ids);
     $out = array();
 
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads);
     }
 
     api_ok_list($out, $limit);
@@ -601,8 +679,34 @@ function ws_api_messages_create($params)
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
     }
 
+    $kind = (string) ($params['kind'] ?? 'message');
+    $ack = !empty($params['ack']);
+
+    // A read receipt is asked for only where it may be, and that is settled
+    // before anything is written. The message about to be written comes
+    // after every message the channel holds, so it is never in an earlier
+    // version of the conversation.
+    if ($ack) {
+        if (!function_exists('ws_acks_ready') || !ws_acks_ready()) {
+            api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+        }
+
+        $about_to_write = array(
+            'id'          => PHP_INT_MAX,
+            'channel_id'  => (int) $channel['id'],
+            'kind'        => $kind,
+            'sender_kind' => 'app',
+            'sender_id'   => ws_api_app_id(),
+            'deleted_at'  => 0,
+        );
+
+        if (!ws_ack_can_request($viewer, $about_to_write)) {
+            api_fail(403, 'forbidden', lang('Only the writer of the message, or staff, can ask for read receipts.'));
+        }
+    }
+
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
-        'kind'   => (string) ($params['kind'] ?? 'message'),
+        'kind'   => $kind,
         'app_id' => ws_api_app_id(),
     ));
 
@@ -611,6 +715,10 @@ function ws_api_messages_create($params)
     }
 
     $row = ws_message($result['message_id']);
+
+    if ($ack) {
+        ws_ack_request($viewer, $row, true);
+    }
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
 }
@@ -636,13 +744,294 @@ function ws_api_messages_react($params)
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
 }
 
+/**
+ * Answers that must be the person's own - a read receipt, an approval - are
+ * given from a device session only: an application key acts for its owner,
+ * and an integration does not read or approve in their name.
+ *
+ * @param string|null $refusal what the refusal says, when not an answer
+ */
+function ws_api_person_only($refusal = null)
+{
+    if (!function_exists('api_current_device') || (api_current_device() === null)) {
+        api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person, signed in on a device, can give this answer; an application cannot give it for them.'));
+    }
+}
+
+function ws_api_messages_ack($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    ws_api_person_only();
+
+    $result = function_exists('ws_ack_set') ? ws_ack_set($viewer, $message) : array('ok' => false, 'error' => lang('Invalid request.'));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+function ws_api_messages_ack_request($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    if (!function_exists('ws_acks_ready') || !ws_acks_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    if (!ws_ack_can_request($viewer, $message)) {
+        api_fail(403, 'forbidden', lang('Only the writer of the message, or staff, can ask for read receipts.'));
+    }
+
+    $on = !array_key_exists('on', $params) || !empty($params['on']);
+
+    api_dry_run_stop($on ? 'requested' : 'withdrawn', 'workspace_read_receipt', array('message_id' => (int) $message['id'], 'on' => $on));
+
+    $result = ws_ack_request($viewer, $message, $on);
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+/* ---------------------------------------------------------------------------
+   Approval requests (approvals.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * One request as the API shows it.
+ *
+ * @param array $viewer
+ * @param array $row ws_approvals row
+ * @return array
+ */
+function ws_api_approval_present($viewer, $row)
+{
+    $answers = ws_approval_people($row['id']);
+    $people = array();
+    $names = array((int) $row['created_by'], (int) $row['closed_by']);
+
+    foreach ($answers as $answer) {
+        $names[] = (int) $answer['user_id'];
+    }
+
+    $briefs = ws_people($names);
+
+    foreach ($answers as $answer) {
+        $people[] = ws_api_approval_person_present($answer, $briefs);
+    }
+
+    $message = ws_message($row['message_id']);
+
+    return array(
+        'id'                => (int) $row['id'],
+        'message_id'        => (int) $row['message_id'],
+        'channel_id'        => (int) $row['channel_id'],
+        'title'             => (string) $row['title'],
+        // The details: the message without the title line it starts with.
+        'text'              => $message ? ws_plain_text($viewer, preg_replace('/^\*\*[^\n]*\*\*\n*/u', '', (string) $message['body'])) : '',
+        'rule'              => (string) $row['rule'],
+        'record'            => ((string) $row['record_type'] !== '') ? array('type' => (string) $row['record_type'], 'id' => (int) $row['record_id']) : null,
+        'people'            => $people,
+        'outcome'           => (string) $row['outcome'],
+        'requested_by'      => ws_api_person_ref($row['created_by'], $briefs),
+        'closed_by'         => ws_api_person_ref($row['closed_by'], $briefs),
+        'result_message_id' => ((int) $row['result_message_id'] > 0) ? (int) $row['result_message_id'] : null,
+        'closes_at'         => api_time($row['closes_at']),
+        'closed_at'         => api_time($row['closed_at']),
+        'created_at'        => api_time($row['created_at']),
+    );
+}
+
+/**
+ * One person asked, with their answer.
+ *
+ * @param array $answer ws_approval_people row
+ * @param array $briefs ws_people()
+ * @return array
+ */
+function ws_api_approval_person_present($answer, $briefs)
+{
+    return array(
+        'user_id'    => (int) $answer['user_id'],
+        'name'       => (string) ($briefs[(int) $answer['user_id']]['name'] ?? ''),
+        'decision'   => (string) $answer['decision'],
+        'note'       => ((string) $answer['note'] !== '') ? (string) $answer['note'] : null,
+        'decided_at' => api_time($answer['decided_at']),
+    );
+}
+
+// What ws_api_approval_present() returns.
+function ws_api_approval_schema()
+{
+    return array(
+        'id'                => 'integer',
+        'message_id'        => 'integer',
+        'channel_id'        => 'integer',
+        'title'             => 'string',
+        'text'              => 'string',
+        'rule'              => 'string',
+        'record'            => array('type' => 'string', 'id' => 'integer'),
+        'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
+        'outcome'           => 'string',
+        'requested_by'      => array('user_id' => 'integer', 'name' => 'string'),
+        'closed_by'         => array('user_id' => 'integer', 'name' => 'string'),
+        'result_message_id' => 'integer?',
+        'closes_at'         => 'string?',
+        'closed_at'         => 'string?',
+        'created_at'        => 'string',
+    );
+}
+
+function ws_api_approval_or_404($viewer, $id)
+{
+    $approval = function_exists('ws_approval') ? ws_approval((int) $id) : null;
+
+    if (!$approval) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    // The channel it is in decides who reads it, as for its messages.
+    ws_api_channel_or_404($viewer, $approval['channel_id']);
+
+    $message = ws_message($approval['message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0)) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    return $approval;
+}
+
+function ws_api_approvals_list($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+    $limit = (int) ($params['limit'] ?? 50);
+    $state = (string) ($params['state'] ?? 'all');
+
+    if (!function_exists('ws_approvals_ready') || !ws_approvals_ready()) {
+        api_ok_list(array(), $limit);
+    }
+
+    // What has run out is settled before it is read.
+    ws_approvals_autoclose($channel['id']);
+
+    $where = array("a.channel_id = '" . (int) $channel['id'] . "'", "m.deleted_at = 0");
+
+    if ($state === 'open') {
+        $where[] = "a.closed_at = 0";
+    } elseif ($state === 'closed') {
+        $where[] = "a.closed_at > 0";
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT a.* FROM ws_approvals a
+        INNER JOIN ws_messages m ON m.id = a.message_id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY a.id DESC LIMIT " . max(1, $limit)) as $row) {
+        $out[] = ws_api_approval_present($viewer, $row);
+    }
+
+    api_ok_list($out, $limit);
+}
+
+function ws_api_approvals_create($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $data = array(
+        'title'     => (string) ($params['title'] ?? ''),
+        'text'      => (string) ($params['text'] ?? ''),
+        'approvers' => (array) ($params['approvers'] ?? array()),
+        'rule'      => (string) ($params['rule'] ?? 'any'),
+        'closes_at' => (int) ($params['closes_at'] ?? 0),
+    );
+
+    // The checks ws_approval_create() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_approval_input($viewer, $channel, $data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], (($checked['field'] ?? '') !== '') ? $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers']));
+
+    $result = ws_approval_create($viewer, $channel, $data, ws_api_app_id());
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], (($result['field'] ?? '') !== '') ? $result['field'] : null);
+    }
+
+    ws_api_log(lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])));
+
+    api_ok(ws_api_approval_present($viewer, ws_approval($result['approval_id'])), 201);
+}
+
+function ws_api_approvals_decide($params)
+{
+    $viewer = ws_api_viewer();
+    $approval = ws_api_approval_or_404($viewer, $params['id']);
+
+    ws_api_person_only();
+
+    $result = ws_approval_decide($viewer, $approval, (string) $params['decision'], (string) ($params['note'] ?? ''));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'decision');
+    }
+
+    api_ok(ws_api_approval_present($viewer, ws_approval($approval['id'])));
+}
+
 /* ---------------------------------------------------------------------------
    Tasks
    --------------------------------------------------------------------------- */
 
-function ws_api_task_present($viewer, $task, $warnings = array())
+/**
+ * One task as the API shows it.
+ *
+ * @param array      $viewer
+ * @param array      $task
+ * @param string[]   $warnings
+ * @param array|null $known what a list read for all its tasks at once: links
+ *                          (ws_task_links_map()) and time (ws_task_time_totals());
+ *                          null reads them for this task
+ * @return array
+ */
+function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
 {
+    $id = (int) $task['id'];
     $assignees = ws_task_assignee_ids($task['id']);
+    $minutes = isset($known['time']) ? $known['time'] : ws_task_time_totals(array($task['id']));
     $refs = array();
 
     foreach ((array) db_items("SELECT ref_type, ref_id FROM ws_refs WHERE source_type = 'task' AND source_id = '" . (int) $task['id'] . "'") as $ref) {
@@ -671,6 +1060,11 @@ function ws_api_task_present($viewer, $task, $warnings = array())
         'checklist_done'   => (int) ($task['items_done'] ?? 0),
         'checklist_total'  => (int) ($task['items_total'] ?? 0),
         'notes_count'      => (int) ($task['notes_count'] ?? 0),
+        // The tasks it cannot start before, and the ones that wait for it
+        // (task_links.php); the minutes spent on it (task_time.php).
+        'blocked_by'       => isset($known['links'][$id]) ? $known['links'][$id]['blocked_by'] : ws_task_link_ids($task['id']),
+        'blocks'           => isset($known['links'][$id]) ? $known['links'][$id]['blocks'] : ws_task_link_waiting_ids($task['id']),
+        'time_minutes'     => (int) ($minutes[$id] ?? 0),
         'created_at'       => api_time($task['created_at']),
         'updated_at'       => api_time($task['updated_at']),
         'warnings'         => array_values($warnings),
@@ -700,6 +1094,9 @@ function ws_api_task_schema()
         'checklist_done'   => 'integer',
         'checklist_total'  => 'integer',
         'notes_count'      => 'integer',
+        'blocked_by'       => array('integer'),
+        'blocks'           => array('integer'),
+        'time_minutes'     => 'integer',
         'created_at'       => 'string',
         'updated_at'       => 'string',
         'warnings'         => array('string'),
@@ -743,10 +1140,19 @@ function ws_api_tasks_list($params)
         $filters['updated_since'] = (int) $params['updated_since'];
     }
 
+    $briefs = ws_tasks_list($viewer, $filters);
+    $ids = array();
+
+    foreach ($briefs as $brief) {
+        $ids[] = (int) $brief['id'];
+    }
+
+    // The links and the minutes of the whole page, one read each.
+    $known = array('links' => ws_task_links_map($ids), 'time' => ws_task_time_totals($ids));
     $out = array();
 
-    foreach (ws_tasks_list($viewer, $filters) as $brief) {
-        $out[] = ws_api_task_present($viewer, ws_task($brief['id']));
+    foreach ($briefs as $brief) {
+        $out[] = ws_api_task_present($viewer, ws_task($brief['id']), array(), $known);
     }
 
     api_ok_list($out, $filters['limit']);
@@ -861,10 +1267,21 @@ function ws_api_tasks_create($params)
 
     $warnings = ws_api_task_check($viewer, $after, $data['assignees'], !empty($params['force']));
 
+    // The tasks it waits for are checked before anything is written.
+    $blocked_by = array_key_exists('blocked_by', $params) ? (array) $params['blocked_by'] : null;
+
+    if (($blocked_by !== null) && (($refused = ws_task_links_check($viewer, 0, $blocked_by)) !== '')) {
+        api_fail_validation($refused, 'blocked_by');
+    }
+
     $result = ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    if ($blocked_by !== null) {
+        ws_task_links_set($viewer, ws_task($result['task_id']), $blocked_by);
     }
 
     if (!empty($data['channel_id'])) {
@@ -893,6 +1310,12 @@ function ws_api_tasks_update($params)
     $people = array_key_exists('assignees', $data) ? $data['assignees'] : ws_task_assignee_ids($task['id']);
     $warnings = ws_api_task_check($viewer, $after, $people, !empty($params['force']));
 
+    $blocked_by = array_key_exists('blocked_by', $params) ? (array) $params['blocked_by'] : null;
+
+    if (($blocked_by !== null) && (($refused = ws_task_links_check($viewer, $task['id'], $blocked_by)) !== '')) {
+        api_fail_validation($refused, 'blocked_by');
+    }
+
     $result = ws_task_update($viewer, $task, $data);
 
     if (!$result['ok']) {
@@ -901,6 +1324,14 @@ function ws_api_tasks_update($params)
         }
 
         api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    if ($blocked_by !== null) {
+        $linked = ws_task_links_set($viewer, ws_task($task['id']), $blocked_by);
+
+        if (!$linked['ok']) {
+            api_fail_validation($linked['error'], 'blocked_by');
+        }
     }
 
     api_ok(ws_api_task_present($viewer, ws_task($task['id']), $warnings));
@@ -2052,4 +2483,140 @@ function ws_api_notes_get($params)
     $note = ws_api_note_or_404($viewer, $params['id']);
 
     api_ok(ws_api_note_present($viewer, ws_note_present($viewer, $note)));
+}
+
+/* ---------------------------------------------------------------------------
+   Time spent on tasks (includes/workspace/task_time.php)
+   --------------------------------------------------------------------------- */
+
+function ws_api_task_time_present($row)
+{
+    $running = ((int) $row['minutes'] === 0) && ((int) $row['started_at'] > 0);
+
+    return array(
+        'id'         => (int) $row['id'],
+        'task_id'    => (int) $row['task_id'],
+        'user_id'    => (int) $row['user_id'],
+        'minutes'    => (int) $row['minutes'],
+        'worked_on'  => (string) $row['worked_on'],
+        'note'       => (string) $row['note'],
+        'billable'   => ((int) $row['billable'] === 1),
+        'invoice_id' => ((int) $row['invoice_id'] > 0) ? (int) $row['invoice_id'] : null,
+        'running'    => $running,
+        'started_at' => ((int) $row['started_at'] > 0) ? api_time($row['started_at']) : null,
+        'created_at' => api_time($row['created_at']),
+    );
+}
+
+// What ws_api_task_time_present() returns.
+function ws_api_task_time_schema()
+{
+    return array(
+        'id'         => 'integer',
+        'task_id'    => 'integer',
+        'user_id'    => 'integer',
+        'minutes'    => 'integer',
+        'worked_on'  => 'string',
+        'note'       => 'string',
+        'billable'   => 'boolean',
+        'invoice_id' => 'integer?',
+        'running'    => 'boolean',
+        'started_at' => 'string?',
+        'created_at' => 'string',
+    );
+}
+
+/**
+ * The task of a time request, with the schema there.
+ *
+ * @return array viewer, task
+ */
+function ws_api_task_time_task($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_task_time_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    return array($viewer, ws_api_task_or_404($viewer, $params['id']));
+}
+
+function ws_api_task_time_list($params)
+{
+    list(, $task) = ws_api_task_time_task($params);
+    $out = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_task_time WHERE task_id = '" . (int) $task['id'] . "' ORDER BY worked_on DESC, id DESC LIMIT 500") as $row) {
+        $out[] = ws_api_task_time_present($row);
+    }
+
+    api_ok_list($out, 500);
+}
+
+function ws_api_task_time_create($params)
+{
+    list($viewer, $task) = ws_api_task_time_task($params);
+
+    if (!ws_task_time_may_log($viewer, $task, ws_task_assignee_ids($task['id']))) {
+        api_fail(403, 'forbidden', lang('Only the people on a task, the one who created it and staff can write time on it.'));
+    }
+
+    $data = array(
+        'minutes'   => (int) $params['minutes'],
+        'worked_on' => (string) ($params['worked_on'] ?? ''),
+        'note'      => (string) ($params['note'] ?? ''),
+        'billable'  => array_key_exists('billable', $params) ? !empty($params['billable']) : true,
+    );
+
+    // The checks ws_task_time_add() makes, before the rehearsal stops.
+    $day = ws_date_or_null($data['worked_on']);
+
+    if ($day === false) {
+        api_fail_validation(lang('Write the date as day.month.year.'), 'worked_on');
+    }
+
+    if (($day !== null) && ($day > date('Y-m-d'))) {
+        api_fail_validation(lang('Time cannot be written for a day that has not come yet.'), 'worked_on');
+    }
+
+    api_dry_run_stop('created', 'workspace_task_time', array('task_id' => (int) $task['id'], 'minutes' => $data['minutes']));
+
+    $result = ws_task_time_add($viewer, $task, $data);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    ws_api_log(lang(array('string' => 'time was written on workspace task ({var:1})', 'vars' => ws_task_number($task['id']))));
+
+    api_ok(ws_api_task_time_present(ws_task_time_entry($result['id'])), 201);
+}
+
+function ws_api_task_time_delete($params)
+{
+    list($viewer, $task) = ws_api_task_time_task($params);
+    $entry = ws_task_time_entry((int) $params['entry_id']);
+
+    if (!$entry || ((int) $entry['task_id'] !== (int) $task['id'])) {
+        api_fail_not_found(lang('Time entry'));
+    }
+
+    if (((int) $entry['user_id'] !== (int) $viewer['id']) && !ws_task_time_is_manager($viewer)) {
+        api_fail(403, 'forbidden', lang('Only the one who wrote the time, or staff, can delete it.'));
+    }
+
+    if ((int) $entry['invoice_id'] > 0) {
+        api_fail_validation(lang('This time is on an invoice draft. Undo the tie on the channel\'s Summary tab first.'), 'entry_id');
+    }
+
+    api_dry_run_stop('deleted', 'workspace_task_time', array('id' => (int) $entry['id']));
+
+    $result = ws_task_time_delete($viewer, $entry);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    api_ok(ws_api_task_time_present($entry));
 }

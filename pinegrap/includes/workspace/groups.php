@@ -932,7 +932,7 @@ function ws_can_move_channel_group($viewer, $channel)
     // A room with a guest in it stays out of the groups: a group brings its
     // people into the channels in it.
     return ws_can_manage_groups($viewer) && ws_can_manage_channel($viewer, $channel)
-        && ((string) ($channel['kind'] ?? '') !== 'guest');
+        && in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true);
 }
 
 /**

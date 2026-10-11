@@ -189,12 +189,22 @@ if (!$pg_login_posted || !isset($_POST['email'])) {
     // (the visitor may have typed their email address into the username field).
     $username = db_value(
         "SELECT user_username FROM user WHERE user_id = '" . (int) $login_user_id . "'");
-    
+
+    $pg_remember = (REMEMBER_ME == TRUE && $liveform->get_field_value('remember_me') == 1);
+
+    // The posted fields, password included, were copied into the session for
+    // the error path. Dropped here, before the gates below, because either of
+    // them may end this request and the password must not wait in the session.
+    $liveform->remove();
+
+    // An account with a second factor (or a role that requires one) continues
+    // on mfa.php; nothing is signed in and no token is minted until then.
+    pg_mfa_gate($login_user_id, $username, ($_REQUEST['send_to'] ?? ''), $pg_remember, 'index.php');
+
     // Sign the visitor in and, when the device limit is on, count this device.
     // The gate fires for every login (no-op when the limit is off); a remembered
     // login keeps a persistent cookie, a non-remembered one gets a session cookie
     // only while the limit is on.
-    $pg_remember = (REMEMBER_ME == TRUE && $liveform->get_field_value('remember_me') == 1);
     pg_device_limit_gate($login_user_id, $username, ($_REQUEST['send_to'] ?? ''), $pg_remember);
     pg_login_set_device_cookie($login_user_id, $pg_remember);
 
@@ -206,8 +216,6 @@ if (!$pg_login_posted || !isset($_POST['email'])) {
 
     require_once(dirname(__FILE__) . '/connect_user_to_order.php');
     connect_user_to_order();
-    
-    $liveform->remove();
-    
+
     send_user_to_login_home();
 }

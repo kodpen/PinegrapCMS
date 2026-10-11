@@ -53,9 +53,12 @@ function ws_nav_groups($viewer)
         $groups['records'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit', 'rail' => false);
     }
 
-    // Scheduled actions are staff's (scheduled.php).
+    // Scheduled actions are staff's (scheduled.php); everybody else finds
+    // their own scheduled messages on the same screen.
     if (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+    } elseif (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer)) {
+        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
 
     if ($viewer['settings']) {
@@ -170,7 +173,10 @@ function ws_screen_rail($viewer, $current)
 
     $rail = '<nav class="ws-rail" aria-label="' . h(lang('Workspace')) . '">'
         . '<button type="button" class="ws-rail-item ws-rail-open" data-bs-toggle="offcanvas" data-bs-target="#ws-nav-drawer" aria-controls="ws-nav-drawer" title="' . h(lang('Open the menu')) . '" aria-label="' . h(lang('Open the menu')) . '">'
-        . '<i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i></button>';
+        . '<i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i></button>'
+        // The search box of the whole workspace (assets/js/workspace_palette.js).
+        . '<button type="button" class="ws-rail-item ws-rail-search" data-ws-palette="1" title="' . h(lang('Search the workspace (Ctrl+K)')) . '" aria-label="' . h(lang('Search the workspace')) . '">'
+        . '<i class="bi bi-search" aria-hidden="true"></i></button>';
 
     foreach ($groups['top'] as $link) {
         $rail .= $rail_item($link);
@@ -216,7 +222,9 @@ function ws_screen_rail($viewer, $current)
         return '<div class="ws-side-section">' . (($title !== '') ? '<div class="ws-side-title"><span>' . h($title) . '</span></div>' : '') . $items . '</div>';
     };
 
-    $top = '';
+    $top = '<button type="button" class="ws-channel-link" data-ws-palette="1">'
+        . '<i class="bi bi-search" aria-hidden="true"></i>'
+        . '<span class="ws-channel-name">' . h(lang('Search the workspace')) . '</span></button>';
 
     foreach ($groups['top'] as $link) {
         $top .= $list_item($link);

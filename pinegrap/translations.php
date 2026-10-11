@@ -10,7 +10,8 @@
  * The left column lists the pages with their coverage; the right column is
  * the editor for the selected page (or for every text when no page is
  * selected). "Update translations" extracts the texts and sends the pending
- * ones to the language's engine; the browser engine runs here, in this
+ * ones to the language's engine; "Clear translations" deletes the ones of the
+ * selection so they are sent again. The browser engine runs here, in this
  * screen's script (assets/js/translations.js), the server engines in
  * translations_action.php and the scheduled job.
  *
@@ -53,13 +54,17 @@ if (!isset($targets[$language])) {
 $page_id = isset($_GET['page_id']) ? (int) $_GET['page_id'] : 0;
 
 // A group of texts that are not on a page: the catalog, the forms, the
-// software's wording. A group and a page are not selected together. The
-// wording is translated here only for a language with no language file of
-// its own: one that has a file speaks it (pg_tr_ui_text()).
+// cookie window. A group and a page are not selected together. The cookie
+// window is translated here only for a language with no language file of
+// its own: one that has a file speaks it (pg_tr_ui_text()). For the others
+// the group is brought in line with the window before it is counted, so it
+// lists the window's texts and nothing else (pg_tr_ui_sync()).
 $owner_groups = pg_tr_owner_groups();
 
 if (($language !== '') && pg_tr_ui_has_file($language)) {
     unset($owner_groups['ui']);
+} elseif ($language !== '') {
+    pg_tr_extract_group('ui');
 }
 
 $group = isset($_GET['group']) ? (string) $_GET['group'] : '';
@@ -441,6 +446,11 @@ $scope = ($page_id > 0) ? 'page:' . $page_id : (($group !== '') ? 'group:' . $gr
 
 // The machine translations of the scope one click marks reviewed.
 $review_all_count = ($language !== '') ? pg_tr_review_all_count($language, $scope) : 0;
+
+// What "Clear translations" deletes here: the machine translations, and with
+// the reviewed ones the whole count. The dialog names the number.
+$clear_machine_count = ($language !== '') ? pg_tr_clear_count($language, $scope, false) : 0;
+$clear_all_count = ($language !== '') ? pg_tr_clear_count($language, $scope, true) : 0;
 $export_base = 'translations_action.php?action=export&language=' . rawurlencode($language) . '&scope=' . rawurlencode($scope) . '&token=' . rawurlencode($token);
 
 $engine_note = '';
@@ -450,6 +460,9 @@ if ($language_row) {
         $engine_note = '<div class="alert alert-warning py-2 small mb-3"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h($engine['reason']) . '</div>';
     } elseif ($engine_key === 'chrome') {
         $engine_note = '<div class="alert alert-secondary py-2 small mb-3 pg-tr-chrome-note"><i class="bi bi-browser-chrome me-1" aria-hidden="true"></i>' . lang('The browser engine translates on this computer with the Chrome Translator API (desktop Chrome 138 or Edge 148 and newer). The first run downloads the language model.') . pg_tr_browser_pages_html() . '</div>';
+    } elseif ($engine_key === 'chrome_ai') {
+        $engine_note = '<div class="alert alert-secondary py-2 small mb-3 pg-tr-chrome-note"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . lang('The browser AI translates on this computer with the browser\'s built-in model, Gemini Nano (Prompt API, a recent desktop Chrome): one text at a time, with where it stands, the glossary and the style note, keeping inline HTML. A text takes a few seconds; the first run downloads the model.') . ' ' . lang('The model does not officially read every language (Turkish, for one): look its translations over before approving them.')
+            . '<div class="small mt-2">' . lang('The model\'s state is shown at this browser address:') . ' <code class="user-select-all">chrome://on-device-internals</code></div></div>';
     } elseif ($engine_key === 'manual') {
         $engine_note = '<div class="alert alert-secondary py-2 small mb-3"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('This language is translated by hand: "Update translations" scans the pages and lists the pending texts here.') . '</div>';
     } elseif ($engine_key === 'ai') {
@@ -465,6 +478,9 @@ $config = array(
     'language'   => $language,
     'source'     => $source,
     'engine'     => $engine_key,
+    // What the browser's language model is told before the texts: the
+    // session is made in the click itself, before the first package.
+    'ai_instructions' => (($engine_key === 'chrome_ai') || ($open_job && ($open_job['engine'] === 'chrome_ai'))) ? pg_tr_ai_instructions($source, $language, 'item') : '',
     'scope'      => $scope,
     'open_job'   => $open_job ? array('id' => (int) $open_job['id'], 'engine' => $open_job['engine'], 'status' => $open_job['status'], 'total' => (int) $open_job['total'], 'done' => (int) $open_job['done_count'], 'failed' => (int) $open_job['failed_count']) : null,
     'strings'    => array(
@@ -486,6 +502,8 @@ $config = array(
         'translator_missing' => lang('This browser has no Translator API. Use desktop Chrome 138 or Edge 148 and newer, or choose another engine.'),
         'translator_unavailable' => lang('The browser cannot translate from {var} to {var2}.'),
         'downloading'       => lang('Downloading the language model… {var}%'),
+        'model_missing'     => lang('This browser has no built-in AI model (Prompt API). Use a recent desktop Chrome, or choose another engine.'),
+        'model_unavailable' => lang('The browser\'s AI model cannot write {var}.'),
         'network_error'     => lang('The request failed. Please try again.'),
         'confirm_cancel'    => lang('Stop the running update?'),
         'queue_waiting'     => lang('Waiting for Claude to pick the job up…'),
@@ -493,6 +511,8 @@ $config = array(
         'glossary_add'      => lang('Add a term'),
         'glossary_edit'     => lang('Edit the term'),
         'confirm_review_all' => lang('Mark {var} machine translation(s) here as reviewed? The ones flagged suspicious are left to be looked at one by one.'),
+        'clear_count'       => lang('{var} translation(s) will be deleted.'),
+        'retrying'          => lang('The server did not answer in time; trying again…'),
     ),
 );
 
@@ -547,6 +567,7 @@ echo pg_page_shell(array(
                     <li><a class="dropdown-item" href="' . h($export_base) . '"><i class="bi bi-download me-2" aria-hidden="true"></i>' . lang('Export CSV') . '</a></li>
                     <li><a class="dropdown-item" href="' . h($export_base . '&pending=1') . '"><i class="bi bi-download me-2" aria-hidden="true"></i>' . lang('Export pending texts as CSV') . '</a></li>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pg_tr_import"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Import CSV') . '</button></li>
+                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pg_tr_clear_modal"' . (($clear_all_count > 0) ? '' : ' disabled="disabled"') . '><i class="bi bi-eraser me-2" aria-hidden="true"></i>' . lang('Clear translations') . '</button></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-gear me-2" aria-hidden="true"></i>' . lang('Languages and Translation') . '</a></li>
                 </ul>
@@ -601,7 +622,7 @@ echo pg_page_shell(array(
                         <span class="text-uppercase h5 text-primary fw-bold mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</span>
                         <span class="small text-body-secondary">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
                     </div>
-                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('This language has no language file, so the software\'s own wording (buttons, labels, messages) is translated here. A text appears here once a visitor has been shown it on a page in this language; until it is translated, the English wording is shown.') . '</div>' : '') . $output_rows . '
+                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '') . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-3">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>
@@ -633,6 +654,28 @@ echo pg_page_shell(array(
                         <button type="submit" class="btn btn-primary">' . lang('Import') . '</button>
                     </div>
                 </form>
+            </div>
+        </div>
+        <div class="modal fade" id="pg_tr_clear_modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">' . lang('Clear translations') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-body-secondary">' . lang('The translations of the texts shown here are deleted, so the next "Update translations" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.') . '</p>
+                        <div class="form-check mb-3">
+                            <input value="1" class="form-check-input pg-tr-clear-reviewed" type="checkbox" id="pg_tr_clear_reviewed"' . (($clear_all_count > $clear_machine_count) ? '' : ' disabled="disabled"') . '/>
+                            <label class="form-check-label" for="pg_tr_clear_reviewed">' . lang('Delete the reviewed translations as well') . ' <span class="opacity-75">' . ($clear_all_count - $clear_machine_count) . '</span></label>
+                        </div>
+                        <p class="fw-semibold mb-0 pg-tr-clear-count"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-outline-warning pg-tr-clear" data-machine="' . $clear_machine_count . '" data-all="' . $clear_all_count . '"><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="modal fade" id="pg_tr_glossary_modal" tabindex="-1" aria-hidden="true">

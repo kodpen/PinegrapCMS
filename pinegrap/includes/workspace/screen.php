@@ -299,6 +299,8 @@ function ws_js_strings()
         'share_placeholder'      => lang('A line about it (optional)'),
         'shared'                 => lang('Shared in the channel.'),
         'show_in_conversation'   => lang('Show in the conversation'),
+        'side_collapse'          => lang('Close the section'),
+        'side_expand'            => lang('Open the section'),
         'start_date'             => lang('Starts'),
         'start_poll'             => lang('Start a poll'),
         'start_time'             => lang('Starts at'),
@@ -310,10 +312,14 @@ function ws_js_strings()
         'tab_messages'           => lang('Messages'),
         'tab_summary'            => lang('Summary'),
         'tab_tasks'              => lang('Tasks'),
+        'tab_decisions_count'    => ws_js_template('{var:1} decisions and notes', 1),
+        'tab_tasks_count'        => ws_js_template('{var:1} open tasks', 1),
+        'tab_summary_written'    => lang('The summary is written'),
         'table_column'           => ws_js_template('Column {var:1}', 1),
         'table_size'             => ws_js_template('{var:1} columns × {var:2} rows', 2),
         'tag_record'             => lang('Tag a record'),
         'task'                   => lang('Task'),
+        'task_card_thread_note'  => lang('Posted in the channel it is made from, the card shows in this discussion too.'),
         'task_created'           => lang('The task was created.'),
         'task_from_item'         => lang('Make this item a task'),
         'task_from_message'      => lang('Make a task of it'),
@@ -480,13 +486,54 @@ function ws_editor_js_strings()
         'row_above'                 => lang('Insert a row above'),
         'row_below'                 => lang('Insert a row below'),
         'table_hint'                => lang('Write in the cells. Tab moves to the next one; right-click a cell for rows, columns and alignment.'),
-        'table_formula_hint'        => lang('A cell that starts with = is worked out: =B2*C2, =SUM(D2:D5) (TOPLA), + - * / and %. The header is row 1.'),
+        'table_formula_hint'        => lang('A cell that starts with = is worked out: =B2*C2, =SUM(D2:D5) (TOPLA), + - * / and %, IF and comparisons; the names of the calculations in the same text work too (=B2*Rate). The header is row 1.'),
         'table_formula_bar'         => lang('The formula or the value of the cell'),
         'insert_to_note'            => lang('Add to the note'),
         'block_calc'                => ws_js_template('Calculation · {var:1} line(s)', 1),
         'designer_calc'             => lang('Calculation'),
         'calc_placeholder'          => lang('Total = Rent + Dues'),
-        'calc_hint'                 => lang('One value a line, as "Name = expression"; a later line may use the names above it. + - * / ^, brackets, % and SUM, AVERAGE, MIN, MAX, ROUND work.'),
+        'calc_hint'                 => lang('One value a line, as "Name = expression"; a later line may use the names above it, and the tables of the same text may use them too. "Name:" starts a group whose name is the total of the lines under it, up to a blank line. A line starting with _ is worked out but not shown.'),
+        'calc_template'             => lang('Template'),
+        'calc_functions'            => lang('Functions'),
+        'calc_add'                  => lang('Add'),
+        'calc_subtract'             => lang('Subtract'),
+        'calc_multiply'             => lang('Multiply'),
+        'calc_divide'               => lang('Divide'),
+        'calc_percent'              => lang('Percent'),
+        'calc_brackets'             => lang('Brackets'),
+        'calc_group'                => lang('Group'),
+        'calc_group_help'           => lang('A group around the selected lines: its name becomes their total'),
+        'calc_group_name'           => lang('Group'),
+        'calc_hide'                 => lang('Hide'),
+        'calc_hide_help'            => lang('Worked out but not shown (a _ at the start of the line)'),
+        'calc_gap'                  => lang('Blank line'),
+        'calc_gap_help'             => lang('A gap in the table; it also ends a group'),
+        'calc_remark'               => lang('Remark'),
+        'calc_remark_help'          => lang('A line of words (# at the start)'),
+        'calc_decimals'             => lang('Decimals'),
+        'calc_decimals_auto'        => lang('Automatic'),
+        'calc_unit'                 => lang('Unit'),
+        'calc_unit_placeholder'     => lang('e.g. ₺, kg'),
+        'calc_names'                => lang('Names'),
+        'calc_live_try'             => lang('Another figure'),
+        'calc_live_reset'           => lang('Reset'),
+        'calc_live_note'            => lang('The figures you change are only for you to see and are not saved.'),
+        'table_fx'                  => lang('Formula'),
+        'table_fx_col_sum'          => lang('Total of the column above'),
+        'table_fx_col_avg'          => lang('Average of the column above'),
+        'table_fx_col_max'          => lang('Largest in the column above'),
+        'table_fx_col_min'          => lang('Smallest in the column above'),
+        'table_fx_row_sum'          => lang('Total of the row to the left'),
+        'table_fx_mul'              => lang('The two cells to the left multiplied'),
+        'table_fx_diff'             => lang('The difference of the two cells to the left'),
+        'table_fx_change'           => lang('Change between the two cells to the left (%)'),
+        'table_fx_add_pct'          => lang('The cell to the left plus a percentage (VAT)'),
+        'table_fx_discount'         => lang('The cell to the left less a discount'),
+        'table_fx_share'            => lang('Share of the column total (%)'),
+        'table_fx_if'               => lang('A condition (IF)'),
+        'table_total_row'           => lang('Add a total row'),
+        'table_total'               => lang('Total'),
+        'table_fill_down'           => lang('Copy the formula to the cells below'),
         'update_block'              => lang('Update'),
     );
 }
@@ -585,13 +632,36 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
-    // Scheduled actions (includes/workspace/scheduled.php).
+    // Scheduled actions (includes/workspace/scheduled.php) and the messages
+    // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
-        $strings = array_merge($strings, ws_scheduled_js_strings());
+        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
     }
+
+    // The event rule of a scheduled action and a channel's watch switch
+    // (includes/workspace/watch.php, assets/js/workspace_events.js).
+    if (function_exists('ws_events_js_strings')) {
+        $strings = array_merge($strings, ws_events_js_strings());
+    }
+
+    // Discussions (includes/workspace/threads.php) and the assistants' bulk
+    // changes (includes/workspace/bulk.php).
+    $strings = array_merge($strings, ws_threads_js_strings(), ws_bulk_js_strings());
+
+    // Channel templates (includes/workspace/templates.php).
+    $strings = array_merge($strings, ws_templates_js_strings());
 
     // Colours and groups of channels, versions of a conversation.
     $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
+
+    // The search box of every screen (palette.php) and a channel's board
+    // (channel_board.php).
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings());
+    // The time spent on tasks and the tasks they wait for
+    // (assets/js/workspace_task_time.js, workspace_task_links.js).
+    $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
+    // Approval requests and read receipts (approvals.php, acks.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_acks_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -621,12 +691,20 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),
         'reminders'    => function_exists('ws_task_reminders_js_config') ? ws_task_reminders_js_config() : array('ready' => false),
         'scheduled'    => function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null,
+        'scheduled_messages' => function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer),
+        'threads'      => ws_threads_ready(),
         'palette'      => ws_channel_colors_ready() ? ws_palette_js() : array(),
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),
         'pins'         => ws_pins_ready(),
+        'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE) : null,
+        'acks'         => ws_acks_ready(),
         'blocks'       => ws_blocks_ready(),
         'customer'     => ws_customer_ready(),
+        'templates'    => ws_templates_js_config($viewer),
+        'calc'         => function_exists('ws_calc_js_config') ? ws_calc_js_config() : array(),
+        'task_time'    => ws_task_time_ready() ? array('ready' => true, 'manager' => ws_task_time_is_manager($viewer)) : array('ready' => false),
+        'task_links'   => ws_task_links_ready(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
@@ -669,8 +747,18 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <script type="application/json" id="ws-config">' . $json . '</script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_events.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_events.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_templates.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_templates.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_time.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_time.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_links.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_links.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_approvals.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_approvals.js')) . '" defer></script>
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_acks.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_acks.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
+        // The search box, on every workspace screen but a record's drawer.
+        . (($mode !== 'record') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_palette.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js')) . '" defer></script>' : '')
         . (($mode === 'channels') ? '
+<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_board_channel.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js')) . '" defer></script>
 <script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');
 }
 

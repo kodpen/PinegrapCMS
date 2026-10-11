@@ -160,7 +160,7 @@ function pg_settings_modal_markup($user)
                     navigating, so nothing would take the curtain back down
                     until the operator touched the screen again.
                 -->
-                <form class="pg-sm-body" id="pg_settings_modal_form" method="post" autocomplete="off" novalidate="novalidate" data-pg-no-curtain>
+                <form class="pg-sm-body disable_shortcut" id="pg_settings_modal_form" method="post" autocomplete="off" novalidate="novalidate" data-pg-no-curtain>
                     <!--
                         No decoy fields here, and in particular no decoy password.
                         The single screen carried a hidden text input and a hidden

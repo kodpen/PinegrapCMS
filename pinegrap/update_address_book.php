@@ -198,10 +198,13 @@ if (!$_POST) {
 
         // The widget lists the recipients itself, so it comes back to itself
         // (or goes where it was told) with a word that the save went through.
+        // The word is left on the liveform the destination prints, as
+        // pg_sw_account_done() does: the widget's own form back here,
+        // 'my_account' away from it.
         if ($pg_return_to !== '') {
-            $pg_done = new liveform('update_address_book');
-            $pg_done->add_notice(lang('The address book has been updated.'));
             $pg_send_to = pg_safe_redirect_path((string) ($_POST['send_to'] ?? ''), '/__none__');
+            $pg_done = new liveform(($pg_send_to !== '/__none__') ? 'my_account' : 'update_address_book');
+            $pg_done->add_notice(lang('The address book has been updated.'));
             go(($pg_send_to !== '/__none__') ? $pg_send_to : $pg_return_to);
         }
 

@@ -398,8 +398,13 @@ $output_button_bar = '';
 if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     $output_button_bar .=
         '<nav id="button_bar" class="navigation " aria-label="Button Bar">
-        <a class="btn btn-sm btn-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
-        <a class="btn btn-sm btn-primary m-1" href="add_system_style.php?from=pages" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . ' (Visual Page Editor)</a>
+        ' . ($user['role'] < 2
+            // A designer adds a visual page to a design of their choosing
+            // (pg_designer_target_modal()); the classic page screen stays
+            // beside it.
+            ? '<button type="button" class="btn btn-sm btn-primary m-1" data-pg-design-target="add" data-from="pages"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</button>
+               <a class="btn btn-sm btn-outline-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page (Legacy)') . '</a>'
+            : '<a class="btn btn-sm btn-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</a>') . '
         ';
 
     // If advanced search is enabled and the user is a manager or above then output "Update Search Index" button.
@@ -1558,6 +1563,7 @@ pg_page_shell(
     </div>
     ' . pg_seo_render_detail_offcanvas() . '
 </main>
+' . ($user['role'] < 2 ? pg_designer_target_modal() : '') . '
 ' .
 output_footer();
 

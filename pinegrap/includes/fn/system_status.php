@@ -1036,6 +1036,15 @@ function pg_purge_caches()
         $cleared[] = lang('System status') . ' (' . $temp_cleared . ')';
     }
 
+    // What pg_schema_has() remembers about tables and columns. A schema
+    // changed by hand (a column added or dropped outside an upgrade) is
+    // otherwise only noticed after the next upgrade.
+    $schema_cache_files = glob($temp_directory . 'schema_*.json');
+    pg_schema_cache_clear();
+    if (is_array($schema_cache_files) && (count($schema_cache_files) > 0)) {
+        $cleared[] = lang(array('string' => 'Schema cache ({var:1})', 'vars' => count($schema_cache_files)));
+    }
+
     $message = implode(', ', $cleared);
     if ($message === '') {
         $message = lang('nothing to clear');
@@ -1336,7 +1345,8 @@ function pg_write_permission_repair()
  * It returns the checks as data, not as markup. The bar this used to print was
  * the only thing that could be done with a string of <span>s; the dashboard now
  * draws a gauge and a card per check from the same results, and settings.php
- * draws the same widget. Rendering lives in api.php, the checks live here.
+ * draws the same widget. Rendering lives in
+ * includes/dashboard/widgets/widget_2.php, the checks live here.
  *
  * Returned shape:
  *   array(
@@ -1566,6 +1576,7 @@ function get_system_status_checks()
         'Software Update'          => 'Update status',
         'Scheduled Tasks'          => 'Tasks',
         'Webhooks'                 => 'Webhook',
+        'Storage Engine'           => 'Engine',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1594,6 +1605,7 @@ function get_system_status_checks()
         'Software Update',
         'Scheduled Tasks',
         'Webhooks',
+        'Storage Engine',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -1707,7 +1719,9 @@ function get_system_status_checks()
                     'bi-file-earmark-x-fill',
                     'text-danger',
                     'Directory File Integrity',
-                    'Warning: Missing or tampered files detected!'
+                    'Warning: Missing or tampered files detected!',
+                    '',
+                    'software_repair.php'
                 );
                 $score -= $weights['file_integrity'];
                 break;
@@ -2092,6 +2106,96 @@ function get_system_status_checks()
         );
     }
 
+    // 🗄️ Storage engine: the tables still on MyISAM.
+    //
+    // The 2026.4.8 upgrade moves every table within its size limits to InnoDB
+    // and leaves the larger ones for the Database Engine screen, where the
+    // operator converts them one by one at a quiet hour. This line is how
+    // they are found again. Reported and not scored, like Database Size: the
+    // site works on either engine, and a table waiting for a quiet hour is
+    // not a fault.
+    if (function_exists('pg_innodb_capability')) {
+        $engine_capability = pg_innodb_capability();
+
+        if (!$engine_capability['ok']) {
+            $output .= $makeIcon(
+                'bi-database-gear',
+                'text-secondary',
+                'Storage Engine',
+                'The database server does not support the InnoDB row format the software needs; tables stay on MyISAM.',
+                'MyISAM'
+            );
+        } else {
+            $engine_pending = pg_innodb_pending_tables();
+
+            if (count($engine_pending) == 0) {
+                $output .= $makeIcon(
+                    'bi-database-gear',
+                    'text-success',
+                    'Storage Engine',
+                    'All tables are on InnoDB.',
+                    'InnoDB',
+                    'database_engine.php'
+                );
+            } else {
+                $engine_detail = array();
+                $engine_bytes = 0;
+
+                foreach ($engine_pending as $engine_table => $engine_row) {
+                    $engine_bytes += $engine_row['bytes'];
+
+                    // A table whose row cannot fit an InnoDB page stays on
+                    // MyISAM whatever the hour; it says so rather than
+                    // waiting for a quiet moment. Three information_schema
+                    // reads per pending table, behind this widget's cache.
+                    $engine_estimate = pg_innodb_row_estimate($engine_table);
+
+                    if (is_array($engine_estimate) && ($engine_estimate['fits'] === false)) {
+                        $engine_detail[] = array(
+                            'label' => $engine_table,
+                            'state' => 'warn',
+                            'when'  => lang(array(
+                                'string' => '{var:1} rows, {var:2} — too wide for InnoDB ({var:3} / {var:4} bytes)',
+                                'vars'   => array(
+                                    pg_format_number($engine_row['rows'], 0),
+                                    pg_innodb_size_label($engine_row['bytes']),
+                                    pg_format_number($engine_estimate['bytes'], 0),
+                                    pg_format_number($engine_estimate['limit'], 0),
+                                ),
+                            )),
+                        );
+                        continue;
+                    }
+
+                    $engine_detail[] = array(
+                        'label' => $engine_table,
+                        'state' => 'info',
+                        'when'  => lang(array(
+                            'string' => '{var:1} rows, {var:2}',
+                            'vars'   => array(pg_format_number($engine_row['rows'], 0), pg_innodb_size_label($engine_row['bytes'])),
+                        )),
+                    );
+                }
+
+                $output .= $makeIcon(
+                    'bi-database-gear',
+                    'text-warning',
+                    'Storage Engine',
+                    lang(array(
+                        'string' => '{var:1} table(s) are still on MyISAM ({var:2}). Convert them from the Database Engine screen when the site is quiet.',
+                        'vars'   => array(pg_format_number(count($engine_pending), 0), pg_innodb_size_label($engine_bytes)),
+                    )),
+                    lang(array(
+                        'string' => '{var:1} on MyISAM',
+                        'vars'   => pg_format_number(count($engine_pending), 0),
+                    )),
+                    'database_engine.php',
+                    $engine_detail
+                );
+            }
+        }
+    }
+
     // 📦 PHP extensions check with alias support for IIS and Apache
     // Some extensions report a different name depending on the build
     // (e.g. 'Zend OPcache' vs 'opcache'), hence the alias lists.
@@ -2451,7 +2555,12 @@ function get_system_status_checks()
                 if (in_array($backup_entry, $backup_seed)) {
                     continue;
                 }
-                if (!is_dir($backup_path . '/' . $backup_entry)) {
+                // The automatic backup writes one archive per week where a
+                // ZipArchive is available. Only its own names are counted:
+                // any other file in the directory is not a backup run.
+                if (!is_dir($backup_path . '/' . $backup_entry)
+                    && !(pg_backup_is_auto_name($backup_entry) && is_file($backup_path . '/' . $backup_entry))
+                ) {
                     continue;
                 }
                 $backup_count++;
@@ -2504,13 +2613,43 @@ function get_system_status_checks()
         $backup_message = 'Automatic backup is turned off.';
     }
 
+    // The remote copy of the automatic backup (FTP / S3). A backup that exists
+    // only on the server it protects is lost with that server, so a failed
+    // copy is worth a warning even while the local backup is fresh. It costs
+    // half the weight, never more than the check is worth in total.
+    $backup_detail = array();
+
+    if (pg_backup_settings_ready()) {
+
+        $backup_settings = pg_backup_settings();
+
+        if (($backup_settings['backup_remote_type'] !== '') && ($backup_settings['backup_remote_error'] !== '')) {
+
+            $backup_detail[] = array(
+                'label' => $backup_settings['backup_remote_error'],
+                'state' => 'fail',
+                'when'  => lang('Remote copy'),
+            );
+
+            if ($backup_color == 'text-success') {
+                $backup_color = 'text-warning';
+                $backup_message = 'The last remote backup copy failed.';
+                $score -= $weights['backup'] * 0.5;
+            } elseif ($backup_color == 'text-warning') {
+                $backup_message = rtrim(lang($backup_message)) . ' ' . lang('The last remote backup copy failed.');
+                $score -= $weights['backup'] * 0.5;
+            }
+        }
+    }
+
     $output .= $makeIcon(
         $backup_icon,
         $backup_color,
         'Last Backup',
         $backup_message,
         $backup_value,
-        'backups.php'
+        'backups.php',
+        $backup_detail
     );
 
     // ⬆️ Software update
@@ -2671,9 +2810,7 @@ function get_system_status_checks()
 
     if (defined('DB_CONNECTED') && DB_CONNECTED) {
         try {
-            $webhook_table = @mysqli_query(db::$con, "SHOW TABLES LIKE 'api\\_webhooks'");
-
-            if ($webhook_table && mysqli_num_rows($webhook_table) > 0) {
+            if (pg_schema_has('api_webhooks')) {
 
                 // The rows themselves rather than a GROUP BY, because the tile
                 // opens into a list and the question after "3 active" is which

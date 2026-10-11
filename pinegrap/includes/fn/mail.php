@@ -228,6 +228,24 @@ function email_campaign_job_enabled()
     return ($value == true);
 }
 
+// Whether the 2026.4.8 upgrade has added the retry columns to
+// email_recipients. All six are asked for: an upgrade interrupted halfway
+// leaves some of them, and the job reads and writes every one. Until then the
+// campaign job keeps its previous flow, which needs none of them. Asked once
+// per request.
+function pg_email_retry_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = (count(db_items(
+            "SHOW COLUMNS FROM email_recipients
+            WHERE Field IN ('claimed_at', 'claim_token', 'attempts', 'last_error', 'next_attempt_at', 'failed')")) === 6);
+    }
+
+    return $ready;
+}
+
 // The e-mail preferences screen can be reached without a session from the
 // "update preferences / unsubscribe" link in a campaign. The link names the
 // contact through an obfuscated id (rot13 + base64 of the address, kept for the
@@ -441,7 +459,8 @@ function send_comment_email_to_administrators($comment_id)
             'from_name' => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
             'subject' => $subject,
-            'body' => $body
+            'body' => $body,
+            'queue' => true
         ));
     }
 }
@@ -561,7 +580,8 @@ function send_comment_email_to_custom_form_submitter($comment_id)
             'from_email_address' => $from_email_address,
             'subject' => $comments_submitter_email_subject,
             'format' => 'html',
-            'body' => $body
+            'body' => $body,
+            'queue' => true
         ));
     }
 }
@@ -714,7 +734,8 @@ function send_comment_email_to_watchers($comment_id)
                 'from_email_address' => EMAIL_ADDRESS,
                 'subject' => $comments_watcher_email_subject,
                 'format' => 'html',
-                'body' => $body
+                'body' => $body,
+                'queue' => true
             ));
         }
     }
@@ -1397,6 +1418,24 @@ function email($properties)
         return true;
     }
 
+    // 'queue' => true asks for the message to be handed to the general job
+    // (includes/fn/mail_queue.php) instead of being sent within this request.
+    if (!empty($properties['queue'])) {
+        unset($properties['queue']);
+
+        if (pg_mail_job_alive()) {
+            if (pg_mail_enqueue($properties) > 0) {
+                pg_mail_last_error('');
+                return true;
+            }
+        }
+
+        // Queue unavailable or the general job has not run lately: send now,
+        // as before, so no site that has not set up cron waits on a queue.
+    }
+
+    pg_mail_last_error('');
+
     $mail = new PHPMailer(true);
 
     // Language setting
@@ -1430,6 +1469,7 @@ function email($properties)
             $mail->Port = (defined('CAMPAIGN_SMTP_PORT') && CAMPAIGN_SMTP_PORT !== '') ? CAMPAIGN_SMTP_PORT : 587;
         } elseif (!function_exists('mail')) {
             log_activity(lang('Email could not be sent because the PHP mail() function is disabled.'));
+            pg_mail_last_error(lang('Email could not be sent because the PHP mail() function is disabled.'));
             return false;
         }
 
@@ -1470,11 +1510,41 @@ function email($properties)
             $mail->addReplyTo($reply_to);
         }
 
-        // Attachments: each an array with name and content (the bytes, not a
-        // path) and optionally type. Anything shaped differently is skipped.
+        // One-click unsubscribe for commercial campaigns (RFC 8058). The
+        // mailto part goes to whoever reads the replies.
+        $list_unsubscribe_headers = array();
+
+        if (($type === 'campaign') && isset($properties['purpose']) && ($properties['purpose'] === 'commercial')) {
+            $list_unsubscribe_headers = pg_mail_list_unsubscribe_for(
+                is_array($to) ? (string) reset($to) : (string) $to,
+                !empty($reply_to) ? $reply_to : $from_email_address);
+
+            foreach ($list_unsubscribe_headers as $header_name => $header_value) {
+                $mail->addCustomHeader($header_name, $header_value);
+            }
+        }
+
+        // Attachments: each an array with name and content (the bytes) and
+        // optionally type, or with path (a file on this server) and
+        // optionally name and type. A path is read at send time, which is
+        // what lets a queued message carry a large file; the file is left
+        // where it is, deleting it is the caller's decision. A missing file
+        // and anything shaped differently are skipped.
         if (!empty($properties['attachments']) && is_array($properties['attachments'])) {
             foreach ($properties['attachments'] as $attachment) {
-                if (!is_array($attachment) || !isset($attachment['name'], $attachment['content'])) {
+                if (!is_array($attachment)) {
+                    continue;
+                }
+                if (isset($attachment['path']) && ((string) $attachment['path'] !== '')) {
+                    $attachment_path = (string) $attachment['path'];
+                    if (!is_file($attachment_path) || !is_readable($attachment_path)) {
+                        continue;
+                    }
+                    $attachment_name = (isset($attachment['name']) && ((string) $attachment['name'] !== '')) ? (string) $attachment['name'] : basename($attachment_path);
+                    $mail->addAttachment($attachment_path, $attachment_name, PHPMailer::ENCODING_BASE64, isset($attachment['type']) ? (string) $attachment['type'] : '');
+                    continue;
+                }
+                if (!isset($attachment['name'], $attachment['content'])) {
                     continue;
                 }
                 $mail->addStringAttachment((string) $attachment['content'], (string) $attachment['name'], PHPMailer::ENCODING_BASE64, isset($attachment['type']) ? (string) $attachment['type'] : '');
@@ -1508,11 +1578,20 @@ function email($properties)
             // its signature. Encoding the parts before signing leaves a relay
             // nothing to convert (RFC 6376, section 5.3).
             $mail->Encoding = PHPMailer::ENCODING_QUOTED_PRINTABLE;
+
+            // RFC 8058 requires both List-Unsubscribe headers to be covered by
+            // the DKIM signature; a receiver offers the one-click button only
+            // then. PHPMailer signs a fixed set of headers unless told more.
+            if ($list_unsubscribe_headers) {
+                $mail->DKIM_extraHeaders = array_keys($list_unsubscribe_headers);
+            }
         }
 
         return $mail->send();
 
     } catch (Exception $e) {
+        $error = ($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage();
+
         $log = lang('The following email could not be delivered.') . "\n\n";
         $log .= lang('Error') . ': ' . $mail->ErrorInfo . "\n\n";
         $log .= lang('Subject') . ': ' . $subject . "\n";
@@ -1545,6 +1624,11 @@ function email($properties)
                 'notify_sender' => false
             ]);
         }
+
+        // Set last: the notice to the sender above is an email() call of its
+        // own and resets the value.
+        pg_mail_last_error($error);
+
         return false;
     }
 }
@@ -1692,7 +1776,8 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             'from_email_address' => $from_email_address,
             'subject' => $subject,
             'format' => $custom_form['submitter_email_format'],
-            'body' => $body
+            'body' => $body,
+            'queue' => true
         ));
 
     }
@@ -1766,7 +1851,8 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
                 'reply_to' => $submitter_email_address,
                 'subject' => $subject,
                 'format' => $custom_form['administrator_email_format'],
-                'body' => $body
+                'body' => $body,
+                'queue' => true
             ));
 
         }

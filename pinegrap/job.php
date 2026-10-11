@@ -391,8 +391,9 @@ pg_cron_ran('job');
 // Webhook deliveries, when the operator has switched them on.
 //
 // Run here rather than through the dispatcher below: that hands out one job per
-// tick and holds a site-wide lock, so an event could wait behind a backup, and a
-// notification that arrives late is most of the way to one that did not arrive.
+// tick, so an event would wait its turn behind every other due job in its lane,
+// and a notification that arrives late is most of the way to one that did not
+// arrive.
 // The cost when nothing is queued is one indexed read, which is why it can
 // afford a turn on every tick.
 //
@@ -418,6 +419,24 @@ if (pg_cron_job_is_enabled('push_job')) {
     pg_push_queue_run(10);
 
     pg_cron_ran('push_job');
+
+}
+
+// Queued e-mail (includes/fn/mail_queue.php): password resets, order receipts,
+// form and comment notifications that email() handed over instead of sending
+// inside the visitor's request.
+//
+// Unconditional, unlike the two passes above: email() queues a message only
+// while this job keeps finishing, so this pass is the only thing that sends
+// those rows and must not depend on a setting. With nothing due it is one
+// indexed read. The budget is kept small for the same reason as the webhook
+// pass: an SMTP server that does not answer costs its full timeout per
+// message, and what is left over waits for the next tick.
+if (pg_mail_queue_ready()) {
+
+    pg_mail_queue_run(25, 20);
+
+    pg_cron_ran('mail_job');
 
 }
 
@@ -465,8 +484,14 @@ if (
 // the very last thing this script does. Several of those scripts call exit()
 // from inside their own control flow, which ends this process too - harmless
 // here, because there is nothing left to run and the completion above is
-// already recorded. Nothing happens at all until an operator selects jobs on
-// the settings screen.
+// already recorded. That is also why a tick never includes a second job.
+// Nothing happens at all until an operator selects jobs on the settings
+// screen.
+//
+// The lock is the chosen job's own, and jobs share two lanes: while a heavy
+// job such as the backup holds its lane, the next ticks still hand out the
+// light jobs, and the same job is never started twice. See
+// pg_cron_dispatch_next().
 //
 // The include is at global scope on purpose. Done from inside a function, the
 // job's top-level code would run in that function's local scope, and every
@@ -479,8 +504,10 @@ $dispatch_script = pg_cron_dispatch_next();
 
 if ($dispatch_script !== '') {
 
-    // Registered before the include so the lock is released even when the job
-    // exits from the middle of its own flow: shutdown handlers still run.
+    // Registered before the include so the job's lock is released even when
+    // the job exits from the middle of its own flow: shutdown handlers still
+    // run. Only a process killed outright skips it, and the lock then expires
+    // on its own.
     register_shutdown_function('pg_cron_dispatch_finished');
 
     // Each of these scripts is written to be a whole request, and some print an

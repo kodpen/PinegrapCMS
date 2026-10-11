@@ -54,6 +54,18 @@ body.pg-guest {
   white-space: nowrap;
 }
 
+/* A channel shared to read only says so under its name. */
+.pg-guest-readonly-badge {
+  display: inline-block;
+  margin-top: .15rem;
+  padding: .05rem .5rem;
+  border-radius: 1rem;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+  font-size: .72rem;
+  font-weight: 600;
+}
+
 .pg-guest-staff {
   display: flex;
   flex: none;
@@ -600,6 +612,38 @@ body.pg-guest {
 .ws-calc-remark td {
   font-size: .8rem;
   color: var(--bs-secondary-color);
+}
+
+.ws-calc-group th {
+  padding-top: .45rem;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--bs-secondary-color);
+}
+
+.ws-calc-in th,
+.ws-calc-remark.ws-calc-in td {
+  padding-left: 1.25rem;
+}
+
+.ws-calc-total th,
+.ws-calc-total td {
+  font-weight: 700;
+  border-top: 1px solid var(--bs-border-color-translucent);
+  background: var(--bs-tertiary-bg);
+}
+
+.ws-calc-func {
+  margin-left: .25rem;
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+
+.ws-calc-gap td {
+  height: .6rem;
+  padding: 0;
+  border-bottom: 0;
 }
 
 /* Files, polls and task cards. */

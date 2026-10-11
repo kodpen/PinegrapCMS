@@ -1436,6 +1436,28 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0)
 
         $action = (string) ($change['action'] ?? 'update');
 
+        // Many records at once, by a rule (bulk.php).
+        if ($action === 'bulk') {
+            $bulk = is_array($change['bulk'] ?? null) ? $change['bulk'] : array();
+            $bulk['type'] = $type;
+            $checked = ws_bulk_input($asker, $bulk);
+
+            if (!$checked['ok']) {
+                return $refuse($checked['error']);
+            }
+
+            $out['rows'][] = array(
+                'type'      => $type,
+                'action'    => 'bulk',
+                'record_id' => 0,
+                'fields'    => $checked['spec'],
+                'reason'    => trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($change['reason'] ?? '')), 0, 500)),
+                'snapshot'  => array('matched' => $checked['matched'], 'sample' => $checked['sample']),
+            );
+
+            continue;
+        }
+
         if (!in_array($action, $types[$type]['actions'], true)) {
             return $refuse(lang(array('string' => 'A {var:1} takes the actions {var:2}.', 'vars' => array($type, implode(', ', $types[$type]['actions'])))));
         }
@@ -1883,6 +1905,55 @@ function ws_changes_map($viewer, $message_ids)
             $can_post[$channel_id] = ws_can_post_channel($viewer, ws_channel($channel_id));
         }
 
+        // Many records at once (bulk.php): the rule in words, how many it
+        // reaches, a few of them before and after, and how far it has got.
+        if ($action === 'bulk') {
+            $right = $types[$type]['right'];
+            $sees = ($right === '') || !empty($viewer[$right]);
+            $asker = ((int) $row['requested_by'] === (int) $viewer['id']);
+            $pending = ($row['status'] === 'pending');
+            $may = $asker && $sees && ws_change_allowed($viewer, $type, 0);
+            $bulk = ws_bulk_present($row);
+            $spec = json_decode((string) $row['fields'], true);
+            $items = array();
+
+            foreach ($sees ? $bulk['sample'] : array() as $sample) {
+                $items[] = array('label' => (string) $sample['label'], 'from' => (string) $sample['from'], 'to' => (string) $sample['to'], 'html' => '');
+            }
+
+            $out[(int) $row['message_id']][] = array(
+                'id'           => (int) $row['id'],
+                'type'         => $type,
+                'type_label'   => $types[$type]['label'],
+                'action'       => 'bulk',
+                'action_label' => lang('Bulk change'),
+                'record_html'  => '',
+                'record_label' => $sees ? $bulk['summary'] : '',
+                'fields'       => $items,
+                'count'        => $bulk['total'],
+                'hidden'       => !$sees,
+                'reason'       => $sees ? ws_plain_text($viewer, (string) $row['reason'], $refs) : '',
+                'warning'      => '',
+                'bulk'         => array(
+                    'total'    => $bulk['total'],
+                    'delete'   => is_array($spec) && (($spec['action'] ?? '') === 'delete'),
+                    'progress' => $bulk['progress'],
+                    'mine'     => $asker,
+                ),
+                'status'       => (string) $row['status'],
+                'error'        => (string) $row['error'],
+                'asker'        => (string) ($people[(int) $row['requested_by']]['name'] ?? ''),
+                'decided_by'   => (string) ($people[(int) $row['decided_by']]['name'] ?? ''),
+                'decided'      => ((int) $row['decided_at'] > 0) ? ws_time_label($row['decided_at']) : '',
+                'decision_id'  => (int) $row['decision_message_id'],
+                'can_apply'    => $pending && $may && !empty($can_post[$channel_id]),
+                'no_right'     => $pending && $asker && !$may,
+                'can_dismiss'  => $pending && !empty($can_post[$channel_id]) && ($asker || ((int) $viewer['role'] < 3)),
+            );
+
+            continue;
+        }
+
         $right = $types[$type]['right'];
         $sees = ($right === '') || !empty($viewer[$right]);
         $asker = ((int) $row['requested_by'] === (int) $viewer['id']);
@@ -2064,6 +2135,20 @@ function ws_change_apply($viewer, $change_id)
         ws_message_touch($change['message_id']);
     };
 
+    // Many records at once (bulk.php): the work starts here and goes on a
+    // slice at a time; the decision comes when it is done.
+    if ($action === 'bulk') {
+        $started = ws_bulk_start($viewer, $change);
+
+        if (!$started['ok']) {
+            $release('failed', $started['error']);
+
+            return $fail($started['error']);
+        }
+
+        return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
+    }
+
     $record = null;
 
     if ($action !== 'create') {
@@ -2205,6 +2290,11 @@ function ws_change_apply($viewer, $change_id)
 
     if ($decision_id > 0) {
         db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $decision_id . "'");
+
+        // Applied in a discussion: the channel's copy is locked as well.
+        if (function_exists('ws_thread_copy_sync')) {
+            ws_thread_copy_sync($decision_id);
+        }
     }
 
     db("UPDATE ws_ai_changes SET status = 'applied', error = '', record_id = '" . $record_id . "', decision_message_id = '" . $decision_id . "',

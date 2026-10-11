@@ -110,6 +110,42 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Two-Step Verification ──
+//
+// Without the tables, ENCRYPTION_KEY or openssl the select is disabled: a
+// disabled control is not posted, and security.save.php leaves the column as
+// it is when the field is missing.
+$mfa_role_options = '';
+
+foreach (array(
+    99 => lang('Not required (each person may turn it on for their own account)'),
+    0  => lang('Administrators'),
+    1  => lang('Administrators and designers'),
+    2  => lang('Administrators, designers and managers'),
+    3  => lang('Everyone who signs in'),
+) as $mfa_role_value => $mfa_role_label) {
+    $mfa_role_options .= '<option value="' . $mfa_role_value . '"' . (($mfa_required_role === $mfa_role_value) ? ' selected="selected"' : '') . '>' . h($mfa_role_label) . '</option>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-mfa" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Two-Step Verification') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">
+                                        <div class="col-12">
+                                            <label for="mfa_required_role" class="form-label">' . lang('Required for') . '</label>
+                                            <select name="mfa_required_role" id="mfa_required_role" class="form-select pg-f-md"' . ($mfa_available ? '' : ' disabled="disabled"') . '>' . $mfa_role_options . '</select>
+                                            <div class="form-text">' . lang('Two-step verification asks for a code from an authenticator app after the password. People in a required role who have not set it up are asked to when they next sign in. Anybody can turn it on from their account page.') . '</div>
+                                            ' . ($mfa_available ? '' : '<div class="alert alert-warning mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.') . '</div>') . '
+                                        </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Sign in with Google ──
 $pg_settings_cards[] = '
     <div id="pgset-signin" class="pg-set-card">

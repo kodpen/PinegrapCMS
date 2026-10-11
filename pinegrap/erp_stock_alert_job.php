@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Scheduled job: low stock notices. Tells the panel bell and the subscribed
- * devices about the products that have dropped to or below their minimum
- * since the last run, when the ERP settings ask for it. The work lives in
+ * Scheduled job: low stock and quote notices. Tells the panel bell and the
+ * subscribed devices about the products that have dropped to or below their
+ * minimum since the last run, and about the open quotes about to run out,
+ * when the ERP settings ask for it. The work lives in
  * includes/erp/alerts.php; this script only decides who may start it.
  *
  * Runs from the job dispatcher, from a crontab line, or by hand from the
@@ -29,10 +30,12 @@ if (!pg_cron_is_background_run()) {
 }
 
 $result = array('ran' => false, 'count' => 0, 'notification_id' => 0);
+$quotes = array('ran' => false, 'count' => 0, 'notification_id' => 0);
 
 if (defined('ERP_ENABLED') && ERP_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
     $result = erp_alert_low_stock();
+    $quotes = erp_alert_quote_expiry();
 }
 
 if (function_exists('pg_cron_ran')) {
@@ -41,6 +44,7 @@ if (function_exists('pg_cron_ran')) {
 
 if (php_sapi_name() === 'cli') {
     print 'low stock notices: ' . ($result['ran'] ? ((int) $result['count'] . ' product(s) announced') : 'off') . "\n";
+    print 'quote notices: ' . ($quotes['ran'] ? ((int) $quotes['count'] . ' quote(s) announced') : 'off') . "\n";
 } elseif (!pg_cron_is_background_run()) {
     go(PATH . SOFTWARE_DIRECTORY . '/erp_stock_minimums.php?show=low');
 }
