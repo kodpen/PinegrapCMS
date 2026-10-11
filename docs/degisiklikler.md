@@ -13,7 +13,7 @@ Yeniden eskiye sıralıdır. 2026.2.4 öncesi için `install/index.php` içindek
 2026.4.6 `a05c986`, 2026-10-05). Release dalı main'in üstünde tek bir
 "Release 2026.4.8" commit'idir: ağacı `development`'ınkidir, yalnız
 `CLAUDE.md`, `.claude/` ve `docs/` çıkarılmıştır. `tests/` ve `tools/` bu
-sürümde yayına girdi, aynı gün ayrı bir PR ile main'den kaldırıldı (ürün
+sürümde yayına girdi, aynı gün PR #237 ile main'den kaldırıldı (ürün
 sahibinin kararı): 2026.4.9'dan itibaren release ağacından `tools/` ve
 `tests/` de çıkarılır, ikisi yalnız `development`'ta izlenir. GitHub
 kontrolünün (`php-checks.yml`) PHP adımları `tools/` olmayan dalda atlanır;
