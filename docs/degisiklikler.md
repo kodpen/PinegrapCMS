@@ -8,12 +8,15 @@ Yeniden eskiye sıralıdır. 2026.2.4 öncesi için `install/index.php` içindek
 
 ## Dağıtım durumu
 
-**Yayındaki en güncel sürüm: 2026.4.7** — GitHub release `v2026.4.7`
-(PR #189, etiket `8eb2716`, 2026-10-06; önceki 2026.4.6 `a05c986`, 2026-10-05;
-2026.4.5 `d50ecd0`, 2026-09-28). Artık **kapalıdır**: `2026.4.7.php`'nin
-getirdiği şemaya, `versions.php` satırına ve changelog başlığına dokunulmaz. Etiket taşınmaz — bütünlük
-denetiminin referansı bu etiketin ağacıdır; sunucu paketi de bu etiketten
-üretilir.
+**Yayındaki en güncel sürüm: 2026.4.8** — GitHub release `v2026.4.8`
+(`release/2026.4.8` dalı, 2026-10-11; önceki 2026.4.7 `8eb2716`, 2026-10-06;
+2026.4.6 `a05c986`, 2026-10-05). Release dalı main'in üstünde tek bir
+"Release 2026.4.8" commit'idir: ağacı `development`'ınkidir, yalnız
+`CLAUDE.md`, `.claude/` ve `docs/` çıkarılmıştır (`tests/` ve `tools/`
+yayına girer). Artık **kapalıdır**: `2026.4.8.php`'nin getirdiği şemaya,
+`versions.php` satırına ve changelog başlığına dokunulmaz. Etiket taşınmaz —
+bütünlük denetiminin referansı bu etiketin ağacıdır; sunucu paketi de bu
+etiketten üretilir.
 
 **Yayına girmeyenler (ürün sahibinin kararı, 2026-10-05):** barındırma
 platformuna (pinegrap.site) özgü özellikler — barındırılan site kipi
@@ -26,23 +29,15 @@ etkisizdir ve yerinde kalır. 2026.4.6 yayınında bu yüzden changelog'daki
 "Barındırılan site ve tanıtım sitesi" bölümü kaldırıldı, genel güvenlik
 maddeleri "Oturum, hesap ve güvenlik"e taşındı.
 
-**Hazırlanan (açık) sürüm: 2026.4.8.** Yeni bir şema adımı
-`includes/migrations/2026.4.8.php` dosyasındaki `upgrade_to_2026_4_8()`
-girişine `upgrade_2026_4_8_<konu>()` alt adımı olarak eklenir. Alt adım
-etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
-8.58–8.69 ve 8.90'dan sonrası, API 8.70–8.79, Çalışma Alanı 8.80–8.89 ve
-8.110–8.119. Dosya ve `versions.php`'deki `'2026.4.8'` satırı ilk şema
-adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
-panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
-hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.89, 8.110–8.112, 8.30–8.33, 8.40 ve
-8.10–8.20). Çalışma Alanı'nın 8.80–8.89 aralığı doldu, 8.110–8.112 kullanıldı;
-sıradaki Çalışma Alanı adımı 8.113–8.119 aralığından alınır. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
-maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
-değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
-demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
-değişikliğiyle mi açılsın" sorusu ürün sahibinde (aşağıda "Dosya bütünlüğü
-GitHub etiketinden denetleniyor" → Açık kalan).
+**Sıradaki sürüm: 2026.4.9** (henüz açılmadı). İlk şema adımı
+`includes/migrations/2026.4.9.php` → `upgrade_to_2026_4_9()` girişine
+`upgrade_2026_4_9_<konu>()` alt adımı olarak girer; dosya ve `versions.php`'deki
+`'2026.4.9'` satırı o adımla birlikte açılır ve satırı ekleyen dev'de
+yükseltmeyi hemen koşar. Alt adım etiketleri 2026.4.8'deki aralık düzenini
+önek `9.` ile korur: genel işler 9.1'den, ERP 9.58–9.69 ve 9.90'dan sonrası,
+API 9.70–9.79, Çalışma Alanı 9.80–9.89 ve 9.110–9.119. Yeni bölüm başlıkları
+`## 2026.4.9 — …`; `changelog.txt`'de maddeler en üste açılacak `2026.4.9`
+bölümüne girer. Geliştirme `development` dalında sürer.
 
 2026.4.4'ün geçmişi: 2026.4.3'ten sonra dev makinada biriken sekiz çalışma
 numarası (4.4–4.11) 2026-08-28'de tek 2026.4.4 olarak birleştirildi
@@ -54,7 +49,7 @@ anlatımıdır — kullanıcı o sürümü hiç görmediğinden geliştirme içi
 düzeltmeler [DÜZELTME] olarak yazılmaz, geliştirme sırasında eklenip
 kaldırılan iç adreslerden (örn. view_folder_and_files.php) söz edilmez. Dev
 veritabanı açık sürümü zaten koşmuşsa yeniden koşturmak için
-`config.version` bir önceki yayınlanmış sürüme (bugün `2026.4.7`) çekilir;
+`config.version` bir önceki yayınlanmış sürüme (bugün `2026.4.8`) çekilir;
 adımlar idempotent olduğu için uygulanmış olanlar atlanır. Yeni numara
 yalnız yayın sonrası açılır.
 

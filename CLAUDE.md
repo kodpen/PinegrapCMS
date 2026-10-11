@@ -51,12 +51,16 @@ zaten verilmiş kararlar listeleniyor.
 - **Bu depo yalnız ürünü içerir. Kod tabanı `pinegrap/` altındadır ve
   değişiklikler oraya yazılır.** Bu dosyadaki ve skill'lerdeki yollar o köke
   göredir: `includes/fn/core.php` demek `pinegrap/includes/fn/core.php` demektir.
-- **Sürüm durumu (2026-10-06):** 2026.4.7 yayında (GitHub release `v2026.4.7`,
-  etiket `8eb2716`) ve **kapalıdır**; etiket taşınmaz. Açık sürüm **2026.4.8**:
-  yeni şema adımı `includes/migrations/2026.4.8.php` → `upgrade_to_2026_4_8()`
-  girişine `upgrade_2026_4_8_<konu>()` alt adımı olarak girer (dosya ve
-  `versions.php` satırı ilk şema adımıyla açılır); `changelog.txt`'de yeni
-  maddeler en üste açılacak `2026.4.8` bölümüne yazılır. Barındırma platformuna
+- **Sürüm durumu (2026-10-11):** 2026.4.8 yayında (GitHub release `v2026.4.8`,
+  `release/2026.4.8` dalından main'e) ve **kapalıdır**; etiket taşınmaz.
+  Sıradaki sürüm **2026.4.9** henüz açılmadı: ilk şema adımı
+  `includes/migrations/2026.4.9.php` → `upgrade_to_2026_4_9()` girişine
+  `upgrade_2026_4_9_<konu>()` alt adımı olarak girer (dosya ve `versions.php`
+  satırı o adımla açılır); `changelog.txt`'de yeni maddeler en üste açılacak
+  `2026.4.9` bölümüne yazılır. Geliştirme `development` dalında sürer; yayın,
+  `development`'ın ağacından `CLAUDE.md`, `.claude/` ve `docs/` çıkarılarak
+  main'in üstüne kurulan tek "Release <sürüm>" commit'li `release/<sürüm>`
+  dalıyla, PR ve etiketle yapılır. Barındırma platformuna
   (pinegrap.site) özgü özellikler — `PG_HOSTED` / `PG_DEMO` kipleri —
   changelog'a, README'ye ve GitHub release notuna yazılmaz. Güncel durum her
   zaman `docs/degisiklikler.md` → "Dağıtım durumu".
