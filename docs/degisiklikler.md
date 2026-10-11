@@ -9,7 +9,7 @@ Yeniden eskiye sıralıdır. 2026.2.4 öncesi için `install/index.php` içindek
 ## Dağıtım durumu
 
 **Yayındaki en güncel sürüm: 2026.4.8** — GitHub release `v2026.4.8`
-(`release/2026.4.8` dalı, 2026-10-11; önceki 2026.4.7 `8eb2716`, 2026-10-06;
+(PR #236, etiket `348b8a2`, 2026-10-11; önceki 2026.4.7 `8eb2716`, 2026-10-06;
 2026.4.6 `a05c986`, 2026-10-05). Release dalı main'in üstünde tek bir
 "Release 2026.4.8" commit'idir: ağacı `development`'ınkidir, yalnız
 `CLAUDE.md`, `.claude/` ve `docs/` çıkarılmıştır (`tests/` ve `tools/`

@@ -52,7 +52,7 @@ zaten verilmiş kararlar listeleniyor.
   değişiklikler oraya yazılır.** Bu dosyadaki ve skill'lerdeki yollar o köke
   göredir: `includes/fn/core.php` demek `pinegrap/includes/fn/core.php` demektir.
 - **Sürüm durumu (2026-10-11):** 2026.4.8 yayında (GitHub release `v2026.4.8`,
-  `release/2026.4.8` dalından main'e) ve **kapalıdır**; etiket taşınmaz.
+  PR #236, etiket `348b8a2`) ve **kapalıdır**; etiket taşınmaz.
   Sıradaki sürüm **2026.4.9** henüz açılmadı: ilk şema adımı
   `includes/migrations/2026.4.9.php` → `upgrade_to_2026_4_9()` girişine
   `upgrade_2026_4_9_<konu>()` alt adımı olarak girer (dosya ve `versions.php`
