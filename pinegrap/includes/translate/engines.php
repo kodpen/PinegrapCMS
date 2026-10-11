@@ -32,7 +32,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/translate/claude.php');
  *
  *   kind     server  - runs here, in the request or the scheduled job
  *            browser - runs in the operator's browser (the panel sends texts
- *                      and takes answers back)
+ *                      and takes answers back): the Translator API in runs
+ *                      of plain text (chrome), or the browser's built-in
+ *                      language model, Gemini Nano through the Prompt API,
+ *                      one whole text at a time with its context, the
+ *                      glossary and the style note (chrome_ai)
  *            queue   - an outside agent (Claude's routine) is told there is
  *                      work and fetches it through the external API
  *            panel   - no engine at all: typed or imported by hand
@@ -76,6 +80,13 @@ function pg_tr_engines()
             'label'  => lang('Browser (Chrome Translator API)'),
             'kind'   => 'browser',
             'html'   => false,
+            'ready'  => true,
+            'reason' => '',
+        ),
+        'chrome_ai' => array(
+            'label'  => lang('Browser AI (Gemini Nano)'),
+            'kind'   => 'browser',
+            'html'   => true,
             'ready'  => true,
             'reason' => '',
         ),

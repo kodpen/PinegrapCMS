@@ -310,6 +310,9 @@ function pg_designer_screen_render($ctx)
         // Add mode from a template: the editor asks for its pages
         // (designer/template_prepare) behind the "preparing" curtain.
         'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
+        // What to do once open, from the design chooser's link: a new page,
+        // a page from another design or a copy of one (pg_designer_start_action()).
+        'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
         'themes'        => pg_design_theme_catalog(),
@@ -483,6 +486,7 @@ function pg_designer_screen_render($ctx)
                 ' . pg_designer_make_template_modal() . '
             </form>
         </main>
+        ' . ($access === PG_DESIGNER_ACCESS_FULL ? pg_designer_target_modal() : '') . '
         ' . get_codemirror_includes() . '
         ' . get_image_editor_includes() . '
         <!-- The designer\'s data, and its translation map, are declared BEFORE
@@ -1247,6 +1251,72 @@ function pg_designer_new_design_modal($from_pages)
 }
 
 /**
+ * What the editor does once it is open, read from the link the design
+ * chooser makes (pg_designer_target_modal()):
+ *
+ *   ?new_page=1&folder=F  a new page tab, active and named on the tab
+ *   ?pick_page=P          page P of another design as a tab; it moves to
+ *                         this design when the operator publishes (the
+ *                         "Select Page" picker's way)
+ *   ?copy_page=P          a copy of page P as a new draft tab, under a name
+ *                         no page has yet
+ *   ?folder=F             a new design: its first page goes to folder F
+ *
+ * Design-level only: a content-level operator adds no pages. A folder the
+ * operator may not edit is dropped (the page goes to the root folder, as
+ * the save does for no folder). Null when there is nothing to do.
+ *
+ * @param array $user
+ * @param int   $style_id 0 for a new design
+ * @return array|null kind, folder | page_id, from_id, from_name [, name]
+ */
+function pg_designer_start_action($user, $style_id)
+{
+    require_once(dirname(__FILE__) . '/designer_access.php');
+    if (!pg_designer_is_full($user)) return null;
+    $style_id = (int)$style_id;
+
+    $folder = isset($_GET['folder']) ? (int)$_GET['folder'] : 0;
+    if ($folder > 0 && (!db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '$folder'") || !check_edit_access($folder))) {
+        $folder = 0;
+    }
+
+    if ($style_id <= 0) {
+        return $folder > 0 ? array('kind' => 'folder', 'folder' => $folder) : null;
+    }
+    if (!empty($_GET['new_page'])) {
+        return array('kind' => 'new_page', 'folder' => $folder);
+    }
+
+    foreach (array('pick_page' => 'pick', 'copy_page' => 'copy') as $param => $kind) {
+        $page_id = isset($_GET[$param]) ? (int)$_GET[$param] : 0;
+        if ($page_id <= 0) continue;
+        $row = db_item(
+            "SELECT page.page_id, page.page_name, page.page_folder, page.page_style, style.style_name
+             FROM page
+             LEFT JOIN style ON style.style_id = page.page_style
+             WHERE page.page_id = '$page_id' AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+             LIMIT 1");
+        // A page already on this design has nowhere to move; one the
+        // operator may not edit is not theirs to move or copy.
+        if (!is_array($row) || !check_edit_access((int)$row['page_folder'])) return null;
+        if ($kind === 'pick' && (int)$row['page_style'] === $style_id) return null;
+        $out = array(
+            'kind'      => $kind,
+            'page_id'   => $page_id,
+            'from_id'   => (int)$row['page_style'],
+            'from_name' => (string)$row['style_name'],
+        );
+        if ($kind === 'copy') {
+            $out['name'] = get_unique_name(array('name' => $row['page_name'] . '-' . lang('copy'), 'type' => 'page'));
+        }
+        return $out;
+    }
+
+    return null;
+}
+
+/**
  * "Choose a Template": the templates this installation ships. Choosing one
  * opens the editor with the template's pages as unsaved tabs; nothing is
  * created until the design is published.
@@ -1390,6 +1460,15 @@ function pg_designer_template_modal($templates, $from_pages)
                         .then(function (ok) { if (ok) run(); });
                 } else if (window.confirm(msg)) { run(); }
             });
+            // ?start=template, from the Choose a Template menu entry, opens the gallery on load.
+            (function () {
+                if (new URLSearchParams(window.location.search).get("start") !== "template") return;
+                var open = function () {
+                    var modal = document.getElementById("sdTemplateModal");
+                    if (modal && window.bootstrap && window.bootstrap.Modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                };
+                if (document.readyState === "complete") open(); else window.addEventListener("load", open);
+            })();
         </script>';
 }
 
@@ -1864,19 +1943,40 @@ function pg_designer_resolve_tab_values($value, $tab_ids)
  * Only the widgets referenced by the saved trees are read; each config with
  * a key in it is rewritten once. The editor makes the same substitution in
  * its cache from the save reply, so the two sides agree without a reload.
+ *
+ * A widget can sit inside a shared component the page places (the login
+ * region in an account bar) rather than on the page itself, so the trees of
+ * the components found are read too, as deep as the renderer follows them.
  */
 function pg_designer_resolve_tab_refs($pages, $tab_ids)
 {
+    $find_ids = function ($json, &$into) {
+        $json = (string)$json;
+        if (strpos($json, '"sharedId"') === false) return;
+        if (preg_match_all('/"sharedId":\s*"?(\d+)"?/', $json, $mm)) {
+            foreach ($mm[1] as $sid) { $sid = (int)$sid; if ($sid > 0) $into[$sid] = true; }
+        }
+    };
     $sids = array();
     foreach ((array)$pages as $p) {
         if (!is_array($p) || !isset($p['tree_json'])) continue;
-        $json = (string)$p['tree_json'];
-        if (strpos($json, '"sharedId"') === false) continue;
-        if (preg_match_all('/"sharedId":\s*"?(\d+)"?/', $json, $mm)) {
-            foreach ($mm[1] as $sid) { $sid = (int)$sid; if ($sid > 0) $sids[$sid] = true; }
-        }
+        $find_ids($p['tree_json'], $sids);
     }
     if (empty($sids)) return;
+
+    // The components inside the ones found, level by level; a cycle or a
+    // chain deeper than the renderer draws (8) stops here as it does there.
+    $frontier = $sids;
+    for ($depth = 0; $depth < 8 && $frontier; $depth++) {
+        $nested = array();
+        foreach ((array)db_items("SELECT tree_json FROM shared_components
+                                  WHERE id IN (" . implode(',', array_keys($frontier)) . ")
+                                    AND tree_json LIKE '%sharedId%'") as $row) {
+            $find_ids($row['tree_json'], $nested);
+        }
+        $frontier = array_diff_key($nested, $sids);
+        $sids += $frontier;
+    }
     $rows = db_items("SELECT id, system_region_config FROM shared_components
                       WHERE id IN (" . implode(',', array_keys($sids)) . ")
                         AND system_region_config LIKE '%tab:%'");

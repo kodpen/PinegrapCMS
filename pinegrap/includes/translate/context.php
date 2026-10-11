@@ -351,9 +351,14 @@ function pg_tr_package_items($strings, $language)
  *
  * @param string $source
  * @param string $target
+ * @param string $shape  'batch': a JSON list in, one JSON object of id =>
+ *                       translation out (the server and queue engines);
+ *                       'item': one item in, its translation in a
+ *                       "translation" field out (the browser's model, which
+ *                       is small and answers one text at a time)
  * @return string
  */
-function pg_tr_ai_instructions($source, $target)
+function pg_tr_ai_instructions($source, $target, $shape = 'batch')
 {
     $known = pg_tr_known_languages();
     $source_name = isset($known[$source]) ? $known[$source][0] : $source;
@@ -361,14 +366,18 @@ function pg_tr_ai_instructions($source, $target)
 
     $lines = array(
         'You translate the texts of a website from ' . $source_name . ' (' . $source . ') to ' . $target_name . ' (' . $target . ').',
-        'The texts come as a JSON list of items. Each item has an "id", the "text" to translate, and "where" it stands on the site: the page, the kind of field (a heading, a button label, a page title, a meta description, a menu item), and the texts before and after it. Use that only to choose the right wording; translate the text alone.',
+        ($shape === 'item')
+            ? 'Each request is one item as JSON: the "text" to translate, its "format", and "where" it stands on the site: the page, the kind of field (a heading, a button label, a page title, a meta description, a menu item), and the texts before and after it. Use that only to choose the right wording; translate the text alone.'
+            : 'The texts come as a JSON list of items. Each item has an "id", the "text" to translate, and "where" it stands on the site: the page, the kind of field (a heading, a button label, a page title, a meta description, a menu item), and the texts before and after it. Use that only to choose the right wording; translate the text alone.',
         'An item may carry "previous": the wording the text replaced and how that wording was translated. Keep the terms and the tone of that translation where the text still says the same thing.',
         'An item may carry "glossary": terms with the translation to use, or terms to keep exactly as written.',
         'A text of format "inline" is HTML: keep every tag exactly as it is, with its attributes, in the right place around the translated words. Never add or remove a tag.',
         'Tokens such as ^^cart_count^^ or {var:1} are filled in by the site: keep every one of them exactly as written.',
         'Keep numbers, prices, e-mail addresses, URLs and product codes as they are. Translate the words, not the data.',
         'Match the register of a website: a button label stays short, a heading stays a heading, a meta description stays one or two sentences.',
-        'Answer with one JSON object only, no words around it and no code fence: the keys are the ids as strings, the values the translations as strings. Every id of the request appears once. If a text cannot be translated, give its source text back unchanged.',
+        ($shape === 'item')
+            ? 'Answer with one JSON object only: {"translation": "..."}. A text of format "text" stays plain text, without Markdown. If the text cannot be translated, give it back unchanged.'
+            : 'Answer with one JSON object only, no words around it and no code fence: the keys are the ids as strings, the values the translations as strings. Every id of the request appears once. If a text cannot be translated, give its source text back unchanged.',
     );
 
     $note = pg_tr_style_note();

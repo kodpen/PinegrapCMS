@@ -519,10 +519,15 @@ function pg_tr_auto_update($languages, $scope, $user_id = 0)
 }
 
 /**
- * The next batch of a browser engine's job: the waiting texts split into the
- * runs the browser translates, with the source language it translates from.
+ * The next batch of a browser engine's job, with the source language it
+ * translates from. For the Translator API (chrome) the waiting texts are
+ * split into the runs it translates; the browser's language model
+ * (chrome_ai) takes each text whole, with where it stands and the glossary
+ * lines that touch it (pg_tr_package_items()), a few at a time because it
+ * answers in seconds rather than milliseconds.
  *
- * @return array('job' => row, 'items' => array of array(string_id, format, runs))
+ * @return array('job' => row, 'items' => array of array(string_id, format, runs)
+ *               or the items of pg_tr_package_items())
  */
 function pg_tr_job_package($job_id, $limit = 40)
 {
@@ -531,6 +536,12 @@ function pg_tr_job_package($job_id, $limit = 40)
 
     if (!$job) {
         return array('job' => null, 'items' => $items, 'source' => pg_tr_source_language());
+    }
+
+    if ($job['engine'] === 'chrome_ai') {
+        $waiting = pg_tr_job_waiting($job_id, min((int) $limit, 8));
+
+        return array('job' => $job, 'items' => $waiting ? pg_tr_package_items($waiting, $job['language']) : array(), 'source' => pg_tr_source_language());
     }
 
     $keep_terms = pg_tr_keep_terms($job['language']);
@@ -581,9 +592,27 @@ function pg_tr_job_results($job_id, $results, $user_id = 0)
             continue;
         }
 
-        if (!empty($item['error']) || !isset($item['runs']) || !is_array($item['runs'])) {
+        // The browser's language model answers with the whole text; the
+        // checks of pg_tr_accept_result() stand in for the joining.
+        $whole = ($job['engine'] === 'chrome_ai');
+
+        if (!empty($item['error']) || ($whole ? (!isset($item['text']) || !is_string($item['text'])) : (!isset($item['runs']) || !is_array($item['runs'])))) {
             pg_tr_job_item_done($job_id, $string_id, 'failed', !empty($item['error']) ? (string) $item['error'] : 'no answer');
             $summary['failed']++;
+            continue;
+        }
+
+        if ($whole) {
+            $accepted = pg_tr_accept_result($string, $job['language'], $item['text'], $job['engine'], $user_id);
+
+            if ($accepted['ok']) {
+                pg_tr_job_item_done($job_id, $string_id, 'done');
+                $summary['done']++;
+            } else {
+                pg_tr_job_item_done($job_id, $string_id, 'failed', $accepted['error']);
+                $summary['failed']++;
+            }
+
             continue;
         }
 

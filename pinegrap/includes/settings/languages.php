@@ -174,7 +174,7 @@ $output_translation_languages = '
                         <div class="pg-f-md">
                             <label for="translation_add_language" class="form-label">' . lang('Add a language') . '</label>
                             <select name="translation_add_language" id="translation_add_language" class="form-select">' . $output_translation_add_options . '</select>
-                            <div class="form-text">' . lang('The language is added when the settings are saved. A page, file or short link named like its code or prefix would be shadowed by the language directory, so the save stops and lists them when there are any.') . '</div>
+                            <div class="form-text">' . lang('The language is added when the settings are saved. A page, file or short link named like its code or prefix would be shadowed by the language directory, so the save stops and lists them when there are any.') . ' ' . lang('It starts with the browser engine, which needs no key; Claude or another engine can be chosen on its row afterwards.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">

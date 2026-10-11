@@ -189,6 +189,11 @@ if (isset($page_name) && $page_name)
 }
 else
 {
+	// A page in the recycle bin never answers the site root. Sending a page to
+	// the bin clears its home flag (pg_recycle_drop_home()); this keeps a row
+	// that reached the bin some other way from being served, possibly drawn
+	// with a design that no longer exists.
+	$sql_not_binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
 	$query = "SELECT
             page.page_id,
             page.page_name,
@@ -199,7 +204,7 @@ else
             folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE page.page_home = 'yes'
+        WHERE page.page_home = 'yes'" . $sql_not_binned . "
         ORDER BY RAND()
         LIMIT 1";
 	$result = mysqli_query(db::$con, $query) or output_error('Query failed');

@@ -467,7 +467,60 @@ function ws_api_channel_members_remove($params)
    Messages
    --------------------------------------------------------------------------- */
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null)
+/**
+ * The discussions started from a set of messages, as the message object
+ * shows them, and the discussions the copies among them were decided in
+ * (threads.php): one read each for the whole set, and one more for the
+ * moment each discussion was last written in.
+ *
+ * @param array $viewer
+ * @param int[] $message_ids
+ * @return array threads (message id => array), copies (message id => thread id)
+ */
+function ws_api_message_threads($viewer, $message_ids)
+{
+    $out = array('threads' => array(), 'copies' => array());
+
+    if (!function_exists('ws_threads_ready') || !ws_threads_ready()) {
+        return $out;
+    }
+
+    $map = ws_threads_map($viewer, $message_ids);
+    $last = array();
+
+    if (!empty($map)) {
+        $thread_ids = array();
+
+        foreach ($map as $present) {
+            $thread_ids[] = (int) $present['id'];
+        }
+
+        foreach ((array) db_items("SELECT id, last_message_at FROM ws_channels WHERE id IN (" . implode(',', $thread_ids) . ")") as $channel) {
+            $last[(int) $channel['id']] = (int) $channel['last_message_at'];
+        }
+    }
+
+    foreach ($map as $message_id => $present) {
+        $out['threads'][(int) $message_id] = array(
+            'id'              => (int) $present['id'],
+            'title'           => (string) $present['title'],
+            'message_count'   => (int) $present['count'],
+            'last_message_at' => api_time($last[(int) $present['id']] ?? 0),
+            'closed'          => !empty($present['closed']),
+        );
+    }
+
+    // A copy whose discussion is gone says so with thread id 0.
+    foreach (ws_thread_copies_map($message_ids) as $message_id => $copy) {
+        if ((int) $copy['thread_id'] > 0) {
+            $out['copies'][(int) $message_id] = (int) $copy['thread_id'];
+        }
+    }
+
+    return $out;
+}
+
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null)
 {
     if ($reactions === null) {
         $reactions = ws_reactions_map(array($row['id']), $viewer);
@@ -476,6 +529,11 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     // The read receipt it asks for (acks.php).
     if ($acks === null) {
         $acks = function_exists('ws_acks_map') ? ws_acks_map(array($row), $viewer) : array();
+    }
+
+    // The discussion about it, or the one it was copied from (threads.php).
+    if ($threads === null) {
+        $threads = ws_api_message_threads($viewer, array($row['id']));
     }
 
     $ack = $acks[(int) $row['id']] ?? null;
@@ -528,6 +586,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
             'total'  => ($ack !== null) ? (int) $ack['total'] : 0,
             'mine'   => ($ack !== null) && !empty($ack['mine']),
         ),
+        'thread'         => $deleted ? null : ($threads['threads'][(int) $row['id']] ?? null),
+        'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -549,6 +609,8 @@ function ws_api_message_schema()
         'edited'      => 'boolean',
         'reactions'   => array(array('emoji' => 'string', 'count' => 'integer')),
         'ack'         => array('wanted' => 'boolean', 'count' => 'integer', 'total' => 'integer', 'mine' => 'boolean'),
+        'thread'         => array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean'),
+        'from_thread_id' => 'integer?',
         'created_at'  => 'string',
     );
 }
@@ -598,10 +660,11 @@ function ws_api_messages_list($params)
 
     $reactions = ws_reactions_map($ids, $viewer);
     $acks = function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array();
+    $threads = ws_api_message_threads($viewer, $ids);
     $out = array();
 
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads);
     }
 
     api_ok_list($out, $limit);
@@ -616,8 +679,34 @@ function ws_api_messages_create($params)
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
     }
 
+    $kind = (string) ($params['kind'] ?? 'message');
+    $ack = !empty($params['ack']);
+
+    // A read receipt is asked for only where it may be, and that is settled
+    // before anything is written. The message about to be written comes
+    // after every message the channel holds, so it is never in an earlier
+    // version of the conversation.
+    if ($ack) {
+        if (!function_exists('ws_acks_ready') || !ws_acks_ready()) {
+            api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+        }
+
+        $about_to_write = array(
+            'id'          => PHP_INT_MAX,
+            'channel_id'  => (int) $channel['id'],
+            'kind'        => $kind,
+            'sender_kind' => 'app',
+            'sender_id'   => ws_api_app_id(),
+            'deleted_at'  => 0,
+        );
+
+        if (!ws_ack_can_request($viewer, $about_to_write)) {
+            api_fail(403, 'forbidden', lang('Only the writer of the message, or staff, can ask for read receipts.'));
+        }
+    }
+
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
-        'kind'   => (string) ($params['kind'] ?? 'message'),
+        'kind'   => $kind,
         'app_id' => ws_api_app_id(),
     ));
 
@@ -626,6 +715,10 @@ function ws_api_messages_create($params)
     }
 
     $row = ws_message($result['message_id']);
+
+    if ($ack) {
+        ws_ack_request($viewer, $row, true);
+    }
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
 }
@@ -655,11 +748,13 @@ function ws_api_messages_react($params)
  * Answers that must be the person's own - a read receipt, an approval - are
  * given from a device session only: an application key acts for its owner,
  * and an integration does not read or approve in their name.
+ *
+ * @param string|null $refusal what the refusal says, when not an answer
  */
-function ws_api_person_only()
+function ws_api_person_only($refusal = null)
 {
     if (!function_exists('api_current_device') || (api_current_device() === null)) {
-        api_fail(403, 'forbidden', lang('Only the person, signed in on a device, can give this answer; an application cannot give it for them.'));
+        api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person, signed in on a device, can give this answer; an application cannot give it for them.'));
     }
 }
 
@@ -678,6 +773,41 @@ function ws_api_messages_ack($params)
 
     if (!$result['ok']) {
         api_fail_validation($result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+function ws_api_messages_ack_request($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    if (!function_exists('ws_acks_ready') || !ws_acks_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    if (!ws_ack_can_request($viewer, $message)) {
+        api_fail(403, 'forbidden', lang('Only the writer of the message, or staff, can ask for read receipts.'));
+    }
+
+    $on = !array_key_exists('on', $params) || !empty($params['on']);
+
+    api_dry_run_stop($on ? 'requested' : 'withdrawn', 'workspace_read_receipt', array('message_id' => (int) $message['id'], 'on' => $on));
+
+    $result = ws_ack_request($viewer, $message, $on);
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
     }
 
     $row = ws_message($message['id']);
@@ -886,9 +1016,22 @@ function ws_api_approvals_decide($params)
    Tasks
    --------------------------------------------------------------------------- */
 
-function ws_api_task_present($viewer, $task, $warnings = array())
+/**
+ * One task as the API shows it.
+ *
+ * @param array      $viewer
+ * @param array      $task
+ * @param string[]   $warnings
+ * @param array|null $known what a list read for all its tasks at once: links
+ *                          (ws_task_links_map()) and time (ws_task_time_totals());
+ *                          null reads them for this task
+ * @return array
+ */
+function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
 {
+    $id = (int) $task['id'];
     $assignees = ws_task_assignee_ids($task['id']);
+    $minutes = isset($known['time']) ? $known['time'] : ws_task_time_totals(array($task['id']));
     $refs = array();
 
     foreach ((array) db_items("SELECT ref_type, ref_id FROM ws_refs WHERE source_type = 'task' AND source_id = '" . (int) $task['id'] . "'") as $ref) {
@@ -919,9 +1062,9 @@ function ws_api_task_present($viewer, $task, $warnings = array())
         'notes_count'      => (int) ($task['notes_count'] ?? 0),
         // The tasks it cannot start before, and the ones that wait for it
         // (task_links.php); the minutes spent on it (task_time.php).
-        'blocked_by'       => ws_task_link_ids($task['id']),
-        'blocks'           => ws_task_link_waiting_ids($task['id']),
-        'time_minutes'     => (int) (ws_task_time_totals(array($task['id']))[(int) $task['id']] ?? 0),
+        'blocked_by'       => isset($known['links'][$id]) ? $known['links'][$id]['blocked_by'] : ws_task_link_ids($task['id']),
+        'blocks'           => isset($known['links'][$id]) ? $known['links'][$id]['blocks'] : ws_task_link_waiting_ids($task['id']),
+        'time_minutes'     => (int) ($minutes[$id] ?? 0),
         'created_at'       => api_time($task['created_at']),
         'updated_at'       => api_time($task['updated_at']),
         'warnings'         => array_values($warnings),
@@ -997,10 +1140,19 @@ function ws_api_tasks_list($params)
         $filters['updated_since'] = (int) $params['updated_since'];
     }
 
+    $briefs = ws_tasks_list($viewer, $filters);
+    $ids = array();
+
+    foreach ($briefs as $brief) {
+        $ids[] = (int) $brief['id'];
+    }
+
+    // The links and the minutes of the whole page, one read each.
+    $known = array('links' => ws_task_links_map($ids), 'time' => ws_task_time_totals($ids));
     $out = array();
 
-    foreach (ws_tasks_list($viewer, $filters) as $brief) {
-        $out[] = ws_api_task_present($viewer, ws_task($brief['id']));
+    foreach ($briefs as $brief) {
+        $out[] = ws_api_task_present($viewer, ws_task($brief['id']), array(), $known);
     }
 
     api_ok_list($out, $filters['limit']);

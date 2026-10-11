@@ -121,6 +121,8 @@ if (!$_POST) {
         'auto_import'    => ($start === 'import'),
         'auto_paste'     => ($start === 'paste'),
         'template'       => $template ? pg_design_template_summary($template) : null,
+        // ?folder= from the design chooser: the first page's folder.
+        'start_action'   => pg_designer_start_action($user, 0),
     ));
 
     $liveform->remove_form();

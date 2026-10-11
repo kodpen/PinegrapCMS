@@ -321,6 +321,51 @@ function ws_task_link_waiting_ids($task_id)
 }
 
 /**
+ * The links of a set of tasks in both directions, in one query: for each
+ * task the tasks it waits for and the tasks that wait for it, in the order
+ * ws_task_link_ids() and ws_task_link_waiting_ids() give them. Within one
+ * task's list one of the two ids is the task itself, so sorting by the
+ * moment and then by both ids sorts each list by the moment and the other
+ * id, as those two do.
+ *
+ * @param int[] $task_ids
+ * @return array task id => blocked_by (int[]), blocks (int[]); every task asked for is there
+ */
+function ws_task_links_map($task_ids)
+{
+    $out = array();
+
+    foreach ((array) $task_ids as $task_id) {
+        if ((int) $task_id > 0) {
+            $out[(int) $task_id] = array('blocked_by' => array(), 'blocks' => array());
+        }
+    }
+
+    if (empty($out) || !ws_task_links_ready()) {
+        return $out;
+    }
+
+    $in = implode(',', array_keys($out));
+
+    foreach ((array) db_items("SELECT task_id, blocked_by_task_id FROM ws_task_links
+        WHERE task_id IN (" . $in . ") OR blocked_by_task_id IN (" . $in . ")
+        ORDER BY created_at, blocked_by_task_id, task_id") as $row) {
+        $task_id = (int) $row['task_id'];
+        $blocker_id = (int) $row['blocked_by_task_id'];
+
+        if (isset($out[$task_id])) {
+            $out[$task_id]['blocked_by'][] = $blocker_id;
+        }
+
+        if (isset($out[$blocker_id])) {
+            $out[$blocker_id]['blocks'][] = $task_id;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The open tasks in front of a set of tasks, in one query: what makes each
  * of them blocked.
  *

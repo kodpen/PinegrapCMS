@@ -2092,6 +2092,15 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
+        case 'notes':
+            $book = 'M7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13A2.5 2.5 0 0 1 7.5 3z';
+            $body =
+                '<path' . $d . ' d="' . $book . '"/>' .
+                '<path d="' . $book . '"/>' .
+                '<path d="M5 7.5H3.5M5 12H3.5M5 16.5H3.5" stroke-width="1.5"/>' .
+                '<path class="pg-mi-a" d="M9 8.5h6M9 12h6M9 15.5h3.5" stroke-width="1.6"/>';
+            break;
+
         case 'folders':
             $flap = 'M3 17.5v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
             $body =
@@ -2857,6 +2866,7 @@ function output_menu($properties = false)
         $menu_items[21]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
+        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php?start=template\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-grid-1x2 bi-me-2\'>' . lang('Choose a Template') . '</a>';
         // VISUAL PAGE EDITOR > Translations: the pages of a visual design in
         // the site's other languages (includes/translate/).
         $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
@@ -2981,6 +2991,11 @@ function output_menu($properties = false)
             $menu_items[23]['badge_title'] = lang(array('string' => '{var:1} new item(s) for you', 'vars' => $menu_items[23]['badge']));
             $menu_items[23]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-chat-square-text bi-me-2\'>' . lang('Channels') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_tasks.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-check2-square bi-me-2\'>' . lang('My Tasks') . '</a>';
+
+            if (function_exists('ws_notes_ready') && ws_notes_ready()) {
+                $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_notes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-journal-text bi-me-2\'>' . lang('My Notes') . '</a>';
+            }
+
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_board.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-week bi-me-2\'>' . lang('Planning Board') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar3 bi-me-2\'>' . lang('Work Calendar') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_timeline.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-clock-history bi-me-2\'>' . lang('Decision Timeline') . '</a>';
@@ -2988,6 +3003,17 @@ function output_menu($properties = false)
             if ($ws_menu_rights['settings']) {
                 $menu_items[23]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
                 $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('Workspace Settings') . '</a>';
+            }
+
+            // My Notes pinned to the menu by the person (the pin button of the
+            // notes screen): a row of its own, drawn right under the workspace.
+            // Slot 24, never reused, like 22 and 23.
+            if (function_exists('ws_notes_menu_pinned') && ws_notes_menu_pinned((int) $user['id'])) {
+                $menu_items[24]['id'] = 24;
+                $menu_items[24]['href'] = 'workspace_notes.php';
+                $menu_items[24]['menu_icon'] = 'notes';
+                $menu_items[24]['color_class'] = 'workspace-color';
+                $menu_items[24]['title'] = 'My Notes';
             }
         }
     }
@@ -3150,6 +3176,10 @@ function output_menu($properties = false)
         case 'workspace_settings.php':
             $active_menu = 23;
             break;
+        case 'workspace_notes.php':
+            // Pinned to the menu, My Notes lights its own row.
+            $active_menu = isset($menu_items[24]) ? 24 : 23;
+            break;
         case 'view_orders.php':
         case 'view_order.php':
         case 'view_orders_for_contact.php':
@@ -3300,13 +3330,15 @@ function output_menu($properties = false)
 
     }
 
-    // Where two rows sit in the rail: the workspace right under the
-    // dashboard, the ERP after the campaigns. The rows are built in the order
-    // of their ids above and drawn in the order of the array, so they are
-    // moved here; the ids, which the active-row switch reads, stay. When the
-    // row to follow is not there (no access to it), the nearest one before it
-    // is followed.
-    foreach (array(23 => array(0), 22 => array(9, 8, 7, 6, 5, 4, 3, 2, 1, 0)) as $move => $after_ids) {
+    // Where the moved rows sit in the rail: the workspace right under the
+    // dashboard and My Notes, when pinned, right under the workspace; the ERP
+    // after the campaigns, the Visual Page Editor between the file manager
+    // and the pages. The rows are built in the order of their ids above and
+    // drawn in the order of the array, so they are moved
+    // here; the ids, which the active-row switch reads, stay. When the row to
+    // follow is not there (no access to it), the nearest one before it is
+    // followed.
+    foreach (array(23 => array(0), 24 => array(23, 0), 22 => array(9, 8, 7, 6, 5, 4, 3, 2, 1, 0), 21 => array(1, 0)) as $move => $after_ids) {
         if (!isset($menu_items[$move])) {
             continue;
         }

@@ -8846,6 +8846,7 @@ const StyleDesigner = (function () {
         // fresh script element triggers execution). Authored components MUST be idempotent across
         // re-renders since renderCanvas() tears down and rebuilds the body on every change.
         _reExecuteCanvasScripts(canvasDoc.body);
+        _sdThemeSwitchers();
         _initCanvasTooltips();
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
@@ -8889,6 +8890,21 @@ const StyleDesigner = (function () {
                 try { new bs.Popover(pEl); } catch (e) {}
             }
         }
+    }
+
+    // Theme switchers carry no script (the server adds pg_theme_switcher.js
+    // to a visitor page that shows one). The canvas loads the same file into
+    // its frame once, and binds the switchers again after every render, when
+    // the elements are new; the file binds what is there when it loads.
+    function _sdThemeSwitchers() {
+        if (!canvasDoc || !canvasDoc.querySelector('[data-pg-theme-switcher]')) return;
+        var win = canvasDoc.defaultView;
+        if (win && typeof win.pgThemeSwitcherBind === 'function') { win.pgThemeSwitcherBind(canvasDoc); return; }
+        if (canvasDoc.getElementById('pg-theme-switcher-js') || !canvasDoc.head) return;
+        var scr = canvasDoc.createElement('script');
+        scr.id = 'pg-theme-switcher-js';
+        try { scr.src = new URL('assets/js/pg_theme_switcher.js', document.baseURI).href; } catch (e) { return; }
+        canvasDoc.head.appendChild(scr);
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -10048,10 +10064,12 @@ const StyleDesigner = (function () {
                 var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
                 _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
             }
-            // For prop-based inline styles that haven't been migrated to _attrs.style yet:
-            // include them in _inlineBase so they survive when _attrStyle is non-empty
-            // (setAttribute('style', _attrStyle) would wipe out el.style.* set by the render fn).
-            // migrateNodeStyleProps() runs on selection and writes them to _attrs.style permanently.
+            // Prop-backed inline styles (_sdInlineStyleProps()): included in
+            // _inlineBase so they survive when _attrStyle is non-empty
+            // (setAttribute('style', _attrStyle) would wipe out el.style.* set
+            // by the render fn). A copy an older tree kept in _attrs.style
+            // still wins until the node is selected and
+            // migrateNodeStyleProps() folds it back into the prop.
             if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
                 if (!getAttrStyleProp(node, 'font-size')) {
                     _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
@@ -10865,6 +10883,7 @@ const StyleDesigner = (function () {
         '__result_excerpt': _sdT('A short summary of the page, as its meta description or the text around the match.'),
         '__result_type': 'page',
         '__result_type_label': _sdT('Page'),
+        '__result_section': _sdT('Shipping and returns'),
         // Calendar and calendar event
         '__period_label': _sdT('September 2026'),
         '__event_title': _sdT('Sample Event'),
@@ -10898,6 +10917,7 @@ const StyleDesigner = (function () {
         '__recipient_phone': '+90 555 000 00 00',
         '__new_account_email': 'sample@example.com',
         '__new_account_password': 'a1b2c3d4',
+        '__ai_summary': _sdT('The main points of the post, written by the visitor\'s browser.'),
         '__item_name': _sdT('Sample Product Name'),
         '__item_short_description': _sdT('Sample Product Name'),
         '__item_description': _sdT('A sample product description — short and clear.'),
@@ -15466,14 +15486,16 @@ const StyleDesigner = (function () {
                 }
 
                 // ── Theme Switcher variants (Bootstrap 5.3 data-bs-theme) ──────────
-                // Shared init script (idempotent — multiple switchers share one engine)
-                var _tsInit = '(function(){if(!window.pgThemeInit){window.pgThemeInit=true;var root=document.documentElement;var mql=window.matchMedia("(prefers-color-scheme: dark)");function resolve(t){return(!t||t==="auto")?(mql.matches?"dark":"light"):t;}function apply(t){root.setAttribute("data-bs-theme",resolve(t));}apply(localStorage.getItem("pg-theme"));mql.addEventListener("change",function(){var t=localStorage.getItem("pg-theme");if(!t||t==="auto"){apply("auto");document.dispatchEvent(new Event("pg-theme-change"));}});window.pgSetTheme=function(t){localStorage.setItem("pg-theme",t);apply(t);document.dispatchEvent(new Event("pg-theme-change"));};window.pgGetTheme=function(){return localStorage.getItem("pg-theme")||"auto";};window.pgResolvedTheme=function(){return resolve(window.pgGetTheme());};}})();';
+                // No script in the markup: the wrapper's data-pg-theme-switcher marker
+                // is all the server looks for, wherever the switcher ends up (on the
+                // page or in a shared component of any design), to add the engine,
+                // assets/js/pg_theme_switcher.js (pg_theme_switcher_inject()). The
+                // canvas loads the same file (_sdThemeSwitchers()).
 
                 // Theme Switcher: Dropdown (BS docs official pattern — Light / Dark / Auto)
                 if (ctype === 'theme-switcher-dropdown') {
-                    var _tsdId = 'tsd_' + Math.random().toString(36).substr(2, 6);
-                    var _tsdHook = '(function(){var r=document.getElementById("' + _tsdId + '");if(!r||r.dataset.pgInit)return;r.dataset.pgInit="1";var items=r.querySelectorAll("[data-bs-theme-value]");var icon=r.querySelector(".pg-active-icon");function sync(){var t=window.pgGetTheme();items.forEach(function(el){var on=el.getAttribute("data-bs-theme-value")===t;el.classList.toggle("active",on);var ck=el.querySelector(".pg-check");if(ck)ck.classList.toggle("d-none",!on);});if(icon)icon.className="bi pg-active-icon "+(t==="dark"?"bi-moon-stars-fill":t==="light"?"bi-sun-fill":"bi-circle-half");}items.forEach(function(el){el.addEventListener("click",function(e){e.preventDefault();window.pgSetTheme(el.getAttribute("data-bs-theme-value"));sync();});});document.addEventListener("pg-theme-change",sync);sync();})();';
-                    return createNode('semantic', { tag: 'div', cssClass: 'dropdown', id: _tsdId, customName: _sdT('Theme Switcher (Dropdown)') }, [
+                    return createNode('semantic', { tag: 'div', cssClass: 'dropdown', customName: _sdT('Theme Switcher (Dropdown)'),
+                        _attrs: [{ name: 'data-pg-theme-switcher', value: 'dropdown' }] }, [
                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-link nav-link dropdown-toggle d-flex align-items-center', customName: _sdT('Dropdown Toggle'),
                             _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Switch the theme') }] }, [
                             createNode('content', { contentType: 'icon', iconName: 'bi-circle-half', cssClass: 'pg-active-icon' })
@@ -15483,7 +15505,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'button', cssClass: 'dropdown-item d-flex align-items-center gap-2', customName: _sdT('Light Button'),
                                     _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-theme-value', value: 'light' }] }, [
                                     createNode('content', { contentType: 'icon', iconName: 'bi-sun-fill' }),
-                                    createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Expanded') }),
+                                    createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Light') }),
                                     createNode('content', { contentType: 'icon', iconName: 'bi-check-lg', cssClass: 'pg-check ms-auto d-none' })
                                 ])
                             ]),
@@ -15503,29 +15525,26 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'icon', iconName: 'bi-check-lg', cssClass: 'pg-check ms-auto' })
                                 ])
                             ])
-                        ]),
-                        createNode('content', { contentType: 'custom_html', html: '<script>' + _tsInit + _tsdHook + '</script>' })
+                        ])
                     ]);
                 }
 
                 // Theme Switcher: Toggle (simple 2-state button: light ↔ dark)
                 if (ctype === 'theme-switcher-toggle') {
-                    var _tstId = 'tst_' + Math.random().toString(36).substr(2, 6);
-                    var _tstHook = '(function(){var btn=document.getElementById("' + _tstId + '");if(!btn||btn.dataset.pgInit)return;btn.dataset.pgInit="1";function sync(){var r=window.pgResolvedTheme();var i=btn.querySelector("i");if(i)i.className="bi "+(r==="dark"?"bi-sun-fill":"bi-moon-stars-fill");btn.setAttribute("aria-pressed",r==="dark");}btn.addEventListener("click",function(){var r=window.pgResolvedTheme();window.pgSetTheme(r==="dark"?"light":"dark");});document.addEventListener("pg-theme-change",sync);sync();})();';
-                    return createNode('semantic', { tag: 'div', cssClass: 'd-inline-block', customName: _sdT('Theme Switcher (Toggle) Wrap') }, [
-                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary btn-sm rounded-pill', id: _tstId, customName: _sdT('Theme Toggle Button'),
+                    return createNode('semantic', { tag: 'div', cssClass: 'd-inline-block', customName: _sdT('Theme Switcher (Toggle) Wrap'),
+                        _attrs: [{ name: 'data-pg-theme-switcher', value: 'toggle' }] }, [
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary btn-sm rounded-pill', customName: _sdT('Theme Toggle Button'),
                             _attrs: [{ name: 'type', value: 'button' }, { name: 'aria-label', value: _sdT('Switch the theme') }, { name: 'aria-pressed', value: 'false' }] }, [
                             createNode('content', { contentType: 'icon', iconName: 'bi-moon-stars-fill' })
-                        ]),
-                        createNode('content', { contentType: 'custom_html', html: '<script>' + _tsInit + _tstHook + '</script>' })
+                        ])
                     ]);
                 }
 
                 // Theme Switcher: Form Switch (checkbox-style toggle)
                 if (ctype === 'theme-switcher-switch') {
                     var _tswId = 'tsw_' + Math.random().toString(36).substr(2, 6);
-                    var _tswHook = '(function(){var cb=document.getElementById("' + _tswId + '");if(!cb||cb.dataset.pgInit)return;cb.dataset.pgInit="1";function sync(){cb.checked=(window.pgResolvedTheme()==="dark");}cb.addEventListener("change",function(){window.pgSetTheme(cb.checked?"dark":"light");});document.addEventListener("pg-theme-change",sync);sync();})();';
-                    return createNode('semantic', { tag: 'div', cssClass: 'form-check form-switch d-inline-flex align-items-center gap-2', customName: _sdT('Theme Switcher (Form Switch)') }, [
+                    return createNode('semantic', { tag: 'div', cssClass: 'form-check form-switch d-inline-flex align-items-center gap-2', customName: _sdT('Theme Switcher (Form Switch)'),
+                        _attrs: [{ name: 'data-pg-theme-switcher', value: 'switch' }] }, [
                         createNode('content', { contentType: 'icon', iconName: 'bi-sun-fill', cssClass: 'text-body-secondary' }),
                         createNode('semantic', { tag: 'input', cssClass: 'form-check-input m-0', id: _tswId, customName: _sdT('Theme Switch Input'),
                             _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'role', value: 'switch' }, { name: 'aria-label', value: _sdT('Dark theme') }] }),
@@ -15533,8 +15552,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'label', cssClass: 'form-check-label visually-hidden', customName: _sdT('Label'),
                             _attrs: [{ name: 'for', value: _tswId }] }, [
                             createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Dark theme') })
-                        ]),
-                        createNode('content', { contentType: 'custom_html', html: '<script>' + _tsInit + _tswHook + '</script>' })
+                        ])
                     ]);
                 }
 
@@ -18378,10 +18396,10 @@ const StyleDesigner = (function () {
             attrs.push({ name: 'alt',    value: p.alt    !== undefined ? p.alt : '', propKey: 'alt'    });
             attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
             attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
-            // Note: objectPosition is migrated to _attrs.style by migrateNodeStyleProps(),
-            // so it shows as an editable 'style' attr — not locked here.
+            // Note: objectPosition is shown in the merged, editable 'style'
+            // row (_sdInlineStyleProps()) — not locked here.
         }
-        // Note: icon fontSize is handled the same way — migrated to _attrs.style, never locked.
+        // Note: icon fontSize is handled the same way — merged into the style row, never locked.
         // Tooltip runtime attrs — surface them read-only so users can see what the tooltipEnabled
         // prop is emitting. The actual editing happens in the Tooltip properties section.
         if (p.tooltipEnabled && p.tooltipTitle) {
@@ -19021,21 +19039,47 @@ const StyleDesigner = (function () {
     // because the Attributes panel and the frontend renderer both use the
     // string form already.
 
-    // Props that compose into the rendered inline `style` attribute. Keep
-    // this list in sync with the renderer (functions.php `_compose_inline_style`
-    // and the JS render path around the `_inlineBase = 'font-family:'…` block).
-    // Each entry maps a node.props key → the CSS declaration name it lands on.
-    // When you add a new prop here, the bottom Styles panel + Attributes panel
-    // start showing it as part of element.style automatically.
-    var _INLINE_STYLE_PROP_MAP = { fontFamily: 'font-family' };
+    // Props that compose into the rendered inline `style` attribute. The
+    // prop is the one place such a value lives: _attrs.style never keeps a
+    // copy of it, because a copy there wins on the page (it is emitted last)
+    // and the option showing the prop would then change nothing. The
+    // Attributes panel, the Styles panel and the HTML tree show the merged
+    // style (_currentInlineStyleValue()); a write there is split back
+    // (_writeInlineStyleValue()), so deleting a declaration clears the option
+    // that made it. Keep in step with the renderers: functions.php
+    // _compose_inline_style() with each case's $extra, and the canvas
+    // `_inlineBase` block.
+    //   prop    node.props key
+    //   css     the declaration it lands on
+    //   toCss   prop value -> declaration value
+    //   fromCss declaration value -> prop value, or null when the prop cannot
+    //           hold it (an icon size in rem): that declaration stays in
+    //           _attrs.style and the prop is cleared, since the style wins
+    function _sdInlineStyleProps(node) {
+        var same = function (v) { return String(v); };
+        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: same }];
+        var p = (node && node.props) || {};
+        if (node && node.type === 'content' && p.contentType === 'image') {
+            out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
+        }
+        if (node && node.type === 'content' && p.contentType === 'icon') {
+            out.push({ prop: 'fontSize', css: 'font-size',
+                       toCss: function (v) { return String(v) + 'px'; },
+                       fromCss: function (v) {
+                           var m = /^(\d+(?:\.\d+)?)(px)?$/i.exec(String(v).trim());
+                           return m ? m[1] : null;
+                       } });
+        }
+        return out;
+    }
 
     function _propDerivedInlineDecls(node) {
         if (!node || !node.props) return [];
         var out = [];
-        for (var pk in _INLINE_STYLE_PROP_MAP) {
-            var v = node.props[pk];
-            if (v) out.push({ name: _INLINE_STYLE_PROP_MAP[pk], value: String(v) });
-        }
+        _sdInlineStyleProps(node).forEach(function (m) {
+            var v = node.props[m.prop];
+            if (v !== undefined && v !== null && v !== '') out.push({ name: m.css, value: m.toCss(v) });
+        });
         return out;
     }
 
@@ -19078,28 +19122,30 @@ const StyleDesigner = (function () {
         saveState();
 
         var decls = _parseInlineStyle(value || '');
+        var maps = _sdInlineStyleProps(node);
         var seenProps = {};
         var freeform = [];
         decls.forEach(function (d) {
             var dn = (d.name || '').toLowerCase();
-            var matchedProp = null;
-            for (var pk in _INLINE_STYLE_PROP_MAP) {
-                if (_INLINE_STYLE_PROP_MAP[pk] === dn) { matchedProp = pk; break; }
+            var m = null;
+            for (var mi = 0; mi < maps.length; mi++) {
+                if (maps[mi].css === dn) { m = maps[mi]; break; }
             }
-            if (matchedProp) {
-                node.props[matchedProp] = d.value;
-                seenProps[matchedProp] = true;
+            var pv = m ? m.fromCss(d.value) : null;
+            if (m && pv !== null && pv !== '') {
+                node.props[m.prop] = pv;
+                seenProps[m.prop] = true;
             } else {
                 freeform.push(d);
             }
         });
         // Clear props that were previously set but are no longer in the decls
-        // — the user removed that row from element.style, so the prop should
-        // follow. Without this, the font picker would still report a font the
-        // user just deleted.
-        for (var pk2 in _INLINE_STYLE_PROP_MAP) {
-            if (!seenProps[pk2] && node.props[pk2]) node.props[pk2] = '';
-        }
+        // — the user removed that row from element.style, so the option
+        // follows. Without this, the font picker would still report a font
+        // the user just deleted, and the image its old object position.
+        maps.forEach(function (m) {
+            if (!seenProps[m.prop] && node.props[m.prop]) node.props[m.prop] = '';
+        });
 
         // Write the freeform remainder back to _attrs.style. Empty → drop the
         // entry entirely so an empty row doesn't linger in the Attributes panel.
@@ -19558,6 +19604,16 @@ const StyleDesigner = (function () {
             }
             dynEl.querySelectorAll('.sd-attr-del[data-idx]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
+                    var _delEntry = n.props._attrs[parseInt(this.dataset.idx, 10)];
+                    // The style row shows the options' declarations as well
+                    // (object position, an icon's size, the font): deleting it
+                    // clears them too, through the same split as typing it
+                    // empty. Splicing the entry alone left those options set,
+                    // and the row came straight back.
+                    if (_delEntry && (_delEntry.name || '').toLowerCase() === 'style') {
+                        _writeInlineStyleValue(n, '');
+                        return;
+                    }
                     saveState();
                     n.props._attrs.splice(parseInt(this.dataset.idx, 10), 1);
                     renderAttrsPanel();
@@ -21947,23 +22003,31 @@ const StyleDesigner = (function () {
 
     // ========================= PROPERTIES PANEL =========================
 
-    // Migrate prop-based inline styles to _attrs.style so they appear as editable user attrs
-    // in the Attrs panel and in the HTML tree. Runs silently on node selection — no undo entry.
+    // Trees saved before the props became the only source kept a copy of an
+    // icon's size or an image's object position in _attrs.style. The copy is
+    // what the page shows (it comes last) while the option shows the prop, so
+    // changing the option did nothing until the copy was deleted by hand. On
+    // selection the copy is folded back into the prop - the value on screen
+    // is the copy's, so nothing visibly moves - and leaves _attrs.style
+    // (_sdInlineStyleProps()). A font-family typed into the style is left
+    // where it is: the font picker's prop holds a bare family name. Runs
+    // silently on node selection — no undo entry.
     function migrateNodeStyleProps(node) {
-        if (!node || !node.props) return;
-        var p = node.props;
-        // Icon: fontSize → font-size in _attrs.style
-        if (node.type === 'content' && p.contentType === 'icon' && p.fontSize) {
-            if (!getAttrStyleProp(node, 'font-size')) {
-                setAttrStyleProp(node, 'font-size', p.fontSize + 'px');
+        if (!node || !node.props || !Array.isArray(node.props._attrs)) return;
+        _sdInlineStyleProps(node).forEach(function (m) {
+            if (m.prop === 'fontFamily') return;
+            var raw = getAttrStyleProp(node, m.css);
+            if (!raw) return;
+            var v = m.fromCss(raw);
+            if (v === null) {
+                // Not a value the option can hold: the style keeps it, and
+                // the option stops claiming another one.
+                node.props[m.prop] = '';
+                return;
             }
-        }
-        // Image: objectPosition → object-position in _attrs.style
-        if (node.type === 'content' && p.contentType === 'image' && p.objectPosition) {
-            if (!getAttrStyleProp(node, 'object-position')) {
-                setAttrStyleProp(node, 'object-position', p.objectPosition);
-            }
-        }
+            node.props[m.prop] = v;
+            setAttrStyleProp(node, m.css, '');
+        });
     }
 
     // ── Multi-select: shared helpers ─────────────────────────────────────────
@@ -22114,6 +22178,7 @@ const StyleDesigner = (function () {
         selectedNode = _prevSelected;
 
         panel.innerHTML = '<div class="sd-tab-content">' + (optHtml || '') + cssHtml + '</div>';
+        _sdHideBootstrapControls(panel);
 
         // Post-process: inject "— Multiple —" where values differ across selected nodes
         _postProcessMultiPanel(nodes, panel);
@@ -22665,8 +22730,9 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // Migrate any prop-based inline styles (fontSize, objectPosition) to _attrs.style
-        // so they appear as editable style attrs in the Attrs panel and HTML tree.
+        // Fold an older tree's _attrs.style copy of a prop-backed style
+        // (fontSize, objectPosition) back into the prop, so the option and
+        // the page agree (_sdInlineStyleProps()).
         migrateNodeStyleProps(selectedNode);
 
         // Options section (node-specific)
@@ -22688,6 +22754,9 @@ const StyleDesigner = (function () {
         // An element drawing a Bootstrap icon through its class gets the icon
         // picker an icon node has (_sdBiIconSection()).
         optHtml = _sdBiIconSection(selectedNode) + optHtml;
+
+        // Search and SERP: the part of the page a site search result points at.
+        optHtml += propsSearchSection(selectedNode);
 
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
         // Renders nothing for nodes outside system widgets (zero overhead in the common case).
@@ -22730,12 +22799,165 @@ const StyleDesigner = (function () {
 
         // The Appearance section runs in the same flow as the options
         panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        _sdHideBootstrapControls(panel);
         bindPropEvents();
         _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
+    }
+
+    // ── Search section ────────────────────────────────────────────────────
+    // A part of the page the site search points a matching result at
+    // (pg_search_sections(), _pg_sw_search_attach_sections()): the visitor
+    // lands on it with the words marked in yellow, and the page's structured
+    // data names it with its anchor for search engines
+    // (pg_search_sections_jsonld()). The anchor is the element's id; one is
+    // made from the title when the switch goes on and the element has none.
+    var _SD_SEARCH_SECTION_SKIP = ['root', 'region', 'shared_ref', 'loop_area', 'recipient_loop_area'];
+
+    // The text of a subtree, as a visitor reads it.
+    function _sdNodePlainText(node, depth) {
+        depth = depth || 0;
+        if (!node || depth > 80) return '';
+        if (node.type === 'region' || node.type === 'shared_ref') return '';
+        var p = node.props || {};
+        var out = '';
+        ['text', 'html', 'alt'].forEach(function (k) {
+            if (typeof p[k] === 'string' && p[k]) {
+                // An inert document: markup in the text loads nothing.
+                var d = new DOMParser().parseFromString(p[k], 'text/html');
+                out += ' ' + ((d.body && d.body.textContent) || '');
+            }
+        });
+        (node.children || []).forEach(function (c) { out += _sdNodePlainText(c, depth + 1); });
+        return out;
+    }
+
+    // The first heading inside a node, as text ('' without one) - the same
+    // reading _pg_search_first_heading() makes on the server.
+    function _sdSearchHeading(node, depth) {
+        depth = depth || 0;
+        if (!node || depth > 80 || node.type === 'region' || node.type === 'shared_ref') return '';
+        var p = node.props || {};
+        if ((node.type === 'content' && p.contentType === 'heading') ||
+            (node.type === 'semantic' && /^h[1-6]$/i.test(p.tag || ''))) {
+            return _sdNodePlainText(node).replace(/\s+/g, ' ').trim();
+        }
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            var h = _sdSearchHeading(kids[i], depth + 1);
+            if (h) return h;
+        }
+        return '';
+    }
+
+    // An id for a new search section: the title as an address word, unique on
+    // the page.
+    function _sdSearchSectionId(node) {
+        var base = String((node.props && node.props.searchTitle) || _sdSearchHeading(node) || _sdT('section'))
+            .toLocaleLowerCase('tr')
+            .replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[ıİ]/g, 'i').replace(/[öÖ]/g, 'o')
+            .replace(/[şŞ]/g, 's').replace(/[üÜ]/g, 'u')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+        if (!base) base = 'section';
+        if (/^[0-9]/.test(base)) base = 's-' + base;
+        var taken = {};
+        (function walk(n) {
+            if (!n) return;
+            if (n.props && n.props.id) taken[String(n.props.id)] = true;
+            (n.children || []).forEach(walk);
+        })(tree);
+        var id = base;
+        for (var k = 2; taken[id]; k++) id = base + '-' + k;
+        return id;
+    }
+
+    function propsSearchSection(n) {
+        if (!n || _SD_SEARCH_SECTION_SKIP.indexOf(n.type) !== -1) return '';
+        // A part of a shared component or a widget belongs to that, not to a
+        // page the site search lists (pg_search_sections()).
+        if (_resolveSharedSid(n) > 0) return '';
+        var on = !!n.props.searchSection;
+        var h = row(_sdT('Search section'), sw('searchSection', on));
+        if (on) {
+            var autoTitle = _sdSearchHeading(n);
+            h += row(_sdT('Title'), '<input type="text" class="form-control form-control-sm" data-prop="searchTitle" value="' +
+                esc(n.props.searchTitle || '') + '" placeholder="' + esc(autoTitle || _sdT('The first heading inside')) + '">');
+            h += row(_sdT('Topics'), '<input type="text" class="form-control form-control-sm" data-prop="searchKeywords" value="' +
+                esc(n.props.searchKeywords || '') + '" placeholder="' + esc(_sdT('e.g. shipping, returns, delivery time')) + '">');
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('A site search that matches this part links straight to it (#{var}) and marks the words in yellow. The page\'s structured data names it with its anchor for search engines.', n.props.id || '')) +
+                (n.props.id ? '' : ' <strong>' + esc(_sdT('Give the element an id to use it.')) + '</strong>') +
+                '</div></div>';
+        }
+        return sect('bi-search', _sdT('Search and SERP'), h);
+    }
+
+    // A design built without a framework (Custom) has nothing that styles
+    // Bootstrap's utility classes, so the controls that only write them, or
+    // switch on Bootstrap behaviour, would add classes that do nothing. They
+    // are taken off the panel once it is drawn: class groups (data-stylegroup
+    // - colour pickers and alignment buttons included), the spacing scale
+    // (data-util and the box model), class switches (data-util-toggle), the
+    // Bootstrap button and link styles, and the props the renderer turns into
+    // Bootstrap classes (ratio, visually-hidden, placeholder, focus ring,
+    // img-fluid, rounded) or behaviour (tooltips). What writes inline style -
+    // width, height, overflow, position offsets, z-index, background, font,
+    // object position - stays. A row whose own control goes but whose
+    // sub-rows still write style (Position: top, right, bottom, left) keeps
+    // its label with the sub-rows open; a section left with no control goes.
+    var _SD_BS_ONLY_CONTROLS = [
+        '[data-stylegroup]', '[data-util]', '[data-util-toggle]', '[data-bm]',
+        '[data-btn-variant]', '[data-btn-outlined]', '[data-btn-display]', '[data-link-style]',
+        '[data-bs-form-style]', '[data-table-responsive]',
+        '[data-prop="aspectRatioEnabled"]', '[data-prop="aspectRatio"]', '[data-prop="aspectRatioCustom"]',
+        '[data-prop="srOnly"]', '[data-prop="placeholderMode"]', '[data-prop="placeholderAnim"]',
+        '[data-prop="focusRing"]', '[data-prop="tooltipEnabled"]', '[data-prop="tooltipPlacement"]',
+        '[data-prop="tooltipTitle"]', '[data-prop="fluid"]', '[data-prop="rounded"]'
+    ].join(', ');
+    function _sdHideBootstrapControls(panel) {
+        if (!panel || _sdUsesBootstrap()) return;
+        var touch = function (el) {
+            var sec = el.closest('.sd-app-sect, .sd-props-section');
+            if (sec) sec.setAttribute('data-sd-bs-touched', '1');
+        };
+        panel.querySelectorAll('.sd-bm-wrap').forEach(function (el) { touch(el); el.remove(); });
+        panel.querySelectorAll(_SD_BS_ONLY_CONTROLS).forEach(function (ctrl) {
+            if (!panel.contains(ctrl)) return;      // went with a row removed before it
+            touch(ctrl);
+            var item = ctrl.closest('.sd-sp-bp-item');
+            if (item) { item.remove(); return; }
+            var spRow = ctrl.closest('.sd-sp-row');
+            if (spRow) {
+                spRow.setAttribute('data-sd-bs-gone', '1');
+                (ctrl.closest('.sd-align-grp, .sd-cp, .sd-prop-switch') || ctrl).remove();
+                return;
+            }
+            var pRow = ctrl.closest('.sd-prop-row');
+            (pRow || ctrl.closest('.sd-prop-switch') || ctrl).remove();
+        });
+        panel.querySelectorAll('.sd-sp-row[data-sd-bs-gone]').forEach(function (r) {
+            var next = r.nextElementSibling;
+            var bps = (next && next.classList.contains('sd-sp-bps')) ? next : null;
+            if (bps && bps.querySelector('.sd-sp-bp-item')) {
+                bps.style.display = '';
+                var tg = r.querySelector('.sd-sp-toggle');
+                if (tg) tg.classList.add('sd-sp-open');
+                return;
+            }
+            if (bps) bps.remove();
+            r.remove();
+        });
+        panel.querySelectorAll('.sd-sp-bps').forEach(function (b) {
+            if (!b.querySelector('.sd-sp-bp-item')) b.remove();
+        });
+        panel.querySelectorAll('[data-sd-bs-touched]').forEach(function (sec) {
+            var body = sec.querySelector('.sd-sect-body') || sec;
+            if (!body.querySelector('input, select, textarea, button:not(.sd-sp-toggle)')) sec.remove();
+        });
     }
 
     // --- Property builders ---
@@ -23770,6 +23992,8 @@ const StyleDesigner = (function () {
 
                 // Login page dropdown (any page — this design's tabs first)
                 var _loginPageOpts = _swPageOptions(_cfg.login_page_id, _allPagesCache, { types: ['login_form'], none: _sdT('— Choose a page —') });
+                // Staff page: the ^^__staff_url^^ link, for members its folder lets in.
+                var _maStaffOpts   = _swPageOptions(_cfg.staff_page_id, _allPagesCache, { none: _sdT('— No staff link —') });
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
 
                 // Filter form dropdown (0 = show submissions from all forms)
@@ -23819,7 +24043,11 @@ const StyleDesigner = (function () {
                     (_maShowSubs ? row(_sdT('Submission detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-ma-detail-page" data-sw-id="' + sid + '">' + _maDetailOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__detail_url^^ token points at this page.') + '</div>'
-                    ) : '')
+                    ) : '') +
+                    row(_sdT('Staff page'),
+                        '<select class="form-select form-select-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ^^__staff_url^^ link and the "may open the staff page" condition appear only for visitors the page\'s folder lets in.')) + '</div>'
+                    )
                 );
             }
 
@@ -23963,6 +24191,10 @@ const StyleDesigner = (function () {
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                         '</label>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While on, a ^^field_name__label^^ token is offered for every field as well.') + '</div>'
+                    ) +
+                    row(_sdT('Question for the AI assistants'),
+                        '<input type="text" class="form-control form-control-sm" id="sd-sw-fiv-ai-prompt" data-sw-id="' + sid + '" value="' + esc(typeof _cfg.ai_prompt_text === 'string' ? _cfg.ai_prompt_text : '') + '" maxlength="500" placeholder="' + esc(_sdT('Summarize the main points of this article: {url}')) + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The links bound to the ChatGPT, Claude, Perplexity and Google AI addresses open the assistant with this question typed in; {url} is the record\'s address. Empty: the software\'s wording, in the page\'s language.')) + '</div>'
                     )
                 );
             }
@@ -25970,6 +26202,18 @@ const StyleDesigner = (function () {
                 _patchSysCfg(sid, function (cfg) { cfg.not_found_message = v; });
             });
         }
+        var fivAiEl = document.getElementById('sd-sw-fiv-ai-prompt');
+        if (fivAiEl) {
+            fivAiEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = ('' + this.value).trim().slice(0, 500);
+                _patchSysCfg(sid, function (cfg) {
+                    if (v === '') delete cfg.ai_prompt_text;
+                    else cfg.ai_prompt_text = v;
+                });
+            });
+        }
         var fivAcEl = document.getElementById('sd-sw-fiv-access');
         if (fivAcEl) {
             fivAcEl.addEventListener('change', function () {
@@ -26073,6 +26317,17 @@ const StyleDesigner = (function () {
                 if (!sid) return;
                 var v = _swPageVal(this);
                 _patchSysCfg(sid, function (cfg) { cfg.submissions_detail_page_id = v; });
+            });
+        }
+
+        // staff_page_id (select)
+        var maSpEl = document.getElementById('sd-sw-ma-staff-page');
+        if (maSpEl) {
+            maSpEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = _swPageVal(this);
+                _patchSysCfg(sid, function (cfg) { cfg.staff_page_id = v; });
             });
         }
 
@@ -26978,9 +27233,20 @@ const StyleDesigner = (function () {
         ['__new_account_password', _sdT('New account password (when the form opened one)')],
         ['__edit_url',             _sdT('Edit screen address (only for users who may edit the record)')]
     ];
+    // AI: the links that open an assistant with a question about the record
+    // (filled only for a record anybody may open), and the box the browser's
+    // built-in AI writes its summary into (a button bound to the
+    // ai_summarize action starts it).
+    var SW_FORM_ITEM_VIEW_AI_TOKENS = [
+        ['__ai_summary',        _sdT('AI summary box (written in the visitor\'s browser)')],
+        ['__ai_chatgpt_url',    _sdT('Summarize with ChatGPT (address)')],
+        ['__ai_claude_url',     _sdT('Summarize with Claude (address)')],
+        ['__ai_perplexity_url', _sdT('Summarize with Perplexity (address)')],
+        ['__ai_google_url',     _sdT('Summarize with Google AI Mode (address)')]
+    ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
-    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS);
+    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS);
 
     // The format a date binding prints in, as the classic screens take it:
     // ^^submitted_date_and_time^^%%d.m.Y%%. The value lives on the node under
@@ -27178,7 +27444,8 @@ const StyleDesigner = (function () {
             ['__email_preferences_url', _sdT('Email preferences page (the link drops when there is none)')],
             ['__change_password_url',   _sdT('Change password page (the link drops when there is none)')],
             ['__address_book_url',      _sdT('Address book page (shop sites; the link drops when there is none)')],
-            ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')]
+            ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')],
+            ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')]
         ]},
         { label: _sdT('Form Submissions (loop_area)'), tokens: [
             ['form_name',               _sdT('Form name')],
@@ -27592,7 +27859,8 @@ const StyleDesigner = (function () {
             ['__result_image',       _sdT('Image (products; empty for pages)')],
             ['__result_price',       _sdT('Price (products; HTML)')],
             ['__result_is_featured', _sdT('Featured result (1 or empty)')],
-            ['__result_number',      _sdT('Result number')]
+            ['__result_number',      _sdT('Result number')],
+            ['__result_section',     _sdT('Section the result links to (search section; empty without one)')]
         ]}
     ];
 
@@ -28353,14 +28621,16 @@ const StyleDesigner = (function () {
         ],
         my_account: [
             ['has_orders', _sdT('The member has orders')],
-            ['no_orders',  _sdT('The member has no orders')]
+            ['no_orders',  _sdT('The member has no orders')],
+            ['is_staff',   _sdT('The visitor may open the staff page')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
             ['record_found',           _sdT('The record is shown')],
             ['record_not_found',       _sdT('There is no record to show (missing, or not for this visitor)')],
             ['submitted_this_session', _sdT('The visitor sent this record themselves, in this session')],
-            ['can_edit',               _sdT('The visitor may edit the record')]
+            ['can_edit',               _sdT('The visitor may edit the record')],
+            ['has_ai_links',           _sdT('The AI assistants\' links are filled (a record anybody may open)')]
         ],
         logout: [
             ['is_signed_in',    _sdT('The visitor is signed in')],
@@ -28499,6 +28769,9 @@ const StyleDesigner = (function () {
             }
             if (region === 'search_results') {
                 aOpts.push(['submit_search',       _sdT('Submit the Search')]);
+            }
+            if (region === 'form_item_view') {
+                aOpts.push(['ai_summarize',        _sdT('Summarize with the browser\'s AI (form_item_view)')]);
             }
             if (region === 'account_security') {
                 aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
@@ -32959,11 +33232,21 @@ const StyleDesigner = (function () {
         else if (/^url\(/i.test(_bgImgRaw))           { _bgImgUrl = _bgImgRaw.replace(/^url\(['"]?/i, '').replace(/['"]?\)\s*$/i, ''); }
         else if (_bgImgRaw)                           { _bgImgUrl = _bgImgRaw; }
 
-        // Restore saved gradient config from node props (or parse from current gradient string)
-        var _grad = n.props._bgGrad ? Object.assign({}, n.props._bgGrad) : {};
-        if (_bgGradType !== 'none' && !n.props._bgGrad) {
+        // The gradient's remembered settings (props._bgGrad: stops, angle,
+        // shape) are used only while they still build the gradient the style
+        // holds. A gradient typed into, changed in or deleted from the
+        // Attributes panel wins over them: the panel then shows what the
+        // style says, and the remembered settings follow it so the next edit
+        // here starts from the page's gradient rather than from the old one.
+        var _gradSaved   = n.props._bgGrad;
+        var _gradTrusted = !!(_gradSaved && _bgGradType !== 'none' && buildGradientStr(_gradSaved) === _bgGradStr);
+        var _grad = _gradTrusted ? Object.assign({}, _gradSaved) : {};
+        if (_bgGradType !== 'none' && !_gradTrusted) {
             _grad = parseGradient(_bgGradStr);
             _grad.type = _bgGradType;
+        }
+        if (!_gradTrusted && (_gradSaved || _bgGradType !== 'none')) {
+            n.props._bgGrad = (_bgGradType !== 'none') ? Object.assign({}, _grad) : null;
         }
         _grad.type  = _grad.type  || _bgGradType;
         _grad.c1    = _grad.c1    || '#667eea';
@@ -34494,6 +34777,11 @@ const StyleDesigner = (function () {
                     selectedNode.props[prop] = this.value;
                 }
                 if (prop === 'regionType') { selectedNode.props.regionName = ''; }
+                // A search section needs an anchor: one is made when the
+                // switch goes on and the element has no id.
+                if (prop === 'searchSection' && this.checked && !String(selectedNode.props.id || '').trim()) {
+                    selectedNode.props.id = _sdSearchSectionId(selectedNode);
+                }
                 // A new image source must win: the browser prefers srcset over
                 // src, so a srcset/sizes pair that arrived as raw attributes
                 // (imported markup) would keep showing the old picture no
@@ -34504,11 +34792,14 @@ const StyleDesigner = (function () {
                     });
                     if (!selectedNode.props._attrs.length) delete selectedNode.props._attrs;
                 }
-                // For icon fontSize: also write to _attrs.style so it appears in the HTML tree
-                // and the attrs panel as an editable user attribute.
-                if (prop === 'fontSize' && selectedNode.type === 'content' && selectedNode.props.contentType === 'icon') {
-                    setAttrStyleProp(selectedNode, 'font-size', this.value ? this.value + 'px' : '');
-                }
+                // A style-backed option (an icon's size, an image's object
+                // position, the font) lives in its prop alone: a copy left in
+                // _attrs.style would override the new value on the page. The
+                // Attributes panel shows the merged style either way
+                // (_sdInlineStyleProps()).
+                _sdInlineStyleProps(selectedNode).forEach(function (m) {
+                    if (m.prop === prop) setAttrStyleProp(selectedNode, m.css, '');
+                });
                 // When aspectRatioEnabled flips ON, write the default preset to .aspectRatio
                 // so the UI-shown default ('16x9') is also reflected in node.props. Without
                 // this, the dropdown shows "16:9 selected" but selectedNode.props.aspectRatio
@@ -37346,21 +37637,27 @@ const StyleDesigner = (function () {
                       '<button type="button" class="sd-theme-head-btn" data-act="look" title="' + esc(_sdT('Change the look and the palette')) + '"><span class="bi bi-sliders"></span></button>' +
                   '</div>'
                 : '';
+            // Without Bootstrap there are no variables below to speak of or
+            // to save as a theme; the theme file itself is any stylesheet.
+            var _bsVars = _sdUsesBootstrap();
             head.innerHTML = lookRow +
                 '<div class="sd-theme-head-row">' +
                     '<span class="bi bi-palette2 sd-theme-head-icon"></span>' +
                     '<span class="sd-theme-head-txt">' +
                         (th
-                            ? '<strong>' + esc(th.name) + '</strong><br><span class="sd-theme-head-hint">' + esc(_sdT('Loads after every stylesheet and overrides the variables below.')) + '</span>'
-                            : '<strong>' + esc(_sdT('No theme')) + '</strong><br><span class="sd-theme-head-hint">' + esc(_sdT('The variables below live in User Styles.')) + '</span>') +
+                            ? '<strong>' + esc(th.name) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('Loads after every stylesheet and overrides the variables below.') : _sdT('Loads after every stylesheet of the design.')) + '</span>'
+                            : '<strong>' + esc(_sdT('No theme')) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('The variables below live in User Styles.') : _sdT('A theme file loads after every stylesheet of the design.')) + '</span>') +
                     '</span>' +
                     '<button type="button" class="sd-theme-head-btn" data-act="pick" title="' + esc(_sdT('Choose a theme (Settings → Design)')) + '"><span class="bi bi-gear"></span></button>' +
                 '</div>' +
-                '<button type="button" class="sd-theme-save-btn" data-act="save">' +
-                    '<span class="bi bi-save me-1"></span>' + esc(_sdT('Save these colours as a theme')) +
-                '</button>';
+                (_bsVars
+                    ? '<button type="button" class="sd-theme-save-btn" data-act="save">' +
+                          '<span class="bi bi-save me-1"></span>' + esc(_sdT('Save these colours as a theme')) +
+                      '</button>'
+                    : '');
             head.querySelector('[data-act="pick"]').addEventListener('click', _sdOpenDesignSettings);
-            head.querySelector('[data-act="save"]').addEventListener('click', _sdSaveAsTheme);
+            var _saveBtn = head.querySelector('[data-act="save"]');
+            if (_saveBtn) _saveBtn.addEventListener('click', _sdSaveAsTheme);
             var lookBtn = head.querySelector('[data-act="look"]');
             if (lookBtn) lookBtn.addEventListener('click', _sdOpenThemeSettings);
         }
@@ -37401,6 +37698,17 @@ const StyleDesigner = (function () {
             _renderThemeHead();
             var host = document.getElementById('sd-theme-vars');
             if (!host) return;
+            // The variables below are Bootstrap's (--bs-*): a design built
+            // without a framework, or on another one, reads none of them, so
+            // neither they nor the light/dark blocks they are written to are
+            // offered there.
+            var _modeTabs = wrap.querySelector('.sd-theme-mode-tabs');
+            if (_modeTabs) _modeTabs.style.display = _sdUsesBootstrap() ? '' : 'none';
+            if (!_sdUsesBootstrap()) {
+                host.innerHTML = '<p class="form-text small px-2 mb-0">' +
+                    esc(_sdT('This design is built without Bootstrap, so the Bootstrap variables (colours, fonts, borders) are not offered here. Put your own variables in one of the design\'s stylesheets, or choose a theme file above.')) + '</p>';
+                return;
+            }
             // Gather current values once per render
             var content = '';
             for (var i = 0; i < cssFiles.length; i++) {
@@ -41270,6 +41578,12 @@ const StyleDesigner = (function () {
                         createNode('content', { contentType: 'paragraph',
                             text: 'https://example.com/', cssClass: 'small text-success text-break mb-1',
                             _bindings: { text: '__result_full_url' } }),
+                        // The part of the page the result links to; empty
+                        // without a search section, so the element hides.
+                        createNode('content', { contentType: 'paragraph',
+                            text: _sdT('Shipping and returns'), cssClass: 'small text-body-secondary mb-1',
+                            customName: _sdT('Result Section'),
+                            _bindings: { text: '__result_section' } }),
                         createNode('content', { contentType: 'paragraph',
                             text: _sdT('Excerpt'), cssClass: 'mb-0',
                             _bindings: { text: '__result_excerpt' } }),
@@ -43150,8 +43464,10 @@ const StyleDesigner = (function () {
                 var newSize = Math.round(Math.max(ICON_FS_MIN, Math.min(ICON_FS_MAX, startSize + delta / zoom)));
                 if (String(newSize) !== String(selectedNode.props.fontSize)) {
                     selectedNode.props.fontSize = String(newSize);
-                    // Keep _attrs.style in sync so the Attrs panel reflects the live value
-                    setAttrStyleProp(selectedNode, 'font-size', newSize + 'px');
+                    // The prop is the size; a copy in _attrs.style would win
+                    // over it (_sdInlineStyleProps()). The Attrs panel shows
+                    // the merged style.
+                    setAttrStyleProp(selectedNode, 'font-size', '');
                     renderCanvas();
                     updateIconResizeHandle();
                 }
@@ -45655,12 +45971,15 @@ const StyleDesigner = (function () {
         _sdLivePreviewSchedule();
     }
 
-    function _pgTabsAddNew() {
+    // opts.folder: the folder the page goes to (the design chooser's link);
+    // as a click handler the argument is the event, which names none.
+    function _pgTabsAddNew(opts) {
         _pgTabsPersistActive();
         _pgNewTabSeq++;
+        var folder = (opts && typeof opts.folder === 'number' && opts.folder > 0) ? opts.folder : 0;
         var p = {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
-            page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '',
+            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '',
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -45724,6 +46043,92 @@ const StyleDesigner = (function () {
         _pgTabsInsertAfterActive(p);
         _pgTabsSwitch(p.key);
         sdToast('<strong>' + esc(src.page_name || '') + '</strong> ' + esc(_sdT('was duplicated as')) + ' <strong>' + esc(name) + '</strong> — ' + esc(_sdT('save to keep it.')), 'info', 5000);
+    }
+
+    // Copy or move a saved page to another design. The chooser opens the
+    // other design's editor with the page (pg_designer_start_action()): a
+    // copy as a new draft tab there, a move as a tab that changes design when
+    // it is published there. What goes is the page as it was last saved;
+    // leaving goes through _pgExit(), which asks about unsaved changes.
+    function _pgTabsSendTo(key, mode) {
+        var p = _pgPageByKey(key);
+        if (!p || p.page_id <= 0 || p.pickedPending || !window.pgDesignTarget) return;
+        window.pgDesignTarget.open({
+            mode: mode, page: p.page_id, exclude: (_design && _design.styleId) || 0,
+            go: function (url) { _pgExit(url); }
+        });
+    }
+
+    // The design chooser's link, read once the editor is up (sdDesign.
+    // startAction, pg_designer_start_action()). The parameters leave the
+    // address first: a reload must not add the page a second time.
+    function _pgStartAction(act) {
+        try {
+            var u = new URL(window.location.href);
+            ['new_page', 'folder', 'pick_page', 'copy_page'].forEach(function (k) { u.searchParams.delete(k); });
+            history.replaceState(null, '', u.toString());
+        } catch (e) {}
+        var folder = parseInt(act.folder, 10) || 0;
+        if (act.kind === 'folder') {
+            // A new design: its first, still blank page goes to the folder.
+            var first = _pgActivePage();
+            if (first && first.page_id === 0 && folder > 0) {
+                first.page_folder = folder;
+                _pgLoadPageIntoFields(first);
+            }
+            return;
+        }
+        if (act.kind === 'new_page') {
+            _pgTabsAddNew({ folder: folder });
+            return;
+        }
+        if (act.kind !== 'pick' && act.kind !== 'copy') return;
+        _pgApiPost('page_load', { page_id: act.page_id }).then(function (res) {
+            if (!res || res.status !== 'success' || !res.page) {
+                sdToast((res && res.message) ? res.message : _sdT('The page could not be loaded.'), 'error');
+                return;
+            }
+            if (act.kind === 'pick') {
+                _pgTabsAttachLoaded(res.page, { current_style_id: act.from_id, current_style_name: act.from_name });
+            } else {
+                _pgTabsAddCopy(res.page, act.name);
+            }
+        }).catch(function () { sdToast(_sdT('Network error.'), 'error'); });
+    }
+
+    // A page of another design opened here as a copy: a new tab, a draft
+    // where drafts are kept, under the name the server found free. The page
+    // it came from is not touched; the copy is written by the next save.
+    function _pgTabsAddCopy(sp, name) {
+        _pgTabsPersistActive();
+        _pgNewTabSeq++;
+        var tree = sp.tree || createDefaultTree();
+        _sdTreeObjects(tree);
+        _backfillIds(tree);
+        _stripToggleableShowState(tree);
+        var p = {
+            key: 'new' + Date.now() + '_' + _pgNewTabSeq,
+            page_id: 0, page_name: name || ((sp.page_name || _sdT('page')) + '-' + _sdT('copy')),
+            page_folder: sp.page_folder || 0, page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
+            page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
+            page_sitemap: sp.page_sitemap ? 1 : 0, page_home: 0,           // never two home pages
+            page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
+            page_draft: _pgNewPageDraft(),
+            pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
+            pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
+            pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
+            pg_comments_login: sp.pg_comments_login ? 1 : 0,
+            pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
+            pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree), baseline: null, treeLoadWarning: false,
+            // The form settings come along; the fields are made under the
+            // copy's own id by the first save, as for a duplicate.
+            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? JSON.parse(JSON.stringify(sp.formSettings)) : {}
+        };
+        p.baseline = _pgBaselineOf(p);
+        _pgTabsInsertAfterActive(p);
+        _pgTabsSwitch(p.key);
+        sdToast(_sdT('A copy of <strong>{var}</strong> was opened as a new tab. Save or publish to keep it; the page it came from stays as it is.', esc(sp.page_name || '')), 'info', 7000);
     }
 
     // Only NEVER-saved tabs can be closed from the strip. A saved page stays
@@ -45818,6 +46223,9 @@ const StyleDesigner = (function () {
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
+        // A saved page of this design can go to another one; the chooser is
+        // on the screen for designers only (pg_designer_target_modal()).
+        var sendable = saved && !p.pickedPending && !!window.pgDesignTarget && !!(_design && _design.styleId > 0);
         // Draft or on the site, for an operator who decides it. A page picked
         // from another design is still that design's until it is saved here.
         var stateItem = '';
@@ -45848,6 +46256,8 @@ const StyleDesigner = (function () {
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
+            (sendable ? item('copy-to', 'bi-copy', _sdT('Copy to another design')) +
+                        item('move-to', 'bi-box-arrow-right', _sdT('Move to another design')) : '') +
             stateItem +
             (groupItems ? '<div class="sd-tab-popmenu-sep"></div>' + groupItems : '') +
             '<div class="sd-tab-popmenu-sep"></div>';
@@ -45896,7 +46306,7 @@ const StyleDesigner = (function () {
             var act = b.dataset.act;
             _pgTabsCloseMenu();
             if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view'
-                && act !== 'draft' && act !== 'publish' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
+                && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'draft':    _pgSetDraft([key], true); break;
@@ -45904,6 +46314,8 @@ const StyleDesigner = (function () {
                 case 'rename':   _pgTabsRename(); break;
                 case 'settings': _pgTabsOpenPageSettings(); break;
                 case 'dup':      _pgTabsDuplicateActive(); break;
+                case 'copy-to':  _pgTabsSendTo(key, 'copy'); break;
+                case 'move-to':  _pgTabsSendTo(key, 'move'); break;
                 case 'detach':   _pgTabsDetach(key); break;
                 case 'delete':   _pgTabsDelete(key); break;
                 case 'discard':  _pgTabsDiscardNew(key); break;
@@ -48039,13 +48451,16 @@ const StyleDesigner = (function () {
             // The key the server chose: widget settings name the page by it
             // (`tab:<key>`) until Publish gives the page its id.
             var tabKey = (sp.tab_key && !_pgPageByKey(sp.tab_key)) ? sp.tab_key : ('new' + Date.now() + '_' + _pgNewTabSeq);
+            // A site without a home page gets the template's (home_key, set
+            // by the server only then). The home page cannot be a draft.
+            var isHome = !!res.home_key && sp.key === res.home_key;
             var p = {
                 key: tabKey,
                 page_id: 0, page_name: sp.page_name || '', page_folder: parseInt(sp.page_folder, 10) || 0,
                 page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
-                page_home: 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
-                page_draft: _pgNewPageDraft(),
+                page_home: isHome ? 1 : 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
+                page_draft: isHome ? 0 : _pgNewPageDraft(),
                 pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
                 pg_comments_allow_new: (sp.pg_comments_allow_new === 0) ? 0 : 1, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
                 pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
@@ -48567,6 +48982,9 @@ const StyleDesigner = (function () {
 
         if (design && design.autoImport) {
             setTimeout(function () { if (typeof _pgImportOpen === 'function') _pgImportOpen(); }, 400);
+        }
+        if (design && design.startAction) {
+            setTimeout(function () { _pgStartAction(design.startAction); }, 400);
         }
         if (design && design.autoPasteHtml) {
             setTimeout(function () { if (typeof _pgPasteHtmlOpen === 'function') _pgPasteHtmlOpen(''); }, 400);

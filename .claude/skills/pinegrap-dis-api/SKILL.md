@@ -40,6 +40,17 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   çalış, yazmayı atla, sonucu sonda ver.
 - Kısmi güncellemede önce mevcut satırdan tam `$data` kur, sonra gelen alanları
   üstüne koy.
+- Gövdesiz cevap veren uç (`api_send(204, ...)`) rotada `'status' => 204`
+  bildirir; OpenAPI 200 yerine 204 yazar. `tools/check_api_schema.php`
+  `$without_body` listesine de girer.
+- İç içe nesne satır içinde nullable yazılamaz: ayrı nesne bildir, alanı
+  `'Ad?'` yaz (`'Device?'`, `'ErpQuoteSignature?'`).
+- Sonradan kişinin kendi adıyla iş yapan kayıt (zamanlanmış mesaj gibi) yalnız
+  cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
+  iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
+- Panelde yeni bir özellik kayıt yapısını değiştirdiyse (yeni durum, yeni bağ,
+  yeni kanıt) var olan API nesnesine de yansıt: olay kataloğunda olup nesnede
+  okunamayan alan bırakma (4.8'de teklif imzası ve tartışmalar böyle kaldı).
 
 ## Kapsam ve güvenlik
 
@@ -48,6 +59,10 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   saklanmaz. `write`→`read` genişletmesi yalnız `api_scopes_expand()` içindedir.
 - Kimlik doğrulaması başarısız olan istek `api_offence()` ile güvenlik duvarına
   ihlal yazar.
+- `POST /auth/login` sitenin giriş kapısını (`pg_mfa_gate()`) aynalar: iki adımlı
+  doğrulaması açık hesap `otp` ister (401 `mfa_required`), rolü gereği kurmak
+  zorunda olup kurmamış hesap 403 `mfa_setup_required` alır. Parola denetimi
+  bunlardan önce gelir.
 - `api.php` ve `integration.php` `waf_handle_rate_sensitive()` dışındadır, kendi
   kovaları vardır (`waf_rate_limit_api` adres başına, `ratelimit.php` uygulama
   başına, varsayılan 120/dk).

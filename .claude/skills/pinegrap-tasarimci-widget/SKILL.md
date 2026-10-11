@@ -363,8 +363,28 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `_pg_tpl_row_in_use()` bileşen ağaçlarına da bakar, discard bir tur
   hiçbir şey silmeyene kadar döner); kalan satır 12 saat sonra aynı şablon
   açılınca yeniden kullanılır (`_pg_tpl_reuse_cutoff()`). Form ayarında
-  `'sample_records' => 'blog'`: form ilk yayında oluşunca sitenin örnek
-  blog yazıları kopyalanır (`pg_cf_seed_sample_records()`). E-posta
+  `'sample_records' => $sample_posts`: form ilk yayında oluşunca şablonun
+  kendi kayıtları (alan adı → değer dizisi) yazılır
+  (`pg_cf_seed_sample_records()`). `'blog'` (sitenin örnek blogunu kopyala)
+  şablonda kullanılmaz: şablonla kurulan sitede başlangıç sitesinin formları
+  silinir, blog boş açılır. Her şablon aynı anahtarlarla hesap (giriş,
+  kayıt, şifre, Hesabım, profil, e-posta tercihleri, adres defteri),
+  gelen kutusu (`inbox`, `conversation`; iletişim formu görüşme açar),
+  personel (`staff`, `blog_new`, `staff_entry`, `staff_directory`, ortak
+  `staff_bar`) ve blog (`blog`, `blog_post`, `home_posts`) taşır; personel
+  bağlantısı giriş bölgesinde ve Hesabım'da `staff_page_id` +
+  `__staff_url`/`is_staff` ile, yalnız klasörün içeri aldığına çizilir.
+  Ortak bileşenin içindeki widget'ın `tab:` ayarlarını Yayınla
+  `pg_designer_resolve_tab_refs()` ile iç içe bileşenleri de dolaşarak
+  çözer; şablonu yalnız `prepare` ile denemek bunu göstermez, kurup
+  (`pg_design_template_install()`) ayar satırına bak. Her şablonda
+  `search` sayfası + `site_search` (`search_results`) widget'ı (Destek
+  Merkezi) vardır; üst bilgideki ürün arama formu katalogda kalır. İçerik
+  bölümleri arama bölümüdür: şablonun sonundaki `$search_sections` haritası
+  (sayfa → `#id` ya da katman adı → id + konular) ve akordeon yapıcıları
+  (`<id>-item`); yeni içerik sayfası eklersen haritaya da yaz. Bölüm
+  yalnız sayfanın kendi ağacında sayılır (ortak bileşen / widget içi
+  değil). E-posta
   sayfaları da şablon sayfasıdır (özel klasör, sitemap/arama kapalı): form
   ayarı `notify_page_id` / `confirm_page_id`, yorum `comments` dizisinde
   `email_page` / `email_subject` / `notify_email`, ödeme cfg
@@ -544,6 +564,22 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   şablon türü kendi çizimini `pg_design_thumb_svg()`'ye aynı CSS
   değişkenleriyle (`--tp`, `--ts`, `--tr`, `--tbr`, …) ekler; şablon
   penceresi palet değişince yalnız değişkenleri günceller.
+
+## Form detayında yapay zekâ (2026.4.8)
+
+- form_item_view `pg_sw_ai_tokens()`: `__ai_summary` (her zaman boş kutu) ve
+  dört asistan adresi (`__ai_chatgpt_url`, `__ai_claude_url`,
+  `__ai_perplexity_url`, `__ai_google_url`); adresler yalnız herkese açık,
+  bulunmuş kayıtta ve e-posta dışında dolar (`has_ai_links`). Soru widget
+  ayarı `ai_prompt_text` (`pg_tr_text()`) ya da `lang()`; `{url}` adres.
+- Tarayıcıda özet bağlamayla: düğme `_bindings.action = 'ai_summarize'`,
+  kutu `_bindings.text = '__ai_summary'`; `_pg_sw_apply_ai_summary_bindings()`
+  `data-pg-ai-summarize` / `data-pg-ai-summary` + `hidden` + `d-none` yazar,
+  `pg_ai_summary_inject()` betiği (`assets/js/pg_ai_summary.js`) yalnız
+  işaret varken ekler. Özet kaynağı düğmenin `<article>`'ıdır; `aside`
+  atlanır — kutuyu `aside` yap ki kendi metni özete girmesin.
+- Summarizer Türkçe yazmaz: betik İngilizce özetleyip Translator API ile
+  çevirir; `create()` çağrıları tıklamanın içinde eşzamanlı kalmalı.
 
 ## Bitirmeden önce
 

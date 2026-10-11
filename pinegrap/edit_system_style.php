@@ -138,6 +138,8 @@ if (!$_POST) {
         'send_to'        => $liveform->get_field_value('send_to'),
         'from_pages'     => $from_pages,
         'delete_button'  => $delete_button,
+        // ?new_page / ?pick_page / ?copy_page from the design chooser.
+        'start_action'   => pg_designer_start_action($user, $style_id),
     ));
 
     $liveform->remove_form();

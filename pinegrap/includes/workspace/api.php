@@ -34,6 +34,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -132,6 +133,9 @@ function ws_openapi_objects()
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
         'WorkspaceApproval'       => 'ws_api_approval_schema',
+        'WorkspaceThread'           => 'ws_api_thread_schema',
+        'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
+        'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
     );
 }
 
@@ -269,7 +273,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_list',
             'returns'     => array('list' => 'WorkspaceMessage'),
             'summary'     => 'Read a channel',
-            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. text is the message with every tag spelled out; body keeps the tags as written.',
+            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from; from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'since_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
@@ -286,11 +290,107 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_create',
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Write in a channel',
-            'description' => 'Writes a message into a channel the owner may post in; readers see it as written by the application. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. Send an Idempotency-Key so a retried call does not post twice.',
+            'description' => 'Writes a message into a channel the owner may post in; readers see it as written by the application. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; since the message is the application\'s, only an owner who is staff may ask, and anybody else is refused with 403 before anything is written. Send an Idempotency-Key so a retried call does not post twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('message', 'note', 'decision')),
+                array('name' => 'ack', 'in' => 'body', 'type' => 'bool', 'description' => 'Ask for read receipts on the message once it is written.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.ack_request',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/ack-request',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_ack_request',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Ask for read receipts on a message, or stop asking',
+            'description' => 'Asks the members of the message\'s channel to say they read it, the way the message menu does: they see a button under it, and those who have not answered a day later are reminded once. Only the person who wrote the message, or an owner who is staff, may ask - a message written by an application is asked about by staff only - and only while they may write in the channel; anybody else is refused with 403. on false stops asking and drops the answers given. ack on the message says how many have read it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'on', 'in' => 'body', 'type' => 'bool', 'default' => true, 'description' => 'true (the default) asks for read receipts, false stops asking.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.threads.start',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/thread',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_thread_start',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceThread',
+            'summary'     => 'Start a discussion about a message',
+            'description' => 'Opens a room of its own to talk over one message of a public or private channel the owner of the application may write in - a message, a decision, a note or a task card - the way the message menu does. The owner and the person who wrote the message are in it; staff who read the channel may join it in the panel. A message has one discussion: when it already has one, that one is answered with 200 instead of a second being made, and a new one is answered with 201. Its id is then read and written with GET and POST /workspace/channels/{id}/messages. A decision, a note or a task card written in it is copied into the channel. Concluded discussions are kept, read only, for 30 days and then deleted.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 80, 'description' => 'Left out, the first words of the message.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.threads.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/threads',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_threads_list',
+            'returns'     => array('list' => 'WorkspaceThread'),
+            'summary'     => 'List the discussions of a channel',
+            'description' => 'The discussions started from messages of a channel that the owner of the application may read - the ones they are in - the latest written in first: who is in them (the first eight), how many messages they hold, what the owner has not read and whether they were concluded. GET /workspace/channels/{id}/messages with a discussion\'s id reads it; a message of the channel says in its thread field that a discussion was started from it, also when the owner is not in it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all', 'description' => 'closed keeps the concluded ones.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/scheduled-messages',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_scheduled_messages_list',
+            'returns'     => array('list' => 'WorkspaceScheduledMessage'),
+            'summary'     => 'The owner\'s scheduled messages in a channel',
+            'description' => 'The messages the owner of the application wrote to be posted later in a channel, the next one first: nobody else sees them until they are posted, administrators included. status active waits for send_at; failed could not be posted when its time came (the owner left the channel, the channel was archived) and error says why - it stays until it is deleted. A message that was posted is no longer listed.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/scheduled-messages',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Schedule a message',
+            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a device session (a Bearer token from POST /auth/login) may schedule one: an application key is refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'Tags such as <#order:1045> or <@user:12> are kept as tags.'),
+                array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'When to post it, as an ISO-8601 moment; seconds are dropped.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.scheduled_messages.delete',
+            'method'       => 'DELETE',
+            'also_accepts' => array('POST'),
+            'path'         => '/workspace/scheduled-messages/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_scheduled_messages_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceScheduledMessage',
+            'summary'      => 'Delete a scheduled message',
+            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -460,6 +560,35 @@ function ws_api_routes()
             'description' => 'A note of the owner\'s, one shared with them, or one shared in a channel they may read. text is the note with every tag spelled out and every figure worked out; body keeps it as written. Reading it here does not mark it read.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.versions.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/notes/{id}/versions',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_note_versions_list',
+            'returns'     => array('list' => 'WorkspaceNoteVersion'),
+            'summary'     => 'The earlier versions of a note',
+            'description' => 'The states a note had before it was changed, the latest first, for whoever may read the note: when that state was saved (saved_at, to the minute) and by whom, its title and its length in characters (size). A state is kept when the note is changed after a pause, when somebody else changes it, or when a change takes away much of it; only the latest ones are kept. text and body are null in the listing; GET /workspace/notes/{id}/versions/{version_id} carries them.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.versions.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/notes/{id}/versions/{version_id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_note_versions_get',
+            'returns'     => 'WorkspaceNoteVersion',
+            'summary'     => 'One earlier version of a note, with its text',
+            'description' => 'text is that state of the note with every tag spelled out and every figure worked out, as the reader would see it today; body keeps it as written. Putting a version back is done on the notes screen.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'version_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 

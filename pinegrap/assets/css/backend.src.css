@@ -1040,6 +1040,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 /* The second colour of each icon. */
 #menu .pg-mi-dashboard { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-workspace { --pg-mi-a: var(--pg-mi-teal); }
+#menu .pg-mi-notes { --pg-mi-a: var(--pg-mi-teal); }
 #menu .pg-mi-folders { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-pages { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-files { --pg-mi-a: var(--pg-mi-amber); }
@@ -14208,6 +14209,149 @@ button.ws-home-row:hover,
 .ws-calc-remark td {
   font-size: .8rem;
   color: var(--bs-secondary-color);
+}
+/* A hesap block's groups: the heading, the lines in it, the subtotal; a
+   blank line as a gap. */
+.ws-calc-group th {
+  padding-top: .45rem;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--bs-secondary-color);
+}
+.ws-calc-in th,
+.ws-calc-remark.ws-calc-in td {
+  padding-left: 1.25rem;
+}
+.ws-calc-total th,
+.ws-calc-total td {
+  font-weight: 700;
+  border-top: 1px solid var(--bs-border-color-translucent);
+  background: var(--bs-tertiary-bg);
+}
+.ws-calc-func {
+  margin-left: .25rem;
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+.ws-calc-gap td {
+  height: .6rem;
+  padding: 0;
+  border-bottom: 0;
+}
+/* A figure a reader may try another value for (assets/js/workspace_editor.js). */
+.ws-msg-body [data-ws-calc-input] {
+  cursor: text;
+  border-bottom-style: dashed;
+}
+.ws-msg-body [data-ws-calc-input]:hover {
+  background: rgba(var(--ws-accent-rgb), .08);
+}
+.ws-rich [data-ws-calc-input] {
+  cursor: inherit;
+}
+.ws-calc-live-input {
+  display: inline-block;
+  width: 7.5rem;
+  padding: 0 .35rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ws-calc-block.ws-calc-tried {
+  border-color: rgba(var(--ws-accent-rgb), .55);
+}
+.ws-calc-block-head {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.ws-calc-reset {
+  margin-left: auto;
+  padding: 0;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ws-calc.ws-calc-tried,
+.ws-calc-tried .ws-calc-derived .ws-calc,
+.ws-calc-tried .ws-calc-total .ws-calc {
+  color: var(--ws-accent);
+}
+/* The calculation window: its tools, settings and the names to pick */
+.ws-calc-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .15rem;
+  margin-bottom: .4rem;
+}
+.ws-calc-tools .ws-calc-op {
+  min-width: 2rem;
+  font-family: var(--bs-font-monospace);
+  font-weight: 600;
+}
+.ws-calc-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .6rem;
+  margin-bottom: .4rem;
+}
+.ws-calc-settings .form-select {
+  width: auto;
+}
+.ws-calc-settings .form-control {
+  width: 7rem;
+}
+.ws-calc-names {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  margin-top: .5rem;
+}
+.ws-calc-names-label {
+  margin-right: .25rem;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-calc-name {
+  padding: .05rem .5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  font-size: .75rem;
+}
+.ws-calc-name:hover {
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+}
+/* A note's earlier versions */
+.ws-nb-versions-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.ws-nb-versions-list {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+.ws-nb-versions-view {
+  min-width: 0;
+  min-height: 8rem;
+  padding: .75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+}
+@media (max-width: 767.98px) {
+  .ws-nb-versions-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-nb-versions-list {
+    max-height: 30vh;
+  }
 }
 .ws-table-edit td[data-ws-result]::after,
 .ws-table-edit th[data-ws-result]::after {

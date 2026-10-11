@@ -164,11 +164,11 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     // ── the new language, with the defaults of the known list ──
     if ($translation_add !== '') {
         $translation_info = $translation_known[$translation_add];
-        // An engine that works without anything else to set up: Google when
-        // a key is stored, Claude when its routine is connected, otherwise
-        // the browser - "by hand" left nothing to press for a new language.
-        $translation_claude = pg_tr_engine('claude');
-        $translation_default_engine = (pg_tr_google_key() !== '') ? 'google' : (($translation_claude && $translation_claude['ready']) ? 'claude' : 'chrome');
+        // The browser engine: it needs no key and costs nothing, and "by
+        // hand" left nothing to press for a new language. An engine that is
+        // paid for or queued (Google, Claude, Pinegrap AI) is chosen on the
+        // language's row once it is added.
+        $translation_default_engine = 'chrome';
         $translation_order = (int) db_value("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM site_languages");
 
         db("INSERT INTO site_languages (code, label, enabled, prefix, engine, fallback_engine, index_policy, locale_number, locale_date, og_locale, sort_order, created_at, updated_at)

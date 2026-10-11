@@ -105,14 +105,35 @@ function ws_format_text($text)
 
 /**
  * The opening line of a block of code (```, or ```php): its language, or
- * null when the line opens nothing.
+ * null when the line opens nothing. Only a hesap block may carry settings
+ * after its language (```hesap ondalık=2); any other line with words after
+ * the language opens nothing, as before.
  *
  * @param string $line
  * @return string|null
  */
 function ws_code_fence_open($line)
 {
-    return preg_match('/^\s*```\s*([A-Za-z0-9_+#.-]{0,20})\s*$/', (string) $line, $match) ? $match[1] : null;
+    if (!preg_match('/^\s*```\s*([A-Za-z0-9_+#.-]{0,20})(?:[ \t]+([^`\r\n]{1,80}?))?\s*$/u', (string) $line, $match)) {
+        return null;
+    }
+
+    if (isset($match[2]) && ($match[2] !== '') && !(function_exists('ws_calc_block_language') && ws_calc_block_language($match[1]))) {
+        return null;
+    }
+
+    return $match[1];
+}
+
+/**
+ * The settings after a hesap block's language on its opening line.
+ *
+ * @param string $line
+ * @return string
+ */
+function ws_code_fence_info($line)
+{
+    return (preg_match('/^\s*```\s*[A-Za-z0-9_+#.-]{1,20}[ \t]+([^`\r\n]{1,80}?)\s*$/u', (string) $line, $match)) ? $match[1] : '';
 }
 
 /**
@@ -251,9 +272,12 @@ function ws_render_text($text, $refs)
  * @param array      $refs      ws_refs_resolve() output covering the text's tokens
  * @param array|null $checks    ws_checks_map() entry for this message: who ticked which item
  * @param bool       $can_check the reader may tick the checklist items
+ * @param array|null $calc      for a piece of a longer text (a note's block):
+ *                              seed, the names its hesap blocks inherit, and
+ *                              all, the names its tables may use
  * @return string
  */
-function ws_render_body($body, $refs, $checks = null, $can_check = false)
+function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null)
 {
     $body = (string) $body;
 
@@ -271,6 +295,18 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
     $html = '';
     $text = array();
     $item = 0;
+
+    // The names the hesap blocks give: each block knows those of the blocks
+    // above it, a table those of them all (includes/workspace/calc.php).
+    $scope = array('seeds' => array(), 'all' => array());
+
+    if (function_exists('ws_calc_body_scope') && (($calc !== null) || (strpos($body, '```') !== false))) {
+        $scope = ws_calc_body_scope($lines, (array) ($calc['seed'] ?? array()));
+
+        if (isset($calc['all']) && is_array($calc['all'])) {
+            $scope['all'] = array_merge($scope['all'], $calc['all']);
+        }
+    }
     $row_pattern = '/^\s*\|.*\|\s*$/';
     $check_pattern = '/^\s*[-*]\s\[( |x|X)\]\s+(.+)$/u';
 
@@ -322,7 +358,7 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
 
             // A hesap block is worked out, not shown as code.
             $html .= $titled((function_exists('ws_calc_block_language') && ws_calc_block_language($language))
-                ? ws_calc_block_html($code)
+                ? ws_calc_block_html($code, $scope['seeds'][$i] ?? array(), ws_code_fence_info($line))
                 : ws_code_block_html(implode("\n", $code), $language));
             $i = $j;
             continue;
@@ -346,7 +382,17 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
 
             // Cells starting with = are formulas, worked out here
             // (includes/workspace/calc.php); their column reads from the right.
-            $grid = (function_exists('ws_calc_has_formula') && ws_calc_has_formula($grid_rows)) ? ws_calc_grid($grid_rows) : null;
+            $grid = (function_exists('ws_calc_has_formula') && ws_calc_has_formula($grid_rows)) ? ws_calc_grid($grid_rows, $scope['all']) : null;
+
+            // A table that uses a name keeps its cells, so that it follows
+            // the figures a reader tries in the blocks (ws_calc_live()).
+            $live = false;
+
+            foreach (($grid !== null) ? $grid : array() as $grid_row) {
+                foreach ($grid_row as $grid_cell) {
+                    $live = $live || !empty($grid_cell['named']);
+                }
+            }
 
             $align = function ($column, $formula = false) use ($alignments) {
                 $side = $alignments[$column] ?? '';
@@ -358,15 +404,17 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false)
                 return ($side !== '') ? ' class="text-' . (($side === 'right') ? 'end' : (($side === 'center') ? 'center' : 'start')) . '"' : '';
             };
 
-            $cell_html = function ($row, $column) use ($grid, $grid_rows, $refs) {
+            $cell_html = function ($row, $column) use ($grid, $grid_rows, $refs, $live) {
                 if (($grid !== null) && !empty($grid[$row][$column]['formula'])) {
-                    return ws_calc_cell_html($grid[$row][$column]);
+                    return ws_calc_cell_html($grid[$row][$column], $live ? $row . ':' . $column : '');
                 }
 
                 return ws_render_inline($grid_rows[$row][$column] ?? '', $refs);
             };
 
-            $table = '<div class="ws-table-wrap"><table class="table table-sm ws-table' . (($grid !== null) ? ' ws-table-calc' : '') . '"><thead><tr>';
+            $live_data = $live ? json_encode($grid_rows, JSON_UNESCAPED_UNICODE) : false;
+            $table = '<div class="ws-table-wrap"><table class="table table-sm ws-table' . (($grid !== null) ? ' ws-table-calc' : '') . '"'
+                . (is_string($live_data) ? ' data-ws-calc-grid="' . h($live_data) . '"' : '') . '><thead><tr>';
 
             for ($column = 0; $column < $columns; $column++) {
                 $table .= '<th' . $align($column, !empty($grid[0][$column]['formula'])) . '>' . $cell_html(0, $column) . '</th>';

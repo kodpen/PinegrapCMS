@@ -440,6 +440,7 @@ switch ($action) {
     case 'ws_note_file':
     case 'ws_note_claude':
     case 'ws_note_claude_deliver':
+    case 'ws_note_menu_pin':
     case 'ws_file_text':
     case 'ws_file_text_save':
     case 'ws_file_history':
@@ -3745,6 +3746,16 @@ switch ($action) {
                     'status'   => 'success',
                     'fields'   => pg_cf_load_page_fields($cf_to),
                     'settings' => pg_cf_load_page_form_settings($cf_to),
+                ));
+                break;
+
+            // The design chooser (pg_designer_target_modal()): the designs a
+            // page can be added to, moved to or copied to, and the one to
+            // offer for the folder. Design-level, like adding a page.
+            case 'design_targets':
+                respond(array('status' => 'success') + pg_designer_design_targets(
+                    isset($request['folder_id']) ? (int)$request['folder_id'] : 0,
+                    isset($request['exclude_style_id']) ? (int)$request['exclude_style_id'] : 0
                 ));
                 break;
 

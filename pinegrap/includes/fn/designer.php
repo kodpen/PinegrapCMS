@@ -2297,6 +2297,204 @@ function pg_designer_selectable_pages($style_id)
 }
 
 /**
+ * The designs a page can be added to, moved to or copied to - the design
+ * chooser of pg_designer_target_modal(). Every visual design, the one changed
+ * last first, with its pages outside the recycle bin, and the one to offer:
+ * the design the folder uses (get_style(), inherited from the parents) when
+ * it is a visual design, else the design most of the folder's pages are on,
+ * else the design changed last.
+ *
+ * @param int $folder_id        the folder the page is meant for; 0 = none
+ * @param int $exclude_style_id a design to leave out (the page's own)
+ * @return array designs => list of {style_id, name, pages},
+ *               default => style_id to offer (0 = none),
+ *               folder  => style_id the folder uses (0 = none)
+ */
+function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
+{
+    $folder_id        = (int)$folder_id;
+    $exclude_style_id = (int)$exclude_style_id;
+
+    $own_tree = pg_multi_page_design_ready()
+        ? " OR EXISTS (SELECT 1 FROM page p2 WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> '')"
+        : '';
+    $rows = db_items(
+        "SELECT style.style_id, style.style_name,
+                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . ") AS pages
+         FROM style
+         WHERE (style.style_layout = 'visual_designer'$own_tree)" . ($exclude_style_id > 0 ? " AND style.style_id <> '$exclude_style_id'" : '') . "
+         ORDER BY style.style_timestamp DESC, style.style_name ASC");
+
+    $designs = array();
+    $ids = array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) {
+        $designs[] = array('style_id' => (int)$r['style_id'], 'name' => (string)$r['style_name'], 'pages' => (int)$r['pages']);
+        $ids[(int)$r['style_id']] = true;
+    }
+
+    $folder_style = 0;
+    if ($folder_id > 0 && (int)db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '$folder_id'") > 0) {
+        $folder_style = (int)get_style($folder_id);
+        if (!isset($ids[$folder_style])) $folder_style = 0;
+        // A folder no design is assigned to - a template's folders, for one -
+        // belongs to the design most of its pages are on.
+        if ($folder_style === 0) {
+            foreach ((array)db_items("SELECT page_style, COUNT(*) AS n FROM page
+                                      WHERE page_folder = '$folder_id' AND layout_type = 'system'
+                                      GROUP BY page_style ORDER BY n DESC") as $fs) {
+                if (isset($ids[(int)$fs['page_style']])) { $folder_style = (int)$fs['page_style']; break; }
+            }
+        }
+    }
+
+    return array(
+        'designs' => $designs,
+        'default' => $folder_style > 0 ? $folder_style : ($designs ? $designs[0]['style_id'] : 0),
+        'folder'  => $folder_style,
+    );
+}
+
+/**
+ * The design chooser: a modal and window.pgDesignTarget.open(opts), for the
+ * screens that add a visual page (the pages list, the file manager) and for
+ * the editor's "Move to another design" / "Copy to another design".
+ *
+ * opts: mode    'add' | 'move' | 'copy'
+ *       folder  the folder the new page goes to (add)
+ *       exclude the design to leave out (move, copy: the page's own)
+ *       page    the page to move or copy
+ *       from    'pages' to come back to the pages list
+ *       go      function (url): how to leave (the editor passes its own,
+ *               which asks about unsaved changes); default: location.href
+ *
+ * The choice opens the editor: add - edit_system_style.php?new_page=1 with
+ * the design's pages and a new tab, or add_system_style.php for a new design;
+ * move - ?pick_page=, the page as a tab that moves on publish; copy -
+ * ?copy_page=, a copy of it as a new draft tab. The editor reads the
+ * parameters (pg_designer_start_action()).
+ *
+ * Printed once per screen; a second call returns ''.
+ */
+function pg_designer_target_modal()
+{
+    static $done = false;
+    if ($done) return '';
+    $done = true;
+
+    $text = array(
+        'add_title'  => lang('Add Page'),
+        'add_intro'  => lang('Choose the design the new page joins. The design opens with its pages, and the new page is ready to edit.'),
+        'move_title' => lang('Move to another design'),
+        'move_intro' => lang('The design opens with this page as a tab. The page moves there when you publish, and from then on uses that design\'s stylesheets, scripts and fonts.'),
+        'copy_title' => lang('Copy to another design'),
+        'copy_intro' => lang('The design opens with a copy of this page as a new draft tab. The page itself stays where it is.'),
+        'new_design' => lang('New design'),
+        'new_text'   => lang('Start an empty design with this page.'),
+        'folder'     => lang('Used by this folder'),
+        'pages'      => lang('Pages'),
+        'empty'      => lang('There is no visual design yet.'),
+        'loading'    => lang('Loading...'),
+        'failed'     => lang('The list could not be fetched.'),
+    );
+
+    return '
+    <div class="modal fade" id="pgDesignTargetModal" tabindex="-1" aria-labelledby="pgDesignTargetTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="pgDesignTargetTitle"></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-body-secondary" id="pgDesignTargetIntro"></p>
+                    <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var T = ' . encode_json($text) . ';
+            var modal = document.getElementById("pgDesignTargetModal");
+            var list = document.getElementById("pgDesignTargetList");
+            var go = document.getElementById("pgDesignTargetGo");
+            var opts = {};
+            var esc = function (v) { var d = document.createElement("div"); d.textContent = String(v == null ? "" : v); return d.innerHTML; };
+            var row = function (value, title, sub, checked, badge) {
+                return "<label class=\"list-group-item list-group-item-action d-flex gap-3 align-items-center\">" +
+                    "<input class=\"form-check-input flex-shrink-0 m-0\" type=\"radio\" name=\"pg_design_target\" value=\"" + esc(value) + "\"" + (checked ? " checked" : "") + ">" +
+                    "<span class=\"flex-grow-1 text-truncate\"><span class=\"fw-semibold\">" + esc(title) + "</span>" +
+                    (badge ? " <span class=\"badge text-bg-primary fw-normal ms-1\">" + esc(badge) + "</span>" : "") +
+                    (sub ? "<span class=\"d-block small text-body-secondary\">" + esc(sub) + "</span>" : "") + "</span></label>";
+            };
+            var target = function () {
+                var c = list.querySelector("input[name=pg_design_target]:checked");
+                if (!c) return "";
+                var from = opts.from === "pages" ? "&from=pages" : "";
+                if (c.value === "new") {
+                    var q = [];
+                    if (opts.folder) q.push("folder=" + encodeURIComponent(opts.folder));
+                    if (opts.from === "pages") q.push("from=pages");
+                    return "add_system_style.php" + (q.length ? "?" + q.join("&") : "");
+                }
+                var url = "edit_system_style.php?id=" + encodeURIComponent(c.value);
+                if (opts.mode === "move") return url + "&pick_page=" + encodeURIComponent(opts.page) + from;
+                if (opts.mode === "copy") return url + "&copy_page=" + encodeURIComponent(opts.page) + from;
+                return url + "&new_page=1" + (opts.folder ? "&folder=" + encodeURIComponent(opts.folder) : "") + from;
+            };
+            list.addEventListener("change", function () { go.disabled = !target(); });
+            list.addEventListener("dblclick", function (e) { if (e.target.closest("label") && target()) go.click(); });
+            go.addEventListener("click", function () {
+                var url = target();
+                if (!url) return;
+                window.bootstrap.Modal.getOrCreateInstance(modal).hide();
+                if (typeof opts.go === "function") opts.go(url); else window.location.href = url;
+            });
+            window.pgDesignTarget = {
+                open: function (o) {
+                    opts = o || {};
+                    var mode = (opts.mode === "move" || opts.mode === "copy") ? opts.mode : "add";
+                    document.getElementById("pgDesignTargetTitle").textContent = T[mode + "_title"];
+                    document.getElementById("pgDesignTargetIntro").textContent = T[mode + "_intro"];
+                    list.innerHTML = "<div class=\"list-group-item small text-body-secondary\">" + esc(T.loading) + "</div>";
+                    go.disabled = true;
+                    window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "designer", sub_action: "design_targets", folder_id: opts.folder || 0,
+                                               exclude_style_id: opts.exclude || 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || res.status !== "success") throw new Error("failed");
+                        var html = (res.designs || []).map(function (d) {
+                            return row(d.style_id, d.name, T.pages + ": " + d.pages, d.style_id === res["default"], d.style_id === res.folder ? T.folder : "");
+                        }).join("");
+                        if (mode === "add") html += row("new", T.new_design, T.new_text, !(res.designs || []).length, "");
+                        list.innerHTML = html || "<div class=\"list-group-item small text-body-secondary\">" + esc(T.empty) + "</div>";
+                        go.disabled = !target();
+                        var c = list.querySelector("input:checked");
+                        if (c) c.focus();
+                    })
+                    .catch(function () {
+                        list.innerHTML = "<div class=\"list-group-item small text-danger\">" + esc(T.failed) + "</div>";
+                    });
+                }
+            };
+            document.addEventListener("click", function (e) {
+                var b = e.target.closest ? e.target.closest("[data-pg-design-target]") : null;
+                if (!b) return;
+                e.preventDefault();
+                window.pgDesignTarget.open({ mode: b.getAttribute("data-pg-design-target"), folder: parseInt(b.getAttribute("data-folder"), 10) || 0,
+                                             from: b.getAttribute("data-from") || "" });
+            });
+        })();
+    </script>';
+}
+
+/**
  * Validate and persist ONE page of a visual design.
  *
  * Everything that used to be inline in edit_system_style.php's POST branch —
@@ -2826,6 +3024,48 @@ function _pg_lightbox_assets_once()
 }
 
 /**
+ * The theme switchers' engine, for a page whose HTML holds one.
+ *
+ * The switchers the visual editor places (Theme: Dropdown, Toggle, Switch)
+ * carry only a data-pg-theme-switcher marker, no script. The page is asked
+ * once every shared component and system widget has been drawn in
+ * (get_page_content.php), so it makes no difference where a switcher was
+ * placed: on the page itself, in a shared component of the page's design or
+ * in one that also serves other designs. The file follows the switcher and
+ * goes with it, with nothing to keep in step on the design.
+ *
+ * The visitor's stored choice is applied by a few inline lines in <head>, so
+ * the first paint already wears it; assets/js/pg_theme_switcher.js binds the
+ * switchers at the end of <body>.
+ *
+ * @param string $content page HTML
+ * @return string
+ */
+function pg_theme_switcher_inject($content)
+{
+    if (strpos($content, 'data-pg-theme-switcher') === false) return $content;
+    if (strpos($content, '/assets/js/pg_theme_switcher.js') !== false) return $content;
+
+    // The resolution pg_theme_switcher.js makes, inline: "auto" or nothing
+    // stored follows the system.
+    $early = '<script>(function(){try{var t=localStorage.getItem("pg-theme");'
+           . 'if(!t||t==="auto"){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}'
+           . 'document.documentElement.setAttribute("data-bs-theme",t);}catch(e){}})();</script>' . "\n";
+    $file  = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_theme_switcher.js?v='
+           . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js') . '" defer></script>' . "\n";
+
+    $head = stripos($content, '</head>');
+    $content = ($head !== false) ? substr_replace($content, $early, $head, 0) : $early . $content;
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    $content = ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
+
+    return $content;
+}
+
+/**
  * Emit Fancybox v6 (Fancyapps) assets exactly once per request.
  *
  * Fancybox v6 replaces the legacy pg_lightbox custom build for the new
@@ -3180,6 +3420,8 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             $tag_lc = strtolower($tag);
             $attrs = '';
             if (!empty($props['id'])) $attrs .= ' id="' . h($props['id']) . '"';
+            // A search section (pg_search_sections()): see _render_extra_attrs().
+            if (!empty($props['id']) && !empty($props['searchSection'])) $attrs .= ' data-pg-search-section';
             // Combine cssClass + sizing classes into a single class attribute
             $sem_cls_parts = array();
             if (!empty($props['cssClass'])) $sem_cls_parts[] = $props['cssClass'];
@@ -3372,6 +3614,9 @@ function _render_extra_attrs($props, $skip_names = array())
     $out = '';
     if (empty($skip_map['id']) && !empty($props['id'])) {
         $out .= ' id="' . h($props['id']) . '"';
+        // A search section (pg_search_sections()) is marked, so the page
+        // render knows to describe its parts in the structured data.
+        if (!empty($props['searchSection'])) $out .= ' data-pg-search-section';
     }
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
@@ -5553,6 +5798,11 @@ function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
  * with the template's SKU is placed in it rather than made again. The pictures go to a folder of their own under the site's root
  * folder ('folder'), found again by its name.
  *
+ * A product made here ships to every shipping zone the site has,
+ * International included: a shippable product with no zone cannot be
+ * shipped anywhere, so the sample sells wherever the shop delivers until the
+ * operator narrows it on the product's Shipping tab.
+ *
  * A group's parent is 'root' (the site's top product group, if any) or the
  * key of another group of the template, listed before it. A product's price
  * is per currency ('USD' => 89, 'TRY' => 3499): the site's base currency, or
@@ -5596,6 +5846,10 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
     if ($details !== '') $details = '<ul>' . $details . '</ul>';
     $base_path = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/');
     $today = date('Y-m-d');
+    $zone_ids = array();
+    foreach (pg_pb_zones() as $zone) {
+        $zone_ids[] = (int)$zone['id'];
+    }
 
     foreach ($def['groups'] as $key => $g) {
         $key   = (string)$key;
@@ -5657,7 +5911,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                     'google_product_category' => '', 'tax_rate' => null,
                 );
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
-                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'attributes' => array(), 'submit_form' => array()));
+                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $zone_ids, 'attributes' => array(), 'submit_form' => array()));
                 if ($pid <= 0) continue;
             }
             if ((int)db_value("SELECT COUNT(*) FROM products_groups_xref WHERE product = '$pid' AND product_group = '$gid'") === 0) {
@@ -5985,6 +6239,10 @@ function _pg_tpl_widget_row($origin, $name, $tree, $cfg, $user_id)
  * editor gives a widget of its kind dropped from the palette - the editor
  * builds it, and publishing writes it.
  *
+ * home_key names the page that opens marked as the site's home page - the
+ * page keyed 'home', else the first - and is set only while the site has no
+ * home page outside the recycle bin; a site that has one keeps it.
+ *
  * Returns array('ok' => true, ...payload) or array('ok' => false, 'error' => text).
  */
 function pg_design_template_prepare($template_id, $user)
@@ -6208,11 +6466,23 @@ function pg_design_template_prepare($template_id, $user)
         $assets[$asset_key] = (isset($tpl['assets'][$asset_key]) && is_string($tpl['assets'][$asset_key])) ? $tpl['assets'][$asset_key] : '';
     }
 
+    // A site without a home page gets the template's, chosen the way
+    // pg_design_template_install() chooses it. A page in the bin does not
+    // count: it is not served at the site root.
+    $home_key = '';
+    if ($pages && (int)db_value("SELECT COUNT(*) FROM page WHERE page_home = 'yes'" . pg_designer_not_binned_sql('page_folder')) === 0) {
+        foreach ($pages as $p) {
+            if ($p['key'] === 'home') { $home_key = 'home'; break; }
+        }
+        if ($home_key === '') $home_key = (string)$pages[0]['key'];
+    }
+
     return array(
         'ok'         => true,
         'template'   => array('id' => $tpl['id'], 'name' => $base, 'version' => $tpl['version'], 'framework' => $tpl['framework']),
         'style_name' => $style_name,
         'pages'      => $pages,
+        'home_key'   => $home_key,
         'widgets'    => $widget_out,
         'shared'     => $shared_out,
         'folders'    => $folders,

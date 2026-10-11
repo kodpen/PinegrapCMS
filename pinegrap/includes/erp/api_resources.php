@@ -2327,7 +2327,9 @@ function erp_api_quotes_ready()
 /**
  * The quote rows with the columns erp_quote() gives the presenter. form_data
  * stays out: it is the form as it was typed, kept for the invoice draft, and
- * a page of it is a lot of text nobody reads.
+ * a page of it is a lot of text nobody reads. Every column
+ * erp_signature_document_hash_quote() covers is read here: a column left out
+ * would read every signed quote as changed.
  *
  * @return string  SELECT ... FROM ... JOIN ..., for erp_api_page()
  */
@@ -2419,7 +2421,83 @@ function erp_api_quote_line_present($line, $position, $sku)
     );
 }
 
-function erp_api_quote_present($row, $lines)
+/**
+ * The signatures of a page of quotes, keyed by quote, read in one query.
+ * Every column the seal covers is read so the seal can be checked; what
+ * leaves the server is decided by erp_api_quote_signature_present().
+ *
+ * @param array $quote_ids
+ * @return array  quote_id => erp_signatures row
+ */
+function erp_api_quote_signatures($quote_ids)
+{
+    $ids = array();
+
+    foreach ((array) $quote_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    if (empty($ids) || !erp_signatures_ready()) {
+        return array();
+    }
+
+    $signatures = array();
+
+    foreach ((array) db_items("SELECT doc_type, doc_id, file_id, image_hash, document_hash, signer_name, signed_at,
+            ip_address, user_agent, user_id, seal
+        FROM erp_signatures
+        WHERE doc_type = 'quote' AND doc_id IN (" . implode(',', $ids) . ")") as $signature) {
+        $signatures[(int) $signature['doc_id']] = $signature;
+    }
+
+    return $signatures;
+}
+
+/**
+ * A quote's signature, or null while it carries none. document_changed is
+ * the quote screen's own reading (edit_erp_quote.php): only a stored hash
+ * that no longer matches counts as a change. The drawing, its file, the
+ * address and the browser stay with the panel: they are evidence about a
+ * person, not data an integration needs.
+ *
+ * @param array      $quote      The quote row, with the columns the hash covers
+ * @param array|null $signature  erp_signatures row
+ * @return array|null
+ */
+function erp_api_quote_signature_present($quote, $signature)
+{
+    if (!is_array($signature)) {
+        return null;
+    }
+
+    return array(
+        'signer_name' => (string) $signature['signer_name'],
+        'signed_at' => api_time($signature['signed_at']),
+        'document_changed' => (erp_signature_document_matches($signature, erp_signature_document_hash_quote($quote)) === false),
+        'seal_valid' => erp_signature_verify($signature),
+    );
+}
+
+// What erp_api_quote_signature_present() returns, declared for the OpenAPI document.
+function erp_api_quote_signature_schema()
+{
+    return array(
+        'signer_name' => 'string',
+        'signed_at' => 'string',
+        'document_changed' => 'boolean',
+        'seal_valid' => 'boolean',
+    );
+}
+
+/**
+ * @param array      $row
+ * @param array      $lines      From erp_api_quote_lines()
+ * @param array|null $signature  erp_signatures row, null for an unsigned quote
+ * @return array
+ */
+function erp_api_quote_present($row, $lines, $signature = null)
 {
     // An invoiced quote whose draft was deleted names no invoice any more;
     // erp_quote_state() reads it as accepted again.
@@ -2450,6 +2528,7 @@ function erp_api_quote_present($row, $lines)
         'invoice_status' => $invoiced ? (string) $row['invoice_status'] : '',
         'notes' => (string) $row['notes'],
         'lines' => $lines,
+        'signature' => erp_api_quote_signature_present($row, $signature),
         'decided_at' => api_time($row['decided_at']),
         'created_at' => api_time($row['created_at']),
         'updated_at' => api_time($row['updated_at']),
@@ -2504,6 +2583,8 @@ function erp_api_quote_schema()
             'withholding_amount' => 'integer',
             'line_total' => 'integer',
         )),
+        // A nested object cannot be nullable inline; a nullable reference can.
+        'signature' => 'ErpQuoteSignature?',
         'decided_at' => 'string?',
         'created_at' => 'string?',
         'updated_at' => 'string?',
@@ -2559,15 +2640,26 @@ function erp_api_quotes_list($params)
         $where[] = "q.updated_at >= '" . (int) $params['updated_since'] . "'";
     }
 
+    // Before the update that brings the signature table no quote is signed:
+    // asking for signed ones finds none, asking for unsigned ones finds all.
+    if (isset($params['signed'])) {
+        if (erp_signatures_ready()) {
+            $where[] = ($params['signed'] ? '' : 'NOT ') . "EXISTS (SELECT 1 FROM erp_signatures s WHERE s.doc_type = 'quote' AND s.doc_id = q.id)";
+        } elseif ($params['signed']) {
+            $where[] = '1 = 0';
+        }
+    }
+
     $page = erp_api_page(erp_api_quote_select(), $where, 'q.updated_at', 'q.id', $params,
         "FROM erp_quotes q LEFT JOIN erp_invoices i ON i.id = q.invoice_id");
 
     $lines = erp_api_quote_lines($page['rows']);
+    $signatures = erp_api_quote_signatures(array_column($page['rows'], 'id'));
 
     $out = array();
 
     foreach ($page['rows'] as $row) {
-        $out[] = erp_api_quote_present($row, $lines[(int) $row['id']] ?? array());
+        $out[] = erp_api_quote_present($row, $lines[(int) $row['id']] ?? array(), $signatures[(int) $row['id']] ?? null);
     }
 
     api_ok_list($out, $page['limit'], $page['next_cursor'], $page['total']);
@@ -2585,7 +2677,7 @@ function erp_api_quotes_get($params)
 
     $lines = erp_api_quote_lines(array($quote));
 
-    api_ok(erp_api_quote_present($quote, $lines[(int) $quote['id']] ?? array()));
+    api_ok(erp_api_quote_present($quote, $lines[(int) $quote['id']] ?? array(), erp_signature('quote', (int) $quote['id'])));
 }
 
 /* ---------------------------------------------------------------------------

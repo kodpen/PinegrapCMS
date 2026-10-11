@@ -62,8 +62,12 @@ function upgrade_to_2026_4_8() {
 	upgrade_2026_4_8_workspace_approvals();     // 8.87
 
 	upgrade_2026_4_8_workspace_acks();          // 8.89
+	upgrade_2026_4_8_note_versions();           // 8.111
+	upgrade_2026_4_8_notes_menu();              // 8.112
 
 	upgrade_2026_4_8_erp_quotes();              // 8.58
+
+	upgrade_2026_4_8_binned_home();             // 8.20
 
 }
 
@@ -1024,6 +1028,45 @@ function upgrade_2026_4_8_workspace_acks() {
 
 }
 
+// Earlier versions of workspace notes (2026.4.8, 8.111;
+// includes/workspace/notes.php). Before a save changes a note, the state it
+// had is kept as a row here when it is worth keeping (the first change, a
+// change after a pause, somebody else's text, or a save that takes much of
+// the note away); a note keeps its latest WS_NOTE_VERSIONS_KEEP rows.
+// saved_by and saved_at are who wrote that state and when it was saved,
+// created_at when it was kept. A table of its own rather than a column of
+// ws_notes: a note's rows grow with every version, the note does not.
+function upgrade_2026_4_8_note_versions() {
+
+	install_create_table('ws_note_versions', "CREATE TABLE ws_note_versions (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		note_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		title       VARCHAR(200) NOT NULL DEFAULT '',
+		body        MEDIUMTEXT NULL,
+		saved_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		saved_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_note (note_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a note keeps its earlier versions; one emptied or changed by mistake can be put back.');
+
+}
+
+// My Notes pinned to the control panel's menu (2026.4.8, 8.112;
+// includes/workspace/notes.php, includes/fn/output.php). A person who pins
+// it from the notes screen gets a menu row of its own right under the
+// workspace; ws_profiles.notes_pinned is that choice, one per person. The
+// row of ws_profiles is made on the first pin when the person has none.
+function upgrade_2026_4_8_notes_menu() {
+
+	install_add_column('ws_profiles', 'notes_pinned', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Workspace: My Notes can be pinned to the menu, right under the workspace.');
+
+}
+
 // ERP: quotes about to run out, the invoice's quote and the customer's
 // signature (2026.4.8, 8.58; includes/erp/alerts.php, quotes.php,
 // signatures.php).
@@ -1095,5 +1138,62 @@ function upgrade_2026_4_8_erp_quotes() {
 	}
 
 	install_note('Quotes: a notice when open quotes are about to run out (Settings › Commerce › ERP), an invoice that leads back to the quote it was made from, and a quote the customer signs on the screen, printed with the signature.');
+
+}
+
+// Pages in the recycle bin that still carry the home flag (2026.4.8, 8.20;
+// pg_recycle_drop_home() in view_folder_and_files_f.php). Before this
+// release no way into the bin cleared page_home, and the site root picks at
+// random among every page carrying it, so a binned home page - often of a
+// design already deleted - was served on some requests. Data only: the flag
+// is cleared for every page inside the bin folder or below it, so a second
+// run finds nothing to clear.
+function upgrade_2026_4_8_binned_home() {
+
+	if (!install_column_exists('config', 'recycle_folder_id')) {
+		install_skipped('page.page_home: this site has no recycle bin');
+		return;
+	}
+
+	$bin_id = (int) db_value("SELECT recycle_folder_id FROM config");
+
+	if (($bin_id <= 0) || !db_value("SELECT COUNT(*) FROM folder WHERE folder_id = '" . $bin_id . "'")) {
+		install_skipped('page.page_home: this site has no recycle bin');
+		return;
+	}
+
+	$children = array();
+
+	foreach ((array) db_items("SELECT folder_id, folder_parent FROM folder") as $row) {
+		$children[(int) $row['folder_parent']][] = (int) $row['folder_id'];
+	}
+
+	$ids = array($bin_id => true);
+	$stack = array($bin_id);
+
+	while ($stack) {
+		$folder_id = array_pop($stack);
+
+		if (empty($children[$folder_id])) {
+			continue;
+		}
+
+		foreach ($children[$folder_id] as $child_id) {
+			if (!isset($ids[$child_id])) {
+				$ids[$child_id] = true;
+				$stack[] = $child_id;
+			}
+		}
+	}
+
+	db("UPDATE page SET page_home = 'no' WHERE page_home = 'yes' AND page_folder IN (" . implode(',', array_keys($ids)) . ")");
+
+	$cleared = (int) mysqli_affected_rows(db::$con);
+
+	if ($cleared > 0) {
+		install_ran('page.page_home cleared for ' . $cleared . ' page(s) in the recycle bin');
+	} else {
+		install_skipped('page.page_home: no page in the recycle bin carries it');
+	}
 
 }

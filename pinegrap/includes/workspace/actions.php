@@ -369,10 +369,24 @@ function ws_handle_action($action, $request)
                 return ws_action_ok(array('lines' => ws_calc_inline_lines($request['lines'])));
             }
 
+            // A reader's own figures in the blocks of a message or a note:
+            // its blocks and tables worked out again, nothing stored.
+            if (isset($request['live']) && is_array($request['live'])) {
+                return ws_action_ok(array('units' => ws_calc_live($request['live'])));
+            }
+
+            // The text a table or a block is written into: the names its
+            // hesap blocks give are known to what is being written.
+            $calc_scope = array();
+
+            if (isset($request['scope']) && is_string($request['scope']) && (strpos($request['scope'], '```') !== false)) {
+                $calc_scope = ws_calc_body_scope(preg_split('/\r\n|\r|\n/', mb_substr($request['scope'], 0, WS_NOTE_MAX)))['all'];
+            }
+
             if (isset($request['grid']) && is_array($request['grid'])) {
                 $cells = array();
 
-                foreach (ws_calc_grid($request['grid']) as $r => $row) {
+                foreach (ws_calc_grid($request['grid'], $calc_scope) as $r => $row) {
                     foreach ($row as $c => $cell) {
                         if ($cell['formula'] || ($cell['value'] !== null)) {
                             $cells[] = array(
@@ -404,8 +418,21 @@ function ws_handle_action($action, $request)
                 $refs = ws_refs_resolve($viewer, ws_tokens(implode("\n", $blocks)));
                 $html = array();
 
-                foreach ($blocks as $block) {
-                    $html[] = ($block === '') ? '' : ws_render_body($block, $refs);
+                // Drawn one by one, but as parts of one note: a block knows
+                // the names of the hesap blocks above it, a table them all.
+                $seeds = array();
+                $running = array();
+
+                foreach ($blocks as $index => $block) {
+                    $seeds[$index] = $running;
+
+                    if (strpos($block, '```') !== false) {
+                        $running = ws_calc_body_scope(preg_split('/\r\n|\r|\n/', $block), $running)['all'];
+                    }
+                }
+
+                foreach ($blocks as $index => $block) {
+                    $html[] = ($block === '') ? '' : ws_render_body($block, $refs, null, false, array('seed' => $seeds[$index], 'all' => $running));
                 }
 
                 return ws_action_ok(array('blocks' => $html));
@@ -419,18 +446,59 @@ function ws_handle_action($action, $request)
                 $body = ws_markdown_headings($body);
             }
 
-            return ws_action_ok(array('html' => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body)))));
+            // The names known from the rest of the text, for the calculation
+            // window to offer.
+            $names = array();
+
+            foreach ($calc_scope as $entry) {
+                if (substr($entry['text'], 0, 1) !== '_') {
+                    $names[] = $entry['text'];
+                }
+            }
+
+            return ws_action_ok(array(
+                'html'  => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body)), null, false, empty($calc_scope) ? null : array('seed' => $calc_scope, 'all' => $calc_scope)),
+                'names' => array_values(array_unique($names)),
+            ));
 
         // Personal notes (includes/workspace/notes.php): the person's own and
         // the ones shared with them; nobody else's, whatever their role.
         case 'ws_notes':
-            return ws_action_ok(array('ready' => ws_notes_ready()) + ws_notes_list($viewer, (string) ($request['search'] ?? '')));
+            return ws_action_ok(array(
+                'ready' => ws_notes_ready(),
+                // Whether My Notes is pinned to the person's panel menu.
+                'menu'  => array('ready' => ws_notes_menu_ready(), 'pinned' => ws_notes_menu_pinned((int) $viewer['id'])),
+            ) + ws_notes_list($viewer, (string) ($request['search'] ?? '')));
+
+        // My Notes pinned to the panel menu, right under the workspace, or
+        // taken off it: the person's own choice.
+        case 'ws_note_menu_pin':
+            if (!ws_notes_menu_pin($viewer, !empty($request['pinned']))) {
+                return ws_action_error(lang('The workspace is not installed yet: the database has to be updated first.'));
+            }
+
+            // The row's drawn icon, for the screen to add the row without a reload.
+            return ws_action_ok(array(
+                'pinned' => !empty($request['pinned']),
+                'icon'   => function_exists('pg_menu_icon') ? pg_menu_icon('notes', 'workspace-color') : '',
+            ));
 
         case 'ws_note_get':
             $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'view');
 
             if (!$note) {
                 return ws_action_error(lang('That note could not be found.'));
+            }
+
+            // Its earlier versions, or one of them: for whoever may read it.
+            if (!empty($request['versions'])) {
+                return ws_action_ok(array('versions' => ws_note_versions($viewer, $note)));
+            }
+
+            if (!empty($request['version'])) {
+                $version = ws_note_version($viewer, $note, (int) $request['version']);
+
+                return $version ? ws_action_ok(array('version' => $version)) : ws_action_error(lang('That version could not be found.'));
             }
 
             // Open in front of the person: what the inbox said about it is read.

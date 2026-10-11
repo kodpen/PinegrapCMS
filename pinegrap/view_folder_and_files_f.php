@@ -1742,6 +1742,59 @@ function pg_recycle_parked_original($name, $item_id)
     return (string) substr($name, strlen($prefix));
 }
 
+// A page in the bin is not the home page any more.
+//
+// The site root is served by any page carrying page_home = 'yes', picked at
+// random when there are several (get_page.php), so a binned page that kept
+// the flag went on answering the root on some requests - drawn with a design
+// that may already have been deleted. The flag leaves with the row, and
+// unlike the name it is not handed back on restore: a page coming out of the
+// bin is an ordinary page until somebody makes it the home page again.
+//
+// The whole bin is swept rather than the one row: a folder carries its pages
+// in with it, and those rows have no bin record of their own. The folder tree
+// is read here instead of through pg_recycle_bin_folder_ids(), which caches
+// per request and may have been filled before the move that just happened.
+function pg_recycle_drop_home()
+{
+    $bin_id = (int) pg_recycle_bin_folder_id();
+
+    if ($bin_id <= 0) {
+        return;
+    }
+
+    $children = array();
+
+    foreach ((array) db_items("SELECT folder_id, folder_parent FROM folder") as $row) {
+        $children[(int) $row['folder_parent']][] = (int) $row['folder_id'];
+    }
+
+    $ids = array($bin_id => true);
+    $stack = array($bin_id);
+
+    while ($stack) {
+        $folder_id = array_pop($stack);
+
+        if (empty($children[$folder_id])) {
+            continue;
+        }
+
+        foreach ($children[$folder_id] as $child_id) {
+            // A damaged tree that loops back on itself must not spin forever.
+            if (isset($ids[$child_id])) {
+                continue;
+            }
+
+            $ids[$child_id] = true;
+            $stack[] = $child_id;
+        }
+    }
+
+    // 'no', not '': page_home is ENUM('no','yes') and a strict server rejects
+    // a value outside the list.
+    db("UPDATE page SET page_home = 'no' WHERE page_home = 'yes' AND page_folder IN (" . implode(',', array_keys($ids)) . ")");
+}
+
 // Park the name of a row on its way into the bin. Best effort by design: if the
 // disk rename fails the row keeps the name it had, which is the state the whole
 // screen worked in before this existed.
@@ -1751,6 +1804,12 @@ function pg_recycle_park_name($item_kind, $item_id, $user)
 
     if ($item_id <= 0) {
         return;
+    }
+
+    // Every way into the bin parks the name, so this is also where a binned
+    // page - or a binned folder's pages - stops being the home page.
+    if (($item_kind == 'page') || ($item_kind == 'folder')) {
+        pg_recycle_drop_home();
     }
 
     $prefix = PG_RECYCLE_PARK_PREFIX . $item_id . '_';

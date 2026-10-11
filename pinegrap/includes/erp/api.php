@@ -133,7 +133,7 @@ function erp_webhook_events()
         'erp.quote.cancelled' => 'An ERP sales quote was cancelled',
         'erp.quote.reopened' => 'An ERP sales quote was opened again (editable, running from today if it had expired)',
         'erp.quote.invoiced' => 'An ERP sales quote was turned into an invoice draft at the prices quoted',
-        'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on',
+        'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on. Also carries signer_name and signed_at',
     );
 }
 
@@ -156,6 +156,7 @@ function erp_openapi_objects()
         'ErpExpense' => 'erp_api_expense_schema',
         'ErpExpenseCategory' => 'erp_api_expense_category_schema',
         'ErpQuote' => 'erp_api_quote_schema',
+        'ErpQuoteSignature' => 'erp_api_quote_signature_schema',
         'ErpCheque' => 'erp_api_cheque_schema',
         'ErpStockLevel' => 'erp_api_stock_level_schema',
         'ErpStockMove' => 'erp_api_stock_move_schema',
@@ -691,7 +692,7 @@ function erp_api_routes()
             'handler' => 'erp_api_quotes_list',
             'returns' => array('list' => 'ErpQuote'),
             'summary' => 'List quotes',
-            'description' => 'Priced offers to customers, with their lines and totals. A quote moves no money, no stock and no tax; once the customer says yes it becomes an invoice draft, and invoice_id then names it. status is what is stored; state is what the quote is today: an open quote past valid_until is expired, and an invoiced one whose draft was deleted reads as accepted again. The status filter works on state. Cursor paged by the moment the record last changed.',
+            'description' => 'Priced offers to customers, with their lines and totals. A quote moves no money, no stock and no tax; once the customer says yes it becomes an invoice draft, and invoice_id then names it. status is what is stored; state is what the quote is today: an open quote past valid_until is expired, and an invoiced one whose draft was deleted reads as accepted again. The status filter works on state. signature says who signed on the screen and when, and whether the quote changed since; null while unsigned. Cursor paged by the moment the record last changed.',
             'params' => array_merge(array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'expired', 'accepted', 'rejected', 'invoiced', 'cancelled'), 'description' => 'The state as the panel shows it: open means still running, expired means open but past valid_until.'),
                 array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
@@ -699,6 +700,7 @@ function erp_api_routes()
                 array('name' => 'issued_from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Quote date on or after this day.'),
                 array('name' => 'issued_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Quote date on or before this day.'),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only quotes changed at or after this moment.'),
+                array('name' => 'signed', 'in' => 'query', 'type' => 'bool', 'description' => 'Limit to quotes the customer signed (true) or has not signed (false).'),
             ), $paging),
         ),
 

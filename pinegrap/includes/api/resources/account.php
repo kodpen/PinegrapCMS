@@ -137,6 +137,16 @@ function api_auth_login($params) {
 
 		pg_mfa_attempt_clear((int)$user_id);
 
+	} elseif (pg_mfa_required_for_user((int)$user_id)) {
+
+		// The site requires a second step for this role and the account has
+		// none yet. On the website the person is held at the setup screen
+		// until it is done (pg_mfa_gate()); a device cannot show that screen,
+		// so it is refused here instead of letting the password alone through.
+		log_activity(lang('access denied from a device (two-step verification not set up)'), $username);
+
+		api_fail(403, 'mfa_setup_required', lang('This account must set up two-step verification on the website before it can sign in from a device.'));
+
 	}
 
 	$owner = api_load_owner((int)$user_id);

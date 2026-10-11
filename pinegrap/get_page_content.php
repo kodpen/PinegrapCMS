@@ -495,6 +495,35 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = _expand_custom_php($content);
     }
 
+    // ── Theme switcher ──────────────────────────────────────────────────────────
+    // A theme switcher carries no script of its own. Checked once every shared
+    // component and widget is drawn in, so a switcher in a shared component -
+    // of this design or of another one - brings the file as surely as one
+    // placed on the page (pg_theme_switcher_inject()). Not in an e-mail.
+    if (!$email && strpos($content, 'data-pg-theme-switcher') !== false && function_exists('pg_theme_switcher_inject')) {
+        $content = pg_theme_switcher_inject($content);
+    }
+
+    // ── In-browser summary ──────────────────────────────────────────────────────
+    // A form item view's button bound to the ai_summarize action brings the
+    // script that summarizes the record with the browser's built-in AI
+    // (pg_ai_summary_inject()), checked once everything is drawn in, the way
+    // the theme switcher is. Not in an e-mail.
+    if (!$email && strpos($content, 'data-pg-ai-summarize') !== false && function_exists('pg_ai_summary_inject')) {
+        $content = pg_ai_summary_inject($content);
+    }
+
+    // ── Search marking ──────────────────────────────────────────────────────────
+    // A site search result that matched a search section links here with
+    // ?highlight= and the section's anchor: the words are marked in yellow
+    // inside the section (pg_search_highlight_inject()). The canonical
+    // address leaves the parameter out, so the marked copy is never a page
+    // of its own for a search engine.
+    if (!$email && isset($_GET['highlight']) && is_scalar($_GET['highlight']) && trim((string)$_GET['highlight']) !== ''
+        && function_exists('pg_search_highlight_inject')) {
+        $content = pg_search_highlight_inject($content);
+    }
+
     // ── Messages placeholder expansion ─────────────────────────────────────────
     // Visual-designer `messages` content nodes baked into style_code as
     // `<!--pg-messages-placeholder-->`. Replace with live session messages.
@@ -5755,6 +5784,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $pg_breadcrumb_items[] = array('name' => $page_title, 'url' => $canonical_url);
 
             $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_breadcrumb_jsonld($pg_breadcrumb_items), JSON_UNESCAPED_UNICODE) . '</script>';
+        }
+
+        // The parts marked as search sections in the visual editor, named with
+        // their anchors (pg_search_sections_jsonld()), so a search engine can
+        // point a result straight at the part that answers it.
+        if ((strpos($content, 'data-pg-search-section') !== false) && function_exists('pg_search_sections_jsonld')) {
+            $pg_sections_ld = pg_search_sections_jsonld($page_id, $canonical_url, $page_title);
+            if ($pg_sections_ld) {
+                $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode($pg_sections_ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+            }
         }
 
         // The organization introduces itself once, on the front door.

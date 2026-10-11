@@ -230,6 +230,10 @@ $explorer_lang = array(
     'upload_file' => lang('Upload Files or Folders'),
     'create_file' => lang('Create File'),
     'new_page' => lang('New Page'),
+    // A designer gets two: the visual page, added to a design, and the
+    // classic page screen.
+    'new_visual_page' => lang('Add Page'),
+    'new_page_legacy' => lang('Add Page (Legacy)'),
     'refresh' => lang('Refresh'),
     'select_all' => lang('Select All'),
     'deselect_all' => lang('Deselect All'),
@@ -1390,6 +1394,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li id="upload_file_item"><button type="button" class="dropdown-item" id="upload_file_button"><span class="bi bi-upload me-2"></span><?php echo lang('Upload Files or Folders'); ?></button></li>
                 <li id="create_file_item"><button type="button" class="dropdown-item" id="create_file_button"><span class="bi bi-file-earmark-plus me-2"></span><?php echo lang('Create File'); ?></button></li>
                 <li id="new_image_item"><button type="button" class="dropdown-item" id="new_image_button"><span class="bi bi-easel me-2"></span><?php echo lang('New image'); ?></button></li>
+                <li id="new_visual_page_item" class="d-none"><button type="button" class="dropdown-item" id="new_visual_page_button"><span class="bi bi-magic me-2"></span><?php echo lang('Add Page'); ?></button></li>
                 <li id="new_page_item" class="d-none"><a class="dropdown-item" id="new_page_button" href="add_page.php"><span class="bi bi-window-plus me-2"></span><?php echo lang('New Page'); ?></a></li>
                 <li id="new_short_link_item" class="d-none"><button type="button" class="dropdown-item" id="new_short_link_button"><span class="bi bi-link-45deg me-2"></span><?php echo lang('Short Link'); ?></button></li>
             </ul>
@@ -2004,6 +2009,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     'use strict';
 
     var L = <?php echo encode_json($explorer_lang); ?>;
+
+    // Visual pages are added by designers, into a design they choose
+    // (pg_designer_target_modal()); the store has none.
+    var canVisualPages = <?php echo (($user['role'] < 2) && ($explorer_area != 'catalog')) ? 'true' : 'false'; ?>;
 
     var state = {
         area: '<?php echo $explorer_area; ?>',
@@ -4032,6 +4041,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (catalogArea) { document.getElementById('new_page_item').classList.remove('d-none'); }
         if (backupArea) { document.getElementById('new_page_item').classList.add('d-none'); }
 
+        // The visual page goes wherever the classic one is offered, outside
+        // the store.
+        var visualPageOn = canVisualPages && !catalogArea && !document.getElementById('new_page_item').classList.contains('d-none');
+
+        document.getElementById('new_visual_page_item').classList.toggle('d-none', !visualPageOn);
+        document.getElementById('new_visual_page_button').disabled = !actions.page;
+
         // The same two buttons, named for what they make here.
         var newFolderLabel = document.querySelector('#new_folder_button');
         var newPageLabel = document.querySelector('#new_page_button');
@@ -4041,7 +4057,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (newPageLabel) {
-            newPageLabel.lastChild.textContent = insideCatalog() ? L.new_product : L.new_page;
+            newPageLabel.lastChild.textContent = insideCatalog() ? L.new_product : (canVisualPages ? L.new_page_legacy : L.new_page);
         }
 
         document.getElementById('new_folder_button').classList.toggle('disabled', !actions.folder);
@@ -7228,7 +7244,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     menuItem('bi-upload', L.upload_file, 'upload_link', !actions.upload) +
                     menuItem('bi-file-earmark-plus', L.create_file, 'create_file_link', !actions.file) +
                     menuItem('bi-easel', L.new_image, 'new_image_link', !actions.image) +
-                    (state.caps.can_create_pages ? menuItem('bi-window-plus', L.new_page, 'new_page_link', !actions.page) : '') +
+                    ((state.caps.can_create_pages && canVisualPages) ? menuItem('bi-magic', L.new_visual_page, 'new_visual_page', !actions.page) : '') +
+                    (state.caps.can_create_pages ? menuItem('bi-window-plus', canVisualPages ? L.new_page_legacy : L.new_page, 'new_page_link', !actions.page) : '') +
                     (actions.short_link ? menuItem('bi-link-45deg', L.short_link, 'new_short_link') : '');
 
                 var anyAction = actions.folder || actions.upload || actions.file || actions.page || actions.short_link;
@@ -7583,6 +7600,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'create_file_link': createFile(); break;
             case 'new_image_link': createBlankImage(); break;
             case 'new_page_link': window.location.href = document.getElementById('new_page_button').href; break;
+            case 'new_visual_page': openVisualPageChooser(); break;
             case 'select_all_toggle':
                 if (selectedItems().length === state.ordered.length) { setSelection([]); } else { setSelection(state.ordered.slice()); }
                 break;
@@ -14056,6 +14074,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.getElementById('new_folder_button').addEventListener('click', createFolder);
     document.getElementById('create_file_button').addEventListener('click', createFile);
     document.getElementById('new_image_button').addEventListener('click', createBlankImage);
+
+    // Add Page (visual): the design chooser, with the folder on screen as the
+    // new page's folder and its design offered first.
+    function openVisualPageChooser() {
+        if (window.pgDesignTarget) { window.pgDesignTarget.open({ mode: 'add', folder: state.folderId || 0 }); }
+    }
+
+    document.getElementById('new_visual_page_button').addEventListener('click', openVisualPageChooser);
     document.getElementById('view_grid_button').addEventListener('click', function () { state.viewType = 'grid'; state.viewTypeExplicit = true; reload(); });
     document.getElementById('view_list_button').addEventListener('click', function () { state.viewType = 'list'; state.viewTypeExplicit = true; reload(); });
 
@@ -14738,6 +14764,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 </script>
 </main>
 <?php
+// The design chooser behind Add Page (visual).
+if (($user['role'] < 2) && ($explorer_area != 'catalog')) {
+    echo pg_designer_target_modal();
+}
+
 echo output_footer();
 
 // The messages above were rendered, so their session forms are cleared the

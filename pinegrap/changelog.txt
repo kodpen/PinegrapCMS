@@ -25,6 +25,189 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Bütün şablonlarda Destek Merkezi. Sayfanın arama kutusu
+         tüm sitede arar: sayfalar, arama bölümü olarak işaretli
+         kısımlar ve mağazalı şablonlarda ürünler. Sonuç sayfanın
+         soruyu yanıtlayan bölümüne gider, aranan kelimeler sarıyla
+         işaretlenir. Yanında popüler konular, altında sık sorulan
+         sorular var. Oyun Bahçesi'nde aynı sayfanın adı "Ne
+         ararsan bul". Online Mağaza, Butik ve Kitapçı'nın üst
+         bilgisindeki arama kutusu ürünlerde aramaya devam eder.
+         Destek Merkezi'ne Mağaza'da üst menüdeki "Yardım"dan,
+         Merhaba ve Oyun Bahçesi'nde menüdeki büyüteçten, Butik'te
+         ürün aramasının altındaki "Tüm sitede ara"dan, Kitapçı'da
+         üstteki hızlı bağlantılardan ve hepsinde alt bilgiden
+         gidilir. Site Ayarları'nda gelişmiş arama açıksa yeni
+         sayfalar arama dizini yenilendiğinde bulunur.
+
+  [YENİ] Şablonların içerik bölümleri arama bölümü olarak
+         işaretli: hakkımızda, hizmetler, iletişim bilgileri,
+         kargo ve iade, bakım rehberi, ziyaret bilgileri,
+         etkinlikler, kitap kulübü ve "Şimdi" sayfası; sık sorulan
+         soruların her biri ayrı bir bölüm. Her bölüme metinde
+         geçmeyen ama aranabilecek konular verildi (ör. "kargo
+         takibi", "parola", "rezervasyon").
+
+  [YENİ] Arama işareti kapalı alanı açar. Sonuçtan gelinen
+         sayfada aranan kelime kapalı bir akordeon cevabında ya da
+         kapalı bir açılır bölümde (details) kalıyorsa o alan
+         açılır; ziyaretçi bulunanı hemen görür.
+
+  [YENİ] Bütün şablonlarda hesap, personel ve blog sayfaları.
+         Online Mağaza, Butik ve Kitapçı şablonlarına blog
+         geldi: yazı listesi, yazı sayfası (yorumlar ve yapay
+         zekâ özeti kutusuyla), ana sayfada son üç yazı, üst
+         menüde ve alt bilgide bağlantı (Butik'te adı "Günce").
+         Personel alanı da geldi: personel sayfası, blog yazısı
+         formu, personel rehberine ekleme formu ve üyelerin
+         Hesabım'dan açtığı personel rehberi. İletişim formundan
+         gelen mesaj artık ziyaretçiyle bir görüşmeye dönüşür;
+         yanıtlar görüşme sayfasında ve gelen kutusunda
+         yazışılır, hesabı olmayan ziyaretçiye hesap açılır.
+         Oyun Bahçesi şablonuna giriş, kayıt, şifre ve Hesabım
+         sayfaları, üst bilgide giriş bölgesi, gelen kutusu ve
+         personel alanı eklendi; "Merhaba de" formunun mesajları
+         da görüşmeye dönüşür. Personel alanının bağlantısı
+         hesap menüsünde ("Personel alanı") ve Hesabım
+         sayfasında ("Personel Alanı" kartı) yalnız özel
+         klasöre erişimi olan kişilere görünür.
+
+  [YENİ] Şablonların blogu kendi örnek yazılarıyla açılır. Blog
+         formu önceden sitenin örnek verisindeki blog yazılarını
+         kopyalıyordu; şablonla kurulan sitede başlangıç
+         sitesinin sayfaları kaldırıldığı için kopyalanacak yazı
+         kalmıyor ve blog boş açılıyordu. Artık her şablon dört
+         örnek yazısını kendisi getirir; yazılar düzenlenip
+         silinebilir.
+
+  [YENİ] Hesabım widget'ında personel bağlantısı. Hesabım
+         Ayarları'nda "Personel sayfası" seçilince
+         ^^__staff_url^^ bağlantısı ve "Ziyaretçi personel
+         sayfasını açabilir" (is_staff) koşulu kullanılabilir;
+         ikisi de yalnız o sayfanın klasörünün içeri aldığı
+         üyelere görünür, Giriş Bölgesi'ndeki gibi.
+
+  [YENİ] Blog yazısında yapay zekâ özeti. "Pinegrap'a merhaba
+         deyin" ve "Oyun Bahçesi" şablonlarının yazı sayfasında
+         "Bu yazıyı yapay zekâyla özetle" kutusu var. ChatGPT,
+         Claude, Perplexity ve Google AI düğmeleri ziyaretçinin
+         kendi asistanını yazının adresi ve hazır bir soruyla
+         açar. "Burada özetle" düğmesi yazıyı tarayıcının
+         yerleşik yapay zekâsıyla (masaüstü Chrome ve Edge 138
+         ve üstü) ziyaretçinin cihazında özetler ve ana
+         fikirleri kutuya yazar. Sayfanın dilinde özet
+         yazamayan tarayıcı özeti İngilizce çıkarıp kendi
+         çevirmeniyle sayfanın diline çevirir; bunu da
+         yapamayan tarayıcıda düğme görünmez. Yazı hiçbir
+         sunucuya gönderilmez, ücret yoktur. Kutu yalnız
+         herkese açık yazıda görünür. Kendi tasarımınızda Form
+         Öğesi Görünümü widget'ında: bağlantılara
+         ^^__ai_chatgpt_url^^, ^^__ai_claude_url^^,
+         ^^__ai_perplexity_url^^ ya da ^^__ai_google_url^^,
+         düğmeye "Tarayıcının yapay zekâsıyla özetle" eylemi,
+         özetin yazılacağı öğeye ^^__ai_summary^^ bağlanır;
+         kutuyu "has_ai_links" koşuluyla gösterin. Asistanlara
+         sorulan soru Detay Görünümü Ayarları'nda değişir
+         ({url} yazının adresidir).
+
+  [DÜZELTME] Online Mağaza, Kitapçı ve Butik şablonlarının
+         oluşturduğu örnek ürünler hiçbir kargo bölgesine
+         bağlanmıyordu: ürün sepete giriyor, ama teslimat
+         adımında hiçbir adrese gönderilemiyordu. Şablonun
+         oluşturduğu ürünler artık sitedeki bütün kargo
+         bölgelerine (International dahil) bağlanıyor; bölgeleri
+         ürünün kargo ayarlarından daraltabilirsiniz. Daha önce
+         oluşmuş ürünler değişmez, bölgeleri ürün ekranından
+         seçilmelidir.
+
+  [YENİ] Arama bölümü: bir öğe seçilip Seçenekler → Arama ve
+         SERP'ten "Arama bölümü" açılınca site araması o kısmı
+         tanır. Aranan ifade bölümün başlığında, metninde ya da
+         ona verilen konularda geçiyorsa sonuç sayfanın başına
+         değil doğrudan o bölüme gider; ziyaretçi geldiğinde
+         aranan kelimeler sarıyla işaretlenir, bölüm kısa süre
+         çerçevelenir. Sonucun alıntısı bölümden gelir; Arama
+         Sonuçları widget'ında yeni ^^__result_section^^ alanı
+         bölümün adını verir. Konular sayfada görünmez ama
+         aranır (gelişmiş aramada arama dizini yenilenince).
+         Bölüm, sayfanın yapılandırılmış verisinde (WebPage →
+         hasPart) adı ve bağlantısıyla yer alır; arama
+         motorları sonucu doğrudan o kısma yönlendirebilir
+         (Ayarlar'da Yapılandırılmış Veri açık olmalı). Anahtar
+         açılınca öğeye başlığından bir kimlik (id) verilir.
+
+  [DÜZELTME] Bir görselin nesne konumu (Object Pos) ya da bir
+         ikonun boyutu seçeneklerden değiştirildiğinde sayfaya
+         yansımıyordu: değer Özellikler alanındaki style içine de
+         kopyalanıyor, eski kopya yeni değeri eziyordu; kopya elle
+         silinince yeni değer geliyordu. Değer artık yalnız
+         seçenekte tutuluyor, style satırında da görünüyor ve iki
+         yönlü eşleşiyor: seçenek değişince style güncelleniyor,
+         style'dan silinen ya da elle yazılan değer seçeneğe
+         yansıyor, style satırı silinince seçenek de temizleniyor.
+         Eski tasarımlarda kalan kopya, öğe seçildiğinde sayfada
+         görünen değerle seçeneğe aktarılıyor. Aynı sorun
+         arka plan gradyanında da vardı (style'dan silinen ya da
+         elle değiştirilen gradyanı panel eski hâliyle
+         gösteriyor, sonraki düzenlemede geri yazıyordu);
+         giderildi.
+
+  [YENİ] Bootstrap'sız (Custom) tasarımlarda Özellikler paneli
+         yalnız doğrudan style yazan ayarları gösteriyor:
+         genişlik, yükseklik, taşma, konum değerleri, z-index,
+         arka plan, yazı tipi, nesne konumu. Bootstrap
+         sınıflarıyla çalışan ayarlar (boşluklar, görüntüleme,
+         flex, metin ve renk sınıfları, kenarlık ve köşe,
+         gölge, en-boy oranı, ipucu, nesne sığdırma) bu
+         tasarımlarda gizli. Temalar sekmesindeki Bootstrap
+         değişkenleri (renkler, yazı tipleri, kenarlıklar) ve
+         açık/koyu blokları da gizleniyor; tema dosyası seçimi
+         kalıyor.
+
+  [YENİ] Hazır şablonlarda üst bilginin üstündeki hesap çubuğu
+         (duyuru, dil seçici, sepet ve giriş bağlantıları) artık
+         üst ve alt bilgi gibi bir ortak bileşen: bir kez
+         düzenlenince bütün sayfalarda değişir, her sayfada ayrı
+         ayrı düzenlemek gerekmez. Şablon sürümleri: Pinegrap'a
+         merhaba deyin 2.4.5, Online Mağaza 1.0.5, Butik 1.0.4,
+         Kitapçı 1.0.4. Bu şablonlardan daha önce kurulmuş
+         tasarımlar değişmez.
+
+  [YENİ] Tema değiştiriciler (açılır menü, düğme, anahtar)
+         sayfaya artık kendi kodlarını bırakmıyor. Yazılımla gelen
+         tek bir betik (pg_theme_switcher.js), sayfada bir tema
+         değiştirici göründüğünde o sayfaya kendiliğinden eklenir:
+         değiştirici sayfanın içinde, tasarımın bir ortak
+         bileşeninde ya da başka tasarımlarda da kullanılan bir
+         ortak bileşende olabilir. Değiştirici kaldırılınca betik
+         de gider. Ziyaretçinin seçimi sayfa çizilmeden uygulanır.
+         Daha önce yerleştirilmiş değiştiriciler kendi kodlarıyla
+         çalışmaya devam eder.
+
+  [DÜZELTME] Tema değiştiricinin açılır menüsünde "Açık"
+         seçeneği İngilizce arayüzde "Expanded" yazıyordu.
+
+  [YENİ] Bir sayfa başka bir tasarıma kopyalanabiliyor ya da
+         taşınabiliyor: sekme menüsünde "Başka tasarıma kopyala"
+         ve "Başka tasarıma taşı". Seçilen tasarım açılır; kopya
+         orada yeni bir taslak sekme olarak gelir, taşınan sayfa
+         ise yayınlanınca o tasarıma geçer.
+
+  [YENİ] Sayfa eklerken tasarım seçiliyor. Sayfalar listesinde
+         ve dosya yöneticisinin Yeni menüsünde "Sayfa Ekle",
+         sayfanın gireceği tasarımı sorar (klasörün tasarımı,
+         yoksa en son düzenlenen seçili gelir; "Yeni tasarım" da
+         seçilebilir). Tasarım bütün sayfalarıyla açılır, yeni
+         sayfa sekmesi adı yazılmaya hazır gelir; dosya
+         yöneticisinden eklenen sayfa açık olan klasöre girer.
+         Klasik sayfa ekranı "Sayfa Ekle (legacy)" adıyla
+         yanında duruyor. Daha önce bu düğme her seferinde yeni
+         bir tasarım başlatıyordu ve adı çevrilmemişti.
+
+  [YENİ] Menüde Görsel Sayfa Editörü, Dosya Yöneticisi ile
+         Sayfalar arasına alındı; alt menüsüne "Şablondan Seç"
+         eklendi.
+
   [YENİ] Tasarım listesindeki "Ortak bileşenler ve sistem
          widget'ları" tablosu artık sayfanın altında değil, listenin
          üstündeki düğmeyle sağdan açılan bir panelde. Düğme kaç
@@ -218,6 +401,14 @@
          şablonun sürümünü ve çatısının sürümünü (ör.
          Bootstrap 5.3.8) görselin köşesinde gösteriyor.
 
+  [YENİ] Sitede ana sayfa yokken editörde bir şablon açılırsa
+         şablonun ana sayfası, sitenin ana sayfası olarak
+         işaretli ve yayında (taslak değil) gelir; Yayınla'ya
+         basılınca site ana sayfasına kavuşur. Sitede zaten bir
+         ana sayfa varsa hiçbir şey değişmez. İşaret, sayfa
+         ayarlarındaki "Anasayfa Olarak Ayarla" kutusundan
+         kaldırılabilir.
+
   [YENİ] Canlı önizleme. Önizleme penceresi açıkken tasarımda
          yapılan değişiklikler (içerik, stil, tema, CSS ve
          JavaScript dosyaları, sekmeler, tasarım ayarları; tuvalde
@@ -294,6 +485,18 @@
 
   DOSYA YÖNETİCİSİ
   --------------------------------------------------------
+
+  [DÜZELTME] Geri Dönüşüm Kutusu'na giden bir ana sayfa (tek
+         başına, klasörüyle ya da tasarımı silinerek) ana sayfa
+         işaretini taşımaya devam ediyordu. Site, ana sayfa
+         işaretli sayfalar arasından rastgele seçtiği için
+         kutudaki sayfa birkaç yenilemede bir sitenin kökünde
+         açılıyordu — tasarımı silinmişse stilleri bozuk. Kutuya
+         giren sayfa artık ana sayfa olmaktan çıkar (geri
+         yüklenince de ana sayfa olmaz, gerekirse yeniden
+         işaretlenir) ve kutudaki hiçbir sayfa sitenin kökünde
+         gösterilmez. Güncelleme, kutuda bu işareti hâlâ taşıyan
+         sayfaları temizler.
 
   [DÜZELTME] Tasarım Dosyası olarak işaretli bir görsel Görsel
          Düzenleyici'de değiştirilip "Değiştir" denince "Erişim
@@ -604,6 +807,23 @@
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
+  [YENİ] Yeni çeviri motoru: "Tarayıcı yapay zekâsı (Gemini
+         Nano)". Chrome'un yerleşik dil modeliyle bu bilgisayarda
+         çevirir: her metni sitedeki yeriyle, sözlükle ve stil
+         notuyla birlikte gönderir, satır içi HTML'i korur.
+         Ücretsizdir, anahtar istemez; metin başına birkaç saniye
+         sürer, ilk çalıştırma modeli indirir (güncel masaüstü
+         Chrome). Model Türkçeyi resmî olarak desteklemediği için
+         çevirilerini onaylamadan önce gözden geçirin. Mevcut
+         "Tarayıcı (Chrome Translator API)" motoru değişmedi.
+
+  [YENİ] Yeni eklenen dil artık tarayıcı motoruyla (Chrome
+         Translator API) başlıyor: anahtar istemez, ücretsizdir.
+         Önceden Google anahtarı kayıtlıysa Google, Claude
+         rutini bağlıysa Claude seçiliyordu. Claude, Google ya
+         da Pinegrap AI dil eklendikten sonra dilin satırından
+         seçilir.
+
   [DÜZELTME] Dil dosyası olmayan dillerde (/ko/ gibi) yazılımın
          kendi metinleri de çeviriye giriyordu: Çeviriler
          ekranının "Arayüz metinleri" grubu, sayfada gösterilen
@@ -644,6 +864,66 @@
 
   ÇALIŞMA ALANI
   --------------------------------------------------------
+
+  [YENİ] Hesap blokları gruplar, gizli satırlar ve boş satırlar
+         alır. "Giderler:" diye biten bir satır grup açar; altındaki
+         satırlar boş satıra kadar gruba girer, grubun adı onların
+         toplamı olur ve tabloda ara toplam satırı görünür
+         (Kalan = Gelir - Giderler). "Puanlar: ORTALAMA" toplam
+         yerine ortalama alır (MİN, MAKS, ADET, ÇARPIM, ORTANCA da
+         olur). _ ile başlayan satır hesaba girer ama tabloda
+         görünmez; boş satır tabloda boşluk bırakır. Ondalık
+         basamak ve birim (ör. ₺) hesap penceresinden seçilir;
+         %20 gibi yazılan değer yüzde olarak gösterilir.
+
+  [YENİ] Hesap penceresinde hazır şablonlar (aylık bütçe, KDV,
+         fatura kalemleri, indirim, kâr marjı, kredi taksiti,
+         ortalama, döviz çevirme), işlem ve fonksiyon düğmeleri,
+         Grup / Gizle / Boş satır / Not satırı düğmeleri ve
+         yazılmış adları tek tıkla ekleyen ad düğmeleri var.
+
+  [YENİ] Bir hesapta verilen ad, aynı mesajdaki ya da nottaki
+         tablolarda ve sonraki hesaplarda kullanılabilir
+         (=B2*Kur). Mesajı okuyan, hesaptaki bir sayıya tıklayıp
+         başka bir değer deneyebilir; hesap ve ona bağlı tablolar
+         yeniden hesaplanır, hiçbir şey kaydedilmez, Sıfırla ile
+         ilk hâline döner.
+
+  [YENİ] Formüllere EĞER, EĞERHATA, VE, YADA, DEĞİL,
+         karşılaştırmalar (> < >= <= = <>), YUKARIYUVARLA,
+         AŞAĞIYUVARLA, KAREKÖK, KUVVET, MOD, ÇARPIM, ORTANCA,
+         TAKSİT ve DEVRESEL_ÖDEME eklendi.
+
+  [YENİ] Tablo penceresinde Formül menüsü: üstteki sütunun
+         toplamı, ortalaması, en büyüğü ve en küçüğü; soldaki
+         satırın toplamı; iki hücrenin çarpımı, farkı ve değişim
+         yüzdesi; KDV ekleme, indirim, sütundaki pay ve koşul.
+         Toplam satırı tek tıkla eklenir; bir formül, satır
+         numaraları kayarak alttaki hücrelere kopyalanır.
+
+  [YENİ] Notlarda ve kanal yazım alanında Ctrl+Z ile geri alma,
+         Ctrl+Y (ya da Ctrl+Shift+Z) ile yineleme; notun araç
+         çubuğunda Geri al ve Yinele düğmeleri. Tamamı silinen bir
+         not Ctrl+Z ile geri gelir.
+
+  [YENİ] Notların önceki sürümleri saklanır: bir aradan sonra
+         yapılan değişiklikten, başkasının değişikliğinden ya da
+         notun büyük bölümünü silen kayıttan önceki hâli tutulur
+         (son 30 sürüm). Not başlığındaki saat düğmesinden
+         sürümler görülür ve biri geri yüklenebilir; geri yükleme
+         de Geri al ile geri alınır. Notun oluşturulma tarihi son
+         değişikliğin yanında gösterilir.
+
+  [YENİ] Notlarım, Çalışma Alanı menüsünde yer alır; Notlarım
+         sayfasındaki "Menüye sabitle" ile kişi isterse ana
+         menüye, Çalışma Alanı'nın hemen altına da sabitler.
+
+  [DÜZELTME] Yeni bir notta başlık yazılırken not ilk kez
+         kaydedildiğinde başlık kutusu boşalıyor, bir sonraki
+         kayıtta başlık siliniyordu.
+
+  [ŞEMA] Not sürümleri için ws_note_versions tablosu; menüye
+         sabitleme için ws_profiles.notes_pinned sütunu eklendi.
 
   [DÜZELTME] Kanalda paylaşılan not kartı notun ilk satırlarını
          düz metin olarak gösteriyordu; tablo "| Öğe | Tutar |"
@@ -983,6 +1263,62 @@
   [ŞEMA] Yeni ws_approvals ve ws_approval_people tabloları
          (onay istekleri), ws_ack_requests ve ws_acks tabloları
          (okundu onayları).
+
+  DIŞ API
+  --------------------------------------------------------
+
+  [GÜVENLİK] Ayarlar › Güvenlik'te iki adımlı doğrulama bir rol
+         için zorunluysa, o roldeki kişi doğrulamayı kurmadan
+         ekip cihazlarından (POST /auth/login) yalnız parolasıyla
+         giremez: cevap 403 mfa_setup_required olur. Sitede aynı
+         kişi kurulum ekranına yönlendirilir; cihaz o ekranı
+         gösteremediği için giriş reddedilir. Kişi doğrulamayı
+         web sitesinde kurduktan sonra cihazdan kodla girer.
+
+  [YENİ] ERP teklifinde müşteri imzası: GET /erp/quotes ve
+         /erp/quotes/{id} cevabındaki signature alanı
+         imzalayanın adını, imza anını, teklifin imzadan sonra
+         değişip değişmediğini (document_changed) ve imza
+         mührünün hâlâ doğrulanıp doğrulanmadığını (seal_valid)
+         verir; imzasız teklifte null'dur. Listeye signed
+         süzgeci eklendi. erp.quote.signed olayı da signer_name
+         ve signed_at taşır. İmza görseli, IP adresi ve tarayıcı
+         bilgisi API'ye çıkmaz.
+
+  [YENİ] Çalışma Alanı tartışmaları API'de: POST
+         /workspace/messages/{id}/thread bir mesajdan tartışma
+         başlatır (varsa olanı döndürür), GET
+         /workspace/channels/{id}/threads kanalın tartışmalarını
+         listeler; tartışmanın kimliği mesaj okuma ve yazma
+         uçlarında kanal kimliği gibi kullanılır. Mesaj nesnesi
+         thread (mesajdan başlatılan tartışma) ve from_thread_id
+         (tartışmadan kanala kopyalanan karar, not ya da görev
+         kartı) alanlarını taşır.
+
+  [YENİ] Zamanlanmış mesaj API'de: GET ve POST
+         /workspace/channels/{id}/scheduled-messages, iptal için
+         DELETE /workspace/scheduled-messages/{id} (POST da
+         olur). Mesaj zamanı gelince kişinin kendi adıyla
+         gittiği için yalnız cihazında oturum açmış kişi
+         zamanlayabilir; uygulama anahtarı listeyi okur ve
+         iptal eder.
+
+  [YENİ] Okundu onayı isteme API'de: mesaj yazarken ack: true
+         ya da var olan mesaj için POST
+         /workspace/messages/{id}/ack-request (on: false isteği
+         geri çeker).
+
+  [YENİ] Not sürümleri API'de: GET /workspace/notes/{id}/versions
+         ve /workspace/notes/{id}/versions/{version_id} (salt
+         okunur; sürümü geri koymak notlar ekranında).
+
+  [HIZ] GET /workspace/tasks görevlerin bağımlılıklarını ve
+         harcanan süresini sayfa için toplu okur; görev başına
+         üç ek sorgu kalktı, cevap aynı.
+
+  [DÜZELTME] OpenAPI belgesi DELETE /webhooks/{id} için 200
+         yazıyordu; uç gövdesiz 204 döner, belge artık 204
+         yazıyor.
 
   E-POSTA
   --------------------------------------------------------

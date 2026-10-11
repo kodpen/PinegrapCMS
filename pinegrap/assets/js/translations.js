@@ -2,10 +2,13 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Translations screen: saving and reviewing a text, "update
- * translations", "clear translations", and the browser engine - the Chrome
- * Translator API, which translates on the operator's own computer. The
- * server engines run in translations_action.php; this script only starts
- * them and shows their progress.
+ * translations", "clear translations", and the two browser engines, which
+ * translate on the operator's own computer: the Chrome Translator API
+ * (chrome), in runs of plain text, and the browser's built-in language
+ * model, Gemini Nano through the Prompt API (chrome_ai), one whole text at a
+ * time with its context, the glossary and the style note. The server
+ * engines run in translations_action.php; this script only starts them and
+ * shows their progress.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -272,7 +275,184 @@
         });
     }
 
-    function runBrowserJob(translator, job) {
+    // The Translator API: an item's runs, one after another.
+    function translatorItem(translator) {
+        return function (item) {
+            var runs = [];
+            var runChain = Promise.resolve();
+            item.runs.forEach(function (run) {
+                runChain = runChain.then(function () {
+                    return Promise.resolve(translator.translate(run)).then(function (out) {
+                        runs.push(String(out || ''));
+                    });
+                });
+            });
+            return runChain.then(function () {
+                return { string_id: item.string_id, runs: runs };
+            });
+        };
+    }
+
+    // ── the browser AI engine: Gemini Nano through the Prompt API ──
+
+    var MODEL_ANSWER = { type: 'object', properties: { translation: { type: 'string' } }, required: ['translation'] };
+
+    function modelSupported() {
+        return (typeof self.LanguageModel !== 'undefined') && (typeof self.LanguageModel.create === 'function');
+    }
+
+    function modelLanguages(input) {
+        return {
+            expectedInputs: [{ type: 'text', languages: input }],
+            expectedOutputs: [{ type: 'text', languages: [config.language] }]
+        };
+    }
+
+    function release(model) {
+        try {
+            if (model && (typeof model.destroy === 'function')) {
+                model.destroy();
+            }
+        } catch (e) { /* already gone */ }
+    }
+
+    // The languages the model is told it will read: the source and the
+    // target; without a source it does not officially read (Turkish, for
+    // one), which it reads all the same; failing that, English. Worked out
+    // when the screen opens, because create() has to be called in the click
+    // itself.
+    var modelInput = [config.source, config.language];
+    var modelPlanned = Promise.resolve(false);
+
+    if ((config.engine === 'chrome_ai') && modelSupported() && (typeof self.LanguageModel.availability === 'function')) {
+        modelPlanned = [[config.source, config.language], [config.language], ['en']].reduce(function (chain, input) {
+            return chain.then(function (found) {
+                if (found) {
+                    return true;
+                }
+                return withTimeout(self.LanguageModel.availability(modelLanguages(input)), 10000, '').then(function (state) {
+                    if (state && (state !== 'unavailable') && (state !== 'no')) {
+                        modelInput = input;
+                        return true;
+                    }
+                    return false;
+                }, function () {
+                    return false;
+                });
+            });
+        }, Promise.resolve(false));
+    }
+
+    // Created in the click handler itself, like the translator: a model that
+    // still has to be downloaded wants the gesture.
+    function createModel() {
+        if (!modelSupported()) {
+            return Promise.reject(new Error(text('model_missing')));
+        }
+
+        var options = modelLanguages(modelInput);
+        options.initialPrompts = [{ role: 'system', content: config.ai_instructions || '' }];
+        options.monitor = function (monitor) {
+            monitor.addEventListener('downloadprogress', function (event) {
+                var percent = (event.total > 0) ? Math.round((event.loaded / event.total) * 100) : Math.round((event.loaded || 0) * 100);
+                showProgress(text('downloading', percent), percent, 100);
+            });
+        };
+
+        var created;
+
+        try {
+            created = self.LanguageModel.create(options);
+        } catch (error) {
+            created = Promise.reject(error);
+        }
+
+        return Promise.resolve(created).catch(function (error) {
+            return modelPlanned.then(function (found) {
+                if (!found) {
+                    throw new Error(text('model_unavailable', config.language));
+                }
+                throw error;
+            });
+        });
+    }
+
+    // What the model is sent for one text: the item as the AI engines get
+    // it, without the empty parts.
+    function modelRequest(item) {
+        var request = { text: item.text, format: item.format };
+        var where = {};
+
+        Object.keys(item.where || {}).forEach(function (key) {
+            if (item.where[key]) {
+                where[key] = item.where[key];
+            }
+        });
+
+        if (Object.keys(where).length) {
+            request.where = where;
+        }
+        if (item.previous) {
+            request.previous = item.previous;
+        }
+        if (item.glossary && item.glossary.length) {
+            request.glossary = item.glossary;
+        }
+
+        return JSON.stringify(request);
+    }
+
+    // The translation out of the model's answer: the "translation" field, or
+    // the answer itself when the browser gave no structured output.
+    function modelAnswer(raw) {
+        var answer = String(raw || '').trim();
+
+        try {
+            var parsed = JSON.parse(answer.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
+            if (parsed && (typeof parsed.translation === 'string')) {
+                return parsed.translation;
+            }
+        } catch (e) { /* plain text */ }
+
+        return answer;
+    }
+
+    function modelItem(session) {
+        var ask = function (model, item) {
+            return Promise.resolve(model.prompt(modelRequest(item), { responseConstraint: MODEL_ANSWER })).then(null, function (error) {
+                // A browser without structured output.
+                if (error && ((error.name === 'NotSupportedError') || (error.name === 'TypeError'))) {
+                    return model.prompt(modelRequest(item));
+                }
+                throw error;
+            });
+        };
+
+        return function (item) {
+            // Each text on a copy of the session: the instructions stay,
+            // the earlier texts do not fill the model's context.
+            var asked = (typeof session.clone === 'function')
+                ? Promise.resolve(session.clone()).then(function (copy) {
+                    return ask(copy, item).then(function (raw) {
+                        release(copy);
+                        return raw;
+                    }, function (error) {
+                        release(copy);
+                        throw error;
+                    });
+                })
+                : ask(session, item);
+
+            return withTimeout(asked, 120000, text('network_error')).then(function (raw) {
+                return { string_id: item.string_id, text: modelAnswer(raw) };
+            });
+        };
+    }
+
+    // A browser engine's job: the packages are fetched, every item is
+    // translated by translateItem() (translatorItem() or modelItem()) and
+    // the answers are sent back, until the job is done.
+    function runBrowserJob(translateItem, job) {
         running = { id: job.id, total: job.total, done: job.done || 0, failed: job.failed || 0, stop: false };
         showProgress(text('progress', running.done, running.total), running.done, running.total);
 
@@ -300,17 +480,8 @@
                         if (running.stop) {
                             return;
                         }
-                        var runs = [];
-                        var runChain = Promise.resolve();
-                        item.runs.forEach(function (run) {
-                            runChain = runChain.then(function () {
-                                return Promise.resolve(translator.translate(run)).then(function (out) {
-                                    runs.push(String(out || ''));
-                                });
-                            });
-                        });
-                        return runChain.then(function () {
-                            results.push({ string_id: item.string_id, runs: runs });
+                        return translateItem(item).then(function (result) {
+                            results.push(result);
                         }).catch(function (error) {
                             results.push({ string_id: item.string_id, error: String(error && error.message ? error.message : error) });
                         });
@@ -455,13 +626,19 @@
             updateButton.disabled = true;
             showProgress(text('scanning'), 0, 1);
 
-            var translatorPromise = (config.engine === 'chrome') ? createTranslator() : Promise.resolve(null);
+            var browserPromise = (config.engine === 'chrome') ? createTranslator().then(translatorItem)
+                : ((config.engine === 'chrome_ai') ? createModel().then(modelItem) : Promise.resolve(null));
 
-            translatorPromise.then(function (translator) {
+            browserPromise.then(function (translateItem) {
+                // A model's download progress may have taken the line.
+                if (translateItem) {
+                    showProgress(text('scanning'), 0, 1);
+                }
+
                 // A browser job an earlier visit left open is picked up where
                 // it stopped rather than opened again.
-                if (translator && config.open_job && config.open_job.engine === 'chrome' && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
-                    return runBrowserJob(translator, { id: config.open_job.id, total: config.open_job.total, done: config.open_job.done, failed: config.open_job.failed });
+                if (translateItem && config.open_job && (config.open_job.engine === config.engine) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
+                    return runBrowserJob(translateItem, { id: config.open_job.id, total: config.open_job.total, done: config.open_job.done, failed: config.open_job.failed });
                 }
 
                 return call({ action: 'update', scope: config.scope }).then(function (data) {
@@ -481,8 +658,8 @@
 
                     toast(text('sent', data.pending), 'info');
 
-                    if (config.engine === 'chrome') {
-                        return runBrowserJob(translator, { id: data.job_id, total: data.pending, done: 0, failed: 0 });
+                    if (translateItem) {
+                        return runBrowserJob(translateItem, { id: data.job_id, total: data.pending, done: 0, failed: 0 });
                     }
 
                     if (config.engine === 'claude') {
@@ -520,7 +697,7 @@
     // A job left open by an earlier visit: a server job is resumed, a queue
     // job is followed, a browser job needs the button (the API wants the
     // gesture).
-    if (config.open_job && config.open_job.engine !== 'chrome' && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
+    if (config.open_job && (['chrome', 'chrome_ai'].indexOf(config.open_job.engine) === -1) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
         var resume = (config.open_job.engine === 'claude') ? watchQueueJob : runServerJob;
 
         if ((config.open_job.engine === 'claude') || (config.open_job.status !== 'sent')) {

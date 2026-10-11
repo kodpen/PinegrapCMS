@@ -460,6 +460,9 @@ if ($language_row) {
         $engine_note = '<div class="alert alert-warning py-2 small mb-3"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h($engine['reason']) . '</div>';
     } elseif ($engine_key === 'chrome') {
         $engine_note = '<div class="alert alert-secondary py-2 small mb-3 pg-tr-chrome-note"><i class="bi bi-browser-chrome me-1" aria-hidden="true"></i>' . lang('The browser engine translates on this computer with the Chrome Translator API (desktop Chrome 138 or Edge 148 and newer). The first run downloads the language model.') . pg_tr_browser_pages_html() . '</div>';
+    } elseif ($engine_key === 'chrome_ai') {
+        $engine_note = '<div class="alert alert-secondary py-2 small mb-3 pg-tr-chrome-note"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . lang('The browser AI translates on this computer with the browser\'s built-in model, Gemini Nano (Prompt API, a recent desktop Chrome): one text at a time, with where it stands, the glossary and the style note, keeping inline HTML. A text takes a few seconds; the first run downloads the model.') . ' ' . lang('The model does not officially read every language (Turkish, for one): look its translations over before approving them.')
+            . '<div class="small mt-2">' . lang('The model\'s state is shown at this browser address:') . ' <code class="user-select-all">chrome://on-device-internals</code></div></div>';
     } elseif ($engine_key === 'manual') {
         $engine_note = '<div class="alert alert-secondary py-2 small mb-3"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('This language is translated by hand: "Update translations" scans the pages and lists the pending texts here.') . '</div>';
     } elseif ($engine_key === 'ai') {
@@ -475,6 +478,9 @@ $config = array(
     'language'   => $language,
     'source'     => $source,
     'engine'     => $engine_key,
+    // What the browser's language model is told before the texts: the
+    // session is made in the click itself, before the first package.
+    'ai_instructions' => (($engine_key === 'chrome_ai') || ($open_job && ($open_job['engine'] === 'chrome_ai'))) ? pg_tr_ai_instructions($source, $language, 'item') : '',
     'scope'      => $scope,
     'open_job'   => $open_job ? array('id' => (int) $open_job['id'], 'engine' => $open_job['engine'], 'status' => $open_job['status'], 'total' => (int) $open_job['total'], 'done' => (int) $open_job['done_count'], 'failed' => (int) $open_job['failed_count']) : null,
     'strings'    => array(
@@ -496,6 +502,8 @@ $config = array(
         'translator_missing' => lang('This browser has no Translator API. Use desktop Chrome 138 or Edge 148 and newer, or choose another engine.'),
         'translator_unavailable' => lang('The browser cannot translate from {var} to {var2}.'),
         'downloading'       => lang('Downloading the language model… {var}%'),
+        'model_missing'     => lang('This browser has no built-in AI model (Prompt API). Use a recent desktop Chrome, or choose another engine.'),
+        'model_unavailable' => lang('The browser\'s AI model cannot write {var}.'),
         'network_error'     => lang('The request failed. Please try again.'),
         'confirm_cancel'    => lang('Stop the running update?'),
         'queue_waiting'     => lang('Waiting for Claude to pick the job up…'),

@@ -212,6 +212,13 @@ foreach ($pages as $page) {
     // searching the title, description, and content indexes.
     $content = $title . ' ' . $page['meta_description'] . ' ' . $page['search_keywords'] . ' ' . $content;
 
+    // The topics given to the page's search sections are searched with its
+    // text; nothing on the page shows them.
+    if (function_exists('pg_search_section_topics') && function_exists('pg_page_tree_json')) {
+        $section_topics = pg_search_section_topics(json_decode(pg_page_tree_json($page['id']), true));
+        if ($section_topics !== '') $content .= ' ' . $section_topics;
+    }
+
     // Check if a search item already exists for this URL.
     $number_of_items = db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . escape($url) . "'");
 

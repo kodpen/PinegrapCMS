@@ -8,8 +8,13 @@
  * wide search and a category bar, the shop with its filters, one product
  * page for every product, the cart, checkout and the order summary, an
  * events page, a book club page whose sign-up form welcomes the new member
- * by e-mail, the about and contact pages, the sign-in and account pages and
- * a newsletter that collects e-mail addresses. Built on Bootstrap 5.
+ * by e-mail, the about page, a blog with its post page, a contact page whose
+ * messages become conversations (the inbox and the conversation page), the
+ * sign-in and account pages, a staff area (the blog's form, the staff
+ * directory), a support center that searches the whole site and a
+ * newsletter that collects e-mail addresses. The header's search looks
+ * through the books and stationery; the support center's looks through
+ * everything. Built on Bootstrap 5.
  * Read by pg_design_templates() (includes/fn/designer.php).
  *
  * Opening the template gives the site the catalog the pages list ('catalog':
@@ -49,6 +54,8 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+
+$panel_url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '') . '/welcome.php';
 
 // ── Node builders ───────────────────────────────────────────────────────
 // Same shapes the editor's createNode() produces; the editor gives every
@@ -116,6 +123,14 @@ $bind = function ($token) {
 };
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
+};
+// A part of a page the site search can point a result at (Search and SERP in
+// the editor's options): its anchor, the switch, and the topics a visitor
+// may search for that the part does not say itself.
+$searchable = function ($id, $topics = '') {
+    $props = array('id' => $id, 'searchSection' => true);
+    if ($topics !== '') $props['searchKeywords'] = $topics;
+    return $props;
 };
 // The language switcher button: the server draws it for each request and
 // leaves it out while the site has a single language, so it can stay in the
@@ -205,9 +220,9 @@ $notice = function () use ($el, $icon, $span) {
 };
 
 // The bar above the header: the notice on the left, the language switcher,
-// the basket and the login region on the right. The last two are system
-// widgets and a shared component cannot hold one yet, so the bar is part of
-// each page.
+// the basket and the login region on the right. A shared component like the
+// header under it: the two system widgets and the notice are placed inside
+// it.
 $account_bar = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-primary-subtle', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
@@ -217,6 +232,12 @@ $account_bar = function () use ($el, $widget, $shared, $lang_switcher) {
             )),
         )),
     ));
+};
+// Every page places the bar as one shared component, so a change to it is
+// made once for the whole site. The builder above is the component's tree.
+$account_bar_tree = $account_bar;
+$account_bar = function () use ($shared) {
+    return $shared('account_bar');
 };
 
 // The header: the shop's name, a wide search over the catalog, the way to
@@ -255,6 +276,7 @@ $header = function () use ($el, $link, $icon, $span, $categories, $category_url,
     }
     $items[] = $el('li', 'nav-item ms-lg-auto', lang('Nav Item'), array($link(lang('Events'), '{{page:events}}', 'nav-link')));
     $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link(lang('Book Club'), '{{page:book_club}}', 'nav-link')));
+    $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link(lang('Blog'), '{{page:blog}}', 'nav-link')));
     $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link(lang('About'), '{{page:about}}', 'nav-link')));
 
     $quick = function ($icon_name, $text, $href) use ($el, $icon, $span) {
@@ -284,6 +306,7 @@ $header = function () use ($el, $link, $icon, $span, $categories, $category_url,
                 )),
             ), array('_attrs' => array($attr('action', '{{page:shop}}'), $attr('method', 'get'), $attr('role', 'search')))),
             $el('nav', 'd-none d-lg-flex align-items-center gap-3 small', lang('Quick Links'), array(
+                $quick('bi-life-preserver', lang('Support Center'), '{{page:search}}'),
                 $quick('bi-geo-alt', lang('Find the shop'), '{{page:contact}}'),
                 $quick('bi-telephone', '+90 555 000 00 00', 'tel:+905550000000'),
             ), array('_attrs' => array($attr('aria-label', lang('Visit the shop'))))),
@@ -359,9 +382,12 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $hours, $c
                         $el('div', 'col-6', lang('Column'), array($list(array(
                             $link(lang('Events'), '{{page:events}}', $plain),
                             $link(lang('Book Club'), '{{page:book_club}}', $plain),
+                            $link(lang('Blog'), '{{page:blog}}', $plain),
                             $link(lang('About'), '{{page:about}}', $plain),
                             $link(lang('Newsletter'), '{{page:newsletter}}', $plain),
                             $link(lang('My Account'), '{{page:my_account}}', $plain),
+                            $link(lang('Inbox'), '{{page:inbox}}', $plain),
+                            $link(lang('Support Center'), '{{page:search}}', $plain),
                         )))),
                     )),
                 )),
@@ -425,6 +451,36 @@ $page = function ($main, $newsletter = true) use ($root, $account_bar, $shared, 
     if ($newsletter) $children[] = $widget('newsletter_band');
     $children[] = $shared('footer');
     return $root($children);
+};
+
+// The staff pages' own menu, under the header's category bar: one shared
+// component.
+$staff_bar = function () use ($el, $link, $span) {
+    $item = function ($key, $text) use ($link) {
+        return $link($text, '{{page:' . $key . '}}', 'nav-link px-0');
+    };
+    return $el('div', 'border-bottom small', lang('Staff Bar'), array(
+        $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2', lang('Staff Bar Container'), array(
+            $span(lang('Staff'), 'badge rounded-pill text-bg-primary', lang('Staff Badge')),
+            $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
+                $item('staff', lang('Staff Area')),
+                $item('blog_new', lang('New Blog Post')),
+                $item('staff_entry', lang('Add to the Staff Directory')),
+                $item('inbox', lang('Inbox')),
+            ), array('smartActive' => true)),
+        )),
+    ));
+};
+
+// A page of the staff area: the staff bar under the header, no newsletter.
+$staff_page = function ($main) use ($root, $account_bar, $shared, $el) {
+    return $root(array(
+        $account_bar(),
+        $shared('header'),
+        $shared('staff_bar'),
+        $el('main', '', lang('Main Content'), $main),
+        $shared('footer'),
+    ));
 };
 
 // The top of the inner pages: where the page sits, its title and one
@@ -628,6 +684,92 @@ $newsletter_line = function ($id) use ($el, $attr, $submit) {
     ));
 };
 
+// A file field; what is sent is kept in the template folder named.
+$file = function ($id, $name, $folder, $accept = 'image/*') use ($el, $attr) {
+    return $el('input', 'form-control', '', array(), array('id' => $id, '_attrs' => array(
+        $attr('type', 'file'), $attr('name', $name), $attr('accept', $accept),
+    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+};
+
+// ── Blog, inbox and staff parts ─────────────────────────────────────────
+
+// A picture that leaves with its row when the record has none (the
+// pg-hide-if-empty row of the form widgets).
+$optional_image = function ($token, $alt_token, $class, $frame, $sample, $alt) use ($el, $image) {
+    return $el('div', 'pg-hide-if-empty', lang('Picture'), array(
+        $el('span', 'pg-field-value d-block ' . $frame, lang('Picture Frame'), array(
+            $image($sample, $alt, $class, array('_bindings' => array('src' => $token, 'alt' => $alt_token))),
+        )),
+    ));
+};
+
+// A blog post card of the lists (the blog page and the home page).
+$post_card = function () use ($el, $para, $span, $link, $col, $optional_image, $bind) {
+    return $col(array(
+        $el('article', 'card h-100 overflow-hidden', lang('Post Card'), array(
+            $optional_image('cover_image', 'title', 'card-img-top object-fit-cover', 'ratio ratio-16x9 bg-body-tertiary',
+                'https://picsum.photos/seed/pinegrap-bookshop-post/800/450', lang('Cover Image')),
+            $el('div', 'card-body d-flex flex-column', lang('Card Body'), array(
+                $para(lang('Date'), 'small text-uppercase fw-semibold text-primary mb-2', $bind('submitted_date_and_time')),
+                $el('h3', 'h5 card-title fw-bold position-static', lang('Post Title'), array(
+                    $link(lang('Five books for a long weekend'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
+                        array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+                )),
+                $para(lang('A short summary of the post. It is what makes a visitor open it, so two sentences are enough.'),
+                    'card-text small text-body-secondary', $bind('summary')),
+                $span(lang('Read More'), 'mt-auto small fw-semibold text-primary', lang('Read More')),
+            )),
+        )),
+    ), '6', '4');
+};
+
+// The record's Edit button, shown to whoever may edit the submissions of
+// its form; it opens the record in the control panel and comes back.
+$edit_button = function () use ($link) {
+    return $link(lang('Edit'), '#', 'btn btn-sm btn-outline-secondary', array(),
+        array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
+};
+
+// Summarize the post with AI: with the visitor's own assistant (each link
+// opens it with a question about the post's address) or with the browser's
+// built-in model, whose button the browser shows only where it can
+// summarize and whose points come into the box below. Shown for a post
+// anybody may open.
+$ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_when) {
+    $assistant = function ($text, $token) use ($link, $attr) {
+        return $link($text, '#', 'btn btn-sm btn-outline-primary rounded-pill', array($attr('rel', 'noopener nofollow')),
+            array('target' => '_blank', '_bindings' => array('href' => $token)));
+    };
+    return $el('aside', 'p-3 rounded-4 bg-body-tertiary mb-4', lang('AI Summary'), array(
+        $el('div', 'd-flex flex-wrap align-items-center gap-2', lang('AI Buttons'), array(
+            $icon('bi-stars', 'text-primary'),
+            $span(lang('Summarize this post with AI'), 'small fw-semibold me-1', lang('Label')),
+            $assistant('ChatGPT', '__ai_chatgpt_url'),
+            $assistant('Claude', '__ai_claude_url'),
+            $assistant('Perplexity', '__ai_perplexity_url'),
+            $assistant('Google AI', '__ai_google_url'),
+            $el('button', 'btn btn-sm btn-primary rounded-pill', lang('Summarize Here Button'), array(), array(
+                'text' => lang('Summarize here'), '_bindings' => array('action' => 'ai_summarize'))),
+        )),
+        $el('div', 'small mt-3', lang('Summary Box'), array(), array_merge(
+            array('text' => lang('The main points of the post, written by the visitor\'s browser.')), $bind('__ai_summary'))),
+    ), $show_when('has_ai_links'));
+};
+
+// The comments of a record page (a post's comments, a conversation's
+// replies), in the reading column.
+$comments_section = function ($name) use ($el, $container, $row, $col) {
+    return $el('section', 'pb-5', $name, array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array()),
+                ), '', '8'),
+            ), '', 'center'),
+        )),
+    ));
+};
+
 // ── Pages ───────────────────────────────────────────────────────────────
 
 $pages = array();
@@ -785,6 +927,14 @@ $pages[] = array(
                 $row($event_cards, '4'),
             )),
         )),
+
+        // The blog's three newest posts.
+        $el('section', 'py-5', lang('From the Blog'), array(
+            $container(array(
+                $shelf_header(lang('From the blog'), lang('Reading notes and news from the shop'), lang('All posts'), '{{page:blog}}'),
+                $widget('home_posts'),
+            )),
+        )),
     )),
 );
 
@@ -880,7 +1030,9 @@ $pages[] = array(
 // Events: every coming event in a list, each with the way to reserve a seat
 // (a message from the contact page).
 $event_rows = array();
-foreach ($events as $e) {
+// Each event is a search section: a search for it opens the events page at
+// its row.
+foreach (array_values($events) as $n => $e) {
     $event_rows[] = $el('div', 'list-group-item p-3 p-lg-4', lang('Event'), array(
         $el('div', 'd-flex flex-column flex-sm-row gap-3', lang('Event Row'), array(
             $date_box($e, 'align-self-start'),
@@ -900,7 +1052,7 @@ foreach ($events as $e) {
                 ), array('href' => '{{page:contact}}')),
             )),
         )),
-    ));
+    ), $searchable('event-' . ($n + 1), $e['type']));
 }
 $pages[] = array(
     'key'              => 'events',
@@ -951,7 +1103,9 @@ $step = function ($n, $title, $text) use ($el, $heading, $para, $span) {
         )),
     ));
 };
-$faq = function ($n, $question, $answer) use ($el, $para, $attr) {
+// A question: a search section of its own, so a search that matches it
+// opens the page at the question (the marking opens the answer).
+$faq = function ($n, $question, $answer, $topics = '', $parent = 'bk-faq') use ($el, $para, $attr, $searchable) {
     $id = 'bk-faq-' . $n;
     return $el('div', 'accordion-item', lang('Question'), array(
         $el('h3', 'accordion-header', lang('Question Header'), array(
@@ -968,8 +1122,8 @@ $faq = function ($n, $question, $answer) use ($el, $para, $attr) {
         )),
         $el('div', 'accordion-collapse collapse', lang('Answer'), array(
             $el('div', 'accordion-body text-body-secondary', lang('Body'), array($para($answer, 'mb-0'))),
-        ), array('id' => $id, '_attrs' => array($attr('data-bs-parent', '#bk-faq')))),
-    ));
+        ), array('id' => $id, '_attrs' => array($attr('data-bs-parent', '#' . $parent)))),
+    ), $searchable($id . '-item', $topics));
 };
 $pages[] = array(
     'key'              => 'book_club',
@@ -1143,6 +1297,11 @@ $pages[] = array(
     'form'             => array(
         'form_name'            => lang('Contact Form'),
         'confirmation_message' => lang('Thank you, your message has reached us. We will get back to you soon.'),
+        // What is sent opens the conversation page: its first message is
+        // this one, and the answers follow as comments. A visitor without an
+        // account gets one (auto-registration), which that page tells them.
+        'confirmation_page_id' => '{{tab:conversation}}',
+        'auto_registration'    => 1,
         'notify_email'         => '{{site_email}}',
         'notify_subject'       => lang('New message: ^^topic^^'),
         'notify_page_id'       => '{{tab:email_new_message}}',
@@ -1173,6 +1332,14 @@ $pages[] = array(
                             )),
                             $heading('h3', lang('Opening hours'), 'h6 fw-bold mb-2'),
                             $hours(),
+                        )),
+                        $el('div', 'p-4 rounded-4 border mt-4', lang('Inbox Note'), array(
+                            $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
+                                $icon('bi-inbox', 'text-primary'),
+                                $span(lang('Follow the answer in your inbox'), '', lang('Text')),
+                            )),
+                            $para(lang('Your message becomes a conversation: the page that opens after you send it, and your inbox, show our answers, and you can write back there. If you have no account yet, one is opened for you.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-primary'),
                         )),
                     ), '', '5'),
                 ), '4', '', 'g-lg-5'),
@@ -1222,6 +1389,38 @@ $pages[] = array(
     ), false),
 );
 
+// Blog: every post, newest first, with a search.
+$pages[] = array(
+    'key'              => 'blog',
+    'name'             => lang('blog'),
+    'folder'           => 'public',
+    'title'            => lang('Blog'),
+    'meta_description' => lang('Reading lists, author evenings and news from the shop.'),
+    'tree'             => $page(array(
+        $page_header(lang('Blog'), lang('Reading lists, author evenings and news from the shop.')),
+        $el('section', 'py-5', lang('Posts'), array(
+            $container(array($widget('blog_list'))),
+        )),
+    )),
+);
+
+// A blog post: the post the list linked to (?r=), and its comments.
+$pages[] = array(
+    'key'              => 'blog_post',
+    'name'             => lang('blog-post'),
+    'folder'           => 'public',
+    'title'            => lang('Blog Post'),
+    'meta_description' => lang('A post from our blog.'),
+    'sitemap'          => false,
+    'comments'         => array('label' => lang('Comment'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
+                                'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('New comment on the blog'),
+                                'notify_email' => '{{site_email}}'),
+    'tree'             => $page(array(
+        $widget('blog_post'),
+        $comments_section(lang('Comments')),
+    )),
+);
+
 // Signing in and out.
 $sign_page = function ($key, $name, $title, $widget_key) use ($page, $widget) {
     return array(
@@ -1254,6 +1453,272 @@ $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profil
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book'), array('folder' => 'registration', 'requires' => 'ecommerce'));
+
+// The inbox: the member's conversations (for the staff, everybody's), and
+// the conversation page, where both sides answer as comments.
+$pages[] = array(
+    'key'     => 'inbox',
+    'name'    => lang('inbox'),
+    'folder'  => 'registration',
+    'title'   => lang('Inbox'),
+    'search'  => false,
+    'sitemap' => false,
+    'tree'    => $page(array(
+        $page_header(lang('Inbox'), lang('The messages you sent us from the contact page, and our answers.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array($widget('inbox_list')), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 rounded-4 bg-body-tertiary', lang('Inbox Note'), array(
+                            $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
+                                $icon('bi-chat-left-text', 'text-primary'),
+                                $span(lang('Looking for a book?'), '', lang('Text')),
+                            )),
+                            $para(lang('Write to us from the contact page; your message and our answers stay here, in one conversation.'), 'small text-body-secondary mb-3'),
+                            $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-primary'),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+    ), false),
+);
+$pages[] = array(
+    'key'      => 'conversation',
+    'name'     => lang('conversation'),
+    'folder'   => 'registration',
+    'title'    => lang('Conversation'),
+    'search'   => false,
+    'sitemap'  => false,
+    'comments' => array('label' => lang('Reply'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
+                        'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('There is a new reply to your conversation'),
+                        'notify_email' => '{{site_email}}'),
+    'tree'     => $page(array(
+        $widget('conversation'),
+        $comments_section(lang('Replies')),
+    ), false),
+);
+$pages[] = array(
+    'key'     => 'staff_directory',
+    'name'    => lang('staff-directory'),
+    'folder'  => 'registration',
+    'title'   => lang('Staff Directory'),
+    'search'  => false,
+    'sitemap' => false,
+    'tree'    => $page(array(
+        $page_header(lang('Staff Directory'), lang('The booksellers behind the counter, and how to reach them.')),
+        $el('section', 'py-5', lang('Directory'), array(
+            $container(array($widget('staff_directory'))),
+        )),
+    ), false),
+);
+
+// The staff area, behind the private folder.
+$staff_shortcut = function ($icon_name, $title, $text, $href) use ($el, $heading, $para, $icon, $col) {
+    return $col(array(
+        $el('a', 'd-flex align-items-start gap-3 h-100 p-4 rounded-4 bg-body-tertiary text-decoration-none link-body-emphasis', $title, array(
+            $icon($icon_name, 'fs-3 text-primary'),
+            $el('div', '', lang('Text'), array(
+                $heading('h3', $title, 'h6 fw-bold mb-1'),
+                $para($text, 'small text-body-secondary mb-0'),
+            )),
+        ), array('href' => $href)),
+    ), '6', '4');
+};
+$pages[] = array(
+    'key'     => 'staff',
+    'name'    => lang('staff'),
+    'folder'  => 'private',
+    'title'   => lang('Staff Area'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'tree'    => $staff_page(array(
+        $el('section', 'py-5 bg-body-tertiary border-bottom', lang('Staff Welcome'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
+                        $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-bold mb-3'),
+                        $para(lang('Orders, books and customers are handled in the control panel. The blog, the staff directory and the conversations with readers are kept here.'), 'lead text-body-secondary mb-4'),
+                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                            $link(lang('Open the control panel'), $panel_url, 'btn btn-primary px-4'),
+                            $link(lang('New Blog Post'), '{{page:blog_new}}', 'btn btn-outline-primary'),
+                        )),
+                    ), '', '8'),
+                )),
+            )),
+        )),
+        $el('section', 'py-5', lang('Shortcuts'), array(
+            $container(array(
+                $shelf_header(lang('Staff'), lang('Shortcuts')),
+                $row(array(
+                    $staff_shortcut('bi-journal-plus', lang('New Blog Post'), lang('Write a post; it appears on the blog as soon as you send it.'), '{{page:blog_new}}'),
+                    $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory members see.'), '{{page:staff_entry}}'),
+                    $staff_shortcut('bi-chat-left-text', lang('All Conversations'), lang('Every message from the contact page. Answer below each one.'), '{{page:inbox}}'),
+                ), '4'),
+                $el('div', 'alert alert-secondary d-flex gap-2 mt-4 mb-0', lang('Access Note'), array(
+                    $icon('bi-info-circle', 'mt-1'),
+                    $span(lang('Only the site staff and the users given access to the private folder see these pages. To let someone in, open their account under Users and tick the folder in Private Content Access.'), '', lang('Text')),
+                )),
+            )),
+        )),
+    )),
+);
+
+// The blog's first posts, written into its form when the form is made:
+// the template carries them, so they are there on every site. Each is
+// edited or deleted like any other post.
+$post_body = function ($paragraphs) {
+    return implode("\n\n", $paragraphs);
+};
+$sample_posts = array(
+    array(
+        'title'       => lang('Five books for a long weekend'),
+        'summary'     => lang('A thick novel, a short one, a book of essays and two you can share: our picks for three slow days.'),
+        'content'     => $post_body(array(
+            lang('A long weekend is the best time for the book that has been waiting on your shelf. Start with something big: a family saga you can sink into on the first evening.'),
+            lang('For the train or the beach, pack a short novel you can finish in one sitting, and a book of essays to dip into between other things.'),
+            lang('Travelling with someone? Take two books you both want to read and swap them halfway. The conversations on the way home are half the fun.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-bookshop-post-1/1200/675',
+    ),
+    array(
+        'title'       => lang('An evening with a first-time author'),
+        'summary'     => lang('Forty chairs, one debut novel and a lot of questions: notes from our latest reading night.'),
+        'content'     => $post_body(array(
+            lang('Last Thursday the shop was full. Our guest read two chapters from her first novel, a story about a lighthouse keeper and the town that forgot him.'),
+            lang('The questions afterwards went on for an hour: how she found the time to write, why the book took seven years, and whether the lighthouse is real. It is, and she told us where.'),
+            lang('Signed copies are still on the counter. The next reading night is on the events page; seats go quickly, so reserve yours early.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-bookshop-post-2/1200/675',
+    ),
+    array(
+        'title'       => lang('Why we still write by hand'),
+        'summary'     => lang('A notebook and a good pen slow you down, and that is exactly the point.'),
+        'content'     => $post_body(array(
+            lang('Typing is fast, and that is its problem. When you write by hand, you have to choose your words before they reach the page.'),
+            lang('Many of us keep a notebook on the counter for book ideas, lists and the titles customers ask for. Looking back through it is like reading the shop\'s diary.'),
+            lang('If you want to try, start small: a pocket notebook, a pen you like holding, and three lines at the end of each day.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-bookshop-post-3/1200/675',
+    ),
+    array(
+        'title'       => lang('The book club\'s picks for autumn'),
+        'summary'     => lang('Three books for three months, chosen by the members: a mystery, a memoir and a novel in translation.'),
+        'content'     => $post_body(array(
+            lang('Every season the members vote on what to read next. This autumn the club starts with a quiet mystery set in a mountain village.'),
+            lang('In the second month comes a memoir about growing up above a family bakery, and in the third a novel translated for the first time.'),
+            lang('Members get ten per cent off the club\'s books. You are welcome to join at any meeting; the book club page has the dates.'),
+        )),
+        'cover_image' => 'https://picsum.photos/seed/pinegrap-bookshop-post-4/1200/675',
+    ),
+);
+
+// The staff's forms: the blog and the staff directory.
+$staff_form_page = function ($key, $name, $title, $lead, $widget_key, $form) use ($staff_page, $page_header, $el, $container, $row, $col, $widget) {
+    return array(
+        'key'     => $key,
+        'name'    => $name,
+        'folder'  => 'private',
+        'title'   => $title,
+        'search'  => false,
+        'sitemap' => false,
+        'noindex' => true,
+        'form'    => $form,
+        'tree'    => $staff_page(array(
+            $page_header($title, $lead),
+            $el('section', 'py-5', lang('Content'), array(
+                $container(array(
+                    $row(array(
+                        $col(array(
+                            $el('div', 'p-4 rounded-4 border', lang('Form Card'), array($widget($widget_key))),
+                        ), '', '8'),
+                    ), '', 'center'),
+                )),
+            )),
+        )),
+    );
+};
+$pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Post'),
+    lang('Write the post; it appears on the blog as soon as you send it.'), 'blog_form',
+    array(
+        'form_name'            => lang('Blog Posts'),
+        'confirmation_message' => lang('The post is published.'),
+        'confirmation_page_id' => '{{tab:blog}}',
+        // The template's sample posts are written in when the form is made,
+        // so the blog and the home page do not open empty
+        // (pg_cf_seed_sample_records()).
+        'sample_records'       => $sample_posts,
+    ));
+$pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
+    lang('Signed-in members see the directory from their account.'), 'staff_form',
+    array(
+        'form_name'            => lang('Staff Directory'),
+        'confirmation_message' => lang('The person is in the staff directory.'),
+        'confirmation_page_id' => '{{tab:staff_directory}}',
+    ));
+
+// The support center: a search over the whole site - pages, the parts of
+// pages marked as search sections (the events, the book club's questions)
+// and the books and stationery - with the common questions under it, each
+// a search section of its own.
+$help_topic = function ($icon_name, $text, $href) use ($el, $icon, $span) {
+    return $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2', lang('Topic'), array(
+        $icon($icon_name, 'text-primary'),
+        $span($text, '', lang('Link Text')),
+    ), array('href' => $href));
+};
+$pages[] = array(
+    'key'              => 'search',
+    'name'             => lang('support-center'),
+    'folder'           => 'public',
+    'title'            => lang('Support Center'),
+    'meta_description' => lang('Search the bookshop: books, events, the book club and answers about orders.'),
+    'tree'             => $page(array(
+        $page_header(lang('Support Center'), lang('Search the whole shop: books and stationery, events, the book club and the answers to the questions we hear most.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array($widget('site_search')), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('Popular Topics'), array(
+                            $heading('h2', lang('Popular topics'), 'h5 fw-bold mb-3'),
+                            $el('nav', 'list-group', lang('Topics'), array(
+                                $help_topic('bi-calendar-event', lang('Events'), '{{page:events}}'),
+                                $help_topic('bi-people', lang('Book Club'), '{{page:book_club}}'),
+                                $help_topic('bi-receipt', lang('My Orders'), '{{page:my_account}}'),
+                                $help_topic('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
+                                $help_topic('bi-envelope', lang('Contact us'), '{{page:contact}}'),
+                            ), array('_attrs' => array($attr('aria-label', lang('Popular topics'))))),
+                        )),
+                        $el('div', 'p-4 rounded-4 border', lang('Still Need Help'), array(
+                            $heading('h2', lang('Still need help?'), 'h5 fw-bold mb-2'),
+                            $para(lang('Write to us from the contact page; the answer comes to your inbox on this site.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-primary'),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+        $el('section', 'py-5 border-top', lang('Frequently Asked Questions'), array(
+            $container(array(
+                $shelf_header(lang('Questions'), lang('Frequently asked questions')),
+                $row(array(
+                    $col(array(
+                        $el('div', 'accordion', lang('FAQ'), array(
+                            $faq(11, lang('Can you order a book you do not have?'), lang('Yes. Write the title from the contact page or ask at the counter; most books arrive within three days, and we tell you when yours is here.'), lang('special order, order a book, out of stock, not on the shelf'), 'bk-help-faq'),
+                            $faq(12, lang('How do I reserve a seat at an event?'), lang('Press Reserve a seat beside the event on the events page, or write to us with the event and how many seats you need. Seats are free.'), lang('events, reservation, seat, reading night, workshop'), 'bk-help-faq'),
+                            $faq(13, lang('Do you sell gift cards?'), lang('Yes. A gift card can be used for anything in the shop, at the counter or online, and comes in an envelope ready to give.'), lang('gift card, voucher, present'), 'bk-help-faq'),
+                            $faq(14, lang('Where do I find your answer to my message?'), lang('In your inbox: sign in and open Inbox from the menu under your name. Every reply is on the conversation page, and you can write back there.'), lang('inbox, reply, answer, conversation'), 'bk-help-faq'),
+                        ), array('id' => 'bk-help-faq')),
+                    ), '', '9'),
+                ), '', 'center'),
+            )),
+        )),
+    )),
+);
 
 // The site's error page.
 $pages[] = array(
@@ -1331,6 +1796,19 @@ $pages[] = array_merge($mail_settings, array(
     'title' => lang('Message Received E-mail'),
     'tree'  => $mail_page(array($widget('email_message_sender'))),
 ));
+// A new reply or comment: sent to the sender of a conversation and to the
+// visitors watching a page. The System region carries the comment and a
+// "View or Reply" button.
+$pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_reply',
+    'name'  => lang('email-new-reply'),
+    'title' => lang('New Reply E-mail'),
+    'tree'  => $mail_page(array(
+        $mail_heading(lang('There is a new reply')),
+        $mail_para(lang('Something new was written on a page you follow. You can read it below and answer it on the page.')),
+        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
+    )),
+));
 // The newsletter's welcome, sent to a new subscriber.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_welcome',
@@ -1367,12 +1845,17 @@ $login_item = function ($text, $token, $flag = '') use ($el, $link) {
         $link($text, '#', 'dropdown-item', array(), array('_bindings' => array('href' => $token))),
     ), $extra);
 };
+$login_page_item = function ($text, $href) use ($el, $link) {
+    return $el('li', '', lang('Menu Item'), array($link($text, $href, 'dropdown-item')));
+};
 $login_divider = function () use ($el) {
     return $el('li', '', lang('Divider'), array($el('hr', 'dropdown-divider', lang('Divider Line'))));
 };
-$account_link = function ($icon_name, $text, $href, $token = '') use ($el, $icon, $span) {
+// $flag shows the link only while that widget flag is on.
+$account_link = function ($icon_name, $text, $href, $token = '', $flag = '') use ($el, $icon, $span) {
     $extra = array('href' => $href);
     if ($token !== '') $extra['_bindings'] = array('href' => $token);
+    if ($flag !== '') $extra['_bindings']['eo_visible_if'] = $flag;
     return $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2', lang('Menu Item'), array(
         $icon($icon_name, 'text-primary'),
         $span($text, '', lang('Link Text')),
@@ -1391,6 +1874,7 @@ $widgets = array(
             'register_page_id'   => '{{tab:register}}',
             'show_register_link' => true,
             'account_page_id'    => '{{tab:my_account}}',
+            'staff_page_id'      => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
             $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
@@ -1414,7 +1898,9 @@ $widgets = array(
                     )),
                     $login_divider(),
                     $login_item(lang('My Account'), '__my_account_url'),
+                    $login_page_item(lang('Inbox'), '{{page:inbox}}'),
                     $login_item(lang('Edit my profile'), '__profile_url'),
+                    $login_item(lang('Staff area'), '__staff_url', 'is_staff'),
                     $login_item(lang('Control panel'), '__panel_url', 'has_panel_access'),
                     $login_divider(),
                     $login_item(lang('Log out'), '__logout_url'),
@@ -1613,6 +2099,283 @@ $widgets = array(
         )),
     ),
 
+    // The three newest posts on the home page.
+    'home_posts' => array(
+        'page'   => 'home',
+        'slug'   => lang('form-list'),
+        'config' => array(
+            'regionType'          => 'form_list_view',
+            'custom_form_page_id' => '{{tab:blog_new}}',
+            'detail_page_id'      => '{{tab:blog_post}}',
+            'items_per_page'      => 3,
+            'max_results'         => 3,
+            'order_by_field'      => 'submitted_date_and_time',
+            'order_by_direction'  => 'DESC',
+            'empty_message'       => lang('No posts yet.'),
+        ),
+        'tree'   => $widget_root(array(
+            $row(array($loop(array($post_card()))), '4'),
+        )),
+    ),
+
+    // The blog: every post, newest first, with a search over the posts.
+    'blog_list' => array(
+        'page'   => 'blog',
+        'slug'   => lang('form-list'),
+        'config' => array(
+            'regionType'          => 'form_list_view',
+            'custom_form_page_id' => '{{tab:blog_new}}',
+            'detail_page_id'      => '{{tab:blog_post}}',
+            'items_per_page'      => 9,
+            'order_by_field'      => 'submitted_date_and_time',
+            'order_by_direction'  => 'DESC',
+            'search_enabled'      => true,
+            'search_fields'       => array('title', 'summary', 'content'),
+            'search_width'        => 'full',
+            'search_label'        => lang('Search the blog...'),
+            'empty_message'       => lang('No posts yet.'),
+        ),
+        'tree'   => $widget_root(array(
+            $row(array($loop(array($post_card()))), '4', '', 'g-lg-5'),
+        )),
+    ),
+
+    // One post.
+    'blog_post' => array(
+        'page'   => 'blog_post',
+        'slug'   => lang('form-detail'),
+        'config' => array(
+            'regionType'          => 'form_item_view',
+            'custom_form_page_id' => '{{tab:blog_new}}',
+            'access_control'      => 'public',
+            'not_found_message'   => lang('This post could not be found. It may have been removed.'),
+        ),
+        'tree'   => $widget_root(array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'text-center py-5', lang('Not Found'), array(
+                            $icon('bi-journal-x', 'display-5 text-body-tertiary'),
+                            $heading('h2', lang('Post not found'), 'h3 fw-bold mt-3'),
+                            $para(lang('This post could not be found. It may have been removed.'), 'text-body-secondary mb-4', $bind('not_found')),
+                            $link(lang('Back to the blog'), '{{page:blog}}', 'btn btn-primary px-4'),
+                        ), $show_when('record_not_found')),
+                        $el('article', '', lang('Post'), array(
+                            $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
+                                $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-primary text-decoration-none', lang('Link'), array(
+                                    $icon('bi-arrow-left'),
+                                    $span(lang('All posts'), '', lang('Link Text')),
+                                ), array('href' => '{{page:blog}}')),
+                                $edit_button(),
+                            )),
+                            $heading('h1', lang('Five books for a long weekend'), 'display-6 fw-bold mb-3', $bind('title')),
+                            $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary pb-3 mb-4 border-bottom', lang('Post Details'), array(
+                                $icon('bi-calendar3'),
+                                $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
+                                $icon('bi-person', 'ms-2'),
+                                $span(lang('Jane Cooper'), '', lang('Author'), $bind('submitter')),
+                            )),
+                            $ai_summary(),
+                            $optional_image('cover_image', 'title', 'rounded-4 object-fit-cover', 'ratio ratio-16x9 mb-4',
+                                'https://picsum.photos/seed/pinegrap-bookshop-post/1200/675', lang('Cover Image')),
+                            $para(lang('A short summary of the post. It is what makes a visitor open it, so two sentences are enough.'), 'lead mb-4', $bind('summary')),
+                            $el('div', 'fs-6 lh-lg', lang('Post Content'), array(), array_merge(
+                                array('text' => lang('The body of the post. Write it on the staff page; line breaks are kept.')), $bind('content'))),
+                        ), $show_when('record_found')),
+                    ), '', '8'),
+                ), '', 'center'),
+            ), 'py-5'),
+        )),
+    ),
+
+    // The staff page's blog form: what a post is made of.
+    'blog_form' => array(
+        'page'   => 'blog_new',
+        'slug'   => 'form',
+        'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+        'tree'   => $widget_root(array(
+            $field('bk-post-title', lang('Title'), $input('bk-post-title', 'text', 'title', 'off')),
+            $field('bk-post-summary', lang('Summary'), $textarea('bk-post-summary', 'summary', 3)),
+            $field('bk-post-cover', lang('Cover Image'), $file('bk-post-cover', 'cover_image', 'public')),
+            $field('bk-post-content', lang('Content'), $textarea('bk-post-content', 'content', 14)),
+            $submit(lang('Publish')),
+            $loop(array()),
+        )),
+    ),
+
+    // The staff page's directory form: one person.
+    'staff_form' => array(
+        'page'   => 'staff_entry',
+        'slug'   => 'form',
+        'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+        'tree'   => $widget_root(array(
+            $row(array(
+                $col(array($field('bk-staff-name', lang('Full Name'), $input('bk-staff-name', 'text', 'full_name', 'off'))), '6'),
+                $col(array($field('bk-staff-title', lang('Job Title'), $input('bk-staff-title', 'text', 'job_title', 'off'))), '6'),
+                $col(array($field('bk-staff-department', lang('Department'), $input('bk-staff-department', 'text', 'department', 'off', false))), '6'),
+                $col(array($field('bk-staff-photo', lang('Photo'), $file('bk-staff-photo', 'photo', 'public'))), '6'),
+                $col(array($field('bk-staff-email', lang('Email'), $input('bk-staff-email', 'email', 'email', 'off', false))), '6'),
+                $col(array($field('bk-staff-phone', lang('Phone'), $input('bk-staff-phone', 'tel', 'phone', 'off', false))), '6'),
+            ), '3'),
+            $field('bk-staff-bio', lang('A few words'), $textarea('bk-staff-bio', 'bio', 3, false)),
+            $submit(lang('Add')),
+            $loop(array()),
+        )),
+    ),
+
+    // The directory members see.
+    'staff_directory' => array(
+        'page'   => 'staff_directory',
+        'slug'   => lang('form-list'),
+        'config' => array(
+            'regionType'          => 'form_list_view',
+            'custom_form_page_id' => '{{tab:staff_entry}}',
+            'items_per_page'      => 24,
+            'order_by_field'      => 'full_name',
+            'order_by_direction'  => 'ASC',
+            'search_enabled'      => true,
+            'search_fields'       => array('full_name', 'job_title', 'department'),
+            'search_width'        => 'half',
+            'search_label'        => lang('Search by name or department...'),
+            'empty_message'       => lang('The directory is empty for now.'),
+        ),
+        'tree'   => $widget_root(array(
+            $row(array($loop(array(
+                $col(array(
+                    $el('div', 'd-flex align-items-start gap-3 h-100 p-4 rounded-4 bg-body-tertiary', lang('Person Card'), array(
+                        $optional_image('photo', 'full_name', 'rounded-circle object-fit-cover', 'flex-shrink-0',
+                            'https://picsum.photos/seed/pinegrap-bookshop-person/128/128', lang('Photo')),
+                        $el('div', 'min-w-0', lang('Details'), array(
+                            $heading('h2', lang('Jane Cooper'), 'h6 fw-bold mb-0', $bind('full_name')),
+                            $para(lang('Customer Support'), 'small text-primary fw-semibold mb-2', $bind('job_title')),
+                            $el('p', 'pg-hide-if-empty small mb-1', lang('Department'), array(
+                                $icon('bi-diagram-3', 'text-primary me-1'),
+                                $span(lang('Operations'), 'pg-field-value', lang('Value'), $bind('department')),
+                            )),
+                            $el('p', 'pg-hide-if-empty small mb-1 text-break', lang('Email'), array(
+                                $icon('bi-envelope', 'text-primary me-1'),
+                                $span(lang('jane.cooper@example.com'), 'pg-field-value', lang('Value'), $bind('email')),
+                            )),
+                            $el('p', 'pg-hide-if-empty small mb-1', lang('Phone'), array(
+                                $icon('bi-telephone', 'text-primary me-1'),
+                                $span('+90 555 000 00 00', 'pg-field-value', lang('Value'), $bind('phone')),
+                            )),
+                            $el('p', 'pg-hide-if-empty small text-body-secondary mt-2 mb-0', lang('A few words'), array(
+                                $span(lang('Happy to help with orders and accounts.'), 'pg-field-value', lang('Value'), $bind('bio')),
+                            )),
+                        )),
+                    )),
+                ), '6', '4'),
+            ))), '4'),
+        )),
+    ),
+
+    // The inbox: conversations the member started (a signed-in submission
+    // of the contact form), or is watching; the staff see them all. The
+    // contact form's subject is its topic.
+    'inbox_list' => array(
+        'page'   => 'inbox',
+        'slug'   => lang('form-list'),
+        'config' => array(
+            'regionType'              => 'form_list_view',
+            'custom_form_page_id'     => '{{tab:contact}}',
+            'detail_page_id'          => '{{tab:conversation}}',
+            'items_per_page'          => 20,
+            'order_by_field'          => 'submitted_date_and_time',
+            'order_by_direction'      => 'DESC',
+            'viewer_filter'           => true,
+            'viewer_filter_submitter' => true,
+            'viewer_filter_watcher'   => true,
+            'viewer_filter_editor'    => true,
+            'empty_message'           => lang('No conversations yet. Start one from the contact page.'),
+        ),
+        'tree'   => $widget_root(array(
+            $el('div', 'list-group', lang('Conversation List'), array(
+                $loop(array(
+                    $el('a', 'list-group-item list-group-item-action py-3', lang('Conversation'), array(
+                        $el('div', 'd-flex w-100 justify-content-between gap-3', lang('Top Line'), array(
+                            $span(lang('Reserving a seat at an event'), 'fw-semibold text-truncate', lang('Subject'), $bind('topic')),
+                            $span(lang('Date'), 'small text-body-secondary text-nowrap', lang('Date'), $bind('submitted_date_and_time')),
+                        )),
+                        $el('div', 'd-flex align-items-center gap-2 small text-body-secondary mt-1', lang('Replies'), array(
+                            $icon('bi-chat-left-text'),
+                            $span('0', 'fw-semibold', lang('Reply Count'), $bind('number_of_comments')),
+                            $span(lang('replies'), '', lang('Label')),
+                        )),
+                    ), array('href' => '#', '_bindings' => array('href' => 'form_item_view'))),
+                )),
+            )),
+        )),
+    ),
+
+    // One conversation: the first message; the answers follow as comments.
+    'conversation' => array(
+        'page'   => 'conversation',
+        'slug'   => lang('form-detail'),
+        'config' => array(
+            'regionType'          => 'form_item_view',
+            'custom_form_page_id' => '{{tab:contact}}',
+            'access_control'      => 'submitter_only',
+            'not_found_message'   => lang('This conversation could not be found, or it is not yours to read.'),
+        ),
+        'tree'   => $widget_root(array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'text-center py-5', lang('Not Found'), array(
+                            $icon('bi-chat-left-dots', 'display-5 text-body-tertiary'),
+                            $heading('h2', lang('Conversation not found'), 'h3 fw-bold mt-3'),
+                            $para(lang('This conversation could not be found, or it is not yours to read.'), 'text-body-secondary mb-4', $bind('not_found')),
+                            $link(lang('Back to the inbox'), '{{page:inbox}}', 'btn btn-primary px-4'),
+                        ), $show_when('record_not_found')),
+                        $el('div', '', lang('Conversation'), array(
+                            $el('div', 'alert alert-success d-flex gap-2', lang('Sent Notice'), array(
+                                $icon('bi-check-circle', 'mt-1'),
+                                $span(lang('Thank you, your message has reached us. Our answers appear on this page and in your inbox, and you can write back below.'), '', lang('Text')),
+                            ), array_merge(array('_attrs' => array($attr('role', 'status'))), $show_when('submitted_this_session'))),
+                            $el('div', 'alert alert-info', lang('New Account'), array(
+                                $el('p', 'fw-semibold mb-2', lang('Title'), array(), array('text' => lang('We opened an account for you'))),
+                                $el('p', 'mb-1', lang('Sign-in Email'), array(
+                                    $span(lang('Email') . ': ', '', lang('Label')),
+                                    $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
+                                )),
+                                $el('p', 'mb-2', lang('Temporary Password'), array(
+                                    $span(lang('Temporary password') . ': ', '', lang('Label')),
+                                    $span('a1b2c3d4', 'fw-semibold font-monospace', lang('Value'), $bind('__new_account_password')),
+                                )),
+                                $para(lang('You are signed in. Keep these details, and choose a password of your own.'), 'small mb-2'),
+                                $link(lang('Change Password'), '{{page:change_password}}', 'btn btn-sm btn-primary'),
+                            ), $show_when('has_new_account')),
+                            $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
+                                $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-primary text-decoration-none', lang('Link'), array(
+                                    $icon('bi-arrow-left'),
+                                    $span(lang('Inbox'), '', lang('Link Text')),
+                                ), array('href' => '{{page:inbox}}')),
+                                $edit_button(),
+                            )),
+                            $heading('h1', lang('Reserving a seat at an event'), 'h3 fw-bold mb-1', $bind('topic')),
+                            $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary mb-4', lang('Conversation Details'), array(
+                                $icon('bi-calendar3'),
+                                $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
+                                $icon('bi-hash', 'ms-2'),
+                                $span('ABC123', '', lang('Reference Code'), $bind('reference_code')),
+                            )),
+                            $el('div', 'p-4 rounded-4 bg-body-tertiary', lang('First Message'), array(
+                                $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Sender'), array(
+                                    $icon('bi-person-circle', 'fs-5 text-primary'),
+                                    $span(lang('Jane'), '', lang('First Name'), $bind('first_name')),
+                                    $span(lang('Cooper'), '', lang('Last Name'), $bind('last_name')),
+                                )),
+                                $el('div', 'lh-lg', lang('Message'), array(), array_merge(
+                                    array('text' => lang('Hello, I would like two seats for the reading night on Thursday.')), $bind('message'))),
+                            )),
+                        ), $show_when('record_found')),
+                    ), '', '8'),
+                ), '', 'center'),
+            ), 'py-5'),
+        )),
+    ),
+
     // The member's account: who is signed in and the way to each account
     // page on the left, the orders on the right.
     'my_account' => array(
@@ -1622,6 +2385,7 @@ $widgets = array(
             'regionType'       => 'my_account',
             'login_page_id'    => '{{tab:login}}',
             'show_submissions' => false,
+            'staff_page_id'    => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
             $container(array(
@@ -1634,12 +2398,16 @@ $widgets = array(
                             $link(lang('Log out'), '#', 'btn btn-sm btn-outline-secondary', array(), array('_bindings' => array('href' => '__logout_url'))),
                         )),
                         $el('nav', 'list-group', lang('Account Menu'), array(
+                            $account_link('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
                             $account_link('bi-person-vcard', lang('My Profile'), '#', '__profile_url'),
                             $account_link('bi-journal-bookmark', lang('Address Book'), '#', '__address_book_url'),
                             $account_link('bi-shield-lock', lang('Change Password'), '#', '__change_password_url'),
                             $account_link('bi-envelope-paper', lang('Email Preferences'), '#', '__email_preferences_url'),
                             $account_link('bi-people', lang('Book Club'), '{{page:book_club}}'),
+                            $account_link('bi-person-lines-fill', lang('Staff Directory'), '{{page:staff_directory}}'),
                             $account_link('bi-basket', lang('Continue Shopping'), '{{page:shop}}'),
+                            // Drawn only for the members the staff area's private folder lets in.
+                            $account_link('bi-person-badge', lang('Staff Area'), '#', '__staff_url', 'is_staff'),
                         ), array('_attrs' => array($attr('aria-label', lang('My Account'))))),
                     ), '', '4'),
                     $col(array(
@@ -1728,6 +2496,52 @@ $widgets = array(
         'config'   => array('regionType' => 'address_book', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'     => 'starter',
     ),
+    // The support center's search: the whole site for ?query=, ten results
+    // a page. A result that matches a search section links to that part of
+    // its page (^^__result_section^^ names it).
+    'site_search' => array(
+        'page'   => 'search',
+        'slug'   => lang('search'),
+        'config' => array(
+            'regionType'             => 'search_results',
+            'search_scope'           => 'all',
+            'results_per_page'       => 10,
+            'empty_message'          => lang('Nothing matched your search. Try fewer or different words.'),
+            'product_group_id'       => '{{product_group:bookshop}}',
+            'catalog_detail_page_id' => '{{tab:product}}',
+        ),
+        'tree'   => $widget_root(array(
+            $el('form', 'mb-4', lang('Search Form'), array(
+                $el('div', 'input-group input-group-lg', lang('Search Box'), array(
+                    $el('input', 'form-control', '', array(), array(
+                        '_attrs'    => array($attr('type', 'search'), $attr('placeholder', lang('Search the site…')), $attr('aria-label', lang('Search the site'))),
+                        '_bindings' => array('value' => 'search_query'),
+                    )),
+                    $el('button', 'btn btn-primary px-4', lang('Search Button'), array($icon('bi-search')), array(
+                        '_attrs'    => array($attr('type', 'submit'), $attr('aria-label', lang('Search'))),
+                        '_bindings' => array('action' => 'submit_search'),
+                    )),
+                )),
+            ), array('_bindings' => array('action' => 'search_form'))),
+            $para(lang('Results heading'), 'fw-semibold pb-3 mb-0 border-bottom', $bind('__results_heading')),
+            $el('div', '', lang('Results'), array(
+                $loop(array(
+                    $el('article', 'py-3 border-bottom position-relative', lang('Result Row'), array(
+                        $span(lang('Page'), 'badge bg-secondary-subtle text-secondary-emphasis mb-2', lang('Result Type'), $bind('__result_type_label')),
+                        $el('h2', 'h5 fw-bold mb-1 position-static', lang('Result Title'), array(
+                            $link(lang('Title'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
+                                array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
+                        )),
+                        $para(lang('Shipping and returns'), 'small fw-semibold text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
+                        $para(lang('Excerpt'), 'small text-body-secondary mb-1', $bind('__result_excerpt')),
+                        $para(lang('Price'), 'fw-semibold mb-0', $bind('__result_price')),
+                    )),
+                )),
+            )),
+            $el('div', 'mt-4', lang('Pagination'), array(), array('_bindings' => array('section' => 'pagination'))),
+        )),
+    ),
+
     'error_page' => array(
         'page'   => 'error',
         'slug'   => lang('error'),
@@ -1748,7 +2562,7 @@ $widgets = array(
         ),
         'tree'   => $widget_root(array(
             $mail_heading(lang('A new message has arrived')),
-            $mail_para(lang('It came from the contact form of the shop. Answer the sender by e-mail.')),
+            $mail_para(lang('It came from the contact form. Answer it on the conversation page: the answer reaches the sender by e-mail and in their inbox.')),
             $mail_box(array(
                 $mail_line(lang('Sender'), array(
                     $span(lang('Jane'), '', lang('First Name'), $bind('first_name')),
@@ -1761,6 +2575,7 @@ $widgets = array(
             ), lang('Sender')),
             $el('div', 'lh-lg', lang('Message'), array(), array_merge(
                 array('text' => lang('Hello, I would like two seats for the reading night on Thursday.')), $bind('message'))),
+            $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
             $el('p', 'small text-body-secondary mt-4 mb-0', lang('Reference'), array(
                 $span(lang('Reference Code') . ': ', '', lang('Label')),
                 $span('ABC123', '', lang('Reference Code'), $bind('reference_code')),
@@ -1779,14 +2594,27 @@ $widgets = array(
         'tree'   => $widget_root(array(
             $mail_heading(lang('Your message has reached us')),
             $mail_greeting(),
-            $mail_para(lang('Thank you for writing to us. We answer every day the shop is open, usually on the same day.')),
+            $mail_para(lang('Thank you for writing to us. Our answer will be on the conversation page and in your inbox, and we will let you know by e-mail when it is there.')),
             $mail_box(array(
                 $el('p', 'fw-semibold mb-2', lang('Subject'), array(), array_merge(
                     array('text' => lang('Reserving a seat at an event'), '_attrs' => array($attr('style', 'font-weight:600;margin:0 0 8px'))), $bind('topic'))),
                 $el('div', 'lh-lg', lang('Message'), array(), array_merge(
                     array('text' => lang('Hello, I would like two seats for the reading night on Thursday.')), $bind('message'))),
             ), lang('Your Message')),
-            $mail_button(lang('Visit the shop'), '{{page:home}}'),
+            $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
+            // The account the form opened for a visitor who had none: the
+            // address it signs in with, and how to choose a password (the
+            // temporary one is shown on the conversation page, not mailed).
+            $el('div', 'border-top pt-3', lang('New Account'), array(
+                $el('p', 'mb-2', lang('Sign-in Email'), array(
+                    $span(lang('We opened an account for you with this address:') . ' ', '', lang('Label')),
+                    $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
+                ), $mail_style('margin:0 0 8px')),
+                $el('p', 'mb-0', lang('Password'), array(
+                    $span(lang('To choose your password, use') . ' ', '', lang('Label')),
+                    $link(lang('Forgot Password'), '{{page:forgot_password}}', ''),
+                ), $mail_style('margin:0')),
+            ), array_merge($mail_style('border-top:1px solid #e7e2d6;padding-top:16px'), $show_when('has_new_account'))),
         )),
     ),
     'email_club' => array(
@@ -1959,9 +2787,62 @@ $catalog = array(
     ),
 );
 
+// ── Search sections ─────────────────────────────────────────────────────
+// The parts of the pages the site search points a result at (Search and
+// SERP in the editor's options): a result that matches one links to it,
+// the words are marked when the visitor arrives, and the page's structured
+// data names it. A part is found by its id ('#…') or by the name it has in
+// the layer tree, once per page; it keeps an id it already has. The topics
+// are words a visitor may search for that the part does not say itself.
+// Parts inside a shared component or a widget belong to that, not to the
+// page, so only the page's own parts are listed here.
+$search_sections = array(
+    'events' => array(
+        lang('Info') => array('reserve-a-seat', lang('reservation, book a seat, tickets, how to reserve')),
+    ),
+    'book_club' => array(
+        lang('How It Works') => array('how-it-works', lang('book club, join, groups, meetings, discount')),
+    ),
+    'about' => array(
+        lang('Our Story') => array('our-story', lang('about us, our story, history, booksellers')),
+        lang('Features')  => array('what-we-offer', lang('book recommendations, special orders, workshops')),
+    ),
+    'contact' => array(
+        lang('Contact Details') => array('contact-details', lang('address, phone, e-mail, opening hours, location')),
+    ),
+);
+$searchable_tree = function ($node, $marks, &$used) use (&$searchable_tree) {
+    if (!is_array($node)) return $node;
+    if (isset($node['props']) && is_array($node['props'])) {
+        $p = $node['props'];
+        $name = isset($p['customName']) ? (string)$p['customName'] : (isset($p['_label']) ? (string)$p['_label'] : '');
+        $key = null;
+        if (!empty($p['id']) && isset($marks['#' . $p['id']]) && !isset($used['#' . $p['id']])) {
+            $key = '#' . $p['id'];
+        } elseif ($name !== '' && isset($marks[$name]) && !isset($used[$name])) {
+            $key = $name;
+        }
+        if ($key !== null) {
+            $used[$key] = true;
+            if (empty($p['id'])) $node['props']['id'] = $marks[$key][0];
+            $node['props']['searchSection'] = true;
+            if ($marks[$key][1] !== '') $node['props']['searchKeywords'] = $marks[$key][1];
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) $node['children'][$i] = $searchable_tree($child, $marks, $used);
+    }
+    return $node;
+};
+foreach ($pages as $i => $p) {
+    if (!isset($search_sections[$p['key']])) continue;
+    $used = array();
+    $pages[$i]['tree'] = $searchable_tree($p['tree'], $search_sections[$p['key']], $used);
+}
+
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.0.3',
+    'version'     => '1.0.6',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',
@@ -1969,7 +2850,7 @@ return array(
     // it: a bookshop front (pg_design_thumb_svg()).
     'thumb'       => 'bookshop',
     'requires'    => 'ecommerce',
-    'description' => lang('A bookshop and stationery store: staff picks, bestsellers, events, the shop with filters, product, cart, checkout and account pages.'),
+    'description' => lang('A bookshop and stationery store: staff picks, bestsellers, events, a blog, the shop with filters, product, cart, checkout and account pages with an inbox, a staff area and a support center that searches the whole site.'),
 
     // The theme the template is made for; the operator can pick another
     // before opening it, and change it later in the editor.
@@ -1981,6 +2862,7 @@ return array(
     'highlights'  => array(
         lang('A catalog to start from: books, notebooks, pens and cards, with pictures.'),
         lang('An events page and a book club whose sign-up form welcomes each new member by e-mail.'),
+        lang('A blog with sample posts, an inbox for the conversations with customers and a staff area come ready.'),
         lang('A newsletter form on the pages: every address joins one contact group, ready for e-mail campaigns.'),
     ),
 
@@ -2007,9 +2889,11 @@ return array(
     'widgets'     => $widgets,
 
     'shared'      => array(
+        'account_bar'  => array('name' => lang('Bookshop Account Bar'), 'tree' => $account_bar_tree()),
         'notice'       => array('name' => lang('Bookshop Notice'), 'tree' => $notice()),
         'header'       => array('name' => lang('Bookshop Header'), 'tree' => $header()),
         'footer'       => array('name' => lang('Bookshop Footer'), 'tree' => $footer()),
+        'staff_bar'    => array('name' => lang('Bookshop Staff Bar'), 'tree' => $staff_bar()),
         'gift_band'    => array('name' => lang('Bookshop Gift Card Band'), 'tree' => $gift_band()),
         'email_header' => array('name' => lang('Bookshop E-mail Header'), 'tree' =>
             $el('div', 'px-4 py-3 border-bottom', lang('E-mail Header'), array(

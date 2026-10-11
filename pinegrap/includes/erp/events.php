@@ -83,6 +83,21 @@ function erp_event_date($value)
 }
 
 /**
+ * A unix moment as the wire wants it: ISO-8601 UTC, null for none - what
+ * api_time() gives, written here because a panel screen that announces an
+ * event has not loaded the API's response helpers.
+ *
+ * @param int $unix
+ * @return string|null
+ */
+function erp_event_time($unix)
+{
+    $unix = (int) $unix;
+
+    return ($unix > 0) ? gmdate('Y-m-d\TH:i:s\Z', $unix) : null;
+}
+
+/**
  * Announce an invoice: issued, paid or cancelled.
  *
  * @param int    $invoice_id
@@ -294,7 +309,7 @@ function erp_event_quote($quote_id, $event)
         return 0;
     }
 
-    return erp_event($event, array(
+    $payload = array(
         'id' => (int) $quote['id'],
         'number' => (string) $quote['full_number'],
         'status' => (string) $quote['status'],
@@ -305,5 +320,16 @@ function erp_event_quote($quote_id, $event)
         'valid_until' => erp_event_date($quote['valid_until']),
         'currency' => (string) $quote['currency'],
         'grand_total' => (int) $quote['grand_total'],
-    ));
+    );
+
+    // Who signed and when, as GET /erp/quotes shows it; the drawing and the
+    // rest of the evidence stay with the panel.
+    if ($event === 'erp.quote.signed') {
+        $signature = function_exists('erp_signature') ? erp_signature('quote', (int) $quote['id']) : null;
+
+        $payload['signer_name'] = is_array($signature) ? (string) $signature['signer_name'] : '';
+        $payload['signed_at'] = is_array($signature) ? erp_event_time($signature['signed_at']) : null;
+    }
+
+    return erp_event($event, $payload);
 }

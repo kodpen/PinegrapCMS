@@ -1260,6 +1260,22 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
     ), array('__mfa_qr')));
 }
 
+// The address of the staff page a widget setting names, for a signed-in
+// visitor that page lets in - the folder access decides, the same rule
+// get_page.php applies on arrival. '' for anyone else, for a page in the
+// recycle bin, and when no page is named.
+function _pg_acct_staff_url($staff_page_id)
+{
+    $staff_page_id = (int)$staff_page_id;
+    if ($staff_page_id <= 0) return '';
+    $staff = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $staff_page_id . "' LIMIT 1");
+    if (!is_array($staff) || (string)$staff['page_name'] === '') return '';
+    if (function_exists('pg_recycle_bin_folder_ids')
+        && in_array((int)$staff['page_folder'], array_map('intval', (array)pg_recycle_bin_folder_ids()), true)) return '';
+    if (!check_view_access($staff['page_folder'])) return '';
+    return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path((string)$staff['page_name']);
+}
+
 // ============================================================================
 // my_account: links to the other account pages, order history
 // ============================================================================
@@ -1272,9 +1288,11 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 //
 // Tokens: ^^__profile_url^^, ^^__email_preferences_url^^,
 // ^^__change_password_url^^, ^^__address_book_url^^ (shop sites),
-// ^^__logout_url^^. Section: order_history (the member's orders, newest
-// first, each linking to the order view page). Flags: has_orders, no_orders.
-function _pg_my_account_extras($logged_in)
+// ^^__logout_url^^, ^^__staff_url^^ (cfg staff_page_id, only for a member
+// the staff page's folder lets in). Section: order_history (the member's
+// orders, newest first, each linking to the order view page). Flags:
+// has_orders, no_orders, is_staff.
+function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
     $links = array(
@@ -1283,9 +1301,10 @@ function _pg_my_account_extras($logged_in)
         '__change_password_url'   => '',
         '__address_book_url'      => '',
         '__logout_url'            => '',
+        '__staff_url'             => '',
     );
     $out = array('links' => $links, 'sections' => array('order_history' => ''),
-                 'flags' => array('has_orders' => false, 'no_orders' => true));
+                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false));
     if (!$logged_in) return $out;
 
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
@@ -1297,6 +1316,8 @@ function _pg_my_account_extras($logged_in)
     $links['__logout_url'] = ($logout !== '') ? $logout
         : _pg_acct_software_path() . '/logout.php?send_to=' . urlencode(defined('PATH') ? PATH : '/')
           . '&token=' . urlencode(isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
+    $links['__staff_url'] = _pg_acct_staff_url(is_array($cfg) && isset($cfg['staff_page_id']) ? $cfg['staff_page_id'] : 0);
+    $out['flags']['is_staff'] = ($links['__staff_url'] !== '');
     $out['links'] = $links;
 
     if ($shop && defined('USER_ID') && (int)USER_ID > 0) {
@@ -1318,7 +1339,8 @@ function _pg_my_account_extras($logged_in)
                     : '<div class="' . $cls . '">' . $inner . '</div>';
             }
             $out['sections']['order_history'] = $html . '</div>';
-            $out['flags'] = array('has_orders' => true, 'no_orders' => false);
+            $out['flags']['has_orders'] = true;
+            $out['flags']['no_orders']  = false;
         }
     }
     return $out;
@@ -1484,18 +1506,8 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
         $links['__logout_url'] = $software . '/logout.php?token=' . urlencode($token)
                                . ($has_logout_page ? '' : '&send_to=' . urlencode(defined('PATH') ? PATH : '/'));
 
-        // The staff link only for those the staff page lets in - the folder
-        // access decides, the same rule get_page.php applies on arrival.
-        $staff_page_id = isset($cfg['staff_page_id']) ? (int)$cfg['staff_page_id'] : 0;
-        if ($staff_page_id > 0) {
-            $staff = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $staff_page_id . "' LIMIT 1");
-            $binned = (is_array($staff) && function_exists('pg_recycle_bin_folder_ids'))
-                ? in_array((int)$staff['page_folder'], array_map('intval', (array)pg_recycle_bin_folder_ids()), true) : false;
-            if (is_array($staff) && (string)$staff['page_name'] !== '' && !$binned && check_view_access($staff['page_folder'])) {
-                $links['__staff_url'] = $output . encode_url_path((string)$staff['page_name']);
-                $flags['is_staff']    = true;
-            }
-        }
+        $links['__staff_url'] = _pg_acct_staff_url(isset($cfg['staff_page_id']) ? $cfg['staff_page_id'] : 0);
+        $flags['is_staff']    = ($links['__staff_url'] !== '');
 
         if (_pg_login_region_panel_access()) {
             $links['__panel_url']      = $software . '/welcome.php';

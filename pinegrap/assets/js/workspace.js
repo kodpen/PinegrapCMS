@@ -2137,6 +2137,12 @@
             onInput: function () {
                 field.pickerCheck();
             },
+            // The undo and redo buttons of whoever shows them (a note).
+            onHistory: function (canUndo, canRedo) {
+                if (field && field.onHistory) {
+                    field.onHistory(canUndo, canRedo);
+                }
+            },
             onKeydown: function (event) {
                 // Escape closes the picker, not the drawer around it.
                 if (field.picker && field.pickerKey(event)) {
@@ -9633,7 +9639,7 @@
                     if (markup !== '') {
                         self.rich.insertBlock('table', markup);
                     }
-                });
+                }, { scope: function () { return self.rich.markup(); } });
                 return;
             }
 
@@ -9681,7 +9687,7 @@
                     if (markup !== '') {
                         self.rich.insertBlock('code', markup);
                     }
-                });
+                }, { scope: function () { return self.rich.markup(); } });
                 return;
             }
 
@@ -16947,6 +16953,72 @@
         var newNote = button('btn btn-sm btn-primary rounded-pill px-3', t('notes_new'), 'bi-plus-lg');
         newNote.addEventListener('click', function () { startNew(); });
         bar.appendChild(newNote);
+
+        // My Notes pinned to the panel menu, right under the workspace: the
+        // person's own choice, shown once the list says it can be made.
+        var menuPin = button('btn btn-sm btn-ghost d-none ws-nb-menu-pin', '', 'bi-pin-angle');
+        var menuPinned = false;
+
+        function drawMenuPin() {
+            menuPin.innerHTML = '';
+            menuPin.appendChild(icon(menuPinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', 'me-1'));
+            menuPin.appendChild(document.createTextNode(menuPinned ? t('notes_menu_unpin') : t('notes_menu_pin')));
+            menuPin.classList.toggle('active', menuPinned);
+            menuPin.setAttribute('aria-pressed', menuPinned ? 'true' : 'false');
+        }
+
+        // The row in the menu, added or taken away without a reload; the
+        // next page draws it on the server the same way (includes/fn/output.php).
+        function drawMenuRow(svg) {
+            Array.prototype.forEach.call(document.querySelectorAll('#menu_item_24'), function (row) {
+                row.remove();
+            });
+
+            Array.prototype.forEach.call(document.querySelectorAll('#menu_item_23'), function (workspace) {
+                if (!menuPinned) {
+                    workspace.classList.add('active');
+                    return;
+                }
+
+                var row = el('a', 'list-group-item list-group-item-action border-0 active');
+                var label = el('span', 'list-group-text', t('notes_menu_label'));
+
+                row.id = 'menu_item_24';
+                row.href = CFG.urls.notes;
+                row.title = t('notes_menu_label');
+
+                if (workspace.getAttribute('target')) {
+                    row.setAttribute('target', workspace.getAttribute('target'));
+                }
+
+                row.innerHTML = svg || '';
+
+                if (!row.firstChild) {
+                    row.appendChild(icon('bi-journal-text', 'me-2 workspace-color'));
+                }
+
+                row.appendChild(label);
+                workspace.classList.remove('active');
+                workspace.parentNode.insertBefore(row, workspace.nextSibling);
+            });
+        }
+
+        menuPin.addEventListener('click', function () {
+            var wanted = !menuPinned;
+
+            menuPin.disabled = true;
+
+            api('ws_note_menu_pin', { pinned: wanted ? 1 : 0 }).then(function (data) {
+                menuPinned = !!data.pinned;
+                drawMenuPin();
+                drawMenuRow(data.icon || '');
+                toast(menuPinned ? t('notes_menu_pinned') : t('notes_menu_unpinned'));
+            }).catch(fail).then(function () {
+                menuPin.disabled = false;
+            });
+        });
+
+        bar.appendChild(menuPin);
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
@@ -17108,6 +17180,13 @@
             return api('ws_notes', { search: search }).then(function (data) {
                 lists.mine = data.mine || [];
                 lists.shared = data.shared || [];
+
+                if (data.menu) {
+                    menuPinned = !!data.menu.pinned;
+                    menuPin.classList.toggle('d-none', !data.menu.ready);
+                    drawMenuPin();
+                }
+
                 drawList();
             }).catch(fail);
         }
@@ -17192,7 +17271,7 @@
 
                 var wasNew = !note.id;
 
-                ['id', 'name', 'updated', 'updated_at', 'updated_by', 'access', 'owner', 'with', 'in', 'pinned', 'excerpt'].forEach(function (key) {
+                ['id', 'name', 'updated', 'updated_at', 'updated_by', 'created', 'created_at', 'versions', 'access', 'owner', 'with', 'in', 'pinned', 'excerpt'].forEach(function (key) {
                     note[key] = data.note[key];
                 });
 
@@ -17484,7 +17563,9 @@
             title.type = 'text';
             title.maxLength = 200;
             title.placeholder = t('notes_title');
-            title.value = current.title || '';
+            // Drawn again after a new note's first save: what was typed in
+            // the meantime stays, rather than the title the note opened with.
+            title.value = (current.titleInput ? current.titleInput.value : current.title) || '';
             title.readOnly = !editable();
             title.setAttribute('aria-label', t('notes_title'));
             title.addEventListener('input', changed);
@@ -17512,6 +17593,14 @@
                 headButtons.share = share;
             }
 
+            // What the note held before: kept on the server, put back as a
+            // step the person can undo.
+            if (current.id && current.versions) {
+                var versions = button('btn btn-sm btn-ghost', '', 'bi-clock-history', t('notes_versions'));
+                versions.addEventListener('click', function () { showVersions(current); });
+                headNode.appendChild(versions);
+            }
+
             var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('more'));
             more.disabled = !current.id;
             more.addEventListener('click', function (event) {
@@ -17533,6 +17622,10 @@
             lastChange = el('span', 'ws-nb-info-part');
             infoNode.appendChild(lastChange);
             drawLastChange();
+
+            if (current.id && current.created) {
+                infoNode.appendChild(el('span', 'ws-nb-info-part', t('notes_created', current.created)));
+            }
 
             if (current.access !== 'owner' && current.owner && current.id) {
                 infoNode.appendChild(el('span', 'ws-nb-info-part', t('notes_owner', current.owner.name)));
@@ -17582,6 +17675,100 @@
             }
 
             infoNode.classList.toggle('d-none', !infoNode.textContent.trim());
+        }
+
+        // The note's earlier versions: one is looked at on the right and may
+        // be put back into the writing box, where it is saved as any change
+        // and Ctrl+Z takes it back out.
+        function showVersions(note) {
+            var node = el('div', 'modal fade ws-nb-versions');
+            node.tabIndex = -1;
+            node.innerHTML = '<div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-md-down"><div class="modal-content">'
+                + '<div class="modal-header"><h5 class="modal-title text-truncate"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+                + '<div class="modal-body"><div class="ws-nb-versions-grid"><div class="list-group ws-nb-versions-list"></div><div class="ws-nb-versions-view"></div></div></div>'
+                + '<div class="modal-footer"></div></div></div>';
+            node.querySelector('.modal-title').appendChild(icon('bi-clock-history', 'me-2'));
+            node.querySelector('.modal-title').appendChild(document.createTextNode(t('notes_versions') + ' · ' + note.name));
+            node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
+
+            var list = node.querySelector('.ws-nb-versions-list');
+            var view = node.querySelector('.ws-nb-versions-view');
+            var footer = node.querySelector('.modal-footer');
+            var chosen = null;
+
+            view.appendChild(el('div', 'small text-body-secondary', t('notes_version_pick')));
+
+            var close = button('btn btn-sm btn-ghost', t('close'));
+            close.setAttribute('data-bs-dismiss', 'modal');
+            footer.appendChild(close);
+
+            var restore = button('btn btn-sm btn-primary rounded-pill px-3', t('notes_version_restore'), 'bi-arrow-counterclockwise');
+            restore.disabled = true;
+            restore.classList.toggle('d-none', !editable());
+            footer.appendChild(restore);
+
+            restore.addEventListener('click', function () {
+                if (!chosen || !field || current !== note || !editable()) {
+                    return;
+                }
+
+                field.rich.setMarkup(chosen.body || '', chosen.labels || {}, true);
+                toast(t('notes_version_restored'));
+                bootstrap.Modal.getOrCreateInstance(node).hide();
+            });
+
+            api('ws_note_get', { note_id: note.id, versions: 1 }).then(function (data) {
+                var versions = data.versions || [];
+
+                if (!versions.length) {
+                    list.appendChild(el('div', 'small text-body-secondary p-2', t('notes_versions_none')));
+                    return;
+                }
+
+                versions.forEach(function (version) {
+                    var item = button('list-group-item list-group-item-action ws-nb-version');
+                    var top = el('div', 'd-flex justify-content-between gap-2');
+
+                    top.appendChild(el('strong', '', version.saved));
+                    top.appendChild(el('span', 'small text-body-secondary', t('notes_version_size', version.size)));
+                    item.appendChild(top);
+
+                    if (version.by) {
+                        item.appendChild(el('div', 'small text-body-secondary text-truncate', version.by.name));
+                    }
+
+                    item.title = version.saved_full || '';
+
+                    item.addEventListener('click', function () {
+                        Array.prototype.forEach.call(list.querySelectorAll('.active'), function (other) {
+                            other.classList.remove('active');
+                        });
+
+                        item.classList.add('active');
+
+                        api('ws_note_get', { note_id: note.id, version: version.id }).then(function (got) {
+                            chosen = got.version;
+                            clear(view);
+
+                            if (chosen.title) {
+                                view.appendChild(el('div', 'fw-semibold mb-2', chosen.title));
+                            }
+
+                            var html = el('div', 'ws-msg-body ws-nb-read');
+                            setHtml(html, chosen.html || '');
+                            chipMenus(html);
+                            view.appendChild(html);
+                            restore.disabled = false;
+                        }).catch(fail);
+                    });
+
+                    list.appendChild(item);
+                });
+            }).catch(fail);
+
+            document.body.appendChild(node);
+            node.addEventListener('hidden.bs.modal', function () { node.remove(); });
+            bootstrap.Modal.getOrCreateInstance(node).show();
         }
 
         // Files dropped on the note or picked: kept for those who may read it,
@@ -17683,6 +17870,17 @@
                 };
             };
 
+            // Undo and redo: the box keeps its own steps (workspace_editor.js).
+            var steps = group();
+            var undo = tool(steps, 'bi-arrow-counterclockwise', t('notes_undo'), function () { rich.undo(); });
+            var redo = tool(steps, 'bi-arrow-clockwise', t('notes_redo'), function () { rich.redo(); });
+
+            field.onHistory = function (canUndo, canRedo) {
+                undo.disabled = !canUndo;
+                redo.disabled = !canRedo;
+            };
+            field.onHistory(rich.canUndo(), rich.canRedo());
+
             var marks = group();
             tool(marks, 'bi-type-bold', t('notes_bold'), format('bold'));
             tool(marks, 'bi-type-italic', t('notes_italic'), format('italic'));
@@ -17690,8 +17888,10 @@
 
             var blocks = group();
             tool(blocks, 'bi-ui-checks', t('notes_checklist'), block('checklist', function (done) { window.PGWsEditor.openChecklist('', done); }));
-            tool(blocks, 'bi-table', t('notes_table'), block('table', function (done) { window.PGWsEditor.openTable({ columns: 3, rows: 3 }, done, { insertLabel: t('insert_to_note') }); }));
-            tool(blocks, 'bi-calculator', t('notes_calc'), block('code', function (done) { window.PGWsEditor.openCalc('', done, { insertLabel: t('insert_to_note') }); }));
+            var scope = function () { return field ? field.value() : ''; };
+
+            tool(blocks, 'bi-table', t('notes_table'), block('table', function (done) { window.PGWsEditor.openTable({ columns: 3, rows: 3 }, done, { insertLabel: t('insert_to_note'), scope: scope }); }));
+            tool(blocks, 'bi-calculator', t('notes_calc'), block('code', function (done) { window.PGWsEditor.openCalc('', done, { insertLabel: t('insert_to_note'), scope: scope }); }));
             tool(blocks, 'bi-code-slash', t('notes_code'), block('code', function (done) { window.PGWsEditor.openCode('', done); }));
 
             if (CFG.blocks) {

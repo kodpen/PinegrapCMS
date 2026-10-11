@@ -35,9 +35,9 @@ etiketleri 2026.4.7'deki yapıyı korur, önek `8.`: genel işler 8.1'den, ERP
 adımıyla birlikte açılır — satır eklendiği an bu sürümün gerisinde kalan
 panel yükseltme ekranına yönlendiği için satırı ekleyen dev'de yükseltmeyi
 hemen koşar. `upgrade_to_2026_4_8()` gövdesi 2026-10-08'de Çalışma Alanı'nın
-8.80 adımıyla açıldı (bugün 8.80–8.89, 8.110, 8.30–8.33, 8.40 ve
-8.10–8.19). Çalışma Alanı'nın 8.80–8.89 aralığı doldu ve 8.110 kullanıldı;
-sıradaki Çalışma Alanı adımı 8.111–8.119 aralığından alınır. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
+8.80 adımıyla açıldı (bugün 8.80–8.89, 8.110–8.112, 8.30–8.33, 8.40 ve
+8.10–8.20). Çalışma Alanı'nın 8.80–8.89 aralığı doldu, 8.110–8.112 kullanıldı;
+sıradaki Çalışma Alanı adımı 8.113–8.119 aralığından alınır. Yeni bölüm başlıkları `## 2026.4.8 — …`; `changelog.txt`'de
 maddeler en üste açılacak `2026.4.8` bölümüne girer. main'e giren her ürün
 değişikliği, şema adımı olmasa da, artık `v2026.4.7` etiketinden farklı dosya
 demektir: main'den kurulan site bütünlükte kırmızı görür. "Numara ilk ürün
@@ -73,6 +73,788 @@ numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başl�
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
+
+## 2026.4.8 — Dış API: 4.8 özelliklerinin API boşlukları kapandı (zorunlu 2FA rolünde cihaz girişi, teklif imzası, tartışmalar, zamanlanmış mesaj, okundu onayı isteme, not sürümleri, görev listesi sorguları, 204 belgesi) (2026-10-11)
+
+**Denetim.** 2026.4.7 yayımlandıktan sonra OpenAPI belgesi rotalarla
+karşılaştırıldı (ERP, Çalışma Alanı, Çeviri açık sayılarak belge DB'siz
+üretildi): 154 rotanın hepsi belgedeydi, yetim `$ref` yoktu, belge OpenAPI
+3.0.3 doğrulayıcısından geçiyordu; modül nesnelerinde (`check_api_schema`
+modül dosyalarını taramıyor) sunum ile şema alan alan aynıydı; kodda duyurulan
+her olay katalogdaydı. 4.7→4.8 arasında eklenen dokuz uç (görev süresi, onay
+istekleri, okundu onayı, kanal şablonları) ve changelog'daki bütün API vaatleri
+koddaydı. Boşluk, 4.8'in API'ye hiç yansımamış özellikleriydi; ürün sahibinin
+"hepsini düzeltelim" kararıyla kapatıldı.
+
+**Zorunlu iki adımlı doğrulama — cihaz girişi.** `api_auth_login()` yalnız
+`pg_mfa_enabled()` olan hesaptan kod istiyordu; `mfa_required_role` gereği
+kurmak zorunda olan ama kurmamış kişi cihazdan yalnız parolayla giriyordu.
+Sitede `pg_mfa_gate()` bu kişiyi oturum açtırmadan kurulum ekranına tutar;
+cihaz o ekranı gösteremez. Artık parola doğrulandıktan sonra
+`pg_mfa_required_for_user()` doğruysa 403 `mfa_setup_required` (katalogda yeni
+kod; `mfa_required` emsali) ve işlem günlüğüne satır. Yanlış parola önce 401
+alır, yani hesabın zorunlu rolde olduğu sızmaz. `/auth/refresh` değişmedi:
+sitede de beni-hatırla oturumları yeniden kapıdan geçmiyor. Sandbox:
+`mfa_required_role=0` iken yönetici 403, 99'a dönünce 201.
+
+**ERP teklif imzası.** `erp.quote.signed` olayı vardı ama ne olay yükünde ne
+`GET /erp/quotes` cevabında imza bilgisi vardı. ErpQuote'a `signature`
+(`ErpQuoteSignature?`: `signer_name`, `signed_at`, `document_changed`,
+`seal_valid`) eklendi; satır içi nesne nullable yazılamadığı için ayrı nesne +
+nullable referans (`'Device?'` emsali). `document_changed` teklif ekranının
+kendi okuması (`erp_signature_document_hash_quote()` +
+`erp_signature_document_matches()`), `seal_valid` `erp_signature_verify()`.
+Liste sayfanın imzalarını tek sorguda okur; liste select'i hash'in kapsadığı her
+sütunu zaten okuyordu (eksik sütun her imzalı teklifi "değişmiş" gösterirdi —
+select'in doc bloğuna yazıldı). `signed` süzgeci `[NOT] EXISTS`; tablo yoksa
+`signed=true` boş, `false` süzgeçsiz. Olay yüküne `signer_name` + `signed_at`
+(panel ekranı olayı duyururken API yardımcıları yüklü olmadığından
+`erp_event_time()`). İmza görseli, dosya, IP, tarayıcı ve kullanıcı kimliği
+API'ye çıkmaz (kişiye ait kanıt). Sandbox: imzala → `document_changed:false`,
+teklifi değiştir → `true`; DB'de imzalayan adı elle değişince
+`seal_valid:false`; tablo adı geçici değişince `signature:null`; kuyruk
+satırında yeni alanlar.
+
+**Çalışma Alanı.** Yeni dosya `includes/workspace/api_threads.php`
+(`api_templates.php` deseni).
+- Tartışmalar: `GET /workspace/channels` tartışmaları bilerek dışarıda
+  bırakıyordu ve mesaj nesnesi tartışmadan söz etmiyordu. `POST
+  /workspace/messages/{id}/thread` (`ws_thread_start()`; varsa 200, yeniyse
+  201), `GET /workspace/channels/{id}/threads` (`state`, `limit` ≤ 100),
+  mesajda `thread` ve `from_thread_id` (sayfa için `ws_threads_map()` /
+  `ws_thread_copies_map()` ile toplu). Tartışma kimliği mesaj okuma/yazma
+  uçlarında kanal kimliği gibi çalışır (içindekiler için); tartışmaya katılma
+  ucu yok (panelden).
+- Zamanlanmış mesaj: `GET/POST /workspace/channels/{id}/scheduled-messages`,
+  `DELETE /workspace/scheduled-messages/{id}` (+POST). Oluşturma yalnız cihaz
+  oturumu: mesaj zamanı gelince sahibin kendi adıyla gider; uygulama anahtarına
+  izin vermek entegrasyonu kişinin ağzından yazdırırdı ("uygulamanın yazdığı
+  uygulama adıyla görünür" ilkesi). Uygulama listeyi okur ve iptal eder.
+  Dry-run için `ws_scheduled_message_save()` denetimleri önceden yinelenir;
+  gerçek istekte son karar modülde — o fonksiyonun kuralları değişirse buradaki
+  ön denetim de güncellenmeli.
+- Okundu onayı isteme: mesaj yazarken `ack: true` (izin yoksa hiçbir şey
+  yazılmadan 403) ve `POST /workspace/messages/{id}/ack-request` (`on`). API
+  mesajı uygulama adına yazıldığı için `ack` yalnız yönetici sahipte çalışır.
+- Not sürümleri (salt okunur): `GET /workspace/notes/{id}/versions` ve
+  `/versions/{version_id}`; `notes.php`'nin genel fonksiyonları üzerinden.
+  `saved_at` `notes.php`'nin verdiği `d.m.Y H:i` metninden çözülüyor (dakika
+  hassasiyeti); `notes.php` ham damgayı da verirse oradan okunmalı.
+- Görev listesi: 4.8'in `blocked_by`/`blocks`/`time_minutes` alanları görev
+  başına üç sorgu ekliyordu; `ws_task_links_map()` (iki yön tek sorguda) +
+  dizi alan `ws_task_time_totals()` ile sayfa başına iki sorgu. Altı görevde
+  80 → 64 sorgu; cevaplar önceki kayıtla byte byte aynı. Görev başına `ws_task()`
+  ve atanan/ref okuması önceden de böyleydi, kapsam dışı bırakıldı.
+
+**OpenAPI 204.** `DELETE /webhooks/{id}` gövdesiz 204 dönüyordu, belge 200
+yazıyordu. Rota satırı `'status' => 204` bildirir; `api_openapi_responses()`
+200 yerine 204 "Done. The answer has no body." yazar.
+
+**Doğrulama.** `lint`, `check_api_schema` (158 rota, 80 nesne, 30 hata kodu),
+`test.php` (245/245), `check_lang` (yeni 7 anahtar tr.json'da) temiz; belge
+162 rota / 174 işlem, doğrulayıcıdan geçti; modül sunum↔şema karşılaştırması
+temiz. Sandbox'ta her yeni/değişen uç curl ile (başarı, 404, 422, red,
+`X-Dry-Run`) denendi, sunucu günlüğünde uyarı yok. **Doğrulanamayan:** tablo
+eksikken 503 cevapları (kod okundu), Claude uygulamasının kanal sınırları
+yeni uçlarda, gerçek mobil istemci.
+
+---
+
+## 2026.4.8 — Şablonlar: her şablonda Destek Merkezi (site araması), içerik bölümleri arama bölümü, işaret kapalı akordeonu açar (2026-10-11)
+
+**Ne istendi (ürün sahibinin kararları).** Şablonlarda arama formu her
+sayfada ürün kataloğuna gidiyor; site içi aramanın değerli özellikleri
+(arama bölümü, sarı işaret, SERP) kullanılmıyor. E-ticaret şablonlarında
+katalog araması olduğu gibi kalabilir; bütün şablonlarda site arama
+sayfası olsun ("destek merkezi" gibi bir adla, içinde arama formu ve
+sonuçlar); sayfalardaki SERP içerik bulma özellikleri açık olacak şekilde
+bütün şablonlar güncellensin.
+
+**Ne yapıldı — sayfa.** Her şablona `search` anahtarlı sayfa ve
+`site_search` widget'ı (`search_results`, 10 sonuç/sayfa, boş mesajı;
+mağazalı şablonlarda `search_scope` `all` + şablonun ürün grubu +
+`catalog_detail_page_id` `{{tab:product}}`, Oyun Bahçesi'nde `pages`).
+Adı "Destek Merkezi" (`support-center` → `destek-merkezi`); Oyun
+Bahçesi'nde "Ne ararsan bul" (`search` → `arama`). Düzen: form + sonuçlar
+geniş sütunda (sonuç satırında başlık, tür rozeti, `__result_section`,
+alıntı, fiyat; boş bağlı öğe CSS ile gizlenir), dar sütunda popüler konular
+ve "Hâlâ yardıma mı ihtiyacınız var?", altında 4 sık sorulan soru. Widget,
+sayfa türü eşlemesiyle (`search results` → `search_results`) sitenin arama
+sayfası da olur. Görsel dil her şablonun kendi yapıcılarıyla.
+
+**Ne yapıldı — giriş noktaları.** Mağaza: üst menüdeki "Yardım" artık Destek
+Merkezi'ne gider (kargo ve iade alt bilgide ve popüler konularda kaldı).
+Merhaba ve Oyun Bahçesi: menü sonunda büyüteç (dar ekranda yazısıyla).
+Butik: ürün araması satırının altında "Tüm sitede ara", çekmece menüde
+bağlantı. Kitapçı: üstteki hızlı bağlantılarda. Hepsinde alt bilgide.
+Üst bilgideki ürün arama formları (`{{page:shop}}`) değişmedi.
+
+**Ne yapıldı — arama bölümleri.** Şablon dosyalarının sonunda, sayfalar
+döndürülmeden önce bir geçiş (`$search_sections` + `$searchable_tree`):
+sayfa anahtarı → düğüm (`#id` ya da katman adı: `customName` / `_label`,
+sayfa başına bir kez) → `id` (varsa korunur), `searchSection`,
+`searchKeywords`. Konular `lang()` ile, Türkçede aranacak eş anlamlılarla.
+İşaretlenenler: Merhaba hakkımızda (hikâye, değerler, yolculuk), hizmetler
+(hizmetler, nasıl çalışıyoruz), iletişim bilgileri; Mağaza kargo-iade-ödeme
+kartları, iletişim; Butik hikâye, `#bq-visit`, `#bq-care`, iletişim; Kitapçı
+etkinlik satırları (her biri `event-N`, konusu türü), yer ayırtma kutusu,
+kitap kulübü "nasıl işler", hakkımızda, iletişim; Oyun Bahçesi hikâye, zaman
+çizelgesi, "Şimdi" listesi, iletişim kutusu. Akordeon yapıcıları (`$faq`,
+`$care`, `$fact`, Merhaba'da yeni `$question`) her soruyu `<id>-item`
+kimlikli ayrı bölüm yapar; isteğe bağlı konu ve üst akordeon parametresi
+aldılar. Bölümler yalnız sayfanın kendi ağacında: ortak bileşen / widget
+içi sayılmadığı için (`pg_search_sections()`) oraya konmadı.
+
+**Ne yapıldı — işaret.** `assets/js/pg_search_highlight.js`: işaretlenen
+kelime kapalı bir Bootstrap `collapse` ya da kapalı `<details>` içindeyse
+alan açılır (`show` + tetikleyicide `collapsed` kalkar, `aria-expanded`),
+sonraki tık normal kapatır. Hedef bölüm varsa yalnız onun içindekiler,
+yoksa yalnız ilk işaretinki (soru sayfası topluca açılmasın). Bootstrap'e
+bağımlı değil. jsdom ile denendi: kapalı cevaptaki kelime işaretlendi,
+cevap açıldı, hedef dışındaki akordeon kapalı kaldı, `highlight` adresten
+silindi.
+
+**Doğrulama.** Sandbox yeniden kuruldu (`setup_sandbox.sh`), beş şablon
+kuruldu. Başlangıç sitesi gelişmiş aramada (dizin `update_search_index.php`
+ile, yönetici oturumu ister); deneme basit aramada yapıldı. Türkçe
+sorgularla: "şifre" → Destek Merkezi `#hp-help-3-item`; "kargo takibi"
+(yalnız konuda) → `#ps-faq-11-item`; "gravür" → `#bq-care-11-item`;
+"çalışma saatleri" → Butik `#bq-visit` ve iletişim `#contact-details`;
+"rezervasyon" → Kitapçı `#reserve-a-seat` ve SSS; "ukulele" → Oyun Bahçesi
+`#now`; ürünler mağazalı şablonlarda sonuçta. Kurulan beş tasarımın bütün
+sayfaları 200/302 (hata sayfası 404), PHP uyarısı yok; `?highlight=` ile
+betik ekleniyor, bölümde `data-pg-search-section` basılıyor. `lint`,
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` temiz;
+`test.php`'deki hatalar yalnız önceden var olan `workspace_calc_test.php`.
+**Doğrulanamayan:** gelişmiş aramada sonuçlar (dizin yenilenmeli),
+gerçek tarayıcıda görünüm, editörde şablonu açıp Yayınla.
+
+---
+
+## 2026.4.8 — Şablonlar: hesap, personel, gelen kutusu ve blog her şablonda; şablonun kendi örnek yazıları; ortak bileşendeki widget'ın sayfa seçimleri yayında çözülür; Hesabım'da personel bağlantısı (2026-10-11)
+
+**Ne istendi (ürün sahibinin kararları).** Görsel editör şablonlarının
+kiminde hesabım ve personel sayfaları eksikti; hepsinde olmak zorunda.
+"Pinegrap'a merhaba deyin"de hepsi var ama personel sayfalarına menü
+bağlantısı görünmüyor (personel sayfası özel klasörde olduğu için yalnız
+yetkisi olan görmeli) ve örnek blog yazıları gelmiyor. E-ticaret
+şablonlarında da blog olmalı. Sorulan üç seçimin cevabı: (1) gelen kutusu +
+görüşme de hesap paketine girer (iletişim formu görüşme açar, Merhaba'daki
+gibi); (2) personel bağlantısı hesap menüsünde ve Hesabım sayfasında, ikisi de
+yetkisiz kişiye hiç çizilmez; (3) e-ticaret şablonlarında ana sayfada son üç
+yazı + üst menü ve alt bilgide Blog bağlantısı.
+
+**Kök sebep — personel bağlantısı.** Merhaba'nın giriş bölgesi
+`staff_page_id => {{tab:staff}}` taşıyor ve "Personel alanı" maddesi
+(`__staff_url`, `is_staff`) zaten vardı. Aynı gün hesap çubuğu ortak bileşene
+taşındı (bir önceki madde); giriş bölgesi artık sayfanın değil `account_bar`
+ortak bileşeninin içinde. `pg_designer_resolve_tab_refs()`
+(`includes/designer_screen.php`) yalnız sayfa ağaçlarındaki `sharedId`'leri
+topluyordu: iç içe widget'ın ayarındaki `tab:<anahtar>` hiç çözülmüyor,
+`(int)'tab:…'` = 0 → personel bağlantısı düşüyordu (giriş/kayıt/Hesabım
+otomatik bulunana düştüğü için fark edilmedi). Sandbox'ta şablon kurup giriş
+bölgesi satırında `"staff_page_id":"tab:tple…_staff"` görülerek doğrulandı.
+`prepare` ile yapılan önceki deneme yayınlamadığı için bunu göstermiyordu.
+
+**Kök sebep — örnek blog yazıları.** `'sample_records' => 'blog'` sitenin
+örnek verisindeki BLOG formunu kopyalıyordu (`pg_cf_seed_sample_records()`).
+Şablonla yapılan kurulumda `install_design_template.php` →
+`pg_idt_remove_starter()` başlangıç sitesinin sayfalarını ve formlarını
+siliyor; o sitede editörden açılan her şablonun blogu boş kalıyor. Sandbox'ta
+başlangıç sitesi dururken kopya çalışıyordu (6 yazı), yani kod değil kaynağın
+yokluğu. Ayrıca kopyalanan yazılar "you can use a youtube video player…" ve
+Lorem ipsum yazılarıydı; düz metne indirilince anlamsızlaşıyordu.
+
+**Ne yapıldı.**
+
+- `pg_designer_resolve_tab_refs()`: bulunan ortak bileşenlerin `tree_json`'ı
+  da okunur, iç içe `sharedId`'ler seviye seviye (en çok 8, renderer'ın
+  sınırı; döngüye karşı ziyaret kümesi) toplanır. JS tarafı
+  (`_swResolveTabRefs`) zaten bütün önbelleği dolaşıyordu. Bu düzeltmeden
+  önce dev'de şablondan yayınlanmış tasarımda giriş bölgesinin "Personel
+  sayfası" seçimi bir kez yeniden yapılmalı (yayındaki sürümde bu durum
+  yoktu: hesap çubuğu 2026.4.8'de ortak bileşen oldu).
+- `pg_cf_seed_sample_records()`: `$source` dizi olabilir — şablonun kendi
+  kayıtları (alan adı → değer, en çok 12; formda olmayan alan atlanır, tarih
+  son haftalara yayılır, `pretty_urls` ise adres adı yazılır;
+  `_pg_cf_seed_given_records()`). `'blog'` eski yolu duruyor. Kayıtlar yalnız
+  bu kayıtta oluşan forma girer (değişmedi).
+- Hesabım: `_pg_my_account_extras($logged_in, $cfg)` → `__staff_url` +
+  `is_staff`; kontrol giriş bölgesiyle ortak `_pg_acct_staff_url()`'e taşındı
+  (klasör erişimi, çöp kutusu). `has_orders` dalı bayrak dizisini artık
+  ezmiyor. Editör: Hesabım Ayarları'nda "Personel sayfası" seçici
+  (`sd-sw-ma-staff-page`), belirteç ve koşul açılır listelerde.
+  `check_bindings` temiz.
+- Şablonlar (sürümler: Merhaba 2.4.7, Mağaza 1.0.6, Butik 1.0.5, Kitapçı
+  1.0.5, Oyun Bahçesi 1.0.4): her birinde aynı anahtarlar — sayfalar `blog`,
+  `blog_post`, `blog_new`, `staff`, `staff_entry`, `staff_directory`,
+  `inbox`, `conversation`, `email_reply`; widget'lar `home_posts`,
+  `blog_list`, `blog_post` (AI özet kutusuyla), `blog_form`, `staff_form`,
+  `staff_directory`, `inbox_list`, `conversation`; ortak `staff_bar`. Giriş
+  bölgesi `staff_page_id` + Gelen kutusu + Personel alanı; Hesabım
+  `staff_page_id` + Gelen kutusu / Personel Rehberi / Personel Alanı
+  (`is_staff`) kartı. İletişim formu `confirmation_page_id` görüşme +
+  `auto_registration`; bildirim e-postalarında "Görüşmeyi aç" düğmesi,
+  gönderene yeni hesap bloğu. Her şablon kendi görünümüyle yazıldı (Butik
+  köşesiz/ortalı, blog adı "Günce"; Kitapçı'da iletişim formunun konusu
+  `topic` alanı olduğu için gelen kutusu `topic`'e bağlı). Oyun Bahçesi'ne
+  `registration` klasörü, giriş bölgesi üst bilgi ortak bileşeninin içinde,
+  "Merhaba de" formuna `subject` alanı, görüşme yanıtları için ayrı
+  `email_reply` (blog yorumu `email_comment`'te kaldı). Her şablon dört
+  örnek yazıyı `$sample_posts` ile taşır.
+
+**Doğrulama.** `lint`, `check_lang`, `check_bindings`, `check_api_schema`,
+`check_copies` temiz; `node --check style_designer.js` temiz. `test.php`'deki
+hatalar yalnız `tests/workspace_calc_test.php`'de ve bu değişiklikten önce de
+vardı (çalışma alanı işinin açık dosyası). Sandbox'ta (`setup_sandbox.sh`)
+beş şablon `pg_design_template_install()` ile kuruldu: hepsinde giriş
+bölgesi satırındaki sayfa seçimleri kimliğe çevrildi, blog formuna 4 yazı
+girdi; herkese açık sayfalar 200 döndü, PHP uyarısı yok. Yönetici olarak
+girilince hesabım / gelen kutusu / personel / personel rehberi / iki form
+sayfası 200 döndü, personel bağlantısı hesap menüsünde ve Hesabım kartında
+çizildi. **Doğrulanamayan:** editörde şablon açıp Yayınla akışı (sunucu tarafı
+aynı fonksiyonlardan geçiyor), yetkisiz üyede bağlantının gizlenmesi
+(`check_view_access` mevcut kuralı), görüşme açan form gönderimi.
+
+---
+
+## 2026.4.8 — Çeviriler: tarayıcı yapay zekâsı motoru (Gemini Nano, Prompt API) (2026-10-11)
+
+**Ne istendi.** Erdal çeviri sisteminde tarayıcının yapay zekâ modelinin
+neden kullanılmadığını sordu, mümkünse elden geçirilmesini istedi. Chrome
+154'te aynı Türkçe paragrafla karşılaştırıldı:
+
+- Translator API (bugünkü "Tarayıcı" motoru) 0,13 sn sürdü ve
+  `<strong>`'u korudu, ama kelimesi kelimesine çevirdi; bir yerde anlam
+  bozuldu ("leased from the site").
+- Gemini Nano (Prompt API) 2–3 sn sürdü ve İngilizcesi daha doğaldı. Ama
+  Almancada 'Gönder' ile 'Teklif iste'yi ters çevirdi, İngilizcede
+  `<strong>`'u `**` yaptı.
+- Prompt API Türkçe girdiyi resmî olarak desteklemiyor (`tr: unavailable`).
+  Girdi dili hedef dil ya da İngilizce olarak bildirilince Türkçeyi okuyor.
+
+Bugün Translator'ın kullanılmasının sebebi bu: o da cihaz üstü bir yapay
+zekâ modeli, yalnız çeviri için eğitilmiş ve Türkçeyi destekliyor.
+Seçenekler sunuldu; Erdal "ayrı motor olarak ekle"yi seçti. Translator
+motoru ve yeni dilin varsayılanı (tarayıcı) değişmedi.
+
+**Ne yapıldı.**
+
+- `includes/translate/engines.php`: yeni motor `chrome_ai`, "Tarayıcı
+  yapay zekâsı (Gemini Nano)", tür `browser`, `html => true`. Çalışma
+  Alanı'na bağlı değil; motor listesinde ve dil satırında her zaman çıkar.
+  Kaydedince çeviri (`auto_update`) tarayıcı motorlarını çalıştırmaz, bu
+  motoru da çalıştırmaz.
+- `includes/translate/jobs.php`, `pg_tr_job_package()`: `chrome_ai`
+  işinde metin parçalara bölünmez. `pg_tr_package_items()` ile bütün metin,
+  yeri, önceki çevirisi ve dokunan sözlük satırları gider. Paket en çok 8
+  metindir, çünkü model metin başına saniyeler harcar.
+  `pg_tr_job_results()` bu motorda `runs` yerine `text` bekler ve onu
+  doğrudan `pg_tr_accept_result()`'a verir (etiket, token ve uzunluk
+  denetimi).
+- `includes/translate/context.php`, `pg_tr_ai_instructions()`: yeni
+  `$shape` parametresi. `'item'` biçiminde istek tek öğe olur, cevap
+  `{"translation": "..."}` olur ve "text" biçimindeki metinde Markdown
+  yasaklanır. Varsayılan `'batch'`, Pinegrap AI'ın ve rutinin talimatını
+  değiştirmez.
+- `translations.php`: motor notu (Gemini Nano, ilk çalıştırmada indirme,
+  Türkçe uyarısı, `chrome://on-device-internals`), yapılandırmada
+  `ai_instructions` (yalnız bu motor ya da açık işi için) ve iki hata
+  metni.
+- `assets/js/translations.js`:
+  - `runBrowserJob()` artık metni çeviren bir işlev alıyor: Translator için
+    `translatorItem()`, model için `modelItem()`.
+  - Model oturumu tıklamanın içinde eşzamanlı kurulur (`createModel()`,
+    sistem istemi = talimat).
+  - Bildirilecek girdi dilleri ekran açılırken `availability()` ile
+    seçilir: önce [kaynak, hedef], sonra [hedef], sonra [en].
+  - Her metin oturumun bir kopyasında sorulur (`clone()`): talimat kalır,
+    önceki metinler bağlamı doldurmaz. Cevap `responseConstraint` ile JSON
+    şemasına bağlanır; desteklemeyen tarayıcıda düz cevap okunur.
+  - Metin başına zaman aşımı 120 sn.
+  - Açık işi kaldığı yerden sürdürme ve otomatik devam dışlaması iki
+    tarayıcı motoruna genelleştirildi.
+  - Model hazır olunca ilerleme satırı yeniden "Sayfalar taranıyor"a döner
+    (indirme yüzdesi satırda kalıyordu; Translator'da da aynıydı).
+
+**Doğrulama.** Bulutta `lint`, `check_lang`, `node --check` temiz.
+dev.pinegrap.com'da en dilinin motoru araç çubuğundan `chrome_ai` yapıldı ve
+"Çevirileri güncelle"ye basıldı. Bekleyen 2 metin çevrildi ("Koyu tema" →
+"Dark theme"); iş "Bitti · 2/2" oldu ve bekleyen kalmadı. Ardından motor
+`chrome`'a geri alındı.
+
+## 2026.4.8 — Çalışma Alanı: hesap grupları, gizli satır, ad kapsamı, okuyanın denediği değer; tablo formül kalıpları; geri al / yinele; not sürümleri (8.111); Notlarım menüde ve menüye sabitlenir (8.112) (2026-10-11)
+
+**İstek (ürün sahibi):** hesap bloklarına hazır şablon ve düğmeler; boş satır, tabloda görünmeyen ama hesaba giren satır ve değişken; bir grubun adının içindeki satırların toplamı olması (`<TOPLAMLAR> … <TOPLAMLAR>` örneğiyle anlatıldı, aynı etiketle kapatmanın kafa karıştırdığı da söylendi); tablolarda formül kalıpları ve "daha iyi bildiğin hesap ayarları". Ayrıca notlarda ve yazım alanında Ctrl+Z / Ctrl+Y ve üstte geri/ileri düğmeleri (yanlışlıkla temizlenen bir not Ctrl+Z ile bir an geri gelip ikinci basışta kayboldu, kurtarılamadı), notun oluşturulma tarihinin tutulup gösterilmesi, Notlarım'ın Çalışma Alanı menüsünde olmaması ve kişi isterse ana menüye, Çalışma Alanı'nın hemen altına sabitlenmesi.
+
+**Ürün sahibinin seçimleri:** grup `Ad:` başlık satırıyla açılır, boş satırda ya da sonraki başlıkta biter (kapanış etiketi yok); gizli satır `_` ile başlar; "değişken" iki anlamıyla — adlar aynı metindeki tablolarda/sonraki hesaplarda geçer **ve** okuyan bir sayıyı değiştirip sonucu görebilir; not sürümleri sunucuda (yeni tablo); menüye sabitleme veritabanında, yeni bir sütunla (eski, kullanılmayan `selected_appmenu_items_array` alanını yeniden kullanmak istenmedi); düğme Notlarım sayfasının üstünde.
+
+### Hesap motoru (`includes/workspace/calc.php`)
+
+- `ws_calc_block($lines, $seed, $options, &$scope)`: satır türleri `value | group | total | remark | blank`; her satıra `hidden`, `grouped`, `input`, `line`. Grup kapanınca `ws_calc_call(<fonksiyon>, [sayılar])` ile `total` satırı üretilir; grubun adı başlık satırının yuvasına bağlanır. Gizli satırın adı hem `kur` hem `_kur` olarak bilinir. **Gizli satır grup toplamına girer**: gizlemek yalnız görünümü değiştirir, hiçbir sonucu değil. Gizli başlık (`_Ara:`) grubun tamamını (satırlar + ara toplam) gizler.
+- Başlık tanınması: satırda atama `=`'i yoksa ve `^[^:=()<>]*harf…: (fonksiyon)?$` ise; fonksiyon `ws_calc_group_functions()` (SUM, AVERAGE, MIN, MAX, COUNT, PRODUCT, MEDIAN) dışındaysa satır başlık sayılmaz, eskisi gibi hesap satırı olarak hata verir.
+- Atama ayrımı `ws_calc_assignment_at()`: `<=`, `>=`, `==`, `!=` içindeki `=` atlanır (`Büyük = EĞER(a >= b; a; b)`).
+- Ayarlar fence satırında: ```` ```hesap ondalık=2 birim=₺ ```` (`decimals=` / `unit=` de okunur). `ws_code_fence_open()` dilden sonraki kelimeleri **yalnız hesap dilinde** kabul eder; ```` ```php bir şey ```` eskisi gibi blok açmaz, eski mesajların görünümü değişmez. `ws_code_fence_info()` yeni; JS `fenceOpen()` / `fenceInfo()` aynı kuralla.
+- Değerlendirici yeniden yazıldı: hata (sıfıra bölme, olmayan ad) değer olarak yukarı taşınırken formülün geri kalanı okunmaya devam eder, yalnız okunamayan formül `syntax` olur. Önceki erken-dönüşlü ayrıştırıcıda `EĞER(B2=0; 0; C2/B2)` imkânsızdı: seçilmeyen dal sıfıra bölüp bütün formülü düşürüyordu. `EĞERHATA` aynı mekanizmayla.
+- Yeni: karşılaştırmalar (1/0; ondalık toplamlar kesin olmadığı için 1e-9 göreli tolerans), `IF/EĞER`, `IFERROR/EĞERHATA`, `AND/VE`, `OR/YADA`, `NOT/DEĞİL`, `ROUNDUP/YUKARIYUVARLA`, `ROUNDDOWN/AŞAĞIYUVARLA` (`round(…, 9)` ile 2.675×100 = 267.4999… hatasından korunur), `SQRT/KAREKÖK`, `POWER/KUVVET`, `MOD` (sonuç bölenin işaretini alır), `PRODUCT/ÇARPIM`, `MEDIAN/ORTANCA`, `PMT/DEVRESEL_ÖDEME` (Excel işareti, negatif), `INSTALLMENT/TAKSİT` (aynı hesap, pozitif). Eksik argüman (`YUVARLA(2;)`) sözdizimi hatasıdır, sıfır sayılmaz.
+- Yüzde olarak yazılmış düz değer yüzde gösterilir (`ws_calc_format_percent()`, TR `%20`, EN `20%`); önceden `KDV oranı = 20%` `0,20`, `%3,5` ise `0,04` görünüyordu.
+- `ws_calc_format($value, $decimals, $unit)`: sabit ondalık ve birim ($ € £ ¥ önde, diğerleri arkada boşlukla).
+- **Ad kapsamı:** `ws_calc_body_scope($lines, $seed)` metindeki hesap bloklarını sırayla çalıştırır; her blok üstündekilerin adlarını (`seeds`), her tablo hepsinin adlarını (`all`) görür. Tablo formülünde adlar `ws_calc_bind()` ile `@L<yuva>` belirtecine çevrilir: uzun ad önce, ardından `(` gelen ad fonksiyondur, `B2` gibi hücre başvurusu bozulmaz (sınamada `A2` hücre, `A` ad). Blokta miras adlar `WS_CALC_SEED_SLOT` (100000) üstündeki yuvalarda durur. Bağlama her ad için regex koşmadan önce `mb_stripos` ön elemesi yapar (200 satır × 200 ad sınırında maliyet). `ws_render_body()` yeni 5. parametre `$calc` (`seed`, `all`) alır; not kartları tek tek çizilirken (`ws_calc` → `blocks`) her karta üstündeki hesapların adları verilir.
+- `ws_calc_plain()` (e-posta, bildirim, Claude'un okuduğu metin) grup başlıklarını ve ara toplamları yazar, **gizli satırları yazmaz**, tablolarda kapsamı kullanır.
+- Şablonlar `ws_calc_templates()` site dilinde: adlar `lang()` ile, fonksiyon adları `ws_calc_local_name()` (TR'de TOPLA, ORTALAMA…), ondalık işareti yerel. `tr.json`'daki `Product` = "Ürün", `Margin` = "Dış Boşluk", `Items` = "Ürün Adedi" bu bağlamda yanlış anlam taşıdığı için ayrı anahtarlar (`Multiplied together`, `Margin (%)`, `Line items`, `Term (months)`) kullanıldı.
+
+### Okuyanın denediği değer (`ws_calc_live()`)
+
+- Hesap bloğu HTML'i kendi satırlarını `data-ws-calc` (JSON: `lines`, `info`), ad kullanan tablo `data-ws-calc-grid` ve formül hücreleri `data-ws-cell="r:c"` taşır. Düz sayı satırları `data-ws-calc-input` alır; tıklanınca yerinde kutu açılır (`workspace_editor.js`), değer girilince aynı mesaj/not gövdesindeki (`.ws-msg-body`) bütün hesaplar ve tablolar `ws_calc` eylemine `live` birimleri olarak gider, sunucu kapsamı sırayla kurup blok HTML'ini ve tablo hücrelerini döner. Hiçbir şey saklanmaz; "Sıfırla" orijinal satırları geri koyar.
+- **Ödün:** gizli satırlar okuyanın tarayıcısına `data-ws-calc` içinde gider (canlı hesap bütün satırları ister). Gizli satır bir *görünüm* özelliğidir, gizlilik değil (Excel'deki gizli satır gibi). Alternatif — istemciden mesaj/not id'si + değişiklik gönderip gövdeyi sunucunun yüklemesi — mesaj, iş parçacığı, not, zaman çizelgesi erişim yollarının hepsine dokunacağı için seçilmedi. Misafir sayfası `workspace_editor.js` yüklemediğinden orada sayılar tıklanmaz.
+
+### Hesap ve tablo pencereleri (`workspace_editor.js`)
+
+- Hesap penceresi: Şablon ve Fonksiyonlar menüleri (`CFG.calc`, `ws_calc_js_config()`), `+ − × ÷ % ( )`, Grup (seçili satırları gruplar, menüden toplam/ortalama/…; ad seçili gelir), Gizle (satır başına `_` açar/kapar; not satırına dokunmaz), Boş satır, Not satırı; Ondalık (Otomatik, 0–4) ve Birim; ad düğmeleri (bloğun kendi adları + metnin geri kalanından `ws_calc` → `names`). Ekleme `execCommand('insertText')` ile yapılır ki textarea'nın kendi Ctrl+Z'si çalışsın.
+- Tablo penceresi: Formül menüsü (`patternItems()`; ilk satırda sütun kalıpları kapalı), Toplam satırı (`addTotalRow()`: sayı ya da formül taşıyan her sütuna `TOPLA(X2:Xn)`, ilk sütun boşsa **Toplam**), Aşağı doldur (`shiftRows()`: `$`'sız satır numaraları kayar, `$2` sabit; 3+ harfli adlar ve `(` ile devam eden fonksiyon adları dokunulmaz). Önizleme yazım alanının metnini `scope` olarak gönderir.
+- Not içinde bir hesap kartı varsa kart değişince bütün kartlar birlikte yeniden çizilir (bir tablo hesabın adını kullanıyor olabilir).
+
+### Geri al / yinele (`workspace_editor.js` → `Editor`)
+
+- **Kök sebep:** kutu kendi içine sonuç rozetleri (`data-ws-skip`), kart önizlemeleri ve çipler çiziyor, boşalınca `innerHTML = ''` yapıyor. Tarayıcının yerel geri alma yığını bu programatik değişikliklerle bozuluyordu: bir adım geri gelip sonrakinde kayboluyordu.
+- Kutu artık kendi yığınını tutar: anlık görüntü = rozetleri ve kart çizimleri çıkarılmış `innerHTML` + karakter cinsinden imleç (`caretOffset()` / `placeCaret()`). Yazma 600 ms duraksayınca ya da en çok 2 sn'de bir adım olur; her satır sonu ayrı adımdır (gizli sekmede kısılan zamanlayıcılar adımları birleştirmesin diye — dev'de tarayıcı denemesinde görüldü). 100 adım. Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z (Mac'te Cmd; klavye düzeninden bağımsız `event.code` yedeği) ve tarayıcı menüsünden gelen `historyUndo/historyRedo` (`beforeinput`) yakalanır. Geri yüklenen adım `input`'u "sessiz" gönderir: not kaydedilir ama bu ayrı adım olmaz. `setMarkup(…, asStep)` sürüm geri yüklemede adım ekler; diğer `setMarkup` / `clear()` (not açma, mesaj gönderme) geçmişi baştan başlatır — gönderilen mesaj Ctrl+Z ile geri gelmez.
+- Notun araç çubuğunun başında Geri al / Yinele (`onHistory` geri çağrısıyla etkin/edilgin).
+
+### Not sürümleri (8.111) ve oluşturulma tarihi
+
+- `ws_note_versions` (InnoDB; `id`, `note_id`, `title`, `body` MEDIUMTEXT, `saved_by`, `saved_at`, `created_at`; `idx_note (note_id, id)`), `get_tables()`'a eklendi. `ws_note_save()` UPDATE'ten önce `ws_note_version_keep()` çağırır: not boş değilse ve (henüz sürüm yok | son sürüm 10 dk'dan eski | eldeki metni başkası yazmış | kayıt metni %60'ın altına indiriyor, en az 20 karakterlik notta) ise eski hâl satır olur; aynı hâl iki kez tutulmaz; nota 30 sürüm kalır, not silinince sürümleri de gider. `saved_by` / `saved_at` o hâli yazanı ve zamanını, `created_at` sürümün tutulduğu anı taşır (aralık kuralı onunla).
+- Okuma `ws_note_get` eyleminin `versions` / `version` parametreleriyle (görme yetkisi yeter; geri yükleme normal kayıt yolundan geçtiği için düzenleme yetkisi orada denetlenir). Geri yükleme yazım alanına adım olarak girer ve kaydedilir; Geri al ile geri alınır.
+- `ws_notes.created_at` zaten vardı; `ws_notes_present()` `created`, `created_at`, `versions` döner, bilgi satırında "Oluşturuldu: …".
+- **Ödün:** sürüm kayıt anında sunucuda tutulur; "elle sürüm kaydet" düğmesi yok. 10 dk aralık ve %60 eşiği deneme amaçlı seçildi, sabit (`WS_NOTE_VERSION_GAP`, `WS_NOTE_VERSIONS_KEEP`).
+
+### Notlarım menüde (8.112)
+
+- Kök sebep: ana menünün Çalışma Alanı açılır menüsü (`output_menu()`, yuva 23) Kanallar, Görevlerim, Plan Panosu, Takvim, Karar Zaman Çizelgesi'ni listeliyor, Notlarım'ı hiç listelemiyordu; `workspace_notes.php` etkin menü listesinde de yoktu. Görevlerim'in altına eklendi (`ws_notes_ready()` ise), Notlarım sayfası Çalışma Alanı'nı etkin gösterir.
+- Sabitleme: `ws_profiles.notes_pinned` TINYINT(1) (kişi başına; satırı olmayan kişiye ilk sabitlemede `INSERT … ON DUPLICATE KEY UPDATE` ile satır açılır — diğer alanlardaki 0 zaten "site varsayılanı" demek). Sabitliyse menüye yuva **24** eklenir (22/23 gibi bir daha kullanılmaz), yeniden sıralama döngüsü onu 23'ün hemen arkasına koyar, Notlarım sayfasında etkin satır 24 olur. Simge `pg_menu_icon('notes')` (iki tonlu defter, vurgu turkuaz). Düğme Notlarım sayfasının araç çubuğunda ("Menüye sabitle" / "Menüden kaldır"); yeni `ws_note_menu_pin` eylemi (`api.php` case listesine eklendi), yanıt satırın çizili simgesini de döner ki menü satırı sayfa yenilenmeden eklensin.
+
+### Düzeltme
+
+- Yeni notun ilk kaydında `drawHead()` başlık kutusunu notun açıldığı andaki (boş) başlıkla yeniden çiziyordu: arada yazılan başlık kutudan siliniyor, sonraki kayıt boş başlığı sunucuya yazıyordu. Kutu yeniden çizilirken yazılanı korur.
+
+### Doğrulama
+
+- `tests/workspace_calc_test.php` (21 test); `lint`, `check_lang` (93 yeni anahtar), `test.php` (241) temiz; iki JS dosyasında `node --check` temiz.
+- Dev'de yükseltme 2026.4.7'den dört kez koşuldu: 8.111 için 197 ifadenin 196'sı, sonra 197'si yerindeydi; 8.112 için 198'in 197'si, sonra 198'i yerindeydi.
+- Tarayıcıda (dev.pinegrap.com, yerleşik tarayıcı) denendi: not yaz → hepsini sil → Ctrl+Z / Ctrl+Y; hesap penceresinde şablon, gizli satır, ondalık/birim, nota ekleme ve kart önizlemesi; canlı değer + Sıfırla (sayfaya enjekte edilen HTML ile — kanala mesaj gönderilmedi); sürüm listesi, önizleme, geri yükleme ve geri alma; tablo penceresinde Formül menüsü, aşağı doldurma, toplam satırı; kanal yazım alanında geri al / yinele (gönderilmeden); Notlarım'ın açılır menüde görünmesi, sabitleme, sayfa yenilenince ve başka sayfada satırın Çalışma Alanı'nın altında durması.
+- Denenmeyen: gerçek bir kanal mesajında canlı değer, Safari/Firefox'ta Cmd+Z ve `beforeinput` geçmiş olayları, mobil dar ekranda sürüm penceresi.
+
+---
+
+
+## 2026.4.8 — Blog yazısında yapay zekâ özeti (asistan bağlantıları + tarayıcıda özet); şablon ürünleri bütün kargo bölgelerinde; yeni dil tarayıcı motoruyla başlar (2026-10-11)
+
+**Ne istendi.** (1) Görsel tasarımcı şablonlarından üretilen ürünler tüm
+dünyaya, International dahil, gönderilebilsin; site yöneticisi sonradan
+ikilemde kalmasın. (2) Yeni eklenen dilin çeviri motoru Claude değil tarayıcı
+olsun; Claude'u isteyen kendisi seçsin. (3) Blog yazılarına yapay zekâ özeti
+gibi özellikler, şablonlara uygulanarak. Ürün sahibi üçüncü madde için iki yol
+seçti: ziyaretçinin kendi asistanına giden "yapay zekâyla özetle" bağlantıları
+ve tarayıcının yerleşik yapay zekâsıyla cihazda özet. Sunucuda üretilip
+saklanan özet seçilmedi. Daha önce oluşmuş, bölgesiz şablon ürünlerine
+dokunulmaması da ürün sahibinin kararı; bu yüzden migration adımı yok.
+
+**Ne yapıldı — şablon ürünleri.** `_pg_tpl_catalog()` (`includes/fn/designer.php`)
+yeni ürünü `pg_pb_create_product()`'a `zone_ids` ile verir: sitedeki bütün
+bölgeler (`pg_pb_zones()`). Kök sebep: ürün `products_zones_xref` satırı
+olmadan oluşuyordu. `get_valid_zones()` sepetteki ürünlerin izinli
+bölgelerinin kesişimini, `validate_product_for_destination()` ürünün izinli
+bölgelerini aldığı için gönderilebilir ürün hiçbir adrese gönderilemiyordu.
+Hata 2026.4.7'deki Online Mağaza şablonundan beri var. SKU'suyla bulunan,
+sitede zaten olan ürüne dokunulmaz. Sitede hiç bölge yoksa ürün yine bölgesiz
+kalır; yeni bölge açılmaz.
+
+**Ne yapıldı — yeni dil.** `includes/settings/languages.save.php` eklenen
+dili `engine = 'chrome'` ile yazar. Önceki kural şuydu: Google anahtarı
+kayıtlıysa Google, Claude rutini hazırsa Claude, ikisi de yoksa tarayıcı.
+Google da kota maliyeti yüzünden varsayılan olmaktan çıktı; ücretli ya da
+kuyruklu motor dil eklendikten sonra satırından seçilir.
+`includes/settings/languages.php`'de "Dil ekle" açıklamasına bunu söyleyen
+bir cümle eklendi.
+
+**Ne yapıldı — form_item_view token'ları.** `includes/fn/widgets.php`:
+
+- `pg_sw_ai_tokens()` beş token döndürür. `__ai_summary` sayfada her zaman
+  boştur: özet kutusudur. `__ai_chatgpt_url`, `__ai_claude_url`,
+  `__ai_perplexity_url` ve `__ai_google_url` asistan adresleridir; `$extra`
+  ham yazıldığı için değerler `h()`'den geçmiş gelir.
+- Adresleri `pg_ai_assistant_urls()` kurar: `chatgpt.com/?q=`,
+  `claude.ai/new?q=`, `perplexity.ai/search/new?q=` ve Google AI Modu için
+  `google.com/search?udm=50&q=`. Gemini adresten soru almadığı için listede
+  yok.
+- Soruyu `pg_sw_ai_prompt()` verir. Widget ayarı `ai_prompt_text` doluysa o
+  kullanılır: anahtar `_text` ile bittiği için Çeviriler ekranına widget
+  ayarı olarak girer ve çizimde `pg_tr_text()` ile sayfanın diline çevrilir.
+  Boşsa `lang('Summarize the main points of this article: {url}')`
+  kullanılır; `lang()` ön yüz dilinin dil dosyasını okuduğu için /en/
+  sayfada soru İngilizcedir. `{url}` geçmeyen ifadede adres sona eklenir.
+- Adresi `pg_sw_ai_page_url()` kurar: `$self_url`, dil sayfasında router'ın
+  kestiği önek (`LANGUAGE_PATH`) geri konarak, `URL_SCHEME .
+  HOSTNAME_SETTING` ile mutlak.
+- Bağlantılar yalnız kayıt bulunmuş, `access_control = public` ve çizim
+  e-posta değilken dolar. Görünürlük bayrağı `has_ai_links`. Gerekçe:
+  asistan oturum isteyen sayfayı açamaz, e-postanın da sayfası yoktur.
+- `_pg_sw_apply_ai_summary_bindings()` ağacı çizimden önce işler (arama
+  formu bağlamalarının deseni). `_bindings.action = 'ai_summarize'` olan
+  düğme `type="button"`, `data-pg-ai-summarize`, `hidden` ve `d-none` alır;
+  bağlantıysa `href="#"` ve `role="button"`. `_bindings.text = '__ai_summary'`
+  olan öğe `data-pg-ai-summary`, `aria-live="polite"`, `hidden` ve `d-none`
+  alır. `d-none` ikinci gizlemedir: tasarımın `d-flex` gibi `!important`
+  yardımcıları `[hidden]`'ı yener.
+
+**Ne yapıldı — tarayıcıda özet.** `get_page_content.php` sayfada
+`data-pg-ai-summarize` görürse `pg_ai_summary_inject()`'i çağırır: tema
+değiştirici gibi her şey çizildikten sonra, e-postada değil.
+`window.pgAiSummaryLabels` (sayfanın dilinde dört etiket) ve
+`assets/js/pg_ai_summary.js` `</body>`'den önce girer. Betik ES5'tir ve
+jQuery istemez:
+
+- Summarizer API (`key-points`, `markdown`, `medium`) sayfanın dilini
+  (`<html lang>`) doğrudan yazabiliyorsa yol `direct`'tir.
+- Yazamıyorsa ve Translator API en → sayfa dili varsa yol `bridge`'dir:
+  özet İngilizce çıkar, maddeler tek tek çevrilir.
+- İkisi de yoksa düğme gizli kalır.
+
+Summarizer şu an en/es/ja/de/fr yazıyor; Türkçe `unavailable`, Türkçe
+sitelerde yol `bridge`. Model indirmesi kullanıcı jesti istediği için
+`Summarizer.create()` ve `Translator.create()` tıklamanın içinde eşzamanlı
+çağrılır (çeviri motorundaki ders); indirme ilerlemesi kutuda görünür.
+Kaynak metin düğmenin `<article>`'ıdır, yoksa `<main>`. Form, düğme, nav,
+aside, gizli öğeler, özet kutusu ve asistan bağlantıları atlanır; her blok
+bir satır olur. Metin 12.000 karakterde kesilir; `QuotaExceededError`'da
+üçte biriyle bir kez daha denenir. Sonuç bir `<ul>` ve "cihazınızda
+özetlendi; hata içerebilir" notudur; kutu `<p>` ya da `<span>` ise maddeler
+tek satıra yazılır. Başarıda düğme gizlenir, hatada ileti çıkar ve düğme
+yeniden kullanılabilir.
+
+**Ne yapıldı — editör.** `style_designer.js`: bağlama listesine
+`SW_FORM_ITEM_VIEW_AI_TOKENS`, tuval örneğine `__ai_summary`, form_item_view
+eylem listesine `ai_summarize`, görünürlük bayraklarına `has_ai_links`.
+Detay Görünümü Ayarları'na "Yapay zekâ asistanlarına soru" alanı geldi
+(`ai_prompt_text`; boş bırakılınca anahtar silinir).
+
+**Ne yapıldı — şablonlar.** `hello-pinegrap` (2.4.6) ve `pinegrap-playground`
+(1.0.3) yazı sayfasına `$ai_summary()` eklendi: `has_ai_links` bayraklı bir
+`aside` içinde ikon ve etiket, dört asistan bağlantısı (`target="_blank"`,
+`rel="noopener nofollow"`), "Burada özetle" düğmesi ve özet kutusu. Kutu
+`aside` olduğu için özetlenen metne girmez. Mağaza şablonlarında blog yok.
+Şablonu daha önce açmış sitelerin widget satırı değişmez.
+
+**Ödünler.** Tarayıcıda özet yalnız masaüstü Chrome/Edge 138 ve üstünde,
+modelin donanım şartlarını karşılayan cihazda görünür (Chrome: ≈22 GB boş
+alan, 4 GB'tan fazla VRAM ya da 16 GB RAM); ilk tıklama modeli indirir.
+Etiketler yazılımın dil dosyasından gelir (2026-10-09 kararı): dil dosyası
+olmayan dilin sayfasında İngilizcedir.
+
+**Doğrulama.** Bulutta son anlık görüntü üzerinde `lint`, `check_lang`,
+`check_bindings`, `check_api_schema`, `check_copies` ve `node --check`
+temiz; `tests/ai_summary_test.php` (4 test) geçti. `test.php`'deki tek
+kırmızı (`test_panel_actions_exempt_matches_api_gate`) başka bir ajanın
+`api.php`'deki açık değişikliğinden geliyor; HEAD'deki `api.php` ile yeşil.
+dev.pinegrap.com'da blog formu olmadığı için geçici bir betikle
+(`pinegrap/_probe_ai_summary.php`, sonra `dev/_to_delete/dev_helpers/`)
+hello-pinegrap yazı ağacı çizildi. Kutu, bağlantılar (Türkçe soru, mutlak
+adres), betik ve Türkçe etiketler geldi. Chrome 154'te Summarizer tr
+`unavailable`, en `downloadable`, Translator en→tr `available` çıktı;
+düğme `bridge` yoluyla göründü. Erdal'ın onayıyla tıklandı: model indirmesi
+kutuda yüzde olarak ilerledi (yaklaşık bir dakika), ardından beş Türkçe madde
+ve not geldi, düğme gizlendi. İkinci denemede (Oyun Bahçesi ağacı, model
+hazır) özet birkaç saniyede geldi. Çevrilen maddelerin bir kısmı küçük harfle
+başladığı için maddeler sayfanın dilinde büyük harfle başlatılıyor
+(`sentence()`); indirme bitince kutu yeniden "özetliyor" iletisine dönüyor.
+
+## 2026.4.8 — Görsel editör: arama bölümü — site araması sonucu sayfadaki bölüme bağlanır, kelimeler sarıyla işaretlenir, bölüm JSON-LD'de (2026-10-11)
+
+**Ne istendi.** Görsel tasarımcıya arama sonuçlarında çıkmaya yardım eden bir
+seçenek: seçenek açılmış bir sayfa bölümünü arama sistem widget'ı aramadaki
+konuyla eşleştirsin, sonuçtan gidilince sayfada o alan sarı işaretle
+gösterilsin; aynı işaretleme Google SERP'te anlamsal vurgu olarak işe
+yarasın.
+
+**Ne yapıldı — editör.** Seçenekler'e "Arama ve SERP" grubu
+(`propsSearchSection()`): her öğede (kök, bölge, ortak bileşen başvurusu,
+döngü alanları ve ortak bileşen / widget içindeki öğeler hariç — onlar
+sayfanın değil, `_resolveSharedSid()`) "Arama bölümü" anahtarı. Açılınca
+`props.searchSection`, öğenin kimliği yoksa başlığından Türkçe harfleri
+sadeleştirilmiş, ağaçta benzersiz bir `id` (`_sdSearchSectionId()`);
+"Başlık" (`searchTitle`, boşsa içerideki ilk başlık — yer tutucu olarak
+gösterilir) ve "Konular" (`searchKeywords`, virgülle). Sunucu bölümü
+`data-pg-search-section` ile işaretler (`_render_extra_attrs()` ve semantic
+dalı); kimliksiz bölüm çapasız olduğundan sayılmaz.
+
+**Ne yapıldı — arama.** `includes/fn/widgets.php`: `pg_search_sections($tree)`
+(id, başlık, konular, metin; `region` / `shared_ref` içine inmez),
+`pg_search_section_topics()`, `pg_search_section_match()` (tam ifade başlıkta
+8, metinde 4 puan; konu ifadenin kendisiyse 10, içeriyorsa 3, çok kelimeli
+aramanın parçasıysa 2; çok kelimeli aramada her kelime en çok 3) ve
+`_pg_search_fold()` (küçük harf + Türkçe i'ler tek harf: `mb_strtolower('İ')`
+birleşik noktalı i verir, "iade" onu bulmazdı). `_pg_sw_search_collect()`
+iki modda da sonuçları `_pg_sw_search_attach_sections()`'tan geçirir — liste
+için tek sorgu (`page_name IN (...) AND page_tree_json LIKE '%searchSection%'`):
+eşleşen bölümü olan sayfanın bağlantısı `?highlight=<arama>#<id>` olur,
+alıntı bölüm metninden (ifade, yoksa ilk bulunan kelimesi çevresinden; yalnız
+konuyla eşleşmişse bölümün başı), `section` alanı bölüm adını taşır. Widget
+token'ı `^^__result_section^^` (boşsa bağlı öğe gizlenir); varsayılan Arama
+Sonuçları şablonuna URL satırının altına "Sonuç Bölümü" satırı eklendi.
+Konular sayfada görünmez ama aranır: basit aramada `page_tree_json` LIKE
+adayına girer ve isabet sayılır, gelişmiş aramada `update_search_index.php`
+konuları dizin içeriğine ekler (sayfanın işlenmiş HTML'i bölüm metnini zaten
+taşıyor).
+
+**Ne yapıldı — hedef sayfa.** `get_page_content.php` `?highlight=` geldiğinde
+`pg_search_highlight_inject()` ile `assets/js/pg_search_highlight.js`'i
+ekler (parametresiz istekte hiçbir şey eklenmez). Betik çapadaki bölümde
+(yoksa main/body) ifadeyi ve kelimelerini Türkçe büyük/küçük harf
+duyarsız arar, metin düğümlerini `<mark class="pg-search-hit">` (sarı) ile
+sarar, bölümü kısa süre çerçeveler ve kaydırır, `highlight` parametresini
+`history.replaceState` ile adresten siler (yer imi / paylaşım temiz kalır);
+Esc işaretleri kaldırır. Canonical zaten keyfi sorgu parametrelerini
+taşımıyor, `?highlight=` kopya içerik üretmez.
+
+**Ne yapıldı — SERP.** Sayfada `data-pg-search-section` varsa yapılandırılmış
+veri bloğuna `pg_search_sections_jsonld()`: `WebPage` (`@id`/`url` canonical)
+→ `hasPart` `WebPageElement` (name, `url#id`, `cssSelector`, keywords).
+Google'ın bölüme atlayan sonuç ("bu sayfadaki bölüme git" bağlantısı, metin
+parçasına kaydırma) göstermesi kendi kararıdır; buradan verilen sabit çapa,
+anlamlı başlık ve bölümü adıyla tanımlayan JSON-LD'dir. Blok diğer sayfa
+JSON-LD'si gibi e-postada, düzenleme kipinde (oturumlu yönetici görünümü) ve
+Ayarlar'da Yapılandırılmış Veri kapalıyken basılmaz.
+
+**Doğrulama.** dev.pinegrap.com'da oturumlu tarayıcıyla: id=794 / "deneme"
+(1727) sayfasına "Özellikler: Liste" bloğu bırakılıp anahtar açıldı —
+`#isinizi-buyuten-detaylar` kimliği verildi, konular kaydedildi, sayfa
+yeniden açılınca korunuyor. Basit ve (dizin yenilendikten sonra) gelişmiş
+aramada "yedekleme", "Webhook", "rol", "snapshot", "İşinizi büyüten",
+yalnız konuda geçen "rol yetkileri" sonucu `/deneme?highlight=…#isinizi-buyuten-detaylar`
+ve bölüm adıyla geldi; "xyzq" boş. Hedef sayfada işaretler (Türkçe "İşinizi
+büyüten" dahil) ve çerçeve çıktı, `highlight` adresten silindi. JSON-LD
+fonksiyonu doğru çıktı verdi; dev'de Yapılandırılmış Veri kapalı olduğu
+için sayfada basılmadığı görüldü. `check_lang`, `check_bindings`, `lint`,
+`node --check` temiz; eşleştirme 10 sorguyla CLI'da denendi.
+
+## 2026.4.8 — Görsel editör: seçenek ↔ style eşleşmesi (nesne konumu, ikon boyutu, gradyan); Custom tasarımda Bootstrap'a bağlı ayarlar gizli (2026-10-11)
+
+**Ne istendi.** (1) Görselde object-fit cover + Object Pos tanımlanıyor; Object
+Pos değişince seçenek değişiyor ama sayfa değişmiyordu, Özellikler'deki style
+içinde eski `object-position` kalıyordu; elle silinince yeni değer geliyordu.
+İstenen: style'dan elle silinen değer seçenekten de silinsin, seçenek
+değişince style kararlı güncellensin; benzer seçenekler de incelensin.
+(2) view_system_styles.php'den Custom oluşturulan tasarımda panel Bootstrap 5
+varsayıp Bootstrap ayarlarını gösteriyordu: doğrudan style uygulayanlar
+kalsın, Bootstrap sınıflarıyla çalışanlar gizlensin. (3) Custom'da Temalar
+sekmesindeki Bootstrap değişkeni ayarları da gizlensin.
+
+**Kök sebep (1).** İki model yan yana yaşıyordu. `fontFamily` için prop tek
+kaynak, Özellikler'in style satırı birleşik değeri gösterip yazınca geri
+bölüyor (`_currentInlineStyleValue` / `_writeInlineStyleValue`). Ama ikonun
+`fontSize`'ı ve görselin `objectPosition`'ı `migrateNodeStyleProps()` ile
+seçimde `_attrs.style`'a **kopyalanıyordu** (yalnız style'da yoksa); sonra
+Object Pos seçeneği yalnız prop'u değiştiriyordu (`fontSize` için yazma vardı,
+`objectPosition` için yoktu). Hem `_compose_inline_style()` hem tuval kullanıcı
+style'ını en sona koyduğu için eski kopya kazanıyordu. Ters yönde style
+satırını silmek yalnız `_attrs` girdisini siliyor, prop kalıyor; bir sonraki
+seçimde migrate kopyayı geri yazıyordu. Aynı sınıftan: arka plan gradyanında
+`props._bgGrad` (duraklar, açı) style'daki `background-image`'tan bağımsız
+okunuyordu — style'dan silinen/elle değiştirilen gradyanı panel eski hâliyle
+gösteriyor, bir sonraki düğme değişikliği eski ayarlarla geri yazıyordu.
+
+**Ne yapıldı (1).** `_INLINE_STYLE_PROP_MAP` yerine düğüme göre
+`_sdInlineStyleProps(node)`: `fontFamily` (hepsi), `objectPosition` (görsel),
+`fontSize` (ikon; `px`/birimsiz ↔ sayı, başka birim prop'a sığmaz → style'da
+kalır, prop temizlenir). Prop tek kaynak; `_attrs.style` kopya tutmaz.
+Seçenek değişince ilgili bildirim style'dan silinir (ikon boyutu sürükleme
+tutamağı dahil); style satırının × düğmesi `_writeInlineStyleValue(n, '')`
+ile seçenekleri de temizler. `migrateNodeStyleProps()` tersine döndü: eski
+ağaçtaki kopyayı **sayfada görünen değer olduğu için** prop'a alır ve
+style'dan siler (font-family'ye dokunmaz — picker çıplak aile adı tutuyor).
+Gradyan: `_bgGrad` yalnız style'daki gradyanı birebir üretiyorsa kullanılır;
+değilse style'dan ayrıştırılır ve `_bgGrad` ona eşitlenir (style'da gradyan
+yoksa `null`). Sunucu tarafı değişmedi. Node ile çıkarılan fonksiyonlar
+üzerinde 16 senaryo denendi (eski kopyanın katlanması, seçenek değişimi,
+style'dan silme/yazma, satırı silme, ikon px/rem, görsel olmayan düğüm,
+fontFamily davranışının korunması).
+
+**Ne yapıldı (2)–(3).** `_sdHideBootstrapControls(panel)` tekli ve çoklu
+seçimde panel çizildikten sonra çalışır (`_sdUsesBootstrap()` yanlışsa):
+`data-stylegroup` (renk seçici ve hizalama dahil), `data-util`, kutu modeli,
+`data-util-toggle`, buton/bağlantı stil seçicileri, `data-bs-form-style`,
+`data-table-responsive` ve Bootstrap sınıfına/davranışına dönen prop'lar
+(aspectRatio*, srOnly, placeholder*, focusRing, tooltip*, fluid, rounded).
+Kendi kontrolü giden ama alt satırları style yazan satır (Konum → top/right/
+bottom/left) etiketiyle açık kalır; kontrolsüz kalan bölüm kaldırılır.
+Temsilî işaretlemeyle tarayıcıda denendi. Temalar sekmesi: Custom'da
+`--bs-*` grupları, açık/koyu sekmeleri ve "renkleri tema olarak kaydet"
+gizli, yerine kısa açıklama; tema dosyası satırının ipucu değişkenlerden söz
+etmiyor.
+
+**Doğrulama.** Kullanıcı oturum açtıktan sonra dev'de editörde (id=794)
+denendi. `check_lang.php`, `check_bindings.php` temiz, `node --check` temiz.
+
+## 2026.4.8 — Şablonlarda ortak hesap çubuğu, tema değiştirici betiği, tasarım seçici (sayfa ekle / taşı / kopyala), menü sırası (2026-10-11)
+
+**Ne istendi (ürün sahibinin kararları).** (1) Bütün şablonlarda üst ve alt
+bilgi ortak bölge olmalı; üst bilginin üstündeki çubuk dışarıda kaldığı için
+her sayfada ayrı düzenleniyordu. Mevcut tasarımlar dönüştürülmeyecek, yalnız
+şablonlar. (2) Tema değiştirici özel HTML ile satır içi JS bırakıyordu; sayfaya
+bırakılınca sayfaya, ortak bileşene bırakılınca o bileşeni kullanan stil(ler)e
+JS gelsin — "en pratik" kurgu olarak seçilen: bileşen betik taşımaz, çıktıda
+işaret varsa sunucu dosyayı ekler. (3) Görsel Sayfa Editörü menüsü Dosya
+Yöneticisi ile Sayfalar arasına, alt menüsüne şablon seçimi. (4) "Sayfa ekle"
+her seferinde yeni tasarım açıyordu: tasarım sorulsun (varsayılan seçili,
+"Yeni tasarım" da var), o tasarım sayfalarıyla açılsın, yeni sekme aktif
+gelsin; dosya yöneticisinde "Sayfa Ekle" + "Sayfa Ekle (legacy)";
+view_pages.php'deki çevrilmemiş "(Visual Page Editor)" etiketi. (5) Stilden
+stile taşıma/kopyalama: hedef editörde açılır (taşıma mevcut "Sayfa Seç"
+mantığıyla yayınlanınca, kopya yeni taslak sekme).
+
+**Kök sebep (1).** Dört şablonda (`hello-pinegrap`, `pinegrap-store`,
+`pinegrap-boutique`, `pinegrap-bookshop`) `$account_bar()` her sayfanın
+ağacına satır içi giriyordu; yorumu "a shared component cannot hold one
+yet" diyordu. Ortak bileşen içine sistem widget'ı / iç içe ortak bileşen
+artık destekleniyor (`pg_design_template_prepare()` ikinci geçiş,
+`_expand_system_widgets()` + `pg_expand_nested_components()`), kısıt
+eskimişti. Playground'da hesap çubuğu yok.
+
+**Ne yapıldı.**
+
+- Şablonlar: builder `$account_bar_tree` olarak saklanıp `$account_bar`
+  `$shared('account_bar')` döndüren closure'a çevrildi (sayfa closure'ları onu
+  değeriyle yakaladığı için tanımın hemen ardından); `'shared'` dizisine
+  `account_bar` (Site / Mağaza / Butik / Kitapçı Hesap Çubuğu). Duyuru / bilgi
+  satırı ortak bileşeni çubuğun içinde iç içe kaldı. Sürümler: 2.4.5, 1.0.5,
+  1.0.4, 1.0.4. Dev'de `pg_design_template_prepare()` ile denendi: dördünde de
+  hesap çubuğu satırı oluştu, içindeki 2–3 referans (`cart_link`,
+  `login_region`, duyuru) `sharedId`'ye bağlandı, bağlanmamış
+  `templateWidget`/`templateShared` kalmadı; satırlar
+  `pg_design_template_discard()` ile atıldı.
+- Tema değiştirici: `style_designer.js` paletindeki üç varyant artık
+  `custom_html` betik düğümü üretmiyor, sarmalayıcıya
+  `data-pg-theme-switcher="dropdown|toggle|switch"` yazıyor (rastgele id'ler
+  kalktı; anahtarın label'ı için input id'si duruyor). Yeni
+  `assets/js/pg_theme_switcher.js`: eski satır içi motorun API'si
+  (`pgSetTheme`/`pgGetTheme`/`pgResolvedTheme`, `pg-theme-change`,
+  localStorage `pg-theme`) aynen; `window.pgThemeInit` korumasıyla eski
+  sayfalardaki satır içi motorla çakışmaz. Bağlı değiştiriciler tek bir
+  dinleyiciden güncellenir, belgeden çıkanlar düşürülür (tuval her render'da
+  DOM'u yeniden kurduğu için). `pg_theme_switcher_inject()`
+  (`includes/fn/designer.php`) `get_page_content.php`'de ortak bileşen,
+  sistem widget'ı ve custom PHP açılımlarından **sonra** çağrılır: `<head>`'e
+  seçimi boyamadan önce uygulayan birkaç satır, son `</body>`'den önce
+  `defer` dosya; e-postada yok. Böylece üç senaryo (sayfada / aynı stilin
+  ortak bileşeninde / başka stillerde de kullanılan ortak bileşende) ayrı
+  kayıt tutmadan karşılanır, bileşen silinince betik de gider. Tuval
+  `_sdThemeSwitchers()` ile aynı dosyayı iframe'e bir kez yükler ve her
+  render'da `pgThemeSwitcherBind()` çağırır. Açılır menüdeki "Light" etiketi
+  `_sdT('Expanded')` olarak kalmıştı (Türkçede ikisi de "Açık" olduğu için
+  görünmüyordu) — düzeltildi.
+- Tasarım seçici: `pg_designer_design_targets($folder_id, $exclude)` görsel
+  tasarımları (son düzenlenen önce, kutu dışı sayfa sayısıyla) ve önerilecek
+  tasarımı verir — klasörün `get_style()` ile kalıtılan tasarımı görselse o,
+  değilse klasördeki sayfaların çoğunun tasarımı (şablon klasörlerine tasarım
+  atanmıyor), o da yoksa son düzenlenen. `api.php` designer `design_targets` alt eylemi
+  (tasarım düzeyi; içerik düzeyi allow-list'e girmedi).
+  `pg_designer_target_modal()` modal + `window.pgDesignTarget.open({mode,
+  folder, exclude, page, from, go})`; `[data-pg-design-target]` düğmeleri de
+  açar. Seçim editörü açar: `edit_system_style.php?id=&new_page=1&folder=`,
+  `?pick_page=`, `?copy_page=`, yeni tasarım için `add_system_style.php?folder=`.
+- Editör: `pg_designer_start_action()` (`includes/designer_screen.php`) bu
+  parametreleri okur — yalnız tasarım düzeyi, klasöre düzenleme yetkisi
+  yoksa klasör düşer, taşıma/kopya için sayfa kutuda olmamalı ve klasörüne
+  yetki olmalı, kopya adı `get_unique_name(<ad>-<copy>)`. `sdDesign.startAction`
+  → `_pgStartAction()` parametreleri önce adresten siler (yeniden yükleme
+  ikinci sayfa eklemesin), sonra: `_pgTabsAddNew({folder})` (sekme adı
+  yazılmaya hazır), `_pgTabsAttachLoaded()` (taşıma; mevcut "Sayfa Seç" yolu,
+  `page_style` kaydedince değişir) ya da `_pgTabsAddCopy()` (page_id 0,
+  `page_home` 0, taslak, form ayarları kopyalanır, alanlar ilk kayıtta yeni
+  id ile). Sekme menüsüne kaydedilmiş, `pickedPending` olmayan sayfalar için
+  "Başka tasarıma kopyala / taşı" (`_pgTabsSendTo()`; çıkış `_pgExit()`
+  üzerinden, kaydedilmemiş değişiklik uyarısıyla).
+- view_pages.php: tasarımcıya "Sayfa Ekle" (seçici, `from=pages`) + "Sayfa
+  Ekle (Legacy)"; diğer rollere eskisi gibi tek düğme (menejer artık
+  açamadığı `add_system_style.php`'ye gönderilmiyor). view_folders.php: Yeni
+  menüsünde ve sağ tık "Yeni" alt menüsünde aynı ikili (katalogda yok);
+  görsel sayfa açık klasörü alır.
+- Menü (`includes/fn/output.php`): 21 numaralı satır, mevcut taşıma
+  döngüsüne `21 => array(1, 0)` ile Dosya Yöneticisi'nin ardına alındı (id'ler
+  değişmez); alt menüye "Şablondan Seç" → `view_system_styles.php?start=template`,
+  şablon modalı bu parametreyle yüklenince açılıyor.
+
+**Doğrulanamayan.** Yönetici oturumu olmadığı için editör içi akışlar
+(yeni sekme, taşı/kopyala sekmeleri, tuvalde tema değiştirici) tıklanarak
+denenmedi. Denenenler: şablon prepare (yukarıda), seçici modalının URL
+üretimi sahte `fetch` ile (ekle/taşı/kopyala/yeni tasarım), tema betiğinin
+üç varyantı tarayıcıda (seçim, senkron, yeniden bağlama), enjeksiyon çıktısı,
+`pg_designer_start_action()`'ın oturumsuz yolları (hata yok, yetkisizde
+`null`). `tools/lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php` temiz; `node --check` iki JS dosyasında temiz.
+
+## 2026.4.8 — Çöp kutusundaki sayfa ana sayfa olmaktan çıkar (8.20); ana sayfasız sitede şablonun ana sayfası işaretli gelir (2026-10-11)
+
+**Ne istendi.** (1) dev.pinegrap.com'da ana sayfa atandıktan sonra bile
+sitenin kökü 2–3 yenilemede bir stilleri bozuk bir sayfa getiriyordu
+(`pgbin_1560_anasayfa`, çöp kutusundaki eski bir ana sayfa). Ürün sahibinin
+kararı: çöp kutusuna giren ana sayfa artık ana sayfa özelliği taşımaz.
+(2) Görsel Sayfa Editörü'nde bir şablon seçildiğinde sitede hiç ana sayfa
+yoksa şablonun ana sayfası ana sayfa olarak ayarlansın.
+
+**Kök sebep.** `get_page.php` kökü `page_home = 'yes'` taşıyan sayfalar
+arasından `ORDER BY RAND()` ile seçer (çoklu ana sayfa bilerek desteklenir,
+`pg_home_page_group_expression()` başlığı). Çöpe giden dört yolun hiçbiri —
+dosya yöneticisi (`view_folder_and_files_f.php`, sayfa ve klasör),
+tasarım silme (`pg_designer_delete_design()`), dış API (`api_pages_delete()`),
+Çalışma Alanı (`ws_change_write_page()`) — bayrağı kaldırmıyordu; yalnız
+`page_folder`'ı kutuya çeviriyordu. Dev'de 3 sayfa bayrak taşıyordu: gerçek
+ana sayfa 1643 (Butik) ve kutudaki 1560 ile 1616; ikisinin `style` satırı da
+silinmişti (tasarımları silinmiş), stilsiz görünüm buradan. Kutu klasörü özel
+ve `archived` olduğundan ziyaretçi için aynı istekler büyük olasılıkla hata ya
+da giriş sayfasına düşüyordu (ziyaretçi olarak ayrıca denenmedi).
+Tasarım silme iletisinin "site, başka bir sayfa ana sayfa işaretlenene dek
+ana sayfasız kalır" cümlesi de bu yüzden doğru değildi.
+
+**Ne yapıldı.**
+
+- `pg_recycle_drop_home()` (`view_folder_and_files_f.php`): kutu klasörü ve
+  altındaki bütün klasörlerdeki sayfalarda `page_home = 'yes'` → `'no'`
+  (sütun `ENUM('no','yes')`; `''` katı kipte reddedilir). Klasör ağacı taze
+  okunur — `pg_recycle_bin_folder_ids()` istek başına önbellekli ve taşımadan
+  önce dolmuş olabilir. Tek satır yerine bütün kutu süpürülür: klasör kutuya
+  sayfalarıyla girer ve o sayfaların kendi kutu kaydı yoktur.
+  `pg_recycle_park_name()` 'page' ve 'folder' için bunu en başta çağırır —
+  dört yolun dördü de adı park ettiği için tek dikiş yeri orası (adın
+  sığmadığı erken dönüşlerden önce).
+- Geri yükleme bayrağı geri getirmez (`pg_recycle_release_name()`'e
+  dokunulmadı): kutudan çıkan sayfa sıradan sayfadır.
+- `get_page.php`: kök sorgusuna `pg_designer_not_binned_sql('page.page_folder')`
+  (`widgets.php`'deki `function_exists` korumasıyla) — kutuya başka bir yoldan
+  düşmüş bir satır bile kökte gösterilmez. Dev'de düzeltmeden önce, kutudaki
+  iki satır hâlâ bayraklıyken kök 12/12 istekte 1643'ü getirdi.
+- Şema adımı yok; veri adımı `upgrade_2026_4_8_binned_home()` (8.20): mevcut
+  kurulumlarda kutuda kalmış bayrakları aynı süpürmeyle temizler, kutu yoksa
+  atlar; ikinci koşu "no page in the recycle bin carries it" der. Dev'de
+  yardımcı betikle koşturuldu: `pg_recycle_drop_home()` 2 satır, ikinci koşu
+  0; adım tek başına koşturulunca 0 satır, idempotent.
+- Şablon: `pg_design_template_prepare()` yeni `home_key` döndürür — sitede
+  kutu dışında `page_home = 'yes'` sayfa yoksa şablonun `home` anahtarlı
+  sayfası, yoksa ilki (`pg_design_template_install()`'un seçimiyle aynı);
+  varsa `''`. `style_designer.js` `_pgTemplateApply()` o sekmeyi
+  `page_home: 1, page_draft: 0` açar (ana sayfa taslak olamaz;
+  `pg_designer_page_draft_plan()` de reddeder). Kayıt Yayınla'da mevcut
+  `pg_designer_save_page()` yoluyla yazılır, yeni sunucu yolu yok. Dev'de
+  `pinegrap-boutique` ile denendi: ana sayfa varken `home_key = ''`, bayrak
+  geçici kaldırılınca `'home'`; açılan satırlar `pg_design_template_discard()`
+  ile atıldı, bayrak geri kondu.
+
+**Doğrulanamayan.** Editörde şablonu açıp Yayınla'ya basan uçtan uca akış
+tarayıcıda tıklanarak denenmedi (yönetici oturumu yoktu); JS değişikliği
+`node --check` ile, sunucu yarısı yukarıdaki betikle doğrulandı.
+`tools/lint.php`, `check_lang.php`, `check_bindings.php` temiz (yeni çeviri
+anahtarı yok). `tools/test.php`: `data/` kopyalanmadığı için 5 innodb hatası
+(sql.sql yok) ve bu değişiklikle ilgisiz `test_panel_actions_exempt_matches_api_gate`
+başarısızlığı (`api.php` okur; `api.php`'ye dokunulmadı).
 
 ## 2026.4.8 — Panel arayüzü: ortak bileşen offcanvas'ı, dil seçici hizası, not kartı, `#button_bar` standardı, sipariş girişi, ERP filtre select'i (2026-10-10)
 
