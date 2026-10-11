@@ -1,9 +1,10 @@
 # Development tree - never published
 /dev/
 
-# Internal documents. CLAUDE.md, .claude/ and docs/ are tracked on the
-# development branch only and never reach main or a release. The notes below
-# stay on the development machine and are not tracked on any branch.
+# Internal documents. CLAUDE.md, .claude/ and docs/ - like the developer tools
+# under tools/ and the unit tests under tests/ - are tracked on the development
+# branch only and never reach main or a release. The notes below stay on the
+# development machine and are not tracked on any branch.
 /docs/_mockup_add_order.html
 /docs/_plan_barindirma.md
 /docs/_seed_workspace.php
