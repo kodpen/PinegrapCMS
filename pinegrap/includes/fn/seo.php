@@ -3172,3 +3172,218 @@ function perf_monitor_shutdown()
         }
     }
 }
+
+/**
+ * Plain text for a <title> or a meta description made from a catalog field:
+ * tags and entities gone, white space folded, and when $max is given cut at
+ * a word before $max characters with an ellipsis.
+ *
+ * @param string $html
+ * @param int    $max  0 for no limit
+ * @return string
+ */
+function pg_sw_item_text($html, $max = 0)
+{
+    $text = preg_replace('~<(script|style)\b[^>]*>.*?</\1\s*>~is', ' ', (string) $html);
+    $text = html_entity_decode(strip_tags(preg_replace('~<\s*(br|/p|/div|/li|/h[1-6])\b[^>]*>~i', ' $0', (string) $text)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = trim(preg_replace('~[\s\x{00A0}]+~u', ' ', (string) $text));
+
+    $max = (int) $max;
+
+    if (($max > 1) && (mb_strlen($text, 'UTF-8') > $max)) {
+        $cut = mb_substr($text, 0, $max - 1, 'UTF-8');
+
+        // Back to the last whole word, unless the cut already ends one or
+        // that would throw away more than half of the text.
+        if (mb_substr($text, $max - 1, 1, 'UTF-8') !== ' ') {
+            $space = mb_strrpos($cut, ' ', 0, 'UTF-8');
+
+            if (($space !== false) && ($space >= ($max * 0.5))) {
+                $cut = mb_substr($cut, 0, $space, 'UTF-8');
+            }
+        }
+
+        $text = rtrim($cut, " ,.;:-") . "\u{2026}";
+    }
+
+    return $text;
+}
+
+/**
+ * The item a page built in the visual editor shows through a system widget
+ * when its address names one, so that the page is that item's page: a
+ * product or a select-type product group on a Catalog Detail widget
+ * (/<page>/<address>, or ?pid= for a product), a product group a Catalog
+ * widget drills down to (/<page>/<address>, or ?cat=<address> on the home
+ * page), a record on a Form Item View widget (?r=). The item is resolved the
+ * way the widgets resolve it. null when the page shows no item of its own:
+ * the bare page, an address that names nothing, the widget's own root group,
+ * a record the visitor may not see.
+ *
+ * @param int    $page_id
+ * @param string $page_name
+ * @param bool   $home      the page is the site's home page
+ * @return array|null type (product | product_group | record), path (from
+ *                    PATH, encoded), query ('' or '?…', encoded), title,
+ *                    description (plain text, '' when the item has none),
+ *                    image_name
+ */
+function pg_sw_page_item($page_id, $page_name, $home = false)
+{
+    static $cache = array();
+
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || !function_exists('_pg_find_system_widget_on_page')) {
+        return null;
+    }
+
+    if (array_key_exists($page_id, $cache)) {
+        return $cache[$page_id];
+    }
+
+    $cache[$page_id] = null;
+
+    // The segment after the page name, decoded the way the widgets decode it.
+    $full = isset($_GET['page']) ? (string) $_GET['page'] : '';
+    $slash = mb_strpos($full, '/', 0, 'UTF-8');
+    $segment = '';
+
+    if ($slash !== false) {
+        $segment = mb_substr($full, $slash + 1, null, 'UTF-8');
+        $next = mb_strpos($segment, '/', 0, 'UTF-8');
+
+        if ($next !== false) {
+            $segment = mb_substr($segment, 0, $next, 'UTF-8');
+        }
+
+        $segment = urldecode(trim($segment));
+    }
+
+    if (strlen($segment) > 200) {
+        $segment = '';
+    }
+
+    $base = PATH . encode_url_path($page_name);
+    $group_columns = "id, address_name, short_description, full_description, name, title, meta_description, image_name";
+
+    $group_item = function ($group, $path, $query) {
+        $title = trim((string) $group['title']);
+
+        if ($title === '') {
+            $title = pg_sw_item_text($group['short_description']);
+        }
+
+        if ($title === '') {
+            $title = trim((string) $group['name']);
+        }
+
+        $description = trim((string) $group['meta_description']);
+
+        if ($description === '') {
+            $description = pg_sw_item_text($group['full_description'], 160);
+        }
+
+        return array(
+            'type'        => 'product_group',
+            'path'        => $path,
+            'query'       => $query,
+            'title'       => $title,
+            'description' => $description,
+            'image_name'  => (string) $group['image_name'],
+        );
+    };
+
+    // The listing widget takes the address before a detail widget on the
+    // same page, as the page's feed and structured data do.
+    $listing = _pg_find_system_widget_on_page($page_id, 'catalog_listing');
+
+    if ($listing) {
+        // The home page is asked for a group with ?cat= at the site root,
+        // like the widget; under its own name it takes the segment too.
+        $address = (($segment === '') && $home && isset($_GET['cat']) && is_scalar($_GET['cat'])) ? trim((string) $_GET['cat']) : $segment;
+
+        if (($address === '') || (strlen($address) > 200)) {
+            return null;
+        }
+
+        $group = db_item("SELECT $group_columns FROM product_groups WHERE address_name = '" . e($address) . "' AND enabled = 1 LIMIT 1");
+
+        // The widget's own group is what the bare page already shows.
+        if (!is_array($group) || ((int) $group['id'] === (int) $listing['product_group_id'])) {
+            return null;
+        }
+
+        return $cache[$page_id] = $home
+            ? $group_item($group, PATH, '?cat=' . rawurlencode((string) $group['address_name']))
+            : $group_item($group, $base . '/' . encode_url_path((string) $group['address_name']), '');
+    }
+
+    $detail = $home ? null : _pg_find_system_widget_on_page($page_id, 'catalog_item_view');
+
+    if ($detail) {
+        $by_pid = ($segment === '') && isset($_GET['pid']) && ((int) $_GET['pid'] > 0);
+
+        if (($segment === '') && !$by_pid) {
+            return null;
+        }
+
+        $product = _pg_catalog_item_resolve_product($detail['product_group_id']);
+
+        if (!is_array($product)) {
+            return null;
+        }
+
+        // An address that is not the product's own is a select-type group:
+        // the widget shows that group's first product for it.
+        if (($segment !== '') && (mb_strtolower((string) $product['address_name'], 'UTF-8') !== mb_strtolower($segment, 'UTF-8'))) {
+            $group = db_item("SELECT $group_columns FROM product_groups
+                              WHERE address_name = '" . e($segment) . "' AND enabled = 1 AND display_type = 'select' LIMIT 1");
+
+            return $cache[$page_id] = is_array($group)
+                ? $group_item($group, $base . '/' . encode_url_path((string) $group['address_name']), '')
+                : null;
+        }
+
+        $title = trim((string) $product['title']);
+
+        if ($title === '') {
+            $title = pg_sw_item_text($product['short_description']);
+        }
+
+        $description = trim((string) $product['meta_description']);
+
+        if ($description === '') {
+            $description = pg_sw_item_text($product['full_description'], 160);
+        }
+
+        // A product without an address is reached by its id alone.
+        $address = (string) $product['address_name'];
+
+        return $cache[$page_id] = array(
+            'type'        => 'product',
+            'path'        => ($address !== '') ? $base . '/' . encode_url_path($address) : $base,
+            'query'       => ($address !== '') ? '' : '?pid=' . (int) $product['id'],
+            'title'       => $title,
+            'description' => $description,
+            'image_name'  => (string) $product['image_name'],
+        );
+    }
+
+    if (!$home && function_exists('pg_sw_record_comment_context') && isset($_GET['r']) && is_scalar($_GET['r']) && (trim((string) $_GET['r']) !== '')) {
+        $context = pg_sw_record_comment_context($page_id, 0);
+
+        if (is_array($context) && !empty($context['visible']) && is_array($context['form'])) {
+            return $cache[$page_id] = array(
+                'type'        => 'record',
+                'path'        => $base,
+                'query'       => '?r=' . rawurlencode((string) $context['form']['reference_code']),
+                'title'       => '',
+                'description' => '',
+                'image_name'  => '',
+            );
+        }
+    }
+
+    return null;
+}

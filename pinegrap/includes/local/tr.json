@@ -19931,5 +19931,13 @@
     "Scheduled message": "Zamanlanmış mesaj",
     "started a discussion in #{var:1}": "#{var:1} kanalında tartışma başlatıldı",
     "a message was scheduled in #{var:1}": "#{var:1} kanalında bir mesaj zamanlandı",
-    "a scheduled message was deleted in #{var:1}": "#{var:1} kanalında zamanlanmış bir mesaj silindi"
+    "a scheduled message was deleted in #{var:1}": "#{var:1} kanalında zamanlanmış bir mesaj silindi",
+    "The browser's AI model does not write {var} on this computer: this language is translated with the browser's translation model (Translator API) instead, in runs of plain text, without the context and the style note.": "Tarayıcının yapay zekâ modeli bu bilgisayarda {var} dilinde yazmıyor: bu dil onun yerine tarayıcının çeviri modeliyle (Translator API) çevrilir; düz metin parçaları hâlinde, bağlam ve stil notu olmadan.",
+    "Scanning the pages… {var} of {var2}": "Sayfalar taranıyor… {var}/{var2}",
+    "Links in the text": "Metindeki bağlantılar",
+    "Take it out of the text: it becomes a link element right after it": "Metinden çıkar: hemen arkasında ayrı bir bağlantı öğesi olur",
+    "Remove the link, keep the words": "Bağlantıyı kaldır, sözcükler kalsın",
+    "Split into elements": "Öğelere ayır",
+    "This text is links only: each becomes an element of its own, to select, edit and move.": "Bu metin yalnız bağlantılardan oluşuyor: her biri ayrı bir öğe olur; seçilir, düzenlenir, taşınır.",
+    "Split into {var} elements.": "{var} öğeye ayrıldı."
 }

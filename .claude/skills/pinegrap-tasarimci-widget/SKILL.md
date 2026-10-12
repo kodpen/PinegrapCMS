@@ -159,6 +159,21 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `requestAnimationFrame`'inde zamanlanır: tuval penceresininki sürüklemede
   bekletilir (`_sdMotionShimFn()`). Tuval gövdesine yeni bir editör durum
   sınıfı eklersen `renderCanvas()` içindeki `_EDITOR_STATE_CLASSES`'a yaz.
+- Köprü yalnız sayfada kullanılan kuralı köprüler: gerektirdiği sınıflar
+  (`_sdBrNeeds()`) tuvalde yoksa kural `canvasDoc._sdBr.wait`'te bekler,
+  editörün `MutationObserver`'ı sınıfı görünce köprüler (`_sdBrRelease()`).
+  Tuvale sınıf getiren yeni bir yol ek iş istemez; kuralı köprüleyen tek yer
+  `_sdBridgeRule()`. Kullanılmayan kuralları köprülemek tuvalin her stil
+  hesabını Bootstrap 6'da 30 ms'den 250 ms'ye çıkarıyordu.
+- Sarmalayıcının `.sd-tb`'si boş kurulur, içi ilk gerektiğinde dolar
+  (`tb._sdFill` → `_sdTbFill(w)`: fare altı, seçim). Araç çubuğunu gösteren
+  yeni bir durum eklersen o noktada `_sdTbFill(wrap)` çağır; düğmelerin her
+  sarmalayıcıda var olduğunu varsayma. Kutunun kendisi yerinde kalır
+  (sarmalayıcının çocuk sırası konum seçicileri için değişmesin).
+- `renderSelectionOnly()` katmanlar ağacını `_sdTreeSelectInPlace()` ile
+  yalnız işaretler (ağaç `_sdEditEpoch` ile eşleşiyorsa). Ağacı
+  `saveState()`/`render()` olmadan değiştiren bir yol `renderTree()`'yi
+  kendisi çağırır.
 
 ## Sistem widget kimliği
 
@@ -322,6 +337,12 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `_expanded` (Katmanlar paneli durumu) ve boş `_attrs` sayılmaz. Panel
   çizimi düğüme yazmaz; düğümde yeni bir arayüz durumu tutulacaksa anahtarı
   oraya da eklenir, yoksa öğe seçmek sayfayı "kaydedilmemiş" gösterir.
+- Kayıt değişmemiş sayfayı ağaçsız, `unchanged: 1` ile gönderir
+  (`_pgPageUnchanged()`: kaydedilmiş, `_pgPageDirty()` temiz, gösterdiği
+  ortak bileşenlerden hiçbiri `_sharedDirty` değil); sunucu onu yazmaz,
+  `pages` cevabına koyar. Sayfa kaydına sayfanın ağacı ve ayarları dışında
+  bir şeye bağlı yeni bir iş eklersen o koşulu `_pgPageUnchanged()`'e de yaz,
+  yoksa değişiklik o sayfaya yazılmaz.
 
 ## Çatı (framework) ve şablon
 

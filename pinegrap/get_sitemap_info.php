@@ -101,25 +101,29 @@ function get_sitemap_info() {
     foreach ($pages as $page) {
         // if this page is public, then continue to add it to the sitemap
         if (in_array($page['folder_id'], $public_folder_ids) == TRUE) {
-            // if this a home page and a home page has not already been added then add URL with just scheme and hostname for home page
-            if (($page['home'] == 'yes') && ($home_page_added == FALSE)) {
+            // A home page is listed once, at the site root: the root is its
+            // canonical address (get_page_content()), so its own name - and
+            // that of any other page marked as home - is not listed beside it.
+            if ($page['home'] == 'yes') {
+                if ($home_page_added == FALSE) {
+                    $output_sitemap_urls .=
+                        '    <url>' . "\n" .
+                        '        <loc>' . URL_SCHEME . HOSTNAME_SETTING . h(PATH) . '</loc>' . "\n" .
+                        '        <lastmod>' . gmdate('Y-m-d\TH:i:s\Z', $page['last_modified_timestamp']) . '</lastmod>' . "\n" .
+                        '        <priority>1.0</priority>' . "\n" .
+                        '    </url>' . "\n";
+
+                    $home_page_added = TRUE;
+                }
+            } else {
+                $output_path = h(PATH . encode_url_path($page['name']));
+
                 $output_sitemap_urls .=
                     '    <url>' . "\n" .
-                    '        <loc>' . URL_SCHEME . HOSTNAME_SETTING . '</loc>' . "\n" .
+                    '        <loc>' . URL_SCHEME . HOSTNAME_SETTING . $output_path . '</loc>' . "\n" .
                     '        <lastmod>' . gmdate('Y-m-d\TH:i:s\Z', $page['last_modified_timestamp']) . '</lastmod>' . "\n" .
-                    '        <priority>1.0</priority>' . "\n" .
                     '    </url>' . "\n";
-                
-                $home_page_added = TRUE;
             }
-
-            $output_path = h(PATH . encode_url_path($page['name']));
-            
-            $output_sitemap_urls .=
-                '    <url>' . "\n" .
-                '        <loc>' . URL_SCHEME . HOSTNAME_SETTING . $output_path . '</loc>' . "\n" .
-                '        <lastmod>' . gmdate('Y-m-d\TH:i:s\Z', $page['last_modified_timestamp']) . '</lastmod>' . "\n" .
-                '    </url>' . "\n";
             
             // for certain types of pages add page to array so that we can later get items that appear through the page
             // we don't want to prepare URL's for all of the items yet, because we want to make sure we get all normal pages before we hit the 50,000 URL limit
@@ -617,6 +621,207 @@ function get_sitemap_info() {
                             // remember that we have added this URL
                             $added_urls[] = $output_url;
                         }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Pages built in the visual editor are page_type 'standard' and carry
+    // their catalog and their record lists as system widgets. The product
+    // groups a Catalog widget drills down to are listed under its page, its
+    // products and select-type groups under the page of its Catalog Detail
+    // widget, and the records of a list under its detail page (?r=) - the
+    // addresses the widgets link to and the item pages name as canonical
+    // (pg_sw_page_item()). The detail page itself is usually left out of the
+    // sitemap, since bare it shows no item; only its folder and its noindex
+    // setting decide whether the items behind it are listed.
+    if (function_exists('pg_sw_widget_pages') && function_exists('_pg_find_system_widget_on_page')) {
+        // The standard pages listed above, and every public page that is not
+        // marked noindex, by id: the hosts and the possible detail pages.
+        $listed_standard_pages = array();
+
+        foreach ($pages as $page) {
+            if (($page['type'] == 'standard') && in_array($page['folder_id'], $public_folder_ids)) {
+                $listed_standard_pages[(int) $page['id']] = $page;
+            }
+        }
+
+        $indexable_pages = array();
+
+        foreach ((array) db_items("SELECT page_id, page_name, page_folder FROM page WHERE (page_type = 'standard') $sql_page_noindex") as $row) {
+            if (in_array($row['page_folder'], $public_folder_ids)) {
+                $indexable_pages[(int) $row['page_id']] = $row;
+            }
+        }
+
+        $added_urls = array();
+
+        $add_url = function ($url, $timestamp) use (&$added_urls, &$output_sitemap_urls) {
+            if (isset($added_urls[$url])) {
+                return;
+            }
+
+            $added_urls[$url] = true;
+
+            $output_sitemap_urls .=
+                '    <url>' . "\n" .
+                '        <loc>' . $url . '</loc>' . "\n" .
+                '        <lastmod>' . gmdate('Y-m-d\TH:i:s\Z', (int) $timestamp) . '</lastmod>' . "\n" .
+                '    </url>' . "\n";
+        };
+
+        // Several pages can carry a Catalog widget over the same groups (a
+        // shop page, a lookbook, the home page). A group is listed once,
+        // under the oldest page that reaches it; the home page, which shows a
+        // group only through ?cat=, lists none.
+        $listing_hosts = array();
+
+        foreach (pg_sw_widget_pages('catalog_listing') as $host) {
+            $host_id = (int) $host['page_id'];
+
+            if (isset($listed_standard_pages[$host_id]) && ($listed_standard_pages[$host_id]['home'] != 'yes')) {
+                $listing_hosts[$host_id] = $host;
+            }
+        }
+
+        ksort($listing_hosts);
+
+        $listed_groups = array();
+
+        foreach ($listing_hosts as $host_id => $host) {
+            $listing = _pg_find_system_widget_on_page($host_id, 'catalog_listing');
+
+            if (!$listing) {
+                continue;
+            }
+
+            $product_group_id = (int) $listing['product_group_id'];
+
+            if ($product_group_id == 0) {
+                $product_group_id = (int) db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
+            }
+
+            if (!db_value("SELECT enabled FROM product_groups WHERE id = '" . e($product_group_id) . "'")) {
+                continue;
+            }
+
+            // The page product links open (pg_sw_catalog_detail_page_name()),
+            // when it is public, not marked noindex and carries a Catalog
+            // Detail widget. Its own group, when it has one, narrows which
+            // products resolve there.
+            $detail_page_name = function_exists('pg_sw_catalog_detail_page_name')
+                ? pg_sw_catalog_detail_page_name(isset($listing['cfg']['detail_page_id']) ? (int) $listing['cfg']['detail_page_id'] : 0)
+                : '';
+            $detail_page_id = 0;
+
+            foreach ($indexable_pages as $candidate_id => $candidate) {
+                if ((string) $candidate['page_name'] === $detail_page_name) {
+                    $detail_page_id = $candidate_id;
+                    break;
+                }
+            }
+
+            $detail = ($detail_page_id > 0) ? _pg_find_system_widget_on_page($detail_page_id, 'catalog_item_view') : null;
+            $detail_products = null;
+
+            if ($detail && ((int) $detail['product_group_id'] > 0)) {
+                $detail_products = array();
+
+                foreach ((array) db_items("SELECT products.address_name FROM products
+                                           INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
+                                           WHERE products_groups_xref.product_group = '" . (int) $detail['product_group_id'] . "'") as $row) {
+                    $detail_products[mb_strtolower((string) $row['address_name'], 'UTF-8')] = true;
+                }
+            }
+
+            $output_listing_path = h(PATH . encode_url_path($host['page_name']) . '/');
+            $output_detail_path = $detail ? h(PATH . encode_url_path($detail_page_name) . '/') : '';
+
+            foreach (get_catalog_items_for_sitemap($product_group_id, ($detail != null)) as $catalog_item) {
+                if ((string) $catalog_item['address_name'] === '') {
+                    continue;
+                }
+
+                if (($catalog_item['type'] == 'product_group') && ($catalog_item['display_type'] == 'browse')) {
+                    $group_key = mb_strtolower((string) $catalog_item['address_name'], 'UTF-8');
+
+                    if (isset($listed_groups[$group_key])) {
+                        continue;
+                    }
+
+                    $listed_groups[$group_key] = true;
+                    $output_path = $output_listing_path;
+                } else {
+                    if (($catalog_item['type'] == 'product') && ($detail_products !== null)
+                        && !isset($detail_products[mb_strtolower((string) $catalog_item['address_name'], 'UTF-8')])) {
+                        continue;
+                    }
+
+                    $output_path = $output_detail_path;
+                }
+
+                $add_url(URL_SCHEME . HOSTNAME_SETTING . $output_path . h(encode_url_path($catalog_item['address_name'])), $catalog_item['last_modified_timestamp']);
+            }
+        }
+
+        // The records of a list widget, under the list's own filters, on its
+        // detail page when that page shows the same form to everybody.
+        if (function_exists('pg_sw_page_widget') && function_exists('pg_sw_form_widget_form_page_id') && function_exists('pg_sw_form_list_filter_sql')) {
+            foreach (array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list') as $list_type) {
+                foreach (pg_sw_widget_pages($list_type) as $host) {
+                    $host_id = (int) $host['page_id'];
+
+                    if (!isset($listed_standard_pages[$host_id])) {
+                        continue;
+                    }
+
+                    $list = pg_sw_page_widget($host_id, $list_type);
+
+                    if (!$list) {
+                        continue;
+                    }
+
+                    $cfg = $list['cfg'];
+                    $form_page_id = pg_sw_form_widget_form_page_id($cfg);
+                    $detail_page_id = isset($cfg['detail_page_id']) ? (int) $cfg['detail_page_id'] : 0;
+
+                    if (($form_page_id <= 0) || !isset($indexable_pages[$detail_page_id])) {
+                        continue;
+                    }
+
+                    if (isset($cfg['access_control']) && ($cfg['access_control'] !== '') && ($cfg['access_control'] !== 'public')) {
+                        continue;
+                    }
+
+                    $record_view = pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
+                        return pg_sw_form_widget_form_page_id($c) === $form_page_id;
+                    });
+
+                    if (!$record_view || (isset($record_view['cfg']['access_control']) && !in_array($record_view['cfg']['access_control'], array('', 'public'), true))) {
+                        continue;
+                    }
+
+                    $filter_sql = pg_sw_form_list_filter_sql($form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array());
+                    $filter_join = '';
+
+                    if (($filter_sql['where'] !== '') && $filter_sql['tokens']) {
+                        $standard = pg_sw_standard_sql($filter_sql['tokens'], $detail_page_id, array('reference_code'));
+                        $filter_join = $standard['join'];
+                    }
+
+                    $output_detail_path = h(PATH . encode_url_path($indexable_pages[$detail_page_id]['page_name']));
+
+                    foreach ((array) db_items(
+                        "SELECT forms.reference_code, forms.last_modified_timestamp
+                        FROM forms
+                        $filter_join
+                        WHERE
+                            (forms.page_id = '" . (int) $form_page_id . "')
+                            AND (forms.complete = 1)
+                            " . $filter_sql['where'] . "
+                        ORDER BY forms.last_modified_timestamp DESC") as $record) {
+                        $add_url(URL_SCHEME . HOSTNAME_SETTING . $output_detail_path . '?r=' . h(rawurlencode((string) $record['reference_code'])), $record['last_modified_timestamp']);
                     }
                 }
             }

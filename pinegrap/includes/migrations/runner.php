@@ -746,17 +746,36 @@ function install_lock_marker_file() {
 
 }
 
+// The name of the upgrade lock. GET_LOCK names belong to the whole MySQL server, so the name
+// carries the database and sites on one shared server do not wait for each other. A fresh
+// installation has no config.php yet (DB_DATABASE is not defined there), so it asks the
+// connection which database it is using; with the empty name it had before, every site being
+// installed on the server at the same moment stopped with "Another upgrade is running".
+function install_lock_name() {
+
+	if (defined('DB_DATABASE')) {
+
+		return 'pinegrap_upgrade_' . md5(DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : ''));
+
+	}
+
+	return 'pinegrap_upgrade_' . md5('install@' . db_value("SELECT DATABASE()"));
+
+}
+
 function install_acquire_lock() {
 
 	global $install_runner;
 
-	$name = 'pinegrap_upgrade_' . md5((defined('DB_DATABASE') ? DB_DATABASE : '') . '@' . (defined('DB_HOST') ? DB_HOST : ''));
+	$name = '';
 
 	// The runner is already active here, so a server without GET_LOCK answers with an
 	// exception rather than a dead page, and the file lock takes over.
 	$got = null;
 
 	try {
+
+		$name = install_lock_name();
 
 		$got = db_value("SELECT GET_LOCK('" . $name . "', 0)");
 
@@ -857,8 +876,6 @@ function install_lock_is_held() {
 
 	global $install_runner;
 
-	$name = 'pinegrap_upgrade_' . md5((defined('DB_DATABASE') ? DB_DATABASE : '') . '@' . (defined('DB_HOST') ? DB_HOST : ''));
-
 	$free = null;
 
 	// outside a run a failed query is fatal, so the safety net is switched on for this one
@@ -868,7 +885,7 @@ function install_lock_is_held() {
 
 	try {
 
-		$free = db_value("SELECT IS_FREE_LOCK('" . $name . "')");
+		$free = db_value("SELECT IS_FREE_LOCK('" . install_lock_name() . "')");
 
 	} catch (Throwable $e) {
 

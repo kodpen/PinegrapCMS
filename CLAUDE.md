@@ -51,13 +51,13 @@ zaten verilmiş kararlar listeleniyor.
 - **Bu depo yalnız ürünü içerir. Kod tabanı `pinegrap/` altındadır ve
   değişiklikler oraya yazılır.** Bu dosyadaki ve skill'lerdeki yollar o köke
   göredir: `includes/fn/core.php` demek `pinegrap/includes/fn/core.php` demektir.
-- **Sürüm durumu (2026-10-11):** 2026.4.8 yayında (GitHub release `v2026.4.8`,
+- **Sürüm durumu (2026-10-12):** 2026.4.8 yayında (GitHub release `v2026.4.8`,
   PR #236, etiket `348b8a2`) ve **kapalıdır**; etiket taşınmaz.
-  Sıradaki sürüm **2026.4.9** henüz açılmadı: ilk şema adımı
+  Açık sürüm **2026.4.9** (2026-10-12'de 9.1 ile açıldı): şema adımları
   `includes/migrations/2026.4.9.php` → `upgrade_to_2026_4_9()` girişine
-  `upgrade_2026_4_9_<konu>()` alt adımı olarak girer (dosya ve `versions.php`
-  satırı o adımla açılır); `changelog.txt`'de yeni maddeler en üste açılacak
-  `2026.4.9` bölümüne yazılır. Geliştirme `development` dalında sürer; yayın,
+  `upgrade_2026_4_9_<konu>()` alt adımı olarak eklenir; `changelog.txt`'de
+  yeni maddeler en üstteki `2026.4.9` bölümüne yazılır. Geliştirme
+  `development` dalında sürer; yayın,
   `development`'ın ağacından `CLAUDE.md`, `.claude/`, `docs/`, `tools/` ve
   `tests/` çıkarılarak
   main'in üstüne kurulan tek "Release <sürüm>" commit'li `release/<sürüm>`

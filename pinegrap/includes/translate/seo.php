@@ -4,8 +4,10 @@
  *
  * Front-end translation - what search engines and the site search see of the
  * other languages: the language addresses in sitemap.xml with their
- * alternates, the robots.txt rules repeated under every language directory,
- * and the site search on a page served in another language.
+ * alternates, which of them may be offered at all (and what the pages
+ * answered when they were drawn), the robots.txt rules repeated under every
+ * language directory, and the site search on a page served in another
+ * language.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -49,20 +51,7 @@ function pg_tr_target_languages()
  */
 function pg_tr_page_id_of_url($url)
 {
-    static $names = null;
-    static $home = null;
-
-    if ($names === null) {
-        $names = array();
-
-        foreach ((array) db_items("SELECT page_id, page_name, page_home FROM page") as $row) {
-            $names[mb_strtolower((string) $row['page_name'], 'UTF-8')] = (int) $row['page_id'];
-
-            if (($home === null) && ($row['page_home'] === 'yes')) {
-                $home = (int) $row['page_id'];
-            }
-        }
-    }
+    $index = pg_tr_page_index();
 
     $path = (string) parse_url($url, PHP_URL_PATH);
     $path = rawurldecode(($path === '') ? '/' : $path);
@@ -74,7 +63,7 @@ function pg_tr_page_id_of_url($url)
     $rest = trim(substr($path, strlen(PATH)), '/');
 
     if ($rest === '') {
-        return (int) $home;
+        return (int) $index['home'];
     }
 
     if (strpos($rest, '/') !== false) {
@@ -83,20 +72,27 @@ function pg_tr_page_id_of_url($url)
 
     $key = mb_strtolower($rest, 'UTF-8');
 
-    return isset($names[$key]) ? $names[$key] : 0;
+    return isset($index['names'][$key]) ? (int) $index['names'][$key] : 0;
 }
 
 /**
- * Whether a language's address of a page may be listed for the search
- * engines under the language's index policy: never for "none", always for
- * "all", and for "reviewed" only when every text of the page has a reviewed
- * translation - the same rule the page's own robots meta follows.
+ * Whether a language's address of a page may be offered to the search
+ * engines - listed in sitemap.xml, named as an alternate - under the
+ * language's index policy: never for "none", always for "all". For
+ * "reviewed" the page decides with its own robots meta, which weighs every
+ * text drawn on it: what it answered the last time it was drawn in the
+ * language is used while it is known (pg_tr_page_verdicts()); until then -
+ * and for an address with a query string, which is not the page's own -
+ * the page's own texts must all have a reviewed translation.
  *
- * @param array  $row site_languages row
- * @param string $url the source address
+ * @param array  $row      site_languages row
+ * @param string $url      the source address, unescaped
+ * @param bool   $one_page true when only this page is asked about (the
+ *                         alternates in a page's head): reads its rows alone
+ *                         instead of the whole language's
  * @return bool
  */
-function pg_tr_indexable($row, $url)
+function pg_tr_indexable($row, $url, $one_page = false)
 {
     static $stats = array();
 
@@ -118,17 +114,161 @@ function pg_tr_indexable($row, $url)
 
     $code = (string) $row['code'];
 
-    if (!isset($stats[$code])) {
-        $stats[$code] = pg_tr_page_stats($code);
+    if ((string) parse_url($url, PHP_URL_QUERY) === '') {
+        $verdicts = pg_tr_page_verdicts($code, $one_page ? $page_id : 0);
+
+        if (isset($verdicts[$page_id])) {
+            return ($verdicts[$page_id] === 1);
+        }
     }
 
-    if (!isset($stats[$code][$page_id])) {
+    if ($one_page) {
+        $page = pg_tr_page_stats_one($code, $page_id);
+    } else {
+        if (!isset($stats[$code])) {
+            $stats[$code] = pg_tr_page_stats($code);
+        }
+
+        $page = isset($stats[$code][$page_id]) ? $stats[$code][$page_id] : null;
+    }
+
+    if (!is_array($page)) {
         return false;
     }
 
-    $page = $stats[$code][$page_id];
-
     return ($page['total'] > 0) && ($page['reviewed'] >= $page['total']);
+}
+
+/**
+ * pg_tr_page_stats() for one page: how many of its own texts (body and SEO
+ * fields) there are and how many have a reviewed translation.
+ *
+ * @param string $language
+ * @param int    $page_id
+ * @return array|null total, reviewed; null when the page has no texts
+ */
+function pg_tr_page_stats_one($language, $page_id)
+{
+    $row = db_item("SELECT COUNT(DISTINCT u.string_id) AS total,
+                           COUNT(DISTINCT CASE WHEN t.status = 'reviewed' THEN t.string_id END) AS reviewed
+                    FROM translation_uses u
+                    LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
+                    WHERE u.owner_type IN ('page', 'page_seo') AND u.owner_id = '" . (int) $page_id . "'");
+
+    if (!is_array($row) || ((int) $row['total'] === 0)) {
+        return null;
+    }
+
+    return array('total' => (int) $row['total'], 'reviewed' => (int) $row['reviewed']);
+}
+
+/**
+ * Whether the schema keeps what a page answered (page_translations.indexable,
+ * 2026.4.9). Code that runs before the database upgrade asks first.
+ *
+ * @return bool
+ */
+function pg_tr_page_verdict_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('page_translations', 'indexable');
+    }
+
+    return $ready;
+}
+
+/**
+ * What pages answered the search engines the last time they were drawn in a
+ * language under the reviewed policy: 1 indexable, 0 noindex. A page not
+ * drawn since the language's translations last changed has no answer -
+ * pg_tr_invalidate_pages() drops its row together with the drawn body.
+ *
+ * @param string $language
+ * @param int    $page_id  one page (read with its other languages), or 0 for
+ *                         every page of the language
+ * @return array page id => 0|1
+ */
+function pg_tr_page_verdicts($language, $page_id = 0)
+{
+    static $by_language = array();
+    static $by_page = array();
+
+    if (!pg_tr_page_verdict_ready()) {
+        return array();
+    }
+
+    $language = (string) $language;
+    $page_id = (int) $page_id;
+
+    if ($page_id > 0) {
+        if (!isset($by_page[$page_id])) {
+            $by_page[$page_id] = array();
+
+            foreach (db_items("SELECT language, indexable FROM page_translations
+                               WHERE page_id = '$page_id' AND indexable IS NOT NULL") as $row) {
+                $by_page[$page_id][(string) $row['language']] = (int) $row['indexable'];
+            }
+        }
+
+        return isset($by_page[$page_id][$language]) ? array($page_id => $by_page[$page_id][$language]) : array();
+    }
+
+    if (!isset($by_language[$language])) {
+        $by_language[$language] = array();
+
+        foreach (db_items("SELECT page_id, indexable FROM page_translations
+                           WHERE language = '" . e($language) . "' AND indexable IS NOT NULL") as $row) {
+            $by_language[$language][(int) $row['page_id']] = (int) $row['indexable'];
+        }
+    }
+
+    return $by_language[$language];
+}
+
+/**
+ * Keeps what a page drawn in a language answered the search engines, for
+ * pg_tr_indexable(). Only a page's own address answered in full counts: an
+ * address with a query string (a filtered list, one event), one below a page
+ * (a catalog item) or an error answer is not the page's. Written only when
+ * the answer changed.
+ *
+ * @param string $url       the source address of the page, unescaped
+ * @param string $language
+ * @param bool   $indexable
+ */
+function pg_tr_page_verdict_keep($url, $language, $indexable)
+{
+    if (!pg_tr_page_verdict_ready() || ((string) parse_url($url, PHP_URL_QUERY) !== '')) {
+        return;
+    }
+
+    $status = function_exists('http_response_code') ? http_response_code() : false;
+
+    if (($status !== false) && ((int) $status !== 200)) {
+        return;
+    }
+
+    $page_id = pg_tr_page_id_of_url($url);
+
+    if ($page_id === 0) {
+        return;
+    }
+
+    $value = $indexable ? 1 : 0;
+    $known = pg_tr_page_verdicts($language, $page_id);
+
+    if (isset($known[$page_id]) && ($known[$page_id] === $value)) {
+        return;
+    }
+
+    // A page without a drawn body (one that is not built in the visual
+    // editor, or whose body was dropped) gets a row with an empty one, which
+    // the body cache never serves.
+    db("INSERT INTO page_translations (page_id, language, tree_code, indexable)
+        VALUES ('$page_id', '" . e($language) . "', '', '$value')
+        ON DUPLICATE KEY UPDATE indexable = VALUES(indexable)");
 }
 
 /**

@@ -4864,15 +4864,23 @@ const StyleDesigner = (function () {
         // each of those into an animated scroll.
         'html { scroll-behavior:auto !important; }',
         // Designer node wrapper — inset box-shadow: it does not affect layout and adds no scrollbar
-        '.sd-wrap { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
-        '.sd-wrap:hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
+        '.sd-wrap:where(:not([data-sd-self])) { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
+        '.sd-wrap:where(:not([data-sd-self])):hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
+        // An element that is its own wrapper (a summary, _sdSelfWrapped()) is
+        // the page's element: the wrapper's box styling is not put on it (the
+        // canvas rules are unlayered and would beat a framework's layered
+        // ones), only a position for its toolbar and outlines for the marks.
+        // The :where() above keeps every other wrapper's specificity.
+        '.sd-wrap[data-sd-self] { position:relative; }',
+        '.sd-wrap[data-sd-self]:hover:not(:has(.sd-wrap:hover)) { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
         // Audit badge: a small "!" pinned to the top-left of a wrapper whose
         // node has an HTML / SEO warning. Click opens the audit panel on it.
         '.sd-issue-badge { position:absolute; top:-7px; left:-7px; z-index:20; width:16px; height:16px; border-radius:50%; background:#f0c040; color:#1b1f24; font:700 11px/16px sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.4); cursor:pointer; pointer-events:auto; }',
         '.sd-issue-badge:hover { background:#ffd866; }',
         '.sd-wrap.sd-has-issue { box-shadow:inset 0 0 0 1px rgba(240,192,64,.55); }',
         '.sd-wrap.sd-has-issue.sd-selected { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); }',
-        '.sd-wrap.sd-selected { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); background:rgba(13,110,253,.02); z-index:10; }',
+        '.sd-wrap.sd-selected:where(:not([data-sd-self])) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); background:rgba(13,110,253,.02); z-index:10; }',
+        '.sd-wrap.sd-selected[data-sd-self] { outline:1px solid rgba(13,110,253,.7); outline-offset:-1px; }',
         // Type-specific spacing
         // 100vh applies ONLY to the page's outer root (body's direct child).
         // Without the `body >` scope, a system widget's cached tree (which
@@ -4926,6 +4934,9 @@ const StyleDesigner = (function () {
         'td.sd-wrap, th.sd-wrap { position:relative; }',
         // Toolbar inside td/th (positioned inside the cell)
         'td.sd-wrap > .sd-tb, th.sd-wrap > .sd-tb { top:0; left:0; }',
+        // A summary's toolbar, inside it too: above it, a details that clips
+        // its content (a rounded accordion item) would hide it.
+        '.sd-wrap[data-sd-self] > .sd-tb { top:0; left:0; border-radius:0 0 4px 0; }',
         // Persistent note indicator — always-visible dot on any sd-wrap with a saved note.
         // Sits above hover outline but below selection toolbar/outline.
         '.sd-persistent-note { position:absolute; top:2px; right:2px; width:16px; height:16px; ' +
@@ -5965,7 +5976,7 @@ const StyleDesigner = (function () {
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
-            '<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
+            '<link rel="stylesheet" id="sd-icons-css" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
             '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body' +
             (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') +
             (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '></body></html>');
@@ -6000,7 +6011,15 @@ const StyleDesigner = (function () {
             var t = e.target;
             var w = (t && t.closest) ? t.closest('.sd-wrap') : null;
             _sdHoverWrap = w;
-            if (w) { _sdTbFlip(w); _sdPlaceWrapChrome(w); }
+            if (w) {
+                // Hovering shows this wrapper's toolbar, and the name of each
+                // bound wrapper around it.
+                for (var a = w; a; a = a.parentElement ? a.parentElement.closest('.sd-wrap') : null) {
+                    if (a === w || a.classList.contains('sd-has-binding')) _sdTbFill(a);
+                }
+                _sdTbFlip(w);
+                _sdPlaceWrapChrome(w);
+            }
         });
         var _sdChromeRaf = 0;
         canvasDoc.addEventListener('load', function (e) {
@@ -6469,6 +6488,7 @@ const StyleDesigner = (function () {
         if (!canvasDoc) return null;
         var wrap = canvasDoc.querySelector('[data-sd-id="' + nodeId + '"]');
         if (!wrap) return null;
+        if (wrap.hasAttribute('data-sd-self')) return wrap;
         // The first child that is NOT sd-tb and NOT sd-dz is the inner el
         for (var i = 0; i < wrap.children.length; i++) {
             var ch = wrap.children[i];
@@ -8054,6 +8074,19 @@ const StyleDesigner = (function () {
     // Updates selection UI (right/bottom panels, tree, status) WITHOUT rebuilding the canvas.
     // Used when clicking Bootstrap interactive elements so BS JS can handle collapse/modal/dropdown
     // without the canvas being torn down and rebuilt (which resets component state).
+    // A node inside a closed <details> (an FAQ answer picked in the tree)
+    // is shown: its details are opened on the canvas. Not the one whose
+    // summary holds the node: the click that selected it toggles that one.
+    function _sdRevealInDetails(wrap) {
+        for (var n = wrap; n && n.parentElement; ) {
+            var d = n.parentElement.closest('details');
+            if (!d) return;
+            var s = d.querySelector(':scope > summary');
+            if (!d.open && !(s && s.contains(wrap))) d.open = true;
+            n = d;
+        }
+    }
+
     function renderSelectionOnly() {
         // Keep _editingSharedSid in sync with the new selection so ctx-bar lookups
         // (findDropdownContainer / findNavbarContainer / findCompositeContext, etc.)
@@ -8065,17 +8098,46 @@ const StyleDesigner = (function () {
             var _toSel = selectedNodes.length > 1 ? selectedNodes : (selectedNode ? [selectedNode] : []);
             _toSel.forEach(function(n) {
                 var wrap = _findCanvasEl(n);
-                if (wrap) wrap.classList.add('sd-selected');
+                if (wrap) { wrap.classList.add('sd-selected'); _sdTbFill(wrap); _sdRevealInDetails(wrap); }
             });
             _sdPlaceSelectedChrome();
         }
         renderProperties();
         renderStatusBar();
-        renderTree();
+        if (!_sdTreeSelectInPlace()) renderTree();
         renderHtmlTree();
         renderAttrsPanel();
         renderStylesPanel();
         updateCtxBar();
+    }
+
+    // The <details> the operator opened or closed on the canvas. A render
+    // builds them again as the tree has them (closed unless `open`); the
+    // item being read stays open. Canvas-only: the tree's `open` attribute
+    // is the page's, and a change to it wins over what the canvas remembers.
+    var _canvasDetailsState = {};
+    function _captureDetailsState() {
+        if (!canvasDoc) return;
+        canvasDoc.querySelectorAll('details').forEach(function (d) {
+            var w = d.parentElement;
+            var id = (w && w.getAttribute) ? w.getAttribute('data-sd-id') : null;
+            if (!id || d._sdOpenDefault === undefined) return;
+            _canvasDetailsState[id] = { open: d.open, def: d._sdOpenDefault };
+        });
+    }
+    function _restoreDetailsState() {
+        if (!canvasDoc) return;
+        var all = Array.prototype.slice.call(canvasDoc.querySelectorAll('details'));
+        // Every default is read first: opening one of a named group closes
+        // the others.
+        var defs = all.map(function (d) { return d.open; });
+        all.forEach(function (d, i) {
+            var w = d.parentElement;
+            var id = (w && w.getAttribute) ? w.getAttribute('data-sd-id') : null;
+            var was = id ? _canvasDetailsState[id] : null;
+            d._sdOpenDefault = defs[i];
+            if (was && was.def === defs[i] && was.open !== defs[i]) d.open = was.open;
+        });
     }
 
     // Per-canvas tab activation memory. Designer-edited tab state must
@@ -8156,6 +8218,8 @@ const StyleDesigner = (function () {
 
     // The element a wrapper holds: its first child that is not editor chrome.
     function _sdWrapEl(w) {
+        // A summary is its own wrapper (_sdSelfWrapped()).
+        if (w && w.hasAttribute && w.hasAttribute('data-sd-self')) return w;
         for (var c = w ? w.firstElementChild : null; c; c = c.nextElementSibling) {
             if (!c.matches(_SD_FX_CHROME)) return c;
         }
@@ -8466,10 +8530,11 @@ const StyleDesigner = (function () {
     var _SD_BR_WRAP = 'div.sd-wrap:not([data-sd-type="col"])';
     // Appended to every compound: a wrapper, a piece of editor chrome or a
     // canvas-only holder is never one of the page's elements. They all carry
-    // an `sd-` class; the two page elements that do too are a ghost record
-    // and a column (whose wrapper is the column itself). All of it inside
-    // :where(), so it adds nothing to the rule's specificity.
-    var _SD_BR_X = ':not(:where([class^="sd-"]:not(.sd-ghost, [data-sd-type="col"]), [class*=" sd-"]:not(.sd-ghost, [data-sd-type="col"])))';
+    // an `sd-` class; the page elements that do too are a ghost record, a
+    // column (whose wrapper is the column itself) and a summary (its own
+    // wrapper, _sdSelfWrapped()). All of it inside :where(), so it adds
+    // nothing to the rule's specificity.
+    var _SD_BR_X = ':not(:where([class^="sd-"]:not(.sd-ghost, [data-sd-type="col"], [data-sd-self]), [class*=" sd-"]:not(.sd-ghost, [data-sd-type="col"], [data-sd-self])))';
     // Siblings that count for :first-child and the like (chrome does not).
     var _SD_BR_SIB = ':where(:not(.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-loop-band, .sd-dz, .sd-virtual-text, .sd-section-binding-hint, .sd-align-guide))';
     var _SD_BR_NEED = /[>+~]|:(first|last|only|nth)-|:has\(/i;
@@ -8512,22 +8577,213 @@ const StyleDesigner = (function () {
                 if (_sdBridged.has(r)) continue;
                 _sdBridged.add(r);
                 var st = r.selectorText;
-                if (_SD_BR_NEED.test(st)) {
-                    var b = _sdBridgeList(st);
-                    if (b !== st) {
-                        try { r.selectorText = b; } catch (e) {}
-                        // A list the browser refuses as a whole (one part it
-                        // cannot parse) goes in the forgiving :is() form.
-                        if (r.selectorText === st && b.indexOf('::') === -1) {
-                            try { r.selectorText = ':is(' + b + ')'; } catch (e) {}
-                        }
-                    }
-                }
+                if (_SD_BR_NEED.test(st) && !_sdBrDefer(r, st)) _sdBridgeRule(r, st);
                 continue;   // rules nested inside a style rule keep their selectors
             }
             if (r.cssRules && _sdBridgeRules(r, depth + 1)) imports = true;               // @media, @layer, @supports, @container
         }
         return imports;
+    }
+
+    // One rule's selector list in its canvas form.
+    function _sdBridgeRule(r, st) {
+        var b = _sdBridgeList(st);
+        if (b === st) return;
+        try { r.selectorText = b; } catch (e) {}
+        // A list the browser refuses as a whole (one part it cannot parse)
+        // goes in the forgiving :is() form.
+        if (r.selectorText === st && b.indexOf('::') === -1) {
+            try { r.selectorText = ':is(' + b + ')'; } catch (e) {}
+        }
+    }
+
+    // ── Bridging only what the page uses ──
+    // A framework stylesheet carries thousands of rules for classes a page
+    // never uses (every space-x-*, divide-*, row-cols-* step at every
+    // breakpoint). A bridged rule costs far more to match than the original:
+    // several alternatives, each with wrapper and position tests, and one
+    // whose subject is universal (`:where(.space-x-3 > :not(:last-child))`)
+    // is tried on every element at every style change. Bridged for nothing,
+    // a few hundred of them made every restyle of the canvas a full,
+    // quarter-second recalculation, so hovering and dragging stalled.
+    //
+    // A rule is bridged once the classes it needs are on the canvas. Until
+    // then it waits in an index keyed by a class it is missing, and an
+    // observer on the canvas bridges it the moment that class shows up — an
+    // edit, a script switching a state class. A rule that matches nothing on
+    // the page draws the same bridged or not, so the canvas looks the same.
+    function _sdBrState() {
+        if (!canvasDoc || !canvasDoc.documentElement) return null;
+        var br = canvasDoc._sdBr;
+        if (br) return br;
+        br = canvasDoc._sdBr = { seen: new Set(), wait: new Map(), obs: null };
+        if (canvasDoc.body) _sdBrTake(br, canvasDoc.body, true, null);
+        // The editor's own observer: the canvas window belongs to the
+        // design's scripts.
+        if (typeof MutationObserver === 'function') {
+            br.obs = new MutationObserver(function (recs) {
+                var fresh = [];
+                for (var i = 0; i < recs.length; i++) {
+                    var rec = recs[i];
+                    if (rec.type === 'attributes') { _sdBrTake(br, rec.target, false, fresh); continue; }
+                    for (var j = 0; j < rec.addedNodes.length; j++) {
+                        if (rec.addedNodes[j].nodeType === 1) _sdBrTake(br, rec.addedNodes[j], true, fresh);
+                    }
+                }
+                if (fresh.length) _sdBrRelease(br, fresh);
+            });
+            br.obs.observe(canvasDoc.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+        }
+        return br;
+    }
+
+    // Notes the classes of an element (and, deep, of everything under it);
+    // the ones some waiting rule is keyed by go into `fresh`.
+    function _sdBrTake(br, el, deep, fresh) {
+        _sdBrTakeOne(br, el, fresh);
+        if (!deep || !el.querySelectorAll) return;
+        var all = el.querySelectorAll('[class]');
+        for (var i = 0; i < all.length; i++) _sdBrTakeOne(br, all[i], fresh);
+    }
+
+    function _sdBrTakeOne(br, el, fresh) {
+        var cl = el.classList;
+        if (!cl) return;
+        for (var i = 0; i < cl.length; i++) {
+            var c = cl[i];
+            if (br.seen.has(c)) continue;
+            br.seen.add(c);
+            if (fresh && br.wait.has(c)) fresh.push(c);
+        }
+    }
+
+    // Whether the rule waits for its classes (true) or is bridged now.
+    // Without an observer nothing could wake it, so everything is bridged.
+    function _sdBrDefer(r, st) {
+        var br = _sdBrState();
+        if (!br || !br.obs) return false;
+        var needs = _sdBrNeeds(st);
+        if (!needs || _sdBrMet(br, needs)) return false;
+        _sdBrPark(br, { r: r, st: st, needs: needs, done: false });
+        return true;
+    }
+
+    // One of the selectors has every class it needs on the canvas.
+    function _sdBrMet(br, needs) {
+        for (var i = 0; i < needs.length; i++) {
+            var ok = true;
+            for (var j = 0; j < needs[i].length && ok; j++) ok = br.seen.has(needs[i][j]);
+            if (ok) return true;
+        }
+        return false;
+    }
+
+    // Files a waiting rule under the first missing class of each selector.
+    function _sdBrPark(br, w) {
+        for (var i = 0; i < w.needs.length; i++) {
+            for (var j = 0; j < w.needs[i].length; j++) {
+                var c = w.needs[i][j];
+                if (br.seen.has(c)) continue;
+                var q = br.wait.get(c);
+                if (!q) br.wait.set(c, (q = []));
+                q.push(w);
+                break;
+            }
+        }
+    }
+
+    // Classes just seen: the rules waiting on them are bridged, or filed
+    // again under the next class they still miss.
+    function _sdBrRelease(br, classes) {
+        for (var i = 0; i < classes.length; i++) {
+            var q = br.wait.get(classes[i]);
+            if (!q) continue;
+            br.wait.delete(classes[i]);
+            for (var j = 0; j < q.length; j++) {
+                var w = q[j];
+                if (w.done) continue;
+                if (_sdBrMet(br, w.needs)) { w.done = true; _sdBridgeRule(w.r, w.st); }
+                else _sdBrPark(br, w);
+            }
+        }
+    }
+
+    // The classes a selector list needs on the page before it can match
+    // anything: for each selector, the classes outside every bracket and
+    // parenthesis (an argument of :not(), :is() or :has() need not be
+    // there). A selector that is one :is() / :where() as a whole is read
+    // through. Null when a selector needs no class: bridged at once.
+    function _sdBrNeeds(text) {
+        var list = _sdSelSplitList(text);
+        if (!list || !list.length) return null;
+        var out = [];
+        for (var i = 0; i < list.length; i++) {
+            var inner = _sdBrGroupArg(list[i]);
+            if (inner !== null) {
+                var sub = _sdBrNeeds(inner);
+                if (!sub) return null;
+                out = out.concat(sub);
+                continue;
+            }
+            var cls = _sdBrTopClasses(list[i]);
+            if (!cls.length) return null;
+            out.push(cls);
+        }
+        return out;
+    }
+
+    // The argument of a selector that is a single :is( … ) / :where( … ).
+    function _sdBrGroupArg(sel) {
+        var m = /^:(is|where)\(/i.exec(sel);
+        if (!m) return null;
+        var depth = 0, q = '';
+        for (var i = m[0].length - 1; i < sel.length; i++) {
+            var ch = sel.charAt(i);
+            if (ch === '\\') { i = _sdSelEscEnd(sel, i) - 1; continue; }
+            if (q) { if (ch === q) q = ''; continue; }
+            if (ch === '"' || ch === "'") { q = ch; continue; }
+            if (ch === '(' || ch === '[') depth++;
+            else if ((ch === ')' || ch === ']') && --depth === 0) {
+                return (i === sel.length - 1) ? sel.slice(m[0].length, i) : null;
+            }
+        }
+        return null;
+    }
+
+    // The class names of a selector outside brackets and parentheses,
+    // escapes resolved (`.md\:row-cols-2` → "md:row-cols-2").
+    function _sdBrTopClasses(sel) {
+        var out = [], depth = 0, q = '';
+        for (var i = 0; i < sel.length; i++) {
+            var ch = sel.charAt(i);
+            if (ch === '\\') { i = _sdSelEscEnd(sel, i) - 1; continue; }
+            if (q) { if (ch === q) q = ''; continue; }
+            if (ch === '"' || ch === "'") { q = ch; continue; }
+            if (ch === '(' || ch === '[') { depth++; continue; }
+            if (ch === ')' || ch === ']') { depth--; continue; }
+            if (ch !== '.' || depth !== 0) continue;
+            var name = '', j = i + 1;
+            while (j < sel.length) {
+                var c = sel.charAt(j);
+                if (c === '\\') {
+                    var e = _sdSelEscEnd(sel, j);
+                    var hex = /^\\([0-9a-fA-F]{1,6})/.exec(sel.slice(j, e));
+                    if (hex) {
+                        var cp = parseInt(hex[1], 16);
+                        name += (cp > 0 && cp <= 0x10FFFF) ? String.fromCodePoint(cp) : '\uFFFD';
+                    } else {
+                        name += sel.charAt(j + 1);
+                    }
+                    j = e;
+                    continue;
+                }
+                if (/[\w-]/.test(c) || c.charCodeAt(0) > 127) { name += c; j++; continue; }
+                break;
+            }
+            if (name) out.push(name);
+            i = j - 1;
+        }
+        return out;
     }
 
     // A selector list, each selector rewritten where needed.
@@ -8771,6 +9027,51 @@ const StyleDesigner = (function () {
         return ctx;
     }
 
+    // The exports of a module the design loads, kept on the canvas window
+    // (__sdFwModules) by a module of the editor's own that imports the same
+    // URL: the same instance, so what is started from them is the page's own
+    // component, answering the page's own delegated events. The canvas is
+    // told when they arrive.
+    function _sdShareModule(url) {
+        if (!canvasDoc || !canvasDoc.head || !url) return;
+        if (!canvasDoc._sdModWatch) {
+            canvasDoc._sdModWatch = true;
+            canvasDoc.addEventListener('sd:fw-module', function () { _sdBootModuleWidgets(); });
+        }
+        var s = canvasDoc.createElement('script');
+        s.type = 'module';
+        s.textContent = 'import * as m from ' + JSON.stringify(url) + ';\n' +
+            '(window.__sdFwModules = window.__sdFwModules || []).push(m);\n' +
+            'document.dispatchEvent(new Event("sd:fw-module"));';
+        canvasDoc.head.appendChild(s);
+    }
+
+    // Components a framework module starts by itself on DOMContentLoaded:
+    // Bootstrap 6's nav that folds the links it has no room for into "More"
+    // (nav-overflow). The canvas is drawn after that event and again on
+    // every change, so they are started after each render. Export name →
+    // its elements. The ones that rebuild form controls (chips, range,
+    // OTP, strength) are left out: the editor selects and edits those.
+    var _SD_MODULE_BOOT = [
+        ['NavOverflow', '[data-bs-toggle="nav-overflow"]']
+    ];
+    function _sdBootModuleWidgets() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        var mods = canvasDoc.defaultView ? canvasDoc.defaultView.__sdFwModules : null;
+        if (!mods || !mods.length) return;
+        _SD_MODULE_BOOT.forEach(function (b) {
+            var els = canvasDoc.querySelectorAll(b[1]);
+            if (!els.length) return;
+            mods.forEach(function (m) {
+                var C = m ? m[b[0]] : null;
+                if (!C || typeof C.getOrCreateInstance !== 'function') return;
+                els.forEach(function (el) {
+                    try { C.getOrCreateInstance(el); } catch (e) { /* the page's markup does not fit the component */ }
+                });
+            });
+        });
+    }
+
     function renderCanvas() {
         if (!canvasDoc || !canvasDoc.body || !iframeReady) return;
         // Preserve scroll position so options changes don't jump the canvas to top
@@ -8783,6 +9084,7 @@ const StyleDesigner = (function () {
         // restore the user's last-selected tab (Bootstrap's tab JS otherwise
         // resets to whatever the tree marks as active = always tab 1).
         _captureTabState();
+        _captureDetailsState();
         if (tree) injectGoogleFonts();
         canvasDoc.body.innerHTML = '';
         // A shared tree left marked open by an interrupted render would draw
@@ -8851,6 +9153,8 @@ const StyleDesigner = (function () {
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
         _restoreTabState();
+        _restoreDetailsState();
+        _sdBootModuleWidgets();
         if (_scrollY) {
             if (canvasDoc.documentElement) canvasDoc.documentElement.scrollTop = _scrollY;
             canvasDoc.body.scrollTop = _scrollY;
@@ -8966,6 +9270,16 @@ const StyleDesigner = (function () {
             _sdCanvasFidelityPass();
             _sdPlaceSelectedChrome();
         });
+    }
+
+    // A <summary> is the summary of its <details> only as that element's own
+    // child. Wrapped in a div it is an ordinary element: the browser draws
+    // its own "Details" label instead, and the question shows only once that
+    // is opened, inside the answer. Like a table cell, it is its own wrapper:
+    // the element carries the wrapper's marks (buildNodeEl()).
+    function _sdSelfWrapped(node) {
+        return !!(node && node.type === 'semantic' && node.props &&
+            String(node.props.tag || '').toLowerCase() === 'summary');
     }
 
     // Table structural tags must NOT be wrapped in a div — browsers reject divs inside
@@ -9663,6 +9977,18 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // Builds what a wrapper's toolbar holds, the first time it is needed:
+    // buildNodeEl() leaves the box empty.
+    function _sdTbFill(w) {
+        if (!w || !w.firstElementChild) return;
+        for (var c = w.firstElementChild; c; c = c.nextElementSibling) {
+            if (!c.classList.contains('sd-tb')) continue;
+            var fill = c._sdFill;
+            if (fill) { c._sdFill = null; fill(); }
+            return;
+        }
+    }
+
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -9693,15 +10019,22 @@ const StyleDesigner = (function () {
         }
 
         var doc = canvasDoc;
-        var wrapper = doc.createElement('div');
-        wrapper.className = 'sd-wrap';
+        // A summary is its own wrapper (_sdSelfWrapped()).
+        var _selfWrap = _sdSelfWrapped(node);
+        var wrapper = _selfWrap ? buildInnerElement(doc, node) : doc.createElement('div');
+        if (_selfWrap) {
+            wrapper.classList.add('sd-wrap');
+            wrapper.setAttribute('data-sd-self', '1');
+        } else {
+            wrapper.className = 'sd-wrap';
+        }
         wrapper.setAttribute('data-sd-id', node._id);
         wrapper.setAttribute('data-sd-type', node.type);
         // A design on a custom framework: the wrapper draws no box of its own,
         // so its element is laid out by its real parent, as on the page. The
         // page root keeps its box (it is the canvas-wide drop target), and so
-        // does a column, whose wrapper is the column itself.
-        if (_sdFxFlatOn() && node.type !== 'root' && node.type !== 'col') wrapper.classList.add('sd-fx-flat');
+        // does a column, whose wrapper is the column itself, and a summary.
+        if (_sdFxFlatOn() && !_selfWrap && node.type !== 'root' && node.type !== 'col') wrapper.classList.add('sd-fx-flat');
 
         // Content level: the canvas says which blocks are the operator's.
         // A marked area gets a ring and a label; everything they cannot touch
@@ -9864,193 +10197,200 @@ const StyleDesigner = (function () {
             wrapper.appendChild(noteDot);
         }
 
-        // Toolbar: name tag (hover) + action buttons (selected)
+        // Toolbar: name tag (hover) + action buttons (selected). The box goes
+        // in now, so the wrapper keeps its shape (toolbar first, then the
+        // element: position selectors count on it); what it holds is built
+        // the first time it can show, on hover or selection (_sdTbFill()).
+        // A page of a thousand elements carried a thousand hidden toolbars:
+        // most of the canvas's elements, and much of the time to draw it.
         var tb = doc.createElement('div');
         tb.className = 'sd-tb';
+        tb._sdFill = function () {
+            // Name span — visible on hover only (CSS-controlled via :has())
+            var tbName = doc.createElement('span');
+            tbName.className = 'sd-tb-name';
+            tbName.textContent = getNodeLabel(node);
+            tb.appendChild(tbName);
 
-        // Name span — visible on hover only (CSS-controlled via :has())
-        var tbName = doc.createElement('span');
-        tbName.className = 'sd-tb-name';
-        tbName.textContent = getNodeLabel(node);
-        tb.appendChild(tbName);
+            // Buttons container — visible only when selected
+            var tbBtns = doc.createElement('div');
+            tbBtns.className = 'sd-tb-btns';
 
-        // Buttons container — visible only when selected
-        var tbBtns = doc.createElement('div');
-        tbBtns.className = 'sd-tb-btns';
-
-        // Drag handle — <span draggable> (button[draggable] unreliable in cross-origin iframes)
-        // Skip inner descendants of component nodes: the inner button / list / item of a
-        // dropdown, modal, navbar, etc. must not be draggable on its own — moving the piece
-        // out of its component container would break the structure. The component root
-        // itself (node.type === 'component') still gets a drag handle.
-        var insideComponent = false;
-        if (node.type !== 'root' && node.type !== 'component') {
-            var anc = findParent(node, tree);
-            while (anc) {
-                if (anc.type === 'component') { insideComponent = true; break; }
-                anc = findParent(anc, tree);
-            }
-        }
-        if (node.type !== 'root' && !insideComponent && !node.props._locked && !hasLockedAncestor(node)) {
-            var dragHandle = doc.createElement('span');
-            dragHandle.className = 'sd-drag-handle bi bi-grip-vertical';
-            dragHandle.title = _sdT('Drag to move');
-            dragHandle.setAttribute('draggable', 'true');
-            dragHandle.addEventListener('mousedown', function(e) {
-                // Do not let mousedown cancel the selection — it is only here for the drag
-                e.stopPropagation();
-            });
-            dragHandle.addEventListener('dragstart', function(e) {
-                e.stopPropagation();
-                dragData = { source: 'node', node: node, type: node.type };
-                _lastDragData = dragData; _lastDragDataTime = Date.now();
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', node.type);
-                wrapper.style.opacity = '0.45';
-            });
-            dragHandle.addEventListener('dragend', function(e) {
-                e.stopPropagation();
-                wrapper.style.opacity = '';
-                _clearAlignGuides();
-                // Defer dragData clear so a racing `drop` (Firefox / deeply
-                // nested target) still sees the payload.
-                setTimeout(function () {
-                    if (dragData && dragData.source === 'node') dragData = null;
-                }, 0);
-                // CRITICAL: don't call renderCanvas() / renderTree() here.
-                // Chromium can fire `dragend` BEFORE `drop` for deeply
-                // nested drop targets (e.g. an empty col's dz placeholder
-                // inside body > container > row > col). Rebuilding the
-                // DOM in dragend tears down the dz that the drop event
-                // was queued to fire on — the drop never lands and the
-                // user sees "release does nothing". A successful drop
-                // already runs render() inside handleDrop; an aborted
-                // drag doesn't change the tree, so no re-render needed.
-            });
-            tbBtns.appendChild(dragHandle);
-        }
-
-        // + button removed — users add elements by drag-and-drop from the left panel
-        // Duplicate
-        if (node.type !== 'root') {
-            var dupBtn = doc.createElement('button');
-            dupBtn.type = 'button';
-            dupBtn.className = 'bi bi-copy';
-            dupBtn.title = _sdT('Duplicate');
-            dupBtn.addEventListener('click', function (e) { e.stopPropagation(); onDuplicate(node); });
-            if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
-            tbBtns.appendChild(dupBtn);
-        }
-        // Binding indicator — shown when this node has any data binding (system widget).
-        // Click scrolls the props panel to the "Bind Data" section + opens it.
-        if (node.type !== 'root' && node.props && node.props._bindings) {
-            var _boundKeys = Object.keys(node.props._bindings).filter(function (k) { return !!node.props._bindings[k]; });
-            if (_boundKeys.length) {
-                var bindBtn = doc.createElement('button');
-                bindBtn.type = 'button';
-                bindBtn.className = 'sd-tb-bind-btn bi bi-link-45deg';
-                // Most bindings resolve to a ^^token^^; field bindings do not
-                // — they name a form field, and printing them in token syntax
-                // would send the designer looking for a token that never exists.
-                bindBtn.title = _sdT('Data bound') + ': ' + _boundKeys.map(function (k) {
-                    var v = node.props._bindings[k];
-                    if (k === 'form_field') return _sdT('form field') + ' → ' + v;
-                    if (k === 'eo_field')   return _sdT('order field') + ' → ' + v;
-                    if (k === 'section')    return _sdT('section') + ' → ' + v;
-                    if (k === 'action')     return _sdT('action') + ' → ' + v;
-                    return k + ' → ^^' + v + '^^';
-                }).join(', ');
-                bindBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    // Select this node so its props panel renders, then scroll + highlight
-                    selectedNode = node;
-                    selectedNodes = [];
-                    _sdSelectRender();
-                    setTimeout(function () {
-                        var panel = document.getElementById('sd-properties');
-                        if (!panel) return;
-                        // Find the "Bind Data" section by its bi-link-45deg icon title
-                        var sects = panel.querySelectorAll('.sd-sect');
-                        for (var i = 0; i < sects.length; i++) {
-                            var lbl = sects[i].querySelector('.sd-sect-label, .sd-sect-title');
-                            if (lbl && lbl.textContent && lbl.textContent.indexOf(_sdT('Bind Data')) !== -1) {
-                                sects[i].scrollIntoView({ block: 'start', behavior: 'smooth' });
-                                sects[i].classList.add('sd-sect-flash');
-                                setTimeout(function () { sects[i].classList.remove('sd-sect-flash'); }, 1200);
-                                break;
-                            }
-                        }
-                    }, 0);
-                });
-                tbBtns.appendChild(bindBtn);
-            }
-        }
-        // Notes — opens a floating notes popup anchored to this node
-        if (node.type !== 'root') {
-            var noteBtn = doc.createElement('button');
-            noteBtn.type = 'button';
-            var _hasNote = !!(node.props && node.props._notes && node.props._notes.trim());
-            noteBtn.className = 'sd-note bi ' + (_hasNote ? 'bi-chat-fill' : 'bi-chat');
-            noteBtn.title = _hasNote ? _sdT('Note (existing)') : _sdT('Add a note');
-            if (_hasNote) noteBtn.style.color = '#0dcaf0';
-            noteBtn.addEventListener('click', function (e) { e.stopPropagation(); openNotesPopup(node); });
-            tbBtns.appendChild(noteBtn);
-        }
-        // Delete
-        if (node.type !== 'root') {
-            var delBtn = doc.createElement('button');
-            delBtn.type = 'button';
-            delBtn.className = 'sd-del bi bi-trash';
-            delBtn.title = _sdT('Delete');
-            if (_isDeleteProtected(node)) {
-                delBtn.style.opacity = '0.4';
-                delBtn.style.cursor = 'not-allowed';
-                delBtn.title = (node.type === 'loop_area')
-                    ? _sdT('A loop area cannot be deleted')
-                    : _sdT('This element cannot be deleted (it contains a loop area)');
-                delBtn.addEventListener('click', function (e) { e.stopPropagation(); _blockDeleteWithToast(node); });
-            } else {
-                delBtn.addEventListener('click', function (e) { e.stopPropagation(); if (!node.props._locked && !hasLockedAncestor(node)) onDelete(node); });
-                if (!_sdCanEditNode(node)) delBtn.style.display = 'none';
-            }
-            tbBtns.appendChild(delBtn);
-        }
-
-        // Toggle visibility — for Bootstrap collapse/modal/offcanvas/dropdown-menu nodes
-        var visCls = ['collapse', 'modal', 'offcanvas', 'dropdown-menu'];
-        var isVisTog = visCls.some(function(c) {
-            return (node.props.cssClass || '').split(' ').indexOf(c) !== -1;
-        });
-        if (isVisTog) {
-            var visBtn = doc.createElement('button');
-            visBtn.type = 'button';
-            visBtn.className = 'bi bi-eye sd-vis-toggle';
-            visBtn.title = _sdT('Toggle preview visibility');
-            visBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var el = innerEl;  // Use innerEl directly (the Bootstrap element, not the toolbar)
-                if (!el) return;
-                var isNowShown = el.classList.contains('show');
-                if (isNowShown) {
-                    el.classList.remove('show');
-                    visBtn.className = 'bi bi-eye-slash sd-vis-toggle';
-                } else {
-                    el.classList.add('show');
-                    visBtn.className = 'bi bi-eye sd-vis-toggle';
+            // Drag handle — <span draggable> (button[draggable] unreliable in cross-origin iframes)
+            // Skip inner descendants of component nodes: the inner button / list / item of a
+            // dropdown, modal, navbar, etc. must not be draggable on its own — moving the piece
+            // out of its component container would break the structure. The component root
+            // itself (node.type === 'component') still gets a drag handle.
+            var insideComponent = false;
+            if (node.type !== 'root' && node.type !== 'component') {
+                var anc = findParent(node, tree);
+                while (anc) {
+                    if (anc.type === 'component') { insideComponent = true; break; }
+                    anc = findParent(anc, tree);
                 }
-                // Strip data-bs-popper on dropdown-menu — see ctxBarToggle comment.
-                if (el.classList.contains('dropdown-menu')) el.removeAttribute('data-bs-popper');
-                // Sync ctx bar active state
-                updateCtxBar();
-            });
-            tbBtns.insertBefore(visBtn, delBtn);
-        }
+            }
+            if (node.type !== 'root' && !insideComponent && !node.props._locked && !hasLockedAncestor(node)) {
+                var dragHandle = doc.createElement('span');
+                dragHandle.className = 'sd-drag-handle bi bi-grip-vertical';
+                dragHandle.title = _sdT('Drag to move');
+                dragHandle.setAttribute('draggable', 'true');
+                dragHandle.addEventListener('mousedown', function(e) {
+                    // Do not let mousedown cancel the selection — it is only here for the drag
+                    e.stopPropagation();
+                });
+                dragHandle.addEventListener('dragstart', function(e) {
+                    e.stopPropagation();
+                    dragData = { source: 'node', node: node, type: node.type };
+                    _lastDragData = dragData; _lastDragDataTime = Date.now();
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', node.type);
+                    wrapper.style.opacity = '0.45';
+                });
+                dragHandle.addEventListener('dragend', function(e) {
+                    e.stopPropagation();
+                    wrapper.style.opacity = '';
+                    _clearAlignGuides();
+                    // Defer dragData clear so a racing `drop` (Firefox / deeply
+                    // nested target) still sees the payload.
+                    setTimeout(function () {
+                        if (dragData && dragData.source === 'node') dragData = null;
+                    }, 0);
+                    // CRITICAL: don't call renderCanvas() / renderTree() here.
+                    // Chromium can fire `dragend` BEFORE `drop` for deeply
+                    // nested drop targets (e.g. an empty col's dz placeholder
+                    // inside body > container > row > col). Rebuilding the
+                    // DOM in dragend tears down the dz that the drop event
+                    // was queued to fire on — the drop never lands and the
+                    // user sees "release does nothing". A successful drop
+                    // already runs render() inside handleDrop; an aborted
+                    // drag doesn't change the tree, so no re-render needed.
+                });
+                tbBtns.appendChild(dragHandle);
+            }
 
-        tb.appendChild(tbBtns);
+            // + button removed — users add elements by drag-and-drop from the left panel
+            // Duplicate
+            if (node.type !== 'root') {
+                var dupBtn = doc.createElement('button');
+                dupBtn.type = 'button';
+                dupBtn.className = 'bi bi-copy';
+                dupBtn.title = _sdT('Duplicate');
+                dupBtn.addEventListener('click', function (e) { e.stopPropagation(); onDuplicate(node); });
+                if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
+                tbBtns.appendChild(dupBtn);
+            }
+            // Binding indicator — shown when this node has any data binding (system widget).
+            // Click scrolls the props panel to the "Bind Data" section + opens it.
+            if (node.type !== 'root' && node.props && node.props._bindings) {
+                var _boundKeys = Object.keys(node.props._bindings).filter(function (k) { return !!node.props._bindings[k]; });
+                if (_boundKeys.length) {
+                    var bindBtn = doc.createElement('button');
+                    bindBtn.type = 'button';
+                    bindBtn.className = 'sd-tb-bind-btn bi bi-link-45deg';
+                    // Most bindings resolve to a ^^token^^; field bindings do not
+                    // — they name a form field, and printing them in token syntax
+                    // would send the designer looking for a token that never exists.
+                    bindBtn.title = _sdT('Data bound') + ': ' + _boundKeys.map(function (k) {
+                        var v = node.props._bindings[k];
+                        if (k === 'form_field') return _sdT('form field') + ' → ' + v;
+                        if (k === 'eo_field')   return _sdT('order field') + ' → ' + v;
+                        if (k === 'section')    return _sdT('section') + ' → ' + v;
+                        if (k === 'action')     return _sdT('action') + ' → ' + v;
+                        return k + ' → ^^' + v + '^^';
+                    }).join(', ');
+                    bindBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        // Select this node so its props panel renders, then scroll + highlight
+                        selectedNode = node;
+                        selectedNodes = [];
+                        _sdSelectRender();
+                        setTimeout(function () {
+                            var panel = document.getElementById('sd-properties');
+                            if (!panel) return;
+                            // Find the "Bind Data" section by its bi-link-45deg icon title
+                            var sects = panel.querySelectorAll('.sd-sect');
+                            for (var i = 0; i < sects.length; i++) {
+                                var lbl = sects[i].querySelector('.sd-sect-label, .sd-sect-title');
+                                if (lbl && lbl.textContent && lbl.textContent.indexOf(_sdT('Bind Data')) !== -1) {
+                                    sects[i].scrollIntoView({ block: 'start', behavior: 'smooth' });
+                                    sects[i].classList.add('sd-sect-flash');
+                                    setTimeout(function () { sects[i].classList.remove('sd-sect-flash'); }, 1200);
+                                    break;
+                                }
+                            }
+                        }, 0);
+                    });
+                    tbBtns.appendChild(bindBtn);
+                }
+            }
+            // Notes — opens a floating notes popup anchored to this node
+            if (node.type !== 'root') {
+                var noteBtn = doc.createElement('button');
+                noteBtn.type = 'button';
+                var _hasNote = !!(node.props && node.props._notes && node.props._notes.trim());
+                noteBtn.className = 'sd-note bi ' + (_hasNote ? 'bi-chat-fill' : 'bi-chat');
+                noteBtn.title = _hasNote ? _sdT('Note (existing)') : _sdT('Add a note');
+                if (_hasNote) noteBtn.style.color = '#0dcaf0';
+                noteBtn.addEventListener('click', function (e) { e.stopPropagation(); openNotesPopup(node); });
+                tbBtns.appendChild(noteBtn);
+            }
+            // Delete
+            if (node.type !== 'root') {
+                var delBtn = doc.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'sd-del bi bi-trash';
+                delBtn.title = _sdT('Delete');
+                if (_isDeleteProtected(node)) {
+                    delBtn.style.opacity = '0.4';
+                    delBtn.style.cursor = 'not-allowed';
+                    delBtn.title = (node.type === 'loop_area')
+                        ? _sdT('A loop area cannot be deleted')
+                        : _sdT('This element cannot be deleted (it contains a loop area)');
+                    delBtn.addEventListener('click', function (e) { e.stopPropagation(); _blockDeleteWithToast(node); });
+                } else {
+                    delBtn.addEventListener('click', function (e) { e.stopPropagation(); if (!node.props._locked && !hasLockedAncestor(node)) onDelete(node); });
+                    if (!_sdCanEditNode(node)) delBtn.style.display = 'none';
+                }
+                tbBtns.appendChild(delBtn);
+            }
+
+            // Toggle visibility — for Bootstrap collapse/modal/offcanvas/dropdown-menu nodes
+            var visCls = ['collapse', 'modal', 'offcanvas', 'dropdown-menu'];
+            var isVisTog = visCls.some(function(c) {
+                return (node.props.cssClass || '').split(' ').indexOf(c) !== -1;
+            });
+            if (isVisTog) {
+                var visBtn = doc.createElement('button');
+                visBtn.type = 'button';
+                visBtn.className = 'bi bi-eye sd-vis-toggle';
+                visBtn.title = _sdT('Toggle preview visibility');
+                visBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var el = innerEl;  // Use innerEl directly (the Bootstrap element, not the toolbar)
+                    if (!el) return;
+                    var isNowShown = el.classList.contains('show');
+                    if (isNowShown) {
+                        el.classList.remove('show');
+                        visBtn.className = 'bi bi-eye-slash sd-vis-toggle';
+                    } else {
+                        el.classList.add('show');
+                        visBtn.className = 'bi bi-eye sd-vis-toggle';
+                    }
+                    // Strip data-bs-popper on dropdown-menu — see ctxBarToggle comment.
+                    if (el.classList.contains('dropdown-menu')) el.removeAttribute('data-bs-popper');
+                    // Sync ctx bar active state
+                    updateCtxBar();
+                });
+                tbBtns.insertBefore(visBtn, delBtn);
+            }
+
+            tb.appendChild(tbBtns);
+        };
         wrapper.appendChild(tb);
+        if (wrapper.classList.contains('sd-selected')) _sdTbFill(wrapper);
 
         // Content element inside wrapper
-        var innerEl = buildInnerElement(doc, node);
+        var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
         if (innerEl) {
             if (node.props.id) { innerEl.id = node.props.id; }
             if (node.props.title) { innerEl.title = node.props.title; }
@@ -10116,7 +10456,7 @@ const StyleDesigner = (function () {
                 var _bImg = (innerEl.tagName === 'IMG') ? innerEl : innerEl.querySelector('img');
                 if (_bImg) _bImg.setAttribute('data-sd-bind-src', String(node.props._bindings.src));
             }
-            wrapper.appendChild(innerEl);
+            if (innerEl !== wrapper) wrapper.appendChild(innerEl);
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
@@ -20354,6 +20694,9 @@ const StyleDesigner = (function () {
         if (tree && tree.children) {
             tree.children.forEach(function(child) { buildTreeItems(list, child, 1); });
         }
+        // What the rows were drawn from (_sdTreeSelectInPlace()).
+        list._sdTreeOf = tree;
+        list._sdTreeEpoch = _sdEditEpoch;
 
         // Attach palette-drop handlers ONCE on the list element.
         // Using a flag prevents duplicate handlers from accumulating on every render.
@@ -20706,6 +21049,14 @@ const StyleDesigner = (function () {
             if (f.type === 'external-css' && f.content && f.content.trim()) cssHrefs.push(_sdAssetHref(f));
         });
         _sdSyncCanvasLinks('pg-ext-css-', cssHrefs, true);
+        // The editor's own Bootstrap Icons sheet (its toolbars draw with it)
+        // stands down while the design loads one: the same classes twice
+        // over, two thousand rules the canvas restyles with for nothing.
+        var _sdIcons = canvasDoc.getElementById('sd-icons-css');
+        if (_sdIcons) {
+            var _ownIcons = cssHrefs.some(function (h) { return /bootstrap-icons/i.test(h); });
+            if (_sdIcons.disabled !== _ownIcons) _sdIcons.disabled = _ownIcons;
+        }
 
         // ── CSS: inline ──
         // Three buckets, each with their own <style id> in <head>:
@@ -20802,6 +21153,11 @@ const StyleDesigner = (function () {
                     scr.async = false;
                     scr.src = src;
                     canvasDoc.head.appendChild(scr);
+                    // A module's exports are out of the page's reach. Those of
+                    // a framework (Bootstrap 6) start some components on
+                    // DOMContentLoaded, which the canvas is drawn after; they
+                    // are handed over to start them here (_sdBootModuleWidgets()).
+                    if (f.module) _sdShareModule(scr.src);
                 }
             });
 
@@ -21523,10 +21879,52 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A new selection marks other rows of the overview; the rows stay as
+    // they are. It is drawn again when the selection opened a branch (the
+    // row clicked, or the ancestors of an element picked on the canvas: its
+    // row is then missing) or the tree changed since it was drawn. Redrawing
+    // a thousand-row tree on every click cost some 200 ms.
+    function _sdTreeSelectInPlace() {
+        var list = document.getElementById('sd-tree-list');
+        if (!list || list._sdTreeOf !== tree || list._sdTreeEpoch !== _sdEditEpoch) return false;
+        var marks = selectedNodes.length > 1 ? selectedNodes.slice() : [];
+        var want = marks.concat(selectedNode ? [selectedNode] : []);
+        for (var i = 0; i < want.length; i++) {
+            var n = want[i];
+            if (n === tree) continue;
+            var row = _sdTreeRowOf(list, n);
+            if (!row) return false;
+            var chev = row.querySelector(':scope > .sd-tree-chev');
+            if (chev && chev.classList.contains('sd-tree-chev-open') !== (n._expanded !== false)) return false;
+        }
+        list.querySelectorAll('li.active, li.sd-multi-selected').forEach(function (x) {
+            x.classList.remove('active', 'sd-multi-selected');
+        });
+        var bodyRow = list.querySelector(':scope > .sd-tree-body-row');
+        if (bodyRow) bodyRow.classList.toggle('sd-tree-selected', !!(selectedNode && selectedNode.type === 'root'));
+        var act = (selectedNode && selectedNode !== tree) ? _sdTreeRowOf(list, selectedNode) : null;
+        if (act) act.classList.add('active');
+        marks.forEach(function (m) {
+            var r = _sdTreeRowOf(list, m);
+            if (r) r.classList.add('sd-multi-selected');
+        });
+        if (_refreshNotesPanel) _refreshNotesPanel();
+        return true;
+    }
+
+    // The overview row drawn for this node object (an id can be on a page
+    // and inside a widget at once).
+    function _sdTreeRowOf(list, node) {
+        var rows = list.querySelectorAll('li[data-nid="' + String(node._id).replace(/["\\]/g, '\\$&') + '"]');
+        for (var i = 0; i < rows.length; i++) if (rows[i]._sdNode === node) return rows[i];
+        return null;
+    }
+
     function buildTreeItems(ul, node, depth) {
         var li = document.createElement('li');
         li.style.setProperty('--depth', depth);
         li.dataset.nid = node._id;
+        li._sdNode = node;
 
         // For shared_ref nodes, show children from cache tree instead of (empty) node.children
         var _sharedRefSid = (node.type === 'shared_ref' && node.props && node.props.sharedId)
@@ -22636,6 +23034,212 @@ const StyleDesigner = (function () {
         }, 250);
     }
 
+    // ── Links inside a text ───────────────────────────────────────────
+    // A paragraph or heading is one text: the links in it are markup in its
+    // `text`, with no element of their own to select. Their address, target,
+    // classes and rel are edited here; one can be taken out of the text (it
+    // becomes a link element right after it) or turned back into words. A
+    // text of links and nothing else (a row of buttons) is split into
+    // elements in one go: an element of the same tag and classes, holding a
+    // link element for each.
+
+    function _sdIlTextNode(n) {
+        return !!(n && n.type === 'content' && n.props &&
+            (n.props.contentType === 'paragraph' || n.props.contentType === 'heading') &&
+            !_sdTextIsBound(n));
+    }
+
+    // The text parsed in an inert template: nothing in it loads or runs.
+    function _sdIlParse(html) {
+        var t = document.createElement('template');
+        t.innerHTML = String(html || '');
+        return t.content;
+    }
+
+    function _sdIlHtml(frag) {
+        var d = document.createElement('div');
+        d.appendChild(frag.cloneNode(true));
+        return d.innerHTML;
+    }
+
+    // What may stand between the links of a row besides spaces (" · ", " | ").
+    var _SD_IL_SEP = /^[\s ·•|\/–—-]*$/;
+
+    function _sdIlOnlyLinks(frag) {
+        var links = 0;
+        for (var c = frag.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 3) {
+                if (!_SD_IL_SEP.test(c.nodeValue)) return false;
+                continue;
+            }
+            if (c.nodeType === 8) continue;
+            if (c.nodeType !== 1 || c.tagName !== 'A') return false;
+            links++;
+        }
+        return links > 0;
+    }
+
+    // A link element made from a link of the text, the way the HTML import
+    // makes one (pg_di_node()): its words, with any inline markup, are the
+    // text; address, target, rel and classes are its options; any other
+    // attribute stays an attribute.
+    function _sdIlLinkNode(a) {
+        var p = {
+            contentType: 'link',
+            text: String(a.innerHTML || '').trim(),
+            href: a.getAttribute('href') || '',
+            target: a.getAttribute('target') || '',
+            rel: a.getAttribute('rel') || '',
+            cssClass: a.getAttribute('class') || ''
+        };
+        if (a.getAttribute('id')) p.id = a.getAttribute('id');
+        var rest = [];
+        Array.prototype.forEach.call(a.attributes, function (at) {
+            if (['href', 'target', 'rel', 'class', 'id'].indexOf(at.name) === -1) rest.push({ name: at.name, value: at.value });
+        });
+        if (rest.length) p._attrs = rest;
+        return createNode('content', p, []);
+    }
+
+    function _sdIlSection(n) {
+        if (!_sdIlTextNode(n)) return '';
+        var frag = _sdIlParse(n.props.text);
+        var links = frag.querySelectorAll('a');
+        if (!links.length) return '';
+        var h = '';
+        Array.prototype.forEach.call(links, function (a, i) {
+            var label = String(a.textContent || '').replace(/\s+/g, ' ').trim() || a.getAttribute('href') || String(i + 1);
+            var target = a.getAttribute('target') || '';
+            var targets = [['', _sdT('Default/Self')], ['_blank', _sdT('New Window (_blank)')]];
+            if (target && target !== '_blank') targets.push([target, target]);
+            h += '<div class="sd-il-link" data-sd-il-idx="' + i + '" style="' + (i ? 'border-top:1px solid rgba(128,128,128,.25);padding-top:6px;margin-top:6px' : '') + '">' +
+                '<div style="display:flex;align-items:center;gap:4px;font-size:.75rem;font-weight:600;margin-bottom:4px">' +
+                    '<span class="bi bi-link-45deg" aria-hidden="true"></span>' +
+                    '<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(label) + '">' + esc(label) + '</span>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="out" title="' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"><span class="bi bi-box-arrow-down-right" aria-hidden="true"></span></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="unlink" title="' + esc(_sdT('Remove the link, keep the words')) + '"><span class="bi bi-eraser" aria-hidden="true"></span></button>' +
+                '</div>' +
+                row(_sdT('Link'),
+                    '<div class="sd-pick-group">' +
+                        '<input type="text" class="form-control form-control-sm" id="sd-il-href-' + i + '" data-sd-il="href" value="' + esc(a.getAttribute('href') || '') + '">' +
+                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-il-pick="sd-il-href-' + i + '">' + esc(_sdT('Select')) + '</button>' +
+                    '</div>') +
+                row(_sdT('Target'), '<select class="form-select form-select-sm" data-sd-il="target">' +
+                    targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                    '</select>') +
+                row(_sdT('Classes'), '<input type="text" class="form-control form-control-sm" data-sd-il="class" value="' + esc(a.getAttribute('class') || '') + '" spellcheck="false">') +
+                row('rel', '<input type="text" class="form-control form-control-sm" data-sd-il="rel" value="' + esc(a.getAttribute('rel') || '') + '" placeholder="noopener" spellcheck="false">') +
+            '</div>';
+        });
+        if (_sdIlOnlyLinks(frag)) {
+            h += '<button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
+                '<div style="font-size:.7rem;opacity:.75;margin-top:4px">' + esc(_sdT('This text is links only: each becomes an element of its own, to select, edit and move.')) + '</div>';
+        }
+        return sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>');
+    }
+
+    // Every change goes through the text: parsed, changed, written back, as
+    // one undo step. `fn` may hand back a step for the tree (taking a link
+    // out puts its element after the text). render() draws the panel again.
+    function _sdIlApply(n, fn) {
+        var frag = _sdIlParse(n.props.text);
+        var links = frag.querySelectorAll('a');
+        saveState();
+        var then = fn(frag, links);
+        n.props.text = _sdIlHtml(frag);
+        var owner = _sdAnyParent(n);
+        if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+        if (typeof then === 'function') then(owner);
+        render();
+    }
+
+    // The text becomes an element of the same tag and classes holding a link
+    // element for each link and a span for a separator. The node keeps its
+    // id: its name, notes, attributes and place stay.
+    function _sdIlSplit(n) {
+        var frag = _sdIlParse(n.props.text);
+        if (!_sdIlOnlyLinks(frag)) return;
+        var kids = [];
+        for (var c = frag.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 1) kids.push(_sdIlLinkNode(c));
+            else if (c.nodeType === 3 && c.nodeValue.replace(/ /g, ' ').trim() !== '') {
+                kids.push(createNode('content', { contentType: 'span', text: c.nodeValue.trim(), cssClass: '' }, []));
+            }
+        }
+        saveState();
+        var p = n.props;
+        var cls = String(p.cssClass || '').split(/\s+/).filter(Boolean);
+        if (p.lead && cls.indexOf('lead') === -1) cls.unshift('lead');
+        if (p.align && cls.indexOf('text-' + p.align) === -1) cls.push('text-' + p.align);
+        var tag = (p.contentType === 'heading') ? (p.tag || 'h2') : 'p';
+        ['contentType', 'text', 'lead', 'align', 'tag'].forEach(function (k) { delete p[k]; });
+        p.tag = tag;
+        p.cssClass = cls.join(' ');
+        n.type = 'semantic';
+        n.children = kids;
+        n._expanded = true;
+        var owner = _sdAnyParent(n);
+        if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+        render();
+        sdToast(esc(_sdT('Split into {var} elements.', kids.length)), 'success');
+    }
+
+    function _sdIlBind(n) {
+        var box = document.querySelector('#sd-properties .sd-il');
+        if (!box || !_sdIlTextNode(n)) return;
+        var indexOf = function (el) {
+            var item = el.closest('[data-sd-il-idx]');
+            return item ? parseInt(item.getAttribute('data-sd-il-idx'), 10) : -1;
+        };
+        box.addEventListener('change', function (e) {
+            var what = e.target.getAttribute('data-sd-il');
+            if (!what) return;
+            var idx = indexOf(e.target);
+            var val = String(e.target.value || '').trim();
+            _sdIlApply(n, function (frag, links) {
+                var a = links[idx];
+                if (!a) return;
+                if (val === '') a.removeAttribute(what);
+                else a.setAttribute(what, val);
+            });
+        });
+        box.addEventListener('click', function (e) {
+            var pick = e.target.closest('[data-sd-il-pick]');
+            if (pick) {
+                window.sdOpenFilePicker(pick.getAttribute('data-sd-il-pick'), 'href');
+                return;
+            }
+            var btn = e.target.closest('[data-sd-il-act]');
+            if (!btn) return;
+            var act = btn.getAttribute('data-sd-il-act');
+            if (act === 'split') {
+                _sdIlSplit(n);
+                return;
+            }
+            var idx = indexOf(btn);
+            if (act === 'unlink') {
+                _sdIlApply(n, function (frag, links) {
+                    var a = links[idx];
+                    if (!a) return;
+                    while (a.firstChild) a.parentNode.insertBefore(a.firstChild, a);
+                    a.parentNode.removeChild(a);
+                });
+            } else if (act === 'out') {
+                _sdIlApply(n, function (frag, links) {
+                    var a = links[idx];
+                    if (!a) return;
+                    var link = _sdIlLinkNode(a);
+                    a.parentNode.removeChild(a);
+                    return function (owner) {
+                        var parent = owner ? owner.parent : null;
+                        if (!parent || !Array.isArray(parent.children)) return;
+                        parent.children.splice(parent.children.indexOf(n) + 1, 0, link);
+                    };
+                });
+            }
+        });
+    }
+
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
@@ -22745,7 +23349,7 @@ const StyleDesigner = (function () {
             case 'col':        optHtml += propsCol(selectedNode);        break;
             case 'region':     optHtml += propsRegion(selectedNode);     break;
             case 'component':  optHtml += propsComponent(selectedNode);  break;
-            case 'content':    optHtml += propsContent(selectedNode);    break;
+            case 'content':    optHtml += propsContent(selectedNode) + _sdIlSection(selectedNode); break;
             case 'shared_ref': optHtml += propsSharedRef(selectedNode);  break;
             case 'loop_area':  optHtml += propsLoopArea(selectedNode);   break;
             case 'recipient_loop_area': optHtml += propsRecipientLoopArea(selectedNode); break;
@@ -22801,6 +23405,7 @@ const StyleDesigner = (function () {
         panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
+        _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
@@ -35707,7 +36312,7 @@ const StyleDesigner = (function () {
             for (var si = 0; si < wrap.children.length; si++) {
                 if (!wrap.children[si].classList.contains('sd-tb')) { inner = wrap.children[si]; break; }
             }
-            var target = inner || wrap;
+            var target = wrap.hasAttribute('data-sd-self') ? wrap : (inner || wrap);
             var w = Math.round(target.offsetWidth);
             var h = Math.round(target.offsetHeight);
             if (w <= 0 && h <= 0) { badge.style.display = 'none'; return; }
@@ -45906,6 +46511,25 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The timer's look at the dirty dots. Each comparison serialises a whole
+    // page tree, and a design of dozens of large pages spent some 30 ms of
+    // every tick on it, in the middle of whatever the operator was doing.
+    // Edits land on the open page, so a tick compares that page, and only
+    // after an edit; every tenth tick still looks at every page.
+    var _pgDirtyPollTick = 0, _pgDirtyPollEpoch = -1;
+    function _pgTabsPollDirty() {
+        if (++_pgDirtyPollTick % 10 === 0) {
+            _pgDirtyPollEpoch = _sdEditEpoch;
+            _pgTabsRefreshDirty();
+            return;
+        }
+        if (_pgDirtyPollEpoch === _sdEditEpoch) return;
+        _pgDirtyPollEpoch = _sdEditEpoch;
+        var p = _pgActivePage();
+        var t = p ? document.querySelector('.sd-tab[data-key="' + p.key + '"]') : null;
+        if (t) t.classList.toggle('dirty', _pgPageDirty(p));
+    }
+
     // Cheap re-paint of the dirty dots without rebuilding the strip.
     function _pgTabsRefreshDirty() {
         _pages.forEach(function (p) {
@@ -48524,6 +49148,35 @@ const StyleDesigner = (function () {
         }
     }
 
+    // A page this save can leave as it is stored: saved to this design
+    // before, its tree and settings as they were then (the validation that
+    // just ran cut nothing out of it), and none of the shared components it
+    // shows — nested ones included — waiting to be flushed. A widget's form
+    // fields and tab references are settled on the server per page, so a
+    // page showing a changed widget is written again.
+    function _pgPageUnchanged(p, t, vr) {
+        if (!(p.page_id > 0) || p.pickedPending) return false;
+        if (vr && vr.orphaned && vr.orphaned.length) return false;
+        if (_pgPageDirty(p)) return false;
+        var dirty = Object.keys(_sharedDirty).filter(function (k) { return !!_sharedDirty[k]; });
+        if (!dirty.length) return true;
+        var todo = {}, seen = {};
+        collectSharedIds(t, todo);
+        for (var guard = 0; guard < 16; guard++) {
+            var ids = Object.keys(todo).filter(function (k) { return !seen[k]; });
+            if (!ids.length) break;
+            var next = {};
+            for (var i = 0; i < ids.length; i++) {
+                if (_sharedDirty[ids[i]]) return false;
+                seen[ids[i]] = true;
+                var c = _sharedCache[ids[i]];
+                if (c && c.tree) collectSharedIds(c.tree, next);
+            }
+            todo = next;
+        }
+        return true;
+    }
+
     // ── Serialise for save ────────────────────────────────────────────────
     // Every tab, not just the active one: a single save persists the whole
     // design. Returns null when a tree fails validation (toast already shown).
@@ -48548,12 +49201,19 @@ const StyleDesigner = (function () {
             }
             _sanitizeDynamicPlaceholders(t);
             _stripToggleableShowState(t);
-            var rec = { key: p.key, page_id: p.page_id, tree_json: JSON.stringify(t) };
+            var rec = { key: p.key, page_id: p.page_id };
+            // A saved page nothing has touched since the last save goes
+            // without its tree, marked unchanged: the server keeps the stored
+            // row instead of writing, scoring, translating and logging every
+            // page of the design on every save. Its tree, its settings and
+            // the shared components it shows all count as touching it.
+            if (_pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
+            else rec.tree_json = JSON.stringify(t);
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
             // The page's own form-level settings. The fields are not sent:
             // the server reads them off the widget tree flushed before this
             // request. `page_id: 0` means "this page", resolved on the server.
-            if (p.formSettings && typeof p.formSettings === 'object' && _cfPageHasOwnForm(t)) {
+            if (!rec.unchanged && p.formSettings && typeof p.formSettings === 'object' && _cfPageHasOwnForm(t)) {
                 rec.forms = [{ page_id: p.page_id || 0, settings: p.formSettings }];
             }
             out.push(rec);
@@ -48950,7 +49610,7 @@ const StyleDesigner = (function () {
         // Keep the dirty dots honest after any canvas edit.
         if (!window._pgDirtyPollBound) {
             window._pgDirtyPollBound = true;
-            setInterval(_pgTabsRefreshDirty, 1500);
+            setInterval(_pgTabsPollDirty, 1500);
         }
         // "Add design → Import": the editor opens straight onto the import
         // dialog. Deferred so the modals exist and the canvas has painted.

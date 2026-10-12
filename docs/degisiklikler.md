@@ -33,11 +33,11 @@ etkisizdir ve yerinde kalır. 2026.4.6 yayınında bu yüzden changelog'daki
 "Barındırılan site ve tanıtım sitesi" bölümü kaldırıldı, genel güvenlik
 maddeleri "Oturum, hesap ve güvenlik"e taşındı.
 
-**Sıradaki sürüm: 2026.4.9** (henüz açılmadı). İlk şema adımı
-`includes/migrations/2026.4.9.php` → `upgrade_to_2026_4_9()` girişine
-`upgrade_2026_4_9_<konu>()` alt adımı olarak girer; dosya ve `versions.php`'deki
-`'2026.4.9'` satırı o adımla birlikte açılır ve satırı ekleyen dev'de
-yükseltmeyi hemen koşar. Alt adım etiketleri 2026.4.8'deki aralık düzenini
+**Açık sürüm: 2026.4.9** — 2026-10-12'de ilk şema adımıyla açıldı
+(`includes/migrations/2026.4.9.php`, 9.1 `upgrade_2026_4_9_translation_index()`;
+`versions.php`'de `'2026.4.9'` satırı; dev yükseltildi). Sonraki şema
+adımları `upgrade_to_2026_4_9()` girişine `upgrade_2026_4_9_<konu>()` alt
+adımı olarak eklenir; dosya yeniden oluşturulmaz. Alt adım etiketleri 2026.4.8'deki aralık düzenini
 önek `9.` ile korur: genel işler 9.1'den, ERP 9.58–9.69 ve 9.90'dan sonrası,
 API 9.70–9.79, Çalışma Alanı 9.80–9.89 ve 9.110–9.119. Yeni bölüm başlıkları
 `## 2026.4.9 — …`; `changelog.txt`'de maddeler en üste açılacak `2026.4.9`
@@ -72,6 +72,611 @@ numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başl�
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
+
+## 2026.4.9 — Şablonların blog formu RSS rolleriyle geliyor; mevcut sitelere veri adımı (9.2) (2026-10-12)
+
+**İstek (ürün sahibi).** Bir önceki bölümün açık konusu — şablon blog
+yazılarının başlığı ve açıklaması yazıya göre değişmiyor, blog listesi RSS
+akışı sunmuyor — için "evet" (şablonlarda ve mevcut sitelerde düzelt).
+
+**Kök sebep.** Beş şablon (`hello-pinegrap`, `pinegrap-bookshop`,
+`pinegrap-boutique`, `pinegrap-playground`, `pinegrap-store`) blog formunu
+aynı dört alanla kuruyor — `title` (metin), `summary` (metin alanı),
+`cover_image` (dosya), `content` (metin alanı) — ama hiçbir kontrolde
+`props._cf.rss_field` yok. Kayıt sayfasının başlığı ve açıklaması
+(`get_page_content()`), paylaşım görseli (`pg_resolve_submitted_form_og_image()`)
+ve liste widget'ının beslemesi (`pg_sw_page_form_feed_widget()` rolü olan alan
+ister) hep bu rollerden okunuyor.
+
+- **Şablonlar:** yeni `pg_cf_with_role($node, $role)`
+  (`includes/fn/custom_form.php`, saf; `tests/custom_form_role_test.php`)
+  kontrole rolü koyar, `_cf`'te olanı korur. Beş şablonda title →
+  `title`, summary → `description`, cover_image → `media`. Şablon kurulurken
+  sayfa kaydı (`pg_cf_reconcile_page_form()`) rolü `form_fields`'a yazar.
+  `content`'e rol verilmedi: açıklama özetten gelir.
+- **Mevcut siteler — `upgrade_2026_4_9_template_blog_roles()` (9.2, yalnız
+  veri):** aynı dört alanı türleriyle taşıyan ve **hiçbir alanı rol
+  taşımayan** formlar (operatörün eklediği alanlar engel değil; operatörün
+  verdiği bir rol formu tamamen dışarıda bırakır). Roller iki yere: widget
+  ağacı (`shared_components.tree_json` — sonraki sayfa kaydı buradan okur;
+  yalnız `form_fields`'a yazılsaydı ilk kayıt rolleri silerdi) ve
+  `form_fields.rss_field` (sayfalar şimdi buradan okur). Ağaç nesne olarak
+  çözülüp editörün bayraklarıyla yazılır; diziye çözülseydi boş `{}`'ler
+  `[]` olurdu (`pg_designer_tree_encode()` aynı sebeple var). Göç kendi
+  başına çalışsın diye o fonksiyona dayanmadı. `updated_at`'e dokunulmadı:
+  rol widget'ın çizdiği işaretlemeyi değiştirmiyor.
+
+**Doğrulama (dev).** Adım yardımcı betikle iki kez: ilki 1 form, 2 widget
+(Butik şablonunun iki kurulumundan), ikincisi "değişiklik yok". Öncesi/sonrası
+ağaçlar `rss_field` anahtarları dışında birebir aynı (boş nesneler korundu).
+Ardından `config.version` 2026.4.8'e çekilip yükseltme ekranı koşuldu: "2
+ifade, 2 tanesi zaten yerindeydi". Sonuç: `/blog-yazisi?r=OA4K0S2BTJ`
+başlığı "Gümüş takılara nasıl bakılır", açıklaması yazının özeti;
+`/blog?rss=true` dört yazıyı başlık, özet, tarih ve kapakla veriyor ve
+`/blog` akışı duyuruyor. Örnek yazıların kapağı uzantısız harici adres
+(picsum), bu yüzden onlarda `og:image` yok; yüklenen kapakta dosyadan gelir.
+lint, check_lang, check_bindings temiz; testlerde yalnız önceden var olan
+başarısızlıklar.
+
+## 2026.4.9 — Görsel editörle kurulan ürün, kategori ve yazı sayfaları: kendi canonical adresi, ürünün başlığı ve açıklaması, sitemap.xml'de (2026-10-12)
+
+**İstek (ürün sahibi).** Bir önceki bölümün açık konusu: görsel editörle kurulan
+ürün detay sayfasında canonical ürünün değil sayfanın adresiydi. "Kesinlikle
+düzelt" dendi.
+
+**İncelemede çıkanlar (dev, Butik şablonu).** Sorun yalnız ürün detayında
+değildi; sistem widget'ıyla tek bir öğe gösteren her `page_type = 'standard'`
+sayfada aynıydı:
+
+| Adres | canonical / og:url | `<title>` |
+|---|---|---|
+| `/urun-detay/Tek_Tas_Yuzuk` | `/urun-detay` | Ürün |
+| `/magaza/Taki` | `/magaza` | Mağaza |
+| `/blog-yazisi?r=OA4K0S2BTJ` | `/blog-yazisi` | Günce Yazısı |
+| `/urun-detay/Yok_Boyle_Urun` | `/urun-detay` | Ürün |
+
+- **Kök sebep:** `get_page_content()` canonical'ı sayfa türüne göre kuruyor:
+  adresteki öğe yalnız `catalog` / `catalog detail` türünde, `?r=` yalnız
+  `form item view` türünde ekleniyor. Görsel editör sayfaları `standard`;
+  `get_page.php` `layout_type = 'system'` sayfada eğik çizgiden sonrasını
+  widget'lara bırakıyor ama canonical bunu hiç görmüyordu. Başlık/açıklama
+  için de aynı: eski katalog sayfası öğenin `title` / `meta_description`'ını
+  kullanıyor, widget sayfası kullanmıyordu (kayıt sayfası RSS alanlarıyla
+  zaten adlandırılıyordu).
+- Ayrıca **sitemap.xml** görsel editör kataloğunu ve kayıt listelerini hiç
+  bilmiyordu: dev'de 8 adres vardı, tek ürün yoktu. (Önceki bölümde
+  "sitemap ürün adreslerini listeliyor" yazılmıştı; yanlıştı.)
+
+### 1. `pg_sw_page_item()` (`includes/fn/seo.php`)
+
+- Sayfanın gösterdiği öğe, widget'ların çözdüğü gibi: Katalog widget'ı
+  (`catalog_listing`) önce — `/<sayfa>/<grup>` (ana sayfada `?cat=` ya da
+  segment); Ürün Detay (`catalog_item_view`) — `/<sayfa>/<ürün>`, `?pid=`
+  ya da select türü grup (`_pg_catalog_item_resolve_product()` yeniden
+  kullanıldı; segment ürünün adresi değilse select grup); Kayıt Görünümü
+  (`form_item_view`) — `?r=`, `pg_sw_record_comment_context()` görünür
+  diyorsa. Öğe yoksa (çıplak sayfa, çözülmeyen adres, widget'ın kendi kök
+  grubu, ziyaretçinin göremediği kayıt) `null` → canonical sayfanın kendisi.
+  Bilinmeyen `/urun-detay/X` ve `/hakkimizda/foo` böylece sayfaya canonical
+  verir (yumuşak 404 davranışı değişmedi).
+- Döner: `path` (PATH'ten, kodlanmış; ürün adresi büyük/küçük harf farkıyla
+  gelse de kayıtlı yazımı), `query` (`?cat=`, `?pid=` yalnız adresi olmayan
+  üründe, `?r=`), `title`, `description`, `image_name`.
+- Başlık: ürünün/grubun SEO başlığı; boşsa `short_description` (ürünün
+  görünen adı; `name` SKU'dur), grupta son çare `name`. Açıklama:
+  `meta_description`; boşsa `full_description`'ın düz metni, 160 karakterde
+  sözcükte kesilir (`pg_sw_item_text()`, `tests/seo_item_test.php`). Eski
+  katalog sayfasına bu geri düşüş eklenmedi (davranışı değişmesin diye).
+
+### 2. `get_page_content.php`
+
+- Canonical bloğunun sonunda, `standard` sayfada (e-posta değilse)
+  `$path` / `$query_string` öğeninkiyle değişir; `og:url`, hreflang
+  (finalize canonical'dan türetiyor) ve ürün JSON-LD'sinin `url`'i aynı
+  adresi kullanır.
+- Eski katalog meta bloğundan sonra ürün/grup öğesinin başlığı ve açıklaması
+  sayfanınkini ezer (dilde `pg_tr_text(…, 'seo')` ile); ürün görseli
+  `$pg_og_sw_product_image_name`'e girer → `og:type=product` ve görsel,
+  JSON-LD kapalı olsa da (dev'de `STRUTURED_DATA` kapalı, önceden yalnız
+  JSON-LD açıkken doluyordu).
+
+### 3. sitemap.xml (`get_sitemap_info.php`)
+
+- Site haritasındaki (herkese açık, `sitemap = 1`, noindex değil) Katalog
+  widget'lı sayfalar, `page_id` sırasıyla: alt gruplar `/<sayfa>/<grup>`
+  (bir grup bir kez, ilk sayfanın altında — dev'de `magaza` ve `lookbook`
+  aynı kök grubu gösteriyor), ürünler ve select gruplar ürün detay sayfasının
+  altında (`pg_sw_catalog_detail_page_name()`; o sayfa bir grupla
+  sınırlıysa yalnız o grubun ürünleri). Ana sayfa kendi kataloğu için adres
+  vermez. `get_catalog_items_for_sitemap()` yeniden kullanıldı.
+- Liste widget'larının (`form_list_view`, `submitted_forms_list`,
+  `form_list`, `blog_list`) kayıtları: liste herkese açık, detay sayfası
+  aynı formu herkese açık gösteriyorsa, listenin filtreleriyle
+  (`pg_sw_form_list_filter_sql()`, beslemedeki gibi), `complete = 1`,
+  `/<detay>?r=<kod>`.
+- **Karar:** detay sayfasının "Site Haritasına Dahil Et" bayrağı öğeleri
+  kapatmaz — şablonlar ürün detay ve yazı sayfasını `sitemap = 0` kuruyor
+  (çıplak sayfa bir şey göstermiyor); eski katalogdaki gibi bayrağa uyulsaydı
+  şablonla kurulan hiçbir mağazanın ürünü listelenmezdi. Detay sayfasının
+  klasörü ve noindex'i belirler (noindex sayfa robots.txt'de de alt
+  adresleriyle engelleniyor). Çıplak detay sayfası bayrak kapalıysa yine
+  listelenmez.
+
+**Doğrulama (dev).** Yukarıdaki tablo şimdi: `/urun-detay/Tek_Tas_Yuzuk` →
+canonical/og:url kendisi, "Tek Taş Yüzük", ürün açıklaması, `og:type=product`,
+ürün görseli; `/urun-detay/tek_tas_yuzuk` → kayıtlı yazım; `/magaza/Taki` →
+kendisi, "Takı"; `/?cat=Taki` ve `/anasayfa/Taki` → `/?cat=Taki`;
+`/blog-yazisi?r=…` → kendisi; yanlış `?r=`, bilinmeyen ürün/grup,
+`/hakkimizda/foo` → sayfanın kendisi. `/tr/urun-detay/…` canonical'ı
+`/tr/…`. sitemap.xml 8 → 34 adres (4 grup, 18 ürün, 4 yazı); listelenen her
+öğe adresi canonical olarak kendini veriyor (26/26). `th` geçici "Makine
+çevirileri de" yapılınca ürün, grup, `?cat` ve `?r=` sayfalarında hreflang
+ve sitemap alternatifleri doğru (`/th/urun-detay/…`, `/th/blog-yazisi?r=…`);
+ayar geri alındı. lint, check_lang, check_copies temiz; testlerde yalnız
+önceden var olan `panel_actions` başarısızlığı ve `innodb_test` hataları.
+
+**Açık konu.** Şablonların blog formunda RSS rolleri yok (dev'de "Günce
+Yazıları": title, summary, cover_image, content — hiçbirinde `rss_field`
+yok). Bu yüzden yazı sayfalarının `<title>`'ı ve açıklaması yazıya göre
+değişmiyor (hepsi "Günce Yazısı") ve blog listesinin RSS beslemesi çıkmıyor
+(`pg_sw_page_form_feed_widget()` RSS alanı ister). Aynı gün düzeltildi:
+yukarıdaki "Şablonların blog formu RSS rolleriyle geliyor" bölümü.
+
+## 2026.4.9 — Çok dil SEO: dil RSS akışının bağlantıları, sitemap.xml ile hreflang aynı kuralda (`page_translations.indexable`, 9.1), ana sayfa sitemap'te bir kez (2026-10-12)
+
+**İstek (ürün sahibi).** pinegrap.com çok dilli ayarlandığı hâlde
+`sitemap.xml` yalnız kaynak dildeki adresleri veriyordu; RSS, sitemap ve
+robots.txt'nin diller için ayrıca yapılandırılması gerekip gerekmediği
+soruldu. İnceleme sonrası düzeltmelerin 2026.4.9'a (şema gerekirse diye)
+uygulanması istendi.
+
+**İncelemede çıkanlar (pinegrap.com ve dev):**
+
+- **robots.txt:** arama motorları her alan adı için yalnız kökteki
+  `/robots.txt`'i okur; dil başına dosya gerekmez. Gizli sayfaların
+  `Disallow` satırları her dil dizini için zaten tekrarlanıyordu
+  (`pg_tr_robots_render()`).
+- **sitemap.xml:** tek dosyada `xhtml:link` alternatifleri Google'ın önerdiği
+  yol; `pg_tr_sitemap_render()` bunu zaten yapıyordu. Dil adresleri yoktu,
+  çünkü dillerin "Arama motorları indeksler" ayarı varsayılan "Yalnız gözden
+  geçirilmiş metinler" ve pinegrap.com'daki bütün dil sayfaları
+  `noindex, follow` dönüyor (20 adres denendi). Sitemap'in onları
+  listelememesi doğru; hata değildi.
+- **`/tr/sitemap.xml`, `/tr/robots.txt`:** ilk bakışta 200 ve kökün aynısı
+  sanıldı; `fetch()` yönlendirmeyi izlemişti. `router_language_file_redirect()`
+  ikisini zaten köke 301 ile gönderiyor — değişiklik gerekmedi.
+- Gerçek sorunlar aşağıdaki dördü.
+
+### 1. Dil RSS akışında bağlantılar kaynak dile gidiyordu (`includes/translate/render.php`)
+
+- `/tr/magaza?rss=true` başlıkları çeviriyordu (`pg_tr_render_db_texts()`
+  akışın metin düğümlerini de değiştiriyor), ama `<channel><link>`, öğe
+  `<link>`'i ve `<guid>` kaynak adresteydi. **Kök sebep:**
+  `pg_tr_render_finalize()` yalnız `href`/`action` özniteliklerini önekliyor
+  (`pg_tr_rewrite_links()`); RSS'te adresler etiket içinde düz metin.
+- Yeni saf fonksiyon `pg_tr_rss_localize($content, $language, $rewrite)`:
+  RSS belgesi değilse dokunmaz; `<link>` ve kalıcı bağlantı `<guid>`'i
+  (`isPermaLink="false"` olan hariç; RSS 2.0'da varsayılan true) verilen
+  yeniden yazıcıdan geçirir; kanala, ilk `<item>`'dan önce `<language>` yoksa
+  kanalın `<description>`'ından sonra, aynı girinti ve satır sonuyla ekler.
+  `<enclosure>` dosyadır, adresi değişmez. Finalize'ın sonunda çağrılır:
+  hedef dilde `pg_tr_rewrite_url(…, önek, true)` ile, kaynak dilde yalnız
+  `<language>` (çok dilli sitede). Tek dilli siteye finalize zaten erken
+  döndüğü için dokunmaz.
+- Test: `tests/translate_feed_test.php` (6 test, 14 doğrulama).
+
+### 2. hreflang noindex dil sayfalarını da gösteriyordu (`render.php`, `includes/translate/seo.php`)
+
+- Sayfa başındaki alternatifler her etkin hedef dili yazıyordu; sitemap ise
+  `pg_tr_indexable()` ile süzüyordu. Sonuç: pinegrap.com'da her kaynak sayfa
+  noindex dil sayfalarına hreflang veriyordu (Google bunları yok sayar,
+  Search Console'da gürültüdür).
+- Artık başlıktaki alternatifler de `pg_tr_indexable($row, $canonical, true)`
+  ile süzülür; çizilen dil için az önce yazılan robots kararı kullanılır.
+  Hiçbir hedef dil açık değilse hreflang hiç yazılmaz (yalnız kaynak +
+  x-default anlamsız). "Yalnız gözden geçirilmiş" kuralında sayfa altındaki
+  adres (katalog öğesi) hiçbir dilde sunulmaz — sitemap'le aynı.
+- `$one_page = true`: tek sayfa için okunur (`pg_tr_page_stats_one()`, sayfanın
+  dil kararları tek sorguda); sitemap dilin bütününü okumaya devam eder.
+- Yan düzeltme: canonical artık çözülmüş (`html_entity_decode`) okunuyor.
+  Kaynak dil alternatifi `h()`'den ikinci kez geçtiği için sorgu dizgeli
+  canonical'da (`?id=…&recurrence_number=…`) `&amp;amp;` yazılıyordu.
+
+### 3. Sitemap ile sayfanın robots kararı ayrışabiliyordu — `page_translations.indexable` (9.1)
+
+- **Kök sebep:** "Yalnız gözden geçirilmiş" kuralında sayfanın kendi
+  `noindex`'i o istekte çizilen **her** metni sayar (gövde bayrağı +
+  ortak bileşen, menü, katalog, form sayaçları — `pg_tr_render_counter()`);
+  sitemap ise yalnız sayfanın kendi metinlerine (`page`, `page_seo` kullanımları,
+  `pg_tr_page_stats()`) bakıyordu. Gövdesi onaylı ama üst bilgisi makine
+  çevirisi olan sayfa sitemap'e giriyor, sayfa noindex diyordu ("Gönderilen
+  URL noindex olarak işaretlenmiş"). Ters yönde, metni olmayan (görsel
+  editörsüz) sayfa hiç listelenmiyordu.
+- Sitemap sayfayı çizemez; karar sayfa çizilirken saklanır.
+  `pg_tr_page_verdict_keep()` (finalize, yalnız `reviewed` kuralında): sayfanın
+  kendi adresi (sorgu dizgesi yok, `pg_tr_page_id_of_url() > 0`), 200 yanıtı;
+  değişmediyse yazmaz. Gövdesi olmayan sayfaya boş `tree_code`'lu satır
+  açılır — gövde önbelleği boş gövdeyi hiç sunmaz (`tree_code !== ''`).
+- `pg_tr_indexable()`: karar biliniyorsa o; bilinmiyorsa (çeviri değişti,
+  sayfa o dilde henüz çizilmedi) eski kural (sayfanın kendi metinleri onaylı).
+  Kararlar `pg_tr_invalidate_pages()` ile, yani dilin çevirileri her
+  değiştiğinde gövdeyle birlikte silinir.
+- **Ödün:** sayfa metni ya da ortak bileşen değişince saklı karar bir sonraki
+  çizime kadar eski kalır. Ayrı bir geçersizleştirme yazılmadı: sitemap'i
+  okuyan tarayıcı adresi ziyaret ettiğinde sayfa yeniden çizilir ve karar
+  düzelir; tutarsızlık en çok bir tarama sürer. Sayfa kaydında kararı silip
+  eski kurala düşmek de düşünüldü; eski kural da ortak bileşeni göremediği
+  için kazanç sağlamıyor.
+- `pg_tr_page_index()`: sayfa adları ile ana sayfa id'si istekte bir kez
+  okunur; `pg_tr_page_names()` (bağlantı önekleyici) ve
+  `pg_tr_page_id_of_url()` ortak kullanır (önceden aynı tablo iki kez
+  taranıyordu). `pg_tr_page_names()` değerleri `true` yerine sayfa id'si;
+  çağıran yalnız `isset()` kullanıyor.
+- Şema: `includes/migrations/2026.4.9.php` →
+  `upgrade_2026_4_9_translation_index()` (9.1): kolon yoksa önce
+  `DELETE FROM page_translations` (önbellek; ALTER'ın kopyalayacağı satır
+  kalmaz, `install_heavy_tables()`'a eklemek gerekmedi), sonra
+  `install_add_column('page_translations', 'indexable', TINYINT(1) UNSIGNED NULL)`,
+  `pg_schema_cache_clear()`. Kod şema yokken `pg_tr_page_verdict_ready()`
+  (`pg_schema_has()`) ile eski davranışa düşer. 2026.4.9 bu adımla açıldı:
+  `versions.php` satırı eklendi, `tests/update_test.php` son sürüm beklentisi
+  `2026.4.9`.
+
+### 4. Ana sayfa sitemap'te iki kez (`get_sitemap_info.php`)
+
+- Ana sayfa hem kökte hem kendi adıyla (`/index`, dev'de `/anasayfa`)
+  listeleniyordu; adlı adresin canonical'ı kök (`get_page_content()`
+  `$page_home == 'yes'` → `PATH`), Search Console'da "uygun canonical etiketli
+  alternatif sayfa" olarak görünür. Artık `page_home = 'yes'` olan sayfanın adı
+  listelenmez; kök bir kez. Kök `<loc>` artık `HOSTNAME_SETTING . PATH`:
+  alt klasöre kurulu sitede alan adının kökünü gösteriyordu, canonical ise
+  sondaki eğik çizgiyle yazılıyor.
+
+**Doğrulama.** `php tools/lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php`, `check_copies.php` temiz. `php tools/test.php`:
+yeni testler geçti; `panel_actions` testinin bir başarısızlığı ve
+`innodb_test`'in beş hatası (anlık görüntüde `data/backups` yok) değişiklikten
+önce de vardı. Dev'de (MySQL 8.0.46): adım yardımcı betikle üç kez koşuldu
+(ilki kolonu ekledi ve önbelleği boşalttı, sonrakiler "zaten var"), ardından
+yükseltme ekranı 2026.4.8 → 2026.4.9'u "1 ifade, 1 tanesi zaten yerindeydi"
+diye tamamladı. Davranış: `/tr/magaza?rss=true` kanal, öğe ve guid
+bağlantıları `/tr/…`, `<language>tr</language>`; kaynak akışta
+`<language>en</language>`. `/tr/hakkimizda` noindex çizildi → karar 0,
+sitemap'te dil adresi yok, kaynak sayfada hreflang yok. Karar elle 1
+yapılınca sitemap `/tr/hakkimizda`'yı alternatifleriyle (ve
+`xmlns:xhtml`) listeledi, kaynak sayfa `en,tr,x-default` yazdı; `/tr/hakkimizda`
+yeniden açılınca karar 0'a döndü ve sitemap'ten düştü. `th` geçici olarak
+"Makine çevirileri de" yapılınca sitemap her sayfanın `/th/` adresini
+alternatifleriyle verdi, başlıklar `en,th,x-default` yazdı; ayar geri alındı.
+
+**Açık konu (bu değişiklikte yapılmadı).** Görsel editörle kurulan ürün
+detay sayfasında (`catalog_item_view` widget'lı standart sayfa) canonical
+ürünün adresi değil sayfanın kendisi: dev'de `/urun-detay/Hediye_Kutusu`'nun
+canonical'ı ve `og:url`'si `/urun-detay`. Bütün ürün sayfaları tek sayfanın
+kopyası sayılır. Aynı gün düzeltildi: yukarıdaki "Görsel editörle kurulan
+ürün, kategori ve yazı sayfaları" bölümü.
+
+## 2026.4.9 — Görsel editör: metindeki bağlantılar, details/summary tuvalde, Bootstrap 6 nav-overflow; Çeviriler: Gemini Nano'nun yazmadığı dil, tarama zaman sınırı (2026-10-12)
+
+**İstek (ürün sahibi).** pinegrap.com tasarımı (İngilizce, Bootstrap 6,
+HTML içe aktarma) dev'de düzenlenirken dört sorun çıktı:
+
+1. Tarayıcı yapay zekâsı (Gemini Nano) motoru İngilizce sayfayı Türkçeye
+   çevirmiyordu.
+2. Bir paragrafın içindeki düğmelerin (bağlantıların) adresi ve sınıfları
+   düzenlenemiyor, düğmeler paragraftan dışarı taşınamıyordu. Seçenekler
+   sunuldu; Erdal "ikisi birlikte"yi seçti: metindeki bağlantılar paneli +
+   yalnız bağlantıdan oluşan paragrafa "Öğelere ayır" + içe aktarma kuralı.
+3. SSS alanı (`<details>`/`<summary>`) tuvalde ön yüzden farklıydı.
+4. Bootstrap 6 `nav-overflow` menüsü tuvalde katlanmıyordu ("sistem
+   Bootstrap 6'ya geçtiğinde hazır olsun").
+
+### 1. Gemini Nano Türkçe yazmıyor (`assets/js/translations.js`)
+
+- **Kök sebep:** Prompt API çıktı dili olarak yalnız en, ja, es, de, fr
+  kabul ediyor (Chrome belgesi). `LanguageModel.availability()` çıktı `tr`
+  için `unavailable`, `en` için `downloadable` döndü (Chromium 152'de
+  denendi). Girdi dili için [kaynak,hedef] → [hedef] → [en] geri düşüşü
+  vardı, çıktı için yoktu: `create()` reddediliyor, ekran "model tr
+  yazamıyor" diyordu.
+- Ekran açılırken bulunan sonuç `modelWrites`'ta tutulur. Model hedef dili
+  yazmıyorsa (ya da `create()` bu yüzden reddedilirse) iş `chrome`
+  motoruyla açılır: `update` çağrısı `engine: 'chrome'` taşır
+  (`pg_tr_update()` zaten destekliyordu), sunucu metinleri parça (run)
+  olarak paketler, Translator API çevirir. Karar tıklamada bir şey
+  beklenmeden verilir (indirme kullanıcı jesti ister). Açık iş, geri
+  düşülen motorla eşleşirse sürdürülür.
+- Motor notuna ve bildirim olarak: "Tarayıcının yapay zekâ modeli bu
+  bilgisayarda tr dilinde yazmıyor: …Translator API… bağlam ve stil notu
+  olmadan." (`translations.php` → `model_fallback`).
+
+### 2. "Çevirileri güncelle" zaman sınırı (`includes/translate/extract.php`, `jobs.php`, `translations_action.php`)
+
+- Geri düşüş çalışınca ikinci hata göründü: `php_errors.log`'da üç kez
+  `translations_action.php` "Maximum execution time of 120 seconds
+  exceeded". dev'de kaynak `en`, hedef `tr`, 10.710 metin.
+- **Kök sebep:** `pg_tr_extract_all()` her sayfa için
+  `pg_tr_extract_page()` çağırıyor; o da sayfanın yerleştirdiği ortak
+  bileşenleri (üst bilgi, alt bilgi, widget'lar) ve menüleri her sayfada
+  yeniden çıkarıyordu.
+- `pg_tr_extract_page($page_id, &$memo = null)`: bir turda çıkarılmış
+  ortak bileşen (`s<id>`) ve menü (`m<id>`) yeniden çıkarılmaz; sayfanın
+  `page_ref` satırları yine yazılır. Diğer çağıranlar (kaydedince çeviri,
+  API) değişmedi.
+- `pg_tr_extract_all($deadline, $from)`: adımlar = sayfalar + katalog +
+  formlar; son tarih geçince `next`/`total` ile döner.
+  `pg_tr_update(…, $from = -1)`: `$from >= 0` ise ~20 sn'lik turlar,
+  bitmeyen tur `extracting` döner ve iş açmaz. Ekran (`scan()`) turları
+  "Sayfalar taranıyor… x/y" ile ardı ardına çağırır. API ve kaydedince
+  çeviri tek seferlik eski yolda.
+- Ölçüm (dev, `engine: manual` ile, iş açmadan): tam tarama tek turda
+  8 sn, 10.702 bekleyen.
+- **Dikkat (veri):** dev'de kaynak dil `en` ama şablon sayfalarının çoğu
+  Türkçe ("Hizmetlerimiz", "Hakkımızda"…). "Tüm sayfalar" bunları da
+  İngilizce diye çeviriciye gönderir; pinegrap.com sayfaları için sayfa
+  kapsamı ("Bu sayfayı güncelle") kullanılmalı.
+
+### 3. Metindeki bağlantılar (`assets/js/style_designer.js`, `includes/designer_import.php`)
+
+- İçe aktarma her `<p>`'yi `content/paragraph` yapıp iç HTML'i `text`'e
+  koyuyor (`pg_di_node()`); bağlantıların düğümü yok.
+- `_sdIlSection()` / `_sdIlBind()`: paragraf ve başlıkta (bağlı metin
+  hariç) "Metindeki bağlantılar" bölümü. Her `<a>` için Bağlantı (dosya
+  seçicisiyle), Hedef, Sınıflar, rel; "Metinden çıkar" (`_sdIlLinkNode()`
+  ile içe aktarmanın yaptığı gibi bir `link` düğümü, metnin hemen
+  arkasına) ve "Bağlantıyı kaldır" (sözcükler kalır). Her değişiklik metin
+  ayrıştırılıp (`<template>`, etkisiz) yazılarak yapılır, tek geri alma
+  adımıdır.
+- "Öğelere ayır" (`_sdIlSplit()`): yalnız bağlantı ve ayırıcıdan
+  (boşluk, ·, •, |, /, tire) oluşan metinde görünür. Düğüm aynı `_id` ile
+  `semantic` olur (paragrafta `p`, başlıkta kendi etiketi), sınıflar,
+  `lead`/`align` dahil, kalır; çocuklar bağlantı düğümleri + ayırıcı
+  span'lar. Cümle içindeki bağlantıda gösterilmez: cümle parçalanır,
+  düzenleme ve çeviri bozulur.
+- İçe aktarma: `pg_di_only_links()` — yalnız bağlantıdan oluşan `<p>`
+  `semantic p` + çocuk düğümler olarak gelir.
+- dev'de denendi (tasarım 800, kaydetmeden): sınıf değişikliği metne
+  yazıldı; ayırma 3 bağlantı + 1 ayırıcı verdi (`data-x` öznitelik olarak
+  kaldı); "Metinden çıkar" bağlantıyı arkaya koydu, geri alma tek adımda
+  döndü; "Bağlantıyı kaldır" sözcükleri bıraktı. `pg_di_only_links()`
+  bulutta 5 örnekle sınandı.
+
+### 4. details/summary tuvalde (`style_designer.js`)
+
+- **Kök sebep:** tuvalde her düğüm `div.sd-wrap` içinde. `<summary>`
+  yalnız `<details>`'in doğrudan çocuğuyken özettir; sarmalayıcıda sıradan
+  bir öğe oluyor, tarayıcı kendi "Ayrıntılar" etiketini çizip soruyu
+  cevabın içinde gösteriyordu. `display:contents` DOM ilişkisini
+  değiştirmediği için çare değil.
+- `_sdSelfWrapped()`: `summary`, tablo hücresi gibi kendi sarmalayıcısı.
+  `buildNodeEl()` öğeyi `buildInnerElement()` ile kurar, `sd-wrap` +
+  `data-sd-self` ekler, `innerEl` = sarmalayıcı; `sd-fx-flat` almaz.
+  `_sdWrapEl()` / `getCanvasInnerEl()` / boyut rozeti öğenin kendisini
+  verir.
+- CSS: tuval kuralları katmansız, Bootstrap 6 `@layer components` içinde;
+  sarmalayıcının kutu stilleri (gölge, köşe, min-height, seçim arka planı)
+  özete konsaydı tasarımınkileri ezerdi. Genel kurallar
+  `:where(:not([data-sd-self]))` ile daraltıldı (özgüllük aynı); özete
+  yalnız `position:relative`, hover/seçim için outline, araç çubuğu içeride
+  (`top:0`; kenarları kırpan details onu gizliyordu).
+- Köprü (`_SD_BR_X`): `sd-` sınıflı öğeler tasarım kurallarından
+  dışlanıyordu; `[data-sd-self]` hayalet kayıt ve sütun gibi istisna.
+- Açık/kapalı durumu `renderCanvas()` boyunca korunur
+  (`_captureDetailsState()` / `_restoreDetailsState()`, düğüm id'siyle;
+  ağaçtaki `open` değişirse ağaçtaki kazanır). Ağaçtan seçilen bir cevabın
+  `details`'i açılır (`_sdRevealInDetails()`); özetin kendisi değil, onu
+  tıklama açar/kapatır.
+- dev'de (sayfa 1942): ilk soru açık, diğerleri kapalı sorularıyla; tıklama
+  açıp kapatıyor (`name` grubu birini kapatıyor); yeniden çizimde durum
+  kaldı; `generateHTML()` çıktısında tuval izi yok.
+
+### 5. Bootstrap 6 nav-overflow tuvalde (`style_designer.js`)
+
+- **Kök sebep:** BS6 alpha paketi ES modülü; bileşenlerin bir kısmı
+  kendini `DOMContentLoaded`'da başlatıyor (NavOverflow, Combobox,
+  Datepicker, Strength, OtpInput, Chips, Range). Tuvalin JS'i ilk
+  çizimden sonra yüklendiği ve gövde her değişiklikte yeniden kurulduğu
+  için hiçbiri başlamıyordu; modülün dışa aktarımlarına sayfadan
+  erişilemiyor.
+- `_sdShareModule()`: tasarımın her modül betiği için tuvale aynı URL'yi
+  içe aktaran küçük bir modül eklenir (aynı örnek, sayfanın kendi olay
+  delegasyonu) ve dışa aktarımlar `window.__sdFwModules`'a konur.
+  `_sdBootModuleWidgets()` her `renderCanvas()` sonunda ve modül
+  geldiğinde `_SD_MODULE_BOOT` tablosundaki bileşenleri
+  `getOrCreateInstance()` ile başlatır. Şimdilik yalnız NavOverflow: form
+  denetimini yeniden kuranlar (chips, range, OTP, strength) editörün seçip
+  düzenlediği öğeler; denenmeden eklenmedi.
+- dev'de 530 px'te "Two ways · Features · Looks · More · Live demo";
+  "More" menüsü açılıyor; yeniden çizimde yeniden başlıyor.
+
+**Doğrulama.** `node --check` (iki JS), `php -l` (extract.php, jobs.php,
+translations_action.php, translations.php, designer_import.php) temiz.
+Gemini Nano → Translator geri düşüşünün iş akışı yerleşik tarayıcıda
+denenemedi (Translator hizmeti yok); Erdal'ın Chrome'unda denenecek.
+
+---
+
+## 2026.4.9 — Görsel editör: kendi CSS'iyle kurulan tasarımda tuval takılmıyor; kayıt yalnız değişen sayfaları yazar (2026-10-12)
+
+**Sorun (ürün sahibi).** Bol JS ve CSS'li özel (custom) bir tasarımda
+animasyonlar kapalıyken de editör sürekli takılıyordu: Genel Bakış'ta
+sürüklenen öğenin yerine oturması 10–20 sn, iframe'e sürükleme kullanılamaz
+hâlde, "Yayınla" 10–15 sn. Hazır şablonlarda (Bootstrap 5) sorun yok.
+
+**Kök neden (ölçüldü, tasarım 801 "changelog", 33 sayfa, Bootstrap 6 + AOS,
+sayfa ağacı 1.548 düğüm, tuvalde 14.934 öğe).**
+
+- *Seçici köprüsü.* Özel çatılı tasarımda sarmalayıcılar saydam çizilir ve
+  `_sdBridgeSheets()` tasarımın yapı/konum seçicilerini sarmalayıcıyı da
+  atlayacak biçimde yeniden yazar. Bootstrap 6'nın 4.326 kuralından 639'u
+  yeniden yazılmış, seçici metni 99 KB'tan 1,6 MB'a çıkmıştı. Maliyetin
+  neredeyse tamamı öznesi evrensel olan ~190 kuraldan geliyordu
+  (`:where(.space-x-3 > :not(:last-child))`, `divide-*`): her biri her öğede,
+  her stil değişikliğinde, sarmalayıcı ve konum testli dört seçenekle
+  deneniyordu. Tuvalin tam stil hesabı 250 ms (tasarımın kendi CSS'iyle 31 ms),
+  tek bir sarmalayıcıda sınıf değişikliği 240 ms (2–14 ms) tutuyordu. Her
+  `mouseover` 230 ms'lik zorunlu stil hesabı, her `dragover` ~250 ms demekti.
+  Şablonlar Bootstrap 5'tir; köprü onlarda hiç çalışmaz.
+- *Gizli araç çubukları.* Her sarmalayıcı ~8 öğelik bir araç çubuğu taşıyordu:
+  14.934 öğenin ~11.500'ü. `renderCanvas` 420–550 ms.
+- *Seçimde ağaç.* `renderSelectionOnly()` her tıklamada katmanlar ağacını
+  (1.644 satır) baştan kuruyordu: ~190 ms.
+- *Kirli nokta yoklaması.* `setInterval(_pgTabsRefreshDirty, 1500)` her
+  turda 33 sayfanın ağacını `JSON.stringify` ediyordu: 1,5 sn'de bir ~30 ms.
+- *Kayıt.* `_pgTabsSerialize()` her kayıtta bütün sayfaları ağaçlarıyla
+  gönderiyor, sunucu her birini önce kuru, sonra gerçek
+  `pg_designer_save_page()`'ten geçirip SEO yapı puanını (sayfayı çizerek)
+  hesaplıyor, çeviri işini ve etkinlik günlüğünü yazıyordu. Performans
+  Günlüğü: `edit_system_style.php` en kötü 4,3 sn / 2.262 sorgu,
+  `add_system_style.php` (yeni tasarımın ilk kaydı) 8,6 sn / 2.117 sorgu.
+- Tuvalde Bootstrap Icons üç kez yükleniyordu (editörün kendi kopyası +
+  tasarımın kilitli satırı + tasarımın içe aktarılan 1.13.1'i).
+
+**Çözüm (`assets/js/style_designer.js`, `includes/designer_screen.php`).**
+
+- *Kullanıma göre köprü.* `_sdBridgeRules()` bir kuralı, gerektirdiği
+  sınıflar tuvalde varsa köprüler (`_sdBridgeRule()`); yoksa kural
+  `canvasDoc._sdBr.wait` dizininde eksik sınıflarından birinin altında bekler
+  (`_sdBrDefer()`, `_sdBrPark()`). Gerekli sınıflar `_sdBrNeeds()`: her
+  seçicinin parantez ve köşeli parantez dışındaki sınıfları (kaçışlar
+  çözülür; tamamı `:is()`/`:where()` olan seçici içinden okunur); sınıf
+  gerektirmeyen seçici hemen köprülenir. Tuvaldeki sınıflar editörün kendi
+  `MutationObserver`'ı ile izlenir (`childList` + `class` niteliği):
+  yeni bir sınıf görünce (düzenleme, betiğin eklediği durum sınıfı) onu
+  bekleyen kurallar köprülenir (`_sdBrRelease()`). Gözlemci yoksa her şey
+  eskisi gibi hemen köprülenir. Kullanılmayan bir kural köprülü ya da değil
+  hiçbir şeyle eşleşmez, tuvalin görünüşü değişmez.
+- *Araç çubuğu gerektiğinde.* `buildNodeEl()` `.sd-tb` kutusunu yine koyar
+  (sarmalayıcının çocuk sırası, konum seçicileri için aynı kalır), içini
+  `tb._sdFill` ile bırakır. `_sdTbFill(w)` onu ilk gerektiğinde kurar:
+  tuval `mouseover`'ında fare altındaki sarmalayıcı ve çevresindeki bağlı
+  (`sd-has-binding`) sarmalayıcılar, seçimde (`renderSelectionOnly()`,
+  seçili düğümün `buildNodeEl()`'i). Tablo, ortak bileşen ve loop bandı
+  araç çubukları eskisi gibi hemen kurulur.
+- *Seçimde ağaç yerinde.* `buildTreeItems()` satıra düğümünü (`li._sdNode`),
+  `renderTree()` listeye ağacı ve `_sdEditEpoch`'u yazar.
+  `_sdTreeSelectInPlace()` yalnız sınıfları (`active`, `sd-multi-selected`,
+  gövde satırı) değiştirir; ağaç değiştiyse (saveState/render), seçilen
+  düğümün satırı yoksa (kapalı bir dalın içinde) ya da seçim düğümü açtıysa
+  (oku tutmuyor) `renderTree()`'ye düşer.
+- *Yoklama.* `_pgTabsPollDirty()`: yalnız açık sayfayı ve yalnız
+  `_sdEditEpoch` değiştiyse karşılaştırır; her onuncu tur bütün sayfalara
+  bakar. Olay kaynaklı `_pgTabsRefreshDirty()` çağrıları aynı.
+- *Kayıt yalnız değişeni yazar.* `_pgTabsSerialize()` daha önce bu tasarıma
+  kaydedilmiş, `_pgPageDirty()` temiz, doğrulamada kesilen bir şey olmayan
+  ve gösterdiği ortak bileşenlerden (iç içe olanlar dahil) hiçbiri
+  `_sharedDirty` olmayan sayfayı ağaçsız, `unchanged: 1` ile gönderir
+  (`_pgPageUnchanged()`). Sunucu (`pg_designer_screen_post()`) böyle bir
+  sayfayı ad tekilliği denetimine katar, kilit ve kuru kayıt denetimini
+  atlar, yazmaz; `pages` cevabında anahtarı, id'si ve taslak durumuyla yer
+  alır (`tab:` çözümü tam haritayla çalışır). SEO ve `forms` cevabı yalnız
+  yazılan sayfalar için (`$written`). Eski tasarım geneli gövde sınıfları
+  (`additional_body_classes`) bekliyorsa değişmemiş sayfaların ağaçları
+  `pg_page_tree_json()` ile okunur ve hepsi eskisi gibi yazılır.
+- *SEO puanı süreli.* Kayıttan sonra yapı puanı en fazla 2 sn hesaplanır;
+  kalan sayfalar puansız kuyruğa girer (`seo_struct_score = NULL`,
+  `seo_struct_current = 0`, `seo_analysis_current = 0`); gece işi ve
+  Sayfalar ekranındaki düğme işler.
+- *İkon CSS'i.* Editörün tuvaldeki kendi Bootstrap Icons bağlantısı
+  (`#sd-icons-css`) tasarım bir Bootstrap Icons sayfası yüklüyorsa
+  kapatılır (`applyAssetsToIframe()`).
+
+**Ölçüm (yerleşik tarayıcı, dev, aynı sayfa).**
+
+| | Önce | Sonra |
+|---|---|---|
+| Tam stil hesabı | 250 ms | 30 ms |
+| Sarmalayıcıda sınıf değişikliği | 240 ms | 26 ms |
+| `mouseover` işleyicisi | 230 ms | 25 ms |
+| `dragover` (20 olay ort.) | ~250 ms | 1,2 ms |
+| Tuvaldeki öğe | 14.934 | 5.066 |
+| `renderCanvas` | 420–550 ms | ~60–210 ms |
+| Katmanlar ağacından seçim | ~190 ms ağaç + çizim | 124 ms toplam, ağaç kurulmaz |
+| Kirli yoklama | 1,5 sn'de ~30 ms | düzenleme yoksa 0 |
+| Kayıt, değişiklik yok (35 sayfa) | 4,3 sn'ye kadar | sunucu 256 ms, gönderilen 19 KB |
+| Kayıt, tek sayfa değişti | aynı | sunucu ~430 ms |
+
+Tasarım 801'de köprülenen kural 639 → 26 (+ sınıfsız olanlar); tuvaldeki
+1.748 gerçek öğenin hesaplanmış stili (28 özellik) önceki kodla birebir aynı.
+Sayfada olmayan bir sınıf (`space-x-3`) bir öğeye eklenince kuralı aynı
+mikro görevde köprülendi. Tasarım 800'de (Bootstrap 5) bütün araç çubukları
+doldurulduğunda 995 gerçek öğenin stili ve kutusu boş hâliyle aynı.
+
+**Ödün / açık.**
+
+- Yeni bir tasarımın ilk kaydı bütün sayfaları yine yazar (hepsi yenidir);
+  puanlama süreyle sınırlandığı için kısalır, çeviri işi ve günlük sayfa
+  başına kalır.
+- Değişmemiş sayfanın `page_timestamp`'i ve etkinlik günlüğü satırı artık
+  her kayıtta yenilenmez (doğru olan bu).
+- Köprülenmiş kural, sınıf sayfadan kalkınca köprülü kalır (yalnız maliyet).
+- Kirli noktalar, olay tetiklemeyen bir dış değişiklikte en geç ~15 sn'de
+  güncellenir.
+- Tasarım 801'in kendisi iki Bootstrap Icons sürümü yüklüyor (kilitli
+  1.11.3 satırı + içe aktarılan 1.13.1): canlı sitede de iki kopya; kilitli
+  satır kapatılabilir.
+
+**Doğrulama.** `node --check`, `php tools/lint.php`, `check_lang`,
+`check_bindings`, `tools/test.php` temiz. Dev'de tasarım 800'de değişikliksiz
+kayıt (35 sayfa `unchanged`, `pages` 35 satır) ve tek sayfalık kayıt (geçici
+bir not eklenip sonra silinerek, iki kayıt). Tasarım 801'de sentetik
+sürükle-bırak ve geri al. Büyük bir ilk kayıtta SEO kuyruğa alma çalışma
+anında denenmedi.
+
+## 2026.4.9 — Kurulum: aynı sunucuda aynı anda kurulan siteler birbirini durduruyordu (2026-10-11)
+
+**Sorun.** Sürüm adımlarını koşturan kilit (`includes/migrations/runner.php`,
+`install_acquire_lock()` ve `install_lock_is_held()`) MySQL `GET_LOCK` ile
+alınır; adı `pinegrap_upgrade_` + `md5(DB_DATABASE . '@' . DB_HOST)`.
+`GET_LOCK` adları veritabanına değil bütün MySQL sunucusuna aittir. Yeni
+kurulumda henüz `config.php` yüklenmediği için `DB_DATABASE` ve `DB_HOST`
+tanımsızdır, ad her kurulumda `md5('@')` olur: aynı sunucuda aynı anda
+kurulan bütün siteler aynı kilidi ister. Kilidi alamayan kurulum başlangıç
+sitesinin SQL'i yüklendikten, yönetici hesabı ve `config.php` yazıldıktan
+sonra, sürüm adımlarına (başlangıç sitesinin 2026.4.4 şemasından güncel
+sürüme) geçerken "Başka bir yükseltme çalışıyor" ile durur; tasarım şablonu
+da uygulanmaz. Site yarım kalır: `config.php` var, veritabanı eski şemada, ön
+yüz "Unknown column ..." hatası verir, sihirbaz da kurulu siteyi koruyan
+kilit ekranını gösterir.
+
+**Düzeltme.** Ad yeni `install_lock_name()`'de üretilir: `DB_DATABASE`
+tanımlıysa eskisi gibi (yükseltmelerin kilidi değişmez), değilse bağlantının
+kullandığı veritabanından (`SELECT DATABASE()`) `'install@' . <veritabanı>`.
+Kilidi alan ve tutulup tutulmadığını soran iki fonksiyon aynı adı kullanır;
+ad, `install_acquire_lock()`'ta `GET_LOCK` ile aynı `try` içinde üretilir,
+sorgu düşerse dosya kilidine geçilir.
+
+**Nasıl bulundu.** pinegrap.site'da beş şablon kaynak sitesi (her biri ayrı
+veritabanında) aynı anda kurulurken yalnız biri bitti; diğer dördünün kurulum
+çerçevesinde "Başka bir yükseltme çalışıyor". Barındırma platformu bu
+düzeltmeyi 2026.4.8 kaynak sitelerine yamayla uyguluyor
+(`dev/hosting/pgplatform/patches/patch_4_8_install.json`).
+
+## 2026.4.9 — Kurulum: mağazalı tasarım şablonları kurulamıyordu (2026-10-11)
+
+**Sorun.** Kurulum sihirbazının tasarım adımı şablonları `ECOMMERCE` açıkmış
+gibi okuyor ("iki başlangıç sitesi de mağaza açık gelir"; `install/index.php`
+tasarım adımı ve `design_preview` isteği `define('ECOMMERCE', true)` yapar), bu
+yüzden `'requires' => 'ecommerce'` taşıyan Online Mağaza, Butik ve Kitapçı
+listede görünür ve seçilebilir. Gönderimde ise (`isset($_POST['submit'])`
+dalı) sabit tanımlı değildi: `pg_design_template()` → `pg_design_templates()`
+bu üç şablonu `_pg_tpl_requirement_met()` ile ele, kurulum "Şablon bulunamadı"
+hatasıyla gizli kurulum çerçevesinin içinde durdu; ekranda yalnız "Kurulum
+tamamlanmadan durdu" görünüyordu. Pinegrap'a merhaba deyin ve Oyun Bahçesi
+(`requires` yok) etkilenmiyordu.
+
+**Düzeltme.** Gönderim dalında, şablon okunmadan hemen önce aynı gerekçeyle
+`if (!defined('ECOMMERCE')) define('ECOMMERCE', true);`. Bu istekte
+`pg_design_templates()` daha önce çağrılmadığı için statik önbellek eksik
+listeyle dolmamış olur. İkinci istek (`includes/install_design_template.php`)
+siteyle (`init.php`) koştuğundan `ECOMMERCE`'i sitenin ayarından alır; ona
+dokunulmadı.
+
+**Nasıl bulundu.** pinegrap.site'da 2026.4.8 ile Butik şablonlu kaynak site
+kurulurken; çerçevedeki sayfada "Bir hata oluştu: Şablon bulunamadı."
+Barındırma platformu 2026.4.8 kaynak sitelerine aynı düzeltmeyi yamayla
+(`dev/hosting/pgplatform/patches/patch_4_8_install.json`, aşağıdaki kilit
+düzeltmesiyle birlikte) uyguluyor.
 
 ## 2026.4.8 — Dış API: 4.8 özelliklerinin API boşlukları kapandı (zorunlu 2FA rolünde cihaz girişi, teklif imzası, tartışmalar, zamanlanmış mesaj, okundu onayı isteme, not sürümleri, görev listesi sorguları, 204 belgesi) (2026-10-11)
 
