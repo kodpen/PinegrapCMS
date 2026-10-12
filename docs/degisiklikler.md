@@ -37,7 +37,12 @@ maddeleri "Oturum, hesap ve güvenlik"e taşındı.
 (`includes/migrations/2026.4.9.php`, 9.1 `upgrade_2026_4_9_translation_index()`;
 `versions.php`'de `'2026.4.9'` satırı; dev yükseltildi). Sonraki şema
 adımları `upgrade_to_2026_4_9()` girişine `upgrade_2026_4_9_<konu>()` alt
-adımı olarak eklenir; dosya yeniden oluşturulmaz. Alt adım etiketleri 2026.4.8'deki aralık düzenini
+adımı olarak eklenir; dosya yeniden oluşturulmaz. **2026-10-12: 2026.4.9 beta olarak
+yayınlandı, pinegrap.com güncellendi** (ürün sahibi): beta'yı koşmuş bir
+site `config.version`'ı 2026.4.9 olduğu için sonradan eklenen bir 2026.4.9
+alt adımını koşmaz; böyle bir değişiklik ya kodda kendini düzeltmeli
+(örnek: `pg_tr_render_rules_check()`) ya da yayından sonra açılacak sürüme
+girmeli. Alt adım etiketleri 2026.4.8'deki aralık düzenini
 önek `9.` ile korur: genel işler 9.1'den, ERP 9.58–9.69 ve 9.90'dan sonrası,
 API 9.70–9.79, Çalışma Alanı 9.80–9.89 ve 9.110–9.119. Yeni bölüm başlıkları
 `## 2026.4.9 — …`; `changelog.txt`'de maddeler en üste açılacak `2026.4.9`
@@ -72,6 +77,109 @@ numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başl�
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
+
+## 2026.4.9 — Kaynakla aynı dönen makine çevirisi sayfayı dizinden düşürmüyor; "Tümünü onayla" şüphelileri de sunuyor (2026-10-12)
+
+**İstek (ürün sahibi).** 2026.4.9 beta olarak yayınlandı ve pinegrap.com
+güncellendi. Türkçe çeviriler tamamlanıp hepsi gözden geçirildi yapılmasına
+rağmen `/tr/features` sitemap.xml'de yoktu ("Site Haritasına Dahil Et"
+açık). "Tek kelime çeviri eksiği varsa sitemap'e girmemesi mantıksız değil
+mi? Tümünü onaylama seçeneği de gelmiyor zaten." Önerilen üç değişiklik
+(dizin kuralı, Tümünü onayla, tek seferlik yenileme) birlikte seçildi.
+
+**Kök sebep.** `/tr/features` `noindex, follow` veriyordu: sayfada beş makine
+çevirisi gözden geçirilmemişti (LinkedIn, Website, Import HTML or ZIP, SEO,
+ERP; ekranda Makine 113, Bekleyen 0). Beşi de motorun kaynağı aynen geri
+verdiği yanıtlar. `pg_tr_result_check()` (`engines.php`) böyle bir yanıtı
+yazıyor ama şüpheli işaretliyor; "Tümünü onayla" şüphelileri dışarıda
+bırakıyor (`pg_tr_review_all_where()`, `t.suspicious = 0`) ve sayı 0 olunca
+düğme hiç çizilmiyordu. "Yalnız gözden geçirilmiş metinler" kuralında
+(`pg_tr_render_finalize()`) tek bir makine metni (`counts['machine'] > 0`)
+sayfayı kapatıyor; sitemap.xml de sayfanın bu yanıtını
+(`page_translations.indexable`) ya da gözden geçirilmişlik tahminini izliyor.
+
+### 1. Dizin kuralı
+
+- `pg_tr_same_as_source($source, $text)` (`store.php`, saf;
+  `tests/translate_index_test.php`): büyük/küçük harf ve kenar boşlukları
+  dışında kaynağın aynısı mı.
+- `pg_tr_render_text()` (`render.php`) ve `pg_tr_db_text()` (`content.php`):
+  böyle bir makine çevirisi `machine` (ve `google`) sayacını artırmaz —
+  sayfada motor çıktısı değil sitenin kendi sözcükleri var, Google atfı da
+  gerekmez. Gövde önbelleğindeki `reviewed` bayrağı aynı sayaçlardan çıkar.
+- Tahmin (henüz yanıtı saklanmamış sayfa, sorgu dizgili adres):
+  `pg_tr_page_stats_one()` yerine `pg_tr_index_stats($language, $page_id = 0)`
+  (`seo.php`); tek sayfa ve bütün dil aynı sorgu. Sayılan: `status =
+  'reviewed'` ya da `CAST(LOWER(TRIM(t.text)) AS BINARY) =
+  CAST(LOWER(TRIM(s.source_text)) AS BINARY)`. Karşılaştırma bilerek ikili:
+  `utf8mb4_unicode_ci` aksanları da eşit sayar ("Resume" = "Résumé"), PHP
+  tarafı saymaz. `pg_tr_page_stats()` (Çeviriler ekranının sayıları)
+  değişmedi; orada gözden geçirilmiş sayısı operatörün işini gösteriyor.
+- Kapsam yalnız birebir aynı yanıtlar. Uzunluğu orantısız diye şüpheli
+  sayılanlar ve çevirisi olmayan (bekleyen) metinler sayfayı eskisi gibi
+  kapatır.
+
+### 2. Tümünü onayla
+
+- `pg_tr_review_all_where()` / `_count()` / `pg_tr_review_all()`: yeni
+  `$suspicious` parametresi (varsayılan false). API'nin `all: true`
+  davranışı değişmedi; açıklaması ekranın varsayılanını anlatıyor, o da
+  hâlâ şüphesiz.
+- `translations.php`: düğme şüphesiz makine çevirisi yokken şüpheli varsa da
+  görünür; sayısı şüphesizlerin, yoksa şüphelilerin. `window.confirm` yerine
+  "Çevirileri temizle" desenindeki pencere (`#pg_tr_review_all_modal`):
+  açıklama, "Şüpheli işaretlenenleri de onayla" kutusu ve sayısı, neyin
+  şüpheli sayıldığı notu, "Şüphelileri göster" bağlantısı (kapsamı koruyan
+  `filter=suspicious`), onaylanacak sayı. Yalnız şüpheliler kaldıysa kutu
+  işaretli gelir; sayı 0 iken Onayla kapalı. Düğmenin ipucu (tooltip)
+  kaldığı için pencere JS'ten açılıyor (`bootstrap.Modal`).
+- `translations_action.php` `review_all`: `suspicious` (1/0). Onaylanan
+  çevirinin şüpheli bayrağı kalır; tek tek gözden geçirmede
+  (`pg_tr_set_status()`) de kalıyor.
+- 5 yeni lang anahtarı `tr_append.py` ile. `confirm_review_all` metni artık
+  kullanılmıyor; tr.json'daki karşılığı duruyor.
+
+### 3. Tek seferlik yenileme (şemasız)
+
+- `pg_tr_render_rules()` (`'2026.4.9'`): gövde parmak izinin tuzu (önce
+  `'2026.4.7'` sabitiydi). Çevrilmiş gövdeler bir kez yeniden çizilir.
+- `pg_tr_render_rules_check()`: `data/temp/translate_rules_<kurallar>`
+  işareti yoksa önce işareti yazar, yazabildiyse `pg_tr_invalidate_pages()`
+  ile `page_translations`'ı (gövdeler ve saklanan yanıtlar) bir kez boşaltır.
+  `pg_tr_render_page_body()` ve `pg_tr_page_verdicts()` (sitemap, hreflang,
+  yanıtı saklama) çağırır. Neden: parmak izi yalnız açılan sayfayı yeniler;
+  sitemap.xml ise kimsenin açmadığı sayfaların eski kurala göre saklanmış
+  `indexable = 0` yanıtını okumaya devam ederdi. Beta'yı (9.1, 9.2) koşmuş
+  siteler yeni bir 2026.4.9 alt adımını koşmayacağı için kod tarafında
+  yapıldı. İşaret yazılamazsa boşaltma yapılmaz (her istekte boşaltmaktansa);
+  gövdeler yine parmak iziyle yenilenir, yanıtlar sayfa açıldıkça düzelir.
+- Kurallar bir daha değişirse `pg_tr_render_rules()`'ın değeri değişir.
+
+**Doğrulama.** dev'de hedef dil kurulu değil ve panel oturumu yok; bulut
+sandbox'ında (`tools/setup_sandbox.sh`, `development` klonu + bu
+değişiklik) hello-pinegrap şablonu, kaynak tr, hedef en (`reviewed`), bütün
+metinler gözden geçirilmiş, ana sayfada tek makine metni kaynağın aynısı
+(Google, şüpheli):
+
+- `/en/` robots meta yok, hreflang en var, saklanan yanıt 1;
+  `get_sitemap.xml.php`'de `/en/` var. Metin başka bir yanıtla
+  değiştirilince `noindex, follow`, yanıt 0, sitemap'ten çıkıyor —
+  sayfa açılmadan da (tahmin yolu). Yeniden kaynağın aynısı yapılınca geri
+  geliyor.
+- Eski kurala göre saklanmış `indexable = 0` satırı ve işaret yokken ilk
+  sitemap isteği tabloyu boşalttı, işareti yazdı, `/en/` listelendi.
+- Çeviriler ekranı (Playwright): yalnız şüpheli kaldığında "Tümünü onayla 1";
+  pencere kutu işaretli, "1 çeviri gözden geçirildi olarak işaretlenecek.";
+  kutu kaldırılınca 0 ve Onayla kapalı; onaydan sonra çeviri `reviewed`,
+  düğme kayboldu; konsol hatası yok.
+- lint, check_lang, check_bindings, check_api_schema, check_copies, test
+  (LF klonda 260/260; OneDrive kopyasında `panel_actions` testi CRLF
+  yüzünden düşüyor, değişiklikle ilgisiz) ve `node --check translations.js`
+  temiz. İşaret dosyası yazılamazken davranış sandbox'ta denenemedi (root).
+
+**pinegrap.com.** Güncellemeden sonra ilk istek önbelleği boşaltır;
+`/tr/features` beş metni kaynağın aynısı olduğu için açılır. "Website"in
+gerçekten çevrilmesi ("Web sitesi") ayrı bir içerik işi.
 
 ## 2026.4.9 — Şablonların blog formu RSS rolleriyle geliyor; mevcut sitelere veri adımı (9.2) (2026-10-12)
 

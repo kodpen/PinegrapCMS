@@ -346,7 +346,8 @@ if (!$translations_is_import && !$translations_is_export) {
             translations_respond(array('status' => 'success', 'state' => $status));
             break;
 
-        // Every machine translation of the scope reviewed at once.
+        // Every machine translation of the scope reviewed at once; the ones
+        // flagged suspicious too when the dialog was ticked.
         case 'review_all':
             $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
 
@@ -354,7 +355,7 @@ if (!$translations_is_import && !$translations_is_export) {
                 translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
             }
 
-            $count = pg_tr_review_all($language, $scope, (int) $user['id']);
+            $count = pg_tr_review_all($language, $scope, (int) $user['id'], !empty($request['suspicious']));
 
             if ($count > 0) {
                 log_activity(lang(array('string' => 'machine translations were marked as reviewed ({var:1}, {var:2} text(s))', 'vars' => array($language, $count))), $_SESSION['sessionusername']);

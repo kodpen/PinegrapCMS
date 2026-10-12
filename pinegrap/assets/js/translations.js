@@ -784,23 +784,51 @@
     }
 
     // ── "approve all": every machine translation of the scope reviewed at
-    //    once, for a translation that is trusted as the engine gave it ──
+    //    once, for a translation that is trusted as the engine gave it. The
+    //    dialog names the count; the ones flagged suspicious go along only
+    //    when ticked, and are ticked already when nothing else is left ──
 
     var reviewAllButton = document.getElementById('pg_tr_review_all');
+    var reviewAllModal = document.getElementById('pg_tr_review_all_modal');
 
-    if (reviewAllButton) {
+    if (reviewAllButton && reviewAllModal && window.bootstrap) {
+        var reviewAllGo = reviewAllModal.querySelector('.pg-tr-review-all-go');
+        var reviewAllFlagged = reviewAllModal.querySelector('.pg-tr-review-all-flagged');
+        var reviewAllCount = reviewAllModal.querySelector('.pg-tr-review-all-count');
+        var reviewAllPlain = parseInt(reviewAllGo.getAttribute('data-plain'), 10) || 0;
+        var reviewAllFlaggedCount = parseInt(reviewAllGo.getAttribute('data-flagged'), 10) || 0;
+
+        function syncReviewAll() {
+            var count = reviewAllPlain + (reviewAllFlagged.checked ? reviewAllFlaggedCount : 0);
+            reviewAllCount.textContent = text('review_all_count', count);
+            reviewAllGo.disabled = (count === 0);
+        }
+
+        reviewAllFlagged.addEventListener('change', syncReviewAll);
+
+        reviewAllModal.addEventListener('show.bs.modal', function () {
+            reviewAllFlagged.checked = (reviewAllPlain === 0) && (reviewAllFlaggedCount > 0);
+            syncReviewAll();
+        });
+
         reviewAllButton.addEventListener('click', function () {
-            if (running || !window.confirm(text('confirm_review_all', reviewAllButton.getAttribute('data-count')))) {
+            if (!running) {
+                window.bootstrap.Modal.getOrCreateInstance(reviewAllModal).show();
+            }
+        });
+
+        reviewAllGo.addEventListener('click', function () {
+            if (running) {
                 return;
             }
 
-            reviewAllButton.disabled = true;
+            reviewAllGo.disabled = true;
 
-            call({ action: 'review_all', scope: config.scope }).then(function (data) {
+            call({ action: 'review_all', scope: config.scope, suspicious: reviewAllFlagged.checked ? 1 : 0 }).then(function (data) {
                 toast(data.message, 'success');
                 window.setTimeout(function () { window.location.reload(); }, 800);
             }).catch(function (error) {
-                reviewAllButton.disabled = false;
+                reviewAllGo.disabled = false;
                 toast(error.message, 'error');
             });
         });

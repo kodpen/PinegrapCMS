@@ -444,8 +444,12 @@ if ($output_glossary === '') {
 
 $scope = ($page_id > 0) ? 'page:' . $page_id : (($group !== '') ? 'group:' . $group : 'all');
 
-// The machine translations of the scope one click marks reviewed.
+// The machine translations of the scope one click marks reviewed, and the
+// ones flagged suspicious it marks only when asked to. With only flagged
+// ones left the button still shows: its dialog offers them.
 $review_all_count = ($language !== '') ? pg_tr_review_all_count($language, $scope) : 0;
+$review_all_flagged = ($language !== '') ? max(0, pg_tr_review_all_count($language, $scope, true) - $review_all_count) : 0;
+$review_all_shown = ($review_all_count > 0) ? $review_all_count : $review_all_flagged;
 
 // What "Clear translations" deletes here: the machine translations, and with
 // the reviewed ones the whole count. The dialog names the number.
@@ -512,7 +516,7 @@ $config = array(
         'queue_held'        => lang('Claude is paused: {var}'),
         'glossary_add'      => lang('Add a term'),
         'glossary_edit'     => lang('Edit the term'),
-        'confirm_review_all' => lang('Mark {var} machine translation(s) here as reviewed? The ones flagged suspicious are left to be looked at one by one.'),
+        'review_all_count'  => lang('{var} translation(s) will be marked as reviewed.'),
         'clear_count'       => lang('{var} translation(s) will be deleted.'),
         'retrying'          => lang('The server did not answer in time; trying again…'),
     ),
@@ -551,8 +555,8 @@ echo pg_page_shell(array(
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
             <select class="form-select form-select-sm w-auto rounded-pill" id="pg_tr_engine" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
-            ' . (($review_all_count > 0) ? '<button type="button" class="btn btn-sm btn-ghost no-popover" id="pg_tr_review_all" data-count="' . (int) $review_all_count . '" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
-                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75">' . (int) $review_all_count . '</span>
+            ' . (($review_all_shown > 0) ? '<button type="button" class="btn btn-sm btn-ghost no-popover" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
+                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75">' . (int) $review_all_shown . '</span>
             </button>' : '') . '
             <div class="pg-toolbar-grow pg-chips">' . $output_chips . '</div>
             <form class="input-group input-group-sm rounded-pill pg-toolbar-search" method="get" action="' . h($self) . '">
@@ -676,6 +680,29 @@ echo pg_page_shell(array(
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
                         <button type="button" class="btn btn-outline-warning pg-tr-clear" data-machine="' . $clear_machine_count . '" data-all="' . $clear_all_count . '"><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="pg_tr_review_all_modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">' . lang('Approve all') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-body-secondary">' . lang('The machine translations of the texts shown here are marked as reviewed, as the engine gave them.') . '</p>
+                        <div class="form-check mb-1">
+                            <input value="1" class="form-check-input pg-tr-review-all-flagged" type="checkbox" id="pg_tr_review_all_flagged"' . (($review_all_flagged > 0) ? '' : ' disabled="disabled"') . '/>
+                            <label class="form-check-label" for="pg_tr_review_all_flagged">' . lang('Approve the ones flagged suspicious as well') . ' <span class="opacity-75">' . (int) $review_all_flagged . '</span></label>
+                        </div>
+                        <p class="small text-body-secondary ms-4 mb-3">' . lang('An answer that repeats the source text, or whose length is out of proportion to it, is flagged suspicious.') . (($review_all_flagged > 0) ? ' <a href="' . h($url(array('filter' => 'suspicious', 'p' => 0))) . '">' . lang('Show the suspicious ones') . '</a>' : '') . '</p>
+                        <p class="fw-semibold mb-0 pg-tr-review-all-count"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-primary pg-tr-review-all-go" data-plain="' . (int) $review_all_count . '" data-flagged="' . (int) $review_all_flagged . '"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
                 </div>
             </div>

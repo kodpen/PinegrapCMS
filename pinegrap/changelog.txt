@@ -119,6 +119,25 @@
          dildeki hiçbir sürümü açık olmayan sayfa hreflang
          yazmıyor.
 
+  [DÜZELTME] "Arama motorları indeksler: Yalnız gözden
+         geçirilmiş metinler" ayarlı dillerde, makine çevirisi
+         kaynak metnin aynısı olan tek bir metin (LinkedIn,
+         SEO, ERP gibi bir ad ya da kısaltma) bütün sayfayı
+         arama motorlarına kapatıyordu (noindex); sayfa
+         sitemap.xml'e de girmiyordu. Motorun olduğu gibi geri
+         verdiği böyle metinler artık sayfayı kapatmıyor:
+         sayfada gösterilen zaten sizin yazdığınız sözcükler.
+         Güncellemeden sonra çevrilmiş sayfalar ve site
+         haritası yeni kurala göre bir kez yeniden hazırlanır.
+
+  [DÜZELTME] Çeviriler ekranında geriye yalnız şüpheli işaretli
+         makine çevirileri kaldığında "Tümünü onayla" düğmesi
+         görünmüyordu. Düğme artık görünüyor ve bir pencere
+         açıyor: kaç çevirinin onaylanacağını yazıyor,
+         şüphelileri de onaylama seçeneği sunuyor (yalnız
+         şüpheliler kaldıysa işaretli gelir) ve şüphelileri
+         listeleyen bağlantıyı veriyor.
+
   [ŞEMA] "Arama motorları indeksler: Yalnız gözden geçirilmiş
          metinler" ayarlı dillerde sitemap.xml, noindex diyen bir
          sayfayı listeleyebiliyordu: üst bilgi, menü ya da

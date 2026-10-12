@@ -83,7 +83,8 @@ function pg_tr_page_id_of_url($url)
  * text drawn on it: what it answered the last time it was drawn in the
  * language is used while it is known (pg_tr_page_verdicts()); until then -
  * and for an address with a query string, which is not the page's own -
- * the page's own texts must all have a reviewed translation.
+ * the page's own texts must all have a reviewed translation, or one that is
+ * the source text itself (pg_tr_index_stats()).
  *
  * @param array  $row      site_languages row
  * @param string $url      the source address, unescaped
@@ -122,15 +123,15 @@ function pg_tr_indexable($row, $url, $one_page = false)
         }
     }
 
-    if ($one_page) {
-        $page = pg_tr_page_stats_one($code, $page_id);
-    } else {
-        if (!isset($stats[$code])) {
-            $stats[$code] = pg_tr_page_stats($code);
-        }
+    // One page reads its own rows, unless the whole language's are read
+    // already.
+    $scope = ($one_page && !isset($stats[$code][0])) ? $page_id : 0;
 
-        $page = isset($stats[$code][$page_id]) ? $stats[$code][$page_id] : null;
+    if (!isset($stats[$code][$scope])) {
+        $stats[$code][$scope] = pg_tr_index_stats($code, $scope);
     }
+
+    $page = isset($stats[$code][$scope][$page_id]) ? $stats[$code][$scope][$page_id] : null;
 
     if (!is_array($page)) {
         return false;
@@ -140,26 +141,41 @@ function pg_tr_indexable($row, $url, $one_page = false)
 }
 
 /**
- * pg_tr_page_stats() for one page: how many of its own texts (body and SEO
- * fields) there are and how many have a reviewed translation.
+ * pg_tr_page_stats() the way a page's robots meta weighs its texts: per
+ * page, how many of its own texts (body and SEO fields) there are and how
+ * many stand as they may be indexed - with a reviewed translation, or a
+ * machine one that is the source text itself (pg_tr_same_as_source(); the
+ * column collation is not trusted for the comparison, the bytes of the
+ * lower-cased texts are).
  *
  * @param string $language
- * @param int    $page_id
- * @return array|null total, reviewed; null when the page has no texts
+ * @param int    $page_id one page, or 0 for every page
+ * @return array page id => array(total, reviewed); a page without texts is absent
  */
-function pg_tr_page_stats_one($language, $page_id)
+function pg_tr_index_stats($language, $page_id = 0)
 {
-    $row = db_item("SELECT COUNT(DISTINCT u.string_id) AS total,
-                           COUNT(DISTINCT CASE WHEN t.status = 'reviewed' THEN t.string_id END) AS reviewed
-                    FROM translation_uses u
-                    LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
-                    WHERE u.owner_type IN ('page', 'page_seo') AND u.owner_id = '" . (int) $page_id . "'");
+    $stats = array();
 
-    if (!is_array($row) || ((int) $row['total'] === 0)) {
-        return null;
+    $rows = db_items("SELECT u.owner_id AS page_id,
+                             COUNT(DISTINCT u.string_id) AS total,
+                             COUNT(DISTINCT CASE WHEN (t.status = 'reviewed')
+                                     OR (CAST(LOWER(TRIM(t.text)) AS BINARY) = CAST(LOWER(TRIM(s.source_text)) AS BINARY))
+                                 THEN t.string_id END) AS reviewed
+                      FROM translation_uses u
+                      LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
+                      LEFT JOIN translation_strings s ON s.id = t.string_id
+                      WHERE u.owner_type IN ('page', 'page_seo')" . (((int) $page_id > 0) ? " AND u.owner_id = '" . (int) $page_id . "'" : '') . "
+                      GROUP BY u.owner_id");
+
+    if (is_array($rows)) {
+        foreach ($rows as $row) {
+            if ((int) $row['total'] > 0) {
+                $stats[(int) $row['page_id']] = array('total' => (int) $row['total'], 'reviewed' => (int) $row['reviewed']);
+            }
+        }
     }
 
-    return array('total' => (int) $row['total'], 'reviewed' => (int) $row['reviewed']);
+    return $stats;
 }
 
 /**
@@ -198,6 +214,9 @@ function pg_tr_page_verdicts($language, $page_id = 0)
     if (!pg_tr_page_verdict_ready()) {
         return array();
     }
+
+    // Answers given under older rules are not read.
+    pg_tr_render_rules_check();
 
     $language = (string) $language;
     $page_id = (int) $page_id;

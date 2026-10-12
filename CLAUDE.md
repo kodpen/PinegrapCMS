@@ -53,7 +53,9 @@ zaten verilmiş kararlar listeleniyor.
   göredir: `includes/fn/core.php` demek `pinegrap/includes/fn/core.php` demektir.
 - **Sürüm durumu (2026-10-12):** 2026.4.8 yayında (GitHub release `v2026.4.8`,
   PR #236, etiket `348b8a2`) ve **kapalıdır**; etiket taşınmaz.
-  Açık sürüm **2026.4.9** (2026-10-12'de 9.1 ile açıldı): şema adımları
+  Açık sürüm **2026.4.9** (2026-10-12'de 9.1 ile açıldı; aynı gün beta
+  olarak yayınlandı — beta'yı koşmuş site sonradan eklenen alt adımı
+  koşmaz, bkz. `docs/degisiklikler.md` → "Dağıtım durumu"): şema adımları
   `includes/migrations/2026.4.9.php` → `upgrade_to_2026_4_9()` girişine
   `upgrade_2026_4_9_<konu>()` alt adımı olarak eklenir; `changelog.txt`'de
   yeni maddeler en üstteki `2026.4.9` bölümüne yazılır. Geliştirme

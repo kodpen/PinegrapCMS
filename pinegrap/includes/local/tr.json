@@ -19939,5 +19939,10 @@
     "Remove the link, keep the words": "Bağlantıyı kaldır, sözcükler kalsın",
     "Split into elements": "Öğelere ayır",
     "This text is links only: each becomes an element of its own, to select, edit and move.": "Bu metin yalnız bağlantılardan oluşuyor: her biri ayrı bir öğe olur; seçilir, düzenlenir, taşınır.",
-    "Split into {var} elements.": "{var} öğeye ayrıldı."
+    "Split into {var} elements.": "{var} öğeye ayrıldı.",
+    "{var} translation(s) will be marked as reviewed.": "{var} çeviri gözden geçirildi olarak işaretlenecek.",
+    "The machine translations of the texts shown here are marked as reviewed, as the engine gave them.": "Burada gösterilen metinlerin makine çevirileri, motorun verdiği haliyle gözden geçirildi olarak işaretlenir.",
+    "Approve the ones flagged suspicious as well": "Şüpheli işaretlenenleri de onayla",
+    "An answer that repeats the source text, or whose length is out of proportion to it, is flagged suspicious.": "Kaynak metni aynen tekrarlayan ya da uzunluğu kaynağa göre orantısız olan yanıtlar şüpheli işaretlenir.",
+    "Show the suspicious ones": "Şüphelileri göster"
 }

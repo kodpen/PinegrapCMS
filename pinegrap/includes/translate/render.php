@@ -93,7 +93,9 @@ function pg_tr_render_text($text, $format = 'text', $kind = 'content')
 
     pg_tr_render_counter('hits');
 
-    if ($found['status'] !== 'reviewed') {
+    // A machine translation that is the source text itself shows the page's
+    // own words: no engine output is drawn, nothing to attribute.
+    if (($found['status'] !== 'reviewed') && !pg_tr_same_as_source($normalized, $found['text'])) {
         pg_tr_render_counter('machine');
 
         if ($found['engine'] === 'google') {
@@ -137,6 +139,50 @@ function pg_tr_render_props($props, $type)
 }
 
 /**
+ * The rules a page is drawn by in a language: what is translated, and what
+ * keeps the page from the search engines. A body drawn under other rules is
+ * drawn again (pg_tr_render_page_body()), and what the pages answered the
+ * search engines is dropped once when they change (pg_tr_render_rules_check()).
+ *
+ * @return string
+ */
+function pg_tr_render_rules()
+{
+    return '2026.4.9';
+}
+
+/**
+ * Drops the drawn bodies and the kept robots answers of every language once
+ * after the rules changed (an update), so the sitemap does not go on reading
+ * answers given under the old ones for pages nobody has visited since. A
+ * marker in data/temp says the rules in force were applied; when it cannot
+ * be written nothing is dropped, rather than dropping on every request - the
+ * bodies are still drawn again by their fingerprint.
+ */
+function pg_tr_render_rules_check()
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+
+    $marker = PG_FUNCTIONS_DIR . '/data/temp/translate_rules_' . pg_tr_render_rules();
+
+    if (is_file($marker)) {
+        return;
+    }
+
+    if (@file_put_contents($marker, (string) time()) === false) {
+        return;
+    }
+
+    pg_tr_invalidate_pages();
+}
+
+/**
  * The drawn body of a page in the current language. Served from
  * page_translations while the source body it was drawn from is unchanged;
  * otherwise drawn now and kept.
@@ -151,10 +197,11 @@ function pg_tr_render_page_body($page_id, $page_tree_code, $style_name, $additio
 {
     $language = pg_tr_language();
 
+    pg_tr_render_rules_check();
+
     // The source body, and the rules a body is drawn by: a body drawn before
-    // they changed (placeholder Latin left as written, the software's
-    // wording from the site's translations) is drawn again.
-    $fingerprint = sha1('2026.4.7' . "\n" . $page_tree_code);
+    // they changed is drawn again.
+    $fingerprint = sha1(pg_tr_render_rules() . "\n" . $page_tree_code);
 
     $cached = db_item("SELECT tree_code, fingerprint, coverage, reviewed, mt_google FROM page_translations
                        WHERE page_id = '$page_id' AND language = '" . e($language) . "' LIMIT 1");
