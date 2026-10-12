@@ -18,9 +18,27 @@
 
 include('init.php');
 
+// The stylesheet the sitemap names for browsers (pg_sitemap_add_stylesheet()):
+// sitemap.xml?stylesheet=css, so it is served wherever the sitemap is.
+if (isset($_GET['stylesheet']) && ($_GET['stylesheet'] === 'css')) {
+    header('Content-Type: text/css; charset=utf-8');
+    header('Cache-Control: public, max-age=86400');
+    header_remove('Pragma');
+    header_remove('Expires');
+
+    echo pg_sitemap_stylesheet_css(array(
+        'title'    => lang('XML Sitemap'),
+        'note'     => lang('Search engines read this file as it is; the look is only for reading it in a browser.'),
+        'count'    => lang('Addresses:'),
+        'lastmod'  => lang('Last modified:'),
+        'priority' => lang('Priority:'),
+    ));
+    exit();
+}
+
 require_once(dirname(__FILE__) . '/get_sitemap_info.php');
 
 $sitemap_info = get_sitemap_info();
 
 header('Content-type: text/xml');
-echo $sitemap_info['content'];
+echo pg_sitemap_add_stylesheet($sitemap_info['content'], PATH . 'sitemap.xml?stylesheet=css&v=' . rawurlencode(VERSION));

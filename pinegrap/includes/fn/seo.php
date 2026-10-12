@@ -3387,3 +3387,215 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
 
     return null;
 }
+
+/**
+ * sitemap.xml with the stylesheet a browser draws it with: an xml-stylesheet
+ * instruction right after the XML declaration. A browser shows the XML tree
+ * of a sitemap only while no element in it is an XHTML one; the hreflang
+ * alternates (xhtml:link) turn the tree into run-together text. CSS rather
+ * than XSL, because browsers are taking XSLT out (Chrome stops running it in
+ * version 158) while CSS on XML stays. Search engines skip the instruction.
+ *
+ * @param string $xml  the sitemap
+ * @param string $href the stylesheet's address, unescaped
+ * @return string
+ */
+function pg_sitemap_add_stylesheet($xml, $href)
+{
+    $xml = (string) $xml;
+
+    if (strpos($xml, '<?xml-stylesheet') !== false) {
+        return $xml;
+    }
+
+    $instruction = '<?xml-stylesheet type="text/css" href="' . htmlspecialchars((string) $href, ENT_QUOTES | ENT_XML1, 'UTF-8') . '"?>';
+
+    // Nothing may come before the declaration, so the instruction follows it.
+    if (preg_match('/^<\?xml\s[^?]*\?>(\r?\n)?/', $xml, $match)) {
+        return rtrim($match[0], "\r\n") . "\n" . $instruction . "\n" . substr($xml, strlen($match[0]));
+    }
+
+    return $instruction . "\n" . $xml;
+}
+
+/**
+ * A text as a CSS string literal, quotes included.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_sitemap_css_string($text)
+{
+    return '"' . str_replace(array('\\', '"', "\r", "\n"), array('\\\\', '\\"', '', '\\A '), (string) $text) . '"';
+}
+
+/**
+ * The stylesheet pg_sitemap_add_stylesheet() names: the addresses as a
+ * numbered list, each with its date, priority and language alternates, in
+ * light and dark. CSS can only add words through content, so the labels come
+ * in translated.
+ *
+ * @param array $labels title, note, count, lastmod, priority
+ * @return string
+ */
+function pg_sitemap_stylesheet_css($labels)
+{
+    $label = function ($key) use ($labels) {
+        return pg_sitemap_css_string(isset($labels[$key]) ? $labels[$key] : '');
+    };
+
+    return '@namespace url(http://www.sitemaps.org/schemas/sitemap/0.9);
+@namespace xhtml url(http://www.w3.org/1999/xhtml);
+
+/* The document element is the urlset: it is the page. */
+urlset {
+    display: block;
+    margin: 0;
+    padding: 32px 16px 40px;
+    color-scheme: light dark;
+    background: #f6f8fa;
+    color: #1f2328;
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    counter-reset: pg-sitemap-url;
+}
+
+urlset::before {
+    content: ' . $label('title') . ';
+    display: block;
+    max-width: 960px;
+    margin: 0 auto 16px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+/* After the last address the counter holds the total. */
+urlset::after {
+    content: ' . $label('count') . ' " " counter(pg-sitemap-url) "\A" ' . $label('note') . ';
+    display: block;
+    max-width: 960px;
+    margin: 16px auto 0;
+    white-space: pre-wrap;
+    font-size: 12px;
+    color: #59636e;
+}
+
+url {
+    display: block;
+    position: relative;
+    box-sizing: border-box;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 10px 16px 10px 56px;
+    background: #ffffff;
+    border: 1px solid #d1d9e0;
+    border-top-width: 0;
+    counter-increment: pg-sitemap-url;
+}
+
+url:first-of-type {
+    border-top-width: 1px;
+    border-radius: 8px 8px 0 0;
+}
+
+url:last-of-type {
+    border-radius: 0 0 8px 8px;
+}
+
+url:only-of-type {
+    border-radius: 8px;
+}
+
+url::before {
+    content: counter(pg-sitemap-url);
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    width: 32px;
+    text-align: right;
+    color: #818b98;
+    font-variant-numeric: tabular-nums;
+}
+
+loc {
+    display: block;
+    color: #0969da;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+lastmod,
+priority {
+    display: inline-block;
+    margin: 2px 16px 0 0;
+    font-size: 12px;
+    color: #59636e;
+}
+
+lastmod::before {
+    content: ' . $label('lastmod') . ' " ";
+}
+
+priority::before {
+    content: ' . $label('priority') . ' " ";
+}
+
+/* The alternates are HTML link elements, hidden by the browser until told
+   otherwise: one line each, the language code and the address. */
+xhtml|link {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #59636e;
+    overflow-wrap: anywhere;
+}
+
+xhtml|link::before {
+    content: attr(hreflang);
+    display: inline-block;
+    min-width: 2.5em;
+    margin-right: 8px;
+    padding: 0 6px;
+    border-radius: 4px;
+    background: #ddf4ff;
+    color: #0550ae;
+    font-weight: 600;
+    text-align: center;
+}
+
+xhtml|link::after {
+    content: attr(href);
+}
+
+@media (prefers-color-scheme: dark) {
+    urlset {
+        background: #0d1117;
+        color: #f0f6fc;
+    }
+
+    urlset::after,
+    lastmod,
+    priority,
+    xhtml|link {
+        color: #9198a1;
+    }
+
+    url {
+        background: #151b23;
+        border-color: #3d444d;
+    }
+
+    url::before {
+        color: #656c76;
+    }
+
+    loc {
+        color: #4493f8;
+    }
+
+    xhtml|link::before {
+        background: #0c2d6b;
+        color: #79c0ff;
+    }
+}
+';
+}

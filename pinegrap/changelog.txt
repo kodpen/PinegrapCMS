@@ -150,6 +150,14 @@
   SEO VE PAYLAŞIM
   --------------------------------------------------------
 
+  [YENİ] sitemap.xml tarayıcıda açıldığında artık okunur bir
+         liste olarak görünüyor: adresler numaralı, her birinin
+         son düzenleme tarihi, önceliği ve dil sürümleriyle;
+         altta adres sayısı. Çok dilli sitelerde dil
+         bağlantıları yüzünden tarayıcı dosyayı birbirine
+         karışmış düz metin gibi gösteriyordu. Arama motorları
+         dosyayı eskisi gibi okur.
+
   [DÜZELTME] sitemap.xml ana sayfayı iki kez listeliyordu: site
          kökünde ve sayfanın kendi adıyla (örneğin /index). Ana
          sayfa artık yalnız kökte listeleniyor. Bir alt klasöre

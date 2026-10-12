@@ -78,6 +78,46 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.9 — sitemap.xml tarayıcıda CSS ile okunur görünüyor (2026-10-12)
+
+**İstek (ürün sahibi).** Beta'yla güncellenen pinegrap.com'da sitemap.xml
+tarayıcıda "HTML gibi" geldi. Dosya geçerli XML'di (`text/xml`, 64 adres);
+Chromium, belgede XHTML ad alanından tek bir öğe olunca XML ağaç
+görünümünü kapatıp belgeyi düz metin gibi çiziyor. O öğeler 2026.4.9'un
+dil alternatifleri (`xhtml:link`); önceden Türkçe sayfaların hepsi noindex
+olduğu için hiç yazılmıyordu. Bulutta iki dosyayla doğrulandı (alternatifsiz
+ağaç, tek `xhtml:link` ile düz metin). Önerilen `<?xml-stylesheet?>`
+istendi.
+
+**Karar: XSL değil CSS.** Chrome XSLT'yi kaldırıyor: Chrome 158'de
+(2026-11-17) kararlı sürümde çalışmayı bırakıyor; `type="text/xsl"`
+talimatı da kapsamda. `type="text/css"` kalıyor. Ödün: CSS bağlantı
+üretemez, adresler tıklanmaz; okunur liste, numara, tarih, öncelik ve dil
+sürümleri verir.
+
+- `pg_sitemap_add_stylesheet($xml, $href)` (`includes/fn/seo.php`, saf):
+  XML bildiriminin hemen arkasına `<?xml-stylesheet type="text/css" …?>`;
+  bildirim yoksa başa; adres XML için kaçışlı; talimat varsa dokunmaz.
+- `pg_sitemap_stylesheet_css($labels)` ve `pg_sitemap_css_string()`: CSS
+  yalnız `content` ile yazı ekleyebildiği için etiketler `lang()`'tan
+  geçmiş olarak gelir (5 yeni anahtar). Ad alanlı seçiciler (`@namespace`),
+  numara ve toplam için CSS sayacı, `xhtml|link` HTML'in gizlediği öğe
+  olduğu için açıkça `display: block` + `attr(hreflang)` / `attr(href)`;
+  koyu tema `prefers-color-scheme`.
+- `get_sitemap.xml.php`: stil sayfası aynı adresten,
+  `sitemap.xml?stylesheet=css` (router sorgu dizgisini geçirir; yazılım
+  klasörü sitemap'te görünmez), `text/css; charset=utf-8`, bir gün
+  önbellek; talimatın adresinde `&v=<VERSION>`. Sitemap içeriğini kuran
+  `get_sitemap_info()` değişmedi, IndexNow'un özeti etkilenmez.
+
+**Doğrulama.** `tests/sitemap_style_test.php` (bildirimden sonra yer,
+`DOMDocument` ile iyi biçimlilik ve talimat düğümü, adres kaçışı, tekrar
+eklememe, CSS etiket kaçışı). Bulut sandbox'ında `router.php` üzerinden
+`/sitemap.xml` ve `?stylesheet=css` yanıtları, Chromium'da açık, koyu ve
+390 px genişlikte ekran görüntüsü (68 adres, altta "Adres sayısı: 68").
+Firefox/Safari'de denenmedi (CSS ile XML'i ikisi de destekliyor). lint,
+check_lang ve testler (265/265) temiz.
+
 ## 2026.4.9 — Kaynakla aynı dönen makine çevirisi sayfayı dizinden düşürmüyor; "Tümünü onayla" şüphelileri de sunuyor (2026-10-12)
 
 **İstek (ürün sahibi).** 2026.4.9 beta olarak yayınlandı ve pinegrap.com
