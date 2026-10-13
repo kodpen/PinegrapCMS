@@ -835,6 +835,20 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] E-posta kampanyaları API'de, kendi izinleriyle
+         (kampanyaları okuma / yazma): kampanyalar konusu,
+         durumu, türü (elle ya da otomatik), gönderim
+         saati, kaç alıcıya gittiği, kaçının beklediği ve
+         kaçına gidemediğiyle; tek kampanyada mesaj ve kişi
+         grupları; alıcı listesi gönderildi / bekliyor /
+         gidemedi süzgeciyle ve son hatasıyla. Yazma bir
+         kampanyayı bekletir, yeniden gönderime açar, iptal
+         eder, konusunu, düz metin mesajını, göndereni,
+         yanıt adresini, saatini ya da amacını düzeltir veya
+         siler; gönderilmiş kampanya değişmez. API e-posta
+         göndermez, kampanya oluşturmaz. Kullanıcı rolündeki
+         hesap yalnız kendi kampanyalarını görür.
+
   [YENİ] Ziyaretçi raporları API'de (ziyaretçileri okuma
          izni): günlük ya da saatlik ziyaret ve sayfa
          görüntüleme sayıları, en çok görüntülenen sayfa ve
