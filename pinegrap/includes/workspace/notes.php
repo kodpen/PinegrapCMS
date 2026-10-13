@@ -1728,8 +1728,10 @@ function ws_note_news_map($viewer, $note_ids)
  */
 function ws_notes_js_strings()
 {
+    // Merged into the screen's own strings, so a key must not repeat one of
+    // those: 'notes' there is the task drawer's "Notes" heading.
     return array(
-        'notes'                 => lang('My Notes'),
+        'my_notes'              => lang('My Notes'),
         'nav_notes'             => lang('My Notes'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),

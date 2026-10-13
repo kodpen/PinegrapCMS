@@ -235,6 +235,14 @@
          listesi, sayfa üstüne acil durum şeridi, profil
          kartlı ekip ve puan özetli yorumlar.
 
+  [DÜZELTME] Özellikler panelinde yapılan değişiklik (link
+         adresi, link seçiciden gelen sayfa, metin kutuları,
+         açılır listeler, erişilebilirlik alanları) kendi
+         geri alma adımını açıyor. Önceden Ctrl+Z onu bir
+         önceki düzenlemeyle (örneğin başlık metni) birlikte
+         geri alıyor, açılır listede ilk Ctrl+Z hiçbir şey
+         yapmıyordu.
+
   SEO
   --------------------------------------------------------
 
@@ -242,6 +250,15 @@
          (blog yazısı, gönderim ya da etkinlik ayrıntısı) bir
          kayıtla ölçüyor. Önceden sayfa kayıtsız çizildiği için
          "H1 yok" ve "ince içerik" uyarıları alıyordu.
+
+  [DÜZELTME] Görsel editörde yapılan detay ve katalog
+         sayfaları, adresteki kayıt, ürün ya da kategori
+         yoksa 404 kodu ve noindex ile cevap veriyor
+         (/blog-yazisi/olmayan-kayit, ?r=…, ?pid=…,
+         /magaza/olmayan-kategori). Önceden "bulunamadı"
+         ekranı 200 koduyla geliyor, arama motorları onu
+         sayfanın adresine kanonik bağlıyordu. Ziyaretçi
+         aynı "bulunamadı" mesajını görür.
 
   ÜRÜNLER
   --------------------------------------------------------
@@ -383,6 +400,9 @@
 
   [YENİ] Asistan cevap verdiğinde gelen bildirim, onay
          bekleyen öneri varsa sayısını da söylüyor.
+
+  [DÜZELTME] Görev çekmecesindeki not bölümünün başlığı
+         "Notlarım" yerine "Notlar" yazıyor.
 
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
@@ -591,6 +611,44 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Yorumlar API'de: GET /comments ziyaretçi
+         yorumlarını sayfaya, konusuna (form kaydı, ürün,
+         etkinlik), duruma (yayında, bekleyen, zamanlanmış) ve
+         öne çıkarılmaya göre listeler. Bir yorum yayınlanır ya
+         da bekletilir, öne çıkarılır ya da kaldırılır; yayına
+         alınınca izleyenlere ve form kaydının sahibine yorumlar
+         ekranındaki e-posta gider. Yeni "Yorumlar" izni
+         yöneticiye kadar olan rollere verilir; ziyaretçinin
+         yazdığı metin API'den değiştirilmez.
+
+  [YENİ] Menüler API'de: GET /menus ve GET /menus/{id}
+         menüleri ve öğelerini sitenin çizdiği sırayla (alt
+         öğeler, bağlantı, yeni pencere, güvenlik) verir. Menü
+         öğesi eklenir, değiştirilir, başka bir öğenin altına
+         ya da başka bir sıraya taşınır, altındakilerle
+         birlikte silinir. Yeni menü açmak ve menünün
+         görünüşünü (efekt, açılır konumlar, sınıflar)
+         değiştirmek tasarımcı hakkı ister. Menünün adı
+         tasarımlarda menüyü yerleştiren addır, API'den
+         değiştirilmez; menü de API'den silinmez. Geri dönüşüm
+         kutusundaki ya da taslak bir sayfaya ve javascript:
+         gibi adreslere bağlantı verilmez.
+
+  [YENİ] Görsel tasarımlar API'de: GET /design/designs
+         tasarımları sayfa, taslak sayısı ve durumlarıyla
+         listeler. POST /design/pages bir tasarıma yeni sayfa
+         ekler: boş tuval olarak ya da aynı tasarımın başka bir
+         sayfasının yerleşimiyle. Sayfa her zaman taslak olarak
+         açılır, Görsel Sayfa Düzenleyici'de diğer sayfalarla
+         birlikte görünür ve siteye bir kişi yayınlar. İçeriği
+         öneri olarak yazılır (POST /design/pages/{id}/proposals).
+         Tasarım sayfaları listesi sayfanın taslak olup
+         olmadığını da gösteriyor.
+
+  [DÜZELTME] GET /design/pages ikinci sayfayı istediğinde
+         yine ilk sayfayı veriyordu; sayfalayan bir istemci
+         listeyi hiç bitiremiyordu.
+
   [YENİ] ERP faturaları ve teklifleri API'den ve MCP'den
          yazılıyor. Faturada: taslak yazma, değiştirme ve
          silme (POST /erp/invoices), kesme, iptal, iade
@@ -627,6 +685,16 @@
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
          gibi listede kalıyordu.
+
+  [YENİ] Bağlı uygulamalar ekranında her bağlantının
+         hangi adrese ait olduğu yazıyor; aynı uygulamanın
+         MCP sunucusunun iki adresindeki bağlantıları
+         artık birbirinden ayırt ediliyor. Panelin
+         uygulama listesindeki son kullanım zamanı
+         bağlantının her kullanımında güncelleniyor. MCP
+         sunucusu kimliksiz isteğe API anahtarı istemek
+         yerine uygulamanın siteye bağlanması gerektiğini
+         söylüyor.
 
   [ŞEMA] Bağlı uygulamalar için iki yeni tablo (kayıtlı
          istemciler ve kısa ömürlü onay kodları) ve oturum
@@ -802,6 +870,18 @@
          kuralına takılmadan okuyabiliyor; ülke
          kısıtlamasında "API, MCP ve OAuth uçları"
          seçeneği bu adresi de kapsıyor.
+
+  [YENİ] Reddedilen bir ülkeden panele gelen personel,
+         sitenin giriş sayfasına yönlenip orada
+         reddedilmek yerine panelin kendi giriş, şifremi
+         unuttum ve yeni şifre ekranlarını görüyor.
+         Sitenin sayfaları ve dosyaları kısıtlı kalıyor.
+
+  [DÜZELTME] IIS'te X-Content-Type-Options ve
+         Referrer-Policy başlıkları yanıtlarda iki kez
+         gelmiyor: sitenin web.config dosyası bunları
+         zaten ekliyorsa yazılım kendi kopyasını
+         göndermiyor.
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.

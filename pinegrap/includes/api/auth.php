@@ -191,6 +191,16 @@ function api_authenticate($input) {
 
 	if ($credentials['key'] === '' || $credentials['secret'] === '') {
 
+		// The MCP server is reached through OAuth: the AI application signs
+		// a person in and calls with the token it was given (the challenge
+		// on this 401 says where). Asking it for an API key would send its
+		// user looking for the wrong thing.
+		if (defined('PG_MCP_ENTRY')) {
+
+			api_fail(401, 'credentials_missing', lang('Sign-in required. Connect your application to this site so it can sign you in and receive an access token.'));
+
+		}
+
 		api_fail(401, 'credentials_missing', lang('An API key and secret are required.'));
 
 	}

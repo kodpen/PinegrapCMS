@@ -85,6 +85,12 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
   uğramaz. Yurt dışındaki personel için cevap izin listesidir.
 - Panel muaf değilken kendi ülkesini kapatan kayıt, gönderilen izin listesi
   adresini kapsamıyorsa reddedilir (`firewall.save.php`); bu korumayı kaldırma.
+- Sitenin giriş/şifremi unuttum/yeni şifre sayfaları (eski tür ya da tasarım
+  widget'ı) **site sayfasıdır, muaf yapma.** Reddedilen ülkeden gelen personel
+  panelin yerleşik ekranlarında kalır: `waf_country_keeps_to_panel()` →
+  `pg_sign_in_kept_to_panel()` / `pg_sign_in_screen_url()` (forms.php);
+  `set_password.php` GET'te formu çizer. Panelden siteye giriş için yönlendiren
+  yeni bir yer yazarsan bu kontrolü ekle.
 
 ## Modlar ve kapatma
 
@@ -147,3 +153,7 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
   tanım yazma (`pg_request_is_https()` Cloudflare Flexible'ı geçirir).
 - Panele yeni dış kaynak eklersen `waf_csp_policy()`'ye de ekle;
   `csp_report.php` bağımsız kalsın ve `waf_log`'a yazmasın.
+- `X-Content-Type-Options`'ı `header()` ile yazma: `waf_send_nosniff()` /
+  `pg_send_nosniff()`. IIS web.config `<customHeaders>` ile ekliyorsa PHP
+  kopyası gönderilmez (`waf_server_adds_header()`); IIS ekler, `<remove>`
+  PHP'nin başlığına ulaşmaz, ikisi birleşir.

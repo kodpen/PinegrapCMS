@@ -492,6 +492,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // The widgets are told what the page is drawn for: an e-mail, and the
     // record the sender passed with it (a form's confirmation: form_id; an
     // order receipt: order_id), which on an e-mail page no URL carries.
+    if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
     if (strpos($content, '<!--pg-system-widget:') !== false) {
         $pg_sw_prev_ctx = function_exists('pg_sw_render_context')
             ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
@@ -5802,7 +5803,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     //
     // Not emitted for an e-mail body. There is no crawler there, and the tag
     // would only travel to the recipient's mail client as dead markup.
-    if (($page_noindex == 1) && ($email != TRUE)) {
+    //
+    // An address that names a record or product that is not there answers
+    // 404 (pg_sw_item_missing()): it is kept out of the index the same way,
+    // and has no canonical address to point at.
+    $pg_item_missing = function_exists('pg_sw_item_missing') && pg_sw_item_missing();
+
+    if ((($page_noindex == 1) || $pg_item_missing) && ($email != TRUE)) {
         $robots_content = 'noindex, ' . (($page_nofollow == 1) ? 'nofollow' : 'follow');
         $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
     }
@@ -5813,7 +5820,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
-        '        <link rel="canonical" href="' . h($canonical_url) . '">';
+        ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_url) . '">');
 
     // The placeholder is written into every style the software creates, but a
     // designer editing raw style code can delete it, and then none of this block

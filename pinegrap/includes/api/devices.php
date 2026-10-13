@@ -476,6 +476,17 @@ function api_device_authenticate($token) {
 				last_used_ip = '" . escape(mb_substr(api_client_ip(), 0, 45)) . "'
 			WHERE id = '" . (int)$row['id'] . "'");
 
+		// The client's own last use moves with its connections, not only
+		// when it is issued a token: the operator's list of clients would
+		// otherwise call a client in use right now idle since its last
+		// refresh.
+		if ($oauth) {
+
+			api_exec("UPDATE oauth_clients SET last_used_timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . (int)$row['oauth_client_id'] . "'");
+
+		}
+
 	}
 
 	// A connection holds what the person agreed to on the consent screen and

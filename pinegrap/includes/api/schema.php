@@ -1134,6 +1134,244 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Menus -------------------------------------------------------- */
+
+		array(
+			'id'      => 'menus.list',
+			'method'  => 'GET',
+			'path'    => '/menus',
+			'scope'   => 'pages:read',
+			'handler' => 'api_menus_list',
+			'returns' => array('list' => 'Menu'),
+			'summary' => 'Menus',
+			'description' => 'The site\'s menus without their items (GET /menus/{id} has them). A design places a menu by its name. Cursor paged.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the menu name.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'menus.get',
+			'method'  => 'GET',
+			'path'    => '/menus/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_menus_get',
+			'returns' => 'Menu',
+			'summary' => 'A menu and its items',
+			'description' => 'items in the order the site draws them: each item followed by the items under it (parent_id, level), siblings by order. url is where the item leads: the linked page\'s address, or link_url. security hides the item from visitors who may not open its page.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'menus.create',
+			'method'  => 'POST',
+			'path'    => '/menus',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menus_create',
+			'dry_run' => true,
+			'returns' => 'Menu',
+			'summary' => 'Add a menu',
+			'description' => 'An empty menu, shown nowhere until a designer places it in a design. Only for an application whose owner is an administrator or a designer (403 otherwise), as on the menus screen. The name is how designs place the menu: letters, numbers and dashes, unique (409 name_taken), and it is not changed through the API afterwards. Menus are not removed through the API either: the menus screen shows where a menu is used.',
+			'params'  => array(
+				array('name' => 'name',                        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'effect',                      'in' => 'body', 'type' => 'enum', 'values' => array('none', 'popup', 'accordion'), 'description' => 'How the items under an item open.'),
+				array('name' => 'first_level_popup_position',  'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'second_level_popup_position', 'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'class',                       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'CSS class of the menu.'),
+				array('name' => 'active_item_class',           'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'CSS class of the item of the page being shown.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/menus/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menus_update',
+			'dry_run' => true,
+			'returns' => 'Menu',
+			'summary' => 'Change how a menu is drawn',
+			'description' => 'The effect, the pop-up positions and the classes. Only for an application whose owner is an administrator or a designer (403 otherwise). The name stays: designs place the menu by it. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'effect',                      'in' => 'body', 'type' => 'enum', 'values' => array('none', 'popup', 'accordion')),
+				array('name' => 'first_level_popup_position',  'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'second_level_popup_position', 'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'class',                       'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'active_item_class',           'in' => 'body', 'type' => 'string', 'max_length' => 255)
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.create',
+			'method'  => 'POST',
+			'path'    => '/menus/{id}/items',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_create',
+			'dry_run' => true,
+			'returns' => 'MenuItem',
+			'summary' => 'Add a menu item',
+			'description' => 'It links to a page (page_id) or to an address (url), or to nothing (a heading for the items under it). A page in the Recycle Bin or kept off the site as a draft is refused; an address must be http, https, mailto or tel, or a path on this site. It goes last among its siblings, or after the one named in after (0: first).',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The text of the item.'),
+				array('name' => 'parent_id',  'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The item it goes under; 0 or left out for the top level.'),
+				array('name' => 'page_id',    'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The page it leads to.'),
+				array('name' => 'url',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address it leads to, when it does not lead to a page.'),
+				array('name' => 'new_window', 'in' => 'body', 'type' => 'bool', 'description' => 'Open the link in a new window.'),
+				array('name' => 'security',   'in' => 'body', 'type' => 'bool', 'description' => 'Show the item only to visitors who may open its page.'),
+				array('name' => 'class',      'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'after',      'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The sibling it goes after; 0 puts it first.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/menus/{id}/items/{item_id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_update',
+			'dry_run' => true,
+			'returns' => 'MenuItem',
+			'summary' => 'Change a menu item',
+			'description' => 'Only what is sent is changed. A page_id clears the address and a url clears the page; page_id 0 removes the page link and url "" the address. A new parent_id moves the item with everything under it, last among its new siblings unless after says where; it cannot go under itself or an item under it. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'parent_id',  'in' => 'body', 'type' => 'int', 'min' => 0),
+				array('name' => 'page_id',    'in' => 'body', 'type' => 'int', 'min' => 0),
+				array('name' => 'url',        'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'new_window', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'security',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'class',      'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'after',      'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The sibling it goes after; 0 puts it first.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.delete',
+			'method'  => 'DELETE',
+			'path'    => '/menus/{id}/items/{item_id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'removed' => 'integer'),
+			'summary' => 'Remove a menu item',
+			'description' => 'The item and every item under it, as on the menu item screen; removed counts them. Try it with X-Dry-Run first to see the count.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.delete_post',
+			'method'  => 'POST',
+			'path'    => '/menus/{id}/items/{item_id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'removed' => 'integer'),
+			'summary' => 'Remove a menu item, addressed as a POST',
+			'description' => 'The same removal as DELETE /menus/{id}/items/{item_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Comments ----------------------------------------------------- */
+
+		array(
+			'id'      => 'comments.list',
+			'method'  => 'GET',
+			'path'    => '/comments',
+			'scope'   => 'comments:read',
+			'handler' => 'api_comments_list',
+			'returns' => array('list' => 'Comment'),
+			'summary' => 'Comments',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. Cursor paged.',
+			'params'  => array(
+				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
+				array('name' => 'item_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
+				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'comments.get',
+			'method'  => 'GET',
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:read',
+			'handler' => 'api_comments_get',
+			'returns' => 'Comment',
+			'summary' => 'A comment',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'comments.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_update',
+			'dry_run' => true,
+			'returns' => 'Comment',
+			'summary' => 'Moderate a comment',
+			'description' => 'Publish it or hold it (published), feature it or not (featured). Either value of published ends a schedule. Publishing a comment that was not published sends what the comments screen sends: the e-mail to the people watching the page and, on a form record, to the person who submitted it; the dry run says whether it would (emails). The visitor\'s words are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'published', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'featured',  'in' => 'body', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'comments.delete',
+			'method'  => 'DELETE',
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a comment',
+			'description' => 'For good, with its attached file unless another comment shares it (file_deleted in the dry run), as on the comments screen.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'comments.delete_post',
+			'method'  => 'POST',
+			'path'    => '/comments/{id}/delete',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a comment, addressed as a POST',
+			'description' => 'The same removal as DELETE /comments/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Files -------------------------------------------------------- */
 
 		array(
@@ -1323,6 +1561,42 @@ function api_schema() {
 		),
 
 		/* ----- Page design (Visual Page Editor pages) --------------------- */
+
+		array(
+			'id'      => 'design.designs.list',
+			'method'  => 'GET',
+			'path'    => '/design/designs',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_designs_list',
+			'returns' => array('list' => 'Design'),
+			'summary' => 'Designs of the Visual Page Editor',
+			'description' => 'The designs a page can be added to (POST /design/pages). pages and drafts count the design\'s pages outside the Recycle Bin and those of them kept off the site; home says whether the home page is one of them. state: empty (no pages), live (no drafts), draft (every page that can be a draft is one) or mixed. template is the design template the design started from. Cursor paged.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the design name.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.pages.create',
+			'method'  => 'POST',
+			'path'    => '/design/pages',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_pages_create',
+			'dry_run' => true,
+			'returns' => 'DesignPage',
+			'summary' => 'Add a page to a design, as a draft',
+			'description' => 'A new page of the design, always kept off the site in the drafts folder: it opens in the Visual Page Editor with the design\'s other pages, and a person publishes it there. It starts as an empty canvas, or with the layout of another page of the same design (copy_from; its title, description and settings are not copied). Fill it with proposals (POST /design/pages/{id}/proposals). folder_id is the folder the page is published to (GET /folders), the top folder when left out. name is the page\'s address: spaces and & become _, and 409 name_taken when a page, file, short link or folder already answers at it. 409 page_has_form when the page to copy has a form of its own (the editor duplicates those).',
+			'params'  => array(
+				array('name' => 'design_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The design (GET /design/designs).'),
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The page name, which is its address.'),
+				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'meta_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'folder_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The folder the page is published to.'),
+				array('name' => 'copy_from',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A page of the same design whose layout the new page starts with.')
+			)
+		),
 
 		array(
 			'id'      => 'design.pages.list',
