@@ -157,6 +157,95 @@ yapıldı, ikincisinde üçü de "zaten var" diye atlandı. Eski ödeme sayfası
 
 ---
 
+## 2026.4.10 — USPS fiyat, teslim tarihi ve adres doğrulaması REST API ve OAuth ile (2026-10-13)
+
+**Neden.** USPS Web Tools'u (`production.shippingapis.com`, XML, `USERID`
+ile giriş) kapattı. USPS API'leri artık yalnız USPS Developer Portal
+uygulamasının tüketici anahtarı ve gizli anahtarıyla alınan OAuth 2.0
+jetonunu kabul ediyor. Bu yüzden USPS yöntemlerinin anlık fiyatı ve teslim
+tarihi gelmiyor, "ABD Adreslerini Doğrulama" çalışmıyordu. UPS (#302) ve
+FedEx (#308) ile aynı iş, aynı modülde.
+
+**Nasıl.** `includes/fn/carrier_api.php`'ye USPS eklendi:
+
+- Uygulama `connect_apps` tablosunda `shipping_usps` anahtarıyla, jeton
+  `pg_connect_service_put('shipping_usps')` ile; önbellek, kilit ve 401'de
+  bir kez yenileme UPS/FedEx'teki gibi. Hostlar: üretim
+  `https://apis.usps.com`, test `https://apis-tem.usps.com`.
+- Jeton: `POST {host}/oauth2/v3/token`, `client_id` ve `client_secret` form
+  gövdesinde.
+- `pg_carrier_api_call()` artık GET de yapıyor: `$payload` `null` ise gövde
+  ve `Content-Type` gönderilmez (başlıklar `pg_carrier_api_request_headers()`
+  ile). `pg_carrier_api_error_text()` USPS'in `error.errors[]` ayrıntılarını
+  da satıra ekliyor, tekrar eden satırı bir kez yazıyor.
+- Fiyat: paket başına `POST /prices/v3/total-rates/search`, `RETAIL`,
+  bugünün tarihi, yalnız bu hizmetin ve etkin yöntemlerin sınıfları
+  (`PRIORITY_MAIL_EXPRESS`, `PRIORITY_MAIL`, `USPS_GROUND_ADVANTAGE`).
+  `pg_usps_rate_parse()`: Flat Rate, Cubic ve varış tesisi (DDU/DSCF/SCF/NDC)
+  fiyatları elenir; `rateIndicator` SP/PA/DR/DN olanlar, yoksa göstergesiz
+  ama açıklaması bunlardan olmayanlar kalır; paketin işleme sınıfına
+  (eski machinable testi, `pg_usps_machinable()`) uyanlar seçilir ve
+  kalanların en yükseği alınır. Fiyat `totalPrice`, yoksa `totalBasePrice`.
+- Teslim tarihi: `GET /service-standards/v3/estimates`, `destinationType`
+  `STREET`, kabul tarihi gönderim günü. Eski istek tek seferde tüm
+  sınıfları alıyordu; yeni API sınıf başına yanıt verdiği için yalnız
+  istenen hizmetin tarihi `shipping_delivery_dates`'e yazılır.
+- Adres: `GET /addresses/v3/address` (sokak, daire, şehir, eyalet, ilk 5
+  hane). `pg_usps_address_parse()`: `DPVConfirmation` D/S ya da düzeltme
+  kodu 32 → "daire/suite eksik"; N ya da 22 → "bulunamadı"; 4xx metninde
+  "address not found"/"multiple" → bulunamadı, "invalid city/state/zip" →
+  ilgili alan, 404 → bulunamadı; ağ hatası, 401/403, 5xx ve boş adres
+  müşteriye hata göstermez, günlüğe yazılır. Fatura adresinde PO Box ve
+  büyük-küçük harf biçimi, gönderim adresinde ad/şirketin büyük harfe
+  çevrilmesi, oturum hash'i ve mevcut mesajlar aynen kaldı.
+- `shipping.php` başındaki `shipping_mask_credentials()` silindi: kimlik
+  taşıyan XML isteği kalmadı.
+
+**Ne değişti.**
+
+- Ayarlar › E-Ticaret › Nakliye: "USPS Web Araçları Kullanıcı Kimliği"
+  kutusu kalktı. Yerine USPS başlığı altında Tüketici Anahtarı, Tüketici
+  Gizli Anahtarı (kayıtlıysa "Kayıtlı. Korumak için boş bırakın."), Ortam
+  ve "Kaydet ve bağlantıyı test et". USPS'in açma/kapama anahtarı yok,
+  eskisi gibi kimlik girilince açılır.
+- Eski kullanıcı kimliği girili, yenisi yoksa kartta uyarı.
+  `config.usps_user_id` silinmedi; artık kayıtta yazılmıyor ve yalnız bu
+  uyarı için okunuyor. `USPS_USER_ID` sabiti `init.php`'de kaldı: yöntem
+  ekranındaki USPS hizmet listesi eski kimlik ya da yeni uygulama varken
+  görünür, kayıtlı yöntemlerin hizmeti kaybolmaz.
+- Adres doğrulama uyarısı "Onaylı bir USPS Web Araçları hesabı gerektirir"
+  yerine "Yukarıda girilen USPS tüketici anahtarı ve gizli anahtarıyla
+  USPS Addresses API'sini kullanır."
+- Kimlik alanlarının yardım metni taşıyıcının kendi alan adlarını
+  kullanıyor ("… şu API'leri içeren bir uygulama oluşturun: …. Ardından
+  uygulamanın {kimlik} ve {gizli} değerlerini buraya girin."); UPS ve
+  FedEx kartları da bunu kullanıyor.
+- `usps_ground` hizmetinin adı "USPS Retail Ground" yerine "USPS Ground
+  Advantage" (USPS 2023'te değiştirdi; hizmet anahtarı aynı).
+- Günlük satırları `lang()` ile Türkçe.
+
+**Bilerek yapılmayan.** Ticari (`COMMERCIAL`) fiyat ve hesap numarası
+yok; eski kod da perakende fiyat alıyordu. Kabul saati gönderilmiyor (eski
+istek mesai bitiş saatini ekliyordu). Etiket, takip ve iade API'leri bu
+işin dışında.
+
+**Doğrulanan.** Uçlar, gövdeler ve yanıt alanları devir notundaki
+araştırmaya göre (USPS api-examples, karrio-usps, usps_v3). Yerel bir
+taklit sunucuyla jeton (form gövdesi), fiyat (POST, JSON), teslim tarihi ve
+adres (GET, gövdesiz, `Content-Type` yok) uçtan uca denendi.
+`tests/carrier_api_test.php`'ye 17 USPS testi eklendi. lint, check_lang,
+test.php, check_bindings, check_api_schema, check_copies, build_js --check
+temiz.
+
+**Doğrulanamayan.** Gerçek bir USPS hesabına istek atılmadı. USPS'in
+README'sine göre bazı uygulamalarda jeton için CRID/MID gerekebilir.
+Dev'de: USPS Developer Portal uygulamasının anahtarlarıyla Test ortamında
+"Kaydet ve bağlantıyı test et"; USPS hizmetli yöntemde fiyat ve teslim
+tarihi; "ABD Adreslerini Doğrulama" açıkken ABD adresli ödeme. 10.72 adımı
+ve `ENCRYPTION_KEY` gerekir.
+
+---
+
 ## 2026.4.10 — Yedekler Google Drive, OneDrive ve Dropbox'a (2026-10-13)
 
 **Neden.** `docs/_plan_tersine_oauth.md` §4.4: otomatik yedeğin uzak kopyası

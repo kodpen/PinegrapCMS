@@ -22602,5 +22602,18 @@
     "On account": "Cari hesapta",
     "Put on account": "Cari hesaba yazıldı",
     "Put it on my account at checkout": "Ödemede \"Cari hesabıma yaz\"",
-    "A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account's payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order is invoiced from its screen as usual and is never cancelled for an unpaid transfer.": "Carisinde kredi limiti tanımlı, oturum açmış müşteri siparişi ödemek yerine cari hesabına yazdırabilir: sipariş o cariye, carinin vadesiyle faturalanır. Sipariş, henüz faturalanmamış cari siparişleriyle birlikte limiti aşıyorsa reddedilir. Sipariş her zamanki gibi kendi ekranından faturalanır ve havale gelmedi diye iptal edilmez."
+    "A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account's payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order is invoiced from its screen as usual and is never cancelled for an unpaid transfer.": "Carisinde kredi limiti tanımlı, oturum açmış müşteri siparişi ödemek yerine cari hesabına yazdırabilir: sipariş o cariye, carinin vadesiyle faturalanır. Sipariş, henüz faturalanmamış cari siparişleriyle birlikte limiti aşıyorsa reddedilir. Sipariş her zamanki gibi kendi ekranından faturalanır ve havale gelmedi diye iptal edilmez.",
+    "USPS": "USPS",
+    "Consumer Key": "Tüketici Anahtarı (Consumer Key)",
+    "Consumer Secret": "Tüketici Gizli Anahtarı (Consumer Secret)",
+    "Create an application at {var:1} with these APIs: {var:2}. Then enter its {var:3} and {var:4} here.": "{var:1} adresinde şu API'leri içeren bir uygulama oluşturun: {var:2}. Ardından uygulamanın {var:3} ve {var:4} değerlerini buraya girin.",
+    "Uses the USPS Addresses API with the consumer key and secret entered above.": "Yukarıda girilen USPS tüketici anahtarı ve gizli anahtarıyla USPS Addresses API'sini kullanır.",
+    "This website cannot get real-time rates from USPS, because no USPS consumer key and consumer secret are set in the site settings.": "Site ayarlarında USPS tüketici anahtarı ve gizli anahtarı girilmediği için bu site USPS'ten anlık fiyat alamıyor.",
+    "USPS rate request: {var:1}": "USPS fiyat isteği: {var:1}",
+    "USPS rate response: {var:1}": "USPS fiyat yanıtı: {var:1}",
+    "An error occurred while trying to get real-time rates from USPS: {var:1}": "USPS'ten anlık fiyat alınırken hata oluştu: {var:1}",
+    "This website cannot get delivery dates from USPS, because no USPS consumer key and consumer secret are set in the site settings.": "Site ayarlarında USPS tüketici anahtarı ve gizli anahtarı girilmediği için bu site USPS'ten teslim tarihi alamıyor.",
+    "An error occurred while trying to get a delivery date from USPS: {var:1} Request: {var:2}": "USPS'ten teslim tarihi alınırken hata oluştu: {var:1} İstek: {var:2}",
+    "This website cannot verify addresses with USPS, because no USPS consumer key and consumer secret are set in the site settings.": "Site ayarlarında USPS tüketici anahtarı ve gizli anahtarı girilmediği için bu site adresleri USPS ile doğrulayamıyor.",
+    "An error occurred while trying to verify an address with USPS: {var:1}": "Adres USPS ile doğrulanırken hata oluştu: {var:1}"
 }

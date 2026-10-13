@@ -4,9 +4,10 @@
  *
  * The shipping carriers' REST APIs, signed in with OAuth 2.0.
  *
- * UPS retired its XML access key and FedEx its SOAP web services; both now
- * take an access token fetched with a client_credentials grant from an
- * application the site owner creates in the carrier's developer portal.
+ * UPS retired its XML access key, FedEx its SOAP web services and USPS its
+ * Web Tools user ID; all three now take an access token fetched with a
+ * client_credentials grant from an application the site owner creates in the
+ * carrier's developer portal.
  *
  * The application's client ID and secret are kept in connect_apps under
  * 'shipping_<carrier>' (the secret sealed with the site's key and never
@@ -65,6 +66,18 @@ function pg_carrier_api_definitions()
             'portal'     => 'https://developer.fedex.com/',
             'products'   => 'Rates and Transit Times',
         ),
+        'usps' => array(
+            'label'      => 'USPS',
+            'hosts'      => array(
+                'production' => 'https://apis.usps.com',
+                // Testing Environment for Mailers.
+                'test'       => 'https://apis-tem.usps.com',
+            ),
+            'token_path' => '/oauth2/v3/token',
+            'token_auth' => 'form',
+            'portal'     => 'https://developers.usps.com/',
+            'products'   => 'Domestic Prices, Service Standards, Addresses',
+        ),
     );
 }
 
@@ -79,6 +92,10 @@ function pg_carrier_api_labels($carrier)
 {
     if ($carrier === 'fedex') {
         return array('id' => lang('API Key'), 'secret' => lang('Secret Key'));
+    }
+
+    if ($carrier === 'usps') {
+        return array('id' => lang('Consumer Key'), 'secret' => lang('Consumer Secret'));
     }
 
     return array('id' => lang('Client ID'), 'secret' => lang('Client Secret'));
@@ -431,22 +448,45 @@ function pg_carrier_api_http($method, $url, $headers, $body = '')
 }
 
 /**
+ * The headers of a call to a carrier's API. A request without a body says
+ * nothing about a content type: some gateways refuse a GET that names one.
+ *
+ * @param string $token
+ * @param bool   $has_body
+ * @param array  $headers extra "Name: value" lines
+ * @return array
+ */
+function pg_carrier_api_request_headers($token, $has_body, $headers = array())
+{
+    $lines = array('Accept: application/json');
+
+    if ($has_body) {
+        $lines[] = 'Content-Type: application/json';
+    }
+
+    $lines[] = 'Authorization: Bearer ' . $token;
+
+    return array_merge($lines, $headers);
+}
+
+/**
  * A JSON call to a carrier's API with its access token. A token the API
  * refuses is fetched again once: the carrier may revoke one before the time
  * it gave.
  *
- * @param string $carrier
- * @param string $method
- * @param string $path    from the host, e.g. /api/rating/v2409/Shop
- * @param array  $payload sent as JSON
- * @param array  $headers extra "Name: value" lines
+ * @param string     $carrier
+ * @param string     $method
+ * @param string     $path    from the host, e.g. /api/rating/v2409/Shop,
+ *                            with its query string for a GET
+ * @param array|null $payload sent as JSON; null sends no body
+ * @param array      $headers extra "Name: value" lines
  * @return array status, body, data, error ('' only for a 2xx answer)
  */
 function pg_carrier_api_call($carrier, $method, $path, $payload, $headers = array())
 {
     $definition = pg_carrier_api_definition($carrier);
     $app = pg_carrier_api_app($carrier);
-    $json = json_encode($payload);
+    $json = ($payload === null) ? '' : json_encode($payload);
 
     $result = array('status' => 0, 'body' => '', 'data' => null, 'error' => '');
 
@@ -461,11 +501,7 @@ function pg_carrier_api_call($carrier, $method, $path, $payload, $headers = arra
         $result = pg_carrier_api_http(
             $method,
             pg_carrier_api_host($definition, $app['environment']) . $path,
-            array_merge(array(
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $token['token'],
-            ), $headers),
+            pg_carrier_api_request_headers($token['token'], ($json !== ''), $headers),
             $json);
 
         if ($result['status'] !== 401) {
@@ -485,6 +521,7 @@ function pg_carrier_api_call($carrier, $method, $path, $payload, $headers = arra
  *
  * UPS:   {"response": {"errors": [{"code", "message"}]}}
  * FedEx: {"errors": [{"code", "message"}]}
+ * USPS:  {"error": {"code", "message", "errors": [{"code", "title", "detail"}]}}
  * OAuth: {"error": "invalid_client", "error_description": "..."}
  *
  * @param array|null $data
@@ -502,6 +539,20 @@ function pg_carrier_api_error_text($data, $status)
             $errors = $data['errors'];
         } elseif (isset($data['error']) && is_array($data['error'])) {
             $errors = array($data['error']);
+
+            // USPS names what it refused under the error, e.g. the field.
+            if (isset($data['error']['errors']) && is_array($data['error']['errors'])) {
+                foreach ($data['error']['errors'] as $detail) {
+                    if (!is_array($detail)) {
+                        continue;
+                    }
+
+                    $errors[] = array(
+                        'code'    => isset($detail['code']) ? $detail['code'] : '',
+                        'message' => isset($detail['detail']) ? $detail['detail'] : (isset($detail['title']) ? $detail['title'] : ''),
+                    );
+                }
+            }
         } elseif (isset($data['error']) && is_string($data['error'])) {
             $errors = array(array(
                 'code'    => $data['error'],
@@ -531,7 +582,7 @@ function pg_carrier_api_error_text($data, $status)
         return 'HTTP ' . (int) $status;
     }
 
-    return implode('; ', $lines);
+    return implode('; ', array_unique($lines));
 }
 
 /**
@@ -567,10 +618,12 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
 
     $html .= '
             <div class="col-12 form-text mt-2">' . lang(array(
-                'string' => 'Create an application at {var:1}, add the {var:2} API to it, and enter its client ID and client secret here.',
+                'string' => 'Create an application at {var:1} with these APIs: {var:2}. Then enter its {var:3} and {var:4} here.',
                 'vars'   => array(
                     '<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h(preg_replace('#^https://|/$#', '', $definition['portal'])) . '</a>',
-                    h($definition['products'])))) . '</div>
+                    h($definition['products']),
+                    h($labels['id']),
+                    h($labels['secret'])))) . '</div>
             <div class="pg-f-md">
                 <label for="' . h($name) . 'client_id" class="form-label">' . h($labels['id']) . '</label>
                 <input type="text" name="' . h($name) . 'client_id" id="' . h($name) . 'client_id" class="form-control" value="' . h($app['client_id']) . '" maxlength="255" autocomplete="off"/>
@@ -1001,4 +1054,400 @@ function pg_fedex_delivery_parse($data)
     }
 
     return $result;
+}
+
+
+/* ---------------------------------------------------------------------------
+   USPS
+   --------------------------------------------------------------------------- */
+
+/**
+ * The mail classes USPS's Domestic Prices and Service Standards APIs name,
+ * for the services the shipping methods can be set to. Retail Ground, which
+ * the usps_ground service was named after, became USPS Ground Advantage.
+ *
+ * @return array mail class => service
+ */
+function pg_usps_services()
+{
+    return array(
+        'PRIORITY_MAIL_EXPRESS' => 'usps_express',
+        'PRIORITY_MAIL'         => 'usps_priority',
+        'USPS_GROUND_ADVANTAGE' => 'usps_ground',
+    );
+}
+
+/**
+ * @param string $service e.g. usps_priority
+ * @return string the mail class, '' for a service USPS is not asked about
+ */
+function pg_usps_mail_class($service)
+{
+    $mail_class = array_search((string) $service, pg_usps_services(), true);
+
+    return ($mail_class === false) ? '' : $mail_class;
+}
+
+/**
+ * A ZIP code as USPS's APIs take it: the five digits, without the +4.
+ *
+ * @param string $zip_code
+ * @return string
+ */
+function pg_usps_zip($zip_code)
+{
+    return mb_substr(trim((string) $zip_code), 0, 5);
+}
+
+/**
+ * Whether USPS sorts the package by machine: within 6-34 x 3-17 x 0.25-17
+ * inches and 6 ounces to 35 pounds. Ground Advantage is priced higher for
+ * the others.
+ *
+ * @param array $package length, width, height (inches), weight (pounds)
+ * @return bool
+ */
+function pg_usps_machinable($package)
+{
+    return ($package['length'] >= 6) && ($package['length'] <= 34)
+        && ($package['width'] >= 3) && ($package['width'] <= 17)
+        && ($package['height'] >= 0.25) && ($package['height'] <= 17)
+        && ($package['weight'] >= 0.375) && ($package['weight'] <= 35);
+}
+
+/**
+ * The Domestic Prices body for one package at retail prices, asking for every
+ * given mail class so the other services' rates are cached from the same
+ * answer.
+ *
+ * @param string $origin_zip
+ * @param string $destination_zip
+ * @param array  $package      length, width, height (inches), weight (pounds)
+ * @param array  $mail_classes
+ * @param string $mailing_date Y-m-d; prices change on set dates
+ * @return array
+ */
+function pg_usps_rate_request($origin_zip, $destination_zip, $package, $mail_classes, $mailing_date)
+{
+    return array(
+        'originZIPCode'      => pg_usps_zip($origin_zip),
+        'destinationZIPCode' => pg_usps_zip($destination_zip),
+        'weight'             => round((float) $package['weight'], 2),
+        'length'             => round((float) $package['length'], 2),
+        'width'              => round((float) $package['width'], 2),
+        'height'             => round((float) $package['height'], 2),
+        'mailClasses'        => array_values($mail_classes),
+        'priceType'          => 'RETAIL',
+        'mailingDate'        => (string) $mailing_date,
+        'itemValue'          => 0,
+    );
+}
+
+/**
+ * How well a price option fits a parcel in the shop's own box.
+ *
+ * Flat Rate and Cubic prices need USPS's boxes or a commercial account, and
+ * destination entry prices (DDU, DSCF, SCF, NDC) a drop at a USPS facility,
+ * so none of them is what the customer is charged for.
+ *
+ * @param array $rate one entry of rateOptions[].rates
+ * @return int 2 single-piece or dimensional price, 1 a price that names no
+ *             rate indicator and does not read as one of those, 0 none
+ */
+function pg_usps_rate_fit($rate)
+{
+    $facility = isset($rate['destinationEntryFacilityType']) ? strtoupper(trim((string) $rate['destinationEntryFacilityType'])) : '';
+
+    if (($facility !== '') && ($facility !== 'NONE')) {
+        return 0;
+    }
+
+    $text = '';
+
+    foreach (array('description', 'productName') as $field) {
+        if (isset($rate[$field]) && is_scalar($rate[$field])) {
+            $text .= ' ' . strtoupper((string) $rate[$field]);
+        }
+    }
+
+    if ((strpos($text, 'FLAT RATE') !== false) || (strpos($text, 'CUBIC') !== false) || preg_match('/\b(DDU|DSCF|SCF|NDC)\b/', $text)) {
+        return 0;
+    }
+
+    $indicator = isset($rate['rateIndicator']) ? strtoupper(trim((string) $rate['rateIndicator'])) : '';
+
+    if ($indicator === '') {
+        return 1;
+    }
+
+    // Single-piece, and the dimensional prices of large rectangular and
+    // nonrectangular parcels.
+    return in_array($indicator, array('SP', 'PA', 'DR', 'DN'), true) ? 2 : 0;
+}
+
+/**
+ * The rates in a Domestic Prices answer.
+ *
+ * USPS answers with an option per price that could apply. Per service the
+ * best-fitting options are kept, then those of the package's processing
+ * category, and of what remains the highest price is taken, so a checkout
+ * is not charged less than the post office will ask.
+ *
+ * @param array|null $data
+ * @param bool       $machinable pg_usps_machinable()
+ * @return array service => rate in cents
+ */
+function pg_usps_rate_parse($data, $machinable)
+{
+    $rates = array();
+
+    if (!is_array($data) || !isset($data['rateOptions']) || !is_array($data['rateOptions'])) {
+        return $rates;
+    }
+
+    $services = pg_usps_services();
+    $candidates = array();
+
+    foreach ($data['rateOptions'] as $option) {
+        if (!is_array($option) || !isset($option['rates'][0]) || !is_array($option['rates'][0])) {
+            continue;
+        }
+
+        $rate = $option['rates'][0];
+        $mail_class = isset($rate['mailClass']) ? (string) $rate['mailClass'] : '';
+
+        if (!isset($services[$mail_class])) {
+            continue;
+        }
+
+        $fit = pg_usps_rate_fit($rate);
+
+        if (!$fit) {
+            continue;
+        }
+
+        $price = 0.0;
+
+        foreach (array(
+            isset($option['totalPrice']) ? $option['totalPrice'] : null,
+            isset($option['totalBasePrice']) ? $option['totalBasePrice'] : null,
+            isset($rate['price']) ? $rate['price'] : null,
+        ) as $value) {
+            if (is_numeric($value) && ((float) $value > 0)) {
+                $price = (float) $value;
+                break;
+            }
+        }
+
+        if ($price <= 0) {
+            continue;
+        }
+
+        $candidates[$services[$mail_class]][] = array(
+            'fit'      => $fit,
+            'category' => isset($rate['processingCategory']) ? strtoupper((string) $rate['processingCategory']) : '',
+            'cents'    => (int) round($price * 100),
+        );
+    }
+
+    $categories = $machinable ? array('MACHINABLE') : array('NONSTANDARD', 'NON_MACHINABLE', 'NONMACHINABLE');
+
+    foreach ($candidates as $service => $options) {
+        $best_fit = max(array_column($options, 'fit'));
+
+        $options = array_filter($options, function ($option) use ($best_fit) {
+            return $option['fit'] === $best_fit;
+        });
+
+        $of_category = array_filter($options, function ($option) use ($categories) {
+            return in_array($option['category'], $categories, true);
+        });
+
+        if ($of_category) {
+            $options = $of_category;
+        }
+
+        $rates[$service] = max(array_column($options, 'cents'));
+    }
+
+    return $rates;
+}
+
+/**
+ * The Service Standards request for one mail class: when a parcel accepted on
+ * the given day is delivered to a street address.
+ *
+ * @param string $origin_zip
+ * @param string $destination_zip
+ * @param string $ship_date  Y-m-d
+ * @param string $mail_class
+ * @return string path and query
+ */
+function pg_usps_delivery_path($origin_zip, $destination_zip, $ship_date, $mail_class)
+{
+    return '/service-standards/v3/estimates?' . http_build_query(array(
+        'originZIPCode'      => pg_usps_zip($origin_zip),
+        'destinationZIPCode' => pg_usps_zip($destination_zip),
+        'acceptanceDate'     => (string) $ship_date,
+        'mailClass'          => (string) $mail_class,
+        'destinationType'    => 'STREET',
+    ), '', '&', PHP_QUERY_RFC3986);
+}
+
+/**
+ * The delivery date in a Service Standards answer.
+ *
+ * @param array|null $data       a list of estimates, or a lone estimate
+ * @param string     $mail_class the class asked for
+ * @return string Y-m-d, '' when USPS gave none
+ */
+function pg_usps_delivery_parse($data, $mail_class)
+{
+    if (!is_array($data)) {
+        return '';
+    }
+
+    $estimates = isset($data[0]) ? $data : array($data);
+
+    foreach ($estimates as $estimate) {
+        if (!is_array($estimate)) {
+            continue;
+        }
+
+        if (isset($estimate['mailClass']) && ((string) $estimate['mailClass'] !== (string) $mail_class)) {
+            continue;
+        }
+
+        foreach (array(
+            isset($estimate['delivery']['scheduledDeliveryDateTime']) ? $estimate['delivery']['scheduledDeliveryDateTime'] : '',
+            isset($estimate['scheduledDeliveryDateTime']) ? $estimate['scheduledDeliveryDateTime'] : '',
+        ) as $candidate) {
+            if (is_string($candidate) && preg_match('/^(\d{4}-\d{2}-\d{2})/', $candidate, $match)) {
+                return $match[1];
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The Addresses request for one address.
+ *
+ * @param array $address address_1, address_2, city, state (two letters),
+ *                       zip_code
+ * @return string path and query
+ */
+function pg_usps_address_path($address)
+{
+    $query = array('streetAddress' => trim((string) $address['address_1']));
+
+    if (trim((string) $address['address_2']) !== '') {
+        $query['secondaryAddress'] = trim((string) $address['address_2']);
+    }
+
+    if (trim((string) $address['city']) !== '') {
+        $query['city'] = trim((string) $address['city']);
+    }
+
+    $query['state'] = strtoupper(trim((string) $address['state']));
+
+    if (pg_usps_zip($address['zip_code']) !== '') {
+        $query['ZIPCode'] = pg_usps_zip($address['zip_code']);
+    }
+
+    return '/addresses/v3/address?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+}
+
+/**
+ * What an Addresses answer says about the address.
+ *
+ * @param int        $status
+ * @param array|null $data
+ * @return array result: 'verified'; 'secondary' (found, but an apartment,
+ *               suite or box number is missing or unknown); 'not_found';
+ *               'city', 'state' or 'zip_code' (that field is wrong); 'error'
+ *               (USPS gave no usable answer),
+ *               address: address_1, address_2, city, state, zip_code as USPS
+ *               standardized them, for 'verified' and 'secondary' only
+ */
+function pg_usps_address_parse($status, $data)
+{
+    $status = (int) $status;
+
+    if (($status >= 200) && ($status <= 299)) {
+        // A blank answer must not blank the customer's address.
+        if (!is_array($data) || empty($data['address']['streetAddress'])) {
+            return array('result' => 'error', 'address' => null);
+        }
+
+        $found = $data['address'];
+        $zip_code = isset($found['ZIPCode']) ? (string) $found['ZIPCode'] : '';
+
+        if (!empty($found['ZIPPlus4'])) {
+            $zip_code .= '-' . $found['ZIPPlus4'];
+        }
+
+        $address = array(
+            'address_1' => (string) $found['streetAddress'],
+            'address_2' => isset($found['secondaryAddress']) ? (string) $found['secondaryAddress'] : '',
+            'city'      => isset($found['city']) ? (string) $found['city'] : '',
+            'state'     => isset($found['state']) ? (string) $found['state'] : '',
+            'zip_code'  => $zip_code,
+        );
+
+        $dpv = isset($data['additionalInfo']['DPVConfirmation']) ? strtoupper(trim((string) $data['additionalInfo']['DPVConfirmation'])) : '';
+
+        // 32: the building was found, the unit was not. 22: several
+        // addresses matched.
+        $codes = array();
+
+        if (isset($data['corrections']) && is_array($data['corrections'])) {
+            foreach ($data['corrections'] as $correction) {
+                if (is_array($correction) && isset($correction['code'])) {
+                    $codes[] = (string) $correction['code'];
+                }
+            }
+        }
+
+        if (($dpv === 'D') || ($dpv === 'S') || in_array('32', $codes, true)) {
+            return array('result' => 'secondary', 'address' => $address);
+        }
+
+        if (($dpv === 'N') || in_array('22', $codes, true)) {
+            return array('result' => 'not_found', 'address' => null);
+        }
+
+        return array('result' => 'verified', 'address' => $address);
+    }
+
+    // A network problem or a refused token: nothing is known about the
+    // address itself.
+    if (($status === 0) || ($status === 401) || ($status === 403) || ($status >= 500)) {
+        return array('result' => 'error', 'address' => null);
+    }
+
+    $text = strtolower(pg_carrier_api_error_text($data, $status));
+
+    if ((strpos($text, 'address not found') !== false) || (strpos($text, 'multiple') !== false)) {
+        return array('result' => 'not_found', 'address' => null);
+    }
+
+    if (strpos($text, 'invalid city') !== false) {
+        return array('result' => 'city', 'address' => null);
+    }
+
+    if (strpos($text, 'invalid state') !== false) {
+        return array('result' => 'state', 'address' => null);
+    }
+
+    if (strpos($text, 'invalid zip') !== false) {
+        return array('result' => 'zip_code', 'address' => null);
+    }
+
+    if ($status === 404) {
+        return array('result' => 'not_found', 'address' => null);
+    }
+
+    return array('result' => 'error', 'address' => null);
 }

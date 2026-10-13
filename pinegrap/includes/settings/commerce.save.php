@@ -383,7 +383,6 @@ function pg_parasut_credentials_for_save()
             iyzipay_protected_currency_code = '" . escape(post_value('iyzipay_protected_currency_code')) . "',
             ecommerce_shipping = '" . escape(post_value('ecommerce_shipping')) . "',
             ecommerce_recipient_mode = '" . escape(post_value('ecommerce_recipient_mode')) . "',
-            usps_user_id = '" . e(trim(post_value('usps_user_id'))) . "',
             ecommerce_address_verification = '" . escape(post_value('ecommerce_address_verification')) . "',
             ecommerce_address_verification_enforcement_type = '" . escape(post_value('ecommerce_address_verification_enforcement_type')) . "',
             ups = '" . e(post_value('ups')) . "',
