@@ -815,6 +815,13 @@
   [ŞEMA] Ayarlar tablosuna dil yönlendirmesi için dört
          kolon eklenir.
 
+  [DÜZELTME] Tek dilli sitede görsel editörle yapılan
+         sayfalar sitenin dilini söylüyor (<html lang="tr">).
+         Önceden "en" kalıyordu; büyük harfe çevrilen
+         Türkçe metin "MÜŞTERI", "İLETIŞIM" görünüyordu,
+         artık "MÜŞTERİ", "İLETİŞİM". Stile elle yazılmış
+         başka bir dil korunuyor.
+
   GÜVENLİK DUVARI
   --------------------------------------------------------
 
