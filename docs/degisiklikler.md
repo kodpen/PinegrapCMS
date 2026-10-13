@@ -173,6 +173,73 @@ dev.pinegrap.com'da yerel oturum dener.
 
 ---
 
+## 2026.4.10 — ERP: satın alma siparişleri dış API'de ve MCP'de (2026-10-13)
+
+**Neden.** Faz 7'nin son parçası (`docs/_plan_erp_ozellikler.md` §3, "API
+`GET/POST /erp/purchase-orders…` (Faz 6'nın kuralları)" ve olaylar). Sipariş
+panelde yazılıp faturaya dönüşüyordu ama dışarıdan (muhasebe ya da depo
+entegrasyonu, Claude bağlayıcısı) görünmüyordu. Şema yok.
+
+**Rotalar** (`includes/erp/api.php` tablosu; işleyiciler ve sunucu yeni
+`includes/erp/api_purchase_orders.php`'de, Faz 6'nın `api_stock.php` deseni):
+
+| Rota | Kapsam | Alan fonksiyonu |
+|---|---|---|
+| `GET /erp/purchase-orders` (durum, `waiting`, `late`, tedarikçi, numara, tarih, `updated_since`, imleç) | erp:read | sorgu, `erp_purchase_order_progress()` |
+| `GET /erp/purchase-orders/{id}`, `…/{id}/document` | erp:read | `erp_purchase_order()`, `erp_purchase_order_html()` |
+| `POST /erp/purchase-orders`, `POST /erp/purchase-orders/{id}` (PATCH da) | erp:write | `erp_purchase_order_save()` |
+| `POST /erp/purchase-orders/{id}/status` (`sent`, `cancelled`, `open`) | erp:write | `erp_purchase_order_mark_sent()`, `erp_purchase_order_set_status()` |
+| `POST /erp/purchase-orders/{id}/invoice` | erp:write | `erp_purchase_order_to_invoice()` |
+| `POST /erp/purchase-orders/{id}/email` | erp:write | `erp_purchase_order_mail_send()` |
+
+Her yazma `X-Dry-Run` ile durur (`check_api_schema.php` denetler); 409 kodları
+`purchase_order_not_editable`, `purchase_order_status_not_allowed`,
+`purchase_order_not_invoiceable`, `purchase_order_not_sendable`. MCP araçları
+rotalardan kendiliğinden çıkar (`erp_purchase_orders_list` …).
+
+**Nesne `ErpPurchaseOrder`.** Başlık, toplamlar, `late` (pano kartının
+okuması), satırlar ve her satırda `key`, `received_quantity`,
+`drafted_quantity`, `outstanding_quantity`; siparişten yapılan fatura ve
+taslaklar `invoices`'ta. Liste sayfası tek sorguda miktarları, faturaları ve
+ürün kodlarını okur (`erp_api_purchase_order_context()`), satır başına sorgu
+yok.
+
+**Satır anahtarı API'de.** Panel formu anahtarı gizli alanla geri gönderiyor;
+API'de karşılığı yoktu, bir istemci taslağın satırlarını yeniden yazınca
+anahtar düşer, sipariş o satırı hiç sayamazdı. `erp_api_lines_in()` üçüncü
+parametre aldı: sipariş güncellemesinde `lines[].key`, siparişten yapılmış
+alış taslağının güncellemesinde `lines[].purchase_order_line`. Siparişten
+yapılmamış taslakta anahtar 422, yeni siparişte ve teklifte bilinmeyen alan
+422. `ErpInvoice` artık `purchase_order_id` ve satırlarda
+`purchase_order_line` taşıyor; `GET /erp/invoices?purchase_order_id=` eklendi.
+
+**Olaylar.** `erp_webhook_events()`'e `erp.purchase_order.created|sent|
+received|cancelled|reopened` (paneldeki 1. ve 2. parçadan beri yayılıyordu,
+abone olunamıyordu).
+
+**Alan tarafında küçük değişiklikler.** Durum ve dönüşüm reddi tek yerde:
+`erp_purchase_order_status_refusal()` (gönderildi, iptal, yeniden aç) ve
+`erp_purchase_order_invoice_refusal()`; ekranlar ve API aynı cümleyi verir.
+`erp_purchase_order_refresh()` durum değişmese de `updated_at`'i ilerletir
+(alınan miktar değişti), `erp_purchase_order_to_invoice()` de; böylece
+`updated_since` ile izleyen istemci siparişi yeniden görür.
+
+**Doğrulanan.** Sandbox'ta curl ile: X-Dry-Run (200, `would`), aynı
+Idempotency-Key ile ikinci istek aynı sipariş (`Idempotent-Replay: true`),
+yeni siparişte `key` 422, beklenen tarih sipariş tarihinden önce 422,
+anahtarlı güncelleme satırları korudu ve yeni satıra anahtar verdi, `sent`,
+faturaya dönüşüm (201, taslak satırları anahtarlı), ikinci dönüşüm 409,
+taslak API'den 2 satıra indirilip kesildi → `partial`, kalan taslak kesildi →
+`received` (olay bir kez), iptal → dönüşüm ve e-posta 409, yeniden açma →
+`partial`, kısmi siparişi değiştirme 409, e-posta X-Dry-Run, PDF, `late`,
+`waiting`, imleç ve `updated_since`, OpenAPI'de 6 yol ve nesne.
+`tests/erp_purchase_order_test.php`'ye 5 test (18 test).
+
+**Doğrulanamayan.** dev.pinegrap.com'da Claude bağlayıcısıyla (yeni araçlar
+için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
+
+---
+
 ## 2026.4.10 — Bağlı hesaplar: giden OAuth altyapısı (2026-10-13)
 
 **Neden.** Ürün sahibi tersine OAuth planından (`docs/_plan_tersine_oauth.md`)
@@ -386,6 +453,51 @@ birlikte geri aldı, 2. geri al kapalıydı. Sonrası: 1. geri al yalnız adresi
 açılır listesi (`_blank`) için de 1. geri al yalnız hedefi geri aldı. Ortak
 başlıktaki linkte (marka linki) metin ve adres ayrı adımlarda geri alındı.
 dev.pinegrap.com'da denenmedi.
+
+---
+
+## 2026.4.10 — Dış API: takvim etkinliği ekleme, değiştirme, silme (2026-10-13)
+
+**Sorun.** Takvimler API'de yalnız okunuyordu. Bir rezervasyon aracı ya da
+asistan etkinlik açamıyor, saatini kaydıramıyor, yayına alamıyordu; Çalışma
+Alanı aynı işi öneri olarak yapabildiği hâlde API yapamıyordu.
+
+**Değişiklik.** `calendars` izin grubuna `calendars:write` eklendi; `calendars:read`
+ile aynı kişilere verilir (rol < 3 ya da takvim yetkisi). Yeni rotalar
+(`includes/api/resources/calendars.php`):
+
+- `POST /calendars/events`: `name`, `start`, `end`, `calendar_ids` zorunlu;
+  `all_day`, `short_description`, `description` (HTML, `pg_sanitize_rich_text`
+  ile temizlenir), `location`, `show_start_time`, `show_end_time`, `published`,
+  `unpublish_days`. Tüm gün etkinlik ilk günün 00:00'ından son günün 23:59'una
+  yazılır; diğerinde bitiş başlangıçtan sonra olmalı (etkinlik ekranının
+  kuralı). Geri kalan sütunlar ekranın başlangıç değerleriyle (yayında değil,
+  45 gün, tekrar ve rezervasyon kapalı).
+- `POST`/`PATCH /calendars/events/{id}`: yalnız gönderilen değişir; `start`,
+  `end` ya da `all_day` gelince saatler saklı olanla birlikte yeniden
+  hesaplanır. Salon ayıran tek seferlik etkinlik `check_calendar_event_location_availability`
+  ile denetlenir (409 `room_taken`); salon ayıran tekrarlanan etkinliğin saati
+  buradan değiştirilmez (409 `repeating_event_books_room`), çünkü ekran her
+  tekrarı ayrı denetler. `calendar_ids` sahibin açabildiği takvimleri
+  değiştirir, göremediği takvimler etkinliği tutar.
+- `DELETE /calendars/events/{id}` (ve `POST …/delete`): ekrandaki gibi
+  istisnalar, takvim ve salon bağları, kalan rezervasyon yerleriyle birlikte.
+
+Yetki ekranlarla aynı: rol 3 sahibi yalnız atanmış takvimlerine yazar;
+yayın yetkisi (`user_publish_calendar_events`) yoksa `published` /
+`unpublish_days` 403, yayındaki etkinliği değiştiremez ve silemez (403).
+Tekrar kuralı, rezervasyon, ürün, salon seçimi ve sonraki sayfa etkinlik
+ekranında kalır. Şema değişikliği yok. Var olan uygulamalar yeni izni
+kendiliğinden almaz; API ayarlarından verilmesi gerekir.
+
+**Doğrulandı (sandbox).** Oluşturma, dry-run, tüm gün (00:00–23:59), bitiş
+başlangıçtan önce 422, olmayan ya da boş takvim 422; açıklamadaki `script`,
+`onclick` ve `javascript:` temizlendi; tüm gün aç/kapat; takvim değiştirme;
+salon çakışması 409 ve bitişik saat kabul; tekrarlanan + salonlu etkinlikte
+saat 409, ad değişikliği geçer; silme bağları temizledi, sonra 404. Rol 3
+(takvim 1 atanmış, yayın yetkisi yok): başka takvim 422, yayınlama 403,
+yayındaki etkinlik 403, göremediği takvim korunur, görünmeyen etkinlik 404.
+`tests/api_calendars_test.php` saat kuralı için yeni test.
 
 ---
 
