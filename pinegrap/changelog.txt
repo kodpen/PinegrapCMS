@@ -353,6 +353,16 @@
          değiştirilince korunuyor. Önceden liste "Son
          Değişiklik" sıralamasına dönüyordu.
 
+  [DÜZELTME] Ürünleri İçe Aktar'a verilen OpenDocument
+         (.ods) dosyası PHP 8'de hata sayfasıyla
+         duruyordu; dosya artık okunuyor. Tablodaki tarih
+         ve saat hücreleri sitenin saat dilimi ne olursa
+         olsun yazıldığı gibi aktarılıyor. Önceden .ods'de
+         yaz aylarındaki tarihlere saat ekleniyor, .xlsx ve
+         .ods'de saat içeren hücreler sitenin saat dilimi
+         kadar, Amerika saat dilimlerinde tarihler bir gün
+         geri kayıyordu.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 

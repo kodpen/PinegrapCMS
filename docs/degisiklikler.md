@@ -84,6 +84,52 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ürün içe aktarımı: `.ods` PHP 8'de okunuyor; tablo tarihleri saat diliminden bağımsız (2026-10-13)
+
+**Sorun.** Ürünleri İçe Aktar'a verilen OpenDocument (`.ods`) dosyası PHP
+8'de ölümcül hatayla duruyordu (ERP Faz 9'un "bilinen sorun" kaydı).
+`includes/phpexcel/PHPExcel/Reader/OOCalc.php:538` `implode($dataArray, "\n")`
+yazıyordu; ters argüman sırası PHP 7.4'te kullanımdan kalktı, PHP 8'de
+`TypeError`. `pg_products_import_to_csv()` yalnız `Exception` yakaladığı için
+hata, "Dosya okunamadı" yerine boş sayfa oldu.
+
+Düzeltme sandbox'ta denenince aynı yolda iki tarih hatası çıktı:
+
+- OOCalc tarih hücresini UTC'den `Europe/London`'a çeviriyordu; İngiltere yaz
+  saatinde (mart sonu–ekim sonu) her tarihe bir saat ekleniyor, `2026-07-15`
+  hücresi İstanbul'da `2026-07-15 04:00:00` olarak aktarılırdı.
+- `pg_products_import_cell()` ve `pg_products_import_xlsx_date()` UTC'ye göre
+  hesaplanmış damgayı `date()` ile, yani sitenin saat dilimiyle yazıyordu:
+  saat içeren hücre o kadar kayıyor (İstanbul'da 13:45 → 16:45), UTC'nin
+  gerisindeki saat dilimlerinde (Amerika) tarih bir gün geri gidiyordu. Bu
+  `.xlsx` yolunda da vardı. Banka ekstresi (`erp_bank_sheet_value()`) zaten
+  `gmdate()` kullanıyor.
+
+**Değişiklik.** Vendored `OOCalc.php`'de üç satır: `implode("\n", $dataArray)`;
+tarih hücresi UTC'de kalır (`Europe/London` çevirisi ve kullanılmayan
+`$timezoneObj` kalktı); saat hücresi `strtotime()` yerine `gmmktime()` ile
+kurulur, çünkü `PHPToExcel()` damgayı UTC okur ve `strtotime()` sunucu saat
+dilimini uygular (eskiden iki kayma `date()` ile birbirini götürüyordu).
+`import_products_f.php`'de iki `date()` → `gmdate()`. `OOCalc.php`'de başka PHP
+8 kırığı yok; PHPExcel'in dinamik özellik ve "zorunludan önce isteğe bağlı
+parametre" bildirimleri yalnız kullanımdan kalkma uyarısı, davranışa dokunmaz.
+Banka ekstresinde `.ods` reddi (`erp_bank_read_file()`) yerinde kaldı; açılması
+ayrı iş. Şema değişikliği yok.
+
+**Doğrulama.** `tests/import_products_test.php`: elle yazılmış `.ods` (çok
+paragraflı ve `span`'lı metin, sayı, mantıksal, yaz ve kış tarihi, tarih-saat,
+saat) UTC, Europe/Istanbul ve America/New_York'ta aynı CSV'yi verir;
+`pg_products_import_xlsx_date()` üç saat diliminde aynı günü ve saati verir.
+Düzeltmeden önce test `TypeError` ve kayan tarihlerle düşüyor. Sandbox'ta
+LibreOffice'in yazdığı `.ods`, `.xlsx` ve `.xls` aynı üç saat diliminde
+`pg_products_import_to_csv()`'den geçti; yalnız tarih taşıyan `.xlsx` ve `.xls`
+İstanbul ve UTC'de eskisiyle aynı çıktıyı verdi (`.xls` tarih hücresi eskisi
+gibi gün sayısı: okuyucu `setReadDataOnly(true)`). Dokunulmayan: formüllü
+hücrede PHPExcel `Calculation.php:3349` "array offset on null" uyarısı verir
+(değer doğru, uyarı `php_errors.log`'a düşer).
+
+---
+
 ## 2026.4.10 — Dış API: anahtar kodlar ve ürün nitelikleri (2026-10-13)
 
 **Sorun.** Anahtar kodlar (teklif kodunun yerine yazılan, kişiye, karta ya da

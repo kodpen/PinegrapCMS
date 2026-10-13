@@ -324,7 +324,6 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
             throw new PHPExcel_Reader_Exception("Could not open " . $pFilename . " for reading! File does not exist.");
         }
 
-        $timezoneObj = new DateTimeZone('Europe/London');
         $GMT = new DateTimeZone('UTC');
 
         $zipClass = PHPExcel_Settings::getZipClass();
@@ -535,7 +534,7 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                             array_push($dataArray, $pData);
                                         }
                                     }
-                                    $allCellDataText = implode($dataArray, "\n");
+                                    $allCellDataText = implode("\n", $dataArray);
 
 //                                    echo 'Value Type is '.$cellDataOfficeAttributes['value-type'].'<br />';
                                     switch ($cellDataOfficeAttributes['value-type']) {
@@ -582,7 +581,6 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                         case 'date':
                                             $type = PHPExcel_Cell_DataType::TYPE_NUMERIC;
                                             $dateObj = new DateTime($cellDataOfficeAttributes['date-value'], $GMT);
-                                            $dateObj->setTimeZone($timezoneObj);
                                             list($year, $month, $day, $hour, $minute, $second) = explode(' ', $dateObj->format('Y m d H i s'));
                                             $dataValue = PHPExcel_Shared_Date::FormattedPHPToExcel($year, $month, $day, $hour, $minute, $second);
                                             if ($dataValue != floor($dataValue)) {
@@ -593,7 +591,9 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                             break;
                                         case 'time':
                                             $type = PHPExcel_Cell_DataType::TYPE_NUMERIC;
-                                            $dataValue = PHPExcel_Shared_Date::PHPToExcel(strtotime('01-01-1970 '.implode(':', sscanf($cellDataOfficeAttributes['time-value'], 'PT%dH%dM%dS'))));
+                                            // Built in UTC, as PHPToExcel() reads it: strtotime() would apply the server time zone.
+                                            list($hour, $minute, $second) = sscanf($cellDataOfficeAttributes['time-value'], 'PT%dH%dM%dS');
+                                            $dataValue = PHPExcel_Shared_Date::PHPToExcel(gmmktime((int) $hour, (int) $minute, (int) $second, 1, 1, 1970));
                                             $formatting = PHPExcel_Style_NumberFormat::FORMAT_DATE_TIME4;
                                             break;
                                     }
