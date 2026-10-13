@@ -84,6 +84,99 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Klinik testi: başkası adına doldurulan form oturumdaki kişiyi ezmiyor; giriş sayfası tasarımın kendisinden; kayıt düzenleme ekranı sayfaya dönüyor; İptal düğmesinde send_to kaçışı (2026-10-13)
+
+Klinik şablonunun (#292) dev testinden.
+
+### 1. Giriş isteyen sayfa, kendi tasarımının giriş sayfasına gönderiyor
+
+**Neden.** Klinik şablonu var olan bir tasarımın yanına kuruldu; aynı adlı
+sayfalar "-2" eki aldı (`/giris-2`). Çıkış yapmış ziyaretçi Klinik'in
+kayıt gerektiren bir sayfasını (randevu sayfası, `registration` klasörü)
+açınca eski tasarımın `/giris` sayfasına gidiyordu. Sebep bir site ayarı
+değil: `pg_sw_sign_in_url()` "giriş widget'ı taşıyan, ziyaretçinin
+açabildiği ilk sayfayı" seçiyor, `pg_sw_widget_pages()` sayfaları başlık
+ve ada göre sıraladığı için `giris` `giris-2`'den önce geliyordu.
+
+**Nasıl.** `pg_sw_sign_in_url()` beşinci parametre olarak istenen sayfanın
+id'sini alır; `_pg_sw_open_widget_page_name($type, $style_id)` önce o
+sayfanın tasarımındaki (`page.page_style`) açık sayfayı, yoksa eskisi gibi
+ilk açık sayfayı döndürür. Çağıranlar: `get_page.php` (private ve
+registration klasörü yönlendirmesi) ve `get_page_content.php` (yorum için
+giriş bağlantısı, yorumun sayfası).
+
+**Bilerek yapılmayan.** Kurulumda site ayarını güncellemek: böyle bir ayar
+yok, olsa da var olan sitenin giriş sayfasını yeni (belki taslak)
+tasarıma çevirirdi. Widget'ların kendi bağlantıları (`login_page_id`,
+`register_page_id`, `account_page_id`) şablonda zaten kendi sekmelerine
+çözülüyor (`{{tab:login}}`); değişmedi. Bağlamı olmayan ekranlar
+(`index.php`, `forgot_password.php` → `pg_sw_screen_page_url()`) eskisi
+gibi ilk açık sayfayı kullanır.
+
+### 2. Kayıt düzenleme ekranı send_to'ya dönüyor
+
+**Neden.** Kayıt sayfasındaki Düzenle düğmesi (`__edit_url`,
+`pg_sw_backend_edit_url()`) `edit_submitted_form.php?id=…&send_to=<sayfa>`
+açıyordu, ama ekran `send_to`'yu forma koymuyordu; Kaydet panelin form
+listesine (`view_submitted_forms.php`) dönüyordu. Klinikte "Durumu
+Değiştir" bu düğme.
+
+**Nasıl.** GET'te `send_to` (`pg_send_to_url()` + `pg_safe_redirect_path()`,
+yalnız bu sitenin yolu) gizli alan olarak forma girer ve İptal oraya döner.
+Kayıt başarılıysa mevcut `send_to` dalı çalışır. Hata olursa: eski
+ön yüz düzenleme formu (`form_item_view_page_id` gönderir) eskisi gibi
+`send_to`'ya, panel ekranı kendine döner ve `send_to`'yu korur (önceden
+`send_to` varsa hatayı gösteremeden sayfaya giderdi).
+
+### 3. İptal düğmesinde `send_to` betik olarak çalışmıyor
+
+**Neden.** `output_header()` İptal adresini
+`OnClick="pgSettingsGo('…')"` içine yalnız `htmlspecialchars()` ile
+koyuyordu. Öznitelik çözülünce `&#039;` yeniden `'` olur; adresten gelen
+bir `send_to` (`edit_product_group.php` zaten `pg_send_to_url()`
+veriyordu; bu iş `edit_submitted_form.php`'yi de ekliyor) dizeyi kapatıp
+betik çalıştırabiliyordu (İptal'e tıklayınca).
+
+**Nasıl.** `pg_output_go_script($url)`: adres önce JSON dizesi
+(`JSON_HEX_TAG|APOS|QUOT|AMP`), sonra HTML olarak kaçırılır. Test
+`tests/output_test.php`.
+
+### 4. Başkası adına doldurulan form oturumdaki kişiyi ezmiyor
+
+**Neden.** Yönetici oturumuyla randevu formu başka bir hasta adına (ad,
+e-posta, telefon farklı) gönderildi; formun kişi alanları (`contact_field`)
+oturumdaki kişinin kişi kaydını (ad, soyad, e-posta, cep telefonu) formdaki
+değerlerle ezdi. `custom_form.php` giriş yapmış kişide `$contact_id`'yi
+`user.user_contact`'tan alıp her zaman onu güncelliyordu; kişi kaydı yoksa
+yenisini açıp kullanıcıya bağlıyordu. Bütün özel formlar (eski sayfa türü
+ve tasarım widget'ı) bu tek işleyiciden geçer.
+
+**Nasıl.** `pg_cf_email_is_someone_else($typed, $known)` ve
+`pg_cf_contact_is_someone_else()` (`includes/fn/custom_form.php`): giriş
+yapmış kişide, formun kişi e-postası alanının değeri (`email_address`'e
+bağlı alan) kişinin hiçbir adresi değilse (`user.user_email` ve kişi
+kaydının `email_address`'i; büyük/küçük harf ve boşluk fark etmez) gönderim
+başkası içindir. O zaman `$contact_id` boşalır: gönderim, anonim gönderim
+gibi kendi kişi kaydını alır, bu kayıt kullanıcıya (`user_contact`)
+bağlanmaz, oturumdaki kişinin kaydına dokunulmaz. Karar "sonra kaydet"
+dalından önce verilir. Test `tests/custom_form_contact_test.php`.
+
+**Ödün.** Kişi e-postası alanı olmayan formda iki durum ayırt edilemez;
+eskisi gibi oturumdaki kişi güncellenir. Kendi e-postasını formda başka bir
+adresle değiştiren kişi de artık "başkası" sayılır (yeni kişi kaydı açılır);
+hesap e-postası zaten profil ekranından değişir.
+
+**Bilerek yapılmayan.** E-postaya göre var olan bir kişi kaydını bulup
+güncellemek: giriş yapmış herhangi bir üye, bir e-posta yazarak başkasının
+kişi kaydını değiştirebilirdi. Personel adına doldurulan gönderim personelin
+kullanıcısında kalır (`forms.user_id`); hastaya hesap açılmaz, randevu
+hastanın Randevularım listesinde görünmez. Bu ayrı bir ürün kararı.
+
+**Açık kalan.** Şablon sayfalarının editörde taslak başlaması (2026-10-06
+kararı) ürün sahibinin kararını bekliyor; bu bölümde değişmedi.
+
+---
+
 ## 2026.4.10 — Referrer-Policy sunucu kuralından çıktı; görev çekmecesinde hazır olmayan asistan seçilemiyor (2026-10-13)
 
 ### 1. `no-referrer` sayfaları IIS'te de referrer göndermiyor
