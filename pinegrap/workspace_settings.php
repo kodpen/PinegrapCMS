@@ -347,6 +347,16 @@ if ($_POST) {
 
             $anchor = '#ws-ai';
             break;
+
+        // Other services' MCP servers under an alias
+        // (includes/workspace/mcp.php).
+        case 'mcp_save':
+        case 'mcp_refresh':
+        case 'mcp_toggle':
+        case 'mcp_delete':
+        case 'mcp_tools':
+            $anchor = ws_mcp_settings_post($viewer, $action, $liveform);
+            break;
     }
 
     go($self_url . $anchor);
@@ -584,6 +594,8 @@ pg_page_shell([
             ' . ws_claude_settings_card($self_url, $viewer) . '
 
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
+
+            ' . ws_mcp_settings_card($self_url, $viewer) . '
         </div>
 
         <div class="col-xl-4">

@@ -442,6 +442,33 @@
   [DÜZELTME] Görev çekmecesindeki not bölümünün başlığı
          "Notlarım" yerine "Notlar" yazıyor.
 
+  [YENİ] MCP sunucuları: Çalışma Alanı Ayarları'nda
+         yönetici başka hizmetlerin uzak MCP sunucularını
+         (kod barındırma, proje takibi, dokümantasyon
+         sitesi gibi) @github gibi bir takma adla
+         ekleyebiliyor. Sunucu adresi https olmalı.
+         Erişim jetonu, hizmetin kendi başlığı ya da
+         kullanıcı adı ve parola sitenin anahtarıyla
+         şifrelenip saklanıyor, bir daha gösterilmiyor.
+         Kaydedilince site sunucuya bağlanıp araçlarını
+         listeliyor; bağlanamazsa nedenini yazıyor.
+
+  [YENİ] Sunucunun her aracı kapalı başlıyor, yönetici
+         tek tek açıyor. Herkes için tek bağlantı
+         kullanıldığından yalnızca okuyan araçlar
+         açılabiliyor; yazan ya da silebilen araçlar
+         kapalı kalıyor. Sunucunun okuyup okumadığını
+         söylemediği aracı yönetici, yalnızca okuduğunu
+         bilerek açabiliyor. Araç listesi süzülebiliyor,
+         "Yalnızca okuyan tüm araçlar" hepsini birden
+         açıyor. Sunucu kapatılabiliyor, araçları
+         yeniden okunabiliyor ve kaldırılabiliyor; her
+         değişiklik etkinlik kaydına yazılıyor.
+
+  [ŞEMA] MCP sunucuları ve araç çağrıları için iki yeni
+         tablo oluşturulur; asistan isteklerine sunucu
+         kolonu eklenir.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
@@ -678,6 +705,18 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] Ziyaretçi raporları API'de (ziyaretçileri okuma
+         izni): günlük ya da saatlik ziyaret ve sayfa
+         görüntüleme sayıları, en çok görüntülenen sayfa ve
+         ürünler, ziyaretlerin kaynağa, kampanyaya (UTM),
+         giriş sayfasına, ülkeye ya da şehre göre dağılımı ve
+         getirdikleri form, sipariş ve ciro. Yalnız toplamlar
+         verilir, tek bir ziyaret (IP, konum) verilmez.
+
+  [YENİ] Site günlüğü API'de, yalnız okuma (site günlüğü
+         izni): sitede kimin neyi hangi adresten yaptığı,
+         tarih, kullanıcı ve metinle süzülerek.
 
   [YENİ] Hediye kartları API'de, kendi izinleriyle
          (hediye kartlarını okuma / yazma): kartlar kodu,

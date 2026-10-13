@@ -84,12 +84,12 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
-## 2026.4.10 — Bağlı hesaplar: Dropbox'a hazırlık ve cevap başlıkları (2026-10-13)
+## 2026.4.10 — Bağlı hesaplar: Dropbox'a hazırlık (2026-10-13)
 
 **Neden.** Buluta yedek senaryosu (`docs/_plan_tersine_oauth.md` §4.4)
-Dropbox'u ve Google Drive'ın sürdürülebilir yüklemesini getiriyor; ikisi de
-ortak altyapıda iki küçük boşluğa çarpıyordu. Altyapı ayrı thread'lerin
-ortak dosyası olduğu için bu ek kendi küçük PR'ında.
+Dropbox'u getiriyor; Dropbox ortak altyapıda iki küçük boşluğa çarpıyordu.
+Altyapı ayrı thread'lerin ortak dosyası olduğu için bu ek kendi küçük
+PR'ında.
 
 **Ne değişti.** Sağlayıcı dosyası iki yeni bayrak alabilir:
 `'nonce' => false` (kimlik belirtecine nonce taşımayan sağlayıcı; nonce ne
@@ -97,13 +97,57 @@ gönderilir ne beklenir, belirteç yine doğrudan token ucundan, PKCE
 doğrulayıcısı ve istemci sırrıyla gelir) ve `'revoke_auth' => 'bearer'`
 (Dropbox: iptal, bağlantının erişim belirteciyle ve JSON `null` gövdeyle
 yapılır, refresh token'ı da sonlandırır; öteki sağlayıcılar eskisi gibi
-form gövdesinde refresh token gönderir). `api_http_request()`
-`'response_headers' => true` ile cevabın başlıklarını da döndürür (küçük
-harfli ad => son değer; ara 100 Continue atlanır): Google'ın sürdürülebilir
-yüklemesi parçaların gideceği adresi yalnız `Location` başlığında verir.
+form gövdesinde refresh token gönderir). Google Drive'ın sürdürülebilir
+yüklemesinin istediği cevap başlıkları (`api_http_request()`
+`'response_headers'`) #297 ile aynı biçimde geldiği için bu PR'dan çıktı.
 
 **Bilerek yapılmayan.** Davranışı değişen mevcut sağlayıcı yok; Google ve
 Microsoft dosyalarına dokunulmadı.
+
+---
+
+## 2026.4.10 — Dış API: ziyaretçi raporları ve site günlüğü (2026-10-13)
+
+**Sorun.** Trafik ve denetim kaydı API'de yoktu. Bir raporlama aracı ya da
+Claude "geçen hafta kaç ziyaret geldi, hangi kampanya sipariş getirdi, bu
+sayfayı kim değiştirdi" sorularını panelden başka yerde soramıyordu.
+
+**Değişiklik.** İki yeni dosya, iki yeni izin grubu, yazma yok:
+
+- `includes/api/resources/visitors.php`, izin `visitors:read`
+  (`validate_visitors_access()`: rol < 3 ya da ziyaretçi yetkisi):
+  - `GET /reports/traffic` (`interval` day/hour): `visitor_stats_hourly`
+    toplayıcısından (`pg_visitor_stats_range()`), boş günler/saatler sıfır
+    olarak; en çok 400 gün (saatlikte 31). `visitor_tracking` sitenin ziyaret
+    sayıp saymadığını söyler.
+  - `GET /reports/top-content`: `pg_visitor_top_content()`, başlık ve
+    adresiyle (`pg_visitor_label_content_rows()`).
+  - `GET /reports/visitors?by=…`: `visitors` tablosu, ziyaretçi raporu
+    ekranının özet toplamlarıyla (ziyaret, sayfa, form, sipariş oluşturuldu /
+    ödemeye geçti / tamamlandı, ciro kuruş). Boyutlar: referrer_host,
+    search_engine, search_terms, channel (ücretli: izleme kodunda SEO
+    ayarlarındaki pay-per-click işareti; işaret boşsa hiçbir ziyaret ücretli
+    sayılmaz, ekranın boş `LIKE '%%'` davranışı alınmadı), landing_page,
+    tracking_code, utm_*, country, state, city, form, site_search_terms.
+    `totals` penceredeki bütün ziyaretleri kapsar.
+  - Üç rapor da pencereyi sitenin saatine göre tam gün olarak sayar
+    (`api_visitors_window()`, yaz saati geçişinde de); varsayılan son 30 gün.
+    Tek ziyaret satırı (IP, şehir, user agent) bilerek verilmez.
+- `includes/api/resources/site_log.php`, izin `site_log:read` (Site Günlüğü
+  ekranı gibi rol ≤ 2): `GET /site-log` (`from`, `to`, `user`, `q`, imleç).
+  Açıklama sitenin dilinde kayıtlı olduğu için `q` o dilde aranır. PHP hata
+  günlükleri dosya olduğu için dışarıda kaldı.
+
+Testler: `tests/api_reports_test.php` (varsayılan pencere, Mart 2026
+Berlin yaz saati geçişinde 31 gün, işaretsiz kanal ifadesi). Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox).** Haziran 2019 trafiği tablo toplamıyla aynı
+(10 ziyaret / 539 sayfa), saatlik 48 dönem, 31 / 400 gün sınırları, from >
+to 422; en çok görüntülenen üç sayfa; kaynak, kanal, giriş sayfası, ülke,
+UTM dağılımları ve toplamlar SQL ile aynı (2158 ziyaret, 43 sipariş);
+`ppc_` işaretli test ziyareti `pay_per_click`; site günlüğü süzgeçleri ve
+imleç; izni olmayan uygulamaya 403; OpenAPI dört nesne.
 
 ---
 
@@ -143,6 +187,80 @@ oluşturma (201), 0 / ondalık / çok büyük tutar 422; bakiye ve süre
 değiştirme, süreyi kaldırma, geçmiş tarih `expired`; -1 bakiye ve boş
 istek 422; `X-Dry-Run` üç yazmada; iki silme yolu, 404; harcama satırı
 tek kartta; izni olmayan uygulamaya 403 `insufficient_scope`; OpenAPI.
+
+---
+
+## 2026.4.10 — Çalışma Alanı: başka hizmetlerin MCP sunucuları takma adla, MCP istemcisi (10.82) (2026-10-13)
+
+**Neden.** Site bugüne kadar yalnız MCP *sunucusuydu* (`mcp.php`): Claude
+ve diğer istemciler siteye bağlanıyordu. Bu değişiklikle site bir MCP
+*istemcisi* de oluyor: yönetici başka bir hizmetin uzak MCP sunucusunu
+(GitHub, bir proje takip aracı, bir dokümantasyon sitesi) `@takma ad` ile
+ekliyor; kanalda bu takma ada yazılan istek Pinegrap AI tarafından o
+sunucunun izin verilen araçlarıyla yanıtlanacak (kanal tarafı ayrı
+değişiklikle gelir). Bu parça istemciyi, sunucu dizinini ve araç izinlerini
+getirir.
+
+**İstemci** (`includes/mcp/client.php`). Streamable HTTP; stdio sunucuları
+web sitesinden çağrılamaz. Önce güncel nesil (2026-07-28) denenir:
+oturum yok, `server/discover`, her istekte `MCP-Protocol-Version`,
+`Mcp-Method`, `Mcp-Name` başlıkları ve `_meta` içinde sürüm ile istemci
+bilgisi. Sunucu bunu tanımazsa eski el sıkışmaya düşülür: `initialize`
+(2025-11-25 önerilir; 2025-06-18 ve 2025-03-26 kabul), `Mcp-Session-Id`,
+`notifications/initialized`. 401/403 ya da ağ hatasında düşülmez (kimlik
+bilgisi ya da adres yanlıştır, eski sürüm denemek bir şey değiştirmez).
+Yanıt JSON ya da SSE (`text/event-stream`) olabilir; SSE'de isteğin
+kimliğine eşleşen mesaj aranır. Oturum 404 ya da -32022 ile düşerse bir kez
+yeniden el sıkışılır. `tools/list` sayfalanır (en çok 10 sayfa, 200 araç);
+araç şemaları nesne olarak çözülür ki boş `{}` diziye dönüşmesin. Arka
+planda süren iş (`resultType` ≠ `complete`) şimdilik hata sayılır.
+Bütün istekler `api_http_request()` üstünden gider: yalnız https, adres
+DNS'te çözülüp iç ağ adresleri reddedilir, curl o adrese sabitlenir,
+yönlendirme izlenmez. `api_http_request()`'e `response_headers` seçeneği
+eklendi (oturum ve içerik türü başlıkları için).
+
+**Dizin ve ekran** (`includes/workspace/mcp.php`, Çalışma Alanı Ayarları ›
+"MCP sunucuları" kartı; yalnız yönetici). Takma ad: harfle başlar, 2–32
+karakter `a-z0-9_-`, benzersiz; bir kullanıcı adıyla ya da ayrılmış adlarla
+(`ai`, `claude`, `pinegrap`, `herkes`, `kanal` …) çakışamaz, böylece `@`
+tek anlama gelir. Kimlik bilgisi: yok, Bearer jetonu, hizmetin kendi başlığı
+(`Host`, `Content-Type`, `Accept`, `Cookie`, `Mcp-*` gibi bağlantının
+kendi başlıkları reddedilir) ya da kullanıcı adı ve parola; JSON olarak site anahtarıyla
+şifrelenir, ekrana geri yazılmaz (boş bırakılan alan saklananı korur),
+satır sonu içeremez. En çok 20 sunucu. Kaydedince el sıkışılır ve araçlar
+okunur; hata metni kaydedilir ve satırda görünür. Sunucu kapatılabilir,
+araçları yeniden okunabilir, kaldırılabilir; her işlem etkinlik kaydına
+yazılır.
+
+**Araç izinleri.** Her araç kapalı başlar. Herkes tek bağlantıyla
+(yöneticinin girdiği kimlik bilgisiyle) çalıştığı için yazan araç, yetkisi
+olmayan birinin o hesapla iş yapması demektir (confused deputy); bu yüzden
+yalnız sunucunun `readOnlyHint: true` dediği araçlar (`auto`) açılabilir.
+Sunucu hiçbir ipucu vermiyorsa yönetici "yalnız okuyor" diyerek açabilir
+(`auto_declared`); `destructiveHint`/`idempotentHint` gibi bir ipucu verip
+`readOnlyHint` vermeyen araç yazan sayılır ve kapalı kalır. Yazan araçlar
+kişi başı bağlantı ve onay ile ayrı değişiklikte gelecek. Araç adı
+`^[A-Za-z0-9_./-]{1,128}$` dışındaysa liste dışı kalır. Listede yeniden
+okununca kaybolan aracın izni silinir.
+
+**Şema 10.82** (`upgrade_2026_4_10_workspace_mcp()`): `ws_mcp_servers`,
+`ws_mcp_calls` (çağrı kaydı; bu parçada henüz yazılmıyor),
+`ws_ai_requests.mcp_server_id`. Ayrıntı `CLAUDE-tam.md` sürüm tablosunda.
+**2026.4.10'a zaten geçmiş siteler (dev dahil) tabloları almak için
+Yazılımı Onar › 2026.4.9'dan yeniden koşturmalı.**
+
+**Doğrulama.** `tests/mcp_client_test.php` (12 test): adres kuralları, SSE
+okuma, kimlik eşleşmesi, güncel nesil el sıkışma ve iki sayfalık araç
+listesi, `initialize`'a düşüş ve unutulan oturum, 401'de düşmeme,
+2024-11-05'i reddetme, arka plan işi, araç normalleştirme, sonuç metni,
+oturum kimliği, başlıkta CR/LF temizliği. Sandbox'ta: sitenin kendi
+`mcp.php`'sine karşı iki nesilde de el sıkışma ve araç listesi; ekle,
+kaydet, jetonun şifreli saklanması, boş alanın jetonu koruması, araç
+izinlerinde yazan aracın reddedilmesi, ipucusuz aracın `auto_declared`
+olması, kapat/aç/kaldır, etkinlik kaydı. Şema adımı üç kez koşturuldu.
+
+**Doğrulanamayan.** Sandbox dış adresleri çözemediği için gerçek bir uzak
+sunucu (GitHub MCP gibi) denenemedi; dev.pinegrap.com'da denenmeli.
 
 ---
 
