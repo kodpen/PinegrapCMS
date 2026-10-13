@@ -2,14 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Sign in with Microsoft, Apple and any other provider whose definition in
- * includes/connect/providers/ carries a 'signin' block.
+ * Sign in with Google, Microsoft, Apple and any other provider whose
+ * definition in includes/connect/providers/ carries a 'signin' block.
  *
  * The provider registry and the applications are the connected accounts'
  * (includes/fn/connect.php, connect_apps); no token is kept, because signing
- * in only needs to know once who the person is. Google keeps its own screen
- * (google_auth.php) and column (user.user_google_id); its button is drawn
- * with the others by pg_signin_buttons().
+ * in only needs to know once who the person is. Google is the exception on
+ * two counts, both kept so a site that had Google sign-in before needs no
+ * change in Google Cloud Console: its application is the one of the security
+ * settings (config.oauth_google_*) and its return address is google_auth.php.
  *
  * The flow (signin.php): the button sends the browser here with the provider
  * and what the screen allows (sign in only, open an account, or hand over to
@@ -17,13 +18,16 @@
  * session; the provider sends the browser back with a code, which is traded
  * for an id_token at the provider's token endpoint. The account is found by
  * the identity (user_identities), else by an e-mail address the provider
- * vouches for, else opened when the screen allows it - the same rules the
- * Google sign-in follows.
+ * vouches for, else opened when the screen allows it - the same rules for
+ * every provider.
  *
  * A provider's 'signin' block:
  *
- *   order            where its button stands (Google is 10)
+ *   order            where its button stands
  *   scopes           what is asked for
+ *   authorize_params replace the provider's own on the sign-in request
+ *   return           the root script the provider sends people back to,
+ *                    signin.php when absent
  *   pkce             false when the provider does not take PKCE
  *   subject_claims   claims that together name the person instead of sub
  *   verified_tenants tid values whose e-mail claim counts as verified
@@ -32,7 +36,10 @@
  *   user_field       the posted field carrying the name on a first sign-in
  *
  * Tables (2026.4.10, 10.74): user_identities; config.signin_providers lists
- * the providers whose buttons are on.
+ * the providers whose buttons are on, Google's switch is
+ * config.oauth_google_enabled. Google identities moved there from
+ * user.user_google_id with 10.75; a link that is still in that column moves
+ * the first time it signs in.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -350,6 +357,112 @@ function pg_signin_apple_key_problem($text)
     return '';
 }
 
+/**
+ * The root script a provider sends people back to: its 'return' (Google's
+ * google_auth.php, the address sites registered before Google joined this
+ * flow), else signin.php.
+ *
+ * @param array|null $provider
+ * @return string
+ */
+function pg_signin_return_file($provider)
+{
+    $file = (is_array($provider) && isset($provider['signin']['return'])) ? (string) $provider['signin']['return'] : '';
+
+    return preg_match('/^[a-z0-9_]{1,40}\.php$/', $file) ? $file : 'signin.php';
+}
+
+/**
+ * The extra parameters of a provider's sign-in request: the 'signin' block's
+ * own when it has them (Google asks for a refresh token when connecting an
+ * account, never when signing in), else the provider's.
+ *
+ * @param array|null $provider
+ * @return array
+ */
+function pg_signin_authorize_params($provider)
+{
+    if (is_array($provider) && isset($provider['signin']['authorize_params']) && is_array($provider['signin']['authorize_params'])) {
+        return $provider['signin']['authorize_params'];
+    }
+
+    return (is_array($provider) && isset($provider['authorize_params']) && is_array($provider['authorize_params'])) ? $provider['authorize_params'] : array();
+}
+
+/**
+ * Sign-in providers of several accounts at once, for the lists: user_id =>
+ * provider keys in button order. $rows are user_identities rows with
+ * user_id and provider.
+ *
+ * @param array $rows
+ * @param array $order provider keys in button order
+ * @return array<int,array>
+ */
+function pg_signin_group_identities($rows, $order)
+{
+    $rank = array_flip(array_values($order));
+    $grouped = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['user_id'], $row['provider'])) {
+            continue;
+        }
+
+        $grouped[(int) $row['user_id']][] = (string) $row['provider'];
+    }
+
+    foreach ($grouped as $user_id => $keys) {
+        $keys = array_values(array_unique($keys));
+
+        usort($keys, function ($a, $b) use ($rank) {
+            $x = isset($rank[$a]) ? $rank[$a] : PHP_INT_MAX;
+            $y = isset($rank[$b]) ? $rank[$b] : PHP_INT_MAX;
+
+            return ($x === $y) ? strcmp($a, $b) : (($x < $y) ? -1 : 1);
+        });
+
+        $grouped[$user_id] = $keys;
+    }
+
+    return $grouped;
+}
+
+/**
+ * How an account signs in, as badges for the user and session lists: one
+ * per provider, and a warning when a single provider is the only way in.
+ *
+ * @param array $providers provider keys
+ * @param int   $password_algo user.user_password_algo; 3 is no password
+ * @return string
+ */
+function pg_signin_identity_badges($providers, $password_algo)
+{
+    $providers = array_values(array_filter(array_map('strval', (array) $providers), 'strlen'));
+
+    if (!$providers) {
+        return '<span class="text-muted">&mdash;</span>';
+    }
+
+    if ((count($providers) === 1) && ((int) $password_algo === 3)) {
+        $label = pg_signin_provider_label($providers[0]);
+
+        return '<span class="badge bg-warning text-dark fw-light" title="'
+            . h(lang(array('string' => 'This account has no password of its own - disconnecting {var:1} would lock it out.', 'vars' => $label))) . '">'
+            . h(lang(array('string' => '{var:1} only', 'vars' => $label))) . '</span>';
+    }
+
+    $html = array();
+
+    foreach ($providers as $key) {
+        $label = pg_signin_provider_label($key);
+
+        $html[] = '<span class="badge bg-light text-dark border fw-light" title="'
+            . h(lang(array('string' => 'This account can sign in with {var:1}.', 'vars' => $label))) . '">' . h($label) . '</span>';
+    }
+
+    return implode(' ', $html);
+}
+
 
 /* ---------------------------------------------------------------------------
    Providers
@@ -391,13 +504,61 @@ function pg_signin_providers()
 }
 
 /**
- * The providers the operator turned on (config.signin_providers).
+ * The providers the operator turned on: config.signin_providers, and Google
+ * by its own switch (config.oauth_google_enabled).
  *
  * @return array
  */
 function pg_signin_switched_on()
 {
-    return pg_connect_scope_list(str_replace(',', ' ', defined('SIGNIN_PROVIDERS') ? (string) SIGNIN_PROVIDERS : ''));
+    $list = pg_connect_scope_list(str_replace(',', ' ', defined('SIGNIN_PROVIDERS') ? (string) SIGNIN_PROVIDERS : ''));
+
+    if (defined('OAUTH_GOOGLE_ENABLED') && OAUTH_GOOGLE_ENABLED && !in_array('google', $list, true)) {
+        array_unshift($list, 'google');
+    }
+
+    return $list;
+}
+
+/**
+ * The application a provider signs people in with: Google's is the one of
+ * the security settings, every other provider's the connected accounts' one.
+ *
+ * @param string $key
+ * @return array|null in the shape of pg_connect_app()
+ */
+function pg_signin_app($key)
+{
+    return ($key === 'google') ? pg_signin_google_app() : pg_connect_app($key);
+}
+
+/**
+ * The "Sign in with Google" application of the security settings, or null
+ * when it has no client ID. The secret is kept encrypted in config and read
+ * only when asked for.
+ *
+ * @return array|null
+ */
+function pg_signin_google_app()
+{
+    if (!defined('OAUTH_GOOGLE_CLIENT_ID') || (OAUTH_GOOGLE_CLIENT_ID === '')) {
+        return null;
+    }
+
+    $secret_row = db_item("SELECT oauth_google_client_secret, oauth_google_secret_iv FROM config");
+
+    $client_secret = is_array($secret_row)
+        ? (string) decode_ssl_keys((string) $secret_row['oauth_google_client_secret'], (string) $secret_row['oauth_google_secret_iv'])
+        : '';
+
+    return array(
+        'client_id'     => (string) OAUTH_GOOGLE_CLIENT_ID,
+        'client_secret' => $client_secret,
+        'secret_stored' => ($client_secret !== ''),
+        'options'       => array(),
+        'enabled'       => true,
+        'source'        => 'signin',
+    );
 }
 
 /**
@@ -420,9 +581,25 @@ function pg_signin_enabled($key)
     $cache[$key] = isset($providers[$key])
         && in_array($key, pg_signin_switched_on(), true)
         && pg_signin_schema_ready()
-        && pg_signin_app_ready($providers[$key], pg_connect_app($key));
+        && pg_signin_app_ready($providers[$key], pg_signin_app($key));
 
     return $cache[$key];
+}
+
+/**
+ * Whether any sign-in button is on.
+ *
+ * @return bool
+ */
+function pg_signin_any_enabled()
+{
+    foreach (array_keys(pg_signin_providers()) as $key) {
+        if (pg_signin_enabled($key)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -447,15 +624,17 @@ function pg_signin_app_ready($provider, $app)
 }
 
 /**
- * The return address to register with the provider for signing in. It
- * carries the host the visitor is on, like google_auth.php, so the callback
- * finds the session the sign-in started in.
+ * The return address to register with a provider for signing in. It carries
+ * the host the visitor is on, so the callback finds the session the sign-in
+ * started in.
  *
+ * @param string $key '' for signin.php, the address of most providers
  * @return string
  */
-function pg_signin_redirect_uri()
+function pg_signin_redirect_uri($key = '')
 {
-    return URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/signin.php';
+    return URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/'
+        . pg_signin_return_file(((string) $key !== '') ? pg_connect_provider($key) : null);
 }
 
 /**
@@ -530,6 +709,11 @@ function pg_signin_logo_svg($key, $size = 18)
  */
 function pg_signin_button($key, $send_to = '', $signup = 'create')
 {
+    // Google's button keeps the look Google prescribes.
+    if ($key === 'google') {
+        return pg_google_signin_button($send_to, $signup);
+    }
+
     $url = pg_signin_url($key, $send_to, $signup);
 
     if ($url === '') {
@@ -559,9 +743,9 @@ function pg_signin_button($key, $send_to = '', $signup = 'create')
 }
 
 /**
- * Every sign-in button a screen shows: Google's, then the other providers
- * that are on, or '' when none is. The login, registration and membership
- * screens and widgets print this where they printed the Google button.
+ * Every sign-in button a screen shows, in button order, or '' when none is
+ * on. The login, registration and membership screens and widgets print this
+ * where they printed the Google button.
  *
  * @param string $send_to
  * @param mixed  $signup
@@ -569,7 +753,7 @@ function pg_signin_button($key, $send_to = '', $signup = 'create')
  */
 function pg_signin_buttons($send_to = '', $signup = 'create')
 {
-    $html = function_exists('pg_google_signin_button') ? pg_google_signin_button($send_to, $signup) : '';
+    $html = '';
 
     foreach (array_keys(pg_signin_providers()) as $key) {
         $html .= pg_signin_button($key, $send_to, $signup);
@@ -604,7 +788,7 @@ function pg_signin_identity_user($provider_key, $subject)
         WHERE user_identities.provider = '" . e($provider_key) . "' AND user_identities.subject = '" . e($subject) . "'");
 
     if (!is_array($row)) {
-        return 0;
+        return ($provider_key === 'google') ? pg_signin_google_legacy_user($subject) : 0;
     }
 
     if (!$row['existing']) {
@@ -657,6 +841,46 @@ function pg_signin_identity_add($user_id, $provider_key, $subject, $email)
             email = '" . e(pg_connect_clip($email)) . "',
             created_timestamp = UNIX_TIMESTAMP(),
             last_used_timestamp = UNIX_TIMESTAMP()");
+}
+
+/**
+ * Whether user.user_google_id is there to read: where Google identities were
+ * kept until 10.75 moved them to user_identities.
+ *
+ * @return bool
+ */
+function pg_signin_google_legacy_column()
+{
+    return pg_schema_has('user', 'user_google_id');
+}
+
+/**
+ * The account whose Google link is still in user.user_google_id, moved to
+ * user_identities on the way so it is found there from now on; 0 when there
+ * is none. A link 10.75 has not moved yet keeps signing in.
+ *
+ * @param string $subject Google's sub
+ * @return int
+ */
+function pg_signin_google_legacy_user($subject)
+{
+    if (((string) $subject === '') || !pg_signin_google_legacy_column()) {
+        return 0;
+    }
+
+    $row = db_item("SELECT user_id, user_email FROM user WHERE user_google_id = '" . e($subject) . "'");
+
+    if (!is_array($row)) {
+        return 0;
+    }
+
+    $user_id = (int) $row['user_id'];
+
+    if (pg_signin_identity_add($user_id, 'google', $subject, (string) $row['user_email'])) {
+        db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $user_id . "'");
+    }
+
+    return $user_id;
 }
 
 /**
@@ -720,6 +944,7 @@ function pg_signin_can_remove($user_id, $without)
         return true;
     }
 
+    // A Google link 10.75 has not moved yet is a way in too.
     if (($without !== 'google') && ((string) $row['user_google_id'] !== '')) {
         return true;
     }
@@ -734,7 +959,8 @@ function pg_signin_can_remove($user_id, $without)
 }
 
 /**
- * Removes an account's identity at one provider.
+ * Removes an account's identity at one provider; for Google, a link not yet
+ * moved out of user.user_google_id too.
  *
  * @param int    $user_id
  * @param string $provider_key
@@ -744,6 +970,34 @@ function pg_signin_identity_remove($user_id, $provider_key)
     if (pg_signin_schema_ready()) {
         db("DELETE FROM user_identities WHERE user_id = '" . (int) $user_id . "' AND provider = '" . e($provider_key) . "'");
     }
+
+    if (($provider_key === 'google') && pg_signin_google_legacy_column()) {
+        db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . (int) $user_id . "'");
+    }
+}
+
+/**
+ * The sign-in providers of several accounts, for the user and session
+ * lists: user_id => provider keys in button order.
+ *
+ * @param array $user_ids
+ * @return array<int,array>
+ */
+function pg_signin_identities_of($user_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $user_ids))));
+
+    if (!$ids || !pg_signin_schema_ready()) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT user_id, provider
+        FROM user_identities
+        WHERE user_id IN (" . implode(',', $ids) . ")
+        ORDER BY id");
+
+    return pg_signin_group_identities($rows, array_keys(pg_signin_providers()));
 }
 
 /**
@@ -814,7 +1068,7 @@ function pg_signin_start($key, $send_to, $signup)
     $providers = pg_signin_providers();
     $provider = $providers[$key];
     $signin = $provider['signin'];
-    $app = pg_connect_app($key);
+    $app = pg_signin_app($key);
 
     $state = bin2hex(random_bytes(16));
     $nonce = bin2hex(random_bytes(16));
@@ -844,7 +1098,7 @@ function pg_signin_start($key, $send_to, $signup)
     $params = array(
         'response_type' => 'code',
         'client_id'     => (string) $app['client_id'],
-        'redirect_uri'  => pg_signin_redirect_uri(),
+        'redirect_uri'  => pg_signin_redirect_uri($key),
         'scope'         => implode(' ', pg_connect_scope_list(isset($signin['scopes']) ? $signin['scopes'] : array('openid', 'email'))),
         'state'         => $state,
         'nonce'         => $nonce,
@@ -855,11 +1109,9 @@ function pg_signin_start($key, $send_to, $signup)
         $params['code_challenge_method'] = 'S256';
     }
 
-    if (isset($provider['authorize_params']) && is_array($provider['authorize_params'])) {
-        foreach ($provider['authorize_params'] as $name => $value) {
-            if (!isset($params[$name])) {
-                $params[$name] = (string) $value;
-            }
+    foreach (pg_signin_authorize_params($provider) as $name => $value) {
+        if (!isset($params[$name])) {
+            $params[$name] = (string) $value;
         }
     }
 
@@ -915,7 +1167,7 @@ function pg_signin_finish($params)
 
     $providers = pg_signin_providers();
     $key = $result['provider'];
-    $app = pg_connect_app($key);
+    $app = pg_signin_app($key);
 
     if (!isset($providers[$key]) || !pg_signin_app_ready($providers[$key], $app)) {
         return $fail(lang('This sign-in is not available.'));
@@ -968,7 +1220,7 @@ function pg_signin_finish($params)
     $request = array(
         'grant_type'   => 'authorization_code',
         'code'         => $code,
-        'redirect_uri' => pg_signin_redirect_uri(),
+        'redirect_uri' => pg_signin_redirect_uri($key),
     );
 
     if ((string) $pending['verifier'] !== '') {
@@ -1052,14 +1304,18 @@ function pg_signin_match_user($identity)
 
     // The address only finds the row; the identity is what signs in from
     // now on. An account already tied to another person at this provider is
-    // never taken over.
+    // never taken over, Google's still in the old column included.
+    $legacy_google = (($identity['provider'] === 'google') && pg_signin_google_legacy_column())
+        ? " AND (user.user_google_id IS NULL OR user.user_google_id = '')"
+        : '';
+
     $match_id = (int) db_value(
         "SELECT user.user_id
         FROM user
         LEFT JOIN user_identities
             ON user_identities.user_id = user.user_id
             AND user_identities.provider = '" . e($identity['provider']) . "'
-        WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL
+        WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL" . $legacy_google . "
         ORDER BY user.user_id
         LIMIT 1");
 

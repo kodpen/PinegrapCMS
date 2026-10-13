@@ -266,8 +266,8 @@ function pg_designer_screen_render($ctx)
             'password_hint'        => (bool)(defined('PASSWORD_HINT') && PASSWORD_HINT),
             'captcha'              => (bool)(defined('CAPTCHA') && CAPTCHA),
             'strong_password'      => (bool)(defined('STRONG_PASSWORD') && STRONG_PASSWORD),
-            'google'               => (bool)(defined('OAUTH_GOOGLE_ENABLED') && OAUTH_GOOGLE_ENABLED
-                                        && defined('OAUTH_GOOGLE_CLIENT_ID') && OAUTH_GOOGLE_CLIENT_ID !== ''),
+            'google'               => (bool)(function_exists('pg_signin_enabled') && pg_signin_enabled('google')),
+            'signin'               => (bool)(function_exists('pg_signin_any_enabled') && pg_signin_any_enabled()),
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the

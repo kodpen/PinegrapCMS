@@ -1147,19 +1147,21 @@
          giriş, kayıt ve üyelik sayfalarında ve görsel
          editörün giriş, kayıt ve üyelik widget'larında
          görünüyor. İkisi de varsayılan kapalı; Ayarlar ›
-         Güvenlik'te açılıyor ve uygulama bilgileri
-         girilene kadar düğme gizli kalıyor. Microsoft
-         uygulaması Bağlı hesaplar ekranındaki uygulamanın
-         aynısı; Apple için Services ID, ekip kimliği,
-         anahtar kimliği ve .p8 anahtarı Güvenlik
-         ekranına giriliyor (anahtar şifreli saklanıyor).
+         Güvenlik'te Google ile aynı kartta açılıyor ve
+         uygulama bilgileri girilene kadar düğme gizli
+         kalıyor. Microsoft uygulaması Bağlı hesaplar
+         ekranındaki uygulamanın aynısı; Apple için
+         Services ID, ekip kimliği, anahtar kimliği ve .p8
+         anahtarı Güvenlik ekranına giriliyor (anahtar
+         şifreli saklanıyor).
 
-  [YENİ] Google'daki kurallar geçerli: aynı doğrulanmış
-         e-posta adresli hesap varsa ona bağlanıyor, yoksa
-         kayıt sayfasından gelen kişiye üye hesabı
-         açılıyor, üyelik sayfasında üye numarası
-         soruluyor, personel girişinde bilinmeyen hesap
-         reddediliyor. İki adımlı doğrulama ve cihaz
+  [YENİ] Google, Microsoft ve Apple aynı giriş akışından
+         geçiyor ve kurallar üçünde de aynı: aynı
+         doğrulanmış e-posta adresli hesap varsa ona
+         bağlanıyor, yoksa kayıt sayfasından gelen kişiye
+         üye hesabı açılıyor, üyelik sayfasında üye
+         numarası soruluyor, personel girişinde bilinmeyen
+         hesap reddediliyor. İki adımlı doğrulama ve cihaz
          sınırı parolayla girişteki gibi soruluyor.
          Microsoft iş ve okul hesaplarının adresi yalnız
          dizin alan adını doğruluyorsa (xms_edov) kabul
@@ -1173,9 +1175,19 @@
          yoksa (parola ya da başka bir sağlayıcı)
          bağlantı kesilemiyor.
 
-  [ŞEMA] Hesaplara bağlı Microsoft ve Apple kimlikleri
-         için yeni bir tablo ve ayarlar tablosuna bir
-         kolon eklenir.
+  [YENİ] Kullanıcılar listesi ve Oturumlar ekranı her
+         hesabın Google, Microsoft ve Apple bağlantısını
+         rozetle gösteriyor; hesaba tek giriş yolu olan
+         bağlantı "Yalnız Google" gibi uyarı rozetiyle.
+         Oturumlar ekranındaki Bağlı hesaplar tablosu
+         artık üç sağlayıcıyı da listeliyor.
+
+  [ŞEMA] Hesaplara bağlı Google, Microsoft ve Apple
+         kimlikleri için yeni bir tablo ve ayarlar
+         tablosuna bir kolon eklenir; mevcut Google
+         bağlantıları bu tabloya taşınır. Google Cloud
+         Console'da değişiklik gerekmez, yönlendirme
+         adresi (.../google_auth.php) aynı kalır.
 
   GOOGLE SEARCH CONSOLE
   --------------------------------------------------------

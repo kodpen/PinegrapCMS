@@ -101,9 +101,10 @@ if (isset($_POST['pg_unlink_google']) || isset($_POST['pg_unlink_identity'])) {
 
     validate_token_field();
 
-    // Microsoft, Apple or another provider of signin.php; Google otherwise.
+    // A provider of signin.php; pg_unlink_google is the older form of
+    // pg_unlink_identity=google.
     $unlink_provider = (isset($_POST['pg_unlink_identity']) && is_string($_POST['pg_unlink_identity'])) ? $_POST['pg_unlink_identity'] : 'google';
-    $unlink_label = ($unlink_provider === 'google') ? lang('Google') : pg_signin_provider_label($unlink_provider);
+    $unlink_label = pg_signin_provider_label($unlink_provider);
 
     $unlink_user_id = (int) ($_POST['id'] ?? 0);
     $unlink_user = db_item(
@@ -124,27 +125,17 @@ if (isset($_POST['pg_unlink_google']) || isset($_POST['pg_unlink_identity'])) {
 
         // An account left with no other way in would be locked out entirely.
         if (!pg_signin_can_remove($unlink_user_id, $unlink_provider)) {
-            output_error((($unlink_provider === 'google')
-                ? lang('This account signs in with Google only. Give it a password first, or disconnecting Google would lock it out.')
-                : lang(array(
+            output_error(lang(array(
                     'string' => 'This account signs in with {var:1} only. Give it a password first, or disconnecting {var:1} would lock it out.',
-                    'vars'   => $unlink_label)))
+                    'vars'   => $unlink_label))
                 . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        if ($unlink_provider === 'google') {
-            db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $unlink_user_id . "'");
+        pg_signin_identity_remove($unlink_user_id, $unlink_provider);
 
-            log_activity(lang(array(
-                'string' => 'google connection removed from user ({var:1})',
-                'vars'   => array($unlink_user['user_username']))), $_SESSION['sessionusername'] ?? '');
-        } else {
-            pg_signin_identity_remove($unlink_user_id, $unlink_provider);
-
-            log_activity(lang(array(
-                'string' => '{var:1} connection removed from user ({var:2})',
-                'vars'   => array($unlink_label, $unlink_user['user_username']))), $_SESSION['sessionusername'] ?? '');
-        }
+        log_activity(lang(array(
+            'string' => '{var:1} connection removed from user ({var:2})',
+            'vars'   => array($unlink_label, $unlink_user['user_username']))), $_SESSION['sessionusername'] ?? '');
     }
 
     $unlink_send_to = '';
@@ -229,7 +220,6 @@ if (!$_POST) {
             user_id,
             user_username,
             user_email,
-            user_google_id,
             user_role,
             user_home,
             user_password_hint,
@@ -287,11 +277,7 @@ if (!$_POST) {
     $id = $row['user_id'];
     $username = $row['user_username'];
     $email = $row['user_email'];
-    $user_google_id = $row['user_google_id'];
     $user_identities = pg_signin_identities((int) $id);
-    $output_google_badge = (!empty($user_google_id))
-        ? ' <span class="badge bg-light text-dark border fw-light" title="' . h(lang('This account can sign in with Google.')) . '">' . lang('Google') . '</span>'
-        : '';
     $role = $row['user_role'];
     $home = $row['user_home'];
     $password_hint = $row['user_password_hint'];
@@ -847,7 +833,6 @@ if (!$_POST) {
     // ── Identity tags ────────────────────────────────────────────────────
     $output_identity_tags =
         '<span class="badge text-bg-primary fw-light">' . h(pg_user_role_name($role)) . '</span>'
-        . ((!empty($user_google_id)) ? '<span class="badge text-bg-light border fw-light" title="' . h(lang('This account can sign in with Google.')) . '"><i class="bi bi-google me-1"></i>Google</span>' : '')
         . implode('', array_map(function ($identity_provider) {
             $identity_definition = pg_connect_provider($identity_provider);
             $identity_label = pg_signin_provider_label($identity_provider);
@@ -930,19 +915,16 @@ if (!$_POST) {
         ? lang(array('string' => 'Last changed {var:1}', 'vars' => date('d.m.Y', $password_changed_at)))
         : lang('Change date not recorded');
 
-    $output_google_row = (!empty($user_google_id))
-        ? '<div class="pg-fact">
-                <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
-                <div class="pg-fact-text"><b>' . h(lang('Sign in with Google')) . '</b><span>' . h(lang('Connected')) . '</span></div>
-            </div>'
+    $output_identity_rows = $user_identities
+        ? ''
         : '<div class="pg-fact">
-                <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
-                <div class="pg-fact-text"><b>' . h(lang('Sign in with Google')) . '</b><span>' . h(lang('Not connected')) . ($user_identities ? '' : ' &middot; ' . h(lang('Signs in with a password only'))) . '</span></div>
+                <span class="pg-fact-icon"><i class="bi bi-key"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Signs in with a password only')) . '</b><span>' . h(lang('No Google, Microsoft or Apple account is connected.')) . '</span></div>
             </div>';
 
     foreach ($user_identities as $identity_provider => $identity) {
         $identity_definition = pg_connect_provider($identity_provider);
-        $output_google_row .= '<div class="pg-fact">
+        $output_identity_rows .= '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
                 <div class="pg-fact-text"><b>' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => pg_signin_provider_label($identity_provider)))) . '</b><span>' . h(lang('Connected'))
                     . (((string) $identity['email'] !== '') ? ' &middot; ' . h($identity['email']) : '') . '</span></div>
@@ -958,7 +940,7 @@ if (!$_POST) {
         : '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>
                 <div class="pg-fact-text"><b>' . h(lang('No active sessions')) . '</b></div>
-                ' . ((!empty($user_google_id) || $user_identities) ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
+                ' . ($user_identities ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
             </div>';
 
     // Two-step verification: a fact row, and turning it off in the side
@@ -996,7 +978,7 @@ if (!$_POST) {
                     <span class="pg-fact-icon"><i class="bi bi-key"></i></span>
                     <div class="pg-fact-text"><b>' . h(lang('Password')) . '</b><span>' . h($output_password_note) . '</span></div>
                 </div>
-                ' . $output_google_row . $output_mfa_row . $output_sessions_row . '
+                ' . $output_identity_rows . $output_mfa_row . $output_sessions_row . '
             </div>
         </div>';
 
@@ -1042,31 +1024,15 @@ if (!$_POST) {
 
     // ── The panels that live outside the form ────────────────────────────
     //
-    // Sessions and the Google connection are their own forms, and forms cannot
-    // nest, so these sit after the main form closes. The panel says as much:
-    // the buttons in it act at once rather than on Save.
-    $output_google_panel = (!empty($user_google_id))
-        ? '<div class="pg-perm-block">
-                <div class="pg-perm-block-title">' . h(lang('Sign in with Google')) . '</div>
-                <div class="d-flex align-items-start gap-3 border rounded p-3">
-                    <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
-                    <div class="flex-grow-1">
-                        <p class="small mb-0">' . h(lang('The connection is tied to the Google account itself, not to the email address - changing the email here does not remove it.')) . '</p>
-                    </div>
-                    <form method="post" action="edit_user.php" style="margin:0">' . get_token_field()
-                        . '<input type="hidden" name="pg_unlink_google" value="1"/>'
-                        . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
-                        . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Disconnect Google')) . '</button>'
-                    . '</form>
-                </div>
-            </div>'
-        : '';
+    // Sessions and the sign-in connections are their own forms, and forms
+    // cannot nest, so these sit after the main form closes. The panel says as
+    // much: the buttons in it act at once rather than on Save.
+    $output_identity_panel = '';
 
     foreach ($user_identities as $identity_provider => $identity) {
         $identity_definition = pg_connect_provider($identity_provider);
         $identity_label = pg_signin_provider_label($identity_provider);
-        $output_google_panel .= '<div class="pg-perm-block">
+        $output_identity_panel .= '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => $identity_label))) . '</div>
                 <div class="d-flex align-items-start gap-3 border rounded p-3">
                     <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
@@ -1140,7 +1106,7 @@ if (!$_POST) {
             </div>
             <div class="offcanvas-body">
                 <p class="pg-perm-panel-lead">' . h(lang('These act at once and do not wait for Save.')) . '</p>
-                ' . $output_sessions_list . $output_google_panel . $output_mfa_panel . '
+                ' . $output_sessions_list . $output_identity_panel . $output_mfa_panel . '
             </div>
             <div class="offcanvas-footer">
                 <div class="pg-perm-panel-count">' . h(lang('Sessions expire on their own after 30 days.')) . '</div>

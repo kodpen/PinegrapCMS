@@ -1147,11 +1147,11 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 
     $self         = function_exists('get_request_uri') ? (string)get_request_uri() : '';
     $impersonated = !empty($_SESSION['software']['logged_in_as_different_user']);
-    $user         = db_item("SELECT user_username, user_email, user_google_id, user_password_algo FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
-    if (!is_array($user)) $user = array('user_username' => '', 'user_email' => '', 'user_google_id' => '', 'user_password_algo' => 0);
+    $user         = db_item("SELECT user_username, user_email, user_password_algo FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
+    if (!is_array($user)) $user = array('user_username' => '', 'user_email' => '', 'user_password_algo' => 0);
     $algo       = (int)$user['user_password_algo'];
-    $has_google = (string)$user['user_google_id'] !== '';
     $identities = pg_signin_identities($user_id);
+    $has_google = isset($identities['google']);
     $has_microsoft       = isset($identities['microsoft']);
     $microsoft_removable = $has_microsoft && pg_signin_can_remove($user_id, 'microsoft');
     $has_apple           = isset($identities['apple']);

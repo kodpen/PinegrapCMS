@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the sign-in rules that need no database (includes/fn/signin.php):
- * the provider definitions, what a screen may do with an unknown identity,
- * when an e-mail address counts as verified, who the person is, the names
- * for the address book, the pasted Apple key and the client secret JWT
- * signed with it.
+ * the provider definitions, Google's return address and request, what a
+ * screen may do with an unknown identity, when an e-mail address counts as
+ * verified, who the person is, the names for the address book, the pasted
+ * Apple key and the client secret JWT signed with it, and the badges of the
+ * user and session lists.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -53,14 +54,14 @@ function signin_test_b64url_decode($text)
 	return base64_decode($text . str_repeat('=', (4 - strlen($text) % 4) % 4));
 }
 
-// Microsoft and Apple sign people in, Microsoft's button first; Apple has no
+// Google, Microsoft and Apple sign people in, in that order; Apple has no
 // account to connect.
 function test_signin_providers_in_button_order()
 {
 	$providers = pg_signin_providers();
 
-	pg_assert_same(array('microsoft', 'apple'), array_keys($providers), 'order');
-	pg_assert_false(isset($providers['google']), 'Google has its own screen');
+	pg_assert_same(array('google', 'microsoft', 'apple'), array_keys($providers), 'order');
+	pg_assert_false(isset($providers['google']['accounts']), 'Google also connects');
 	pg_assert_same(false, $providers['apple']['accounts'], 'Apple only signs in');
 	pg_assert_false(isset($providers['microsoft']['accounts']), 'Microsoft also connects');
 	pg_assert_same('apple_jwt', $providers['apple']['signin']['client_secret'], 'Apple signs its secret');
@@ -224,4 +225,92 @@ function test_signin_membership_notice_names_the_provider()
 	pg_assert_contains('Google', pg_signin_membership_notice(array('sub' => '1')), 'Google record');
 	pg_assert_contains('Microsoft', pg_signin_membership_notice(array('provider' => 'microsoft')), 'Microsoft record');
 	pg_assert_contains('Apple', pg_signin_membership_notice(array('provider' => 'apple')), 'Apple record');
+}
+
+// Google keeps the return address sites registered in Google Cloud Console;
+// everybody else comes back to signin.php.
+function test_signin_return_file_per_provider()
+{
+	pg_assert_same('google_auth.php', pg_signin_return_file(pg_connect_provider('google')), 'Google');
+	pg_assert_same('signin.php', pg_signin_return_file(pg_connect_provider('microsoft')), 'Microsoft');
+	pg_assert_same('signin.php', pg_signin_return_file(pg_connect_provider('apple')), 'Apple');
+	pg_assert_same('signin.php', pg_signin_return_file(null), 'no provider');
+	pg_assert_same('signin.php', pg_signin_return_file(array('signin' => array('return' => '../evil.php'))), 'not a root script');
+	pg_assert_same('signin.php', pg_signin_return_file(array('signin' => array('return' => 'https://example.com/x.php'))), 'not a file name');
+}
+
+// Signing in with Google asks for no refresh token and no consent screen
+// every time; connecting a Google account still does.
+function test_signin_google_request_parameters()
+{
+	$google = pg_connect_provider('google');
+	$params = pg_signin_authorize_params($google);
+
+	pg_assert_same(array('access_type' => 'online', 'prompt' => 'select_account'), $params, 'sign-in');
+	pg_assert_same('offline', $google['authorize_params']['access_type'], 'connecting keeps offline');
+	pg_assert_same('consent', $google['authorize_params']['prompt'], 'connecting keeps consent');
+	pg_assert_same(array('openid', 'email', 'profile'), $google['signin']['scopes'], 'scopes');
+	pg_assert_true($google['signin']['pkce'], 'PKCE');
+
+	pg_assert_same('form_post', pg_signin_authorize_params(pg_connect_provider('apple'))['response_mode'], 'Apple falls back to the provider');
+	pg_assert_same(array(), pg_signin_authorize_params(null), 'nothing');
+}
+
+// Google's id_token: either issuer spelling, its email_verified claim, sub.
+function test_signin_google_claims()
+{
+	$google = pg_connect_provider('google');
+	$now = 1760000000;
+
+	foreach (array('https://accounts.google.com', 'accounts.google.com') as $issuer) {
+		pg_assert_same('', pg_connect_claims_problem($google, array(
+			'iss' => $issuer, 'aud' => 'client.apps.googleusercontent.com', 'sub' => '110248495921238986420', 'exp' => $now + 600, 'nonce' => 'n',
+		), 'client.apps.googleusercontent.com', 'n', $now), $issuer);
+	}
+
+	pg_assert_true(pg_connect_claims_problem($google, array(
+		'iss' => 'https://accounts.google.com', 'aud' => 'another.apps.googleusercontent.com', 'sub' => '1', 'exp' => $now + 600, 'nonce' => 'n',
+	), 'client.apps.googleusercontent.com', 'n', $now) !== '', 'another client');
+
+	pg_assert_true(pg_signin_email_verified($google['signin'], array('email' => 'ada@gmail.com', 'email_verified' => true)), 'verified');
+	pg_assert_false(pg_signin_email_verified($google['signin'], array('email' => 'ada@example.com', 'email_verified' => false)), 'not verified');
+	pg_assert_false(pg_signin_email_verified($google['signin'], array('email' => 'ada@example.com')), 'no claim');
+	pg_assert_same('110248495921238986420', pg_signin_subject($google['signin'], array('sub' => '110248495921238986420')), 'sub');
+}
+
+function test_signin_group_identities_in_button_order()
+{
+	$grouped = pg_signin_group_identities(array(
+		array('user_id' => '7', 'provider' => 'apple'),
+		array('user_id' => '7', 'provider' => 'google'),
+		array('user_id' => '9', 'provider' => 'microsoft'),
+		array('user_id' => '7', 'provider' => 'microsoft'),
+		array('user_id' => '9', 'provider' => 'retired'),
+		array('user_id' => '7', 'provider' => 'google'),
+		'not a row',
+	), array('google', 'microsoft', 'apple'));
+
+	pg_assert_same(array(7 => array('google', 'microsoft', 'apple'), 9 => array('microsoft', 'retired')), $grouped, 'grouped and ordered');
+	pg_assert_same(array(), pg_signin_group_identities(array(), array('google')), 'none');
+}
+
+function test_signin_identity_badges()
+{
+	pg_assert_contains('&mdash;', pg_signin_identity_badges(array(), 2), 'nothing connected');
+
+	$only = pg_signin_identity_badges(array('apple'), 3);
+	pg_assert_contains('Apple only', $only, 'the only way in');
+	pg_assert_contains('bg-warning', $only, 'as a warning');
+
+	$with_password = pg_signin_identity_badges(array('google'), 2);
+	pg_assert_contains('>Google<', $with_password, 'Google with a password');
+	pg_assert_false(strpos($with_password, 'bg-warning') !== false, 'no warning with a password');
+
+	$two = pg_signin_identity_badges(array('google', 'microsoft'), 3);
+	pg_assert_contains('>Google<', $two, 'two providers, Google');
+	pg_assert_contains('>Microsoft<', $two, 'two providers, Microsoft');
+	pg_assert_false(strpos($two, 'bg-warning') !== false, 'either one can go');
+
+	pg_assert_same(pg_signin_identity_badges(array('google'), 2), pg_connected_account_label('google', 2), 'the sessions screen reads the same');
+	pg_assert_contains('&mdash;', pg_connected_account_label('', 2), 'sessions screen, nothing');
 }

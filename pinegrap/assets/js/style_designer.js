@@ -10023,8 +10023,9 @@ const StyleDesigner = (function () {
         var href    = b.href || '';
         if (section === 'captcha')                                     return off('captcha', SITE);
         if (section === 'password_rules')                              return off('strong_password', SITE);
-        if (section === 'google_signin' || section === 'google_signup' ||
-            href === '__google_signin_url' || href === '__google_signup_url') return off('google', SITE);
+        // The sections hold every provider's button, the token links Google's.
+        if (section === 'google_signin' || section === 'google_signup')  return off('signin', SITE);
+        if (href === '__google_signin_url' || href === '__google_signup_url') return off('google', SITE);
         if (section === 'forgot_password_link' || href === '__forgot_password_url') return off('forgot_password_link', SITE);
         if (section === 'register_link' || href === '__register_url') {
             return (!cfg.register_page_id && !cfg.show_register_link) ? PANEL : '';
