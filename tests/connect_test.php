@@ -199,6 +199,12 @@ function test_connect_token_response_shape()
 
 	pg_assert_same('', $bare['refresh_token'], 'no refresh token');
 	pg_assert_same(4600, $bare['expires_at'], 'an hour when the provider does not say');
+
+	$lasting = pg_connect_token_response(array('access_token' => 'at'), 1000, 86400);
+
+	pg_assert_same(87400, $lasting['expires_at'], 'the provider\'s own default when the answer does not say');
+	pg_assert_same(3600, pg_connect_default_ttl(array()), 'an hour by default');
+	pg_assert_same(86400, pg_connect_default_ttl(array('default_ttl' => 86400)), 'the provider\'s default');
 }
 
 function test_connect_claims_are_checked()
@@ -378,4 +384,71 @@ function test_connect_mail_request_per_provider()
 
 	pg_assert_false($too_big['ok'], 'over 4 MB once encoded');
 	pg_assert_true($too_big['error'] !== '', 'says why');
+}
+
+// A provider made at run time (an MCP server's): the builder of its prefix
+// answers it, a file of the same name would win, and the screens that list
+// the provider files do not list it.
+function test_connect_built_provider_comes_from_its_prefix()
+{
+	pg_connect_provider_builders('tst_', function ($key) {
+		return ($key === 'tst_7') ? array('label' => 'Test 7', 'authorize_url' => 'https://as.example/authorize', 'identity' => false) : null;
+	});
+
+	pg_connect_provider_builders('Bad', function ($key) {
+		return array('label' => 'never');
+	});
+
+	$builders = pg_connect_provider_builders();
+
+	pg_assert_true(isset($builders['tst_']), 'registered');
+	pg_assert_false(isset($builders['Bad']), 'a prefix not in lower case ending in _ is refused');
+
+	$provider = pg_connect_provider('tst_7');
+
+	pg_assert_true(is_array($provider), 'built');
+	pg_assert_same('tst_7', $provider['key'], 'key is the whole key');
+	pg_assert_true($provider['built'], 'marked as built');
+	pg_assert_same(null, pg_connect_provider('tst_8'), 'the builder answered null');
+	pg_assert_same(null, pg_connect_provider('other_7'), 'no builder for the prefix');
+	pg_assert_same(null, pg_connect_built_provider('tst_../x'), 'not a key');
+	pg_assert_false(isset(pg_connect_providers()['tst_7']), 'not among the provider files');
+	pg_assert_same('Google', pg_connect_provider('google')['label'], 'files still answer');
+}
+
+function test_connect_purpose_by_provider_prefix()
+{
+	$purpose = array('owner' => 'any', 'scopes' => array(), 'provider_prefix' => 'tst_');
+
+	pg_assert_true(pg_connect_purpose_allows($purpose, 'tst_7', 'person'), 'a provider of the prefix');
+	pg_assert_true(pg_connect_purpose_allows($purpose, 'tst_7', 'site'), 'the site too');
+	pg_assert_false(pg_connect_purpose_allows($purpose, 'google', 'site'), 'another provider');
+
+	$person_only = array('owner' => 'person', 'scopes' => array(), 'provider_prefix' => 'tst_');
+
+	pg_assert_false(pg_connect_purpose_allows($person_only, 'tst_7', 'site'), 'the owner rule still holds');
+}
+
+// A public client (no secret: a metadata document or a dynamic registration
+// without one) is ready with its id alone; any other needs its secret.
+function test_connect_public_app_is_ready_without_a_secret()
+{
+	$app = array('client_id' => 'https://site.example/client', 'client_secret' => '', 'options' => array('public' => true), 'enabled' => true);
+
+	pg_assert_true(pg_connect_app_public($app), 'public');
+	pg_assert_true(pg_connect_app_ready($app), 'ready without a secret');
+
+	$app['options'] = array();
+
+	pg_assert_false(pg_connect_app_public($app), 'not public');
+	pg_assert_false(pg_connect_app_ready($app), 'a confidential client needs its secret');
+
+	$app['client_secret'] = 's';
+
+	pg_assert_true(pg_connect_app_ready($app), 'with its secret');
+
+	$app['enabled'] = false;
+
+	pg_assert_false(pg_connect_app_ready($app), 'turned off');
+	pg_assert_false(pg_connect_app_public(null), 'no application');
 }

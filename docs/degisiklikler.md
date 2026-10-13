@@ -106,6 +106,58 @@ Microsoft dosyalarına dokunulmadı.
 
 ---
 
+## 2026.4.10 — Bağlı hesaplar: çalışma anında kurulan sağlayıcı (MCP sunucuları için hazırlık) (2026-10-13)
+
+**Neden.** Çalışma Alanı'ndaki MCP istemcisinin OAuth'lu sunuculara
+bağlanabilmesi (`_plan_oauth.md` Faz F, F2) için jetonların bağlı hesaplar
+deposunda (`connect_accounts`) durması kararlaştırıldı. Oradaki sağlayıcılar
+dosyadan okunuyordu (`includes/connect/providers/<ad>.php`, uçlar sabit);
+bir MCP sunucusunun uçları ise keşifle bulunur ve sunucu başına değişir. Bu
+değişiklik yalnız altyapıdır, ekranda bir şey değişmez; MCP tarafı ayrı
+değişiklikle gelir. Kullanıcıya görünen bir etkisi olmadığı için
+`changelog.txt`'ye yazılmadı.
+
+**Ne geldi** (`includes/fn/connect.php`):
+
+- `pg_connect_provider_builders($prefix, $builder)`: bir özellik bir anahtar
+  öneki (`mcp_`) için kurucu kaydeder; `pg_connect_provider('mcp_7')`
+  dosyada yoksa kurucuya sorar (`pg_connect_built_provider()`), tanım
+  dosyadakiyle aynı biçimdedir ve `built => true` taşır. Aynı adlı dosya her
+  zaman önce gelir. `pg_connect_providers()` yalnız dosyaları listeler, bu
+  yüzden Bağlı hesaplar ekranı kurulan sağlayıcıları göstermez; özellik kendi
+  ekranından bağlar.
+- Amaç dosyası sağlayıcı yerine önek adlayabilir (`provider_prefix`);
+  kapsamlar o zaman sağlayıcının `identity_scopes`'udur, sahiplik kuralı
+  (`owner`) aynen geçerli.
+- Genel istemci: `connect_apps.options.public = true` olan uygulama gizlisiz
+  hazır sayılır (`pg_connect_app_public()`), jeton isteğinde yalnız
+  `client_id` ve PKCE doğrulayıcısı gider (istemci kimlik belgesi ya da
+  `token_endpoint_auth_method: none` ile dinamik kayıt).
+- Sağlayıcı tanımına yeni anahtarlar (hepsi isteğe bağlı, var olan Google ve
+  Microsoft davranışı değişmez): `token_params` (her jeton isteğine, kod
+  değişimine de yenilemeye de eklenir: RFC 8707 `resource`), `identity =>
+  false` (hesap adı yok: kimlik jetonu ve userinfo okunmaz, sahip başına tek
+  bağlantı `external_id = 'account'`, etiket `account_label` ya da
+  sağlayıcının adı), `refresh_optional => true` (yenileme jetonu vermeyen
+  sunucu kabul edilir; erişim jetonu bitince bağlantı "Yeniden bağla"ya
+  düşer), `default_ttl` (yanıtta `expires_in` yoksa erişim jetonunun ömrü;
+  `pg_connect_token_response()`'a üçüncü parametre), `iss_required => true`
+  (yetkilendirme sunucusu `authorization_response_iss_parameter_supported`
+  diyorsa dönüşte `iss` zorunlu, RFC 9207).
+
+**Doğrulama.** `tests/connect_test.php`'ye üç test ve bir ek: önekle kurulan
+sağlayıcı (dosya önce gelir, liste dışı, geçersiz önek ve anahtar
+reddedilir), önekli amaç ve sahiplik, genel istemcinin hazır sayılması,
+varsayılan ömür. Jeton isteği ve `pg_connect_finish()` ağ ve veritabanı
+istediği için birim testte yok; Google ve Microsoft yolunda değişen tek şey
+`token_params`/`public`/`identity`/`refresh_optional` anahtarlarının
+yokluğunda eski dalın çalışmasıdır.
+
+**Doğrulanamayan.** Gerçek bir OAuth'lu MCP sunucusuyla bağlantı; bu altyapıyı
+kullanan MCP tarafı henüz yok.
+
+---
+
 ## 2026.4.10 — Microsoft ile Giriş ve Apple ile Giriş (2026-10-13)
 
 **Neden.** Tersine OAuth planının (`docs/_plan_tersine_oauth.md`) dördüncü
