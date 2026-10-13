@@ -5558,6 +5558,41 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
             }
 
+            // A designed page names the record with the widget's own title
+            // settings: the field it picks (else the RSS title fields above)
+            // and the text after it, such as "| Inbox".
+            if ($pg_sw_form_item !== null) {
+                $pg_sw_title_widget = pg_sw_page_widget($page_id, 'form_item_view');
+                $pg_sw_title_cfg = $pg_sw_title_widget ? $pg_sw_title_widget['cfg'] : array();
+                $pg_sw_title_values = array();
+                if (!empty($pg_sw_title_cfg['title_field'])) {
+                    $pg_sw_title_values['reference_code'] = (string) $pg_sw_form_item['reference_code'];
+                    $pg_sw_title_rows = db_items(
+                        "SELECT form_fields.name, form_data.data, form_data.type
+                        FROM form_data
+                        LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
+                        WHERE form_data.form_id = '" . escape($submitted_form['id']) . "'
+                        ORDER BY form_data.id ASC");
+                    foreach ((array) $pg_sw_title_rows as $pg_sw_title_row) {
+                        $pg_sw_title_name = strtolower((string) $pg_sw_title_row['name']);
+                        if ($pg_sw_title_name === '') {
+                            continue;
+                        }
+                        $pg_sw_title_value = (string) $pg_sw_title_row['data'];
+                        if (($pg_sw_title_row['type'] == 'html') && ($pg_sw_title_value != '')) {
+                            $pg_sw_title_value = trim(convert_html_to_text($pg_sw_title_value));
+                        }
+                        if ($pg_sw_title_value === '') {
+                            continue;
+                        }
+                        $pg_sw_title_values[$pg_sw_title_name] = isset($pg_sw_title_values[$pg_sw_title_name])
+                            ? $pg_sw_title_values[$pg_sw_title_name] . ', ' . $pg_sw_title_value
+                            : $pg_sw_title_value;
+                    }
+                }
+                $combined_title = pg_sw_record_title($pg_sw_title_cfg, $pg_sw_title_values, $combined_title);
+            }
+
             // If submitted form title was found then override page's title.
             if ($combined_title != '') {
                 $page_title = $combined_title;

@@ -33,6 +33,14 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   yeniden çizilirse odak kaçar.
 - Bağlamayı yapısal etikete (`table/thead/tbody/tr/td/th/caption/col`) yapma;
   içerik elemanına (`span`, `h1..h6`, `p`, `a`, `img`) yap.
+- Metnini olduğu gibi basan içerikte (heading/link/paragraph/span/text) `text`
+  bağlaması işaretlemeyi korur: tek kelime grubunu saran işaretlemede token o
+  grubun yerine girer (`pg_binding_text_slot()`, tuvalde `_sdBindTextSlot()`).
+  İkisini birlikte değiştir. Birden çok grupta tüm metin token olur.
+- Panel metinlerinde `^^token^^` adı gösterme; bağlama listesindeki seçeneğin
+  adını söyle. Sayfa içeriğinde de token yazma: bir değer bağlamayla gelir.
+  Eski adlar (`__detail_url` form listesinde, `__not_found_message` form
+  detayında) yalnız eski tasarımlar için renderer'da takma addır.
 - Fonksiyonel class ve `data-*` hook'larını silme: `pg-eo-form`,
   `pg-eo-cc-fields`, `pg-eo-total-formatted`, `pg-qty-stepper`,
   `data-pg-qty-action`, `data-pg-remove-href`, `data-pg-eo-form`,
@@ -188,14 +196,32 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
 
 - Yeni tür `SW_TYPES` + `_swTypeDefaults`'a yazılır; tür yalnız `_swIsType` ile
   kabul edilir.
-- Ad `<sayfa>-<tür>-widget` (`_swAutoName`/`_swSlug`); tekilliği sunucu
-  `_sc_unique_name` ile korur, istemcide sayaç tutma.
+- Ad `<sayfa>-<tür>-widget` (`_swAutoName`/`_swSlug`); paylaşılan bir
+  parçaya (başlık, altlık — `_sdSharedOwnerOf()`) bırakılan ya da birden çok
+  sayfada duran widget `<tasarım>-<tür>-widget` alır (`where: {target|sid}`).
+  Tekilliği sunucu `_sc_unique_name` ile korur, istemcide sayaç tutma.
 - `regionType === ''` boş görünsün; ilk türü seçilmiş gibi gösterme.
 - Silme/yeniden adlandırma/kullanım taramasını `_pgAllPageTrees()` üzerinden yap;
   sunucuda kayıtlı sayfalardaki kullanım tek yerden: `pg_shared_component_usage()`
   (`usage_all`, toplu silme `delete_many`).
 - Sayfa seçicisini `_swPageOptions()` ile çiz, `_swPageVal(el)` ile oku;
-  `parseInt(value)` kullanma (`tab:<key>`'i 0 yapar).
+  `parseInt(value)` kullanma (`tab:<key>`'i 0 yapar). Detay sayfası gibi
+  widget'ı sonradan eklenecek sayfada `otherTabs` ile widget'sız sekmeleri de
+  listele, altına `_swDetailPageHint()`.
+- Durum mesajını (boş liste, kayıt yok) `pg_sw_state_message_html()` ile yaz:
+  `_split_widget_tree()`'nin `loop_parent`'ına uygun etiket (ul'de li, tabloda
+  colspan'lı tr). Liste/tablo içine div, arama kutusu ya da sayfalama yazma;
+  `$outside_markers` işaretlerini kullan.
+- `pg-hide-if-empty`: değer `pg-field-value` öğesinin içidir, yoksa öğenin
+  tamamı (`pg_sw_hide_empty_fields()`). Boş semantic öğe tek satırda kapanır
+  (`:empty` için); pretty-print boşluğu ekleme.
+- Stretched link'in `position-relative`'i ataya bakar (`_pg_stretch_claims()`,
+  `_pg_node_is_positioned()`): konumlanmış kutu (card, list-group-item,
+  position sınıfı, satır içi `position:`) varsa kimse sınıf almaz.
+- Form detayında kayıt yoksa `hide_when_not_found` (varsayılan açık)
+  `pg_sw_prune_record_layout()` ile yalnız `record_not_found` öğelerini ve
+  bulunamadı mesajını bırakır; sayfa başlığı `title_field`/`title_suffix`
+  (`pg_sw_record_title()`).
 - PHP ve designer JS varsayılanlarını **lockstep** tut; bir düzeltmeyi üç yerde
   birden uygula: PHP varsayılan ağaç, JS starter tree, sunucu fallback'i.
 - Kapalı özellik frontend'e hiç çıkmasın: `_pg_catalog_binding_disabled()` (PHP)

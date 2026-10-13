@@ -25,6 +25,74 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [DÜZELTME] Bağlantı içeren bir başlık ya da paragraf
+         bir alana bağlandığında bağlantı korunuyor:
+         değer bağlantının içine yazılıyor. Önceden
+         bağlantı siliniyor, yalnız düz metin kalıyordu.
+         Bağlama paneli metnin biçimlendirmesiyle ne
+         olacağını söylüyor ve "Linki ayrı bir öğe yap"
+         düğmesiyle link ayrı bir öğeye dönüşüyor; o
+         zaman linkin adresi de bağlanabiliyor.
+
+  [DÜZELTME] Form listesinde detay linki: panelin
+         söylediği eski adla bağlanan linkler de artık
+         detay sayfasına gidiyor (önceden adres boş
+         kalıyordu). Panel yer tutucu adı yerine bağlama
+         listesindeki seçeneğin adını gösteriyor: listede
+         "Detay sayfası adresi", detay sayfasında "Bu
+         kaydın adresi".
+
+  [YENİ] Form detay widget'ında "Kayıt yoksa düzeni
+         gizle" (varsayılan açık): kayıt bulunamadığında
+         şablon boş alanlarla basılmıyor; yalnız "kayıt
+         yokken göster" diye ayarlanan öğeler ve
+         bulunamadı mesajı görünüyor. Hiçbiri yoksa mesaj
+         düzenin yerinde çıkıyor. Bulunamadı mesajı eski
+         adıyla bağlanan öğelerde de doluyor.
+
+  [YENİ] Form detay widget'ında sayfa başlığı: hangi
+         alanın başlık olacağı ve ardından gelecek metin
+         seçilebiliyor (örnek "Konu | Gelen Kutusu").
+         Seçilmezse formun RSS başlık alanları
+         kullanılıyor; formda böyle alan yoksa panel
+         uyarıyor.
+
+  [DÜZELTME] pg-hide-if-empty sınıfı sitede çalışıyor:
+         değeri boş kalan alan (etiketi olsa da) sayfadan
+         çıkıyor. Boş öğeler artık gerçekten boş
+         yazılıyor, CSS :empty ile seçilebiliyor.
+
+  [DÜZELTME] Boş liste mesajı listeye uygun etiketle
+         yazılıyor: listede li, tabloda tüm kolonları
+         kaplayan satır, grid satırında tam genişlik
+         kolon. Arama kutusu ve sayfalama listenin
+         dışında kalıyor. Mesajın sınıfı Bootstrap 5.3 ve
+         6'nın text-body-secondary'si.
+
+  [DÜZELTME] Uzatılmış (stretched) link en yakın kartı,
+         liste öğesini ya da konumlanmış kutuyu kaplıyor.
+         Önceden içinde durduğu başlık position-relative
+         alıyor ve yalnız başlık tıklanıyordu.
+
+  [YENİ] Detay sayfası seçicisi tasarımın henüz detay
+         widget'ı olmayan sayfalarını da ayrı grupta
+         gösteriyor. Seçilen sayfada widget yoksa ya da
+         hiç detay sayfası yoksa panel ne yapılacağını
+         söylüyor.
+
+  [DÜZELTME] Ortak başlık ya da altlık gibi paylaşılan
+         bir parçaya bırakılan widget, o an açık olan
+         sayfanın değil tasarımın adını alıyor.
+
+  [DÜZELTME] Tuvalde blog özeti gibi alanlar ürün örnek
+         metniyle değil, nötr bir örnek metinle
+         görünüyor.
+
+  [DÜZELTME] Editörün form alanları ve detay sayfaları
+         sorguları formu form_id ya da page_id adıyla
+         kabul ediyor; eksik olduğunda "Geçersiz ID."
+         yerine beklenen parametreyi söylüyor.
+
   [YENİ] Tasarımın bir CSS ya da JS dosyası yalnız seçilen
          sayfalarda yüklenebiliyor: dosyaya sağ tıklayıp
          "Yüklendiği Sayfalar…" ile "Her sayfa" ya da sayfa
