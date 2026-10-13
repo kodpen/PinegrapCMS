@@ -84,6 +84,62 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sayfalar listesi ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber). `view_pages.php` sıralamayı
+`$_SESSION['software']['pages']` altında çevrilmiş başlık adıyla tutup
+kendi `switch`'iyle tek sütunluk ORDER BY kuruyordu. Bu PR yalnız
+Sayfalar'ı taşır.
+
+**Ne değişti.** Sıralanabilen sütunlar kodla tanımlandı (`name`, yalnız
+Özel Form Sayfalarım görünümünde `form_name` ve `form_enabled`, `folder`,
+`style`, `page_type`, `searchable`, `comments`, `sitemap`, `seo`,
+`impact`, `last_modified`). Sıra `pg_list_state('view_pages', …)` ile
+okunur, ORDER BY `pg_list_order_by()` ile yalnız ekranın kod → SQL
+eşlemesinden yazılır (sütunlar artık tablo adıyla nitelenmiş,
+`seo_impact` sorgudaki takma ad). Varsayılan eskisi gibi son değişiklik
+azalan. Başlıklar `get_column_heading()`'e düzey listesi verir; Shift+tık
+ve düzey numarası ürünlerdeki gibi çalışır. Görünüm seçiminin yanına
+`pg_list_sort_menu()` eklendi; görünüm (`filter`) adresten okunduğu için
+#335'teki `$query` parametresiyle bağlantılarda ve formda taşınır. Ortak
+yardımcıya, `backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan
+metinler zaten vardı.
+
+Stil sütunu masaüstü ve mobil için tek kod (`style`) oldu: eski kod
+cihaz geçişinde oturumdaki başlığı "Desktop Page Style" ↔ "Mobile Page
+Style" diye İngilizce adla çeviriyordu, Türkçe panelde eşleşmediği için
+sıra varsayılana düşüyordu. Etkin olmayan bir tema önizlenirken stil
+sütunu eskisi gibi sıralanamaz (stil adı satır satır `preview_styles`'tan
+okunuyor); o zaman yalnız o düzey düşer, eskiden bütün sıra silinirdi.
+Form sütunları diğer görünümlerde yok; o düzey düşer, hiç düzey kalmazsa
+varsayılan döner (eski kod da oturumdaki sırayı boşaltıyordu). Kullanılmayan
+`$screen` okuması kaldırıldı (liste sayfalamayı tarayıcıda yapıyor).
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Toplu işlemler (Seçilenleri Değiştir, Seçilenleri
+Sil), SEO özet şeridi, SEO yenileme ve HTML çözümleme düğmeleri
+değişmedi. Satır içi hızlı güncelleme bu PR'ın kapsamında değil. Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium, 181 sayfa).** Sunucunun
+döndürdüğü satır sırası aynı ORDER BY'lı SQL ile karşılaştırıldı:
+varsayılan (son değişiklik azalan), `folder:asc,name:desc` ve sayfa
+yenilenince korunması, Standart Sayfalarım'da tür + ad, Özel Form
+Sayfalarım'da form etkin + form adı + ad (başka görünüme geçince form
+düzeyleri düştü, ad kaldı), masaüstü ve mobil stil (cihaz geçişinde sıra
+ve başlık oku korundu), eski `sort=Klasör&order=desc` bağlantısı, bozuk
+düzeyin düşmesi. RSS görünümü (GROUP BY) etki + klasör + ad ve SEO
+görünümü dört düzeyle hatasız açıldı. Tarayıcıda başlığa Shift+tık aynı
+sekmede düzey ekledi, Shift'siz tık önde olan sütunu tek başına çevirdi;
+menünün bağlantıları ve formu görünümü taşıdı; 390 piksel genişlikte menü
+açıldı, yatay kaydırma yok; konsolda ve sunucu günlüğünde `view_pages.php`
+uyarısı yok. Doğrulanamadı: dev.pinegrap.com'daki gerçek sayfalar, tema
+önizlemesi açıkken stil sütunu ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Rehber (kişi listesi) ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
 
 **Neden.** #331 çoklu sıralamayı `pg_list_state()` kullanan tek sunucu

@@ -409,6 +409,20 @@
          görünümü eskisi gibi e-posta adresine göre
          sıralanıyor.
 
+  SAYFALAR
+  --------------------------------------------------------
+
+  [YENİ] Sayfalar listesi de aynı anda birden çok
+         sütuna göre sıralanıyor, örneğin klasör artan,
+         aynı klasörde ad artan. Başlığa Shift ile
+         tıklamak sonraki düzeyi ekliyor; telefonda ya
+         da klavyeyle görünüm seçiminin yanındaki
+         "Sıralama" menüsü kullanılıyor. Seçilen görünüm
+         (Özel Form Sayfalarım, SEO filtreleri gibi)
+         sıralama değişince korunuyor. Seçilen sıralama
+         panel dili değişince ve masaüstü/mobil stil
+         geçişinde kaybolmuyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 
