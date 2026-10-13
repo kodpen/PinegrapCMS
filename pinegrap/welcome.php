@@ -259,7 +259,7 @@ $output_widget_controls = '';
 //
 // One case cannot be solved from here: a widget with nothing to show renders a
 // centred "none yet" panel, and no skeleton can know that before the data
-// arrives. Widgets 25 and 26 will always shift when they come back empty.
+// arrives. Widget 25 will always shift when it comes back empty.
 
 $pg_ph_card = function ($inner) {
     return '<div class="card-body card-body-placeholder p-0 overflow-hidden placeholder-glow">' . $inner . '</div>';
@@ -380,8 +380,8 @@ $placeholder_w1 = $pg_ph_card(
     . '<div class="pg-split-half"><div class="pg-list">' . str_repeat($pg_ph_row, 5) . '</div></div>'
     . '</div>');
 
-// A filter button as the Activity card draws them: a tile and a label, with
-// the count left to arrive with the data.
+// A filter button as the Activity and Operations Desk cards draw them: a tile
+// and a label, with the count left to arrive with the data.
 $pg_ph_filter = '
 <div class="pg-filter">
     <span class="placeholder rounded flex-shrink-0" style="width:28px;height:28px"></span>
@@ -393,10 +393,18 @@ $placeholder_w7  = $pg_ph_card(
     . '<div class="pg-split-half pg-filters">' . str_repeat($pg_ph_filter, 6) . '</div>'
     . '<div class="pg-split-half"><div class="pg-list">' . str_repeat($pg_ph_row, 6) . '</div></div>'
     . '</div>');
-$placeholder_w3  = $pg_ph_card($pg_ph_ec . '<div class="border-top mx-2 mb-1"></div><div class="pg-list">' . str_repeat($pg_ph_row_sm, 4) . '</div>');
+$placeholder_w3  = $pg_ph_card(
+    '<div class="pg-split">'
+    . '<div class="pg-split-half">' . $pg_ph_ec . '<div class="border-top mx-2 mb-1"></div><div class="pg-list">' . str_repeat($pg_ph_row_sm, 4) . '</div></div>'
+    . '<div class="pg-split-half"><div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 6) . '</div></div>'
+    . '</div>');
+$placeholder_w9  = $pg_ph_card(
+    '<div class="pg-ops">'
+    . '<div class="pg-lanes">' . str_repeat($pg_ph_filter, 3) . '</div>'
+    . '<div class="pg-ops-body"><div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div></div>'
+    . '</div>');
 $placeholder_w4  = $pg_ph_card($pg_ph_tiles(126, true)  . $pg_ph_blocks(array(133)));
 $placeholder_w5  = $pg_ph_card($pg_ph_blocks(array(277)));
-$placeholder_w6  = $pg_ph_card('<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 8) . '</div>');
 $placeholder_w8  = $pg_ph_card($pg_ph_head . $pg_ph_blocks(array(27)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 3) . '</div>');
 $placeholder_w15 = $pg_ph_card('<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row, 4) . '</div>');
 $placeholder_w18 = $pg_ph_card($pg_ph_blocks(array(29, 91, 29, 110)));
@@ -434,60 +442,6 @@ $placeholder_w24 = $pg_ph_card(
 );
 $placeholder_w25 = $pg_ph_card($pg_ph_blocks(array(35)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
 
-// Loading state for the pending shipments card. The card itself cannot resize
-// -- .card.widget is aspect-ratio 1/1 -- so this is not about the grid moving.
-// It is about the boxes inside: the generic skeleton above puts them nowhere
-// near where the loaded body puts them, so the content visibly slides into
-// place. Mirroring the real structure holds every box within a pixel of where
-// api.php will put it. Measured against the live card: head, meter and first
-// row all land within 1px.
-$placeholder_shipments = '
-<div class="card-body card-body-placeholder p-0 overflow-hidden">
-    <div class="pg-ship-head placeholder-glow">
-        <div class="d-flex align-items-baseline flex-wrap gap-2">
-            <span class="placeholder rounded" style="width:46px;height:32px"></span>
-            <span class="placeholder col-6 rounded"></span>
-        </div>
-        <div class="pg-ship-meter">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </div>
-    <div class="pg-ship-list placeholder-glow">
-        <div class="pg-ship-row">
-            <span class="placeholder pg-ship-badge"></span>
-            <span class="pg-ship-text">
-                <span class="placeholder col-7 d-block mb-1"></span>
-                <span class="placeholder col-4 d-block"></span>
-            </span>
-        </div>
-        <div class="pg-ship-row">
-            <span class="placeholder pg-ship-badge"></span>
-            <span class="pg-ship-text">
-                <span class="placeholder col-7 d-block mb-1"></span>
-                <span class="placeholder col-4 d-block"></span>
-            </span>
-        </div>
-        <div class="pg-ship-row">
-            <span class="placeholder pg-ship-badge"></span>
-            <span class="pg-ship-text">
-                <span class="placeholder col-7 d-block mb-1"></span>
-                <span class="placeholder col-4 d-block"></span>
-            </span>
-        </div>
-    </div>
-</div>';
-
 // ── Widget registry ─────────────────────────────────────────────────────────
 //
 // One entry per dashboard card: what it is called, the skeleton it wears while
@@ -512,8 +466,9 @@ $placeholder_shipments = '
 // Reset Widgets.
 //
 // Ids are permanent: api.php answers get_widget_data on the same number and
-// dashboards in the field have it stored. 10, 11, 13, 17, 19, 22 and 24 are
-// retired and are not reused: their content lives on in 7 and 21.
+// dashboards in the field have it stored. 6, 10, 11, 12, 13, 17, 19, 22, 24
+// and 26 are retired and are not reused: their content lives on in 3, 5, 7, 9
+// and 21.
 //
 // 1 is the exception, and it is a deliberate one: the slot answered with an
 // empty string for long enough that no dashboard can be showing anything under
@@ -562,10 +517,14 @@ $widget_registry[2] = array(
     'wide'   => true,
     'show'   => ($user['role'] < 3));
 
+// Two tracks: the summary on the left, the best sellers on the right. The best
+// sellers were the Trending Content card's (6, retired), where they sat apart
+// from the figures they explain.
 $widget_registry[3] = array(
     'title' => lang('Ecommerce Summary'),
     'icon'  => 'bi-cash-stack',
     'body'  => $placeholder_w3,
+    'wide'  => true,
     'show'  => ((ECOMMERCE === true) && (($user['role'] < 3) || USER_MANAGE_ECOMMERCE || USER_MANAGE_ECOMMERCE_REPORTS)));
 
 // Sales map, directly under the ecommerce summary: that card says how much was
@@ -594,12 +553,6 @@ $widget_registry[4] = array(
     'wide'  => true,
     'show'  => ($user['role'] < 3));
 
-$widget_registry[6] = array(
-    'title' => lang('Trending Content'),
-    'icon'  => 'bi-fire',
-    'body'  => $placeholder_w6,
-    'show'  => (($user['role'] < 3) || ($user['manage_visitors'] == true)));
-
 // Activity: what happened lately, in one feed with a filter per kind. It took
 // over the cards that each listed one kind of recent thing -- content changes
 // (this id, formerly Recent Updates), forms (13), contacts (10), users (11),
@@ -622,17 +575,17 @@ $widget_registry[8] = array(
     'wide'  => true,
     'show'  => ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
 
+// Operations desk: what the shop owes -- parcels to send, refunds to pay back,
+// products that cannot be sold -- as three lanes on one card. It took over
+// Pending Shipments (this id), Out of Stock Products (12) and Refund Pending
+// (26). Shown wherever the shop is: the shipping lane is the only one that
+// needs shipping switched on, and the card leaves it out when it is off.
 $widget_registry[9] = array(
-    'title' => lang('Pending Shipments'),
-    'icon'  => 'bi-truck',
-    'body'  => $placeholder_shipments,
-    'show'  => ((ECOMMERCE === true) && (ECOMMERCE_SHIPPING === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
-
-$widget_registry[12] = array(
-    'title' => lang('Out of Stock Products'),
-    'icon'  => 'bi-exclamation-diamond',
-    'body'  => $placeholder,
-    'show'  => ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
+    'title' => lang('Operations Desk'),
+    'icon'  => 'bi-clipboard-check',
+    'body'  => $placeholder_w9,
+    'wide'  => true,
+    'show'  => ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
 
 // Subscriptions. Administrator only, and only where the installation has a
 // subscription key to report on. Carries no icon, as it always has.
@@ -704,15 +657,6 @@ $widget_registry[25] = array(
     'icon'  => 'bi-chat-square-quote',
     'body'  => $placeholder_w25,
     'show'  => (($user['role'] < 3) || no_acl_check($user['id'])));
-
-// Cancelled orders whose money has not gone back yet. Same reach as the rest of
-// the shop screens, because view_order.php is where the refund is marked done
-// and that is what every row here links to.
-$widget_registry[26] = array(
-    'title' => lang('Refund Pending'),
-    'icon'  => 'bi-cash-coin',
-    'body'  => $placeholder_w25,
-    'show'  => ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
 
 // ── Order ───────────────────────────────────────────────────────────────────
 //
@@ -2677,6 +2621,10 @@ pg_page_shell(
         'icon'=>'welcome',
         'heading'=>lang('Welcome'),
         'heading_description' => lang('Your site at a glance: visitors, orders and health'),
+        // No card draws a code field, so CodeMirror and its linters (some
+        // 2 MB of script) stay out of the head; the settings dialog loads
+        // them when one of its panes needs them.
+        'code_editor' => false,
     )
 ) . '<main id="content" class="container-fluid" data-widget-theme="' . h($widget_theme) . '" data-panel-backdrop="' . h($panel_backdrop) . '">' .
 $output_header_includes .
@@ -2750,7 +2698,7 @@ $output_header_includes .
     // view. A card whose markup comes back unchanged is left alone -- its
     // charts are not rebuilt and its list keeps its scroll position.
     var pg_widgets = {
-        refresh: ["4","6","7","8","12","16","25","26"],
+        refresh: ["4","7","8","9","16","25"],
         solo: ["1","2","5","21","23"],
         interval: Math.max(10, parseInt("' . (int) $widget_refresh_time . '", 10) || 60) * 1000,
         html: {},
