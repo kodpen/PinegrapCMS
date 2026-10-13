@@ -1,0 +1,104 @@
+/*
+ * Pinegrap - the page an approval link leads to, for somebody outside the
+ * team (workspace_approval.php).
+ */
+
+body.pg-approval {
+  min-height: 100vh;
+  margin: 0;
+  padding: 2rem 1rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.pg-approval-card {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 1rem;
+  background: var(--bs-body-bg);
+  box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .05);
+}
+
+.pg-approval-site {
+  margin-bottom: 1rem;
+  color: var(--bs-secondary-color);
+  font-size: .875rem;
+}
+
+.pg-approval-title {
+  margin-bottom: .5rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pg-approval-meta {
+  color: var(--bs-secondary-color);
+}
+
+.pg-approval-details {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border-radius: .75rem;
+  background: var(--bs-tertiary-bg);
+  overflow-wrap: anywhere;
+}
+
+.pg-approval-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+
+.pg-approval-fine {
+  margin: 1rem 0 0;
+  color: var(--bs-secondary-color);
+  font-size: .8125rem;
+}
+
+.pg-approval-result {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.pg-approval-result > .bi {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.pg-approval-approved > .bi {
+  color: var(--bs-success);
+}
+
+.pg-approval-rejected > .bi {
+  color: var(--bs-danger);
+}
+
+.pg-approval-quote {
+  margin: 0 0 1rem;
+  padding: .5rem .75rem;
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--bs-body-color);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 30rem) {
+  body.pg-approval {
+    padding: 0;
+  }
+
+  .pg-approval-card {
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .pg-approval-buttons .btn {
+    flex: 1 1 auto;
+  }
+}

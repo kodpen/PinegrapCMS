@@ -81,6 +81,30 @@ function ws_action_channel($viewer, $request, $need = 'read')
 }
 
 /**
+ * The deadline of an approval request as the forms send it: a day and a
+ * time (18:00 when the time is left out).
+ *
+ * @param array $request closes_date, closes_time
+ * @return int|false the moment, 0 for none, false for a day that cannot be read
+ */
+function ws_action_approval_deadline($request)
+{
+    $day = ws_date_or_null((string) ($request['closes_date'] ?? ''));
+
+    if ($day === false) {
+        return false;
+    }
+
+    if ($day === null) {
+        return 0;
+    }
+
+    $time = preg_match('/^[0-9]{1,2}:[0-9]{2}$/', (string) ($request['closes_time'] ?? '')) ? $request['closes_time'] : '18:00';
+
+    return (int) strtotime($day . ' ' . $time . ':00');
+}
+
+/**
  * May this person override a clash with somebody's leave on this task?
  *
  * @param array $viewer
@@ -164,7 +188,7 @@ function ws_handle_action($action, $request)
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
             $poll = db_item("SELECT message_id FROM ws_polls WHERE id = '" . (int) ($request['poll_id'] ?? 0) . "'");
             $touched = is_array($poll) ? ws_message((int) $poll['message_id']) : null;
-        } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close'), true)) {
+        } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close', 'ws_approval_guest_resend'), true)) {
             $approval = function_exists('ws_approval') ? ws_approval((int) ($request['approval_id'] ?? 0)) : null;
             $touched = $approval ? ws_message((int) $approval['message_id']) : null;
         }
@@ -1248,22 +1272,17 @@ function ws_handle_action($action, $request)
             }
 
             // The deadline comes as a day and a time, as the form asks.
-            $closes_at = 0;
-            $closes_day = ws_date_or_null((string) ($request['closes_date'] ?? ''));
+            $closes_at = ws_action_approval_deadline($request);
 
-            if ($closes_day === false) {
+            if ($closes_at === false) {
                 return ws_action_error(lang('Write the date as day.month.year.'), 'closes_date');
-            }
-
-            if ($closes_day !== null) {
-                $closes_time = preg_match('/^[0-9]{1,2}:[0-9]{2}$/', (string) ($request['closes_time'] ?? '')) ? $request['closes_time'] : '18:00';
-                $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
             }
 
             $result = ws_approval_create($viewer, $channel, array(
                 'title'     => (string) ($request['title'] ?? ''),
                 'text'      => (string) ($request['text'] ?? ''),
                 'approvers' => (array) ($request['approvers'] ?? array()),
+                'guests'    => (array) ($request['guests'] ?? array()),
                 'rule'      => (string) ($request['rule'] ?? 'any'),
                 'closes_at' => $closes_at,
             ));
@@ -1271,6 +1290,56 @@ function ws_handle_action($action, $request)
             return $result['ok']
                 ? ws_action_ok(array('message_id' => $result['message_id'], 'approval_id' => $result['approval_id']))
                 : ws_action_error($result['error'], $result['field']);
+
+        // A customer asked from a task's drawer, and a new link for somebody
+        // outside the team who has not answered (approval_guests.php).
+        case 'ws_task_approval_create':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            $closes_at = ws_action_approval_deadline($request);
+
+            if ($closes_at === false) {
+                return ws_action_error(lang('Write the date as day.month.year.'), 'closes_date');
+            }
+
+            $result = ws_task_approval_create($viewer, $task, array(
+                'title'     => (string) ($request['title'] ?? ''),
+                'text'      => (string) ($request['text'] ?? ''),
+                'guests'    => array(array('name' => (string) ($request['guest_name'] ?? ''), 'email' => (string) ($request['guest_email'] ?? ''))),
+                'closes_at' => $closes_at,
+            ));
+
+            return $result['ok']
+                ? ws_action_ok(array('approvals' => ws_task_approvals_detail($viewer, ws_task($task['id']))))
+                : ws_action_error($result['error'], $result['field']);
+
+        case 'ws_approval_guest_resend':
+            $approval = ws_approval((int) ($request['approval_id'] ?? 0));
+
+            if (!$approval || !ws_can_read_channel($viewer, ws_channel($approval['channel_id']))) {
+                return ws_action_error(lang('That approval request could not be found.'));
+            }
+
+            $result = ws_approval_guest_resend($viewer, $approval, (int) ($request['guest_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            // Asked from a task's drawer: the drawer's list comes back.
+            $task = ((int) ($request['task_id'] ?? 0) > 0) ? ws_task((int) $request['task_id']) : null;
+
+            if ($task && ws_can_see_task($viewer, $task)) {
+                return ws_action_ok(array('approvals' => ws_task_approvals_detail($viewer, $task)));
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($approval['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
 
         case 'ws_approval_decide':
         case 'ws_approval_close':

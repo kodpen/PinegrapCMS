@@ -39,6 +39,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_erp_open_account();       // 10.60
 	upgrade_2026_4_10_signin_google();          // 10.75
 	upgrade_2026_4_10_erp_late_fee();           // 10.61
+	upgrade_2026_4_10_workspace_approval_guests(); // 10.84
 
 }
 
@@ -715,5 +716,45 @@ function upgrade_2026_4_10_erp_late_fee() {
 	install_add_index('erp_invoices', 'idx_late_fee', "INDEX idx_late_fee (account_id, late_fee_through)");
 
 	install_note('ERP: late payment fees. A monthly rate set under ERP Settings is worked out day by day on what a customer owes past the due date; the account screen shows it and writes it on a sales invoice draft. It is off until a rate is set.');
+
+}
+
+// Approval requests answered from outside the team (2026.4.10, 10.84;
+// includes/workspace/approval_guests.php, workspace_approval.php).
+//
+// Staff ask somebody with no account on the site - a customer - to approve
+// something, by e-mail. ws_approval_guests is one row per person asked so,
+// beside ws_approval_people's rows for the team: name and email as staff
+// wrote them; token_hash, the SHA-256 of the token in the link they were
+// sent (the token itself is kept nowhere), token_hint its first characters,
+// so a link can be told apart in the site log; expires_at when that link
+// stops opening; sent_at / sent_by the last link given and who gave it. The
+// answer is decision, note and decided_at, with decided_ip, decided_agent
+// and decided_hint - from where, with what, and through which link it came.
+// A new link replaces the hash, so only the last one opens.
+function upgrade_2026_4_10_workspace_approval_guests() {
+
+	install_create_table('ws_approval_guests', "CREATE TABLE ws_approval_guests (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		approval_id   INT UNSIGNED NOT NULL,
+		name          VARCHAR(60) NOT NULL DEFAULT '',
+		email         VARCHAR(255) NOT NULL DEFAULT '',
+		token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		token_hint    VARCHAR(8) NOT NULL DEFAULT '',
+		expires_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		decision      ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+		note          VARCHAR(500) NOT NULL DEFAULT '',
+		decided_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_ip    VARCHAR(45) NOT NULL DEFAULT '',
+		decided_agent VARCHAR(255) NOT NULL DEFAULT '',
+		decided_hint  VARCHAR(8) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_token (token_hash),
+		KEY idx_approval (approval_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an approval request can ask a customer, or anybody outside the team, by e-mail. They approve or reject it from a link of their own, with no account; the answer lands on the card, in the channel and on the task it is about.');
 
 }

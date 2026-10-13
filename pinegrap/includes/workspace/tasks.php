@@ -284,6 +284,7 @@ function ws_task_detail($viewer, $task)
     $detail['time'] = ws_task_time_detail($viewer, $task, $assignees);
     $detail['links'] = ws_task_links_detail($viewer, $task, $detail['can_edit']);
     $detail['delegation'] = ws_task_delegation_detail($viewer, $task);
+    $detail['approvals'] = function_exists('ws_task_approvals_detail') ? ws_task_approvals_detail($viewer, $task) : null;
 
     // The time on the due date and the e-mail reminder (reminders.php).
     if (function_exists('ws_task_reminder_detail')) {
