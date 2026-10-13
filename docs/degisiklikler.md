@@ -84,6 +84,205 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Pano üst alanı: karşılama ve saat tek satırda, sıradaki toplantı geri sayımı, "Başka bir şey söyle" (2026-10-13)
+
+**İstenen.** Erdal: ekranın üst kısmındaki saat ve brief alanları
+geliştirilsin.
+
+**Brief ayrı dosyada.** `welcome.php`'deki yaklaşık 1.700 satırlık
+karşılama kodu `includes/dashboard/brief.php` → `pg_dashboard_brief($user,
+$changelog_sections)` oldu. Davranış aynı; tek fark sistem durumu önbellek
+yolunun `dirname(__FILE__)` yerine `PG_FUNCTIONS_DIR` ile kurulması. Dönen
+dizi: `icon`, `greeting`, `line`, `strip`, `next`, `ws`. Sayfa da yeni
+`get_dashboard_brief` paneli eylemi de bu fonksiyondan geçer.
+
+**"Başka bir şey söyle".** Kartın sağında yuvarlak düğme.
+`get_dashboard_brief`'i çağırır (muaf, jetonsuz, yazmaz; oturum açık
+kalır çünkü cümle seçimi son söyleneni oturumda tutuyor). Gelen selam,
+cümle, şerit ve saatin altındaki satır yerine konur, giriş animasyonu
+yeniden oynar. İstek sürerken düğme döner ve kilitlenir.
+
+**Saatin altında sıradaki etkinlik.**
+- `ws_dashboard_signals()` artık `events_next` da döner: bugünün bitmemiş,
+  kişiyi ilgilendiren toplantı ve ziyaretlerinden ilk üçü (`event_first`
+  alanları + `id`, `ends_at`).
+- `pg_dashboard_brief_next()` hepsini yazar, CSS ilkini gösterir.
+  Saatli olanlar tüm gün olanlardan önce gelir.
+- `pg_dashboard_brief_until()` kalan süreyi yazar: "25 dk sonra", "2 sa
+  30 dk sonra", başladıysa "Şimdi". Dakika yukarı yuvarlanır. Sayfa
+  betiği (`pg_clock_next()`) aynı hesabı saatin dakika tikinde yapar;
+  biten etkinliği siler, sıradaki kendiliğinden öne çıkar, istek yok.
+
+**Şeritte iki yeni öğe.** Çalışan görev sayacı (`ws_task_time_running()`,
+en başta, yeşil nefes alan nokta, süre `data-pg-elapsed`'den dakikada bir
+ilerler) ve onayını bekleyen istekler (`ws_approvals_waiting()`, bağlantı
+en yenisinin kanalına). Cümle havuzuna da onay bekleyen istek cümlesi
+girdi.
+
+**Düzen.** 992 px ve üstünde `.pg-clockbar` satır: kart solda, saat
+sağda sağa yaslı; altında tarih ve sıradaki etkinlik. Daha dar ekranda
+eskisi gibi alt alta.
+
+**Doğrulama.**
+- `php tools/test.php`: `tests/dashboard_brief_test.php` (geri sayım
+  yuvarlaması, durumlar, işaretleme, sıralama, kaçış).
+- Sandbox + Playwright (Çalışma Alanı açık, bir görev sayacı, iki toplantı,
+  bir tüm gün ziyaret): 1440, 1100 ve 390 px, koyu tema. Düğmeye üç kez
+  basıldı; her seferinde farklı cümle geldi, tek `.pg-brief-line`, tek
+  şerit, tek etkinlik satırı kaldı. Sayfada zaman ileri alınınca toplantı
+  "Şimdi" oldu, bitince sıradaki geldi, hepsi bitince satır kalktı.
+
+Onay isteği şeridi sandbox'ta denenmedi (kanal ve mesaj kurmak gerekiyordu);
+`ws_approvals_waiting()` Çalışma Alanı ekranının kullandığı fonksiyon.
+
+---
+
+## 2026.4.10 — Pano: Operasyon Masası; en çok satanlar E-ticaret Özeti'nde, en çok ziyaret edilenler Ziyaretçi Özetleri'nde; panoda CodeMirror yok (2026-10-13)
+
+**İstenen.** Erdal: bekleyen sevkiyat, bekleyen iade ve stokta tükenen
+kartları güzel bir başlık ve kurguyla tek geniş karta insin. En çok
+satanlar E-ticaret Özeti'ne, en çok ziyaret edilen sayfalar Ziyaretçi
+Özetleri'ne girsin.
+
+**Operasyon Masası (widget 9, eski Bekleyen Sevkiyatlar).**
+- Üç şerit:
+  - `pg_dashboard_ops_shipping()`: eski 9'un sorgusu aynen. 30 günlük
+    pencere, `ship_tos.complete`, `saved_for_later` yoklaması. Özet
+    satırı sipariş, paket, tutar ve en eski tarih; liste en çok 10 alıcı.
+  - `pg_dashboard_ops_refunds()`: eski 26. `refund_status` kolonu yoksa
+    şerit yok. Para birimine göre gruplu toplam: tek para biriminde
+    tutar, birden çoksa "Birden çok para biriminde".
+  - `pg_dashboard_ops_stock()`: eski 12'nin 8 satırı ve toplam sayı.
+    `ECOMMERCE_LOW_STOCK_THRESHOLD` elle ayarlıysa eşiğin altına inen
+    stoklu, ön siparişsiz ürünler "Azalıyor" başlığıyla. Eşik yoksa
+    uydurma bir eşik konmaz.
+- Şerit düğmeleri Aktivite'nin süzgeç düğmesi (`pg_widget_filter()`).
+  Gövde `data-pg-filterable="ops"`, şerit gövdeleri `data-kind`. Seçim
+  aynı mekanizmayla hatırlanır. `data-pg-default` en acil şerittir:
+  - Ödenmemiş iade varsa iade.
+  - Yoksa iki günü geçmiş sevkiyat.
+  - Yoksa sayısı sıfırdan büyük ilk şerit.
+- Sıfır olan şerit yeşil onay simgesi ve "Hepsi gönderildi" / "Bekleyen
+  iade yok" / "Hepsi stokta" alt satırıyla durur. İki günü geçen sevkiyat
+  ya da iade sayıyı kırmızı yapar.
+- Kart artık `ECOMMERCE_SHIPPING`'e bağlı değil. Kargo kapalıysa yalnız
+  gönderim şeridi çıkmaz. 12 ve 26 emekli (boş başarı, yeniden
+  kullanılmaz).
+
+**En çok satanlar (widget 3).** `pg_dashboard_best_sellers($since,
+$limit)`: `complete` / `exported` siparişlerin satırlarından ürün başına
+adet ve tutar. Eşit adette ürün kimliği sıralar. Eski Trend İçerik tüm
+zamanları okuyordu. Şimdi son 30 gün okunur, o ay satış yoksa tüm
+zamanlar. Başlık hangisi olduğunu söyler. Kart geniş oldu: solda özet,
+sağda liste.
+
+**En çok ziyaret edilenler (widget 5).** Şeridin dördüncü hücresi ("En Çok
+Ziyaret Edilen") düğme oldu (`data-vs5="p"`). Tıklanınca grafiğin
+yerinde `#vs5_pages` açılır:
+- Son 7 günün en çok görüntülenen 8 içeriği
+  (`pg_visitor_top_content()`).
+- Bugünün en çok görüntüleneni listede alevle işaretli. Listede değilse
+  "Bugün Yükselen" başlığıyla altta.
+- Aynı hücreye ya da başka bir döneme tıklayınca grafik döner.
+- Kart boyu değişmez.
+
+Trend İçerik (6) emekli.
+
+**CodeMirror.** `pg_page_shell()`'e `'code_editor' => false` (#254'teki
+seçenek). Hiçbir pano kartı kod alanı çizmiyor. Site Ayarları diyaloğu
+CodeMirror'ı gerektiğinde `window.pgCodeEditorReady()` ile yükler.
+Sandbox'ta panoda yüklenen betik dosyası 47'den 14'e, betik baytı
+1,48 MB'tan 0,68 MB'a indi (sıkıştırmasız).
+
+**Doğrulama.** Sandbox + Playwright:
+- 1440 px'te Operasyon Masası 658×316. Tükenen şeridi varsayılan açıldı,
+  iki ürün listelendi. Seçim yenilemeden sonra korundu.
+- 390 px'te şeritler ikinci satırsız sığdı.
+- E-ticaret Özeti'nde en çok satanlar "Tüm Zamanlar"la geldi (sandbox
+  siparişleri eski).
+- Ziyaretçi Özetleri'nde liste grafiğin yerinde açıldı (veri yok
+  durumu).
+
+Bekleyen sevkiyat ve iade satırları sandbox'ta yoktu. Sorguları eski
+kartlardan aynen taşındı, canlıda bakılmalı.
+
+---
+
+## 2026.4.10 — Çalışma Alanı API ve MCP: not yazma, plan kayıtları, arama, "benim günüm" (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırmasının P1 1.3 maddesi: dış API (ve ondan
+türeyen MCP araçları) notları ve planlama panosunu yalnız okuyabiliyordu,
+Ctrl+K araması ve kişinin "bugün neyim var" görünümü hiç yoktu. Claude ya da
+ChatGPT'den "bu toplantının notunu Çalışma Alanı'na yaz", "perşembe 14:00'e
+müşteri görüşmesi koy", "bugün neyim var" istekleri bu yüzden karşılıksızdı.
+
+**Ne değişti.** On yeni rota; hepsi `ws_api_routes()`'ta
+(`includes/workspace/api.php`) ve MCP'de kendiliğinden araç olur
+(`pg_mcp_tool_from_route()`). İşleyiciler panelin kendi fonksiyonlarını
+çağırır; kim neyi yazabilir sorusu orada cevaplanır.
+
+| Rota | Kapsam | Ne yapar |
+|---|---|---|
+| `POST /workspace/notes` | workspace:write | Sahibin yeni kişisel notu (`ws_note_save()`); paylaşılana kadar kimse görmez |
+| `POST`/`PATCH /workspace/notes/{id}` | workspace:write | Yalnız gönderilen alanlar; `base` ile çakışma 409 `changed_meanwhile` |
+| `GET /workspace/plan-items`, `/{id}` | tasks:read | Toplantı, ziyaret, izin, tatil (`ws_events_between()`); `user_id`, `kind`, `from`, `days` |
+| `POST /workspace/plan-items`, `POST`/`PATCH /{id}` | tasks:write | `ws_event_save()` üzerinden; kimin için plan yapılabileceğini o söyler |
+| `DELETE /workspace/plan-items/{id}`, `POST …/{id}/delete` | tasks:write | `dry_run` destekli; POST takma adı MCP'de ayrı araç değil |
+| `GET /workspace/search` | workspace:read | `ws_palette_search()`; `#` kayıt, `@` kişi; `type`, `channel_id`, `limit` |
+| `GET /workspace/my-day` | workspace:read | Bugün biten/geciken görevler, sayaç, bugünkü plan, onaylar, okundu onayları, kişiye yazılanlar |
+
+Ayrıntılar:
+
+- **Notlar.** Boş not (başlık ve metin boş) 422. Okumak için paylaşılmış
+  not 403; `pinned` yalnız sahibinin, başkası gönderirse 422 (ekran onu
+  sessizce yok sayıyordu, API'de sessiz yok sayma yanıltıcı olurdu). Eski
+  hâl ekrandaki gibi sürümlere girer, notu tutan diğerlerine haber gider.
+  `ws_api_note_or_404()`'ün Claude kanalı süzgeci `ws_api_note_reachable()`
+  olarak ayrıldı; arama da onu kullanıyor.
+- **Plan kayıtları.** Kısmi güncelleme kaydın tam hâlini kurup gelen
+  alanları üstüne koyar. Yalnız `start_date` gönderilirse kayıt gün
+  uzunluğunu korur (iki günlük izin taşınınca bitişi de kayar). Saat
+  `HH:MM` değilse 422 (ekranın sessizce 09:00'a düşmesi API'de yok).
+  `ws_event_save()`'in tarih hataları 422 `start_date`/`end_date`, geri
+  kalan reddi (şirket geneli, başkası için plan, kayıt sahibi değil) 403.
+  Takvim adresinden okunan tatil (`from_calendar`) değiştirilebilir ama
+  takvimin sonraki okunuşunda yeniden yazılır; açıklamada söyleniyor.
+- **Arama.** Görevler yalnız `tasks:read` ile aranır (`type=tasks` onsuz
+  403 `insufficient_scope`). Panel kayıtları türüne göre süzülür:
+  `ws_api_search_record_scopes()` her türü okuyan kapsama eşler (sipariş
+  `orders:read`, kişi `customers:read`, fatura `erp:read`, makbuz
+  `erp_cash:read` …); kullanıcı hesabını okuyan kapsam olmadığı için o tür
+  aranmaz. Bunun için `ws_palette_records()` ve `ws_palette_search()`
+  isteğe bağlı tür listesi aldı (`record_kinds`); panel çağrıları değişmedi.
+  `/` komut araması API'de boş döner. Adresler tam adres olarak verilir.
+- **Benim günüm.** Görev, sayaç ve plan parçaları `tasks:read` ister;
+  yoksa boş gelir ve `left_out` kapsamı adlandırır. Onaylar
+  `WorkspaceApproval`, görevler `WorkspaceTask`, sayaç `WorkspaceTaskTime`
+  nesnesiyle döner. Claude'un uygulaması yalnız sorulabildiği kanalları
+  görür (onay, okundu, bahsetme).
+- Yeni nesneler: `WorkspacePlanItem`, `WorkspaceSearchHit`,
+  `WorkspaceMyDay` (`includes/workspace/api_day.php`);
+  `tools/check_api_schema.php` sunucu–bildirim çiftlerini tanıyor.
+
+**Bilerek yapılmayan.** Not silme ve paylaşma API'ye açılmadı: kanal
+paylaşımı kanala kişinin adıyla kart yazar (API'nin "uygulamanın yazdığı
+uygulama adıyla görünür" kuralına aykırı), silme geri alınamaz. Not ve plan
+yazmada `dry_run` yok (doğrulama `ws_note_save()`/`ws_event_save()` içinde,
+yazmadan ayrılmıyor; görev yazma da böyle); plan silmede var.
+
+**Doğrulama.** Sandbox'ta iki kullanıcı ve üç uygulamayla (tam, yalnız
+`workspace:read`, ikinci kişi) bütün yollar: oluşturma, kısmi güncelleme,
+taşıma, 403/404/409/422 dalları, `dry_run`, `left_out`, kapsamla süzülen
+kayıt araması; OAuth jetonuyla `mcp.php` `tools/list` (yeni dokuz araç
+listede, `delete_post` yok) ve `tools/call`; panelin Ctrl+K araması
+değişmeden çalışıyor (Chromium). `tests/workspace_api_test.php`: her
+rotanın işleyicisi var, iki rota aynı yöntem+yolu paylaşmıyor, silme tek
+araç, arama kapsam eşlemesi bilinen türleri adlandırıyor.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com) ve gerçek bir Claude bağlantısı.
+
+---
+
 ## 2026.4.10 — Görsel editör: klasik blog adresi, yeni sekmeye verilen sayfa, katalog sepete ekle ve hedef sayfa, sayfa adı çakışması (2026-10-13)
 
 **Kaynak.** Güzel URL düzeltmesinden (aşağıda, PR #251) sonra görsel

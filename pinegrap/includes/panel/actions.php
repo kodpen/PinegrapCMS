@@ -89,6 +89,7 @@ function pg_panel_actions()
         'sitemap_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_sitemap_check', 'exempt' => true, 'token' => true, 'write' => true),
         'get_widget_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widget_data', 'exempt' => true, 'token' => false, 'write' => false),
         'get_widgets_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widgets_data', 'exempt' => true, 'token' => false, 'write' => false),
+        'get_dashboard_brief' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_dashboard_brief', 'exempt' => true, 'token' => false, 'write' => false),
         // Personal settings: the pinned apps live in the caller's own user
         // row. Every role; the handler checks the session and the token.
         'user_pinned_app_update' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_user_pinned_app_update', 'exempt' => true, 'token' => true, 'write' => true),

@@ -342,6 +342,20 @@
   [YENİ] Yeni webhook olayları: customer.deleted,
          product_group.created, product_group.deleted.
 
+  [YENİ] Çalışma Alanı API'de ve MCP'de genişledi: not
+         yazma ve değiştirme (POST /workspace/notes), plan
+         kayıtları (toplantı, müşteri ziyareti, izin, tatil:
+         /workspace/plan-items ile listeleme, ekleme,
+         değiştirme, silme), Ctrl+K araması (GET
+         /workspace/search) ve kişinin günü (GET
+         /workspace/my-day: bugün biten ve geciken görevler,
+         çalışan süre sayacı, bugünkü plan kayıtları, bekleyen
+         onaylar, okundu onayları, kişiye yazılanlar). Claude
+         gibi bağlı bir uygulamadan "bu toplantının notunu
+         Çalışma Alanı'na yaz" ya da "bugün neyim var" demek
+         yetiyor. Arama, uygulamaya izin verilmeyen kayıt
+         türlerini (sipariş, müşteri, fatura…) göstermez.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
@@ -390,6 +404,40 @@
          ve menü tablolarını her dakika baştan sona okuyordu;
          E-posta Kampanyaları her kampanya için iki ek sorgu
          atıyordu.
+
+  [YENİ] Operasyon Masası kartı: Bekleyen Sevkiyatlar, Bekleyen
+         İade ve Stokta Tükenen Ürünler kartları tek geniş
+         kartta üç şerit olarak. Her şerit büyük sayısıyla ve
+         özetiyle (paket sayısı ve tutar, iade tutarı,
+         azalan ürünler) üstte duruyor, tıklanan şeridin
+         listesi altta açılıyor. Kart en acil olanla açılıyor:
+         önce bekleyen iade, sonra iki günü geçmiş sevkiyat.
+         Kargo kapalı sitede gönderim şeridi çıkmıyor, kart
+         yine görünüyor. Mağazada "azalan stok" eşiği
+         ayarlıysa azalan ürünler de stok şeridinde.
+
+  [YENİ] En çok satan ürünler E-ticaret Özeti kartına geçti
+         (son 30 gün; o ay satış yoksa tüm zamanlar), kart iki
+         sütun genişliğinde. En çok ziyaret edilen sayfalar
+         Ziyaretçi Özetleri kartında: alttaki "En Çok Ziyaret
+         Edilen" kutusuna tıklayınca grafiğin yerinde son yedi
+         günün listesi açılıyor, bugün öne çıkan sayfa alevle
+         işaretli. Trend İçerik kartı kaldırıldı.
+
+  [HIZ] Pano kod editörü dosyalarını (yaklaşık 2 MB, 33
+         dosya) artık yüklemiyor; Site Ayarları'nda kod alanı
+         olan bir bölüm açılınca geliyor.
+
+  [YENİ] Pano üst alanı: karşılama kartı ile saat geniş
+         ekranda tek satırda; kart solda, saat sağda. Saatin
+         altında bugünün sıradaki toplantısı ya da ziyareti
+         saatiyle ve geri sayımla ("25 dk sonra") duruyor;
+         başlayınca "Şimdi" oluyor, bitince sıradaki geliyor.
+         Kartın sağındaki düğme ("Başka bir şey söyle")
+         sayfayı yenilemeden yeni bir cümle getiriyor.
+         Çalışma Alanı şeridinde çalışan sayaç (süresi
+         dakikada bir ilerliyor) ve onayını bekleyen istekler
+         de görünüyor.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------

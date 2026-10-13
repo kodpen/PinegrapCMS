@@ -263,7 +263,10 @@ function ws_channel_briefing($viewer, $channel, $membership)
  * @return array open, overdue, due_today, waiting, doing (id, title, progress),
  *               done_week, team_done_week, new_task (id, title, by, due_label),
  *               new_tasks, mentions, mention_url, inbox, events_today,
- *               event_first (kind, title, starts_at, time, all_day)
+ *               event_first (kind, title, starts_at, time, all_day),
+ *               events_next (up to three of today's events, each as
+ *               event_first plus id and ends_at), approvals, approval_url,
+ *               timer (task_id, title, started_at)
  */
 function ws_dashboard_signals($viewer)
 {
@@ -287,6 +290,10 @@ function ws_dashboard_signals($viewer)
         'inbox'          => 0,
         'events_today'   => 0,
         'event_first'    => null,
+        'events_next'    => array(),
+        'approvals'      => 0,
+        'approval_url'   => null,
+        'timer'          => null,
     );
 
     // The open list in one pass, the same shape ws_home() reads. A due date of
@@ -394,6 +401,30 @@ function ws_dashboard_signals($viewer)
 
     $out['inbox'] = ws_inbox_unread_count($me);
 
+    // Requests waiting for this person's answer. ws_approvals_waiting() drops
+    // the ones in channels the person can no longer write in, so the count is
+    // taken from its rows rather than from a bare COUNT over the table.
+    if (function_exists('ws_approvals_waiting')) {
+        $approvals = ws_approvals_waiting($viewer, 20);
+        $out['approvals'] = count($approvals);
+        $out['approval_url'] = ($out['approvals'] > 0) ? (string) $approvals[0]['url'] : null;
+    }
+
+    // A timer left running is the one thing on this list that goes on costing
+    // something while nobody looks at it.
+    if (function_exists('ws_task_time_ready') && ws_task_time_ready()) {
+        $running = ws_task_time_running($me);
+        $running_task = $running ? ws_task((int) $running['task_id']) : null;
+
+        if ($running_task) {
+            $out['timer'] = array(
+                'task_id'    => (int) $running_task['id'],
+                'title'      => (string) $running_task['title'],
+                'started_at' => (int) $running['started_at'],
+            );
+        }
+    }
+
     // Meetings and visits on today's calendar that are about this person and
     // have not finished yet: one that ended at ten is not worth mentioning at
     // three. The first of them is the one a sentence names.
@@ -409,18 +440,31 @@ function ws_dashboard_signals($viewer)
 
         $out['events_today']++;
 
-        if ($out['event_first'] === null) {
-            // A visit that began on an earlier day has no start time today.
-            $all_day = ((int) $event['all_day'] === 1) || ((int) $event['starts_at'] < strtotime($today));
-
-            $out['event_first'] = array(
-                'kind'      => (string) $event['kind'],
-                'title'     => (string) $event['title'],
-                'starts_at' => (int) $event['starts_at'],
-                'time'      => $all_day ? null : date('H:i', (int) $event['starts_at']),
-                'all_day'   => $all_day,
-            );
+        if (count($out['events_next']) >= 3) {
+            continue;
         }
+
+        // A visit that began on an earlier day has no start time today.
+        $all_day = ((int) $event['all_day'] === 1) || ((int) $event['starts_at'] < strtotime($today));
+
+        $item = array(
+            'kind'      => (string) $event['kind'],
+            'title'     => (string) $event['title'],
+            'starts_at' => (int) $event['starts_at'],
+            'time'      => $all_day ? null : date('H:i', (int) $event['starts_at']),
+            'all_day'   => $all_day,
+        );
+
+        if ($out['event_first'] === null) {
+            $out['event_first'] = $item;
+        }
+
+        // The clock carries the next few, so that when one ends the page can
+        // move on to the one after it without asking the server.
+        $out['events_next'][] = $item + array(
+            'id'      => (int) $event['id'],
+            'ends_at' => (int) $event['ends_at'],
+        );
     }
 
     return $out;

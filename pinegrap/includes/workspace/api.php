@@ -14,7 +14,8 @@
  * channel is shown as written by the application, so a reader always knows a
  * message came from an integration and not from a colleague.
  *
- * The handlers and presenters are in api_resources.php beside this file.
+ * The handlers and presenters are in api_resources.php beside this file, and
+ * in the api_*.php files it loads.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -35,6 +36,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -136,6 +138,9 @@ function ws_openapi_objects()
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
         'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
+        'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
+        'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
+        'WorkspaceMyDay'            => 'ws_api_my_day_schema',
     );
 }
 
@@ -159,6 +164,19 @@ function ws_api_routes()
         array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, form, calendar_event, file or page.'),
         array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Hand the work over even though somebody on it is away on those days. Refused unless the owner may override the board.'),
         array('name' => 'blocked_by', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'Ids of the tasks this one cannot start before; replaces the list (links to tasks the owner cannot see are kept). A list that would make tasks wait for each other is refused with 422. Not enforced: a blocked task can still be started.'),
+    );
+
+    $plan_item_fields = array(
+        array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_event_kinds()), 'description' => 'meeting when left out on a new item.'),
+        array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The kind\'s name when left empty.'),
+        array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 500),
+        array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, for an item over several days; the start day when left out.'),
+        array('name' => 'all_day', 'in' => 'body', 'type' => 'bool', 'description' => 'Always true for leave and holidays.'),
+        array('name' => 'start_time', 'in' => 'body', 'type' => 'string', 'max_length' => 5, 'description' => 'HH:MM, when not all day; 09:00 when left out on a new item.'),
+        array('name' => 'end_time', 'in' => 'body', 'type' => 'string', 'max_length' => 5, 'description' => 'HH:MM on the end day, when not all day; 10:00 when left out on a new item.'),
+        array('name' => 'scope', 'in' => 'body', 'type' => 'enum', 'values' => array('people', 'department', 'company'), 'description' => 'Who the item is about; people when left out on a new item.'),
+        array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For scope department. See GET /workspace/departments.'),
+        array('name' => 'people', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'User ids, for scope people; ids of people outside the team are left out.'),
     );
 
     $routes = array(
@@ -564,6 +582,41 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.notes.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/notes',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_notes_create',
+            'returns'     => 'WorkspaceNote',
+            'summary'     => 'Write a note',
+            'description' => 'Writes a new personal note of the owner of the application, as the notes screen does: nobody else sees it until the owner shares it there. body is Markdown; tags such as <#order:1045> or <@user:12> are kept as tags and checklists, tables and figures work as on the screen. A note without a title is called by its first line. Send an Idempotency-Key so a retried call does not write two notes.',
+            'params'      => array(
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 200),
+                array('name' => 'body', 'in' => 'body', 'type' => 'string', 'max_length' => 60000, 'description' => 'The text of the note, in Markdown.'),
+                array('name' => 'pinned', 'in' => 'body', 'type' => 'bool', 'description' => 'Keep it at the top of the owner\'s notes.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.notes.update',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/notes/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_notes_update',
+            'returns'      => 'WorkspaceNote',
+            'summary'      => 'Change a note',
+            'description'  => 'Changes only the fields sent, on a note of the owner\'s or one shared with them to change (access edit). body replaces the whole text: read the note first and send it back changed. The state before is kept among the versions as on the screen, and the others who keep the note are told it changed. Send base, the updated_at the note was read at, to have the change refused with 409 changed_meanwhile when somebody else changed the note since. pinned is the owner\'s alone. PATCH is accepted beside POST.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 200),
+                array('name' => 'body', 'in' => 'body', 'type' => 'string', 'max_length' => 60000, 'description' => 'The whole new text of the note, in Markdown.'),
+                array('name' => 'pinned', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'base', 'in' => 'body', 'type' => 'datetime', 'description' => 'The updated_at the note was read at.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.notes.versions.list',
             'method'      => 'GET',
             'path'        => '/workspace/notes/{id}/versions',
@@ -836,6 +889,125 @@ function ws_api_routes()
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 31, 'default' => 7),
                 array('name' => 'department_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.plan_items.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/plan-items',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_plan_items_list',
+            'returns'     => array('list' => 'WorkspacePlanItem'),
+            'summary'     => 'List plan items',
+            'description' => 'The meetings, customer visits, leave, holidays and other items on the planning board and the calendar between two days, the earliest first, as the whole team sees them. A yearly holiday is listed in every year of the range with the same id. user_id keeps the items about one person: theirs, their departments\' and the company\'s.',
+            'params'      => array(
+                array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Today when left out.'),
+                array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 92, 'default' => 14),
+                array('name' => 'user_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+                array('name' => 'kind', 'in' => 'query', 'type' => 'enum', 'values' => array_keys(ws_event_kinds())),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.plan_items.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/plan-items/{id}',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_plan_items_get',
+            'returns'     => 'WorkspacePlanItem',
+            'summary'     => 'One plan item',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.plan_items.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/plan-items',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_plan_items_create',
+            'returns'     => 'WorkspacePlanItem',
+            'summary'     => 'Add a plan item',
+            'description' => 'Puts a meeting, a customer visit, leave or another item on the planning board, as the calendar does; it takes its hours (a whole day for leave and holidays) from the people\'s capacity. scope people is about the people listed - the owner when nobody is - and the owner may plan only for themselves and the people of the departments they lead; department is the lead\'s or a settings holder\'s, company a settings holder\'s alone. Leave and holidays are whole days. Send an Idempotency-Key so a retried call does not add two items.',
+            'params'      => array_merge(array(
+                array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD.'),
+            ), $plan_item_fields),
+        ),
+
+        array(
+            'id'           => 'workspace.plan_items.update',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/plan-items/{id}',
+            'scope'        => 'tasks:write',
+            'handler'      => 'ws_api_plan_items_update',
+            'returns'      => 'WorkspacePlanItem',
+            'summary'      => 'Change a plan item',
+            'description'  => 'Changes only the fields sent, on an item the owner added, of a department they lead, or any item for a settings holder (can_edit). people replaces the list. A holiday read from a calendar address (from_calendar) is written over by the next reading of that calendar. PATCH is accepted beside POST.',
+            'params'       => array_merge(array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD.'),
+            ), $plan_item_fields),
+        ),
+
+        array(
+            'id'          => 'workspace.plan_items.delete',
+            'method'      => 'DELETE',
+            'path'        => '/workspace/plan-items/{id}',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_plan_items_delete',
+            'dry_run'     => true,
+            'returns'     => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary'     => 'Remove a plan item',
+            'description' => 'Takes an item off the board and the calendar, for whoever may change it (can_edit). It cannot be undone. POST /workspace/plan-items/{id}/delete does the same for servers that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.plan_items.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/plan-items/{id}/delete',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_plan_items_delete',
+            'dry_run'     => true,
+            'returns'     => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary'     => 'Remove a plan item, addressed as a POST',
+            'description' => 'The same removal as DELETE /workspace/plan-items/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.search',
+            'method'      => 'GET',
+            'path'        => '/workspace/search',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_search',
+            'returns'     => array('list' => 'WorkspaceSearchHit'),
+            'summary'     => 'Search the workspace',
+            'description' => 'The search box of the workspace screens (Ctrl+K): channels, messages, decisions, tasks, notes, files posted in channels and panel records, a few hits of each group in that order, from what the owner of the application may see. Starting q with # looks only among records (#order 1045 among one kind); with @, among the people of the team. Tasks are searched only with tasks:read, and each kind of record only with the scope that reads it (orders:read for orders, customers:read for contacts and so on). url opens the hit on the panel; for a file, the file itself.',
+            'params'      => array(
+                array('name' => 'q', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'required' => true, 'description' => 'At least two characters, or one after # with a kind.'),
+                array('name' => 'type', 'in' => 'query', 'type' => 'enum', 'values' => array('channels', 'messages', 'decisions', 'tasks', 'notes', 'files', 'records'), 'description' => 'Only this group.'),
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only what was written in this channel: messages, decisions, tasks and files.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 20, 'default' => 8, 'description' => 'Hits per group.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.my_day.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/my-day',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_my_day_get',
+            'returns'     => 'WorkspaceMyDay',
+            'summary'     => 'The owner\'s day',
+            'description' => 'What the owner of the application has on their plate today, in one call: their open tasks due today or overdue, the timer they have running, today\'s plan items about them, the approval requests and read receipts waiting for their answer, and what was written to them lately (replies to their messages and mentions of them, read or not). The tasks, the timer and the plan items need tasks:read; without it they are empty and left_out names the scope.',
+            'params'      => array(),
         ),
 
         array(
