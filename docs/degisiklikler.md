@@ -84,6 +84,46 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sayfa Ekle ve Sayfa Düzenle tek sayfa türü formunu paylaşıyor (2026-10-13)
+
+Site sahibine görünen bir değişiklik yok; `changelog.txt`'ye madde girmez.
+
+**Sorun** (Plan 1 Faz 6). `add_page.php` (2.781 satır) ile `edit_page.php`
+(5.082 satır) sayfa türü seçicisini, Sistem Seçenekleri kartını, POST'tan
+tür özelliklerinin okunmasını ve türe bağlı yan kayıtları paralel
+kopyalarda tutuyordu (1.759 ortak satır). Bir türe alan eklemek iki yerde
+aynı değişikliği gerektiriyordu.
+
+**Çözüm.** `includes/forms/page_form.php` (ERP `invoice_form.php` deseni,
+`PG_FUNCTIONS_DIR` kapısı); kök dosyalar ince sarmalayıcı kaldı
+(1.773 ve ~550 satır).
+
+- `pg_page_form_type_fields($page_type, $layout_type, $properties, $user, $page_id)`:
+  seçici, Sistem Seçenekleri kartı, WYSIWYG kodu. Düzenleme düğmeleri ve
+  kayıtlı özelliklerin yüklenmesi `edit_page.php`'de kaldı.
+- `pg_page_form_new_page_properties()`: yeni sayfanın varsayılanları.
+- `pg_page_form_type_properties_from_post($page_type, $page_id)`: her tür
+  için POST → özellik dizisi. Kişi grubu, özel klasör ve özel form id'leri
+  ham gelir; erişim denetimi ve teklif alanları çağıranda.
+- `pg_page_form_save_type_links($page_type, $page_id, $user)`: arama
+  sonuçları etiket bulutu, form görünüm dizini liste görünümleri, takvim
+  bağları. Tür tablosuna yazılmadan **önce** çağrılır: etiket bulutu
+  yardımcısı eski değerleri tablodan okur.
+- Etiket bulutu yardımcısına işaretsiz "ürünlerde ara" kutusu `0` olarak
+  geçer, `''` değil: yardımcı `== 0` ile bakar ve PHP 8'de `'' == 0`
+  yanlıştır.
+
+**Görünür farklar (yalnız Sayfa Ekle; artık Düzenle ile aynı çiziliyor):**
+takvim varsayılan görünümünde "Aylık" açıkça seçili; arama sonuçları ürün
+grubu listesi select türü grupları göstermiyor; `interactive_page_feature`
+çapası, üç açılır kutuda `w-100`, birkaç etiket sınıfı.
+
+**Doğrulama.** Sandbox'ta değişiklik öncesi kopya ikinci sunucuda: 39
+sayfanın düzenleme ekranı fark 0; 40 türün her biri Sayfa Ekle ve Sayfa
+Düzenle'de varsayılan ve ters çevrilmiş gövdeyle gönderildi, veritabanı
+dökümü fark 0. Rol 3 kullanıcıyla ve tür değiştirerek düzenleme
+denenmedi.
+
 ## 2026.4.10 — Panel eylem tablosu tamamlandı: `api.php`'de `switch` ve muafiyet zinciri kalmadı (2026-10-13)
 
 Kullanıcıya görünen değişiklik yok; `changelog.txt`'ye madde girmez.
