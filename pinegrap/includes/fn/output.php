@@ -3096,6 +3096,7 @@ function output_menu($properties = false)
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-building bi-me-2\'>' . lang('Accounts') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Invoices') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-text bi-me-2\'>' . lang('Quotes') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-check bi-me-2\'>' . lang('Purchase orders') . '</a>';
         // Screens only an e-document provider can fill; a store without one
         // (or with one that does not hand these over) is not shown them.
         if (pg_erp_provider_offers('inbox')) {
@@ -3292,6 +3293,9 @@ function output_menu($properties = false)
         case 'erp_quotes.php':
         case 'add_erp_quote.php':
         case 'edit_erp_quote.php':
+        case 'erp_purchase_orders.php':
+        case 'add_erp_purchase_order.php':
+        case 'edit_erp_purchase_order.php':
         case 'erp_inbox.php':
         case 'erp_inbox_document.php':
         case 'erp_account_sync.php':
