@@ -1829,306 +1829,73 @@ function get_shipping_realtime_rate($properties) {
                     log_activity('This website cannot communicate with UPS for real-time rates, because UPS is disabled in the site settings.');
                     return false;
                 }
-                
-                // Get UPS settings, because we won't have global constants for them, unlike USPS,
-                // for performance reasons.
-                $config = db_item(
-                    "SELECT
-                        ups_key,
-                        ups_user_id,
-                        ups_password,
-                        ups_account
-                    FROM config");
 
-                if (!$config['ups_key'] or !$config['ups_user_id'] or !$config['ups_password']) {
-                    log_activity(
-                        'This website cannot communicate with UPS for real-time rates, because a ' .
-                        'UPS Access Key, User ID, and/or Password could not be found in the site ' .
-                        'settings.');
+                // UPS's Rating API signs in with the client ID and secret of an
+                // application from the UPS Developer Portal (includes/fn/carrier_api.php).
+                // The access key, user ID and password of the retired XML
+                // interface stay in the config table, unread.
+                if (!pg_carrier_api_ready('ups')) {
+                    log_activity(lang('This website cannot get real-time rates from UPS, because no UPS client ID and client secret are set in the site settings.'));
                     return false;
                 }
 
-                // UPS does not support passing multiple packages and showing the negotiated rate
-                // for each package, so we are going to send an API request for each package.
-                // If you send multiple packages in the same request, then UPS will only show a
-                // total negotiated rate for all packages, which creates issues for us when dealing
-                // with the cache table and etc.  We need to know the negotiated rate for each
-                // package.
+                $ups_account = trim((string) db_value("SELECT ups_account FROM config"));
 
-                $rate_information = '';
-                $shipper_number = '';
+                $organization_state = ORGANIZATION_STATE;
 
-                // If there is an account number in the site settings, then enable negotiated rates.
-                if ($config['ups_account']) {
+                // UPS takes the two-letter code; the site settings may hold
+                // the state's name.
+                if (mb_strlen((string) $organization_state) > 2) {
 
-                    $rate_information =
-                        '<RateInformation>
-                            <NegotiatedRatesIndicator/>
-                        </RateInformation>';
+                    $organization_state_code = db_value(
+                        "SELECT code
+                        FROM states
+                        WHERE name = '" . e($organization_state) . "'");
 
-                    $shipper_number = '<ShipperNumber>' . h($config['ups_account']) . '</ShipperNumber>';
-
-                }
-
-                $state_province_code = '';
-
-                // If there is a state in the site settings, then prepare to pass that to UPS,
-                // because UPS might give more accurate info if state is provided.
-                if (ORGANIZATION_STATE) {
-
-                    $organization_state = ORGANIZATION_STATE;
-
-                    // If the state in the site settings appears to be the name of the state then
-                    // check state table for 2-char state code, because that is what UPS requires.
-                    if (mb_strlen($organization_state) > 2) {
-
-                        $organization_state_code = db_value(
-                            "SELECT code
-                            FROM states
-                            WHERE name = '" . e($organization_state) . "'");
-
-                        if ($organization_state_code) {
-                            $organization_state = $organization_state_code;
-                        }
-
+                    if ($organization_state_code) {
+                        $organization_state = $organization_state_code;
                     }
 
-                    $state_province_code = '<StateProvinceCode>' . h($organization_state) . '</StateProvinceCode>';
-
                 }
 
-                // We request rates for all services (RequestOption: Shop), and not just the
-                // one service that we are interested in here, in order to minimize carrier API
-                // requests. The rates for the other services will get added to the cache table,
-                // so future requests for the other services will benefit.
+                $shipper = array(
+                    'name'      => (string) ORGANIZATION_NAME,
+                    'address_1' => (string) ORGANIZATION_ADDRESS_1,
+                    'city'      => (string) ORGANIZATION_CITY,
+                    'state'     => (mb_strlen((string) $organization_state) == 2) ? mb_strtoupper($organization_state) : '',
+                    'zip_code'  => (string) ORGANIZATION_ZIP_CODE);
 
-                // Prepare the header request info that will be the same for all packages.
-                $request_header =
-                    '<?xml version="1.0" ?>
-                    <AccessRequest xml:lang="en-US">
-                        <AccessLicenseNumber>' . h($config['ups_key']) . '</AccessLicenseNumber>
-                        <UserId>' . h($config['ups_user_id']) . '</UserId>
-                        <Password>' . h($config['ups_password']) . '</Password>
-                    </AccessRequest>
-                    <?xml version="1.0" ?>
-                    <RatingServiceSelectionRequest xml:lang="en-US">
-                        <Request>
-                            <RequestAction>Rate</RequestAction>
-                            <RequestOption>Shop</RequestOption>
-                        </Request>
-                        <Shipment>
-                            ' . $rate_information . '
-                            <Shipper>
-                                ' . $shipper_number . '
-                                <Address>
-                                    <PostalCode>' . h(ORGANIZATION_ZIP_CODE) . '</PostalCode>
-                                    ' . $state_province_code . '
-                                    <CountryCode>US</CountryCode>
-                                </Address>
-                            </Shipper>
-                            <ShipTo>
-                                <Address>
-                                    <PostalCode>' . h($zip_code) . '</PostalCode>
-                                    <StateProvinceCode>' . h($state) . '</StateProvinceCode>
-                                    <CountryCode>US</CountryCode>
-                                </Address>
-                            </ShipTo>';
+                // The rate is cached by ZIP code, so the street is not sent.
+                $ship_to = array(
+                    'state'    => (mb_strlen((string) $state) == 2) ? mb_strtoupper($state) : '',
+                    'zip_code' => $zip_code);
 
-                $request_footer =
-                    '    </Shipment>
-                    </RatingServiceSelectionRequest>';
-
+                // One request per package (see pg_ups_rate_request()). Every
+                // service is asked for at once, so the other services' rates
+                // land in the cache table from the same answer.
                 foreach ($pending_packages as $package) {
 
-                    // UPS returns an error if a dimension or weight is greater than 6 chars,
-                    // so let's reduce the length of those values, and round if necessary.
+                    $request = pg_ups_rate_request($shipper, $ship_to, $package, $ups_account);
 
-                    // Remove extra zeros on the end.
-                    $length = $package['length'] + 0;
-                    $width = $package['width'] + 0;
-                    $height = $package['height'] + 0;
-                    $weight = $package['weight'] + 0;
+                    log_activity(lang(array('string' => 'UPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
 
-                    if (strlen($length) > 6) {
-                        $length = round($length, 2);
-                    }
+                    $response = pg_carrier_api_call('ups', 'POST', '/api/rating/v2409/Shop', $request, array(
+                        'transId: ' . bin2hex(random_bytes(16)),
+                        'transactionSrc: pinegrap'));
 
-                    if (strlen($width) > 6) {
-                        $width = round($width, 2);
-                    }
+                    log_activity(lang(array('string' => 'UPS rate response: {var:1}', 'vars' => array($response['body']))));
 
-                    if (strlen($height) > 6) {
-                        $height = round($height, 2);
-                    }
-
-                    if (strlen($weight) > 6) {
-                        $weight = round($weight, 2);
-                    }
-
-                    $request =
-                        $request_header . '
-                        <Package>
-                            <PackagingType>
-                                <Code>02</Code>
-                            </PackagingType>
-                            <Dimensions>
-                                <UnitOfMeasurement>
-                                    <Code>IN</Code>
-                                </UnitOfMeasurement>
-                                <Length>' . h($length) . '</Length>
-                                <Width>' . h($width) . '</Width>
-                                <Height>' . h($height) . '</Height>
-                            </Dimensions>
-                            <PackageWeight>
-                                <UnitOfMeasurement>
-                                    <Code>LBS</Code>
-                                </UnitOfMeasurement>
-                                <Weight>' . h($weight) . '</Weight>
-                            </PackageWeight>
-                        </Package>
-                        ' . $request_footer;
-
-                    log_activity(shipping_mask_credentials($request));
-
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, 'https://onlinetools.ups.com/ups.app/xml/Rate');
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    pg_curl_tls($ch);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-                    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-                    curl_setopt($ch, CURLOPT_POST, 1);
-                    $response = curl_exec($ch);
-                    $curl_errno = curl_errno($ch);
-                    $curl_error = curl_error($ch);
-                    curl_close($ch);
-
-                    log_activity($response);
-
-                    // If there was a cURL problem, then log the error and return false.
-                    if ($curl_errno) {
-                        log_activity(
-                            'An error occurred while trying to communicate with UPS for real-time rates.' .
-                            'cURL Error Number: ' . $curl_errno . '. ' .
-                            'cURL Error Message: ' . $curl_error . '.');
+                    if ($response['error'] !== '') {
+                        log_activity(lang(array('string' => 'An error occurred while trying to get real-time rates from UPS: {var:1}', 'vars' => array($response['error']))));
                         return false;
                     }
 
-                    // Get the response status code in order to determine if there was an error.
-                    preg_match('/<ResponseStatusCode>(.*?)<\/ResponseStatusCode>/si', $response, $match);
+                    foreach (pg_ups_rate_parse($response['data'], ($ups_account !== '')) as $rate_service => $rate) {
 
-                    // If there was an error, then log error(s) and return false.
-                    if (!isset($match[1]) || ($match[1] != '1')) {
-
-                        // Get all errors.  Normally, it appears there is just one error per
-                        // response, however it appears multiple errors can technically appear,
-                        // according to the docs, so we check for multiple errors.
-                        preg_match_all('/<Error>(.*?)<\/Error>/si', $response, $errors, PREG_SET_ORDER);
-
-                        $log_error = '';
-
-                        // Loop through the errors so we can add each error to log message.
-                        foreach ($errors as $error) {
-
-                            preg_match('/<ErrorCode>(.*?)<\/ErrorCode>/si', $error[1], $match);
-                            $code = unhtmlspecialchars($match[1]);
-                            
-                            preg_match('/<ErrorDescription>(.*?)<\/ErrorDescription>/si', $error[1], $match);
-                            $description = unhtmlspecialchars($match[1]);
-
-                            $log_error .=
-                                ' UPS Error Code: ' . $code . '. ' .
-                                'UPS Error Description: ' . $description;
-
-                        }
-
-                        log_activity(
-                            'An error occurred while trying to communicate with UPS for real-time
-                            rates.' . $log_error . ' Request: ' . shipping_mask_credentials($request));
-
-                        return false;
-
-                    }
-
-                    // Get all rated shipments. There is one for each service.
-                    preg_match_all('/<RatedShipment>(.*?)<\/RatedShipment>/si', $response,
-                        $rated_shipments, PREG_SET_ORDER);
-
-                    // Loop through all rated shipments in order to get rate for each service.
-                    foreach ($rated_shipments as $rated_shipment) {
-
-                        // Get service code.
-                        preg_match('/<Service>.*?<Code>(.*?)<\/Code>.*?<\/Service>/si',
-                            $rated_shipment[1], $match);
-                        $service_code = $match[1];
-
-                        $rate_service = '';
-
-                        // Get the service from the service code.  We only support domestic services.
-                        switch ($service_code) {
-                            
-                            case '01':
-                                $rate_service = 'ups_next_day_air';
-                                break;
-
-                            case '14':
-                                $rate_service = 'ups_next_day_air_early';
-                                break;
-
-                            case '13':
-                                $rate_service = 'ups_next_day_air_saver';
-                                break;
-
-                            case '02':
-                                $rate_service = 'ups_2nd_day_air';
-                                break;
-
-                            case '59':
-                                $rate_service = 'ups_2nd_day_air_am';
-                                break;
-
-                            case '12':
-                                $rate_service = 'ups_3_day_select';
-                                break;
-
-                            case '03':
-                                $rate_service = 'ups_ground';
-                                break;
-
-                        }
-
-                        // If this is a service that we don't support, or no enabled shipping
-                        // methods use this service, then skip to next service.
-                        if (!$rate_service or !in_array($rate_service, $enabled_services)) {
+                        // No enabled shipping method uses this service.
+                        if (!in_array($rate_service, $enabled_services)) {
                             continue;
                         }
-
-                        $rate = '';
-
-                        // If we requested negotiated rates, then look for a negotiated rate first.
-                        if ($config['ups_account']) {
-                            preg_match('/<NegotiatedRates>.*?<NetSummaryCharges>.*?<GrandTotal>.*?<MonetaryValue>(.*?)<\/MonetaryValue>.*?<\/GrandTotal>.*?<\/NetSummaryCharges>.*?<\/NegotiatedRates>/si',
-                                $rated_shipment[1], $match);
-                            $rate = $match[1];
-                        }
-
-                        // If we did not find a negotiated rate, then look for a standard rate.
-                        if ($rate == '') {
-                            preg_match('/<TotalCharges>.*?<MonetaryValue>(.*?)<\/MonetaryValue>.*?<\/TotalCharges>/si',
-                            $rated_shipment[1], $match);
-                            $rate = $match[1];
-                        }
-
-                        // If we could not find the rate for some reason, then skip to the next
-                        // service.
-                        if ($rate == '') {
-                            continue;
-                        }
-
-                        // Convert to cents.
-                        $rate = $rate * 100;
 
                         // Store the info for this new rate, so later we can add rate to db.
                         $new_rates[] = array(
@@ -2143,7 +1910,7 @@ function get_shipping_realtime_rate($properties) {
                     }
 
                 }
-                
+
                 break;
         }
 
