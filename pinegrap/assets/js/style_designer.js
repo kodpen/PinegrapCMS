@@ -710,6 +710,10 @@ const StyleDesigner = (function () {
                             // can't restyle the value, and re-loading the default
                             // layout (losing every customisation) was the only fix.
                             if (parsed) _sdMigrateStructuralBindings(parsed);
+                            // The stored row replaces the cached tree, so a
+                            // snapshot of the old one (kept after a save) no
+                            // longer says what is stored.
+                            delete _sharedSnapshots[sid];
                             _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null };
                             // A form control's name used to live in a binding;
                             // it lives on the attribute now. Moved on load so the
@@ -8057,7 +8061,6 @@ const StyleDesigner = (function () {
     // drawing — showing it means switching states, which takes a render.
     function _sdSelectRender() {
         if (_sdSelectionNeedsCanvas()) { render(); return; }
-        _sdTrackSharedEditing();
         renderSelectionOnly();
     }
 
@@ -8184,7 +8187,11 @@ const StyleDesigner = (function () {
         // (findDropdownContainer / findNavbarContainer / findCompositeContext, etc.)
         // walk the correct tree when selection changes inside a system widget or
         // shared component via an interactive click that skips full render().
-        _editingSharedSid = _resolveSharedSid(selectedNode);
+        // The panels edit the selected node without marking anything, so the
+        // component is marked here: a selection made by right-click, on a form
+        // control, on a Bootstrap-wired element or with Ctrl/Shift left it
+        // unmarked, and the save skipped what was then changed in it.
+        _sdTrackSharedEditing();
         if (canvasDoc) {
             canvasDoc.querySelectorAll('.sd-selected').forEach(function(el) { el.classList.remove('sd-selected'); });
             var _toSel = selectedNodes.length > 1 ? selectedNodes : (selectedNode ? [selectedNode] : []);
@@ -46494,6 +46501,7 @@ const StyleDesigner = (function () {
         // active tree was validated above; _pgTabsSerialize() validates the
         // parked ones the same way and bails (with its own toast) on the
         // first failure so no half-valid payload leaves the browser.
+        _sdSharedCatchEdits();
         var pagesPayload = _pgTabsSerialize();
         if (pagesPayload === null) return false;
         var pj = document.getElementById('sd-pages-json');
@@ -46594,6 +46602,7 @@ const StyleDesigner = (function () {
         // was. Read before the save serialises and flushes: one save writes
         // the whole design, so a change waiting on a page on the site (or in
         // the design's settings, or in a shared component) goes live with it.
+        _sdSharedCatchEdits();
         var _asDraft  = _pgActiveIsDraft();
         var _asKey    = _activeKey;
         var _liveToo  = _asDraft && (_pages.some(function (p) {
@@ -50566,6 +50575,19 @@ const StyleDesigner = (function () {
         }
     }
 
+    // A shared component with a snapshot keeps it after a save (the stored
+    // row). A save clears the dirty mark, but the selection can stay inside
+    // the component, and the panels change the selected node without marking
+    // anything: the next edit was never written. Compared here, before the
+    // pages are serialised (_pgPageUnchanged()) and the flush reads the marks.
+    function _sdSharedCatchEdits() {
+        Object.keys(_sharedSnapshots).forEach(function (k) {
+            if (_sharedDirty[k]) return;
+            var c = _sharedCache[k];
+            if (c && c.tree && JSON.stringify(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
+        });
+    }
+
     // Push updated tree_json for each dirty shared component. Returns a
     // promise that settles when every push has been answered: the page save
     // that follows reads the widget trees on the server (a custom form's
@@ -50582,10 +50604,10 @@ const StyleDesigner = (function () {
             var cached = _sharedCache[sid];
             if (!cached || !cached.tree) { delete _sharedDirty[sid]; return; }
             var currentJson = JSON.stringify(cached.tree);
-            // Skip if tree is unchanged since the snapshot (no real edit happened)
+            // Skip if tree is unchanged since the snapshot (no real edit happened).
+            // The snapshot stays: it is still what the stored row holds.
             if (_sharedSnapshots[sid] && currentJson === _sharedSnapshots[sid]) {
                 delete _sharedDirty[sid];
-                delete _sharedSnapshots[sid];
                 return;
             }
             delete _sharedSnapshots[sid];
@@ -50604,7 +50626,12 @@ const StyleDesigner = (function () {
                 if (!resp || resp.status !== 'success') {
                     _sharedDirty[sid] = true;
                     if (resp && resp.message) sdToast(esc(resp.message), 'error', 8000);
+                    return;
                 }
+                // Written: what was sent is the stored row now. Kept as the
+                // snapshot so an edit made after this save is found by
+                // _sdSharedCatchEdits() even when no new selection marks it.
+                _sharedSnapshots[sid] = currentJson;
             }).catch(function () {
                 // Not answered: keep it dirty so the next save tries again.
                 _sharedDirty[sid] = true;

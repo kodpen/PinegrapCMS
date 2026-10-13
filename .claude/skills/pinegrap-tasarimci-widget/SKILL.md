@@ -300,6 +300,14 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   okur ama `_sharedDirty` işaretli girişin üstüne yazmaz: kayda kadar
   değişikliğin tek kopyası önbellektir. Önbelleğe ağaç koyan yeni bir yol
   `_sharedDirty`'yi (ve karşılaştırma için `_sharedSnapshots`'ı) yazsın.
+- Panel seçili düğümü değiştirirken bileşeni işaretlemez. İşareti seçim
+  koyar: `_sdTrackSharedEditing()` hem `render()`'da hem
+  `renderSelectionOnly()`'de çalışır. Yeni bir seçim yolu bu ikisinden
+  birinden geçsin. `_flushDirtyShared()` yazdığı JSON'u snapshot olarak
+  tutar; kayıttan önce `_sdSharedCatchEdits()` snapshot'lı her bileşeni
+  ağaçla karşılaştırır. Bir kayıttan sonra seçim bileşende kalınca yapılan
+  düzenleme bu karşılaştırmayla bulunur. Snapshot'ı kayıtta silme.
+  Önbellekteki ağacı sunucu satırıyla değiştiren yol snapshot'ı siler.
 - Şablon widget'ının satırı hâlâ yer tutucuysa (`_swIsTemplatePlaceholder()`,
   ayarda `template_origin`) tam erişimli editör yüklerken türünün başlangıç
   ağacını koyar ve kirli işaretler; kayıt yazar. Editör açmadan onarmak:
