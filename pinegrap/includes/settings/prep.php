@@ -2167,3 +2167,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $language_redirect_mode = in_array(($row['language_redirect_mode'] ?? ''), array('language', 'country', 'both'), true) ? (string) $row['language_redirect_mode'] : 'both';
     $language_redirect_scope = (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home';
     $language_redirect_fallback = (string) ($row['language_redirect_fallback'] ?? '');
+
+    // Firewall country restriction (2026.4.10, 10.2). Off, and the step's
+    // defaults, until the columns are there.
+    $waf_country_ready = array_key_exists('waf_country_mode', $row);
+    $waf_country_mode = in_array(($row['waf_country_mode'] ?? ''), array('allow', 'block'), true) ? (string) $row['waf_country_mode'] : 'off';
+    $waf_country_list = function_exists('waf_country_codes') ? waf_country_codes((string) ($row['waf_country_list'] ?? '')) : array();
+    $waf_country_unknown = !empty($row['waf_country_unknown']) ? 1 : 0;
+    $waf_country_exempt_panel = isset($row['waf_country_exempt_panel']) ? (int) $row['waf_country_exempt_panel'] : 1;
+    $waf_country_exempt_api = isset($row['waf_country_exempt_api']) ? (int) $row['waf_country_exempt_api'] : 1;
+    $waf_country_exempt_bots = isset($row['waf_country_exempt_bots']) ? (int) $row['waf_country_exempt_bots'] : 1;

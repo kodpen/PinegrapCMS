@@ -212,27 +212,7 @@ if (waf_table_has_column('config', 'language_redirect')) {
         language_redirect_scope = '" . e($language_redirect_scope) . "',
         language_redirect_fallback = '" . e($language_redirect_fallback) . "'");
 
-    // The location database: when the button asks for it, and once on its
-    // own when the redirect has just been set to read the visitor's location
-    // and the site has none yet. After that the general job keeps it current.
-    $language_redirect_geo_forced = (bool) post_value('geo_db_refresh');
-
-    if ($language_redirect_geo_forced || ($language_redirect_on && ($language_redirect_mode !== 'language') && (pg_geo_db_meta() === null))) {
-
-        $language_redirect_geo = pg_geo_db_refresh($language_redirect_geo_forced);
-
-        if ($language_redirect_geo['status'] === 'updated') {
-            $liveform->add_notice(lang(array(
-                'string' => 'The location database was downloaded ({var:1}).',
-                'vars'   => array($language_redirect_geo['version']))));
-        } elseif ($language_redirect_geo['status'] === 'fresh') {
-            $liveform->add_notice(lang('The location database is already the newest one.'));
-        } elseif ($language_redirect_geo['status'] === 'busy') {
-            $liveform->add_notice(lang('The location database is being downloaded by another request. Look again in a minute.'));
-        } else {
-            $liveform->add_notice(lang(array(
-                'string' => 'The location database could not be downloaded: {var:1}. The redirect still uses the country Cloudflare sends.',
-                'vars'   => array(($language_redirect_geo['reason'] !== '') ? $language_redirect_geo['reason'] : lang('unknown error')))));
-        }
-    }
+    // The location database, when the button asks for it or the redirect
+    // reads the visitor's location and the site has none yet.
+    pg_geo_db_refresh_for_screen($liveform, (bool) post_value('geo_db_refresh'), $language_redirect_on && ($language_redirect_mode !== 'language'));
 }

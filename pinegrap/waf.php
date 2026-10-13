@@ -51,9 +51,9 @@ define('WAF_MIN_VALUE_BYTES', 3);
 // a flood by three or four orders of magnitude.
 define('WAF_LOG_WINDOW', 300);
 
-// Visitor location: the country a request comes from, for the features that
-// depend on it (the language redirect). Standalone like this file, and loaded
-// with it so both bootstraps have it.
+// Visitor location: the country a request comes from, for the country
+// restriction below and the language redirect. Standalone like this file, and
+// loaded with it so both bootstraps have it.
 require_once(dirname(__FILE__) . '/includes/geo.php');
 
 
@@ -3443,6 +3443,14 @@ function waf_run($stage = 'init')
             waf_handle_bot($ip, $blocking);
         }
 
+        // ── Country restriction ──────────────────────────────────────────
+        // After the bot classification, which is what proves a search engine
+        // crawler is one. Off unless the operator chose countries.
+        if (empty($done['country'])) {
+            $done['country'] = true;
+            waf_handle_country($blocking);
+        }
+
         // ── Rate limiting ────────────────────────────────────────────────
         // The two limits are latched separately on purpose.
         //
@@ -3573,6 +3581,12 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
 
         $verdict = waf_verify_bot($ip, $bot['token']);
 
+        // Only a proven crawler is let past the country restriction: an
+        // unverifiable name is a claim anyone can type.
+        if ($verdict === 'verified') {
+            waf_bot_verified(true);
+        }
+
         // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
         // timeout or an unverifiable operator all fail open, so a resolver
         // outage cannot start returning 403 to Googlebot.
@@ -3638,6 +3652,211 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     $label = ($bot['class'] === 'empty') ? '(no user agent)' : $bot['name'];
 
     waf_log_event($blocking ? 'block' : 'would-block', 'bot-' . $bot['class'], 'bot', 6, 'USER_AGENT', $label);
+
+    if ($blocking) {
+        waf_deny(403, waf_reference());
+    }
+}
+
+/**
+ * Whether the bot classification proved this request's crawler to be the one
+ * its name claims (waf_verify_bot() answered 'verified'). Set once by
+ * waf_handle_bot(), read by the country restriction.
+ *
+ * @param bool|null $set true to record the proof
+ * @return bool
+ */
+function waf_bot_verified($set = null)
+{
+    static $verified = false;
+
+    if ($set === true) {
+        $verified = true;
+    }
+
+    return $verified;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COUNTRY RESTRICTION
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The country codes of a stored or typed list: two letters each, upper-cased,
+ * in the order written, each once. T1 is the Tor network as Cloudflare names
+ * it. Anything else is left out.
+ *
+ * @param string $raw codes separated by commas, spaces or line breaks
+ * @return array
+ */
+function waf_country_codes($raw)
+{
+    $codes = array();
+
+    foreach (preg_split('/[\s,;]+/', strtoupper((string) $raw)) as $code) {
+        if (preg_match('/^(?:[A-Z]{2}|T1)$/', $code) && !in_array($code, $codes, true)) {
+            $codes[] = $code;
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * Whether the restriction refuses a request from this country.
+ *
+ * A request no source could place is let through unless the operator asked
+ * otherwise: a site with no location database and no edge header would
+ * otherwise turn every visitor away.
+ *
+ * @param string $code           two letters, T1, or '' when unknown
+ * @param string $mode           allow (only the listed countries) | block
+ *                               (every country but the listed ones)
+ * @param array  $list           from waf_country_codes()
+ * @param bool   $refuse_unknown
+ * @return bool
+ */
+function waf_country_refused($code, $mode, $list, $refuse_unknown)
+{
+    if (($mode !== 'allow') && ($mode !== 'block')) {
+        return false;
+    }
+
+    if ($code === '') {
+        return (bool) $refuse_unknown;
+    }
+
+    $listed = in_array($code, $list, true);
+
+    return ($mode === 'allow') ? !$listed : $listed;
+}
+
+/**
+ * Whether the request is for the control panel: an address under the software
+ * directory. get_file.php is not counted, because it serves the site's own
+ * files, which the restriction covers. Nor is api.php on its own: the store,
+ * the cart and the live chat of the site's pages talk to it as well as the
+ * panel's screens, so it counts as the panel only for signed-in staff.
+ */
+function waf_country_is_panel_request()
+{
+    if (!defined('PATH') || !defined('SOFTWARE_DIRECTORY')) {
+        return false;
+    }
+
+    $url = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+    $question = strpos($url, '?');
+
+    if ($question !== false) {
+        $url = substr($url, 0, $question);
+    }
+
+    $panel = strtolower(PATH . SOFTWARE_DIRECTORY . '/');
+
+    if (strpos(strtolower(rawurldecode($url)), $panel) !== 0) {
+        return false;
+    }
+
+    // The rewrite rules run router.php, from the software directory, for
+    // every address of the site; only a script of the panel itself counts.
+    if ((waf_script_name() === 'router.php') || waf_request_names_script(array('get_file.php'))) {
+        return false;
+    }
+
+    if (waf_is_site_api_request()) {
+        return waf_country_staff_signed_in();
+    }
+
+    return true;
+}
+
+/**
+ * Whether the session belongs to staff: an administrator, designer or manager
+ * (role below 3). The site's own member accounts are not staff. False without
+ * a session.
+ */
+function waf_country_staff_signed_in()
+{
+    if (empty($_SESSION['sessionuserid'])) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT user_role FROM user WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "' LIMIT 1");
+    $row = $result ? @mysqli_fetch_assoc($result) : null;
+
+    return (is_array($row) && ((int) $row['user_role'] < 3));
+}
+
+/**
+ * Requests the restriction leaves alone:
+ *
+ *   - robots.txt and .well-known/ (waf_path_is_always_served()): certificate
+ *     renewal is checked from several countries, and a refused challenge
+ *     takes the site's certificate down months later;
+ *   - the external API, the MCP server and the OAuth endpoints, when the
+ *     operator keeps them open: their callers present a credential, and an
+ *     integration or an AI application runs wherever its provider does;
+ *   - the control panel, when the operator keeps it open, so staff abroad can
+ *     still sign in;
+ *   - a search engine crawler whose address proved its name, when the
+ *     operator lets them in.
+ *
+ * The allow list of addresses never reaches here: waf_run() returns for it
+ * before any rule.
+ */
+function waf_country_request_exempt()
+{
+    if (waf_path_is_always_served()) {
+        return true;
+    }
+
+    if ((int) waf_setting('waf_country_exempt_api', 1) && waf_is_api_request() && !waf_is_site_api_request()) {
+        return true;
+    }
+
+    if ((int) waf_setting('waf_country_exempt_panel', 1) && waf_country_is_panel_request()) {
+        return true;
+    }
+
+    if ((int) waf_setting('waf_country_exempt_bots', 1) && waf_bot_verified()) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * The country restriction: refuses a request from a country the operator
+ * blocked, or from any country but the ones they allowed. Recorded in the
+ * firewall log either way; refused only in Block mode, like every rule the
+ * firewall applies. Not an offence: a visitor from a refused country has not
+ * attacked anything, and counting them towards a ban would ban them twice.
+ *
+ * @param bool $blocking
+ */
+function waf_handle_country($blocking)
+{
+    $mode = (string) waf_setting('waf_country_mode', 'off');
+
+    if (($mode !== 'allow') && ($mode !== 'block')) {
+        return;
+    }
+
+    if (waf_country_request_exempt()) {
+        return;
+    }
+
+    $country = pg_geo_country();
+    $list = waf_country_codes(waf_setting('waf_country_list', ''));
+
+    if (!waf_country_refused($country['code'], $mode, $list, (int) waf_setting('waf_country_unknown', 0) === 1)) {
+        return;
+    }
+
+    $label = ($country['code'] !== '') ? $country['code'] . ' (' . $country['source'] . ')' : 'unknown';
+
+    waf_log_event($blocking ? 'block' : 'would-block', 'geo-country', 'country', 10, 'COUNTRY', $label);
 
     if ($blocking) {
         waf_deny(403, waf_reference());

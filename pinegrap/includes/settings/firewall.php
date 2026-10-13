@@ -314,6 +314,119 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Country Restriction ──
+
+if (!empty($waf_country_ready)) {
+
+    $output_waf_country_modes = '';
+
+    foreach (array(
+        'off'   => array(lang('Off'), lang('Every country is let in.')),
+        'block' => array(lang('Refuse the listed countries'), lang('Every other country is let in.')),
+        'allow' => array(lang('Let in only the listed countries'), lang('Every other country is refused. List your own country and the countries of your customers and suppliers.')),
+    ) as $waf_country_mode_key => $waf_country_mode_text) {
+        $output_waf_country_modes .= '
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="waf_country_mode" id="waf_country_mode_' . $waf_country_mode_key . '" value="' . $waf_country_mode_key . '"' . (($waf_country_mode === $waf_country_mode_key) ? ' checked="checked"' : '') . '/>
+                                        <label class="form-check-label" for="waf_country_mode_' . $waf_country_mode_key . '"><strong>' . h($waf_country_mode_text[0]) . '</strong></label>
+                                        <div class="form-text">' . h($waf_country_mode_text[1]) . '</div>
+                                    </div>';
+    }
+
+    $waf_country_names = array();
+
+    foreach ($waf_country_list as $waf_country_code) {
+        $waf_country_names[] = pg_geo_country_name($waf_country_code) . ' (' . $waf_country_code . ')';
+    }
+
+    $output_waf_country_exemptions = '';
+
+    foreach (array(
+        'waf_country_exempt_panel' => array($waf_country_exempt_panel, lang('The control panel'), lang('Its screens and its sign-in page stay open from every country, so staff abroad can still sign in. The site\'s pages and files stay restricted; to open them for someone abroad as well, add their address to the Allowed IP Addresses.')),
+        'waf_country_exempt_api'   => array($waf_country_exempt_api, lang('The API, MCP and OAuth endpoints'), lang('Integrations and AI applications present their own credentials and run wherever their provider does.')),
+        'waf_country_exempt_bots'  => array($waf_country_exempt_bots, lang('Verified search engine crawlers'), lang('Googlebot, Bingbot and the other search engines, once their address proves the name (Verify Search Engine Crawlers has to be on). Without this a site open to one country drops out of search results.')),
+    ) as $waf_country_field => $waf_country_exemption) {
+        $output_waf_country_exemptions .= '
+                                    <div class="form-check form-switch">
+                                        <input value="1"' . ($waf_country_exemption[0] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="' . $waf_country_field . '" name="' . $waf_country_field . '"/>
+                                        <label class="form-check-label" for="' . $waf_country_field . '">' . h($waf_country_exemption[1]) . '</label>
+                                        <div class="form-text">' . h($waf_country_exemption[2]) . '</div>
+                                    </div>';
+    }
+
+    // What the saved settings do with the request that opened this screen.
+    $waf_country_here = pg_geo_country();
+    $output_waf_country_check = '';
+
+    if ($waf_country_mode !== 'off') {
+        $waf_country_here_label = ($waf_country_here['code'] !== '') ? pg_geo_country_name($waf_country_here['code']) . ' (' . $waf_country_here['code'] . ')' : lang('an unknown country');
+        $waf_country_here_refused = waf_country_refused($waf_country_here['code'], $waf_country_mode, $waf_country_list, (bool) $waf_country_unknown);
+        $waf_country_here_allowed = $waf_country_here_refused && waf_ip_is_allowed(waf_client_ip());
+
+        if (!$waf_country_here_refused) {
+            $waf_country_here_text = lang(array('string' => 'You are in {var:1}, which these settings let in.', 'vars' => array($waf_country_here_label)));
+        } elseif ($waf_country_here_allowed) {
+            $waf_country_here_text = lang(array('string' => 'You are in {var:1}, which these settings refuse; your address is on the Allowed IP Addresses, so the site still opens for you.', 'vars' => array($waf_country_here_label)));
+        } else {
+            $waf_country_here_text = lang(array('string' => 'You are in {var:1}, which these settings refuse: the site\'s pages do not open for you.', 'vars' => array($waf_country_here_label)));
+        }
+
+        $waf_country_here_warn = $waf_country_here_refused && !$waf_country_here_allowed;
+
+        $output_waf_country_check = '
+                    <div class="col-12">
+                        <div class="alert ' . ($waf_country_here_warn ? 'alert-warning' : 'alert-secondary') . ' mb-0 py-2 small"><i class="bi ' . ($waf_country_here_warn ? 'bi-exclamation-triangle' : 'bi-person-check') . ' me-1" aria-hidden="true"></i>' . h($waf_country_here_text) . '</div>
+                    </div>';
+    }
+
+    $output_waf_country = '
+                    <div class="col-12">
+                        <div class="form-text">' . lang('Refuses requests by the country they come from. Applied while the firewall is enabled; in Monitor mode a request that would be refused is only recorded in the firewall log.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">' . lang('Restriction') . '</label>' . $output_waf_country_modes . '
+                    </div>
+                    <div class="col-12">
+                        <label for="waf_country_list" class="form-label"><i class="bi bi-globe2 me-1"></i>' . lang('Countries') . '</label>
+                        <input type="text" value="' . h(implode(',', $waf_country_list)) . '" name="waf_country_list" id="waf_country_list" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add a country code') . '"/>
+                        <script>
+                            if(document.body.contains(document.querySelector("input#waf_country_list"))){
+                                tagin(document.querySelector("#waf_country_list"));
+                            }
+                        </script>
+                        <div class="form-text">' . lang('Two-letter country codes (ISO 3166-1), for example TR, DE, US. T1 is the Tor network, which only Cloudflare reports.') . ($waf_country_names ? '<br/>' . h(implode(', ', $waf_country_names)) : '') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . ($waf_country_unknown ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="waf_country_unknown" name="waf_country_unknown"/>
+                            <label class="form-check-label" for="waf_country_unknown">' . lang('Also refuse a request whose country is not known') . '</label>
+                            <div class="form-text">' . lang('Off: a request no source can place is let in, so a missing location database never shuts the site.') . '</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">' . lang('Always let in') . '</label>' . $output_waf_country_exemptions . '
+                        <div class="form-text">' . lang('Allowed IP addresses, robots.txt and certificate renewal (.well-known) are always let in.') . '</div>
+                    </div>' . $output_waf_country_check . '
+                    <div class="col-12">' . pg_geo_settings_note() . '
+                    </div>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-countries" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Country Restriction') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">' . (!empty($waf_country_ready) ? $output_waf_country : '
+                    <div class="col-12">
+                        <div class="alert alert-secondary mb-0 py-2 small">' . lang('These settings arrive with the 2026.4.10 upgrade, which this site has not run yet.') . '</div>
+                    </div>') . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── HTTPS and Security Headers ──
 // Secure Mode (url_scheme) is always shown; the header, policy and text log
 // switches only once their columns exist - a switch that saves nowhere is
