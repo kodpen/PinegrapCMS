@@ -175,6 +175,57 @@ için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
 
 ---
 
+## 2026.4.10 — Dış API: kısa linkler; Geri Dönüşüm Kutusu'ndaki kısa link yönlendirmiyor (2026-10-13)
+
+**Sorun.** Kısa linkler yalnız panelden (Kısa Linkler ekranı, dosya
+yöneticisi) yönetiliyordu; bir kampanya aracı ya da asistan link açamıyor,
+hedefini değiştiremiyordu. Ayrıca Geri Dönüşüm Kutusu'na taşınan kısa link
+`router.php`'de hâlâ çözülüyor ve 301 ile yönlendiriyordu (sorgu `recycled`
+sütununa bakmıyordu).
+
+**Değişiklik.** Yeni `includes/api/resources/short_links.php`; izin
+`pages:read` / `pages:write` (rol ≤ 2, Kısa Linkler ekranının kapısı).
+Yardımcılar dosya yöneticisininkiler (`pg_short_link_read_request`,
+`pg_short_link_clean_name`, `pg_short_link_state`, `check_name_availability`).
+
+- `GET /short-links`, `GET /short-links/{id}`: en yeni önce; süzgeçler
+  hedef türü, sayfa, tür (`mode`: permanent / timed / once), metin,
+  `recycled`. Yanıtta linkin kendi adresi (`address`), gittiği yer
+  (`target`), durum (open / used / expired), `expires_at`, `use_count`.
+  Tek kullanımlık linkin adresi saklanmaz, yalnız `token_hint`.
+- `POST /short-links`: ad (boşluk `_` olur; sayfa, dosya, klasör ya da
+  başka kısa linkle çakışırsa 409 `name_taken`), hedef (`page_id`;
+  ürün grubu ve ürün için katalog sayfası + `product_group_id` /
+  `product_id`; `url` yalnız http(s) ya da site yolu; `file_id`),
+  `tracking_code`. `mode=timed` için `duration` panelin seçenekleri
+  (3600 … 7776000 sn). `mode=once` ad almaz; üretilen adres
+  (`token_url`) yalnız bu yanıtta bir kez verilir, saklanan hash'tir.
+- `POST`/`PATCH /short-links/{id}`: ad (tek kullanımlıkta 422), hedef
+  alanlarından biri gelince hedef saklı olanla birlikte yeniden okunur ve
+  türün kullanmadığı sütunlar boşaltılır (dosya yöneticisi gibi),
+  `tracking_code`, süreli linke `renew` ile yeni süre. Geri Dönüşüm
+  Kutusu'ndaki link 409 `already_recycled`.
+- `DELETE /short-links/{id}` (ve `POST …/delete`): Geri Dönüşüm Kutusu'na
+  (`recycled = 1` + `recycle_bin` satırı, dosya yöneticisi gibi);
+  `permanent=true` doğrudan siler.
+
+Çalışma Alanı misafir linkleri (`workspace_guest`) API'de görünmez (404).
+`router.php`: bulunan kısa link `recycled` ise kısa link sayılmaz, ad sayfa
+aramasına düşer (404); sütun olmayan eski şemada davranış aynı. Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox).** Sayfa, ürün grubu, ürün, dosya ve adres hedefli
+oluşturma; ad çakışması (kısa link ve sayfa) 409; `javascript:` ve `//`
+adresleri 422; tek kullanımlık link: `token_url` bir kez, tarayıcıyla ilk
+açılış 302 hedefe, ikincisi "kullanıldı" sayfasına, `used_at` /
+`use_count` güncellendi; süreli link süre yok 422, `renew` ile uzatma;
+hedef türü değişince eski sütunlar boşaldı; Geri Dönüşüm Kutusu'na taşıma,
+adres 301'den 404'e döndü, ikinci silme ve değiştirme 409, `recycled=true`
+listesi, `permanent=true` ile kutu satırı da silindi; misafir linki 404;
+MCP `tools/list` ve OpenAPI.
+
+---
+
 ## 2026.4.10 — Bağlı hesaplar: giden OAuth altyapısı (2026-10-13)
 
 **Neden.** Ürün sahibi tersine OAuth planından (`docs/_plan_tersine_oauth.md`)
