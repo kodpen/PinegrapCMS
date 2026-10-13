@@ -84,6 +84,68 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Akrilik efekt hafifledi: Site Ayarları penceresi ve pano (2026-10-13)
+
+**Neden.** Şeffaf Akrilik Efekt (`.advanced-visuals`) açıkken Site
+Ayarları penceresi aşırı takılıyordu, en çok pano (`welcome.php`)
+üstünde. `backdrop-filter` bir kez çizilmez: kutunun altında ya da
+içinde bir şey değişen her karede yeniden çalışır. Pencerenin tamamı
+(1180×860) bulanıktı ve ayar bölmesi kaydırılan bir alan; her kaydırma
+karesi bütün pencereyi yeniden bulanıklaştırıyordu. Panoda hiç durmayan
+animasyonlar (Sistem Durumu hücreleri, canlı noktalar) da pencere boşta
+dururken aynı işi her karede yaptırıyordu. Cam balon temasında her kartın
+(`blur(16px) saturate(130%)`) ve karşılama kartının (`blur(6px)`) kendi
+filtresi vardı; sabit (`background-attachment: fixed`) renk geçişinin
+üstünde her kaydırma karesinde hepsi yeniden hesaplanıyordu.
+
+**Ölçüm (headless Chromium 141, yazılım çizimi, 1600×1000, cam tema,
+koyu).** Bulanık katman sayısı, pencere açıkken: önce 17 (pencere + 15
+kart + karşılama kartı), sonra 1 (sol bölüm listesi, 240×860). Pencere
+açık, boşta: 9–10 → 60 kare/sn; ayar bölmesi kaydırılırken 10–11 → 58–60.
+Pano kaydırılırken (pencere kapalı): 53 → 60. Açık temada aynı: pencere
+12 → 60. Seçenekler tek tek denendi: yarıçap maliyeti değiştirmiyor
+(pencere üstünde 8/12/24 px aynı ~21 kare/sn, yalnız listede 24 px ile
+100 px aynı ~58–60), belirleyen bulanık alanın büyüklüğü ve ne sıklıkla
+yeniden çizildiği. Arkadaki animasyonları pencere açıkken durdurmak
+(`animation-play-state`) yalnız listede bulanıklık kalınca küçük fark
+yaptığı için eklenmedi. `background-attachment: fixed` ölçülebilir fark
+yaratmadı, dokunulmadı.
+
+**Ne değişti (`assets/css/backend.src.css`).**
+- Site Ayarları penceresi: `.modal-content.pg-sm` saydam ve filtresiz;
+  filtre yalnız `.pg-sm-side`'da (aynı değerler: açıkta
+  `brightness(1) saturate(1.5) blur(20px)`, koyuda
+  `brightness(0.7) saturate(1.7) blur(100px)`), bölmenin dolgusu
+  (`%55 secondary-bg`) aynı. `.pg-sm-main` panelin kendi arka planıyla
+  düz. %90 saydam denendi: filtre olmadan panonun rakamları ve başlıkları
+  formun altından okunuyordu. Pencerenin üstüne açılan küçük diyaloglar
+  (`#pg_settings_modal_extras`) eskisi gibi tümüyle buzlu; küçükler ve
+  kaydırılmıyorlar. Perde (`--bs-backdrop-opacity: 0.25`) aynı.
+- Cam balon teması kartlarından ve `.pg-brief`'ten `backdrop-filter`
+  kaldırıldı; yarı saydam dolgular aynı. Arkalarında yalnız panonun yumuşak
+  radyal geçişleri var, bulanıklık görünür bir fark yaratmıyordu (önce/sonra
+  ekran görüntüsü açık ve koyu temada aynı).
+
+**Etkilenen ekranlar.** Pencere kuralı Site Ayarları'nın açıldığı her
+panel ekranını etkiler, yalnız akrilik efekt açıkken. Kart ve karşılama
+kartı kuralları yalnız panoda (cam tema). Menü ve açılır pencerelerin
+(`.dropdown-menu.backdrop`, `.popover.backdrop`) filtresine dokunulmadı.
+`will-change` bu kurallarda hiç yoktu; geçişler Bootstrap'in (modal kayma
+animasyonu `prefers-reduced-motion: reduce` altında zaten kapalı).
+
+**Not.** Bu Chromium'da koyu temanın 100 px'lik `backdrop-filter`'ı
+arkadaki yazıyı bulanıklaştırmadan, keskin ve soluk gösteriyor (40 px ve
+üstü aynı; 24 px ve altı gerçekten buzlu). Gerçek ekran kartında aynı
+olup olmadığı dev.pinegrap.com'da bakılacak; değerler bu PR'da
+değişmedi.
+
+**Doğrulandı.** Sandbox (MariaDB, PHP 8.3), Chromium: pano ve pencere
+açık/koyu temada 1600 px, pencere 800 px (tam ekran) ve 390 px (çekmece
+açık) genişlikte ekran görüntüsüyle; `php tools/lint.php` temiz. JS
+değişmedi. Doğrulanamadı: Erdal'ın ekran kartında gerçek kare hızı.
+
+---
+
 ## 2026.4.10 — Sayfalar listesi ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
