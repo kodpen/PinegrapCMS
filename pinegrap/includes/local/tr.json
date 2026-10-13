@@ -1,5 +1,8 @@
 {
     "Card Style": "Kart Tarzı",
+    "A comment on page ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Sayfadaki ({var:1}) bir yorum, {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
+    "A comment on page ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Sayfadaki ({var:1}) bir yorum, {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
+    "What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one": "Ziyaretçilerin sayfalara, kayıtlara, ürünlere ve etkinliklere yazdıkları; yazma, birini yayınlamak, bekletmek, öne çıkarmak ya da kaldırmak demektir",
     "Only designers can add menus or change how a menu is drawn.": "Menü eklemek ya da menünün görünüşünü değiştirmek yalnız tasarımcıların işidir.",
     "Menu item": "Menü öğesi",
     "There is no page with that id.": "Bu numarada bir sayfa yok.",
