@@ -648,6 +648,23 @@
          onay kartları API'de type=mcp_call ile
          listeleniyor.
 
+  [YENİ] MCP bağlantılarım: Çalışma Alanı menüsündeki bu
+         ekranda her üye, OAuth ile bağlanan sunuculardaki
+         kendi hesabını tek yerde görüyor; bağlıyor,
+         yeniden bağlıyor ya da bağlantısını kesiyor.
+         Sitenin bağlantısıyla çalışan sunucular da
+         listede.
+
+  [YENİ] MCP araçları formla: açık ve onay istemeyen
+         (okuyan) bir araç, MCP bağlantılarım ekranında
+         alanları aracın kendisinden gelen bir formla
+         Pinegrap AI olmadan çalıştırılabiliyor. Yanıt
+         ekranda görünüyor; istenirse yazılabilen bir
+         kanala kişinin adıyla, düzenlenemeyen bir mesaj
+         olarak gidiyor. Pinegrap AI bağlı değilken
+         kanalda @takmaad yazılınca gelen mesaj da bu
+         forma bağlantı veriyor.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

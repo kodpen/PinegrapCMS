@@ -84,6 +84,77 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı MCP: "MCP bağlantılarım" ekranı ve okuyan araçlar için form (2026-10-13)
+
+OAuth Faz F'nin isteğe bağlı iki kalanı (`docs/_plan_oauth.md` Faz F,
+`notes/oauth-faz-f-devir.md`): kişinin kendi bağlantıları ekranı ve F1c
+(araç formu, `notes/mcp-arastirma.md` §3 seviye A).
+
+**Sorun.** #324'ten sonra sıradan bir üye OAuth'lu sunucudaki kendi
+hesabını yalnız onay kartından ve "hesabınız bağlı değil" mesajındaki
+bağlantıdan kurabiliyor, kesmek için ise o kartı bulmak zorundaydı;
+Çalışma Alanı Ayarları'ndaki MCP kartı yalnız ayar görüntüleyicilerine
+açık. Pinegrap AI lisansı olmayan sitede takma ad hiç çalışmıyordu: kanalda
+`@takmaad` yazınca yalnız "Premium lisans gerekir" mesajı geliyordu.
+
+**Değişiklik.**
+
+- Yeni ekran `workspace_mcp.php` ("MCP bağlantılarım"; Çalışma Alanı
+  çekmecesinde "Çalışma ve planlama" altında, yalnız açık bir sunucu varken;
+  ayarlar kartının başlığında da bağlantısı var). Her üye açık sunucuları
+  görür. OAuth'lu sunucuda kendi hesabının durumu (bağlı, son kullanım, sona
+  ermiş, bağlı değil; site hesabı varsa okuyan araçların onu kullandığı) ve
+  Bağla / Yeniden bağla / Bağlantıyı kes düğmeleri. Bağlama
+  `ws_mcp_person_connect_start()` ile, dönüş `workspace_mcp.php?mcp_connected=ID`
+  (`pg_connect_flash_take()`); kesme `ws_mcp_person_disconnect()`. Kimlik
+  bilgisiyle çalışan sunucuda "herkes sitenin bağlantısını kullanır" yazar.
+- F1c, yeni modül `includes/workspace/mcp_form.php`: açık ve onay istemeyen
+  araçlar (`ws_mcp_form_tools()`: `ws_mcp_tools_on()` eksi `approve`)
+  ekranda listelenir; seçilen aracın formu `inputSchema`'dan çıkar
+  (`ws_mcp_form_fields()`): string metin kutusu, `enum` seçim listesi,
+  integer/number sayı (virgül ondalık), boolean Evet/Hayır/boş, düz değer
+  dizisi satır başına bir değer, nesne ve diğer her şey JSON. `type` dizisi
+  ya da `anyOf`/`oneOf` ise `null` olmayan ilk tür alınır; adı düz kelime
+  olmayan özellik atlanır; en çok 40 alan. `ws_mcp_form_arguments()` boş
+  alanı göndermez (zorunluysa hata), her değeri türüne çevirir, JSON
+  nesnesini nesne bırakır (`{}` → `{}`).
+- Çalıştırma `ws_mcp_form_run()`: kişinin kendi hesabı varsa onunla, yoksa
+  sitenin (Pinegrap AI'ın okuyan araç kuralıyla aynı), 401'de bir kez
+  yenileme. Çağrı `ws_mcp_calls`'a `via = 'form'`, `request_id 0` ile
+  yazılır (sütun 10.82'de hazırdı; şema yok). Kişi başına sunucu başına
+  dakikada en çok 10 form çağrısı. Yanıt ekranda (20.000 karakter) gösterilir;
+  kişi yazabildiği bir kanal seçtiyse yanıt (3000 karakter) kendi adıyla,
+  `locked = 1` mesaj olarak gider (`ws_mcp_form_message_body()`: yanıt kod
+  bloğunda, içindeki ``` ve `<@`/`<#` etiketleri etkisizleştirilir, mesaj
+  `WS_MESSAGE_MAX`'a sığar). Mesaj Pinegrap AI'ı tetiklemez
+  (`ws_message_send()` `ws_ai_after_send()` çağırmaz).
+- Onay isteyen (`approve`) araç formla **çalışmaz**: yazan çağrı yalnız
+  yanıt altındaki onay kartından, soranın kendi hesabıyla çalışır.
+- Pinegrap AI hazır değilken takma ad yazılınca gelen sistem mesajına
+  (`ws_ai_after_send()`), sunucunun formla çalışan aracı varsa
+  `ws_mcp_form_hint()` eklenir: "@x sunucusunun okuyan araçları onsuz da
+  formla çalıştırılabilir: [@x araçlarından birini çalıştır](…)". Bağlantı
+  kanalı seçili getirir (`?server=&channel=`; `#` parçası yok, mesajda kanal
+  etiketi sayılmasın diye).
+
+Yetki: Çalışma Alanı üyesi (`ws_screen_gate()`); kanal seçimi
+`ws_can_post_channel()`. Kanala gönderim için kanalın Pinegrap AI izni
+aranmaz: modele bir şey okutulmuyor, kişi zaten görebildiği yanıtı kendi
+adıyla gönderiyor.
+
+Testler: `tests/workspace_mcp_test.php`'ye form araçları, sorgu adresi,
+şemadan alanlar, argüman türleri, sayı okuma ve kanal mesajı (etiket ve
+kod bloğu etkisizleştirme, uzunluk) testleri. Sandbox'ta sahte bir MCP
+sunucusuyla (`initialize`, `tools/list`, `tools/call`) uçtan uca denendi:
+ekran, boş zorunlu alan hatası, enum/liste/boolean/JSON alanlarının
+gönderdiği argümanlar, kanala kilitli mesaj ve `ws_mcp_calls` satırı
+(`via form`, `message_id`), OAuth'lu sunucuda kartın "Bağlı değil" hali ve
+giriş kurulmamışken Bağla'nın hatası, onaylı aracın formunun açılmaması,
+Pinegrap AI kapalıyken sistem mesajı. Gerçek OAuth hizmetine kişi bağlantısı
+sandbox'ta denenmedi (yol #324'teki `ws_mcp_person_connect_start()`).
+
+---
+
 ## 2026.4.10 — Dış API: para alanlarında en az / en çok sınırı yönlendiricide (2026-10-13)
 
 **Sorun.** Yönlendirici `int` ve `decimal` türlerinde şemadaki `min`/`max`'ı
