@@ -70,8 +70,9 @@ yeni araç; MCP tarafında kod yok.
 siparişin faturası ve teklifler (işleyiciler `includes/erp/api_documents.php`'de;
 `api_resources.php` 3500 satırı geçtiği için ayrı dosya). `period_locked` ve
 `credit_limit` kodları `check_api_schema.php` gereği `api_error_catalogue()`'a eklendi;
-`schema.php`'de başka değişiklik yok. Sıradakiler: irsaliye + sayım + stok alt sınırları,
-sonra virman + çek/senet + raporlar.
+`schema.php`'de başka değişiklik yok. İkinci parçada irsaliye, sayım ve minimum stok
+(işleyiciler `includes/erp/api_stock.php`'de; `GET /erp/stock/minimums` açılmadı, çünkü
+`GET /erp/stock/levels` minimumu zaten veriyor). Sıradaki: virman + çek/senet + raporlar.
 
 **Rotalar** (kapsam parantezde; her işleyici var olan alan fonksiyonunu çağırır, ikinci bir
 hesap yolu açmaz):
@@ -88,9 +89,9 @@ hesap yolu açmaz):
 | ✓ `POST /erp/orders/{order_id}/invoice` (erp:write) | `erp_invoice_from_order()` |
 | ✓ `GET /erp/invoice-recurrences`, `POST /erp/invoices/{id}/recurrence`, `POST /erp/invoice-recurrences/{id}/stop` | `includes/erp/invoice_recurring.php` |
 | ✓ `POST /erp/quotes`, `POST /erp/quotes/{id}`, `POST /erp/quotes/{id}/status`, `POST /erp/quotes/{id}/invoice`, `POST /erp/quotes/{id}/email`, `GET /erp/quotes/{id}/document` | `erp_quote_save()`, `erp_quote_set_status()`, `erp_quote_to_invoice()`, `erp_quote_mail_send()`, `erp_quote_html()` |
-| `POST /erp/waybills` (`invoice_id` ya da `order_id` ya da satırlar), `POST /erp/waybills/{id}/cancel`, `POST /erp/waybills/{id}/invoice` | `erp_waybill_data_from_invoice()` / `_from_order()` + `erp_waybill_create()`, `erp_waybill_cancel()`, `erp_waybill_invoice()` |
-| `POST /erp/stock-counts`, `POST /erp/stock-counts/{id}/items`, `POST /erp/stock-counts/{id}/apply`, `POST /erp/stock-counts/{id}/cancel` | `includes/erp/stock_counts.php` |
-| `GET /erp/stock/minimums`, `POST /erp/stock/minimums` | `includes/erp/stock_levels.php` |
+| ✓ `POST /erp/waybills` (`invoice_id` ya da `order_id` ya da satırlar), `POST /erp/waybills/{id}/cancel`, `POST /erp/waybills/{id}/invoice` | `erp_waybill_data_from_invoice()` / `_from_order()` + `erp_waybill_create()`, `erp_waybill_cancel()`, `erp_waybill_invoice()` |
+| ✓ `POST /erp/stock-counts`, `POST /erp/stock-counts/{id}/items`, `POST /erp/stock-counts/{id}/apply`, `POST /erp/stock-counts/{id}/cancel` | `includes/erp/stock_counts.php` |
+| ✓ `POST /erp/stock/minimums` (okuma `GET /erp/stock/levels`) | `includes/erp/stock_levels.php` |
 | `POST /erp/cash-transfers` (erp_cash:write) | `erp_post_transfer()` |
 | `POST /erp/cheques`, `POST /erp/cheques/{id}/step` (erp_cash:write) | `erp_cheque_create()`, `erp_cheque_step()` |
 | `GET /erp/reports/profit`, `GET /erp/reports/cashflow`, `GET /erp/dashboard` (erp:read) | `erp_profit_report()`, `includes/erp/cashflow.php`, pano kartlarının hesapları |
