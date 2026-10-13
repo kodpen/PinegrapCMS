@@ -18,6 +18,16 @@
 
 include('init.php');
 
+// A GET draws the built-in form. The reset link of a visitor the country
+// restriction keeps to the panel opens here (see forgot_password.php), and so
+// does their way back after an error or to the confirmation. Everyone else
+// sets the password on the site's set password page, which posts here.
+if (!isset($_SERVER['REQUEST_METHOD']) || ($_SERVER['REQUEST_METHOD'] !== 'POST')) {
+    require_once(dirname(__FILE__) . '/get_set_password.php');
+    echo output_header_secure(array('title' => lang('Set Password'))) . get_set_password(array('page_id' => 0, 'folder_id' => 0)) . output_footer_secure();
+    exit();
+}
+
 $form = new liveform('set_password');
 
 validate_token_field();
@@ -52,7 +62,7 @@ if (!is_array($user) || !$user['id']) {
 
     log_activity('Set Password: invalid token');
 
-    output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. The token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(get_page_type_url('forgot password'))))));
+    output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. The token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
 }
 
 $token_timestamp = $user['token_timestamp'];
@@ -63,7 +73,7 @@ if (($token_timestamp + $time_24hrs) < time()) {
 
     log_activity('Set Password: expired token');
 
-    output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(get_page_type_url('forgot password'))))));
+    output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
 }   
 
 // validate required fields
@@ -98,7 +108,7 @@ if ($form->check_form_errors()) {
     // The legacy page reads the token from its own address, so it goes back
     // with it; without it the visitor met "the token is missing" instead of
     // the reason the password was refused.
-    $pg_set_password_url = get_page_type_url('set password');
+    $pg_set_password_url = pg_sign_in_screen_url('set password', 'set_password.php');
     go(($pg_return_to !== '') ? $pg_return_to : ($pg_set_password_url ? $pg_set_password_url . '?k=' . urlencode($token) : PATH));
 }
 
@@ -134,7 +144,7 @@ if (!$pg_signed_in) {
     $form->set('screen', 'confirm');
     $form->add_notice(lang('Your password has been set. Please sign in with your new password.'));
 
-    go(($pg_return_to !== '') ? $pg_return_to : get_page_type_url('set password'));
+    go(($pg_return_to !== '') ? $pg_return_to : pg_sign_in_screen_url('set password', 'set_password.php'));
 }
 
 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
@@ -169,8 +179,10 @@ $form->set('screen', 'confirm');
 if ($send_to != '') {
     $continue_url = pg_safe_redirect_path($send_to, PATH);
     
-// else if user has a home page, then forward user to that page
-} elseif ($home_page_name != '') {
+// else if user has a home page, then forward user to that page (not a user
+// the country restriction keeps to the control panel; see
+// pg_sign_in_kept_to_panel())
+} elseif (($home_page_name != '') && !pg_sign_in_kept_to_panel()) {
     $continue_url = PATH . encode_url_path($home_page_name);
 
 // else if user's role is administrator, designer, or manager
@@ -200,4 +212,4 @@ if ($send_to != '') {
 
 $form->add_notice(lang(array('string' => 'We have set your password, and you are now logged in. <a href="{var:1}">Continue</a>', 'vars' => array(h($continue_url)))));
 
-go(($pg_return_to !== '') ? $pg_return_to : get_page_type_url('set password'));
+go(($pg_return_to !== '') ? $pg_return_to : pg_sign_in_screen_url('set password', 'set_password.php'));

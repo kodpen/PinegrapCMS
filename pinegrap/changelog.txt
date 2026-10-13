@@ -533,6 +533,16 @@
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
          gibi listede kalıyordu.
 
+  [YENİ] Bağlı uygulamalar ekranında her bağlantının
+         hangi adrese ait olduğu yazıyor; aynı uygulamanın
+         MCP sunucusunun iki adresindeki bağlantıları
+         artık birbirinden ayırt ediliyor. Panelin
+         uygulama listesindeki son kullanım zamanı
+         bağlantının her kullanımında güncelleniyor. MCP
+         sunucusu kimliksiz isteğe API anahtarı istemek
+         yerine uygulamanın siteye bağlanması gerektiğini
+         söylüyor.
+
   [ŞEMA] Bağlı uygulamalar için iki yeni tablo (kayıtlı
          istemciler ve kısa ömürlü onay kodları) ve oturum
          tablosuna üç kolon eklenir.
@@ -686,6 +696,18 @@
          kuralına takılmadan okuyabiliyor; ülke
          kısıtlamasında "API, MCP ve OAuth uçları"
          seçeneği bu adresi de kapsıyor.
+
+  [YENİ] Reddedilen bir ülkeden panele gelen personel,
+         sitenin giriş sayfasına yönlenip orada
+         reddedilmek yerine panelin kendi giriş, şifremi
+         unuttum ve yeni şifre ekranlarını görüyor.
+         Sitenin sayfaları ve dosyaları kısıtlı kalıyor.
+
+  [DÜZELTME] IIS'te X-Content-Type-Options ve
+         Referrer-Policy başlıkları yanıtlarda iki kez
+         gelmiyor: sitenin web.config dosyası bunları
+         zaten ekliyorsa yazılım kendi kopyasını
+         göndermiyor.
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.

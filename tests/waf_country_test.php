@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the firewall's country restriction in waf.php: reading a list of
- * country codes, deciding whether a country is refused, and the paths the
- * restriction always leaves alone.
+ * country codes, deciding whether a country is refused, the paths the
+ * restriction always leaves alone, and when the panel's sign-in screens keep
+ * a visitor to their built-in forms.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -73,4 +74,44 @@ function test_waf_country_exempts_always_served_paths()
 function test_waf_country_bot_proof_starts_absent()
 {
 	pg_assert_false(waf_bot_verified());
+}
+
+// Staff from a refused country stay on the panel's own sign-in forms while
+// the panel is exempt; anyone the site's pages would let in is not kept.
+function test_waf_country_keeps_refused_staff_to_panel()
+{
+	$config = array(
+		'waf_country_mode' => 'block',
+		'waf_country_list' => 'AQ, KP',
+		'waf_country_exempt_panel' => 1,
+		'waf_country_unknown' => 0,
+	);
+
+	pg_assert_true(waf_country_keeps_to_panel_decision('block', $config, 'AQ', false), 'refused country');
+	pg_assert_false(waf_country_keeps_to_panel_decision('block', $config, 'US', false), 'country let in');
+	pg_assert_false(waf_country_keeps_to_panel_decision('monitor', $config, 'AQ', false), 'monitor mode refuses nobody');
+	pg_assert_false(waf_country_keeps_to_panel_decision('off', $config, 'AQ', false), 'firewall off');
+	pg_assert_false(waf_country_keeps_to_panel_decision('block', $config, 'AQ', true), 'allowed address');
+	pg_assert_false(waf_country_keeps_to_panel_decision('block', $config, '', false), 'unknown country let in');
+
+	$config['waf_country_unknown'] = 1;
+	pg_assert_true(waf_country_keeps_to_panel_decision('block', $config, '', false), 'unknown country refused');
+
+	$config['waf_country_exempt_panel'] = 0;
+	pg_assert_false(waf_country_keeps_to_panel_decision('block', $config, 'AQ', false), 'panel not exempt');
+
+	$config['waf_country_exempt_panel'] = 1;
+	$config['waf_country_mode'] = 'allow';
+	$config['waf_country_list'] = 'TR';
+	pg_assert_true(waf_country_keeps_to_panel_decision('block', $config, 'DE', false), 'allow mode, other country');
+	pg_assert_false(waf_country_keeps_to_panel_decision('block', $config, 'TR', false), 'allow mode, listed country');
+
+	$config['waf_country_mode'] = 'off';
+	pg_assert_false(waf_country_keeps_to_panel_decision('block', $config, 'DE', false), 'restriction off');
+}
+
+// Without a database the answer is no, and the panel behaves as it always has.
+function test_waf_country_keeps_to_panel_fails_open()
+{
+	pg_assert_false(waf_country_keeps_to_panel());
 }

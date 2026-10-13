@@ -20585,5 +20585,6 @@
     "{var:1} wrote a note on {var:2}": "{var:1}, {var:2} görevine not yazdı",
     "{var:1} is overdue": "{var:1} gecikti",
     "Quick note": "Hızlı not",
-    "Write a note. Its first line becomes its title.": "Bir not yazın. İlk satırı başlığı olur."
+    "Write a note. Its first line becomes its title.": "Bir not yazın. İlk satırı başlığı olur.",
+    "Sign-in required. Connect your application to this site so it can sign you in and receive an access token.": "Oturum açmanız gerekiyor. Uygulamanızı bu siteye bağlayın; oturumunuzu açsın ve erişim jetonu alsın."
 }

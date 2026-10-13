@@ -1776,8 +1776,10 @@ function send_user_to_login_home()
     if ((isset($_REQUEST['send_to']) == true) && ($_REQUEST['send_to'] != '')) {
         header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
         exit();
-        // else if user has a home page, then forward user to that page
-    } elseif ($home_page_name != '') {
+        // else if user has a home page, then forward user to that page; not
+        // when the country restriction keeps the user to the control panel,
+        // where the home page, a page of the site, would refuse them
+    } elseif (($home_page_name != '') && !pg_sign_in_kept_to_panel()) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path($home_page_name));
         exit();
         // else if user's role is administrator, designer, or manager

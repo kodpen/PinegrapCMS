@@ -2146,14 +2146,27 @@ function update_visitor_page_data($page_name, $page_id = 0)
 {
     pg_record_visitor_page_view($page_id, $page_name);
 
+    // init_tracking() opens no visitor record for a crawler, another Pinegrap
+    // installation or an uptime monitor, so there is no row to update.
+    $visitor_id = (int) ($_SESSION['software']['visitor_id'] ?? 0);
+
+    if ($visitor_id <= 0) {
+        return;
+    }
+
     // check to see if landing page name has already been set
     $query = "SELECT landing_page_name
 
              FROM visitors
 
-             WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
+             WHERE id = '" . $visitor_id . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
+    // The session can name a row that is gone: a restored backup, a table
+    // emptied by hand.
+    if (!is_array($row)) {
+        return;
+    }
     $existing_landing_page_name = $row['landing_page_name'];
     // if there is not an existing landing page name, prepare sql for landing page name update
     if (!$existing_landing_page_name) {
@@ -2172,7 +2185,7 @@ function update_visitor_page_data($page_name, $page_id = 0)
 
                 stop_timestamp = UNIX_TIMESTAMP()
 
-             WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
+             WHERE id = '" . $visitor_id . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 }
 // this function lowercases a keyword and folds the four forms of the letter i onto one

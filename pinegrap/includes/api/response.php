@@ -126,7 +126,7 @@ function api_send($status_code, $body, $error_code = '') {
 		// on to it is a leak, not a saving.
 		header('Cache-Control: no-store');
 
-		header('X-Content-Type-Options: nosniff');
+		pg_send_nosniff();
 
 		foreach (api_extra_headers() as $name => $value) {
 
@@ -307,7 +307,7 @@ function api_send_html($status_code, $html) {
 
 		header('Cache-Control: no-store');
 
-		header('X-Content-Type-Options: nosniff');
+		pg_send_nosniff();
 
 		header('X-Frame-Options: DENY');
 
