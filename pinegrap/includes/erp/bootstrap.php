@@ -72,6 +72,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/price_lists.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_counts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cheques.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bank_import.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/storefront.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/ubl.php');

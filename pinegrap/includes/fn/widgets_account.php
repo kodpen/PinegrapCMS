@@ -11,7 +11,8 @@
 // A module of functions.php: the account system widgets - logout, change
 // password, set password, profile, email preferences, address book and
 // account security - the designed pages that stand in for the legacy page
-// types, and the login region a site header carries.
+// types, the member's invoices from the ERP, and the login region a site
+// header carries.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -1275,6 +1276,120 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         '__recovery_codes'              => $codes_text,
         '__recovery_codes_download_url' => $codes_download,
     ), array('__mfa_qr')));
+}
+
+// ============================================================================
+// account_invoices
+// ============================================================================
+
+// Render an 'account_invoices' system widget ("My Invoices"): the signed-in
+// member's issued sales invoices and returns from the ERP, what is still owed
+// on each, the account's balance and the statement to download. Drawn only
+// while the ERP is on and the member's contact has an ERP account; for anyone
+// else it prints nothing at all, so the widget can sit on the my account page
+// of a site that does not use the ERP. The documents open through
+// get_account_document.php, which asks the same question again.
+//
+// loop_area: one row per document, newest first. Row tokens:
+// ^^__invoice_number^^, ^^__invoice_kind^^, ^^__invoice_date^^,
+// ^^__invoice_due_date^^, ^^__invoice_total^^, ^^__invoice_open^^,
+// ^^__invoice_status^^, ^^__invoice_overdue_days^^,
+// ^^__invoice_order_number^^, ^^__invoice_pdf_url^^. Row flags:
+// invoice_is_invoice, invoice_is_return; the state, one of invoice_is_paid,
+// invoice_is_unpaid (nothing paid, not yet due), invoice_is_partial (part
+// paid, not yet due), invoice_is_overdue; invoice_is_open (anything still
+// owed), invoice_has_order.
+//
+// Visibility flags: has_documents, no_documents, has_balance (the member
+// owes), has_credit (the store owes the member), no_balance, has_overdue.
+// Tokens: ^^__account_title^^, ^^__balance^^, ^^__overdue_total^^,
+// ^^__document_count^^, ^^__statement_url^^.
+// Errors: none - nothing posts from this widget; its Messages node is named
+// for it so it leaves the page's other alerts alone.
+// cfg: max_results (default 50, at most 500).
+function _render_system_widget_account_invoices($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    $widget_id = (int)$widget_id;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    $account = function_exists('pg_erp_member_account') ? pg_erp_member_account() : null;
+    if ($account === null) return '';
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    $limit     = (isset($cfg['max_results']) && (int)$cfg['max_results'] > 0) ? min(500, (int)$cfg['max_results']) : 50;
+    $documents = erp_storefront_documents($account['id'], $limit);
+    $figures   = erp_storefront_account_figures($account['id']);
+    $title     = (string)db_value("SELECT title FROM erp_accounts WHERE id = '" . (int)$account['id'] . "' LIMIT 1");
+    $endpoint  = _pg_acct_software_path() . '/get_account_document.php';
+
+    _pg_inject_messages_node($tree, 'account_invoices');
+
+    $split = _split_widget_tree($tree);
+    _eo_apply_visibility_bindings($split['static_tree'], array(
+        'has_documents' => count($documents) > 0,
+        'no_documents'  => count($documents) === 0,
+        'has_balance'   => $figures['balance'] > 0,
+        'has_credit'    => $figures['balance'] < 0,
+        'no_balance'    => $figures['balance'] === 0,
+        'has_overdue'   => $figures['overdue_count'] > 0,
+    ));
+
+    $status_text = array(
+        'return'  => lang('Return'),
+        'paid'    => lang('Paid'),
+        'partial' => lang('Partially paid'),
+        'open'    => lang('Open'),
+    );
+
+    $rows = '';
+    if ($split['loop_children'] !== null) {
+        $row_tree = array('type' => 'root', 'props' => array(), 'children' => $split['loop_children']);
+        foreach ($documents as $d) {
+            $state     = (string)$d['state'];
+            $is_return = ($state === 'return');
+            $t = $row_tree;
+            _eo_apply_visibility_bindings($t, array(
+                'invoice_is_invoice' => !$is_return,
+                'invoice_is_return'  => $is_return,
+                'invoice_is_paid'    => $state === 'paid',
+                'invoice_is_unpaid'  => $state === 'open',
+                'invoice_is_partial' => $state === 'partial',
+                'invoice_is_overdue' => $state === 'overdue',
+                'invoice_is_open'    => (int)$d['open'] > 0,
+                'invoice_has_order'  => (int)$d['order_id'] > 0 && (string)$d['order_number'] !== '',
+            ));
+            $html = '';
+            foreach ($t['children'] as $child) $html .= _render_tree_node($child, 0, 0);
+            $html = _pg_sw_fill_tokens($html, pg_sw_escape_token_values(array(
+                '__invoice_number'       => (string)$d['full_number'],
+                '__invoice_kind'         => $is_return ? lang('Return') : lang('Invoice'),
+                '__invoice_date'         => erp_document_date((string)$d['issue_date']),
+                '__invoice_due_date'     => $is_return ? '' : erp_document_date((string)$d['effective_due']),
+                '__invoice_total'        => erp_money_out_currency((int)$d['grand_total'], (string)$d['currency']),
+                '__invoice_open'         => ((int)$d['open'] > 0) ? erp_money_out_currency((int)$d['open'], (string)$d['currency']) : '',
+                '__invoice_status'       => ($state === 'overdue')
+                    ? lang(array('string' => '{var:1} days overdue', 'vars' => array((int)$d['days'])))
+                    : $status_text[$state],
+                '__invoice_overdue_days' => ($state === 'overdue') ? (string)(int)$d['days'] : '',
+                '__invoice_order_number' => ((int)$d['order_id'] > 0) ? (string)$d['order_number'] : '',
+                '__invoice_pdf_url'      => $endpoint . '?id=' . (int)$d['id'],
+            )));
+            $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, (int)$d['id']);
+        }
+    }
+    $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
+
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values(array(
+        '__account_title'  => $title,
+        '__balance'        => erp_money_out_currency(abs($figures['balance']), $figures['currency']),
+        '__overdue_total'  => ($figures['overdue'] > 0) ? erp_money_out($figures['overdue']) : '',
+        '__document_count' => (string)count($documents),
+        '__statement_url'  => $endpoint . '?statement=1&download=1',
+    )));
 }
 
 // The address of the staff page a widget setting names, for a signed-in

@@ -138,6 +138,61 @@ Metin `dg_not_chosen` (`ws_delegation_js_strings()`, mevcut
 
 ---
 
+## 2026.4.10 — Mağazada "Faturalarım" (ERP Faz 8a) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 8 (#14), ilk parça: müşteri
+ERP'de kesilen faturasını ancak e-postayla gelirse görüyordu; hesabında
+faturaları, ne kadar borcu kaldığı ve ekstresi yoktu.
+
+**Ne değişti.** Yeni sistem widget türü `account_invoices` ("My
+Invoices"; `pg_sw_type_labels()`, `SW_TYPES`, oluşturucu
+`_render_system_widget_account_invoices()`, `widgets_account.php`).
+Oturumdaki üyenin kişisine bağlı cari `pg_erp_member_account()` ile
+okunur (`ecommerce.php`; `erp_accounts.contact_id`, istek başına bir kez,
+ERP yüklenmeden). Cari yoksa ya da ERP kapalıysa widget hiçbir şey
+basmaz; bu yüzden ayrı bir ayar yok ve şema adımı yok. Okumalar yeni
+`includes/erp/storefront.php`'de:
+
+- `erp_storefront_documents()`: carinin kesilmiş satış faturaları ve
+  iadeleri (taslak, iptal ve numarasız yok), en yeni önce, ayardaki sayı
+  kadar (varsayılan 50, en çok 500). Kalan ve gecikme günü yaşlandırma
+  modülünden (`erp_aging_invoices()`): alacak ekranlarıyla aynı rakam.
+- `erp_storefront_document_state()`: iade / ödendi / gecikti / kısmen
+  ödendi / açık (saf, `tests/erp_storefront_test.php`).
+- `erp_storefront_account_figures()`: bakiye defterden
+  (`erp_reconciliation_balance()`, cari dövizliyse kendi para biriminde,
+  mutabakat mektubu nasıl yazıyorsa), vadesi geçen toplam yaşlandırmadan.
+- `erp_storefront_document()`: belge bu carinin kesilmiş satış belgesi
+  mi; değilse null.
+
+Belgeler yeni `get_account_document.php`'den açılır: `?id=` faturanın
+kesildiğinde saklanan PDF'i (`erp_archive_invoice()`; saklanmamışsa şimdi
+üretip saklar, panel gibi), `?statement=1` mutabakat PDF'i
+(`erp_reconciliation_pdf()`, varsayılan yılbaşından bugüne).
+Panelin `get_erp_invoice_pdf.php`'si ERP hakkı ister ve değişmedi; yeni
+uç yalnız belgenin oturumdaki üyenin carisine ait olup olmadığını sorar.
+Başkasının belgesi, taslak, iptal ve carisi olmayan üye aynı 404'ü alır;
+adres başına dakikada 30 istek (`waf_rate_exceeded()`, kapsam
+`erp_doc`). Oturum yoksa giriş sayfasına yönlenir.
+
+Widget'ın jetonları, bayrakları ve başlangıç ağacı (`style_designer.js`):
+bakiye, vadesi geçen toplam, belge sayısı, "Ekstreyi indir"; satırda
+numara, tür, tarih, vade, tutar, kalan, durum ("12 gün gecikmiş"),
+gecikme günü, sipariş numarası ve PDF bağlantısı. Satır durum bayrakları
+birbirini dışlar (`invoice_is_paid`, `_unpaid`, `_partial`, `_overdue`;
+iade `invoice_is_return`), başlangıç ağacındaki rozetler bunlara bire
+bir bağlı. Hiçbir şey göndermediği için Mesajlar düğümü kendi adıyla
+damgalanır ve JS'te `_SW_NO_MESSAGES`'tadır. Altı hazır şablonun Hesabım
+sayfasına hesap özeti ile güvenlik kartı arasına eklendi (şablon
+sürümleri birer arttı).
+
+**Bilerek yapılmayan.** Müşteri faturayı ödeyemez (ödeme linki bu fazda
+yok, plan §4). Belge listesinde sayfalama yok; ayardaki sayıdan eskisi
+ekstrede görünür. Bir kişiye birden çok cari bağlıysa ilk açılan
+(en küçük id) okunur; panel de kişi başına bir cari varsayar.
+
+---
+
 ## 2026.4.10 — Klinik şablonu: randevu, hekimler, hasta rehberi, blog ve hesaplar (2026-10-13)
 
 **Neden.** Ürün sahibi "yerel hekim sitesi olsun, hesap sayfaları, randevu
@@ -268,6 +323,42 @@ taşımıyorsa ileti eskisi gibi SMTP / `mail()` ile gider. Graph'ın 4 MB
 sınırını aşan ekler için yükleme oturumu yok; ileti boyutu açıkça
 reddedilir. Microsoft'un SMTP XOAUTH2 yolu bilerek seçilmedi: posta
 kutusunda SMTP AUTH'un açık olmasını ister, Graph istemez.
+
+---
+
+## 2026.4.10 — Dış API: mağaza kurulumu (nakliye, bölge, vergi, ülke, para birimi) (2026-10-13)
+
+**Sorun.** Siparişin hesaplandığı tanımlar API'de yoktu. Bir kargo ya da
+pazaryeri entegrasyonu nakliye yöntemlerini, bölgeleri, vergi oranlarını,
+ülke/il kodlarını ve kurları okuyamıyor, nakliye ücretini tahmin ediyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/store.php`, yalnız okuma, izin
+`orders:read` (e-ticaret açık ve rol < 3 ya da e-ticaret yetkisi). Hepsi tek
+sayfa döner (küçük kümeler):
+
+- `GET /store/shipping-methods` (`enabled` süzgeci) ve
+  `GET /store/shipping-methods/{id}`: taban ücret kademeleri
+  (`base_rates`: `from_subtotal` → `rate`, `variable_base_rate` açıksa
+  2.–4. kademe), birincil/ikincil ağırlık ve ürün başı ücret, ilk ürün
+  hariç bayrakları, gerçek zamanlı taşıyıcı servisi, sunulduğu günler ve
+  kesim saatleri (`offered_on`), sokak adresi / posta kutusu, geçerlilik
+  aralığı (tablonun 1000-01-01 / 9999-12-31 "her zaman" değerleri null),
+  hazırlık ve taşıma günleri, korumalı (yalnız personel), taşıyıcı unvanı
+  ve VKN, `zone_ids`. Rota açıklaması ücretin `shipping.php`'deki
+  hesaplanışını anlatır.
+- `GET /store/zones`: bölgenin ek ücretleri, ülke kodları ve illeri.
+- `GET /store/tax-zones`: oran (yüzde), ülke kodları ve illeri.
+- `GET /store/countries` (`code` süzgeci): varsayılan ülke, posta kodu
+  zorunluluğu, iller.
+- `GET /store/currencies`: sembol HTML varlığından çözülür (`&euro;` → €),
+  kur tabana göre, taban önce.
+
+Para kuruş cinsinden (`api_money()`). Şema değişikliği yok.
+
+**Doğrulandı (sandbox).** Sekiz nakliye yöntemi ve bölgeleri, 404, bölgeler
+(International 205 ülke, Türkiye 81 il), vergi bölgeleri (Teksas 8.25, TR 18),
+242 ülke / 143 il, TR süzgeci, yedi para birimi (₺ taban); MCP `tools/list`
+altı araç, OpenAPI.
 
 ---
 

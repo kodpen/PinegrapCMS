@@ -499,6 +499,20 @@
          X-Dry-Run ile denenebilir; erp:write yetkisi
          gerekir.
 
+  [YENİ] Mağazada "Faturalarım": görsel editörde yeni
+         "Faturalarım" sistem widget'ı, oturum açmış
+         müşteriye ERP'de kesilmiş faturalarını ve
+         iadelerini gösteriyor: tutar, vade, kalan,
+         gecikme rozeti, carinin bakiyesi ve vadesi
+         geçen toplam. Her belge PDF olarak açılıyor;
+         "Ekstreyi indir" yılbaşından bugüne mutabakat
+         PDF'ini veriyor. Müşteri yalnız kendi carisinin
+         belgelerini görür; taslak ve iptal edilmiş
+         belge görünmez. ERP kapalıysa ya da müşterinin
+         kişisi bir cariye bağlı değilse widget hiçbir şey
+         göstermez. Hazır şablonların Hesabım sayfasında
+         hesap özetinin altında yer alıyor.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
@@ -655,6 +669,14 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] Mağaza kurulumu API'de okunuyor: nakliye
+         yöntemleri (ücretler, kademeli taban ücret, sunulduğu
+         günler ve saatler, adres türleri, bölgeler), nakliye
+         bölgeleri, vergi bölgeleri, ülkeler ve illeri, para
+         birimleri ve kurları. Bir kargo ya da pazaryeri
+         entegrasyonu nakliye ücretini mağazanın hesapladığı
+         gibi hesaplayabilir. Siparişleri okuma izni yeterli.
 
   [YENİ] Kısa linkler API'de: GET /short-links kısa
          linkleri, nereye gittikleriyle (sayfa, ürün grubu,
