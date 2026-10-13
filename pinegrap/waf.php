@@ -3540,6 +3540,22 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
         return;
     }
 
+    // The external API, the MCP server and the OAuth endpoints admit a caller
+    // by the credential it presents, never by its user agent, so a crawler
+    // name decides nothing there. An AI assistant working through the MCP
+    // server sends its fetcher's name (Claude-User) from its operator's API
+    // egress, which is not in the crawler ranges that operator publishes;
+    // judged as a crawler it read as a forged one and was refused - and
+    // counted towards a ban - right after it had been given a token.
+    //
+    // Returning before the good-bot branch also leaves IS_BOT undefined, so
+    // a crawler name buys no relief from the rate limits on these endpoints.
+    // api.php is not among them: it answers the site's own pages without a
+    // credential, and the bot policy below still guards it.
+    if (waf_is_api_request() && !waf_is_site_api_request()) {
+        return;
+    }
+
     if ($bot['class'] === 'good') {
         // Mark the request so visitor tracking can skip it.
         if (!defined('IS_BOT')) {

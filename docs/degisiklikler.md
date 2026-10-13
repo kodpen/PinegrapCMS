@@ -84,6 +84,47 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — WAF: bot politikası kimlikle girilen uçlarda uygulanmaz (Claude-User engeli) (2026-10-13)
+
+**Neden.** dev.pinegrap.com'da Claude bağlayıcısı OAuth onayını ve token'ı
+aldı (kod 11:27:24'te kullanıldı, `api_devices` satırı açıldı) ama hemen
+ardından "yetkilendirme başarısız" dedi. `api_request_log`'da token'lı tek
+istek yoktu; `waf_log`'da ise 11:27:25'ten itibaren Claude'un her
+`POST /pinegrap/mcp.php` isteği `bot-spoof` kuralıyla engellenmişti. Claude'un
+MCP istemcisi `Claude-User` adıyla Anthropic'in API çıkışından (160.79.106.160
+–.186) geliyor; `waf_ai_bots()` bu adı `https://claude.com/crawling/bots.json`
+listesine göre doğruluyor ve liste yalnız tarayıcı adreslerini
+(160.79.106.16/28, .128/28) içeriyor. Adres listede olmadığı için istek
+"sahte bot" sayıldı, 403 aldı ve her engelleme bir ihlal olarak otomatik
+yasağa sayıldı.
+
+**Ne değişti.** `waf_handle_bot()`: saldırı aracı kontrolünden hemen sonra
+`waf_is_api_request() && !waf_is_site_api_request()` ise döner. Bu uçlar
+(`integration.php`, `mcp.php`, `oauth.php`) çağıranı sunduğu kimlik bilgisiyle
+kabul eder; kullanıcı ajanının bir tarayıcı adı taşıması orada hiçbir şey
+kazandırmaz. Dönüş iyi-bot dalından önce olduğu için `IS_BOT` tanımlanmaz ve
+hız sınırları aynen işler. Saldırı araçları (`sqlmap` vb.) bu uçlarda da
+engellenir. `api.php` kapsam dışında: sitenin kendi sayfalarına kimliksiz
+cevap verdiği için bot politikası orada sürer; sayfalar da değişmedi.
+
+**Neden aralık eklemek değil.** Anthropic'in API çıkış adreslerini
+`anthropic-bots` satırına elle eklemek, yayımlanan liste her yenilendiğinde
+ezilir ve aynı sorun ChatGPT ve diğer MCP istemcilerinde de tekrar eder.
+Kimlik isteyen uçta kullanıcı ajanına bakmak zaten bir koruma sağlamıyordu.
+
+**Doğrulama.** Sandbox'ta WAF engelleme kipinde, `anthropic-bots` satırı
+yayımlanan listeyle doldurulup `CF-Connecting-IP` güvenilir vekilden
+verilerek: düzeltmeden önce `mcp.php` ve `oauth.php/token` için Claude-User +
+160.79.106.167 → 403 (`bot-spoof`); sonra 401 (MCP/OAuth kodu cevaplıyor).
+`sqlmap` ile `mcp.php` hâlâ 403, aynı sahte Claude-User ile ana sayfa ve
+`api.php` hâlâ 403 `bot-spoof`.
+
+**Sahada.** Engellemeler ihlal olarak sayılsa da dev.pinegrap.com'da
+160.79.x için otomatik yasak oluşmamıştı; başka bir sitede oluşmuşsa Güvenlik
+Duvarı ekranından kaldırılır.
+
+---
+
 ## 2026.4.10 — Dış API: MCP sunucusu sitenin kök adresinde (`site.com/mcp.php`) (2026-10-13)
 
 **Neden.** Erdal dev.pinegrap.com'da Claude'a `https://dev.pinegrap.com/mcp.php`

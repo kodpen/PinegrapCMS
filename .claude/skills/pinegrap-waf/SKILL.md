@@ -60,6 +60,12 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
   (`waf_path_is_always_served()`); IP kara listesi ve hız sınırı yine uygulanır.
   Engellenirse ACME yenilemesi 90 gün sonra sessizce ölür.
 - `waf_is_api_request()` isteğin **yoluna** bakar, çalışan dosyaya değil.
+- Bot politikası kimlikle girilen uçlarda (`integration.php`, `mcp.php`,
+  `oauth.php`) uygulanmaz; yalnız saldırı aracı kontrolü işler. Bu dönüşü
+  iyi-bot dalının **önüne** koy, yoksa `IS_BOT` tanımlanır ve hız sınırı
+  atlanır. `api.php` (`waf_is_site_api_request()`) kapsam dışıdır. Sebep:
+  Claude'un MCP istemcisi `Claude-User` adıyla yayımlanan tarayıcı
+  listesinde olmayan API çıkışından gelir ve `bot-spoof` sayılıyordu.
 
 ## Modlar ve kapatma
 
