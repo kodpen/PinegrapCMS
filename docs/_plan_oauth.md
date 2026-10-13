@@ -102,9 +102,12 @@ resource_metadata="…"` başlığını da ekler (yalnız OAuth açıkken).
 
 - PKCE zorunlu, yalnız `S256`; `plain` ve örtük akış yok.
 - Dönüş adresi kayıtlı adresle **birebir** eşleşir; yalnız loopback
-  (`http://127.0.0.1`, `http://[::1]`, `http://localhost`) için port serbesttir
-  (RFC 8252). `https` dışı adres yalnız loopback ya da ters alan adlı özel şema
-  (`com.ornek.app:/cb`) olabilir.
+  (`http://127.0.0.1`, `http://[::1]`, `http://localhost`) yol ve sorgusuyla
+  karşılaştırılır, port ve loopback adı serbesttir (RFC 8252). `https` dışı
+  adres yalnız loopback ya da özel şema olabilir (`com.ornek.app:/cb`,
+  `cursor://…`); tehlikeli şemalar `pg_oauth_forbidden_redirect_schemes()`'te
+  reddedilir. Ters alan adı şartı 2026.4.10'da kalktı: Cursor, Windsurf gibi
+  istemciler tek kelimelik şema kullanıyor, kodu PKCE koruyor.
 - İstemci ya da dönüş adresi geçersizse hiçbir yere yönlendirilmez, hata sayfası
   gösterilir (açık yönlendirme olmasın).
 - Onay ekranı `X-Frame-Options`/CSP ile çerçeveye alınamaz; onay POST'u CSRF

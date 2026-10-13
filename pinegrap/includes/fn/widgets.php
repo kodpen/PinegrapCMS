@@ -1003,6 +1003,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // deleted from its item view leaves its notice there). An unnamed node
     // would print and use up every form's messages on the page.
     _pg_inject_messages_node($tree_decoded, 'form_list_view');
+    pg_sw_record_href_bindings($tree_decoded);
     $split = _split_widget_tree($tree_decoded, true);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
@@ -1284,9 +1285,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($remaining < $page_limit) $page_limit = max(0, $remaining);
     }
 
-    // Resolve the detail page (if configured) into a URL prefix once. Each row
-    // appends its own reference_code, matching the legacy form_list_view pattern:
+    // Resolve the detail page (if configured) once. Each row then links to
+    // its own record there, matching the legacy form_list_view pattern:
     //   PATH . encode_url_path(page_name) . '?r=' . forms.reference_code
+    // or, when the form has pretty URLs on and the record has a name,
+    //   PATH . encode_url_path(page_name) . '/' . forms.address_name
+    // which get_page.php resolves for the detail page's widget
+    // (pg_sw_route_record_address()).
     //
     // This URL is INTENTIONALLY independent of `_pg_sw_build_query`. The detail
     // link points at a *different* page (the form_item_view), so it must NOT
@@ -1295,57 +1300,28 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // state in the query string (and on installs without URL rewriting, the
     // `page=<slug>` slug param could even point at the wrong page entirely).
     //
-    // The page_type guard in the JS dropdown already restricts selections to
-    // `form item view` pages; the SQL here looks up the page_name without
-    // re-asserting the type so a page that was retyped after selection still
-    // resolves rather than silently producing an empty href.
-    $detail_page_id    = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
-    $detail_url_prefix = '';
-    if ($detail_page_id > 0) {
-        // JOIN form_item_view_pages so we resolve the page_name AND verify the
-        // detail page is bound to the SAME custom form the widget is listing.
-        // Without this guard, picking a detail page tied to a different custom
-        // form would generate `?r=ABC` links that the detail screen rejects:
-        // get_form_item_view.php's WHERE clause asserts
-        //   forms.page_id = $custom_form_page_id AND forms.reference_code = ?
-        // — the page_id mismatch silently 404s every link. We fall back to ''
-        // (which becomes '#' per record) when the config is stale.
-        $detail_page_name = db_value(
-            "SELECT page.page_name
-             FROM page
-             INNER JOIN form_item_view_pages
-                     ON form_item_view_pages.page_id = page.page_id
-                    AND form_item_view_pages.collection = 'a'
-                    AND form_item_view_pages.custom_form_page_id = '" . (int)$custom_form_page_id . "'
-             WHERE page.page_id = '" . (int)$detail_page_id . "'
-             LIMIT 1"
-        );
-        // A page built in the visual editor shows the record through a
-        // form_item_view widget; the same guard applies — it must be bound
-        // to the form this list shows.
-        if (!$detail_page_name && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
-            return (int)(isset($c['custom_form_page_id']) ? $c['custom_form_page_id'] : 0) === (int)$custom_form_page_id;
-        })) {
-            $detail_page_name = db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$detail_page_id . "' LIMIT 1");
-        }
-        if ($detail_page_name) {
-            $base_path = defined('PATH') ? PATH : '/';
-            $detail_url_prefix = $base_path . encode_url_path($detail_page_name) . '?r=';
-        }
-    }
+    // The detail page must show the SAME custom form the widget is listing:
+    // the detail screen's WHERE clause asserts
+    //   forms.page_id = $custom_form_page_id AND forms.reference_code = ?
+    // so a page bound to another form would 404 every link. A stale config
+    // gives no address ('#' per record). pg_sw_list_detail_target() applies
+    // that guard to a classic form item view page and to a designed page
+    // alike.
+    $detail_page_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
+    $detail_target  = pg_sw_list_detail_target($detail_page_id, $custom_form_page_id);
 
     // Which standard fields this design actually prints decides what the
     // listing query reads: a template that never mentions a commenter never
     // joins the comments table.
     $template_tokens = pg_sw_template_tokens($loop_template);
     // A filter on a standard field needs that field's table joined too.
-    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, array('reference_code'));
+    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, array('reference_code', 'address_name'));
 
     // 1. Pull submitted form rows (the `forms` table) for this custom form,
     //    applying ordering + search + pagination.
     //    Only `complete=1` rows are shown — incomplete sessions are drafts.
     $forms = db_items(
-        "SELECT forms.id, forms.page_id, forms.user_id, forms.reference_code
+        "SELECT forms.id, forms.page_id, forms.user_id, forms.reference_code, forms.address_name
                 {$standard_sql['select']}
          FROM forms
          $order_join
@@ -1416,8 +1392,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // tripped users into thinking the URL builder was leaking those
         // params. `#` makes the inert state explicit.
         $extra = array(
-            'form_item_view'    => ($detail_url_prefix !== '' && !empty($f['reference_code']))
-                                       ? $detail_url_prefix . urlencode((string)$f['reference_code'])
+            'form_item_view'    => ($detail_target['page_name'] !== '' && !empty($f['reference_code']))
+                                       ? pg_sw_record_url($detail_target['page_name'], $f['reference_code'],
+                                                          isset($f['address_name']) ? $f['address_name'] : '', $detail_target['pretty'])
                                        : '#',
             'submitted_form_id' => (string)$fid,
             'submitter_user_id' => isset($f['user_id']) ? (string)$f['user_id'] : '',
@@ -1551,7 +1528,7 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
     $form = null;
     if ($custom_form_page_id > 0 && $where !== '') {
         $form = db_item(
-            "SELECT forms.id, forms.page_id, forms.reference_code, forms.user_id, forms.form_editor_user_id,
+            "SELECT forms.id, forms.page_id, forms.reference_code, forms.address_name, forms.user_id, forms.form_editor_user_id,
                     user.user_username AS form_editor_username, user.user_email AS form_editor_email_address
              FROM forms
              LEFT JOIN user ON forms.form_editor_user_id = user.user_id
@@ -1566,6 +1543,201 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
         'form'                => $form,
         'visible'             => ($form !== null) && pg_sw_submitted_form_visible($form, $access, $page_id),
     );
+}
+
+// ============================================================================
+// Pretty record addresses (the custom form's "Enable Pretty URLs")
+// ============================================================================
+// A form with pretty URLs on gives every record a name made from its Title
+// field (forms.address_name, written by custom_form.php and
+// update_submitted_form_address_name()). The classic screens reach such a
+// record through the list page (/blog/<name>, get_page.php). A page built in
+// the visual editor reaches it through the page that shows it, the page with
+// the Form Item View widget, the way a Catalog Detail page is reached
+// (/<page>/<product address>). The reference code (?r=) keeps answering
+// either way, so links written before the setting was turned on still work.
+
+// A link bound to a record's Address Name opens the record. The name alone
+// is not an address: printed as an href it resolves against the page it is
+// on (/blog/<name> on the list page), and that page shows the list again.
+// Such a link takes the record's own address (form_item_view: the detail
+// page with the name when the form has pretty URLs on, ?r= otherwise).
+// Text bound to the name keeps printing the name.
+function pg_sw_record_href_bindings(&$node)
+{
+    if (!is_array($node)) return;
+    if (isset($node['props']['_bindings']['href'])
+        && is_string($node['props']['_bindings']['href'])
+        && strtolower(trim($node['props']['_bindings']['href'])) === 'address_name') {
+        $node['props']['_bindings']['href'] = 'form_item_view';
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) pg_sw_record_href_bindings($child);
+        unset($child);
+    }
+}
+
+// The list widget types: form_list_view under its older names.
+function pg_sw_form_list_types()
+{
+    return array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list');
+}
+
+// Whether the form names its records in their addresses. Asked once per form
+// per request; $reset forgets the answers (a save that just changed it).
+function pg_sw_form_pretty_urls($form_page_id, $reset = false)
+{
+    static $cache = array();
+    if ($reset) $cache = array();
+    $form_page_id = (int)$form_page_id;
+    if ($form_page_id <= 0) return false;
+    if (!isset($cache[$form_page_id])) {
+        $cache[$form_page_id] = (check_if_pretty_urls_are_enabled($form_page_id) == true);
+    }
+    return $cache[$form_page_id];
+}
+
+// The address of one record on the page that shows it, from $base (PATH when
+// null): /<page>/<address name> when $pretty and the record has a name,
+// /<page>?r=<reference code> otherwise.
+function pg_sw_record_url($page_name, $reference_code, $address_name, $pretty, $base = null)
+{
+    if ($base === null) $base = defined('PATH') ? PATH : '/';
+    $url = $base . encode_url_path((string)$page_name);
+    $address_name = trim((string)$address_name);
+    if ($pretty && $address_name !== '') return $url . '/' . encode_url_path($address_name);
+    return $url . '?r=' . rawurlencode((string)$reference_code);
+}
+
+// The address segment a page was asked for: what follows the page name in
+// $_GET['page'] (/blog-post/<segment>), up to the next slash, decoded the
+// way the catalog widgets decode theirs. '' when there is none.
+function pg_sw_request_segment($page_parameter = null)
+{
+    $full = ($page_parameter === null) ? (isset($_GET['page']) ? (string)$_GET['page'] : '') : (string)$page_parameter;
+    $slash = mb_strpos($full, '/', 0, 'UTF-8');
+    if ($slash === false) return '';
+    $segment = mb_substr($full, $slash + 1, null, 'UTF-8');
+    $next = mb_strpos($segment, '/', 0, 'UTF-8');
+    if ($next !== false) $segment = mb_substr($segment, 0, $next, 'UTF-8');
+    $segment = trim(urldecode(trim($segment)));
+    return (strlen($segment) > 255) ? '' : $segment;
+}
+
+// The record of a form a pretty address names: array('id', 'reference_code',
+// 'address_name'), or null.
+function pg_sw_record_by_address($form_page_id, $address_name)
+{
+    $form_page_id = (int)$form_page_id;
+    $address_name = trim((string)$address_name);
+    if ($form_page_id <= 0 || $address_name === '') return null;
+    $row = db_item(
+        "SELECT id, reference_code, address_name FROM forms
+         WHERE page_id = '" . $form_page_id . "'
+           AND address_name = '" . e($address_name) . "'
+         ORDER BY id ASC
+         LIMIT 1");
+    return (is_array($row) && !empty($row['id'])) ? $row : null;
+}
+
+/**
+ * A pretty record address asked of a page built in the visual editor.
+ *
+ * Called by get_page.php before the page is drawn, with the page the address
+ * starts with and the segment after it.
+ *
+ *   /<page>/<name>, the page shows the record (a Form Item View widget of a
+ *   form with pretty URLs on): the record's reference code goes into
+ *   $_GET['r'], where the widget, its comments and the page's canonical
+ *   address read it. A name that matches no record leaves an empty reference
+ *   and the widget shows its not-found state.
+ *
+ *   /<list page>/<name>, the classic shape: a list widget whose detail page
+ *   shows the same form sends the visitor on to the record's own address.
+ *
+ * A page with a catalog widget keeps its segment (a product, a product
+ * group), and an explicit ?r= wins over the segment.
+ *
+ * @return string '' when nothing more is to be done, else the address (from
+ *                PATH) to send the visitor to
+ */
+function pg_sw_route_record_address($page_id, $segment)
+{
+    $page_id = (int)$page_id;
+    $segment = trim((string)$segment);
+    if ($page_id <= 0 || $segment === '') return '';
+    if (isset($_GET['r']) && is_scalar($_GET['r']) && trim((string)$_GET['r']) !== '') return '';
+
+    $item_view = null;
+    $lists = array();
+    foreach (pg_sw_page_widgets($page_id) as $w) {
+        $type = isset($w['cfg']['regionType']) ? (string)$w['cfg']['regionType'] : '';
+        if ($type === 'catalog_listing' || $type === 'catalog_item_view') return '';
+        if ($type === 'form_item_view' && $item_view === null) $item_view = $w;
+        if (in_array($type, pg_sw_form_list_types(), true)) $lists[] = $w;
+    }
+
+    if ($item_view !== null) {
+        $form_page_id = pg_sw_form_widget_form_page_id($item_view['cfg']);
+        if ($form_page_id > 0 && pg_sw_form_pretty_urls($form_page_id)) {
+            $record = pg_sw_record_by_address($form_page_id, $segment);
+            $_GET['r'] = $record ? (string)$record['reference_code'] : '';
+        }
+        return '';
+    }
+
+    foreach ($lists as $w) {
+        $form_page_id   = pg_sw_form_widget_form_page_id($w['cfg']);
+        $detail_page_id = isset($w['cfg']['detail_page_id']) ? (int)$w['cfg']['detail_page_id'] : 0;
+        if ($form_page_id <= 0 || $detail_page_id <= 0 || $detail_page_id === $page_id) continue;
+        if (!pg_sw_form_pretty_urls($form_page_id)) continue;
+        if (!pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
+            return pg_sw_form_widget_form_page_id($c) === $form_page_id;
+        })) continue;
+        $record = pg_sw_record_by_address($form_page_id, $segment);
+        if (!$record) continue;
+        $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+        if ($detail_page_name === '') continue;
+        return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true);
+    }
+    return '';
+}
+
+// The address a list links each record to: the detail page's, resolved once
+// per render. A detail page that shows another form gives no address (its
+// widget would not find the record). Returns array('page_name' => '' when
+// there is none, 'pretty' => bool).
+function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
+{
+    $out = array('page_name' => '', 'pretty' => false);
+    $detail_page_id = (int)$detail_page_id;
+    $custom_form_page_id = (int)$custom_form_page_id;
+    if ($detail_page_id <= 0 || $custom_form_page_id <= 0) return $out;
+
+    // A classic form item view page bound to the same form.
+    $name = (string)db_value(
+        "SELECT page.page_name
+         FROM page
+         INNER JOIN form_item_view_pages
+                 ON form_item_view_pages.page_id = page.page_id
+                AND form_item_view_pages.collection = 'a'
+                AND form_item_view_pages.custom_form_page_id = '" . $custom_form_page_id . "'
+         WHERE page.page_id = '" . $detail_page_id . "'
+         LIMIT 1"
+    );
+    $classic = ($name !== '');
+    // A page built in the visual editor shows the record through a
+    // form_item_view widget; it must be bound to the same form.
+    if (!$classic && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
+        return pg_sw_form_widget_form_page_id($c) === $custom_form_page_id;
+    })) {
+        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+    }
+    $out['page_name'] = $name;
+    // A classic detail page answers only ?r= under its own name; its pretty
+    // address is the classic list page's (get_page.php).
+    $out['pretty'] = ($name !== '' && !$classic && pg_sw_form_pretty_urls($custom_form_page_id));
+    return $out;
 }
 
 // ============================================================================
@@ -1614,7 +1786,9 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
 //   title_field, title_suffix — the page's <title> (pg_sw_record_title())
 //
 // URL params:
-//   r — reference_code (matches Pinegrap's classic form item view convention)
+//   r — reference_code (matches Pinegrap's classic form item view convention);
+//       on /<page>/<address name> of a form with pretty URLs on, get_page.php
+//       fills it from the name (pg_sw_route_record_address())
 function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -1641,6 +1815,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // Messages: liveform 'form_item_view', as on the legacy page (a record
     // saved through send_to leaves its notice there).
     _pg_inject_messages_node($tree_decoded, 'form_item_view');
+    pg_sw_record_href_bindings($tree_decoded);
     // The tree as designed, for the no-record layout below.
     $tree_designed = $tree_decoded;
     // The record template (loop_area) and the surround, drawn from a tree.
@@ -1747,10 +1922,11 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             // Strip trailing /<group>/... segments — keep only the page slug itself
             $first_slash = mb_strpos($page_slug, '/');
             if ($first_slash !== false) $page_slug = mb_substr($page_slug, 0, $first_slash);
-            $self_url = PATH . encode_url_path($page_slug);
-            if ($found_and_allowed) {
-                $self_url .= '?r=' . urlencode((string)$form_row['reference_code']);
-            }
+            // The record's own address: its name when the form has pretty
+            // URLs on (pg_sw_route_record_address() answers it on this page).
+            $self_url = $found_and_allowed
+                ? pg_sw_record_url($page_slug, $form_row['reference_code'], $form_row['address_name'], pg_sw_form_pretty_urls($custom_form_page_id))
+                : PATH . encode_url_path($page_slug);
         }
     }
 
@@ -2318,12 +2494,17 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // ── Loop_area present — build submission rows ─────────────────────────
     $loop_rendered = '';
     if ($show_submissions && $loop_template !== '') {
-        // Resolve the detail page URL base.
+        // Resolve the detail page URL base, and the form its record widget
+        // shows: only that form's records may take their pretty address
+        // there (pg_sw_route_record_address() resolves no other).
         $detail_page_name = '';
+        $detail_form_id   = 0;
         if ($detail_page_id > 0) {
             $detail_page_name = (string)db_value(
                 "SELECT page_name FROM page WHERE page_id = '" . e($detail_page_id) . "' LIMIT 1"
             );
+            $detail_widget = pg_sw_page_widget($detail_page_id, 'form_item_view');
+            if ($detail_widget) $detail_form_id = pg_sw_form_widget_form_page_id($detail_widget['cfg']);
         }
 
         // Optional single-form filter — validate that page_id exists and is a custom form.
@@ -2344,7 +2525,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         $submission_rows = db_items(
             "SELECT
                 forms.id,
+                forms.page_id,
                 forms.reference_code,
+                forms.address_name,
                 FROM_UNIXTIME(forms.submitted_timestamp) AS submitted_date_and_time,
                 page.page_title AS form_name
              FROM forms
@@ -2362,8 +2545,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 // widgets carry, so a row design moves between them.
                 $detail_url = '#';
                 if ($detail_page_name !== '') {
-                    $detail_url = $output_base . encode_url_path($detail_page_name)
-                                  . '?r=' . urlencode((string)$sr['reference_code']);
+                    $sr_pretty  = ($detail_form_id > 0) && ((int)$sr['page_id'] === $detail_form_id)
+                                  && pg_sw_form_pretty_urls($detail_form_id);
+                    $detail_url = pg_sw_record_url($detail_page_name, $sr['reference_code'], $sr['address_name'], $sr_pretty, $output_base);
                 }
 
                 // Per-row tokens extend the base account map. The row itself
@@ -3202,28 +3386,16 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
 
     // Where an item links: the record page is its own detail page; a list
     // links to its detail page when that page is bound to the same form.
+    // A record of a form with pretty URLs on links by its name.
     $detail_page_name = '';
+    $detail_pretty    = false;
     if ($feed['type'] === 'form_item_view') {
         $detail_page_name = $page_name;
+        $detail_pretty    = pg_sw_form_pretty_urls($form_page_id);
     } else {
-        $detail_page_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
-        if ($detail_page_id > 0) {
-            $detail_page_name = (string)db_value(
-                "SELECT page.page_name
-                 FROM page
-                 INNER JOIN form_item_view_pages
-                         ON form_item_view_pages.page_id = page.page_id
-                        AND form_item_view_pages.collection = 'a'
-                        AND form_item_view_pages.custom_form_page_id = '" . $form_page_id . "'
-                 WHERE page.page_id = '" . $detail_page_id . "'
-                 LIMIT 1"
-            );
-            if ($detail_page_name === '' && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
-                return pg_sw_form_widget_form_page_id($c) === $form_page_id;
-            })) {
-                $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
-            }
-        }
+        $detail_target    = pg_sw_list_detail_target(isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, $form_page_id);
+        $detail_page_name = $detail_target['page_name'];
+        $detail_pretty    = $detail_target['pretty'];
     }
 
     // The records, under the filters the designer set on the list.
@@ -3238,7 +3410,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         }
     }
     $records = db_items(
-        "SELECT forms.id, forms.reference_code, forms.submitted_timestamp
+        "SELECT forms.id, forms.reference_code, forms.address_name, forms.submitted_timestamp
          FROM forms
          $filter_join
          WHERE forms.page_id = '" . $form_page_id . "'
@@ -3258,7 +3430,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         $form_id = (int)$record['id'];
         $text    = pg_sw_submitted_form_rss_text($form_id);
         $link    = ($detail_page_name !== '')
-            ? $site . $base_path . encode_url_path($detail_page_name) . '?r=' . rawurlencode((string)$record['reference_code'])
+            ? $site . pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], $detail_pretty, $base_path)
             : $site . $base_path . encode_url_path($page_name);
 
         $categories = '';

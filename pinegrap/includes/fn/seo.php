@@ -3215,8 +3215,9 @@ function pg_sw_item_text($html, $max = 0)
  * product or a select-type product group on a Catalog Detail widget
  * (/<page>/<address>, or ?pid= for a product), a product group a Catalog
  * widget drills down to (/<page>/<address>, or ?cat=<address> on the home
- * page), a record on a Form Item View widget (?r=). The item is resolved the
- * way the widgets resolve it. null when the page shows no item of its own:
+ * page), a record on a Form Item View widget (?r=, or /<page>/<name> when
+ * its form has pretty URLs on, pg_sw_route_record_address()). The item is
+ * resolved the way the widgets resolve it. null when the page shows no item of its own:
  * the bare page, an address that names nothing, the widget's own root group,
  * a record the visitor may not see.
  *
@@ -3374,10 +3375,15 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
         $context = pg_sw_record_comment_context($page_id, 0);
 
         if (is_array($context) && !empty($context['visible']) && is_array($context['form'])) {
+            // A record of a form with pretty URLs on is canonical under its
+            // name (/<page>/<name>), however it was asked for.
+            $address = (function_exists('pg_sw_form_pretty_urls') && pg_sw_form_pretty_urls($context['custom_form_page_id']))
+                ? trim((string) $context['form']['address_name']) : '';
+
             return $cache[$page_id] = array(
                 'type'        => 'record',
-                'path'        => $base,
-                'query'       => '?r=' . rawurlencode((string) $context['form']['reference_code']),
+                'path'        => ($address !== '') ? $base . '/' . encode_url_path($address) : $base,
+                'query'       => ($address !== '') ? '' : '?r=' . rawurlencode((string) $context['form']['reference_code']),
                 'title'       => '',
                 'description' => '',
                 'image_name'  => '',

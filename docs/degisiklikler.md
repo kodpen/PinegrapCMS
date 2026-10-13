@@ -157,6 +157,233 @@ davranış.
 
 ---
 
+## 2026.4.10 — Dış API: OAuth ve MCP, Claude dışındaki istemcilerle de bağlanıyor (Cursor, VS Code, Gemini CLI, Codex, Windsurf, ChatGPT, mcp-remote) (2026-10-13)
+
+**Neden.** OAuth sunucusu ve `mcp.php` yalnız Claude'la denenmişti. Diğer
+MCP istemcilerinin kayıt gövdeleri, dönüş adresleri ve keşif sırası
+kaynak kodlarından okundu: VS Code (`extHostMcp`, `oauth.ts`), MCP SDK,
+mcp-remote, gemini-cli-core, Codex. Kodla karşılaştırınca şunlar bağlantıyı
+kesiyordu:
+
+- **Cursor** kayıtta `cursor://anysphere.cursor-mcp/oauth/callback`
+  gönderiyor. Uygulama şeması için ters alan adı (noktalı şema) şartı
+  vardı, kayıt `invalid_redirect_uri` ile reddediliyordu. Windsurf ve
+  Kiro gibi tek kelimelik şemalı istemciler de aynı durumdaydı.
+- **VS Code** `grant_types`'a `urn:ietf:params:oauth:grant-type:device_code`
+  ekleyebiliyor. Bazı istemciler `response_types`'a fazladan değer
+  koyuyor. Kayıt yalnız `authorization_code`/`refresh_token` ve yalnız
+  `code` kabul ettiği için `invalid_client_metadata` dönüyordu.
+- Loopback adresi kayıtta `http://127.0.0.1/` iken istemci
+  `http://localhost:PORT/` ile gelebiliyor (ya da tersi). Yalnız port
+  serbestti, ad farkı ve sondaki eğik çizgi farkı eşleşmiyordu.
+- **Gemini CLI** ve SDK tabanlı istemciler `scope`'a `openid` ve
+  `offline_access` koyuyor. Authorize'da yalnız bunlar istendiğinde
+  `invalid_scope` dönüyordu. Yenilemede aynı dize tekrar gelince
+  `invalid_scope` dönüyordu.
+- Tek dönüş adresli istemci authorize'da `redirect_uri` göndermezse token
+  ucu boş adresi kayıttakiyle karşılaştırıp reddediyordu.
+- **Gemini CLI** önce MCP adresine HEAD atıp 401'deki
+  `WWW-Authenticate`'ten keşif adresini arıyor. GET/HEAD doğrudan 405
+  dönüyordu, meydan okuma yoktu.
+- Eski SDK'lar `initialize`'da `2024-11-05` istiyor. Sürüm listesinde
+  yoktu, istemci bilinmeyen sürüm cevabıyla vazgeçiyordu.
+- Bazı istemciler yetenekten bağımsız `resources/list` ve `prompts/list`
+  soruyor. `-32601` dönüyordu ve sunucu hatalı görünüyordu.
+- Tarayıcı içi istemciler keşif belgelerini `MCP-Protocol-Version`
+  başlığıyla okuyor. OAuth uçlarının CORS önuçuşunda bu başlık yoktu.
+
+**Düzeltme.**
+
+- `rules.php`
+  - `pg_oauth_redirect_uri_is_acceptable()`: uygulama şeması artık
+    noktasız da olabiliyor (`cursor://…`, `vscode://…`, `myapp:/cb`).
+    Reddedilenler `pg_oauth_forbidden_redirect_schemes()`'de: javascript,
+    vbscript, data, file, blob, about, filesystem, view-source, jar, ftp,
+    ws, wss, mailto, tel, sms, intent. Kullanıcı adı/parola taşıyan ve
+    iki noktadan sonrası boş adres (`cursor:`, `cursor://`) de
+    reddediliyor. Kodu çalınan bir adresi PKCE koruyor (doğrulayıcı
+    istemcide). RFC 8252 7.1 de ters alan adını öneri olarak bırakıyor.
+  - `pg_oauth_loopback_rest()` ve `pg_oauth_redirect_uri_matches()`:
+    loopback http adresi (127.0.0.1, localhost, ::1) yalnız yol ve
+    sorgusuyla karşılaştırılıyor. Port ve loopback adı yok sayılıyor, boş
+    yol `/` sayılıyor.
+  - `pg_oauth_scope_requested()`: tanınmayan değerler atlanıyor. Tanınan
+    hiçbir şey istenmediyse istemciye açık olan her şey öneriliyor
+    (kapsamsız istek gibi). Kişi yine onay ekranında daraltıyor.
+  - `pg_oauth_redirect_destination()`: onay ekranı için hedefin türü.
+    `web` https sitesi, `device` bu bilgisayardaki program (loopback),
+    `app` bu cihazdaki uygulama (şema).
+- `endpoints.php`
+  - Kayıt: `grant_types` `authorization_code` **içermeli**, `response_types`
+    `code` **içermeli**. Fazlası reddedilmiyor, kayıtta ve cevapta her
+    zaman `["authorization_code","refresh_token"]` / `["code"]` yazıyor
+    (RFC 7591 2: sunucu desteklemediğini değiştirebilir, cevap neyin
+    kaydedildiğini söyler).
+  - Token: dönüş adresi authorize'daki gibi eşleştiriliyor. Authorize'da
+    adres gönderilmediyse token'da da gönderilmeyebilir, gönderilirse
+    istemcinin kayıtlı adreslerinden biri olmalı.
+  - Yenileme: `scope`'taki tanınmayan değerler atlanıyor.
+  - Önuçuş `MCP-Protocol-Version` başlığına izin veriyor.
+- `authorize.php`: etkin dönüş adresi istemcinin gönderdiği (yoksa tek
+  kayıtlı adres). Kod gönderilen adresle saklanıyor. Onay ekranı "Yanıtın
+  gideceği yer" altında hedefin türünü ve adını gösteriyor. Bilinmeyen
+  istemci sayfası (ör. sitede silinmiş dinamik istemci) kişiye
+  uygulamadan yeniden başlamasını, olmazsa sunucuyu orada kaldırıp
+  eklemesini söylüyor.
+- `protocol.php`
+  - `2024-11-05` sürüm listesine girdi. Bu sunucunun kullandığı
+    `tools/list` ve `tools/call` o sürümde de aynı.
+  - GET/HEAD önce kimlik soruyor: kimliksizse 401 ve meydan okuma, kimlikli
+    ise 405 `Allow: POST, OPTIONS`.
+  - `resources/list`, `resources/templates/list`, `prompts/list` boş liste
+    dönüyor.
+- `api_settings.php` (OAuth uygulamasının rehberi, çekmece ve sayfa):
+  "Uygulamaya göre adımlar" kutusu eklendi. Claude (web/masaüstü/mobil),
+  Claude Code, ChatGPT, VS Code (Copilot), Cursor, Windsurf, Gemini CLI,
+  Codex ve diğerleri (mcp-remote) için açılır bölümler var. Her birinde
+  kısa adımlar ve kopyalanabilir ayar ya da komut bulunuyor: `.vscode/mcp.json`
+  `servers…type: http`, Cursor `mcpServers…url`, Windsurf `serverUrl`,
+  Gemini `httpUrl` + `/mcp auth`, `codex mcp add … --url` + `codex mcp
+  login`, `npx -y mcp-remote`. Rehberdeki adres `pinegrap/mcp.php`. 1. adım
+  adresin aynen yazılmasını söylüyor: `www`'li/`www`'siz ya da sorgu dizeli
+  adres, korumalı kaynak belgesindeki `resource` ile uyuşmuyor ve VS Code
+  gibi istemciler bağlanmıyor. "Uygulama ne yapabilir" kutusuna araç
+  sınırı eklendi: VS Code ve Cursor gibi uygulamalar aynı anda sınırlı
+  sayıda araç kullanıyor (VS Code'da 128). Uyarı çıkarsa kişi onay
+  ekranında gereksiz alanları kaldırmalı ya da araçları uygulamada
+  kapatmalı. Türkçe metinler `tr.json`'da.
+
+**Bilinen sınırlar (düzeltilmedi).**
+
+- Alt klasöre kurulumda (`PATH !== '/'`) istemcinin bulabildiği tek ad
+  `openid-configuration`. MCP SDK bu belgeyi OIDC şemasıyla doğruluyor ve
+  `jwks_uri` gibi alanlar arıyor. Bu, Faz E (OIDC) ile çözülür.
+- Kök `/.well-known/oauth-protected-resource` (yolsuz) `integration`
+  kaynağını tanıtıyor. VS Code'un yolsuz yedek araması MCP adresiyle
+  uyuşmuyor. VS Code önce 401'deki `resource_metadata`'yı ve yollu adresi
+  denediği için bu yedeğe düşmemesi beklenir (VS Code kaynağından okundu,
+  canlı denenmedi).
+- Yöneticinin istemci listesi / izin verilen istemciler (allowlist) bu PR'da
+  yok, Faz B'ye kaldı.
+
+**Doğrulama.** `tests/oauth_test.php` (16 test, 114 doğrulama) ve
+`tests/mcp_test.php` geçiyor. Yeni testler: VS Code, Cursor, Gemini ve
+çıplak kayıt gövdeleri, reddedilen kayıtlar, VS Code ve uygulama şeması
+eşleşmesi, hedef türü, kapsam seçimi. Sandbox'ta (PHP yerleşik sunucu,
+IIS kuralını taklit eden yönlendirici) uçtan uca denendi:
+- Keşif belgeleri ve 204 önuçuşu.
+- `HEAD`/`GET` `/mcp.php` ve `/pinegrap/mcp.php` için 401 ve doğru
+  `resource_metadata`, `DELETE` için 405.
+- VS Code (device_code'lu, dört adresli), Cursor (`cursor://`) ve Gemini
+  (`openid offline_access`) kayıtları 201. `JavaScript://` ve `implicit`
+  400.
+- VS Code: `127.0.0.1:54321` ile onay ("Bu bilgisayardaki bir program"),
+  `localhost:54321` ile token 200, `offline_access`'lı yenileme 200.
+- Cursor: kapsamsız ve kaynaksız onay ("Bu cihazdaki bir uygulama
+  cursor://anysphere.cursor-mcp"), `cursor://…?code=…&iss=…` dönüşü,
+  token 200.
+- Gemini: `redirect_uri`'siz authorize ve token 200. Yanlış adresle token
+  `invalid_grant`, kayıtsız adresle authorize 400. Bilinmeyen istemci
+  sayfası Türkçe.
+- Jetonla `initialize` (`2024-11-05`), `resources/list`,
+  `resources/templates/list`, `prompts/list` ve `tools/list` (yalnız
+  products:read verilince 4 araç).
+- Panel rehberinin dokuz bölümü ve kopyalanacak ayarlar render ediliyor.
+  Sunucu logunda uyarı yok.
+
+**Doğrulanmayan.** Gerçek istemcilerle (Cursor, VS Code, Gemini CLI, Codex,
+ChatGPT geliştirici modu) canlı bağlantı denenmedi. Cloud oturumu
+dev.pinegrap.com'a ulaşamıyor. Erdal'ın dev.pinegrap.com'da denemesi
+gerekiyor.
+
+---
+
+## 2026.4.10 — Görsel editör: formlarda güzel URL, Adres Adı'na bağlı linkler, link seçicide Geri Dönüşüm Kutusu (2026-10-13)
+
+**Kaynak.** Ürün sahibinin görsel editörde bulduğu üç sorun: formlarda güzel
+URL hiç etki etmiyor; güzel URL linkleri kaydı referansla değil, blog
+sayfasının adının sonuna eklenen bir adresle açmaya çalışıyor; özel form
+widget'ında klasik sayfa eklemedeki "Güzel URL'leri Etkinleştir" seçeneği
+yok, var olan kayıtların adresleri de açılamıyor.
+
+**Kök neden.** Klasik akışta güzel URL'yi form liste görünümü sayfası
+çözüyordu: `/blog/<adres adı>` gelince `get_page.php` listenin detay
+sayfasına geçip kaydı adından buluyordu. Görsel editör sayfaları
+`page_type = 'standard'`, `layout_type = 'system'`; `get_page.php` bu
+sayfalarda `/X/<her şey>`'i X'e çevirip segmenti atıyordu, yani
+`/blog/ilk-yazim` blog listesini yeniden açıyordu. Editör widget'ları
+(form listesi, form detayı, Hesabım gönderimleri, form RSS'i, site haritası,
+kanonik adres) `custom_form_pages.pretty_urls`'ü hiç okumuyor, her zaman
+`?r=` basıyordu. Linkinin adresini "Adres adı" alanına bağlayan tasarım
+göreli bir slug basıyordu; tarayıcı onu bulunduğu sayfanın adresine
+ekliyordu (`/blog/ilk-yazim` gibi), o adres de listeyi açıyordu. Editörde
+ayar yoktu, `pg_cf_write_form_settings()` da `pretty_urls`'ü yazmıyordu.
+
+**Adres biçimi.** Kaydın güzel adresi onu gösteren detay sayfası + adı:
+`/blog-yazisi/ilk-yazim`, katalog widget'larının ürün adresiyle aynı biçim.
+Klasik biçim (`/blog/ilk-yazim`, liste sayfası + ad) kaybolmasın diye kaydın
+adresine 301 ile yönlenir; sorgu dizesi korunur. `?r=` her yerde çalışmaya
+devam eder; adı olmayan kayıt (gönderildiğinde Başlık rolünde alan yoktu)
+`?r=` ile basılır. Liste + ad yerine detay + ad seçildi çünkü görsel
+editörde bir formun birden çok listesi olabilir: adres kaydı gösteren
+sayfaya bağlanınca bütün listeler aynı kanonik adrese gider.
+
+- Yönlendirme: `pg_sw_route_record_address()` (`includes/fn/widgets.php`),
+  `get_page.php`'nin system bloğundan. Sayfada güzel URL'si açık bir formun
+  `form_item_view`'ı varsa segment `forms.address_name`'de aranır ve
+  `$_GET['r']` kurulur (bulunamazsa boş kalır, widget bulunamadı halini
+  basar). Sayfada liste widget'ı varsa ve listenin detay sayfası aynı formu
+  gösteriyorsa kaydın adresine 301. `?r=` verilmişse ya da sayfada katalog
+  widget'ı varsa dokunulmaz (katalog kendi segmentini okur).
+- Link üretimi: tek kaynak `pg_sw_record_url()`. `pg_sw_list_detail_target()`
+  listenin detay sayfasının klasik mi editör sayfası mı olduğunu ayırır:
+  klasik detay sayfası `/x/<ad>`'ı çözmez, `?r=` alır. Kullananlar: form
+  listesi, form detayı (`self_url`: yorum ve paylaşım linkleri), Hesabım
+  gönderim listesi, form RSS'i (`pg_sw_form_feed_parts()`), site haritası,
+  kanonik adres (`pg_sw_page_item()`, `seo.php`).
+- Adres adına bağlı link: render öncesi `pg_sw_record_href_bindings()`
+  `_bindings.href = 'address_name'`'i `form_item_view`'a çevirir; link
+  kaydın tam adresine gider (güzel URL kapalıysa `?r=`). Metin olarak basılan
+  adres adı değişmez. Bağlama paneli bunu söyler.
+
+**Ayar.** Özel form widget'ının ayarlarında (formun kendi sayfasında)
+"Kayıt adresleri → Güzel URL'leri Etkinleştir". `pretty_urls` diğer form
+ayarlarıyla kaydedilir (`pg_cf_load_page_form_settings()`,
+`pg_cf_write_form_settings()`). Anahtar açıkken Başlık rolünde alan yoksa
+panel uyarır. Başka bir sayfanın formunu gösteren widget, güzel URL'nin açık
+ya da kapalı olduğunu ve formun kendi sayfasından açıldığını söyler.
+
+**Var olan kayıtlar.** Anahtar açılınca, ya da açıkken Başlık alanı
+değişince, `pg_cf_refresh_address_names()` formun bütün kayıtlarını gönderim
+sırasıyla adlandırır (`update_submitted_form_address_name()`; aynı ada sayı
+eklenir, klasik "Sayfayı Düzenle"deki `update_multiple_submitted_form_address_names()`
+ile aynı kural). Zaten açıkken yalnız adı boş kayıtlar adlandırılır. Kayıt
+ekranı kaç kaydın kendi adresini aldığını söyler. Klasikteki gibi kapatmak
+adları silmez; linkler `?r=`'ye döner.
+
+**Komşu düzeltmeler.**
+
+- Dış API (`POST|PATCH /forms/{id}/submissions/{submission_id}`) ve Çalışma
+  Alanı form değişikliği (`ws_change_write_form()`) cevapları değiştirince,
+  formun güzel URL'si açıksa kaydın adı yeniden üretilir. Önceden başlığı
+  değişen kayıt eski adıyla kalıyordu; panelin gönderim ekranı bunu zaten
+  yapıyordu.
+- Link seçici (`editor_select_page_or_file.php`, editörün ve CKEditor'ün
+  sayfa/dosya seçicisi) Geri Dönüşüm Kutusu'ndaki sayfaları listelemiyor
+  (`pg_designer_not_binned_sql()`); seçilen link silinmiş sayfaya gidiyordu.
+
+**Yapılmayanlar.** Hazır tasarım şablonlarının formlarında güzel URL
+varsayılan açılmadı: kurulu sitelerin adresleri kendiliğinden değişmesin.
+Site içi arama dizini (`update_search_index.php`) yalnız klasik liste
+sayfalarını tarıyor, editör kayıtları dizine girmiyor; bu ayrı bir iş.
+Ziyaretçi raporlarındaki içerik linkleri (`pg_visitor_label_content_rows()`)
+editör kayıtları için `?r=` kalır (çalışır, yalnız kanonik değil). Bulut
+oturumu dev.pinegrap.com'a erişemediği için canlıda denenmedi.
+
+- `tests/designer_pretty_url_test.php`.
+
+---
+
 ## 2026.4.10 — Görsel editör: ortak bileşende yapılan düzenleme kayıtta kaybolmuyor (2026-10-13)
 
 **Belirti.** kodpen.com'da Erdal, menüdeki bir linkin adresini beş kez

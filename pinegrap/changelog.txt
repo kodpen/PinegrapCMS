@@ -25,6 +25,34 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Özel form widget'ında "Güzel URL'leri
+         Etkinleştir": kayıt, referans kodu (?r=…)
+         yerine onu gösteren sayfanın adresinin ardından
+         başlığıyla açılıyor (/blog-yazisi/ilk-yazim).
+         Açıldığında daha önce gönderilmiş kayıtlar da
+         adını alıyor; eski linkler çalışmaya devam
+         ediyor. Başlık rolünde alan yoksa panel uyarıyor.
+
+  [DÜZELTME] Güzel URL'si açık formların kayıtları
+         görsel editör sayfalarında adlarıyla açılıyor.
+         Önceden /blog/kayit-adi adresi blog listesini
+         yeniden açıyordu; bu adres artık kaydın
+         sayfasına yönleniyor. Liste, detay, Hesabım,
+         RSS, site haritası ve kanonik adres aynı
+         adresi kullanıyor.
+
+  [DÜZELTME] Adresi "Adres adı" alanına bağlanan link
+         kaydın sayfasını açıyor. Önceden adres
+         bulunulan sayfanın sonuna ekleniyor ve liste
+         yeniden açılıyordu.
+
+  [DÜZELTME] Başlığı API ya da Çalışma Alanı üzerinden
+         değişen kayıt, güzel URL açıksa yeni adını
+         alıyor.
+
+  [DÜZELTME] Link seçici Geri Dönüşüm Kutusu'ndaki
+         sayfaları listelemiyor.
+
   [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
          yapılan değişiklik kaydediliyor. Bir kayıttan
          sonra aynı parçada yapılan düzenleme, ya da öğe
@@ -182,6 +210,24 @@
   [YENİ] Uygulamalar kendilerini bir kimlik adresiyle
          (istemci kimlik belgesi) tanıtabiliyor; onay ekranı
          uygulamanın hangi alan adından geldiğini gösterir.
+
+  [YENİ] MCP sunucusuna Claude ve ChatGPT dışındaki
+         uygulamalar da bağlanıyor: VS Code (GitHub Copilot),
+         Cursor, Windsurf, Gemini CLI, Codex ve mcp-remote ile
+         çalışan diğerleri. Uygulama Erişimi'ndeki rehber her
+         uygulama için adımları ve kopyalanacak ayarı ya da
+         komutu gösteriyor.
+
+  [DÜZELTME] Cursor gibi kendi adres şemasıyla (cursor://)
+         dönen uygulamaların kaydı reddedilmiyor. Bilgisayarda
+         çalışan programların döndüğü yerel adreste localhost
+         ile 127.0.0.1 farkı bağlantıyı bozmuyor. Uygulamanın
+         istediği ama sitede olmayan izinler (openid,
+         offline_access) bağlantıyı durdurmuyor.
+
+  [YENİ] Onay ekranı yanıtın nereye gideceğini türüyle
+         söylüyor: bir web sitesi, bu bilgisayardaki bir program
+         ya da bu cihazdaki bir uygulama.
 
   [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
          okuma (GET /webhooks/{id}), adres, olay listesi ve

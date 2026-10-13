@@ -121,6 +121,14 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `pg_oauth_client_resolve()` yalnız yetkilendirme ekranında ve kişi giriş
   yaptıktan sonra çeker (`api_http_request()`, 5 KB, yönlendirme yok);
   token ucu belgeyi çekmez, `pg_oauth_client()` ile kayıtlı kopyayı okur.
+- İstemci uyumu (Cursor, VS Code, Gemini CLI, Codex, mcp-remote): kural
+  değiştirirken `tests/oauth_test.php`'deki gerçek kayıt gövdelerini koru.
+  Kayıt fazla `grant_types`/`response_types`'ı reddetmez, yerine
+  desteklenenleri yazar; uygulama şeması noktasız olabilir; loopback adı ve
+  portu eşleşmede yok sayılır (`pg_oauth_redirect_uri_matches()`); bilinmeyen
+  kapsam (`openid`, `offline_access`) authorize'da ve yenilemede atlanır
+  (`pg_oauth_scope_requested()`). Panel rehberi istemci başına adım ve ayar
+  verir (`api_settings_oauth_guide()`); yeni istemci oraya eklenir.
 
 ## MCP sunucusu (2026.4.10, `mcp.php`, `includes/mcp/`)
 

@@ -626,6 +626,14 @@ function api_form_submission_update($params) {
 
 	api_exec("UPDATE forms SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
 
+	// A form with pretty URLs on names its records after their Title field;
+	// a retyped title renames the record, as the submission screen does.
+	if ($writes && check_if_pretty_urls_are_enabled($row['page_id'])) {
+
+		update_submitted_form_address_name($id);
+
+	}
+
 	log_activity(lang(array(
 		'string' => 'The submitted form ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array((string)$row['reference_code'], $app['name'], $app['api_key'])
