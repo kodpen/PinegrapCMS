@@ -151,6 +151,173 @@ mağazada alış faturası kesme.
 
 ---
 
+## 2026.4.10 — Görsel editör: hizmet, randevu, saat, şube, menü ve etkinlik blokları (2026-10-13)
+
+**Neden.** Ürün sahibi bir yerel hekim ve bir kurumsal kafe şablonu istedi
+ve "bu iki şablon için yeni Bootstrap 5 bileşenleri eklensin" dedi. Paletin
+Bloklar sekmesinde hizmet kartı, fiyat listesi, çalışma saatleri, şube,
+menü ve etkinlik gibi yerel işletmenin her sayfada kullandığı parçalar
+yoktu; operatör bunları başlık, paragraf ve kartlardan elle kuruyordu.
+Bloklar şablonlardan önce geldi ki her tasarım (şablonla kurulmamış olanlar
+da) aynı parçaları kullanabilsin.
+
+**Nasıl.** `assets/js/style_designer.js`'te `createFromPalette()`'in bileşen
+dalına tek bir aile eklendi: tür öneki `services-`, `steps-`, `booking-`,
+`hours-`, `locations-`, `menu-`, `events-`, `notice-` olan ya da
+`team-profiles` / `testimonial-ratings` olan bloklar ortak yardımcıları
+(`_bkSection`, `_bkRow`, `_bkCol`, `_bkMenuItem`…) bir kez tanımlayan bir
+`if` içinde üretilir. Palet öğeleri `_sdBlockPaletteItems()`'a, gruplar
+`_sdBlockPaletteGroups()`'a eklendi (Hizmetler ve Randevu, Saatler ve
+Şubeler, Yiyecek ve İçecek; `events-` İçerik Listeleri'ne, `notice-` Durum
+ve Yardımcılar'a). Tam genişlikte bölüm oldukları için hepsi kökte kaba
+sarılmayanlar listesinde (`_noWrapCtypes`). Görselli üç blok mevcut oran
+kurallarını (`pg-ratio-16x9`, `pg-ratio-1x1`) `_SD_BLOCK_CSS_NEEDS` üzerinden
+Stiller paneline yazar; yeni CSS kuralı yok, gerisi Bootstrap 5.3
+yardımcıları.
+
+**Ne değişti.** On sekiz blok:
+
+- Hizmetler: Simgeli Kartlar (altı kart, kartın tamamı link —
+  `stretched-link`), Görselli Kartlar (süre rozeti, fiyat ve düğme), Fiyat
+  Listesi (iki sütun `list-group-flush`).
+- Adımlar: Numaralı (dört kart, numara rozeti ve simge).
+- Randevu: Eylem Çağrısı (renkli panel, randevu ve `tel:` düğmesi),
+  İkiye Bölünmüş (görsel + kontrol listesi + iki düğme).
+- Çalışma Saatleri: Kart (gün başına satır, kapalı gün soluk), Konum
+  (16:9 harita yeri, adres, saat, telefon, yol tarifi).
+- Şubeler: Kartlar (görsel, adres, saat, telefon).
+- Menü: Sekmeler (Bootstrap `nav-pills` + `tab-pane`, her bölmede iki
+  sütun), İki Sütun, Görselli Kartlar (kare görsel, rozet), Pano
+  (`data-bs-theme="dark"` bölüm, boy fiyatlı tablo), Günün Önerileri.
+  Menü satırı ad, fiyata uzanan kılavuz çizgi (`border-bottom` taşıyan boş
+  `flex-grow-1`), açıklama ve diyet rozetlerinden oluşur.
+- Etkinlikler: Liste (`<time datetime>` tarih yaprağı).
+- Duyuru: Şerit (sayfa üstü acil durum satırı, `tel:` bağlantısı).
+- Ekip: Profiller (yatay kart, uzmanlık, dil rozetleri, randevu düğmesi).
+- Referans: Puanlar (ortalama puan ve yıldızlar + üç yorum kartı).
+
+Bütün görünen metinler `_sdT()` ile; 340 yeni anahtar `tr.json`'a eklendi.
+Türkçe fiyatlar gerçekçi TL tutarlarına çevrildi (ör. `$2.80` → `₺95`).
+Örnek görseller picsum.photos, örnek adlar mevcut kanondan (Jane Cooper →
+Ayşe Yılmaz).
+
+**Bilerek yapılmayan.** Randevu ve rezervasyon blokları form içermiyor.
+Paletteki statik `<form>` blokları (Contact: Form gibi) gönderilmez; çalışan
+form Pinegrap'ta özel form widget'ıdır. Bloklar bu yüzden düzen ve eylem
+çağrısı verir, form şablonların kendi sayfalarında widget olarak gelir.
+Harita için bir bileşen yok; konum blokları yer tutucu taşır.
+
+**Doğrulama.** `node --check`, `tools/check_lang.php` temiz. Blok ağaçları
+editörün dışında küçük bir Node betiğiyle HTML'e çevrildi ve Bootstrap
+5.3.8 ile 1280 ve 390 piksel genişlikte, İngilizce ve Türkçe çekildi:
+sütunlar, kılavuz çizgiler, koyu pano ve kartlar beklenen gibi.
+
+**Doğrulanamayan.** Bloklar canlı editörde sürüklenip bırakılarak
+denenmedi; dev.pinegrap.com'da yerel oturum dener.
+
+---
+
+## 2026.4.10 — Çalışma Alanı: hatırlatıcı, gecikme ve görev notu bildirimleri; başlıkta hızlı not (2026-10-13)
+
+**Neden.** Ürün sahibinin üç isteği: panelin service worker'lı bildirim
+sistemine Çalışma Alanı'nın eksik uçlarını tamamlamak, bir "hızlı not"
+düğmesi ve Çalışma Alanı açıksa Notlarım'a bir yol.
+
+**Tarama.** `sw.js` yükte metin taşımaz; uyanınca `push_pending`'e sorar,
+o da zilin satırlarını okur. Çalışma Alanı'ndan cihaza giden tek yol
+`ws_notify()` → `ws_inbox` → zil (`notifications.target_user_id`, 4.83) →
+`push_queue` (`source = 'ws'`). Bu yola zaten bağlı olanlar: anma, görev
+verme, görevin bitmesi (açana), görev notunda anma, engelin kalkması, kanala
+davet, not paylaşımı ve değişikliği, Claude/Pinegrap AI'ın not cevabı, onay
+isteği/kararı/hatırlatması, okundu isteği hatırlatması, misafir mesajı,
+zamanlanmış eylem bildirimi ve hatası, tartışma, asistanın görev cevabı.
+Bağlı olmayan dört şey bulundu: (1) görev hatırlatıcısı yalnız e-postaydı,
+adresi olmayan kişiye hiç ulaşmıyordu; (2) gecikmiş görev için hiçbir şey
+yoktu; (3) görevdeki kişiler, anılmadıkları sürece göreve yazılan notu
+duymuyordu; (4) asistanın cevap bildirimi onay bekleyen önerileri
+söylemiyordu. Bir de: görevi açmak o görevin gelen kutusu satırlarını okunmuş
+saymıyordu, zil ve cihaz kuyruğu okunmamış kalıyordu. Push uçları
+(`push_config`, `push_subscribe`, `push_unsubscribe`, `push_test`,
+`push_pending`) ve dış API'nin `/notifications` uçları eksiksiz; yeni uç
+gerekmedi. Kişi başı, tür bazında bildirim tercihi sistemde yok; kanalın
+"Hiçbir zaman" ayarı anmaları susturuyor ve öyle kalıyor.
+
+**Ne değişti.**
+
+- `reminders.php`: hatırlatıcı her kişiye `task_reminder` gelen kutusu satırı
+  yazar (zil + cihaz), e-posta adresi olanlara ayrıca e-posta gider.
+  Kime: `ws_task_notice_user_ids()` (görevdeki ekip üyeleri, kimse yoksa
+  açan); `ws_task_reminder_people()` bunun adresi olanları. Dönüşte `sent`
+  artık giden hatırlatma, `failed` e-postası kimseye gitmeyen hatırlatma.
+  Çekmecedeki metinler "Saat ve hatırlatma", "Hatırlat" ve "bildirimlerinde
+  ve e-postayla" oldu (eski anahtarlar tr.json'da duruyor).
+- Gecikme: `ws_task_overdue_run()`. Açık görev bitiş anını geçince
+  görevdekilere bir kez `task_overdue`. An: saatli görevde saati, saatsizde
+  ertesi gün `WS_TASK_REMIND_DAY_TIME` (09:00) — listelerin "gecikti" demeye
+  başladığı gün. Görevde bir şey saklanmaz, şema adımı yok: `cron_runs`'ta
+  `workspace_overdue_notices` satırı bir su çizgisi tutar, her koşu
+  çizgiyi bulduğu yerden şimdiye korumalı UPDATE ile taşıyarak kendi
+  aralığını alır (iki koşu aynı anda gelirse biri çıkar). İlk koşu yalnız
+  çizgiyi kurar (eski gecikmeler haber değildir); geride kalan koşu en çok iki
+  gün geriye bakar (`WS_TASK_OVERDUE_LOOKBACK`). Bitiş ileri alınan görev
+  yeni an geçince yeniden bildirilir. Koşanlar: genel iş (`job.php`, beş
+  dakikada bir; Çalışma Alanı yalnız gerektiğinde yüklenir), saatlik
+  tekrarlayan görev işi, açık Çalışma Alanı ekranının `ws_tick`'i
+  (`ws_sync` cevabındaki `scheduled_due` artık bunu da söyler).
+- `task_work.php`: `ws_task_note_tell()` — göreve not yazılınca görevdekiler
+  ve açan `task_note` alır; yazan ve notta anılanlar (kendi `note`
+  satırları var) hariç, görevi görebilenlere. Okunmamış satır sonraki notları
+  da toplar; satır en yeni notu (okuyanın kendi notları hariç) yazanın adı
+  ve metniyle anlatır, uygulama notunda uygulamanın adıyla.
+- `notify.php`: üç yeni tür (`task_note`, `task_reminder`, `task_overdue`)
+  ve tanımları; `task_assistant` gövdesi onay bekleyen öneri sayısını ekler
+  (`ws_task_delegation_waiting_map()`). `ws_notify()`'a `batch` bayrağı:
+  cihaz kuyruğa girer ama burada uyandırılmaz; hatırlatma ve gecikme koşuları
+  bitince kuyruğu bir kez işler (`ws_push_batch_done()`). Her satırda
+  kuyruğu ayrı işlemek, çok kişili bir koşuyu ekranın `ws_tick` isteğinde
+  uzatırdı.
+- `ws_inbox_mark_task_read()`: görev çekmecesi (`ws_task_get`) açılınca o
+  görevin okuyana ait satırları okunur, zil eşitlenir; kuyrukta bekleyen
+  banner gönderim anında düşer (`ws_push_still_relevant()`). Dış API'nin
+  görev okuması okundu saymaz.
+- Hızlı not: `ws_notes_quick_markup()` (`notes.php`), `output_header()`
+  zilin solunda basar — Çalışma Alanı açık, kişi ekip üyesi ve notlar
+  kuruluysa; araç çubuğu kipinde değil (ayarlar düğmesiyle aynı gerekçe).
+  Kutu `ws_note_save` eylemiyle kişinin kendi notuna yazar (başlık boş,
+  ilk satır başlık olur), Ctrl+Enter kaydeder, kayıttan sonra "Notu aç"
+  bağlantısı çıkar; kutunun başında Notlarım bağlantısı. Betik
+  `backend.src.js` (`pg_quick_note_init()`), metinler ve adresler formun
+  `data-*` özniteliklerinde, stil `backend.src.css`'te zilinkiyle aynı
+  yerleşim.
+
+**Bilerek yapılmayan.**
+
+- Kanalın "Her mesajı bildir" ayarı cihaz bildirimi göndermiyor; yalnız
+  rozeti etkiliyor. Varsayılan `all` olduğundan her mesajı bildirime çevirmek
+  herkesi gürültüye boğardı. Gerekirse ayrı bir karar.
+- Başkasının planladığı toplantı/izin (plan kaydı) için bildirim yok:
+  `ws_inbox` plan kaydına işaret edecek kolon taşımıyor, şema adımı ister.
+- Tür bazında kişisel bildirim tercihi ekranı yok.
+- Gecikme ve hatırlatma için webhook olayı eklenmedi.
+
+**Doğrulama.** Sandbox'ta (MariaDB, üç ekip üyesi, biri e-postasız) CLI ile:
+hatırlatma iki kişiye `task_reminder` + zil satırı, e-postasız kişiye de;
+görev notu yazan hariç görevdekilere ve açana `task_note`, ikinci not aynı
+satırda, anılan kişiye yalnız `note`; görevi açınca satır ve zil okundu;
+gecikmede ilk koşu yalnız çizgiyi kurdu, saatli geçmiş görev ve dünkü
+saatsiz görev (kimse yokken açana) bildirildi, bugünkü saatsiz ve bitmiş
+görev bildirilmedi, aynı çizgiyle ikinci koşu hiçbir şey yapmadı;
+`batch` satırı kuyrukta bekleyip `ws_push_batch_done()` ile işlendi;
+zilin cihaz için verdiği metin doğru. `php job.php` ve
+`workspace_recurring_job.php` hatasız koştu, çizgi ilerledi. Chromium'da
+hızlı not: masaüstü ve 375 px'te açıldı, kutu odak aldı, Ctrl+Enter kaydetti,
+"Notu aç" doğru notu açtı (ilk satır başlık), Notlarım bağlantısı doğru.
+
+**Doğrulanamayan.** Gerçek bir cihaza giden push (sandbox'ta abonelik yok);
+dev.pinegrap.com'da telefonla denenmeli.
+
+---
+
 ## 2026.4.10 — ERP: satın alma siparişi (10.58) (2026-10-13)
 
 **Neden.** ERP planının Faz 7'si (`docs/_plan_erp_ozellikler.md` §3): mağaza
