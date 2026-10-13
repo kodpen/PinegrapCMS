@@ -8527,6 +8527,8 @@ function get_tables() {
 		'ws_ack_requests',
 		'ws_acks',
 		'ws_calendar_feeds',
+		'ws_mcp_servers',
+		'ws_mcp_calls',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',
