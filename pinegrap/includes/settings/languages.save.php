@@ -183,3 +183,56 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     pg_tr_prefixes_rewrite(($translation_source !== '') ? $translation_source : (($translation_panel_language !== '') ? $translation_panel_language : 'en'));
     pg_tr_invalidate_pages();
 }
+
+// ── the automatic language redirect (2026.4.10) ──
+if (waf_table_has_column('config', 'language_redirect')) {
+
+    $language_redirect_on = post_value('language_redirect') ? 1 : 0;
+    $language_redirect_mode = (string) post_value('language_redirect_mode');
+    $language_redirect_scope = (string) post_value('language_redirect_scope');
+    $language_redirect_fallback = trim((string) post_value('language_redirect_fallback'));
+
+    if (!in_array($language_redirect_mode, array('language', 'country', 'both'), true)) {
+        $language_redirect_mode = 'both';
+    }
+
+    if ($language_redirect_scope !== 'all') {
+        $language_redirect_scope = 'home';
+    }
+
+    // A served target language, or none. A language removed or turned off
+    // later is ignored by the redirect itself (pg_lang_pick()).
+    if (($language_redirect_fallback !== '') && (!function_exists('pg_tr_languages') || !isset(pg_tr_languages(true, true)[$language_redirect_fallback]))) {
+        $language_redirect_fallback = '';
+    }
+
+    db("UPDATE config SET
+        language_redirect = '" . $language_redirect_on . "',
+        language_redirect_mode = '" . e($language_redirect_mode) . "',
+        language_redirect_scope = '" . e($language_redirect_scope) . "',
+        language_redirect_fallback = '" . e($language_redirect_fallback) . "'");
+
+    // The location database: when the button asks for it, and once on its
+    // own when the redirect has just been set to read the visitor's location
+    // and the site has none yet. After that the general job keeps it current.
+    $language_redirect_geo_forced = (bool) post_value('geo_db_refresh');
+
+    if ($language_redirect_geo_forced || ($language_redirect_on && ($language_redirect_mode !== 'language') && (pg_geo_db_meta() === null))) {
+
+        $language_redirect_geo = pg_geo_db_refresh($language_redirect_geo_forced);
+
+        if ($language_redirect_geo['status'] === 'updated') {
+            $liveform->add_notice(lang(array(
+                'string' => 'The location database was downloaded ({var:1}).',
+                'vars'   => array($language_redirect_geo['version']))));
+        } elseif ($language_redirect_geo['status'] === 'fresh') {
+            $liveform->add_notice(lang('The location database is already the newest one.'));
+        } elseif ($language_redirect_geo['status'] === 'busy') {
+            $liveform->add_notice(lang('The location database is being downloaded by another request. Look again in a minute.'));
+        } else {
+            $liveform->add_notice(lang(array(
+                'string' => 'The location database could not be downloaded: {var:1}. The redirect still uses the country Cloudflare sends.',
+                'vars'   => array(($language_redirect_geo['reason'] !== '') ? $language_redirect_geo['reason'] : lang('unknown error')))));
+        }
+    }
+}

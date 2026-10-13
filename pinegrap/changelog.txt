@@ -374,6 +374,52 @@
          Önceden saat dakikada bir sunucudan soruluyor ve bir
          dakikaya kadar geride kalabiliyordu.
 
+  [YENİ] Aktivite kartı: Son Güncellemeler, Formlar, Rehber,
+         Kullanıcılar, Site Günlükleri ve E-posta Kampanyaları
+         kartları tek bir geniş kartta, tek akışta. Solda
+         türler (İçerik, Formlar, Siparişler, Rehber, Yorumlar,
+         Kullanıcılar, Kampanyalar, Site Günlükleri) bugünkü
+         sayılarıyla ve son yedi günün küçük çubuklarıyla
+         duruyor; birine tıklayınca akış o türe süzülüyor ve
+         türün tam listesine bağlantı çıkıyor. Seçilen tür
+         hatırlanıyor. Siparişler ve yorumlar akışa yeni
+         girdi. Her tür, eski kartının yetkisiyle görünür.
+
+  [HIZ] Aktivite kartı sorgularını sınırlı okuyor. Eski Son
+         Güncellemeler kartı sayfa, dosya, klasör, kısa link
+         ve menü tablolarını her dakika baştan sona okuyordu;
+         E-posta Kampanyaları her kampanya için iki ek sorgu
+         atıyordu.
+
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [YENİ] Otomatik dil yönlendirmesi: siteye kaynak dildeki
+         bir sayfadan giren ziyaretçi, site onun dilinde de
+         yayınlanıyorsa aynı sayfanın o dildeki sürümüne
+         gönderiliyor. Dil önce ziyaretçinin daha önceki
+         seçiminden, sonra tarayıcısının dil tercihinden,
+         sonra bulunduğu ülkeden belirleniyor. Yalnız
+         ziyaretin ilk sayfası yönlendiriliyor; arama
+         motorları, oturum açmış personel ve site içinde
+         gezinen ziyaretçi istediği sayfayı görüyor. Dili
+         değiştiren ziyaretçinin seçimi hatırlanıyor.
+         Ayarlar › Diller ve Çeviri'de açılır (varsayılan
+         kapalı): yalnız ana sayfa ya da görsel tasarımın
+         tüm sayfaları; tarayıcı dili, konum ya da ikisi;
+         sitenin yayınlanmadığı dillerdeki ziyaretçi için
+         bir yedek dil. Ekran, ayarı açan kişinin kendi
+         tarayıcısının nereye gönderileceğini gösteriyor.
+
+  [YENİ] Ziyaretçinin ülkesi Cloudflare'in gönderdiği
+         bilgiden, o yoksa sitenin kendi IP-ülke
+         veritabanından (DB-IP, ücretsiz, ayda bir
+         kendiliğinden güncellenir) okunuyor. Ziyaretçinin
+         adresi hiçbir dış servise sorulmuyor.
+
+  [ŞEMA] Ayarlar tablosuna dil yönlendirmesi için dört
+         kolon eklenir.
+
 
 
   2026.4.9

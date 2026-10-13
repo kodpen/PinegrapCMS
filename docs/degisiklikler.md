@@ -142,6 +142,202 @@ tasarımı, editör için Playwright); dev.pinegrap.com'da denenmedi.
 
 ---
 
+## 2026.4.10 — Çok dilli site: otomatik dil yönlendirmesi ve ziyaretçi konumu (10.1) (2026-10-13)
+
+**İstek.** Erdal: "kullanıcı diline veya konumuna göre otomatik uygun dile
+yönlendirme mekanizması ayarlıyalım. isabetli olsun." Aynı istekteki WAF
+ülke kısıtlaması ayrı PR'da gelir ve buradaki konum katmanını kullanır.
+
+**Konum katmanı (`includes/geo.php`).** `waf.php` gibi bağımsızdır
+(functions.php, oturum, `lang()` yok) ve `waf.php` onu yükler; böylece
+router'ın WAF aşaması da ülkeyi okuyabilir. `pg_geo_country()` istek başına
+bir kez `code` ve `source` döner. Kaynak sırası:
+
+1. Kenarın başlığı (`CF-IPCountry`, `CloudFront-Viewer-Country`), yalnız
+   `waf_client_ip()`'nin adres başlığına inandığı eşte (Cloudflare aralığı
+   ya da `waf_trusted_proxies`, Cloudflare Tunnel'da 127.0.0.1). Ülke ile
+   adres aynı yerden gelir; sunucuya doğrudan gelen sahte başlık okunmaz.
+   `XX` bilinmiyor sayılır, `T1` (Tor) korunur.
+2. Sunucu modülü (`GEOIP_COUNTRY_CODE`, `MM_COUNTRY_CODE`), yalnız arada
+   vekil yokken (modül bağlanan adresi bulur).
+3. Sitenin kendi veritabanı, `data/geo/`: DB-IP "IP to Country Lite" (CC BY
+   4.0, aylık). Sıralı, sabit boyutlu kayıtlar (IPv4 4 bayt, IPv6 /64'ün 8
+   baytı, ardından 2 harf); disk üzerinde ikili arama yaklaşık yirmi kayıt
+   okur. İstek hiçbir ağ çağrısı yapmaz. Özel ve ayrılmış adres sorulmaz.
+
+**Veritabanı (`includes/fn/geo.php`).**
+- `pg_geo_db_refresh()` bu ayın listesini, henüz yayınlanmadıysa geçen ayınkini
+  indirir (cURL, 60 sn, `pinegrap_user_agent()`, `pg_curl_tls()`).
+- Satırlar aralık kayıtlarına çevrilir (`pg_geo_db_records()`): komşu aynı
+  ülke birleşir, delikler ve uçlar `--` olur, sırası bozuk liste reddedilir.
+  Aile başına 1000 kaydın altı "eksik" sayılır ve eski veritabanı kalır.
+- Dosyalar derlemenin adını taşır; `meta.json` en son, rename ile yazılır.
+  Windows açık dosyayı yeniden adlandırmadığı için okunmakta olan çift hiç
+  değiştirilmez, eski çiftler sonradan silinir. Tek derleme `flock` ile;
+  başarısız deneme 12 saat beklenir (`attempt.txt`).
+- Genel iş (`job.php`) `pg_geo_db_due()` ile yalnız konumu okuyan bir ayar
+  açıkken ve veritabanı bu ayın değilse indirir. Ayarlar ekranı ilk kayıtta
+  ve "şimdi indir" düğmesiyle indirir.
+
+**Yönlendirme (`includes/fn/language_redirect.php`).** Kanca `get_page.php`'de,
+sayfa bulunup arşiv denetimi geçtikten sonra, sayfa türlerinden önce.
+Karar sırası (`pg_lang_redirect_decide()`):
+
+1. `pg_language` çerezi: ziyaretçinin kendi seçimi.
+2. Accept-Language: q'ya göre, eşitte yazılış sırasıyla. `de-AT` → `de`;
+   Çince yazı ya da bölgeyle zh-CN / zh-TW, Portekizce Brezilya'da pt-BR;
+   `iw`, `in`, `nb`, `nn`, `fil` eş adları; en son aynı dilin başka çeşidi.
+3. Ülke: `pg_lang_country_languages()` resmi dilleri en yaygını önde verir.
+4. Yedek dil: yalnız ziyaretçi bir işaret verdiyse ve site onun dillerinin
+   hiçbirinde yoksa. İşaret yoksa sayfa olduğu gibi kalır.
+
+Kip `language`, `country` ya da `both`; ülke yalnız gerekince sorulur.
+
+**Kim yönlendirilmez.** GET olmayan istek; `Sec-Fetch-Dest` belge olmayan
+(çerçeve, editör önizlemesi); XHR; `IS_BOT` ya da `waf_classify_bot()`
+insan demeyen istemci; oturum açmış personel; dil dizinindeki adres
+(`/en/...` istendiği gibi açılır); aynı siteden gelen istek (referer bu
+host). Yani yalnız ziyaretin ilk sayfası yönlenir. API, MCP, OAuth ve
+integration uçları `get_page.php`'ye hiç uğramaz.
+
+**Kapsam.** `home` (varsayılan) yalnız sitenin kökü, `all` görsel tasarımın
+her sayfası. Her iki durumda sayfanın çevrilmiş gövdesi olmalıdır:
+`layout_type = 'system'` ve ağaç (`pg_page_tree_sql_expr()`, çeviri
+çizicisinin kullandığı test). `layout_type` tek başına yetmez, eski sistem
+düzenleri de 'system' taşır.
+
+**Seçimin hatırlanması.** Aynı siteden gelen istekte referer'ın dili bu
+sayfanınkinden farklıysa (dil değiştirici ya da dizinler arası link), bu
+sayfanın dili `pg_language`'a yazılır (bir yıl, HttpOnly, SameSite=Lax).
+Tarayıcıların varsayılanı ve WAF güvenlik başlıklarındaki
+`Referrer-Policy: strict-origin-when-cross-origin` aynı kökende tam yolu
+gönderir.
+
+**Yanıt.** 302, `Cache-Control: private, no-store`, `Vary: Accept-Language,
+Cookie`; sorgu dizesi korunur. Arama motorunun dizinlediği adres sayfanın
+kendisidir; `hreflang` x-default kaynak adresi göstermeye devam eder.
+
+**Panel.** Ayarlar › Diller ve Çeviri'de `pgset-language-redirect` kartı:
+- anahtar, kip, kapsam ve yedek dil (yalnız yayındaki hedef diller);
+- ekranı açanın tarayıcısının nereye gönderileceği (`pg_lang_redirect_decide()`
+  kayıtlı ayarla);
+- bu isteğin konumu ve kaynağı, veritabanının durumu;
+- lisansın istediği DB-IP atfı ve "Konum veritabanını şimdi indir" düğmesi.
+
+Hedef dil yokken uyarı, kolonlar yokken not gösterir.
+
+**Şema (10.1).** `config.language_redirect` TINYINT(1) 0,
+`language_redirect_mode` ENUM('language','country','both') 'both',
+`language_redirect_scope` ENUM('home','all') 'home',
+`language_redirect_fallback` TEXT NULL. Sabitler `LANGUAGE_REDIRECT*`
+(`init.php`). `tests/innodb_test.php` sayıları güncellendi: 418 kolon, TEXT
+dönüşümünden önce MySQL 8.0'da 8556 bayt, sunucu satırı 64.095 bayt.
+
+**Ödün / sonraya kalan.** Ülke → dil haritası kodda sabittir; bölgesel diller
+(Katalonya gibi) ayrı ele alınmaz. `both` kipinde tarayıcı ile konum farklı
+dil derse tarayıcı kazanır.
+
+**Doğrulama.** Birim testleri: `tests/language_redirect_test.php` ve
+`tests/geo_test.php` (uydurma bir listeden derleme ve arama dahil).
+Sandbox'ta hello-pinegrap şablonu kuruldu (kaynak tr, hedef en), ayar panelden
+kaydedildi ve ön yüzde 30 durum denendi:
+- en tarayıcı 302 ile /en/'e gider, tr tarayıcı kalır;
+- aynı sitenin referer'ı kalır, Google referer'ı yönlenir;
+- /en/'e geçiş çerezi yazar; çerez tr iken en tarayıcı kalır;
+- Googlebot, iframe, HEAD, oturumlu personel ve eski düzen sayfası kalır;
+- home ve all kapsamları, yedek dil;
+- güvenilen vekilden gelen CF-IPCountry (both, country, T1) okunur,
+  güvenilmeyen eşten gelen sahte başlık okunmaz;
+- kapalıyken hiçbir istek yönlenmez.
+
+Migration taze kurulumda koştu, kolonlar silinip iki kez daha koşturuldu.
+
+**Doğrulanmayan.** DB-IP'den gerçek indirme: sandbox'ın ağı
+download.db-ip.com'a kapalıdır ("CONNECT tunnel failed, response 403"),
+derleme uydurma listeyle sınandı. IIS'te ve Cloudflare arkasında deneme.
+
+---
+
+## 2026.4.10 — Pano: Aktivite kartı, altı liste kartı tek süzgeçli akışta (2026-10-13)
+
+**İstenen.** Erdal: son form, rehber, kullanıcı, site günlüğü ve kampanya
+kartları aktivite özetiyle birleşsin. Akış filtreli olsun, başka aktivite
+türleri de süzülebilsin.
+
+**Değişiklik.** Widget 7 (eski adı Son Güncellemeler) Aktivite oldu.
+Geniş bir kart: solda türler, sağda zamana göre akış.
+- Türler ve kaynakları (`pg_dashboard_activity_kinds()`):
+  - İçerik: eski 7.
+  - Formlar: eski 13.
+  - Siparişler: yeni.
+  - Rehber: eski 10.
+  - Yorumlar: yeni.
+  - Kullanıcılar: eski 11.
+  - Kampanyalar: eski 19.
+  - Site Günlükleri: eski 17.
+- Her tür eski kartının kapısını ve kapsamını taşır:
+  - Formlar: rol 3 yalnız erişebildiği klasörlerdeki form sayfaları,
+    `complete = '1'`.
+  - Rehber: rol 3 düzenleyebildiği gruplar.
+  - Kullanıcılar: yönetici kendi rolünün altını görür.
+  - Siparişler: `manage_ecommerce`, sepette kalanlar hariç.
+  - Yorumlar: rol < 3. Rol 3'ün klasör kapsamı Yorum Moderasyonu
+    kartında.
+- Her tür en çok 12 satır getirir. "Tüm Aktivite" aynı satırları zamana göre
+  birleştirir. Aynı saniyedeki satırları kimlik sıralar, yenilemede yer
+  değiştirmezler.
+- Tür düğmesi bugünkü sayıyı ve yedi günlük çubukları gösterir
+  (`pg_activity_daily()`, tür başına tek sorgu). İçerikte günlük seri yok:
+  bir düzine tabloya yayılıyor. Bugünkü sayısı getirilen satırlardan
+  çıkar; bugün 12'den az değişiklik varsa kesindir, yoksa alt sınırdır.
+- Seçilen türün tam listesine bağlantı listenin altına çıkar (gönderilen
+  formlar, siparişler, rehber, yorumlar, kullanıcılar, kampanyalar,
+  günlük). Tür yoksa "Son zamanlarda bu türden bir şey yok." yazar.
+- Ortak parçalar (`includes/dashboard/widgets.php`):
+  - `pg_widget_row()` `data` özelliğiyle `data-*` öznitelikleri yazar.
+    Anahtar `[a-z0-9-]`, değer kaçışlı.
+  - `pg_widget_bars()`: yedi günlük CSS çubukları.
+  - `pg_widget_filter()`: süzgeç düğmesi. Renk düğmede `--pg-k`
+    olarak durur.
+- Sayfa betiği (`welcome.php`) genel bir süzgeç taşır:
+  `[data-pg-filterable]` gövde, `[data-pg-filter]` düğme, `[data-kind]`
+  satır, `.pg-filter-more`, `.pg-filter-none`. Seçim tarayıcıda
+  `localStorage`'da kart başına durur. `try/catch` içinde, yoksa
+  varsayılan. Her yeniden çizimden sonra (`pg:widget-drawn`) geri konur.
+  Operasyon Masası da aynı mekanizmayı kullanacak.
+- Dar kartta (telefon) türler akışın üstünde çip satırı olur. Çubuklar ve
+  ikinci satır gizlenir.
+
+**Hız.** Eski Son Güncellemeler page, files, folder, short_links ve menus
+tablolarını her dakika `LIMIT`'siz okuyordu (staff için her satır). Şimdi
+her tablo en yeniden sınırlı okunur. Rol 3'ün satırları okunduktan sonra
+klasöre göre süzüldüğü için onun tabloları 200 satıra kadar okunur.
+Kampanyalarda ilerleme, listelenen kampanyaların alıcıları üzerinden tek
+`GROUP BY` sorgusuyla gelir. Eskiden kampanya başına iki sorgu vardı:
+yirmi satır için kırk sorgu. Altı kart altı istek yerine tek kart tek
+istek.
+
+**Emekli kimlikler.** 10, 11, 13, 17 ve 19 boş başarı döndüren dosyalar
+olarak kalır. Yükseltme sırasında açık kalan sekme bunları istemeye devam
+eder; boş başarı iskeleti temizler. Kimlikler yeniden kullanılmaz. Kayıtlı
+dizilişte bu kimlikler yok sayılır; 7 yerinde kalır.
+
+**Ödün.** Formlar kartının başlığındaki "bugün N form" çizgisi ve form
+başına sayım yok; sayı tür düğmesinde. Eski Site Günlükleri satırı
+mesajdaki adresi link yapıyordu. Satırın kendisi link olduğu için
+(iç içe `<a>` geçersiz) adres artık düz metin. Rol 3 için form ve rehber
+günlük sayıları eskisi gibi site geneli sayılır, kapsamlı değildir;
+içerik değil yalnız sayı.
+
+**Doğrulama.** `php tools/test.php`: satır `data` öznitelikleri, çubuk
+ölçeği, süzgeç düğmesi. Sandbox + Playwright:
+- 1440 px'te kart 658×316.
+- "Formlar" seçilince 50 satırdan 12'si görünür kaldı.
+- Sayfa yenilenince seçim korundu.
+- 390 px'te çip düzeni ve koyu tema denendi.
+
+---
+
 ## 2026.4.10 — Dış API: OAuth'la bağlanan uygulamalar panelde (operatör kapatır/kaldırır, kişi kendi bağlantılarını sonlandırır) (2026-10-13)
 
 **Neden.** Faz A'dan beri kişi bir bağlantıyı ancak parolasını

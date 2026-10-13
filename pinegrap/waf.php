@@ -51,6 +51,11 @@ define('WAF_MIN_VALUE_BYTES', 3);
 // a flood by three or four orders of magnitude.
 define('WAF_LOG_WINDOW', 300);
 
+// Visitor location: the country a request comes from, for the features that
+// depend on it (the language redirect). Standalone like this file, and loaded
+// with it so both bootstraps have it.
+require_once(dirname(__FILE__) . '/includes/geo.php');
+
 
 /* ─────────────────────────────────────────────────────────────────────────
    CONFIGURATION
