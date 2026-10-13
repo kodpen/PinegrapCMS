@@ -62,6 +62,7 @@ function ws_api_plan_item_present($viewer, $event)
         'ends_at'       => api_time($event['ends_at']),
         'yearly'        => !empty($event['yearly']),
         'from_calendar' => ((int) ($event['feed_id'] ?? 0) > 0),
+        'meeting_url'   => (string) ($event['meeting_url'] ?? ''),
         'created_by'    => (int) $event['created_by'],
         'can_edit'      => ws_can_edit_event($viewer, $event),
         'created_at'    => api_time($event['created_at']),
@@ -88,6 +89,7 @@ function ws_api_plan_item_schema()
         'ends_at'       => 'string?',
         'yearly'        => 'boolean',
         'from_calendar' => 'boolean',
+        'meeting_url'   => 'string',
         'created_by'    => 'integer',
         'can_edit'      => 'boolean',
         'created_at'    => 'string?',
@@ -251,6 +253,15 @@ function ws_api_plan_item_write($viewer, $params, $current = null)
 
     if (array_key_exists('people', $params)) {
         $data['people'] = ws_api_user_ids($params['people'], 'people');
+    }
+
+    // The video call: kept as it is unless sent.
+    if (array_key_exists('meeting_url', $params)) {
+        if (ws_meeting_url_clean($params['meeting_url']) === false) {
+            api_fail_validation(lang('The meeting link is not a web address.'), 'meeting_url');
+        }
+
+        $data['meeting_url'] = (string) $params['meeting_url'];
     }
 
     if (($data['scope'] === 'department') && (((int) $data['department_id'] <= 0) || !ws_department((int) $data['department_id']))) {

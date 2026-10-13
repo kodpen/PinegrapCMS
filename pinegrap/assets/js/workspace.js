@@ -4306,6 +4306,20 @@
                     row.appendChild(el('small', '', item.body));
                 }
 
+                // A meeting about to start: its call, one tap away.
+                if (item.join) {
+                    var join = el('span', 'btn btn-sm btn-primary rounded-pill align-self-start mt-1', t('meeting_join'));
+                    join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+                    join.setAttribute('role', 'button');
+                    join.addEventListener('click', function (clicked) {
+                        clicked.preventDefault();
+                        clicked.stopPropagation();
+                        api('ws_inbox_read', { ids: [item.id] }).catch(function () {});
+                        joinMeeting(item.join);
+                    });
+                    row.appendChild(join);
+                }
+
                 row.addEventListener('click', function () {
                     api('ws_inbox_read', { ids: [item.id] }).catch(function () {});
                 });
@@ -15370,6 +15384,11 @@
                     cell.events.forEach(function (event) {
                         var item = button('ws-board-item ' + ((event.kind === 'leave' || event.kind === 'holiday') ? 'ws-item-leave' : 'ws-item-event'), (event.time ? event.time + ' ' : '') + event.title);
                         item.title = event.title;
+
+                        if (event.meeting_url) {
+                            item.insertBefore(icon('bi-camera-video', 'me-1'), item.firstChild);
+                        }
+
                         var openEvent = function () {
                             api('ws_event_get', { event_id: event.id }).then(function (result) {
                                 eventForm(result.event, {}, load);
@@ -15380,6 +15399,7 @@
                         onContext(item, function () {
                             return [
                                 { header: event.title },
+                                event.meeting_url ? { icon: 'bi-camera-video', label: t('meeting_join'), action: function () { joinMeeting(event.meeting_url); } } : null,
                                 { icon: 'bi-pencil', label: t('edit'), action: openEvent },
                                 { icon: 'bi-trash', label: t('delete'), danger: true, action: function () {
                                     ask(t('delete_item_confirm'), t('delete'), true).then(function (yes) {
@@ -15388,7 +15408,7 @@
                                         }
                                     });
                                 } }
-                            ];
+                            ].filter(Boolean);
                         });
                         box.appendChild(item);
                     });
@@ -15935,6 +15955,11 @@
 
                             var item = el('div', 'ws-cal-event ws-kind-' + event.kind, (event.time ? event.time + ' ' : '') + event.title);
                             item.title = event.title + (event.people && event.people.length ? ' · ' + peopleNames(event.people) : '');
+
+                            if (event.meeting_url) {
+                                item.insertBefore(icon('bi-camera-video', 'me-1'), item.firstChild);
+                            }
+
                             cell.appendChild(item);
                             shown++;
                         });
@@ -16088,6 +16113,17 @@
                     main.appendChild(el('div', 'ws-row-title', (event.time ? event.time + ' · ' : '') + event.title));
                     main.appendChild(el('div', 'ws-row-sub', (CFG.event_kinds[event.kind] || '') + (event.people.length ? ' · ' + peopleNames(event.people) : '')));
                     row.appendChild(main);
+
+                    if (event.meeting_url) {
+                        var join = el('a', 'btn btn-sm btn-outline-primary rounded-pill text-nowrap', t('meeting_join'));
+                        join.href = event.meeting_url;
+                        join.target = '_blank';
+                        join.rel = 'noopener noreferrer';
+                        join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+                        join.addEventListener('click', function (clicked) { clicked.stopPropagation(); });
+                        row.appendChild(join);
+                    }
+
                     row.addEventListener('click', function () {
                         api('ws_event_get', { event_id: event.id }).then(function (result) {
                             hideOffcanvas(node);
@@ -16269,6 +16305,41 @@
         }
 
         load();
+
+        // Opened from a meeting's notice (?event=): the item, with its Join.
+        if (parseInt(query.event || 0, 10) > 0) {
+            api('ws_event_get', { event_id: parseInt(query.event, 10) }).then(function (result) {
+                eventForm(result.event, {}, load);
+            }).catch(fail);
+        }
+    }
+
+    // A Jitsi room nobody can guess: a few letters of the title and a
+    // random tail. meet.jit.si opens it on first visit; nothing is set up.
+    function jitsiRoom(title) {
+        var map = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u', 'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U' };
+        var words = String(title || '').replace(/[çğıöşüÇĞİÖŞÜ]/g, function (letter) { return map[letter]; })
+            .replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').filter(Boolean).slice(0, 4);
+        var alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
+        var tail = '';
+        var bytes = new Uint8Array(10);
+
+        (window.crypto || window.msCrypto).getRandomValues(bytes);
+
+        for (var i = 0; i < bytes.length; i++) {
+            tail += alphabet.charAt(bytes[i] % alphabet.length);
+        }
+
+        return 'https://meet.jit.si/' + (words.length ? words.join('-') : 'Meeting') + '-' + tail;
+    }
+
+    // Opens a plan item's video call in a new tab.
+    function joinMeeting(url) {
+        var opened = window.open(url, '_blank', 'noopener');
+
+        if (opened) {
+            opened.opener = null;
+        }
     }
 
     // The plan item form: a meeting, a visit, leave, a holiday.
@@ -16395,6 +16466,76 @@
         note.value = event ? event.note : '';
         body.appendChild(formRow(t('note'), note));
 
+        // The video call (includes/workspace/meetings.php): a Jitsi room made
+        // up here, or a link pasted in; Join opens it in a new tab.
+        var meeting = null;
+
+        if (CFG.meetings) {
+            var meetingRow = el('div');
+            var meetingGroup = el('div', 'input-group input-group-sm');
+            meeting = el('input', 'form-control');
+            meeting.type = 'url';
+            meeting.id = nextId('ws-ev-meeting-');
+            meeting.maxLength = 500;
+            meeting.placeholder = 'https://';
+            meeting.value = event ? (event.meeting_url || '') : '';
+            meetingGroup.appendChild(meeting);
+
+            var jitsi = button('btn btn-outline-secondary', '', 'bi-magic', t('meeting_jitsi'));
+            jitsi.addEventListener('click', function () {
+                meeting.value = jitsiRoom(title.value);
+                joinView();
+            });
+            meetingGroup.appendChild(jitsi);
+
+            var join = el('a', 'btn btn-primary', t('meeting_join'));
+            join.target = '_blank';
+            join.rel = 'noopener noreferrer';
+            join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+            meetingGroup.appendChild(join);
+
+            var joinView = function () {
+                var url = meeting.value.trim();
+
+                join.classList.toggle('d-none', !/^https?:\/\/\S+$/i.test(url));
+                join.href = url || '#';
+            };
+
+            meeting.addEventListener('input', joinView);
+            joinView();
+
+            if (event && !event.can_edit) {
+                meeting.readOnly = true;
+                jitsi.classList.add('d-none');
+            }
+
+            meetingRow.appendChild(formRow(t('meeting_link'), meetingGroup, t('meeting_link_help')));
+            body.appendChild(meetingRow);
+
+            var meetingView = function () {
+                meetingRow.classList.toggle('d-none', (kind.value === 'leave' || kind.value === 'holiday') && !meeting.value);
+            };
+
+            kind.addEventListener('change', meetingView);
+            meetingView();
+
+            // The meeting note: found again, or written from the template.
+            if (event && CFG.notes) {
+                var noteButton = button('btn btn-sm btn-outline-secondary rounded-pill', t('meeting_note'), 'bi-journal-text');
+                noteButton.title = t('meeting_note_help');
+                noteButton.addEventListener('click', function () {
+                    noteButton.disabled = true;
+                    api('ws_meeting_note', { event_id: event.id }).then(function (data) {
+                        window.location.href = CFG.urls.notes + '?note=' + data.note_id;
+                    }).catch(function (error) {
+                        noteButton.disabled = false;
+                        fail(error);
+                    });
+                });
+                body.appendChild(noteButton);
+            }
+        }
+
         if (event && event.can_edit) {
             var remove = button('btn btn-sm btn-outline-warning me-auto', t('delete'), 'bi-trash');
             remove.addEventListener('click', function () {
@@ -16434,7 +16575,8 @@
                     all_day: allDay.checked ? 1 : 0,
                     start_time: startTime.value,
                     end_time: endTime.value,
-                    note: note.value
+                    note: note.value,
+                    meeting_url: meeting ? meeting.value.trim() : undefined
                 }).then(function () {
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
@@ -17340,6 +17482,12 @@
             }
 
             items.push({ icon: 'bi-link-45deg', label: t('notes_copy_link'), action: function () { copyText(absoluteUrl(CFG.urls.notes + '?note=' + note.id)); } });
+
+            // A meeting note's decisions and action items (meetings.php).
+            if (CFG.meetings && (mine || note.access === 'edit')) {
+                items.push({ icon: 'bi-box-arrow-in-right', label: t('meeting_transfer'), action: function () { meetingTransfer(note); } });
+            }
+
             items.push('-');
 
             if (mine) {
@@ -17881,6 +18029,15 @@
                 });
                 headNode.appendChild(share);
                 headButtons.share = share;
+            }
+
+            // A meeting note (one that tags a plan item and has decisions or
+            // action items): its own button to bring them into a channel.
+            if (CFG.meetings && current.id && editable() && /<#plan:\d+>/.test(current.body || '')
+                && ((current.body || '').indexOf('::: ' + t('meeting_decisions')) !== -1 || (current.body || '').indexOf('::: ' + t('meeting_actions')) !== -1)) {
+                var transfer = button('btn btn-sm btn-ghost', t('meeting_transfer'), 'bi-box-arrow-in-right');
+                transfer.addEventListener('click', function () { meetingTransfer(current); });
+                headNode.appendChild(transfer);
             }
 
             // What the note held before: kept on the server, put back as a
@@ -18503,6 +18660,134 @@
                     toast(t('notes_shared_channel_ok'), 'success', { label: t('open_channel'), href: CFG.urls.workspace + '?channel=' + data.channel_id + '&message=' + data.message_id });
                     refresh(note);
                 }).catch(fail);
+            });
+        }
+
+        // A meeting note's decisions and action items, brought into a
+        // channel (includes/workspace/meetings.php): read and shown first,
+        // each one chosen, written on confirmation.
+        function meetingTransfer(note) {
+            var channels = ((BOOT && BOOT.channels) || []).filter(function (channel) {
+                return !channel.archived && (channel.joined || channel.kind === 'public');
+            });
+            var node = offcanvas('ws-meeting-transfer', '');
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+            var choice = select(channels.map(function (channel) {
+                return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
+            }), channels.length ? channels[0].id : 0);
+            var list = el('div');
+            var picked = [];
+
+            node.querySelector('.offcanvas-title').textContent = t('meeting_transfer_title');
+            choice.id = nextId('ws-mt-channel-');
+            body.appendChild(formRow(t('meeting_channel'), choice));
+            body.appendChild(el('div', 'form-text mb-3', t('meeting_transfer_help')));
+            body.appendChild(list);
+
+            footer.classList.remove('d-none');
+
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+            footer.appendChild(cancel);
+
+            var go = button('btn btn-sm btn-primary rounded-pill px-3', t('meeting_transfer_go'), 'bi-box-arrow-in-right');
+            footer.appendChild(go);
+
+            function row(group, item, text, sub, blocked) {
+                var line = el('div', 'form-check mb-2');
+                var box = el('input', 'form-check-input');
+                var label = el('label', 'form-check-label');
+
+                box.type = 'checkbox';
+                box.id = nextId('ws-mt-item-');
+                box.checked = !blocked;
+                box.disabled = !!blocked;
+                label.htmlFor = box.id;
+                label.appendChild(el('span', blocked ? 'text-body-secondary' : '', text));
+
+                if (sub) {
+                    label.appendChild(el('div', 'small ' + (item.error ? 'text-danger' : 'text-body-secondary'), sub));
+                }
+
+                line.appendChild(box);
+                line.appendChild(label);
+                picked.push({ group: group, index: item.index, box: box });
+
+                return line;
+            }
+
+            function load() {
+                go.disabled = true;
+                picked = [];
+                clear(list);
+                list.appendChild(el('div', 'small text-body-secondary', t('loading')));
+
+                api('ws_meeting_transfer', { note_id: note.id, channel_id: parseInt(choice.value, 10) || 0 }).then(function (data) {
+                    clear(list);
+
+                    if (!data.decisions.length && !data.actions.length) {
+                        list.appendChild(el('div', 'ws-empty', t('meeting_transfer_none')));
+                        return;
+                    }
+
+                    if (data.decisions.length) {
+                        list.appendChild(el('div', 'form-label mt-2', t('meeting_decisions')));
+                        data.decisions.forEach(function (item) {
+                            list.appendChild(row('decisions', item, item.text, item.done ? t('meeting_transfer_done') : '', item.done));
+                        });
+                    }
+
+                    if (data.actions.length) {
+                        list.appendChild(el('div', 'form-label mt-2', t('meeting_actions')));
+                        data.actions.forEach(function (item) {
+                            var sub = item.done ? t('meeting_transfer_task') : (item.error || [item.people.map(function (who) { return who.name; }).join(', '), item.due].filter(Boolean).join(' · '));
+                            list.appendChild(row('actions', item, item.title || '…', sub, item.done || !!item.error));
+                        });
+                    }
+
+                    go.disabled = !channels.length;
+                }).catch(fail);
+            }
+
+            choice.addEventListener('change', load);
+
+            go.addEventListener('click', function () {
+                var chosen = { decisions: [], actions: [] };
+                var channelId = parseInt(choice.value, 10) || 0;
+
+                picked.forEach(function (item) {
+                    if (item.box.checked && !item.box.disabled) {
+                        chosen[item.group].push(item.index);
+                    }
+                });
+
+                if (!chosen.decisions.length && !chosen.actions.length) {
+                    hideOffcanvas(node);
+                    return;
+                }
+
+                go.disabled = true;
+
+                api('ws_meeting_transfer', { note_id: note.id, channel_id: channelId, confirm: 1, decisions: chosen.decisions, actions: chosen.actions }).then(function (data) {
+                    hideOffcanvas(node);
+                    toast(t('meeting_transfer_result', data.decisions, data.tasks), 'success', { label: t('open_channel'), href: CFG.urls.workspace + '?channel=' + channelId });
+
+                    if (data.failed && data.failed.length) {
+                        toast(t('meeting_transfer_failed') + ' ' + data.failed.join(' · '), 'warning');
+                    }
+
+                    // The rows that became tasks carry their tags now.
+                    openNote(note.id, true);
+                }).catch(function (error) {
+                    go.disabled = false;
+                    fail(error);
+                });
+            });
+
+            save().then(function () {
+                showOffcanvas(node);
+                load();
             });
         }
 

@@ -40,6 +40,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_signin_google();          // 10.75
 	upgrade_2026_4_10_erp_late_fee();           // 10.61
 	upgrade_2026_4_10_workspace_approval_guests(); // 10.84
+	upgrade_2026_4_10_workspace_meetings();     // 10.86
 
 }
 
@@ -756,5 +757,29 @@ function upgrade_2026_4_10_workspace_approval_guests() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: an approval request can ask a customer, or anybody outside the team, by e-mail. They approve or reject it from a link of their own, with no account; the answer lands on the card, in the channel and on the task it is about.');
+
+}
+
+// Meetings on the plan (2026.4.10, 10.86; includes/workspace/schedule.php,
+// includes/workspace/reminders.php).
+//
+// A plan item carries the address of its video call: a Jitsi room the form
+// makes up, or a Google Meet, Teams or Zoom link pasted in. meeting_url is
+// that address. A timed item with one tells its people a few minutes before
+// it starts: remind_at is that moment, worked out as the item is saved, and
+// reminded_at says it went, so finding the ones that are due is one indexed
+// read, as for a task's reminder.
+//
+// ws_inbox.event_id names the plan item an inbox line is about, the way
+// task_id names a task.
+function upgrade_2026_4_10_workspace_meetings() {
+
+	install_add_column('ws_events', 'meeting_url', "VARCHAR(500) NOT NULL DEFAULT ''");
+	install_add_column('ws_events', 'remind_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_events', 'reminded_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_events', 'idx_remind', "INDEX idx_remind (reminded_at, remind_at)");
+	install_add_column('ws_inbox', 'event_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER task_id");
+
+	install_note('Workspace: a meeting on the plan can carry its video call link (a Jitsi room made up on the spot, or a Google Meet, Teams or Zoom link), with a Join button and a notice to its people a few minutes before it starts; a meeting note can be opened from it, and its decisions and actions brought into a channel.');
 
 }

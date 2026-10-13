@@ -37,6 +37,14 @@
  * A due date moved later goes overdue again later and is told again; the
  * tasks that were already overdue when the notice arrived are not told.
  *
+ * A meeting on the plan with a video call link (2026.4.10, 10.86) tells its
+ * people WS_MEETING_REMIND_MINUTES before it starts, with the same runs: a
+ * line in the inbox that opens the item and its Join button, and a banner on
+ * their devices. No e-mail: the notice is minutes ahead, and the link is one
+ * tap away on the screen it opens. Its moment is kept on the item
+ * (ws_events.remind_at) and claimed the same way; one that comes after the
+ * meeting ended is dropped.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -71,6 +79,95 @@ define('WS_TASK_OVERDUE_LOOKBACK', 172800);
 /** How many tasks with a date in its stretch one run reads at most. */
 define('WS_TASK_OVERDUE_BATCH', 2000);
 
+/** How many minutes before a meeting with a link its people are told. */
+define('WS_MEETING_REMIND_MINUTES', 10);
+
+/**
+ * Whether the database has the meeting link and its notice (2026.4.10,
+ * 10.86). Reads nothing of the workspace, like ws_task_reminders_ready().
+ *
+ * @return bool
+ */
+function ws_meetings_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        if (function_exists('waf_table_has_column')) {
+            $ready = waf_table_has_column('ws_events', 'reminded_at')
+                && waf_table_has_column('ws_inbox', 'event_id');
+        } else {
+            $ready = ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND ((TABLE_NAME = 'ws_events' AND COLUMN_NAME = 'reminded_at')
+                    OR (TABLE_NAME = 'ws_inbox' AND COLUMN_NAME = 'event_id'))") === 2);
+        }
+    }
+
+    return $ready;
+}
+
+/**
+ * Whether a meeting's notice is waiting to go: one indexed read.
+ *
+ * @return bool
+ */
+function ws_meeting_reminders_waiting()
+{
+    if (!ws_meetings_ready()) {
+        return false;
+    }
+
+    return (bool) db_value("SELECT id FROM ws_events
+        WHERE reminded_at = 0 AND remind_at > 0 AND remind_at <= '" . time() . "'
+        LIMIT 1");
+}
+
+/**
+ * Tells the people of the meetings about to start: a line in each one's
+ * inbox, which wakes their devices.
+ *
+ * @param int $limit
+ * @return int the people told
+ */
+function ws_meeting_reminders_run($limit = WS_TASK_REMIND_BATCH)
+{
+    if (!ws_meetings_ready() || !ws_enabled()) {
+        return 0;
+    }
+
+    $now = time();
+    $told = 0;
+
+    foreach ((array) db_values("SELECT id FROM ws_events
+        WHERE reminded_at = 0 AND remind_at > 0 AND remind_at <= '" . $now . "'
+        ORDER BY remind_at LIMIT " . max(1, (int) $limit)) as $event_id) {
+
+        // Claimed first: a second run that read the same row finds it taken.
+        db("UPDATE ws_events SET reminded_at = '" . $now . "' WHERE id = '" . (int) $event_id . "' AND reminded_at = 0");
+
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            continue;
+        }
+
+        $event = db_item("SELECT * FROM ws_events WHERE id = '" . (int) $event_id . "'");
+
+        // Over already, or its link taken away: there is nothing to join.
+        if (!is_array($event) || ((string) $event['meeting_url'] === '') || ((int) $event['ends_at'] <= $now)) {
+            continue;
+        }
+
+        foreach (ws_event_people_ids($event) as $user_id) {
+            ws_notify($user_id, 'meeting_soon', array('event_id' => (int) $event['id'], 'actor_id' => 0, 'batch' => true));
+            $told++;
+        }
+    }
+
+    ws_push_batch_done($told > 0);
+
+    return $told;
+}
+
 /**
  * Whether the database has the reminder columns (2026.4.5, 5.111). Reads
  * nothing of the workspace, so the general job can ask before loading it.
@@ -104,6 +201,11 @@ function ws_task_reminders_ready()
  */
 function ws_task_reminders_waiting()
 {
+    // A meeting about to start goes with the same runs.
+    if (ws_meeting_reminders_waiting()) {
+        return true;
+    }
+
     if (!ws_task_reminders_ready()) {
         return false;
     }
@@ -526,6 +628,8 @@ function ws_task_reminder_mail($task)
 function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
 {
     $result = array('sent' => 0, 'skipped' => 0, 'failed' => 0);
+
+    ws_meeting_reminders_run($limit);
 
     if (!ws_task_reminders_ready() || !ws_enabled()) {
         return $result;

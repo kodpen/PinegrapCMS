@@ -36,8 +36,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | approval_requested | approval_decided | approval_reminder | ack_reminder
  *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
- *                         | task_reminder | task_overdue (reminders.php)
- * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner;
+ *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
+ * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done()
  * @return int the inbox row
@@ -57,21 +57,25 @@ function ws_notify($user_id, $kind, $data)
     // A note handed over is named by the copy it became (4.110).
     $note_id = (function_exists('ws_notes_inbox_ready') && ws_notes_inbox_ready()) ? (int) ($data['note_id'] ?? 0) : 0;
 
+    // A plan item, by its own id (2026.4.10, 10.86).
+    $event_id = (function_exists('ws_meetings_ready') && ws_meetings_ready()) ? (int) ($data['event_id'] ?? 0) : 0;
+
     // The same thing twice is one row: an edit that mentions somebody again,
     // a task given to somebody who already had it.
     $existing = (int) db_value("SELECT id FROM ws_inbox
         WHERE user_id = '" . $user_id . "' AND kind = '" . e($kind) . "' AND read_at = 0
         AND channel_id = '" . $channel_id . "' AND message_id = '" . $message_id . "' AND task_id = '" . $task_id . "'"
-        . (($note_id > 0) ? " AND note_id = '" . $note_id . "'" : '') . "
+        . (($note_id > 0) ? " AND note_id = '" . $note_id . "'" : '')
+        . (($event_id > 0) ? " AND event_id = '" . $event_id . "'" : '') . "
         LIMIT 1");
 
     if ($existing > 0) {
         return $existing;
     }
 
-    db("INSERT INTO ws_inbox (user_id, kind, channel_id, message_id, task_id, " . (($note_id > 0) ? 'note_id, ' : '') . "actor_id, created_at)
+    db("INSERT INTO ws_inbox (user_id, kind, channel_id, message_id, task_id, " . (($note_id > 0) ? 'note_id, ' : '') . (($event_id > 0) ? 'event_id, ' : '') . "actor_id, created_at)
         VALUES ('" . $user_id . "', '" . e($kind) . "', '" . $channel_id . "', '" . $message_id . "', '" . $task_id . "',
-            " . (($note_id > 0) ? "'" . $note_id . "', " : '') . "'" . (int) ($data['actor_id'] ?? 0) . "', '" . time() . "')");
+            " . (($note_id > 0) ? "'" . $note_id . "', " : '') . (($event_id > 0) ? "'" . $event_id . "', " : '') . "'" . (int) ($data['actor_id'] ?? 0) . "', '" . time() . "')");
 
     $inbox_id = (int) mysqli_insert_id(db::$con);
 
@@ -466,6 +470,20 @@ function ws_inbox_describe($viewer, $row)
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
                 'icon'  => 'bi-calendar-x',
             );
+
+        // A meeting with a video call is about to start (reminders.php). The
+        // line opens the item on the calendar, where Join is; the inbox list
+        // also offers the link itself (join).
+        case 'meeting_soon':
+            $event = ((int) ($row['event_id'] ?? 0) > 0) ? db_item("SELECT * FROM ws_events WHERE id = '" . (int) $row['event_id'] . "'") : null;
+
+            return array(
+                'title' => lang(array('string' => 'Starting soon: {var:1}', 'vars' => is_array($event) ? mb_substr((string) $event['title'], 0, 150) : '')),
+                'body'  => is_array($event) ? lang(array('string' => 'At {var:1}. Tap to join.', 'vars' => date('H:i', (int) $event['starts_at']))) : '',
+                'url'   => $base . 'workspace_calendar.php' . (is_array($event) ? '?month=' . date('Y-m', (int) $event['starts_at']) . '&event=' . (int) $event['id'] : ''),
+                'icon'  => 'bi-camera-video',
+                'join'  => is_array($event) ? (string) $event['meeting_url'] : '',
+            );
     }
 
     return array('title' => lang('Workspace'), 'body' => '', 'url' => $base . 'workspace.php', 'icon' => 'bi-bell');
@@ -542,6 +560,11 @@ function ws_inbox_row_visible($viewer, $row)
         if (!$message || ((int) $message['deleted_at'] > 0)) {
             return false;
         }
+    }
+
+    // A meeting's notice is there as long as the meeting is.
+    if (($row['kind'] === 'meeting_soon') && !db_value("SELECT id FROM ws_events WHERE id = '" . (int) ($row['event_id'] ?? 0) . "'")) {
+        return false;
     }
 
     // A line about a note is there as long as the person may read the note.

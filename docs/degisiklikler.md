@@ -84,6 +84,78 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: toplantı bağlantısı ve toplantı notu (2026-10-13)
+
+**Neden.** Workspace araştırması (`workspace-arastirma.md` §4, P2 2.6 a ve
+b): Notion, Teams, Slack, Odoo ve Bitrix24'ün ortak özelliği. Yerleşik
+görüntülü görüşme (WebRTC) paylaşımlı hostingte sunucu ister; bağlantı
+taşımak yeter. Ses kaydı ve yazıya dökme (2.6 c) kapsam dışı.
+
+**Ne değişti.**
+- Plan öğesi (`ws_events`) toplantı bağlantısı taşıyor:
+  `meeting_url` VARCHAR(500). Form "Jitsi odası oluştur" ile
+  `https://meet.jit.si/<başlıktan birkaç kelime>-<10 rastgele karakter>`
+  yazıyor (`crypto.getRandomValues`), ya da Meet/Teams/Zoom bağlantısı
+  yapıştırılıyor. Doğrulama `ws_meeting_url_clean()`: http(s), boşluksuz,
+  `FILTER_VALIDATE_URL`, en çok 500 karakter. Site bu servislerle hiç
+  konuşmaz; adres yalnız yeni sekmede açılır (`noopener`).
+- "Katıl": plan öğesi formunda, takvimin gün listesinde, gelen kutusunda
+  ve planlama panosundaki öğenin sağ tık menüsünde. Takvim ızgarasında ve
+  panoda bağlantılı öğe kamera simgesi taşıyor. Takvim `?event=<id>` ile
+  açılınca öğenin formu açılıyor (bildirimin adresi).
+- Başlamadan bildirim: zamanlı ve bağlantılı öğe, başlamadan
+  `WS_MEETING_REMIND_MINUTES` (10) dakika önce katılanlara (kişiler,
+  departmanın üyeleri ya da bütün ekip — `ws_event_people_ids()`) gelen
+  kutusu satırı `meeting_soon` yazar; satır zil ve push kuyruğuna gider.
+  An `ws_events.remind_at`'te kayıt sırasında hesaplanır, `reminded_at`
+  koşullu güncellemeyle sahiplenilir (görev hatırlatmasıyla aynı desen,
+  aynı koşular: `ws_task_reminders_waiting()` / `_run()` içinden çağrılır,
+  böylece `job.php`, ekranların yoklaması ve saatlik iş değişmedi). Saat
+  ya da bağlantı değişince yeniden kurulur; toplantı bittiyse atılır.
+  E-posta yok: on dakika önceden haber, bağlantı açılan ekranda bir
+  dokunuş uzakta. Push adresi dış bağlantı olamaz (`sw.js`
+  `safeTarget()` kapsam dışını panele çevirir), bu yüzden satırın adresi
+  takvimdeki öğe; gelen kutusu listesi ayrıca bağlantının kendisini
+  `join` olarak taşır.
+- `ws_inbox.event_id`: satırın hangi plan öğesine ait olduğu. Yalnız
+  `task_id` / `channel_id` / `message_id` olsaydı iki toplantının
+  bildirimi `ws_notify()`'ın "aynı şey iki kez" kontrolünde tek satıra
+  düşerdi.
+- Toplantı notu (`includes/workspace/meetings.php`): plan öğesinden
+  "Toplantı notu" sıradan bir not açar — öğenin etiketi
+  (`<#plan:id>`), saati ve bağlantısı; Katılımcılar (işaret listesi,
+  gelenler işaretlenir; departman toplantısında departman etiketi, şirket
+  toplantısında blok yok), Gündem, Kararlar, Aksiyonlar (`::: Başlık`lı
+  tablolar, `ws_template_note_table()`). Not açan kişinindir ve her not
+  gibi paylaşılır; yeniden basınca kişinin okuyabildiği, öğeyi etiketleyen
+  en yeni not açılır (önce kendi notu). Öğeye not sütunu eklenmedi: tek
+  bir not kimliği, notu herkesle paylaşmadan başkalarına bir şey
+  söylemezdi.
+- "Kanala aktar" (not başlığında toplantı notunda, "Daha fazla" menüsünde
+  düzenlenebilen her notta): Kararlar ve Aksiyonlar bloklarını (tablo ya
+  da işaret listesi; başlık ekran dilinde ya da İngilizce) okur, önce
+  liste gösterir. Karar kanala `decision` mesajı olur (Kararlar sekmesi);
+  kanalda kelimesi kelimesine aynı karar varsa "zaten var". Aksiyon satırı
+  `/task` gibi okunur (`ws_command_parse_task()`: @kişi, gün, ~süre,
+  !öncelik), kimse yoksa aktaran kişinin olur, görev kartı kanala düşer;
+  görev olan satıra notta `<#task:id>` eklenir ve bir daha aktarılmaz.
+  İzin kontrolü `ws_can_assign_to()`; izin dışı satır listede kırmızı ve
+  seçilemez. Bir seferde en çok 15 (kanalın dakikada 20 mesaj sınırı).
+  İzin çakışması (`ws_assignment_check()`) burada sorulmuyor; `/task`
+  önizlemesindeki uyarılar görev çekmecesinde görünür.
+- Dış API / MCP: plan öğesi `meeting_url` alanı (yazma ve okuma). iCal
+  aboneliği bağlantıyı açıklamaya ve `LOCATION`'a yazıyor.
+
+**Şema (10.86).** `ws_events.meeting_url`, `remind_at`, `reminded_at`,
+`idx_remind (reminded_at, remind_at)`; `ws_inbox.event_id`. 10.85 olaylarla
+otomasyon işine bırakıldı.
+
+**Doğrulanamayan.** Bildirimin telefondaki push görünümü (sandbox'ta push
+servisi yok); Teams ve Zoom bağlantılarının açılışı (yalnız yeni sekme
+açılıyor, servisle konuşulmuyor).
+
+---
+
 ## 2026.4.10 — Kullanıcılar listesi ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

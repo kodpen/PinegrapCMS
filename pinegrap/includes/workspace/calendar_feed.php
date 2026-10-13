@@ -628,6 +628,15 @@ function ws_calendar_feed_plan_items($viewer, $details, $since, $until, $plan, $
             $lines[] = trim((string) $row['note']);
         }
 
+        // The video call (10.86): in the text, and as the place, where a
+        // calendar app puts its join link.
+        $meeting = (string) ($row['meeting_url'] ?? '');
+
+        if ($meeting !== '') {
+            $lines[] = '';
+            $lines[] = lang('Join') . ': ' . $meeting;
+        }
+
         $lines[] = '';
         $lines[] = $url;
 
@@ -644,6 +653,7 @@ function ws_calendar_feed_plan_items($viewer, $details, $since, $until, $plan, $
             'summary'     => ($title !== '') ? $title : $kind,
             'description' => implode("\n", $lines),
             'url'         => $url,
+            'location'    => $meeting,
             'all_day'     => $all_day,
             'start'       => $all_day ? date('Y-m-d', $starts) : $starts,
             'end'         => $all_day ? date('Y-m-d', $ends) : (($ends > $starts) ? $ends : null),
@@ -963,6 +973,10 @@ function ws_ics_event($item, $host)
 
     if ((string) ($item['description'] ?? '') !== '') {
         $lines[] = 'DESCRIPTION:' . ws_ics_text($item['description']);
+    }
+
+    if ((string) ($item['location'] ?? '') !== '') {
+        $lines[] = 'LOCATION:' . ws_ics_text($item['location']);
     }
 
     if ((string) ($item['url'] ?? '') !== '') {
