@@ -1037,6 +1037,9 @@ numarası belgenin kendisidir. Bunlar düz `table table-hover` ile çizilir.
 
 Kesilmiş fatura düzenlenmez; geri dönüş iki yoldan olur (`includes/erp/returns.php`).
 
+- **Alış faturası** da kendi serisinde: `erp_invoice_series('purchase')`,
+  `ERP_PURCHASE_INVOICE_SERIES` ya da fatura serisi + `A` (PGF → PGFA;
+  2026.4.10 öncesi kesilenler PGF'de kaldı). İadesi PGFAI.
 - **İade** kendi belgesidir ve **kendi serisinde** koşar: fatura serisi + `I`
   (PGF → PGFI), ya da `ERP_RETURN_SERIES`. Aynı seride olamaz —
   `erp_invoices.uniq_number` (direction, series, number, issue_year) `doc_type`

@@ -328,6 +328,8 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   yalnız ondan yapılan alış faturasıyla değişir. Numara
   `erp_next_number($seri, 'purchase_order', $yıl)`, seri
   `ERP_PURCHASE_ORDER_SERIES` ya da fatura serisi + `P` (`S` irsaliyenin).
+  Alış faturası da kendi serisinde: `erp_invoice_series('purchase')`,
+  `ERP_PURCHASE_INVOICE_SERIES` ya da fatura serisi + `A`.
   Her satırın kalıcı anahtarı `source_line` (`erp_source_line_key()`,
   `erp_purchase_order_line_keys()`); siparişten yapılan fatura satırı onu
   `erp_invoice_items.source_line`'a, siparişi `erp_invoices.purchase_order_id`'ye

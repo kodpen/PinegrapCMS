@@ -534,6 +534,13 @@
          bağışlar etkilenmez; ürün RSS beslemeleri liste
          fiyatını yayımlar. Varsayılan kapalı.
 
+  [DÜZELTME] Alış faturaları artık kendi serisinde
+         numaralanıyor: fatura serisinin sonuna A eklenir
+         (ör. PGFA2026000000001). Önceden yılın ilk alış
+         faturası ile ilk satış faturası aynı numarayı
+         (PGF2026000000001) taşıyordu. Kesilmiş belgelerin
+         numaraları değişmez.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.

@@ -84,6 +84,38 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Alış faturası kendi serisinde (2026-10-13)
+
+**Kaynak.** Satın alma siparişlerinin dev.pinegrap.com testi (koordinatör
+üzerinden): alış faturası PGF2026000000001 ile satış faturası
+PGF2026000000001 aynı numarayı taşıyor. `erp_invoice_issue()` iki yön için
+de `ERP_DEFAULT_SERIES`'ten numara alıyordu; `erp_document_series` satırı
+`doc_kind`'e göre ayrı olduğundan iki sayaç da 1'den başlıyordu.
+`erp_invoices.uniq_number` `direction` içerdiğinden veritabanı ikisini de
+kabul ediyordu.
+
+**Ne değişti.** Yeni `erp_invoice_series($direction)`
+(`includes/erp/invoice_manual.php`): satış faturası fatura serisinde kalır,
+alış faturası `config.php`'deki `ERP_PURCHASE_INVOICE_SERIES` ya da fatura
+serisi + `A` (PGF → PGFA) alır; irsaliyenin `S`, iadenin `I`, teklifin `T`,
+satın alma siparişinin `P` eki gibi. Alış faturasının iadesi ana faturanın
+serisine `I` ekler, artık PGFAI. Ayarlar › E-Ticaret › ERP'deki seri
+açıklaması "alış faturaları A" diyor (yeni dil anahtarı).
+
+**Bilerek yapılmayan.** Şema adımı yok. İstenen biçim
+`erp_document_series.prefix`'i güncelleyen bir adımdı, ama `prefix` yalnız
+GİB biçiminde kullanılıyor; "yıl" ve "sürekli" biçimleri seriyi doğrudan
+yazdığından yalnız önek değişse PGF-2026-0001 yine iki belgede olurdu.
+Kesilmiş belgelerin numaraları değişmedi; eski `PGF / purchase_invoice`
+sayaç satırı yerinde kalır, kullanılmaz. Yeni seri 1'den başlar. Seri 10
+karakter sınırına göre kesilmiyor (`I`, `S`, `T`, `P` eklerinde de böyle).
+
+**Doğrulama.** Sandbox: alış PGFA2026000000001, satış PGF2026000000006,
+alış PGFA2026000000002; `erp_document_series`'te `PGFA / purchase_invoice`
+satırı açıldı. `tests/erp_purchase_order_test.php`'de seri testi.
+
+---
+
 ## 2026.4.10 — Cari fiyatları mağazada (ERP Faz 8b, 10.59) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 8b (#14): bayi ya da

@@ -21608,5 +21608,6 @@
     "Download the statement": "Ekstreyi indir",
     "You have no invoices yet.": "Henüz faturanız yok.",
     "Account prices in the store": "Cari fiyatları mağazada",
-    "A customer whose contact is linked to an account sees and pays that account's prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.": "Kişisi bir cariye bağlı müşteri, oturum açtığında mağazada o carinin fiyatlarını görür ve öder: ürüne tanımlı kendi fiyatını ya da liste fiyatı üzerinden iskontosunu. Daha düşük bir kampanya yine geçerlidir; ikisi toplanmaz. Kapalıyken herkes liste fiyatını görür."
+    "A customer whose contact is linked to an account sees and pays that account's prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.": "Kişisi bir cariye bağlı müşteri, oturum açtığında mağazada o carinin fiyatlarını görür ve öder: ürüne tanımlı kendi fiyatını ya da liste fiyatı üzerinden iskontosunu. Daha düşük bir kampanya yine geçerlidir; ikisi toplanmaz. Kapalıyken herkes liste fiyatını görür.",
+    "The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.": "Her fatura numarasının başladığı harfler, örneğin PGF (Türkiye'de üç harf). İrsaliyeler bunlara S, iadeler I, alış faturaları A ekler."
 }
