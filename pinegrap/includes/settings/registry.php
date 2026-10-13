@@ -177,12 +177,14 @@ function pg_settings_categories()
         'security' => array(
             'label' => lang('Security'),
             'icon'  => 'bi-shield-lock',
-            'description' => lang('Passwords, devices, Google sign-in, registration and membership.'),
+            'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership.'),
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
                 'pgset-signin'     => lang('Sign in with Google'),
+                'pgset-signin-microsoft' => lang('Sign in with Microsoft'),
+                'pgset-signin-apple'     => lang('Sign in with Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
             'keywords' => array(
@@ -190,6 +192,8 @@ function pg_settings_categories()
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')),
+                'pgset-signin-microsoft' => pg_settings_keywords(lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')),
+                'pgset-signin-apple'     => pg_settings_keywords(lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
             ),
         ),
