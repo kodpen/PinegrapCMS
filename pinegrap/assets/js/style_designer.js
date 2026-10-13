@@ -41144,11 +41144,16 @@ const StyleDesigner = (function () {
         }).join('');
     }
 
-    // The <option> of a chosen page id that no picker list holds. Named
-    // from the full page list (list_all_pages, which keeps binned pages
-    // flagged), fetched on first need.
+    // The <option> of a chosen page id that no picker list holds. A tab of
+    // this design is live (the picker left it out for lacking the widget);
+    // any other page is named from the full page list (list_all_pages,
+    // which keeps binned pages flagged), fetched on first need.
     function _swMissingPageOption(cur) {
-        var hit = null;
+        var tab = null, hit = null;
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (String(p.page_id) === cur) tab = p; });
+        if (tab) {
+            return '<option value="' + esc(cur) + '" selected>' + esc((tab.page_name || ('#' + cur)) + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+        }
         if (_allPagesCache) {
             _allPagesCache.forEach(function (p) { if (String(parseInt(p.page_id, 10)) === cur) hit = p; });
         } else {
