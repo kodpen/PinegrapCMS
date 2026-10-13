@@ -67,13 +67,23 @@ function erp_api_line_number($value)
  * zone rate for a product without its own. The figures themselves are worked
  * out by the ERP, which refuses what it would refuse from the screen.
  *
- * @param mixed $raw         The lines parameter
- * @param int   $account_id  The account the document is for
+ * A document whose lines are tied to a purchase order's lines takes one more
+ * field per line, named by $key_field: the purchase order line's key, which
+ * lands in source_line. Without it the line has no key.
+ *
+ * @param mixed  $raw         The lines parameter
+ * @param int    $account_id  The account the document is for
+ * @param string $key_field   The field carrying a purchase order line's key; '' for none
  * @return array
  */
-function erp_api_lines_in($raw, $account_id)
+function erp_api_lines_in($raw, $account_id, $key_field = '')
 {
     $known = array('product_id', 'description', 'quantity', 'unit', 'unit_price', 'discount_rate', 'tax_rate', 'tax2_rate', 'withholding_code', 'withholding_rate');
+
+    if ($key_field !== '') {
+        $known[] = $key_field;
+    }
+
     $lines = array();
     $product_ids = array();
 
@@ -163,6 +173,18 @@ function erp_api_lines_in($raw, $account_id)
 
         $quantity = $number('quantity', 0, 999999999);
 
+        // Letters and digits only, as the order gives them out; anything else
+        // would be cleaned into a key no line of the order carries.
+        $source_line = '';
+
+        if (($key_field !== '') && $given($key_field)) {
+            $source_line = $text($key_field, 16);
+
+            if (!preg_match('/^[A-Za-z0-9]+$/', $source_line) || (erp_source_line_key($source_line) === '')) {
+                api_fail_validation(lang(array('string' => '{var:1} is not the key of a purchase order line.', 'vars' => $field($key_field))), $field($key_field));
+            }
+        }
+
         $lines[$index] = array(
             'product_id' => $product_id,
             'description' => $text('description', 255),
@@ -176,6 +198,7 @@ function erp_api_lines_in($raw, $account_id)
             'tax2_rate' => (float) $tax2_rate,
             'withholding_code' => $text('withholding_code', 10),
             'withholding_rate' => (float) $number('withholding_rate', 0, 100),
+            'source_line' => $source_line,
         );
 
         if ($product_id > 0) {
@@ -428,7 +451,17 @@ function erp_api_invoice_draft_in($params, $kept)
     $header = erp_api_document_header($params, $kept, 'due_date', 'due_date');
 
     if ($sent('lines')) {
-        $lines = erp_api_lines_in($params['lines'], $account_id);
+        $lines = erp_api_lines_in($params['lines'], $account_id, 'purchase_order_line');
+
+        // Only a purchase draft made from a purchase order counts its lines
+        // against the order's; anywhere else a key would mean nothing.
+        $from_order = ($direction === 'purchase') && ((int) ($kept['purchase_order_id'] ?? 0) > 0);
+
+        foreach ($lines as $index => $line) {
+            if (!$from_order && ((string) $line['source_line'] !== '')) {
+                api_fail_validation(lang('purchase_order_line is only taken on a purchase invoice draft made from a purchase order.'), 'lines[' . $index . '].purchase_order_line');
+            }
+        }
     } else {
         $lines = empty($kept) ? array() : (array) db_items("SELECT * FROM erp_invoice_items
             WHERE invoice_id = '" . (int) $kept['id'] . "' ORDER BY line_no ASC, id ASC");
