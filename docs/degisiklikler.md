@@ -81,6 +81,87 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## Sonraki sürüm (numara açılmadı) — Panel eylem tablosu tamamlandı: `api.php`'de `switch` ve muafiyet zinciri kalmadı (2026-10-13)
+
+Kullanıcıya görünen değişiklik yok; `changelog.txt`'ye madde girmez.
+
+**Sorun** (Plan 1 Faz 3'ün kalanı; ilk parça yukarıda "2026.4.8 — Panel
+eylem tablosu"). İlk parçadan sonra `api.php`'de 70 satır içi case ile
+`chat_*` (11), `ws_*` (150) ve `site_chat_*` (6) devreden case'leri ve
+51 tam ad + 3 önekten oluşan `and ($action != '…')` muafiyet zinciri
+duruyordu. Tablonun `exempt` sütunu yalnız bilgi amaçlıydı; zincirle
+uyuşmasını bir test ayrıştırarak denetliyordu.
+
+**Çözüm.**
+
+- **Kalan 70 eylem grup dosyalarına taşındı** (`includes/panel/`):
+  `dashboard.php` (8), `notifications.php` (9), `commerce.php` (23),
+  `content.php` (14), `designer.php` (16), `shared_component.php` (1). Envanter
+  önerisinden iki sapma: `get_common_regions` ve `test` `content.php`'de
+  (ikisi de LiveSite göç aracının uçları, `get_pages`/`get_folders` ile
+  aynı yerde), `test.php` diye tek fonksiyonluk dosya açılmadı.
+- **Devreden aileler** tek handler'a bağlandı: `pg_panel_chat`,
+  `pg_panel_site_chat` (`chat.php`), `pg_panel_ws` (`workspace.php`).
+  Tabloda her ad ayrı satırdır (adlar `pg_panel_actions()` içinde döngüyle
+  eklenir), handler eylem adını modüle aynen geçirir.
+- **Muafiyet zinciri tablodan üretilir.** `pg_panel_gate($action)`:
+  `exempt` → genel kapı yok; `session` → oturum ister, rol istemez
+  (`any_role`, yalnız `get_form`/`get_forms`); `role` → oturum + rol ≤ 1
+  (tabloda olmayan her ad dahil). `pg_panel_exempt_prefixes()` (`chat_`,
+  `site_chat_`, `ws_`) tabloda olmayan aile adını da muaf tutar; eskiden de
+  öyleydi, bilinmeyen `ws_x` "Invalid login." değil "Invalid action." alır.
+  Zincirdeki gerekçe yorumları tablo satırlarının üstüne taşındı.
+- **`api.php`** artık önsöz + kapı + `pg_panel_dispatch()` + "Invalid
+  action." + `respond()` / `validate_token()`. 5.287 → 245 satır.
+  `_sc_unique_name()` yalnız `shared_component` kullandığı için
+  `shared_component.php`'ye taşındı.
+- **Yeni isteğe bağlı sütunlar:** `any_role`; `public` (oturumsuz ziyaretçi
+  ucu: sepet, ürün, taksit, kargo, çapraz satış, site sohbeti — "muaf ve
+  yazıyorsa token ister" kuralının bilinçli istisnası); `token_by`
+  (`offer_editor`: token'ı `pg_offer_editor_handle()` denetler).
+- **`global $user`:** oturum kullanıcısını yükleyen her handler önce
+  `global $user;` der (`designer` ayrıca `$folders_that_user_has_access_to`).
+  Gövdeler eskiden global kapsamda çalışıyordu; `check_folder_access_in_array()`,
+  `select_folder()`, `get_page_options()`, `pg_tour_ready()`, sayfa/widget
+  çizicileri `$user`'ı `global` ile okur. Yalnız kanıtlanmış zincirlere değil
+  `$user` atayan her handler'a konuldu: hangi yardımcının hangi alt eylemden
+  çağrıldığını tek tek izlemek yerine eski anlamı aynen korur.
+- **Yol düzeltmeleri:** `dirname(__FILE__)` → `PG_FUNCTIONS_DIR` (37 include satırı).
+  Gövdelerde göreli yol, `__DIR__`, case düzeyinde `return`/`break` (sondaki
+  hariç) ve gövdenin atamadan okuduğu dış kapsam değişkeni yok (tokenizer ile
+  tarandı); include edilen dosyaların hiçbiri üst düzeyde değişken tutmuyor.
+- **Davranış farkı (tek):** `action` dizi gelirse eski zincirdeki
+  `strpos()` PHP 8'de TypeError → HTTP 500 "Beklenmeyen bir hata oluştu."
+  veriyordu; şimdi genel kapıdan geçip `{"status":"error","message":"Invalid
+  action."}` döner.
+- **`tests/panel_actions_test.php`:** zinciri ayrıştıran test yerine muaf
+  adların **sabit listesi** (51 ad; muafiyet eklemek iki yerde bilerek
+  yapılır), aile satırlarının muaf ve doğru handler'da olduğu,
+  `pg_panel_gate()` yanıtları (bilinmeyen, dizi, tamsayı, `Null`), `public`
+  satırların muaf olduğu, `token_by` fonksiyonunun `validate_token()`
+  çağırdığı ve `api.php`'de `switch`/`case` kalmadığı.
+
+**Doğrulama.**
+
+- **Statik:** 74 blok (70 case + 3 aile + `default` hariç) için eski case
+  gövdesi ile yeni handler gövdesi **token düzeyinde** karşılaştırıldı
+  (yorum ve boşluk hariç; dize içerikleri dahil): `global` satırı, sondaki
+  `break;` ve `dirname(__FILE__)` → `PG_FUNCTIONS_DIR` dışında fark 0.
+  Çok satırlı dizelerin içi dedent edilmedi (SQL girintisi aynen).
+- **Sandbox, eski/yeni yan yana:** `development` bir worktree'de `:8001`'de,
+  yeni ağaç `:8000`'de, aynı veritabanı ve oturum. 238 eylem + 4 bilinmeyen
+  ad × {oturumsuz, admin tokensız, admin, rol 2, rol 3, rol 3 +
+  `manage_ecommerce`} ve 30 tasarımcı/ortak bileşen/pano widget'ı alt
+  eylemi: 1.604 istek. Port ve varlık sürüm damgası (`?v=`) normalize
+  edildikten sonra tek fark yukarıdaki dizi `action`. PHP uyarı sayıları
+  aynı (yalnız sepet oturumunun ilk istek uyarısı sıraya bağlı yer
+  değiştiriyor); Fatal yok.
+- **Doğrulanamayan:** sandbox'ta Çalışma Alanı ve sohbet kapalı (kapı ve
+  token yolları denendi, modül içi değil); ağ isteyen ya da ağır işler
+  (`software_update`, `software_backup`, `ca_bundle_*`, `push_test`,
+  `sitemap_check`, Iyzipay, kargo) yalnız oturumsuz ve tokensız durumda
+  karşılaştırıldı.
+
 ## 2026.4.9 — Ekrana özgü yardım pinegrap.com belgelerine gidiyor; "Tüm Bildirimleri Sil" çalışma alanı bildirimlerini siliyor (2026-10-13)
 
 **İstek (ürün sahibi).** pinegrap.com yayında ve belgeler orada: İngilizce

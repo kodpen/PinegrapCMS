@@ -56,9 +56,13 @@ Pinegrap için yazılan hiçbir dosya LiveSite başlığı taşımaz. Yeni PHP/J
 - Yeni panel AJAX eylemi `includes/panel/<grup>.php` dosyasına
   `pg_panel_<action>($request, $action)` olarak girer (kapı
   `PG_PANEL_ACTIONS`) ve `pg_panel_actions()` tablosuna satır eklenir.
-  `exempt` (genel kapı zincirinde muaf mı), `token` (`validate_token()`
-  çağırıyor mu) ve `write` doğru doldurulur; `tests/panel_actions_test.php`
-  bunları handler kaynağı ve `api.php` zinciriyle karşılaştırır.
+  `exempt` (genel kapıdan muaf mı), `token` (`validate_token()` çağırıyor
+  mu) ve `write` doğru doldurulur; gerektiğinde `any_role`, `public`,
+  `token_by` (anlamları `actions.php` başlığında). `api.php`'de `switch`
+  yoktur, `case` yazılmaz. `tests/panel_actions_test.php` bayrakları handler
+  kaynağıyla, muaf adları sabit listeyle karşılaştırır. Handler oturum
+  kullanıcısını yüklüyorsa önce `global $user;` der (yardımcılar
+  `global $user` okur).
 
 ## Kapı sabiti
 

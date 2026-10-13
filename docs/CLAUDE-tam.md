@@ -6682,12 +6682,15 @@ tutsaydık listeye yazılmayan yeni bir mağaza eylemi sessizce 30/dk'ya düşer
 
 ### `api.php`'nin Başında Genel Bir Rol Kapısı Var
 
-`switch ($action)`'dan **önce**, muafiyet listesi olan bir blok: listede
-olmayan her eylem için `USER_ROLE > 1` ise "The User must have a Designer or
-Administrator role." Bir `case` bloğunun içine yazdığın izin listesi, istek
-oraya ulaşmadığı sürece hiçbir şey yapmaz.
+Handler çağrılmadan **önce** genel bir kapı: muaf olmayan her eylem için
+oturum, sonra `USER_ROLE > 1` ise "The User must have a Designer or
+Administrator role." Bir handler'ın içine yazdığın izin listesi, istek
+oraya ulaşmadığı sürece hiçbir şey yapmaz. Muafiyet eskiden `switch`'in
+önündeki `and ($action != '…')` zinciriydi; 2026-10-13'ten beri
+`includes/panel/actions.php` tablosunun `exempt` sütunundan gelir
+(`pg_panel_gate()`), `api.php`'de `switch` kalmadı.
 
-`designer` bu yüzden muafiyet listesine eklendi; kararı kendi izin listesi
+`designer` bu yüzden muaf (`exempt => true`); kararı kendi izin listesi
 veriyor (`presence`, `leave`, `lock_release`, `note_save`, `page_load`,
 `seo_check`, `import_fragment`, `form_fields` — gerisi reddedilir).
 
