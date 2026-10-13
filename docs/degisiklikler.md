@@ -84,6 +84,118 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: anahtar kodlar ve ürün nitelikleri (2026-10-13)
+
+**Sorun.** Anahtar kodlar (teklif kodunun yerine yazılan, kişiye, karta ya da
+gönderime özel kodlar) ve ürün nitelikleri (beden, renk ve seçenekleri) API'de
+yoktu. Bir CRM ya da bülten aracı kişiye özel indirim kodu üretemiyor, hangi
+kodun kullanıldığını okuyamıyordu. Ürün yazan bir entegrasyon `POST /products`
+`attributes` alanına `attribute_id`/`option_id` vermek zorundaydı ama bu
+kimlikleri okuyacağı ya da yeni bir seçenek (XL) açacağı bir uç yoktu.
+
+**Değişiklik: anahtar kodlar.** Yeni `includes/api/resources/key_codes.php` ve
+yeni izin grubu `key_codes` (`key_codes:read`, `key_codes:write`); anahtar kod
+ekranlarının kapısı `validate_ecommerce_access()` olduğu için teklifler ve
+hediye kartlarıyla aynı koşulla (mağaza açık, rol < 3 ya da mağaza yetkisi)
+verilir. Ayrı izin, çünkü anahtar kod ödemede teklifin kendi kodu gibi indirim
+alır: kod üretmek indirim dağıtmaktır, okumak kullanılabilir kodları tutmaktır;
+`offers:write` bugün yalnız teklifi açıp kapatıyor, tarihini değiştiriyor ya da
+siliyor.
+
+- `GET /key-codes` (`offer_code`, `status`, `single_use`, `q` kod/not; imleçli,
+  yeniden eskiye) ve `GET /key-codes/{id}`: kod, `offer_code`, `status`,
+  `enabled`, `single_use`, `report`, `expires_on`, `notes`, değiştiren.
+  `status` bugün ödemede ne olacağını söyler: `disabled` (kapalı; tek
+  kullanımlık kod onu kullanan siparişte `submit_order.php` tarafından
+  kapatılır), `expired`, `offer_inactive` (bu teklif koduyla bugün çalışan
+  teklif yok; birden çok teklif aynı kodu paylaşabildiği için `EXISTS`/alt
+  sorgu, ekrandaki `LEFT JOIN` gibi satırı çoğaltmaz) ya da `active`. Süzgeç
+  aynı dört durumu aynı öncelikle SQL'e çevirir
+  (`api_key_code_status_clause()`).
+- `POST /key-codes`: var olan bir teklif kodu için tek bir kendi kodu (`code`)
+  ya da `quantity` kadar (en çok 250) yeni on karakterlik kod, ekrandaki gibi
+  `0-9A-Z` (`random_int`). `enabled` varsayılan açık, `single_use` varsayılan
+  kapalı (anahtar kod ekranı gibi), `report` varsayılan `key_code`. Cevap tek
+  kodda bile `data` listesidir, 201.
+- `POST /key-codes/{id}` (PATCH da): yalnız gönderilen alan yazılır;
+  `enabled=true` kullanılmış tek kullanımlık kodu yeniden açar.
+- `DELETE /key-codes/{id}` ve `POST /key-codes/{id}/delete`: ekrandaki gibi
+  siler; kodu kullanmış siparişler kaydettiklerini korur. Toplu silme
+  (ekrandaki "Tüm anahtar kodları sil") API'de yok.
+
+Ekrandan farklı bir denetim: **bir teklifin kendi koduyla aynı kod reddedilir**
+(422, `code`). `get_offer_code_for_special_offer_code()` yazılan kodu önce
+tekliflerde arar, anahtar kodlara ancak teklif yoksa bakar; teklif koduyla aynı
+anahtar kod hiç okunmaz, `single_use` ve `report` işlemez. Üretilen kodlar da
+hem anahtar kodlarda hem tekliflerde boş olanlardan seçilir. Güncellemede kodun
+kendisi geri gönderilirse denetlenmez (kural öncesi kayıt). Kod
+karşılaştırması veritabanınınki gibi büyük/küçük harf duyarsızdır.
+
+**Değişiklik: ürün nitelikleri.** Yeni `includes/api/resources/product_attributes.php`;
+izin `products:read` / `products:write` (yeni izin yok): nitelikler katalogdur
+ve `products:write` ürünün hangi seçeneği taşıdığını zaten yazıyor; klasörlerin
+ve menülerin `pages:*` altına girmesiyle aynı karar.
+
+- `GET /product-attributes` (`q` ad/etiket; imleçli, id sırasıyla) ve
+  `GET /product-attributes/{id}`: ad (benzersiz kod), etiket, seçenekler
+  sırasıyla (`no_value` "istemiyorum" seçeneği), `products` ve
+  `product_groups` kullanım sayıları (Geri Dönüşüm Kutusu dahil). Seçenekler
+  ve sayılar sayfa başına üç sorguda.
+- `POST /product-attributes`: ad, etiket, en az bir seçenek; alınmış ad 409
+  `name_taken` (ürün grubu gibi, hangi niteliğin aldığını söyler).
+- `POST /product-attributes/{id}` (PATCH da): yalnız gönderilen yazılır.
+  `options` kimliği verilen seçeneğin adını ya da `no_value`'sunu değiştirir,
+  kimliksiz olanı sona ekler; **gönderilmeyen seçenek kalır**. Ekran seçenek
+  listesini bütünüyle değiştirir ve eksik olanı siler; API'de bir seçenek ancak
+  kimliği `remove_option_ids`'te ise gider, ekrandaki gibi ürünlerdeki bağıyla
+  (`products_attributes_xref`). Ek olarak, kaldırılan seçenek bir ürün grubunun
+  ön seçimiyse (`product_groups_attributes_xref.default_option_id`) 0'a çekilir;
+  ekran bunu yapmıyordu, grup var olmayan bir seçeneği gösteriyordu. Nitelikte
+  en az bir seçenek kalır; iki seçenek aynı okunamaz (büyük/küçük harf
+  duyarsız, `product_attribute_action.php`'nin kuralı). Sıra değiştirme ekranda
+  kalır.
+- `DELETE /product-attributes/{id}` ve `POST …/delete`: nitelik, seçenekleri,
+  ürün ve ürün grubu bağları (ekrandaki dört DELETE). Bir ürün ya da grupta
+  kullanılıyorsa `force=true` olmadan 409 `attribute_in_use`; tekliflerin
+  `offer_active` kuralıyla aynı gerekçe: ekranda silen kişi mağazaya bakıyor,
+  uygulama bakmıyor.
+
+`POST /products` `attributes` açıklaması yeni uca yönlendiriyor. Yazmalar
+`dry_run` destekler, günlüğe uygulama ve anahtarla yazılır. OpenAPI'de
+`KeyCode`, `ProductAttribute`, `ProductAttributeOption`; MCP araçları
+rotalardan kendiliğinden gelir (`key_codes_*`, `product_attributes_*`). Yeni
+`key_codes` izni mevcut uygulamalara verilmez, operatör Uygulama Erişimi'nde
+işaretler. Şema değişikliği yok.
+
+Testler: `tests/api_key_codes_test.php` (durum ve önceliği, süzgecin dört
+durumu, son gün, üretilen kodun biçimi, rotalar ve kapsamları, yöntem+yol
+çakışması yok, iznin teklif/hediye kartından türememesi ve mağaza kapalıyken
+verilmemesi), `tests/api_product_attributes_test.php` (seçeneklerin denetimi
+ve düzeltilmesi, reddedilen biçimler, seçenek değişikliği planı: ekleme,
+yeniden adlandırma, yalnız adı verilen kaldırılır, başka niteliğin seçeneği,
+hem değişen hem kaldırılan, seçeneksiz kalma, aynı okunan seçenek; seçenek
+nesnesi ve şeması; rotalar).
+
+**Doğrulandı (sandbox, MariaDB, varsayılan site dökümü, HTTP üzerinden
+`integration.php`).** Anahtar kodlar: liste, imleç, okunamayan imleç 400,
+`offer_code`/`single_use`/`q` süzgeçleri, `status=active/disabled/expired`;
+`dry_run` hiçbir şey yazmadı; üç kod üretildi (tek kullanımlık, son gün, not),
+kendi kodu; aynı kod küçük harfle, teklif kodu, `quantity` ile kendi kodu,
+olmayan teklif, eksik `offer_code`, tanınmayan alan, `quantity=251` 422;
+güncelleme (kapatma, son gün, `report`, not, son günü silme, kodu yeniden
+gönderme, alınmış koda ve boş koda değiştirme, boş istek, PATCH), 404, POST
+ile silme; günlük satırları. Ürün nitelikleri: oluşturma, `dry_run`, alınmış ad
+409, seçeneksiz, `id`li, aynı okunan, boş etiketli ve dize seçenekler 422;
+seçenek ekleme, yeniden adlandırma (`no_value` korundu), başka niteliğin
+seçeneği, hem değişen hem kaldırılan, var olanla aynı okunan, hepsini
+kaldırma 422, alınmış ad 409; ürünün taşıdığı seçenek kaldırılınca ürün bağı
+silindi ve grubun ön seçimi 0'a çekildi; kullanılan nitelik `force`suz 409,
+`force` ile silindi, bağlar gitti; `q`, imleç, PATCH, 404; OpenAPI'de altı yol
+ve üç nesne. MCP araç tanımları CLI'da üretildi; MCP üzerinden çağrı ve panel
+ekranları (Uygulama Erişimi izin listesi) ayrıca denenmedi.
+
+---
+
 ## 2026.4.10 — Banka ekstresi Excel'den, vade farkı, nakit tahmini (ERP Faz 9, 10.61) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 9: bankalar ekstreyi çoğunlukla

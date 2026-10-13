@@ -897,6 +897,31 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Anahtar kodlar API'de, kendi izinleriyle (anahtar
+         kodları okuma / yazma): kodlar, bağlı oldukları
+         teklif kodu, bugün ödemede işe yarayıp yaramadıkları
+         (etkin, kapalı, süresi dolmuş ya da teklifi
+         çalışmıyor), tek kullanımlık olup olmadıkları ve
+         siparişe neyin yazılacağıyla. Yazma var olan bir
+         teklif için kendi belirlediğiniz bir kodu ya da
+         tek seferde 250'ye kadar yeni kod üretir, kodu
+         değiştirir ya da siler. Bir teklifin kendi koduyla
+         aynı olan kod kabul edilmez, çünkü ödeme adımı o
+         kodu teklif olarak okur. Mağaza yetkisi olan
+         kişilere açıktır; mevcut uygulamalara kendiliğinden
+         verilmez.
+
+  [YENİ] Ürün nitelikleri (beden, renk gibi) API'de, ürün
+         izinleriyle: nitelikler seçenekleriyle ve kaç
+         üründe, kaç ürün grubunda kullanıldıklarıyla
+         listeleniyor. Yazma nitelik oluşturur, adını ve
+         etiketini değiştirir, seçenek ekler ya da
+         seçeneğin adını değiştirir. Bir seçenek yalnız
+         açıkça kaldırılması istendiğinde gider, ürünlerdeki
+         bağıyla birlikte. Ürünlerde ya da ürün gruplarında
+         kullanılan bir nitelik ancak açıkça istenirse
+         silinir.
+
   [YENİ] İletişim grupları API'de, kendi izinleriyle
          (iletişim gruplarını okuma / yazma): gruplar adı,
          açıklaması, e-posta aboneliği ve üye sayısıyla;

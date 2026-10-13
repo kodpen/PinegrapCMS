@@ -55,6 +55,12 @@ function api_scope_groups() {
 
 		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => 'offers:write'),
 
+		// A key code gets its offer at checkout like the offer's own code, so
+		// minting one is handing out a discount, and reading them is holding
+		// codes a shopper could redeem: neither rides on offers. Writing makes
+		// codes for an existing offer, changes or removes one.
+		'key_codes' => array('label' => 'Key Codes',  'read' => 'key_codes:read', 'write' => 'key_codes:write'),
+
 		// A gift card's code is spendable money, so it is not read under
 		// orders: an integration reporting sales has no business holding the
 		// codes. Writing issues a card, changes its balance or expiry, or
@@ -261,6 +267,10 @@ function api_owner_scopes($owner) {
 		// The gift cards screen opens to the same people.
 		$scopes[] = 'gift_cards:read';
 		$scopes[] = 'gift_cards:write';
+
+		// And the key code screens.
+		$scopes[] = 'key_codes:read';
+		$scopes[] = 'key_codes:write';
 
 	}
 

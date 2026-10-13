@@ -138,7 +138,7 @@ function api_schema() {
 				array('name' => 'inventory',         'in' => 'body', 'type' => 'bool',   'description' => 'Track stock for this product.'),
 				array('name' => 'inventory_quantity','in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 1000000, 'description' => 'Opening stock. Only meaningful with inventory on.'),
 				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to. A variant is a product in the article\'s group - see the product-groups endpoint.'),
-				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}: what makes this row one variant rather than another. Both ids have to belong together.'),
+				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
 				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
 				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The EAN or UPC printed on the box, in the site\'s barcode format. Only on a site with barcodes switched on; a code another product carries is refused.')
 			)
@@ -181,7 +181,7 @@ function api_schema() {
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
 				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones. A product in no group is not shown in the shop\'s catalogue tree.'),
-				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}, replacing the current ones: what makes this row one variant rather than another. Both ids have to belong together.'),
+				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}, replacing the current ones: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
 				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it, replacing the current ones. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
 				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Gives a product that has no barcode yet its code. A barcode already on the product is not replaced, because labels may already carry it; that is changed on the product screen.')
 			)
@@ -398,6 +398,107 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		/* ----- Product attributes ------------------------------------------ */
+
+		array(
+			'id'      => 'product_attributes.list',
+			'method'  => 'GET',
+			'path'    => '/product-attributes',
+			'scope'   => 'products:read',
+			'handler' => 'api_product_attributes_list',
+			'returns' => array('list' => 'ProductAttribute'),
+			'summary' => 'Product attributes',
+			'description' => 'What variants are told apart by (Size, Colour), each with its options in the order the shop shows them, by id, cursor paged. name is the attribute\'s unique code, label what the shop shows. An option with no_value is the "no thanks" choice. products and product_groups count where it is used. These are the attribute_id and option_id values POST /products takes in attributes.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the label.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.get',
+			'method'  => 'GET',
+			'path'    => '/product-attributes/{id}',
+			'scope'   => 'products:read',
+			'handler' => 'api_product_attributes_get',
+			'returns' => 'ProductAttribute',
+			'summary' => 'One product attribute',
+			'description' => 'The same fields as the list, for one attribute.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.create',
+			'method'  => 'POST',
+			'path'    => '/product-attributes',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_create',
+			'dry_run' => true,
+			'returns' => 'ProductAttribute',
+			'summary' => 'Create a product attribute',
+			'description' => 'An attribute with its options, as the attribute screen makes it. The name has to be free (409 name_taken names the attribute that has it), and at least one option is needed. Then give products their option with POST /products or POST /products/{id}, attributes.',
+			'params'  => array(
+				array('name' => 'name',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The attribute\'s unique code, such as size.'),
+				array('name' => 'label',   'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'What the shop shows above the options, such as Choose a size.'),
+				array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => array('label' => 'string', 'no_value' => 'boolean'), 'max_items' => 100, 'required' => true, 'description' => 'Objects of {label, no_value}, in the order the shop shows them. Labels are distinct; no_value marks the "no thanks" choice.')
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/product-attributes/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_update',
+			'dry_run' => true,
+			'returns' => 'ProductAttribute',
+			'summary' => 'Change a product attribute',
+			'description' => 'Only what is sent is changed. options changes the options named by id and adds the ones without an id at the end; options left out stay as they are, so adding XL to a size attribute is options=[{"label":"XL"}]. An option goes only when its id is in remove_option_ids, and the products that came in it lose that option, as on the attribute screen. The attribute keeps at least one option, and no two options may read the same. Reordering options stays on the attribute screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'label',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'options',           'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer?', 'label' => 'string', 'no_value' => 'boolean'), 'max_items' => 100, 'description' => 'Objects of {id, label, no_value}, each with its label: with the id of one of its options to rename it or change no_value, without one to add an option.'),
+				array('name' => 'remove_option_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'Ids of its options to remove, together with every product\'s link to them.')
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.delete',
+			'method'  => 'DELETE',
+			'path'    => '/product-attributes/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'products' => 'integer', 'product_groups' => 'integer'),
+			'summary' => 'Delete a product attribute',
+			'description' => 'Removes the attribute and its options and takes it off every product and product group, as the attribute screen does; it cannot be undone. An attribute that a product or a product group uses is refused with 409 attribute_in_use unless force=true is sent. The answer counts the products and groups it was taken off. POST /product-attributes/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id',    'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'force', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete it even though products or product groups use it.')
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.delete_post',
+			'method'  => 'POST',
+			'path'    => '/product-attributes/{id}/delete',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'products' => 'integer', 'product_groups' => 'integer'),
+			'summary' => 'Delete a product attribute, addressed as a POST',
+			'description' => 'The same deletion as DELETE /product-attributes/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete it even though products or product groups use it.')
 			)
 		),
 
@@ -2186,6 +2287,116 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Remove the offer even though it is running today.')
+			)
+		),
+
+		/* ----- Key codes ---------------------------------------------------- */
+
+		array(
+			'id'      => 'key_codes.list',
+			'method'  => 'GET',
+			'path'    => '/key-codes',
+			'scope'   => 'key_codes:read',
+			'handler' => 'api_key_codes_list',
+			'returns' => array('list' => 'KeyCode'),
+			'summary' => 'Key codes',
+			'description' => 'Codes a shopper types instead of an offer\'s own code, one per customer, card or mailing, so orders an offer brought in can be told apart. Newest first, cursor paged. offer_code is the offer it stands for (GET /offers?code=). status is what it does at checkout today: active, disabled (switched off; a single-use code is switched off by the order that uses it), expired (past expires_on) or offer_inactive (no offer with its offer code runs today). report says what an order records: the key code itself, or the offer code. The code is redeemable: whoever holds it gets the offer.',
+			'params'  => array(
+				array('name' => 'offer_code', 'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Only the codes that stand for this offer code.'),
+				array('name' => 'status',     'in' => 'query', 'type' => 'enum', 'values' => array('active', 'disabled', 'expired', 'offer_inactive')),
+				array('name' => 'single_use', 'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',          'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the code or the notes.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.get',
+			'method'  => 'GET',
+			'path'    => '/key-codes/{id}',
+			'scope'   => 'key_codes:read',
+			'handler' => 'api_key_codes_get',
+			'returns' => 'KeyCode',
+			'summary' => 'One key code',
+			'description' => 'The same fields as the list, for one code.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.create',
+			'method'  => 'POST',
+			'path'    => '/key-codes',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_create',
+			'dry_run' => true,
+			'returns' => array('data' => 'KeyCode[]'),
+			'summary' => 'Create key codes',
+			'description' => 'One code of your own choosing, or quantity new ten-character codes, for an existing offer code, as the key code screen makes them. The answer lists what was made under data, even when that is one code; nothing is mailed to anyone. A code already in use, or one that is an offer\'s own code (checkout would apply that offer and never read the key code), is refused. Single-use codes are what an offer hands out one per customer.',
+			'params'  => array(
+				array('name' => 'offer_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code of the offer it stands for. The offer has to exist.'),
+				array('name' => 'code',       'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'A code of your own, for one key code. Left out, codes are made.'),
+				array('name' => 'quantity',   'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 1, 'description' => 'How many codes to make.'),
+				array('name' => 'enabled',    'in' => 'body', 'type' => 'bool', 'description' => 'On unless false is sent.'),
+				array('name' => 'single_use', 'in' => 'body', 'type' => 'bool', 'description' => 'Switched off by the first order that uses it. Off unless true is sent.'),
+				array('name' => 'report',     'in' => 'body', 'type' => 'enum', 'values' => array('key_code', 'offer_code'), 'description' => 'What an order records: this code (the default) or the offer code.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be used. Left out, it never expires.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only, such as who it was given to.')
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/key-codes/{id}',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_update',
+			'dry_run' => true,
+			'returns' => 'KeyCode',
+			'summary' => 'Change a key code',
+			'description' => 'Only what is sent is changed, as on the key code screen; enabled=true switches a used single-use code back on. A new code goes through the same checks as on creation. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'code',       'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'offer_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The offer has to exist.'),
+				array('name' => 'enabled',    'in' => 'body', 'type' => 'bool'),
+				array('name' => 'single_use', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'report',     'in' => 'body', 'type' => 'enum', 'values' => array('key_code', 'offer_code')),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.delete',
+			'method'  => 'DELETE',
+			'path'    => '/key-codes/{id}',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a key code',
+			'description' => 'Removes the code, as the key code screen does; it stops working at once and it cannot be undone. Orders that used it keep what they recorded. POST /key-codes/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.delete_post',
+			'method'  => 'POST',
+			'path'    => '/key-codes/{id}/delete',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a key code, addressed as a POST',
+			'description' => 'The same deletion as DELETE /key-codes/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

@@ -547,7 +547,7 @@ if (is_array($recent)) {
 function api_settings_group_text($key, $group = array()) {
 
 	$text = array(
-		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products and product groups, and deleting them'), 'bi-box-seam'),
+		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products, product groups and product attributes, and deleting them'), 'bi-box-seam'),
 		'inventory' => array(lang('Inventory'),  lang('Setting a quantity and adjusting it - reading is under Products'), 'bi-grid-3x3-gap'),
 		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes'), 'bi-cart3'),
 		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
@@ -555,6 +555,7 @@ function api_settings_group_text($key, $group = array()) {
 		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies, or adding a page as a draft'), 'bi-palette'),
 		'comments'  => array(lang('Comments'),   lang('What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one'), 'bi-chat-left-text'),
 		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
+		'key_codes' => array(lang('Key Codes'),  lang('The codes shoppers type instead of an offer\'s own code; writing makes codes for an existing offer, changes or removes one'), 'bi-key'),
 		'gift_cards' => array(lang('Gift Cards'), lang('The cards, their codes, balances and where they were spent; writing issues a card, changes its balance or expiry, or removes it'), 'bi-gift'),
 		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder and describing them'), 'bi-folder'),
 		'forms'     => array(lang('Forms'),      lang('Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers'), 'bi-ui-checks'),
