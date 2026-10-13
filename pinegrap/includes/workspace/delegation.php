@@ -25,9 +25,12 @@
  * name (@ai, @Claude) - a note asks without handing the task over.
  *
  * ws_assistants() is the one list of assistants a task can go to. The task
- * drawer, the task lists and the API read it, so another kind of assistant
- * (an MCP server's alias) joins by adding its row there and answering the
- * same queue.
+ * drawer, the task lists and the API read it. An MCP server's alias
+ * (mcp_ask.php) is one of them under the key mcp:<server id>: its runs are
+ * Pinegrap AI's requests with the server set (agent ai, mcp_server_id), so
+ * Pinegrap AI works the task with that server's tools, and a tool that
+ * writes waits on the task as a call to approve, run only by the person who
+ * asked, with their own account.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -76,11 +79,53 @@ function ws_delegation_ready()
 }
 
 /**
+ * The MCP server an assistant's key stands for (mcp:<server id>).
+ *
+ * @param string $key
+ * @return int the server's id, 0 for Pinegrap AI or Claude
+ */
+function ws_assistant_mcp_id($key)
+{
+    return preg_match('/^mcp:([1-9][0-9]{0,9})$/', (string) $key, $match) ? (int) $match[1] : 0;
+}
+
+/**
+ * The assistant a run was for, by key: a request to Pinegrap AI with an MCP
+ * server set is that server's alias.
+ *
+ * @param array $row ws_ai_requests
+ * @return string
+ */
+function ws_task_run_key($row)
+{
+    $agent = (string) ($row['agent'] ?? 'claude');
+
+    if (($agent === 'ai') && ((int) ($row['mcp_server_id'] ?? 0) > 0)) {
+        return 'mcp:' . (int) $row['mcp_server_id'];
+    }
+
+    return $agent;
+}
+
+/**
+ * The assistant whose queue, limits and channel switch a key's runs go by:
+ * an MCP server's alias is answered by Pinegrap AI.
+ *
+ * @param string $key
+ * @return string ai | claude
+ */
+function ws_assistant_agent($key)
+{
+    return (ws_assistant_mcp_id($key) > 0) ? 'ai' : (string) $key;
+}
+
+/**
  * The assistants a task can be handed to, by key: the ones whose connection
- * is switched on. Each has the name and picture it is shown with and the
+ * is switched on, and the MCP servers' aliases that can be asked where
+ * Pinegrap AI is. Each has the name and picture it is shown with and the
  * application it writes through.
  *
- * @return array key => key, name, handle, icon, avatar, app_id
+ * @return array key => key, name, handle, icon, avatar, app_id (server_id for an alias)
  */
 function ws_assistants()
 {
@@ -122,6 +167,29 @@ function ws_assistants()
         );
     }
 
+    // An MCP server's alias: Pinegrap AI answers with that server's tools,
+    // so an alias is there only where Pinegrap AI is, and only once it has a
+    // tool turned on.
+    if (isset($list['ai']) && function_exists('ws_mcp_ready') && ws_mcp_ready() && function_exists('ws_mcp_ask_problem')) {
+        foreach (ws_mcp_servers() as $server) {
+            if (ws_mcp_ask_problem($server) !== '') {
+                continue;
+            }
+
+            $key = 'mcp:' . (int) $server['id'];
+
+            $list[$key] = array(
+                'key'       => $key,
+                'name'      => '@' . $server['alias'],
+                'handle'    => '@' . $server['alias'],
+                'icon'      => 'bi-plug',
+                'avatar'    => PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
+                'app_id'    => (int) $ai['app_id'],
+                'server_id' => (int) $server['id'],
+            );
+        }
+    }
+
     return $list;
 }
 
@@ -153,6 +221,14 @@ function ws_assistant_name($key)
         return $assistant['name'];
     }
 
+    $server_id = ws_assistant_mcp_id($key);
+
+    if ($server_id > 0) {
+        $server = function_exists('ws_mcp_server') ? ws_mcp_server($server_id) : null;
+
+        return $server ? '@' . $server['alias'] : lang('MCP server');
+    }
+
     return ($key === 'ai') ? 'Pinegrap AI' : (($key === 'claude') ? 'Claude' : (string) $key);
 }
 
@@ -171,7 +247,7 @@ function ws_assistant_avatar($key)
         return $assistant['avatar'];
     }
 
-    return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . (($key === 'ai') ? 'ws-ai.svg' : 'ws-assistant.svg');
+    return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'ai') ? 'ws-ai.svg' : 'ws-assistant.svg');
 }
 
 /**
@@ -198,7 +274,10 @@ function ws_assistant_called($body)
 /**
  * What keeps an assistant from working on a task: it is not connected, or
  * the task's channel does not let it be asked. A task outside any channel is
- * sent by the person who hands it over, who can read all of it.
+ * sent by the person who hands it over, who can read all of it. An MCP
+ * server's alias goes by Pinegrap AI's setup and channel switch, and a server
+ * people sign in to needs an account for the one who hands it over: their
+ * own, or the site's.
  *
  * @param array  $viewer
  * @param string $key
@@ -211,21 +290,33 @@ function ws_assistant_task_problem($viewer, $key, $task)
         return lang('Invalid request.');
     }
 
-    if (($key === 'ai') && !ws_ai_ready()) {
+    $agent = ws_assistant_agent($key);
+
+    if (($agent === 'ai') && !ws_ai_ready()) {
         return ws_plain_text($viewer, ws_ai_setup_hint());
     }
 
-    if (($key === 'claude') && !ws_claude_ready()) {
+    if (($agent === 'claude') && !ws_claude_ready()) {
         return ws_plain_text($viewer, ws_claude_setup_hint());
+    }
+
+    $server_id = ws_assistant_mcp_id($key);
+
+    if ($server_id > 0) {
+        $problem = ws_mcp_ask_problem(ws_mcp_server($server_id), $viewer, 0, (int) $task['id']);
+
+        if ($problem !== '') {
+            return $problem;
+        }
     }
 
     $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
 
     if ($channel) {
-        $allowed = ($key === 'ai') ? ws_ai_channel_allowed($channel) : ws_claude_channel_allowed($channel);
+        $allowed = ($agent === 'ai') ? ws_ai_channel_allowed($channel) : ws_claude_channel_allowed($channel);
 
         if (!$allowed) {
-            return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name($key)));
+            return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name($agent)));
         }
     }
 
@@ -262,6 +353,17 @@ function ws_delegation_status_open($status)
 }
 
 /**
+ * The column that ties a request to an MCP server, for a query that names
+ * its columns: there only once its schema step (10.82) has run.
+ *
+ * @return string ", mcp_server_id" or ""
+ */
+function ws_delegation_server_column()
+{
+    return (function_exists('ws_mcp_ready') && ws_mcp_ready()) ? ', mcp_server_id' : '';
+}
+
+/**
  * The run of an assistant that is still under way on a task, if any.
  *
  * @param int $task_id
@@ -283,7 +385,8 @@ function ws_task_delegation_open_run($task_id)
 /**
  * Starts a run of an assistant on a task: the request waits in the queue
  * until the assistant takes it. One run at a time on a task, and no more
- * waiting requests per person than the assistant takes from anybody.
+ * waiting requests per person than the assistant takes from anybody. A run
+ * for an MCP server's alias is Pinegrap AI's request with the server set.
  *
  * @param array  $viewer
  * @param array  $task
@@ -311,20 +414,24 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
         return $fail(lang('An assistant is already working on this task. Wait for its answer or stop it first.'));
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($key));
+    $agent = ws_assistant_agent($key);
+    $server_id = ws_assistant_mcp_id($key);
 
-    $limit = ($key === 'ai') ? WS_AI_PER_PERSON : WS_CLAUDE_PER_PERSON;
+    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($agent));
+
+    $limit = ($agent === 'ai') ? WS_AI_PER_PERSON : WS_CLAUDE_PER_PERSON;
 
     if ($waiting >= $limit) {
-        return $fail(lang(array('string' => '{var:1} already has {var:2} requests of yours waiting. Please wait for those to be answered.', 'vars' => array(ws_assistant_name($key), $limit))));
+        return $fail(lang(array('string' => '{var:1} already has {var:2} requests of yours waiting. Please wait for those to be answered.', 'vars' => array(ws_assistant_name($agent), $limit))));
     }
 
     // Written with its assistant in one go: a request to Pinegrap AI must
-    // never sit in the table as Claude's, where Claude's run would take it.
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, task_id, note_text, requested_by, status, agent, created_at)
+    // never sit in the table as Claude's, where Claude's run would take it,
+    // nor a request to an alias as Pinegrap AI's own.
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, task_id, note_text, requested_by, status, agent, created_at" . (($server_id > 0) ? ', mcp_server_id' : '') . ")
         VALUES ('0', '0', '" . (int) $task['id'] . "', '" . e(ws_delegation_instruction_clean($instruction)) . "',
-            '" . (int) $viewer['id'] . "', 'queued', '" . e($key) . "', '" . time() . "')");
+            '" . (int) $viewer['id'] . "', 'queued', '" . e($agent) . "', '" . time() . "'" . (($server_id > 0) ? ", '" . $server_id . "'" : '') . ")");
 
     $request_id = (int) mysqli_insert_id(db::$con);
 
@@ -480,7 +587,7 @@ function ws_task_delegation_told($row, $status)
 
     if (function_exists('pg_announce')) {
         pg_announce('workspace.task.assistant_answered', ws_task_event_payload($task, ws_task_assignee_ids($task['id'])) + array(
-            'agent'        => (string) ($row['agent'] ?? 'claude'),
+            'agent'        => ws_task_run_key($row),
             'request_id'   => (int) $row['id'],
             'requested_by' => (int) $row['requested_by'],
             'outcome'      => $status,
@@ -494,7 +601,7 @@ function ws_task_delegation_told($row, $status)
  *
  * @param array $task
  * @param int   $before_id only runs before this request
- * @return array[] agent, instruction, status, answer, error, asked_by, at
+ * @return array[] agent (the assistant's key), instruction, status, answer, error, asked_by, at
  */
 function ws_task_delegation_earlier($task, $before_id = 0)
 {
@@ -502,7 +609,7 @@ function ws_task_delegation_earlier($task, $before_id = 0)
         return array();
     }
 
-    $rows = (array) db_items("SELECT id, agent, note_text, note_reply, status, error, requested_by, created_at FROM ws_ai_requests
+    $rows = (array) db_items("SELECT id, agent, note_text, note_reply, status, error, requested_by, created_at" . ws_delegation_server_column() . " FROM ws_ai_requests
         WHERE task_id = '" . (int) $task['id'] . "' AND status IN ('answered', 'failed')"
         . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '') . "
         ORDER BY id DESC LIMIT " . WS_DELEGATION_EARLIER);
@@ -511,7 +618,7 @@ function ws_task_delegation_earlier($task, $before_id = 0)
 
     foreach (array_reverse($rows) as $row) {
         $out[] = array(
-            'agent'       => (string) $row['agent'],
+            'agent'       => ws_task_run_key($row),
             'instruction' => (string) $row['note_text'],
             'status'      => (string) $row['status'],
             'answer'      => (string) $row['note_reply'],
@@ -559,12 +666,32 @@ function ws_task_delegation_detail($viewer, $task)
     $assistants = array();
 
     foreach (ws_assistants() as $key => $assistant) {
+        $server_id = ws_assistant_mcp_id($key);
+        $server = ($server_id > 0) ? ws_mcp_server($server_id) : null;
+        $connect = null;
+
+        if ($server) {
+            // A server people sign in to, where the reader has no account
+            // yet (neither their own nor the site's): they connect their own
+            // from here.
+            $problem = ws_mcp_ask_problem($server, $viewer);
+            $ready = ws_ai_ready() && ($problem === '');
+
+            if (ws_ai_ready() && ($problem !== '') && ($server['auth_kind'] === 'oauth')) {
+                $connect = array('server_id' => (int) $server['id'], 'alias' => (string) $server['alias']);
+            }
+        } else {
+            $ready = ($key === 'ai') ? ws_ai_ready() : ws_claude_ready();
+        }
+
         $assistants[] = array(
-            'key'    => $key,
-            'name'   => $assistant['name'],
-            'icon'   => $assistant['icon'],
-            'avatar' => $assistant['avatar'],
-            'ready'  => ($key === 'ai') ? ws_ai_ready() : ws_claude_ready(),
+            'key'     => $key,
+            'name'    => $assistant['name'],
+            'title'   => $server ? (string) $server['name'] : '',
+            'icon'    => $assistant['icon'],
+            'avatar'  => $assistant['avatar'],
+            'ready'   => $ready,
+            'connect' => $connect,
         );
     }
 
@@ -606,7 +733,8 @@ function ws_task_delegation_detail($viewer, $task)
     $waiting = 0;
 
     foreach ($rows as $row) {
-        $key = (string) ($row['agent'] ?? 'claude');
+        $agent = (string) ($row['agent'] ?? 'claude');
+        $key = ws_task_run_key($row);
         $state = ws_task_delegation_state($viewer, $row);
         $running = ws_delegation_status_open($row['status']);
         $open = $open || $running;
@@ -619,7 +747,7 @@ function ws_task_delegation_detail($viewer, $task)
 
         $runs[] = array(
             'id'          => (int) $row['id'],
-            'agent'       => $key,
+            'agent'       => $agent,
             'assistant'   => array('name' => ws_assistant_name($key), 'avatar' => ws_assistant_avatar($key), 'app' => true),
             'asked_by'    => $people[(int) $row['requested_by']]['name'] ?? ws_person_name($row['requested_by']),
             'asked_at'    => ws_time_label($row['created_at']),
@@ -695,7 +823,7 @@ function ws_task_delegation_waiting_map($task_ids)
  * have one.
  *
  * @param int[] $task_ids
- * @return array task id => assistant key
+ * @return array task id => assistant key (mcp:<server id> for an alias)
  */
 function ws_task_delegation_open_map($task_ids)
 {
@@ -707,10 +835,10 @@ function ws_task_delegation_open_map($task_ids)
 
     $out = array();
 
-    foreach ((array) db_items("SELECT task_id, agent FROM ws_ai_requests
+    foreach ((array) db_items("SELECT task_id, agent" . ws_delegation_server_column() . " FROM ws_ai_requests
         WHERE task_id IN (" . implode(',', $task_ids) . ") AND status IN ('queued', 'sent', 'running')
         ORDER BY id") as $row) {
-        $out[(int) $row['task_id']] = (string) $row['agent'];
+        $out[(int) $row['task_id']] = ws_task_run_key($row);
     }
 
     return $out;
@@ -788,7 +916,7 @@ function ws_task_delegation_context($asker, $row)
 
     return array(
         'task'         => $task,
-        'delegated'    => ((string) ($task['delegate'] ?? '') === (string) ($row['agent'] ?? 'claude')),
+        'delegated'    => ((string) ($task['delegate'] ?? '') === ws_task_run_key($row)),
         'delegated_by' => (int) ($task['delegated_by'] ?? 0),
         'earlier'      => $earlier,
     );
@@ -825,6 +953,7 @@ function ws_delegation_js_strings()
         'dg_change_done'   => lang('The change was applied.'),
         'dg_waiting'       => ws_js_template('{var:1} proposed change(s) wait for approval', 1),
         'dg_waiting_short' => ws_js_template('{var:1} awaiting approval', 1),
+        'dg_connect_first' => ws_js_template('@{var:1} has no account for you yet: connect your own account first.', 1),
     );
 }
 

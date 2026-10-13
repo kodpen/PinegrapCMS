@@ -1173,6 +1173,13 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
             db("DELETE FROM ws_mcp_servers WHERE id = '" . (int) $server['id'] . "'");
             ws_mcp_servers(true);
 
+            // The tasks handed to its alias are with nobody now
+            // (delegation.php); what it proposed on them stays to be decided.
+            if (function_exists('ws_delegation_ready') && ws_delegation_ready()) {
+                db("UPDATE ws_tasks SET delegate = '', delegated_by = 0, delegated_at = 0, updated_at = '" . time() . "'
+                    WHERE delegate = 'mcp:" . (int) $server['id'] . "'");
+            }
+
             log_activity(lang(array('string' => 'the MCP server @{var:1} was removed', 'vars' => $server['alias'])), $username);
             $liveform->add_notice(lang(array('string' => '@{var:1} was removed, with its credential.', 'vars' => $server['alias'])));
 

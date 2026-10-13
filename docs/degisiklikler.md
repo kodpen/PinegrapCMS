@@ -736,6 +736,81 @@ aynı ve boş ek görsel atlanıyor, tırnak ve `<` içeren altyazı metin olara
 
 ---
 
+## 2026.4.10 — Görev bir MCP takma adına verilebiliyor (OAuth Faz F3) (2026-10-13)
+
+**Neden.** `docs/_plan_tersine_oauth.md` §4.6 (senaryo 5), Faz F'nin son
+adımı. Görev devri (#265/#269/#271) yalnız Pinegrap AI ve Claude'u tanıyordu;
+`ws_assistants()` başka bir asistanın aynı listeye satır ekleyerek katılması
+için kurulmuştu. #307 kanalda `@takmaad` akışını, #324 kişi başı bağlantıyı
+ve yazan araçlar için onay kartını getirdi; bu parça ikisini göreve taşır.
+Şema yok: `ws_tasks.delegate` VARCHAR(32) `mcp:<server_id>`'yi alır,
+`ws_ai_requests.mcp_server_id` (10.82) ve `ws_ai_changes.task_id` (10.80)
+zaten var. 10.83 etiketi kullanılmadı, boş kaldı.
+
+**Ne değişti.**
+
+- `includes/workspace/delegation.php`: anahtar `mcp:<server_id>`
+  (`ws_assistant_mcp_id()`). `ws_assistants()` Pinegrap AI açıkken, açık ve en
+  az bir aracı açık her sunucuyu `@takmaad` adıyla ekler (uygulaması Pinegrap
+  AI'ınki). Çalışma Pinegrap AI'ın isteğidir: `agent = 'ai'`,
+  `mcp_server_id` dolu (`ws_assistant_agent()`); kişi başı sınır
+  `WS_AI_PER_PERSON`, kanal anahtarı Pinegrap AI'ınki. `ws_task_run_key()`
+  isteği yeniden anahtara çevirir: çekmecedeki çalışma adı, önceki
+  çalışmalar, açık çalışma haritası (API `assistant_working`),
+  `workspace.task.assistant_answered` olayının `agent`'ı ve "asistan
+  cevap verdi" bildirimi `@takmaad` der. `ws_assistant_task_problem()`
+  OAuth sunucusunda soranın (kendi ya da sitenin) hesabını ister; yoksa
+  düz bir cümle döner (bağlantı değil). Çekmece verisinde takma ad satırı
+  `title` (sunucu adı) ve hesap yoksa `connect` taşır. Sorgular
+  `mcp_server_id`'yi yalnız 10.82 koşmuşsa okur
+  (`ws_delegation_server_column()`).
+- `includes/workspace/mcp_ask.php`: `ws_mcp_ask_start()` görev isteğini
+  `ws_mcp_ask_task_start()`'a verir. Model kanal mesajında olduğu gibi yalnız
+  işin gerektirdiğini okur: görevin başlığı, açıklaması, durumu, önceliği,
+  tarihleri, talimat ve **aynı sunucunun** bu görevdeki önceki soru/yanıtları.
+  Notlar, kişiler ve kanal gitmez (modelin okuduğu her şey araç argümanıyla
+  diğer hizmete gidebilir). Sistem metni "görev @x'e verildi, yanıtın göreve
+  yazılır" der. `ws_mcp_ask_propose()` artık görevde de öneri kurar (kanal
+  ya da görev şart); `ws_ai_deliver()`'ın görev dalı
+  `ws_mcp_calls_propose($row, 0, …)` ile `mcp_call` kartlarını görevin
+  üstüne yazar (`task_id`, kanal 0). `ws_mcp_call_run()` görevde karar
+  mesajı yerine göreve not yazar (uygulayan kişi adına,
+  `ws_task_note_add(…, 0, false)`: not hiçbir asistanı çağırmaz).
+- Sunucu kaldırılınca ona verilmiş görevlerin `delegate`'i boşalır
+  (`mcp_delete`), önerileri karar için kalır.
+- Çekmece (`assets/js/workspace_task_delegate.js`): seçicide
+  "@takmaad · Sunucu adı"; hesabı olmayan takma ad seçilebilir ama "Asistana
+  ver" yerine "Hesabımı bağla" çıkar. Görevdeki `mcp_call` kartı kanal
+  kartıyla aynı: "Hesabımı bağla" / engel cümlesi / "Hesabımın bağlantısını
+  kes". Karar verilince görev yeniden çizilir (karar notu görünsün). Satır
+  etiketi takma ad için `bi-plug`.
+- Bağlanma dönüşü: `ws_mcp_connect` eylemi `task_id` alır, dönüş
+  `workspace_tasks.php?task=X&mcp_connected=Y`; görevler ekranı bildirimi
+  gösterir (`workspace_tasks.php` artık `mcp` yapılandırmasını verir).
+- API: `POST /workspace/tasks/{id}/delegate` `agent`'ı ve
+  `GET /workspace/tasks` `delegate` süzgeci enum yerine metin
+  (`ai`, `claude`, `mcp:<id>`; süzgeçte `any`/`none`), geçersiz değer 422.
+
+**Denendi.** Birim testleri (`tests/workspace_delegation_test.php`: anahtar
+ayrıştırma, `ws_assistant_agent()`, `ws_task_run_key()`). Sandbox'ta
+(`tools/setup_sandbox.sh`, sahte sunucu satırı, model elle sürüldü) 51
+kontrol: takma ad listede, devir `delegate = mcp:id` ve `agent ai` +
+`mcp_server_id` yazar, aynı anda tek çalışma, ilk mesajda görev ve talimat
+var ve görev notu gitmiyor, araçlar yalnız sunucununki, yazan araç görevde
+`pending` + `mcp_call` kartı (task_id, kanal 0), bekleyen sayacı, çekmece adı
+ve kartı, OAuth değilse kart engelli, reddetme çağrıyı `dismissed` yapar,
+karar notu çalışma başlatmaz, ikinci çalışmaya önceki yanıt gider, OAuth'ta
+hesap yoksa seçicide "bağla" ve devir reddi, kendi hesabı olmadan Uygula
+reddedilir ve kart bekler. Tarayıcıda çekmece (Playwright): seçici, bağlan
+ipucu, görevdeki kart. Gerçek bir OAuth MCP sunucusunda uygulama (karar
+notu) denenmedi; dev.pinegrap.com kontrol listesinde.
+
+**Kapsam dışı (devir notunda).** Görev notunda `@takmaad` yazınca sorma
+(bugün yalnız `@ai` / `@Claude`) ve uzak ajan (seviye C). "MCP bağlantılarım"
+ekranı ve okuyan araçlar için form ayrı geldi (#334).
+
+---
+
 ## 2026.4.10 — Ürün içe aktarımı: `.ods` PHP 8'de okunuyor; tablo tarihleri saat diliminden bağımsız (2026-10-13)
 
 **Sorun.** Ürünleri İçe Aktar'a verilen OpenDocument (`.ods`) dosyası PHP

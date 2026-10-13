@@ -665,6 +665,23 @@
          kanalda @takmaad yazılınca gelen mesaj da bu
          forma bağlantı veriyor.
 
+  [YENİ] Görev bir MCP takma adına verilebiliyor: görev
+         çekmecesinin Asistan bölümünde Pinegrap AI ve
+         Claude'un yanında @github gibi takma adlar da
+         seçilebiliyor. Pinegrap AI görevi o sunucunun
+         açık araçlarıyla yürütüyor ve yanıtını göreve
+         yazıyor; görevin yalnızca başlığını, açıklamasını,
+         durumunu ve tarihlerini, verilen talimatı ve aynı
+         takma adın görevdeki önceki yanıtlarını okuyor,
+         notlarını ve kanalını okumuyor. Yazan araç
+         çağrıları görevde onay kartında bekliyor; kartı
+         yalnızca görevi veren kişi kendi hesabıyla
+         uygulayabiliyor, sonuç göreve not olarak düşüyor.
+         Hesabı bağlı olmayan kişiye çekmece ve kart
+         "Hesabımı bağla" düğmesini gösteriyor, giriş
+         sonrası göreve dönülüyor. API ve MCP'de görev
+         devri agent=mcp:<sunucu no> ile yapılabiliyor.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

@@ -2242,6 +2242,13 @@ function ws_ai_deliver($row, $text, $proposals)
 
         if (ws_task_delegation_answer($row, $text)) {
             ws_changes_store($row, 0, $checked['rows']);
+
+            // A task handed to an MCP server's alias: the calls of its tools
+            // that write wait on the task the same way.
+            if (!empty($proposals['mcp_calls']) && function_exists('ws_mcp_calls_propose')) {
+                ws_mcp_calls_propose($row, 0, $proposals['mcp_calls']);
+            }
+
             ws_ai_log(lang(array('string' => 'Pinegrap AI answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
         }
 
@@ -3275,7 +3282,7 @@ function ws_ai_tools($row)
     // Written to an MCP server's alias: that server's tools, and none of the
     // site's (mcp_ask.php).
     if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
-        $tools[0] = $tool('answer', 'Write your answer under the request. Call it once, at the end.', array(
+        $tools[0] = $tool('answer', $task ? 'Write your answer on the task. Call it once, at the end.' : 'Write your answer under the request. Call it once, at the end.', array(
             'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown.'),
         ), array('text'));
 

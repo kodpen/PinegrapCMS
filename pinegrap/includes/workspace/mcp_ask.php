@@ -28,6 +28,13 @@
  * to. The kind is deliberately not one of ws_change_types(): no assistant
  * can propose it there, and the API's list of kinds does not name it.
  *
+ * A task can be handed to an alias too (delegation.php, key mcp:<server id>):
+ * the run is the same request with task_id set, the model reads the task
+ * (its title, description, state and dates, the instruction, and what the
+ * same server answered on it before) rather than a message, and its answer
+ * and the calls that wait for approval stay on the task. A call run from the
+ * task's card leaves its decision as a note on the task.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -112,14 +119,16 @@ function ws_mcp_ask_server($body, $message_id = 0)
 /**
  * Why a server cannot be asked now, as the channel is told; '' when it can.
  * Given who asks, a server that signs in with OAuth must have an account for
- * them: their own, or the site's; the answer then offers to connect one.
+ * them: their own, or the site's; the answer then offers to connect one - by
+ * a link in a channel, from the task's Assistant part on a task.
  *
  * @param array      $server
  * @param array|null $asker
  * @param int        $channel_id where the offer to connect leads back to
+ * @param int        $task_id    asked for a task instead
  * @return string
  */
-function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0)
+function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0, $task_id = 0)
 {
     if ($server['status'] !== 'active') {
         return lang(array('string' => '@{var:1} is turned off. Nothing is sent to it until it is turned on again.', 'vars' => $server['alias']));
@@ -133,7 +142,9 @@ function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0)
         return lang(array('string' => '@{var:1} has no account connected for {var:2}. {var:3}', 'vars' => array(
             $server['alias'],
             ws_person_name((int) $asker['id']),
-            '[' . lang('Connect your own account') . '](' . ws_mcp_connect_link($server, $channel_id) . ')',
+            ((int) $task_id > 0)
+                ? lang('Connect your own account in the Assistant part of the task.')
+                : '[' . lang('Connect your own account') . '](' . ws_mcp_connect_link($server, $channel_id) . ')',
         )));
     }
 
@@ -304,10 +315,16 @@ function ws_mcp_ask_start($row, $asker)
         return array('ok' => false, 'error' => lang('That MCP server could not be found.'), 'state' => null);
     }
 
-    $problem = ws_mcp_ask_problem($server, $asker, (int) $row['channel_id']);
+    $problem = ws_mcp_ask_problem($server, $asker, (int) $row['channel_id'], (int) ($row['task_id'] ?? 0));
 
     if ($problem !== '') {
         return array('ok' => false, 'error' => $problem, 'state' => null);
+    }
+
+    // A task handed to the alias (delegation.php): the task is what it
+    // works on.
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        return ws_mcp_ask_task_start($row, $asker, $server);
     }
 
     $channel = ws_channel($row['channel_id']);
@@ -351,16 +368,108 @@ function ws_mcp_ask_start($row, $asker)
     $parts[] = '';
     $parts[] = 'Answer in ' . ws_ai_request_language($request_text) . '.';
 
-    return array('ok' => true, 'error' => '', 'state' => array(
+    return array('ok' => true, 'error' => '', 'state' => ws_mcp_ask_state($server, $asker, $parts, $request_text, false));
+}
+
+/**
+ * The first two messages of a run on a task handed to a server's alias. As
+ * with a message, the model reads only what the work needs - the task's own
+ * words, its state and dates, the instruction, and what the same server
+ * answered on it before - and not its notes, its people or its channel:
+ * whatever the model reads it may send to the other service.
+ *
+ * @param array $row    the request, with task_id
+ * @param array $asker
+ * @param array $server
+ * @return array ok, error, state
+ */
+function ws_mcp_ask_task_start($row, $asker, $server)
+{
+    $context = function_exists('ws_task_delegation_context') ? ws_task_delegation_context($asker, $row) : null;
+
+    if (!$context) {
+        return array('ok' => false, 'error' => lang('The task could not be found, or the person who asked may no longer see it.'), 'state' => null);
+    }
+
+    $task = $context['task'];
+    $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+
+    if ($channel && !ws_ai_channel_allowed($channel)) {
+        return array('ok' => false, 'error' => lang('Pinegrap AI may not be asked in the channel of this task.'), 'state' => null);
+    }
+
+    $description = ws_ai_text($asker, (string) $task['description'], null, 3000);
+
+    $parts = array(
+        $context['delegated'] ? 'The task, handed to you. The people on it stay responsible for it:' : 'The task:',
+        'Task ' . ws_task_number($task['id']) . ': ' . (string) $task['title'],
+        'Status: ' . (string) $task['status'] . ', priority: ' . (string) $task['priority']
+            . (((string) $task['start_date'] > '0000-00-00') ? ', starts ' . $task['start_date'] : '')
+            . (((string) $task['due_date'] > '0000-00-00') ? ', due ' . $task['due_date'] : '') . '.',
+    );
+
+    if ($description !== '') {
+        $parts[] = 'Description:';
+        $parts[] = $description;
+    }
+
+    $parts[] = '';
+
+    // What this server was asked and answered on the task before: the
+    // conversation goes on from there, as a reply to an answer does.
+    $earlier = array();
+
+    foreach (ws_task_delegation_earlier($task, (int) $row['id']) as $item) {
+        if ($item['agent'] === 'mcp:' . (int) $server['id']) {
+            $earlier[] = '- ' . ws_person_name($item['asked_by']) . ' asked: ' . (($item['instruction'] !== '') ? mb_substr(ws_ai_text($asker, $item['instruction']), 0, 600) : '(the task itself)')
+                . (($item['status'] === 'answered') ? "\n  Answer: " . mb_substr(ws_ai_text($asker, $item['answer']), 0, 1200) : "\n  Not done: " . $item['error']);
+        }
+    }
+
+    if (!empty($earlier)) {
+        $parts[] = 'What you were asked on this task before, and what you answered:';
+        $parts = array_merge($parts, $earlier);
+        $parts[] = 'Carry the work on from there.';
+        $parts[] = '';
+    }
+
+    $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
+
+    $parts[] = 'The instruction of ' . ws_person_name($asker['id']) . ':';
+    $parts[] = ($request_text !== '') ? $request_text : '(none: work on the task as its title and description say)';
+
+    if ($request_text === '') {
+        $request_text = (string) $task['title'] . ' ' . $description;
+    }
+
+    $parts[] = '';
+    $parts[] = 'Answer in ' . ws_ai_request_language($request_text) . '.';
+
+    return array('ok' => true, 'error' => '', 'state' => ws_mcp_ask_state($server, $asker, $parts, $request_text, true));
+}
+
+/**
+ * The conversation a request to a server's alias starts with.
+ *
+ * @param array    $server
+ * @param array    $asker
+ * @param string[] $parts        the lines of the first message
+ * @param string   $request_text
+ * @param bool     $on_task
+ * @return array
+ */
+function ws_mcp_ask_state($server, $asker, $parts, $request_text, $on_task)
+{
+    return array(
         'messages'  => array(
-            array('role' => 'system', 'content' => ws_mcp_ask_system_prompt($server, $asker)),
+            array('role' => 'system', 'content' => ws_mcp_ask_system_prompt($server, $asker, $on_task)),
             array('role' => 'user', 'content' => implode("\n", $parts)),
         ),
         'proposals' => array('tasks' => array(), 'changes' => array(), 'mcp_calls' => array()),
         'seen'      => array(),
         'request'   => $request_text,
         'mcp_calls' => 0,
-    ));
+    );
 }
 
 /**
@@ -368,9 +477,10 @@ function ws_mcp_ask_start($row, $asker)
  *
  * @param array $server
  * @param array $asker
+ * @param bool  $on_task a task handed to the alias rather than a message
  * @return string
  */
-function ws_mcp_ask_system_prompt($server, $asker)
+function ws_mcp_ask_system_prompt($server, $asker, $on_task = false)
 {
     $label = ($server['name'] !== '') ? '"' . $server['name'] . '" (' . ws_mcp_host($server['url']) . ')' : ws_mcp_host($server['url']);
     $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
@@ -378,7 +488,9 @@ function ws_mcp_ask_system_prompt($server, $asker)
     $lines = array(
         'You are Pinegrap AI in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.',
         'Now: ' . $today . '.',
-        'The request was written to @' . $server['alias'] . ', a connection to the service ' . $label . '. Answer it with that service\'s tools; they are the only tools you have besides answer and fail.',
+        $on_task
+            ? 'A task of the workspace was given to @' . $server['alias'] . ', a connection to the service ' . $label . '. Work on it with that service\'s tools; they are the only tools you have besides answer and fail. Your answer is kept on the task.'
+            : 'The request was written to @' . $server['alias'] . ', a connection to the service ' . $label . '. Answer it with that service\'s tools; they are the only tools you have besides answer and fail.',
         'The request comes from ' . ws_person_name($asker['id']) . ' <@user:' . (int) $asker['id'] . '>.',
         '',
         'How to work:',
@@ -578,9 +690,9 @@ function ws_mcp_ask_signature($row)
  */
 function ws_mcp_ask_propose($row, &$state, $server, $tool, $args)
 {
-    // The card waits under an answer in a channel.
-    if (((int) $row['channel_id'] <= 0) || ((int) ($row['task_id'] ?? 0) > 0)) {
-        return array('error' => 'This tool changes things on the service and needs the approval of the person who asked, which only a request in a channel can have. Answer without it.');
+    // The card waits under an answer in a channel, or on the task.
+    if (((int) $row['channel_id'] <= 0) && ((int) ($row['task_id'] ?? 0) <= 0)) {
+        return array('error' => 'This tool changes things on the service and needs the approval of the person who asked, which only a request in a channel or on a task can have. Answer without it.');
     }
 
     $pending = (array) ($state['proposals']['mcp_calls'] ?? array());
@@ -868,7 +980,8 @@ function ws_mcp_call_problem($viewer, $change)
  * Runs a proposed call that the person who asked applied, with their own
  * account and never the site's, and keeps how it ended: the call
  * (ws_mcp_calls: done or failed, approved_by), the proposal, and a locked
- * decision under the answer that names the tool and quotes what it answered.
+ * decision under the answer that names the tool and quotes what it answered
+ * - on a task, a note on the task that says the same.
  * A token the service refused gives the proposal back to be run again once
  * the account is connected again; anything else ends it.
  *
@@ -964,12 +1077,6 @@ function ws_mcp_call_run($viewer, $change, $channel)
         return $fail($error);
     }
 
-    if ($channel === null) {
-        $end('applied');
-
-        return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
-    }
-
     // What the service answered is its text, quoted: a tag in it would
     // mention somebody here, so its angle bracket is changed.
     $quote = trim(preg_replace('/<(?=[@#])/', '‹', $text));
@@ -978,6 +1085,20 @@ function ws_mcp_call_run($viewer, $change, $channel)
         'string' => '@{var:1}: {var:2} was run with the account of {var:3}, on Pinegrap AI\'s proposal. {var:4}',
         'vars'   => array($server['alias'], '`' . str_replace('`', '', (string) $call['tool']) . '`', ws_person_name((int) $viewer['id']), ($quote !== '') ? "\n" . $quote : ''),
     ));
+
+    // On a task: the decision is a note on it, written by the person who
+    // ran it, that calls no assistant.
+    if ($channel === null) {
+        $task = ws_task((int) ($change['task_id'] ?? 0));
+
+        if ($task && function_exists('ws_task_note_add')) {
+            ws_task_note_add($viewer, $task, mb_substr($body, 0, WS_TASK_NOTE_MAX), 0, false);
+        }
+
+        $end('applied');
+
+        return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
+    }
 
     $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision', 'parent_id' => (int) $change['message_id']));
     $decision_id = $sent['ok'] ? (int) $sent['message_id'] : 0;

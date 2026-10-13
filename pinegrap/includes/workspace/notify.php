@@ -401,11 +401,12 @@ function ws_inbox_describe($viewer, $row)
         // the latest of them names the assistant and how it ended.
         case 'task_assistant':
             $run = (($task !== null) && function_exists('ws_delegation_ready') && ws_delegation_ready())
-                ? db_item("SELECT agent, status FROM ws_ai_requests
+                ? db_item("SELECT agent, status" . ws_delegation_server_column() . " FROM ws_ai_requests
                     WHERE task_id = '" . (int) $task['id'] . "' AND requested_by = '" . (int) $row['user_id'] . "' AND status IN ('answered', 'failed')
                     ORDER BY id DESC LIMIT 1")
                 : null;
-            $agent = is_array($run) ? (string) $run['agent'] : 'claude';
+            // An MCP server's alias is named by its alias.
+            $agent = is_array($run) ? ws_task_run_key($run) : 'claude';
             $name = function_exists('ws_assistant_name') ? ws_assistant_name($agent) : 'Claude';
             $number = $task ? ws_task_number($task['id']) : '';
 

@@ -45,5 +45,8 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . ws_screen_assets($viewer, 'tasks') .
+' . ws_screen_assets($viewer, 'tasks', array(
+    // Back from connecting an account to an MCP server from a task's drawer.
+    'mcp' => function_exists('ws_mcp_screen_config') ? ws_mcp_screen_config($viewer) : null,
+)) .
 output_footer();

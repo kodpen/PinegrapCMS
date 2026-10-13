@@ -22873,5 +22873,7 @@
     "@{var:1}: {var:2} was run with a form by {var:3}.": "@{var:1}: {var:2}, {var:3} tarafından formla çalıştırıldı.",
     "What was typed is too long.": "Yazılanlar çok uzun.",
     "You have run many tools in the last minute. Please wait a moment.": "Son bir dakikada çok sayıda araç çalıştırdınız. Lütfen biraz bekleyin.",
-    "ran the tool {var:1} of the MCP server @{var:2} with a form": "MCP sunucusu @{var:2} üzerindeki {var:1} aracını formla çalıştırdı"
+    "ran the tool {var:1} of the MCP server @{var:2} with a form": "MCP sunucusu @{var:2} üzerindeki {var:1} aracını formla çalıştırdı",
+    "Connect your own account in the Assistant part of the task.": "Görevin Asistan bölümünden kendi hesabınızı bağlayın.",
+    "@{var:1} has no account for you yet: connect your own account first.": "@{var:1} üzerinde henüz sizin için bir hesap yok: önce kendi hesabınızı bağlayın."
 }

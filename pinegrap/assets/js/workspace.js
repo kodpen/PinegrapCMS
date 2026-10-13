@@ -1880,9 +1880,10 @@
     }
 
     // A person's own account on an MCP server (includes/workspace/mcp.php):
-    // the service's sign-in, then back to the channel.
-    function mcpConnect(serverId, channelId, done) {
-        api('ws_mcp_connect', { server_id: serverId, channel_id: channelId || 0 }).then(function (data) {
+    // the service's sign-in, then back to the channel, or to the task whose
+    // drawer offered it.
+    function mcpConnect(serverId, channelId, done, taskId) {
+        api('ws_mcp_connect', { server_id: serverId, channel_id: channelId || 0, task_id: taskId || 0 }).then(function (data) {
             if (data.url) {
                 window.location.href = data.url;
             }
@@ -2596,6 +2597,7 @@
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
             clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            mcpConnect: mcpConnect,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
         };
@@ -15188,6 +15190,12 @@
             taskDrawer.open(parseInt(query.task, 10), null, load);
         } else if (query['new']) {
             taskDrawer.open(0, {}, load);
+        }
+
+        // Back from connecting an account to an MCP server from a task's
+        // drawer (includes/workspace/actions.php, ws_mcp_connect).
+        if (CFG.mcp && CFG.mcp.flash) {
+            toast(CFG.mcp.flash.text, (CFG.mcp.flash.kind === 'error') ? 'danger' : 'success');
         }
 
         // Linked from the overview: the pressing ones straight away.
