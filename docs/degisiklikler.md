@@ -84,6 +84,54 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: sayfa seçicilerinde Geri Dönüşüm Kutusu, link seçicide adres kodlaması (2026-10-13)
+
+**Kaynak.** Bir önceki taramada (aşağıda, PR #257) bilerek bırakılan iki
+nokta. Seçicideki karar koordinatörün varsayılanıdır: kutudaki sayfa
+listelenmez, ama ayarın hâlâ gösterdiği sayfa "(silinmiş)" etiketiyle
+seçili kalır ki "seçilmedi" gibi görünmesin.
+
+- **Sayfa seçicileri kutudaki sayfaları listeliyordu.** `shared_component`
+  liste uçları (`list_all_pages`, sepet, katalog listesi ve detayı, form
+  detayı, takvim etkinliği, katalog sayfaları) çöp kutusuna bakmıyordu;
+  kutudaki sayfa park edilmiş adıyla (`pgbin_<id>_<ad>`) seçilebiliyordu,
+  oysa sunulmaz. Türe göre süzülen listeler artık kutudaki sayfayı
+  almıyor (`pg_designer_not_binned_sql()`; `pg_sw_widget_pages()` zaten
+  almıyordu). `list_all_pages` ve form listesi (`list_custom_forms`)
+  kutudakini `binned: 1` işaretiyle, park edilmeden önceki adıyla
+  döndürüyor (`_sc_flag_binned_pages()`; ad `pg_recycle_parked_original()`
+  ile, `pg_shared_component_usage()` ile aynı yol).
+- **Seçili sayfa listeden düşünce seçici "seçilmedi" gösteriyordu.**
+  `_swPageOptions()` kutudaki sayfayı yalnız seçili olansa gösterir,
+  "(silinmiş)" ekiyle. Hiçbir listede olmayan seçili sayfa için
+  `_swMissingPageOption()` bir seçenek yazar: adı tam listeden
+  (`list_all_pages`) okunur; kutudaysa ya da hiç yoksa "(silinmiş)",
+  canlı ama seçicinin istediği widget'ı taşımıyorsa "(uyumsuz — yeniden
+  seçin)". Detay sayfası seçicisinin kendi "uyumsuz" seçeneği bu yola
+  katıldı (önceden `#<id>` gösteriyordu). Form seçicileri (form listesi
+  ve form detayı, Hesabım filtresi, özel form widget'ının "Hangi form"u)
+  aynı kuralı `_swFormOptions()` ile uygular. Panel birkaç seçici
+  çizdiğinde `list_all_pages` bir kez istenir (`_fetchAllPages()` bekleyen
+  geri çağrıları toplar).
+- **Link seçici adresi kodlamıyordu.** `editor_select_page_or_file.php`
+  (CKEditor ve editörün link/dosya alanları) `PATH . ad`'ı olduğu gibi
+  veriyordu; adında boşluk, `#` ya da `?` olan sayfanın linki yarıda
+  kesiliyordu (`/şartlar ve koşullar#1` → `/şartlar ve koşullar` + parça,
+  404). Eklenen adres artık `encode_url_path()`'ten geçiyor (sayfa,
+  dosya, kısa link); liste okunur adı göstermeye devam ediyor.
+
+Sandbox'ta doğrulandı (hello-pinegrap tasarımı yayımlandı, iki sayfası
+kutuya taşındı; editör ve link seçici Playwright ile): öncesinde katalog
+detay seçicisi `pgbin_1091_urun-detay — Ürün`'ü seçili, giriş formunun
+yönlendirme seçicisi kutudaki iki sayfayı seçenek olarak gösteriyordu;
+sonrasında `urun-detay (silinmiş)` ve `hakkimizda — Hakkımızda (silinmiş)`
+seçili, kutudaki öteki sayfa listede yok. Canlı ama uyumsuz sayfa
+`site-search (uyumsuz — yeniden seçin)`, var olmayan id `#99999
+(silinmiş)` gösteriyor. Link seçici `/%C5%9Fartlar%20ve%20ko%C5%9Fullar%231`
+ekliyor, adres 200 dönüyor. dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Pano üst alanı: karşılama ve saat tek satırda, sıradaki toplantı geri sayımı, "Başka bir şey söyle" (2026-10-13)
 
 **İstenen.** Erdal: ekranın üst kısmındaki saat ve brief alanları
