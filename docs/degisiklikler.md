@@ -158,6 +158,150 @@ sunucu (GitHub MCP gibi) denenemedi; dev.pinegrap.com'da denenmeli.
 
 ---
 
+## 2026.4.10 — Mağazada "Faturalarım" (ERP Faz 8a) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 8 (#14), ilk parça: müşteri
+ERP'de kesilen faturasını ancak e-postayla gelirse görüyordu; hesabında
+faturaları, ne kadar borcu kaldığı ve ekstresi yoktu.
+
+**Ne değişti.** Yeni sistem widget türü `account_invoices` ("My
+Invoices"; `pg_sw_type_labels()`, `SW_TYPES`, oluşturucu
+`_render_system_widget_account_invoices()`, `widgets_account.php`).
+Oturumdaki üyenin kişisine bağlı cari `pg_erp_member_account()` ile
+okunur (`ecommerce.php`; `erp_accounts.contact_id`, istek başına bir kez,
+ERP yüklenmeden). Cari yoksa ya da ERP kapalıysa widget hiçbir şey
+basmaz; bu yüzden ayrı bir ayar yok ve şema adımı yok. Okumalar yeni
+`includes/erp/storefront.php`'de:
+
+- `erp_storefront_documents()`: carinin kesilmiş satış faturaları ve
+  iadeleri (taslak, iptal ve numarasız yok), en yeni önce, ayardaki sayı
+  kadar (varsayılan 50, en çok 500). Kalan ve gecikme günü yaşlandırma
+  modülünden (`erp_aging_invoices()`): alacak ekranlarıyla aynı rakam.
+- `erp_storefront_document_state()`: iade / ödendi / gecikti / kısmen
+  ödendi / açık (saf, `tests/erp_storefront_test.php`).
+- `erp_storefront_account_figures()`: bakiye defterden
+  (`erp_reconciliation_balance()`, cari dövizliyse kendi para biriminde,
+  mutabakat mektubu nasıl yazıyorsa), vadesi geçen toplam yaşlandırmadan.
+- `erp_storefront_document()`: belge bu carinin kesilmiş satış belgesi
+  mi; değilse null.
+
+Belgeler yeni `get_account_document.php`'den açılır: `?id=` faturanın
+kesildiğinde saklanan PDF'i (`erp_archive_invoice()`; saklanmamışsa şimdi
+üretip saklar, panel gibi), `?statement=1` mutabakat PDF'i
+(`erp_reconciliation_pdf()`, varsayılan yılbaşından bugüne).
+Panelin `get_erp_invoice_pdf.php`'si ERP hakkı ister ve değişmedi; yeni
+uç yalnız belgenin oturumdaki üyenin carisine ait olup olmadığını sorar.
+Başkasının belgesi, taslak, iptal ve carisi olmayan üye aynı 404'ü alır;
+adres başına dakikada 30 istek (`waf_rate_exceeded()`, kapsam
+`erp_doc`). Oturum yoksa giriş sayfasına yönlenir.
+
+Widget'ın jetonları, bayrakları ve başlangıç ağacı (`style_designer.js`):
+bakiye, vadesi geçen toplam, belge sayısı, "Ekstreyi indir"; satırda
+numara, tür, tarih, vade, tutar, kalan, durum ("12 gün gecikmiş"),
+gecikme günü, sipariş numarası ve PDF bağlantısı. Satır durum bayrakları
+birbirini dışlar (`invoice_is_paid`, `_unpaid`, `_partial`, `_overdue`;
+iade `invoice_is_return`), başlangıç ağacındaki rozetler bunlara bire
+bir bağlı. Hiçbir şey göndermediği için Mesajlar düğümü kendi adıyla
+damgalanır ve JS'te `_SW_NO_MESSAGES`'tadır. Altı hazır şablonun Hesabım
+sayfasına hesap özeti ile güvenlik kartı arasına eklendi (şablon
+sürümleri birer arttı).
+
+**Bilerek yapılmayan.** Müşteri faturayı ödeyemez (ödeme linki bu fazda
+yok, plan §4). Belge listesinde sayfalama yok; ayardaki sayıdan eskisi
+ekstrede görünür. Bir kişiye birden çok cari bağlıysa ilk açılan
+(en küçük id) okunur; panel de kişi başına bir cari varsayar.
+
+---
+
+## 2026.4.10 — Klinik şablonu: randevu, hekimler, hasta rehberi, blog ve hesaplar (2026-10-13)
+
+**Neden.** Ürün sahibi "yerel hekim sitesi olsun, hesap sayfaları, randevu
+vs. hepsi dahil, blog da var, hizmetler vs." diye tam donanımlı bir şablon
+istedi. Bir önceki PR (#276) şablonun kullanacağı Bootstrap 5.3 bloklarını
+paletin Bloklar sekmesine ekledi; bu PR şablonun kendisi.
+
+**Nasıl.** `includes/design_templates/pinegrap-clinic.php`, Kitapçı
+şablonunun yapısını izler: aynı düğüm kurucuları, ortak parçalar, sistem
+widget'ları ve kurulumda editörün ürettiği başlangıç düzenleri
+(`'tree' => 'starter'`). Randevu, ek modül istemeyen bir özel formdur:
+form kaydı kendi sayfasını açar (`form_item_view`, yalnız gönderen ve
+personel), altına yorum olarak yazışma gelir (iletişim sayfasındaki
+görüşme düzeni), otomatik kayıt hastaya hesap açar. Durum (Talep edildi /
+Onaylandı / Tamamlandı / İptal) yalnız personelin gördüğü bir seçim
+listesidir (`office_use_only`); personel randevuyu açıp "Durumu Değiştir"
+ile kaydı panelde düzenler. Randevularım listesi gönderen / izleyen /
+düzenleyen süzgeciyle, Personel Alanı'ndaki liste bugünden itibaren
+(`preferred_date` ≥ `current date`) tarih sırasıyla gelir. Görünüm
+`modern-soft`, palet `ocean`; küçük resim `_pg_design_thumb_clinic()`.
+Varsayılan olarak güzel adresler kapalı.
+
+**Ne değişti.** 37 sayfa ve 33 widget:
+
+- Ana sayfa (saatler kartlı hero, hızlı eylemler, hizmetler, rakamlar,
+  hekimler, üç adımda randevu, yorumlar, son yazılar), Hizmetlerimiz
+  (bölüm başına kapsam, süre, ücret; site aramasında bölüm başına sonuç),
+  Hekimlerimiz (dört profil), Check-up (üç paket, hazırlık, SSS), Randevu
+  Al (bölüm, hekim — "Fark etmez" seçili —, görüşme şekli, tarih, saat
+  aralığı, hasta bilgileri, sigorta, neden, açık rıza, doğrulama), randevu
+  sayfası, Randevularım, Hasta Rehberi (altı başlık + SSS), Hakkımızda,
+  İletişim (konu seçimli görüşme), Bülten, Blog (dört örnek yazı, YZ
+  özeti, yorumlar, tıbbi uyarı), Yardım Merkezi, 404.
+- Hesap: giriş, kayıt, şifremi unuttum, şifre belirle, çıkış, Hesabım
+  (randevu kartı; adres defteri yalnız e-ticaret açıksa), profil, şifre
+  değiştir, e-posta tercihleri, adres defteri, gelen kutusu, görüşme.
+- Personel (özel klasör): Personel Alanı (yaklaşan randevular, kısayollar),
+  yeni blog yazısı, personel rehberine ekleme, personel rehberi.
+- Altı e-posta sayfası: yeni randevu (personele), randevu talebiniz
+  alındı (hastaya), yeni mesaj, mesajınız alındı, yeni yanıt, bülten
+  hoş geldin.
+- Her sayfada acil durum satırı (telefonda da görünür), dil seçici ve
+  giriş bölgesi; başlık menüsü `xl` altında katlanır, telefon numarası
+  `xxl`'de görünür. Hastanın telefonu kişinin cep telefonu alanına
+  bağlıdır, sonraki randevuda ad, e-posta ve telefon dolu gelir.
+- `tr.json`'a 403 anahtar; Türkçe örnek ücretler TL'dir (ör. `$90` →
+  `₺2.800`), sayfa adları Türkçe (`randevu-al`, `randevularim`,
+  `hasta-rehberi`, `hekimlerimiz`).
+
+**Düzeltmeler (çekirdek).**
+
+- `_pg_cf_controls()` (`includes/fn/custom_form.php`) tek seçimli bir
+  listenin varsayılanını `selected` işaretli seçenekten okumuyordu;
+  ziyaretçinin görmediği personel alanı (randevu durumu) boş kaydediliyordu.
+  Artık seçili seçeneğin değeri (değer yoksa metni) varsayılan; çoklu
+  listeye dokunulmaz. `tests/custom_form_default_test.php`.
+- `_pg_sw_resolve_visibility()` (`includes/fn/widgets.php`) iç içe görünürlük
+  aralıklarını çözmüyordu: "kayıt bulundu" aralığının içindeki "düzenleyebilir"
+  ya da "bu oturumda gönderildi" aralıkları işaretleriyle sayfaya düşüyor,
+  düzenleme düğmesi (boş adresle) ve yeni hesap kutusu herkese görünüyordu.
+  Bu, Kitapçı şablonunun blog yazısı sayfasındaki Düzenle düğmesini de
+  etkiliyordu. Tutulan aralığın içi artık kendi bayraklarıyla çözülür.
+  `tests/widget_visibility_test.php`.
+- Kitapçı (1.0.7) ve klinik şablonunun sayfa yolunda "Home" "Ev" diye
+  çıkıyordu; ikisi de "Homepage" (Ana Sayfa) anahtarını kullanıyor.
+
+**Bilerek yapılmayan.** Takvimde dolu saat denetimi yok: hasta bir saat
+aralığı ister, personel saati e-postayla netleştirir ve durumu günceller.
+Çalışma Alanı ya da takvim modülüne bağlanmadı; şablon yalnız mevcut form,
+yorum ve hesap özelliklerini kullanır. Personel Alanı'ndaki "bugünden
+itibaren" süzgeci tarih alanı boş kayıtları göstermez.
+
+**Doğrulama.** `tools/lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php`, `check_copies.php`, `test.php`, `build_js.php
+--check` temiz. Şablon deneme sitesine (`tools/setup_sandbox.sh`, Türkçe)
+editörün başlangıç düzenleriyle kuruldu, uyarı yok; sayfalar Bootstrap 5.3.8
+ile 1440, 1280, 1024 ve 390 piksel genişlikte çekildi, yatay kaydırma ve
+JS hatası yok. Ziyaretçi olarak randevu gönderildi: hesap açıldı, kayıt
+sayfası açıldı, durum "Talep edildi" kaydedildi; hasta düzenleme düğmesini
+görmüyor, yönetici görüyor ve düğme kaydın panel ekranına gidiyor; kayıt
+Randevularım'da ve Personel Alanı'nda listeleniyor; iki randevu e-postası
+kayıtla doldu.
+
+**Doğrulanamayan.** E-postaların gerçekten gönderilmesi (deneme sitesinde
+posta yok) ve görsellerin yüklenmesi (dış adresler kapalı) denenmedi;
+dev.pinegrap.com'da yerel oturum dener.
+
+---
+
 ## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
 
 **Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
@@ -199,6 +343,42 @@ taşımıyorsa ileti eskisi gibi SMTP / `mail()` ile gider. Graph'ın 4 MB
 sınırını aşan ekler için yükleme oturumu yok; ileti boyutu açıkça
 reddedilir. Microsoft'un SMTP XOAUTH2 yolu bilerek seçilmedi: posta
 kutusunda SMTP AUTH'un açık olmasını ister, Graph istemez.
+
+---
+
+## 2026.4.10 — Dış API: mağaza kurulumu (nakliye, bölge, vergi, ülke, para birimi) (2026-10-13)
+
+**Sorun.** Siparişin hesaplandığı tanımlar API'de yoktu. Bir kargo ya da
+pazaryeri entegrasyonu nakliye yöntemlerini, bölgeleri, vergi oranlarını,
+ülke/il kodlarını ve kurları okuyamıyor, nakliye ücretini tahmin ediyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/store.php`, yalnız okuma, izin
+`orders:read` (e-ticaret açık ve rol < 3 ya da e-ticaret yetkisi). Hepsi tek
+sayfa döner (küçük kümeler):
+
+- `GET /store/shipping-methods` (`enabled` süzgeci) ve
+  `GET /store/shipping-methods/{id}`: taban ücret kademeleri
+  (`base_rates`: `from_subtotal` → `rate`, `variable_base_rate` açıksa
+  2.–4. kademe), birincil/ikincil ağırlık ve ürün başı ücret, ilk ürün
+  hariç bayrakları, gerçek zamanlı taşıyıcı servisi, sunulduğu günler ve
+  kesim saatleri (`offered_on`), sokak adresi / posta kutusu, geçerlilik
+  aralığı (tablonun 1000-01-01 / 9999-12-31 "her zaman" değerleri null),
+  hazırlık ve taşıma günleri, korumalı (yalnız personel), taşıyıcı unvanı
+  ve VKN, `zone_ids`. Rota açıklaması ücretin `shipping.php`'deki
+  hesaplanışını anlatır.
+- `GET /store/zones`: bölgenin ek ücretleri, ülke kodları ve illeri.
+- `GET /store/tax-zones`: oran (yüzde), ülke kodları ve illeri.
+- `GET /store/countries` (`code` süzgeci): varsayılan ülke, posta kodu
+  zorunluluğu, iller.
+- `GET /store/currencies`: sembol HTML varlığından çözülür (`&euro;` → €),
+  kur tabana göre, taban önce.
+
+Para kuruş cinsinden (`api_money()`). Şema değişikliği yok.
+
+**Doğrulandı (sandbox).** Sekiz nakliye yöntemi ve bölgeleri, 404, bölgeler
+(International 205 ülke, Türkiye 81 il), vergi bölgeleri (Teksas 8.25, TR 18),
+242 ülke / 143 il, TR süzgeci, yedi para birimi (₺ taban); MCP `tools/list`
+altı araç, OpenAPI.
 
 ---
 
@@ -290,6 +470,57 @@ taslak API'den 2 satıra indirilip kesildi → `partial`, kalan taslak kesildi �
 
 **Doğrulanamayan.** dev.pinegrap.com'da Claude bağlayıcısıyla (yeni araçlar
 için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
+
+---
+
+## 2026.4.10 — Dış API: kısa linkler; Geri Dönüşüm Kutusu'ndaki kısa link yönlendirmiyor (2026-10-13)
+
+**Sorun.** Kısa linkler yalnız panelden (Kısa Linkler ekranı, dosya
+yöneticisi) yönetiliyordu; bir kampanya aracı ya da asistan link açamıyor,
+hedefini değiştiremiyordu. Ayrıca Geri Dönüşüm Kutusu'na taşınan kısa link
+`router.php`'de hâlâ çözülüyor ve 301 ile yönlendiriyordu (sorgu `recycled`
+sütununa bakmıyordu).
+
+**Değişiklik.** Yeni `includes/api/resources/short_links.php`; izin
+`pages:read` / `pages:write` (rol ≤ 2, Kısa Linkler ekranının kapısı).
+Yardımcılar dosya yöneticisininkiler (`pg_short_link_read_request`,
+`pg_short_link_clean_name`, `pg_short_link_state`, `check_name_availability`).
+
+- `GET /short-links`, `GET /short-links/{id}`: en yeni önce; süzgeçler
+  hedef türü, sayfa, tür (`mode`: permanent / timed / once), metin,
+  `recycled`. Yanıtta linkin kendi adresi (`address`), gittiği yer
+  (`target`), durum (open / used / expired), `expires_at`, `use_count`.
+  Tek kullanımlık linkin adresi saklanmaz, yalnız `token_hint`.
+- `POST /short-links`: ad (boşluk `_` olur; sayfa, dosya, klasör ya da
+  başka kısa linkle çakışırsa 409 `name_taken`), hedef (`page_id`;
+  ürün grubu ve ürün için katalog sayfası + `product_group_id` /
+  `product_id`; `url` yalnız http(s) ya da site yolu; `file_id`),
+  `tracking_code`. `mode=timed` için `duration` panelin seçenekleri
+  (3600 … 7776000 sn). `mode=once` ad almaz; üretilen adres
+  (`token_url`) yalnız bu yanıtta bir kez verilir, saklanan hash'tir.
+- `POST`/`PATCH /short-links/{id}`: ad (tek kullanımlıkta 422), hedef
+  alanlarından biri gelince hedef saklı olanla birlikte yeniden okunur ve
+  türün kullanmadığı sütunlar boşaltılır (dosya yöneticisi gibi),
+  `tracking_code`, süreli linke `renew` ile yeni süre. Geri Dönüşüm
+  Kutusu'ndaki link 409 `already_recycled`.
+- `DELETE /short-links/{id}` (ve `POST …/delete`): Geri Dönüşüm Kutusu'na
+  (`recycled = 1` + `recycle_bin` satırı, dosya yöneticisi gibi);
+  `permanent=true` doğrudan siler.
+
+Çalışma Alanı misafir linkleri (`workspace_guest`) API'de görünmez (404).
+`router.php`: bulunan kısa link `recycled` ise kısa link sayılmaz, ad sayfa
+aramasına düşer (404); sütun olmayan eski şemada davranış aynı. Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox).** Sayfa, ürün grubu, ürün, dosya ve adres hedefli
+oluşturma; ad çakışması (kısa link ve sayfa) 409; `javascript:` ve `//`
+adresleri 422; tek kullanımlık link: `token_url` bir kez, tarayıcıyla ilk
+açılış 302 hedefe, ikincisi "kullanıldı" sayfasına, `used_at` /
+`use_count` güncellendi; süreli link süre yok 422, `renew` ile uzatma;
+hedef türü değişince eski sütunlar boşaldı; Geri Dönüşüm Kutusu'na taşıma,
+adres 301'den 404'e döndü, ikinci silme ve değiştirme 409, `recycled=true`
+listesi, `permanent=true` ile kutu satırı da silindi; misafir linki 404;
+MCP `tools/list` ve OpenAPI.
 
 ---
 

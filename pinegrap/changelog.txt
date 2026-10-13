@@ -243,6 +243,32 @@
          geri alıyor, açılır listede ilk Ctrl+Z hiçbir şey
          yapmıyordu.
 
+  [YENİ] Klinik şablonu (yerel hekim sitesi). Hizmetler,
+         hekimler, check-up paketleri, hasta rehberi, blog,
+         iletişim ve bülten; çevrimiçi randevu formu (bölüm,
+         hekim, görüşme şekli, tarih, saat aralığı). Randevu
+         kendi sayfasını açar, hastaya hesap açılır, altına
+         yazışma gelir; Randevularım'da durumuyla listelenir.
+         Personel Alanı'nda bugünden itibaren yaklaşan
+         randevular; personel durumu (Talep edildi, Onaylandı,
+         Tamamlandı, İptal) "Durumu Değiştir" ile günceller.
+         Hesap sayfaları, gelen kutusu, personel rehberi ve
+         altı e-posta sayfası dahil.
+
+  [DÜZELTME] Özel formda yalnız personelin gördüğü bir açılır
+         listenin seçili seçeneği ziyaretçi gönderdiğinde
+         kaydediliyor; önceden alan boş kalıyordu.
+
+  [DÜZELTME] Kayıt sayfasında yalnız düzenleme yetkisi
+         olanlara gösterilen Düzenle düğmesi ile yalnız formu
+         gönderen ziyaretçiye gösterilen teşekkür ve yeni hesap
+         kutuları herkese görünüyordu (Kitapçı şablonunun
+         blog yazısı sayfası dahil). Artık yalnız ilgili
+         kişiye görünüyor.
+
+  [DÜZELTME] Kitapçı şablonunun sayfa yolunda "Ev" yerine
+         "Ana Sayfa" yazıyor.
+
   SEO
   --------------------------------------------------------
 
@@ -497,6 +523,20 @@
          X-Dry-Run ile denenebilir; erp:write yetkisi
          gerekir.
 
+  [YENİ] Mağazada "Faturalarım": görsel editörde yeni
+         "Faturalarım" sistem widget'ı, oturum açmış
+         müşteriye ERP'de kesilmiş faturalarını ve
+         iadelerini gösteriyor: tutar, vade, kalan,
+         gecikme rozeti, carinin bakiyesi ve vadesi
+         geçen toplam. Her belge PDF olarak açılıyor;
+         "Ekstreyi indir" yılbaşından bugüne mutabakat
+         PDF'ini veriyor. Müşteri yalnız kendi carisinin
+         belgelerini görür; taslak ve iptal edilmiş
+         belge görünmez. ERP kapalıysa ya da müşterinin
+         kişisi bir cariye bağlı değilse widget hiçbir şey
+         göstermez. Hazır şablonların Hesabım sayfasında
+         hesap özetinin altında yer alıyor.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
@@ -653,6 +693,27 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] Mağaza kurulumu API'de okunuyor: nakliye
+         yöntemleri (ücretler, kademeli taban ücret, sunulduğu
+         günler ve saatler, adres türleri, bölgeler), nakliye
+         bölgeleri, vergi bölgeleri, ülkeler ve illeri, para
+         birimleri ve kurları. Bir kargo ya da pazaryeri
+         entegrasyonu nakliye ücretini mağazanın hesapladığı
+         gibi hesaplayabilir. Siparişleri okuma izni yeterli.
+
+  [YENİ] Kısa linkler API'de: GET /short-links kısa
+         linkleri, nereye gittikleriyle (sayfa, ürün grubu,
+         ürün, dosya, adres), türleriyle (kalıcı, süreli, tek
+         kullanımlık) ve kaç kez açıldıklarıyla listeler. Kısa
+         link eklenir, adı ve hedefi değiştirilir, süreli
+         linke yeni süre verilir, Geri Dönüşüm Kutusu'na
+         taşınır ya da silinir. Tek kullanımlık linkin adresi
+         yalnız oluşturulduğu yanıtta bir kez verilir.
+
+  [DÜZELTME] Geri Dönüşüm Kutusu'ndaki kısa link hâlâ
+         yönlendiriyordu; artık açılmıyor (404), geri
+         yüklenince yeniden çalışıyor.
 
   [YENİ] Takvim etkinlikleri API'den eklenip
          değiştirilebiliyor ve silinebiliyor: ad, açıklamalar,
