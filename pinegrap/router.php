@@ -407,10 +407,16 @@ if ((mysqli_num_rows($result) == 0) && (preg_match('/^[A-Za-z0-9_-]{43}$/', $ite
     }
 }
 
+$short_link = (mysqli_num_rows($result) > 0) ? mysqli_fetch_assoc($result) : null;
+
+// A link in the Recycle Bin no longer answers: its address goes on to the page
+// lookup below like any other free name.
+if ($short_link && !empty($short_link['recycled'])) {
+    $short_link = null;
+}
+
 // If short link was found, then process it.
-if (mysqli_num_rows($result) > 0) {
-    
-    $short_link = mysqli_fetch_assoc($result);
+if ($short_link) {
 
     // Opened once, until a time, or a guest's way into the workspace: here it
     // is decided whether this visit goes on to where the link leads.

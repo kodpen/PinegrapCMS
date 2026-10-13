@@ -144,6 +144,7 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Log'), 'icon' => 'bi-journal-text', 'url' => $base_url . '/view_log.php', 'keys' => array('log', 'kayit', 'journal', 'akt'));
         $actions[] = array('label' => lang('Backups'), 'icon' => 'bi-database', 'url' => $base_url . '/backups.php', 'keys' => array('yedek', 'backup', 'bak', 'yed'));
         $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
+        $actions[] = array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/connections.php', 'keys' => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'));
     }
 
     // ── Design ────────────────────────────────────────────────────────────

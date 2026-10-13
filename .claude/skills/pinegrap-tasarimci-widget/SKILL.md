@@ -253,8 +253,9 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   sayfanın liveform adıdır; legacy sayfa mesaj basmıyorsa widget'ın kendi
   adı (`calendar_view`, `logout`, `error_page`). Denetim
   `tests/designer_messages_test.php`. Hesap bandındaki widget'lar
-  (`cart_link`, `login_region`, `language_switcher`) kimsenin göndermediği
-  bir adla damgalanır, mesaj göstermez; JS'te `_SW_NO_MESSAGES`'tadırlar:
+  (`cart_link`, `login_region`, `language_switcher`) ve hiçbir şey
+  göndermeyen `account_invoices` kimsenin göndermediği bir adla damgalanır,
+  mesaj göstermez; JS'te `_SW_NO_MESSAGES`'tadırlar:
   başlangıç ağacına "Mesajlar (PHP)" eklenmez, eski ağaçtaki yüklenirken
   düşer. Böyle yeni bir tür eklersen iki tarafa birden yaz.
 - Grup kapsamı: normal gezinmede doğrudan üyeler, arama/filtre varsa tüm alt

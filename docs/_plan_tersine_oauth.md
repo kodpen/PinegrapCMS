@@ -378,7 +378,8 @@ Efor: K küçük, O orta, B büyük. "Şart" sağlayıcının istediğidir (2026
 
 - **Durum:** `shipping.php`'deki UPS / FedEx / USPS çağrıları karşı tarafta kalkmış API'ler; yerlerine
   gelenler OAuth `client_credentials` ister (kullanıcı yönlendirmesi yok, yalnız sunucu). Türk kargo
-  firmaları ve iyzico OAuth kullanmıyor. Paraşüt'ün yenileme jetonu düz metin dosyada.
+  firmaları ve iyzico OAuth kullanmıyor. Paraşüt'ün yenileme jetonu düz metin dosyadaydı; 2026.4.10'da
+  `pg_connect_service_*` ile şifreli depoya taşındı (dosya ilk okumada taşınıp silinir).
 - **Bu planın payı:** `client.php` `client_credentials` ve parola akışını da taşır, jetonlar
   `connect_accounts`'ta şifreli durur; Paraşüt önbelleği oraya taşınır (K). Sürücülerin kendisi
   (kargo, e-Belge, pazaryeri, ödeme) **Erdal'ın yerel işi** (2026-10-13 kapsam kuralı); `shipping.php`'nin

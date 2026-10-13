@@ -57,9 +57,10 @@ function api_scope_groups() {
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
-		// Read only: an event is built on its own screen with repeats,
-		// reservation spots and the product they are sold through.
-		'calendars' => array('label' => 'Calendars',  'read' => 'calendars:read', 'write' => ''),
+		// Writing is an event's words, times, calendars and publishing. Its
+		// repeats, reservation spots, rooms and the product they are sold
+		// through stay on its own screen.
+		'calendars' => array('label' => 'Calendars',  'read' => 'calendars:read', 'write' => 'calendars:write'),
 
 		// A form is drawn in the page designer, with its validation, upload
 		// folders and contact mapping, and that stays there. What an
@@ -259,15 +260,19 @@ function api_owner_scopes($owner) {
 	}
 
 	// The calendars, to whoever the calendar screens open them to: roles 0 to
-	// 2, or a user given the calendars right - who then reads only the
-	// calendars assigned to them, which the endpoints filter for. Not offered
-	// where the site does not run its calendars.
+	// 2, or a user given the calendars right - who then reads and writes only
+	// the calendars assigned to them, which the endpoints filter for, and
+	// publishes only with the publishing right. Not offered where the site
+	// does not run its calendars.
 	$manages_calendars = ($role < 3)
 		|| (isset($owner['manage_calendars']) && in_array(strtolower(trim((string)$owner['manage_calendars'])), array('yes', '1', 'true'), true));
 
 	if ((!defined('CALENDARS') || CALENDARS === true) && $manages_calendars) {
 
 		$scopes[] = 'calendars:read';
+
+		// The event screens open to the same people.
+		$scopes[] = 'calendars:write';
 
 	}
 

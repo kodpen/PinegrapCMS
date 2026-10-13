@@ -7201,6 +7201,39 @@ function pg_erp_store_country()
 }
 
 /**
+ * The ERP account of the member signed in on the storefront: the account
+ * linked to the member's contact (erp_accounts.contact_id, the side of the
+ * link that is the truth). Read once per request and without loading the
+ * ERP, since the storefront asks on pages the ERP has no other business on.
+ *
+ * @return array|null  id, kind, status; null when the ERP is off, nobody is
+ *                     signed in, or the member's contact has no account
+ */
+function pg_erp_member_account()
+{
+    static $account = false;
+
+    if ($account !== false) {
+        return $account;
+    }
+
+    $account = null;
+    $contact_id = defined('USER_CONTACT_ID') ? (int) USER_CONTACT_ID : 0;
+
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !defined('USER_LOGGED_IN') || (USER_LOGGED_IN !== true) || ($contact_id <= 0)) {
+        return $account;
+    }
+
+    $row = db_item("SELECT id, kind, status FROM erp_accounts WHERE contact_id = '" . $contact_id . "' ORDER BY id ASC LIMIT 1");
+
+    if (is_array($row)) {
+        $account = array('id' => (int) $row['id'], 'kind' => (string) $row['kind'], 'status' => (string) $row['status']);
+    }
+
+    return $account;
+}
+
+/**
  * The name of the ERP's tax report as the menu shows it on every panel page,
  * the ERP loaded or not: "VAT report", or the report of the tax name set in
  * the ERP settings. Inside the ERP it is erp_tax_label('report').

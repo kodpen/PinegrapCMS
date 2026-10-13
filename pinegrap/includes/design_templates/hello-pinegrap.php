@@ -1044,7 +1044,7 @@ $pages[] = array(
     'title'            => lang('My Account'),
     'search'           => false,
     'sitemap'          => false,
-    'tree'             => $page('', array($widget('my_account'), $widget('account_security'))),
+    'tree'             => $page('', array($widget('my_account'), $widget('account_invoices'), $widget('account_security'))),
 );
 $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profile'), 'profile'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
@@ -1949,6 +1949,15 @@ $widgets = array(
         'config' => array('regionType' => 'email_preferences', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'   => 'starter',
     ),
+    // The customer's invoices and returns from the ERP, under the account
+    // overview on the same page; it draws nothing for a member without an
+    // ERP account, so a site that does not use the ERP never sees it.
+    'account_invoices' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('invoices'),
+        'config' => array('regionType' => 'account_invoices', 'max_results' => 50),
+        'tree'   => 'starter',
+    ),
     // Google connection, remembered devices and two-step verification,
     // under the account overview on the same page.
     'account_security' => array(
@@ -2292,7 +2301,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.8',
+    'version'     => '2.4.9',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

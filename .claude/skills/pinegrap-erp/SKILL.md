@@ -337,7 +337,13 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   `received` saklanır ama faturalardan türetilir: `erp_purchase_order_refresh()`
   `erp_event_invoice()`'tan (alış faturası kesilince/iptalinde) çağrılır; siparişe
   bağlı faturayı başka yoldan yazan kod da bu olayı çıkarmalı. Dönüşüm yalnız
-  `erp_purchase_order_to_invoice()` ile (taslak, kalan miktarlar).
+  `erp_purchase_order_to_invoice()` ile (taslak, kalan miktarlar). Durum ve
+  dönüşüm reddi ekranla API'de ortak: `erp_purchase_order_status_refusal()`,
+  `erp_purchase_order_invoice_refusal()`. API `/erp/purchase-orders…`
+  `includes/erp/api_purchase_orders.php`'de; satır anahtarı API'de siparişte
+  `lines[].key`, taslakta `lines[].purchase_order_line` (`erp_api_lines_in()`'in
+  üçüncü parametresi). Satırları yeniden yazan her yol anahtarı geri almalı,
+  yoksa sipariş o satırı sayamaz.
 - Teklif imzası (8.58, `includes/erp/signatures.php`): kayıt `erp_signatures`'ta
   (`doc_type`, `doc_id`; belge başına bir), çizim `files`'ta `erp_doc_type =
   'quote_signature'`. İmza **silinmez, yeniden çizilmez**; teklif sonradan
@@ -602,6 +608,7 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
 | İrsaliye | `includes/erp/waybills.php` |
 | Mutabakat | `includes/erp/reconciliation.php` |
 | Kasa akışı | `includes/erp/cashflow.php` |
+| Ön yüz: müşterinin kendi carisi | `includes/erp/storefront.php` (belgeler, bakiye, sahiplik sorusu), `get_account_document.php` (müşterinin PDF ucu: belge ve ekstre; başkasınınki 404), widget `account_invoices` (`includes/fn/widgets_account.php`); oturumdaki üyenin carisi `pg_erp_member_account()` (`includes/fn/ecommerce.php`, ERP'yi yüklemeden) |
 | CSV içe/dışa | `includes/erp/import.php`, `export.php` |
 | API dikişi / olaylar | `includes/erp/api.php` (rota tablosu), `api_resources.php` (okuma, cari, tahsilat, gider), `api_documents.php` (fatura, teklif, tekrarlayan fatura yazma), `api_stock.php` (irsaliye, stok sayımı, minimum stok yazma), `api_cash.php` (virman, çek/senet yazma), `api_reports.php` (kâr, kasa akışı, pano), `events.php` |
 | e-Belge | `includes/erp/edoc/registry.php`, `service.php`, `<kod>.php` |
@@ -615,5 +622,5 @@ Otomatik tahsis eşleştirme yok (FIFO yalnız öneri) · e-İrsaliye yok
 (`erp_waybills` dahili irsaliyedir) · Paraşüt sürücüsü boş · çevrimdışı ödeme
 akışı türetilmiş durumdur, yeni enum değeri değil · kâr/zarar resmî gelir tablosu değildir (amortisman,
 dönemsellik yok) · siparişi birden çok faturaya bölme yok · faturaya ödeme
-linki ve müşterinin "Faturalarım" sayfası yok · iyzico ve pazaryeri hakedişi yok
+linki yok (müşteri faturasını "Faturalarım" widget'ında görür, ödeyemez) · iyzico ve pazaryeri hakedişi yok
 · banka ekstresi yalnız CSV, bankaya API bağlantısı yok.

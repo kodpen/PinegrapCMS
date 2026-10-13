@@ -9799,6 +9799,7 @@ const StyleDesigner = (function () {
                     email_preferences:    _sdT('Email Preferences'),
                     address_book:         _sdT('Address Book'),
                     account_security:     _sdT('Account Security'),
+                    account_invoices:     _sdT('My Invoices'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -24792,6 +24793,7 @@ const StyleDesigner = (function () {
             var _isLoginRegion     = (_regionType === 'login_region');
             var _isCartLink        = (_regionType === 'cart_link');
             var _isLanguageSwitcher = (_regionType === 'language_switcher');
+            var _isAccountInvoices = (_regionType === 'account_invoices');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -24833,6 +24835,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The first published page carrying this widget becomes the site\'s error page: a page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
             } else if (_isCartLink) {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
+            } else if (_isAccountInvoices) {
+                _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isLoginRegion) {
                 _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
@@ -25795,6 +25799,17 @@ const StyleDesigner = (function () {
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                         '</label>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only the other languages are listed; an element bound to "{var}" shows the current one.', _swBindLabel('language_switcher', '__current_language_label'))) + '</div>'
+                    )
+                );
+            }
+
+            // ── account_invoices settings ─────────────────────────────────────
+            if (_isAccountInvoices) {
+                var _aiMax = parseInt(_cfg.max_results, 10) > 0 ? parseInt(_cfg.max_results, 10) : 50;
+                systemSection += sect('bi-receipt-cutoff', _sdT('My Invoices Settings'),
+                    row(_sdT('Documents to list'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="max_results" data-sw-cfg-kind="int" min="1" max="500" value="' + _aiMax + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The newest documents first. The statement covers the whole year whatever the list shows.')) + '</div>'
                     )
                 );
             }
@@ -29395,6 +29410,32 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // account_invoices token palette — has loop_area (one row per document).
+    // Mirrors _render_system_widget_account_invoices() in widgets_account.php.
+    var SW_ACCOUNT_INVOICES_TOKEN_GROUPS = [
+        { label: _sdT('Account'), tokens: [
+            ['__account_title',        _sdT('Account name')],
+            ['__balance',              _sdT('Balance (what is owed today, or the credit in the customer\'s favour)')],
+            ['__overdue_total',        _sdT('Overdue total')],
+            ['__document_count',       _sdT('Number of documents listed')]
+        ]},
+        { label: _sdT('Document (loop_area)'), tokens: [
+            ['__invoice_number',       _sdT('Document number')],
+            ['__invoice_kind',         _sdT('Invoice or return')],
+            ['__invoice_date',         _sdT('Date')],
+            ['__invoice_due_date',     _sdT('Due date')],
+            ['__invoice_total',        _sdT('Total (currency)')],
+            ['__invoice_open',         _sdT('Still owed (currency; empty when paid)')],
+            ['__invoice_status',       _sdT('Status ("Paid", "12 days overdue")')],
+            ['__invoice_overdue_days', _sdT('Days overdue (number)')],
+            ['__invoice_order_number', _sdT('Order number (empty when not from an order)')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__invoice_pdf_url',      _sdT('The document as a PDF (loop_area)')],
+            ['__statement_url',        _sdT('Download the statement (PDF)')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -29405,7 +29446,8 @@ const StyleDesigner = (function () {
         account_profile:   SW_ACCOUNT_PROFILE_TOKEN_GROUPS,
         email_preferences: SW_EMAIL_PREFERENCES_TOKEN_GROUPS,
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
-        account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS
+        account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
+        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -30260,6 +30302,22 @@ const StyleDesigner = (function () {
             ['mfa_key_unreadable',  _sdT('It is on but the key cannot be read (recovery codes only)')],
             ['mfa_can_regenerate',  _sdT('New recovery codes can be made')],
             ['mfa_required',        _sdT('The member\'s role requires two-step verification')]
+        ],
+        account_invoices: [
+            ['has_documents',      _sdT('There are documents to list')],
+            ['no_documents',       _sdT('There are no documents yet')],
+            ['has_balance',        _sdT('The customer owes a balance')],
+            ['has_credit',         _sdT('The balance is in the customer\'s favour')],
+            ['no_balance',         _sdT('The balance is zero')],
+            ['has_overdue',        _sdT('Something is overdue')],
+            ['invoice_is_invoice', _sdT('Row: an invoice')],
+            ['invoice_is_return',  _sdT('Row: a return')],
+            ['invoice_is_paid',    _sdT('Row: paid')],
+            ['invoice_is_unpaid',  _sdT('Row: nothing paid yet, not yet due')],
+            ['invoice_is_partial', _sdT('Row: partly paid, not yet due')],
+            ['invoice_is_overdue', _sdT('Row: past its due date')],
+            ['invoice_is_open',    _sdT('Row: money is still owed on it')],
+            ['invoice_has_order',  _sdT('Row: made from an order')]
         ],
         cart_link: [
             ['cart_has_items',   _sdT('The cart has something in it')],
@@ -41166,6 +41224,7 @@ const StyleDesigner = (function () {
         { type: 'email_preferences', label: _sdT('Email Preferences'), slug: _sdT('email-preferences'), icon: 'bi-envelope-paper' },
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
+        { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
         { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
@@ -41293,6 +41352,8 @@ const StyleDesigner = (function () {
         } else if (newType === 'account_profile' || newType === 'email_preferences' || newType === 'address_book' || newType === 'account_security') {
             if (cfg.not_logged_in_message === undefined) cfg.not_logged_in_message = _sdT('You must be logged in to view this page.');
             if (newType === 'address_book' && cfg.address_type === undefined) cfg.address_type = false;
+        } else if (newType === 'account_invoices') {
+            if (cfg.max_results === undefined) cfg.max_results = 50;
         } else if (newType === 'search_results') {
             if (cfg.search_scope === undefined) cfg.search_scope = 'all';
             if (cfg.results_per_page === undefined) cfg.results_per_page = 20;
@@ -44974,6 +45035,91 @@ const StyleDesigner = (function () {
                 ], true);
             }
 
+            case 'account_invoices': {
+                // The customer's invoices and returns from the ERP, one loop
+                // row each with its PDF, under the balance and the statement
+                // link. Draws nothing for a visitor without an ERP account,
+                // so there is no signed-out block. Mirrors
+                // _render_system_widget_account_invoices().
+                var aiBadge = function (text, css, flag, name, token) {
+                    var b = { eo_visible_if: flag };
+                    if (token) b.text = token;
+                    return createNode('semantic', { tag: 'span', cssClass: 'badge fw-normal ' + css, text: text, customName: name, _bindings: b });
+                };
+                var aiLoop = createNode('loop_area', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group-item d-flex flex-wrap justify-content-between align-items-start gap-3', customName: _sdT('Document') }, [
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Document Info') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Document Number') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: 'PGF2026000000012', customName: _sdT('Number'),
+                                    _bindings: { text: '__invoice_number' } }),
+                                createNode('semantic', { tag: 'span', cssClass: 'small text-muted', text: _sdT('Invoice'), customName: _sdT('Kind'),
+                                    _bindings: { text: '__invoice_kind' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-muted d-flex flex-wrap gap-3', customName: _sdT('Dates') }, [
+                                createNode('semantic', { tag: 'span', cssClass: '', text: '01.10.2026', customName: _sdT('Date'),
+                                    _bindings: { text: '__invoice_date' } }),
+                                createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Due Date'),
+                                    _bindings: { eo_visible_if: 'invoice_is_invoice' } }, [
+                                    createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Due date'), customName: _sdT('Label') }),
+                                    createNode('semantic', { tag: 'span', cssClass: '', text: '31.10.2026', customName: _sdT('Value'),
+                                        _bindings: { text: '__invoice_due_date' } })
+                                ]),
+                                createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Order'),
+                                    _bindings: { eo_visible_if: 'invoice_has_order' } }, [
+                                    createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Order'), customName: _sdT('Label') }),
+                                    createNode('semantic', { tag: 'span', cssClass: '', text: '1042', customName: _sdT('Value'),
+                                        _bindings: { text: '__invoice_order_number' } })
+                                ])
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-end', customName: _sdT('Amounts') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'fw-semibold', text: _sdT('$199'), customName: _sdT('Total'),
+                                _bindings: { text: '__invoice_total' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-muted', customName: _sdT('Still Owed'),
+                                _bindings: { eo_visible_if: 'invoice_is_open' } }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Still owed'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('$199'), customName: _sdT('Value'),
+                                    _bindings: { text: '__invoice_open' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-end align-items-center gap-2 mt-1', customName: _sdT('Status and PDF') }, [
+                                aiBadge(_sdT('Paid'), 'text-bg-success', 'invoice_is_paid', _sdT('Paid Badge')),
+                                aiBadge(_sdT('Open'), 'text-bg-secondary', 'invoice_is_unpaid', _sdT('Open Badge')),
+                                aiBadge(_sdT('Partially paid'), 'text-bg-warning', 'invoice_is_partial', _sdT('Partially Paid Badge')),
+                                aiBadge(_sdT('12 days overdue'), 'text-bg-danger', 'invoice_is_overdue', _sdT('Overdue Badge'), '__invoice_status'),
+                                aiBadge(_sdT('Return'), 'text-bg-info', 'invoice_is_return', _sdT('Return Badge')),
+                                createNode('content', { contentType: 'link', text: _sdT('PDF'), href: '#', cssClass: 'btn btn-sm btn-outline-primary',
+                                    _attrs: [{ name: 'target', value: '_blank' }, { name: 'rel', value: 'noopener' }],
+                                    _bindings: { href: '__invoice_pdf_url' } })
+                            ])
+                        ])
+                    ])
+                ]);
+                return _swAcctPage(_sdT('My Invoices Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('My Invoices'), cssClass: 'card-title mb-3' }),
+                    createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-end gap-4 mb-4', customName: _sdT('Account Summary') }, [
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Balance') }, [
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Balance'), cssClass: 'small text-muted mb-1' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('$199'), cssClass: 'fs-5 fw-semibold mb-0',
+                                _bindings: { text: '__balance' } }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('In your favour'), cssClass: 'small text-success mb-0',
+                                _bindings: { eo_visible_if: 'has_credit' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Overdue'),
+                            _bindings: { eo_visible_if: 'has_overdue' } }, [
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Overdue'), cssClass: 'small text-muted mb-1' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('$199'), cssClass: 'fs-5 fw-semibold text-danger mb-0',
+                                _bindings: { text: '__overdue_total' } })
+                        ]),
+                        createNode('content', { contentType: 'link', text: _sdT('Download the statement'), href: '#', cssClass: 'btn btn-sm btn-outline-secondary ms-auto',
+                            _bindings: { href: '__statement_url' } })
+                    ]),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('You have no invoices yet.'), cssClass: 'text-muted mb-0',
+                        _bindings: { eo_visible_if: 'no_documents' } }),
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group', customName: _sdT('Documents'),
+                        _bindings: { eo_visible_if: 'has_documents' } }, [aiLoop])
+                ], true);
+            }
+
             case 'calendar_event_view': {
                 // One event, read from ?id= — the page the calendar's events
                 // link to. Blocks with a "Show only when" condition drop out
@@ -45088,7 +45234,7 @@ const StyleDesigner = (function () {
     // step. Their layouts get no Messages block, and one an older layout still
     // carries is dropped on load (prefetchShared()): on the canvas it was a
     // "PHP Messages" box in the middle of the header that the page never shows.
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

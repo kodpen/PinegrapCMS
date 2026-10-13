@@ -2302,11 +2302,13 @@ function waf_send_security_headers()
  * so that sending it from PHP as well delivers it twice.
  *
  * IIS reads the site's web.config, and the rules the software gives it
- * (includes/server_config.php) add X-Content-Type-Options and
- * Referrer-Policy in <customHeaders>. IIS appends those to whatever PHP
- * sent - its <remove> only reaches headers IIS itself added - so every PHP
- * response arrived with "nosniff, nosniff". The server rule stays, because
- * it is what covers the static files PHP never serves.
+ * (includes/server_config.php) add X-Content-Type-Options in
+ * <customHeaders>. IIS appends that to whatever PHP sent - its <remove> only
+ * reaches headers IIS itself added - so every PHP response arrived with
+ * "nosniff, nosniff". The server rule stays, because it is what covers the
+ * static files PHP never serves. Referrer-Policy is no longer among those
+ * rules (a server copy overrode the no-referrer some pages send), but a
+ * web.config written earlier may still add it, and then PHP leaves it to IIS.
  *
  * Apache's "Header always set" replaces PHP's copy, so it never doubles.
  * nginx's configuration cannot be read from here, so it is not detected.

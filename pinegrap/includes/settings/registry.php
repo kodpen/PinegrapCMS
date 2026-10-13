@@ -370,6 +370,7 @@ function pg_settings_tool_groups($user)
     $connections = array(
         array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
+        array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg',  'url' => 'connections.php'),
     );
 
     if ($ecommerce) {

@@ -120,6 +120,478 @@ denenmedi.
 
 ---
 
+## 2026.4.10 — Referrer-Policy sunucu kuralından çıktı; görev çekmecesinde hazır olmayan asistan seçilemiyor (2026-10-13)
+
+### 1. `no-referrer` sayfaları IIS'te de referrer göndermiyor
+
+**Neden.** Yerel testte IIS yanıtlarında `Referrer-Policy` iki kez
+görüldü. Kök web.config `<customHeaders>` içinde
+`strict-origin-when-cross-origin` ekliyordu. `waf_send_security_headers()`
+bunu görüp kendi kopyasını göndermiyordu, ama `no-referrer` isteyen
+betikler (`includes/oauth/authorize.php`, `includes/api/response.php`,
+`router.php` süreli kısa link kapısı, `workspace_guest.php`,
+`short_link_gone.php`, `includes/workspace/calendar_feed.php`) kendi
+başlıklarını yazıyor, IIS de kendi değerini ona ekliyordu. Referrer-Policy
+spec'i son geçerli değeri aldığı için bu sayfalar fiilen
+`strict-origin-when-cross-origin` ile gidiyordu. Bir önceki düzeltmede
+"açık kalan" olarak bırakılmıştı (aşağıda "Yerel test bulguları", madde 2).
+
+**Nasıl.** Referrer-Policy artık yalnız PHP'nin: kök `web.config`'ten ve
+yazılımın yazdığı kurallardan (`includes/server_config.php`: IIS bloğu,
+Apache `.htaccess` bloğu, nginx örneği) ekleme satırı çıktı. IIS bloğunda
+`<remove name="Referrer-Policy" />` kaldı: sunucu düzeyinden miras gelen bir
+kopya aynı şeyi yapmasın. Artık `waf_server_adds_header('Referrer-Policy')`
+false döner, `waf_send_security_headers()` her PHP yanıtına
+`strict-origin-when-cross-origin` yazar ve `no-referrer` betikleri
+`header()` ile onu değiştirir (hepsi `init.php` / router başlıklarından
+sonra koşuyor). Testler: `tests/waf_headers_test.php` kök web.config'in ve
+üç sunucu şablonunun Referrer-Policy eklemediğini denetler.
+
+**Ödün.** Statik dosyalar (CSS, JS, görsel) başlıksız kalır. Tarayıcıların
+varsayılanı aynı politika (`strict-origin-when-cross-origin`) olduğu için
+pratikte fark yok. `<location>` ile yol başına kural denenmedi: router'dan
+geçen kısa linkleri kapsamaz.
+
+**Bilerek yapılmayan.** "Sunucu kurallarını onar" yalnız ekler, operatörün
+dosyasından satır silmez; eski kurulumların web.config / .htaccess
+dosyasındaki Referrer-Policy satırı kendiliğinden gitmez. Changelog
+operatöre satırı silmesini söylüyor. O satır kaldıkça PHP normal
+sayfalarda kendi kopyasını göndermemeye devam eder (çift başlık yok).
+
+### 2. Görev çekmecesi: hazır olmayan asistan varsayılan değil
+
+**Neden.** Çekmecenin Asistan bölümündeki seçim listesi ilk asistanla
+açılıyordu; Pinegrap AI kurulu değilken "Pinegrap AI (hazır değil)" seçili
+geliyor, "Asistana ver" sunucudan kurulum uyarısıyla dönüyordu.
+
+**Nasıl.** `assets/js/workspace_task_delegate.js` (`composer()`): hazır
+olmayan asistan listede kalır ama `disabled`; varsayılan ilk hazır
+asistandır. Hazır asistan yoksa listenin başına "— Seçilmedi —" (`''`)
+eklenir, o seçili açılır ve "Asistana ver" düğmesi pasif kalır. Görev zaten
+bir asistandaysa liste hiç çizilmez, kayıtlı atama korunur (değişmedi).
+Metin `dg_not_chosen` (`ws_delegation_js_strings()`, mevcut
+"— Not selected —" anahtarı). `workspace.min.js` yeniden üretildi.
+
+---
+
+## 2026.4.10 — Mağazada "Faturalarım" (ERP Faz 8a) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 8 (#14), ilk parça: müşteri
+ERP'de kesilen faturasını ancak e-postayla gelirse görüyordu; hesabında
+faturaları, ne kadar borcu kaldığı ve ekstresi yoktu.
+
+**Ne değişti.** Yeni sistem widget türü `account_invoices` ("My
+Invoices"; `pg_sw_type_labels()`, `SW_TYPES`, oluşturucu
+`_render_system_widget_account_invoices()`, `widgets_account.php`).
+Oturumdaki üyenin kişisine bağlı cari `pg_erp_member_account()` ile
+okunur (`ecommerce.php`; `erp_accounts.contact_id`, istek başına bir kez,
+ERP yüklenmeden). Cari yoksa ya da ERP kapalıysa widget hiçbir şey
+basmaz; bu yüzden ayrı bir ayar yok ve şema adımı yok. Okumalar yeni
+`includes/erp/storefront.php`'de:
+
+- `erp_storefront_documents()`: carinin kesilmiş satış faturaları ve
+  iadeleri (taslak, iptal ve numarasız yok), en yeni önce, ayardaki sayı
+  kadar (varsayılan 50, en çok 500). Kalan ve gecikme günü yaşlandırma
+  modülünden (`erp_aging_invoices()`): alacak ekranlarıyla aynı rakam.
+- `erp_storefront_document_state()`: iade / ödendi / gecikti / kısmen
+  ödendi / açık (saf, `tests/erp_storefront_test.php`).
+- `erp_storefront_account_figures()`: bakiye defterden
+  (`erp_reconciliation_balance()`, cari dövizliyse kendi para biriminde,
+  mutabakat mektubu nasıl yazıyorsa), vadesi geçen toplam yaşlandırmadan.
+- `erp_storefront_document()`: belge bu carinin kesilmiş satış belgesi
+  mi; değilse null.
+
+Belgeler yeni `get_account_document.php`'den açılır: `?id=` faturanın
+kesildiğinde saklanan PDF'i (`erp_archive_invoice()`; saklanmamışsa şimdi
+üretip saklar, panel gibi), `?statement=1` mutabakat PDF'i
+(`erp_reconciliation_pdf()`, varsayılan yılbaşından bugüne).
+Panelin `get_erp_invoice_pdf.php`'si ERP hakkı ister ve değişmedi; yeni
+uç yalnız belgenin oturumdaki üyenin carisine ait olup olmadığını sorar.
+Başkasının belgesi, taslak, iptal ve carisi olmayan üye aynı 404'ü alır;
+adres başına dakikada 30 istek (`waf_rate_exceeded()`, kapsam
+`erp_doc`). Oturum yoksa giriş sayfasına yönlenir.
+
+Widget'ın jetonları, bayrakları ve başlangıç ağacı (`style_designer.js`):
+bakiye, vadesi geçen toplam, belge sayısı, "Ekstreyi indir"; satırda
+numara, tür, tarih, vade, tutar, kalan, durum ("12 gün gecikmiş"),
+gecikme günü, sipariş numarası ve PDF bağlantısı. Satır durum bayrakları
+birbirini dışlar (`invoice_is_paid`, `_unpaid`, `_partial`, `_overdue`;
+iade `invoice_is_return`), başlangıç ağacındaki rozetler bunlara bire
+bir bağlı. Hiçbir şey göndermediği için Mesajlar düğümü kendi adıyla
+damgalanır ve JS'te `_SW_NO_MESSAGES`'tadır. Altı hazır şablonun Hesabım
+sayfasına hesap özeti ile güvenlik kartı arasına eklendi (şablon
+sürümleri birer arttı).
+
+**Bilerek yapılmayan.** Müşteri faturayı ödeyemez (ödeme linki bu fazda
+yok, plan §4). Belge listesinde sayfalama yok; ayardaki sayıdan eskisi
+ekstrede görünür. Bir kişiye birden çok cari bağlıysa ilk açılan
+(en küçük id) okunur; panel de kişi başına bir cari varsayar.
+
+---
+
+## 2026.4.10 — Klinik şablonu: randevu, hekimler, hasta rehberi, blog ve hesaplar (2026-10-13)
+
+**Neden.** Ürün sahibi "yerel hekim sitesi olsun, hesap sayfaları, randevu
+vs. hepsi dahil, blog da var, hizmetler vs." diye tam donanımlı bir şablon
+istedi. Bir önceki PR (#276) şablonun kullanacağı Bootstrap 5.3 bloklarını
+paletin Bloklar sekmesine ekledi; bu PR şablonun kendisi.
+
+**Nasıl.** `includes/design_templates/pinegrap-clinic.php`, Kitapçı
+şablonunun yapısını izler: aynı düğüm kurucuları, ortak parçalar, sistem
+widget'ları ve kurulumda editörün ürettiği başlangıç düzenleri
+(`'tree' => 'starter'`). Randevu, ek modül istemeyen bir özel formdur:
+form kaydı kendi sayfasını açar (`form_item_view`, yalnız gönderen ve
+personel), altına yorum olarak yazışma gelir (iletişim sayfasındaki
+görüşme düzeni), otomatik kayıt hastaya hesap açar. Durum (Talep edildi /
+Onaylandı / Tamamlandı / İptal) yalnız personelin gördüğü bir seçim
+listesidir (`office_use_only`); personel randevuyu açıp "Durumu Değiştir"
+ile kaydı panelde düzenler. Randevularım listesi gönderen / izleyen /
+düzenleyen süzgeciyle, Personel Alanı'ndaki liste bugünden itibaren
+(`preferred_date` ≥ `current date`) tarih sırasıyla gelir. Görünüm
+`modern-soft`, palet `ocean`; küçük resim `_pg_design_thumb_clinic()`.
+Varsayılan olarak güzel adresler kapalı.
+
+**Ne değişti.** 37 sayfa ve 33 widget:
+
+- Ana sayfa (saatler kartlı hero, hızlı eylemler, hizmetler, rakamlar,
+  hekimler, üç adımda randevu, yorumlar, son yazılar), Hizmetlerimiz
+  (bölüm başına kapsam, süre, ücret; site aramasında bölüm başına sonuç),
+  Hekimlerimiz (dört profil), Check-up (üç paket, hazırlık, SSS), Randevu
+  Al (bölüm, hekim — "Fark etmez" seçili —, görüşme şekli, tarih, saat
+  aralığı, hasta bilgileri, sigorta, neden, açık rıza, doğrulama), randevu
+  sayfası, Randevularım, Hasta Rehberi (altı başlık + SSS), Hakkımızda,
+  İletişim (konu seçimli görüşme), Bülten, Blog (dört örnek yazı, YZ
+  özeti, yorumlar, tıbbi uyarı), Yardım Merkezi, 404.
+- Hesap: giriş, kayıt, şifremi unuttum, şifre belirle, çıkış, Hesabım
+  (randevu kartı; adres defteri yalnız e-ticaret açıksa), profil, şifre
+  değiştir, e-posta tercihleri, adres defteri, gelen kutusu, görüşme.
+- Personel (özel klasör): Personel Alanı (yaklaşan randevular, kısayollar),
+  yeni blog yazısı, personel rehberine ekleme, personel rehberi.
+- Altı e-posta sayfası: yeni randevu (personele), randevu talebiniz
+  alındı (hastaya), yeni mesaj, mesajınız alındı, yeni yanıt, bülten
+  hoş geldin.
+- Her sayfada acil durum satırı (telefonda da görünür), dil seçici ve
+  giriş bölgesi; başlık menüsü `xl` altında katlanır, telefon numarası
+  `xxl`'de görünür. Hastanın telefonu kişinin cep telefonu alanına
+  bağlıdır, sonraki randevuda ad, e-posta ve telefon dolu gelir.
+- `tr.json`'a 403 anahtar; Türkçe örnek ücretler TL'dir (ör. `$90` →
+  `₺2.800`), sayfa adları Türkçe (`randevu-al`, `randevularim`,
+  `hasta-rehberi`, `hekimlerimiz`).
+
+**Düzeltmeler (çekirdek).**
+
+- `_pg_cf_controls()` (`includes/fn/custom_form.php`) tek seçimli bir
+  listenin varsayılanını `selected` işaretli seçenekten okumuyordu;
+  ziyaretçinin görmediği personel alanı (randevu durumu) boş kaydediliyordu.
+  Artık seçili seçeneğin değeri (değer yoksa metni) varsayılan; çoklu
+  listeye dokunulmaz. `tests/custom_form_default_test.php`.
+- `_pg_sw_resolve_visibility()` (`includes/fn/widgets.php`) iç içe görünürlük
+  aralıklarını çözmüyordu: "kayıt bulundu" aralığının içindeki "düzenleyebilir"
+  ya da "bu oturumda gönderildi" aralıkları işaretleriyle sayfaya düşüyor,
+  düzenleme düğmesi (boş adresle) ve yeni hesap kutusu herkese görünüyordu.
+  Bu, Kitapçı şablonunun blog yazısı sayfasındaki Düzenle düğmesini de
+  etkiliyordu. Tutulan aralığın içi artık kendi bayraklarıyla çözülür.
+  `tests/widget_visibility_test.php`.
+- Kitapçı (1.0.7) ve klinik şablonunun sayfa yolunda "Home" "Ev" diye
+  çıkıyordu; ikisi de "Homepage" (Ana Sayfa) anahtarını kullanıyor.
+
+**Bilerek yapılmayan.** Takvimde dolu saat denetimi yok: hasta bir saat
+aralığı ister, personel saati e-postayla netleştirir ve durumu günceller.
+Çalışma Alanı ya da takvim modülüne bağlanmadı; şablon yalnız mevcut form,
+yorum ve hesap özelliklerini kullanır. Personel Alanı'ndaki "bugünden
+itibaren" süzgeci tarih alanı boş kayıtları göstermez.
+
+**Doğrulama.** `tools/lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php`, `check_copies.php`, `test.php`, `build_js.php
+--check` temiz. Şablon deneme sitesine (`tools/setup_sandbox.sh`, Türkçe)
+editörün başlangıç düzenleriyle kuruldu, uyarı yok; sayfalar Bootstrap 5.3.8
+ile 1440, 1280, 1024 ve 390 piksel genişlikte çekildi, yatay kaydırma ve
+JS hatası yok. Ziyaretçi olarak randevu gönderildi: hesap açıldı, kayıt
+sayfası açıldı, durum "Talep edildi" kaydedildi; hasta düzenleme düğmesini
+görmüyor, yönetici görüyor ve düğme kaydın panel ekranına gidiyor; kayıt
+Randevularım'da ve Personel Alanı'nda listeleniyor; iki randevu e-postası
+kayıtla doldu.
+
+**Doğrulanamayan.** E-postaların gerçekten gönderilmesi (deneme sitesinde
+posta yok) ve görsellerin yüklenmesi (dış adresler kapalı) denenmedi;
+dev.pinegrap.com'da yerel oturum dener.
+
+---
+
+## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
+
+**Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
+Exchange Online'da parolayla SMTP girişini (Basic auth) 2026 sonunda
+kapatıyor; Gmail parolayla SMTP'ye yalnız uygulama parolasıyla izin
+veriyor. Müşteri sitelerinin çoğu e-postayı bu iki hesaptan gönderiyor.
+
+**Nasıl.** Yeni amaç dosyası `includes/connect/purposes/mail.php`
+(`owner = site`; Google `gmail.send`, Microsoft Graph `Mail.Send`) her
+sağlayıcı için iletinin nasıl teslim edileceğini de taşır (`send`: adres,
+içerik türü, `raw`/`base64`, en büyük boyut, belirteç kapsamları).
+`email()` (`includes/fn/mail.php`) ileti türü için bir bağlı hesap
+seçiliyse (`SYSTEM_MAIL_CONNECTION` / `CAMPAIGN_MAIL_CONNECTION`,
+`data/config.php`) iletiyi SMTP'deki gibi PHPMailer'la kurar (`isSMTP()`:
+CRLF satır sonları; ekler, DKIM, List-Unsubscribe aynı), `preSend()` ile
+bitirir ve sunucuya bağlanmak yerine sağlayıcının API'sine verir: Gmail
+`upload/gmail/v1/users/me/messages/send?uploadType=media`
+(`message/rfc822`, 35 MB'a kadar), Graph `me/sendMail` (MIME base64
+`text/plain`, istek 4 MB'a kadar). SMTP'de yalnız zarfta giden Bcc
+alıcıları sağlayıcının okuması için başlık olarak öne eklenir (imzadan
+sonra; DKIM Bcc'yi kapsamaz). Posta kutusu kendi adına gönderdiği için
+From bağlı hesabın adresi olur, ad korunur; Reply-To yoksa asıl gönderen
+adresi Reply-To olur (`pg_mail_connection_from()`). Hata `email()`'in
+mevcut yoluna düşer: günlük, `pg_mail_last_error()`, gönderene bildirim.
+Kuyruk aynı `email()`'i çağırdığı için kampanya işi de bu yoldan gider.
+
+**Ne değişti.** SMTP Ayarları'nda Sistem ve Kampanya kartlarında
+"Gönderim yolu" seçimi (bu sunucu ya da `mail` amacıyla bağlanmış site
+hesapları) ve uygulaması kurulu sağlayıcılar için "… hesabı bağla"
+düğmeleri (formlar iç içe olamadığı için düğmeler gizli formları `form`
+özniteliğiyle gönderir; dönüş yine SMTP Ayarları). Bir hesap seçiliyse
+"Test Gönder" düğmesi SMTP bilgisi olmadan da görünür. Kayıtta yalnız
+`mail` amacı taşıyan site hesabı seçilebilir.
+
+**Bilerek yapılmayan.** Bağlantı başarısız olunca SMTP'ye ya da `mail()`'e
+geri düşülmez: hata görünür kalır, hesap "Yeniden bağla" durumundaysa
+günlükte yazar. Seçili hesap silinmişse ya da artık posta amacı
+taşımıyorsa ileti eskisi gibi SMTP / `mail()` ile gider. Graph'ın 4 MB
+sınırını aşan ekler için yükleme oturumu yok; ileti boyutu açıkça
+reddedilir. Microsoft'un SMTP XOAUTH2 yolu bilerek seçilmedi: posta
+kutusunda SMTP AUTH'un açık olmasını ister, Graph istemez.
+
+---
+
+## 2026.4.10 — Dış API: mağaza kurulumu (nakliye, bölge, vergi, ülke, para birimi) (2026-10-13)
+
+**Sorun.** Siparişin hesaplandığı tanımlar API'de yoktu. Bir kargo ya da
+pazaryeri entegrasyonu nakliye yöntemlerini, bölgeleri, vergi oranlarını,
+ülke/il kodlarını ve kurları okuyamıyor, nakliye ücretini tahmin ediyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/store.php`, yalnız okuma, izin
+`orders:read` (e-ticaret açık ve rol < 3 ya da e-ticaret yetkisi). Hepsi tek
+sayfa döner (küçük kümeler):
+
+- `GET /store/shipping-methods` (`enabled` süzgeci) ve
+  `GET /store/shipping-methods/{id}`: taban ücret kademeleri
+  (`base_rates`: `from_subtotal` → `rate`, `variable_base_rate` açıksa
+  2.–4. kademe), birincil/ikincil ağırlık ve ürün başı ücret, ilk ürün
+  hariç bayrakları, gerçek zamanlı taşıyıcı servisi, sunulduğu günler ve
+  kesim saatleri (`offered_on`), sokak adresi / posta kutusu, geçerlilik
+  aralığı (tablonun 1000-01-01 / 9999-12-31 "her zaman" değerleri null),
+  hazırlık ve taşıma günleri, korumalı (yalnız personel), taşıyıcı unvanı
+  ve VKN, `zone_ids`. Rota açıklaması ücretin `shipping.php`'deki
+  hesaplanışını anlatır.
+- `GET /store/zones`: bölgenin ek ücretleri, ülke kodları ve illeri.
+- `GET /store/tax-zones`: oran (yüzde), ülke kodları ve illeri.
+- `GET /store/countries` (`code` süzgeci): varsayılan ülke, posta kodu
+  zorunluluğu, iller.
+- `GET /store/currencies`: sembol HTML varlığından çözülür (`&euro;` → €),
+  kur tabana göre, taban önce.
+
+Para kuruş cinsinden (`api_money()`). Şema değişikliği yok.
+
+**Doğrulandı (sandbox).** Sekiz nakliye yöntemi ve bölgeleri, 404, bölgeler
+(International 205 ülke, Türkiye 81 il), vergi bölgeleri (Teksas 8.25, TR 18),
+242 ülke / 143 il, TR süzgeci, yedi para birimi (₺ taban); MCP `tools/list`
+altı araç, OpenAPI.
+
+---
+
+## 2026.4.10 — Paraşüt jetonu şifreli depoda (2026-10-13)
+
+**Neden.** Tersine OAuth planının yan bulgusu (§4.14): Paraşüt'ün erişim ve
+yenileme jetonu `data/parasut_token.json`'da düz metindi. Erişim jetonu
+süresi boyunca Paraşüt API'sine doğrudan girer; dosya `data/` yedeğine de
+giriyordu. Ürün sahibi "sorunları çöz" dedi.
+
+**Nasıl.** `includes/fn/parasut.php`'de yalnız önbelleğin iki fonksiyonu
+değişti: `_parasut_token_cache_read()` / `_parasut_token_cache_write()`
+artık `pg_connect_service_get/put('parasut')` kullanıyor (bağlı hesaplar
+tablosunda `provider = 'service'` satırı, site anahtarıyla şifreli). Eski
+dosya ilk okumada şifreli kayda taşınıp silinir; şifreli kayıt zaten varsa
+dosya artık kullanılmaz ve silinir. Şema 10.72 henüz koşmamış sitede dosya
+eskisi gibi okunur ve yazılır (atomik yeniden adlandırma korundu). Kayıt
+firma, istemci ve kullanıcı adının özetini (`owner`) taşır; Paraşüt
+ayarları başka bir hesaba çevrilince eski jeton sunulmaz. Kilit ve yenileme
+akışı (`parasut_get_token()`) değişmedi.
+
+**Bilerek yapılmayan.** `includes/erp/edoc/` sürücüleri ve Paraşüt kimlik
+bilgilerinin saklanışı (`config.parasut_credentials_enc`, zaten şifreli)
+değişmedi. `PARASUT_TOKEN_CACHE` sabiti eski dosyayı bulmak için kaldı.
+
+---
+
+## 2026.4.10 — ERP: satın alma siparişleri dış API'de ve MCP'de (2026-10-13)
+
+**Neden.** Faz 7'nin son parçası (`docs/_plan_erp_ozellikler.md` §3, "API
+`GET/POST /erp/purchase-orders…` (Faz 6'nın kuralları)" ve olaylar). Sipariş
+panelde yazılıp faturaya dönüşüyordu ama dışarıdan (muhasebe ya da depo
+entegrasyonu, Claude bağlayıcısı) görünmüyordu. Şema yok.
+
+**Rotalar** (`includes/erp/api.php` tablosu; işleyiciler ve sunucu yeni
+`includes/erp/api_purchase_orders.php`'de, Faz 6'nın `api_stock.php` deseni):
+
+| Rota | Kapsam | Alan fonksiyonu |
+|---|---|---|
+| `GET /erp/purchase-orders` (durum, `waiting`, `late`, tedarikçi, numara, tarih, `updated_since`, imleç) | erp:read | sorgu, `erp_purchase_order_progress()` |
+| `GET /erp/purchase-orders/{id}`, `…/{id}/document` | erp:read | `erp_purchase_order()`, `erp_purchase_order_html()` |
+| `POST /erp/purchase-orders`, `POST /erp/purchase-orders/{id}` (PATCH da) | erp:write | `erp_purchase_order_save()` |
+| `POST /erp/purchase-orders/{id}/status` (`sent`, `cancelled`, `open`) | erp:write | `erp_purchase_order_mark_sent()`, `erp_purchase_order_set_status()` |
+| `POST /erp/purchase-orders/{id}/invoice` | erp:write | `erp_purchase_order_to_invoice()` |
+| `POST /erp/purchase-orders/{id}/email` | erp:write | `erp_purchase_order_mail_send()` |
+
+Her yazma `X-Dry-Run` ile durur (`check_api_schema.php` denetler); 409 kodları
+`purchase_order_not_editable`, `purchase_order_status_not_allowed`,
+`purchase_order_not_invoiceable`, `purchase_order_not_sendable`. MCP araçları
+rotalardan kendiliğinden çıkar (`erp_purchase_orders_list` …).
+
+**Nesne `ErpPurchaseOrder`.** Başlık, toplamlar, `late` (pano kartının
+okuması), satırlar ve her satırda `key`, `received_quantity`,
+`drafted_quantity`, `outstanding_quantity`; siparişten yapılan fatura ve
+taslaklar `invoices`'ta. Liste sayfası tek sorguda miktarları, faturaları ve
+ürün kodlarını okur (`erp_api_purchase_order_context()`), satır başına sorgu
+yok.
+
+**Satır anahtarı API'de.** Panel formu anahtarı gizli alanla geri gönderiyor;
+API'de karşılığı yoktu, bir istemci taslağın satırlarını yeniden yazınca
+anahtar düşer, sipariş o satırı hiç sayamazdı. `erp_api_lines_in()` üçüncü
+parametre aldı: sipariş güncellemesinde `lines[].key`, siparişten yapılmış
+alış taslağının güncellemesinde `lines[].purchase_order_line`. Siparişten
+yapılmamış taslakta anahtar 422, yeni siparişte ve teklifte bilinmeyen alan
+422. `ErpInvoice` artık `purchase_order_id` ve satırlarda
+`purchase_order_line` taşıyor; `GET /erp/invoices?purchase_order_id=` eklendi.
+
+**Olaylar.** `erp_webhook_events()`'e `erp.purchase_order.created|sent|
+received|cancelled|reopened` (paneldeki 1. ve 2. parçadan beri yayılıyordu,
+abone olunamıyordu).
+
+**Alan tarafında küçük değişiklikler.** Durum ve dönüşüm reddi tek yerde:
+`erp_purchase_order_status_refusal()` (gönderildi, iptal, yeniden aç) ve
+`erp_purchase_order_invoice_refusal()`; ekranlar ve API aynı cümleyi verir.
+`erp_purchase_order_refresh()` durum değişmese de `updated_at`'i ilerletir
+(alınan miktar değişti), `erp_purchase_order_to_invoice()` de; böylece
+`updated_since` ile izleyen istemci siparişi yeniden görür.
+
+**Doğrulanan.** Sandbox'ta curl ile: X-Dry-Run (200, `would`), aynı
+Idempotency-Key ile ikinci istek aynı sipariş (`Idempotent-Replay: true`),
+yeni siparişte `key` 422, beklenen tarih sipariş tarihinden önce 422,
+anahtarlı güncelleme satırları korudu ve yeni satıra anahtar verdi, `sent`,
+faturaya dönüşüm (201, taslak satırları anahtarlı), ikinci dönüşüm 409,
+taslak API'den 2 satıra indirilip kesildi → `partial`, kalan taslak kesildi →
+`received` (olay bir kez), iptal → dönüşüm ve e-posta 409, yeniden açma →
+`partial`, kısmi siparişi değiştirme 409, e-posta X-Dry-Run, PDF, `late`,
+`waiting`, imleç ve `updated_since`, OpenAPI'de 6 yol ve nesne.
+`tests/erp_purchase_order_test.php`'ye 5 test (18 test).
+
+**Doğrulanamayan.** dev.pinegrap.com'da Claude bağlayıcısıyla (yeni araçlar
+için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
+
+---
+
+## 2026.4.10 — Dış API: kısa linkler; Geri Dönüşüm Kutusu'ndaki kısa link yönlendirmiyor (2026-10-13)
+
+**Sorun.** Kısa linkler yalnız panelden (Kısa Linkler ekranı, dosya
+yöneticisi) yönetiliyordu; bir kampanya aracı ya da asistan link açamıyor,
+hedefini değiştiremiyordu. Ayrıca Geri Dönüşüm Kutusu'na taşınan kısa link
+`router.php`'de hâlâ çözülüyor ve 301 ile yönlendiriyordu (sorgu `recycled`
+sütununa bakmıyordu).
+
+**Değişiklik.** Yeni `includes/api/resources/short_links.php`; izin
+`pages:read` / `pages:write` (rol ≤ 2, Kısa Linkler ekranının kapısı).
+Yardımcılar dosya yöneticisininkiler (`pg_short_link_read_request`,
+`pg_short_link_clean_name`, `pg_short_link_state`, `check_name_availability`).
+
+- `GET /short-links`, `GET /short-links/{id}`: en yeni önce; süzgeçler
+  hedef türü, sayfa, tür (`mode`: permanent / timed / once), metin,
+  `recycled`. Yanıtta linkin kendi adresi (`address`), gittiği yer
+  (`target`), durum (open / used / expired), `expires_at`, `use_count`.
+  Tek kullanımlık linkin adresi saklanmaz, yalnız `token_hint`.
+- `POST /short-links`: ad (boşluk `_` olur; sayfa, dosya, klasör ya da
+  başka kısa linkle çakışırsa 409 `name_taken`), hedef (`page_id`;
+  ürün grubu ve ürün için katalog sayfası + `product_group_id` /
+  `product_id`; `url` yalnız http(s) ya da site yolu; `file_id`),
+  `tracking_code`. `mode=timed` için `duration` panelin seçenekleri
+  (3600 … 7776000 sn). `mode=once` ad almaz; üretilen adres
+  (`token_url`) yalnız bu yanıtta bir kez verilir, saklanan hash'tir.
+- `POST`/`PATCH /short-links/{id}`: ad (tek kullanımlıkta 422), hedef
+  alanlarından biri gelince hedef saklı olanla birlikte yeniden okunur ve
+  türün kullanmadığı sütunlar boşaltılır (dosya yöneticisi gibi),
+  `tracking_code`, süreli linke `renew` ile yeni süre. Geri Dönüşüm
+  Kutusu'ndaki link 409 `already_recycled`.
+- `DELETE /short-links/{id}` (ve `POST …/delete`): Geri Dönüşüm Kutusu'na
+  (`recycled = 1` + `recycle_bin` satırı, dosya yöneticisi gibi);
+  `permanent=true` doğrudan siler.
+
+Çalışma Alanı misafir linkleri (`workspace_guest`) API'de görünmez (404).
+`router.php`: bulunan kısa link `recycled` ise kısa link sayılmaz, ad sayfa
+aramasına düşer (404); sütun olmayan eski şemada davranış aynı. Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox).** Sayfa, ürün grubu, ürün, dosya ve adres hedefli
+oluşturma; ad çakışması (kısa link ve sayfa) 409; `javascript:` ve `//`
+adresleri 422; tek kullanımlık link: `token_url` bir kez, tarayıcıyla ilk
+açılış 302 hedefe, ikincisi "kullanıldı" sayfasına, `used_at` /
+`use_count` güncellendi; süreli link süre yok 422, `renew` ile uzatma;
+hedef türü değişince eski sütunlar boşaldı; Geri Dönüşüm Kutusu'na taşıma,
+adres 301'den 404'e döndü, ikinci silme ve değiştirme 409, `recycled=true`
+listesi, `permanent=true` ile kutu satırı da silindi; misafir linki 404;
+MCP `tools/list` ve OpenAPI.
+
+---
+
+## 2026.4.10 — Bağlı hesaplar: giden OAuth altyapısı (2026-10-13)
+
+**Neden.** Ürün sahibi tersine OAuth planından (`docs/_plan_tersine_oauth.md`)
+model A'yı seçti ve ilk beş senaryonun hemen başlamasını istedi. Beşi de
+(Microsoft 365/Gmail ile posta, Search Console, buluta yedek, Microsoft ile
+giriş, Çalışma Alanı'nda MCP istemcisi) aynı şeye dayanıyor: sitenin bir
+dış hesaba bir kez bağlanıp belirteçlerini güvenle saklaması ve yenilemesi.
+Microsoft parolalı SMTP'yi 2026 sonunda kapatıyor; posta senaryosu bu
+altyapıyı bekliyordu.
+
+**Nasıl.** `includes/fn/connect.php` her istekte yüklü bir modül: sağlayıcı
+ve amaç tanımları klasörden okunur (`includes/connect/providers/*.php`,
+`includes/connect/purposes/*.php`; yeni sağlayıcı ya da özellik bir dosya),
+akış yetkilendirme kodu + PKCE S256, durum ve nonce oturumda, RFC 9207
+`iss` denetimi. id_token imzası doğrulanmaz (OpenID Connect Core 3.1.3.7:
+belirteç TLS üzerinden doğrudan token ucundan, istemci sırrıyla alınan
+yanıtta gelir), ama `iss`, `aud`, `exp`, `nonce` ve `sub` denetlenir;
+id_token yoksa userinfo ucu okunur. Refresh token ve kapsam kümesi başına
+erişim belirteçleri tek bir şifreli alanda (`encrypt_string_with_iv()`,
+site anahtarı) durur. Yenileme `GET_LOCK` altında, satır yeniden okunarak
+yapılır; `invalid_grant` hesabı `reauth` durumuna alır ve günlüğe yazar,
+geçici hatalar yalnız `last_error`'a düşer. Microsoft belirteci kaynak
+başına verdiği için (`token_per_scope`) önbellek anahtarı kapsamların
+özetidir ve yenilemede kapsam gönderilir; Google `access_type=offline` +
+`prompt=consent` ile her bağlantıda refresh token verir. Google
+uygulaması girilmemişse Google ile giriş ayarlarındaki uygulama kullanılır.
+
+**Ne değişti.** Ayarlar › Bağlantılar › Bağlı hesaplar (`connections.php`):
+sağlayıcı başına kart, bağlı hesaplar (amaç, bağlanma ve son kullanım,
+son hata, durum), Denetle / Yeniden bağla / Bağlantıyı kes (Google'da izin
+de geri alınır; Microsoft'un iptal ucu yok), uygulama formu (kurulum adımları, kopyalanabilir yönlendirme
+adresi, istemci kimliği, gizli anahtar — kayıtlıysa geri gösterilmez —,
+Microsoft dizini). Geri dönüş adresi `connect.php`: POST bağlantıyı
+başlatır (site hesabı yönetici yetkisi ister), GET kodu alır ve ekrana
+iletiyle döner; dönüş adresi yalnız panel betiği olabilir. Komut paletinde
+"Bağlı hesaplar". Şema 10.72: `connect_apps`, `connect_accounts`.
+Özelliklerin kullanacağı yüz: `pg_connect_start_fields()`,
+`pg_connect_access_token()`, `pg_connect_api()`,
+`pg_connect_service_get/put/delete()` (sunucudan sunucuya belirteçler).
+`tr.json`'da "Client ID" "Müşteri Kimliği" yerine "İstemci Kimliği",
+"Client Secret" "İstemci Gizli Anahtarı" oldu (Paraşüt ve ClearCommerce
+alanları da aynı anahtarı kullanır).
+
+**Bilerek yapılmayan.** Hiçbir özellik henüz bu bağlantıyı kullanmıyor;
+posta gönderimi, Paraşüt belirteci ve kargo API'leri ayrı PR'lar. Kişinin
+kendi hesabını bağlaması (`owner = person`) kütüphanede var, ekranı onu
+kullanacak özellikle gelecek. Arka planda belirteç tazeleme işi yok:
+belirteç kullanılırken yenilenir, Google'ın altı ay kullanılmayan izni
+düşürmesi `reauth` olarak görünür.
+
+---
+
 ## 2026.4.10 — Dış API ve MCP: ERP virmanı, çek/senet, kâr, kasa akışı ve pano (Faz 6, üçüncü parça) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), son parça: kasalar
@@ -284,6 +756,51 @@ dev.pinegrap.com'da denenmedi.
 
 ---
 
+## 2026.4.10 — Dış API: takvim etkinliği ekleme, değiştirme, silme (2026-10-13)
+
+**Sorun.** Takvimler API'de yalnız okunuyordu. Bir rezervasyon aracı ya da
+asistan etkinlik açamıyor, saatini kaydıramıyor, yayına alamıyordu; Çalışma
+Alanı aynı işi öneri olarak yapabildiği hâlde API yapamıyordu.
+
+**Değişiklik.** `calendars` izin grubuna `calendars:write` eklendi; `calendars:read`
+ile aynı kişilere verilir (rol < 3 ya da takvim yetkisi). Yeni rotalar
+(`includes/api/resources/calendars.php`):
+
+- `POST /calendars/events`: `name`, `start`, `end`, `calendar_ids` zorunlu;
+  `all_day`, `short_description`, `description` (HTML, `pg_sanitize_rich_text`
+  ile temizlenir), `location`, `show_start_time`, `show_end_time`, `published`,
+  `unpublish_days`. Tüm gün etkinlik ilk günün 00:00'ından son günün 23:59'una
+  yazılır; diğerinde bitiş başlangıçtan sonra olmalı (etkinlik ekranının
+  kuralı). Geri kalan sütunlar ekranın başlangıç değerleriyle (yayında değil,
+  45 gün, tekrar ve rezervasyon kapalı).
+- `POST`/`PATCH /calendars/events/{id}`: yalnız gönderilen değişir; `start`,
+  `end` ya da `all_day` gelince saatler saklı olanla birlikte yeniden
+  hesaplanır. Salon ayıran tek seferlik etkinlik `check_calendar_event_location_availability`
+  ile denetlenir (409 `room_taken`); salon ayıran tekrarlanan etkinliğin saati
+  buradan değiştirilmez (409 `repeating_event_books_room`), çünkü ekran her
+  tekrarı ayrı denetler. `calendar_ids` sahibin açabildiği takvimleri
+  değiştirir, göremediği takvimler etkinliği tutar.
+- `DELETE /calendars/events/{id}` (ve `POST …/delete`): ekrandaki gibi
+  istisnalar, takvim ve salon bağları, kalan rezervasyon yerleriyle birlikte.
+
+Yetki ekranlarla aynı: rol 3 sahibi yalnız atanmış takvimlerine yazar;
+yayın yetkisi (`user_publish_calendar_events`) yoksa `published` /
+`unpublish_days` 403, yayındaki etkinliği değiştiremez ve silemez (403).
+Tekrar kuralı, rezervasyon, ürün, salon seçimi ve sonraki sayfa etkinlik
+ekranında kalır. Şema değişikliği yok. Var olan uygulamalar yeni izni
+kendiliğinden almaz; API ayarlarından verilmesi gerekir.
+
+**Doğrulandı (sandbox).** Oluşturma, dry-run, tüm gün (00:00–23:59), bitiş
+başlangıçtan önce 422, olmayan ya da boş takvim 422; açıklamadaki `script`,
+`onclick` ve `javascript:` temizlendi; tüm gün aç/kapat; takvim değiştirme;
+salon çakışması 409 ve bitişik saat kabul; tekrarlanan + salonlu etkinlikte
+saat 409, ad değişikliği geçer; silme bağları temizledi, sonra 404. Rol 3
+(takvim 1 atanmış, yayın yetkisi yok): başka takvim 422, yayınlama 403,
+yayındaki etkinlik 403, göremediği takvim korunur, görünmeyen etkinlik 404.
+`tests/api_calendars_test.php` saat kuralı için yeni test.
+
+---
+
 ## 2026.4.10 — Görsel editör: olmayan kayıt, ürün ve kategoride 404 + noindex (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 2. maddesi:
@@ -427,7 +944,8 @@ değiştirir; nginx'in `add_header`'ı buradan okunamaz, orada çift kalır.
 dokümanı, misafir sayfası, kısa link) IIS'te sunucunun
 `strict-origin-when-cross-origin` kopyasıyla birleşir; tarayıcı son geçerli
 değeri alır. PHP sunucunun eklediğini kaldıramaz; düzeltmesi web.config'te
-o yollar için `<location>` kuralıdır, bu iş kapsamında değil.
+o yollar için `<location>` kuralıdır, bu iş kapsamında değil. → Kapandı: en üstteki "Referrer-Policy
+sunucu kuralından çıktı" bölümü.
 
 ### 3. MCP 401 metni
 

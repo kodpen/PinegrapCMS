@@ -243,6 +243,32 @@
          geri alıyor, açılır listede ilk Ctrl+Z hiçbir şey
          yapmıyordu.
 
+  [YENİ] Klinik şablonu (yerel hekim sitesi). Hizmetler,
+         hekimler, check-up paketleri, hasta rehberi, blog,
+         iletişim ve bülten; çevrimiçi randevu formu (bölüm,
+         hekim, görüşme şekli, tarih, saat aralığı). Randevu
+         kendi sayfasını açar, hastaya hesap açılır, altına
+         yazışma gelir; Randevularım'da durumuyla listelenir.
+         Personel Alanı'nda bugünden itibaren yaklaşan
+         randevular; personel durumu (Talep edildi, Onaylandı,
+         Tamamlandı, İptal) "Durumu Değiştir" ile günceller.
+         Hesap sayfaları, gelen kutusu, personel rehberi ve
+         altı e-posta sayfası dahil.
+
+  [DÜZELTME] Özel formda yalnız personelin gördüğü bir açılır
+         listenin seçili seçeneği ziyaretçi gönderdiğinde
+         kaydediliyor; önceden alan boş kalıyordu.
+
+  [DÜZELTME] Kayıt sayfasında yalnız düzenleme yetkisi
+         olanlara gösterilen Düzenle düğmesi ile yalnız formu
+         gönderen ziyaretçiye gösterilen teşekkür ve yeni hesap
+         kutuları herkese görünüyordu (Kitapçı şablonunun
+         blog yazısı sayfası dahil). Artık yalnız ilgili
+         kişiye görünüyor.
+
+  [DÜZELTME] Kitapçı şablonunun sayfa yolunda "Ev" yerine
+         "Ana Sayfa" yazıyor.
+
   [DÜZELTME] Yayınla yalnız gerçekten düzenlenen sayfaların
          değişiklik zamanını ve "sayfa düzenlendi" kaydını
          güncelliyor. Önceden ortak başlıkta yapılan tek bir
@@ -307,6 +333,9 @@
          Aynı asistana yeni talimat yazılabilir, çalışma
          durdurulabilir, görev geri alınabilir. Görev
          listesinde asistandaki görevler işaretli.
+         Kurulu olmayan asistan listede "hazır değil"
+         diye görünür ama seçilemez; hazır asistan yoksa
+         seçim boş açılır.
 
   [YENİ] Görev notunda @ai ya da @Claude yazmak, görevi
          devretmeden asistana o görev hakkında sorar.
@@ -462,6 +491,36 @@
          fiyatıyla. ERP panosunda "Bekleyen satın alma
          siparişleri" kartı var; teslim günü geçenlerin
          sayısını gösteriyor.
+
+  [YENİ] Satın alma siparişleri API'de ve MCP'de: listeleme
+         (durum, gecikme, tedarikçi, tarih ve değişiklik
+         zamanıyla süzülerek), tek sipariş ve PDF'i, yazma ve
+         değiştirme, gönderildi, iptal ya da yeniden açma,
+         alış faturası taslağına dönüştürme ve tedarikçiye
+         e-postayla gönderme (GET/POST /erp/purchase-orders).
+         Her satırda alınan, taslaktaki ve gelecek miktar
+         yazıyor. Siparişten yapılan taslak API'den
+         düzeltilirken satırlar sipariş satırının anahtarını
+         taşıyor; GET /erp/invoices?purchase_order_id= o
+         siparişin faturalarını veriyor. Web kancası
+         olayları: erp.purchase_order.created, sent,
+         received, cancelled ve reopened. Yazmalar önce
+         X-Dry-Run ile denenebilir; erp:write yetkisi
+         gerekir.
+
+  [YENİ] Mağazada "Faturalarım": görsel editörde yeni
+         "Faturalarım" sistem widget'ı, oturum açmış
+         müşteriye ERP'de kesilmiş faturalarını ve
+         iadelerini gösteriyor: tutar, vade, kalan,
+         gecikme rozeti, carinin bakiyesi ve vadesi
+         geçen toplam. Her belge PDF olarak açılıyor;
+         "Ekstreyi indir" yılbaşından bugüne mutabakat
+         PDF'ini veriyor. Müşteri yalnız kendi carisinin
+         belgelerini görür; taslak ve iptal edilmiş
+         belge görünmez. ERP kapalıysa ya da müşterinin
+         kişisi bir cariye bağlı değilse widget hiçbir şey
+         göstermez. Hazır şablonların Hesabım sayfasında
+         hesap özetinin altında yer alıyor.
 
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
@@ -620,6 +679,38 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Mağaza kurulumu API'de okunuyor: nakliye
+         yöntemleri (ücretler, kademeli taban ücret, sunulduğu
+         günler ve saatler, adres türleri, bölgeler), nakliye
+         bölgeleri, vergi bölgeleri, ülkeler ve illeri, para
+         birimleri ve kurları. Bir kargo ya da pazaryeri
+         entegrasyonu nakliye ücretini mağazanın hesapladığı
+         gibi hesaplayabilir. Siparişleri okuma izni yeterli.
+
+  [YENİ] Kısa linkler API'de: GET /short-links kısa
+         linkleri, nereye gittikleriyle (sayfa, ürün grubu,
+         ürün, dosya, adres), türleriyle (kalıcı, süreli, tek
+         kullanımlık) ve kaç kez açıldıklarıyla listeler. Kısa
+         link eklenir, adı ve hedefi değiştirilir, süreli
+         linke yeni süre verilir, Geri Dönüşüm Kutusu'na
+         taşınır ya da silinir. Tek kullanımlık linkin adresi
+         yalnız oluşturulduğu yanıtta bir kez verilir.
+
+  [DÜZELTME] Geri Dönüşüm Kutusu'ndaki kısa link hâlâ
+         yönlendiriyordu; artık açılmıyor (404), geri
+         yüklenince yeniden çalışıyor.
+
+  [YENİ] Takvim etkinlikleri API'den eklenip
+         değiştirilebiliyor ve silinebiliyor: ad, açıklamalar,
+         yer, başlangıç ve bitiş (tüm gün dahil), takvimler ve
+         yayın durumu. Saati değişen etkinliğin ayırdığı salon
+         o saatte başka bir etkinliğe ayrılmışsa istek
+         reddedilir. Tekrar, rezervasyon ve salon seçimi
+         etkinlik ekranında kalır. Takvimler izni artık yazmayı
+         da kapsıyor; takvim yetkisi verilmiş bir kullanıcının
+         uygulaması yalnız kendi takvimlerine yazar, yayın
+         yetkisi yoksa yayınlayamaz.
+
   [YENİ] Yorumlar API'de: GET /comments ziyaretçi
          yorumlarını sayfaya, konusuna (form kaydı, ürün,
          etkinlik), duruma (yayında, bekleyen, zamanlanmış) ve
@@ -724,6 +815,47 @@
          tablosuna üç kolon eklenir.
          Kimlik adresli uygulamalar için kayıtlı istemci
          tablosu genişler.
+
+  BAĞLI HESAPLAR
+  --------------------------------------------------------
+
+  [YENİ] Ayarlar › Bağlantılar › Bağlı hesaplar: site bir
+         Google ya da Microsoft hesabına bir kez, tarayıcıda
+         bağlanır ve sonra o hesap adına çalışabilir. Her
+         site sağlayıcının konsolunda kendi uygulamasını
+         kaydeder (ekran adımları ve yönlendirme adresini
+         gösterir); izin ekranında sitenin adı görünür.
+         İzinler sitenin şifreleme anahtarıyla şifreli
+         saklanır, süresi dolan erişim kendiliğinden
+         yenilenir; sağlayıcı izni geri alırsa hesap
+         "Yeniden bağla" durumuna düşer ve günlüğe yazılır.
+         Bağlantı Denetle ile denenir, Bağlantıyı kes ile
+         kaldırılır (Google'da izin de geri alınır).
+         Microsoft 365 ve Gmail ile posta gönderme gibi
+         özellikler bu bağlantıyı kullanacak.
+
+  [YENİ] SMTP Ayarları'nda "Gönderim yolu": sistem ve
+         kampanya e-postaları SMTP sunucusu yerine bağlı bir
+         Google (Gmail) ya da Microsoft 365 / Outlook
+         hesabından gönderilebiliyor; SMTP parolası ya da
+         uygulama parolası gerekmiyor. Hesap ekrandaki
+         düğmeyle bağlanıyor. İleti o hesaptan çıkıyor,
+         yanıtlar iletinin asıl gönderen adresine gidiyor;
+         ekler, DKIM ve abonelikten çıkma başlıkları
+         eskisi gibi. Microsoft, parolayla SMTP girişini
+         2026 sonunda kapatıyor.
+
+  [GÜVENLİK] Paraşüt'ün erişim ve yenileme jetonu artık
+         sitenin şifreleme anahtarıyla şifreli saklanıyor.
+         Önceden data klasöründe düz metin bir dosyadaydı;
+         dosyayı ya da yedeğini okuyan, jetonun süresi
+         içinde Paraşüt hesabına erişebiliyordu. Var olan
+         dosya ilk kullanımda taşınıp siliniyor; Paraşüt
+         ayarlarında firma, istemci ya da kullanıcı
+         değişince eski jeton kullanılmıyor.
+
+  [ŞEMA] Bağlı hesaplar için iki yeni tablo (sağlayıcı
+         uygulamaları ve bağlı hesaplar) eklenir.
 
   PANO
   --------------------------------------------------------
@@ -891,6 +1023,16 @@
          gelmiyor: sitenin web.config dosyası bunları
          zaten ekliyorsa yazılım kendi kopyasını
          göndermiyor.
+
+  [DÜZELTME] Adresini başka siteye göndermemesi gereken
+         sayfalar (OAuth onay ekranı, API dokümanı,
+         Çalışma Alanı misafir sayfası, takvim aboneliği,
+         süreli kısa linkler) IIS'te de referrer
+         göndermiyor. Yazılımın yazdığı sunucu kuralları
+         Referrer-Policy başlığını artık eklemiyor; başlığı
+         her sayfaya yazılım koyuyor. Mevcut sitelerde
+         web.config'teki (Apache'de .htaccess'teki)
+         Referrer-Policy ekleyen satırı silin.
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.

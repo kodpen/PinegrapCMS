@@ -819,6 +819,7 @@ function ws_delegation_js_strings()
         'dg_no_instruction' => lang('No instruction: the task itself.'),
         'dg_none'          => lang('No assistant has worked on this task yet. A note that writes @ai or @Claude asks one too.'),
         'dg_not_ready'     => lang('not ready'),
+        'dg_not_chosen'    => lang('— Not selected —'),
         'dg_started'       => lang('The task was handed to the assistant.'),
         'dg_sent'          => lang('Sent to the assistant.'),
         'dg_change_done'   => lang('The change was applied.'),
