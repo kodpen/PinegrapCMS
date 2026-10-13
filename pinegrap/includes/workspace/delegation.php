@@ -691,6 +691,32 @@ function ws_task_delegation_waiting_map($task_ids)
 }
 
 /**
+ * The assistant on a run under way on each of these tasks, for those that
+ * have one.
+ *
+ * @param int[] $task_ids
+ * @return array task id => assistant key
+ */
+function ws_task_delegation_open_map($task_ids)
+{
+    $task_ids = array_values(array_filter(array_map('intval', (array) $task_ids)));
+
+    if (empty($task_ids) || !ws_delegation_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT task_id, agent FROM ws_ai_requests
+        WHERE task_id IN (" . implode(',', $task_ids) . ") AND status IN ('queued', 'sent', 'running')
+        ORDER BY id") as $row) {
+        $out[(int) $row['task_id']] = (string) $row['agent'];
+    }
+
+    return $out;
+}
+
+/**
  * A run started on the screen goes on at once: Claude's routine is fired,
  * Pinegrap AI is carried on by the screen that waits (ws_ai_kick).
  *
