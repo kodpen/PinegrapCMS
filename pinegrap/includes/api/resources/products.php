@@ -536,12 +536,6 @@ function api_products_create($params) {
 
 	if (array_key_exists('price', $params)) {
 
-		if ((int)$params['price'] < 0) {
-
-			api_fail_validation(lang('price cannot be negative.'), 'price');
-
-		}
-
 		$product['price'] = (int)$params['price'];
 
 	}
@@ -970,12 +964,6 @@ function api_products_update($params) {
 	}
 
 	if (array_key_exists('price', $params)) {
-
-		if ((int)$params['price'] < 0) {
-
-			api_fail_validation(lang('price cannot be negative.'), 'price');
-
-		}
 
 		$set[] = "price = '" . (int)$params['price'] . "'";
 

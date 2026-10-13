@@ -84,6 +84,308 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: para alanlarında en az / en çok sınırı yönlendiricide (2026-10-13)
+
+**Sorun.** Yönlendirici `int` ve `decimal` türlerinde şemadaki `min`/`max`'ı
+uyguluyordu ama `money` türünde uygulamıyordu (`api-genisletme-devir.md` 6.
+madde). Bu yüzden para alanının sınırı her işleyicide ayrı ayrı ve farklı
+sözlerle denetleniyordu: ürün fiyatı "price cannot be negative.", hediye
+kartı kendi `api_gift_card_money_or_fail()` yardımcısı, ERP tahsilat, virman
+ve çek "Enter an amount greater than zero.", ERP cari kartında
+`credit_limit` ise eksi değer **sessizce 0'a çekiliyordu**. Sınır OpenAPI
+belgesinde ve MCP araç tanımında da görünmüyordu; entegrasyon kuralı ancak
+422 alınca öğreniyordu. Bazı alanlarda hiç üst sınır yoktu: ürün fiyatı
+`products.price` (imzalı INT) kolonunun taşıyabileceğinden büyük gelince
+MySQL'e kadar gidiyordu.
+
+**Değişiklik.**
+
+- `api_validate_value()` `money` türünde de `min`/`max`'ı uygular. Üç sayı
+  türü (`int`, `decimal`, `money`) tek yardımcıdan geçer
+  (`api_validate_bounds()`), ret sözü ve alanı hepsinde aynı: 422
+  `validation_failed`, "{alan} is below the smallest accepted value." /
+  "... above the largest accepted value.", `field` alanın adı.
+- `api_openapi_type()` `money` için `minimum`/`maximum` yazar; MCP araçları
+  aynı fonksiyondan kurulduğu için `inputSchema`'da da görünür, API
+  konsolu (`/docs`) zaten her türde `min–max` notu gösteriyordu.
+- Bütün para parametrelerine sınır yazıldı:
+
+  | Uç | Alan | min | max |
+  |---|---|---|---|
+  | `POST /products`, `POST /products/{id}` | `price` | 0 | 2147483647 (`products.price` imzalı INT) |
+  | `POST /gift-cards` | `amount` | 1 | 4294967295 (INT UNSIGNED) |
+  | `POST /gift-cards/{id}` | `balance` | 0 | 4294967295 |
+  | `POST /erp/accounts`, `POST /erp/accounts/{id}` | `credit_limit` | 0 | — (BIGINT) |
+  | `POST /erp/accounts` | `opening_balance` | — | — (eksi: mağaza cariye borçlu) |
+  | `POST /erp/receipts` | `amount` | 1 | — |
+  | `POST /erp/cash-transfers` | `amount` | 1 | — |
+  | `POST /erp/cheques` | `amount` | 1 | — |
+  | `POST /erp/expenses`, `POST /erp/expenses/{id}` | `amount` | 1 | — |
+  | `POST /erp/expenses`, `POST /erp/expenses/{id}` | `tax_amount` | 0 | — |
+
+- İşleyicilerdeki tekrar denetimler kaldırıldı: ürün oluşturma/güncellemede
+  eksi fiyat denetimi, `api_gift_card_money_or_fail()`, ERP tahsilat,
+  virman ve çekte `amount <= 0` denetimi, cari kartta `max(0, ...)`.
+  Panelle ortak kayıt fonksiyonlarındaki denetimler (`erp_expense_figures()`,
+  `erp_account_save()` içindeki `max(0, ...)`) yerinde: panel de onlardan
+  geçiyor. Toplu fiyat ucundaki satır denetimi ("price cannot be
+  negative.") da yerinde; `list` türünün öğeleri yönlendiricide türlenmiyor.
+
+**Davranışı değişen uçlar.** Hepsi yine 422, alan adı aynı; değişen ret
+sözü ve sırası:
+
+- `credit_limit` eksi gelince artık 422 (önceden 0 olarak yazılıp 200/201
+  dönüyordu).
+- Ürün fiyatı 2147483647'den, hediye kartı tutarı/bakiyesi 4294967295'ten
+  büyükse 422 (ürün fiyatında önceden sınır yoktu).
+- Ürün fiyatı eksi: "price cannot be negative." yerine "price is below the
+  smallest accepted value.".
+- ERP tahsilat, virman, çek ve gider `amount` 0 ya da eksi: "Enter an
+  amount greater than zero." yerine "amount is below the smallest accepted
+  value.". Gider `tax_amount` eksi: önceden `field: amount` ile "The tax
+  amount cannot be negative." dönüyordu, artık `field: tax_amount`.
+- Sınır dışı tutar artık uygulama sahibinin ERP kasa hakkı, kasa/cari
+  varlığı gibi işleyici denetimlerinden **önce** reddedilir (diğer tür
+  hataları gibi); kasa hakkı olmayan sahibin `amount: 0` isteği 403 yerine
+  422 alır.
+
+Şema değişikliği yok; yeni izin yok.
+
+Testler: `tests/api_money_bounds_test.php` (her para alanının alt sınırı
+olması, bilerek eksi alan `opening_balance`'ın adıyla listelenmesi,
+yukarıdaki tablonun rotalarla aynı olması, OpenAPI'de `minimum`/`maximum`).
+Yönlendirici gerçek `api_validate_value()` ile ayrıca denendi: eksi fiyat,
+2147483648 fiyat, 0 hediye kartı, 4294967296 hediye kartı, eksi
+`credit_limit`, 0 tahsilat, eksi `tax_amount` 422 ve doğru `field`; 0
+fiyat, eksi `opening_balance`, `"500"` kabul; `int`/`decimal` sınırları
+eskisi gibi. HTTP katmanı ve MCP sandbox'ta denenmedi.
+
+---
+
+## 2026.4.10 — Dış API ve MCP: ERP vade farkı ve nakit tahmini (ERP Faz 9'un API parçası) (2026-10-13)
+
+**Neden.** ERP Faz 9 (#319) vade farkını ve nakit tahminini yalnız panele
+koydu; ikisi de API'de ve MCP'de yoktu (Faz 9 devir notunun 1. ve 2.
+maddesi). Bir muhasebe entegrasyonu ya da asistan, carinin işleyen vade
+farkını okuyamıyor, faturasını hazırlatamıyor, önümüzdeki günlerin nakit
+durumunu soramıyordu.
+
+**Ne değişti.** Üç yeni rota `erp_api_routes()`'ta; MCP'de üç yeni araç
+(`erp_accounts_late_fee`, `erp_accounts_late_fee_invoice`,
+`erp_reports_cash_forecast`, rotadan kendiliğinden). İşleyiciler
+`includes/erp/api_reports.php`'de, panelin çağırdığı fonksiyonları
+çağırır. Yeni kapsam, şema adımı ve web kancası olayı yok.
+
+| Rota | Kapsam | Fonksiyon |
+|---|---|---|
+| `GET /erp/accounts/{id}/late-fee` | `erp:read` | `erp_late_fee_account()`, `_charged_through()`, `_open_draft()` |
+| `POST /erp/accounts/{id}/late-fee-invoice` | `erp:write` | `erp_late_fee_draft()` |
+| `GET /erp/reports/cash-forecast` | `erp_cash:read` | `erp_cash_forecast()` |
+
+Ayrıntılar:
+
+- **Vade farkı okuma.** `ErpLateFee`: oran (`rate`, aylık yüzde; 0 =
+  kapalı), KDV oranı (`tax_rate`, `null` = carinin kendi oranı), dönem
+  (`from`, `to`), en son kesilen gün (`charged_through`), toplam ve fatura
+  fatura döküm (gün, ortalama borç, vade farkı), bekleyen vade farkı
+  taslağı (`draft_invoice_id`). `from` verilmezse `as_of` yılının 1 Ocak'ı
+  (mutabakat mektubu gibi). Kesilmiş bir dönem yeniden sayılmaz:
+  `charged_through` istenen başlangıçtan sonraysa `from` ertesi güne
+  kayar ve `to`'yu geçebilir, toplam 0 olur (açıklamada yazıyor).
+- **Vade farkı faturası.** Panel düğmesinin kuralı aynen: tek satırlı
+  satış faturası taslağı, bugünün tarihi, mağaza para birimi, ayardaki KDV
+  oranı, notlarda fatura fatura döküm; taslak `late_fee_through` taşır,
+  kesilince sonraki vade farkı ertesi günden başlar. Hesabın bekleyen vade
+  farkı taslağı varsa ikincisi yazılmaz, o taslak 200 ile döner (panel de
+  onu açar); bu yolda hiçbir şey yazılmadığı için prova da aynı cevabı
+  verir. Oran 0 iken ve dönemde yansıtılacak tutar yokken 422. Prova
+  (`X-Dry-Run`) dönemi, tutarı ve fatura sayısını söyler. Günlüğe panelin
+  satırı ("erp late payment fee draft …") uygulamanın adıyla yazılır.
+- **Tarih kuralı.** İki uçta da `as_of` bugünü geçemez (422): panelin
+  `erp_aging_as_of()`'u ileri bir günü kabul ediyor, ama API'de bu
+  henüz borçlanılmamış günlere vade farkı yazmak olurdu. `from > as_of`
+  422. 10.61 koşmamış sitede iki uç da 503 `service_unavailable`.
+- **Nakit tahmini.** `ErpCashForecast`: `horizon` 30/60/90 (başka değer
+  422), bugünkü kasa (`cash`, çek kasaları hariç), toplam giriş/çıkış/net
+  ve beklenen bakiye; `columns` (vadesi geçmiş + otuzar gün, her birinin
+  giriş/çıkış/net ve sonrasındaki bakiyesi), `kinds` (yedi tür, her
+  sütun için bir tutar, `columns` sırasıyla), `items` (tarih sırasıyla,
+  `limit` kadar, varsayılan 100, en çok 500; `items_count` toplamı).
+  Kalemlere kaynak kaydı eklendi: `erp_cash_forecast_items()` artık
+  `source` (`invoice`, `expense`, `invoice_recurrence`,
+  `expense_recurrence`, `cheque`), `source_id` ve `account_id` de
+  döndürüyor; ekran bunları kullanmıyor. Panelde kasa hakkı isteyen ekran
+  olduğu için kasa akışı gibi `erp_cash:read` ve sahibin kasa hakkı
+  istenir.
+- **ErpInvoice.** `late_fee_through` alanı (vade farkı faturasının
+  kestiği son gün, diğer faturalarda `null`): panelde 10.61 ile gelen bağ
+  API nesnesine de yansıdı.
+- `tools/check_api_schema.php` iki yeni nesnenin sunucu–şema eşlerini de
+  karşılaştırıyor; `tests/erp_api_test.php`'ye rota kapsamı ve nakit
+  tahmini sunumu testleri eklendi.
+
+**Doğrulama.** Sandbox'ta curl: üç faturalı (biri kısmen tahsil edilmiş)
+cari; vade farkı okuma (varsayılan dönem, `from`/`as_of`, ileri `as_of`
+422, ters tarih 422, olmayan cari 404, yalnız okuma anahtarı 200), elle
+hesapla aynı tutar (1.200,00 ₺ × 46 gün + 600,00 ₺ × 29 gün, aylık %3 →
+72,60 ₺);
+fatura: yalnız okuma anahtarı 403, tanınmayan alan 422, prova (başlık ve
+`?dry_run=true`) yazmadı, gerçek 201 taslak (satır, %20 KDV, notlar,
+`late_fee_through`), ikinci çağrı ve provası aynı taslak 200, okumada
+`draft_invoice_id`; taslak kesilince `charged_through` ve `from` kaydı,
+aynı güne ikinci fatura 422; oran 0'da okuma `rate: 0`, yazma 422.
+Nakit tahmini: 30/60/90, `horizon=45` ve `limit=0` 422, yalnız okuma
+anahtarı ve kasa hakkı olmayan sahip 403; alış faturası, gider, alınan
+çek (çek kasası `cheque_tills`), tekrarlayan fatura kalemleri kaynaklarıyla.
+OpenAPI'de üç rota ve iki nesne; MCP `tools/list`'te üç araç,
+`tools/call` ile okuma, tahmin (`horizon` tamsayıyla) ve fatura provası.
+Panelde `erp_cashflow.php?view=forecast` ve cari kartı aynı rakamlarla
+açıldı. `php tools/lint.php`, `check_lang.php`, `check_api_schema.php`,
+`test.php` temiz.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com); döviz açık sitede tahmin
+(kod değişmedi, yalnız kalemlere alan eklendi).
+
+---
+
+## 2026.4.10 — Tablolarda çoklu sıralama: ürün listesi ve tarayıcıda sıralanan tablolar (2026-10-13)
+
+**Neden.** Buglar listesinin 4. maddesi: "Tüm tablolar çoklu sıralama
+desteği alacak. Örneğin stok alçalan fiyat yükselen aynı anda." Panelde
+iki ortak sıralama yolu var; ikisi de yalnız tek sütunla sıralıyordu.
+
+**Sunucuda sıralanan liste: ürünler.** `pg_list_state()` artık sıralama
+düzeylerini de okur. Adres düzeyleri sırayla `kod:yön` çiftleri olarak
+taşır (`sort=inventory_quantity:desc,price:asc`, `pg_list_sort_value()`
+yazar). Okuma sırası: değerin tamamı bir kod ya da eski bağlantıdaki bir
+başlıksa tek düzeydir (eski davranış), değilse virgülle bölünür
+(`pg_list_sort_parse()`). Her düzey `pg_list_sort_clean()`'den geçer:
+görünümün sunmadığı sütun ve tekrar düşer, yön `asc`/`desc` dışındaysa
+tek sıralamadaki kuralla başlar (varsayılan sütun kendi yönüyle, diğerleri
+artan), hiçbir düzey kalmazsa varsayılan döner. ORDER BY yalnız
+`pg_list_order_by()` ile, ekranın kod → SQL eşlemesinden yazılır; adresten
+gelen hiçbir şey sorguya girmez. Oturumda ilk düzey eskisi gibi
+`sort`/`order` olarak durur, sonrakiler yalnız varsa `then` altına yazılır;
+böylece daha önce saklanmış tek sıralama aynen okunur ve tek `order`
+parametresi taşıyan eski bağlantı ilk düzeyin yönünü çevirir. Dönüşe
+`sorts` (bütün düzeyler) eklendi, `sort`/`order` ilk düzeydir.
+
+`get_column_heading()` `$sort` olarak düzey listesi alırsa
+`pg_list_sort_heading()`'e devreder; dizge alan 35 ekran eskisi gibi
+çalışır. Başlık bağlantısı: düz tık o sütunla tek başına sıralar (öndeki
+düzeyse yönü çevirir, DataTables'ın alışılmış davranışı);
+`data-pg-sort-add` Shift+tıkın gideceği adresi taşır
+(`pg_list_sort_toggle()`: yeni sütun sona artan eklenir, artan düzey
+azalan olur, azalan düzey çıkar, tek düzeyse artana döner). Birden çok
+düzey varken sıralı başlıkta düzey numarası çıkar. Ok ve numara metin
+değil ikon (`bi-N-circle-fill`), çünkü sütun görünürlüğü listesi başlığın
+metnini okur; ikon başlığın adını kirletmez. Shift+tık tarayıcıda yeni
+pencere açtığı için `backend.src.js` tıklamayı belgeye devredilmiş tek
+dinleyiciyle yakalar (DataTables'ın sabit başlığı başlıkları kopyalar)
+ve Shift+mousedown'da metin seçimini engeller.
+
+Shift dokunmatikte yok; araç çubuğundaki "Sıralama" menüsü
+(`pg_list_sort_menu()`) aynı işi bağlantı ve GET formuyla yapar: düzeyler
+sırayla, her birinin yönünü çevirme ve kaldırma bağlantısı, "Ardından şuna
+göre sırala" listesi (her sütun artan ve azalan, değer düzeylerin tamamı)
+ve varsayılana dönüş. Listenin boş ilk seçeneği `required` ile formun boş
+`sort` göndermesini, yani listeyi sıfırlamasını engeller. Dışa Aktar aynı
+düzeyleri kullanır; dışa aktarma sorgusunda etki puanı olmadığı için o
+düzey eskisi gibi son değişikliğe göre sıralar.
+
+**Tarayıcıda sıralanan tablolar (`data-pg-sort`).** `backend.src.js`
+sıralayıcısı düzey listesiyle çalışır: Shift+tık sunucudakiyle aynı
+adımları uygular, düz tık eskisi gibi tek sütunu artan → azalan → sunucu
+sırası döndürür. Her düzeyin sayı mı metin mi olduğu ayrı belirlenir; boş
+hücreler her düzeyde sona gider, eşitlikte sunucunun sırası korunur.
+`aria-sort` yalnız öndeki başlıkta (bir anda bir başlık), sıralı her
+başlık `data-pg-sort-level` taşır. Saklanan seçim `3:desc,1:asc`
+biçiminde; eski tek `3:asc` bir düzey olarak okunur. Bu yolun Shift'siz
+düzey ekleme yolu yok: telefonda bu tablolar tek sütunla sıralanır.
+
+**Hangi tablolar kazandı.** Sunucu yolu: yalnız `view_products.php`
+(`pg_list_state()`'i kullanan tek ekran). Tarayıcı yolu, değişmeden: 27
+ekran (`edit_erp_account`, `edit_erp_invoice`, `edit_erp_till`,
+`edit_erp_waybill`, `erp_account_prices`, `erp_accountant`,
+`erp_accounts_import`, `erp_audit`, `erp_bank_statement`,
+`erp_bank_statements`, `erp_cashflow`, `erp_cheques`, `erp_dashboard`,
+`erp_expenses`, `erp_export`, `erp_inbox_document`,
+`erp_invoice_recurrences`, `erp_profit`, `erp_purchase_orders`,
+`erp_quotes`, `erp_receipt`, `erp_stock`, `erp_stock_count`,
+`erp_stock_counts`, `erp_stock_minimums`, `erp_vat_report`,
+`search_console`). Dokunulmayanlar: sıralamayı oturumda başlık adıyla
+tutup kendi `switch`'iyle ORDER BY kuran 35 ekran (`view_orders`,
+`view_contacts`, `view_pages`, `view_users`, `view_files`,
+`duplicate_products` gibi; `get_column_heading()`'e dizge veriyorlar),
+`asc_or_desc()` kullanan 8 ekran (`view_countries`, `view_log`,
+`view_zones` gibi) ve hiç sıralaması olmayan DataTables listeleri
+(`erp_invoices`, `erp_accounts`, `erp_waybills` gibi). Bunların her biri
+`pg_list_state()`'e taşınınca aynı yardımcılarla kazanır.
+
+Testler: `tests/list_state_test.php` (adresten düzeyler ve oturumdaki
+`then`, bilinmeyen/tekrar düzeyin düşmesi, saklanan düzeylerin tek
+sıralamayla yer değiştirmesi, Shift+tık adımları, ORDER BY'ın yalnız
+eşlemeden yazılması, başlık bağlantıları ve eski tek sıralama
+bağlantısı). Mevcut altı test değişmeden geçiyor. Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium).** Ürünler
+`sort=inventory_quantity:desc,price:asc` ile stoğu 10 olanlar fiyat artan
+geldi; başlıkta Shift+tık aynı sekmede üçüncü düzeyi ekledi ve oturumda
+kaldı; menüde kaldırma, ekleme formu ve varsayılana dönüş çalıştı; eski
+`sort=price&order=desc` bağlantısı tek sütunla sıraladı; çok düzeyli
+(etki dahil) Dışa Aktar 200 döndü. 390 piksel genişlikte menü dokunuşla
+açıldı. `erp_stock_minimums.php`'de Stok azalan + Ürün artan Shift+tıkla
+kuruldu, sayfa yenilenince geri geldi, ikinci Shift+tık düzeyi kaldırdı,
+eski `2:desc` saklı değeri okundu, Shift+tık metin seçmedi; konsolda hata
+yok. Doğrulanamadı: Safari/iOS'ta menü ve gerçek bir telefonda dokunuş.
+
+---
+
+## 2026.4.10 — Banka ekstresi `.ods` dosyasını da alıyor (2026-10-13)
+
+**Neden.** ERP Faz 9 (10.61) banka ekstresinde `.ods`'yi adla reddediyordu,
+çünkü PHPExcel'in OpenDocument okuyucusu PHP 8'de ölüyordu. Okuyucu ürün içe
+aktarımı düzeltmesiyle (`implode()` sırası, `Europe/London` çevirisi, saat
+hücresi) onarıldı; ekstreyi LibreOffice'te açıp yeniden kaydeden operatörün
+dosyası artık geri çevrilmiyor.
+
+**Değişiklik.** `erp_bank_read_file()` `.ods`'yi çalışma kitabı sayar; ret
+listesinde `.numbers` ve `.pdf` kaldı, ret metni `.ods`'yi de sayar.
+`erp_bank_read_spreadsheet()`'in PHPExcel kolu `.xls` ile `.ods`'yi birlikte
+okur; okuyucu adı ürün içe aktarımının `pg_products_import_reader()`'ından
+gelir (`OOCalc`), ayrı bir okuyucu ya da kopya yok. `.xls` gibi
+**biçimleriyle** okunur (`setReadDataOnly` yok): OOCalc tarih hücresine
+tarih biçimi koyar, `erp_bank_xls_cell()` onu `Y-m-d` (saatliyse `Y-m-d H:i`)
+yazar; kuruşlu ve para birimli (`currency`) hücre aynı makine biçimine döner.
+Dosya OOCalc'a verilmeden önce zip olarak açılıp `content.xml` ve `meta.xml`
+aranır: okuyucu açılamayan zip'te hata vermeden devam edip uyarılarla
+düşüyordu, şimdi bozuk `.xlsx` gibi "Dosya okunamadı" der. Başlık bloğunun
+atlanması (`erp_bank_rows_from_heading()`), sütun ekranı, satır karması ve
+eşleştirme değişmedi; satırlar `raw_rows`'a `.xlsx`'tekiyle aynı yazılır.
+Yükleme formu `.ods`'yi kabul eder; alan adı ve yardım metni onu da sayar
+(`tr.json`'da üç anahtar yenilendi). Şema değişikliği yok.
+
+**Bilinen.** PHPExcel `getLibXmlLoaderOptions()` içinde
+`libxml_disable_entity_loader(true)` çağırır ve geri açmaz: aynı istekte
+PHPExcel'den sonra `XMLReader::open()` ile dosya açılamaz. Ekstre yüklemesi
+istek başına bir dosya okuduğu için etkisiz; `.xls`/`.ods` ile `.xlsx`'i aynı
+istekte okuyacak bir kod (toplu içe aktarım, test) `.xlsx`'i önce okumalı.
+
+**Doğrulama.** `tests/erp_bank_import_test.php`: elle yazılmış `.ods`
+(başlık bloğu, boş sütun, `span`'lı metin, tarih ve tarih-saat, `currency` ve
+eksi kuruşlu `float`, LibreOffice'in tekrarlı boş satır/sütunları) UTC,
+Europe/Istanbul ve America/New_York'ta aynı satırları verir; zip olmayan ve
+`content.xml`'siz `.ods` okunamaz der; `.pdf`/`.numbers` ret metni `.ods`'yi
+sayar. Sandbox'ta örnek ekstre (`ornek-banka-ekstresi.xlsx`) LibreOffice ile
+`.ods`'ye çevrildi; `erp_bank_read_file()` dört saat diliminde (Kiritimati
+dahil) `.xlsx` ile birebir aynı sonucu verdi (7 satır: başlık + 6 hareket).
+Panelden yüklenen `.ods`'de sütun ekranı "İşlem Tarihi" başlığıyla açıldı;
+tarih, açıklama ve tutar seçilince 6 satır geldi (+10.000, −15.000, −3.000,
++2.450,75, −12,50, +1.141). Bozuk `.ods` "Dosya okunamadı", `.pdf` yeni ret
+metnini verdi.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: seçili mesajları kopyalama, telefonda mesaj kopyalama, ayırt edilen kanal listesi düğmesi (2026-10-13)
 
 **Neden.** Ürün sahibi telefonda mesaj kopyalayamadı. Asıl eksik: "Mesajları

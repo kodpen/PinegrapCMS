@@ -380,6 +380,19 @@
          ekranında çıkıyor; silme bildirimi de yalnız
          ürün listesine dönülünce gösteriliyor.
 
+  [YENİ] Ürün listesi aynı anda birden çok sütuna göre
+         sıralanıyor, örneğin stok azalan, aynı stokta
+         fiyat artan. Bir sütun başlığına Shift ile
+         tıklamak onu sonraki sıralama düzeyi olarak
+         ekliyor; ikinci Shift+tık yönünü çeviriyor,
+         üçüncüsü düzeyi kaldırıyor. Başlıklarda düzeyin
+         sırası numarayla görünüyor. Telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsünden
+         düzey eklenip yönü çevrilip kaldırılıyor ve
+         varsayılana dönülüyor. Seçim, Dışa Aktar'a da
+         aynı sırayla geçiyor. Başlığa Shift'siz tıklamak
+         eskisi gibi tek sütuna göre sıralıyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 
@@ -696,6 +709,18 @@
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
+  [YENİ] Başlığına tıklayınca sıralanan ERP tabloları
+         (teklifler, satın alma siparişleri, giderler,
+         çekler, stok, sayımlar, minimum stok, cari
+         fiyatları, kâr ve KDV raporları gibi) ile Search
+         Console tabloları da birden çok sütuna göre
+         sıralanıyor: başlığa Shift ile tıklamak sütunu
+         sonraki düzey olarak ekliyor, ikinci Shift+tık
+         yönünü çeviriyor, üçüncüsü düzeyi kaldırıyor.
+         Seçim bu tarayıcıda hatırlanıyor. Bu tablolarda
+         düzey eklemek için Shift tuşu gerekiyor;
+         telefonda tek sütuna göre sıralanıyor.
+
   [YENİ] Satın alma siparişi: ERP menüsündeki "Satın alma
          siparişleri" ekranında tedarikçiden ne istendiği
          yazılıyor. Sipariş alış faturasıyla aynı satır
@@ -799,7 +824,8 @@
 
   [YENİ] Banka ekstresi Excel'den: Banka ekstreleri
          ekranı internet bankacılığından indirilen
-         .xlsx ve .xls dosyalarını CSV gibi doğrudan
+         .xlsx ve .xls dosyalarını, LibreOffice'te
+         kaydedilmiş .ods dosyalarını da CSV gibi doğrudan
          alıyor. İlk sayfa okunur; tarih hücreleri tarih,
          tutarlar tutar olarak gelir. Bankanın hareketlerin
          üstündeki başlık satırları (banka adı, IBAN,
@@ -852,6 +878,16 @@
 
   DIŞ API
   --------------------------------------------------------
+
+  [DÜZELTME] Para alanlarının sınırları her uçta aynı
+         denetleniyor ve belgede görünüyor: ürün fiyatı 0
+         ile 2147483647, hediye kartı tutarı 1'den, bakiyesi
+         0'dan başlıyor; ERP tahsilat, virman, çek ve gider
+         tutarı en az 1, gider KDV'si ve kredi limiti en az
+         0. Sınır dışı değer 422 alıyor, OpenAPI belgesi ve
+         MCP araçları en az / en çok değeri yazıyor. Eksi
+         kredi limiti önceden sessizce 0 yazılıyordu, artık
+         reddediliyor.
 
   [YENİ] Bağlı uygulamalar (OAuth 2.1): Ayarlar › API'de
          "Bağlı uygulamalar (OAuth)" türünde bir uygulama
@@ -1211,6 +1247,19 @@
          /erp/reports/cashflow, erp_cash:read) ve ERP panosunun
          rakamları (GET /erp/dashboard); kasa rakamları yalnız
          kasayı okuyabilen anahtara gösterilir.
+
+  [YENİ] ERP vade farkı ve nakit tahmini API'de ve MCP'de.
+         GET /erp/accounts/{id}/late-fee carinin işleyen vade
+         farkını fatura fatura verir; POST
+         /erp/accounts/{id}/late-fee-invoice cari kartındaki
+         "Vade farkı faturası" düğmesi gibi tek satırlı satış
+         faturası taslağı yazar (X-Dry-Run ile denenebilir;
+         bekleyen taslak varsa ikincisini yazmaz, onu döner).
+         GET /erp/reports/cash-forecast önümüzdeki 30, 60 ya
+         da 90 günün beklenen giriş, çıkış ve bakiyesini
+         verir (erp_cash:read). Faturalarda late_fee_through
+         alanı vade farkı faturasının hangi güne kadar
+         kestiğini söyler.
 
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık

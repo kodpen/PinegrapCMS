@@ -459,7 +459,7 @@ function erp_api_accounts_create($params)
     );
 
     if (isset($params['credit_limit'])) {
-        $data['credit_limit'] = max(0, (int) $params['credit_limit']);
+        $data['credit_limit'] = (int) $params['credit_limit'];
     }
 
     if (isset($params['invoice_email']) && ($params['invoice_email'] !== '')) {
@@ -622,7 +622,7 @@ function erp_api_accounts_update($params)
         }
 
         if ($name === 'credit_limit') {
-            $value = max(0, (int) $value);
+            $value = (int) $value;
         }
 
         if (($name === 'invoice_email') && ($value !== '') && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
@@ -879,6 +879,8 @@ function erp_api_invoice_present($row, $lines)
         'quote_id' => (int) ($row['quote_id'] ?? 0),
         // The purchase order a purchase invoice was made from (10.58); 0 for none.
         'purchase_order_id' => (int) ($row['purchase_order_id'] ?? 0),
+        // On a late payment fee invoice, the last day it charges (10.61); null otherwise.
+        'late_fee_through' => erp_api_date($row['late_fee_through'] ?? ''),
         'supplier_invoice_no' => (string) $row['supplier_invoice_no'],
         'issue_date' => erp_api_date($row['issue_date']),
         'due_date' => erp_api_date($row['due_date']),
@@ -941,6 +943,7 @@ function erp_api_invoice_schema()
         'parent_invoice_id' => 'integer',
         'quote_id' => 'integer',
         'purchase_order_id' => 'integer',
+        'late_fee_through' => 'string?',
         'supplier_invoice_no' => 'string',
         'issue_date' => 'string?',
         'due_date' => 'string?',
@@ -1346,10 +1349,6 @@ function erp_api_receipts_create($params)
 
     if ((int) $till['is_active'] !== 1) {
         api_fail_validation(lang('That till or bank account is not active.'), 'cash_account_id');
-    }
-
-    if ((int) $params['amount'] <= 0) {
-        api_fail_validation(lang('Enter an amount greater than zero.'), 'amount');
     }
 
     $direction = (string) ($params['direction'] ?? 'collection');

@@ -292,7 +292,9 @@ function erp_cash_forecast_cash()
  *
  * @param string $today    Y-m-d
  * @param int    $horizon
- * @return array ['items' => [[kind, date, amount, title, party, url], ...], 'unpriced' => int]
+ * @return array ['items' => [[kind, date, amount, title, party, url, source, source_id, account_id], ...],
+ *                'unpriced' => int]  source names the record the movement comes from (invoice,
+ *                expense, invoice_recurrence, expense_recurrence, cheque), account_id its account or 0
  */
 function erp_cash_forecast_items($today, $horizon)
 {
@@ -314,6 +316,9 @@ function erp_cash_forecast_items($today, $horizon)
                 'title' => (string) $row['full_number'],
                 'party' => (string) $row['title'],
                 'url' => 'edit_erp_invoice.php?id=' . (int) $row['id'],
+                'source' => 'invoice',
+                'source_id' => (int) $row['id'],
+                'account_id' => (int) $row['account_id'],
             );
         }
     }
@@ -328,6 +333,9 @@ function erp_cash_forecast_items($today, $horizon)
                 'title' => (string) $row['description'],
                 'party' => (string) $row['supplier'],
                 'url' => 'edit_erp_expense.php?id=' . (int) $row['id'],
+                'source' => 'expense',
+                'source_id' => (int) $row['id'],
+                'account_id' => 0,
             );
         }
     }
@@ -352,6 +360,9 @@ function erp_cash_forecast_items($today, $horizon)
                 'title' => (string) $row['description'],
                 'party' => (string) $row['supplier'],
                 'url' => 'erp_expenses.php',
+                'source' => 'expense_recurrence',
+                'source_id' => (int) $row['id'],
+                'account_id' => 0,
             );
         }
     }
@@ -372,12 +383,15 @@ function erp_cash_forecast_items($today, $horizon)
                 'title' => lang('Repeating invoice'),
                 'party' => (string) ($row['account_title'] ?? ''),
                 'url' => 'erp_invoice_recurrences.php',
+                'source' => 'invoice_recurrence',
+                'source_id' => (int) $row['id'],
+                'account_id' => (int) $row['account_id'],
             );
         }
     }
 
     if (erp_cheques_ready()) {
-        foreach ((array) db_items("SELECT c.id, c.direction, c.kind, c.due_date, c.amount_base, c.serial_no, a.title AS account_title
+        foreach ((array) db_items("SELECT c.id, c.direction, c.kind, c.account_id, c.due_date, c.amount_base, c.serial_no, a.title AS account_title
             FROM erp_cheques c
             LEFT JOIN erp_accounts a ON a.id = c.account_id
             WHERE c.status IN ('portfolio', 'deposited', 'given') AND c.due_date <= '" . escape($last) . "'") as $row) {
@@ -388,6 +402,9 @@ function erp_cash_forecast_items($today, $horizon)
                 'title' => (((string) $row['kind'] === 'note') ? lang('Promissory note') : lang('Cheque')) . (((string) $row['serial_no'] !== '') ? ' ' . (string) $row['serial_no'] : ''),
                 'party' => (string) $row['account_title'],
                 'url' => 'erp_cheque.php?id=' . (int) $row['id'],
+                'source' => 'cheque',
+                'source_id' => (int) $row['id'],
+                'account_id' => (int) $row['account_id'],
             );
         }
     }

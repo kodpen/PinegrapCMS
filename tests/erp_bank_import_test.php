@@ -6,8 +6,9 @@
  * (includes/erp/bank_import.php): erp_bank_sheet_value(), which turns a
  * number cell into the text a CSV would have carried,
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
- * erp_bank_read_file() over a small .xlsx written here. The older .xls goes
- * through PHPExcel, which is checked on the sandbox rather than here.
+ * erp_bank_read_file() over a small .xlsx and .ods written here. The older
+ * .xls goes through PHPExcel, which is checked on the sandbox rather than
+ * here.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -135,13 +136,107 @@ function test_erp_bank_read_file_xlsx()
 	rmdir($dir);
 }
 
+// An .ods saved again from LibreOffice: the title block, a column left empty,
+// dates as date cells, amounts as float and currency cells, the empty rows and
+// columns LibreOffice writes as one repeated cell. Read the same in every time
+// zone, as the .xlsx is.
+function test_erp_bank_read_file_ods()
+{
+	if (!class_exists('ZipArchive')) {
+		return;
+	}
+
+	$dir = sys_get_temp_dir() . '/pg_bank_test_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+	$path = $dir . '/statement.ods';
+
+	$cell = function ($text) {
+		return '<table:table-cell office:value-type="string"><text:p>' . $text . '</text:p></table:table-cell>';
+	};
+	$empty = '<table:table-cell table:number-columns-repeated="1020"/>';
+
+	$zip = new ZipArchive();
+	pg_assert_true($zip->open($path, ZipArchive::CREATE) === true, 'zip written');
+
+	$zip->addFromString('mimetype', 'application/vnd.oasis.opendocument.spreadsheet');
+	$zip->addFromString('META-INF/manifest.xml', '<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/></manifest:manifest>');
+	$zip->addFromString('meta.xml', '<?xml version="1.0" encoding="UTF-8"?><office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" office:version="1.2"><office:meta/></office:document-meta>');
+	$zip->addFromString('content.xml', '<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2"><office:body><office:spreadsheet><table:table table:name="Hesap Hareketleri">'
+		. '<table:table-row>' . $cell('Örnek Bankası hesap özeti') . $empty . '</table:table-row>'
+		. '<table:table-row><table:table-cell table:number-columns-repeated="1024"/></table:table-row>'
+		. '<table:table-row>' . $cell('Tarih') . $cell('Açıklama') . '<table:table-cell/>' . $cell('Tutar') . $empty . '</table:table-row>'
+		. '<table:table-row>'
+		. '<table:table-cell office:value-type="date" office:date-value="2026-09-23"><text:p>23.09.2026</text:p></table:table-cell>'
+		. '<table:table-cell office:value-type="string"><text:p><text:span>Fatura </text:span><text:span>1042</text:span></text:p></table:table-cell>'
+		. '<table:table-cell/>'
+		. '<table:table-cell office:value-type="currency" office:currency="TRY" office:value="1250"><text:p>1.250,00 ₺</text:p></table:table-cell>'
+		. $empty . '</table:table-row>'
+		. '<table:table-row>'
+		. '<table:table-cell office:value-type="date" office:date-value="2026-09-24T14:30:00"><text:p>24.09.2026 14:30</text:p></table:table-cell>'
+		. $cell('Kira') . '<table:table-cell/>'
+		. '<table:table-cell office:value-type="float" office:value="-800.5"><text:p>-800,50</text:p></table:table-cell>'
+		. $empty . '</table:table-row>'
+		. '<table:table-row table:number-rows-repeated="1048570"><table:table-cell table:number-columns-repeated="1024"/></table:table-row>'
+		. '</table:table></office:spreadsheet></office:body></office:document-content>');
+	$zip->close();
+
+	$zone = date_default_timezone_get();
+
+	// PHPExcel predates PHP 8.2 and raises deprecations of its own while it
+	// loads; they are not what this test is about.
+	$reporting = error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+
+	try {
+
+		foreach (array('UTC', 'Europe/Istanbul', 'America/New_York') as $name) {
+			date_default_timezone_set($name);
+
+			$read = erp_bank_read_file($path, 'Hesap Hareketleri.ODS');
+
+			pg_assert_same('', $read['error'], $name . ' read');
+			pg_assert_same(array(
+				array('Tarih', 'Açıklama', '', 'Tutar'),
+				array('2026-09-23', 'Fatura 1042', '', '1250'),
+				array('2026-09-24 14:30', 'Kira', '', '-800.50'),
+			), $read['rows'], $name . ' rows from the heading on, columns kept in place');
+		}
+
+		pg_assert_same(125000, erp_bank_amount($read['rows'][1][3]), 'amount reads back');
+		pg_assert_same(-80050, erp_bank_amount($read['rows'][2][3]), 'minus amount reads back');
+		pg_assert_same('2026-09-24', erp_bank_date($read['rows'][2][0]), 'date with a time reads back');
+
+		// A worksheet's destructor creates PHPExcel's calculation engine, which
+		// raises the same deprecations; collected here rather than at shutdown.
+		gc_collect_cycles();
+
+		// Neither a zip nor an OpenDocument zip reaches the reader.
+		file_put_contents($path, 'not a workbook');
+		pg_assert_same(array(), erp_bank_read_file($path, 'statement.ods')['rows'], 'a broken file');
+		pg_assert_true(erp_bank_read_file($path, 'statement.ods')['error'] !== '', 'says so');
+
+		unlink($path);
+		$zip = new ZipArchive();
+		$zip->open($path, ZipArchive::CREATE);
+		$zip->addFromString('mimetype', 'application/zip');
+		$zip->close();
+		pg_assert_same(array(), erp_bank_read_file($path, 'statement.ods')['rows'], 'a zip without a sheet');
+
+	} finally {
+		error_reporting($reporting);
+		date_default_timezone_set($zone);
+		@unlink($path);
+		rmdir($dir);
+	}
+}
+
 // A document that is not a workbook Pinegrap reads is refused by its name, not read as text.
 function test_erp_bank_read_file_refuses_other_documents()
 {
-	foreach (array('statement.ods', 'statement.PDF', 'statement.numbers') as $name) {
+	foreach (array('statement.PDF', 'statement.numbers') as $name) {
 		$read = erp_bank_read_file(__FILE__, $name);
 
 		pg_assert_same(array(), $read['rows'], $name . ' rows');
 		pg_assert_contains('.xlsx', $read['error'], $name . ' says what to save it as');
+		pg_assert_contains('.ods', $read['error'], $name . ' names OpenDocument too');
 	}
 }
