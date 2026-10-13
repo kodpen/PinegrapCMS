@@ -1,5 +1,9 @@
 {
     "Card Style": "Kart Tarzı",
+    "Gift card ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Hediye kartı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden oluşturuldu.",
+    "Gift card ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Hediye kartı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
+    "Gift card ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Hediye kartı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
+    "The cards, their codes, balances and where they were spent; writing issues a card, changes its balance or expiry, or removes it": "Kartlar, kodları, bakiyeleri ve harcandıkları siparişler; yazma kart oluşturur, bakiyesini ya da son kullanma tarihini değiştirir veya kartı siler",
     "Store set-up": "Mağaza kurulumu",
     "Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes": "Siparişleri ve satırlarını, hesaplandıkları nakliye yöntemlerini, bölgeleri, vergileri, ülkeleri ve para birimlerini okumak; durum ve not yazmak",
     "Short link": "Kısa link",

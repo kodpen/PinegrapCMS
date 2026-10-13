@@ -706,6 +706,17 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Hediye kartları API'de, kendi izinleriyle
+         (hediye kartlarını okuma / yazma): kartlar kodu,
+         tutarı, kalan bakiyesi, durumu (geçerli, bitmiş,
+         süresi dolmuş) ve son kullanma tarihiyle listelenir;
+         tek kartta hangi siparişlerde ne kadar harcandığı da
+         görünür. Kart oluşturulur, bakiyesi, son kullanma
+         tarihi ve notu değiştirilir ya da silinir; Hediye
+         Kartları ekranıyla aynı kurallar geçerli. Kod para
+         yerine geçtiği için siparişleri okuma izni kodları
+         göstermez.
+
   [YENİ] Mağaza kurulumu API'de okunuyor: nakliye
          yöntemleri (ücretler, kademeli taban ücret, sunulduğu
          günler ve saatler, adres türleri, bölgeler), nakliye
