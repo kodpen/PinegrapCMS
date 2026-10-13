@@ -59,6 +59,16 @@ if (!$_POST) {
         WHERE l.invoice_id = '" . $invoice_id . "'
         ORDER BY l.line_no ASC, l.id ASC");
 
+    // The purchase order the draft was made from (10.58): the way back to it.
+    $purchase_order_number = ((int) ($invoice['purchase_order_id'] ?? 0) > 0)
+        ? (string) db_value("SELECT full_number FROM erp_purchase_orders WHERE id = '" . (int) $invoice['purchase_order_id'] . "' LIMIT 1")
+        : '';
+    $output_purchase_order = ($purchase_order_number !== '')
+        ? '<div class="alert alert-light d-flex align-items-center gap-2 py-2 mb-3" role="status"><i class="bi bi-cart-check" aria-hidden="true"></i><span>'
+            . '<a class="link-body-emphasis" href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '">' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a>'
+            . ' <span class="text-body-secondary">' . h(lang('The order counts these lines as received once the draft is issued.')) . '</span></span></div>'
+        : '';
+
     echo
     pg_page_shell([
         'title' => lang('Draft Invoice'),
@@ -78,6 +88,7 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            ' . $output_purchase_order . '
             ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
                 ? '<div class="alert alert-warning"><i class="bi bi-speedometer2 me-2" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
                 : '') . '

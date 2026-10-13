@@ -4,7 +4,9 @@
  *
  * ERP - one purchase order: changed while it is open or sent, printed,
  * e-mailed to the supplier or marked sent by hand, cancelled and opened
- * again. The work lives in includes/erp/purchase_orders.php.
+ * again, and turned into purchase invoice drafts as the goods come, with
+ * what has come against each line. The work lives in
+ * includes/erp/purchase_orders.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -95,6 +97,22 @@ if ($_POST) {
         go($self_url);
     }
 
+    // What has not come yet becomes a purchase invoice draft; the supplier's
+    // bill is checked against it and issued, which moves the stock.
+    if ($action === 'invoice') {
+        $result = erp_purchase_order_to_invoice($order_id, (int) $user['id']);
+
+        if (!$result['success']) {
+            $liveform->mark_error('_error', h($result['error']));
+            go($self_url);
+        }
+
+        log_activity(lang(array('string' => 'erp purchase order ({var:1}) was turned into a purchase invoice draft', 'vars' => $order['full_number'])), $_SESSION['sessionusername']);
+        $liveform_draft = new liveform('edit_erp_invoice_draft');
+        $liveform_draft->add_notice(h(lang(array('string' => 'The purchase invoice draft was made from purchase order {var:1}, for what has not come yet. Match it to the supplier\'s bill: the quantities, their number and date. Then issue it.', 'vars' => $order['full_number']))));
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id']);
+    }
+
     if ($action === 'mail') {
         $sent = erp_purchase_order_mail_send($order_id, (string) ($_POST['mail_to'] ?? ''), (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id']);
 
@@ -129,8 +147,19 @@ $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($
         . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . ' data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
+// What has come against each line, and the invoices it came on.
+$progress = erp_purchase_order_order_progress($order);
+$remaining_total = 0.0;
+foreach ($progress as $row) {
+    $remaining_total += (float) $row['remaining'];
+}
+$can_invoice = !$readonly && in_array($status_key, array('open', 'sent', 'partial'), true) && ($remaining_total > 0);
+
 $output_actions = '';
 if (!$readonly) {
+    if ($can_invoice) {
+        $output_actions .= $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-primary', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
+    }
     if ($status_key === 'open') {
         $output_actions .= $action_button('sent', lang('Mark as sent'), 'bi-send-check', 'btn-outline-primary', lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
     }
@@ -209,6 +238,68 @@ if ($editable) {
                         </div>
                     </div>
                 </div>
+            </div>';
+}
+
+// The goods: per line what was ordered, has come and is on drafts, and the
+// purchase invoices made from the order.
+$output_goods = '';
+$linked_invoices = erp_purchase_order_invoices($order_id);
+
+if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received'), true)) {
+    $goods_rows = '';
+    foreach ($progress as $row) {
+        $full = ((float) $row['ordered'] > 0) && ((float) $row['received'] >= (float) $row['ordered']);
+        $goods_rows .= '
+            <tr>
+                <td>' . (int) $row['line_no'] . '</td>
+                <td>' . h($row['description']) . '</td>
+                <td class="text-end">' . h(erp_quantity_text($row['ordered'])) . '</td>
+                <td class="text-end' . ($full ? ' text-success fw-semibold' : '') . '">' . h(erp_quantity_text($row['received'])) . '</td>
+                <td class="text-end text-body-secondary">' . (((float) $row['drafted'] > 0) ? h(erp_quantity_text($row['drafted'])) : '—') . '</td>
+                <td class="text-end' . (((float) $row['open'] > 0) ? ' fw-semibold' : ' text-body-secondary') . '">' . h(erp_quantity_text($row['open'])) . '</td>
+            </tr>';
+    }
+
+    $invoice_statuses = array(
+        'draft' => array(lang('Draft'), 'secondary'),
+        'issued' => array(lang('Issued'), 'primary'),
+        'partially_paid' => array(lang('Partly paid'), 'warning'),
+        'paid' => array(lang('Paid'), 'success'),
+        'cancelled' => array(lang('Cancelled'), 'dark'),
+    );
+    $invoice_rows = '';
+    foreach ($linked_invoices as $linked) {
+        $is_draft = ((string) $linked['status'] === 'draft');
+        $linked_status = $invoice_statuses[(string) $linked['status']] ?? array((string) $linked['status'], 'secondary');
+        $invoice_rows .= '
+            <tr' . (((string) $linked['status'] === 'cancelled') ? ' class="opacity-75"' : '') . '>
+                <td class="text-nowrap"><a class="link-body-emphasis fw-semibold" href="' . ($is_draft ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $linked['id'] . '">'
+                    . h($is_draft ? lang('Draft Invoice') : (string) $linked['full_number']) . '</a></td>
+                <td class="text-nowrap">' . h(prepare_form_data_for_output((string) $linked['issue_date'], 'date')) . '</td>
+                <td class="text-break">' . h((string) $linked['supplier_invoice_no']) . '</td>
+                <td class="text-end text-nowrap">' . h(erp_money_out_currency((int) $linked['grand_total'], (string) $linked['currency'])) . '</td>
+                <td><span class="badge text-bg-' . h($linked_status[1]) . '">' . h($linked_status[0]) . '</span></td>
+            </tr>';
+    }
+
+    $output_goods = '
+            <div class="card my-4" id="erp-goods">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Goods received') . '</div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>#</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Ordered') . '</th><th class="text-end">' . lang('Received') . '</th><th class="text-end">' . lang('On drafts') . '</th><th class="text-end">' . lang('Still to come') . '</th></tr></thead>
+                        <tbody>' . $goods_rows . '</tbody>
+                    </table>
+                </div>
+                <div class="form-text px-3 pb-2">' . lang('Received is what the issued purchase invoices made from this order carry; a cancelled invoice counts for nothing. Drafts count once they are issued.') . '</div>'
+                . (($invoice_rows !== '') ? '
+                <div class="card-body p-0 border-top table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead><tr><th>' . lang('Purchase invoice') . '</th><th>' . lang('Date') . '</th><th>' . lang('Supplier Invoice Number') . '</th><th class="text-end">' . lang('Total') . '</th><th>' . lang('Status') . '</th></tr></thead>
+                        <tbody>' . $invoice_rows . '</tbody>
+                    </table>
+                </div>' : '') . '
             </div>';
 }
 
@@ -338,6 +429,7 @@ pg_page_shell([
             ' . ((!$editable && !$readonly && in_array($status_key, array('partial', 'received'), true)) ? '<div class="form-text mb-2">' . lang('Goods have come in against this order, so its lines are no longer changed; a new order asks for more.') . '</div>' : '') . '
             ' . ((!$editable && !$readonly && ($status_key === 'cancelled')) ? '<div class="form-text mb-2">' . lang('A cancelled order is not changed; "Open again" makes it editable.') . '</div>' : '') . '
             ' . $output_body . '
+            ' . $output_goods . '
             ' . $output_mail . '
         </div>
     </div>

@@ -121,6 +121,13 @@ function erp_event_invoice($invoice_id, $event)
         erp_archive_defer('invoice', (int) $invoice['id']);
     }
 
+    // A purchase invoice made from a purchase order: the order reads what has
+    // come in again (includes/erp/purchase_orders.php).
+    if (in_array($event, array('erp.invoice.created', 'erp.invoice.cancelled'), true)
+        && ((string) $invoice['direction'] === 'purchase') && function_exists('erp_purchase_order_refresh_for_invoice')) {
+        erp_purchase_order_refresh_for_invoice((int) $invoice['id']);
+    }
+
     // The customer's copy by e-mail, where the store sends invoices on their
     // own (includes/erp/mail.php): on the issue, or on GIB's acceptance.
     if (in_array($event, array('erp.invoice.created', 'erp.invoice.edoc_changed'), true) && function_exists('erp_mail_auto_consider')) {
