@@ -5814,9 +5814,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
     }
 
+    // The site's Google Search Console verification (search_console.php). Google
+    // reads it from the home page, and goes on reading it to keep the site
+    // verified, so it is on every page rather than on one the operator might
+    // later move. Not in an e-mail body, for the same reason as robots.
+    $site_verification_tag = '';
+
+    if (defined('GOOGLE_SITE_VERIFICATION') && (GOOGLE_SITE_VERIFICATION !== '') && ($email != TRUE)) {
+        $site_verification_tag = '<meta name="google-site-verification" content="' . h(GOOGLE_SITE_VERIFICATION) . '">';
+    }
+
     // The <meta name="keywords"> tag was removed: no search engine has used it for years.
     // The keyword fields themselves stay in place, they feed site search and the tag cloud.
     $meta_tags = $robots_meta_tag .
+        (($site_verification_tag !== '') ? $site_verification_tag . "\n" . '        ' : '') .
         '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
@@ -5836,6 +5847,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = preg_replace(
             '/<\/head>/i',
             '        <meta name="robots" content="' . $robots_content . '">' . "\n" . '</head>',
+            $content,
+            1);
+    }
+
+    if (($site_verification_tag !== '') && ($meta_tags_placeholder_found == FALSE)) {
+        $content = preg_replace(
+            '/<\/head>/i',
+            '        ' . $site_verification_tag . "\n" . '</head>',
             $content,
             1);
     }

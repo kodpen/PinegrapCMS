@@ -441,6 +441,8 @@ $placeholder_w24 = $pg_ph_card(
     . '</div>'
 );
 $placeholder_w25 = $pg_ph_card($pg_ph_blocks(array(35)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
+// Google Search: the two figures over the list of searches.
+$placeholder_w31 = $pg_ph_card($pg_ph_blocks(array(48)) . '<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 5) . '</div>');
 // The agenda: a day heading over small rows, twice.
 $placeholder_w29 = $pg_ph_card('<div class="pg-list">'
     . $pg_ph_heading . str_repeat($pg_ph_row_sm, 3)
@@ -502,6 +504,16 @@ $widget_registry[5] = array(
     'body'  => $placeholder_w5,
     'wide'  => true,
     'show'  => (($user['role'] < 3) || ($user['manage_visitors'] == true)));
+
+// Google Search: what Search Console says about the site, once the site is
+// linked to it (search_console.php). Same reach as the visitor reports.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/search_console.php');
+
+$widget_registry[31] = array(
+    'title' => lang('Google Search'),
+    'icon'  => 'bi-google',
+    'body'  => $placeholder_w31,
+    'show'  => ((($user['role'] < 3) || ($user['manage_visitors'] == true)) && pg_gsc_linked()));
 
 // System status. One health score for the installation: the security checks
 // alongside the backup, update and scheduled-task checks that used to be a

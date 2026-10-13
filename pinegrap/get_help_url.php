@@ -188,6 +188,7 @@ function get_help_url($properties = array())
         'view_visitor_reports' => 'visitors#visitor-reports',
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
+        'search_console'       => 'visitors#google-search-console',
 
         // Contacts
         'view_contacts' => array(

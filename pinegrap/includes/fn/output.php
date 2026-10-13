@@ -2753,6 +2753,10 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
+        // VISITORS > Google Search Console
+        $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
+
         // VISITORS > Analystics
         // if an external web stats link is supplied in the settings, then prepare link to web stats
         if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
@@ -3265,6 +3269,7 @@ function output_menu($properties = false)
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
         case 'view_visitor.php':
+        case 'search_console.php':
             $active_menu = 6;
             break;
         case 'view_contacts.php':

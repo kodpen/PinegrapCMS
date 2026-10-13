@@ -23,14 +23,14 @@ function pg_test_dashboard_widget_ids()
 {
 	$ids = array('clock');
 
-	for ($id = 1; $id <= 30; $id++) {
+	for ($id = 1; $id <= 31; $id++) {
 		$ids[] = (string) $id;
 	}
 
 	return $ids;
 }
 
-// Each of the 31 ids has its file, and loading it defines its function.
+// Each of the 32 ids has its file, and loading it defines its function.
 function test_dashboard_every_widget_has_file_and_function()
 {
 	foreach (pg_test_dashboard_widget_ids() as $id) {
@@ -55,7 +55,7 @@ function test_dashboard_invalid_ids_are_refused()
 	$ids = array(
 		'empty'      => '',
 		'zero'       => '0',
-		'31'         => '31',
+		'32'         => '32',
 		'99'         => '99',
 		'traversal'  => '../x',
 		'nested'     => '1/../2',
