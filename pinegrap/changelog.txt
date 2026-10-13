@@ -653,6 +653,14 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Mağaza kurulumu API'de okunuyor: nakliye
+         yöntemleri (ücretler, kademeli taban ücret, sunulduğu
+         günler ve saatler, adres türleri, bölgeler), nakliye
+         bölgeleri, vergi bölgeleri, ülkeler ve illeri, para
+         birimleri ve kurları. Bir kargo ya da pazaryeri
+         entegrasyonu nakliye ücretini mağazanın hesapladığı
+         gibi hesaplayabilir. Siparişleri okuma izni yeterli.
+
   [YENİ] Kısa linkler API'de: GET /short-links kısa
          linkleri, nereye gittikleriyle (sayfa, ürün grubu,
          ürün, dosya, adres), türleriyle (kalıcı, süreli, tek

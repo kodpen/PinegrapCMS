@@ -1,5 +1,7 @@
 {
     "Card Style": "Kart Tarzı",
+    "Store set-up": "Mağaza kurulumu",
+    "Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes": "Siparişleri ve satırlarını, hesaplandıkları nakliye yöntemlerini, bölgeleri, vergileri, ülkeleri ve para birimlerini okumak; durum ve not yazmak",
     "Short link": "Kısa link",
     "This short link is in the recycle bin. Restore it in the file manager before changing it.": "Bu kısa link Geri Dönüşüm Kutusu'nda. Değiştirmeden önce dosya yöneticisinden geri yükleyin.",
     "The address must be a web address or a path on this site.": "Adres bir web adresi ya da bu sitede bir yol olmalı.",
