@@ -84,6 +84,40 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ürün listesi sıralamayı kolon koduyla tutuyor: `pg_list_state()` (2026-10-13)
+
+**Sorun** (Plan 1 Faz 5). `view_products.php` sıralamayı oturumda
+çevrilmiş başlıkla ("Fiyat") tutuyor, her filtrede 10 kopya blokta uzun
+bir `!=` zinciriyle doğruluyordu. Panel dili değişince kayıtlı başlık
+tanınmıyor, sıralama "Son Değişiklik"e dönüyordu.
+
+**Çözüm.**
+
+- `pg_list_state($screen, $columns, $default)` (`includes/fn/output.php`):
+  `$_SESSION['software']['list_state'][$screen]` altında kod + yön; yalnız
+  `$columns` anahtarı olan kod geçer, gerisi varsayılana düşer; `desc`
+  dışındaki yön `asc`; yönsüz seçilen kolon varsayılan kolonsa varsayılan
+  yönde, değilse artan açılır; etiket taşıyan eski bağlantı koda eşlenir;
+  `screen` pozitif tam sayı değilse 1.
+- `view_products.php`: 10 blok birer kod listesi (`$sort_codes`),
+  etiket `switch`'i kod → SQL kolonu haritası, 39 başlık kod taşıyor.
+  Etiketi boş özel alan sıralanamaz.
+- `get_column_heading()` isteğe bağlı `$key` alır (bağlantı değeri ve
+  karşılaştırma); vermeyen ekranlar eskisi gibi.
+- `duplicate_products.php` başlık tabanlı eski anahtarı okumaya devam eder;
+  ürün listesi o anahtarı her istekte doldurur.
+- SEO filtresi şema hazır değilken tüm ürünlere düşünce sıralama da artık
+  o listenin kolonlarıyla doğrulanır.
+- **Davranış farkı:** `order`'sız elle yazılmış adreste Tükenen Ürünler'de
+  "Stokta Tükenme Tarihi" azalan açılır (eskiden artan). Başlık
+  bağlantıları her zaman yön taşır.
+- `tests/list_state_test.php`.
+
+**Doğrulama.** Sandbox'ta eski kopyayla 105 istek (10 filtre, kolonlar,
+yönler, geçersiz değerler): HTML ve sıra aynı; "Etki" ve "Başlangıç
+Sayfası"ndaki fark eşit değerlerden, eski kod da iki çalıştırmada farklı
+sıra veriyor. Dil `tr` → `en`: "Fiyat ↓" → "Price ↓" korundu.
+
 ## 2026.4.10 — Sayfa Ekle ve Sayfa Düzenle tek sayfa türü formunu paylaşıyor (2026-10-13)
 
 Site sahibine görünen bir değişiklik yok; `changelog.txt`'ye madde girmez.
