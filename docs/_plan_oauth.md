@@ -23,7 +23,7 @@ seçmeli ve istediği an geri alabilmeli.
 | Faz | İçerik | Durum |
 |---|---|---|
 | A | Yetkilendirme sunucusu: keşif belgeleri, dinamik istemci kaydı, yetkilendirme kodu + PKCE, jeton/yenileme, geri alma; jetonun `integration.php`'de geçmesi; panelde "Bağlı uygulamalar (OAuth)" türü | Birleşti (#244) |
-| B | Panelde kayıtlı istemci listesi (kapatma, silme), kişinin kendi "bağlı uygulamalarım" ekranı | Sonra |
+| B | Panelde kayıtlı istemci listesi (kapatma, silme), kişinin kendi "bağlı uygulamalarım" ekranı | Tamamlandı: Uygulama Erişimi → "Bağlı uygulamalar" kartı, `connected_apps.php`. İzin verilen istemci listesi yok |
 | C | MCP sunucusu (`mcp.php`): araçlar dış API kaynaklarının üstüne kurulur, jetonu bu sunucu verir | Birleşti (#245, #246); Claude ile doğrulandı |
 | D | İstemci kimlik belgesi (Client ID Metadata Document): `client_id` bir https adresi olur, sunucu belgeyi çeker. Dışarıya istek attığı için SSRF koruması ister. MCP 2026-07-28 dinamik kaydı eskimiş saydı, istemciler önce bunu dener | Birleşti (#245); Claude ile doğrulandı |
 | F | Çalışma Alanı'nda MCP istemcisi: dış sunucular `@takma ad` ile, dizin mekaniği (araştırma: `/mnt/project-files/notes/mcp-arastirma.md`) | Sonra |

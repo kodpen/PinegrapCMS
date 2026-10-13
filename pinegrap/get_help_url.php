@@ -455,6 +455,7 @@ function get_help_url($properties = array())
         // API and integrations
         'api_settings'         => 'api#api-keys',
         'api_docs'             => 'api#api-reference',
+        'connected_apps'       => 'api#mcp',
         'marketplace_settings' => 'api#marketplaces',
 
         // System tools
