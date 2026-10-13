@@ -913,20 +913,66 @@ function api_settings_permission_rows($prefix, $id_prefix = '') {
 
 }
 
+/* ---------------------------------------------------------------------------
+   The OAuth connection guide, drawn in the drawer and in the sheet shown once
+   the application is made
+   --------------------------------------------------------------------------- */
+
+function api_settings_oauth_guide($id_prefix, $button_class) {
+
+	// The MCP server answers at two addresses: the file in the software
+	// directory, reachable on any server, and the site's own address, which
+	// only works where the site's URL rewriting hands unknown paths to the
+	// router. The file comes first because it is the one that never fails.
+	$addresses = pg_oauth_resource_addresses();
+
+	$mcp_file = $addresses['mcp'][1];
+
+	$mcp_short = $addresses['mcp'][0];
+
+	$metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
+
+	$box = function ($id, $value) use ($button_class) {
+		return '<div class="api-secret-box mb-1"><code id="' . $id . '">' . h($value) . '</code>
+			<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id . '">' . lang('Copy') . '</button></div>';
+	};
+
+	return '
+	<label class="form-label small">' . lang('MCP server address') . '</label>
+	' . $box($id_prefix . '_mcp', $mcp_file) . '
+	<div class="form-text mb-3">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+
+	<label class="form-label small">' . lang('Short address') . '</label>
+	' . $box($id_prefix . '_mcp_short', $mcp_short) . '
+	<div class="form-text mb-3">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+
+	<label class="form-label small">' . lang('Discovery address') . '</label>
+	' . $box($id_prefix . '_meta', $metadata_url) . '
+	<div class="form-text mb-3">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+
+	<div class="api-guide">
+		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
+		<ol class="mb-0">
+			<li>' . lang('Add the MCP server address in the application. In Claude: Settings > Connectors > Add custom connector. In ChatGPT: Settings > Apps & Connectors, with developer mode on, create a connector and choose OAuth as its authentication.') . '</li>
+			<li>' . lang('The application opens this site\'s sign-in page. The person signs in with their own panel account; the application never sees the password.') . '</li>
+			<li>' . lang('The site lists what the application asks for, and the person agrees or refuses.') . '</li>
+			<li>' . lang('The tools appear in the application, and the connection is listed on this application\'s Connections tab, where it can be ended.') . '</li>
+		</ol>
+	</div>
+
+	<div class="api-guide">
+		<div class="api-guide-title"><i class="bi bi-tools me-1"></i>' . lang('What the application can do') . '</div>
+		<ul class="mb-0">
+			<li>' . lang('Every permission area becomes a set of tools. Read gives the list and view tools; Write also gives the tools that create, change and delete.') . '</li>
+			<li>' . lang('A person gets at most what their own panel account may do, and never more than the permissions chosen here.') . '</li>
+			<li>' . lang('Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.') . '</li>
+		</ul>
+	</div>';
+
+}
+
 
 $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/integration.php';
-
-// Where an outside application starts when it connects with OAuth: the site
-// itself, and the authorization server's metadata under it.
-$oauth_issuer = pg_oauth_issuer();
-
-$oauth_metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
-
-// The address an AI application is given to reach the site's MCP server
-// (mcp.php): in Claude, the URL of a custom connector.
-$oauth_resources = pg_oauth_resources();
-
-$oauth_mcp_url = $oauth_resources['mcp'];
 
 $permission_rows = api_settings_permission_rows('scope', 'd_scope');
 
@@ -1198,6 +1244,11 @@ echo pg_page_shell(array(
 .api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--bs-tertiary-bg);
 	border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 9px 11px; }
 .api-secret-box code { flex: 1; font-size: 12px; word-break: break-all; }
+.api-guide { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: 8px;
+	padding: 10px 12px; margin-bottom: 10px; font-size: 12.5px; }
+.api-guide-title { font-weight: 600; margin-bottom: 6px; }
+.api-guide ol, .api-guide ul { padding-left: 18px; }
+.api-guide li + li { margin-top: 4px; }
 .api-danger-zone { border-top: 1px solid var(--bs-border-color); margin-top: 18px; padding-top: 14px; }
 /* The site chat launcher is fixed at z-index 1080, an offcanvas is 1045, so the
    bubble sits on top of whatever the drawer puts in its bottom right corner -
@@ -1313,14 +1364,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
 				</div>
 				<div class="mb-3" id="d_oauth_block">
-					<label class="form-label small">' . lang('MCP server address') . '</label>
-					<div class="api-secret-box mb-2"><code id="d_oauth_mcp">' . h($oauth_mcp_url) . '</code>
-						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_oauth_mcp">' . lang('Copy') . '</button></div>
-					<label class="form-label small">' . lang('Discovery address') . '</label>
-					<div class="api-secret-box"><code id="d_oauth_meta">' . h($oauth_metadata_url) . '</code>
-						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_oauth_meta">' . lang('Copy') . '</button></div>
-					<div class="form-text">'
-						. lang('An outside application (an MCP client such as Claude) finds the site from its address and asks the person to connect on this site\'s own sign-in page. Each person grants at most what their own account may do, and never more than the permissions chosen here. Connections appear on the Connections tab, where each can be ended.') . '</div>
+					' . api_settings_oauth_guide('d_oauth', 'btn-outline-secondary') . '
 				</div>
 				<div class="mb-3" id="d_auth_block">
 					<label class="form-label small">' . lang('Authentication') . '</label>
@@ -1492,24 +1536,7 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 			<div class="modal-body">
 				<p class="mb-3">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
 
-				<label class="form-label small text-uppercase opacity-75">' . lang('MCP server address') . '</label>
-				<div class="api-secret-box mb-1">
-					<code id="nc_mcp">' . h($oauth_mcp_url) . '</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_mcp">' . lang('Copy') . '</button>
-				</div>
-				<div class="form-text mb-3">' . lang('Give this address to an AI application that speaks MCP. In Claude it is the URL of a custom connector.') . '</div>
-
-				<label class="form-label small text-uppercase opacity-75">' . lang('Site address') . '</label>
-				<div class="api-secret-box mb-3">
-					<code id="nc_issuer">' . h($oauth_issuer) . '</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_issuer">' . lang('Copy') . '</button>
-				</div>
-
-				<label class="form-label small text-uppercase opacity-75">' . lang('Discovery address') . '</label>
-				<div class="api-secret-box mb-3">
-					<code id="nc_meta">' . h($oauth_metadata_url) . '</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_meta">' . lang('Copy') . '</button>
-				</div>
+				' . api_settings_oauth_guide('nc', 'btn-outline-primary') . '
 
 				<div class="alert alert-primary py-2 px-3 small mb-0">
 					<i class="bi bi-info-circle me-1"></i>'

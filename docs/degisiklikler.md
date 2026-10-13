@@ -84,6 +84,50 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Uygulama Erişimi: OAuth uygulamasında MCP adresleri ve bağlantı rehberi (2026-10-13)
+
+**Neden.** Erdal Claude'u `https://dev.pinegrap.com/pinegrap/mcp.php` ile
+bağladı; ekran ise yalnız kök adresi (`site.com/mcp.php`) gösteriyordu ve
+"OAuth ile uygulama bağlama açıldı" penceresiyle çekmecenin OAuth bölümü
+neredeyse boştu. Hangi adresin verileceği ve bağlantının nasıl yapılacağı
+ekrandan anlaşılmıyordu.
+
+**Ne değişti.** `api_settings.php` içinde ekrana özgü
+`api_settings_oauth_guide($id_prefix, $button_class)` eklendi; hem oluşturma
+sonrası pencere hem çekmecenin Genel sekmesi onu basıyor:
+
+- **MCP sunucu adresi:** yazılım klasöründeki dosya
+  (`pg_oauth_resource_addresses()['mcp'][1]`, ör. `site.com/pinegrap/mcp.php`).
+  Gerçek dosya olduğu için her sunucuda, yeniden yazma kuralına bakmadan
+  çalışır; bu yüzden birinci sırada.
+- **Kısa adres:** sitenin kendi adresi (`['mcp'][0]`, `site.com/mcp.php`);
+  sayfa adresleri nerede çalışıyorsa orada çalışır. Sunucu tarafında iki adres
+  de aynı kaynak sayılır (#246), hangisiyle bağlanıldığı fark etmez.
+- **Keşif adresi:** kontrol için; uygulamalar onu MCP adresinden kendileri
+  bulur.
+- **Nasıl bağlanır:** Claude (Ayarlar › Bağlayıcılar › Özel bağlayıcı ekle),
+  ChatGPT (Uygulamalar ve Bağlayıcılar, geliştirici modu, OAuth), giriş ve onay
+  adımları, Bağlantılar sekmesi.
+- **Uygulama neler yapabilir:** her izin alanı bir araç grubudur (Okuma →
+  listeleme/görüntüleme, Yazma → oluşturma/değiştirme/silme); kişi kendi panel
+  hesabının yetkisini aşamaz; daraltma hemen geçerli, genişletmeden sonra
+  uygulamada yeniden bağlanmak gerekir (onaylanan kapsamlar saklanıyor,
+  `pg_oauth_effective_scopes()` yalnız kesişimi alır).
+
+Pencereden "Site adresi" (issuer) kutusu kaldırıldı: istemciye verilmesi
+gereken bir değer değil, MCP adresinin yanında karışıklık yaratıyordu.
+Sunucu tarafı (`pg_oauth_resources()` sırası, PRM, token kontrolü)
+değişmedi. Eski metinlerin `tr.json` karşılıkları başka yerlerde
+kullanılmadığı hâlde silinmedi (ortak dosyada yalnız ekleme).
+
+**Doğrulama.** Sandbox'ta OAuth uygulaması oluşturulup pencere ve çekmece
+ekran görüntüsüyle kontrol edildi: adresler `http://127.0.0.1:8000/pinegrap/mcp.php`,
+`/mcp.php` ve `/.well-known/oauth-authorization-server`, Kopyala düğmeleri her
+kutuda. Claude ve ChatGPT menü adları üçüncü taraf arayüzlerinden; değişirlerse
+yalnız metin güncellenir.
+
+---
+
 ## 2026.4.10 — WAF: bot politikası kimlikle girilen uçlarda uygulanmaz (Claude-User engeli) (2026-10-13)
 
 **Neden.** dev.pinegrap.com'da Claude bağlayıcısı OAuth onayını ve token'ı
