@@ -5,8 +5,9 @@
  * Tests for the ERP module's route table in the external API
  * (includes/erp/api.php) that need no database: every route reaches a
  * handler, no two routes answer the same method on the same path, the writes
- * on invoices and quotes can be rehearsed with X-Dry-Run, and the helpers
- * that read a typed document's lines (includes/erp/api_documents.php).
+ * on invoices, quotes, delivery notes and stock can be rehearsed with
+ * X-Dry-Run, and the helpers that read a typed document's lines
+ * (includes/erp/api_documents.php, api_stock.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -55,12 +56,12 @@ function test_erp_api_routes_do_not_share_a_method_and_path()
 	}
 }
 
-// Issuing, cancelling, returning and e-mailing cannot be taken back, so every
-// write on an invoice or a quote can be tried first.
+// Issuing, cancelling, returning, e-mailing and applying a count cannot be
+// taken back, so every write on a document or on stock can be tried first.
 function test_erp_api_document_writes_can_be_rehearsed()
 {
 	foreach (erp_api_routes() as $route) {
-		if (($route['method'] === 'GET') || !preg_match('/^erp\.(invoices|invoice_recurrences|quotes|orders)\./', $route['id'])) {
+		if (($route['method'] === 'GET') || !preg_match('/^erp\.(invoices|invoice_recurrences|quotes|orders|waybills|stock_counts|stock)\./', $route['id'])) {
 			continue;
 		}
 
@@ -91,4 +92,33 @@ function test_erp_api_document_field_names_the_api_field()
 	pg_assert_same('account_id', erp_api_document_field('account_id'));
 	pg_assert_same(null, erp_api_document_field('_error'));
 	pg_assert_same(null, erp_api_document_field(''));
+}
+
+// A refusal of the note's header is answered at the parameter it is about.
+function test_erp_api_waybill_field_names_the_parameter()
+{
+	pg_assert_same('ship_time', erp_api_waybill_field(lang('Please enter the shipment time as HH:MM.')));
+	pg_assert_same('carrier_tax_number', erp_api_waybill_field(lang('The carrier tax number has to be 10 or 11 digits.')));
+	pg_assert_same('carrier_tax_number', erp_api_waybill_field(lang('The carrier tax number:') . ' x'));
+	pg_assert_same('driver_id_number', erp_api_waybill_field(lang('The driver ID number has to be 11 digits.')));
+	pg_assert_same('account_id', erp_api_waybill_field(lang('Choose an account.')));
+	pg_assert_same(null, erp_api_waybill_field('Something else went wrong.'));
+}
+
+// Every header parameter the handler reads is one the route declares.
+function test_erp_api_waybill_create_declares_its_header()
+{
+	$declared = array();
+
+	foreach (erp_api_routes() as $route) {
+		if ($route['id'] === 'erp.waybills.create') {
+			foreach ($route['params'] as $param) {
+				$declared[$param['name']] = true;
+			}
+		}
+	}
+
+	foreach (array_keys(erp_api_waybill_header_params()) as $name) {
+		pg_assert_true(isset($declared[$name]), $name . ' is a parameter of erp.waybills.create');
+	}
 }

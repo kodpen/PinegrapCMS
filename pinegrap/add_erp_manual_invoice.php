@@ -58,12 +58,18 @@ if (!$_POST) {
             $liveform->mark_error('', lang('The invoice could not be found.'));
         } else {
             // The stored lines; a form sent back with an error keeps its own
-            // (erp_invoice_form_lines() prefers what was posted).
-            $card_options['lines'] = erp_invoice_form_lines($liveform, (array) db_items("SELECT l.*, COALESCE(NULLIF(p.short_description, ''), p.name) AS product_name
+            // (erp_invoice_form_lines() prefers what was posted). The copy is
+            // not made from a purchase order, so its lines name none.
+            $copied = array();
+            foreach ((array) db_items("SELECT l.*, COALESCE(NULLIF(p.short_description, ''), p.name) AS product_name
                 FROM erp_invoice_items l
                 LEFT JOIN products p ON l.product_id = p.id
                 WHERE l.invoice_id = '" . $copy_id . "'
-                ORDER BY l.line_no ASC, l.id ASC"));
+                ORDER BY l.line_no ASC, l.id ASC") as $copied_line) {
+                $copied_line['source_line'] = '';
+                $copied[] = $copied_line;
+            }
+            $card_options['lines'] = erp_invoice_form_lines($liveform, $copied);
 
             if ($fresh) {
                 $liveform->assign_field_value('direction', ((string) $source['direction'] === 'purchase') ? 'purchase' : 'sales');

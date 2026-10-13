@@ -90,6 +90,32 @@
          ya da "?" olan sayfanın linki önceden yarıda
          kesiliyordu.
 
+  [DÜZELTME] Widget ayarlarındaki açıklamalar
+         ^^token^^ yerine Veri Bağla listesindeki
+         seçeneğin adını söylüyor (ör. "Giriş sayfası
+         adresi" alanına bağlanan linkler). Bağlı öğenin
+         araç çubuğundaki ipucu da seçenek adını
+         gösteriyor.
+
+  [DÜZELTME] Giriş bölgesi ve sepet bağlantısı
+         widget'ının içindeki öğelerde Veri Bağla paneli
+         "önce widget'a bir form seçin" diyordu; bağlama
+         değiştirilemiyor, "Yalnız şu durumda göster"
+         seçenekleri çıkmıyordu. Panel artık widget'ın
+         kendi alanlarını ve koşullarını sunuyor.
+
+  [DÜZELTME] Form detayında "Alan etiketleri" açıkken
+         Veri Bağla listesi her alanın etiketini sunuyor.
+         Önceden ayar açılabiliyor ama etiketi bağlamanın
+         yolu yoktu.
+
+  [DÜZELTME] E-posta tercihleri widget'ında liste
+         kutusunun adı "contact_group"; sunucu her listeye
+         kendi adını veriyor. Eski sayfalardaki
+         contact_group_^^__group_id^^ adı da çalışıyor.
+         Ödeme widget'ının alıcı başlığı da örnek metinle
+         geliyor.
+
   [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
          yapılan değişiklik kaydediliyor. Bir kayıttan
          sonra aynı parçada yapılan düzenleme, ya da öğe
@@ -383,6 +409,31 @@
          siparişleri" ve "Yeni satın alma siparişi"
          düğmeleri var.
 
+  [YENİ] Siparişten alış faturası: sipariş ekranındaki
+         "Alış faturası taslağı oluştur" henüz gelmeyenler
+         için siparişin fiyatlarıyla bir taslak açıyor.
+         Tedarikçinin faturasına göre miktarlar, fatura
+         numarası ve tarihi düzeltilip kesiliyor; stok ve
+         maliyet her zamanki gibi fatura kesilince
+         değişiyor. Parçalı teslimde her teslim için yeni
+         bir taslak açılabiliyor.
+
+  [YENİ] Sipariş kendi durumunu bu faturalardan okuyor:
+         bir kısmı geldiyse "Kısmen teslim alındı",
+         tamamı geldiyse "Tamamı teslim alındı". İptal
+         edilen fatura sayılmıyor. Sipariş ekranında her
+         satır için sipariş edilen, alınan, taslakta olan
+         ve gelecek miktar ile siparişten kesilen
+         faturalar listeleniyor; faturada ve taslakta
+         siparişe dönen bağlantı var.
+
+  [YENİ] Minimum stok ekranında işaretlenen ürünlerden
+         satın alma siparişi açılıyor: her ürün için
+         minimuma dönmek üzere gereken miktar ve son alış
+         fiyatıyla. ERP panosunda "Bekleyen satın alma
+         siparişleri" kartı var; teslim günü geçenlerin
+         sayısını gösteriyor.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
@@ -522,6 +573,24 @@
          yetiyor. Arama, uygulamaya izin verilmeyen kayıt
          türlerini (sipariş, müşteri, fatura…) göstermez.
 
+  [YENİ] Klasörler API'de: GET /folders ve GET /folders/{id}
+         klasör ağacını, her klasörün erişim türünü (kendi ya
+         da üstten gelen) ve içindeki klasör, sayfa ve dosya
+         sayısını verir. POST /folders klasör açar, POST
+         /folders/{id} adını, sırasını, arşiv durumunu ve
+         yerini değiştirir, boş klasör silinebilir. Klasörü ya
+         da sayfayı daha çok kişiye açacak bir değişiklik (özel
+         klasörü herkese açık yapmak, özel bir klasörden herkese
+         açık bir klasöre taşımak) API'den yapılmaz, klasör
+         ekranında yapılır.
+
+  [YENİ] Sayfa güncellemede (POST /pages/{id}) meta anahtar
+         kelimeleri, yorum ayarları (yorumlar, yeni yorum alma,
+         otomatik yayın, giriş şartı) ve sayfanın klasörü
+         değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
+         taslak ya da geri dönüşüm kutusunda olup olmadığını
+         da gösteriyor.
+
   [YENİ] ERP faturaları ve teklifleri API'den ve MCP'den
          yazılıyor. Faturada: taslak yazma, değiştirme ve
          silme (POST /erp/invoices), kesme, iptal, iade
@@ -538,6 +607,21 @@
          satış credit_limit koduyla reddedilir. erp:write
          yetkisi gerekir; e-Belge sağlayıcısına gönderim
          paneldeki fatura ekranında kalır.
+
+  [YENİ] ERP irsaliyeleri, stok sayımları ve minimum stok
+         API'den ve MCP'den yazılıyor. İrsaliye: kesilmiş
+         faturadan, siparişten ya da cari ve satırlarla yazma
+         (POST /erp/waybills; gönderilen satırlar kısmi sevkiyat
+         olur), iptal ve faturalama. Stok sayımı: başlatma,
+         barkod, ürün kodu ya da ürün numarasıyla sayma
+         (ekleme, sayıyı belirleme, sayımdan çıkarma), uygulama
+         ve iptal. Minimum stok: POST /erp/stock/minimums ile
+         toplu ayar. Geri alınamayan adımlar (irsaliye iptali,
+         sayımın uygulanması) önce X-Dry-Run ile denenebilir.
+         Yeni web kancası olayları: erp.waybill.cancelled ve
+         erp.stock_count.applied; ikisi de panelden yapılınca
+         da yayılır ve denetim izine düşer. erp:write yetkisi
+         gerekir.
 
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık

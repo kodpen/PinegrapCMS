@@ -208,9 +208,13 @@ function erp_waybill_lines_build($lines_in)
  *                     driver_tckn, ship_to_title, ship_to_address,
  *                     ship_to_district, ship_to_city, ship_to_state,
  *                     ship_to_country, notes
+ * @param bool  $account_required  false lets account_id 0 through, for a
+ *                                 note whose account is still to be opened
+ *                                 from the order's customer; an account
+ *                                 that is named has to exist either way
  * @return array ['header' => array, 'error' => string]
  */
-function erp_waybill_header_build($data)
+function erp_waybill_header_build($data, $account_required = true)
 {
     $fail = function ($message) {
         return array('header' => array(), 'error' => $message);
@@ -218,7 +222,7 @@ function erp_waybill_header_build($data)
 
     $account_id = (int) ($data['account_id'] ?? 0);
 
-    if (($account_id <= 0) || !is_array(erp_account($account_id))) {
+    if (($account_required || ($account_id > 0)) && (($account_id <= 0) || !is_array(erp_account($account_id)))) {
         return $fail(lang('Choose an account.'));
     }
 
@@ -543,11 +547,12 @@ function erp_waybill_write_back($waybill_id)
  * address; the carrier and the shipment date are what the invoice already
  * states, when it states them.
  *
- * @param int $invoice_id
- * @param int $created_by
+ * @param int  $invoice_id
+ * @param int  $created_by
+ * @param bool $open_account  See erp_waybill_data_from_order()
  * @return array ['success' => bool, 'data' => array, 'error' => string]
  */
-function erp_waybill_data_from_invoice($invoice_id, $created_by = 0)
+function erp_waybill_data_from_invoice($invoice_id, $created_by = 0, $open_account = true)
 {
     $invoice_id = (int) $invoice_id;
 
@@ -571,7 +576,7 @@ function erp_waybill_data_from_invoice($invoice_id, $created_by = 0)
     }
 
     if ((int) $invoice['order_id'] > 0) {
-        $from_order = erp_waybill_data_from_order((int) $invoice['order_id'], $created_by);
+        $from_order = erp_waybill_data_from_order((int) $invoice['order_id'], $created_by, $open_account);
 
         if ($from_order['success']) {
             $from_order['data']['invoice_id'] = $invoice_id;
@@ -650,11 +655,15 @@ function erp_waybills_for_invoice($invoice_id)
  * recorded when the goods left (today when nothing has left yet, which the
  * operator sees on the form and can correct).
  *
- * @param int $order_id
- * @param int $created_by  Who opens an account for the contact if it has none
+ * @param int  $order_id
+ * @param int  $created_by    Who opens an account for the contact if it has none
+ * @param bool $open_account  false reads without writing anything: a
+ *                            customer with no account yet answers
+ *                            account_id 0 where true would open one from
+ *                            the customer record
  * @return array ['success' => bool, 'data' => array, 'error' => string]
  */
-function erp_waybill_data_from_order($order_id, $created_by = 0)
+function erp_waybill_data_from_order($order_id, $created_by = 0, $open_account = true)
 {
     $order_id = (int) $order_id;
 
@@ -678,12 +687,18 @@ function erp_waybill_data_from_order($order_id, $created_by = 0)
         return $fail(lang('This order has no items.'));
     }
 
+    $contact_id = (int) $order['contact_id'];
     $account_id = (int) ($order['erp_account_id'] ?? 0);
-    if ($account_id <= 0) {
-        $account_id = erp_account_for_contact((int) $order['contact_id'], (int) $created_by, $order);
+    if (($account_id <= 0) && $open_account) {
+        $account_id = erp_account_for_contact($contact_id, (int) $created_by, $order);
+    } elseif (($account_id <= 0) && ($contact_id > 0)) {
+        $account_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
     }
-    if ($account_id <= 0) {
-        return $fail(((int) $order['contact_id'] > 0)
+    // Read without writing, a customer record that can still open the
+    // account is as good as the account.
+    $to_open = (!$open_account && ($account_id <= 0) && ($contact_id > 0) && (erp_account_data_from_contact($contact_id) !== null));
+    if (($account_id <= 0) && !$to_open) {
+        return $fail(($contact_id > 0)
             ? lang('The contact this order belongs to no longer exists, so there is no account to bill.')
             : lang('This order is not linked to a contact, so there is no account to bill.'));
     }
@@ -801,7 +816,42 @@ function erp_waybill_cancel($waybill_id)
         return array('success' => false, 'error' => erp_db_error());
     }
 
+    erp_event_waybill((int) $waybill['id'], 'erp.waybill.cancelled');
+
     return array('success' => true, 'error' => '');
+}
+
+/**
+ * The recipient of a note left empty is the account: the goods go to the
+ * customer at the address on its card. A typed address under an empty name
+ * keeps the address.
+ *
+ * @param array $data  See erp_waybill_header_build()
+ * @return array  $data with the recipient filled where it was empty
+ */
+function erp_waybill_ship_to_default($data)
+{
+    if (trim((string) ($data['ship_to_title'] ?? '')) !== '') {
+        return $data;
+    }
+
+    $account = erp_account((int) ($data['account_id'] ?? 0));
+
+    if (!is_array($account)) {
+        return $data;
+    }
+
+    $data['ship_to_title'] = (string) $account['title'];
+
+    if (trim((string) ($data['ship_to_address'] ?? '')) === '') {
+        $data['ship_to_address'] = (string) $account['address'];
+        $data['ship_to_district'] = (string) $account['district'];
+        $data['ship_to_city'] = (string) $account['city'];
+        $data['ship_to_state'] = (string) ($account['state'] ?? '');
+        $data['ship_to_country'] = (string) $account['country_code'];
+    }
+
+    return $data;
 }
 
 /**

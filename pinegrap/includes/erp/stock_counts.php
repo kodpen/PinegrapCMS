@@ -160,6 +160,31 @@ function erp_stock_count_scan($count_id, $code, $quantity = 1, $set = false)
         return $fail(lang(array('string' => 'No product carries the code {var:1}.', 'vars' => mb_substr(trim((string) $code), 0, 100))));
     }
 
+    return erp_stock_count_add($count_id, $product, $quantity, $set);
+}
+
+/**
+ * Add to a product's count, or set it: what a scan does once the code has
+ * been read, for a caller that already holds the product.
+ *
+ * @param int   $count_id
+ * @param array $product   products row: id, name, short_description, inventory
+ * @param int   $quantity  How many to add, or the count to set
+ * @param bool  $set       true sets the count to $quantity instead of adding
+ * @return array ['success' => bool, 'error' => string, 'product' => string, 'counted' => int]
+ */
+function erp_stock_count_add($count_id, $product, $quantity = 1, $set = false)
+{
+    $fail = function ($message) {
+        return array('success' => false, 'error' => $message, 'product' => '', 'counted' => 0);
+    };
+
+    $count = erp_stock_count($count_id);
+
+    if (($count === null) || ((string) $count['status'] !== 'open')) {
+        return $fail(lang('Only an open count can be changed.'));
+    }
+
     $name = (trim((string) ($product['short_description'] ?? '')) !== '') ? (string) $product['short_description'] : (string) $product['name'];
 
     if ((int) $product['inventory'] !== 1) {
@@ -298,6 +323,8 @@ function erp_stock_count_apply($count_id, $user_id)
             pg_marketplace_product_changed($product_id);
         }
     }
+
+    erp_event_stock_count((int) $count_id, $changed);
 
     return array('success' => true, 'error' => '', 'changed' => $changed, 'lines' => count($items));
 }
