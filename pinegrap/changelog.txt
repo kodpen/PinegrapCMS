@@ -294,6 +294,15 @@
   [GÜVENLİK] Panel ekranlarındaki İptal düğmesi, adresten
          gelen dönüş adresini betik olarak çalıştırmıyor.
 
+  [DÜZELTME] Yayınla yalnız gerçekten düzenlenen sayfaların
+         değişiklik zamanını ve "sayfa düzenlendi" kaydını
+         güncelliyor. Önceden ortak başlıkta yapılan tek bir
+         değişiklik, başlığı gösteren her sayfayı düzenlenmiş
+         sayıyordu: aktivite akışı değişmemiş sayfalarla
+         doluyor, site haritasında her sayfanın tarihi
+         değişiyordu. Başlık değişikliği yine bütün
+         sayfalarda görünür.
+
   SEO
   --------------------------------------------------------
 
