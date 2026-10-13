@@ -16,8 +16,10 @@ olduğunu `docs/degisiklikler.md` başındaki "Dağıtım durumu" söyler; o dos
 dışıdır (geliştirme makinasında durur) — erişemiyorsan **tahmin etme, sor**.
 
 2026-10-13 itibarıyla 2026.4.9 yayında ve kapalı (`includes/migrations/2026.4.9.php`
-dokunulmaz); **açık sürüm yok**. İlk şema adımını yazan yeni sürümü açar —
-numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin yapısını yeni
+dokunulmaz). **Açık sürüm 2026.4.10**: `versions.php` satırı ve changelog
+başlığı var, migration dosyası henüz yok — ilk şema adımını yazan
+`includes/migrations/2026.4.10.php` → `upgrade_to_2026_4_10()` dosyasını açar
+(alt adımlar `10.x`). Sonraki numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin yapısını yeni
 önekle korur (Çalışma Alanı .80–.89, ERP .58–.69 ve .90–, API .70–.79). Dosyayı
 ve `versions.php` satırını ilk şema adımını yazan açar; satır eklendiği an dev
 paneli yükseltme ekranına yönlenir, yükseltme hemen koşulur. Dosya açıldıktan

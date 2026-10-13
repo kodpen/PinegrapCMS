@@ -25,7 +25,7 @@ function test_update_versions_from_real_source()
 
 	pg_assert_same('2017.2', $versions[0], 'first version');
 	pg_assert_contains('2026', $versions, 'the 2026 entry');
-	pg_assert_same('2026.4.9', $versions[count($versions) - 1], 'last version');
+	pg_assert_same('2026.4.10', $versions[count($versions) - 1], 'last version');
 	pg_assert_same(count($versions), count(array_unique($versions)), 'each version once');
 	pg_assert_same($versions, pg_upgrade_versions_list(), 'the list of this installation');
 }

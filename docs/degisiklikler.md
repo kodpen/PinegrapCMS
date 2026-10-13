@@ -37,8 +37,11 @@ etkisizdir ve yerinde kalır. 2026.4.6 yayınında bu yüzden changelog'daki
 "Barındırılan site ve tanıtım sitesi" bölümü kaldırıldı, genel güvenlik
 maddeleri "Oturum, hesap ve güvenlik"e taşındı.
 
-**Açık sürüm: yok.** 2026.4.9 2026-10-13'te yayınlandı ve kapandı. Sonraki
-sürüm ilk şema adımı ya da changelog maddesiyle açılır: yeni
+**Açık sürüm: 2026.4.10** (2026-10-13'te ürün sahibinin isteğiyle açıldı:
+`versions.php` satırı ve `changelog.txt` başlığı; henüz şema adımı ve
+migration dosyası yok, ilk şema adımı `includes/migrations/2026.4.10.php`'yi
+açar, alt adımlar `10.x`). 2026.4.9 2026-10-13'te yayınlandı ve kapandı.
+Bir sürüm ilk şema adımı ya da changelog maddesiyle açılır: yeni
 `includes/migrations/<sürüm>.php` → `upgrade_to_<sürüm>()`, `versions.php`'ye
 satır, `changelog.txt`'de en üste yeni sürüm başlığı, bu dosyada
 `## <sürüm> — …` bölümleri; numara ürün sahibinindir. Alt adım etiketleri
@@ -81,7 +84,7 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
-## Sonraki sürüm (numara açılmadı) — Panel eylem tablosu tamamlandı: `api.php`'de `switch` ve muafiyet zinciri kalmadı (2026-10-13)
+## 2026.4.10 — Panel eylem tablosu tamamlandı: `api.php`'de `switch` ve muafiyet zinciri kalmadı (2026-10-13)
 
 Kullanıcıya görünen değişiklik yok; `changelog.txt`'ye madde girmez.
 
