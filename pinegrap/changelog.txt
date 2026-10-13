@@ -550,6 +550,27 @@
          Kimlik adresli uygulamalar için kayıtlı istemci
          tablosu genişler.
 
+  BAĞLI HESAPLAR
+  --------------------------------------------------------
+
+  [YENİ] Ayarlar › Bağlantılar › Bağlı hesaplar: site bir
+         Google ya da Microsoft hesabına bir kez, tarayıcıda
+         bağlanır ve sonra o hesap adına çalışabilir. Her
+         site sağlayıcının konsolunda kendi uygulamasını
+         kaydeder (ekran adımları ve yönlendirme adresini
+         gösterir); izin ekranında sitenin adı görünür.
+         İzinler sitenin şifreleme anahtarıyla şifreli
+         saklanır, süresi dolan erişim kendiliğinden
+         yenilenir; sağlayıcı izni geri alırsa hesap
+         "Yeniden bağla" durumuna düşer ve günlüğe yazılır.
+         Bağlantı Denetle ile denenir, Bağlantıyı kes ile
+         kaldırılır (Google'da izin de geri alınır).
+         Microsoft 365 ve Gmail ile posta gönderme gibi
+         özellikler bu bağlantıyı kullanacak.
+
+  [ŞEMA] Bağlı hesaplar için iki yeni tablo (sağlayıcı
+         uygulamaları ve bağlı hesaplar) eklenir.
+
   PANO
   --------------------------------------------------------
 
