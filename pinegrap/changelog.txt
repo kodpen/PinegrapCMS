@@ -243,6 +243,15 @@
          kayıtla ölçüyor. Önceden sayfa kayıtsız çizildiği için
          "H1 yok" ve "ince içerik" uyarıları alıyordu.
 
+  [DÜZELTME] Görsel editörde yapılan detay ve katalog
+         sayfaları, adresteki kayıt, ürün ya da kategori
+         yoksa 404 kodu ve noindex ile cevap veriyor
+         (/blog-yazisi/olmayan-kayit, ?r=…, ?pid=…,
+         /magaza/olmayan-kategori). Önceden "bulunamadı"
+         ekranı 200 koduyla geliyor, arama motorları onu
+         sayfanın adresine kanonik bağlıyordu. Ziyaretçi
+         aynı "bulunamadı" mesajını görür.
+
   ÜRÜNLER
   --------------------------------------------------------
 
