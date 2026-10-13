@@ -198,6 +198,17 @@
          etiketi yerine paragraf olarak ekliyor; sayfanın
          başlık sırası menüdeki "Menü" yazısıyla başlamıyor.
 
+  [YENİ] Bloklar sekmesinde 18 yeni hazır blok, üç yeni
+         grupla. Hizmetler ve Randevu: simgeli ve görselli
+         hizmet kartları, fiyat listesi, numaralı adımlar,
+         iki randevu bandı. Saatler ve Şubeler: çalışma
+         saatleri kartı, harita alanlı konum bölümü, şube
+         kartları. Yiyecek ve İçecek: sekmeli menü, iki
+         sütunlu menü, görselli menü kartları, boy fiyatlı
+         içecek panosu, günün önerisi. Ayrıca etkinlik
+         listesi, sayfa üstüne acil durum şeridi, profil
+         kartlı ekip ve puan özetli yorumlar.
+
   SEO
   --------------------------------------------------------
 
