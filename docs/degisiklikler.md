@@ -136,6 +136,35 @@ düşürmesi `reauth` olarak görünür.
 
 ---
 
+## 2026.4.10 — Tek dilli sitede sayfanın dili: büyük harfte Türkçe İ (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 6. maddesi: "Tasarımın dili `en`
+olarak ayarlı ama metinler Türkçe; büyük harfe çevrilen metin MÜŞTERI
+görünüyor."
+
+**Neden.** `generate_style_code_from_tree()` kaydedilen gövdeye sabit
+`<html lang="en">` yazıyor. Bunu sitenin diline çeviren adım
+(`pg_tr_render_finalize()`) yalnız sitede hedef dil varken çalışıyordu; tek
+dilli sitede sayfa "en" kalıyordu. Tarayıcı `text-transform: uppercase`'i
+(Bootstrap `.text-uppercase`) sayfanın diline göre uyguluyor: "en"de
+i → I, "tr"de i → İ.
+
+**Düzeltme** (`includes/fn/translate.php`, `pg_tr_finalize()`). Hedef dilde
+çizilmeyen her sayfada, kaynak dil (`pg_tr_source_language()`: Diller ve
+Çeviri'deki kaynak dil, boşsa panel dili) "en" değilse, `<html>`'deki `lang`
+eksikse ya da "en" ise kaynak dile çevriliyor. Stile elle yazılmış başka bir
+dil (`lang="de"`) korunuyor. Dili olan sitelerde mevcut dil adımı her
+sayfanın dilini zaten yazıyor; sonuç değişmiyor.
+
+**Doğrulama (sandbox, kaynak dil boş, panel dili tr, hedef dil yok).**
+Öncesi `/hakkimizda` `<html lang="en">`, Chromium'da `text-transform:
+uppercase` "Müşteri Hizmetleri, İletişim, ılık" → "MÜŞTERI HIZMETLERI,
+İLETIŞIM, ILIK". Sonrası `<html lang="tr">` → "MÜŞTERİ HİZMETLERİ, İLETİŞİM,
+ILIK". `/anasayfa`, `/magaza` de `lang="tr"`. `php tools/test.php` geçti.
+dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Görsel editör: özellikler panelindeki değişiklik kendi geri alma adımını açıyor (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 1. maddesi: link adresi seçiciyle ya
