@@ -84,6 +84,64 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: klasik blog adresi, yeni sekmeye verilen sayfa, katalog sepete ekle ve hedef sayfa, sayfa adı çakışması (2026-10-13)
+
+**Kaynak.** Güzel URL düzeltmesinden (aşağıda, PR #251) sonra görsel
+editörün komşu alanlarında yapılan hata taraması. Beş hata, her biri ayrı
+commit.
+
+- **Klasik blog adresleri 404 (2026.4.9'da da var).** `layout_type`
+  klasik sayfanın da varsayılanı `'system'`. `get_page.php`'nin system
+  bloğu `/X/<segment>`'i X'e çevirip segmenti atıyordu; düzeni `system`
+  olan klasik form liste görünümünde `/blog/<adres adı>` bu yüzden
+  kaydı bulamıyor, adres 404 dönüyordu (düzeni `custom` olan sayfa
+  etkilenmiyordu). System bloğu artık `page_type = 'form list view'`
+  sayfayı kendi durumuna bırakıyor, o da segmentten adı okuyor.
+- **Yeni sekmeye verilen detay sayfası kaydedilmiyordu.** Widget ayarı
+  (`_patchSysCfg`) sunucuya hemen yazılıyor, değişmeyen sayfa ise kayıtta
+  ağacı olmadan (`unchanged: 1`) gidiyor. `pg_designer_resolve_tab_refs()`
+  `tab:<anahtar>`'ı yalnız gönderilen ağaçlardaki widget'larda çözüyordu;
+  liste sayfası değişmemişse ayar `tab:…` olarak kalıyor, link hiçbir
+  sayfaya gitmiyordu. Değişmeyen sayfanın ağacı artık veritabanından
+  okunuyor; ayarında `tab:` geçen widget yoksa hiç okunmuyor.
+- **Katalog listesinde kart üzerindeki "Sepete Ekle" ana sayfaya atıyordu.**
+  Sepet sayfası seçilmemişse form `next_page_id = 0` gönderiyor,
+  `catalog_detail.php` sonraki sayfayı `catalog_detail_pages`'te arıyordu;
+  editör sayfasının orada satırı yok, ziyaretçi ana sayfaya gidiyor, logda
+  PHP uyarısı kalıyordu. Kart artık ürün detayı widget'ı gibi listeye
+  bildirimle (`?cart_added=`) dönüyor; `catalog_detail.php` satır yoksa
+  sonraki sayfa yok sayıyor.
+- **Katalogda "Grup gezinmesi → Hedef sayfa" hiç çalışmıyordu.** Ayar
+  kaydediliyor ama okunmuyordu: içerik haritası, grup ağacı ve grup kartları
+  yalnız `drill_down` için kuruluyordu; bu kipte grup görünmüyor, kökünde
+  ürün olmayan katalog boş görünüyordu. Grup linkleri artık
+  `/<hedef sayfa>/<grup>`'a gidiyor; editör kataloğu da klasik katalog
+  sayfası da grubu bu adresten alıyor. Hedef seçilmemiş ya da silinmişse
+  drill-down'a düşülür. Hedef seçici yalnız klasik katalog sayfalarını
+  listeliyordu; artık katalog listesi widget'ı olan editör sayfalarını da
+  listeliyor (ürün detayı widget'ının katalog seçicisiyle aynı liste,
+  `list_catalog_listing_pages`; JS'teki `_fetchCatalogPages()` kalktı).
+- **Sayfa adı dosya, kısa link ya da kök klasörle çakışabiliyordu.** Editör
+  kaydı yalnız diğer sayfalara bakıyordu; klasik sayfa ekranları
+  (`check_name_availability()`) dosyalara, kısa linklere, site kökündeki
+  dosya ve klasörlere, `sitemap.xml` / `robots.txt`'ye de bakar. Böyle
+  adlandırılan editör sayfası hiç görünmüyordu (`/pinegrap` yönetim
+  klasörünü açar). Yeni `pg_designer_page_name_taken_elsewhere()` ad
+  verilirken ya da değişirken çalışır; bu adı zaten taşıyan sayfa
+  kaydedilmeye devam eder. `check_name_availability()` kullanılmadı: site
+  kökünü çalışma dizininden `'../'` diye okur, MCP sunucusundan gelen
+  kayıtta çalışma dizini yazılım klasörü değildir.
+
+**Yapılmayanlar.** Taramada çıkan iki küçük nokta bırakıldı: CKEditor'ün
+link seçicisi sayfa adresini kodlamadan basıyor (Türkçe karakter
+tarayıcıda çalışıyor; `#`/`?` içeren ad nadir) ve tasarımcı sayfa
+seçicileri (`list_all_pages` ve diğerleri) Geri Dönüşüm Kutusu'ndaki
+sayfaları da listeliyor (seçili sayfa listeden düşerse seçici "seçilmedi"
+gösterir, ayrı karar ister). Sandbox'ta doğrulandı (hello-pinegrap
+tasarımı, editör için Playwright); dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Dış API: OAuth'la bağlanan uygulamalar panelde (operatör kapatır/kaldırır, kişi kendi bağlantılarını sonlandırır) (2026-10-13)
 
 **Neden.** Faz A'dan beri kişi bir bağlantıyı ancak parolasını
