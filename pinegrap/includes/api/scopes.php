@@ -55,6 +55,12 @@ function api_scope_groups() {
 
 		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => 'offers:write'),
 
+		// A gift card's code is spendable money, so it is not read under
+		// orders: an integration reporting sales has no business holding the
+		// codes. Writing issues a card, changes its balance or expiry, or
+		// removes it.
+		'gift_cards' => array('label' => 'Gift Cards', 'read' => 'gift_cards:read', 'write' => 'gift_cards:write'),
+
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
 		// Writing is an event's words, times, calendars and publishing. Its
@@ -233,6 +239,10 @@ function api_owner_scopes($owner) {
 		$scopes[] = 'orders:write';
 		$scopes[] = 'offers:read';
 		$scopes[] = 'offers:write';
+
+		// The gift cards screen opens to the same people.
+		$scopes[] = 'gift_cards:read';
+		$scopes[] = 'gift_cards:write';
 
 	}
 
