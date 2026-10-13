@@ -20302,5 +20302,6 @@
     "All log entries": "Tüm günlük kayıtları",
     "Awaiting approval": "Onay bekliyor",
     "{var:1} today": "Bugün {var:1}",
-    "{var:1} recipient{suffix:1}": "{var:1} alıcı"
+    "{var:1} recipient{suffix:1}": "{var:1} alıcı",
+    "(deleted)": "(silinmiş)"
 }
