@@ -906,45 +906,7 @@ function erp_api_orders_invoice($params)
         api_fail(409, 'order_already_invoiced', lang('This order has already been invoiced.'));
     }
 
-    if (!in_array((string) $order['status'], erp_order_billable_statuses(), true)) {
-        api_fail_validation(lang('An order is invoiced once it is complete.'), 'order_id');
-    }
-
-    // What erp_invoice_from_order() refuses before it writes, asked here so
-    // a rehearsal meets it too. The account itself is only opened by the
-    // call, from the customer record, which has to be there.
-    $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
-        FROM order_items
-        LEFT JOIN products ON order_items.product_id = products.id
-        WHERE order_items.order_id = '" . (int) $order['id'] . "' AND order_items.saved_for_later = 0
-        ORDER BY order_items.id ASC");
-
-    if (empty($items)) {
-        api_fail_validation(lang('This order has no items.'), 'order_id');
-    }
-
-    if (((int) ($order['erp_account_id'] ?? 0) <= 0)
-        && ((int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . (int) $order['contact_id'] . "' AND contact_id > 0 LIMIT 1") <= 0)
-        && (((int) $order['contact_id'] <= 0) || (erp_account_data_from_contact((int) $order['contact_id']) === null))) {
-        api_fail_validation(((int) $order['contact_id'] > 0)
-            ? lang('The contact this order belongs to no longer exists, so there is no account to bill.')
-            : lang('This order is not linked to a contact, so there is no account to bill.'), 'order_id');
-    }
-
-    $built = erp_order_lines($order, $items);
-    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
-
-    if ((int) $built['totals']['grand_total'] !== $expected) {
-        api_fail_validation(lang(array(
-            'string' => 'The invoice total ({var:1}) does not match the order total ({var:2}). The invoice was not created.',
-            'vars' => array(erp_money_out($built['totals']['grand_total']), erp_money_out($expected)),
-        )), 'order_id');
-    }
-
-    if (($refusal = erp_lock_refusal(date('Y-m-d'))) !== '') {
-        api_fail(422, 'period_locked', $refusal, 'order_id');
-    }
+    erp_api_order_invoice_check($order, 'order_id');
 
     api_dry_run_stop('created', 'erp_invoice', array('order_id' => (int) $order['id'], 'issue_date' => date('Y-m-d')));
 
@@ -960,6 +922,56 @@ function erp_api_orders_invoice($params)
     )));
 
     erp_api_invoice_answer((int) $made['invoice_id'], 201);
+}
+
+/**
+ * What erp_invoice_from_order() refuses before it writes, asked first so a
+ * rehearsal meets it too, and answered 422 at $field. The account itself is
+ * only opened by the call, from the customer record, which has to be there.
+ *
+ * @param array       $order  The orders row
+ * @param string|null $field  The parameter the order came in, null when the
+ *                            route named something else (a delivery note)
+ * @return void
+ */
+function erp_api_order_invoice_check($order, $field = null)
+{
+    if (!in_array((string) $order['status'], erp_order_billable_statuses(), true)) {
+        api_fail_validation(lang('An order is invoiced once it is complete.'), $field);
+    }
+
+    $items = (array) db_items("SELECT order_items.*, products.short_description,
+            products.tax_rate AS product_tax_rate
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = '" . (int) $order['id'] . "' AND order_items.saved_for_later = 0
+        ORDER BY order_items.id ASC");
+
+    if (empty($items)) {
+        api_fail_validation(lang('This order has no items.'), $field);
+    }
+
+    if (((int) ($order['erp_account_id'] ?? 0) <= 0)
+        && ((int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . (int) $order['contact_id'] . "' AND contact_id > 0 LIMIT 1") <= 0)
+        && (((int) $order['contact_id'] <= 0) || (erp_account_data_from_contact((int) $order['contact_id']) === null))) {
+        api_fail_validation(((int) $order['contact_id'] > 0)
+            ? lang('The contact this order belongs to no longer exists, so there is no account to bill.')
+            : lang('This order is not linked to a contact, so there is no account to bill.'), $field);
+    }
+
+    $built = erp_order_lines($order, $items);
+    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
+
+    if ((int) $built['totals']['grand_total'] !== $expected) {
+        api_fail_validation(lang(array(
+            'string' => 'The invoice total ({var:1}) does not match the order total ({var:2}). The invoice was not created.',
+            'vars' => array(erp_money_out($built['totals']['grand_total']), erp_money_out($expected)),
+        )), $field);
+    }
+
+    if (($refusal = erp_lock_refusal(date('Y-m-d'))) !== '') {
+        api_fail(422, 'period_locked', $refusal, $field);
+    }
 }
 
 /* ---------------------------------------------------------------------------

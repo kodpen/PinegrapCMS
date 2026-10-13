@@ -1681,7 +1681,19 @@ function erp_api_waybills_list($params)
 
 function erp_api_waybills_get($params)
 {
-    $row = db_item(erp_api_waybill_select() . " WHERE w.id = '" . (int) $params['id'] . "' AND w.status <> 'draft' LIMIT 1");
+    erp_api_waybill_answer((int) $params['id']);
+}
+
+/**
+ * Answer with one delivery note, or a 404.
+ *
+ * @param int $waybill_id
+ * @param int $status  200, or 201 for a note just written
+ * @return void
+ */
+function erp_api_waybill_answer($waybill_id, $status = 200)
+{
+    $row = db_item(erp_api_waybill_select() . " WHERE w.id = '" . (int) $waybill_id . "' AND w.status <> 'draft' LIMIT 1");
 
     if (!is_array($row)) {
         api_fail_not_found(lang('Delivery Note'));
@@ -1689,7 +1701,7 @@ function erp_api_waybills_get($params)
 
     $lines = erp_api_waybill_lines(array((int) $row['id']));
 
-    api_ok(erp_api_waybill_present($row, $lines[(int) $row['id']] ?? array()));
+    api_ok(erp_api_waybill_present($row, $lines[(int) $row['id']] ?? array()), $status);
 }
 
 function erp_api_waybills_document($params)
@@ -3183,7 +3195,19 @@ function erp_api_stock_counts_get($params)
 {
     erp_api_stock_counts_ready();
 
-    $count = erp_stock_count((int) $params['id']);
+    erp_api_stock_count_answer((int) $params['id']);
+}
+
+/**
+ * Answer with one stock count and its lines, or a 404.
+ *
+ * @param int $count_id
+ * @param int $status  200, or 201 for a count just started
+ * @return void
+ */
+function erp_api_stock_count_answer($count_id, $status = 200)
+{
+    $count = erp_stock_count((int) $count_id);
 
     if ($count === null) {
         api_fail_not_found(lang('Stock count'));
@@ -3196,7 +3220,7 @@ function erp_api_stock_counts_get($params)
         $items[] = erp_api_stock_count_item_present($row, $applied);
     }
 
-    api_ok(erp_api_stock_count_present($count, count($items), $items));
+    api_ok(erp_api_stock_count_present($count, count($items), $items), $status);
 }
 
 /* ---------------------------------------------------------------------------

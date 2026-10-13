@@ -162,7 +162,7 @@ function erp_audit_event($event, $payload)
     } elseif ($type === 'receipt') {
         $label = '#' . (int) ($payload['id'] ?? 0);
         $amount = (int) ($payload['amount'] ?? 0);
-    } elseif ($type === 'account') {
+    } elseif (($type === 'account') || ($type === 'stock_count')) {
         $label = (string) ($payload['title'] ?? '');
     } elseif ($type === 'expense') {
         $label = trim((string) ($payload['supplier'] ?? '') . ((trim((string) ($payload['document_no'] ?? '')) !== '') ? ' · ' . $payload['document_no'] : ''));
@@ -235,6 +235,7 @@ function erp_audit_object_types()
         'expense' => array(lang('Expenses'), 'edit_erp_expense.php?id='),
         'quote' => array(lang('Quotes'), 'edit_erp_quote.php?id='),
         'purchase_order' => array(lang('Purchase orders'), 'edit_erp_purchase_order.php?id='),
+        'stock_count' => array(lang('Stock counts'), 'erp_stock_count.php?id='),
     );
 }
 
@@ -262,6 +263,7 @@ function erp_audit_event_text($row)
         'erp.receipt.cancelled' => lang('Receipt cancelled'),
         'erp.account.created' => lang('Account opened'),
         'erp.waybill.created' => lang('Delivery note issued'),
+        'erp.waybill.cancelled' => lang('Delivery note cancelled'),
         'erp.expense.created' => lang('Expense recorded'),
         'erp.expense.paid' => lang('Expense paid'),
         'erp.expense.cancelled' => lang('Expense cancelled'),
@@ -277,6 +279,7 @@ function erp_audit_event_text($row)
         'erp.purchase_order.received' => lang('Purchase order received in full'),
         'erp.purchase_order.cancelled' => lang('Purchase order cancelled'),
         'erp.purchase_order.reopened' => lang('Purchase order opened again'),
+        'erp.stock_count.applied' => lang('Stock count applied'),
     );
 
     return $texts[$event] ?? $event;
