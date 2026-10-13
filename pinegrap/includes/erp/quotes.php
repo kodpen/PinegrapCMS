@@ -327,6 +327,37 @@ function erp_quote_save($data, $quote_id, $user_id)
 }
 
 /**
+ * Why a quote cannot be moved to a status by hand, or '' when it can.
+ *
+ * Pure: the external API asks it before anything is written, and
+ * erp_quote_set_status() asks it for the screen's buttons.
+ *
+ * @param array  $quote  From erp_quote()
+ * @param string $to     open | accepted | rejected | cancelled
+ * @return string
+ */
+function erp_quote_status_refusal($quote, $to)
+{
+    $state = erp_quote_state($quote);
+    $allowed = array(
+        'open' => array('accepted', 'rejected', 'cancelled'),
+        'expired' => array('open', 'accepted', 'rejected', 'cancelled'),
+        'accepted' => array('open', 'rejected', 'cancelled'),
+        'rejected' => array('open'),
+        'cancelled' => array('open'),
+        'invoiced' => array(),
+    );
+
+    if (in_array((string) $to, $allowed[$state] ?? array(), true)) {
+        return '';
+    }
+
+    return ($state === 'invoiced')
+        ? lang('The quote has become an invoice; the invoice is where it goes on from here.')
+        : lang('The quote cannot be moved to that status.');
+}
+
+/**
  * Move a quote to another status by hand.
  *
  * @param int    $quote_id
@@ -342,20 +373,10 @@ function erp_quote_set_status($quote_id, $to, $user_id)
         return array('success' => false, 'error' => lang('The quote could not be found.'));
     }
 
-    $state = erp_quote_state($quote);
-    $allowed = array(
-        'open' => array('accepted', 'rejected', 'cancelled'),
-        'expired' => array('open', 'accepted', 'rejected', 'cancelled'),
-        'accepted' => array('open', 'rejected', 'cancelled'),
-        'rejected' => array('open'),
-        'cancelled' => array('open'),
-        'invoiced' => array(),
-    );
+    $refusal = erp_quote_status_refusal($quote, $to);
 
-    if (!in_array((string) $to, $allowed[$state] ?? array(), true)) {
-        return array('success' => false, 'error' => ($state === 'invoiced')
-            ? lang('The quote has become an invoice; the invoice is where it goes on from here.')
-            : lang('The quote cannot be moved to that status.'));
+    if ($refusal !== '') {
+        return array('success' => false, 'error' => $refusal);
     }
 
     // Opening an expired quote again gives it the usual run from today.
