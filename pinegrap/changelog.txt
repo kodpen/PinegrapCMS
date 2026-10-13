@@ -303,6 +303,32 @@
          değişiyordu. Başlık değişikliği yine bütün
          sayfalarda görünür.
 
+  [YENİ] Kafe şablonu (kurumsal kafe sitesi). Menü,
+         şubeler ve çalışma saatleri, kurumsal catering
+         paketleri, etkinlikler ve atölyeler, kariyer, blog,
+         iletişim ve bülten. Menüdeki her yemek bir kayıt:
+         kategori sekmelerinde fiyatı, beslenme etiketleri,
+         rozeti ve fotoğrafıyla listelenir; seçilenler ana
+         sayfada favori olarak görünür. Masa rezervasyonu ve
+         catering teklifi kendi sayfasını açar, misafire
+         hesap açılır, altına yazışma gelir; Rezervasyonlarım
+         ve Catering Taleplerim'de durumuyla listelenir.
+         Personel Alanı'nda yaklaşan rezervasyonlar ve yeni
+         catering talepleri; personel durumu "Durumu
+         Değiştir" ile günceller. İş başvurusu özgeçmişi
+         özel klasöre yükler. Hesap sayfaları, gelen kutusu,
+         personel rehberi ve on e-posta sayfası dahil.
+
+  [YENİ] Bloklar sekmesinde altı yeni hazır blok: menü
+         beslenme anahtarı, kavrum dereceli kahve kökenleri,
+         öne çıkan paketli catering paketleri, damga kartlı
+         kahve kulübü, tarih yapraklı etkinlik kartları ve
+         kapatılabilir duyuru şeridi.
+
+  [DÜZELTME] Şablonla gelen örnek kayıtlarda onay kutusu
+         grubu (birden çok seçilebilen alan) artık dolu
+         geliyor; önceden boş kalıyordu.
+
   SEO
   --------------------------------------------------------
 

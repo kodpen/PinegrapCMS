@@ -5897,7 +5897,7 @@ function pg_design_templates()
     foreach ($files ? $files : array() as $file) {
         $id = basename($file, '.php');
         if (!preg_match('/^[a-z0-9-]{1,64}$/', $id)) continue;
-        $tpl = include $file;
+        $tpl = _pg_tpl_include($file);
         if (!is_array($tpl) || empty($tpl['pages']) || !is_array($tpl['pages'])) continue;
         // A template made for a feature the site does not use (a store
         // without the shop) is not offered at all.
@@ -5917,6 +5917,13 @@ function pg_design_templates()
         return (isset($a['order']) ? (int)$a['order'] : 100) - (isset($b['order']) ? (int)$b['order'] : 100);
     });
     return $templates;
+}
+
+// Runs a template file in a scope of its own: the variables it sets while
+// building its pages (an $id in a loop) cannot overwrite the list above.
+function _pg_tpl_include($file)
+{
+    return include $file;
 }
 
 // One template, or null.

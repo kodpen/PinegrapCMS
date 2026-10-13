@@ -84,6 +84,124 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kafe şablonu: menü, şubeler, kurumsal catering, masa rezervasyonu, etkinlikler, kariyer ve hesaplar; altı yeni blok (2026-10-13)
+
+**Neden.** Ürün sahibi klinik şablonuyla birlikte "kurumsal bir cafe sitesi
+olsun, menü özellikleri vs. olan" ve "bu 2 şablon için yeni bootstrap 5
+bileşenleri eklensin, tam donanımlı tasarımlar olacak" dedi. Klinik (#292)
+ve 18 blok (#276) birleşti; bu PR kafe şablonu ve onun için eksik kalan
+altı blok.
+
+**Nasıl.** `includes/design_templates/pinegrap-cafe.php` klinik şablonunun
+yapısını izler: aynı düğüm kurucuları, ortak parçalar, sistem widget'ları ve
+kurulumda editörün ürettiği başlangıç düzenleri (`'tree' => 'starter'`).
+
+- Menü bir özel formdur ("Menü"): her yemek bir kayıt — kategori, ad,
+  açıklama, fiyat, beslenme etiketleri (onay kutusu grubu, bir yemek
+  birkaçını taşır), rozet, "Ana sayfada göster" ve fotoğraf. Menü
+  sayfasının sekmeleri (Bootstrap `nav-pills`) kategori başına süzülmüş
+  birer liste widget'ı taşır; ana sayfadaki favoriler "Ana sayfada göster"
+  = Evet süzgeciyle en fazla dört yemek. Personel "Menüye Ekle" sayfasından
+  yemek ekler; kayıtları panelde düzenler ya da siler. Şablon 24 örnek
+  yemekle kurulur.
+- Masa rezervasyonu ve catering teklifi klinikteki randevu düzenindedir:
+  form kaydı kendi sayfasını açar (`form_item_view`, yalnız gönderen ve
+  personel), altına yazışma gelir, otomatik kayıt misafire hesap açar.
+  Durum yalnız personelin gördüğü bir seçim listesidir (`office_use_only`;
+  rezervasyon: Talep edildi / Onaylandı / Tamamlandı / İptal; catering:
+  Talep alındı / Teklif gönderildi / Onaylandı / Tamamlandı / İptal).
+  Rezervasyonlarım ve Catering Taleplerim gönderen / izleyen / düzenleyen
+  süzgeciyle gelir; Personel Alanı bugünden itibaren rezervasyonları tarih
+  ve saat sırasıyla, en yeni beş catering talebini listeler.
+- Etkinlikler bir formdur ("Etkinlik Takvimi") ve `event_date` ≥ `current
+  date` süzgeciyle en yakını önce listelenir. Altı örnek etkinliğin tarihi
+  kurulum gününe göre hesaplanır (3–20 gün sonrası): şablon hangi gün
+  kurulursa kurulsun etkinlik sayfası ve ana sayfa dolu açılır.
+- Kariyer: "İş Başvuruları" formu; özgeçmiş özel klasöre yüklenir, kayıt
+  sayfası yoktur, durum Yeni / Görüşme / İşe alındı / Bu sefer olmadı.
+  Açık pozisyonlar bir akordeondur, her biri site aramasında kendi
+  sonucudur.
+- Görünüm `organic`, palet `cocoa`; küçük resim `_pg_design_thumb_cafe()`
+  (`includes/fn/design_themes.php`). Varsayılan olarak güzel adresler
+  kapalı.
+
+**Ne değişti.** 46 sayfa ve 52 widget:
+
+- Ana sayfa (saatler kartlı hero, hızlı eylemler, favoriler, bu mevsimin
+  kahvesi, rakamlar, şubeler, kahve kulübü damga kartı, catering tanıtımı,
+  yaklaşan etkinlikler, yorumlar, son yazılar), Menü (beslenme anahtarı,
+  beş sekme, kahve kökenleri), Şubelerimiz (üç kafe, saat tablosu, yol
+  tarifi bağlantısı), Kurumsal ve Catering (hizmetler, kişi başı fiyatlı
+  üç paket, nasıl çalışır, teklif formu, SSS), Etkinlikler ve Atölyeler
+  (özel etkinlik bölümüyle), Hakkımızda (hikâye, kavurma atölyesi, ekip,
+  sürdürülebilirlik, kariyer bandı), Kariyer, İletişim (konu seçimli
+  görüşme), Bülten, Blog (dört örnek yazı), Masa Ayırt, rezervasyon ve
+  catering talebi sayfaları, Rezervasyonlarım, Catering Taleplerim,
+  Yardım Merkezi, 404.
+- Hesap: giriş, kayıt, şifremi unuttum, şifre belirle, çıkış, Hesabım,
+  profil, şifre değiştir, e-posta tercihleri, adres defteri (yalnız
+  e-ticaret açıksa), gelen kutusu, görüşme, personel rehberi.
+- Personel (özel klasör): Personel Alanı (yaklaşan rezervasyonlar, yeni
+  catering talepleri, sekiz kısayol), Menüye Ekle, Yeni Etkinlik, Yeni Blog
+  Yazısı, Personel Rehberine Ekle.
+- On e-posta sayfası: rezervasyon, catering talebi ve iş başvurusu için
+  birer "yeni" (personele) ve "alındı" (gönderene); yeni mesaj, mesajınız
+  alındı, yeni yanıt, bülten hoş geldin.
+- `tr.json`'a 716 anahtar; Türkçe örnek fiyatlar TL'dir (ör. `$4.80` →
+  `₺170`), sayfa adları Türkçe (`menumuz`, `subelerimiz`,
+  `kurumsal-catering`, `masa-ayirt`, `rezervasyonlarim`,
+  `catering-taleplerim`). Şablonda geçen ama kafede başka anlama gelen
+  mevcut çeviriler (Time → Zaman, Apply → Uygula, Service → Servis,
+  Events → Olaylar…) için yeni, bağlama uygun anahtarlar kullanıldı.
+
+**Yeni bloklar (`assets/js/style_designer.js`).** Paletin Bloklar
+sekmesine altı blok: Menü: Beslenme Anahtarı, Menü: Kahve Kökenleri
+(kavrum derecesi çubuğuyla), Catering: Paketler (öne çıkan paketle),
+Sadakat: Damga Kartı (on damga, onuncusu hediye), Etkinlikler: Kartlar
+(tarih yaprağıyla) ve Bildirim: Duyuru (kapatılabilir şerit). Metinler
+`_sdT()` ile çevrilir.
+
+**Düzeltmeler (çekirdek).**
+
+- `_pg_cf_seed_given_records()` (`includes/fn/custom_form.php`) bir
+  şablonun örnek kayıtlarında değer listesini atlıyordu; onay kutusu
+  grubu (beslenme etiketleri) boş kalıyordu. Liste artık değer başına bir
+  `form_data` satırı yazar — süzgeçler ve kayıt düzenleme ekranı alanı
+  böyle okur. Sınır 12'den 24 kayda çıktı (kafe menüsü). Değerleri seçen
+  kısım `_pg_cf_seed_record_values()` oldu;
+  `tests/custom_form_seed_test.php`.
+- `pg_design_templates()` (`includes/fn/designer.php`) şablon dosyalarını
+  kendi değişkenleriyle aynı kapsamda `include` ediyordu: sayfalarını
+  kurarken `$id` adlı bir değişken kullanan şablon listenin anahtarını
+  eziyor, galeride görünmüyordu ("Şablon bulunamadı"). Dosya artık kendi
+  kapsamında yüklenir (`_pg_tpl_include()`).
+
+**Bilerek yapılmayan.** Masa doluluğu denetlenmez: misafir bir saat ister,
+personel e-postayla onaylar ve durumu günceller. Menü bir e-ticaret
+kataloğu değildir; sepet ve çevrimiçi sipariş yok. Damga kartı bir
+tanıtım bloğudur, hesaba bağlı sayaç tutmaz. Catering teklifi ERP
+teklifine bağlanmadı; personel isterse ERP'de ayrıca teklif hazırlar.
+
+**Doğrulama.** `tools/lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php`, `check_copies.php`, `test.php`, `build_js.php
+--check` temiz. Şablon deneme sitesine (`tools/setup_sandbox.sh`, Türkçe)
+editörün başlangıç düzenleriyle kuruldu, uyarı yok; 24 yemek beş sekmeye
+doğru dağıldı (6 / 4 / 5 / 4 / 5), beslenme etiketleri değer başına satır
+olarak yazıldı, altı etkinlik ve dört blog yazısı geldi. Sayfalar
+Bootstrap 5.3.8 ile 1280 ve 390 piksel genişlikte çekildi, yatay kaydırma
+ve JS hatası yok. Ziyaretçi olarak masa ayırtıldı: hesap açıldı, kayıt
+sayfası "Talep edildi" ile açıldı; aynı oturumda catering teklifi istendi
+(kişi bilgileri dolu geldi), kayıt "Talep alındı" ile açıldı; ikisi
+Rezervasyonlarım'da, Catering Taleplerim'de ve Personel Alanı'nda
+listelendi. İş başvurusu özgeçmişle gönderildi: kayıt "Yeni" durumunda,
+dosya özel klasörde. Yeni rezervasyon ve catering talebiniz alındı
+e-postaları kayıtla doldu.
+
+**Doğrulanamayan.** E-postaların gerçekten gönderilmesi (deneme sitesinde
+posta yok) ve görsellerin yüklenmesi (dış adresler kapalı) denenmedi.
+
+---
+
 ## 2026.4.10 — Bağlı hesaplar: Dropbox'a hazırlık (2026-10-13)
 
 **Neden.** Buluta yedek senaryosu (`docs/_plan_tersine_oauth.md` §4.4)

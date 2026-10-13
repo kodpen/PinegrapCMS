@@ -13256,7 +13256,9 @@ const StyleDesigner = (function () {
                                      'steps-numbered', 'booking-cta', 'booking-split',
                                      'hours-card', 'hours-location', 'locations-cards',
                                      'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
-                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings'];
+                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
+                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'events-cards', 'notice-promo'];
                 var _ct = (dragData.extra || {}).componentType || '';
                 if (_noWrapCtypes.indexOf(_ct) === -1) {
                     n = createNode('container', { fluid: false, cssClass: '' }, [n]);
@@ -16091,7 +16093,7 @@ const StyleDesigner = (function () {
                 // branches, menus, events, an urgent notice, profile cards and
                 // a rating summary. Bootstrap utilities only, so a block looks
                 // the same in any design. One family, one set of helpers.
-                if (/^(services|booking|steps|hours|locations|menu|events|notice)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
+                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
                     var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
                     var _bkDiv = function (cls, name, kids, attrs) {
                         var p = { tag: 'div', cssClass: cls, customName: name };
@@ -16709,6 +16711,201 @@ const StyleDesigner = (function () {
                                     ])
                                 ], '9')
                             ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Menu: Diet Key — what the menu's diet tags mean, and where to ask about allergens
+                    if (ctype === 'menu-legend') {
+                        var _mgTag = function (icon, text, tone) {
+                            return _bkTag('li', '', text, [
+                                _bkDiv('badge rounded-pill d-inline-flex align-items-center gap-1 bg-' + tone + '-subtle text-' + tone + '-emphasis', _sdT('Diet Tag'), [
+                                    _bkIcon(icon),
+                                    _bkH('span', text)
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-4', _sdT('Menu (Diet Key)'), [
+                            _bkDiv('d-flex flex-column flex-lg-row align-items-lg-center gap-3 p-4 rounded-4 bg-body-tertiary', _sdT('Diet Key'), [
+                                _bkH('h2', _sdT('Good to know'), 'h6 fw-bold flex-shrink-0 mb-0'),
+                                _bkTag('ul', 'list-unstyled d-flex flex-wrap gap-2 flex-grow-1 mb-0', _sdT('Diet Tags'), [
+                                    _mgTag('bi-leaf', _sdT('Vegetarian'), 'success'),
+                                    _mgTag('bi-flower1', _sdT('Vegan'), 'success'),
+                                    _mgTag('bi-slash-circle', _sdT('Gluten free'), 'info'),
+                                    _mgTag('bi-exclamation-triangle', _sdT('Contains nuts'), 'warning'),
+                                    _mgTag('bi-fire', _sdT('Spicy'), 'danger')
+                                ]),
+                                _bkP(_sdT('Allergies? Every dish has its allergen list at the counter; just ask.'), 'small text-body-secondary mb-0')
+                            ])
+                        ]);
+                    }
+
+                    // Menu: Coffee Origins — three bean cards, origin badge, process and altitude, tasting notes and a roast bar
+                    if (ctype === 'menu-origins') {
+                        var _moCard = function (n, country, region, meta, notes, roast, level, width) {
+                            return _bkCol(_sdT('Origin {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm', _sdT('Origin Card'), [
+                                    _bkDiv('card-body p-4', _sdT('Origin Body'), [
+                                        _bkDiv('d-flex align-items-start justify-content-between gap-2 mb-3', _sdT('Origin Head'), [
+                                            _bkH('span', country, 'badge rounded-pill bg-primary-subtle text-primary-emphasis'),
+                                            _bkIcon('bi-globe-americas', 'text-primary', '22')
+                                        ]),
+                                        _bkH('h3', region, 'h5 fw-bold mb-1'),
+                                        _bkP(meta, 'small text-body-secondary mb-3'),
+                                        _bkDiv('d-flex flex-wrap gap-1 mb-4', _sdT('Tasting Notes'), notes.map(function (t) {
+                                            return _bkH('span', t, 'badge rounded-pill bg-body-tertiary text-body border');
+                                        })),
+                                        _bkDiv('d-flex justify-content-between small mb-1', _sdT('Roast Label'), [
+                                            _bkH('span', _sdT('Roast'), 'text-body-secondary'),
+                                            _bkH('span', roast, 'fw-semibold')
+                                        ]),
+                                        _bkDiv('progress', _sdT('Roast Level'), [
+                                            _bkDiv('progress-bar ' + width, _sdT('Roast Bar'))
+                                        ], [
+                                            { name: 'role',          value: 'progressbar' },
+                                            { name: 'aria-label',    value: _sdT('Roast level') },
+                                            { name: 'aria-valuenow', value: level },
+                                            { name: 'aria-valuemin', value: '0' },
+                                            { name: 'aria-valuemax', value: '100' }
+                                        ])
+                                    ])
+                                ])
+                            ], '4', '6');
+                        };
+                        return _bkSection('py-5', _sdT('Menu (Coffee Origins)'), [
+                            _bkIntro(_sdT('This Season\'s Coffee'), _sdT('Roasted every week in small batches; the beans change with the harvest.')),
+                            _bkRow(_sdT('Origins Row'), [
+                                _moCard(1, _sdT('Ethiopia'), _sdT('Yirgacheffe'), _sdT('Washed · 1,900–2,200 m'), [_sdT('Jasmine'), _sdT('Bergamot'), _sdT('Lemon')], _sdT('Light'), '25', 'w-25'),
+                                _moCard(2, _sdT('Colombia'), _sdT('Huila'), _sdT('Washed · 1,600–1,800 m'), [_sdT('Red apple'), _sdT('Caramel'), _sdT('Cocoa')], _sdT('Medium'), '50', 'w-50'),
+                                _moCard(3, _sdT('Brazil'), _sdT('Cerrado Mineiro'), _sdT('Natural · 1,000–1,200 m'), [_sdT('Hazelnut'), _sdT('Milk chocolate'), _sdT('Brown sugar')], _sdT('Medium-dark'), '75', 'w-75')
+                            ])
+                        ]);
+                    }
+
+                    // Catering: Packages — three per-person packages, the middle one marked, with what each includes
+                    if (ctype === 'catering-packages') {
+                        var _cpCard = function (n, icon, title, body, price, min, items, featured) {
+                            var kids = [];
+                            if (featured) kids.push(_bkDiv('card-header text-bg-primary text-center small fw-semibold', _sdT('Card Header'), [ _bkH('span', _sdT('Most ordered')) ]));
+                            kids.push(_bkDiv('card-body d-flex flex-column p-4', _sdT('Package Body'), [
+                                _bkDiv('d-inline-flex align-self-start rounded-3 bg-primary-subtle text-primary-emphasis p-3 mb-3', _sdT('Package Icon'), [ _bkIcon(icon, '', '24') ]),
+                                _bkH('h3', title, 'h5 fw-bold mb-2'),
+                                _bkP(body, 'small text-body-secondary mb-3'),
+                                _bkDiv('d-flex align-items-baseline gap-2 mb-1', _sdT('Package Price'), [
+                                    _bkH('span', price, 'display-6 fw-bold'),
+                                    _bkH('span', _sdT('per person'), 'small text-body-secondary')
+                                ]),
+                                _bkP(min, 'small text-body-secondary mb-3'),
+                                _bkTag('ul', 'list-unstyled small mb-4', _sdT('Package Items'), items.map(function (t) {
+                                    return _bkTag('li', 'd-flex gap-2 mb-2', t, [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', t) ]);
+                                })),
+                                createNode('component', { componentType: 'btn', text: _sdT('Request a quote'), variant: featured ? 'primary' : 'outline-primary', size: '', href: '#', cssClass: 'mt-auto' })
+                            ]));
+                            return _bkCol(_sdT('Package {var}', n), [
+                                _bkDiv('card h-100 ' + (featured ? 'border-primary border-2 shadow' : 'border-0 shadow-sm'), _sdT('Package Card'), kids)
+                            ], '4');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Catering (Packages)'), [
+                            _bkIntro(_sdT('Catering for Teams'), _sdT('Delivered to your office or served at your event, from ten people up.')),
+                            _bkRow(_sdT('Packages Row'), [
+                                _cpCard(1, 'bi-cup-hot', _sdT('Coffee Break'), _sdT('Coffee, tea and something sweet for a meeting that runs long.'), _sdT('$9'), _sdT('From 10 people'),
+                                    [_sdT('Two hot drinks per person'), _sdT('Pastries and cookies'), _sdT('Cups, milk and sugar')], false),
+                                _cpCard(2, 'bi-egg-fried', _sdT('Office Breakfast'), _sdT('A breakfast spread that starts the day before the first call.'), _sdT('$16'), _sdT('From 10 people'),
+                                    [_sdT('Coffee and fresh juice'), _sdT('Sandwiches, croissants and fruit'), _sdT('Vegan and gluten-free choices')], true),
+                                _cpCard(3, 'bi-basket', _sdT('Lunch Boxes'), _sdT('A sandwich or bowl, a salad, a drink and a dessert for each guest.'), _sdT('$22'), _sdT('From 15 people'),
+                                    [_sdT('Named box for every guest'), _sdT('Choice of three mains'), _sdT('Delivered at the time you set')], false)
+                            ]),
+                            _bkP(_sdT('Prices exclude delivery. Companies receive an invoice; tell us about dietary needs when you ask.'), 'small text-body-secondary text-center mt-4 mb-0')
+                        ]);
+                    }
+
+                    // Loyalty: Stamp Card — the club in words on the left, a card of ten stamps on the right
+                    if (ctype === 'loyalty-stamps') {
+                        var _lsStamps = [];
+                        for (var _ls = 1; _ls <= 10; _ls++) {
+                            var _lsOn = _ls <= 6, _lsGift = _ls === 10;
+                            _lsStamps.push(_bkDiv('col', _sdT('Stamp {var}', _ls), [
+                                _bkDiv('ratio ratio-1x1', _sdT('Stamp Frame'), [
+                                    _bkDiv('d-flex align-items-center justify-content-center rounded-circle ' + (_lsOn ? 'text-bg-primary' : 'border border-2 border-primary-subtle text-primary'), _sdT('Stamp'), [
+                                        _bkIcon(_lsGift ? 'bi-gift' : (_lsOn ? 'bi-cup-hot-fill' : 'bi-cup-hot'), '', '20')
+                                    ])
+                                ])
+                            ]));
+                        }
+                        return _bkSection('py-5', _sdT('Loyalty (Stamp Card)'), [
+                            _bkRow(_sdT('Loyalty Row'), [
+                                _bkCol(_sdT('Loyalty Copy'), [
+                                    _bkH('span', _sdT('Coffee Club'), 'badge rounded-pill text-bg-primary mb-3'),
+                                    _bkH('h2', _sdT('Every tenth coffee is on us'), 'fw-bold mb-3'),
+                                    _bkP(_sdT('Ask for a card at the counter and collect a stamp with every hot drink, in any of our cafés.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Perks'), [
+                                        _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Perk'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', _sdT('A free drink after nine stamps')) ]),
+                                        _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Perk'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', _sdT('A slice of cake on your birthday')) ]),
+                                        _bkTag('li', 'd-flex gap-2', _sdT('Perk'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', _sdT('First taste of the seasonal menu')) ])
+                                    ]),
+                                    _bkBtn(_sdT('Join the club'), 'primary', 'lg')
+                                ], '6'),
+                                _bkCol(_sdT('Stamp Card Column'), [
+                                    _bkDiv('card border-0 shadow', _sdT('Stamp Card'), [
+                                        _bkDiv('card-body p-4 p-lg-5', _sdT('Stamp Card Body'), [
+                                            _bkDiv('d-flex align-items-center justify-content-between gap-2 mb-4', _sdT('Card Head'), [
+                                                _bkH('h3', _sdT('Your card'), 'h5 fw-bold mb-0'),
+                                                _bkH('span', _sdT('6 of 10'), 'badge rounded-pill bg-primary-subtle text-primary-emphasis')
+                                            ]),
+                                            _bkDiv('row row-cols-5 g-2 g-sm-3', _sdT('Stamps'), _lsStamps),
+                                            _bkP(_sdT('Three more stamps and the next one is free.'), 'small text-body-secondary mt-4 mb-0')
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Events: Cards — three picture cards with a date tile on the photo, a type badge and a reserve button
+                    if (ctype === 'events-cards') {
+                        var _ecCard = function (n, seed, datetime, month, day, kind, title, meta, body) {
+                            return _bkCol(_sdT('Event {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Event Card'), [
+                                    _bkDiv('position-relative', _sdT('Event Picture'), [
+                                        _bkImg(seed, 800, 450, title, 'card-img-top object-fit-cover pg-ratio-16x9'),
+                                        _bkTag('time', 'position-absolute top-0 start-0 m-3 text-center rounded-3 bg-body text-body px-3 py-2 shadow-sm', _sdT('Event Date'), [
+                                            _bkH('span', month, 'd-block small text-uppercase fw-semibold text-primary'),
+                                            _bkH('span', day, 'd-block fs-4 fw-bold lh-1')
+                                        ], [{ name: 'datetime', value: datetime }])
+                                    ]),
+                                    _bkDiv('card-body d-flex flex-column p-4', _sdT('Event Body'), [
+                                        _bkH('span', kind, 'badge rounded-pill bg-primary-subtle text-primary-emphasis align-self-start mb-2'),
+                                        _bkH('h3', title, 'h5 fw-bold mb-1'),
+                                        _bkP(meta, 'small text-body-secondary mb-2'),
+                                        _bkP(body, 'mb-4'),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Reserve a seat'), variant: 'outline-primary', size: 'sm', href: '#', cssClass: 'mt-auto align-self-start' })
+                                    ])
+                                ])
+                            ], '4', '6');
+                        };
+                        return _bkSection('py-5', _sdT('Events (Cards)'), [
+                            _bkIntro(_sdT('Upcoming Events'), _sdT('Live music, tastings and workshops. Seats are limited.')),
+                            _bkRow(_sdT('Events Row'), [
+                                _ecCard(1, 'event1', '2026-10-16T20:00', _sdT('Oct'), '16', _sdT('Live music'), _sdT('Acoustic Friday'),    _sdT('Friday · 20:00 · Old Town'),    _sdT('Two guitars, one voice and the autumn menu until late.')),
+                                _ecCard(2, 'event2', '2026-10-24T11:00', _sdT('Oct'), '24', _sdT('Tasting'),    _sdT('Coffee Tasting'),     _sdT('Saturday · 11:00 · Riverside'), _sdT('Taste four single origins side by side with our roaster.')),
+                                _ecCard(3, 'event3', '2026-11-07T14:00', _sdT('Nov'), '07', _sdT('Workshop'),   _sdT('Latte Art Workshop'), _sdT('Saturday · 14:00 · Old Town'),  _sdT('Learn to pour a heart and a tulip. All the milk is on us.'))
+                            ])
+                        ]);
+                    }
+
+                    // Notice: Announcement — a dismissible line for news (a new menu, a new branch) at the top of a page
+                    if (ctype === 'notice-promo') {
+                        return createNode('semantic', { tag: 'div', cssClass: 'alert alert-primary alert-dismissible fade show rounded-0 border-0 mb-0 py-2', customName: _sdT('Notice (Announcement)'),
+                            _attrs: [{ name: 'role', value: 'status' }] }, [
+                            createNode('container', { fluid: false, cssClass: 'd-flex flex-wrap align-items-center justify-content-center gap-2 text-center' }, [
+                                _bkH('span', _sdT('New'), 'badge text-bg-primary'),
+                                _bkP(_sdT('The autumn menu is here: pumpkin latte, apple crumble and chestnut cake.'), 'small fw-semibold mb-0'),
+                                _bkLink(_sdT('See the menu'), '#', 'alert-link small text-nowrap', _sdT('Notice Link'))
+                            ]),
+                            _bkTag('button', 'btn-close', _sdT('Close Button'), [], [
+                                { name: 'type',            value: 'button' },
+                                { name: 'data-bs-dismiss', value: 'alert' },
+                                { name: 'aria-label',      value: _sdT('Close') }
+                            ])
                         ]);
                     }
                 }
@@ -52263,7 +52460,13 @@ const StyleDesigner = (function () {
             { label: _sdT('Events: List'),                type: 'component', icon: 'bi-calendar-event',        extra: { componentType: 'events-list' } },
             { label: _sdT('Notice: Bar'),                 type: 'component', icon: 'bi-megaphone-fill',        extra: { componentType: 'notice-bar' } },
             { label: _sdT('Team: Profiles'),              type: 'component', icon: 'bi-person-vcard',          extra: { componentType: 'team-profiles' } },
-            { label: _sdT('Testimonial: Ratings'),        type: 'component', icon: 'bi-star-half',             extra: { componentType: 'testimonial-ratings' } }
+            { label: _sdT('Testimonial: Ratings'),        type: 'component', icon: 'bi-star-half',             extra: { componentType: 'testimonial-ratings' } },
+            { label: _sdT('Menu: Diet Key'),              type: 'component', icon: 'bi-leaf',                  extra: { componentType: 'menu-legend' } },
+            { label: _sdT('Menu: Coffee Origins'),        type: 'component', icon: 'bi-globe-americas',        extra: { componentType: 'menu-origins' } },
+            { label: _sdT('Catering: Packages'),          type: 'component', icon: 'bi-basket',                extra: { componentType: 'catering-packages' } },
+            { label: _sdT('Loyalty: Stamp Card'),         type: 'component', icon: 'bi-cup-hot',               extra: { componentType: 'loyalty-stamps' } },
+            { label: _sdT('Events: Cards'),               type: 'component', icon: 'bi-calendar2-event',       extra: { componentType: 'events-cards' } },
+            { label: _sdT('Notice: Announcement'),        type: 'component', icon: 'bi-megaphone',             extra: { componentType: 'notice-promo' } }
         ];
     }
 
@@ -52276,7 +52479,7 @@ const StyleDesigner = (function () {
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
             { title: _sdT('Hours & Locations'), icon: 'bi-geo-alt',           match: ['hours-', 'locations-'] },
-            { title: _sdT('Food & Drink'),     icon: 'bi-cup-hot',            match: ['menu-'] },
+            { title: _sdT('Food & Drink'),     icon: 'bi-cup-hot',            match: ['menu-', 'catering-', 'loyalty-'] },
             { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-', 'events-'] },
             { title: _sdT('Forms & Access'),   icon: 'bi-envelope-paper',     match: ['contact-', 'newsletter-', 'login-'] },
             { title: _sdT('Page Footer'),      icon: 'bi-window-dock',        match: ['footer-'] },
@@ -52356,7 +52559,8 @@ const StyleDesigner = (function () {
         'navbar-centered-logo': ['pg-spacer-40', 'pg-brand-center'],
         'services-image-cards': ['pg-ratio-16x9'],
         'locations-cards':      ['pg-ratio-16x9'],
-        'menu-cards':           ['pg-ratio-1x1']
+        'menu-cards':           ['pg-ratio-1x1'],
+        'events-cards':         ['pg-ratio-16x9']
     };
 
     // Append the rules a dropped block needs to the design's User Styles,
