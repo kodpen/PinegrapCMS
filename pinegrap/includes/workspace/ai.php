@@ -1630,7 +1630,7 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
         // proposed: nothing was changed, and the words must not say so.
@@ -2201,9 +2201,17 @@ function ws_ai_deliver($row, $text, $proposals)
     }
 
     // A run on a task (delegation.php): the answer is kept on the run and
-    // shown on the task, and the person who asked is told.
+    // shown on the task, with the changes it proposes waiting under it for
+    // the person who asked, who is told.
     if ((int) ($row['task_id'] ?? 0) > 0) {
+        $checked = ws_changes_input($changes, (int) $row['requested_by'], 0, (int) $row['task_id']);
+
+        if (!$checked['ok']) {
+            return array('ok' => false, 'error' => 'changes: ' . $checked['error']);
+        }
+
         if (ws_task_delegation_answer($row, $text)) {
+            ws_changes_store($row, 0, $checked['rows']);
             ws_ai_log(lang(array('string' => 'Pinegrap AI answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
         }
 
@@ -2444,7 +2452,7 @@ function ws_ai_propose_change($row, &$state, $args)
     // Checked the way the answer will be; a create is complete only once
     // every field it needs is there, so its missing fields are not held
     // against it yet.
-    $checked = ws_changes_input(array(ws_ai_change_out($change)), (int) $row['requested_by'], (int) $row['channel_id']);
+    $checked = ws_changes_input(array(ws_ai_change_out($change)), (int) $row['requested_by'], (int) $row['channel_id'], (int) ($row['task_id'] ?? 0));
 
     if (!$checked['ok'] && ($action !== 'create')) {
         return array('error' => preg_replace('/^changes\[0\]: /', '', $checked['error']));
@@ -2454,7 +2462,9 @@ function ws_ai_propose_change($row, &$state, $args)
 
     return array(
         'ok'   => true,
-        'note' => 'Proposed, not done: it is shown under your answer and the person who asked applies it. Before you answer: if the request also asks for a task, call propose_task for it now - a task only written in the answer cannot be opened. Then call answer, saying that you propose it.'
+        'note' => 'Proposed, not done: it is shown under your answer and the person who asked applies it. '
+            . (((int) ($row['task_id'] ?? 0) > 0) ? '' : 'Before you answer: if the request also asks for a task, call propose_task for it now - a task only written in the answer cannot be opened. ')
+            . 'Then call answer, saying that you propose it.'
             . ((!$checked['ok'] && ($action === 'create')) ? ' Still missing for the new record: ' . preg_replace('/^changes\[0\]: /', '', $checked['error']) : ''),
     );
 }
@@ -2928,7 +2938,9 @@ function ws_ai_system_prompt($row, $asker, $readable)
         $lines[] = '- Answer with text only. Your answer is written into the note under the line that asked, so write it as part of the note, without addressing anybody.';
     } elseif ($task) {
         $lines[] = '- The people on the task stay responsible for it. You do the part of the work that reading and writing can do: look things up, work figures out, draft texts, plans and replies.';
-        $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted.';
+        $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted: write that you propose it.';
+        $lines[] = '- What should change - this task\'s status, priority, dates or description, a note on it, a note of the workspace, or another record - propose with propose_change, once for each field. It waits on the task until ' . $name . ' applies it with one click or sets it aside. A note on this task is type task_note with field text (the task is this one when task_id is left out); a note of the workspace is type note with title and body. Find any other record first with search_records or read_record; never guess an id. When propose_change answers with an error, fix the call and call it again.';
+        $lines[] = ws_ai_changes_guide($asker, 0);
         $lines[] = '- Finish with answer: what you did and found, what you propose, and what you need from ' . $name . ' to go on. Your answer is shown on the task, to ' . $name . '; write to them.';
     } else {
         $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted: write that you propose it.';
@@ -3198,7 +3210,9 @@ function ws_ai_tools($row)
     };
 
     $tools = array(
-        $tool('answer', 'Write your answer under the request. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
+        $tool('answer', $task
+            ? 'Write your answer on the task. Call it once, at the end, after proposing with propose_change what should change: changes written only in the answer cannot be applied.'
+            : 'Write your answer under the request. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
             'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>.'),
         ), array('text')),
         $tool('fail', 'Give the request up when you cannot do it, saying why in the language of the request.', array(
@@ -3245,7 +3259,10 @@ function ws_ai_tools($row)
             'due_date'    => array('type' => 'string', 'description' => 'YYYY-MM-DD'),
             'priority'    => array('type' => 'string', 'enum' => array('low', 'normal', 'high', 'urgent')),
         ), array('title'));
+    }
 
+    // On a task as well: what it proposes waits on the task.
+    if (!$note) {
         $tools[] = $tool('propose_change', 'Propose a new value for one field of a record, only when the request asks to change, add or delete records. Call it once per field; calls for the same record make one change. The person who asked applies it with one click.', array(
             'type'   => array('type' => 'string', 'description' => 'The kind of record, from the list in the instructions.'),
             'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove')),
@@ -3254,7 +3271,9 @@ function ws_ai_tools($row)
             'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items.'),
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));
+    }
 
+    if (!$note && !$task) {
         if (function_exists('ws_bulk_ready') && ws_bulk_ready()) {
             $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...). The person who asked sees how many records it reaches and applies it.', array(
                 'type'        => array('type' => 'string', 'enum' => ws_bulk_types()),
@@ -3436,7 +3455,7 @@ function ws_ai_tool_run($row, &$state, $name, $args)
             return ($note || $task) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_task($state, $args);
 
         case 'propose_change':
-            return ($note || $task) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_change($row, $state, $args);
+            return $note ? array('error' => 'Not from a note.') : ws_ai_propose_change($row, $state, $args);
 
         case 'propose_bulk_change':
             return ($note || $task || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_bulk($row, $state, $args);

@@ -1694,6 +1694,8 @@ function api_error_catalogue() {
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
+		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),
 

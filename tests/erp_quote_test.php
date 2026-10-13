@@ -63,3 +63,27 @@ function test_erp_quote_state_decided_keeps_status()
 		pg_assert_same($status, erp_quote_state(array('status' => $status, 'valid_until' => '2000-01-01', 'invoice_status' => '')));
 	}
 }
+
+// The moves a quote's state allows by hand, as the screen's buttons and the
+// external API ask erp_quote_status_refusal() before writing.
+function test_erp_quote_status_refusal_follows_the_state()
+{
+	$open = array('status' => 'open', 'valid_until' => date('Y-m-d', strtotime('+1 day')), 'invoice_status' => '');
+	$expired = array('status' => 'open', 'valid_until' => date('Y-m-d', strtotime('-1 day')), 'invoice_status' => '');
+	$rejected = array('status' => 'rejected', 'valid_until' => '2000-01-01', 'invoice_status' => '');
+	$invoiced = array('status' => 'invoiced', 'valid_until' => '2000-01-01', 'invoice_status' => 'draft');
+
+	foreach (array('accepted', 'rejected', 'cancelled') as $to) {
+		pg_assert_same('', erp_quote_status_refusal($open, $to), 'open to ' . $to);
+		pg_assert_same('', erp_quote_status_refusal($expired, $to), 'expired to ' . $to);
+	}
+
+	pg_assert_same('', erp_quote_status_refusal($expired, 'open'), 'expired opened again');
+	pg_assert_true(erp_quote_status_refusal($open, 'open') !== '', 'open to open is refused');
+	pg_assert_same('', erp_quote_status_refusal($rejected, 'open'), 'rejected opened again');
+	pg_assert_true(erp_quote_status_refusal($rejected, 'accepted') !== '', 'rejected straight to accepted is refused');
+
+	foreach (array('open', 'accepted', 'rejected', 'cancelled') as $to) {
+		pg_assert_true(erp_quote_status_refusal($invoiced, $to) !== '', 'invoiced to ' . $to . ' is refused');
+	}
+}

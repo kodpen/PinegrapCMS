@@ -255,6 +255,22 @@
          yeni webhook olayı: workspace.task.delegated ve
          workspace.task.assistant_answered.
 
+  [YENİ] Asistan bir görevde çalışırken değişiklik
+         önerebiliyor: görevin durumu, önceliği, tarihleri
+         ya da açıklaması, göreve bir not, kişiye bir
+         Çalışma Alanı notu ya da başka bir kayıt (ürün,
+         sipariş, müşteri...). Öneriler görev çekmecesinde
+         asistanın cevabının altında "onay bekliyor" olarak
+         durur; isteyen kişi her birini tek tıkla uygular
+         ya da kenara ayırır. Görev listesinde onay bekleyen
+         öneri sayısı görünür. Asistanın önerdiği not,
+         uygulanınca asistanın adıyla yazılır.
+
+  [YENİ] Kanalda da Claude ve Pinegrap AI bir görevin
+         durumunu, önceliğini ve tarihlerini değiştirmeyi,
+         bir göreve not ya da Çalışma Alanı notu eklemeyi
+         önerebiliyor; uygulanınca kanala karar düşer.
+
   [ŞEMA] Görevler tablosuna asistan için üç kolon,
          asistan istekleri ve önerilen değişiklikler
          tablolarına görev kolonu eklenir.
@@ -437,6 +453,23 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] ERP faturaları ve teklifleri API'den ve MCP'den
+         yazılıyor. Faturada: taslak yazma, değiştirme ve
+         silme (POST /erp/invoices), kesme, iptal, iade
+         faturası, müşteriye e-postayla gönderme, tamamlanmış
+         siparişin faturasını kesme (POST
+         /erp/orders/{id}/invoice), tekrarlayan fatura başlatma
+         ve durdurma. Teklifte: yazma ve değiştirme, kabul,
+         ret, iptal ya da yeniden açma, faturaya dönüştürme,
+         e-postayla gönderme ve PDF'i. Vergiyi, iskontoyu,
+         tevkifatı ve toplamları ERP hesaplar; geri alınamayan
+         adımlar önce X-Dry-Run ile denenebilir. Taslaklar GET
+         /erp/invoices?status=draft ile listelenir. Kilitli
+         döneme düşen tarih period_locked, kredi limitini aşan
+         satış credit_limit koduyla reddedilir. erp:write
+         yetkisi gerekir; e-Belge sağlayıcısına gönderim
+         paneldeki fatura ekranında kalır.
 
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
