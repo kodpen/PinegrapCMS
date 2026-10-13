@@ -13,9 +13,11 @@
  * module has no endpoints, no events and no permission to hand out.
  *
  * The handlers and the presenters are in api_resources.php next to this file,
- * the ones that write invoices and quotes in api_documents.php, and the ones
- * that write delivery notes, stock counts and minimums in api_stock.php; this
- * one stays a table, the way schema.php is a table.
+ * the ones that write invoices and quotes in api_documents.php, the ones that
+ * write delivery notes, stock counts and minimums in api_stock.php, transfers
+ * and cheques in api_cash.php, and the profit, cash flow and dashboard
+ * figures in api_reports.php; this one stays a table, the way schema.php is a
+ * table.
  *
  * Two permissions, mirroring the panel: 'erp' is the ledger - accounts,
  * invoices, delivery notes, expenses, quotes, stock and the reports - and
@@ -44,6 +46,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_documents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_reports.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -171,6 +175,11 @@ function erp_openapi_objects()
         'ErpStockCountItem' => 'erp_api_stock_count_item_schema',
         'ErpAgingReport' => 'erp_api_aging_report_schema',
         'ErpVatReport' => 'erp_api_vat_report_schema',
+        'ErpCashTransfer' => 'erp_api_cash_transfer_schema',
+        'ErpProfitReport' => 'erp_api_profit_report_schema',
+        'ErpCashflowReport' => 'erp_api_cashflow_report_schema',
+        'ErpDashboard' => 'erp_api_dashboard_schema',
+        'ErpDashboardCash' => 'erp_api_dashboard_cash_schema',
     );
 }
 
@@ -700,6 +709,26 @@ function erp_api_routes()
             ),
         ),
 
+        array(
+            'id' => 'erp.cash_transfers.create',
+            'method' => 'POST',
+            'path' => '/erp/cash-transfers',
+            'scope' => 'erp_cash:write',
+            'handler' => 'erp_api_cash_transfers_create',
+            'dry_run' => true,
+            'returns' => 'ErpCashTransfer',
+            'summary' => 'Move money between two tills',
+            'description' => 'Records a transfer the way the Cash and Bank screen does: the amount leaves one till and arrives in the other, dated the same day, and nobody\'s account changes - cash taken to the bank, a card settlement moved to the current account. Both tills must be active and kept in one currency. In a foreign currency the rate recorded for the day is used; exchange_rate stands in only when none is recorded. The day cannot be in a locked period. The application owner must hold the ERP cash right. A transfer cannot be taken back, here or in the panel; a wrong one is put right with a transfer the other way. Send an Idempotency-Key so a retried request does not move the money twice.',
+            'params' => array(
+                array('name' => 'from_cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The till the money leaves.'),
+                array('name' => 'to_cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The till the money arrives in.'),
+                array('name' => 'amount', 'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero, in the tills\' currency.'),
+                array('name' => 'date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day of the transfer. Today when left out.'),
+                array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shows on both tills\' movements.'),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of the tills\' currency, used only when no rate is recorded for the day.'),
+            ),
+        ),
+
         /* ----- Delivery notes ---------------------------------------------- */
 
         array(
@@ -1163,6 +1192,52 @@ function erp_api_routes()
             ),
         ),
 
+        array(
+            'id' => 'erp.cheques.create',
+            'method' => 'POST',
+            'path' => '/erp/cheques',
+            'scope' => 'erp_cash:write',
+            'handler' => 'erp_api_cheques_create',
+            'dry_run' => true,
+            'returns' => 'ErpCheque',
+            'summary' => 'Record a cheque or a promissory note',
+            'description' => 'Records one the way the cheques screen does. A received one is a collection from the account into the till it is kept in (the portfolio), so the customer\'s debt comes down the day it is taken, and it waits there with status portfolio. A given one is a payment to the account out of the till for given cheques, with status given, until the bank pays it. The amount is in the till\'s currency, at the rate of the day. The day cannot be in a locked period. The application owner must hold the ERP cash right. Move it on with POST /erp/cheques/{id}/step. Send an Idempotency-Key: a cheque recorded twice is a debt taken off twice.',
+            'params' => array(
+                array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('received', 'given'), 'required' => true, 'description' => 'received from a customer, or given to a supplier.'),
+                array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('cheque', 'note'), 'description' => 'cheque or promissory note. cheque when left out.'),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The customer it came from, or the supplier it was given to.'),
+                array('name' => 'cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The till it is kept in: the portfolio for a received one, the till for given cheques for a given one.'),
+                array('name' => 'amount', 'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero, in the till\'s currency.'),
+                array('name' => 'due_date', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'The day it falls due.'),
+                array('name' => 'date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day it was taken or given. Today when left out.'),
+                array('name' => 'serial_no', 'in' => 'body', 'type' => 'string', 'max_length' => 40),
+                array('name' => 'bank_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'branch', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'drawer', 'in' => 'body', 'type' => 'string', 'max_length' => 150, 'description' => 'Who wrote it, when that is not the account.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.cheques.step',
+            'method' => 'POST',
+            'path' => '/erp/cheques/{id}/step',
+            'scope' => 'erp_cash:write',
+            'handler' => 'erp_api_cheques_step',
+            'dry_run' => true,
+            'returns' => 'ErpCheque',
+            'summary' => 'Take the next step of a cheque or note',
+            'description' => 'The steps of the cheque screen, each dated on its own day; none can be taken back. deposit hands a received one to the bank for collection (portfolio to deposited; no money moves). collect records the bank collecting it: the amount moves from the portfolio to the bank account (portfolio or deposited to collected). endorse passes a received one on to a supplier, account_id: a payment to that account out of the portfolio (portfolio to endorsed). bounce sends a received one back to the customer: a payment back to them out of the portfolio, so they owe it again (portfolio or deposited to bounced). pay records the bank paying a given one: the amount moves from the bank account to the till for given cheques (given to paid). cash_account_id is the bank account for deposit, collect and pay, the one it was handed to when left out. A step the cheque cannot take from where it is answers 409 cheque_step_not_allowed. The day cannot be in a locked period. The application owner must hold the ERP cash right.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'step', 'in' => 'body', 'type' => 'enum', 'values' => array('deposit', 'collect', 'endorse', 'bounce', 'pay'), 'required' => true),
+                array('name' => 'date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day of the step. Today when left out.'),
+                array('name' => 'cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'deposit, collect and pay only: the bank account. Not the till the cheque is kept in.'),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'endorse only, and required for it: the active account it is passed on to, not the one it came from.'),
+                array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 150, 'description' => 'Not for deposit. Added to the cheque\'s notes, and for endorse and bounce to the movement\'s description.'),
+            ),
+        ),
+
         /* ----- Stock ------------------------------------------------------- */
 
         array(
@@ -1342,6 +1417,58 @@ function erp_api_routes()
                 array('name' => 'month', 'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'YYYY-MM.'),
                 array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period, with to.'),
                 array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.reports.profit',
+            'method' => 'GET',
+            'path' => '/erp/reports/profit',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_reports_profit',
+            'returns' => 'ErpProfitReport',
+            'summary' => 'Profit and loss of a period',
+            'description' => 'The panel\'s profit report: what was sold (issued sales invoices less the returns issued in the period), what the goods cost (from the stock moves; a line with no move is costed at the product\'s average cost today and counted in cogs_estimated), the costs on purchase invoices without a product, the expenses, and what is left - by month, by product and by account, highest profit first. A management view in the store currency without VAT, not the accountant\'s books. Margins are percentages, null where there was no revenue. Name a month, or from and to; the current month when neither is sent. A period covers at most two years.',
+            'params' => array(
+                array('name' => 'month', 'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'YYYY-MM.'),
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period, with to.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
+                array('name' => 'orders', 'in' => 'query', 'type' => 'bool', 'description' => 'Also count the completed orders no invoice has been raised for yet, by their order date, the goods at today\'s average cost. Off when left out.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 500, 'default' => 50, 'description' => 'How many product and account rows to list; products_count and accounts_count say how many there are.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.reports.cashflow',
+            'method' => 'GET',
+            'path' => '/erp/reports/cashflow',
+            'scope' => 'erp_cash:read',
+            'handler' => 'erp_api_reports_cashflow',
+            'returns' => 'ErpCashflowReport',
+            'summary' => 'Money in and out of the tills over a period',
+            'description' => 'The panel\'s cash flow report: what came in and went out of the tills, in the store currency, by day, week or month with the running position; the same period till by till; and split by payment method. Across all tills a transfer between two of the store\'s own tills is not a flow and is left out; for one till it is money that arrived or left. A till kept in another currency is counted at its booked base value and its opening balance is not added in (foreign_tills says how many). The period ends today at the latest and covers at most 1100 days; this month so far when nothing is sent. The application owner must hold the ERP cash right.',
+            'params' => array(
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day. The first of the end date\'s month when left out.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day, today at the latest. Today when left out.'),
+                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'week', 'month'), 'description' => 'The row size. Picked from the length of the period when left out: days up to two months, weeks up to about a year, months beyond.'),
+                array('name' => 'cash_account_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One till only. All tills when left out.'),
+            ),
+        ),
+
+        /* ----- Dashboard --------------------------------------------------- */
+
+        array(
+            'id' => 'erp.dashboard',
+            'method' => 'GET',
+            'path' => '/erp/dashboard',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_dashboard',
+            'returns' => 'ErpDashboard',
+            'summary' => 'The figures of the ERP dashboard',
+            'description' => 'What the first screen of the module shows, for a morning summary or an assistant\'s question: what customers owe and the store owes, what of it is late and what falls due within seven days, by age, with the accounts owing the oldest money; this month\'s net sales, profit and expenses; expenses still to pay; how many products are at or below their minimum stock; accounts over their credit limit; open quotes; purchase orders still waiting. cash (what the tills hold, and today\'s money in and out) is filled in only when the key holds erp_cash:read and its owner the ERP cash right, and is null otherwise. Amounts are in the store currency.',
+            'params' => array(
+                array('name' => 'top', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 5, 'description' => 'How many overdue accounts to list on each side.'),
+                array('name' => 'orders', 'in' => 'query', 'type' => 'bool', 'description' => 'Count this month\'s completed orders without an invoice in the month\'s figures, as the profit report does. Off when left out.'),
             ),
         ),
 

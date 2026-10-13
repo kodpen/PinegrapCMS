@@ -445,6 +445,31 @@ function erp_expense_totals($from, $to)
 }
 
 /**
+ * The expenses still to pay, whatever their date: how many, how much in the
+ * base currency, and how many of them are past their due date.
+ *
+ * @return array ['count' => int, 'total' => kurus, 'overdue' => int]
+ */
+function erp_expense_unpaid_summary()
+{
+    $out = array('count' => 0, 'total' => 0, 'overdue' => 0);
+
+    if (!erp_expenses_ready()) {
+        return $out;
+    }
+
+    $row = db_item("SELECT COUNT(*) AS count, COALESCE(SUM(total_base), 0) AS total,
+            SUM(IF(due_date > '0000-00-00' AND due_date < CURDATE(), 1, 0)) AS overdue
+        FROM erp_expenses WHERE status = 'unpaid'");
+
+    if (is_array($row)) {
+        $out = array('count' => (int) $row['count'], 'total' => (int) $row['total'], 'overdue' => (int) $row['overdue']);
+    }
+
+    return $out;
+}
+
+/**
  * Check a till can pay an amount in a currency.
  *
  * @param int    $cash_account_id
