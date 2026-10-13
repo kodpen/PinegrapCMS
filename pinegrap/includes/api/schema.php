@@ -526,6 +526,86 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Store set-up ------------------------------------------------- */
+
+		array(
+			'id'      => 'store.shipping_methods',
+			'method'  => 'GET',
+			'path'    => '/store/shipping-methods',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_shipping_methods_list',
+			'returns' => array('list' => 'StoreShippingMethod'),
+			'summary' => 'Shipping methods',
+			'description' => 'Every shipping method, in one page, with what it charges and when it is offered. Money is in minor units. What a recipient pays is the base rate (the tier whose from_subtotal the recipient\'s subtotal has reached), plus for each item primary_weight_rate x the product\'s primary weight points, secondary_weight_rate x its secondary weight points and item_rate, each times the quantity (first_item_excluded leaves the first item out of that charge), plus the same four rates of the zone the address is in, plus a carrier\'s live quote where realtime_rate is on. A method is offered while enabled, inside available_from/available_until, on the days in offered_on until their cut-off time, and for the address types it allows; a protected method is offered to the store\'s staff only.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'store.shipping_method_get',
+			'method'  => 'GET',
+			'path'    => '/store/shipping-methods/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_shipping_methods_get',
+			'returns' => 'StoreShippingMethod',
+			'summary' => 'One shipping method',
+			'description' => 'The same object as in the list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.zones',
+			'method'  => 'GET',
+			'path'    => '/store/zones',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_zones_list',
+			'returns' => array('list' => 'StoreZone'),
+			'summary' => 'Shipping zones',
+			'description' => 'The areas shipping methods ship to (zone_ids on a method), each with the countries (ISO codes) and states it covers and the rates it adds to the method\'s own. One page.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.tax_zones',
+			'method'  => 'GET',
+			'path'    => '/store/tax-zones',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_tax_zones_list',
+			'returns' => array('list' => 'StoreTaxZone'),
+			'summary' => 'Tax zones',
+			'description' => 'The areas tax is charged in, each with its rate as a percentage and the countries and states it covers. An address in no tax zone is charged no tax. GET /meta carries the rate of the store\'s own country. One page.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.countries',
+			'method'  => 'GET',
+			'path'    => '/store/countries',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_countries_list',
+			'returns' => array('list' => 'StoreCountry'),
+			'summary' => 'Countries and their states',
+			'description' => 'The countries an address can name, with their states, as the address forms offer them. default is the country the forms select first. One page.',
+			'params'  => array(
+				array('name' => 'code', 'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Only the country with this code.')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies',
+			'method'  => 'GET',
+			'path'    => '/store/currencies',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_currencies_list',
+			'returns' => array('list' => 'StoreCurrency'),
+			'summary' => 'Currencies',
+			'description' => 'The currencies a visitor can see prices in, the base currency first. exchange_rate is how much of the currency one unit of the base currency buys. Orders are always charged in the base currency. One page.',
+			'params'  => array()
+		),
+
 		/* ----- Calendars ---------------------------------------------------- */
 
 		array(
