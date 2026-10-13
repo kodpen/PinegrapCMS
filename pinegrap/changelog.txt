@@ -671,6 +671,28 @@
   [ŞEMA] Ekip dışından sorulan kişiler için yeni bir tablo
          oluşturulur.
 
+  [YENİ] Birden fazla mesaj birlikte kopyalanabiliyor:
+         "Mesajları seç" ile seçilen mesajlar alttaki
+         çubuktaki "Kopyala" ile panoya eskiden yeniye,
+         her biri gönderenin adı ve tam tarih-saatiyle
+         ([13.10.2026 21:18] Ad:) geçiyor. Telefonda da
+         çalışıyor.
+
+  [YENİ] Tek mesajın "Metni kopyala"sı telefonda mesaja
+         dokununca açılan araç satırında da var; metin
+         satır sonlarıyla, listeler satır satır
+         kopyalanıyor. Telefonda basılı tutunca açılan
+         menüdeki "Metni seç" metni bir kutuda açıyor,
+         istenen kısım seçilip kopyalanabiliyor. Tarayıcı
+         kopyalamaya izin vermezse metin aynı kutuda
+         seçilmeye hazır açılıyor.
+
+  [DÜZELTME] Telefonda kanal listesini açan düğme panelin
+         ana menü düğmesiyle karışmıyor. Önceden ikisi de
+         aynı üç çizgi simgesiydi ve alt alta duruyordu;
+         düğme artık geri oku ve "Kanallar" yazısı
+         taşıyor.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
