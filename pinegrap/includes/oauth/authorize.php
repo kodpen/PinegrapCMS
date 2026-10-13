@@ -139,13 +139,20 @@ function pg_oauth_authorize() {
 
 	if (($client === null) || ($client['status'] !== 'active')) {
 
-		pg_oauth_authorize_page_error(lang('The application asking to connect is not known to this site. Start again from the application.'), $resolved['error']);
+		// A client registered long ago and swept as unused still holds its
+		// old client_id and sends it here; only adding it again makes it
+		// register anew.
+		pg_oauth_authorize_page_error(lang('The application asking to connect is not known to this site. Start again from the application; if this keeps happening, remove the server there and add it again.'), $resolved['error']);
 
 	}
 
 	$registered = pg_oauth_client_redirect_uris($client);
 
-	$redirect_uri = $param('redirect_uri');
+	// As the client sent it: the token request has to repeat it only when it
+	// was sent (OAuth 2.1 4.1.3), so the code keeps this spelling.
+	$presented_redirect = $param('redirect_uri');
+
+	$redirect_uri = $presented_redirect;
 
 	if (($redirect_uri === '') && (count($registered) === 1)) {
 
@@ -242,11 +249,8 @@ function pg_oauth_authorize() {
 
 	// No scope asked for means everything this person may hand over; the
 	// screen lists it and they choose. Values the site does not know are
-	// passed over rather than refused, so a client that asks for a generic
-	// scope alongside real ones still connects with the real ones.
-	$asked = ($param('scope') !== '')
-		? array_values(array_intersect($available, pg_oauth_scope_parse($param('scope'))))
-		: $available;
+	// passed over (pg_oauth_scope_requested()).
+	$asked = pg_oauth_scope_requested($param('scope'), api_scopes_all(), $available);
 
 	if (empty($asked)) {
 
@@ -274,15 +278,15 @@ function pg_oauth_authorize() {
 
 		}
 
-		$code = pg_oauth_code_issue($client, $user_id, $redirect_uri, $chosen, $resource, $challenge);
+		$code = pg_oauth_code_issue($client, $user_id, $presented_redirect, $chosen, $resource, $challenge);
 
 		pg_oauth_authorize_return($redirect_uri, array('code' => $code), $state);
 
 	}
 
-	pg_oauth_authorize_consent($client, $owner, $asked, array(
+	pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, array(
 		'client_id'             => (string)$client['client_id'],
-		'redirect_uri'          => $redirect_uri,
+		'redirect_uri'          => $presented_redirect,
 		'response_type'         => 'code',
 		'state'                 => $state,
 		'code_challenge'        => $challenge,
@@ -293,8 +297,9 @@ function pg_oauth_authorize() {
 
 }
 
-// The consent screen itself.
-function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
+// The consent screen itself. $redirect_uri is where the answer goes; $hidden
+// is the request as it came, posted back with the person's choice.
+function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hidden) {
 
 	pg_oauth_authorize_headers();
 
@@ -302,9 +307,21 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
 
 	$site = (defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== '')) ? ORGANIZATION_NAME : pg_oauth_host();
 
-	$return_host = parse_url($hidden['redirect_uri'], PHP_URL_HOST);
+	$destination = pg_oauth_redirect_destination($redirect_uri);
 
-	$return_host = is_string($return_host) ? $return_host : $hidden['redirect_uri'];
+	$return_host = parse_url($redirect_uri, PHP_URL_HOST);
+
+	// A program on this computer or an application on this device is said so
+	// in words; its address alone reads like a web site.
+	$destination_labels = array(
+		'device' => lang('A program on this computer'),
+		'app'    => lang('An application on this device')
+	);
+
+	$destination_html = (isset($destination_labels[$destination['kind']])
+			? h($destination_labels[$destination['kind']]) . '<br/>'
+			: '')
+		. '<code>' . h($destination['text']) . '</code>';
 
 	// One line per permission, grouped the way the API settings screen shows
 	// them, every box ticked to begin with: the person narrows what the
@@ -370,7 +387,7 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
 
 		$identity_row = '<dt>' . h(lang('Identified by')) . '</dt><dd><code>' . h($identity) . '</code></dd>';
 
-		$redirect_scheme = strtolower((string)parse_url($hidden['redirect_uri'], PHP_URL_SCHEME));
+		$redirect_scheme = strtolower((string)parse_url($redirect_uri, PHP_URL_SCHEME));
 
 		if (($redirect_scheme === 'https') && is_string($return_host)
 			&& (strtolower($return_host) !== $identity)
@@ -399,7 +416,7 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
 						<dt>' . h(lang('Signed in as')) . '</dt>
 						<dd>' . h($owner['username']) . '</dd>
 						<dt>' . h(lang('Answer goes to')) . '</dt>
-						<dd><code>' . h($return_host) . '</code></dd>
+						<dd>' . $destination_html . '</dd>
 					</dl>
 					<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/oauth.php/authorize') . '">
 						' . $fields . '

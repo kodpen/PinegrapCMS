@@ -20182,5 +20182,22 @@
     "Loads only on: {var}": "Yalnızca şu sayfalarda yüklenir: {var}",
     "(deleted page)": "(silinmiş sayfa)",
     "Find a page…": "Sayfa bul…",
-    "No page matches.": "Eşleşen sayfa yok."
+    "No page matches.": "Eşleşen sayfa yok.",
+    "The application asking to connect is not known to this site. Start again from the application; if this keeps happening, remove the server there and add it again.": "Bağlanmak isteyen uygulama bu sitede tanınmıyor. Uygulamadan yeniden başlayın; tekrar olursa sunucuyu orada kaldırıp yeniden ekleyin.",
+    "A program on this computer": "Bu bilgisayardaki bir program",
+    "An application on this device": "Bu cihazdaki bir uygulama",
+    "Claude (web, desktop and mobile)": "Claude (web, masaüstü ve mobil)",
+    "Settings > Connectors > Add custom connector. Paste the address, then press Connect.": "Ayarlar › Bağlayıcılar › Özel bağlayıcı ekle. Adresi yapıştırın, ardından Bağlan'a basın.",
+    "Run this in a terminal, then type /mcp in Claude Code and choose the server to sign in.": "Bunu bir terminalde çalıştırın, ardından Claude Code'da /mcp yazın ve oturum açmak için sunucuyu seçin.",
+    "Settings > Apps & Connectors > Advanced settings: switch developer mode on. Then press Create, paste the address as the MCP server URL and choose OAuth as the authentication.": "Ayarlar › Uygulamalar ve Bağlayıcılar › Gelişmiş ayarlar: geliştirici modunu açın. Sonra Oluştur'a basın, adresi MCP sunucu adresi olarak yapıştırın ve kimlik doğrulama olarak OAuth'u seçin.",
+    "Command Palette > MCP: Add Server > HTTP, then paste the address; or put this in .vscode/mcp.json. VS Code asks you to sign in the first time the server starts.": "Komut Paleti › MCP: Add Server › HTTP ile adresi yapıştırın ya da bunu .vscode/mcp.json dosyasına yazın. VS Code, sunucu ilk açıldığında oturum açmanızı ister.",
+    "Add a new MCP server in Cursor's settings, or put this in ~/.cursor/mcp.json. Then press Connect next to the server.": "Cursor ayarlarından yeni bir MCP sunucusu ekleyin ya da bunu ~/.cursor/mcp.json dosyasına yazın. Ardından sunucunun yanındaki Connect düğmesine basın.",
+    "Put this in ~/.codeium/windsurf/mcp_config.json, refresh the MCP servers and sign in when asked.": "Bunu ~/.codeium/windsurf/mcp_config.json dosyasına yazın, MCP sunucularını yenileyin ve istendiğinde oturum açın.",
+    "Put this in ~/.gemini/settings.json, then run /mcp auth pinegrap in Gemini CLI.": "Bunu ~/.gemini/settings.json dosyasına yazın, ardından Gemini CLI'da /mcp auth pinegrap komutunu çalıştırın.",
+    "Run these in a terminal. The second opens the sign-in in your browser.": "Bunları bir terminalde çalıştırın. İkincisi oturum açma sayfasını tarayıcınızda açar.",
+    "Other applications": "Diğer uygulamalar",
+    "An application that asks for a server address works with the address above. One that can only start a program on the computer reaches the server through the mcp-remote bridge, which needs Node.js and opens the sign-in in the browser: give it this as the command.": "Sunucu adresi isteyen bir uygulama yukarıdaki adresle çalışır. Bilgisayarda yalnız bir program başlatabilen uygulama sunucuya mcp-remote köprüsüyle ulaşır; Node.js gerektirir ve oturum açmayı tarayıcıda açar. Komut olarak bunu verin.",
+    "Add the MCP server address in the application, exactly as shown: the steps for each application are below. The application compares it with the address the site names in its answers, so another spelling of the host, with or without www, does not connect.": "MCP sunucu adresini uygulamaya tam gösterildiği gibi ekleyin; her uygulamanın adımları aşağıda. Uygulama bu adresi sitenin cevaplarında bildirdiği adresle karşılaştırır; alan adının başka bir yazımı (www'li ya da www'siz) bağlanmaz.",
+    "Steps for each application": "Uygulamaya göre adımlar",
+    "Some applications use only a limited number of tools at a time, VS Code and Cursor among them. If one warns about too many tools, untick the areas you do not need on the consent screen, or switch tools off in the application.": "Bazı uygulamalar aynı anda yalnız sınırlı sayıda araç kullanır; VS Code ve Cursor bunlardan. Biri çok fazla araç olduğunu söylerse onay ekranında gerekmeyen alanların işaretini kaldırın ya da araçları uygulamada kapatın."
 }

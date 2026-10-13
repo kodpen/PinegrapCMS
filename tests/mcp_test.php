@@ -51,7 +51,8 @@ function mcp_test_route()
 function test_mcp_versions()
 {
 	pg_assert_same('2025-06-18', pg_mcp_legacy_version('2025-06-18'), 'a supported older version is kept');
-	pg_assert_same('2025-11-25', pg_mcp_legacy_version('2024-11-05'), 'an unknown one gets the newest that opens with initialize');
+	pg_assert_same('2024-11-05', pg_mcp_legacy_version('2024-11-05'), 'the oldest that older SDKs still ask for');
+	pg_assert_same('2025-11-25', pg_mcp_legacy_version('2024-10-07'), 'an unknown one gets the newest that opens with initialize');
 	pg_assert_same('2025-11-25', pg_mcp_legacy_version('2026-07-28'), 'initialize never answers the sessionless generation');
 	pg_assert_same('2026-07-28', pg_mcp_request_version('2026-07-28', array()), 'header');
 	pg_assert_same('2026-07-28', pg_mcp_request_version('', array('_meta' => array('io.modelcontextprotocol/protocolVersion' => '2026-07-28'))), '_meta');
