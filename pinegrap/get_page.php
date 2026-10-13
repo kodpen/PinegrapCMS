@@ -258,6 +258,14 @@ if (($folder_archived == '1') && ($edit_access == false))
 	log_activity(lang(array('string'=>'access denied to archived page ({var:1})','vars'=>$page_name)), $_SESSION['sessionusername']);
 	output_error(lang('The page that you requested is no longer available because it has been archived.'), 410);
 }
+// Automatic language redirect (includes/fn/language_redirect.php): the first
+// page of a visit, in the source language, is sent on to the visitor's
+// language; a move between languages is remembered. Before the page types
+// below, which may answer with a redirect of their own.
+if (function_exists('pg_lang_redirect_page'))
+{
+	pg_lang_redirect_page($page_id, !(isset($_GET['page']) && $_GET['page']));
+}
 // do different things depending on page type
 switch ($page_type)
 {

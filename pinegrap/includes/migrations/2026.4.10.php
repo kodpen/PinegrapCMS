@@ -26,6 +26,7 @@ function upgrade_to_2026_4_10() {
 
 	upgrade_2026_4_10_oauth();                  // 10.70
 	upgrade_2026_4_10_oauth_metadata();         // 10.71
+	upgrade_2026_4_10_language_redirect();      // 10.1
 
 }
 
@@ -150,5 +151,31 @@ function upgrade_2026_4_10_oauth_metadata() {
 	install_add_column('oauth_clients', 'metadata_expires', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('External API: the site now has an MCP server (mcp.php). An AI application such as Claude connects to it with OAuth and works with the site through the same permissions as the API.');
+
+}
+
+// Automatic language redirect (2026.4.10, 10.1; includes/fn/language_redirect.php,
+// includes/geo.php).
+//
+// A visitor who arrives on a page in the source language is sent to the same
+// page in the language they read, when the site is served in it. Four config
+// columns: the switch (off), what decides the language - the browser's
+// language, the visitor's country, or the browser first and the country
+// after it - whether the home page alone or every page of a visual design is
+// redirected, and the language a visitor gets whose languages the site has
+// none of ('' keeps the page as it is). The country comes from the edge's
+// header or from the site's own IP-to-country file under data/geo/, which is
+// fetched by the general job and is not a table.
+function upgrade_2026_4_10_language_redirect() {
+
+	install_add_column('config', 'language_redirect', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'language_redirect_mode', "ENUM('language','country','both') NOT NULL DEFAULT 'both'");
+
+	install_add_column('config', 'language_redirect_scope', "ENUM('home','all') NOT NULL DEFAULT 'home'");
+
+	install_add_column('config', 'language_redirect_fallback', "TEXT NULL");
+
+	install_note('Languages: visitors can be sent to the language they read automatically, by their browser\'s language or their location. It is off until it is switched on under Site Settings, Languages and Translation.');
 
 }
