@@ -97,19 +97,17 @@ if (function_exists('erp_profit_report')) {
 
     if (erp_expenses_ready()) {
         $month_expenses = $month_report['expenses']['total'];
-        $expenses_open = db_item("SELECT COUNT(*) AS count, COALESCE(SUM(total_base), 0) AS total,
-                SUM(IF(due_date > '0000-00-00' AND due_date < CURDATE(), 1, 0)) AS overdue
-            FROM erp_expenses WHERE status = 'unpaid'");
-        $open_overdue = is_array($expenses_open) ? (int) $expenses_open['overdue'] : 0;
+        $expenses_open = erp_expense_unpaid_summary();
+        $open_overdue = $expenses_open['overdue'];
 
         $output_cards_month .=
             $card(lang('Expenses this month'), erp_money_out((int) $month_expenses['total']),
                 lang(array('string' => '{var:1} expense(s)', 'vars' => (int) $month_expenses['count'])),
                 'bi-receipt-cutoff', 'erp_expenses.php?period=' . substr($month_from, 0, 7)) .
-            $card(lang('Expenses to pay'), erp_money_out(is_array($expenses_open) ? (int) $expenses_open['total'] : 0),
+            $card(lang('Expenses to pay'), erp_money_out($expenses_open['total']),
                 ($open_overdue > 0)
                     ? lang(array('string' => '{var:1} past their due date', 'vars' => $open_overdue))
-                    : lang(array('string' => '{var:1} expense(s), any date', 'vars' => is_array($expenses_open) ? (int) $expenses_open['count'] : 0)),
+                    : lang(array('string' => '{var:1} expense(s), any date', 'vars' => $expenses_open['count'])),
                 'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=dates&from=2000-01-01&to=' . date('Y-12-31'),
                 ($open_overdue > 0) ? 'text-danger' : '');
     }
