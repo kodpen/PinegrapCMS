@@ -47,11 +47,21 @@ function pg_help_url($properties = array())
 }
 
 
-// this function outputs the includes for the files needed for the control panel
-//
-// $help_topic is the "page#anchor" a screen names for its help through
-// output_header()'s 'help' property; '' looks the screen up by its script.
-function output_control_panel_header_includes($include_assistant = true, $help_topic = '')
+/**
+ * The head every panel screen shares: the theme, the libraries and
+ * backend.src.js.
+ *
+ * $help_topic is the "page#anchor" a screen names for its help through
+ * output_header()'s 'help' property; '' looks the screen up by its script.
+ *
+ * $code_editor false (output_header()'s 'code_editor' property) leaves
+ * CodeMirror and its linters, some 2 MB of script, out of the head of a
+ * screen that draws no code field of its own. They wait in a template and
+ * window.pgCodeEditorReady() (backend.src.js) loads them the first time
+ * something on the screen needs them, such as a pane of the settings dialog
+ * with a code field.
+ */
+function output_control_panel_header_includes($include_assistant = true, $help_topic = '', $code_editor = true)
 {
     $help_url = pg_help_url(array('topic' => (string) $help_topic));
 
@@ -269,7 +279,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
-    ' . get_codemirror_includes() . '
+    ' . ($code_editor ? get_codemirror_includes() : '<template id="pg-code-editor-assets">' . get_codemirror_includes() . '</template>') . '
     <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
     ' . $assistant_snippet . '
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/backend.src.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js') . '"></script>
@@ -1862,7 +1872,7 @@ function output_header($properties = false)
         <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
         <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . output_control_panel_header_includes(true, $help_topic) . '
+        ' . output_control_panel_header_includes(true, $help_topic, !isset($properties['code_editor']) || $properties['code_editor']) . '
         ' . $output_tour_head . '
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
     </head>
@@ -5218,4 +5228,106 @@ function pg_version_assets_callback($match)
     }
 
     return $match[1] . $match[2] . $match[3] . $url . '?v=' . $versions[$url] . $match[5];
+}
+
+/**
+ * The panel scripts that are served minified, and what each is built from.
+ *
+ * Every key is a .min.js under the software directory; its value lists the
+ * sources it is made of, in the order they run. tools/build_js.php writes
+ * the .min.js files from this list (terser, flags fixed there) and its
+ * --check mode, run by CI, fails while a .min.js no longer matches its
+ * sources. A screen asks for a key through pg_js_bundle_urls(), never for a
+ * source by name, so the two cannot drift apart on the page either.
+ *
+ * The workspace's own scripts are one file: every workspace screen and the
+ * Workspace drawer of a record load the same set, so the browser fetches and
+ * compiles it once for all of them. The scripts only some screens load
+ * (the search box, the channel board, the tour) stay files of their own.
+ *
+ * @return array '<bundle>.min.js' => array('<source>.js', ...)
+ */
+function pg_js_bundles()
+{
+    return array(
+        'assets/js/workspace.min.js' => array(
+            'assets/js/workspace_editor.js',
+            'assets/js/workspace_recurrence.js',
+            'assets/js/workspace_events.js',
+            'assets/js/workspace_templates.js',
+            'assets/js/workspace_task_time.js',
+            'assets/js/workspace_task_links.js',
+            'assets/js/workspace_approvals.js',
+            'assets/js/workspace_acks.js',
+            'assets/js/workspace.js',
+        ),
+        'assets/js/workspace_palette.min.js'       => array('assets/js/workspace_palette.js'),
+        'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
+        'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
+        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+    );
+}
+
+/**
+ * The files a page loads for one of pg_js_bundles(): the .min.js when the
+ * site runs minified (ENVIRONMENT_SUFFIX 'min', the default), the sources one
+ * by one when it runs in development. The sources are also the answer when
+ * the .min.js is missing, so an update that left it out still serves a
+ * working screen.
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @return array paths under the software directory, in load order
+ */
+function pg_js_bundle_files($bundle)
+{
+    $bundles = pg_js_bundles();
+
+    if (!isset($bundles[$bundle])) {
+        return array();
+    }
+
+    $minified = !defined('ENVIRONMENT_SUFFIX') || (ENVIRONMENT_SUFFIX === 'min');
+
+    if ($minified && is_file(PG_FUNCTIONS_DIR . '/' . $bundle)) {
+        return array($bundle);
+    }
+
+    return $bundles[$bundle];
+}
+
+/**
+ * The addresses of pg_js_bundle_files(), each versioned by its own
+ * modification time so a rebuilt file reaches every browser and CDN.
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @return array URLs, in load order
+ */
+function pg_js_bundle_urls($bundle)
+{
+    $urls = array();
+
+    foreach (pg_js_bundle_files($bundle) as $file) {
+        $urls[] = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $file);
+    }
+
+    return $urls;
+}
+
+/**
+ * <script> tags for one of pg_js_bundles().
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @param bool   $defer  run after the document is parsed, in order
+ * @return string
+ */
+function pg_js_bundle_tags($bundle, $defer = true)
+{
+    $tags = '';
+
+    foreach (pg_js_bundle_urls($bundle) as $url) {
+        $tags .= '
+<script src="' . h($url) . '"' . ($defer ? ' defer' : '') . '></script>';
+    }
+
+    return $tags;
 }
