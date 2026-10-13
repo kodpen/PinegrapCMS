@@ -2830,9 +2830,49 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         : '';
 
     if ($page_id > 0) {
-        $prev = db_item("SELECT page_search, page_search_keywords FROM page WHERE page_id = '$page_id' LIMIT 1");
+        // The page's own columns, as this save writes them.
+        $own = array(
+            'page_name'                   => $name,
+            'page_style'                  => $style_id,
+            'page_folder'                 => $folder,
+            'page_title'                  => $title,
+            'page_meta_description'       => $meta_desc,
+            'page_search'                 => $search,
+            'page_search_keywords'        => $keywords,
+            'sitemap'                     => $sitemap,
+            'comments'                    => $c_on,
+            'comments_label'              => $c_label,
+            'comments_allow_new_comments' => $c_allow,
+            'comments_rating'             => $c_rating,
+        );
+        if ($multi_ready) $own['page_tree_json'] = $tree_json;
+        if (pg_page_noindex_ready()) {
+            $own['noindex']  = $noindex;
+            $own['nofollow'] = $nofollow;
+        }
+        if ($can_set_home) $own['page_home'] = $home_str;
+        $prev = db_item("SELECT " . implode(', ', array_merge(array_keys($own), array_keys($c_extra))) . " FROM page WHERE page_id = '$page_id' LIMIT 1");
         $home_set = $can_set_home ? "page_home = '" . e($home_str) . "'," : '';
+        // A page the editor sends only because a shared component it shows
+        // changed (a header edit reaches every page that has the header) was
+        // not edited itself: its tree and settings come back as stored. It
+        // keeps its modified time and author, and no "page modified" line is
+        // logged for it, so the site map's lastmod and the activity feed name
+        // the pages somebody actually changed. Decided from the stored row,
+        // not from anything the request says. The $c_extra values are
+        // already escaped for SQL, so the stored value is escaped to match.
+        $carried = is_array($prev);
+        foreach ($own as $col => $val) {
+            if (!$carried) break;
+            if (!array_key_exists($col, $prev) || (string)$prev[$col] !== (string)$val) $carried = false;
+        }
+        foreach ($c_extra as $col => $val) {
+            if (!$carried) break;
+            if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
+        }
+        $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
+                $touch_set
                 page_name                   = '" . e($name) . "',
                 page_style                  = '$style_id',
                 page_folder                 = '$folder',
@@ -2844,19 +2884,19 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 $sql_noindex_set
                 $home_set
                 $sql_tree_set
+                $sql_c_extra_set
                 comments                    = '$c_on',
                 comments_label              = '" . e($c_label) . "',
                 comments_allow_new_comments = '$c_allow',
-                comments_rating             = '$c_rating',
-                $sql_c_extra_set
-                page_timestamp              = UNIX_TIMESTAMP(),
-                page_user                   = '" . (int)$user['id'] . "'
+                comments_rating             = '$c_rating'
             WHERE page_id = '$page_id'");
         update_tag_cloud_keywords_for_page(
             $page_id, $search, $keywords,
             is_array($prev) ? $prev['page_search'] : 0,
             is_array($prev) ? $prev['page_search_keywords'] : '');
-        log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
+        if (!$carried) {
+            log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
+        }
     } else {
         $sql_noindex_cols = pg_page_noindex_ready() ? 'noindex, nofollow,' : '';
         $sql_noindex_vals = pg_page_noindex_ready() ? "'$noindex', '$nofollow'," : '';
