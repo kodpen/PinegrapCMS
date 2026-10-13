@@ -270,6 +270,13 @@ giriş; açık alış faturaları ve ödenmemiş giderler çıkış; tekrarlayan
 sonraki tarihleri; portföydeki çekler vadesinde giriş, verilen çekler çıkış. Gerçekleşenle
 karışmaz, ayrı tablo. Hesap saf fonksiyon + test.
 
+**Durum (2026-10-13):** üçü tek PR'da bitti. 9a `.xlsx` ürün içe aktarıcısının zip
+yardımcılarıyla (PHPExcel'siz), `.xls` PHPExcel ile biçimleriyle okunur; `.ods`
+reddedilir (vendored OOCalc PHP 8'de ölür); bankanın başlık bloğu atlanır. 9b oran ve KDV
+ERP Ayarları'nda; panel cari kartında ve mutabakat ekranında; tekrar faturalamayı
+`erp_invoices.late_fee_through` önler. 9c `erp_cashflow.php?view=forecast`. API/MCP uçları
+yok. **Faz 9 bitti.**
+
 ## 6. Varsayılan kararlar
 
 - API'den yalnız **taslak** oluşturulur; kesim ayrı ve açık bir çağrıdır.

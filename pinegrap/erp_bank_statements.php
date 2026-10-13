@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * ERP - bank statements: take in the file a bank lets its customers
- * download (CSV), and the statements taken in so far with the lines still
+ * download (CSV or Excel), and the statements taken in so far with the lines still
  * to deal with. The work lives in includes/erp/bank_import.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -105,13 +105,13 @@ pg_page_shell([
                         <select class="form-select" id="cash_account_id" name="cash_account_id">' . $tills . '</select>
                     </div>
                     <div class="col-12 col-md-5">
-                        <label class="form-label" for="statement">' . lang('Statement file (CSV)') . '</label>
-                        <input type="file" class="form-control" id="statement" name="statement" accept=".csv,.txt,text/csv" required />
+                        <label class="form-label" for="statement">' . lang('Statement file (Excel or CSV)') . '</label>
+                        <input type="file" class="form-control" id="statement" name="statement" accept=".xlsx,.xls,.csv,.txt,text/csv" required />
                     </div>
                     <div class="col-12 col-md-3">
                         <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Take in') . '</button>
                     </div>
-                    <div class="col-12 form-text">' . lang('Save the statement from internet banking as CSV (in Excel: Save As, CSV). You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . '</div>
+                    <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . '</div>
                 </div>
             </form>' : '') . '
 

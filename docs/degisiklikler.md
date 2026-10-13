@@ -84,6 +84,90 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Banka ekstresi Excel'den, vade farkı, nakit tahmini (ERP Faz 9, 10.61) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 9: bankalar ekstreyi çoğunlukla
+Excel olarak veriyor, CSV'ye çevirmek operatöre kalıyordu; geç ödeyen müşteriye
+vade farkı elle hesaplanıyordu; nakit akışı ekranı yalnız olanı gösteriyor,
+önümüzdeki günleri göstermiyordu.
+
+**9a. Ekstre Excel'den.** `erp_bank_statement_upload()` dosyayı artık
+`erp_bank_read_file()` ile okur: `.xlsx`/`.xlsm` ilk sayfası ürün
+içe aktarıcısının zip yardımcılarıyla satır satır (`erp_bank_read_spreadsheet()`,
+kütüphane yok), eski `.xls` PHPExcel ile **biçimleriyle** okunur; ürün
+içe aktarıcısı `setReadDataOnly(true)` kullandığı için tarih hücresi orada
+gün sayısı olarak gelir, burada gelmez. Sayı hücresi `erp_bank_sheet_value()`
+ile CSV'nin taşıyacağı metne döner: tarih biçimli hücre `Y-m-d` (UTC ile, batı
+saat diliminde gün kaymasın), tam sayı olduğu gibi, gerisi iki ondalık ve
+noktayla (1234.5599999999999 → 1234.56). Bankanın başlık bloğu
+(`erp_bank_rows_from_heading()`): ilk 60 satırda bir hücresi tarih, başka bir
+hücresi tutar (rakam, en çok üç harf, sıfır olmayan) olan ilk satır bulunur,
+üstündeki başlık satırı kalır, gerisi atılır; bulunamazsa satırlar olduğu gibi
+kalır. CSV de aynı süzgeçten geçer. `.ods`, `.numbers`, `.pdf` adla reddedilir
+("Excel veya CSV olarak kaydedip yeniden yükleyin"): PHPExcel'in OpenDocument
+okuyucusu PHP 8'de `implode()` argüman sırasından ölüyor (bkz. bilinen sorun).
+Sütun seçimi, satır özeti ve eşleştirme değişmedi.
+
+**9b. Vade farkı.** Yeni `includes/erp/late_fee.php`. Ayar ERP Ayarları'nda
+yeni kart: `config.erp_late_fee_rate` (aylık %, 0 = kapalı, en çok 50) ve
+`config.erp_late_fee_tax_rate` (faturadaki KDV oranı; boşsa carinin satış
+bölgesi oranı, `erp_account_zone_rate()`). Hesap `erp_late_fee_for_invoice()`:
+vadeden (ya da son faturalanan günden, hangisi sonraysa) itibaren gün gün,
+tahsilat (`erp_settlements.amount_base`) ve iadeler (iade faturası
+`grand_total_base`) kendi günlerinde borcu düşürür; ay 30 gün, yuvarlama bir
+kez sonda. Geç ödenmiş fatura da günlerini kazanır. `erp_late_fee_account()`
+carinin satış faturalarını (kesilmiş, kısmen ödenmiş, ödenmiş; vadesi as-of'tan
+önce; vade farkı faturası olmayan) dönemden önce kapananları eleyerek toplar.
+Dönem varsayılanı mutabakat mektubundaki gibi as-of yılının 1 Ocak'ı.
+Cari kartının bakiye kartı ve mutabakat mektubu ekranı (`erp_late_fee_panel()`,
+yalnız ekranda, mektupta değil) tutarı söyler; "Vade farkı faturası" düğmesi
+(`add_erp_late_fee_invoice.php`, salt okunur kullanıcıda yok) tek satırlı satış
+faturası **taslağı** yazar: açıklama dönem, notlar fatura fatura gün ve tutar,
+seri satış serisi, para birimi ana para birimi. Açık taslak varken düğme
+yerine taslağa bağlantı çıkar, ikinci taslak yazılmaz.
+
+Şema 10.61: `config.erp_late_fee_rate DECIMAL(6,3)`, `erp_late_fee_tax_rate
+DECIMAL(6,3) NULL` (config VARCHAR almaz) ve `erp_invoices.late_fee_through
+DATE NULL` + `idx_late_fee (account_id, late_fee_through)`. Taslak dönemin
+son gününü `late_fee_through`'a yazar (`erp_invoice_draft_save()` yalnız
+çağıran anahtarı verirse yazar; taslağı düzenlemek onu silmez). Fatura
+kesilince sayılır: sonraki vade farkı ertesi günden başlar, aynı gün iki kez
+faturalanmaz; silinen taslak hiçbir şey saymaz.
+
+**9c. Nakit tahmini.** Yeni `includes/erp/cash_forecast.php`. Nakit akışı
+ekranında "Gerçekleşen / Beklenen" sekmesi (`erp_cashflow.php?view=forecast`,
+`horizon` 30/60/90, varsayılan 90). Tablo: vadesi geçmiş + 30'ar günlük
+sütunlar; satırlar açık satış ve alış faturaları (`erp_aging_invoices()`,
+açık tutar etkin vadede), ödenmemiş giderler, tekrarlayan fatura ve giderler
+(sonraki tarihten adım adım, `erp_cash_forecast_repeats()`; geçmiş tarih bugün
+sayılır), portföydeki/tahsildeki alınan ve verilen çek-senetler vadelerinde.
+Altında para girişi, çıkışı, net ve beklenen bakiye (bugünkü kasa + birikimli
+net). Bugünkü nakit: ana para birimindeki kasalar, çek-senet portföy kasaları
+hariç (çek hem portföyde hem satırda sayılmasın). Kurusu bilinmeyen yabancı
+paralı tekrarlayan belge ve yabancı para kasaları notta sayılır, toplama
+girmez. Hesaplama saf `erp_cash_forecast_build()`; liste en çok 300 hareket.
+
+**Bilerek yapılmayan.** API/MCP uçları (vade farkı ve tahmin) yok; ekranlarla
+sınırlı tutuldu. Vade farkı otomatik kesilmez, e-posta atmaz; yalnız taslak.
+Tedarikçiye vade farkı yok. Tahmin geçmiş tahsilat alışkanlığından gecikme
+tahmini yapmaz; vadeyi olduğu gibi alır.
+
+**Bilinen sorun (bu PR dışında).** Ürün içe aktarımı da `.ods` dosyasında
+PHP 8'de ölümcül hata verir: `includes/phpexcel/PHPExcel/Reader/OOCalc.php:538`
+`implode($dataArray, "\n")`.
+
+**Doğrulama.** Birim testleri: `tests/erp_late_fee_test.php`,
+`tests/erp_cash_forecast_test.php`, `tests/erp_bank_import_test.php` (elle
+yazılmış .xlsx dahil); `innodb_test` config sütun sayısı 431. Sandbox'ta 10.61
+iki kez koşturuldu, ikincisinde dördü de "zaten var". Ayar kaydı (3,5 / 20),
+cari kartında "₺950,83" (74 gün × ₺10.000 + 15 gün × ₺5.000, %3,5) ve taslak
+(₺950,83 + %20 KDV = ₺1.141,00), taslağın kesilmesi (`late_fee_through`
+korundu), kesilen faturadan sonra yeni dönemin ertesi günden başlaması
+(₺151,67), tahmin tablosu 90 ve 60 gün, örnek .xlsx ve .xls ekstrenin
+yüklenip sütun eşlenmesi gerçek POST'larla denendi.
+
+---
+
 ## 2026.4.10 — Google ile Giriş signin.php akışında; listelerde sağlayıcı rozetleri (2026-10-13, şema 10.75)
 
 **Sorun.** #306 Microsoft ve Apple ile girişi `signin.php` /

@@ -408,7 +408,8 @@ function erp_manual_header_build($data)
  *                           exchange_rate_source, issue_date, due_date,
  *                           supplier_invoice_no, supplier_invoice_date, notes,
  *                           series, lines (see erp_manual_lines_build()),
- *                           created_by
+ *                           created_by; quote_id, purchase_order_id and
+ *                           late_fee_through only when the caller names them
  * @param int   $invoice_id  0 to create, otherwise the draft to rewrite
  * @return array ['success' => bool, 'invoice_id' => int, 'error' => string]
  */
@@ -479,6 +480,14 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
     if (array_key_exists('purchase_order_id', $data) && waf_table_has_column('erp_invoices', 'purchase_order_id')) {
         $header_sql .= ",
             purchase_order_id = '" . (int) $data['purchase_order_id'] . "'";
+    }
+
+    // The last day a late fee draft charges for (10.61,
+    // includes/erp/late_fee.php), the same way.
+    if (array_key_exists('late_fee_through', $data) && waf_table_has_column('erp_invoices', 'late_fee_through')) {
+        $through = (string) $data['late_fee_through'];
+        $header_sql .= ",
+            late_fee_through = " . ((preg_match('/^\d{4}-\d{2}-\d{2}$/', $through) === 1) ? "'" . escape($through) . "'" : "NULL");
     }
 
     // A withholding makes it a TEVKIFAT document; taking the last one off

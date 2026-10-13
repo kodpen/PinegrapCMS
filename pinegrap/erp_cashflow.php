@@ -9,6 +9,9 @@
  * split by payment method. The address carries the whole state so a view can
  * be bookmarked. CSV of the period table.
  *
+ * ?view=forecast is the other side: what the books say is still to come
+ * over the next 30, 60 or 90 days (includes/erp/cash_forecast.php).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -24,6 +27,216 @@ if (!validate_erp_access($user, 'cash')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_cashflow');
+
+// Two views: what happened (the report below) and what is ahead (the
+// forecast, includes/erp/cash_forecast.php), side by side in the toolbar.
+$output_view_pills = function ($active) {
+    return '<ul class="nav nav-pills nav-sm mb-0 me-2">
+                    <li class="nav-item"><a class="nav-link py-1 px-2' . (($active === 'flow') ? ' active' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a></li>
+                    <li class="nav-item"><a class="nav-link py-1 px-2' . (($active === 'forecast') ? ' active' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a></li>
+                </ul>';
+};
+
+if ((string) ($_GET['view'] ?? '') === 'forecast') {
+    $forecast = erp_cash_forecast($_GET['horizon'] ?? 90);
+    $kinds = erp_cash_forecast_kinds();
+    $bucket_keys = array_keys($forecast['buckets']);
+
+    $signed = function ($kurus) {
+        $kurus = (int) $kurus;
+        $class = ($kurus > 0) ? 'text-success' : (($kurus < 0) ? 'text-danger' : 'text-body-secondary');
+
+        return '<span class="' . $class . '">' . h((($kurus > 0) ? '+' : '') . erp_money_out($kurus)) . '</span>';
+    };
+
+    $plain = function ($kurus) {
+        return ((int) $kurus === 0) ? '<span class="text-body-secondary">—</span>' : h(erp_money_out((int) $kurus));
+    };
+
+    // Column headings: past due, then each thirty days with its dates.
+    $range_labels = array(30 => lang('1-30 days'), 60 => lang('31-60 days'), 90 => lang('61-90 days'));
+    $output_heads = '';
+    foreach ($forecast['buckets'] as $key => $bucket) {
+        $caption = ($key === 'overdue') ? lang('Past due') : $range_labels[(int) substr($key, 1)];
+        $dates = ($key === 'overdue') ? '' : '<div class="small fw-normal text-body-secondary text-nowrap">'
+            . h(prepare_form_data_for_output($bucket['start'], 'date', false) . ' – ' . prepare_form_data_for_output($bucket['end'], 'date', false)) . '</div>';
+        $output_heads .= '<th class="text-end">' . h($caption) . $dates . '</th>';
+    }
+
+    $output_kind_rows = '';
+    foreach ($kinds as $kind => $info) {
+        $cells = '';
+        foreach ($bucket_keys as $key) {
+            $cells .= '<td class="text-end">' . $plain($forecast['kinds'][$kind][$key]) . '</td>';
+        }
+        $output_kind_rows .= '
+                            <tr>
+                                <td><i class="bi ' . (($info['direction'] === 'in') ? 'bi-arrow-down-left text-success' : 'bi-arrow-up-right text-danger') . ' me-2" aria-hidden="true"></i>' . h($info['label']) . '</td>
+                                ' . $cells . '
+                                <td class="text-end fw-semibold">' . $plain($forecast['kinds'][$kind]['total']) . '</td>
+                            </tr>';
+    }
+
+    $total_row = function ($label, $values, $format, $class = '') use ($bucket_keys) {
+        $cells = '';
+        foreach ($bucket_keys as $key) {
+            $cells .= '<td class="text-end">' . $format($values[$key]) . '</td>';
+        }
+
+        return '
+                            <tr class="' . $class . '">
+                                <td>' . h($label) . '</td>
+                                ' . $cells . '
+                                <td class="text-end">' . $format($values['total']) . '</td>
+                            </tr>';
+    };
+
+    $balance_out = function ($kurus) {
+        return '<span class="' . (((int) $kurus < 0) ? 'text-danger' : '') . '">' . h(erp_money_out((int) $kurus)) . '</span>';
+    };
+
+    $output_item_rows = '';
+    foreach (array_slice($forecast['items'], 0, ERP_CASH_FORECAST_MAX_ITEMS) as $item) {
+        $in = ($item['direction'] === 'in');
+        $title = ((string) $item['title'] !== '') ? h((string) $item['title']) : '—';
+        $output_item_rows .= '
+                            <tr>
+                                <td class="text-nowrap' . (($item['bucket'] === 'overdue') ? ' text-danger' : '') . '">' . h(prepare_form_data_for_output((string) $item['date'], 'date', false)) . '</td>
+                                <td>' . h($kinds[$item['kind']]['label']) . '</td>
+                                <td>' . (((string) $item['url'] !== '') ? '<a class="link-body-emphasis" href="' . h((string) $item['url']) . '">' . $title . '</a>' : $title) . '</td>
+                                <td>' . h((string) $item['party']) . '</td>
+                                <td class="text-end text-success">' . ($in ? h(erp_money_out((int) $item['amount'])) : '') . '</td>
+                                <td class="text-end text-danger">' . ($in ? '' : h(erp_money_out((int) $item['amount']))) . '</td>
+                            </tr>';
+    }
+
+    if ($output_item_rows === '') {
+        $output_item_rows = '
+                            <tr><td colspan="6" class="text-center text-body-secondary py-4">' . lang('Nothing is due in this period.') . '</td></tr>';
+    }
+
+    $notes = array(lang('Amounts past their date are counted as if they settled today. Draft invoices and cancelled documents are not counted.'));
+    if ($forecast['cheque_tills'] > 0) {
+        $notes[] = lang('The tills the cheques and notes are kept in are left out of the cash today; the cheques and notes are counted on their due dates instead.');
+    }
+    if ($forecast['foreign_tills'] > 0) {
+        $notes[] = lang('Tills kept in another currency are not added into the cash today.');
+    }
+    if ($forecast['unpriced'] > 0) {
+        $notes[] = lang(array('string' => '{var:1} repeating document(s) in another currency are left out: no exchange rate is recorded for today.', 'vars' => (int) $forecast['unpriced']));
+    }
+    if (count($forecast['items']) > ERP_CASH_FORECAST_MAX_ITEMS) {
+        $notes[] = lang(array('string' => 'The list shows the first {var:1} of {var:2} movements; the table counts them all.', 'vars' => array(ERP_CASH_FORECAST_MAX_ITEMS, count($forecast['items']))));
+    }
+
+    $output_notes = '';
+    foreach ($notes as $note) {
+        $output_notes .= '<div class="form-text">' . h($note) . '</div>';
+    }
+
+    $last_day = end($forecast['buckets'])['end'];
+
+    echo
+    pg_page_shell(array(
+            'title' => lang('Cash forecast'),
+            'extra classes' => 'erp erp_cash',
+            'icon' => 'erp',
+            'heading' => lang('Cash forecast'),
+            'heading_description' => lang('What the books say will come in and go out over the coming days: open invoices, unpaid expenses, repeating documents and cheques on their due dates, and where the tills would stand.'),
+            'cancel' => false,
+        )) . '
+<main id="content" class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                ' . $output_view_pills('forecast') . '
+                ' . pg_filter_select('horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon'],
+                    array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('view'))) . '
+                <div class="pg-toolbar-grow"></div>
+                <a class="btn btn-sm btn-outline-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
+            </nav>
+
+            <div class="card my-4">
+                <div class="card-body">
+                    <div class="row g-3 text-center text-md-start">
+                        <div class="col-6 col-md">
+                            <div class="small text-uppercase text-body-secondary">' . lang('Cash today') . '</div>
+                            <div class="h5 mb-0">' . h(erp_money_out($forecast['cash'])) . '</div>
+                            <div class="small text-body-secondary">' . h(prepare_form_data_for_output($forecast['today'], 'date', false)) . '</div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="small text-uppercase text-body-secondary">' . lang('Expected in') . '</div>
+                            <div class="h5 mb-0 text-success">' . h(erp_money_out($forecast['in']['total'])) . '</div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="small text-uppercase text-body-secondary">' . lang('Expected out') . '</div>
+                            <div class="h5 mb-0 text-danger">' . h(erp_money_out($forecast['out']['total'])) . '</div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="small text-uppercase text-body-secondary">' . lang('Expected balance') . '</div>
+                            <div class="h5 mb-0' . (($forecast['position']['total'] < 0) ? ' text-danger' : '') . '">' . h(erp_money_out($forecast['position']['total'])) . '</div>
+                            <div class="small text-body-secondary">' . h(prepare_form_data_for_output($last_day, 'date', false)) . '</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card my-4">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(erp_cash_forecast_horizons()[$forecast['horizon']]) . '</div>
+                <div class="card-body p-0 position-relative table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                ' . $output_heads . '
+                                <th class="text-end">' . lang('Total') . '</th>
+                            </tr>
+                        </thead>
+                        <tbody>' . $output_kind_rows . '
+                        </tbody>
+                        <tfoot>'
+                            . $total_row(lang('Money in'), $forecast['in'], $plain)
+                            . $total_row(lang('Money out'), $forecast['out'], $plain)
+                            . $total_row(lang('Net change'), $forecast['net'], $signed)
+                            . $total_row(lang('Expected balance'), $forecast['position'], $balance_out, 'fw-bold') . '
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="px-3 pb-3">' . $output_notes . '</div>
+            </div>
+
+            <div class="card my-4">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Expected movements') . '</div>
+                <div class="card-body p-0 position-relative table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>' . lang('Due date') . '</th>
+                                <th>' . lang('Type') . '</th>
+                                <th>' . lang('Document') . '</th>
+                                <th>' . lang('Account') . '</th>
+                                <th class="text-end">' . lang('In') . '</th>
+                                <th class="text-end">' . lang('Out') . '</th>
+                            </tr>
+                        </thead>
+                        <tbody>' . $output_item_rows . '
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+' .
+    output_footer();
+
+    $liveform->remove_form();
+    exit();
+}
 
 // The quick ranges of the toolbar's period select. A range picked there
 // arrives as ?range=<key> and stands for both ends of the period; it is
@@ -215,6 +428,7 @@ pg_page_shell(array(
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                ' . $output_view_pills('flow') . '
                 ' . $output_group_filter . '
                 ' . $output_period_filter . '
                 <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-2 mb-0">
