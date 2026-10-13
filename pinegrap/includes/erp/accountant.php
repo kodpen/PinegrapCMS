@@ -1383,7 +1383,7 @@ function erp_accountant_stream($package)
     header('Content-Disposition: attachment; filename="' . erp_accountant_download_name($package) . '"');
     header('Content-Length: ' . (int) filesize($package['path']));
     header('Cache-Control: private, no-store');
-    header('X-Content-Type-Options: nosniff');
+    pg_send_nosniff();
     readfile($package['path']);
 
     return true;

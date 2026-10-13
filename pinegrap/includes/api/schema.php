@@ -1325,6 +1325,42 @@ function api_schema() {
 		/* ----- Page design (Visual Page Editor pages) --------------------- */
 
 		array(
+			'id'      => 'design.designs.list',
+			'method'  => 'GET',
+			'path'    => '/design/designs',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_designs_list',
+			'returns' => array('list' => 'Design'),
+			'summary' => 'Designs of the Visual Page Editor',
+			'description' => 'The designs a page can be added to (POST /design/pages). pages and drafts count the design\'s pages outside the Recycle Bin and those of them kept off the site; home says whether the home page is one of them. state: empty (no pages), live (no drafts), draft (every page that can be a draft is one) or mixed. template is the design template the design started from. Cursor paged.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the design name.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.pages.create',
+			'method'  => 'POST',
+			'path'    => '/design/pages',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_pages_create',
+			'dry_run' => true,
+			'returns' => 'DesignPage',
+			'summary' => 'Add a page to a design, as a draft',
+			'description' => 'A new page of the design, always kept off the site in the drafts folder: it opens in the Visual Page Editor with the design\'s other pages, and a person publishes it there. It starts as an empty canvas, or with the layout of another page of the same design (copy_from; its title, description and settings are not copied). Fill it with proposals (POST /design/pages/{id}/proposals). folder_id is the folder the page is published to (GET /folders), the top folder when left out. name is the page\'s address: spaces and & become _, and 409 name_taken when a page, file, short link or folder already answers at it. 409 page_has_form when the page to copy has a form of its own (the editor duplicates those).',
+			'params'  => array(
+				array('name' => 'design_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The design (GET /design/designs).'),
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The page name, which is its address.'),
+				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'meta_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'folder_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The folder the page is published to.'),
+				array('name' => 'copy_from',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A page of the same design whose layout the new page starts with.')
+			)
+		),
+
+		array(
 			'id'      => 'design.pages.list',
 			'method'  => 'GET',
 			'path'    => '/design/pages',

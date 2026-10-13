@@ -162,7 +162,7 @@ function pg_mcp_send($http_status, $payload) {
 
 		header('Cache-Control: no-store');
 
-		header('X-Content-Type-Options: nosniff');
+		pg_send_nosniff();
 
 		header('X-Request-Id: ' . api_request_id());
 

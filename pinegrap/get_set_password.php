@@ -31,6 +31,9 @@ function get_set_password($properties) {
 
         $token = $_GET['k'] ?? '';
 
+        // Only a token names an account; without one there is no address to show.
+        $user = null;
+
         // If there is a token in the query string, then validate it.
         if ($token) {
 
@@ -52,7 +55,7 @@ function get_set_password($properties) {
 
                 log_activity('Set Password: invalid token');
 
-                output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. Please check if your email client possibly broke the link. If so, then you might try fixing the link. Otherwise, the token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(get_page_type_url('forgot password'))))));
+                output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. Please check if your email client possibly broke the link. If so, then you might try fixing the link. Otherwise, the token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
             }
 
             $token_timestamp = $user['token_timestamp'];
@@ -63,7 +66,7 @@ function get_set_password($properties) {
                 
                 log_activity('Set Password: expired token');
 
-                output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(get_page_type_url('forgot password'))))));
+                output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
             }   
 
 
@@ -107,6 +110,7 @@ function get_set_password($properties) {
 
         $output = render_layout(array(
             'page_id' => $page_id,
+            'page_type' => 'set password',
             'messages' => $form->get_messages(),
             'form' => $form,
             'attributes' => $attributes,

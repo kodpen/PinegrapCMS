@@ -64,6 +64,7 @@ $presenters = array(
 	'api_calendar_event_schema' => 'api_calendar_event_present',
 	'api_form_submission_schema' => 'api_form_submission_present',
 	'api_seo_schema'           => 'api_seo_block',
+	'api_design_schema'          => 'api_design_present',
 	'api_design_page_schema'     => 'api_design_page_present',
 	'api_design_view_schema'     => 'api_design_view_present',
 	'api_design_outline_item_schema' => 'api_design_outline_item_present',
