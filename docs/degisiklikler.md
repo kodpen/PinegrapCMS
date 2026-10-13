@@ -84,6 +84,87 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — UPS anlık fiyatları REST API ve OAuth ile (2026-10-13)
+
+**Neden.** UPS erişim anahtarı (Access Key), kullanıcı adı ve parolayla
+girişi kaldırdı; API'leri artık yalnız OAuth 2.0 client credentials ile
+alınan erişim jetonunu kabul ediyor. `shipping.php` hâlâ
+`onlinetools.ups.com/ups.app/xml/Rate` XML ucuna eski bilgilerle
+gidiyordu, bu yüzden UPS anlık fiyatı gelmiyordu. Tersine OAuth planının
+yan bulgusu (`docs/_plan_tersine_oauth.md`), ürün sahibinin "sorunları
+çöz" kararıyla. FedEx (SOAP) ve USPS (Web Tools) ayrı PR'larla gelir.
+
+**Nasıl.** Yeni modül `includes/fn/carrier_api.php` (`functions.php`
+manifestinde `connect.php`'den sonra):
+
+- Uygulama: UPS Developer Portal'da açılan uygulamanın istemci kimliği ve
+  gizli anahtarı `connect_apps` tablosunda `shipping_ups` anahtarıyla
+  (`pg_connect_app_save()`; gizli anahtar sitenin şifreleme anahtarıyla
+  mühürlü, forma geri basılmaz), ortam (`production` / `test` = UPS CIE)
+  `options.environment`'ta. `includes/connect/providers/` altında dosyası
+  olmadığı için Bağlı hesaplar ekranında görünmez; `shipping_` öneki, ileride
+  UPS'in kendi girişi için eklenecek bir sağlayıcıyla çakışmasın diye.
+  Yeni şema adımı yok, #282'nin tabloları (10.72) kullanılır.
+- Jeton: `POST {host}/security/v1/oauth/token`, Basic auth,
+  `grant_type=client_credentials`. `pg_connect_service_put('shipping_ups')`
+  ile mühürlü önbellekte; bitimine iki dakika kala yenilenir, ortam +
+  kimlik + gizli anahtar parmak izi değişince eski jeton verilmez, ayar
+  değişince silinir. Aynı anda iki ödeme iki jeton almasın diye
+  `GET_LOCK` (Paraşüt'teki gibi). API 401 verirse jeton bir kez yeniden
+  alınır.
+- Fiyat: `POST {host}/api/rating/v2409/Shop`, başlıklar `transId`
+  (32 karakter) ve `transactionSrc`. Eski davranış aynen: paket başına bir
+  istek, tüm hizmetler tek yanıtta, hesap numarası varsa `ShipperNumber`
+  + `NegotiatedRatesIndicator` ve anlaşmalı fiyat önce
+  (`NegotiatedRateCharges.TotalCharge`, yoksa `TotalCharges`), hizmet
+  kodları (01, 14, 13, 02, 59, 12, 03), ölçüler en çok altı karakter,
+  `shipping_rates` önbelleği ve istek/yanıt günlük satırları. İstek kurucu
+  ve yanıt okuyucu saf fonksiyonlar: `pg_ups_rate_request()`,
+  `pg_ups_rate_parse()`.
+- HTTP: `pg_carrier_api_http()`, `pg_curl_tls()` ile (kargo çağrıları
+  `ALLOW_INSECURE_UPDATE_TLS` kapsamında), 10 sn zaman aşımı, yönlendirme
+  izlenmez. Hata satırı UPS, FedEx ve OAuth hata biçimlerini okur
+  (`pg_carrier_api_error_text()`).
+
+**Ne değişti.**
+
+- Ayarlar › E-Ticaret › Nakliye › UPS: Erişim Anahtarı, Kullanıcı Kimliği
+  ve Parola kutuları kalktı. Yerine İstemci Kimliği, İstemci Gizli Anahtarı
+  (kayıtlıysa "Kayıtlı. Korumak için boş bırakın."), Ortam (Üretim / Test
+  ortamı) ve "Kaydet ve bağlantıyı test et" (jeton ister, sonucu
+  bildirimde söyler). Hesap Numarası aynı ayar anahtarında
+  (`config.ups_account`) kalır. Alanlar `pg_carrier_api_settings_fields()`
+  ile çizilir, `pg_carrier_api_settings_save()` ile kaydedilir; alanları
+  formda olmayan bir bölme onlara dokunmaz.
+- Eski bilgiler girili, yenileri yoksa kartta uyarı: eski giriş kaldırıldı,
+  anlık fiyat yeni bilgiler girilene kadar kapalı. Şema adımı koşmamışsa ya
+  da şifreleme anahtarı yoksa kart onu söyler.
+- `config.ups_key`, `ups_user_id`, `ups_password` silinmedi; artık
+  okunmuyor ve kayıtta yazılmıyor.
+- Boyutu sıfır olan paket boyutsuz, yalnız ağırlıkla soruluyor; REST API
+  sıfır boyutu reddediyor.
+- `tests/carrier_api_test.php`: jeton isteği, önbellek, hata satırı, UPS
+  istek ve yanıtı.
+
+**Bilerek yapılmayan.** Eski kolonlar silinmedi ve taşınmadı (yeni API
+eski bilgileri kabul etmiyor). ShipTo için sokak adresi ve `ShipFrom`,
+`PaymentDetails` gönderilmiyor; eski istek de göndermiyordu, önbellek
+posta koduna göre. UPS teslim tarihi eskisi gibi hesaplanıyor.
+
+**Doğrulanan.** Uç, başlık, gövde ve yanıt alanları UPS'in resmi OpenAPI
+dosyalarıyla (github.com/UPS-API/api-documentation: `Rating.yaml`,
+`OAuthClientCredentials.yaml`) ve karrio-ups ile ShippingRates
+kaynaklarıyla karşılaştırıldı. lint, check_lang, test.php, check_bindings,
+check_api_schema, check_copies, build_js --check temiz.
+
+**Doğrulanamayan.** Gerçek bir UPS hesabına istek atılmadı (bulut
+ortamında taşıyıcı hesabı yok). Dev'de: Rating API'si eklenmiş bir UPS
+uygulamasıyla Test ortamında "Kaydet ve bağlantıyı test et", sonra UPS
+hizmetli bir nakliye yöntemiyle sepette fiyat ve günlükte "UPS fiyat
+isteği / yanıtı" satırları. 10.72 adımı ve `ENCRYPTION_KEY` gerekir.
+
+---
+
 ## 2026.4.10 — Referrer-Policy sunucu kuralından çıktı; görev çekmecesinde hazır olmayan asistan seçilemiyor (2026-10-13)
 
 ### 1. `no-referrer` sayfaları IIS'te de referrer göndermiyor

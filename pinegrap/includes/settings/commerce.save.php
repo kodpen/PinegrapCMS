@@ -375,9 +375,6 @@ function pg_parasut_credentials_for_save()
             ecommerce_address_verification = '" . escape(post_value('ecommerce_address_verification')) . "',
             ecommerce_address_verification_enforcement_type = '" . escape(post_value('ecommerce_address_verification_enforcement_type')) . "',
             ups = '" . e(post_value('ups')) . "',
-            ups_key = '" . e(trim(post_value('ups_key'))) . "',
-            ups_user_id = '" . e(trim(post_value('ups_user_id'))) . "',
-            ups_password = '" . e(trim(post_value('ups_password'))) . "',
             ups_account = '" . e(trim(post_value('ups_account'))) . "',
             fedex = '" . e(post_value('fedex')) . "',
             fedex_key = '" . e(trim(post_value('fedex_key'))) . "',
@@ -476,7 +473,11 @@ function pg_parasut_credentials_for_save()
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
-    
+    // The carriers' API applications are kept with the connected accounts'
+    // applications, the secrets sealed (includes/fn/carrier_api.php).
+    pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
+
+
     // if there was a next order number field, update next order number
     if (isset($_POST['ecommerce_next_order_number']) == true) {
         // if next order number that was submitted is blank, set order number to 1
