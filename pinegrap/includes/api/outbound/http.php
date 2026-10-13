@@ -125,6 +125,11 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             truncating that answer loses which SKU failed.
 //   agent     the word after the version in the user agent, for the receiver's
 //             log
+//   response_headers
+//             true to answer the response's headers as well, under 'headers':
+//             lower-cased name => value (the last one when a name repeats).
+//             A resumable upload is told where to send its parts in a
+//             Location header, and that is the only way to learn it.
 //
 // Everything the webhook client refuses, this refuses: an address inside the
 // network, a redirect to an address nothing checked, an unverified certificate.
@@ -140,6 +145,13 @@ function api_http_request($method, $url, $options = array()) {
 	$timeout  = isset($options['timeout'])  ? (int)$options['timeout']  : 10;
 	$max_body = isset($options['max_body']) ? (int)$options['max_body'] : 1000;
 	$agent    = isset($options['agent'])    ? (string)$options['agent']  : 'outbound';
+	$with_headers = !empty($options['response_headers']);
+
+	if ($with_headers) {
+
+		$result['headers'] = array();
+
+	}
 
 	$check = api_http_check_url($url);
 
@@ -200,6 +212,36 @@ function api_http_request($method, $url, $options = array()) {
 	// The address that was checked is the address that is called.
 	curl_setopt($handle, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
 
+	$received_headers = array();
+
+	if ($with_headers) {
+
+		// Called once per header line, the status line and the blank line
+		// included; an interim 100 Continue starts the list again, so only the
+		// final answer's headers are kept.
+		curl_setopt($handle, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$received_headers) {
+
+			$length = strlen($line);
+			$line = trim($line);
+
+			if (strpos($line, 'HTTP/') === 0) {
+
+				$received_headers = array();
+
+			} elseif (($line !== '') && (strpos($line, ':') !== false)) {
+
+				list($name, $value) = explode(':', $line, 2);
+
+				$received_headers[strtolower(trim($name))] = trim($value);
+
+			}
+
+			return $length;
+
+		});
+
+	}
+
 	$response = curl_exec($handle);
 
 	if ($response === false) {
@@ -217,6 +259,12 @@ function api_http_request($method, $url, $options = array()) {
 		$result['body'] = ($max_body > 0) ? substr((string)$response, 0, $max_body) : (string)$response;
 
 		$result['ok'] = ($result['status'] >= 200 && $result['status'] < 300);
+
+		if ($with_headers) {
+
+			$result['headers'] = $received_headers;
+
+		}
 
 	}
 

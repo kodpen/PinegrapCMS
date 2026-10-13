@@ -192,6 +192,9 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
 - Yeni sağlayıcı = `includes/connect/providers/<anahtar>.php` (uç
   adresleri, `issuers`/`issuer_pattern`, `identity_scopes`,
   `authorize_params`, `token_per_scope`, `options`, `setup` adımları).
+  Kimlik belirtecine nonce taşımayan sağlayıcı `'nonce' => false` der;
+  iptali erişim belirteciyle (Bearer, JSON `null` gövde) yapan sağlayıcı
+  `'revoke_auth' => 'bearer'` der (Dropbox).
   Yeni özellik = `includes/connect/purposes/<anahtar>.php` (`label`,
   `description`, `owner` site/person/any, `scopes` sağlayıcı başına). Şema
   ve `connect.php` değişmez.
@@ -209,6 +212,9 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   `config` kolonuna belirteç yazma.
 - Şifreleme `ENCRYPTION_KEY` ister (`pg_connect_can_seal()`); yoksa ekran
   bağlamayı kapatır.
+- Giden istekte cevap başlığı gerekiyorsa (sürdürülebilir yüklemenin
+  `Location`'ı) `api_http_request()`'e `'response_headers' => true` ver;
+  cevap `headers` (küçük harfli ad => değer) taşır.
 
 ## Modül dikişi (ERP → API)
 
