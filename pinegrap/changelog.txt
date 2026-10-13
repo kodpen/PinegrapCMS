@@ -679,6 +679,18 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Ziyaretçi raporları API'de (ziyaretçileri okuma
+         izni): günlük ya da saatlik ziyaret ve sayfa
+         görüntüleme sayıları, en çok görüntülenen sayfa ve
+         ürünler, ziyaretlerin kaynağa, kampanyaya (UTM),
+         giriş sayfasına, ülkeye ya da şehre göre dağılımı ve
+         getirdikleri form, sipariş ve ciro. Yalnız toplamlar
+         verilir, tek bir ziyaret (IP, konum) verilmez.
+
+  [YENİ] Site günlüğü API'de, yalnız okuma (site günlüğü
+         izni): sitede kimin neyi hangi adresten yaptığı,
+         tarih, kullanıcı ve metinle süzülerek.
+
   [YENİ] Hediye kartları API'de, kendi izinleriyle
          (hediye kartlarını okuma / yazma): kartlar kodu,
          tutarı, kalan bakiyesi, durumu (geçerli, bitmiş,

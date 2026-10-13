@@ -84,6 +84,51 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: ziyaretçi raporları ve site günlüğü (2026-10-13)
+
+**Sorun.** Trafik ve denetim kaydı API'de yoktu. Bir raporlama aracı ya da
+Claude "geçen hafta kaç ziyaret geldi, hangi kampanya sipariş getirdi, bu
+sayfayı kim değiştirdi" sorularını panelden başka yerde soramıyordu.
+
+**Değişiklik.** İki yeni dosya, iki yeni izin grubu, yazma yok:
+
+- `includes/api/resources/visitors.php`, izin `visitors:read`
+  (`validate_visitors_access()`: rol < 3 ya da ziyaretçi yetkisi):
+  - `GET /reports/traffic` (`interval` day/hour): `visitor_stats_hourly`
+    toplayıcısından (`pg_visitor_stats_range()`), boş günler/saatler sıfır
+    olarak; en çok 400 gün (saatlikte 31). `visitor_tracking` sitenin ziyaret
+    sayıp saymadığını söyler.
+  - `GET /reports/top-content`: `pg_visitor_top_content()`, başlık ve
+    adresiyle (`pg_visitor_label_content_rows()`).
+  - `GET /reports/visitors?by=…`: `visitors` tablosu, ziyaretçi raporu
+    ekranının özet toplamlarıyla (ziyaret, sayfa, form, sipariş oluşturuldu /
+    ödemeye geçti / tamamlandı, ciro kuruş). Boyutlar: referrer_host,
+    search_engine, search_terms, channel (ücretli: izleme kodunda SEO
+    ayarlarındaki pay-per-click işareti; işaret boşsa hiçbir ziyaret ücretli
+    sayılmaz, ekranın boş `LIKE '%%'` davranışı alınmadı), landing_page,
+    tracking_code, utm_*, country, state, city, form, site_search_terms.
+    `totals` penceredeki bütün ziyaretleri kapsar.
+  - Üç rapor da pencereyi sitenin saatine göre tam gün olarak sayar
+    (`api_visitors_window()`, yaz saati geçişinde de); varsayılan son 30 gün.
+    Tek ziyaret satırı (IP, şehir, user agent) bilerek verilmez.
+- `includes/api/resources/site_log.php`, izin `site_log:read` (Site Günlüğü
+  ekranı gibi rol ≤ 2): `GET /site-log` (`from`, `to`, `user`, `q`, imleç).
+  Açıklama sitenin dilinde kayıtlı olduğu için `q` o dilde aranır. PHP hata
+  günlükleri dosya olduğu için dışarıda kaldı.
+
+Testler: `tests/api_reports_test.php` (varsayılan pencere, Mart 2026
+Berlin yaz saati geçişinde 31 gün, işaretsiz kanal ifadesi). Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox).** Haziran 2019 trafiği tablo toplamıyla aynı
+(10 ziyaret / 539 sayfa), saatlik 48 dönem, 31 / 400 gün sınırları, from >
+to 422; en çok görüntülenen üç sayfa; kaynak, kanal, giriş sayfası, ülke,
+UTM dağılımları ve toplamlar SQL ile aynı (2158 ziyaret, 43 sipariş);
+`ppc_` işaretli test ziyareti `pay_per_click`; site günlüğü süzgeçleri ve
+imleç; izni olmayan uygulamaya 403; OpenAPI dört nesne.
+
+---
+
 ## 2026.4.10 — Dış API: hediye kartları (2026-10-13)
 
 **Sorun.** Hediye kartları API'de yoktu. Ödül, iade ya da mağaza dışında

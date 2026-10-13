@@ -87,6 +87,14 @@ function api_scope_groups() {
 		// anywhere by the site itself.
 		'system'    => array('label' => 'System',     'read' => 'system:read',    'write' => ''),
 
+		// Traffic, added up: visits, page views, what was viewed most and where
+		// visits came from. Never a single visit, which carries an address and
+		// a place.
+		'visitors'  => array('label' => 'Visitors',   'read' => 'visitors:read',  'write' => ''),
+
+		// Who did what on the site, from which address. Read only.
+		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
+
 		// The caller's own account: its notifications, the devices it is signed
 		// in on and its push registration. A device signed in by a person always
 		// holds it; an application only when the operator gives it, because an
@@ -286,6 +294,15 @@ function api_owner_scopes($owner) {
 
 	}
 
+	// The visitor screens open to roles 0 to 2 or the visitors right
+	// (validate_visitors_access()).
+	if (($role < 3)
+		|| (isset($owner['manage_visitors']) && in_array(strtolower(trim((string)$owner['manage_visitors'])), array('yes', '1', 'true'), true))) {
+
+		$scopes[] = 'visitors:read';
+
+	}
+
 	// Pages are the site itself: a contributor may hold edit rights on
 	// individual pages, but delegating page writes to a machine is a
 	// manager-and-above decision: roles 0 to 2, the panel's 'manager' gate.
@@ -308,6 +325,9 @@ function api_owner_scopes($owner) {
 		// screen's work, which the same people do.
 		$scopes[] = 'comments:read';
 		$scopes[] = 'comments:write';
+
+		// The Site Log screen opens to the same roles.
+		$scopes[] = 'site_log:read';
 
 	}
 
