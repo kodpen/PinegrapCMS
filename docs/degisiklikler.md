@@ -84,6 +84,30 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Paraşüt jetonu şifreli depoda (2026-10-13)
+
+**Neden.** Tersine OAuth planının yan bulgusu (§4.14): Paraşüt'ün erişim ve
+yenileme jetonu `data/parasut_token.json`'da düz metindi. Erişim jetonu
+süresi boyunca Paraşüt API'sine doğrudan girer; dosya `data/` yedeğine de
+giriyordu. Ürün sahibi "sorunları çöz" dedi.
+
+**Nasıl.** `includes/fn/parasut.php`'de yalnız önbelleğin iki fonksiyonu
+değişti: `_parasut_token_cache_read()` / `_parasut_token_cache_write()`
+artık `pg_connect_service_get/put('parasut')` kullanıyor (bağlı hesaplar
+tablosunda `provider = 'service'` satırı, site anahtarıyla şifreli). Eski
+dosya ilk okumada şifreli kayda taşınıp silinir; şifreli kayıt zaten varsa
+dosya artık kullanılmaz ve silinir. Şema 10.72 henüz koşmamış sitede dosya
+eskisi gibi okunur ve yazılır (atomik yeniden adlandırma korundu). Kayıt
+firma, istemci ve kullanıcı adının özetini (`owner`) taşır; Paraşüt
+ayarları başka bir hesaba çevrilince eski jeton sunulmaz. Kilit ve yenileme
+akışı (`parasut_get_token()`) değişmedi.
+
+**Bilerek yapılmayan.** `includes/erp/edoc/` sürücüleri ve Paraşüt kimlik
+bilgilerinin saklanışı (`config.parasut_credentials_enc`, zaten şifreli)
+değişmedi. `PARASUT_TOKEN_CACHE` sabiti eski dosyayı bulmak için kaldı.
+
+---
+
 ## 2026.4.10 — ERP: satın alma siparişleri dış API'de ve MCP'de (2026-10-13)
 
 **Neden.** Faz 7'nin son parçası (`docs/_plan_erp_ozellikler.md` §3, "API

@@ -761,6 +761,15 @@
          Microsoft 365 ve Gmail ile posta gönderme gibi
          özellikler bu bağlantıyı kullanacak.
 
+  [GÜVENLİK] Paraşüt'ün erişim ve yenileme jetonu artık
+         sitenin şifreleme anahtarıyla şifreli saklanıyor.
+         Önceden data klasöründe düz metin bir dosyadaydı;
+         dosyayı ya da yedeğini okuyan, jetonun süresi
+         içinde Paraşüt hesabına erişebiliyordu. Var olan
+         dosya ilk kullanımda taşınıp siliniyor; Paraşüt
+         ayarlarında firma, istemci ya da kullanıcı
+         değişince eski jeton kullanılmıyor.
+
   [ŞEMA] Bağlı hesaplar için iki yeni tablo (sağlayıcı
          uygulamaları ve bağlı hesaplar) eklenir.
 
