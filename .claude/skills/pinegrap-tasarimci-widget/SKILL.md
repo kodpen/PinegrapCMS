@@ -46,6 +46,18 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `get_page.php` → `pg_sw_route_record_address()` çözer; klasik
   `/<liste>/<ad>` biçimi oraya 301 ile gider. `href`'i `address_name`'e bağlı
   link render öncesi `form_item_view`'a çevrilir (`pg_sw_record_href_bindings()`).
+- `layout_type = 'system'` editör sayfası demek değildir: klasik sayfanın
+  varsayılan düzeni de odur. `get_page.php`'de ya da başka yerde "editör
+  sayfası" ayırırken `page_type`'a da bak (klasik form liste görünümü
+  `/<liste>/<ad>`'ı kendi çözer).
+- Widget ayarı (`_patchSysCfg`) kayıttan önce yazılır, değişmeyen sayfa
+  kayda ağaçsız (`unchanged: 1`) gider: kayıtta widget'ları sayfa ağacından
+  bulan kod, ağaç gelmediyse onu veritabanından okusun
+  (`pg_designer_resolve_tab_refs()` gibi).
+- Editör sayfasının adı dosya, kısa link ve site kökü girişleriyle de
+  çakışmamalı (`pg_designer_page_name_taken_elsewhere()`).
+  `check_name_availability()` kökü çalışma dizininden okur; API/MCP'den
+  çağrılan yolda kullanma.
 - Fonksiyonel class ve `data-*` hook'larını silme: `pg-eo-form`,
   `pg-eo-cc-fields`, `pg-eo-total-formatted`, `pg-qty-stepper`,
   `data-pg-qty-action`, `data-pg-remove-href`, `data-pg-eo-form`,

@@ -320,7 +320,6 @@ const StyleDesigner = (function () {
     // <tbody> kept rendering the invalid <div>-in-<tbody> markup that caused
     // the overlapping "binme" bug — even after buildTableLoopAreaEl existed.
     var _sysWidgetRenderTreeRoot = null;
-    var _catalogPagesCache        = null; // [{page_id, page_name, page_title}, …] — catalog list-page candidates (for group_navigation='page')
     var _refreshNotesPanel    = null; // assigned inside initLeftPanel once renderNotesPanel exists
     var _sharedUsage = {};            // { sid: [{style_id, style_name}, …] } — populated after usage_all fetch
     var _systemWidgetItems = [];      // populated by loadSharedTab when filtering shared_components — used by loadSystemTab
@@ -1235,29 +1234,6 @@ const StyleDesigner = (function () {
         };
         xhr.onerror = function () { _catalogListingPagesCache = []; if (cb) cb(_catalogListingPagesCache); };
         xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_catalog_listing_pages', token: token }));
-    }
-
-    // Fetch the list of catalog list pages (page_type='catalog'). Used by the
-    // catalog widget props panel when group_navigation='page' so the user can
-    // pick which page each group click should redirect to.
-    function _fetchCatalogPages(cb, force) {
-        if (_catalogPagesCache && !force) { if (cb) cb(_catalogPagesCache); return; }
-        var apiBase = (typeof path !== 'undefined' ? path : '') +
-                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
-        var token   = (typeof software_token !== 'undefined') ? software_token : '';
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', apiBase, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState !== 4) return;
-            try {
-                var resp = JSON.parse(xhr.responseText);
-                _catalogPagesCache = (resp && resp.status === 'success' && Array.isArray(resp.pages)) ? resp.pages : [];
-            } catch (e) { _catalogPagesCache = []; }
-            if (cb) cb(_catalogPagesCache);
-        };
-        xhr.onerror = function () { _catalogPagesCache = []; if (cb) cb(_catalogPagesCache); };
-        xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_catalog_pages', token: token }));
     }
 
     // Fetch all pages (any page_type) for the my_account login page picker.
@@ -24621,12 +24597,14 @@ const StyleDesigner = (function () {
                     var _groupNavPid = (_cfg.group_nav_page_id != null) ? parseInt(_cfg.group_nav_page_id, 10) : 0;
                     if (!(_groupNavPid > 0)) _groupNavPid = 0;
 
-                    // Catalog-page select (only relevant when _groupNav='page')
+                    // Catalog-page select (only relevant when _groupNav='page').
+                    // Designed pages with a catalog listing count as well as
+                    // classic catalog pages: both take the group as /<page>/<group>.
                     var _catalogPageOpts = '';
                     if (_groupNav === 'page') {
-                        _catalogPageOpts = _swPageOptions(_cfg.group_nav_page_id, _catalogPagesCache,
+                        _catalogPageOpts = _swPageOptions(_cfg.group_nav_page_id, _catalogListingPagesCache,
                             { none: _sdT('— Choose a page —'), noneValue: '', types: ['catalog_listing'] });
-                        if (!_catalogPagesCache) _fetchCatalogPages(function () { renderProperties(); });
+                        if (!_catalogListingPagesCache) _fetchCatalogListingPages(function () { renderProperties(); });
                     }
 
                     var _navSection =
