@@ -771,6 +771,7 @@ function ws_handle_action($action, $request)
                 'reactions'   => ws_reaction_quick(),
                 'claude'      => function_exists('ws_claude_boot') ? ws_claude_boot() : null,
                 'ai'          => function_exists('ws_ai_boot') ? ws_ai_boot() : null,
+                'mcp'         => function_exists('ws_mcp_boot') ? ws_mcp_boot() : array(),
                 'now'         => time(),
             ));
 
