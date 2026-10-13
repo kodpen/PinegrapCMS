@@ -12,10 +12,12 @@
  * is off until the administrator turns it on.
  *
  * Because the connection is shared, whoever writes to the alias acts with the
- * administrator's account on the other service. So a tool that may change
- * something there is never turned on here: only a tool the server says reads
- * only, or one that the administrator declares reads only when the server
- * says nothing either way. A tool the server marks as destructive stays off.
+ * administrator's account on the other service. So on a shared connection a
+ * tool that may change something there is never turned on: only a tool the
+ * server says reads only, or one that the administrator declares reads only
+ * when the server says nothing either way. A tool the server marks as
+ * destructive stays off. Tools that write are for servers people sign in to
+ * themselves, below.
  *
  * The credential is kept encrypted with the site's key and is never shown
  * again; the screen offers an empty field that keeps it when left empty.
@@ -28,6 +30,15 @@
  * provider key mcp_<server id>, which ws_mcp_connect_provider() builds from
  * what discovery found; every request carries the account's access token,
  * renewed there.
+ *
+ * On such a server each person may also connect an account of their own
+ * (owner 'person'). A tool that reads is called with the asker's own account
+ * when they have one, else with the site's. A tool that writes can be turned
+ * on there too, as one that asks first ('approve'): calling it runs nothing,
+ * the call waits under the answer as a proposal (mcp_ask.php) and runs only
+ * when the person who asked applies it, with their own account and never
+ * with the site's, so nobody acts on the other service in somebody else's
+ * name.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -315,22 +326,37 @@ function ws_mcp_tools($server)
 }
 
 /**
- * The administrator's word on each tool, by name.
+ * The administrator's word on each tool, by name: auto (the server says it
+ * reads only), auto_declared (the administrator says it reads only), approve
+ * (each call waits for the approval of the person who asked).
  *
  * @param array $server
- * @return array name => auto
+ * @return array name => rule
  */
 function ws_mcp_tool_rules($server)
 {
     $rules = array();
 
     foreach ((array) json_decode((string) ($server['tool_rules'] ?? ''), true) as $name => $rule) {
-        if (in_array($rule, array('auto', 'auto_declared'), true)) {
+        if (in_array($rule, array('auto', 'auto_declared', 'approve'), true)) {
             $rules[(string) $name] = $rule;
         }
     }
 
     return $rules;
+}
+
+/**
+ * Can a server's tools that write be turned on, each call approved by the
+ * person who asked? Only where people sign in with their own accounts: the
+ * call runs with the account of the one who approves it.
+ *
+ * @param array $server
+ * @return bool
+ */
+function ws_mcp_can_approve($server)
+{
+    return ((string) ($server['auth_kind'] ?? '') === 'oauth');
 }
 
 /**
@@ -364,7 +390,9 @@ function ws_mcp_tool_can_run($tool)
 
 /**
  * The tools that are turned on and may still run: a rule for a tool the
- * server no longer lists, or now marks as writing, counts for nothing.
+ * server no longer lists, or now marks as writing, counts for nothing. A tool
+ * whose calls wait for approval carries 'approve' => true; that rule counts
+ * only while the server signs in with OAuth.
  *
  * @param array $server
  * @return array[] by name
@@ -379,6 +407,14 @@ function ws_mcp_tools_on($server)
             continue;
         }
 
+        if ($rule === 'approve') {
+            if (ws_mcp_can_approve($server)) {
+                $on[$name] = $tools[$name] + array('approve' => true);
+            }
+
+            continue;
+        }
+
         $can = ws_mcp_tool_can_run($tools[$name]);
 
         if (($can === 'read') || (($can === 'declare') && ($rule === 'auto_declared'))) {
@@ -390,23 +426,74 @@ function ws_mcp_tools_on($server)
 }
 
 /**
- * The connection to a server, as the client takes it.
+ * The rule a tool gets from the settings form: what the switch or the list
+ * asked for, as far as the tool and the server allow it.
+ *
+ * @param array  $server
+ * @param array  $tool
+ * @param string $wanted 1 (the switch), auto_declared or approve (the list)
+ * @return string the rule, '' for off
+ */
+function ws_mcp_tool_rule_for($server, $tool, $wanted)
+{
+    $wanted = (string) $wanted;
+
+    if (($wanted === '') || ($wanted === '0')) {
+        return '';
+    }
+
+    $can = ws_mcp_tool_can_run($tool);
+
+    if ($can === 'read') {
+        return 'auto';
+    }
+
+    if (!ws_mcp_can_approve($server)) {
+        return ($can === 'declare') ? 'auto_declared' : '';
+    }
+
+    // On a server people sign in to: a tool that writes asks first, and one
+    // the server says nothing about is what the administrator chose.
+    if ($can === 'declare') {
+        return ($wanted === 'approve') ? 'approve' : 'auto_declared';
+    }
+
+    return 'approve';
+}
+
+/**
+ * The connection to a server, as the client takes it. On a server that signs
+ * in with OAuth it carries the account it was opened with (account_id, and
+ * person when that is somebody's own), so a 401 renews that account's token.
  *
  * @param array $server
- * @param int   $timeout seconds one request may take
+ * @param int   $timeout     seconds one request may take
+ * @param int   $user_id     whose own account comes first (0 for the site's)
+ * @param bool  $person_only only that person's own account will do
  * @return array
  */
-function ws_mcp_connection($server, $timeout = WS_MCP_SCREEN_TIMEOUT)
+function ws_mcp_connection($server, $timeout = WS_MCP_SCREEN_TIMEOUT, $user_id = 0, $person_only = false)
 {
-    return pg_mcp_client_connection(
+    $oauth = ((string) $server['auth_kind'] === 'oauth');
+    $account = $oauth ? ws_mcp_oauth_account($server, $user_id, $person_only) : null;
+    $person = $account && ((int) $account['user_id'] > 0);
+
+    // A person's own account starts a conversation of its own: the session
+    // the server's row keeps was opened with the site's token.
+    $conn = pg_mcp_client_connection(
         (string) $server['url'],
-        ((string) $server['auth_kind'] === 'oauth')
-            ? ws_mcp_oauth_headers($server)
+        $oauth
+            ? ws_mcp_account_headers($account)
             : ws_mcp_auth_headers((string) $server['auth_kind'], ws_mcp_secret_decode($server['secret'] ?? '')),
-        (string) $server['protocol'],
-        (string) $server['session_id'],
+        $person ? '' : (string) $server['protocol'],
+        $person ? '' : (string) $server['session_id'],
         $timeout
     );
+
+    $conn['account_id'] = $account ? (int) $account['id'] : 0;
+    $conn['person'] = $person;
+
+    return $conn;
 }
 
 /* ---------------------------------------------------------------------------
@@ -662,18 +749,59 @@ function ws_mcp_site_account($server)
 }
 
 /**
- * The Authorization header of a server that signs in with OAuth: the site
- * connection's access token.
+ * A person's own connection to a server that signs in with OAuth.
  *
  * @param array $server
- * @param bool  $force  renew the token even when it looks valid
- * @return string[] empty when the site is not connected or no token could be
- *                  had
+ * @param int   $user_id
+ * @return array|null pg_connect_account_public(), null when there is none
  */
-function ws_mcp_oauth_headers($server, $force = false)
+function ws_mcp_person_account($server, $user_id)
 {
-    $account = ws_mcp_site_account($server);
+    if (((int) $user_id <= 0) || (($server['auth_kind'] ?? '') !== 'oauth') || !pg_connect_schema_ready()) {
+        return null;
+    }
 
+    $accounts = pg_connect_accounts(array('provider' => ws_mcp_connect_key($server), 'user_id' => (int) $user_id));
+
+    return $accounts ? $accounts[0] : null;
+}
+
+/**
+ * The account a request to a server that signs in with OAuth goes with: the
+ * person's own when it works, else the site's (never the site's for a call
+ * only the person's own account may make).
+ *
+ * @param array $server
+ * @param int   $user_id     0 for the site's account only
+ * @param bool  $person_only
+ * @return array|null an active account, null when there is none
+ */
+function ws_mcp_oauth_account($server, $user_id = 0, $person_only = false)
+{
+    $mine = ws_mcp_person_account($server, $user_id);
+
+    if ($mine && ($mine['status'] === 'active')) {
+        return $mine;
+    }
+
+    if ($person_only) {
+        return null;
+    }
+
+    $site = ws_mcp_site_account($server);
+
+    return ($site && ($site['status'] === 'active')) ? $site : null;
+}
+
+/**
+ * The Authorization header of a connected account: its access token.
+ *
+ * @param array|null $account
+ * @param bool       $force renew the token even when it looks valid
+ * @return string[] empty when no token could be had
+ */
+function ws_mcp_account_headers($account, $force = false)
+{
     if (!$account || ($account['status'] !== 'active')) {
         return array();
     }
@@ -684,9 +812,25 @@ function ws_mcp_oauth_headers($server, $force = false)
 }
 
 /**
- * After a 401 from a server that signs in with OAuth: the token is renewed
- * once and the connection carries the new one. A service that gave no refresh
- * token marks the connection to be connected again (pg_connect_refresh()).
+ * The Authorization header of a server that signs in with OAuth
+ * (ws_mcp_oauth_account()).
+ *
+ * @param array $server
+ * @param bool  $force       renew the token even when it looks valid
+ * @param int   $user_id     whose own account comes first (0 for the site's)
+ * @param bool  $person_only
+ * @return string[] empty when nobody is connected or no token could be had
+ */
+function ws_mcp_oauth_headers($server, $force = false, $user_id = 0, $person_only = false)
+{
+    return ws_mcp_account_headers(ws_mcp_oauth_account($server, $user_id, $person_only), $force);
+}
+
+/**
+ * After a 401 from a server that signs in with OAuth: the token of the
+ * account the connection was opened with is renewed once and the connection
+ * carries the new one. A service that gave no refresh token marks the
+ * connection to be connected again (pg_connect_refresh()).
  *
  * @param array $conn   the connection, changed in place
  * @param array $server
@@ -695,37 +839,89 @@ function ws_mcp_oauth_headers($server, $force = false)
  */
 function ws_mcp_reauthorize(&$conn, $server, $status)
 {
-    if (((int) $status !== 401) || ((string) $server['auth_kind'] !== 'oauth')) {
+    if (((int) $status !== 401) || ((string) $server['auth_kind'] !== 'oauth') || empty($conn['account_id'])) {
         return false;
     }
 
-    $headers = ws_mcp_oauth_headers($server, true);
+    $token = pg_connect_access_token((int) $conn['account_id'], array(), true);
 
-    if (!$headers) {
+    if (!$token['ok']) {
         return false;
     }
 
-    $conn['headers'] = $headers;
+    $conn['headers'] = array('Authorization: Bearer ' . $token['token']);
 
     return true;
 }
 
 /**
  * What a failed request says: for a server that signs in with OAuth and
- * refused the token, that the site has to connect again.
+ * refused the token, that the account has to be connected again - the site's
+ * by an administrator, a person's own by that person.
  *
  * @param array  $server
  * @param int    $status
  * @param string $error
+ * @param bool   $person the request went with a person's own account
  * @return string
  */
-function ws_mcp_error_text($server, $status, $error)
+function ws_mcp_error_text($server, $status, $error, $person = false)
 {
     if (((string) ($server['auth_kind'] ?? '') === 'oauth') && ((int) $status === 401)) {
-        return lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.', 'vars' => $server['alias']));
+        return $person
+            ? lang(array('string' => 'Your own connection to @{var:1} ended. Connect your account again.', 'vars' => $server['alias']))
+            : lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.', 'vars' => $server['alias']));
     }
 
     return (string) $error;
+}
+
+/**
+ * The address that offers a person to connect their own account to a server,
+ * from a channel: the channel opens and asks first (assets/js/workspace.js).
+ *
+ * @param array $server
+ * @param int   $channel_id
+ * @return string
+ */
+function ws_mcp_connect_link($server, $channel_id)
+{
+    return URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel_id . '&mcp_connect=' . (int) $server['id'];
+}
+
+/**
+ * Sends a person to the service to connect their own account. The sign-in
+ * must be set up already: setting it up registers the site with the service,
+ * which is an administrator's to do.
+ *
+ * @param array  $viewer
+ * @param array  $server
+ * @param string $return the screen to come back to (pg_connect_return_path())
+ * @return array ok, url, error
+ */
+function ws_mcp_person_connect_start($viewer, $server, $return)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'url' => '', 'error' => $error);
+    };
+
+    if (($server['auth_kind'] !== 'oauth') || ($server['status'] !== 'active')) {
+        return $fail(lang('This kind of connection is not available.'));
+    }
+
+    if (!pg_connect_schema_ready()) {
+        return $fail(lang('The database has not been upgraded yet.'));
+    }
+
+    $key = ws_mcp_connect_key($server);
+
+    if (!pg_connect_app_ready(pg_connect_app($key)) || !ws_mcp_connect_provider($key)) {
+        return $fail(lang(array('string' => 'The sign-in to @{var:1} is not set up yet. An administrator saves the server again under Workspace settings › MCP servers.', 'vars' => $server['alias'])));
+    }
+
+    $mine = ws_mcp_person_account($server, (int) $viewer['id']);
+
+    return pg_connect_start($key, 'mcp', 'person', $viewer, $return, $mine ? (int) $mine['id'] : 0);
 }
 
 /**
@@ -738,6 +934,12 @@ function ws_mcp_error_text($server, $status, $error)
  */
 function ws_mcp_remember($server, $conn, $error)
 {
+    // What a person's own account met is not the server's state: the row
+    // keeps the site's conversation, and the card its errors.
+    if (!empty($conn['person'])) {
+        return;
+    }
+
     $error = mb_substr((string) $error, 0, 250);
 
     if (($conn['protocol'] === (string) $server['protocol']) && ($conn['session'] === (string) $server['session_id']) && ($error === (string) $server['last_error'])) {
@@ -756,22 +958,25 @@ function ws_mcp_remember($server, $conn, $error)
 /**
  * Asks a server for its tools again and keeps the list, with the name it
  * gives itself and its instructions. Rules for tools it no longer lists are
- * dropped.
+ * dropped. On a server that signs in with OAuth the asker's own account is
+ * used when they have one, else the site's.
  *
  * @param array $server
+ * @param int   $user_id who asks (0: the site's account only)
  * @return array ok, error, count
  */
-function ws_mcp_refresh_tools($server)
+function ws_mcp_refresh_tools($server, $user_id = 0)
 {
     if (!function_exists('curl_init')) {
         return array('ok' => false, 'error' => lang('This server cannot make outgoing HTTPS requests (cURL is missing).'), 'count' => 0);
     }
 
-    if (((string) $server['auth_kind'] === 'oauth') && !ws_mcp_oauth_headers($server)) {
+    $conn = ws_mcp_connection($server, WS_MCP_SCREEN_TIMEOUT, $user_id);
+
+    if (((string) $server['auth_kind'] === 'oauth') && empty($conn['headers'])) {
         return array('ok' => false, 'error' => lang(array('string' => 'Connect @{var:1} first: the site signs in to the service before its tools can be read.', 'vars' => $server['alias'])), 'count' => 0);
     }
 
-    $conn = ws_mcp_connection($server);
     $conn['protocol'] = '';
     $conn['session'] = '';
 
@@ -782,7 +987,7 @@ function ws_mcp_refresh_tools($server)
     }
 
     if (!$open['ok']) {
-        $error = ws_mcp_error_text($server, $open['status'], $open['error']);
+        $error = ws_mcp_error_text($server, $open['status'], $open['error'], $conn['person']);
         ws_mcp_remember($server, $conn, $error);
 
         return array('ok' => false, 'error' => $error, 'count' => 0);
@@ -795,7 +1000,7 @@ function ws_mcp_refresh_tools($server)
     }
 
     if (!$list['ok']) {
-        $error = ws_mcp_error_text($server, $list['status'], $list['error']);
+        $error = ws_mcp_error_text($server, $list['status'], $list['error'], $conn['person']);
         ws_mcp_remember($server, $conn, $error);
 
         return array('ok' => false, 'error' => $error, 'count' => 0);
@@ -818,9 +1023,10 @@ function ws_mcp_refresh_tools($server)
 
     $info = trim(mb_substr(trim((string) ($open['server']['title'] ?? ($open['server']['name'] ?? ''))) . ' ' . trim((string) ($open['server']['version'] ?? '')), 0, 200));
 
+    // A session opened with a person's own account is not the site's.
     db("UPDATE ws_mcp_servers SET
             protocol = '" . e(mb_substr($conn['protocol'], 0, 20)) . "',
-            session_id = '" . e($conn['session']) . "',
+            session_id = '" . e($conn['person'] ? '' : $conn['session']) . "',
             server_info = '" . e($info) . "',
             instructions = '" . e(mb_substr((string) $open['instructions'], 0, 4000)) . "',
             tools = '" . e((string) json_encode($tools, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . "',
@@ -854,12 +1060,14 @@ function ws_mcp_host($url)
 
 /**
  * A form on the settings screen: a server added, changed, asked for its tools
- * again, turned off or on, removed, its tools turned on and off, or the
- * site's sign-in to it connected or ended.
+ * again, turned off or on, removed, its tools turned on and off, the site's
+ * sign-in to it connected or ended, or the viewer's own account connected or
+ * ended (anybody who may open the screen).
  *
  * @param array    $viewer
  * @param string   $action mcp_save | mcp_refresh | mcp_toggle | mcp_delete |
- *                         mcp_tools | mcp_connect | mcp_disconnect
+ *                         mcp_tools | mcp_connect | mcp_disconnect |
+ *                         mcp_connect_me | mcp_disconnect_me
  * @param liveform $liveform
  * @return string the anchor to go back to
  */
@@ -868,6 +1076,36 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
     if (!ws_mcp_ready()) {
         $liveform->add_error(lang('The database has not been upgraded yet.'));
         return '#ws-mcp';
+    }
+
+    // A person's own account is theirs to connect and end.
+    if (($action === 'mcp_connect_me') || ($action === 'mcp_disconnect_me')) {
+        $server = ws_mcp_server((int) ($_POST['mcp_id'] ?? 0));
+
+        if (!$server || ($server['auth_kind'] !== 'oauth')) {
+            $liveform->add_error(lang('That MCP server could not be found.'));
+            return '#ws-mcp';
+        }
+
+        $anchor = '#ws-mcp-' . (int) $server['id'];
+
+        if ($action === 'mcp_connect_me') {
+            $start = ws_mcp_person_connect_start($viewer, $server, 'workspace_settings.php?mcp_connected=' . (int) $server['id'] . $anchor);
+
+            if (!$start['ok']) {
+                $liveform->add_error($start['error']);
+                return $anchor;
+            }
+
+            header('Location: ' . $start['url']);
+            exit();
+        }
+
+        if (ws_mcp_person_disconnect($viewer, $server)) {
+            $liveform->add_notice(lang(array('string' => 'Your own account is disconnected from @{var:1}.', 'vars' => $server['alias'])));
+        }
+
+        return $anchor;
     }
 
     if ((int) $viewer['role'] !== 0) {
@@ -899,7 +1137,7 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
                 break;
             }
 
-            $refresh = ws_mcp_refresh_tools($server);
+            $refresh = ws_mcp_refresh_tools($server, (int) $viewer['id']);
 
             if ($refresh['ok']) {
                 $liveform->add_notice(lang(array('string' => '@{var:1} answered with {var:2} tools.', 'vars' => array($server['alias'], $refresh['count']))));
@@ -952,16 +1190,14 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
             foreach ($wanted as $name => $on) {
                 $name = (string) $name;
 
-                if (empty($on) || !isset($tools[$name])) {
+                if (!isset($tools[$name]) || !is_scalar($on)) {
                     continue;
                 }
 
-                $can = ws_mcp_tool_can_run($tools[$name]);
+                $rule = ws_mcp_tool_rule_for($server, $tools[$name], (string) $on);
 
-                if ($can === 'read') {
-                    $rules[$name] = 'auto';
-                } elseif ($can === 'declare') {
-                    $rules[$name] = 'auto_declared';
+                if ($rule !== '') {
+                    $rules[$name] = $rule;
                 }
             }
 
@@ -1154,7 +1390,7 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
             }
         }
 
-        if (!ws_mcp_oauth_headers($saved)) {
+        if (!ws_mcp_oauth_headers($saved, false, (int) $viewer['id'])) {
             $liveform->add_notice(lang(array('string' => '@{var:1} was saved. Connect the site to it with the Connect button; its tools are read once it is connected.', 'vars' => $alias)));
             return '#ws-mcp-' . $id;
         }
@@ -1165,7 +1401,7 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
         return '#ws-mcp-' . $id;
     }
 
-    $refresh = ws_mcp_refresh_tools($saved);
+    $refresh = ws_mcp_refresh_tools($saved, (int) $viewer['id']);
 
     if ($refresh['ok']) {
         $liveform->add_notice(lang(array('string' => '@{var:1} was saved and answered with {var:2} tools. Turn on the ones that may be used.', 'vars' => array($alias, $refresh['count']))));
@@ -1216,8 +1452,41 @@ function ws_mcp_settings_connect($viewer, $server, $liveform)
 }
 
 /**
+ * Ends a person's own connection to a server (the service is told where it
+ * can be).
+ *
+ * @param array $viewer
+ * @param array $server
+ * @return bool whether there was one
+ */
+function ws_mcp_person_disconnect($viewer, $server)
+{
+    $mine = ws_mcp_person_account($server, (int) $viewer['id']);
+
+    if (!$mine) {
+        return false;
+    }
+
+    pg_connect_disconnect($mine['id']);
+
+    log_activity(lang(array('string' => 'ended their own connection to the MCP server @{var:1}', 'vars' => $server['alias'])), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    // The cards of the calls that waited for this account are drawn again.
+    if (function_exists('ws_message_touch') && function_exists('ws_changes_ready') && ws_changes_ready()) {
+        foreach ((array) db_values("SELECT DISTINCT c.message_id FROM ws_ai_changes c
+            INNER JOIN ws_mcp_calls m ON m.id = c.record_id
+            WHERE c.record_type = 'mcp_call' AND c.status = 'pending' AND c.requested_by = '" . (int) $viewer['id'] . "'
+                AND m.server_id = '" . (int) $server['id'] . "'") as $message_id) {
+            ws_message_touch((int) $message_id);
+        }
+    }
+
+    return true;
+}
+
+/**
  * Back on the settings screen from the service (connect.php): its message,
- * and the server's tools read at once when the site is now connected.
+ * and the server's tools read at once when an administrator is now connected.
  *
  * @param array    $viewer
  * @param liveform $liveform
@@ -1244,7 +1513,7 @@ function ws_mcp_settings_returned($viewer, $liveform)
         return;
     }
 
-    $refresh = ws_mcp_refresh_tools($server);
+    $refresh = ws_mcp_refresh_tools($server, (int) $viewer['id']);
 
     if ($refresh['ok']) {
         $liveform->add_notice(lang(array('string' => '@{var:1} answered with {var:2} tools. Turn on the ones that may be used.', 'vars' => array($server['alias'], $refresh['count']))));
@@ -1373,35 +1642,60 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
 
     $rules = ws_mcp_tool_rules($server);
     $on = ws_mcp_tools_on($server);
+    $approve = ws_mcp_can_approve($server);
     $rows = '';
 
     foreach ($tools as $name => $tool) {
         $can = ws_mcp_tool_can_run($tool);
         $field = 'ws_mcp_' . (int) $server['id'] . '_tool_' . substr(md5($name), 0, 10);
+        $value = '1';
+        $choice = false;
 
         if ($can === 'read') {
             $badge = '<span class="badge text-bg-success-subtle text-success-emphasis">' . h(lang('Reads only')) . '</span>';
             $hint = '';
         } elseif ($can === 'declare') {
             $badge = '<span class="badge text-bg-warning-subtle text-warning-emphasis">' . h(lang('Not said')) . '</span>';
-            $hint = lang('The server does not say whether this tool changes anything. Turn it on only if you know it only reads.');
+            $hint = $approve
+                ? lang('The server does not say whether this tool changes anything. Choose "Reads only" only if you know it does; otherwise each call waits for the approval of the person who asked.')
+                : lang('The server does not say whether this tool changes anything. Turn it on only if you know it only reads.');
+            $choice = $approve;
         } else {
             $badge = '<span class="badge text-bg-danger-subtle text-danger-emphasis">' . h((($tool['hints']['destructiveHint'] ?? null) === true) ? lang('Can delete') : lang('Writes')) . '</span>';
-            $hint = lang('It changes things on the other service. With one connection for everybody it stays off.');
+            $hint = $approve
+                ? lang('It changes things on the other service. Each call waits for the approval of the person who asked and runs with their own account.')
+                : lang('It changes things on the other service. With one connection for everybody it stays off.');
+            $value = 'approve';
         }
 
         $description = (string) $tool['description'];
 
+        // A tool the server says nothing about, on a server people sign in
+        // to: off, reads only, or asks first.
+        if ($choice) {
+            $current = isset($on[$name]) ? (string) ($rules[$name] ?? '') : '';
+            $control = '
+                <select class="form-select form-select-sm w-auto mt-1" name="mcp_tool[' . h($name) . ']" id="' . $field . '" aria-label="' . h($name) . '"' . ($admin ? '' : ' disabled') . '>
+                    <option value="">' . h(lang('Off')) . '</option>
+                    <option value="auto_declared"' . (($current === 'auto_declared') ? ' selected' : '') . '>' . h(lang('Reads only')) . '</option>
+                    <option value="approve"' . (($current === 'approve') ? ' selected' : '') . '>' . h(lang('Ask before each call')) . '</option>
+                </select>';
+        } else {
+            $control = '
+                <div class="form-check form-switch mt-1">
+                    <input class="form-check-input" type="checkbox" name="mcp_tool[' . h($name) . ']" value="' . $value . '" id="' . $field . '"'
+                        . (isset($on[$name]) ? ' checked' : '') . (((($can === '') && !$approve) || !$admin) ? ' disabled' : '') . '>
+                </div>';
+        }
+
         $rows .= '
             <li class="ws-dept-row align-items-start" data-ws-mcp-tool="' . h(mb_strtolower($name . ' ' . $tool['title'] . ' ' . $description)) . '"' . (($can === 'read') ? ' data-ws-mcp-reads' : '') . '>
-                <div class="form-check form-switch mt-1">
-                    <input class="form-check-input" type="checkbox" name="mcp_tool[' . h($name) . ']" value="1" id="' . $field . '"'
-                        . (isset($on[$name]) ? ' checked' : '') . ((($can === '') || !$admin) ? ' disabled' : '') . '>
-                </div>
+                ' . $control . '
                 <label class="ws-grow" for="' . $field . '">
                     <span class="fw-semibold"><code>' . h($name) . '</code></span>
                     ' . (($tool['title'] !== '') ? '<span class="text-body-secondary">· ' . h($tool['title']) . '</span>' : '') . '
                     ' . $badge . '
+                    ' . (!empty($on[$name]['approve']) ? '<span class="badge text-bg-primary-subtle text-primary-emphasis">' . h(lang('Asks first')) . '</span>' : '') . '
                     ' . (($description !== '') ? '<span class="d-block small text-body-secondary">' . h(mb_strimwidth($description, 0, 240, '…')) . '</span>' : '') . '
                     ' . (($hint !== '') ? '<span class="d-block small text-body-secondary fst-italic">' . h($hint) . '</span>' : '') . '
                 </label>
@@ -1450,6 +1744,14 @@ function ws_mcp_settings_card($self_url, $viewer)
         $oauth = ($server['auth_kind'] === 'oauth');
         $account = $oauth ? ws_mcp_site_account($server) : null;
         $connected = $account && ($account['status'] === 'active');
+        $mine = $oauth ? ws_mcp_person_account($server, (int) $viewer['id']) : null;
+        $people = 0;
+
+        foreach ($oauth ? pg_connect_accounts(array('provider' => ws_mcp_connect_key($server))) : array() as $connection) {
+            if (((int) $connection['user_id'] > 0) && ($connection['status'] === 'active')) {
+                $people++;
+            }
+        }
 
         if ($server['status'] !== 'active') {
             $state = '<span class="badge text-bg-secondary">' . h(lang('Off')) . '</span>';
@@ -1473,6 +1775,10 @@ function ws_mcp_settings_card($self_url, $viewer)
 
         if ($connected) {
             $details[] = lang(array('string' => 'connected {var:1}', 'vars' => ws_time_label($account['refreshed_timestamp'] ?: $account['created_timestamp'])));
+        }
+
+        if ($people > 0) {
+            $details[] = lang(array('string' => '{var:1} people with their own account', 'vars' => $people));
         }
 
         $details[] = lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(count($on), count($tools))));
@@ -1503,6 +1809,26 @@ function ws_mcp_settings_card($self_url, $viewer)
             $details[] = lang(array('string' => 'read {var:1}', 'vars' => ws_time_label($server['tools_at'])));
         }
 
+        // The viewer's own account: what the tools that ask first run with,
+        // and what the tools that read use before the site's.
+        $own = '';
+
+        if ($oauth && ($server['status'] === 'active')) {
+            $own_works = $mine && ($mine['status'] === 'active');
+            $own = '
+                <div class="small d-flex flex-wrap align-items-center gap-2 mt-1">
+                    <span class="text-body-secondary">' . h($own_works
+                        ? lang(array('string' => 'Your own account is connected ({var:1}).', 'vars' => ws_time_label($mine['refreshed_timestamp'] ?: $mine['created_timestamp'])))
+                        : ($mine ? lang('Your own connection ended.') : lang('Your own account is not connected.'))) . '</span>
+                    <form method="post" action="' . h($self_url) . '" class="d-inline">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="ws_action" value="' . ($own_works ? 'mcp_disconnect_me' : 'mcp_connect_me') . '">
+                        <input type="hidden" name="mcp_id" value="' . $id . '">
+                        <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">' . h($own_works ? lang('Disconnect my account') : ($mine ? lang('Connect my account again') : lang('Connect my account'))) . '</button>
+                    </form>
+                </div>';
+        }
+
         $list .= '
             <div class="ws-dept-row' . (($server['status'] !== 'active') ? ' opacity-75' : '') . '" id="ws-mcp-' . $id . '">
                 <i class="bi bi-plug" aria-hidden="true"></i>
@@ -1510,6 +1836,7 @@ function ws_mcp_settings_card($self_url, $viewer)
                     <div class="fw-semibold">@' . h($server['alias']) . (($server['name'] !== '') ? ' <span class="fw-normal text-body-secondary">· ' . h($server['name']) . '</span>' : '') . ' ' . $state . '</div>
                     <div class="small text-body-secondary">' . h(implode(' · ', $details)) . '</div>
                     ' . (($server['last_error'] !== '') ? '<div class="small text-danger">' . h($server['last_error']) . '</div>' : '') . '
+                    ' . $own . '
                 </div>
                 ' . $sign_in . '
                 <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="collapse" data-bs-target="#ws-mcp-edit-' . $id . '" aria-expanded="false"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Tools and settings')) . '</button>
@@ -1553,7 +1880,8 @@ function ws_mcp_settings_card($self_url, $viewer)
             </div>
             <div class="card-body">
                 <p class="small text-body-secondary">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. Each tool stays off until you turn it on here; only tools that read can be turned on.'))
-                    . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.')) . '</p>
+                    . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.'))
+                    . ' ' . h(lang('On a server people sign in to (OAuth), everybody may connect their own account, and tools that write can be turned on too: each call waits under the answer until the person who asked approves it, and runs with their own account.')) . '</p>
                 ' . ((function_exists('ws_ai_ready') && !ws_ai_ready()) ? '<div class="alert alert-warning small py-2">' . h(lang('Pinegrap AI is not connected yet, so the aliases cannot be asked. Connect it on the Pinegrap AI card.')) . '</div>' : '') . '
                 ' . ($admin ? '<div class="collapse mb-3" id="ws-mcp-new">' . ws_mcp_settings_form($self_url, null, true) . '</div>' : '<div class="form-text mb-2">' . h(lang('Only an administrator can add MCP servers.')) . '</div>') . '
                 ' . $list . '

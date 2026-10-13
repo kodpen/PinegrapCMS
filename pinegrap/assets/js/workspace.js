@@ -1757,6 +1757,22 @@
         return out;
     }
 
+    // A person's own account on an MCP server (includes/workspace/mcp.php):
+    // the service's sign-in, then back to the channel.
+    function mcpConnect(serverId, channelId, done) {
+        api('ws_mcp_connect', { server_id: serverId, channel_id: channelId || 0 }).then(function (data) {
+            if (data.url) {
+                window.location.href = data.url;
+            }
+        }).catch(function (error) {
+            fail(error);
+
+            if (done) {
+                done();
+            }
+        });
+    }
+
     function offcanvas(id, title) {
         var existing = document.getElementById(id);
 
@@ -4275,6 +4291,20 @@
                 self.showScheduled(false);
             } else {
                 self.showHome(false);
+            }
+
+            // Back from connecting an account to an MCP server, or asked by a
+            // link in a message to offer it (mcp_ask.php).
+            if (CFG.mcp && CFG.mcp.flash) {
+                toast(CFG.mcp.flash.text, (CFG.mcp.flash.kind === 'error') ? 'danger' : 'success');
+            }
+
+            if (CFG.mcp && CFG.mcp.connect) {
+                ask(t('mcp_connect_ask', CFG.mcp.connect.alias), t('mcp_connect_me')).then(function (yes) {
+                    if (yes) {
+                        mcpConnect(CFG.mcp.connect.server_id, target);
+                    }
+                });
             }
 
             // What the rail of the other screens links to.
@@ -8801,7 +8831,7 @@
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
                 var head = el('div', 'ws-draft-head');
-                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection' };
+                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection', run: 'bi-play-circle' };
 
                 head.appendChild(icon(change.status === 'applied' ? 'bi-check2-circle' : (icons[change.action] || 'bi-pencil-square')));
 
@@ -8956,12 +8986,49 @@
                     actions.appendChild(dismiss);
                 }
 
+                // A call of an MCP server's tool (mcp_ask.php) runs with the
+                // asker's own account, connected from here.
+                if (change.connect) {
+                    var connect = button('btn btn-sm btn-outline-primary rounded-pill px-3', t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
+
+                    connect.addEventListener('click', function () {
+                        connect.disabled = true;
+                        mcpConnect(change.connect.server_id, self.channel ? self.channel.id : 0, function () {
+                            connect.disabled = false;
+                        });
+                    });
+
+                    actions.appendChild(connect);
+                }
+
                 if (actions.childNodes.length) {
                     card.appendChild(actions);
                 }
 
                 if (change.status === 'pending' && !change.can_apply) {
-                    card.appendChild(el('div', 'ws-draft-done', change.no_right ? t('change_no_right') : t('change_waiting', change.asker)));
+                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t('change_waiting', change.asker))));
+                } else if (change.status === 'pending' && change.account) {
+                    var account = el('div', 'ws-draft-done', t('mcp_account', change.account.alias) + ' ');
+                    var off = el('a', '', t('mcp_disconnect_me'));
+
+                    off.href = '#';
+                    off.addEventListener('click', function (event) {
+                        event.preventDefault();
+
+                        ask(t('mcp_disconnect_ask', change.account.alias), t('mcp_disconnect_me'), true).then(function (yes) {
+                            if (!yes) {
+                                return;
+                            }
+
+                            api('ws_mcp_disconnect_me', { server_id: change.account.server_id }).then(function () {
+                                toast(t('mcp_disconnected'), 'success');
+                                self.sync();
+                            }).catch(fail);
+                        });
+                    });
+
+                    account.appendChild(off);
+                    card.appendChild(account);
                 } else if (change.status === 'applied') {
                     var done = el('div', 'ws-draft-done', t('change_applied', change.decided_by, change.decided) + ' ');
 

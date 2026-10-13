@@ -587,6 +587,27 @@
          anahtarı girilebiliyor; yönlendirme adresi
          formda yazıyor.
 
+  [YENİ] OAuth ile bağlanan MCP sunucusunda herkes kendi
+         hesabını bağlayabiliyor: "Hesabımı bağla" ayarlar
+         kartında, onay kartında ve kanalın "hesabınız
+         bağlı değil" mesajındaki bağlantıda. Kendi hesabı
+         bağlı olanın soruları onun hesabıyla, olmayanınki
+         sitenin bağlantısıyla yanıtlanıyor. "Hesabımın
+         bağlantısını kes" izni hizmette de geri alıyor.
+
+  [YENİ] Yazan araçlar onayla: OAuth ile bağlanan
+         sunucuda yönetici, değişiklik yapan araçları
+         "Her çağrıda onay iste" ile açabiliyor. Pinegrap
+         AI böyle bir aracı hemen çağırmıyor; çağrı,
+         argümanlarıyla yanıtın altında bir onay kartında
+         bekliyor (bir yanıtta en çok 3). Kartı yalnızca
+         soran kişi uygulayabiliyor ve araç onun kendi
+         hesabıyla çalışıyor, sitenin bağlantısıyla hiç
+         çalışmıyor. Sonuç kanala kilitli bir karar
+         mesajı olarak yazılıyor. Kart reddedilebiliyor;
+         onay kartları API'de type=mcp_call ile
+         listeleniyor.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

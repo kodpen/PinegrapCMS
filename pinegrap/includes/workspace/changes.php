@@ -2032,7 +2032,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
     foreach ($rows as $row) {
         $type = (string) $row['record_type'];
 
-        if (!isset($types[$type])) {
+        // A call of an MCP server's tool that writes (mcp_ask.php) is not a
+        // kind of record, but waits on the same card.
+        $mcp = ($type === 'mcp_call') && function_exists('ws_mcp_change_entry');
+
+        if (!isset($types[$type]) && !$mcp) {
             continue;
         }
 
@@ -2044,6 +2048,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
             $can_post[$place] = ($task_id > 0)
                 ? ws_can_see_task($viewer, ws_task($task_id))
                 : ws_can_post_channel($viewer, ws_channel($row['channel_id']));
+        }
+
+        if ($mcp) {
+            $out[(int) $row[$by]][] = ws_mcp_change_entry($viewer, $row, $people, !empty($can_post[$place]));
+            continue;
         }
 
         // Many records at once (bulk.php): the rule in words, how many it
@@ -2271,7 +2280,19 @@ function ws_change_apply($viewer, $change_id)
     $type = (string) $change['record_type'];
     $action = (string) ($change['action'] ?? 'update');
 
-    if (!isset($types[$type]) || !ws_change_allowed($viewer, $type, (int) $change['record_id'])) {
+    // A call of an MCP server's tool that writes (mcp_ask.php): it runs with
+    // the asker's own account, so what it needs is that account rather than
+    // a right to a kind of record. Checked before the proposal is taken, so
+    // it waits to be run once the account is connected.
+    $mcp = ($type === 'mcp_call') && function_exists('ws_mcp_call_run');
+
+    if ($mcp) {
+        $problem = ws_mcp_call_problem($viewer, $change);
+
+        if ($problem !== '') {
+            return $fail($problem);
+        }
+    } elseif (!isset($types[$type]) || !ws_change_allowed($viewer, $type, (int) $change['record_id'])) {
         return $fail(lang('You may not change a record of this kind.'));
     }
 
@@ -2306,6 +2327,10 @@ function ws_change_apply($viewer, $change_id)
             WHERE id = '" . (int) $change['id'] . "'");
         ws_message_touch($change['message_id']);
     };
+
+    if ($mcp) {
+        return ws_mcp_call_run($viewer, $change, $channel);
+    }
 
     // Many records at once (bulk.php): the work starts here and goes on a
     // slice at a time; the decision comes when it is done.
@@ -2537,6 +2562,11 @@ function ws_change_dismiss($viewer, $change_id)
 
     db("UPDATE ws_ai_changes SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
         WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
+
+    // A call of an MCP server's tool is kept as set aside too.
+    if (($change['record_type'] === 'mcp_call') && (mysqli_affected_rows(db::$con) === 1) && function_exists('ws_mcp_call_dismissed')) {
+        ws_mcp_call_dismissed($change);
+    }
 
     ws_message_touch($change['message_id']);
 

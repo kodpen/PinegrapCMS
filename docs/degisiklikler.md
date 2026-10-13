@@ -84,6 +84,84 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — MCP sunucularında kişi başı bağlantı ve yazan araçlar için onay kartı (2026-10-13)
+
+**Neden.** `docs/_plan_tersine_oauth.md` §4.6 (senaryo 5), F2'nin kalanı.
+#316 OAuth ile bağlanan MCP sunucusuna yalnız sitenin bağlantısını
+getirmişti: herkes aynı hesapla okuyordu, yazan araçlar hiç açılamıyordu
+(kimin adına yazdığı belli olmayan bir çağrı açılmamalı). Bu parça herkesin
+kendi hesabını bağlamasını ve yazan araçların, soranın onayıyla ve onun
+hesabıyla çalışmasını getirir. Şema yok.
+
+**Ne değişti.**
+
+- `includes/connect/purposes/mcp.php`: `owner => 'any'` (site ya da kişi).
+  `connect.php` POST'u çalışma anında kurulan sağlayıcıyı hâlâ başlatmaz;
+  kişi bağlantısı Çalışma Alanı'ndan, `ws_mcp_person_connect_start()` →
+  `pg_connect_start(..., 'person', $viewer, ...)` ile başlar (sunucu OAuth ve
+  açık, uygulama kayıtlı olmalı).
+- `includes/workspace/mcp.php`: `ws_mcp_connection($server, $timeout,
+  $user_id, $person_only)`: kişinin etkin hesabı önce, yoksa sitenin
+  (`$person_only` ise hiçbiri). Kişi bağlantısı oturum kimliğini saklamaz
+  (`ws_mcp_remember()` atlar, el sıkışma her seferinde). 401'de
+  `ws_mcp_reauthorize()` kullanılan hesabı (`$conn['account_id']`) yeniler;
+  hata metni kişi için ayrı ("@x ile kendi bağlantınız sona erdi").
+  `ws_mcp_person_account()`, `ws_mcp_oauth_account()`,
+  `ws_mcp_account_headers()`, `ws_mcp_connect_link()` (kanaldan bağlanma
+  adresi `workspace.php?channel=X&mcp_connect=Y`), `ws_mcp_person_disconnect()`
+  (bekleyen kartların mesajlarını tazeler).
+- Araç kuralı `approve` (yalnız OAuth sunucusunda, `ws_mcp_can_approve()`):
+  yazan araç yalnız böyle açılır, okuyup okumadığını söylemeyen araçta
+  yönetici "Yalnızca okur" (`auto_declared`) ile "Her çağrıda onay iste"
+  arasında seçer (`ws_mcp_tool_rule_for()`). Kartta "Önce sorar" rozeti,
+  "Hesabımı bağla / yeniden bağla / bağlantısını kes" satırı ve kendi
+  hesabıyla bağlı kişi sayısı. `mcp_connect_me` / `mcp_disconnect_me`
+  yönetici denetiminden önce koşar (her ayar görüntüleyicisi kendi hesabını
+  yönetir).
+- `includes/workspace/mcp_ask.php`: onay isteyen araç Pinegrap AI'a
+  "[needs approval]" işaretiyle verilir. Çağrısı çalışmaz:
+  `ws_mcp_ask_propose()` `ws_mcp_calls`'a `pending` satır yazar (yalnız
+  kanalda, yanıt başına en çok `WS_MCP_ASK_MAX_PROPOSED` = 3), yanıt
+  teslim edilince `ws_mcp_calls_propose()` her biri için `ws_ai_changes`
+  satırı (`record_type 'mcp_call'`, `action 'run'`, `record_id` çağrı,
+  alanlar argümanlar) yazar. İstek başarısız olursa
+  `ws_mcp_ask_drop_pending()` bekleyenleri siler. Okuyan araçlar soranın
+  bağlantısıyla (`requested_by`) çalışır. Bağlı değil mesajı soranın kendi
+  hesabını bağlayacağı bağlantıyı içerir.
+- `includes/workspace/changes.php`: `mcp_call` `ws_change_types()`'ta yok
+  (Claude ve API yazamaz). Kart girişi `ws_mcp_change_entry()`: yalnız soran
+  uygulayabilir; hesabı bağlı değilse kart "Bağla" düğmesi gösterir
+  (`blocked`). `ws_change_apply()` → `ws_mcp_call_run()`: yalnız soranın
+  kendi hesabıyla (sitenin bağlantısı yazan çağrıda hiç kullanılmaz);
+  başlık yoksa ya da hizmet 401 verirse öneri `pending`'e döner; sonuç
+  `ws_mcp_calls`'a (done/failed, `approved_by`, süre) ve kanala kilitli
+  karar mesajı olarak yazılır. Araç çıktısı mesajda kimseyi anmaz (`<@`,
+  `<#` etkisizleştirilir) ve `WS_MCP_DECISION_RESULT_LIMIT` (600) ile
+  kısalır. Reddedilen kartın çağrısı `dismissed` olur.
+- API: `GET /workspace/changes?type=mcp_call` onay kartlarını listeler
+  (kayıt adı "@takma ad araç", alanlar argümanlar). Uygula/reddet API'den
+  `ws_change_apply()` kuralıyla gelir: yalnız soran.
+- Ekran: `workspace.php?mcp_connect=<id>` sorup bağlanmaya gönderir, dönüşte
+  (`mcp_connected`) bildirim; kartta "Bağla" ve "Hesabımın bağlantısını
+  kes" (`ws_mcp_connect`, `ws_mcp_disconnect_me` eylemleri; `ws_mcp_connect`
+  oturumu kapatmaz, bekleyen bağlantı oturumda tutulur).
+
+**Denendi.** Birim testleri (`tests/workspace_mcp_test.php`: onay yalnız
+OAuth'ta, kural matrisi, argüman kısaltma, kişi hata metni). Sandbox'ta sahte
+bir MCP + OAuth sunucusuna karşı uçtan uca (60 kontrol): kişi bağlantısı,
+kişinin jetonuyla araç listesi, başka kişiye bağlanma bağlantısı, okuyan
+araç çalışır / yazan bekler / en çok 3, kartı yalnız soran uygular, kilitli
+ve kimseyi anmayan karar mesajı, iki kez uygulanmaz, araç hatasında
+`failed`, bağlantı kesilince kart "Bağla" der ve bekler, site bağlantısı
+yazan çağrıda kullanılmaz, 401'de öneri geri döner, reddetme, başarısız
+istekte bekleyenler silinir, API listesi, ayar kartı.
+
+**Kapsam dışı (devir notunda).** F3 (göreve takma ad: `ws_tasks.delegate`
+= `mcp:<server_id>`; görevde kanal olmadığı için onay kartının yeri
+ayrıca kurulmalı, `ws_mcp_ask_propose()` şimdilik kanal dışında reddeder).
+
+---
+
 ## 2026.4.10 — Dış API: ortaklık komisyonları (salt okuma) ve `?dry_run=true` (2026-10-13)
 
 **Sorun.** İki ayrı eksik (`api-genisletme-devir.md` 5. ve 7. madde).

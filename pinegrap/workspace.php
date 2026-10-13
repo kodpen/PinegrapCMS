@@ -42,5 +42,9 @@ pg_page_shell([
         <div class="ws-empty m-auto">' . h(lang('Loading…')) . '</div>
     </div>
 </main>
-' . ws_screen_assets($viewer, 'channels', array('open_channel' => (int) ($_GET['channel'] ?? 0))) .
+' . ws_screen_assets($viewer, 'channels', array(
+    'open_channel' => (int) ($_GET['channel'] ?? 0),
+    // Back from connecting an account to an MCP server, or asked to offer it.
+    'mcp'          => function_exists('ws_mcp_screen_config') ? ws_mcp_screen_config($viewer) : null,
+)) .
 output_footer();
