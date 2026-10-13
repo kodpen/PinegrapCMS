@@ -268,6 +268,13 @@ if (
 
     $cancel_before_timestamp = time() - ($cancel_days * 86400);
 
+    // An order put on the customer's account (ERP, 10.60) is an offline
+    // payment too, but no transfer is coming: it is paid by the account's
+    // due date, once it is invoiced. It is never cancelled here.
+    $sql_not_on_account = db_item("SHOW COLUMNS FROM orders LIKE 'erp_on_account'")
+        ? 'AND (erp_on_account = 0)'
+        : '';
+
     $unpaid_orders = db_items(
         "SELECT id, order_number
         FROM orders
@@ -277,6 +284,7 @@ if (
             AND (status = 'complete')
             AND (order_date < '" . $cancel_before_timestamp . "')
             AND (COALESCE(erp_invoice_id, 0) = 0)
+            " . $sql_not_on_account . "
         ORDER BY order_date ASC
         LIMIT 50");
 

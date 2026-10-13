@@ -19,6 +19,10 @@
  * is on: erp_storefront_price() is the one rule, pg_erp_member_prices()
  * (includes/fn/ecommerce.php) applies it to the catalogue and the cart.
  *
+ * And whether an order may go on the account at checkout
+ * (config.erp_open_account_payment): erp_storefront_on_account() weighs it
+ * against the credit limit, pg_erp_open_account() reads the figures.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -115,6 +119,41 @@ function erp_storefront_price($list_price, $terms, $offer_price = null)
     }
 
     return $best;
+}
+
+/**
+ * Whether an order may be put on the customer's account at checkout
+ * (config.erp_open_account_payment), weighed against the account's credit
+ * limit the way erp_credit_state() weighs an invoice: what the ledger says
+ * the account owes, plus the orders already put on it that have no invoice
+ * yet (the ledger holds an order only once it is invoiced), plus this order,
+ * may not pass the limit. Reaching it exactly is allowed. An account without
+ * a limit takes nothing on account: the limit is what the store agreed to
+ * carry.
+ *
+ * Unlike an invoice typed in the ERP, the store asks this whatever the credit
+ * limit mode (config.erp_credit_limit_mode) says: nobody at checkout reads a
+ * warning.
+ *
+ * @param int $limit    erp_accounts.credit_limit (kurus, base currency), 0 for none
+ * @param int $balance  erp_accounts.balance: what the account owes today, below
+ *                      zero when the store owes the customer
+ * @param int $pending  The account's orders on account not invoiced yet (kurus)
+ * @param int $total    This order's total (kurus)
+ * @return array  allowed (bool); available: what the limit leaves before this
+ *                order, never below zero; after: what the account would owe
+ */
+function erp_storefront_on_account($limit, $balance, $pending, $total)
+{
+    $limit = (int) $limit;
+    $owed = (int) $balance + max(0, (int) $pending);
+    $after = $owed + max(0, (int) $total);
+
+    return array(
+        'allowed' => ($limit > 0) && ($after <= $limit),
+        'available' => max(0, $limit - $owed),
+        'after' => $after,
+    );
 }
 
 /**

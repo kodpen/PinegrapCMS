@@ -5179,6 +5179,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     if (isset($pm_pretty_map[$payment_method_raw])) {
         $payment_method_pretty = $pm_pretty_map[$payment_method_raw];
     }
+    // An order put on the customer's account (ERP, 10.60) is stored as an
+    // offline payment and says what it was.
+    if (($payment_method_raw === 'Offline Payment')
+        && function_exists('waf_table_has_column') && waf_table_has_column('orders', 'erp_on_account')
+        && ((int)db_value("SELECT erp_on_account FROM orders WHERE id = '$oid_esc' LIMIT 1") === 1)) {
+        $payment_method_pretty = lang('Put on account');
+    }
 
     // Masked card number — shown under the payment method so the customer can
     // tell WHICH card they paid with when they hold several. Resolution rules

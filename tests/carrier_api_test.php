@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the carriers' REST API helpers in includes/fn/carrier_api.php:
- * the token request and its cache, error lines, and the UPS Rating request
- * and answer. No carrier is called.
+ * the token request and its cache, error lines, the UPS Rating request and
+ * answer, the FedEx transit times, and the USPS prices, delivery dates and
+ * address checks. No carrier is called.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -329,4 +330,274 @@ function test_fedex_delivery_parse_transit_from_operational_detail()
 
 	pg_assert_same(array('fedex_ground' => array('date' => '', 'transit_days' => 3)), pg_fedex_delivery_parse($data));
 	pg_assert_same(array(), pg_fedex_delivery_parse(array('errors' => array())));
+}
+
+// USPS takes the credentials in the form, at its test host in the test
+// environment.
+function test_carrier_api_usps_token_request_uses_form()
+{
+	$request = pg_carrier_api_token_request(pg_carrier_api_definition('usps'), carrier_api_test_app('test'));
+
+	pg_assert_same('https://apis-tem.usps.com/oauth2/v3/token', $request['url']);
+	pg_assert_same('grant_type=client_credentials&client_id=id-123&client_secret=secret%3A456', $request['body']);
+
+	$request = pg_carrier_api_token_request(pg_carrier_api_definition('usps'), carrier_api_test_app());
+
+	pg_assert_same('https://apis.usps.com/oauth2/v3/token', $request['url']);
+}
+
+// A GET carries no content type; a POST with a body does.
+function test_carrier_api_request_headers()
+{
+	pg_assert_same(
+		array('Accept: application/json', 'Authorization: Bearer t0k'),
+		pg_carrier_api_request_headers('t0k', false));
+
+	pg_assert_same(
+		array('Accept: application/json', 'Content-Type: application/json', 'Authorization: Bearer t0k', 'X-locale: en_US'),
+		pg_carrier_api_request_headers('t0k', true, array('X-locale: en_US')));
+}
+
+// USPS names the refused fields under the error; a detail repeating the
+// message is written once.
+function test_carrier_api_error_text_usps_details()
+{
+	pg_assert_same(
+		'400: OAS Validation Failed; 400: Invalid ZIP Code.',
+		pg_carrier_api_error_text(array('apiVersion' => 'v3', 'error' => array(
+			'code'    => '400',
+			'message' => 'OAS Validation Failed',
+			'errors'  => array(array('status' => '400', 'code' => '400', 'title' => 'Invalid value', 'detail' => 'Invalid ZIP Code.')),
+		)), 400));
+
+	pg_assert_same(
+		'010005: Address Not Found.',
+		pg_carrier_api_error_text(array('error' => array(
+			'code'    => '010005',
+			'message' => 'Address Not Found.',
+			'errors'  => array(array('code' => '010005', 'title' => 'Address Not Found.')),
+		)), 400));
+}
+
+function test_usps_mail_classes()
+{
+	pg_assert_same('PRIORITY_MAIL', pg_usps_mail_class('usps_priority'));
+	pg_assert_same('PRIORITY_MAIL_EXPRESS', pg_usps_mail_class('usps_express'));
+	pg_assert_same('USPS_GROUND_ADVANTAGE', pg_usps_mail_class('usps_ground'));
+	pg_assert_same('', pg_usps_mail_class('ups_ground'));
+}
+
+function test_usps_machinable_limits()
+{
+	pg_assert_true(pg_usps_machinable(array('length' => 10, 'width' => 8, 'height' => 4, 'weight' => 2)));
+	pg_assert_false(pg_usps_machinable(array('length' => 40, 'width' => 8, 'height' => 4, 'weight' => 2)), 'too long');
+	pg_assert_false(pg_usps_machinable(array('length' => 10, 'width' => 8, 'height' => 4, 'weight' => 0.25)), 'too light');
+	pg_assert_false(pg_usps_machinable(array('length' => 0, 'width' => 0, 'height' => 0, 'weight' => 2)), 'no dimensions');
+}
+
+// Retail prices for the five-digit ZIP codes, the package's measures and the
+// mail classes asked for.
+function test_usps_rate_request_shape()
+{
+	$request = pg_usps_rate_request(
+		'30301-1234',
+		'10001',
+		array('length' => '10.00', 'width' => '8', 'height' => '4', 'weight' => '2.500'),
+		array('PRIORITY_MAIL', 'USPS_GROUND_ADVANTAGE'),
+		'2026-10-14');
+
+	pg_assert_same(array(
+		'originZIPCode'      => '30301',
+		'destinationZIPCode' => '10001',
+		'weight'             => 2.5,
+		'length'             => 10.0,
+		'width'              => 8.0,
+		'height'             => 4.0,
+		'mailClasses'        => array('PRIORITY_MAIL', 'USPS_GROUND_ADVANTAGE'),
+		'priceType'          => 'RETAIL',
+		'mailingDate'        => '2026-10-14',
+		'itemValue'          => 0,
+	), $request);
+}
+
+function carrier_api_test_usps_option($mail_class, $total, $rate)
+{
+	return array(
+		'totalBasePrice' => $total,
+		'totalPrice'     => $total,
+		'rates'          => array($rate + array('mailClass' => $mail_class, 'price' => $total)),
+	);
+}
+
+// Flat Rate, Cubic and destination entry prices are left out; of the
+// single-piece prices the package's processing category is taken.
+function test_usps_rate_parse_keeps_single_piece_prices()
+{
+	$data = array('rateOptions' => array(
+		carrier_api_test_usps_option('PRIORITY_MAIL', 10.40, array('rateIndicator' => 'FS', 'description' => 'Priority Mail Small Flat Rate Box')),
+		carrier_api_test_usps_option('PRIORITY_MAIL', 12.85, array('rateIndicator' => 'SP', 'description' => 'Priority Mail Machinable Single-piece', 'processingCategory' => 'MACHINABLE')),
+		carrier_api_test_usps_option('PRIORITY_MAIL', 9.20, array('rateIndicator' => 'CP', 'description' => 'Priority Mail Cubic Soft Pack')),
+		carrier_api_test_usps_option('USPS_GROUND_ADVANTAGE', 7.45, array('rateIndicator' => 'SP', 'processingCategory' => 'MACHINABLE')),
+		carrier_api_test_usps_option('USPS_GROUND_ADVANTAGE', 11.30, array('rateIndicator' => 'SP', 'processingCategory' => 'NONSTANDARD')),
+		carrier_api_test_usps_option('USPS_GROUND_ADVANTAGE', 5.10, array('rateIndicator' => 'SP', 'processingCategory' => 'MACHINABLE', 'destinationEntryFacilityType' => 'DESTINATION_DELIVERY_UNIT')),
+		carrier_api_test_usps_option('PRIORITY_MAIL_EXPRESS', 39.10, array('rateIndicator' => 'PA', 'processingCategory' => 'MACHINABLE', 'destinationEntryFacilityType' => 'NONE')),
+		// Not a service the shipping methods offer.
+		carrier_api_test_usps_option('MEDIA_MAIL', 4.13, array('rateIndicator' => 'SP')),
+	));
+
+	pg_assert_same(array(
+		'usps_priority' => 1285,
+		'usps_ground'   => 745,
+		'usps_express'  => 3910,
+	), pg_usps_rate_parse($data, true));
+
+	pg_assert_same(1130, pg_usps_rate_parse($data, false)['usps_ground'], 'nonstandard package');
+}
+
+// Without a rate indicator the description decides; with several prices left
+// the highest is taken, and the total with fees is preferred over the base.
+function test_usps_rate_parse_without_indicator()
+{
+	$data = array('rateOptions' => array(
+		array(
+			'totalBasePrice' => 8.00,
+			'totalPrice'     => 8.75,
+			'rates'          => array(array('mailClass' => 'USPS_GROUND_ADVANTAGE', 'description' => 'USPS Ground Advantage Machinable Single-piece', 'price' => 8.00)),
+		),
+		array(
+			'totalBasePrice' => 7.10,
+			'rates'          => array(array('mailClass' => 'USPS_GROUND_ADVANTAGE', 'description' => 'USPS Ground Advantage Machinable Dimensional Rectangular', 'price' => 7.10)),
+		),
+		array(
+			'totalBasePrice' => 6.00,
+			'rates'          => array(array('mailClass' => 'PRIORITY_MAIL', 'productName' => 'Priority Mail Flat Rate Envelope', 'price' => 6.00)),
+		),
+	));
+
+	pg_assert_same(array('usps_ground' => 875), pg_usps_rate_parse($data, true));
+	pg_assert_same(array(), pg_usps_rate_parse(array('error' => array('code' => '400')), true));
+	pg_assert_same(array(), pg_usps_rate_parse(null, true));
+}
+
+// A price named by a rate indicator outranks one without, whatever the price.
+function test_usps_rate_parse_indicator_outranks_description()
+{
+	$data = array('rateOptions' => array(
+		carrier_api_test_usps_option('PRIORITY_MAIL', 30.00, array('description' => 'Priority Mail Something New')),
+		carrier_api_test_usps_option('PRIORITY_MAIL', 12.00, array('rateIndicator' => 'SP')),
+	));
+
+	pg_assert_same(array('usps_priority' => 1200), pg_usps_rate_parse($data, true));
+}
+
+function test_usps_delivery_path()
+{
+	pg_assert_same(
+		'/service-standards/v3/estimates?originZIPCode=30301&destinationZIPCode=10001&acceptanceDate=2026-10-14&mailClass=PRIORITY_MAIL&destinationType=STREET',
+		pg_usps_delivery_path('30301-1234', '10001-0001', '2026-10-14', 'PRIORITY_MAIL'));
+}
+
+function test_usps_delivery_parse()
+{
+	$data = array(
+		array(
+			'mailClass'       => 'PRIORITY_MAIL',
+			'serviceStandard' => '2',
+			'delivery'        => array('scheduledDeliveryDateTime' => '2026-10-16T18:00:00Z'),
+		),
+	);
+
+	pg_assert_same('2026-10-16', pg_usps_delivery_parse($data, 'PRIORITY_MAIL'));
+	pg_assert_same('', pg_usps_delivery_parse($data, 'USPS_GROUND_ADVANTAGE'), 'other class');
+
+	// A lone estimate, with the date at its top.
+	pg_assert_same('2026-10-19', pg_usps_delivery_parse(array('scheduledDeliveryDateTime' => '2026-10-19T00:00:00'), 'USPS_GROUND_ADVANTAGE'));
+	pg_assert_same('', pg_usps_delivery_parse(array(array('mailClass' => 'PRIORITY_MAIL')), 'PRIORITY_MAIL'));
+	pg_assert_same('', pg_usps_delivery_parse(null, 'PRIORITY_MAIL'));
+}
+
+function test_usps_address_path()
+{
+	pg_assert_same(
+		'/addresses/v3/address?streetAddress=3120%20M%20St%20NW&secondaryAddress=Apt%202&city=Washington&state=DC&ZIPCode=20007',
+		pg_usps_address_path(array(
+			'address_1' => ' 3120 M St NW ',
+			'address_2' => 'Apt 2',
+			'city'      => 'Washington',
+			'state'     => 'dc',
+			'zip_code'  => '20007-3704')));
+
+	pg_assert_same(
+		'/addresses/v3/address?streetAddress=1%20Main%20St&state=GA&ZIPCode=30301',
+		pg_usps_address_path(array('address_1' => '1 Main St', 'address_2' => '', 'city' => '', 'state' => 'GA', 'zip_code' => '30301')));
+}
+
+function carrier_api_test_usps_address($dpv, $corrections = array())
+{
+	return array(
+		'firm'           => '',
+		'address'        => array(
+			'streetAddress'    => '3120 M ST NW',
+			'secondaryAddress' => '',
+			'city'             => 'WASHINGTON',
+			'state'            => 'DC',
+			'ZIPCode'          => '20007',
+			'ZIPPlus4'         => '3704',
+		),
+		'additionalInfo' => array('DPVConfirmation' => $dpv),
+		'corrections'    => $corrections,
+		'matches'        => array(array('code' => '31', 'text' => 'Single Response - exact match')),
+	);
+}
+
+// A confirmed address comes back standardized, with the ZIP+4.
+function test_usps_address_parse_verified()
+{
+	pg_assert_same(array(
+		'result'  => 'verified',
+		'address' => array(
+			'address_1' => '3120 M ST NW',
+			'address_2' => '',
+			'city'      => 'WASHINGTON',
+			'state'     => 'DC',
+			'zip_code'  => '20007-3704',
+		),
+	), pg_usps_address_parse(200, carrier_api_test_usps_address('Y')));
+}
+
+// The building was found but the unit was not: the address is filled in and
+// the customer is asked for the apartment or suite.
+function test_usps_address_parse_missing_secondary()
+{
+	pg_assert_same('secondary', pg_usps_address_parse(200, carrier_api_test_usps_address('D'))['result']);
+	pg_assert_same('secondary', pg_usps_address_parse(200, carrier_api_test_usps_address('S'))['result']);
+	pg_assert_same('secondary', pg_usps_address_parse(200, carrier_api_test_usps_address('Y', array(array('code' => '32', 'text' => 'Default address'))))['result']);
+	pg_assert_same('20007-3704', pg_usps_address_parse(200, carrier_api_test_usps_address('D'))['address']['zip_code']);
+}
+
+function test_usps_address_parse_not_found()
+{
+	pg_assert_same(array('result' => 'not_found', 'address' => null), pg_usps_address_parse(200, carrier_api_test_usps_address('N')));
+	pg_assert_same('not_found', pg_usps_address_parse(200, carrier_api_test_usps_address('', array(array('code' => '22', 'text' => 'Multiple addresses were found'))))['result']);
+	pg_assert_same('not_found', pg_usps_address_parse(400, array('error' => array('code' => '400', 'message' => 'Address Not Found.')))['result']);
+	pg_assert_same('not_found', pg_usps_address_parse(404, array('error' => array('code' => '404', 'message' => 'Resource not found')))['result']);
+}
+
+// A field USPS names as wrong is the one marked.
+function test_usps_address_parse_invalid_fields()
+{
+	pg_assert_same('city', pg_usps_address_parse(400, array('error' => array('code' => '400', 'message' => 'Invalid City.')))['result']);
+	pg_assert_same('state', pg_usps_address_parse(400, array('error' => array('code' => '400', 'message' => 'OAS Validation Failed', 'errors' => array(array('detail' => 'Invalid State Code.')))))['result']);
+	pg_assert_same('zip_code', pg_usps_address_parse(400, array('error' => array('code' => '400', 'message' => 'Invalid Zip Code.')))['result']);
+}
+
+// No answer, a refused token, a server fault or a blank address says nothing
+// about the address, so the customer is not told it is wrong.
+function test_usps_address_parse_errors()
+{
+	pg_assert_same('error', pg_usps_address_parse(0, null)['result']);
+	pg_assert_same('error', pg_usps_address_parse(401, array('error' => array('code' => '401', 'message' => 'Address not found because the token expired')))['result']);
+	pg_assert_same('error', pg_usps_address_parse(503, null)['result']);
+	pg_assert_same('error', pg_usps_address_parse(200, array('address' => array('streetAddress' => '')))['result']);
+	pg_assert_same('error', pg_usps_address_parse(400, array('error' => array('code' => '400', 'message' => 'Something else')))['result']);
 }

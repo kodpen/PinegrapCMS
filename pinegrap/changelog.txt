@@ -382,6 +382,19 @@
          bilgiler silinmez ama artık kullanılmaz ve kart
          bunu söyler.
 
+  [DÜZELTME] USPS anlık fiyatları, teslim tarihleri ve ABD
+         adres doğrulaması USPS'in yeni REST API'lerinden
+         alınıyor. USPS Web Tools'u kapattığı için eski
+         Kullanıcı Kimliğiyle hiçbiri çalışmıyordu. Ayarlar
+         › E-Ticaret › Nakliye › USPS'e artık USPS
+         Developer Portal'da açılan uygulamanın Tüketici
+         Anahtarı ve Tüketici Gizli Anahtarı girilir; test
+         ortamı seçilebilir, "Kaydet ve bağlantıyı test et"
+         bağlantıyı dener. Eski kimlik silinmez ama artık
+         kullanılmaz ve kart bunu söyler. "USPS Retail
+         Ground" hizmetinin adı, USPS'in verdiği yeni adla
+         "USPS Ground Advantage" oldu.
+
   ÇALIŞMA ALANI
   --------------------------------------------------------
 
@@ -652,6 +665,18 @@
          bağışlar etkilenmez; ürün RSS beslemeleri liste
          fiyatını yayımlar. Varsayılan kapalı.
 
+  [YENİ] Cari hesabıma yaz: Ayarlar › E-Ticaret › ERP'deki
+         'Ödemede "Cari hesabıma yaz"' açılınca, carisinde
+         kredi limiti olan ve oturum açmış müşteri ödeme
+         adımında siparişi cari hesabına yazdırabilir;
+         seçeneğin altında kullanılabilir limit yazar.
+         Sipariş, faturalanmamış cari siparişleriyle
+         birlikte limiti aşıyorsa reddedilir ve nedeni
+         yazılır. Sipariş o cariye, carinin vadesiyle
+         faturalanır; havale gelmedi diye otomatik iptal
+         edilmez. Sipariş ekranında "Cari hesapta" rozeti
+         görünür. Varsayılan kapalı.
+
   [DÜZELTME] Alış faturaları artık kendi serisinde
          numaralanıyor: fatura serisinin sonuna A eklenir
          (ör. PGFA2026000000001). Önceden yılın ilk alış
@@ -665,6 +690,10 @@
 
   [ŞEMA] Cari fiyatlarını mağazada açıp kapatan ayar
          için config tablosuna bir kolon eklenir.
+
+  [ŞEMA] "Cari hesabıma yaz" ayarı için config tablosuna,
+         siparişin cari hesaba yazıldığını gösteren işaret
+         için orders tablosuna birer kolon eklenir.
 
   DIŞ API
   --------------------------------------------------------
@@ -818,6 +847,20 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] E-posta kampanyaları API'de, kendi izinleriyle
+         (kampanyaları okuma / yazma): kampanyalar konusu,
+         durumu, türü (elle ya da otomatik), gönderim
+         saati, kaç alıcıya gittiği, kaçının beklediği ve
+         kaçına gidemediğiyle; tek kampanyada mesaj ve kişi
+         grupları; alıcı listesi gönderildi / bekliyor /
+         gidemedi süzgeciyle ve son hatasıyla. Yazma bir
+         kampanyayı bekletir, yeniden gönderime açar, iptal
+         eder, konusunu, düz metin mesajını, göndereni,
+         yanıt adresini, saatini ya da amacını düzeltir veya
+         siler; gönderilmiş kampanya değişmez. API e-posta
+         göndermez, kampanya oluşturmaz. Kullanıcı rolündeki
+         hesap yalnız kendi kampanyalarını görür.
 
   [YENİ] Ziyaretçi raporları API'de (ziyaretçileri okuma
          izni): günlük ya da saatlik ziyaret ve sayfa

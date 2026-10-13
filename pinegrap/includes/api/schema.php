@@ -606,6 +606,115 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		/* ----- E-mail campaigns -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_list',
+			'returns' => array('list' => 'Campaign'),
+			'summary' => 'E-mail campaigns',
+			'description' => 'Newest first, cursor paged, with how far sending has got (recipients: total, sent, failed - the job gave up after its retries - and pending). status: ready (waiting for send_at, or being sent), paused, cancelled or complete. type: manual (sent to contact groups) or automatic (made by a campaign profile when an order, reservation or form came in; profile_id, action and action_item_id say which). An account with the e-mail right but the user role sees only the campaigns it created, as on the campaign screens.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('ready', 'paused', 'cancelled', 'complete')),
+				array('name' => 'type',          'in' => 'query', 'type' => 'enum', 'values' => array('manual', 'automatic')),
+				array('name' => 'purpose',       'in' => 'query', 'type' => 'enum', 'values' => array('commercial', 'transactional')),
+				array('name' => 'profile_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the campaigns this campaign profile made.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the subject.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.get',
+			'method'  => 'GET',
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_get',
+			'returns' => 'Campaign',
+			'summary' => 'One e-mail campaign',
+			'description' => 'With the message (body: the text of a plain-text campaign, or for an HTML one the page as it was rendered when the campaign was made) and, for a manual campaign, the contact groups it was put together from: contact_group_ids it went to, excluded_contact_group_ids whose members were left out.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.recipients',
+			'method'  => 'GET',
+			'path'    => '/campaigns/{id}/recipients',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_recipients',
+			'returns' => array('list' => 'CampaignRecipient'),
+			'summary' => 'Who a campaign goes to',
+			'description' => 'In the order the job sends them, cursor paged: the address, the contact it came from, sent, pending or failed, how many attempts were made and why the last one did not go through.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('sent', 'pending', 'failed')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_update',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Hold, release, cancel or correct a campaign',
+			'description' => 'Only what is sent is changed, as on the campaign screen. status paused holds it, ready lets the scheduled e-mail job send it (again), cancelled stops it; recipients already sent stay sent. Nothing is sent by this call: a ready campaign goes out when the job reaches it, and where the site runs no job it waits for Send Campaign on its screen. A sent (complete) campaign cannot be changed (409 campaign_complete). The body of an HTML campaign is the page as it was rendered and cannot be changed (409 campaign_body_is_a_page); bcc is for automatic campaigns only (409 campaign_bcc_automatic_only). A campaign is put together, recipients and all, on its own screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status',     'in' => 'body', 'type' => 'enum', 'values' => array('ready', 'paused', 'cancelled')),
+				array('name' => 'subject',    'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'body',       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'from_name',  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'reply_to',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'Automatic campaigns only. An empty string removes it.'),
+				array('name' => 'send_at',    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending it. An empty string means as soon as the job runs.'),
+				array('name' => 'purpose',    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.delete',
+			'method'  => 'DELETE',
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign',
+			'description' => 'Removes the campaign with its recipients and contact groups, as the campaign screens do; whatever was already sent stays sent and nothing more goes out. It cannot be undone. POST /campaigns/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.delete_post',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/delete',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign, addressed as a POST',
+			'description' => 'The same deletion as DELETE /campaigns/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Site log ----------------------------------------------------- */
 
 		array(
