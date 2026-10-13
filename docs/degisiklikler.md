@@ -84,6 +84,113 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: betikler küçültülmüş tek dosyada, kayıt ekranlarında ilk tıkta yükleniyor, kod editörü gerektiğinde geliyor (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırmasının (P1 1.1) ölçümü: her Çalışma Alanı
+ekranı küçültülmemiş ~1 MB Workspace betiği yüklüyordu (12 dosya). Sandbox'ta
+Chromium ile ölçülen tablo daha ağırdı: kanal ekranı **59 betik, ~5,0 MB**.
+Bunun 2,27 MB'ı panel başlığının her ekrana koyduğu CodeMirror ve linterleri
+(jshint tek başına 1,2 MB), Çalışma Alanı ekranlarında hiç kullanılmıyordu.
+Sipariş, ürün, kişi, kullanıcı ve ERP ekranlarındaki Çalışma Alanı düğmesi
+(`ws_record_button()`) ise yalnız bir çekmece için ~1 MB betik yüklüyor ve
+her açılışta `ws_bootstrap` + `ws_tick` istekleri gönderiyordu.
+
+**Ne değişti.**
+
+- **Derleme aracı:** `tools/build_js.php`. Neyin neyden derlendiği
+  `pg_js_bundles()`'tadır (`includes/fn/output.php`); ekranlar da aynı
+  listeyi okur. terser sürümü sabittir (`terser@5.51.2`, `npx` ile gelir),
+  bayraklar eski reçeteyle aynıdır (`--compress --mangle --format
+  ascii_only=true`), lisans yorumları kalır. `--check` geçici klasöre
+  derleyip karşılaştırır; CI'da yeni adım olarak koşar, kaynağı değişip
+  yeniden derlenmemiş `.min.js` PR'ı kırmızıya çeker. Satır sonları
+  karşılaştırmaya girmez (Windows checkout'u CRLF'e çevirse de geçer).
+- **Paketler:**
+  - `workspace.min.js`: editör, tekrar, olaylar, şablonlar, süre,
+    bağımlılık, onay, okundu ve `workspace.js`, sayfanın eskiden yüklediği
+    sırayla (487 KB; kaynakları 1.017 KB).
+  - `workspace_palette.min.js`, `workspace_board_channel.min.js`,
+    `workspace_tour.min.js`, `workspace_guest.min.js`: bire bir ikizler.
+  - Hangi ekranın neyi yüklediği değişmedi: arama kutusu kayıt çekmecesi
+    dışında her ekranda, kanal panosu ve tur yalnız kanal ekranında.
+- **Sunuş:** `pg_js_bundle_files()` / `pg_js_bundle_urls()` /
+  `pg_js_bundle_tags()`. `ENVIRONMENT_SUFFIX` `min` ise (varsayılan)
+  `.min.js`, `src` ise (ENVIRONMENT `development`) kaynaklar tek tek
+  gelir. `.min.js` dosyası yoksa da kaynaklar gelir; eksik güncelleme ekranı
+  bozmaz.
+- **Kayıt ekranları:** `ws_screen_assets($viewer, 'record')` artık betik
+  yüklemiyor, `ws_record_loader()`'ın küçük satır içi betiğini basıyor.
+  Çalışma Alanı düğmesine ilk tıklama tutuluyor
+  (`window.PGWsPendingRecord`), paket dosya dosya sırayla yükleniyor,
+  `workspace.js` başlayınca `PGWsRecordReady`'yi yazıp tutulan çekmeceyi
+  açıyor. Ondan sonra `workspace.js`'in kendi dinleyicisi cevap veriyor.
+  Yüklenemeyen dosya sonraki tıklamada yeniden deneniyor.
+- **Kod editörü:** `output_header()`'a `'code_editor' => false` özelliği
+  (`output_control_panel_header_includes()`'un üçüncü parametresi). Açık
+  olmadığında CodeMirror etiketleri `<template id="pg-code-editor-assets">`
+  içinde bekliyor. `window.pgCodeEditorReady(markup, done)`
+  (`backend.src.js`): CodeMirror sayfada yoksa ve gelen işaretlemede
+  "CodeMirror" geçiyorsa dosyaları başlıktaki sırayla yükleyip `done`'ı
+  çağırıyor; başka her durumda `done` hemen, aynı çağrıda koşuyor. Site
+  Ayarları penceresi (`load()`) bölmeyi bununla boyuyor: kod alanlı bölme
+  (Genel'deki cron satırları, SEO) Çalışma Alanı ekranında editör yüklenince
+  çiziliyor, pencere o sırada "yükleniyor" kalıyor. Çalışma Alanı'nın sekiz
+  ekranı (`workspace*.php`) bu özelliği kapatıyor.
+
+**Ölçüm (sandbox, Chromium, `ENVIRONMENT_SUFFIX` min).**
+
+| Ekran | Önce | Sonra |
+|---|---|---|
+| Kanallar | 59 betik, 4.996 KB (Workspace 1.057 KB, CodeMirror 33 dosya) | 18 betik, 2.240 KB (Workspace 510 KB, CodeMirror yok) |
+| Görevler, Pano, Takvim, Zaman çizelgesi, Notlar, Şablon | 57 betik, 4.953 KB | 16 betik, 2.217 KB |
+| Kullanıcı düzenle (kayıt ekranı) | 57 betik, 4.973 KB, `ws_bootstrap` + `ws_tick` | 48 betik, 3.983 KB, Çalışma Alanı isteği yok |
+
+**Bilerek yapılmayan.**
+
+- **`workspace.js`'i ekran başına bölmek.** Ekran sabitini terser'a
+  `--define` ile verip ölü kodu attırarak ölçüldü: ekran başına yalnız
+  %10–17 kazanç (367 KB → 305–330 KB). Kanal ekranının `app` nesnesi
+  (8.000 satır) paylaşılan kodda da kullanılıyor (etiket alanları onun
+  yöntemlerini ödünç alıyor, kanal formu ve programlanmış işlem formu ona
+  bakıyor), terser nesne özelliklerini atamıyor. Ekran başına ayrı dosya
+  ayrıca ekranlar arasında önbelleği bozardı: tek dosya bir kez inip bütün
+  ekranlarda kullanılıyor. Gerçek bölme `app`'i parçalara ayıran ayrı bir
+  refactor'dür.
+- **DataTables, select2, Inputmask, jQuery UI'ı Çalışma Alanı ekranından
+  çıkarmak.** `backend.src.js`'in hazır olunca koşan bölümleri bunları
+  korumasız çağırıyor (`.inputmask()`, `.sortable()`); eksik eklenti
+  ekranın geri kalan başlatmasını durdurur. CodeMirror farklı: yalnız
+  ekranların kendi satır içi betikleri ve ayarlar bölmeleri kullanıyor.
+- **Kod editörünü bütün panelde ertelemek.** Kendi kod alanı olan ekranların
+  bir kısmı başlıktaki CodeMirror'a güveniyor; ekran ekran denetlenmeden
+  açılamaz. Pano için `'code_editor' => false` aynı biçimde kullanılabilir.
+
+**Davranış farkı.** Kayıt ekranları artık `ws_tick` göndermiyor. Zamanlayıcı
+olmayan sitelerde tekrarlayan görevler, bekleyen Claude istekleri ve
+programlanmış işlemler Çalışma Alanı ekranları açıldıkça ve genel iş (cron)
+koştukça yürür; sipariş ya da ürün ekranını açmak artık bunları tetiklemez.
+
+**Doğrulama.** `php tools/build_js.php --check` temiz (kaynağa tek karakter
+değişikliği STALE ile yakalanıyor). Yeni `tests/js_bundles_test.php`: her
+paket ve kaynak dosyası var, kaynak bir pakette bir kez geçiyor, her
+`assets/js/workspace*.js` bir pakette, `workspace.js` en sonda, min kipte
+yalnız `.min.js` seçiliyor. lint, check_lang, check_bindings,
+check_api_schema, check_copies, test.php (338 test) temiz. Sandbox'ta
+Playwright ile min ve src kipinde: yedi Çalışma Alanı ekranı ve ayarları
+konsol hatası vermeden açılıyor; kullanıcı ekranında Çalışma Alanı düğmesi
+paketi yükleyip çekmeceyi açıyor, ikinci tıklama `workspace.js`'in kendi
+dinleyicisiyle açılıyor; Görevler ekranında Site Ayarları › Genel bölmesi
+CodeMirror'u yükleyip 1 editör, SEO 3 editör çiziyor; yeni görev çekmecesi,
+Ctrl+K arama kutusu, kanalda tur ve mesaj gönderme çalışıyor. Kanal
+ekranında mesaj gönderildikten sonra görülen iki "jQuery is not defined"
+hatası ve çözülemeyen dış adresler değişiklik öncesinde de aynen var
+(sandbox dış ağa çıkamıyor).
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com) ve gerçek veriyle büyük kanal
+geçmişi denenmedi; ölçüm sandbox'ın boş veritabanında.
+
+---
+
 ## 2026.4.10 — Dış API: OAuth ve MCP, Claude dışındaki istemcilerle de bağlanıyor (Cursor, VS Code, Gemini CLI, Codex, Windsurf, ChatGPT, mcp-remote) (2026-10-13)
 
 **Neden.** OAuth sunucusu ve `mcp.php` yalnız Claude'la denenmişti. Diğer

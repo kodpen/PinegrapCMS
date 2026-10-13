@@ -14,6 +14,9 @@
  * each other (includes/workspace/task_links.php). A blocked task is never
  * stopped from starting here, only asked about.
  *
+ * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen

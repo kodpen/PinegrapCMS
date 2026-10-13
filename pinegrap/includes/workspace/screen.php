@@ -714,6 +714,14 @@ function ws_screen_config($viewer, $mode, $extra = array())
 /**
  * The settings block and the script, once per page.
  *
+ * The scripts come from pg_js_bundles() (includes/fn/output.php): one
+ * minified file for what every screen runs, plus the search box on the
+ * workspace's own screens and the channel board and tour on the channel
+ * screen. A record's drawer (ws_record_button()) loads nothing up front: the
+ * order, product and contact screens it sits on are opened far more often
+ * than the drawer is, so the script waits until the Workspace button is
+ * first clicked.
+ *
  * @param array  $viewer
  * @param string $mode
  * @param array  $extra
@@ -729,7 +737,6 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 
     $printed = true;
 
-    $script = PG_FUNCTIONS_DIR . '/assets/js/workspace.js';
     $json = json_encode(ws_screen_config($viewer, $mode, $extra), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
     // The panel's picture viewer, for the pictures in a conversation.
@@ -743,23 +750,78 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <template id="ws-image-editor-assets">' . get_image_editor_includes() . '</template>';
     }
 
-    return $lightbox . '
-<script type="application/json" id="ws-config">' . $json . '</script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_events.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_events.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_templates.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_templates.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_time.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_time.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_links.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_links.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_approvals.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_approvals.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_acks.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_acks.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
-        // The search box, on every workspace screen but a record's drawer.
-        . (($mode !== 'record') ? '
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_palette.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js')) . '" defer></script>' : '')
-        . (($mode === 'channels') ? '
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_board_channel.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');
+    $output = $lightbox . '
+<script type="application/json" id="ws-config">' . $json . '</script>';
+
+    if ($mode === 'record') {
+        return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'));
+    }
+
+    $output .= pg_js_bundle_tags('assets/js/workspace.min.js')
+        // The search box, on every workspace screen.
+        . pg_js_bundle_tags('assets/js/workspace_palette.min.js');
+
+    if ($mode === 'channels') {
+        $output .= pg_js_bundle_tags('assets/js/workspace_board_channel.min.js')
+            . pg_js_bundle_tags('assets/js/workspace_tour.min.js');
+    }
+
+    return $output;
+}
+
+/**
+ * What a record's screen carries in place of the workspace script: a click
+ * on a Workspace button (data-ws-record) is held, the script is fetched,
+ * file after file in order, and once it has started it opens the drawer of
+ * the button that was clicked (window.PGWsPendingRecord, read by
+ * assets/js/workspace.js). Clicks that come while the files are on their way
+ * replace the held one; once the script has taken over (PGWsRecordReady)
+ * its own listener answers and this one stands aside. A file that fails to
+ * load lets the next click try again.
+ *
+ * @param array $urls pg_js_bundle_urls() of the workspace script
+ * @return string
+ */
+function ws_record_loader($urls)
+{
+    $files = json_encode(array_values($urls), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    return '
+<script>
+(function () {
+    var files = ' . $files . ';
+    var loading = false;
+
+    document.addEventListener("click", function (event) {
+        var trigger = event.target.closest ? event.target.closest("[data-ws-record]") : null;
+
+        if (!trigger || window.PGWsRecordReady) {
+            return;
+        }
+
+        event.preventDefault();
+        window.PGWsPendingRecord = trigger;
+
+        if (loading) {
+            return;
+        }
+
+        loading = true;
+
+        (function next(index) {
+            if (index >= files.length) {
+                return;
+            }
+
+            var script = document.createElement("script");
+            script.src = files[index];
+            script.onload = function () { next(index + 1); };
+            script.onerror = function () { loading = false; };
+            document.head.appendChild(script);
+        })(0);
+    });
+})();
+</script>';
 }
 
 /**

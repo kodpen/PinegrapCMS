@@ -17,6 +17,9 @@
  * block; what the server sends is written with textContent, the matched
  * words marked with <mark> nodes built here.
  *
+ * Served minified as assets/js/workspace_palette.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
