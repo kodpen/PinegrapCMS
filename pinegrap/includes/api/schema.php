@@ -606,6 +606,27 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		/* ----- Site log ----------------------------------------------------- */
+
+		array(
+			'id'      => 'site_log.list',
+			'method'  => 'GET',
+			'path'    => '/site-log',
+			'scope'   => 'site_log:read',
+			'handler' => 'api_site_log_list',
+			'returns' => array('list' => 'SiteLogEntry'),
+			'summary' => 'Site log',
+			'description' => 'What was done on the site, newest first, cursor paged, as the Site Log screen lists it: the sentence it was logged with (in the site\'s language), the account that did it and the address it came from. user is null for what visitors and the site\'s own jobs did. Read only. The PHP error logs on the same screen are not here.',
+			'params'  => array(
+				array('name' => 'from',   'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'user',   'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only what this username did.'),
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the description.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
 		/* ----- Gift cards -------------------------------------------------- */
 
 		array(
@@ -1083,6 +1104,55 @@ function api_schema() {
 				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),
 				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'month'), 'default' => 'day'),
 				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled'), 'description' => 'One status instead of the two that count as sales.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.traffic',
+			'method'  => 'GET',
+			'path'    => '/reports/traffic',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_traffic',
+			'returns' => 'TrafficReport',
+			'summary' => 'Visits and page views by day or hour',
+			'description' => 'From the hourly counters the Welcome screen draws its traffic chart with, so any window costs the same. A visit is a visitor session started in that period; page views are the pages it opened. Every day (or hour) of the window is in periods, empty ones as zeros, by the site\'s own clock. Defaults to the last thirty days by day. A window is at most 400 days by day and 31 by hour. visitor_tracking false means the site is not counting visits, so the figures stay at zero.',
+			'params'  => array(
+				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'hour'), 'default' => 'day')
+			)
+		),
+
+		array(
+			'id'      => 'reports.top_content',
+			'method'  => 'GET',
+			'path'    => '/reports/top-content',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_top_content',
+			'returns' => array('list' => 'TopContent'),
+			'summary' => 'Most viewed pages and items',
+			'description' => 'The pages, products, product groups and form records opened most in the window, most views first, with the title and the address they are opened at. One page. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 10)
+			)
+		),
+
+		array(
+			'id'      => 'reports.visitors',
+			'method'  => 'GET',
+			'path'    => '/reports/visitors',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_visitors',
+			'returns' => 'VisitorBreakdown',
+			'summary' => 'Visits by source, campaign, landing page or place',
+			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (pay_per_click when the tracking code carries the pay-per-click flag of the SEO settings, organic when a search engine referred it, otherwise neither), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted) or site_search_terms. A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('referrer_host', 'search_engine', 'search_terms', 'channel', 'landing_page', 'tracking_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'country', 'state', 'city', 'form', 'site_search_terms'), 'required' => true),
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
 			)
 		),
 
