@@ -190,22 +190,13 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-3">
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_key" class="form-label">' . lang('Access Key') . '</label>
-                                                                                            <input type="text" name="ups_key" id="ups_key" class="form-control" value="' . h($ups_key) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_user_id" class="form-label">' . lang('User ID') . '</label>
-                                                                                            <input type="text" name="ups_user_id" id="ups_user_id" class="form-control" value="' . h($ups_user_id) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="password" name="ups_password" id="ups_password" class="form-control" value="' . h($ups_password) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        ' . pg_carrier_api_settings_fields('ups', $ups_legacy_set) . '
                                                                                         <div class="pg-f-md">
                                                                                             <label for="ups_account" class="form-label">' . lang('Account Number') . '</label>
                                                                                             <input type="text" name="ups_account" id="ups_account" class="form-control" value="' . h($ups_account) . '" maxlength="100"/>
+                                                                                            <div class="form-text">' . lang('For negotiated rates. Leave empty for published rates.') . '</div>
                                                                                         </div>
+                                                                                        ' . pg_carrier_api_test_button('ups') . '
                                                                                     </div>
                                                                                 </div>
                                                                             </div>

@@ -117,6 +117,54 @@ function pg_cf_contact_fields()
     return $out;
 }
 
+/**
+ * Whether a signed-in person's form submission is about somebody else: the
+ * e-mail address the form writes to the contact (a field wired to the
+ * contact's email_address) is none of the addresses that person has. Only
+ * then can the two be told apart - a form with no such field, or a person
+ * with no address on file, is about the person submitting it.
+ *
+ * @param string $typed the value of the form's contact e-mail field
+ * @param array  $known the signed-in person's addresses (account, contact)
+ * @return bool
+ */
+function pg_cf_email_is_someone_else($typed, $known)
+{
+    $typed = mb_strtolower(trim((string)$typed), 'UTF-8');
+    if ($typed === '') return false;
+
+    $mine = array();
+    foreach ((array)$known as $address) {
+        $address = mb_strtolower(trim((string)$address), 'UTF-8');
+        if ($address !== '') $mine[] = $address;
+    }
+
+    return !empty($mine) && !in_array($typed, $mine, true);
+}
+
+/**
+ * custom_form.php: whether the contact this submission fills in is not the
+ * signed-in person's own (pg_cf_email_is_someone_else()). False for a
+ * visitor who is not signed in, and for a submission that writes nothing to
+ * a contact.
+ *
+ * @param string     $typed       the form's contact e-mail value
+ * @param int|string $contact_id  the signed-in person's contact, or ''
+ * @param string     $sql_update  the contact columns the form writes
+ * @return bool
+ */
+function pg_cf_contact_is_someone_else($typed, $contact_id, $sql_update)
+{
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || (string)$sql_update === '') return false;
+
+    $known = array(defined('USER_EMAIL_ADDRESS') ? USER_EMAIL_ADDRESS : '');
+    if ((int)$contact_id > 0) {
+        $known[] = (string)db_value("SELECT email_address FROM contacts WHERE id = '" . (int)$contact_id . "'");
+    }
+
+    return pg_cf_email_is_someone_else($typed, $known);
+}
+
 // A field name is written into an HTML attribute and, on form list views, into
 // a ^^name^^ token. add_field.php refuses the characters that break either;
 // the same set is refused here so a form drawn in the editor and one drawn on

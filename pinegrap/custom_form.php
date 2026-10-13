@@ -785,6 +785,19 @@ if ($liveform->check_form_errors() == false) {
         }
     }
 
+    // A signed-in person may fill a form in for somebody else - staff booking
+    // an appointment for a patient on the phone. When the e-mail the form
+    // writes to the contact is not theirs, the values belong to that other
+    // person: the submission gets a contact of its own, as an anonymous one
+    // does, and the signed-in person's contact is left as it was. A form with
+    // no contact e-mail field cannot tell the two apart and keeps updating
+    // the signed-in person's contact.
+    $contact_for_someone_else = pg_cf_contact_is_someone_else($connect_to_contact_email_address, $contact_id, $sql_update_contact);
+
+    if ($contact_for_someone_else) {
+        $contact_id = '';
+    }
+
     // If the visitor clicked save-for-later button, then send visitor back to
     // custom form page with a confirmation notice and don't complete actions below.
     if ($action == 'save') {
@@ -1043,8 +1056,10 @@ if ($liveform->check_form_errors() == false) {
             // if the user was found via auto-registation,
             // because this visitor did not login as that user,
             // so we don't want the visitor to be allowed to destroy
-            // and existing connection to some other contact.
-            if (($user_id) && ($auto_registration_existing_user_found == false)) {
+            // and existing connection to some other contact. A form filled
+            // in for somebody else is not connected to the signed-in user
+            // either: the contact is that other person's.
+            if (($user_id) && ($auto_registration_existing_user_found == false) && !$contact_for_someone_else) {
                 $query = "UPDATE user SET user_contact = '$contact_id' WHERE user_id = '$user_id'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }

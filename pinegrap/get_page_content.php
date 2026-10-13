@@ -4401,7 +4401,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         } else {
                             $link_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . h(urlencode(get_request_uri() . '#software_add_comment'));
                             if (function_exists('pg_sw_sign_in_url')) {
-                                $link_url = h(pg_sw_sign_in_url(get_request_uri() . '#software_add_comment', html_entity_decode($link_url, ENT_QUOTES, 'UTF-8'), 'registration entrance', $cm_bs));
+                                $link_url = h(pg_sw_sign_in_url(get_request_uri() . '#software_add_comment', html_entity_decode($link_url, ENT_QUOTES, 'UTF-8'), 'registration entrance', $cm_bs, (int)$system_region_properties['page_id']));
                             }
                         }
                         

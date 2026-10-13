@@ -239,9 +239,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_address_verification = $row['ecommerce_address_verification'];
     $ecommerce_address_verification_enforcement_type = $row['ecommerce_address_verification_enforcement_type'];
     $ups = $row['ups'];
-    $ups_key = $row['ups_key'];
-    $ups_user_id = $row['ups_user_id'];
-    $ups_password = $row['ups_password'];
+    // The sign-in of the XML interface UPS retired, kept on file but no
+    // longer used: the Shipping card says why rates stopped.
+    $ups_legacy_set = (($row['ups_key'] != '') || ($row['ups_user_id'] != '') || ($row['ups_password'] != ''));
     $ups_account = $row['ups_account'];
     $fedex = $row['fedex'];
     $fedex_key = $row['fedex_key'];

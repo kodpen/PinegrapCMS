@@ -85,12 +85,16 @@ function pg_sw_page_type_widget_url($page_type)
 // ($designed_first): its visitor is on the designed site, and the sample
 // content every installation starts with carries the legacy pages. A site
 // with no designed sign-in page gets the legacy screen too. $fallback is the
-// legacy screen's own address.
-function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designed_first = false)
+// legacy screen's own address. $page_id is the page asked for: a site with
+// two designs has a sign-in page in each, and the one of that page's design
+// is the one that looks like it and links to its own sign-up and account
+// pages.
+function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designed_first = false, $page_id = 0)
 {
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $fallback;
     if (!$designed_first && (int)db_value("SELECT COUNT(*) FROM page WHERE page_type = '" . e($legacy_type) . "'") > 0) return $fallback;
-    $name = _pg_sw_open_widget_page_name('login_form');
+    $style_id = ((int)$page_id > 0) ? (int)db_value("SELECT page_style FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1") : 0;
+    $name = _pg_sw_open_widget_page_name('login_form', $style_id);
     if ($name === '') return $fallback;
     $url = (defined('PATH') ? PATH : '/') . encode_url_path($name);
     return ((string)$send_to === '') ? $url : $url . '?send_to=' . urlencode((string)$send_to);
@@ -99,15 +103,17 @@ function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designe
 // Name of the first designed page carrying a widget of $type that the
 // visitor may open, or ''. A page in a folder that itself asks for a sign-in
 // does not count: sending a signed-out visitor there to sign in would send
-// them round in a circle.
-function _pg_sw_open_widget_page_name($type)
+// them round in a circle. With $style_id, a page of that design comes first.
+function _pg_sw_open_widget_page_name($type, $style_id = 0)
 {
+    $first = '';
     foreach (pg_sw_widget_pages($type) as $p) {
-        $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
-        if ($folder === null || $folder === '' || !check_view_access($folder)) continue;
-        return (string)$p['page_name'];
+        $row = db_item("SELECT page_folder, page_style FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
+        if (!is_array($row) || (string)$row['page_folder'] === '' || !check_view_access($row['page_folder'])) continue;
+        if ((int)$style_id <= 0 || (int)$row['page_style'] === (int)$style_id) return (string)$p['page_name'];
+        if ($first === '') $first = (string)$p['page_name'];
     }
-    return '';
+    return $first;
 }
 
 // Where a screen of the software directory sends its visitor on a site that

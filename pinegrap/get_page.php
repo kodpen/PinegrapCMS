@@ -380,7 +380,7 @@ case 'private':
 	// designed sign-in page when it has one, see pg_sw_sign_in_url())
 	if (USER_LOGGED_IN == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL), 'login', pg_sw_page_is_visual($page_id)));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL), 'login', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
 		// else user is logged in
 	}
@@ -416,7 +416,7 @@ case 'registration':
 	// (the site's designed sign-in page, which links to sign-up, when it has one)
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id)));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
 	}
 	break;
