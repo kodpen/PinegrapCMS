@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<!--
+  Pinegrap ERP - the built-in purchase order template.
+
+  The order the store sends a supplier. It is read with the same data as the
+  invoice template (see invoice_default.html for every placeholder): seller
+  is the store, which orders, and account the supplier. The order's own
+  captions are set in the data rather than written here: label.invoice_no is
+  the order number, label.invoice_date its date, label.due_date the expected
+  delivery (invoice.due_date, empty when none was agreed) and label.bill_to
+  names the supplier. The template carries no words of its own, so a
+  translation change reaches the document without an edit here.
+-->
+<html lang="{{language}}">
+<head>
+<meta charset="utf-8">
+<title>{{invoice.title}} {{invoice.full_number}}</title>
+<style>
+    @page { size: {{paper}} portrait; margin: 14mm 14mm 18mm 14mm; }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 9.5pt; color: #222; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { vertical-align: top; }
+    .head td { padding: 0; }
+    .logo { max-height: 60px; max-width: 200px; margin-bottom: 6px; }
+    .seller { font-size: 9pt; line-height: 1.35; }
+    .seller .name { font-size: 12pt; font-weight: bold; margin-bottom: 3px; }
+    .doc { text-align: right; }
+    .doc .title { font-size: 15pt; font-weight: bold; letter-spacing: 1px; color: #333; }
+    .doc table { width: auto; margin-left: auto; margin-top: 6px; }
+    .doc td { padding: 2px 0 2px 12px; font-size: 9pt; white-space: nowrap; }
+    .doc td.k { color: #666; }
+    .doc td.v { font-weight: bold; text-align: right; }
+    .rule { border-top: 2px solid #333; margin: 12px 0; }
+    .party { font-size: 9.5pt; line-height: 1.4; }
+    .party .label { font-size: 8pt; color: #666; letter-spacing: 1px; margin-bottom: 3px; }
+    .party .name { font-weight: bold; font-size: 11pt; }
+    .lines { margin-top: 14px; }
+    .lines th { background: #efefef; border-bottom: 1px solid #999; padding: 6px 5px; font-size: 8.5pt; text-align: left; }
+    .lines td { border-bottom: 1px solid #ddd; padding: 5px; font-size: 9pt; }
+    .lines .n { text-align: right; white-space: nowrap; }
+    .lines .c { text-align: center; }
+    .lines .muted { color: #666; font-size: 8pt; margin-top: 1px; }
+    .totals { width: auto; margin-left: auto; margin-top: 12px; }
+    .totals td { padding: 3px 0 3px 20px; font-size: 9.5pt; }
+    .totals td.v { text-align: right; white-space: nowrap; }
+    .totals tr.grand td { border-top: 2px solid #333; font-weight: bold; font-size: 11pt; padding-top: 6px; }
+    .totals tr.muted td { color: #666; font-size: 8.5pt; }
+    .notes { margin-top: 14px; font-size: 8.5pt; }
+    .foot { position: fixed; bottom: -8mm; left: 0; right: 0; font-size: 7.5pt; color: #777; border-top: 1px solid #ccc; padding-top: 4px; }
+    .foot td { padding: 0; }
+    .foot td.r { text-align: right; }
+</style>
+</head>
+<body>
+
+<table class="head">
+    <tr>
+        <td style="width:58%">
+            <div class="seller">
+                {{#seller.logo_data_uri}}<img class="logo" src="{{seller.logo_data_uri}}" alt=""><br>{{/seller.logo_data_uri}}
+                <div class="name">{{seller.title}}</div>
+                {{#seller.address_1}}{{seller.address_1}}<br>{{/seller.address_1}}
+                {{#seller.address_2}}{{seller.address_2}}<br>{{/seller.address_2}}
+                {{seller.locality}}<br>
+                {{#seller.vkn}}{{label.tax_id}}: <b>{{seller.vkn}}</b>{{/seller.vkn}}
+                {{#seller.tax_office}} &nbsp;{{label.tax_office}}: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
+                {{#seller.web_address}}{{seller.web_address}}{{/seller.web_address}}
+                {{#seller.email}} &nbsp;{{seller.email}}{{/seller.email}}
+            </div>
+        </td>
+        <td class="doc">
+            <div class="title">{{invoice.title}}</div>
+            <table>
+                <tr><td class="k">{{label.invoice_no}}</td><td class="v">{{invoice.full_number}}</td></tr>
+                <tr><td class="k">{{label.invoice_date}}</td><td class="v">{{invoice.issue_date}}</td></tr>
+                {{#invoice.due_date}}<tr><td class="k">{{label.due_date}}</td><td class="v">{{invoice.due_date}}</td></tr>{{/invoice.due_date}}
+                <tr><td class="k">{{label.currency}}</td><td class="v">{{invoice.currency}}</td></tr>
+                {{#invoice.is_foreign}}<tr><td class="k">{{label.exchange_rate}}</td><td class="v">{{invoice.exchange_rate}}</td></tr>
+                <tr><td class="k">{{label.exchange_rate_date}}</td><td class="v">{{invoice.exchange_rate_date}}</td></tr>{{/invoice.is_foreign}}
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div class="rule"></div>
+
+<table>
+    <tr>
+        <td style="width:58%">
+            <div class="party">
+                <div class="label">{{label.bill_to}}</div>
+                <div class="name">{{account.title}}</div>
+                {{#account.address}}{{account.address}}<br>{{/account.address}}
+                {{account.locality}}<br>
+                {{#account.tax_number}}{{label.account_tax_id}}: <b>{{account.tax_number}}</b>{{/account.tax_number}}
+                {{#account.tax_office}} &nbsp;{{label.tax_office}}: <b>{{account.tax_office}}</b>{{/account.tax_office}}<br>
+                {{#account.email}}{{account.email}}{{/account.email}}
+                {{#account.phone}} &nbsp;{{account.phone}}{{/account.phone}}
+            </div>
+        </td>
+        <td></td>
+    </tr>
+</table>
+
+<table class="lines">
+    <thead>
+        <tr>
+            <th class="c" style="width:4%">#</th>
+            <th>{{label.description}}</th>
+            <th class="n" style="width:9%">{{label.quantity}}</th>
+            <th class="n" style="width:13%">{{label.unit_price}}</th>
+            <th class="n" style="width:11%">{{label.discount}}</th>
+            <th class="n" style="width:13%">{{label.taxable_amount}}</th>
+            <th class="n" style="width:7%">{{label.vat}}</th>
+            <th class="n" style="width:12%">{{label.vat_amount}}</th>
+            <th class="n" style="width:13%">{{label.total}}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#lines}}
+        <tr>
+            <td class="c">{{no}}</td>
+            <td>{{description}}{{#withholding}}<div class="muted">{{withholding}}</div>{{/withholding}}</td>
+            <td class="n">{{quantity}}</td>
+            <td class="n">{{unit_price}}</td>
+            <td class="n">{{#has_discount}}&minus;{{discount}}{{/has_discount}}</td>
+            <td class="n">{{base}}</td>
+            <td class="n">{{tax_rate}}</td>
+            <td class="n">{{tax}}</td>
+            <td class="n">{{total}}</td>
+        </tr>
+        {{/lines}}
+        {{^lines}}
+        <tr><td colspan="9" class="c">{{label.no_lines}}</td></tr>
+        {{/lines}}
+    </tbody>
+</table>
+
+<table class="totals">
+    <tr><td>{{label.subtotal}}</td><td class="v">{{totals.subtotal}}</td></tr>
+    {{#totals.has_discount}}<tr><td>{{label.discount}}</td><td class="v">&minus;{{totals.discount_total}}</td></tr>{{/totals.has_discount}}
+    <tr><td>{{label.vat_total}}</td><td class="v">{{totals.tax_total}}</td></tr>
+    {{#totals.has_tax2}}<tr><td>{{label.tax2}}</td><td class="v">{{totals.tax2_total}}</td></tr>{{/totals.has_tax2}}
+    {{#totals.has_withholding}}<tr><td>{{label.tax_inclusive}}</td><td class="v">{{totals.tax_inclusive}}</td></tr>
+    <tr><td>{{label.withholding}}</td><td class="v">&minus;{{totals.withholding_total}}</td></tr>
+    <tr class="grand"><td>{{label.amount_payable}}</td><td class="v">{{totals.grand_total}}</td></tr>{{/totals.has_withholding}}
+    {{^totals.has_withholding}}<tr class="grand"><td>{{label.grand_total}}</td><td class="v">{{totals.grand_total}}</td></tr>{{/totals.has_withholding}}
+    {{#invoice.is_foreign}}<tr class="muted"><td>{{label.grand_total_base}}</td><td class="v">{{totals.grand_total_base}}</td></tr>{{/invoice.is_foreign}}
+</table>
+
+{{#invoice.notes}}
+<div class="notes"><b>{{label.note}}:</b> {{invoice.notes}}</div>
+{{/invoice.notes}}
+
+<div class="foot">
+    <table>
+        <tr>
+            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{invoice.title}} {{invoice.full_number}}</td>
+            <td class="r">{{label.generated_at}}: {{generated_at}}</td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

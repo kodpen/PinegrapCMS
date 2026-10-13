@@ -440,16 +440,23 @@ if (pg_mail_queue_ready()) {
 
 }
 
-// Workspace task reminders by e-mail (includes/workspace/reminders.php). The
-// look is one indexed read; the workspace is loaded only when one is due, so
-// the general job stays as light as it was on every other tick.
+// Workspace task reminders, and the notice that a task went overdue
+// (includes/workspace/reminders.php). Each look is one read; the workspace is
+// loaded only when one of them is due, so the general job stays as light as
+// it was on every other tick.
 if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
 
     require_once(dirname(__FILE__) . '/includes/workspace/reminders.php');
 
-    if (ws_task_reminders_waiting()) {
+    $workspace_overdue_due = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_task_overdue_due();
+
+    if (ws_task_reminders_waiting() || $workspace_overdue_due) {
         require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
         ws_task_reminders_run();
+
+        if ($workspace_overdue_due) {
+            ws_task_overdue_run();
+        }
     }
 
 }
