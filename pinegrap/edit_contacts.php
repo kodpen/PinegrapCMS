@@ -43,6 +43,9 @@ if ($_POST['contacts']) {
                 $remove_from_contact_groups = array();
             }
             
+            // Who actually moved, by group, announced once per group below.
+            $moved = array();
+
             foreach ($_POST['contacts'] as $contact_id) {
                 // if user has access to contact, then continue
                 if (validate_contact_access($user, $contact_id) == true) {
@@ -67,6 +70,8 @@ if ($_POST['contacts']) {
                                     '" . escape($contact_id) . "',
                                     '" . escape($contact_group_id) . "')";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                            $moved[(int) $contact_group_id]['added'][] = (int) $contact_id;
                         }
                     }
                     
@@ -79,12 +84,23 @@ if ($_POST['contacts']) {
                                 (contact_id = '" . escape($contact_id) . "')
                                 AND (contact_group_id = '" . escape($contact_group_id) . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                        if (mysqli_affected_rows(db::$con) > 0) {
+                            $moved[(int) $contact_group_id]['removed'][] = (int) $contact_id;
+                        }
                     }
 
                     $number_of_contacts++;
                 }
             }
             
+            foreach ($moved as $contact_group_id => $contacts) {
+                pg_announce_contact_group_members(
+                    $contact_group_id,
+                    isset($contacts['added']) ? $contacts['added'] : array(),
+                    isset($contacts['removed']) ? $contacts['removed'] : array());
+            }
+
             // if more than 0 contacts were organized, then log activity
             if ($number_of_contacts > 0) {
                 log_activity( lang(array('string'=>'{var:1} contact(s) were organized','vars'=>pg_format_number($number_of_contacts, 0) )) , $_SESSION['sessionusername']);

@@ -850,6 +850,74 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'contact_groups.create',
+			'method'  => 'POST',
+			'path'    => '/contact-groups',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_create',
+			'dry_run' => true,
+			'returns' => 'ContactGroup',
+			'summary' => 'Create a contact group',
+			'description' => 'An empty group, as the contact group screen makes it. The name has to be free, whatever its case (409 name_taken names the group that has it). Only an account from the manager role up may create one (403 forbidden otherwise), as on the contact group screens. Put contacts in with POST /contact-groups/{id}/members.',
+			'params'  => array(
+				array('name' => 'name',               'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'description',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shown with the group on the e-mail preferences page when it takes subscriptions.'),
+				array('name' => 'email_subscription', 'in' => 'body', 'type' => 'bool', 'description' => 'Campaigns may be sent to it, and its members choose whether they get them. Off when left out.'),
+				array('name' => 'subscription_type',  'in' => 'body', 'type' => 'enum', 'values' => array('open', 'closed'), 'description' => 'open offers the group to every contact on the e-mail preferences page, closed only to its members. open when left out.')
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/contact-groups/{id}',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_update',
+			'dry_run' => true,
+			'returns' => 'ContactGroup',
+			'summary' => 'Rename or change a contact group',
+			'description' => 'Only what is sent is changed. A new name has to be free (409 name_taken). Switching email_subscription off keeps the members\' choices for the group\'s e-mail, so switching it back on finds them again; subscription_type is kept while it is off. An account with the user role may change the groups given to it, as on the group screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',               'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'description',        'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'email_subscription', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'subscription_type',  'in' => 'body', 'type' => 'enum', 'values' => array('open', 'closed'))
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.delete',
+			'method'  => 'DELETE',
+			'path'    => '/contact-groups/{id}',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a contact group',
+			'description' => 'Only an empty group is removed, as on the contact group screen: one that still holds contacts is refused with 409 contact_group_has_members, so take them out first with POST /contact-groups/{id}/members. The accounts it was given to, the members\' choices kept for it and the campaigns\' record of having gone to it go with it; campaigns already sent stay sent. It cannot be undone. POST /contact-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.delete_post',
+			'method'  => 'POST',
+			'path'    => '/contact-groups/{id}/delete',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a contact group, addressed as a POST',
+			'description' => 'The same deletion as DELETE /contact-groups/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'contact_groups.members',
 			'method'  => 'GET',
 			'path'    => '/contact-groups/{id}/members',
@@ -875,7 +943,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'ContactGroup',
 			'summary' => 'Put contacts into a group, or take them out',
-			'description' => 'Both lists in one call, as the contact screen ticks a group. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
+			'description' => 'Both lists in one call, as the contact screen ticks a group. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),

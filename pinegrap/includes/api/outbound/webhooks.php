@@ -60,6 +60,13 @@ function api_webhook_events() {
 		'customer.created'     => 'A customer record was created (not bulk imports)',
 		'customer.updated'     => 'A customer record was changed through the API',
 		'customer.deleted'     => 'A customer record was deleted through the API',
+		// Announced where a person or an integration moves contacts on
+		// purpose: the API and the panel's contact screens (add, edit, and
+		// organizing selected contacts). The visitor-facing paths that file a
+		// contact into a group - the checkout, the custom forms, the e-mail
+		// preferences screen, the sign-ups - stay quiet, and so do the imports
+		// and a contact's own deletion; the description says so.
+		'contact_group.members_changed' => 'Contacts were put into or taken out of a contact group through the API or the contact screens (not forms, the checkout, e-mail preferences or imports)',
 		'page.created'         => 'A page was created (not duplicated or imported pages)',
 		'page.updated'         => 'A page was changed through the API',
 		'product_group.created' => 'A product group was created through the API',
