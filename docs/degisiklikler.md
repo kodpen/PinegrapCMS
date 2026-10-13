@@ -84,6 +84,46 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: olmayan kayıt, ürün ve kategoride 404 + noindex (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 2. maddesi:
+`/blog-yazisi/olmayan-kayit-xyz` 200 dönüyor, "Yazı bulunamadı" gösteriyor,
+noindex yok, kanonik `/blog-yazisi`. Klasik form detay sayfası (`/blog/olmayan`)
+bu durumda zaten 404 veriyordu; görsel editörün widget'ları vermiyordu.
+
+**Nasıl.** `pg_sw_item_missing()` (`widgets.php`): adresin istediği öğe yoksa
+widget onu işaretler; yanıt 404 olur, `X-Robots-Tag: noindex` gider,
+`get_page_content.php` sayfaya `<meta name="robots" content="noindex, follow">`
+yazar ve kanonik bağlantıyı çıkarır. Bayrak sayfanın widget geçişinden önce
+sıfırlanır. E-posta gövdesi ve SEO geçişi (başka bir isteğin içinde çizilen
+sayfa) hiç işaretlenmez. İşaretleyen üç yer:
+
+- **Form detay widget'ı** (`_render_system_widget_form_item_view`): `?r=` dolu
+  ya da form güzel URL'liyken sayfa adının ardında bir ad var, ama kayıt yok
+  veya ziyaretçi göremiyor. Erişimi olmayan kayıt da 404 olur; widget onu
+  zaten "bulunamadı" gibi gösteriyordu (kaydın varlığı sızmasın diye). Aynı
+  sayfada katalog widget'ı varsa ad onundur, işaretlenmez.
+- **Ürün detay widget'ı**: adres ya da `?pid=` bir ürün ya da seçim tipi grup
+  bulmadı. Aynı sayfada katalog listesi varsa ad önce onundur, işaretlenmez.
+- **Katalog listesi**: adresteki kategori yok. Aynı sayfada ürün detay widget'ı
+  varsa işaretlenmez (ürünü o gösterebilir).
+
+Çıplak detay sayfası (`/blog-yazisi`, `/urun-detay`) 200 kalır. Liste sayfasının
+ardındaki olmayan ad (`/blog-2/olmayan`) bu PR'da değişmedi: her sayfanın
+ardındaki fazladan parça gibi 200 dönüyor.
+
+**Doğrulama (sandbox).** Form 1109'da güzel URL geçici açıldı:
+`/blog-yazisi/olmayan-kayit-xyz` ve `/blog-yazisi?r=NOPE123` → 404,
+`X-Robots-Tag: noindex`, robots meta, kanonik yok, gövdede "bulunamadı"
+mesajı. `/blog-yazisi/ilk-yazi`, `/blog-yazisi`, `/blog-yazisi/` → 200 ve
+kanonik. `/urun-detay/olmayan-urun`, `/urun-detay?pid=999999`,
+`/magaza/olmayan-grup` → 404 + noindex; `/urun-detay/Recurring_Donation`,
+`/magaza/Donations`, `/magaza` → 200. `php tools/test.php` 405 geçti.
+dev.pinegrap.com'da denenmedi. IIS'te sunucunun kendi hata sayfası 404 gövdesini
+değiştirirse (httpErrors), hata sayfası widget'ının 404'ünde de aynısı olur.
+
+---
+
 ## 2026.4.10 — Görsel editör: panel ipuçlarında ^^token^^ yerine bağlama seçenekleri, form detayında alan etiketleri (2026-10-13)
 
 **Kaynak.** Koordinatörün notu: #248'de detay sayfası ipuçları bağlama

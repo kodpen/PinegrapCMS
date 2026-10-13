@@ -670,6 +670,16 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // drawn as its message area alone, carrying the empty message, so the
     // designer's container and message styling stay.
     if ($url_segment_invalid) {
+        // A 404, not the page, unless a product detail widget on the same
+        // page may still show a product by that address.
+        $asked = true;
+        foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
+            if (isset($w['cfg']['regionType']) && $w['cfg']['regionType'] === 'catalog_item_view') {
+                $asked = false;
+                break;
+            }
+        }
+        if ($asked) pg_sw_item_missing(true);
         return '<div class="pg-sw-cl-not-found">'
              . _pg_sw_render_message_only(json_decode($tree_json, true), 'catalog_listing', h($empty_message), 'warning')
              . '</div>';
@@ -4298,6 +4308,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // legacy catalog detail hook never fires for them.
     if (is_array($p) && !empty($p['id'])) {
         pg_track_content('product', $p['id']);
+    }
+
+    // The address named a product that is not there: a 404, not the page.
+    // A catalog listing on the same page reads the segment first (a group
+    // it drills into) and answers for it.
+    if (!$p && ($product_address_name !== '' || $product_id_direct > 0)) {
+        $asked = true;
+        foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
+            if (isset($w['cfg']['regionType']) && $w['cfg']['regionType'] === 'catalog_listing') {
+                $asked = false;
+                break;
+            }
+        }
+        if ($asked) pg_sw_item_missing(true);
     }
 
     $base_path       = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
