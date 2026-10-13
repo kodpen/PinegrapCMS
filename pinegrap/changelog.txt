@@ -879,6 +879,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] Para alanlarının sınırları her uçta aynı
+         denetleniyor ve belgede görünüyor: ürün fiyatı 0
+         ile 2147483647, hediye kartı tutarı 1'den, bakiyesi
+         0'dan başlıyor; ERP tahsilat, virman, çek ve gider
+         tutarı en az 1, gider KDV'si ve kredi limiti en az
+         0. Sınır dışı değer 422 alıyor, OpenAPI belgesi ve
+         MCP araçları en az / en çok değeri yazıyor. Eksi
+         kredi limiti önceden sessizce 0 yazılıyordu, artık
+         reddediliyor.
+
   [YENİ] Bağlı uygulamalar (OAuth 2.1): Ayarlar › API'de
          "Bağlı uygulamalar (OAuth)" türünde bir uygulama
          açıldığında dış uygulamalar (Claude gibi bir MCP

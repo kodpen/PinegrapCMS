@@ -42,9 +42,9 @@ function api_version() {
 //   bool      1/0, true/false, yes/no, on/off
 //   enum      one of 'values'
 //   datetime  ISO-8601, YYYY-MM-DD or unix, stored as unix
-//   money     whole number of minor units; a decimal is refused rather than
-//             rounded, because rounding someone's price silently is worse than
-//             telling them the format is wrong
+//   money     whole number of minor units, honours 'min' and 'max'; a decimal
+//             is refused rather than rounded, because rounding someone's price
+//             silently is worse than telling them the format is wrong
 //   list      array of objects, for the bulk endpoints
 function api_schema() {
 
@@ -114,7 +114,7 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The product id / SKU. Unique across the catalogue.'),
 				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool',   'description' => 'Published. Off by default, so an import can be checked before it goes live.'),
-				array('name' => 'price',             'in' => 'body', 'type' => 'money',  'description' => 'Minor units. 1999 is 19.99.'),
+				array('name' => 'price',             'in' => 'body', 'type' => 'money',  'min' => 0, 'max' => 2147483647, 'description' => 'Minor units. 1999 is 19.99.'),
 				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'full_description',  'in' => 'body', 'type' => 'string'),
@@ -159,7 +159,7 @@ function api_schema() {
 				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool'),
-				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'description' => 'Minor units. 1999 is 19.99.'),
+				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units. 1999 is 19.99.'),
 				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'full_description',  'in' => 'body', 'type' => 'string'),
@@ -951,7 +951,7 @@ function api_schema() {
 			'summary' => 'Issue a gift card',
 			'description' => 'One card worth amount, with a new sixteen-digit code, as the gift cards screen issues it - for a prize, a refund or a card sold outside the store. The answer carries the code; nothing is mailed to anyone.',
 			'params'  => array(
-				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero. The balance starts at the same amount.'),
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'min' => 1, 'max' => 4294967295, 'required' => true, 'description' => 'Minor units, greater than zero. The balance starts at the same amount.'),
 				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be spent. Left out, it never expires.'),
 				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only.')
 			)
@@ -970,7 +970,7 @@ function api_schema() {
 			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
 			'params'  => array(
 				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'description' => 'Minor units, zero or more.'),
+				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 4294967295, 'description' => 'Minor units, zero or more.'),
 				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
 				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
 			)
