@@ -21,9 +21,19 @@ if (!defined('PG_API_ENTRY')) {
 	exit;
 }
 
-function api_request_method() {
+// The four readers below take a value as well as giving one: the MCP endpoint
+// (includes/mcp/) runs a route inside its own request, and sets the verb, the
+// path, the input and the headers that route would have arrived with before
+// anything reads them.
+function api_request_method($set = null) {
 
 	static $method = '';
+
+	if ($set !== null) {
+
+		$method = strtoupper((string)$set);
+
+	}
 
 	if ($method !== '') {
 
@@ -55,9 +65,15 @@ function api_request_method() {
 // The part after the entry point: /products/12 out of
 // .../integration.php/products/12. The query fallback is for the rare server
 // that will not populate PATH_INFO at all.
-function api_request_path() {
+function api_request_path($set = null) {
 
 	static $path = null;
+
+	if ($set !== null) {
+
+		$path = (string)$set;
+
+	}
 
 	if ($path !== null) {
 
@@ -107,7 +123,7 @@ function api_request_path() {
 // it. Authorization is the awkward one: several server configurations strip it
 // from the CGI environment and leave it only in apache_request_headers(), and an
 // API that reads it in one place only fails on those hosts with no clue why.
-function api_header($name) {
+function api_header($name, $set = null) {
 
 	static $headers = null;
 
@@ -151,6 +167,12 @@ function api_header($name) {
 	}
 
 	$name = strtolower($name);
+
+	if ($set !== null) {
+
+		$headers[$name] = (string)$set;
+
+	}
 
 	return isset($headers[$name]) ? trim((string)$headers[$name]) : '';
 
@@ -203,9 +225,15 @@ function api_request_body_keys($keys = null) {
 
 }
 
-function api_request_input() {
+function api_request_input($set = null) {
 
 	static $input = null;
+
+	if (is_array($set)) {
+
+		$input = $set;
+
+	}
 
 	if ($input !== null) {
 

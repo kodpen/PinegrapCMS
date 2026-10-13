@@ -46,6 +46,20 @@
          parola ya da her yerden çıkış kişinin bağlantılarını
          da sonlandırır.
 
+  [YENİ] MCP sunucusu: Claude, ChatGPT gibi yapay zeka
+         uygulamaları "MCP sunucu adresi" ile siteye bağlanır,
+         kişi sitenin giriş ve onay ekranından izin verir ve
+         uygulama API'nin uçlarını araç olarak kullanır: ürün
+         listeleme ve düzenleme, sipariş okuma, sayfalar, ERP ve
+         Çalışma Alanı kayıtları, kişinin verdiği izin kadar.
+         Yazma işlemleri önce denenebilir (dry_run). Adres
+         Ayarlar › API'deki "Bağlı uygulamalar (OAuth)"
+         uygulamasında görünür.
+
+  [YENİ] Uygulamalar kendilerini bir kimlik adresiyle
+         (istemci kimlik belgesi) tanıtabiliyor; onay ekranı
+         uygulamanın hangi alan adından geldiğini gösterir.
+
   [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
          okuma (GET /webhooks/{id}), adres, olay listesi ve
          durum değiştirme (PATCH /webhooks/{id} ya da POST
@@ -98,6 +112,8 @@
   [ŞEMA] Bağlı uygulamalar için iki yeni tablo (kayıtlı
          istemciler ve kısa ömürlü onay kodları) ve oturum
          tablosuna üç kolon eklenir.
+         Kimlik adresli uygulamalar için kayıtlı istemci
+         tablosu genişler.
 
 
 

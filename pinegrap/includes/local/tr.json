@@ -20129,5 +20129,9 @@
     "Reading the file list; uploading new files to one folder and describing them": "Dosya listesini okuma; tek bir klasöre yeni dosya yükleme ve açıklamasını yazma",
     "Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers": "Sitedeki formlar ve ziyaretçilerin doldurdukları; yazma, gönderimi tamamlandı işaretler ve metin cevaplarını doldurur",
     "The calendars and the events on them - read only": "Takvimler ve üzerlerindeki etkinlikler - yalnız okuma",
-    "Registering, changing and testing an address for event notifications": "Olay bildirimleri için adres kaydetme, değiştirme ve deneme"
+    "Registering, changing and testing an address for event notifications": "Olay bildirimleri için adres kaydetme, değiştirme ve deneme",
+    "Identified by": "Kimlik adresi",
+    "The answer goes to a different address than the one this application is identified by. Connect it only if you expected that.": "Yanıt, bu uygulamanın kimlik adresinden farklı bir adrese gidecek. Yalnız bunu bekliyorsanız bağlayın.",
+    "MCP server address": "MCP sunucu adresi",
+    "Give this address to an AI application that speaks MCP. In Claude it is the URL of a custom connector.": "Bu adresi MCP destekleyen bir yapay zeka uygulamasına verin. Claude'da özel bağlayıcının (custom connector) adresidir."
 }

@@ -4,8 +4,8 @@
  *
  * The OAuth 2.1 rules that need no database: which redirect addresses a
  * client may register, how a presented one is matched against them, PKCE,
- * and the scope string. Kept apart from the server so they can be tested on
- * their own.
+ * the scope string and the client metadata documents a client may identify
+ * itself with. Kept apart from the server so they can be tested on their own.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -267,5 +267,187 @@ function pg_oauth_resource_normalise($resource) {
 	}
 
 	return rtrim($resource, '/');
+
+}
+
+// The largest client metadata document read, in bytes. The document holds a
+// name, a few addresses and a handful of flags; the draft that defines it
+// suggests 5 KB, and anything much bigger is not a client describing itself.
+function pg_oauth_metadata_document_limit() {
+
+	return 5120;
+
+}
+
+// Whether a client_id is the address of a client metadata document
+// (draft-ietf-oauth-client-id-metadata-document 3): https, with a path, and
+// none of the parts that make two spellings of an address differ or hide
+// where it points - no fragment, no user name, no dot segments. A query
+// string is allowed but not encouraged by the draft, and not needed by any
+// client, so it is refused too.
+function pg_oauth_client_id_is_url($client_id) {
+
+	if (!is_string($client_id) || (strlen($client_id) > 255) || (stripos($client_id, 'https://') !== 0)) {
+
+		return false;
+
+	}
+
+	if (preg_match('/[^\x21-\x7E]/', $client_id) === 1) {
+
+		return false;
+
+	}
+
+	$parts = parse_url($client_id);
+
+	if (!is_array($parts) || !isset($parts['host']) || ($parts['host'] === '')
+		|| isset($parts['user']) || isset($parts['pass']) || isset($parts['query'])
+		|| isset($parts['fragment']) || (strpos($client_id, '#') !== false) || (strpos($client_id, '?') !== false)) {
+
+		return false;
+
+	}
+
+	$path = isset($parts['path']) ? $parts['path'] : '';
+
+	if (($path === '') || ($path === '/')) {
+
+		return false;
+
+	}
+
+	foreach (explode('/', $path) as $segment) {
+
+		if (($segment === '.') || ($segment === '..')) {
+
+			return false;
+
+		}
+
+	}
+
+	return true;
+
+}
+
+// Reads a client metadata document fetched from $client_id. Answers
+// array('ok' => bool, 'error' => string, 'client' => array) where client
+// holds what the site keeps: name, client_uri, redirect_uris, software_id,
+// software_version.
+//
+// The document must name the address it was read from as its client_id -
+// otherwise any page could pass itself off as another client. It describes a
+// public client: a shared secret cannot be published at a public address, so
+// a document carrying one, or asking for a secret-based method, is refused.
+// Errors are English and ASCII: they end up in an OAuth error_description.
+function pg_oauth_metadata_document_client($client_id, $json) {
+
+	$fail = function ($error) {
+
+		return array('ok' => false, 'error' => $error, 'client' => array());
+
+	};
+
+	if (!is_string($json) || ($json === '') || (strlen($json) > pg_oauth_metadata_document_limit())) {
+
+		return $fail('The client metadata document is empty or larger than 5 KB.');
+
+	}
+
+	$document = json_decode($json, true);
+
+	if (!is_array($document) || (array_keys($document) === range(0, count($document) - 1))) {
+
+		return $fail('The client metadata document is not a JSON object.');
+
+	}
+
+	if (!isset($document['client_id']) || !is_string($document['client_id']) || ($document['client_id'] !== $client_id)) {
+
+		return $fail('The client metadata document does not name its own address as client_id.');
+
+	}
+
+	if (isset($document['client_secret']) || isset($document['client_secret_expires_at'])) {
+
+		return $fail('A client metadata document cannot carry a client secret.');
+
+	}
+
+	$method = isset($document['token_endpoint_auth_method']) ? $document['token_endpoint_auth_method'] : 'none';
+
+	if ($method !== 'none') {
+
+		return $fail('Only token_endpoint_auth_method none is supported for a client metadata document.');
+
+	}
+
+	if (isset($document['grant_types'])
+		&& (!is_array($document['grant_types']) || !in_array('authorization_code', $document['grant_types'], true))) {
+
+		return $fail('The client metadata document does not allow the authorization_code grant.');
+
+	}
+
+	if (isset($document['response_types'])
+		&& (!is_array($document['response_types']) || !in_array('code', $document['response_types'], true))) {
+
+		return $fail('The client metadata document does not allow response_type code.');
+
+	}
+
+	if (!isset($document['redirect_uris']) || !is_array($document['redirect_uris'])
+		|| empty($document['redirect_uris']) || (count($document['redirect_uris']) > 10)) {
+
+		return $fail('The client metadata document must list between one and ten redirect_uris.');
+
+	}
+
+	$redirect_uris = array();
+
+	foreach ($document['redirect_uris'] as $uri) {
+
+		if (!pg_oauth_redirect_uri_is_acceptable($uri)) {
+
+			return $fail('A redirect_uri in the client metadata document is not acceptable.');
+
+		}
+
+		$redirect_uris[] = $uri;
+
+	}
+
+	$text = function ($name, $length) use ($document) {
+
+		if (!isset($document[$name]) || !is_string($document[$name])) {
+
+			return '';
+
+		}
+
+		return mb_substr(trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $document[$name])), 0, $length);
+
+	};
+
+	$client_uri = $text('client_uri', 255);
+
+	if (($client_uri !== '') && (stripos($client_uri, 'https://') !== 0)) {
+
+		$client_uri = '';
+
+	}
+
+	return array(
+		'ok'     => true,
+		'error'  => '',
+		'client' => array(
+			'name'             => $text('client_name', 100),
+			'client_uri'       => $client_uri,
+			'redirect_uris'    => array_values(array_unique($redirect_uris)),
+			'software_id'      => $text('software_id', 100),
+			'software_version' => $text('software_version', 40)
+		)
+	);
 
 }

@@ -84,6 +84,96 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: MCP sunucusu (`mcp.php`) ve istemci kimlik belgesi (10.71) (2026-10-13)
+
+**Neden.** OAuth Faz A'nın amacı buydu: Claude, ChatGPT ya da bir editörün
+asistanı siteye adresinden bağlanıp kişi adına çalışabilsin. Erdal
+araştırmadan sonra "önce MCP sunucusu" dedi (Çalışma Alanı'nda dış MCP
+sunucularını `@takma ad` ile çağırma sonraya kaldı; araştırma notu
+`/mnt/project-files/notes/mcp-arastirma.md`). MCP'nin 2026-07-28 sürümü
+oturumu ve el sıkışmayı kaldırdı, dinamik istemci kaydını eskimiş saydı;
+istemciler artık önce istemci kimlik belgesini (CIMD) deniyor. Plan:
+`docs/_plan_oauth.md` → "Faz C + D".
+
+**Tasarım.**
+
+- **Araçlar = dış API rotaları.** `api_schema()`'daki (modüllerinkiler
+  dahil) her rota bir araç: ad rota kimliğinden (`products.list` →
+  `products_list`; model API'lerinin araç adı kuralı nokta kabul etmiyor),
+  açıklama özet + açıklama, `inputSchema` parametrelerden
+  (`api_openapi_type()`; `nullable` → `["tip","null"]`), ipuçları: GET
+  `readOnlyHint`, `create` dışındaki yazmalar `destructiveHint`. Dry-run
+  destekleyen yazmalara `dry_run` parametresi (API'nin `X-Dry-Run`'ı).
+  Liste çağıranın kapsamlarına göre süzülür. Dışarıda: `auth.*`, `push.*`,
+  `docs.*`, IIS için açılmış `*_post` takma adları. Ayrı bir araç katmanı
+  yazılmadı: her yeni uç kendiliğinden araç olur, iki tanım ayrışmaz.
+- **Süreç içinde çalıştırma.** Siteye kendi kendine HTTP isteği atmak
+  paylaşımlı hostingte loopback/sertifika sorunu ve iki PHP işçisi demekti.
+  `tools/call` rotayı `api_run()`'ın sırasıyla çalıştırır (kapsam,
+  `api_validate_input()`, işleyici). Bunun için `router.php`'deki
+  `api_request_method/path/input()` ve `api_header()` bir değer de alır,
+  `response.php`'ye `api_send_hook()` eklendi: işleyici yine `api_send()`
+  ile çıkar, kanca cevabı `CallToolResult`'a çevirir (2xx → `content` +
+  `structuredContent`, diğerleri → `isError: true` + API'nin hata gövdesi).
+  Günlüğe yol `/mcp/<rota yolu>` olarak düşer, hız sınırı aynı.
+- **İki protokol kuşağı.** 2026-07-28: `MCP-Protocol-Version` başlığı ya da
+  `_meta`, `Mcp-Method`/`Mcp-Name` gövdeyle karşılaştırılır (uyuşmazsa
+  400/-32020), sonuçlarda `resultType: complete` ve `_meta` içinde
+  `serverInfo`, `server/discover`, `tools/list`'te `ttlMs` + `cacheScope:
+  private`. 2025-03-26…2025-11-25: `initialize` ile açılır; oturum kimliği
+  verilmez (izinli), her istek tek başına. Desteklenmeyen sürüm 400/-32022.
+  GET/DELETE 405, bildirimler 202, toplu istek reddedilir. Akış (SSE) yok.
+- **Kimlik.** `api_authenticate()` olduğu gibi: OAuth jetonu (kaynağı
+  `mcp` olmalı — `PG_OAUTH_RESOURCE`), cihaz jetonu ya da uygulama
+  anahtarı. İlk istek de (`initialize` dahil) kimlik ister; jetonsuz
+  istemci 401 + `WWW-Authenticate: Bearer resource_metadata=".../mcp.php"`
+  alır ve OAuth'a geçer. CORS her kaynağa açık (çerez/oturum yok, sayfa
+  ancak elindeki jetonla iş yapabilir); bozuk `Origin` 403.
+- **WAF.** `mcp.php` ve `oauth.php` `waf_is_api_request()` listesine girdi.
+  Her POST "hassas" sayıldığından dakikada 30 adres sınırına takılıyordu;
+  bir yapay zeka uygulamasının arka ucu çok sayıda siteye aynı adreslerden
+  bağlanır. Sayım uygulama/jeton başına (API) ve kayıt için adres başına.
+- **CIMD (Faz D).** `client_id` https adresiyse (`pg_oauth_client_id_is_url()`:
+  yol var; parça, sorgu, kullanıcı adı, nokta bölüm yok) belge o adresten
+  çekilir (`api_http_request()`: iç ağ adresi yok, yönlendirme yok, 5 KB),
+  `pg_oauth_metadata_document_client()` doğrular (belge kendi adresini
+  `client_id` olarak taşımalı, gizli yok, yöntem yalnız `none`, dönüş
+  adresleri Faz A kurallarıyla) ve `oauth_clients`'a
+  `registered_by = 'metadata'` olarak 1 gün önbelleğe alır; yenileme
+  başarısızsa 7 güne kadar eski kopya. Çekme yalnız yetkilendirme
+  ekranında, **kişi giriş yaptıktan sonra** (girişsiz biri siteyi
+  istediği adrese istek attıramasın) ve adres başına saatte 30. Token ucu
+  belge çekmez. Onay ekranı "Kimlik adresi" satırında belgenin alan adını
+  gösterir; https dönüş adresi başka bir alan adındaysa uyarır. Sunucu
+  belgesinde `client_id_metadata_document_supported`. Kullanılmayan kopyalar
+  dinamik istemcilerle birlikte 30 günde silinir.
+- **Panel.** OAuth uygulamasının çekmecesinde ve açılış sayfasında "MCP
+  sunucu adresi" (Claude'da özel bağlayıcı adresi).
+
+**Şema 10.71.** `oauth_clients.client_id` `VARCHAR(255) ascii_bin`,
+`registered_by` + `metadata`, `metadata_expires`.
+
+**Doğrulama.** Lint, `check_lang`, `check_api_schema`, `check_copies`,
+`check_bindings`, `test.php` (298; yeni `tests/mcp_test.php`, CIMD
+testleri `tests/oauth_test.php`'de). Sandbox (`setup_sandbox.sh` +
+`.htaccess` taklidi): jetonsuz 401 ve challenge, kaynak belgesi,
+`initialize`, bildirim 202, `tools/list` (yalnız verilen kapsamların
+araçları), `tools/call` ile okuma, dry-run, oluşturma, doğrulama hatası
+(422 → `isError`), bilinmeyen alan, olmayan kayıt, kalıcı silme, verilmemiş
+araç (-32602), 2026-07-28 ile `server/discover`/`tools/list`/`tools/call`,
+eksik/uyuşmayan başlık (-32020), desteklenmeyen sürüm (-32022), bilinmeyen
+yöntem 404, ayrıştırma hatası, toplu istek, GET 405, OPTIONS, Origin;
+`integration.php` jetonu `mcp.php`'de ve tersi 401; CIMD girişsiz →
+giriş sayfası, ağ yok/iç adres → hata sayfası ve gerekçe; kayıtlı kopyayla
+onay ekranı (kimlik adresi, başka alan adı uyarısı, kaçış), kod → jeton →
+`tools/list` → yenileme, 7 günlük eski kopya sınırı. Migration 10.70
+şemasından ve ikinci kez koşturuldu. **Doğrulanmayan:** gerçek bir MCP
+istemcisi (Claude özel bağlayıcı) — https'li, internetten erişilen bir
+site ister; CIMD belgesinin gerçekten çekilmesi (sandbox'ta DNS yok);
+IIS.
+
+---
+
 ## 2026.4.10 — Dış API: OAuth 2.1 yetkilendirme sunucusu, MCP hazırlığı (10.70) (2026-10-13)
 
 **Neden.** Pinegrap'a MCP sunucusu eklendiğinde Claude gibi dış

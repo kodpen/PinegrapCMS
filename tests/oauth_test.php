@@ -97,3 +97,69 @@ function test_oauth_resource_normalise()
 	pg_assert_same('', pg_oauth_resource_normalise('/pinegrap/integration.php'), 'relative');
 	pg_assert_same('', pg_oauth_resource_normalise(null), 'not a string');
 }
+
+// draft-ietf-oauth-client-id-metadata-document 3: https, a path, nothing that
+// lets two spellings point to different places.
+function test_oauth_client_id_url_shape()
+{
+	pg_assert_true(pg_oauth_client_id_is_url('https://claude.ai/oauth/mcp-oauth-client-metadata'), 'plain https address with a path');
+	pg_assert_true(pg_oauth_client_id_is_url('https://app.example.com:8443/client.json'), 'with a port');
+	pg_assert_false(pg_oauth_client_id_is_url('pgoc_0123456789abcdef'), 'a registered client_id');
+	pg_assert_false(pg_oauth_client_id_is_url('http://app.example.com/client.json'), 'plain http');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com'), 'no path');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com/'), 'root path only');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com/a/../client.json'), 'dot segment');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com/client.json#x'), 'fragment');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com/client.json?v=1'), 'query');
+	pg_assert_false(pg_oauth_client_id_is_url('https://user@app.example.com/client.json'), 'user name');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com/a b'), 'space');
+	pg_assert_false(pg_oauth_client_id_is_url('https://app.example.com/' . str_repeat('a', 260)), 'too long');
+}
+
+function test_oauth_metadata_document_accepts_a_public_client()
+{
+	$id = 'https://app.example.com/oauth/client.json';
+
+	$read = pg_oauth_metadata_document_client($id, json_encode(array(
+		'client_id'                  => $id,
+		'client_name'                => "Example\nApp",
+		'client_uri'                 => 'https://app.example.com',
+		'redirect_uris'              => array('https://app.example.com/callback', 'http://127.0.0.1/callback'),
+		'grant_types'                => array('authorization_code', 'refresh_token'),
+		'response_types'             => array('code'),
+		'token_endpoint_auth_method' => 'none'
+	)));
+
+	pg_assert_true($read['ok'], 'accepted');
+	pg_assert_same('Example App', $read['client']['name'], 'control characters become spaces');
+	pg_assert_same(array('https://app.example.com/callback', 'http://127.0.0.1/callback'), $read['client']['redirect_uris']);
+	pg_assert_same('https://app.example.com', $read['client']['client_uri']);
+}
+
+function test_oauth_metadata_document_refusals()
+{
+	$id = 'https://app.example.com/oauth/client.json';
+
+	$base = array('client_id' => $id, 'redirect_uris' => array('https://app.example.com/callback'));
+
+	$refused = function ($document, $label) use ($id) {
+
+		$read = pg_oauth_metadata_document_client($id, is_string($document) ? $document : json_encode($document));
+
+		pg_assert_false($read['ok'], $label);
+
+	};
+
+	pg_assert_true(pg_oauth_metadata_document_client($id, json_encode($base))['ok'], 'minimal document');
+
+	$refused(array_merge($base, array('client_id' => 'https://evil.example.com/client.json')), 'another client_id');
+	$refused(array_merge($base, array('client_secret' => 'x')), 'a secret');
+	$refused(array_merge($base, array('token_endpoint_auth_method' => 'client_secret_basic')), 'secret based method');
+	$refused(array_merge($base, array('token_endpoint_auth_method' => 'private_key_jwt')), 'unsupported method');
+	$refused(array_merge($base, array('grant_types' => array('client_credentials'))), 'no authorization_code');
+	$refused(array_merge($base, array('redirect_uris' => array('http://evil.example.com/cb'))), 'plain http redirect');
+	$refused(array_merge($base, array('redirect_uris' => array())), 'no redirect');
+	$refused('[1,2]', 'a list');
+	$refused('not json', 'not JSON');
+	$refused(json_encode(array_merge($base, array('client_name' => str_repeat('a', 6000)))), 'over 5 KB');
+}

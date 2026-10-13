@@ -25,6 +25,7 @@ if (!defined('INSTALL_OR_UPDATE')) {
 function upgrade_to_2026_4_10() {
 
 	upgrade_2026_4_10_oauth();                  // 10.70
+	upgrade_2026_4_10_oauth_metadata();         // 10.71
 
 }
 
@@ -112,5 +113,42 @@ function upgrade_2026_4_10_oauth() {
 	install_add_index('api_devices', 'idx_oauth_client', "INDEX idx_oauth_client (oauth_client_id)");
 
 	install_note('External API: outside applications (an MCP client such as Claude) can connect to the site with OAuth 2.1 once a "Connected apps (OAuth)" application is switched on in API settings. Each connection is agreed by a person on the site and can be ended at any time.');
+
+}
+
+// Clients identified by a metadata document (2026.4.10, 10.71; Client ID
+// Metadata Document, includes/oauth/server.php).
+//
+// An MCP client may name itself with an https address instead of
+// registering: the site reads the client's name and redirect addresses from
+// that address and keeps them as an oauth_clients row marked 'metadata'.
+//
+// client_id grows to hold such an address. It is ascii and compared
+// byte-for-byte - a client_id is case-sensitive, and an ascii column keeps
+// the unique key inside the 767-byte index limit of older MySQL row formats,
+// which a 255-character utf8mb4 column would not.
+//
+// metadata_expires is when the copy of the document should be read again.
+function upgrade_2026_4_10_oauth_metadata() {
+
+	$client_id = install_column_info('oauth_clients', 'client_id');
+
+	if (is_array($client_id) && (stripos((string)$client_id['Type'], 'varchar(255)') === false)) {
+
+		install_modify_column('oauth_clients', 'client_id', "VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL");
+
+	}
+
+	$registered_by = install_column_info('oauth_clients', 'registered_by');
+
+	if (is_array($registered_by) && (stripos((string)$registered_by['Type'], "'metadata'") === false)) {
+
+		install_modify_column('oauth_clients', 'registered_by', "ENUM('dynamic','panel','metadata') NOT NULL DEFAULT 'dynamic'");
+
+	}
+
+	install_add_column('oauth_clients', 'metadata_expires', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('External API: the site now has an MCP server (mcp.php). An AI application such as Claude connects to it with OAuth and works with the site through the same permissions as the API.');
 
 }

@@ -922,6 +922,12 @@ $oauth_issuer = pg_oauth_issuer();
 
 $oauth_metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
 
+// The address an AI application is given to reach the site's MCP server
+// (mcp.php): in Claude, the URL of a custom connector.
+$oauth_resources = pg_oauth_resources();
+
+$oauth_mcp_url = $oauth_resources['mcp'];
+
 $permission_rows = api_settings_permission_rows('scope', 'd_scope');
 
 /* ---------------------------------------------------------------------------
@@ -1307,6 +1313,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
 				</div>
 				<div class="mb-3" id="d_oauth_block">
+					<label class="form-label small">' . lang('MCP server address') . '</label>
+					<div class="api-secret-box mb-2"><code id="d_oauth_mcp">' . h($oauth_mcp_url) . '</code>
+						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_oauth_mcp">' . lang('Copy') . '</button></div>
 					<label class="form-label small">' . lang('Discovery address') . '</label>
 					<div class="api-secret-box"><code id="d_oauth_meta">' . h($oauth_metadata_url) . '</code>
 						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_oauth_meta">' . lang('Copy') . '</button></div>
@@ -1482,6 +1491,13 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 			</div>
 			<div class="modal-body">
 				<p class="mb-3">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
+
+				<label class="form-label small text-uppercase opacity-75">' . lang('MCP server address') . '</label>
+				<div class="api-secret-box mb-1">
+					<code id="nc_mcp">' . h($oauth_mcp_url) . '</code>
+					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_mcp">' . lang('Copy') . '</button>
+				</div>
+				<div class="form-text mb-3">' . lang('Give this address to an AI application that speaks MCP. In Claude it is the URL of a custom connector.') . '</div>
 
 				<label class="form-label small text-uppercase opacity-75">' . lang('Site address') . '</label>
 				<div class="api-secret-box mb-3">

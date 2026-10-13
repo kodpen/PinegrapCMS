@@ -1,6 +1,9 @@
 # OAuth 2.1 yetkilendirme sunucusu — MCP hazırlığı (2026.4.10)
 
-Durum: Faz A yazıldı ve sandbox'ta uçtan uca denendi (2026-10-13); gerçek bir MCP istemcisiyle deneme MCP sunucusunu (Faz C) bekliyor. Sahibi: API
+Durum: Faz A birleşti (PR #244, 2026-10-13). Faz C + D (MCP sunucusu ve
+istemci kimlik belgesi) yazıldı ve sandbox'ta denendi (2026-10-13, Erdal
+"önce MCP sunucusu" dedi); gerçek Claude bağlayıcısıyla deneme https'li
+sitede. Sahibi: API
 (`includes/api/**`, `api_settings.php`) + yeni `oauth.php`, `includes/oauth/`.
 Ayrıntı: `docs/degisiklikler.md` → "OAuth 2.1 yetkilendirme sunucusu".
 
@@ -18,10 +21,11 @@ seçmeli ve istediği an geri alabilmeli.
 
 | Faz | İçerik | Durum |
 |---|---|---|
-| A | Yetkilendirme sunucusu: keşif belgeleri, dinamik istemci kaydı, yetkilendirme kodu + PKCE, jeton/yenileme, geri alma; jetonun `integration.php`'de geçmesi; panelde "Bağlı uygulamalar (OAuth)" türü | Bu PR |
+| A | Yetkilendirme sunucusu: keşif belgeleri, dinamik istemci kaydı, yetkilendirme kodu + PKCE, jeton/yenileme, geri alma; jetonun `integration.php`'de geçmesi; panelde "Bağlı uygulamalar (OAuth)" türü | Birleşti (#244) |
 | B | Panelde kayıtlı istemci listesi (kapatma, silme), kişinin kendi "bağlı uygulamalarım" ekranı | Sonra |
-| C | MCP sunucusu (`mcp.php`): araçlar dış API kaynaklarının üstüne kurulur, jetonu bu sunucu verir | Sonra |
-| D | İstemci kimlik belgesi (Client ID Metadata Document, MCP 2025-11): `client_id` bir https adresi olur, sunucu belgeyi çeker. Dışarıya istek attığı için SSRF koruması ister | Sonra |
+| C | MCP sunucusu (`mcp.php`): araçlar dış API kaynaklarının üstüne kurulur, jetonu bu sunucu verir | Bu PR (aşağıda) |
+| D | İstemci kimlik belgesi (Client ID Metadata Document): `client_id` bir https adresi olur, sunucu belgeyi çeker. Dışarıya istek attığı için SSRF koruması ister. MCP 2026-07-28 dinamik kaydı eskimiş saydı, istemciler önce bunu dener | Bu PR (aşağıda) |
+| F | Çalışma Alanı'nda MCP istemcisi: dış sunucular `@takma ad` ile, dizin mekaniği (araştırma: `/mnt/project-files/notes/mcp-arastirma.md`) | Sonra |
 | E | "Pinegrap ile giriş" (OpenID Connect, `id_token`) — başka yazılımlarda oturum açmak için | Karar bekliyor |
 
 ## Kararlar (varsayılanlar, Erdal değiştirebilir)
@@ -113,3 +117,68 @@ Sandbox'ta (http, PHP yerleşik sunucusu) akışın tamamı denendi. Denenmeyen:
 gerçek bir MCP istemcisiyle (Claude "özel bağlayıcı") bağlantı — bunun için
 önce MCP sunucusu (Faz C) gerekir —, https'li canlı sunucu ve IIS'te
 `.well-known` yolunun yönlendiriciye düşmesi.
+
+## Faz C + D: MCP sunucusu ve istemci kimlik belgesi
+
+**MCP sürümü.** Güncel belge 2026-07-28: oturum yok, `initialize` yok, her
+istek tek POST, yetenekler `server/discover` ile sorulur, `resultType`
+zorunlu. İstemcilerin bir kısmı hâlâ 2025-11-25 / 2025-06-18 konuşuyor;
+sunucu ikisini de cevaplar: gövdede `initialize` gelirse eski yol (oturum
+kimliği verilmez, eski sürüm buna izin veriyor), `MCP-Protocol-Version:
+2026-07-28` gelirse yeni yol (`Mcp-Method` / `Mcp-Name` başlıkları gövdeyle
+karşılaştırılır, uyuşmazsa 400 / -32020).
+
+**Uç.** `pinegrap/mcp.php` — tek adres, PATH_INFO yok, yeniden yazma kuralı
+gerekmez. Kaynak listesine `mcp` olarak girer (RFC 8707): `integration.php`
+için verilmiş jeton burada, burası için verilmiş jeton orada geçmez. 401'de
+`WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource/<yol>/mcp.php"`.
+GET/DELETE 405; bildirimler 202; tarayıcı istemcileri için CORS.
+
+**Kimlik.** OAuth jetonu (asıl yol), cihaz jetonu ya da uygulama
+anahtarı+gizli (komut satırı istemcileri için) — `api_authenticate()`
+olduğu gibi. Hız sınırı, IP listesi, kayıt günlüğü API'ninkiyle aynı.
+
+**Araçlar = dış API uçları.** Her rota bir araç: ad rota kimliğinden
+(`products.list` → `products_list`; Claude API'nin araç adı kuralı nokta
+kabul etmiyor), açıklama rotanın özeti + açıklaması, `inputSchema`
+parametrelerden (OpenAPI üretecinin tip çevirisi), `annotations`:
+GET `readOnlyHint`, silme/iptal `destructiveHint`. Yalnız çağıranın
+kapsamlarının karşıladığı araçlar listelenir. Dışarıda kalanlar: `auth.*`,
+`push.*`, `docs.*` ve IIS için açılmış `*_post` takma adları. Yazma
+uçlarında `dry_run` parametresi (API'nin `X-Dry-Run`'ı): model önce
+deneyip sonra yazabilir.
+
+**Çalıştırma süreç içinde.** Siteye kendi kendine HTTP isteği atılmaz
+(paylaşımlı hostingte loopback ve sertifika sorunları, iki PHP işçisi).
+`tools/call` rotayı `api_run()`'ın yaptığı sırayla çalıştırır: kapsam,
+parametre doğrulama, işleyici. İşleyiciler `api_send()` ile çıkar; MCP
+isteğinde `api_send()` cevabı JSON-RPC sonucuna çevirir (2xx →
+`content` + `structuredContent`, diğerleri → `isError: true` ve API'nin hata
+gövdesi). Bunun için `router.php`'deki istek okuyucularına (yöntem, yol,
+girdi, başlık) birer ayarlayıcı, `response.php`'ye bir çıkış kancası eklenir.
+API günlüğüne yol `/mcp/<rota yolu>` olarak yazılır.
+
+**CIMD (Faz D).** `client_id` bir https adresiyse (yol içerir, parça/kullanıcı
+adı/nokta bölüm yok) istemci kaydı aranmaz, belge o adresten çekilir:
+5 KB sınırı, yönlendirme izlenmez, iç ağ adresleri reddedilir
+(`api_http_request()`), belge `client_id`'yi aynen taşımalı, gizli
+taşımamalı, `token_endpoint_auth_method` yalnız `none`. Belge
+`oauth_clients`'a `registered_by = 'metadata'` olarak 1 gün önbelleğe alınır;
+yenileme başarısızsa 7 güne kadar eski kopya kullanılır. Çekme yalnız
+yetkilendirme ekranında ve **kişi giriş yaptıktan sonra** yapılır (girişsiz
+biri siteyi rastgele adreslere istek attıramasın), ayrıca adres başına
+saatte 30 ile sınırlı. Onay ekranı istemcinin adını değil kimlik adresinin
+alan adını öne koyar; dönüş adresi başka bir alan adındaysa uyarır. Sunucu
+belgesine `client_id_metadata_document_supported: true` eklenir.
+
+**Şema (10.71).** `oauth_clients.client_id` `VARCHAR(255) ascii_bin`
+(adres sığsın; ascii, eski MySQL'in 767 baytlık dizin sınırı için),
+`registered_by`'a `metadata`, `metadata_expires`.
+
+**Panel.** OAuth uygulamasının çekmecesine "MCP sunucu adresi" (Claude'da
+"özel bağlayıcı" eklerken yapıştırılan adres).
+
+**Doğrulanamayacaklar.** Gerçek Claude bağlayıcısıyla deneme https'li,
+internetten erişilen bir site ister (dev.pinegrap.com); sandbox'ta MCP
+istemcisi taklit edilir. CIMD'nin gerçek bir belgeyi çekmesi sandbox'ta
+DNS olmadığı için yalnız ret yolundan denenebilir.

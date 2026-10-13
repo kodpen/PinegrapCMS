@@ -3150,7 +3150,11 @@ function waf_user_is_authenticated()
 /**
  * REST API endpoints. Their whole purpose is to be called by scripts, so the
  * generic-HTTP-client bot class must not apply to them. They authenticate
- * with their own key/secret and are still rate limited.
+ * with their own key/secret and are still rate limited. The MCP server and the
+ * OAuth server are called the same way - by an AI application's backend,
+ * often from addresses it shares with every other site it connects to - and
+ * count their callers the same way: per application, per token, and per
+ * address for registrations (includes/mcp/, includes/oauth/).
  */
 /**
  * Is this a call to the REST API?
@@ -3178,7 +3182,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php'));
+        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php'));
     }
 
     return $answer;

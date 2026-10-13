@@ -23,8 +23,9 @@ if (!defined('PG_OAUTH_ENTRY')) {
 }
 
 // A page with nothing but a message, for the failures that cannot go back to
-// the client.
-function pg_oauth_authorize_page_error($message) {
+// the client. $detail is the technical reason, in English, for whoever
+// develops the application.
+function pg_oauth_authorize_page_error($message, $detail = '') {
 
 	http_response_code(400);
 
@@ -35,7 +36,8 @@ function pg_oauth_authorize_page_error($message) {
 			<div class="card mx-auto shadow-sm" style="max-width: 30rem;">
 				<div class="card-body p-4">
 					<h1 class="h5 mb-3"><i class="bi bi-plug me-2" aria-hidden="true"></i>' . h(lang('Connect an application')) . '</h1>
-					<div class="alert alert-danger mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($message) . '</div>
+					<div class="alert alert-danger mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($message) . '</div>'
+						. (($detail !== '') ? '<p class="small text-muted mt-3 mb-0"><code>' . h($detail) . '</code></p>' : '') . '
 				</div>
 			</div>
 		</main>'
@@ -109,13 +111,35 @@ function pg_oauth_authorize() {
 
 	}
 
+	$signed_in = isset($_SESSION['sessionuserid']) && ((string)$_SESSION['sessionuserid'] !== '');
+
+	// A client that names itself with the address of its metadata document is
+	// read from that address, which only happens for somebody signed in: the
+	// person signs in first, on the site's own page, and comes back here.
+	// Nothing goes to the client on the way, so this is no open redirect.
+	if (pg_oauth_client_id_is_url($param('client_id')) && !$signed_in) {
+
+		if ($post) {
+
+			pg_oauth_authorize_page_error(lang('Your session has ended. Start again from the application.'));
+
+		}
+
+		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
+
+		exit();
+
+	}
+
 	// The client and where it wants the answer. Nothing is sent to the client
 	// until both are known to be its own.
-	$client = pg_oauth_client($param('client_id'));
+	$resolved = pg_oauth_client_resolve($param('client_id'));
+
+	$client = $resolved['client'];
 
 	if (($client === null) || ($client['status'] !== 'active')) {
 
-		pg_oauth_authorize_page_error(lang('The application asking to connect is not known to this site. Start again from the application.'));
+		pg_oauth_authorize_page_error(lang('The application asking to connect is not known to this site. Start again from the application.'), $resolved['error']);
 
 	}
 
@@ -186,7 +210,7 @@ function pg_oauth_authorize() {
 
 	// Who is connecting. Somebody who is not signed in goes to the sign-in
 	// screen, two-step verification included, and comes back here.
-	if (!isset($_SESSION['sessionuserid']) || ((string)$_SESSION['sessionuserid'] === '')) {
+	if (!$signed_in) {
 
 		if ($post) {
 
@@ -324,10 +348,39 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
 
 	}
 
+	$warning = function ($text) {
+
+		return '<div class="alert alert-warning small" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($text) . '</div>';
+
+	};
+
 	$unverified = ((string)$client['registered_by'] === 'dynamic')
-		? '<div class="alert alert-warning small" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>'
-			. h(lang('This application registered itself with the site. Connect it only if you started this from the application yourself.')) . '</div>'
+		? $warning(lang('This application registered itself with the site. Connect it only if you started this from the application yourself.'))
 		: '';
+
+	// A client identified by its metadata document is known by the host that
+	// published the document, which https vouches for; the name in the
+	// document is whatever its author wrote. The answer going to another host
+	// is allowed but worth a second look.
+	$identity = pg_oauth_client_identity_host($client);
+
+	$identity_row = '';
+
+	if ($identity !== '') {
+
+		$identity_row = '<dt>' . h(lang('Identified by')) . '</dt><dd><code>' . h($identity) . '</code></dd>';
+
+		$redirect_scheme = strtolower((string)parse_url($hidden['redirect_uri'], PHP_URL_SCHEME));
+
+		if (($redirect_scheme === 'https') && is_string($return_host)
+			&& (strtolower($return_host) !== $identity)
+			&& (substr(strtolower($return_host), -strlen('.' . $identity)) !== '.' . $identity)) {
+
+			$unverified = $warning(lang('The answer goes to a different address than the one this application is identified by. Connect it only if you expected that.'));
+
+		}
+
+	}
 
 	$title = lang(array('string' => 'Connect {var:1}', 'vars' => $name));
 
@@ -342,6 +395,7 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
 					))) . '</p>
 					' . $unverified . '
 					<dl class="small mb-3">
+						' . $identity_row . '
 						<dt>' . h(lang('Signed in as')) . '</dt>
 						<dd>' . h($owner['username']) . '</dd>
 						<dt>' . h(lang('Answer goes to')) . '</dt>
