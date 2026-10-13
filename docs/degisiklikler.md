@@ -84,9 +84,11 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
-## 2026.4.10 — Çalışma Alanı: telefonda mesaj kopyalama, ayırt edilen kanal listesi düğmesi (2026-10-13)
+## 2026.4.10 — Çalışma Alanı: seçili mesajları kopyalama, telefonda mesaj kopyalama, ayırt edilen kanal listesi düğmesi (2026-10-13)
 
-**Neden.** Ürün sahibi telefonda bir mesajı kopyalayamadı. "Metni kopyala"
+**Neden.** Ürün sahibi telefonda mesaj kopyalayamadı. Asıl eksik: "Mesajları
+seç" ile birden fazla mesaj seçildiğinde alttaki çubukta Yanıtla / İlet /
+Nota ekle vardı, kopyalama yoktu. Tek mesajın "Metni kopyala"sı da
 mesaj menüsünün alt bölümündeydi: telefonda ya mesaja dokunup araç
 satırındaki "…" ile ya da basılı tutarak açılan uzun menünün sonundan
 bulunuyordu. Basılı tutma menüyü açtığı için (`onContext()`, Android'in
@@ -97,8 +99,17 @@ Aynı ekran görüntüsünde ikinci sorun: telefonda Çalışma Alanı başlığ
 kanal listesi düğmesi `bi-list` (üç çizgi) simgesiydi ve panelin ana menü
 düğmesinin tam altında duruyordu; ikisi karışıyordu.
 
-**Ne değişti.** Yalnız `assets/js/workspace.js` (+ `workspace.min.js`),
-`assets/css/backend.src.css`, `includes/workspace/screen.php` metinleri.
+**Ne değişti.** `assets/js/workspace.js` (+ `workspace.min.js`),
+`assets/css/backend.src.css`, `includes/workspace/screen.php` (metinler ve
+`timezone`), `includes/workspace/forward.php` (seçim çubuğu metinleri).
+- Seçim çubuğuna "Kopyala" (`copySelected()`): seçili mesajlar
+  `selectedMessages()` sırasıyla (eskiden yeniye) `[gg.aa.yyyy SS:dd] Ad:`
+  başlığı altında, aralarında boş satırla panoya gider; dosyalı mesajda
+  "Dosya: ad" satırı eklenir. Tarih ekrandaki "Dün 21:18" gibi göreli
+  etiket değil, tam tarih-saattir ve sitenin saat diliminde yazılır:
+  `ws_screen_config()` artık `timezone` (`date_default_timezone_get()`,
+  Site Ayarları'ndaki dilim) taşır; tarayıcının bilmediği dilimde
+  kendi saatine düşer. Kopyaladıktan sonra seçim kapanır.
 - "Metni kopyala" (`bi-copy`) `tool: true` ile araç satırına çıktı ve
   mesaj menüsünde Yanıtla / Görev yap'ın hemen altına taşındı; metni
   olmayan (yalnız dosya) mesajda görünmez. Telefonda araç satırı mesaja
@@ -126,7 +137,7 @@ düğmesinin tam altında duruyordu; ikisi karışıyordu.
   360px'ten dar ekranda yalnız ok kalır. `title`/`aria-label` "Kanal
   listesini göster".
 
-Yeni metinler (tr.json): `Show the channel list`, `Copy all`,
+Yeni metinler (tr.json): `File: {var:1}`, `Show the channel list`, `Copy all`,
 `The browser did not let the text be copied. Select it and copy it from
 here.`, `Press and hold to select the part you need, then copy it.`,
 `Select the text`.
@@ -138,6 +149,11 @@ kısmi kopyalama "Metni seç" kutusundan yapılır. Misafir odası
 tarayıcınındır, dokunulmadı.
 
 **Doğrulama.** Sandbox'ta Playwright ile 412×915 dokunmatik görünüm:
+basılı tutma → "Mesajları seç", üç mesaj seçilip çubuktaki "Kopyala"ya
+basıldı; pano üç mesajı sırasıyla, `[14.10.2026 00:36] admin:`
+başlıklarıyla (sitenin İstanbul saati; tarayıcı UTC'deydi), çok satırlı
+metin ve liste maddeleriyle aldı; seçim kapandı, çubuk telefonda iki satıra
+sığdı.
 başlıkta "‹ Kanallar" görünür, ana menü düğmesinden ayrı; dokununca liste
 açılır. Çok satırlı mesajda araç satırındaki kopyalama düğmesi panoya
 satır sonlarıyla yazdı; basılı tutma menüsünde "Metni kopyala" ve "Metni

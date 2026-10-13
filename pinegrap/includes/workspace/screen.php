@@ -684,6 +684,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'me'           => (int) $viewer['id'],
         'me_role'      => (int) $viewer['role'],
         'locale'       => (string) lang(array('info' => '')),
+        // The site's own clock, which the time labels are written in.
+        'timezone'     => date_default_timezone_get(),
         'today'        => date('Y-m-d'),
         'board_from'   => ws_screen_board_from(),
         'event_kinds'  => ws_event_kinds(),

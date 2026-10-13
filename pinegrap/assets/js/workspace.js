@@ -5179,6 +5179,11 @@
             forward.addEventListener('click', function () { self.forwardForm(self.selectedMessages()); });
             bar.appendChild(forward);
 
+            var copy = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_copy'), 'bi-copy');
+            copy.disabled = none;
+            copy.addEventListener('click', function () { self.copySelected(); });
+            bar.appendChild(copy);
+
             if (CFG.notes) {
                 var note = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_to_note'), 'bi-journal-plus');
                 note.disabled = none;
@@ -5212,6 +5217,42 @@
             if (this.input) {
                 this.input.focus();
             }
+        },
+
+        // The chosen messages as text to paste elsewhere, oldest first, each
+        // under its sender and its full date and time: the labels on the
+        // screen ("Yesterday 21:18") mean nothing once pasted.
+        copySelected: function () {
+            var chosen = this.selectedMessages();
+
+            if (!chosen.length) {
+                return;
+            }
+
+            var text = chosen.map(function (message) {
+                var date = new Date(message.timestamp * 1000);
+                var shape = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+                var when;
+
+                // In the site's time zone, like the labels on the screen; a
+                // zone the browser does not know falls back to its own.
+                try {
+                    when = date.toLocaleString(CFG.locale || undefined, Object.assign({ timeZone: CFG.timezone || undefined }, shape));
+                } catch (error) {
+                    when = date.toLocaleString(CFG.locale || undefined, shape);
+                }
+
+                var lines = [readableText(message.html)];
+
+                if (message.file) {
+                    lines.push(t('sel_copy_file', message.file.name));
+                }
+
+                return '[' + when + '] ' + (message.sender ? message.sender.name : '') + ':\n' + lines.filter(Boolean).join('\n');
+            }).join('\n\n');
+
+            copyText(text);
+            this.endSelect();
         },
 
         forwardForm: function (messages) {
