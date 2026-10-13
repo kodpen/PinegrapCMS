@@ -272,7 +272,8 @@ karışmaz, ayrı tablo. Hesap saf fonksiyon + test.
 
 **Durum (2026-10-13):** üçü tek PR'da bitti. 9a `.xlsx` ürün içe aktarıcısının zip
 yardımcılarıyla (PHPExcel'siz), `.xls` PHPExcel ile biçimleriyle okunur; `.ods`
-reddedilir (vendored OOCalc PHP 8'de ölür); bankanın başlık bloğu atlanır. 9b oran ve KDV
+önce reddediliyordu, OOCalc onarılınca (#323) `.xls` yolundan okunur; bankanın
+başlık bloğu atlanır. 9b oran ve KDV
 ERP Ayarları'nda; panel cari kartında ve mutabakat ekranında; tekrar faturalamayı
 `erp_invoices.late_fee_through` önler. 9c `erp_cashflow.php?view=forecast`. API/MCP uçları
 yok. **Faz 9 bitti.**

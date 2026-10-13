@@ -386,12 +386,13 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   yazılmaz (karşılıksız = cariye yeniden borç). Portföy ve verilen çek
   kasaları kullanıcının açtığı ERP kasalarıdır; yoksa ekran söyler.
 - Banka ekstresi (`includes/erp/bank_import.php`): CSV, `.xlsx`/`.xlsm` (zip
-  yardımcılarıyla, kütüphanesiz) ve `.xls` (PHPExcel, biçimleriyle; tarih
-  hücresi biçiminden tanınır). Her yol `erp_bank_read_file()` → aynı hücre
-  satırları; sayı hücresi `erp_bank_sheet_value()` ile CSV metnine, başlık
-  bloğu `erp_bank_rows_from_heading()` ile atılır. `.ods` reddedilir (vendored
-  OOCalc'ın PHP 8 çökmesi ürün içe aktarımı düzeltmesiyle gitti; banka yolunda
-  `.ods` henüz açılmadı). Satır
+  yardımcılarıyla, kütüphanesiz), `.xls` ve `.ods` (PHPExcel, okuyucu adı
+  `pg_products_import_reader()`'dan, biçimleriyle; tarih hücresi biçiminden
+  tanınır). Her yol `erp_bank_read_file()` → aynı hücre satırları; sayı
+  hücresi `erp_bank_sheet_value()` ile CSV metnine, başlık bloğu
+  `erp_bank_rows_from_heading()` ile atılır. `.numbers`/`.pdf` adla
+  reddedilir. PHPExcel libxml dosya yüklemeyi kapalı bırakır: aynı istekte
+  ondan sonra `.xlsx` (XMLReader) okunmaz. Satır
   `UNIQUE (cash_account_id, line_hash)` ile bir kez alınır; eşleşme defterde
   aynı kasa + tutar + ±3 gün; kayıt tahsilat/ödeme ya da gider kapısından.
   Sütun seçimi kasaya göre hatırlanır.
