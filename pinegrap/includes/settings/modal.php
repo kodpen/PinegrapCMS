@@ -68,7 +68,19 @@ function pg_settings_modal_markup($user)
     // ── the categories ───────────────────────────────────────────────────
     $output_links = '';
 
+    // Each category's section of the documentation, for the help in the
+    // header, which follows the category on view. Empty on a private-labelled
+    // site, and the help is then never shown.
+    $output_help = array();
+    $output_help_start = pg_help_url(array('topic' => 'site-settings#site-settings-intro'));
+
     foreach (pg_settings_categories() as $key => $category) {
+
+        $help = pg_help_url(array('screen' => 'settings_' . $key));
+
+        if ($help !== '') {
+            $output_help[$key] = $help;
+        }
 
         $output_links .=
             '<button type="button" class="pg-sm-link" data-pane="' . h($key) . '"'
@@ -113,6 +125,7 @@ function pg_settings_modal_markup($user)
 <div class="modal fade pg-settings-modal" id="pg_settings_modal" tabindex="-1" aria-labelledby="pg_settings_modal_title" aria-hidden="true"
     data-pgurl="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_pane.php') . '"
     data-pganchors="' . h(json_encode($output_anchors)) . '"
+    data-pghelp="' . h(json_encode($output_help)) . '"
     data-pgleavetitle="' . h(lang('Unsaved Changes')) . '"
     data-pgleave="' . h(lang('The changes on this screen have not been saved. Close anyway?')) . '"
     data-pgdiscard="' . h(lang('Close Without Saving')) . '"
@@ -146,6 +159,9 @@ function pg_settings_modal_markup($user)
                         <h2 class="pg-sm-title" id="pg_settings_modal_title" aria-live="polite">' . h(lang('Site Settings')) . '</h2>
                         <p class="pg-sm-desc" id="pg_settings_modal_desc">' . h(lang('All site-wide settings and defaults.')) . '</p>
                     </div>
+                    <a class="pg-sm-help no-popover' . (($output_help_start === '') ? ' d-none' : '') . '" id="pg_settings_modal_help"
+                        href="' . h($output_help_start) . '" target="_blank" rel="noopener"
+                        title="' . h(lang('Help for this section')) . ' (F1)" aria-label="' . h(lang('Help for this section')) . '"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
                     <button type="button" class="btn-close no-popover" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
                 </header>
 

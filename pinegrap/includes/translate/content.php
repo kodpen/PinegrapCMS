@@ -1084,7 +1084,7 @@ function pg_tr_db_text($value, $formats = array('text', 'inline'))
         $found = pg_tr_lookup(pg_tr_hash($normalized, $format), pg_tr_language());
 
         if ($found !== null) {
-            if ($found['status'] !== 'reviewed') {
+            if (($found['status'] !== 'reviewed') && !pg_tr_same_as_source($normalized, $found['text'])) {
                 pg_tr_render_counter('machine');
 
                 if ($found['engine'] === 'google') {

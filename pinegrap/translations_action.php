@@ -145,10 +145,16 @@ if (!$translations_is_import && !$translations_is_export) {
             }
 
             $engine = isset($request['engine']) ? (string) $request['engine'] : '';
-            $result = pg_tr_update($language, $scope, (int) $user['id'], $engine);
+            // The screen scans the site in turns (pg_tr_update()).
+            $from = isset($request['from']) ? max(0, (int) $request['from']) : -1;
+            $result = pg_tr_update($language, $scope, (int) $user['id'], $engine, $from);
 
             if (!$result['ok']) {
                 translations_respond(array('status' => 'error', 'message' => $result['error']));
+            }
+
+            if (!empty($result['extracting'])) {
+                translations_respond(array('status' => 'success') + $result);
             }
 
             log_activity(lang(array('string' => 'translations were updated ({var:1}, {var:2} text(s) sent)', 'vars' => array($language, $result['pending']))), $_SESSION['sessionusername']);
@@ -340,7 +346,8 @@ if (!$translations_is_import && !$translations_is_export) {
             translations_respond(array('status' => 'success', 'state' => $status));
             break;
 
-        // Every machine translation of the scope reviewed at once.
+        // Every machine translation of the scope reviewed at once; the ones
+        // flagged suspicious too when the dialog was ticked.
         case 'review_all':
             $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
 
@@ -348,7 +355,7 @@ if (!$translations_is_import && !$translations_is_export) {
                 translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
             }
 
-            $count = pg_tr_review_all($language, $scope, (int) $user['id']);
+            $count = pg_tr_review_all($language, $scope, (int) $user['id'], !empty($request['suspicious']));
 
             if ($count > 0) {
                 log_activity(lang(array('string' => 'machine translations were marked as reviewed ({var:1}, {var:2} text(s))', 'vars' => array($language, $count))), $_SESSION['sessionusername']);

@@ -2102,6 +2102,26 @@ function pg_designer_screen_post($ctx)
     require_once(dirname(__FILE__) . '/designer_collab.php');
     $collab_key = isset($_POST['collab_key']) ? (string)$_POST['collab_key'] : '';
 
+    // ── Pages the editor left as they are ─────────────────────────────────
+    // A saved page nothing touched since the last save arrives marked
+    // `unchanged` and without its tree. Its stored row stays as it is: a save
+    // no longer writes, scores, translates and logs every page of the design
+    // each time. The one save that does rewrite every page — folding the old
+    // design-wide body classes onto them, below — reads their stored trees
+    // back and takes them like any other page.
+    $abc_pending = ($mode === 'edit' && $style_id > 0)
+        ? trim((string)db_value("SELECT additional_body_classes FROM style WHERE style_id = '$style_id' LIMIT 1"))
+        : '';
+    if ($abc_pending === '') $abc_pending = trim((string)$liveform->get_field_value('additional_body_classes'));
+    foreach ($pages as $pi => $pp) {
+        if (!is_array($pp) || empty($pp['unchanged'])) continue;
+        $upid = isset($pp['page_id']) ? (int)$pp['page_id'] : 0;
+        if ($upid > 0 && $abc_pending === '') continue;
+        unset($pages[$pi]['unchanged']);
+        $stored_tree = ($upid > 0) ? pg_page_tree_json($upid) : '';
+        if ($stored_tree !== '') $pages[$pi]['tree_json'] = $stored_tree;
+    }
+
     $seen_names   = array();
     $warnings     = array();
     $locked_pages = array();
@@ -2115,6 +2135,8 @@ function pg_designer_screen_post($ctx)
             }
             $seen_names[$lower] = true;
         }
+        // Left as stored: nothing to check against the locks or the rows.
+        if (!empty($p['unchanged'])) continue;
         // The lock is a permission, not a hint on screen. A save that would
         // overwrite somebody else's open page is refused HERE — disabling the
         // Save button only stops the operator who is looking at it, and this
@@ -2227,9 +2249,15 @@ function pg_designer_screen_post($ctx)
 
     // ── Write: pages ──────────────────────────────────────────────────────
     $id_map  = array();
+    $written = array();   // ids of the pages this save wrote
     $cf_jobs = array();   // page_id => form settings, reconciled once every page has its id
     foreach ($pages as $p) {
         $key = isset($p['key']) ? (string)$p['key'] : '';
+        // Left as stored: the tab keeps its id and the state it is in.
+        if (!empty($p['unchanged'])) {
+            $id_map[] = array('key' => $key, 'page_id' => (int)$p['page_id'], 'draft' => !empty($p['page_draft']) ? 1 : 0);
+            continue;
+        }
         // Warned about above; the id still goes into the map so the tab keeps
         // working, it just does not get written.
         if (isset($locked_pages[(int)(isset($p['page_id']) ? $p['page_id'] : 0)])) {
@@ -2241,6 +2269,7 @@ function pg_designer_screen_post($ctx)
             // `draft`: the state the page ended up in, which is not always
             // the one asked for (the home page stays on the site).
             $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => !empty($r['draft']) ? 1 : 0);
+            $written[] = (int)$r['page_id'];
             // The page's form. Its fields are the controls its custom_form
             // widget draws, read from the widget tree the editor flushed just
             // before this request; the editor sends only the form-level
@@ -2317,14 +2346,28 @@ function pg_designer_screen_post($ctx)
     // — settings (meta) and layout (structure) — and the pages list is one
     // click away; a number describing the previous version would be worse
     // than none. Same pair of calls save_region_content.php makes.
+    //
+    // Within a time budget: scoring renders the page, and a save that wrote
+    // dozens of pages at once (a design's first save, an import) spent most
+    // of its seconds here. The pages past the budget go into the analysis
+    // queue without a score; the nightly job and the Pages screen's button
+    // work through it.
     $seo_ids = array();
-    foreach ($id_map as $m) { if ($m['page_id'] > 0) $seo_ids[] = (int)$m['page_id']; }
+    foreach ($written as $wid) { if ($wid > 0) $seo_ids[] = $wid; }
     if (count($seo_ids) > 0) {
         require_once(dirname(__FILE__) . '/../seo.php');
         if (pg_seo_schema_ready()) {
             require_once(dirname(__FILE__) . '/../seo_structure.php');
+            $seo_started = microtime(true);
+            $seo_queued  = array();
             foreach ($seo_ids as $sid) {
+                if ((microtime(true) - $seo_started) > 2) { $seo_queued[] = (int)$sid; continue; }
                 try { pg_seo_analyze_record('page', $sid); } catch (Throwable $t) { /* the score is advisory; the save is not */ }
+            }
+            if ($seo_queued && pg_seo_structure_schema_ready()) {
+                db("UPDATE page
+                    SET seo_struct_score = NULL, seo_struct_current = 0, seo_analysis_current = 0
+                    WHERE page_id IN (" . implode(',', $seo_queued) . ")");
             }
             try { pg_seo_recalculate('page', $seo_ids); } catch (Throwable $t) {}
         }
@@ -2344,7 +2387,8 @@ function pg_designer_screen_post($ctx)
         if (function_exists('pg_cf_load_page_fields')) {
             foreach ($id_map as $m) {
                 $pid = (int)$m['page_id'];
-                if ($pid <= 0) continue;
+                // A page left as stored keeps the form the editor holds.
+                if ($pid <= 0 || !in_array($pid, $written, true)) continue;
                 $forms_now[] = array(
                     'key'      => $m['key'],
                     'page_id'  => $pid,

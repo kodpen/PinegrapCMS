@@ -4864,15 +4864,23 @@ const StyleDesigner = (function () {
         // each of those into an animated scroll.
         'html { scroll-behavior:auto !important; }',
         // Designer node wrapper — inset box-shadow: it does not affect layout and adds no scrollbar
-        '.sd-wrap { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
-        '.sd-wrap:hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
+        '.sd-wrap:where(:not([data-sd-self])) { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
+        '.sd-wrap:where(:not([data-sd-self])):hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
+        // An element that is its own wrapper (a summary, _sdSelfWrapped()) is
+        // the page's element: the wrapper's box styling is not put on it (the
+        // canvas rules are unlayered and would beat a framework's layered
+        // ones), only a position for its toolbar and outlines for the marks.
+        // The :where() above keeps every other wrapper's specificity.
+        '.sd-wrap[data-sd-self] { position:relative; }',
+        '.sd-wrap[data-sd-self]:hover:not(:has(.sd-wrap:hover)) { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
         // Audit badge: a small "!" pinned to the top-left of a wrapper whose
         // node has an HTML / SEO warning. Click opens the audit panel on it.
         '.sd-issue-badge { position:absolute; top:-7px; left:-7px; z-index:20; width:16px; height:16px; border-radius:50%; background:#f0c040; color:#1b1f24; font:700 11px/16px sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.4); cursor:pointer; pointer-events:auto; }',
         '.sd-issue-badge:hover { background:#ffd866; }',
         '.sd-wrap.sd-has-issue { box-shadow:inset 0 0 0 1px rgba(240,192,64,.55); }',
         '.sd-wrap.sd-has-issue.sd-selected { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); }',
-        '.sd-wrap.sd-selected { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); background:rgba(13,110,253,.02); z-index:10; }',
+        '.sd-wrap.sd-selected:where(:not([data-sd-self])) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); background:rgba(13,110,253,.02); z-index:10; }',
+        '.sd-wrap.sd-selected[data-sd-self] { outline:1px solid rgba(13,110,253,.7); outline-offset:-1px; }',
         // Type-specific spacing
         // 100vh applies ONLY to the page's outer root (body's direct child).
         // Without the `body >` scope, a system widget's cached tree (which
@@ -4926,6 +4934,9 @@ const StyleDesigner = (function () {
         'td.sd-wrap, th.sd-wrap { position:relative; }',
         // Toolbar inside td/th (positioned inside the cell)
         'td.sd-wrap > .sd-tb, th.sd-wrap > .sd-tb { top:0; left:0; }',
+        // A summary's toolbar, inside it too: above it, a details that clips
+        // its content (a rounded accordion item) would hide it.
+        '.sd-wrap[data-sd-self] > .sd-tb { top:0; left:0; border-radius:0 0 4px 0; }',
         // Persistent note indicator — always-visible dot on any sd-wrap with a saved note.
         // Sits above hover outline but below selection toolbar/outline.
         '.sd-persistent-note { position:absolute; top:2px; right:2px; width:16px; height:16px; ' +
@@ -5965,7 +5976,7 @@ const StyleDesigner = (function () {
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
-            '<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
+            '<link rel="stylesheet" id="sd-icons-css" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
             '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body' +
             (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') +
             (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '></body></html>');
@@ -6000,7 +6011,15 @@ const StyleDesigner = (function () {
             var t = e.target;
             var w = (t && t.closest) ? t.closest('.sd-wrap') : null;
             _sdHoverWrap = w;
-            if (w) { _sdTbFlip(w); _sdPlaceWrapChrome(w); }
+            if (w) {
+                // Hovering shows this wrapper's toolbar, and the name of each
+                // bound wrapper around it.
+                for (var a = w; a; a = a.parentElement ? a.parentElement.closest('.sd-wrap') : null) {
+                    if (a === w || a.classList.contains('sd-has-binding')) _sdTbFill(a);
+                }
+                _sdTbFlip(w);
+                _sdPlaceWrapChrome(w);
+            }
         });
         var _sdChromeRaf = 0;
         canvasDoc.addEventListener('load', function (e) {
@@ -6469,6 +6488,7 @@ const StyleDesigner = (function () {
         if (!canvasDoc) return null;
         var wrap = canvasDoc.querySelector('[data-sd-id="' + nodeId + '"]');
         if (!wrap) return null;
+        if (wrap.hasAttribute('data-sd-self')) return wrap;
         // The first child that is NOT sd-tb and NOT sd-dz is the inner el
         for (var i = 0; i < wrap.children.length; i++) {
             var ch = wrap.children[i];
@@ -8054,6 +8074,19 @@ const StyleDesigner = (function () {
     // Updates selection UI (right/bottom panels, tree, status) WITHOUT rebuilding the canvas.
     // Used when clicking Bootstrap interactive elements so BS JS can handle collapse/modal/dropdown
     // without the canvas being torn down and rebuilt (which resets component state).
+    // A node inside a closed <details> (an FAQ answer picked in the tree)
+    // is shown: its details are opened on the canvas. Not the one whose
+    // summary holds the node: the click that selected it toggles that one.
+    function _sdRevealInDetails(wrap) {
+        for (var n = wrap; n && n.parentElement; ) {
+            var d = n.parentElement.closest('details');
+            if (!d) return;
+            var s = d.querySelector(':scope > summary');
+            if (!d.open && !(s && s.contains(wrap))) d.open = true;
+            n = d;
+        }
+    }
+
     function renderSelectionOnly() {
         // Keep _editingSharedSid in sync with the new selection so ctx-bar lookups
         // (findDropdownContainer / findNavbarContainer / findCompositeContext, etc.)
@@ -8065,17 +8098,46 @@ const StyleDesigner = (function () {
             var _toSel = selectedNodes.length > 1 ? selectedNodes : (selectedNode ? [selectedNode] : []);
             _toSel.forEach(function(n) {
                 var wrap = _findCanvasEl(n);
-                if (wrap) wrap.classList.add('sd-selected');
+                if (wrap) { wrap.classList.add('sd-selected'); _sdTbFill(wrap); _sdRevealInDetails(wrap); }
             });
             _sdPlaceSelectedChrome();
         }
         renderProperties();
         renderStatusBar();
-        renderTree();
+        if (!_sdTreeSelectInPlace()) renderTree();
         renderHtmlTree();
         renderAttrsPanel();
         renderStylesPanel();
         updateCtxBar();
+    }
+
+    // The <details> the operator opened or closed on the canvas. A render
+    // builds them again as the tree has them (closed unless `open`); the
+    // item being read stays open. Canvas-only: the tree's `open` attribute
+    // is the page's, and a change to it wins over what the canvas remembers.
+    var _canvasDetailsState = {};
+    function _captureDetailsState() {
+        if (!canvasDoc) return;
+        canvasDoc.querySelectorAll('details').forEach(function (d) {
+            var w = d.parentElement;
+            var id = (w && w.getAttribute) ? w.getAttribute('data-sd-id') : null;
+            if (!id || d._sdOpenDefault === undefined) return;
+            _canvasDetailsState[id] = { open: d.open, def: d._sdOpenDefault };
+        });
+    }
+    function _restoreDetailsState() {
+        if (!canvasDoc) return;
+        var all = Array.prototype.slice.call(canvasDoc.querySelectorAll('details'));
+        // Every default is read first: opening one of a named group closes
+        // the others.
+        var defs = all.map(function (d) { return d.open; });
+        all.forEach(function (d, i) {
+            var w = d.parentElement;
+            var id = (w && w.getAttribute) ? w.getAttribute('data-sd-id') : null;
+            var was = id ? _canvasDetailsState[id] : null;
+            d._sdOpenDefault = defs[i];
+            if (was && was.def === defs[i] && was.open !== defs[i]) d.open = was.open;
+        });
     }
 
     // Per-canvas tab activation memory. Designer-edited tab state must
@@ -8156,6 +8218,8 @@ const StyleDesigner = (function () {
 
     // The element a wrapper holds: its first child that is not editor chrome.
     function _sdWrapEl(w) {
+        // A summary is its own wrapper (_sdSelfWrapped()).
+        if (w && w.hasAttribute && w.hasAttribute('data-sd-self')) return w;
         for (var c = w ? w.firstElementChild : null; c; c = c.nextElementSibling) {
             if (!c.matches(_SD_FX_CHROME)) return c;
         }
@@ -8466,10 +8530,11 @@ const StyleDesigner = (function () {
     var _SD_BR_WRAP = 'div.sd-wrap:not([data-sd-type="col"])';
     // Appended to every compound: a wrapper, a piece of editor chrome or a
     // canvas-only holder is never one of the page's elements. They all carry
-    // an `sd-` class; the two page elements that do too are a ghost record
-    // and a column (whose wrapper is the column itself). All of it inside
-    // :where(), so it adds nothing to the rule's specificity.
-    var _SD_BR_X = ':not(:where([class^="sd-"]:not(.sd-ghost, [data-sd-type="col"]), [class*=" sd-"]:not(.sd-ghost, [data-sd-type="col"])))';
+    // an `sd-` class; the page elements that do too are a ghost record, a
+    // column (whose wrapper is the column itself) and a summary (its own
+    // wrapper, _sdSelfWrapped()). All of it inside :where(), so it adds
+    // nothing to the rule's specificity.
+    var _SD_BR_X = ':not(:where([class^="sd-"]:not(.sd-ghost, [data-sd-type="col"], [data-sd-self]), [class*=" sd-"]:not(.sd-ghost, [data-sd-type="col"], [data-sd-self])))';
     // Siblings that count for :first-child and the like (chrome does not).
     var _SD_BR_SIB = ':where(:not(.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-loop-band, .sd-dz, .sd-virtual-text, .sd-section-binding-hint, .sd-align-guide))';
     var _SD_BR_NEED = /[>+~]|:(first|last|only|nth)-|:has\(/i;
@@ -8512,22 +8577,213 @@ const StyleDesigner = (function () {
                 if (_sdBridged.has(r)) continue;
                 _sdBridged.add(r);
                 var st = r.selectorText;
-                if (_SD_BR_NEED.test(st)) {
-                    var b = _sdBridgeList(st);
-                    if (b !== st) {
-                        try { r.selectorText = b; } catch (e) {}
-                        // A list the browser refuses as a whole (one part it
-                        // cannot parse) goes in the forgiving :is() form.
-                        if (r.selectorText === st && b.indexOf('::') === -1) {
-                            try { r.selectorText = ':is(' + b + ')'; } catch (e) {}
-                        }
-                    }
-                }
+                if (_SD_BR_NEED.test(st) && !_sdBrDefer(r, st)) _sdBridgeRule(r, st);
                 continue;   // rules nested inside a style rule keep their selectors
             }
             if (r.cssRules && _sdBridgeRules(r, depth + 1)) imports = true;               // @media, @layer, @supports, @container
         }
         return imports;
+    }
+
+    // One rule's selector list in its canvas form.
+    function _sdBridgeRule(r, st) {
+        var b = _sdBridgeList(st);
+        if (b === st) return;
+        try { r.selectorText = b; } catch (e) {}
+        // A list the browser refuses as a whole (one part it cannot parse)
+        // goes in the forgiving :is() form.
+        if (r.selectorText === st && b.indexOf('::') === -1) {
+            try { r.selectorText = ':is(' + b + ')'; } catch (e) {}
+        }
+    }
+
+    // ── Bridging only what the page uses ──
+    // A framework stylesheet carries thousands of rules for classes a page
+    // never uses (every space-x-*, divide-*, row-cols-* step at every
+    // breakpoint). A bridged rule costs far more to match than the original:
+    // several alternatives, each with wrapper and position tests, and one
+    // whose subject is universal (`:where(.space-x-3 > :not(:last-child))`)
+    // is tried on every element at every style change. Bridged for nothing,
+    // a few hundred of them made every restyle of the canvas a full,
+    // quarter-second recalculation, so hovering and dragging stalled.
+    //
+    // A rule is bridged once the classes it needs are on the canvas. Until
+    // then it waits in an index keyed by a class it is missing, and an
+    // observer on the canvas bridges it the moment that class shows up — an
+    // edit, a script switching a state class. A rule that matches nothing on
+    // the page draws the same bridged or not, so the canvas looks the same.
+    function _sdBrState() {
+        if (!canvasDoc || !canvasDoc.documentElement) return null;
+        var br = canvasDoc._sdBr;
+        if (br) return br;
+        br = canvasDoc._sdBr = { seen: new Set(), wait: new Map(), obs: null };
+        if (canvasDoc.body) _sdBrTake(br, canvasDoc.body, true, null);
+        // The editor's own observer: the canvas window belongs to the
+        // design's scripts.
+        if (typeof MutationObserver === 'function') {
+            br.obs = new MutationObserver(function (recs) {
+                var fresh = [];
+                for (var i = 0; i < recs.length; i++) {
+                    var rec = recs[i];
+                    if (rec.type === 'attributes') { _sdBrTake(br, rec.target, false, fresh); continue; }
+                    for (var j = 0; j < rec.addedNodes.length; j++) {
+                        if (rec.addedNodes[j].nodeType === 1) _sdBrTake(br, rec.addedNodes[j], true, fresh);
+                    }
+                }
+                if (fresh.length) _sdBrRelease(br, fresh);
+            });
+            br.obs.observe(canvasDoc.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+        }
+        return br;
+    }
+
+    // Notes the classes of an element (and, deep, of everything under it);
+    // the ones some waiting rule is keyed by go into `fresh`.
+    function _sdBrTake(br, el, deep, fresh) {
+        _sdBrTakeOne(br, el, fresh);
+        if (!deep || !el.querySelectorAll) return;
+        var all = el.querySelectorAll('[class]');
+        for (var i = 0; i < all.length; i++) _sdBrTakeOne(br, all[i], fresh);
+    }
+
+    function _sdBrTakeOne(br, el, fresh) {
+        var cl = el.classList;
+        if (!cl) return;
+        for (var i = 0; i < cl.length; i++) {
+            var c = cl[i];
+            if (br.seen.has(c)) continue;
+            br.seen.add(c);
+            if (fresh && br.wait.has(c)) fresh.push(c);
+        }
+    }
+
+    // Whether the rule waits for its classes (true) or is bridged now.
+    // Without an observer nothing could wake it, so everything is bridged.
+    function _sdBrDefer(r, st) {
+        var br = _sdBrState();
+        if (!br || !br.obs) return false;
+        var needs = _sdBrNeeds(st);
+        if (!needs || _sdBrMet(br, needs)) return false;
+        _sdBrPark(br, { r: r, st: st, needs: needs, done: false });
+        return true;
+    }
+
+    // One of the selectors has every class it needs on the canvas.
+    function _sdBrMet(br, needs) {
+        for (var i = 0; i < needs.length; i++) {
+            var ok = true;
+            for (var j = 0; j < needs[i].length && ok; j++) ok = br.seen.has(needs[i][j]);
+            if (ok) return true;
+        }
+        return false;
+    }
+
+    // Files a waiting rule under the first missing class of each selector.
+    function _sdBrPark(br, w) {
+        for (var i = 0; i < w.needs.length; i++) {
+            for (var j = 0; j < w.needs[i].length; j++) {
+                var c = w.needs[i][j];
+                if (br.seen.has(c)) continue;
+                var q = br.wait.get(c);
+                if (!q) br.wait.set(c, (q = []));
+                q.push(w);
+                break;
+            }
+        }
+    }
+
+    // Classes just seen: the rules waiting on them are bridged, or filed
+    // again under the next class they still miss.
+    function _sdBrRelease(br, classes) {
+        for (var i = 0; i < classes.length; i++) {
+            var q = br.wait.get(classes[i]);
+            if (!q) continue;
+            br.wait.delete(classes[i]);
+            for (var j = 0; j < q.length; j++) {
+                var w = q[j];
+                if (w.done) continue;
+                if (_sdBrMet(br, w.needs)) { w.done = true; _sdBridgeRule(w.r, w.st); }
+                else _sdBrPark(br, w);
+            }
+        }
+    }
+
+    // The classes a selector list needs on the page before it can match
+    // anything: for each selector, the classes outside every bracket and
+    // parenthesis (an argument of :not(), :is() or :has() need not be
+    // there). A selector that is one :is() / :where() as a whole is read
+    // through. Null when a selector needs no class: bridged at once.
+    function _sdBrNeeds(text) {
+        var list = _sdSelSplitList(text);
+        if (!list || !list.length) return null;
+        var out = [];
+        for (var i = 0; i < list.length; i++) {
+            var inner = _sdBrGroupArg(list[i]);
+            if (inner !== null) {
+                var sub = _sdBrNeeds(inner);
+                if (!sub) return null;
+                out = out.concat(sub);
+                continue;
+            }
+            var cls = _sdBrTopClasses(list[i]);
+            if (!cls.length) return null;
+            out.push(cls);
+        }
+        return out;
+    }
+
+    // The argument of a selector that is a single :is( … ) / :where( … ).
+    function _sdBrGroupArg(sel) {
+        var m = /^:(is|where)\(/i.exec(sel);
+        if (!m) return null;
+        var depth = 0, q = '';
+        for (var i = m[0].length - 1; i < sel.length; i++) {
+            var ch = sel.charAt(i);
+            if (ch === '\\') { i = _sdSelEscEnd(sel, i) - 1; continue; }
+            if (q) { if (ch === q) q = ''; continue; }
+            if (ch === '"' || ch === "'") { q = ch; continue; }
+            if (ch === '(' || ch === '[') depth++;
+            else if ((ch === ')' || ch === ']') && --depth === 0) {
+                return (i === sel.length - 1) ? sel.slice(m[0].length, i) : null;
+            }
+        }
+        return null;
+    }
+
+    // The class names of a selector outside brackets and parentheses,
+    // escapes resolved (`.md\:row-cols-2` → "md:row-cols-2").
+    function _sdBrTopClasses(sel) {
+        var out = [], depth = 0, q = '';
+        for (var i = 0; i < sel.length; i++) {
+            var ch = sel.charAt(i);
+            if (ch === '\\') { i = _sdSelEscEnd(sel, i) - 1; continue; }
+            if (q) { if (ch === q) q = ''; continue; }
+            if (ch === '"' || ch === "'") { q = ch; continue; }
+            if (ch === '(' || ch === '[') { depth++; continue; }
+            if (ch === ')' || ch === ']') { depth--; continue; }
+            if (ch !== '.' || depth !== 0) continue;
+            var name = '', j = i + 1;
+            while (j < sel.length) {
+                var c = sel.charAt(j);
+                if (c === '\\') {
+                    var e = _sdSelEscEnd(sel, j);
+                    var hex = /^\\([0-9a-fA-F]{1,6})/.exec(sel.slice(j, e));
+                    if (hex) {
+                        var cp = parseInt(hex[1], 16);
+                        name += (cp > 0 && cp <= 0x10FFFF) ? String.fromCodePoint(cp) : '\uFFFD';
+                    } else {
+                        name += sel.charAt(j + 1);
+                    }
+                    j = e;
+                    continue;
+                }
+                if (/[\w-]/.test(c) || c.charCodeAt(0) > 127) { name += c; j++; continue; }
+                break;
+            }
+            if (name) out.push(name);
+            i = j - 1;
+        }
+        return out;
     }
 
     // A selector list, each selector rewritten where needed.
@@ -8771,6 +9027,51 @@ const StyleDesigner = (function () {
         return ctx;
     }
 
+    // The exports of a module the design loads, kept on the canvas window
+    // (__sdFwModules) by a module of the editor's own that imports the same
+    // URL: the same instance, so what is started from them is the page's own
+    // component, answering the page's own delegated events. The canvas is
+    // told when they arrive.
+    function _sdShareModule(url) {
+        if (!canvasDoc || !canvasDoc.head || !url) return;
+        if (!canvasDoc._sdModWatch) {
+            canvasDoc._sdModWatch = true;
+            canvasDoc.addEventListener('sd:fw-module', function () { _sdBootModuleWidgets(); });
+        }
+        var s = canvasDoc.createElement('script');
+        s.type = 'module';
+        s.textContent = 'import * as m from ' + JSON.stringify(url) + ';\n' +
+            '(window.__sdFwModules = window.__sdFwModules || []).push(m);\n' +
+            'document.dispatchEvent(new Event("sd:fw-module"));';
+        canvasDoc.head.appendChild(s);
+    }
+
+    // Components a framework module starts by itself on DOMContentLoaded:
+    // Bootstrap 6's nav that folds the links it has no room for into "More"
+    // (nav-overflow). The canvas is drawn after that event and again on
+    // every change, so they are started after each render. Export name →
+    // its elements. The ones that rebuild form controls (chips, range,
+    // OTP, strength) are left out: the editor selects and edits those.
+    var _SD_MODULE_BOOT = [
+        ['NavOverflow', '[data-bs-toggle="nav-overflow"]']
+    ];
+    function _sdBootModuleWidgets() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        var mods = canvasDoc.defaultView ? canvasDoc.defaultView.__sdFwModules : null;
+        if (!mods || !mods.length) return;
+        _SD_MODULE_BOOT.forEach(function (b) {
+            var els = canvasDoc.querySelectorAll(b[1]);
+            if (!els.length) return;
+            mods.forEach(function (m) {
+                var C = m ? m[b[0]] : null;
+                if (!C || typeof C.getOrCreateInstance !== 'function') return;
+                els.forEach(function (el) {
+                    try { C.getOrCreateInstance(el); } catch (e) { /* the page's markup does not fit the component */ }
+                });
+            });
+        });
+    }
+
     function renderCanvas() {
         if (!canvasDoc || !canvasDoc.body || !iframeReady) return;
         // Preserve scroll position so options changes don't jump the canvas to top
@@ -8783,6 +9084,7 @@ const StyleDesigner = (function () {
         // restore the user's last-selected tab (Bootstrap's tab JS otherwise
         // resets to whatever the tree marks as active = always tab 1).
         _captureTabState();
+        _captureDetailsState();
         if (tree) injectGoogleFonts();
         canvasDoc.body.innerHTML = '';
         // A shared tree left marked open by an interrupted render would draw
@@ -8851,6 +9153,8 @@ const StyleDesigner = (function () {
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
         _restoreTabState();
+        _restoreDetailsState();
+        _sdBootModuleWidgets();
         if (_scrollY) {
             if (canvasDoc.documentElement) canvasDoc.documentElement.scrollTop = _scrollY;
             canvasDoc.body.scrollTop = _scrollY;
@@ -8966,6 +9270,16 @@ const StyleDesigner = (function () {
             _sdCanvasFidelityPass();
             _sdPlaceSelectedChrome();
         });
+    }
+
+    // A <summary> is the summary of its <details> only as that element's own
+    // child. Wrapped in a div it is an ordinary element: the browser draws
+    // its own "Details" label instead, and the question shows only once that
+    // is opened, inside the answer. Like a table cell, it is its own wrapper:
+    // the element carries the wrapper's marks (buildNodeEl()).
+    function _sdSelfWrapped(node) {
+        return !!(node && node.type === 'semantic' && node.props &&
+            String(node.props.tag || '').toLowerCase() === 'summary');
     }
 
     // Table structural tags must NOT be wrapped in a div — browsers reject divs inside
@@ -9663,6 +9977,18 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // Builds what a wrapper's toolbar holds, the first time it is needed:
+    // buildNodeEl() leaves the box empty.
+    function _sdTbFill(w) {
+        if (!w || !w.firstElementChild) return;
+        for (var c = w.firstElementChild; c; c = c.nextElementSibling) {
+            if (!c.classList.contains('sd-tb')) continue;
+            var fill = c._sdFill;
+            if (fill) { c._sdFill = null; fill(); }
+            return;
+        }
+    }
+
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -9693,15 +10019,22 @@ const StyleDesigner = (function () {
         }
 
         var doc = canvasDoc;
-        var wrapper = doc.createElement('div');
-        wrapper.className = 'sd-wrap';
+        // A summary is its own wrapper (_sdSelfWrapped()).
+        var _selfWrap = _sdSelfWrapped(node);
+        var wrapper = _selfWrap ? buildInnerElement(doc, node) : doc.createElement('div');
+        if (_selfWrap) {
+            wrapper.classList.add('sd-wrap');
+            wrapper.setAttribute('data-sd-self', '1');
+        } else {
+            wrapper.className = 'sd-wrap';
+        }
         wrapper.setAttribute('data-sd-id', node._id);
         wrapper.setAttribute('data-sd-type', node.type);
         // A design on a custom framework: the wrapper draws no box of its own,
         // so its element is laid out by its real parent, as on the page. The
         // page root keeps its box (it is the canvas-wide drop target), and so
-        // does a column, whose wrapper is the column itself.
-        if (_sdFxFlatOn() && node.type !== 'root' && node.type !== 'col') wrapper.classList.add('sd-fx-flat');
+        // does a column, whose wrapper is the column itself, and a summary.
+        if (_sdFxFlatOn() && !_selfWrap && node.type !== 'root' && node.type !== 'col') wrapper.classList.add('sd-fx-flat');
 
         // Content level: the canvas says which blocks are the operator's.
         // A marked area gets a ring and a label; everything they cannot touch
@@ -9864,193 +10197,200 @@ const StyleDesigner = (function () {
             wrapper.appendChild(noteDot);
         }
 
-        // Toolbar: name tag (hover) + action buttons (selected)
+        // Toolbar: name tag (hover) + action buttons (selected). The box goes
+        // in now, so the wrapper keeps its shape (toolbar first, then the
+        // element: position selectors count on it); what it holds is built
+        // the first time it can show, on hover or selection (_sdTbFill()).
+        // A page of a thousand elements carried a thousand hidden toolbars:
+        // most of the canvas's elements, and much of the time to draw it.
         var tb = doc.createElement('div');
         tb.className = 'sd-tb';
+        tb._sdFill = function () {
+            // Name span — visible on hover only (CSS-controlled via :has())
+            var tbName = doc.createElement('span');
+            tbName.className = 'sd-tb-name';
+            tbName.textContent = getNodeLabel(node);
+            tb.appendChild(tbName);
 
-        // Name span — visible on hover only (CSS-controlled via :has())
-        var tbName = doc.createElement('span');
-        tbName.className = 'sd-tb-name';
-        tbName.textContent = getNodeLabel(node);
-        tb.appendChild(tbName);
+            // Buttons container — visible only when selected
+            var tbBtns = doc.createElement('div');
+            tbBtns.className = 'sd-tb-btns';
 
-        // Buttons container — visible only when selected
-        var tbBtns = doc.createElement('div');
-        tbBtns.className = 'sd-tb-btns';
-
-        // Drag handle — <span draggable> (button[draggable] unreliable in cross-origin iframes)
-        // Skip inner descendants of component nodes: the inner button / list / item of a
-        // dropdown, modal, navbar, etc. must not be draggable on its own — moving the piece
-        // out of its component container would break the structure. The component root
-        // itself (node.type === 'component') still gets a drag handle.
-        var insideComponent = false;
-        if (node.type !== 'root' && node.type !== 'component') {
-            var anc = findParent(node, tree);
-            while (anc) {
-                if (anc.type === 'component') { insideComponent = true; break; }
-                anc = findParent(anc, tree);
-            }
-        }
-        if (node.type !== 'root' && !insideComponent && !node.props._locked && !hasLockedAncestor(node)) {
-            var dragHandle = doc.createElement('span');
-            dragHandle.className = 'sd-drag-handle bi bi-grip-vertical';
-            dragHandle.title = _sdT('Drag to move');
-            dragHandle.setAttribute('draggable', 'true');
-            dragHandle.addEventListener('mousedown', function(e) {
-                // Do not let mousedown cancel the selection — it is only here for the drag
-                e.stopPropagation();
-            });
-            dragHandle.addEventListener('dragstart', function(e) {
-                e.stopPropagation();
-                dragData = { source: 'node', node: node, type: node.type };
-                _lastDragData = dragData; _lastDragDataTime = Date.now();
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', node.type);
-                wrapper.style.opacity = '0.45';
-            });
-            dragHandle.addEventListener('dragend', function(e) {
-                e.stopPropagation();
-                wrapper.style.opacity = '';
-                _clearAlignGuides();
-                // Defer dragData clear so a racing `drop` (Firefox / deeply
-                // nested target) still sees the payload.
-                setTimeout(function () {
-                    if (dragData && dragData.source === 'node') dragData = null;
-                }, 0);
-                // CRITICAL: don't call renderCanvas() / renderTree() here.
-                // Chromium can fire `dragend` BEFORE `drop` for deeply
-                // nested drop targets (e.g. an empty col's dz placeholder
-                // inside body > container > row > col). Rebuilding the
-                // DOM in dragend tears down the dz that the drop event
-                // was queued to fire on — the drop never lands and the
-                // user sees "release does nothing". A successful drop
-                // already runs render() inside handleDrop; an aborted
-                // drag doesn't change the tree, so no re-render needed.
-            });
-            tbBtns.appendChild(dragHandle);
-        }
-
-        // + button removed — users add elements by drag-and-drop from the left panel
-        // Duplicate
-        if (node.type !== 'root') {
-            var dupBtn = doc.createElement('button');
-            dupBtn.type = 'button';
-            dupBtn.className = 'bi bi-copy';
-            dupBtn.title = _sdT('Duplicate');
-            dupBtn.addEventListener('click', function (e) { e.stopPropagation(); onDuplicate(node); });
-            if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
-            tbBtns.appendChild(dupBtn);
-        }
-        // Binding indicator — shown when this node has any data binding (system widget).
-        // Click scrolls the props panel to the "Bind Data" section + opens it.
-        if (node.type !== 'root' && node.props && node.props._bindings) {
-            var _boundKeys = Object.keys(node.props._bindings).filter(function (k) { return !!node.props._bindings[k]; });
-            if (_boundKeys.length) {
-                var bindBtn = doc.createElement('button');
-                bindBtn.type = 'button';
-                bindBtn.className = 'sd-tb-bind-btn bi bi-link-45deg';
-                // Most bindings resolve to a ^^token^^; field bindings do not
-                // — they name a form field, and printing them in token syntax
-                // would send the designer looking for a token that never exists.
-                bindBtn.title = _sdT('Data bound') + ': ' + _boundKeys.map(function (k) {
-                    var v = node.props._bindings[k];
-                    if (k === 'form_field') return _sdT('form field') + ' → ' + v;
-                    if (k === 'eo_field')   return _sdT('order field') + ' → ' + v;
-                    if (k === 'section')    return _sdT('section') + ' → ' + v;
-                    if (k === 'action')     return _sdT('action') + ' → ' + v;
-                    return k + ' → ^^' + v + '^^';
-                }).join(', ');
-                bindBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    // Select this node so its props panel renders, then scroll + highlight
-                    selectedNode = node;
-                    selectedNodes = [];
-                    _sdSelectRender();
-                    setTimeout(function () {
-                        var panel = document.getElementById('sd-properties');
-                        if (!panel) return;
-                        // Find the "Bind Data" section by its bi-link-45deg icon title
-                        var sects = panel.querySelectorAll('.sd-sect');
-                        for (var i = 0; i < sects.length; i++) {
-                            var lbl = sects[i].querySelector('.sd-sect-label, .sd-sect-title');
-                            if (lbl && lbl.textContent && lbl.textContent.indexOf(_sdT('Bind Data')) !== -1) {
-                                sects[i].scrollIntoView({ block: 'start', behavior: 'smooth' });
-                                sects[i].classList.add('sd-sect-flash');
-                                setTimeout(function () { sects[i].classList.remove('sd-sect-flash'); }, 1200);
-                                break;
-                            }
-                        }
-                    }, 0);
-                });
-                tbBtns.appendChild(bindBtn);
-            }
-        }
-        // Notes — opens a floating notes popup anchored to this node
-        if (node.type !== 'root') {
-            var noteBtn = doc.createElement('button');
-            noteBtn.type = 'button';
-            var _hasNote = !!(node.props && node.props._notes && node.props._notes.trim());
-            noteBtn.className = 'sd-note bi ' + (_hasNote ? 'bi-chat-fill' : 'bi-chat');
-            noteBtn.title = _hasNote ? _sdT('Note (existing)') : _sdT('Add a note');
-            if (_hasNote) noteBtn.style.color = '#0dcaf0';
-            noteBtn.addEventListener('click', function (e) { e.stopPropagation(); openNotesPopup(node); });
-            tbBtns.appendChild(noteBtn);
-        }
-        // Delete
-        if (node.type !== 'root') {
-            var delBtn = doc.createElement('button');
-            delBtn.type = 'button';
-            delBtn.className = 'sd-del bi bi-trash';
-            delBtn.title = _sdT('Delete');
-            if (_isDeleteProtected(node)) {
-                delBtn.style.opacity = '0.4';
-                delBtn.style.cursor = 'not-allowed';
-                delBtn.title = (node.type === 'loop_area')
-                    ? _sdT('A loop area cannot be deleted')
-                    : _sdT('This element cannot be deleted (it contains a loop area)');
-                delBtn.addEventListener('click', function (e) { e.stopPropagation(); _blockDeleteWithToast(node); });
-            } else {
-                delBtn.addEventListener('click', function (e) { e.stopPropagation(); if (!node.props._locked && !hasLockedAncestor(node)) onDelete(node); });
-                if (!_sdCanEditNode(node)) delBtn.style.display = 'none';
-            }
-            tbBtns.appendChild(delBtn);
-        }
-
-        // Toggle visibility — for Bootstrap collapse/modal/offcanvas/dropdown-menu nodes
-        var visCls = ['collapse', 'modal', 'offcanvas', 'dropdown-menu'];
-        var isVisTog = visCls.some(function(c) {
-            return (node.props.cssClass || '').split(' ').indexOf(c) !== -1;
-        });
-        if (isVisTog) {
-            var visBtn = doc.createElement('button');
-            visBtn.type = 'button';
-            visBtn.className = 'bi bi-eye sd-vis-toggle';
-            visBtn.title = _sdT('Toggle preview visibility');
-            visBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var el = innerEl;  // Use innerEl directly (the Bootstrap element, not the toolbar)
-                if (!el) return;
-                var isNowShown = el.classList.contains('show');
-                if (isNowShown) {
-                    el.classList.remove('show');
-                    visBtn.className = 'bi bi-eye-slash sd-vis-toggle';
-                } else {
-                    el.classList.add('show');
-                    visBtn.className = 'bi bi-eye sd-vis-toggle';
+            // Drag handle — <span draggable> (button[draggable] unreliable in cross-origin iframes)
+            // Skip inner descendants of component nodes: the inner button / list / item of a
+            // dropdown, modal, navbar, etc. must not be draggable on its own — moving the piece
+            // out of its component container would break the structure. The component root
+            // itself (node.type === 'component') still gets a drag handle.
+            var insideComponent = false;
+            if (node.type !== 'root' && node.type !== 'component') {
+                var anc = findParent(node, tree);
+                while (anc) {
+                    if (anc.type === 'component') { insideComponent = true; break; }
+                    anc = findParent(anc, tree);
                 }
-                // Strip data-bs-popper on dropdown-menu — see ctxBarToggle comment.
-                if (el.classList.contains('dropdown-menu')) el.removeAttribute('data-bs-popper');
-                // Sync ctx bar active state
-                updateCtxBar();
-            });
-            tbBtns.insertBefore(visBtn, delBtn);
-        }
+            }
+            if (node.type !== 'root' && !insideComponent && !node.props._locked && !hasLockedAncestor(node)) {
+                var dragHandle = doc.createElement('span');
+                dragHandle.className = 'sd-drag-handle bi bi-grip-vertical';
+                dragHandle.title = _sdT('Drag to move');
+                dragHandle.setAttribute('draggable', 'true');
+                dragHandle.addEventListener('mousedown', function(e) {
+                    // Do not let mousedown cancel the selection — it is only here for the drag
+                    e.stopPropagation();
+                });
+                dragHandle.addEventListener('dragstart', function(e) {
+                    e.stopPropagation();
+                    dragData = { source: 'node', node: node, type: node.type };
+                    _lastDragData = dragData; _lastDragDataTime = Date.now();
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', node.type);
+                    wrapper.style.opacity = '0.45';
+                });
+                dragHandle.addEventListener('dragend', function(e) {
+                    e.stopPropagation();
+                    wrapper.style.opacity = '';
+                    _clearAlignGuides();
+                    // Defer dragData clear so a racing `drop` (Firefox / deeply
+                    // nested target) still sees the payload.
+                    setTimeout(function () {
+                        if (dragData && dragData.source === 'node') dragData = null;
+                    }, 0);
+                    // CRITICAL: don't call renderCanvas() / renderTree() here.
+                    // Chromium can fire `dragend` BEFORE `drop` for deeply
+                    // nested drop targets (e.g. an empty col's dz placeholder
+                    // inside body > container > row > col). Rebuilding the
+                    // DOM in dragend tears down the dz that the drop event
+                    // was queued to fire on — the drop never lands and the
+                    // user sees "release does nothing". A successful drop
+                    // already runs render() inside handleDrop; an aborted
+                    // drag doesn't change the tree, so no re-render needed.
+                });
+                tbBtns.appendChild(dragHandle);
+            }
 
-        tb.appendChild(tbBtns);
+            // + button removed — users add elements by drag-and-drop from the left panel
+            // Duplicate
+            if (node.type !== 'root') {
+                var dupBtn = doc.createElement('button');
+                dupBtn.type = 'button';
+                dupBtn.className = 'bi bi-copy';
+                dupBtn.title = _sdT('Duplicate');
+                dupBtn.addEventListener('click', function (e) { e.stopPropagation(); onDuplicate(node); });
+                if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
+                tbBtns.appendChild(dupBtn);
+            }
+            // Binding indicator — shown when this node has any data binding (system widget).
+            // Click scrolls the props panel to the "Bind Data" section + opens it.
+            if (node.type !== 'root' && node.props && node.props._bindings) {
+                var _boundKeys = Object.keys(node.props._bindings).filter(function (k) { return !!node.props._bindings[k]; });
+                if (_boundKeys.length) {
+                    var bindBtn = doc.createElement('button');
+                    bindBtn.type = 'button';
+                    bindBtn.className = 'sd-tb-bind-btn bi bi-link-45deg';
+                    // Most bindings resolve to a ^^token^^; field bindings do not
+                    // — they name a form field, and printing them in token syntax
+                    // would send the designer looking for a token that never exists.
+                    bindBtn.title = _sdT('Data bound') + ': ' + _boundKeys.map(function (k) {
+                        var v = node.props._bindings[k];
+                        if (k === 'form_field') return _sdT('form field') + ' → ' + v;
+                        if (k === 'eo_field')   return _sdT('order field') + ' → ' + v;
+                        if (k === 'section')    return _sdT('section') + ' → ' + v;
+                        if (k === 'action')     return _sdT('action') + ' → ' + v;
+                        return k + ' → ^^' + v + '^^';
+                    }).join(', ');
+                    bindBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        // Select this node so its props panel renders, then scroll + highlight
+                        selectedNode = node;
+                        selectedNodes = [];
+                        _sdSelectRender();
+                        setTimeout(function () {
+                            var panel = document.getElementById('sd-properties');
+                            if (!panel) return;
+                            // Find the "Bind Data" section by its bi-link-45deg icon title
+                            var sects = panel.querySelectorAll('.sd-sect');
+                            for (var i = 0; i < sects.length; i++) {
+                                var lbl = sects[i].querySelector('.sd-sect-label, .sd-sect-title');
+                                if (lbl && lbl.textContent && lbl.textContent.indexOf(_sdT('Bind Data')) !== -1) {
+                                    sects[i].scrollIntoView({ block: 'start', behavior: 'smooth' });
+                                    sects[i].classList.add('sd-sect-flash');
+                                    setTimeout(function () { sects[i].classList.remove('sd-sect-flash'); }, 1200);
+                                    break;
+                                }
+                            }
+                        }, 0);
+                    });
+                    tbBtns.appendChild(bindBtn);
+                }
+            }
+            // Notes — opens a floating notes popup anchored to this node
+            if (node.type !== 'root') {
+                var noteBtn = doc.createElement('button');
+                noteBtn.type = 'button';
+                var _hasNote = !!(node.props && node.props._notes && node.props._notes.trim());
+                noteBtn.className = 'sd-note bi ' + (_hasNote ? 'bi-chat-fill' : 'bi-chat');
+                noteBtn.title = _hasNote ? _sdT('Note (existing)') : _sdT('Add a note');
+                if (_hasNote) noteBtn.style.color = '#0dcaf0';
+                noteBtn.addEventListener('click', function (e) { e.stopPropagation(); openNotesPopup(node); });
+                tbBtns.appendChild(noteBtn);
+            }
+            // Delete
+            if (node.type !== 'root') {
+                var delBtn = doc.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'sd-del bi bi-trash';
+                delBtn.title = _sdT('Delete');
+                if (_isDeleteProtected(node)) {
+                    delBtn.style.opacity = '0.4';
+                    delBtn.style.cursor = 'not-allowed';
+                    delBtn.title = (node.type === 'loop_area')
+                        ? _sdT('A loop area cannot be deleted')
+                        : _sdT('This element cannot be deleted (it contains a loop area)');
+                    delBtn.addEventListener('click', function (e) { e.stopPropagation(); _blockDeleteWithToast(node); });
+                } else {
+                    delBtn.addEventListener('click', function (e) { e.stopPropagation(); if (!node.props._locked && !hasLockedAncestor(node)) onDelete(node); });
+                    if (!_sdCanEditNode(node)) delBtn.style.display = 'none';
+                }
+                tbBtns.appendChild(delBtn);
+            }
+
+            // Toggle visibility — for Bootstrap collapse/modal/offcanvas/dropdown-menu nodes
+            var visCls = ['collapse', 'modal', 'offcanvas', 'dropdown-menu'];
+            var isVisTog = visCls.some(function(c) {
+                return (node.props.cssClass || '').split(' ').indexOf(c) !== -1;
+            });
+            if (isVisTog) {
+                var visBtn = doc.createElement('button');
+                visBtn.type = 'button';
+                visBtn.className = 'bi bi-eye sd-vis-toggle';
+                visBtn.title = _sdT('Toggle preview visibility');
+                visBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var el = innerEl;  // Use innerEl directly (the Bootstrap element, not the toolbar)
+                    if (!el) return;
+                    var isNowShown = el.classList.contains('show');
+                    if (isNowShown) {
+                        el.classList.remove('show');
+                        visBtn.className = 'bi bi-eye-slash sd-vis-toggle';
+                    } else {
+                        el.classList.add('show');
+                        visBtn.className = 'bi bi-eye sd-vis-toggle';
+                    }
+                    // Strip data-bs-popper on dropdown-menu — see ctxBarToggle comment.
+                    if (el.classList.contains('dropdown-menu')) el.removeAttribute('data-bs-popper');
+                    // Sync ctx bar active state
+                    updateCtxBar();
+                });
+                tbBtns.insertBefore(visBtn, delBtn);
+            }
+
+            tb.appendChild(tbBtns);
+        };
         wrapper.appendChild(tb);
+        if (wrapper.classList.contains('sd-selected')) _sdTbFill(wrapper);
 
         // Content element inside wrapper
-        var innerEl = buildInnerElement(doc, node);
+        var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
         if (innerEl) {
             if (node.props.id) { innerEl.id = node.props.id; }
             if (node.props.title) { innerEl.title = node.props.title; }
@@ -10116,7 +10456,7 @@ const StyleDesigner = (function () {
                 var _bImg = (innerEl.tagName === 'IMG') ? innerEl : innerEl.querySelector('img');
                 if (_bImg) _bImg.setAttribute('data-sd-bind-src', String(node.props._bindings.src));
             }
-            wrapper.appendChild(innerEl);
+            if (innerEl !== wrapper) wrapper.appendChild(innerEl);
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
@@ -11385,7 +11725,7 @@ const StyleDesigner = (function () {
             return _sdTokenPlaceholder(fieldName, node) || _SD_LOREM_SHORT;
         }
         // Unknown prop → fall back to the literal token (preserves visibility)
-        var safe = String(fieldName || '').replace(/[^a-z0-9_]/gi, '');
+        var safe = String(fieldName || '').replace(/[^a-z0-9_-]/gi, '');
         return safe ? '^^' + safe + '^^' : '';
     }
 
@@ -12291,7 +12631,15 @@ const StyleDesigner = (function () {
                     handled = true;
                 }
             } else {
+                // The same parent the dragover asked: inside a widget or a
+                // shared component the node's parent lives in that cache, and
+                // without it a "drop above/below" landed inside the node (or,
+                // refused there, at the end of an ancestor).
                 var par = findParent(node, tree);
+                if (!par) {
+                    var _dsp = _findParentInShared(node);
+                    if (_dsp) par = _dsp.parent;
+                }
                 if (!par) {
                     if (canDrop(dragData, node)) {
                         handleDrop(node, altCopy, null);
@@ -12443,7 +12791,10 @@ const StyleDesigner = (function () {
             // the 1-per-widget guard later in canDrop blocks misplacement in practice.
             root:       ['container', 'component', 'row', 'col', 'region', 'content', 'semantic', 'shared_ref', 'loop_area', 'recipient_loop_area'],
             container:  ['row', 'semantic', 'component', 'content', 'region', 'shared_ref', 'loop_area', 'recipient_loop_area'],  // 'container' removed
-            semantic:   ['row', 'container', 'semantic', 'component', 'content', 'region', 'shared_ref', 'recipient_loop_area'],
+            // A loop area is a transparent slot, so a plain element (div,
+            // section, ul…) may hold it like a container does; the loop's own
+            // scope and 1-per-widget rules below still apply.
+            semantic:   ['row', 'container', 'semantic', 'component', 'content', 'region', 'shared_ref', 'loop_area', 'recipient_loop_area'],
             // row normally accepts only col (Bootstrap grid). shared_ref + loop_area
             // are accepted too — designer convenience trumps strict grid semantics here.
             row:        ['col', 'shared_ref', 'loop_area', 'recipient_loop_area'],
@@ -12499,17 +12850,23 @@ const StyleDesigner = (function () {
             return _isInlineOnlyDrag(data);
         }
 
-        // Rule 5: <ul> / <ol> — only direct <li> children
+        // Rule 5: <ul> / <ol> — only direct <li> children. A loop area is
+        // let through: it renders as nothing, so its <li> records end up as
+        // the list's own children.
         if (tgtTag === 'ul' || tgtTag === 'ol') {
-            return srcTag === 'li';
+            if (t === 'loop_area') { /* fall through to the loop rules */ }
+            else return srcTag === 'li';
         }
 
         // Rule 6: table structure hierarchy
         if (tgtTag === 'table') {
             return ['thead','tbody','tfoot','caption','colgroup'].indexOf(srcTag) !== -1;
         }
+        // A loop area in a row group repeats its <tr> per record
+        // (buildTableLoopAreaEl() draws it as rows on the canvas).
         if (tgtTag === 'thead' || tgtTag === 'tbody' || tgtTag === 'tfoot') {
-            return srcTag === 'tr';
+            if (t === 'loop_area' || t === 'recipient_loop_area') { /* fall through to the loop rules */ }
+            else return srcTag === 'tr';
         }
         if (tgtTag === 'tr') {
             return srcTag === 'td' || srcTag === 'th';
@@ -12526,6 +12883,11 @@ const StyleDesigner = (function () {
         // its widget context. Toast fires once at drop time (not on every dragover
         // tick) — see handleDrop counterpart.
         if (data.source === 'node' && data.node && _subtreeContainsLoopArea(data.node)) {
+            // A loop (or its wrapper) cannot go inside itself. handleDrop
+            // refuses it anyway, but accepting it here lit up the element
+            // under the cursor as a valid target and the drop then did
+            // nothing — e.g. the row inside a loop that should wrap it.
+            if (isDescendantOf(target, data.node)) return false;
             // Resolve the source widget: which cache does data.node live in?
             var _srcWidgetSid = _resolveSharedSid(data.node);
             // If data.node is the cache's root itself (rare), _resolveSharedSid returns 0;
@@ -16762,6 +17124,8 @@ const StyleDesigner = (function () {
 
         _sdWirePaletteItems(compList, compList);
         _sdWirePaletteItems(blockList, compList);
+        _sdPalTipWire(compList);
+        _sdPalTipWire(blockList);
 
         _sdWirePaletteSearch(document.getElementById('sd-search'),
                              document.getElementById('sd-search-clear'), compList);
@@ -20354,6 +20718,9 @@ const StyleDesigner = (function () {
         if (tree && tree.children) {
             tree.children.forEach(function(child) { buildTreeItems(list, child, 1); });
         }
+        // What the rows were drawn from (_sdTreeSelectInPlace()).
+        list._sdTreeOf = tree;
+        list._sdTreeEpoch = _sdEditEpoch;
 
         // Attach palette-drop handlers ONCE on the list element.
         // Using a flag prevents duplicate handlers from accumulating on every render.
@@ -20706,6 +21073,14 @@ const StyleDesigner = (function () {
             if (f.type === 'external-css' && f.content && f.content.trim()) cssHrefs.push(_sdAssetHref(f));
         });
         _sdSyncCanvasLinks('pg-ext-css-', cssHrefs, true);
+        // The editor's own Bootstrap Icons sheet (its toolbars draw with it)
+        // stands down while the design loads one: the same classes twice
+        // over, two thousand rules the canvas restyles with for nothing.
+        var _sdIcons = canvasDoc.getElementById('sd-icons-css');
+        if (_sdIcons) {
+            var _ownIcons = cssHrefs.some(function (h) { return /bootstrap-icons/i.test(h); });
+            if (_sdIcons.disabled !== _ownIcons) _sdIcons.disabled = _ownIcons;
+        }
 
         // ── CSS: inline ──
         // Three buckets, each with their own <style id> in <head>:
@@ -20802,6 +21177,11 @@ const StyleDesigner = (function () {
                     scr.async = false;
                     scr.src = src;
                     canvasDoc.head.appendChild(scr);
+                    // A module's exports are out of the page's reach. Those of
+                    // a framework (Bootstrap 6) start some components on
+                    // DOMContentLoaded, which the canvas is drawn after; they
+                    // are handed over to start them here (_sdBootModuleWidgets()).
+                    if (f.module) _sdShareModule(scr.src);
                 }
             });
 
@@ -21523,10 +21903,52 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A new selection marks other rows of the overview; the rows stay as
+    // they are. It is drawn again when the selection opened a branch (the
+    // row clicked, or the ancestors of an element picked on the canvas: its
+    // row is then missing) or the tree changed since it was drawn. Redrawing
+    // a thousand-row tree on every click cost some 200 ms.
+    function _sdTreeSelectInPlace() {
+        var list = document.getElementById('sd-tree-list');
+        if (!list || list._sdTreeOf !== tree || list._sdTreeEpoch !== _sdEditEpoch) return false;
+        var marks = selectedNodes.length > 1 ? selectedNodes.slice() : [];
+        var want = marks.concat(selectedNode ? [selectedNode] : []);
+        for (var i = 0; i < want.length; i++) {
+            var n = want[i];
+            if (n === tree) continue;
+            var row = _sdTreeRowOf(list, n);
+            if (!row) return false;
+            var chev = row.querySelector(':scope > .sd-tree-chev');
+            if (chev && chev.classList.contains('sd-tree-chev-open') !== (n._expanded !== false)) return false;
+        }
+        list.querySelectorAll('li.active, li.sd-multi-selected').forEach(function (x) {
+            x.classList.remove('active', 'sd-multi-selected');
+        });
+        var bodyRow = list.querySelector(':scope > .sd-tree-body-row');
+        if (bodyRow) bodyRow.classList.toggle('sd-tree-selected', !!(selectedNode && selectedNode.type === 'root'));
+        var act = (selectedNode && selectedNode !== tree) ? _sdTreeRowOf(list, selectedNode) : null;
+        if (act) act.classList.add('active');
+        marks.forEach(function (m) {
+            var r = _sdTreeRowOf(list, m);
+            if (r) r.classList.add('sd-multi-selected');
+        });
+        if (_refreshNotesPanel) _refreshNotesPanel();
+        return true;
+    }
+
+    // The overview row drawn for this node object (an id can be on a page
+    // and inside a widget at once).
+    function _sdTreeRowOf(list, node) {
+        var rows = list.querySelectorAll('li[data-nid="' + String(node._id).replace(/["\\]/g, '\\$&') + '"]');
+        for (var i = 0; i < rows.length; i++) if (rows[i]._sdNode === node) return rows[i];
+        return null;
+    }
+
     function buildTreeItems(ul, node, depth) {
         var li = document.createElement('li');
         li.style.setProperty('--depth', depth);
         li.dataset.nid = node._id;
+        li._sdNode = node;
 
         // For shared_ref nodes, show children from cache tree instead of (empty) node.children
         var _sharedRefSid = (node.type === 'shared_ref' && node.props && node.props.sharedId)
@@ -21539,6 +21961,9 @@ const StyleDesigner = (function () {
             ? (_sharedRefTree.children && _sharedRefTree.children.length > 0)
             : (node.children && node.children.length > 0);
         if (_sdTreeFolded(node)) hasChildren = false;
+        // Links written inside a paragraph or heading are listed under it.
+        var _ilLinks = _sdIlTreeLinks(node);
+        if (_ilLinks.length) hasChildren = true;
         var isExpanded = node._expanded !== false;
 
         var chevHtml = hasChildren
@@ -21865,19 +22290,15 @@ const StyleDesigner = (function () {
                     if (!canDrop(dragData, node)) return;
                     handleDrop(node, false);
                 } else {
-                    // Drop before/after: insert into parent at specific index
-                    var tgtParent = findParent(node, tree);
+                    // Drop before/after: into the parent, next to this node.
+                    // The parent may live in a widget's or a shared
+                    // component's own tree (the dragover found it there);
+                    // handleDrop marks that tree dirty and adopts form
+                    // controls, as a drop on the canvas does.
+                    var _tgtCtx = _findParentAnywhere(node);
+                    var tgtParent = _tgtCtx ? _tgtCtx.parent : null;
                     if (!tgtParent || !canDrop(dragData, tgtParent)) return;
-                    saveState();
-                    var newNode = createFromPalette(dragData.type, dragData.extra || {});
-                    if (!newNode) return;
-                    _trackRecentComp(dragData.type, dragData.extra || {}, dragData.label || '', dragData.icon || '');
-                    var insertIdx = tgtParent.children.indexOf(node);
-                    if (pos === 'after') insertIdx += 1;
-                    tgtParent.children.splice(insertIdx, 0, newNode);
-                    selectedNode = newNode;
-                    expandAncestors(newNode, tree);
-                    render();
+                    handleDrop(tgtParent, false, { sibling: node, after: pos === 'after' });
                 }
                 dragData = null;
                 return;
@@ -21994,10 +22415,11 @@ const StyleDesigner = (function () {
             var _childSource = _sharedRefTree ? _sharedRefTree.children : node.children;
             if (_sharedRefTree) _sdSharedOpen[_sharedRefSid] = true;
             try {
-                _childSource.forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
+                (_childSource || []).forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
             } finally {
                 if (_sharedRefTree) delete _sdSharedOpen[_sharedRefSid];
             }
+            if (_ilLinks.length) _sdIlTreeRows(childUl, node, _ilLinks, depth + 1);
         }
     }
 
@@ -22636,6 +23058,274 @@ const StyleDesigner = (function () {
         }, 250);
     }
 
+    // ── Links inside a text ───────────────────────────────────────────
+    // A paragraph or heading is one text: the links in it are markup in its
+    // `text`, with no element of their own to select. Their address, target,
+    // classes and rel are edited here; one can be taken out of the text (it
+    // becomes a link element right after it) or turned back into words. A
+    // text of links and nothing else (a row of buttons) is split into
+    // elements in one go: an element of the same tag and classes, holding a
+    // link element for each.
+
+    function _sdIlTextNode(n) {
+        return !!(n && n.type === 'content' && n.props &&
+            (n.props.contentType === 'paragraph' || n.props.contentType === 'heading') &&
+            !_sdTextIsBound(n));
+    }
+
+    // The text parsed in an inert template: nothing in it loads or runs.
+    function _sdIlParse(html) {
+        var t = document.createElement('template');
+        t.innerHTML = String(html || '');
+        return t.content;
+    }
+
+    function _sdIlHtml(frag) {
+        var d = document.createElement('div');
+        d.appendChild(frag.cloneNode(true));
+        return d.innerHTML;
+    }
+
+    // What may stand between the links of a row besides spaces (" · ", " | ").
+    var _SD_IL_SEP = /^[\s ·•|\/–—-]*$/;
+
+    function _sdIlOnlyLinks(frag) {
+        var links = 0;
+        for (var c = frag.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 3) {
+                if (!_SD_IL_SEP.test(c.nodeValue)) return false;
+                continue;
+            }
+            if (c.nodeType === 8) continue;
+            if (c.nodeType !== 1 || c.tagName !== 'A') return false;
+            links++;
+        }
+        return links > 0;
+    }
+
+    // A link element made from a link of the text, the way the HTML import
+    // makes one (pg_di_node()): its words, with any inline markup, are the
+    // text; address, target, rel and classes are its options; any other
+    // attribute stays an attribute.
+    function _sdIlLinkNode(a) {
+        var p = {
+            contentType: 'link',
+            text: String(a.innerHTML || '').trim(),
+            href: a.getAttribute('href') || '',
+            target: a.getAttribute('target') || '',
+            rel: a.getAttribute('rel') || '',
+            cssClass: a.getAttribute('class') || ''
+        };
+        if (a.getAttribute('id')) p.id = a.getAttribute('id');
+        var rest = [];
+        Array.prototype.forEach.call(a.attributes, function (at) {
+            if (['href', 'target', 'rel', 'class', 'id'].indexOf(at.name) === -1) rest.push({ name: at.name, value: at.value });
+        });
+        if (rest.length) p._attrs = rest;
+        return createNode('content', p, []);
+    }
+
+    function _sdIlSection(n) {
+        if (!_sdIlTextNode(n)) return '';
+        var frag = _sdIlParse(n.props.text);
+        var links = frag.querySelectorAll('a');
+        if (!links.length) return '';
+        var h = '';
+        Array.prototype.forEach.call(links, function (a, i) {
+            var label = String(a.textContent || '').replace(/\s+/g, ' ').trim() || a.getAttribute('href') || String(i + 1);
+            var target = a.getAttribute('target') || '';
+            var targets = [['', _sdT('Default/Self')], ['_blank', _sdT('New Window (_blank)')]];
+            if (target && target !== '_blank') targets.push([target, target]);
+            h += '<div class="sd-il-link" data-sd-il-idx="' + i + '" style="' + (i ? 'border-top:1px solid rgba(128,128,128,.25);padding-top:6px;margin-top:6px' : '') + '">' +
+                '<div style="display:flex;align-items:center;gap:4px;font-size:.75rem;font-weight:600;margin-bottom:4px">' +
+                    '<span class="bi bi-link-45deg" aria-hidden="true"></span>' +
+                    '<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(label) + '">' + esc(label) + '</span>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="out" title="' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"><span class="bi bi-box-arrow-down-right" aria-hidden="true"></span></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="unlink" title="' + esc(_sdT('Remove the link, keep the words')) + '"><span class="bi bi-eraser" aria-hidden="true"></span></button>' +
+                '</div>' +
+                row(_sdT('Link'),
+                    '<div class="sd-pick-group">' +
+                        '<input type="text" class="form-control form-control-sm" id="sd-il-href-' + i + '" data-sd-il="href" value="' + esc(a.getAttribute('href') || '') + '">' +
+                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-il-pick="sd-il-href-' + i + '">' + esc(_sdT('Select')) + '</button>' +
+                    '</div>') +
+                row(_sdT('Target'), '<select class="form-select form-select-sm" data-sd-il="target">' +
+                    targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                    '</select>') +
+                row(_sdT('Classes'), '<input type="text" class="form-control form-control-sm" data-sd-il="class" value="' + esc(a.getAttribute('class') || '') + '" spellcheck="false">') +
+                row('rel', '<input type="text" class="form-control form-control-sm" data-sd-il="rel" value="' + esc(a.getAttribute('rel') || '') + '" placeholder="noopener" spellcheck="false">') +
+            '</div>';
+        });
+        if (_sdIlOnlyLinks(frag)) {
+            h += '<button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
+                '<div style="font-size:.7rem;opacity:.75;margin-top:4px">' + esc(_sdT('This text is links only: each becomes an element of its own, to select, edit and move.')) + '</div>';
+        }
+        return sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>');
+    }
+
+    // Every change goes through the text: parsed, changed, written back, as
+    // one undo step. `fn` may hand back a step for the tree (taking a link
+    // out puts its element after the text). render() draws the panel again.
+    function _sdIlApply(n, fn) {
+        var frag = _sdIlParse(n.props.text);
+        var links = frag.querySelectorAll('a');
+        saveState();
+        var then = fn(frag, links);
+        n.props.text = _sdIlHtml(frag);
+        var owner = _sdAnyParent(n);
+        if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+        if (typeof then === 'function') then(owner);
+        render();
+    }
+
+    // The text becomes an element of the same tag and classes holding a link
+    // element for each link and a span for a separator. The node keeps its
+    // id: its name, notes, attributes and place stay.
+    function _sdIlSplit(n) {
+        var frag = _sdIlParse(n.props.text);
+        if (!_sdIlOnlyLinks(frag)) return;
+        var kids = [];
+        for (var c = frag.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 1) kids.push(_sdIlLinkNode(c));
+            else if (c.nodeType === 3 && c.nodeValue.replace(/ /g, ' ').trim() !== '') {
+                kids.push(createNode('content', { contentType: 'span', text: c.nodeValue.trim(), cssClass: '' }, []));
+            }
+        }
+        saveState();
+        var p = n.props;
+        var cls = String(p.cssClass || '').split(/\s+/).filter(Boolean);
+        if (p.lead && cls.indexOf('lead') === -1) cls.unshift('lead');
+        if (p.align && cls.indexOf('text-' + p.align) === -1) cls.push('text-' + p.align);
+        var tag = (p.contentType === 'heading') ? (p.tag || 'h2') : 'p';
+        ['contentType', 'text', 'lead', 'align', 'tag'].forEach(function (k) { delete p[k]; });
+        p.tag = tag;
+        p.cssClass = cls.join(' ');
+        n.type = 'semantic';
+        n.children = kids;
+        n._expanded = true;
+        var owner = _sdAnyParent(n);
+        if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+        render();
+        sdToast(esc(_sdT('Split into {var} elements.', kids.length)), 'success');
+    }
+
+    function _sdIlBind(n) {
+        var box = document.querySelector('#sd-properties .sd-il');
+        if (!box || !_sdIlTextNode(n)) return;
+        var indexOf = function (el) {
+            var item = el.closest('[data-sd-il-idx]');
+            return item ? parseInt(item.getAttribute('data-sd-il-idx'), 10) : -1;
+        };
+        box.addEventListener('change', function (e) {
+            var what = e.target.getAttribute('data-sd-il');
+            if (!what) return;
+            var idx = indexOf(e.target);
+            var val = String(e.target.value || '').trim();
+            _sdIlApply(n, function (frag, links) {
+                var a = links[idx];
+                if (!a) return;
+                if (val === '') a.removeAttribute(what);
+                else a.setAttribute(what, val);
+            });
+        });
+        box.addEventListener('click', function (e) {
+            var pick = e.target.closest('[data-sd-il-pick]');
+            if (pick) {
+                window.sdOpenFilePicker(pick.getAttribute('data-sd-il-pick'), 'href');
+                return;
+            }
+            var btn = e.target.closest('[data-sd-il-act]');
+            if (!btn) return;
+            var act = btn.getAttribute('data-sd-il-act');
+            if (act === 'split') {
+                _sdIlSplit(n);
+                return;
+            }
+            var idx = indexOf(btn);
+            if (act === 'unlink') {
+                _sdIlApply(n, function (frag, links) {
+                    var a = links[idx];
+                    if (!a) return;
+                    while (a.firstChild) a.parentNode.insertBefore(a.firstChild, a);
+                    a.parentNode.removeChild(a);
+                });
+            } else if (act === 'out') {
+                _sdIlTakeOut(n, idx);
+            }
+        });
+    }
+
+    // Link number `idx` of the text leaves it and becomes a link element
+    // right after the text node (Options panel and overview rows).
+    function _sdIlTakeOut(n, idx) {
+        _sdIlApply(n, function (frag, links) {
+            var a = links[idx];
+            if (!a) return;
+            var link = _sdIlLinkNode(a);
+            a.parentNode.removeChild(a);
+            return function (owner) {
+                var parent = owner ? owner.parent : null;
+                if (!parent || !Array.isArray(parent.children)) return;
+                parent.children.splice(parent.children.indexOf(n) + 1, 0, link);
+            };
+        });
+    }
+
+    // The links of a text, as the overview lists them under it: their
+    // words, else their address. Only texts that hold a link are parsed.
+    function _sdIlTreeLinks(n) {
+        if (!_sdIlTextNode(n)) return [];
+        var txt = String(n.props.text || '');
+        if (!/<a[\s>]/i.test(txt)) return [];
+        var out = [];
+        Array.prototype.forEach.call(_sdIlParse(txt).querySelectorAll('a'), function (a, i) {
+            out.push(String(a.textContent || '').replace(/\s+/g, ' ').trim() || a.getAttribute('href') || String(i + 1));
+        });
+        return out;
+    }
+
+    // Overview rows for the links of a text. They are not nodes: a click
+    // selects the text and opens its link in the Options panel; the button
+    // takes the link out of the text.
+    function _sdIlTreeRows(ul, n, labels, depth) {
+        var canEdit = _sdCanEditNode(n) && !(n.props && n.props._locked) && !hasLockedAncestor(n);
+        labels.forEach(function (label, i) {
+            var li = document.createElement('li');
+            li.className = 'sd-tree-il';
+            li.style.setProperty('--depth', depth);
+            li.title = _sdT('A link inside the text. Click to edit it in the options.');
+            li.innerHTML = '<span class="sd-tree-chev-placeholder"></span><span class="bi bi-link-45deg"></span> ' +
+                '<span class="sd-tree-lbl">' + esc(label) + '</span>' +
+                (canEdit ? '<button type="button" class="sd-tree-il-out bi bi-box-arrow-down-right" title="' +
+                    esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"></button>' : '');
+            li.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (e.target.closest('.sd-tree-il-out')) { _sdIlTakeOut(n, i); return; }
+                selectedNodes = [];
+                selectedNode = n;
+                _sdSelectRender();
+                scrollCanvasToNode(n);
+                setTimeout(function () { _sdIlFocus(i); }, 0);
+            });
+            ul.appendChild(li);
+        });
+    }
+
+    // Bring link `idx` of the selected text into view in the Options panel.
+    function _sdIlFocus(idx) {
+        var item = document.querySelector('#sd-properties .sd-il [data-sd-il-idx="' + idx + '"]');
+        if (!item) return;
+        var body = item.closest('.sd-sect-body');
+        if (body && body.style.display === 'none') {
+            body.style.display = '';
+            var hdr = body.previousElementSibling;
+            if (hdr) hdr.classList.add('sd-sect-open');
+        }
+        item.scrollIntoView({ block: 'nearest' });
+        item.classList.remove('sd-il-flash');
+        void item.offsetWidth;
+        item.classList.add('sd-il-flash');
+    }
+
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
@@ -22745,7 +23435,7 @@ const StyleDesigner = (function () {
             case 'col':        optHtml += propsCol(selectedNode);        break;
             case 'region':     optHtml += propsRegion(selectedNode);     break;
             case 'component':  optHtml += propsComponent(selectedNode);  break;
-            case 'content':    optHtml += propsContent(selectedNode);    break;
+            case 'content':    optHtml += propsContent(selectedNode) + _sdIlSection(selectedNode); break;
             case 'shared_ref': optHtml += propsSharedRef(selectedNode);  break;
             case 'loop_area':  optHtml += propsLoopArea(selectedNode);   break;
             case 'recipient_loop_area': optHtml += propsRecipientLoopArea(selectedNode); break;
@@ -22801,6 +23491,7 @@ const StyleDesigner = (function () {
         panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
+        _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
@@ -29795,7 +30486,9 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 var prop = this.dataset.bindProp;
                 if (!prop) return;
-                var v = this.value.trim().replace(/[^a-z0-9_]/gi, '');
+                // The characters a token keeps on the server (_apply_bindings()):
+                // a form field may be named "publish-date".
+                var v = this.value.trim().replace(/[^a-z0-9_-]/gi, '');
                 _setBinding(prop, v);
             });
         });
@@ -35707,7 +36400,7 @@ const StyleDesigner = (function () {
             for (var si = 0; si < wrap.children.length; si++) {
                 if (!wrap.children[si].classList.contains('sd-tb')) { inner = wrap.children[si]; break; }
             }
-            var target = inner || wrap;
+            var target = wrap.hasAttribute('data-sd-self') ? wrap : (inner || wrap);
             var w = Math.round(target.offsetWidth);
             var h = Math.round(target.offsetHeight);
             if (w <= 0 && h <= 0) { badge.style.display = 'none'; return; }
@@ -40871,26 +41564,32 @@ const StyleDesigner = (function () {
         switch (regionType) {
 
             case 'form_list_view': {
-                // Per-submission card inside loop_area.
-                // search box + pagination are auto-injected by PHP at the slot.
+                // Per-submission card: the loop area repeats the COLUMN and
+                // the row sits outside it (row > loop_area > col, as the
+                // catalog list does), so the records are the row's columns
+                // and the grid is changed on the one column. A row inside
+                // the loop made every record a row of its own.
+                // search box + pagination are auto-injected by PHP at the
+                // slot; inside the row they take a full line (.row > * is
+                // 100% wide).
                 // Reference code and submission date are the two system
                 // fields every submitted form has, whatever the form asks
                 // for; with a form chosen, its own fields join them.
                 var loopArea = createNode('loop_area', {}, [
-                    createNode('row', { gutter: '', justify: '', align: '', cssClass: 'mb-3' }, [
-                        createNode('col', { xs: '12', sm: '', md: '', lg: '', xl: '', xxl: '',
-                                           offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'card', customName: _sdT('Card') }, [
-                                createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Card Body') },
-                                    _swFormFieldNodes(_formFields || [], 'list'))
-                            ])
+                    createNode('col', { xs: '12', sm: '', md: '6', lg: '4', xl: '', xxl: '',
+                                       offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'card h-100', customName: _sdT('Card') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Card Body') },
+                                _swFormFieldNodes(_formFields || [], 'list'))
                         ])
                     ])
                 ]);
                 // py-4: the pagination the server adds under the cards needs
                 // room before whatever follows (on a page, the footer).
                 return createNode('root', {}, [
-                    createNode('container', { fluid: false, cssClass: 'py-4' }, [loopArea])
+                    createNode('container', { fluid: false, cssClass: 'py-4' }, [
+                        createNode('row', { gutter: '4', justify: '', align: '', cssClass: '' }, [loopArea])
+                    ])
                 ]);
             }
 
@@ -45906,6 +46605,25 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The timer's look at the dirty dots. Each comparison serialises a whole
+    // page tree, and a design of dozens of large pages spent some 30 ms of
+    // every tick on it, in the middle of whatever the operator was doing.
+    // Edits land on the open page, so a tick compares that page, and only
+    // after an edit; every tenth tick still looks at every page.
+    var _pgDirtyPollTick = 0, _pgDirtyPollEpoch = -1;
+    function _pgTabsPollDirty() {
+        if (++_pgDirtyPollTick % 10 === 0) {
+            _pgDirtyPollEpoch = _sdEditEpoch;
+            _pgTabsRefreshDirty();
+            return;
+        }
+        if (_pgDirtyPollEpoch === _sdEditEpoch) return;
+        _pgDirtyPollEpoch = _sdEditEpoch;
+        var p = _pgActivePage();
+        var t = p ? document.querySelector('.sd-tab[data-key="' + p.key + '"]') : null;
+        if (t) t.classList.toggle('dirty', _pgPageDirty(p));
+    }
+
     // Cheap re-paint of the dirty dots without rebuilding the strip.
     function _pgTabsRefreshDirty() {
         _pages.forEach(function (p) {
@@ -48524,6 +49242,35 @@ const StyleDesigner = (function () {
         }
     }
 
+    // A page this save can leave as it is stored: saved to this design
+    // before, its tree and settings as they were then (the validation that
+    // just ran cut nothing out of it), and none of the shared components it
+    // shows — nested ones included — waiting to be flushed. A widget's form
+    // fields and tab references are settled on the server per page, so a
+    // page showing a changed widget is written again.
+    function _pgPageUnchanged(p, t, vr) {
+        if (!(p.page_id > 0) || p.pickedPending) return false;
+        if (vr && vr.orphaned && vr.orphaned.length) return false;
+        if (_pgPageDirty(p)) return false;
+        var dirty = Object.keys(_sharedDirty).filter(function (k) { return !!_sharedDirty[k]; });
+        if (!dirty.length) return true;
+        var todo = {}, seen = {};
+        collectSharedIds(t, todo);
+        for (var guard = 0; guard < 16; guard++) {
+            var ids = Object.keys(todo).filter(function (k) { return !seen[k]; });
+            if (!ids.length) break;
+            var next = {};
+            for (var i = 0; i < ids.length; i++) {
+                if (_sharedDirty[ids[i]]) return false;
+                seen[ids[i]] = true;
+                var c = _sharedCache[ids[i]];
+                if (c && c.tree) collectSharedIds(c.tree, next);
+            }
+            todo = next;
+        }
+        return true;
+    }
+
     // ── Serialise for save ────────────────────────────────────────────────
     // Every tab, not just the active one: a single save persists the whole
     // design. Returns null when a tree fails validation (toast already shown).
@@ -48548,12 +49295,19 @@ const StyleDesigner = (function () {
             }
             _sanitizeDynamicPlaceholders(t);
             _stripToggleableShowState(t);
-            var rec = { key: p.key, page_id: p.page_id, tree_json: JSON.stringify(t) };
+            var rec = { key: p.key, page_id: p.page_id };
+            // A saved page nothing has touched since the last save goes
+            // without its tree, marked unchanged: the server keeps the stored
+            // row instead of writing, scoring, translating and logging every
+            // page of the design on every save. Its tree, its settings and
+            // the shared components it shows all count as touching it.
+            if (_pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
+            else rec.tree_json = JSON.stringify(t);
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
             // The page's own form-level settings. The fields are not sent:
             // the server reads them off the widget tree flushed before this
             // request. `page_id: 0` means "this page", resolved on the server.
-            if (p.formSettings && typeof p.formSettings === 'object' && _cfPageHasOwnForm(t)) {
+            if (!rec.unchanged && p.formSettings && typeof p.formSettings === 'object' && _cfPageHasOwnForm(t)) {
                 rec.forms = [{ page_id: p.page_id || 0, settings: p.formSettings }];
             }
             out.push(rec);
@@ -48950,7 +49704,7 @@ const StyleDesigner = (function () {
         // Keep the dirty dots honest after any canvas edit.
         if (!window._pgDirtyPollBound) {
             window._pgDirtyPollBound = true;
-            setInterval(_pgTabsRefreshDirty, 1500);
+            setInterval(_pgTabsPollDirty, 1500);
         }
         // "Add design → Import": the editor opens straight onto the import
         // dialog. Deferred so the modals exist and the canvas has painted.
@@ -50007,6 +50761,642 @@ const StyleDesigner = (function () {
         _userStylesSet((css ? css.replace(/\s*$/, '\n') : '') + add);
     }
 
+    // ── Palette item info: hover card and search words ──────────────────
+    // People who write HTML look for an item by its English or HTML name
+    // ("link", "button", "a"); the panel lists it in the editor's language
+    // ("Bağlantı", "Düğme"). So a palette row is found by its label, by the
+    // English text the label was translated from (_sdEnglishOf()) and by the
+    // words below, and the hover card says what the item is — with a small
+    // drawing for the grid and the Bootstrap components.
+    //
+    // Keyed by _sdPalKey(): the item's kind plus its type or tag.
+    //   d  one-line description, shown in the card
+    //   k  extra search words: HTML / Bootstrap / English terms (never shown)
+    //   h  the markup it writes, shown as a code chip
+    //   v  drawing key, _sdPalDrawing()
+    // Built on first use: the descriptions are read through _sdT().
+    var _sdPalInfoMap = null;
+    function _sdPalInfo() {
+        if (_sdPalInfoMap) return _sdPalInfoMap;
+        _sdPalInfoMap = {
+            // Grid
+            'container':          { v: 'container', h: '<div class="container">', k: 'container wrapper box layout grid',
+                                    d: _sdT('A centered box whose width is capped for each screen size. The usual outer wrapper of a page section.') },
+            'container-fluid':    { v: 'container-fluid', h: '<div class="container-fluid">', k: 'container fluid full width wrapper layout grid',
+                                    d: _sdT('A box that always spans the full width of the screen.') },
+            'row':                { v: 'row', h: '<div class="row">', k: 'row grid flex layout columns',
+                                    d: _sdT('A horizontal band of the grid. It holds columns and lays them out side by side.') },
+            'col':                { v: 'col', h: '<div class="col">', k: 'col column grid layout cell',
+                                    d: _sdT('A column inside a row. Its width is set per screen size, in twelfths of the row.') },
+            // HTML elements
+            's:section':          { h: '<section>', k: 'section block html5 semantic',
+                                    d: _sdT('A part of the page about one subject, usually with its own heading: About Us, Services.') },
+            's:article':          { h: '<article>', k: 'article post entry html5 semantic',
+                                    d: _sdT('Content that stands on its own: a blog post, a news item, a comment.') },
+            's:main':             { h: '<main>', k: 'main content html5 semantic',
+                                    d: _sdT('The main content of the page. Use it once per page.') },
+            's:header':           { h: '<header>', k: 'header top masthead html5 semantic',
+                                    d: _sdT('The top of a page or a section: logo, title, menu.') },
+            's:footer':           { h: '<footer>', k: 'footer bottom html5 semantic',
+                                    d: _sdT('The bottom of a page or a section: contact details, copyright, links.') },
+            's:aside':            { h: '<aside>', k: 'aside sidebar html5 semantic',
+                                    d: _sdT('Content beside the main content, such as a sidebar.') },
+            's:nav':              { h: '<nav>', k: 'nav navigation menu links html5 semantic',
+                                    d: _sdT('A group of navigation links, such as a menu.') },
+            's:div':              { h: '<div>', k: 'div box block wrapper group container element',
+                                    d: _sdT('A plain box with no meaning of its own, for grouping and styling elements.') },
+            's:pre':              { h: '<pre><code>', k: 'pre code block snippet preformatted',
+                                    d: _sdT('Text that keeps its spaces and line breaks, with a code element inside: for code samples.') },
+            's:input:text':       { h: '<input type="text">', k: 'input text field textbox control',
+                                    d: _sdT('A one-line text box on its own, without a label; handy for binding inside a widget.') },
+            's:input:checkbox':   { h: '<input type="checkbox">', k: 'checkbox check tick input control',
+                                    d: _sdT('A tick box on its own, without a label.') },
+            's:input:radio':      { h: '<input type="radio">', k: 'radio option input control',
+                                    d: _sdT('One option button on its own; buttons with the same name make one choice.') },
+            's:textarea':         { h: '<textarea>', k: 'textarea multiline text control',
+                                    d: _sdT('A multi-line text box on its own, without a label.') },
+            's:select':           { h: '<select>', k: 'select dropdown option list combobox control',
+                                    d: _sdT('A drop-down list of choices on its own, without a label.') },
+            // Bootstrap components
+            'c:navbar':           { v: 'navbar', h: '<nav class="navbar">', k: 'navbar navigation menu header bar',
+                                    d: _sdT('The bar at the top of the site: brand, menu links, and a menu button on small screens.') },
+            'c:hero':             { v: 'hero', k: 'hero banner jumbotron intro header',
+                                    d: _sdT('A large opening section: a headline, a short text and call-to-action buttons.') },
+            'c:card':             { v: 'card', h: '<div class="card">', k: 'card box panel tile',
+                                    d: _sdT('A framed box for one item: header, title, text and a button.') },
+            'c:carousel':         { v: 'carousel', h: '<div class="carousel">', k: 'carousel slider slideshow gallery images',
+                                    d: _sdT('A slideshow that moves through images, with arrows and position marks.') },
+            'c:alert_box':        { v: 'alert', h: '<div class="alert">', k: 'alert message notice warning error info',
+                                    d: _sdT('A coloured message box: information, success, warning or error.') },
+            'c:accordion':        { v: 'accordion', h: '<div class="accordion">', k: 'accordion collapse faq panels',
+                                    d: _sdT('Stacked panels that open one at a time; suits FAQs.') },
+            'c:tabs':             { v: 'tabs', h: '<ul class="nav nav-tabs">', k: 'tabs tab nav pills panels',
+                                    d: _sdT('Panels behind tab headers: one is visible at a time.') },
+            'c:btn':              { v: 'btn', h: '<button class="btn">', k: 'button btn link cta action submit',
+                                    d: _sdT('A clickable button, or a link that looks like one.') },
+            'c:badge':            { v: 'badge', h: '<span class="badge">', k: 'badge label tag pill counter',
+                                    d: _sdT('A small label or counter next to text, such as New or 4.') },
+            'c:pricing':          { v: 'pricing', k: 'pricing price plans tiers table cards',
+                                    d: _sdT('Price plans side by side, each with a price, features and a button.') },
+            'c:features':         { v: 'features', k: 'feature features icon benefit',
+                                    d: _sdT('One feature: an icon with a title and a short explanation.') },
+            'c:progress':         { v: 'progress', h: '<div class="progress">', k: 'progress bar percent',
+                                    d: _sdT('A bar that shows how far something has got.') },
+            'c:modal':            { v: 'modal', h: '<div class="modal">', k: 'modal dialog popup window lightbox',
+                                    d: _sdT('A dialog window that opens over the page, for example when a button is clicked.') },
+            'c:dropdown':         { v: 'dropdown', h: '<div class="dropdown">', k: 'dropdown menu toggle button',
+                                    d: _sdT('A button that opens a short list of links.') },
+            'c:language_switcher':{ v: 'language', k: 'language switcher locale translate translation',
+                                    d: _sdT('A button listing the site languages; it takes the visitor to the same page in another language.') },
+            'c:list-group':       { v: 'list-group', h: '<ul class="list-group">', k: 'list group items menu',
+                                    d: _sdT('A list of items in one framed box; the items can be links.') },
+            'c:ul_list':          { v: 'ul', h: '<ul>', k: 'ul unordered list bullet li items',
+                                    d: _sdT('A list with bullet points.') },
+            'c:ol_list':          { v: 'ol', h: '<ol>', k: 'ol ordered list numbered li items',
+                                    d: _sdT('A numbered list.') },
+            'c:table':            { v: 'table', h: '<table class="table">', k: 'table data grid rows columns tr td th',
+                                    d: _sdT('Rows and columns of data under a header row.') },
+            'c:breadcrumb':       { v: 'breadcrumb', h: '<ol class="breadcrumb">', k: 'breadcrumb path trail navigation',
+                                    d: _sdT('The path from the home page to the current page.') },
+            'c:toast':            { v: 'toast', h: '<div class="toast">', k: 'toast notification snackbar message',
+                                    d: _sdT('A small notification box, like the ones apps show in a corner.') },
+            'c:card-group':       { v: 'card-group', h: '<div class="card-group">', k: 'card group cards deck',
+                                    d: _sdT('Cards joined side by side, all the same height.') },
+            'c:offcanvas':        { v: 'offcanvas', h: '<div class="offcanvas">', k: 'offcanvas drawer sidebar sidenav slide panel menu',
+                                    d: _sdT('A panel that slides in from the edge of the screen, such as a side menu.') },
+            'c:divider_line':     { v: 'divider', h: '<hr>', k: 'divider hr line separator rule',
+                                    d: _sdT('A horizontal line between two parts of the content.') },
+            'c:callout':          { v: 'callout', k: 'callout note tip highlight remark',
+                                    d: _sdT('A note with a coloured edge that draws attention to a remark.') },
+            'c:spinner':          { v: 'spinner', h: '<div class="spinner-border">', k: 'spinner loader loading',
+                                    d: _sdT('A spinning sign that something is loading.') },
+            'c:pagination':       { v: 'pagination', h: '<ul class="pagination">', k: 'pagination pager pages paging',
+                                    d: _sdT('Page numbers for moving through a long list.') },
+            'c:input-group':      { v: 'input-group', h: '<div class="input-group">', k: 'input group addon field button text',
+                                    d: _sdT('A text box with a piece of text or a button attached to its side.') },
+            'c:blockquote':       { v: 'blockquote', h: '<blockquote class="blockquote">', k: 'blockquote quote citation testimonial',
+                                    d: _sdT('A quotation with its source underneath.') },
+            'c:btn-group':        { v: 'btn-group', h: '<div class="btn-group">', k: 'button group buttons btn toolbar segmented',
+                                    d: _sdT('Buttons joined into one bar.') },
+            'c:close-btn':        { v: 'close', h: '<button class="btn-close">', k: 'close button x dismiss',
+                                    d: _sdT('An X button that closes a window, a message or a panel.') },
+            'c:placeholder':      { v: 'placeholder', h: '<span class="placeholder">', k: 'placeholder skeleton loading',
+                                    d: _sdT('Grey bars that hold the place of content while it loads.') },
+            'c:popover':          { v: 'popover', h: 'data-bs-toggle="popover"', k: 'popover tooltip bubble hint',
+                                    d: _sdT('A button that opens a small bubble with a title and text beside it.') },
+            'c:ratio':            { v: 'ratio', h: '<div class="ratio ratio-16x9">', k: 'ratio aspect embed video iframe responsive',
+                                    d: _sdT('A box that keeps its width-to-height ratio, such as 16:9 for a video.') },
+            'c:figure':           { v: 'figure', h: '<figure class="figure">', k: 'figure image caption figcaption picture',
+                                    d: _sdT('An image with a caption under it.') },
+            'c:vr':               { v: 'vr', h: '<div class="vr">', k: 'vr vertical rule divider line separator',
+                                    d: _sdT('A vertical line between items that sit side by side.') },
+            'c:hstack':           { v: 'hstack', h: '<div class="hstack">', k: 'hstack horizontal stack flex row gap',
+                                    d: _sdT('Items in a row with an even gap between them.') },
+            'c:vstack':           { v: 'vstack', h: '<div class="vstack">', k: 'vstack vertical stack flex column gap',
+                                    d: _sdT('Items one under the other with an even gap between them.') },
+            // Content
+            't:heading':          { h: '<h1> … <h6>', k: 'heading title headline h1 h2 h3 h4 h5 h6',
+                                    d: _sdT('A title, from H1 (the page title, once per page) down to H6.') },
+            't:paragraph':        { h: '<p>', k: 'paragraph text p body copy',
+                                    d: _sdT('A block of running text. Links in it are edited in its options.') },
+            't:span':             { h: '<span>', k: 'span inline text word',
+                                    d: _sdT('A piece of text within a line, for styling a word or a phrase.') },
+            't:image':            { h: '<img>', k: 'image img picture photo graphic',
+                                    d: _sdT('A picture from the file manager or from an address.') },
+            't:divider':          { h: '<hr>', k: 'divider hr line separator rule',
+                                    d: _sdT('A horizontal line.') },
+            't:spacer':           { k: 'spacer gap space margin blank',
+                                    d: _sdT('Empty space of a set height.') },
+            't:custom_html':      { k: 'html code embed raw custom snippet',
+                                    d: _sdT('HTML code of your own, written out as it is.') },
+            't:svg':              { h: '<svg>', k: 'svg vector drawing graphic icon',
+                                    d: _sdT('A vector drawing written as SVG code.') },
+            't:custom_php':       { k: 'php code server dynamic custom',
+                                    d: _sdT('PHP code that runs on the server each time the page is shown.') },
+            't:carousel':         { k: 'carousel slider slideshow gallery images',
+                                    d: _sdT('A slideshow of images.') },
+            't:messages':         { k: 'messages alerts notices errors feedback form',
+                                    d: _sdT('Where a form shows its messages after it is sent: errors and confirmations.') },
+            't:breadcrumb':       { k: 'breadcrumb path trail navigation',
+                                    d: _sdT('The path from the home page to this page, filled in by the site.') },
+            't:variant_attr':     { k: 'variant attribute option size colour color product',
+                                    d: _sdT('The choices of a product variant, such as colour or size; repeated for each attribute.') },
+            't:applied_offers':   { k: 'offers discount promotion cart coupon',
+                                    d: _sdT('The offers applied to the cart, for the shopping cart widget.') },
+            't:link':             { h: '<a href="…">', k: 'link a anchor href url hyperlink',
+                                    d: _sdT('A clickable link to another page, a file or an address.') },
+            't:icon':             { h: '<i class="bi …">', k: 'icon bi glyph symbol bootstrap icons',
+                                    d: _sdT('An icon from the Bootstrap Icons set.') },
+            // Form fields (label + control)
+            'f:text':             { h: '<input type="text">', k: 'input text field textbox',
+                                    d: _sdT('A one-line text field with its label.') },
+            'f:email':            { h: '<input type="email">', k: 'email mail input',
+                                    d: _sdT('An email address field with its label; the browser checks the format.') },
+            'f:tel':              { h: '<input type="tel">', k: 'tel phone telephone mobile input',
+                                    d: _sdT('A phone number field with its label; phones show the number pad.') },
+            'f:number':           { h: '<input type="number">', k: 'number numeric integer input',
+                                    d: _sdT('A field that takes numbers only.') },
+            'f:url':              { h: '<input type="url">', k: 'url link website address input',
+                                    d: _sdT('A web address field with its label.') },
+            'f:password':         { h: '<input type="password">', k: 'password secret input',
+                                    d: _sdT('A field that hides what is typed into it.') },
+            'f:textarea':         { h: '<textarea>', k: 'textarea multiline message text',
+                                    d: _sdT('A multi-line text field with its label, for longer messages.') },
+            'f:select':           { h: '<select>', k: 'select dropdown option combobox list',
+                                    d: _sdT('A drop-down list with its label; one choice is picked.') },
+            'f:multi':            { h: '<select multiple>', k: 'select multiple multiselect list',
+                                    d: _sdT('A list in which several choices can be picked.') },
+            'f:checkbox':         { h: '<input type="checkbox">', k: 'checkbox check tick consent agree',
+                                    d: _sdT('One tick box with its label, for a yes or no answer.') },
+            'f:checkgroup':       { h: '<fieldset>', k: 'checkbox group checkboxes multiple fieldset',
+                                    d: _sdT('A question with several tick boxes; more than one can be ticked.') },
+            'f:radiogroup':       { h: '<fieldset>', k: 'radio group options choice fieldset',
+                                    d: _sdT('A question with option buttons; only one can be picked.') },
+            'f:toggle':           { h: '<div class="form-switch">', k: 'switch toggle checkbox on off',
+                                    d: _sdT('An on/off switch with its label.') },
+            'f:date':             { h: '<input type="date">', k: 'date calendar picker input',
+                                    d: _sdT('A date field with a calendar to pick from.') },
+            'f:time':             { h: '<input type="time">', k: 'time clock hour input',
+                                    d: _sdT('A time-of-day field.') },
+            'f:datetime':         { h: '<input type="datetime-local">', k: 'datetime date time local input',
+                                    d: _sdT('A field for a date and a time together.') },
+            'f:file':             { h: '<input type="file">', k: 'file upload attachment input',
+                                    d: _sdT('A field for uploading a file.') },
+            'f:color':            { h: '<input type="color">', k: 'color colour picker input',
+                                    d: _sdT('A field for picking a colour.') },
+            'f:range':            { h: '<input type="range">', k: 'range slider input',
+                                    d: _sdT('A slider for picking a number between two limits.') },
+            'f:hidden':           { h: '<input type="hidden">', k: 'hidden input value',
+                                    d: _sdT('A field the visitor does not see; it sends a fixed value with the form.') },
+            'f:floating':         { h: '<div class="form-floating">', k: 'floating label input',
+                                    d: _sdT('A text field whose label sits inside it and moves up when typing starts.') },
+            'f:label':            { h: '<label>', k: 'label caption field name',
+                                    d: _sdT('A label on its own, to name a field.') },
+            'f:group':            { k: 'group fieldset wrapper fields',
+                                    d: _sdT('A box that keeps several fields together.') },
+            'f:submit':           { h: '<button type="submit">', k: 'submit button send',
+                                    d: _sdT('The button that sends the form.') },
+            'f:reset':            { h: '<button type="reset">', k: 'reset clear button',
+                                    d: _sdT('A button that clears what was typed into the form.') },
+            'f:captcha':          { k: 'captcha spam robot verify security',
+                                    d: _sdT('A check that keeps automated spam out of the form.') },
+            'f:form':             { h: '<form>', k: 'form fields submit',
+                                    d: _sdT('A form: the box that holds the fields and sends them.') },
+            // Regions
+            'r:page':             { k: 'page region content area editable',
+                                    d: _sdT('An editable content area of the page, filled in the content editor.') },
+            'r:system':           { k: 'system region page type catalog cart form',
+                                    d: _sdT('Where the page type shows its built-in content: catalog, cart, forms and the like.') },
+            'r:common':           { k: 'common region shared content',
+                                    d: _sdT('A block of content shared by many pages and edited once.') },
+            'r:designer':         { k: 'designer region html block',
+                                    d: _sdT('A block of HTML kept by designers and placed on pages.') },
+            'r:dynamic':          { k: 'dynamic region php code',
+                                    d: _sdT('A block whose output comes from PHP code on every visit.') },
+            'r:menu':             { k: 'menu region navigation links',
+                                    d: _sdT('One of the site menus, as set up under Menus.') },
+            'r:menu_sequence':    { k: 'menu sequence previous next pager',
+                                    d: _sdT('Previous and next links through the pages of a menu.') },
+            'r:login':            { k: 'login sign in account region',
+                                    d: _sdT('The sign-in area: a link to sign in, or the visitor once signed in.') },
+            'r:ad':               { k: 'ad ads advert banner region',
+                                    d: _sdT('An ad slot filled from the Ads screen.') },
+            'r:cart':             { k: 'cart basket shopping region',
+                                    d: _sdT('A link to the shopping cart with the number of items in it.') },
+            'r:tag_cloud':        { k: 'tag cloud tags region',
+                                    d: _sdT('The tags of the site, sized by how often they are used.') },
+            'r:mobile_switch':    { k: 'mobile switch desktop view region',
+                                    d: _sdT('A link that switches between the mobile and the desktop look of the site.') },
+            'r:pdf':              { k: 'pdf download print region',
+                                    d: _sdT('A link that offers the page as a PDF file.') },
+            'r:comments_block':   { k: 'comments block comment form region',
+                                    d: _sdT('The comments of the page and the form for adding one.') }
+        };
+        return _sdPalInfoMap;
+    }
+
+    function _sdPalKey(it) {
+        var x = (it && it.extra) || {};
+        switch (it && it.type) {
+            case 'component': return 'c:' + (x.componentType || '');
+            case 'content':   return 't:' + (x.contentType || '');
+            case 'cf_field':  return 'f:' + (x.cfType || '');
+            case 'region':    return 'r:' + (x.regionType || '');
+            case 'semantic': {
+                var tag = String(x.tag || '').toLowerCase();
+                if (tag !== 'input') return 's:' + tag;
+                var ty = 'text';
+                (Array.isArray(x._attrs) ? x._attrs : []).forEach(function (a) {
+                    if (a && a.name === 'type' && a.value) ty = String(a.value).toLowerCase();
+                });
+                return 's:input:' + ty;
+            }
+            default: return String((it && it.type) || '');
+        }
+    }
+
+    // Lowercase, Turkish letters and accents folded to ASCII, - and _ read
+    // as spaces: "Bağlantı", "baglanti" and "BAĞLANTI" are one word, and
+    // "list-group" matches "list group".
+    function _sdFold(s) {
+        var out = String(s == null ? '' : s).replace(/İ/g, 'i').toLowerCase();
+        if (out.normalize) out = out.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return out.replace(/ı/g, 'i').replace(/[-_]+/g, ' ');
+    }
+
+    // The English source texts a label was translated from (sdDesign.i18n
+    // read backwards). Empty when the editor runs in English.
+    var _sdI18nRev = null;
+    function _sdEnglishOf(label) {
+        if (!_sdI18nRev) {
+            _sdI18nRev = Object.create(null);
+            var map = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.i18n) ? sdDesign.i18n : null;
+            if (map) Object.keys(map).forEach(function (k) {
+                var v = String(map[k]);
+                if (v === k) return;
+                (_sdI18nRev[v] = _sdI18nRev[v] || []).push(k);
+            });
+        }
+        return _sdI18nRev[String(label || '')] || [];
+    }
+
+    // Everything a palette row is found by, folded once when it is drawn.
+    function _sdPalSearchText(it) {
+        var x = (it && it.extra) || {};
+        var info = _sdPalInfo()[_sdPalKey(it)] || {};
+        return _sdFold([it.label || '', _sdEnglishOf(it.label).join(' '), info.k || '',
+                        x.componentType || '', x.contentType || '', x.tag || '', x.cfType || '', x.regionType || ''].join(' '))
+            .replace(/["'<>&]/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // Drawings for the hover card: a light page in Bootstrap's own colours,
+    // text drawn as grey bars, so they need no translation (the few glyphs
+    // are symbols: @, /, 1 2 3, 16:9, language codes).
+    function _sdPalDrawing(key) {
+        var P = '#0d6efd', PL = '#cfe2ff', S = '#6c757d', B = '#dee2e6', G = '#e9ecef', T = '#ced4da',
+            D = '#343a40', W = '#ffffff', LG = '#f8f9fa', DASH = ' stroke-dasharray="4 3"';
+        function R(x, y, w, h, fill, rx, stroke, extra) {
+            return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' +
+                (rx ? ' rx="' + rx + '"' : '') + ' fill="' + (fill || 'none') + '"' +
+                (stroke ? ' stroke="' + stroke + '"' : '') + (extra || '') + '/>';
+        }
+        function L(x, y, w, c) { return R(x, y, w, 4, c || T, 2); }          // a line of text
+        function Hd(x, y, w, c) { return R(x, y, w, 7, c || D, 2); }         // a heading
+        function C(cx, cy, r, fill, stroke, extra) {
+            return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + (fill || 'none') + '"' +
+                (stroke ? ' stroke="' + stroke + '"' : '') + (extra || '') + '/>';
+        }
+        function Tx(x, y, s, size, fill, anchor) {
+            return '<text x="' + x + '" y="' + y + '" font-size="' + (size || 10) + '" fill="' + (fill || D) + '"' +
+                (anchor ? ' text-anchor="' + anchor + '"' : '') + '>' + s + '</text>';
+        }
+        function Pa(d, stroke, w, fill) {
+            return '<path d="' + d + '" fill="' + (fill || 'none') + '"' +
+                (stroke ? ' stroke="' + stroke + '" stroke-width="' + (w || 1.5) + '" stroke-linecap="round" stroke-linejoin="round"' : '') + '/>';
+        }
+        function Btn(x, y, w, c, outline) {
+            return outline ? R(x + .5, y + .5, w - 1, 12, W, 3, c) + L(x + 6, y + 4.5, w - 12, c)
+                           : R(x, y, w, 13, c, 3) + L(x + 6, y + 4.5, w - 12, W);
+        }
+        function Chev(x, y, up) { return Pa(up ? 'M' + (x - 3) + ' ' + (y + 1.5) + 'l3 -3 3 3' : 'M' + (x - 3) + ' ' + (y - 1.5) + 'l3 3 3 -3', S, 1.3); }
+        function Pic(x, y, w, h, frame, hill) {
+            return R(x, y, w, h, frame || T, 3) + C(x + w * .74, y + h * .3, Math.round(Math.min(w, h) * .09), W) +
+                Pa('M' + x + ' ' + (y + h) + 'L' + (x + w * .34) + ' ' + (y + h * .46) + 'L' + (x + w * .58) + ' ' + (y + h * .78) +
+                   'L' + (x + w * .74) + ' ' + (y + h * .62) + 'L' + (x + w) + ' ' + (y + h) + 'Z', '', 0, hill || '#adb5bd');
+        }
+        var DIM = ' fill-opacity=".42"';
+        var draw = {
+            'container': function () {
+                return R(0, 0, 200, 110, LG) + R(30, 0, 140, 110, W) + R(30.5, 6.5, 139, 97, 'none', 3, P, DASH) +
+                    Hd(40, 17, 70) + L(40, 31, 118) + L(40, 39, 104) + L(40, 47, 112) + R(40, 61, 56, 34, G, 3) + R(104, 61, 56, 34, G, 3) +
+                    Pa('M6 55H24M6 55l4 -3M6 55l4 3', S, 1.2) + Pa('M194 55H176M194 55l-4 -3M194 55l-4 3', S, 1.2);
+            },
+            'container-fluid': function () {
+                return R(0, 0, 200, 110, W) + R(4.5, 6.5, 191, 97, 'none', 3, P, DASH) +
+                    Hd(14, 17, 70) + L(14, 31, 160) + L(14, 39, 140) + L(14, 47, 150) + R(14, 61, 82, 34, G, 3) + R(104, 61, 82, 34, G, 3);
+            },
+            'row': function () {
+                return R(0, 0, 200, 110, W) + R(8.5, 28.5, 183, 53, 'none', 4, P, DASH) +
+                    R(14, 34, 53, 42, PL, 3) + R(73.5, 34, 53, 42, PL, 3) + R(133, 34, 53, 42, PL, 3) +
+                    L(20, 44, 36, P) + L(79.5, 44, 36, P) + L(139, 44, 36, P) + L(20, 52, 28, '#9ec5fe') + L(79.5, 52, 30, '#9ec5fe') + L(139, 52, 24, '#9ec5fe');
+            },
+            'col': function () {
+                return R(0, 0, 200, 110, W) + R(8.5, 28.5, 183, 53, 'none', 4, B) +
+                    R(14, 34, 53, 42, G, 3) + R(73.5, 34, 53, 42, PL, 3, P) + R(133, 34, 53, 42, G, 3) +
+                    L(80, 44, 30, P) + L(80, 52, 40, '#9ec5fe') + L(80, 60, 24, '#9ec5fe');
+            },
+            'navbar': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 26, LG) + R(0, 26, 200, 1, B) + R(10, 9, 30, 8, P, 2) +
+                    L(62, 11, 18, S) + L(86, 11, 22, S) + L(114, 11, 16, S) + Btn(156, 7, 34, P) +
+                    L(10, 42, 120, G) + L(10, 52, 150, G) + L(10, 62, 100, G) + R(10, 76, 85, 26, G, 3) + R(105, 76, 85, 26, G, 3);
+            },
+            'hero': function () {
+                return R(0, 0, 200, 110, '#212529') + R(45, 25, 110, 10, W, 3) + L(38, 45, 124, S) + L(56, 54, 88, S) +
+                    Btn(58, 71, 40, P) + R(102.5, 71.5, 39, 12, 'none', 3, '#adb5bd') + L(108, 76, 28, '#adb5bd');
+            },
+            'card': function () {
+                return R(0, 0, 200, 110, LG) + R(50.5, 6.5, 99, 97, W, 5, B) + R(51, 7, 98, 17, LG, 4.5) + R(51, 17, 98, 7, LG) + R(51, 24, 98, 1, B) +
+                    L(58, 13.5, 40, S) + Hd(58, 33, 58) + L(58, 46, 82) + L(58, 54, 74) + L(58, 62, 78) + Btn(58, 79, 46, P);
+            },
+            'carousel': function () {
+                return R(0, 0, 200, 110, W) + Pic(10, 8, 180, 94, '#adb5bd', '#868e96') +
+                    Pa('M25 48l-6 7 6 7', W, 2.4) + Pa('M175 48l6 7 -6 7', W, 2.4) + L(66, 78, 68, W) +
+                    R(83, 92, 10, 2.5, W, 1) + R(95, 92, 10, 2.5, W, 1, '', ' fill-opacity=".5"') + R(107, 92, 10, 2.5, W, 1, '', ' fill-opacity=".5"');
+            },
+            'alert': function () {
+                return R(0, 0, 200, 110, W) + R(10.5, 32.5, 179, 45, '#cff4fc', 5, '#9eeaf9') + C(28, 55, 7, '#055160') +
+                    R(27, 52, 2, 6, '#cff4fc', 1) + R(27, 49.5, 2, 2, '#cff4fc', 1) + Hd(44, 44, 60, '#055160') + L(44, 57, 128, '#087990') + L(44, 65, 92, '#087990');
+            },
+            'accordion': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 6.5, 159, 97, W, 4, B) + R(21, 7, 158, 19, PL, 3.5) + R(21, 20, 158, 6, PL) +
+                    L(29, 14.5, 64, '#052c65') + Chev(168, 16.5, true) + L(29, 34, 120) + L(29, 42, 104) + L(29, 50, 112) +
+                    R(21, 61, 158, 1, B) + L(29, 69, 70, D) + Chev(168, 71) + R(21, 82, 158, 1, B) + L(29, 90, 58, D) + Chev(168, 92);
+            },
+            'tabs': function () {
+                return R(0, 0, 200, 110, W) + R(10, 31, 180, 1, B) + R(14.5, 12.5, 46, 20, W, 4, B) + R(15, 29, 45, 5, W) +
+                    L(22, 20, 30, D) + L(72, 20, 30, P) + L(112, 20, 30, P) +
+                    Hd(14, 45, 70) + L(14, 59, 160) + L(14, 67, 140) + L(14, 75, 150) + L(14, 83, 96);
+            },
+            'btn': function () {
+                return R(0, 0, 200, 110, W) + R(62, 42, 76, 26, P, 6) + L(76, 53, 48, W);
+            },
+            'badge': function () {
+                return R(0, 0, 200, 110, W) + R(26, 48, 96, 12, D, 3) + R(130, 46.5, 40, 15, P, 7.5) + L(138, 52, 24, W);
+            },
+            'pricing': function () {
+                function plan(x, hot) {
+                    return R(x + .5, 12.5, 55, 86, W, 4, hot ? P : B, hot ? ' stroke-width="2"' : '') + L(x + 8, 20, 24, S) +
+                        R(x + 8, 30, 32, 10, D, 2) + L(x + 8, 48, 36) + L(x + 8, 56, 30) + L(x + 8, 64, 38) + Btn(x + 8, 78, 40, P, !hot);
+                }
+                return R(0, 0, 200, 110, LG) + plan(8) + plan(72, true) + plan(136);
+            },
+            'features': function () {
+                return R(0, 0, 200, 110, W) + R(30, 30, 28, 28, PL, 6) + R(38, 38, 12, 12, P, 2) +
+                    Hd(70, 32, 74) + L(70, 47, 100) + L(70, 55, 92) + L(70, 63, 64);
+            },
+            'progress': function () {
+                return R(0, 0, 200, 110, W) + L(20, 36, 54, S) + R(20, 50, 160, 14, G, 7) + R(20, 50, 104, 14, P, 7) + Tx(72, 60, '65%', 9, W, 'middle');
+            },
+            'modal': function () {
+                return R(0, 0, 200, 110, W) + L(10, 10, 120) + L(10, 20, 150) + L(10, 30, 100) + R(0, 0, 200, 110, '#000', 0, '', DIM) +
+                    R(40, 12, 120, 86, W, 5) + Hd(48, 21, 56) + Pa('M146 21l6 6M152 21l-6 6', S, 1.3) + R(40, 34, 120, 1, B) +
+                    L(48, 44, 100) + L(48, 52, 88) + L(48, 60, 96) + R(40, 72, 120, 1, B) + Btn(84, 79, 32, S) + Btn(120, 79, 32, P);
+            },
+            'dropdown': function () {
+                return R(0, 0, 200, 110, W) + R(20, 8, 62, 17, P, 4) + L(27, 14.5, 34, W) + Pa('M68 15l3 3 3 -3', W, 1.4) +
+                    R(20.5, 30.5, 96, 66, W, 4, B) + L(30, 38, 60, D) + R(21, 47, 95, 14, G) + L(30, 52, 48, D) + L(30, 66, 66, D) +
+                    R(21, 76, 95, 1, B) + L(30, 84, 40, D);
+            },
+            'language': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 8.5, 66, 17, W, 4, S) + C(31, 17, 4.5, 'none', S) +
+                    Pa('M26.5 17h9M31 12.5c-2.4 2.6 -2.4 6.4 0 9M31 12.5c2.4 2.6 2.4 6.4 0 9', S, 1) + Tx(41, 20.5, 'TR', 8, S) +
+                    Pa('M71 15.5l3 3 3 -3', S, 1.3) + R(20.5, 30.5, 80, 48, W, 4, B) +
+                    Tx(30, 44, 'TR', 8, P) + L(46, 40.5, 44, P) + Tx(30, 58, 'EN', 8, D) + L(46, 54.5, 40) + Tx(30, 72, 'DE', 8, D) + L(46, 68.5, 46);
+            },
+            'list-group': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 8.5, 119, 93, W, 4, B) + R(41, 9, 118, 18.5, P, 3.5) + R(41, 20, 118, 7.5, P) +
+                    L(50, 16, 64, W) + L(50, 34.7, 70) + R(41, 46, 118, 1, B) + L(50, 53.2, 56) + R(41, 64.5, 118, 1, B) +
+                    L(50, 71.7, 76) + R(41, 83, 118, 1, B) + L(50, 90.2, 48);
+            },
+            'ul': function () {
+                var ws = [110, 90, 120, 70], out = R(0, 0, 200, 110, W);
+                [30, 46, 62, 78].forEach(function (y, i) { out += C(42, y, 2.6, D) + L(52, y - 2, ws[i]); });
+                return out;
+            },
+            'ol': function () {
+                var ws = [110, 90, 120, 70], out = R(0, 0, 200, 110, W);
+                [30, 46, 62, 78].forEach(function (y, i) { out += Tx(34, y + 3.5, (i + 1) + '.', 9, D) + L(52, y - 2, ws[i]); });
+                return out;
+            },
+            'table': function () {
+                var out = R(0, 0, 200, 110, W) + R(14.5, 14.5, 171, 81, W, 3, B) + R(15, 15, 170, 19, LG, 2.5) + R(15, 33.5, 170, 1.2, '#adb5bd') +
+                    L(22, 22.5, 36, D) + L(80, 22.5, 42, D) + L(138, 22.5, 30, D);
+                [42, 62, 82].forEach(function (y, i) {
+                    if (i) out += R(15, y - 8.5, 170, 1, B);
+                    out += L(22, y, 34) + L(80, y, 46) + L(138, y, 28);
+                });
+                return out;
+            },
+            'breadcrumb': function () {
+                return R(0, 0, 200, 110, W) + R(10, 38, 180, 32, LG, 5) + L(22, 52, 30, P) + Tx(60, 57.5, '/', 10, S, 'middle') +
+                    L(68, 52, 36, P) + Tx(112, 57.5, '/', 10, S, 'middle') + L(120, 52, 44, S);
+            },
+            'toast': function () {
+                return R(0, 0, 200, 110, W) + L(10, 74, 90, G) + L(10, 84, 120, G) + L(10, 94, 70, G) +
+                    R(92.5, 8.5, 98, 56, W, 5, B) + R(93, 9, 97, 17, LG, 4.5) + R(93, 20, 97, 6, LG) + R(93, 26, 97, 1, B) +
+                    R(99, 13, 9, 9, P, 2) + L(112, 15.5, 40, D) + Pa('M176 14l5 5M181 14l-5 5', S, 1.2) + L(100, 36, 80) + L(100, 45, 62);
+            },
+            'card-group': function () {
+                var out = R(0, 0, 200, 110, LG) + R(10.5, 12.5, 179, 85, W, 4, B) + R(70, 13, 1, 84, B) + R(130, 13, 1, 84, B);
+                [18, 78, 138].forEach(function (x) { out += Hd(x, 24, 40) + L(x, 38, 46) + L(x, 46, 38) + L(x, 54, 44) + L(x, 82, 30, '#adb5bd'); });
+                return out;
+            },
+            'offcanvas': function () {
+                return R(0, 0, 200, 110, W) + L(96, 14, 90) + L(96, 24, 70) + R(96, 40, 90, 40, G, 3) + R(0, 0, 200, 110, '#000', 0, '', DIM) +
+                    R(0, 0, 86, 110, W) + Hd(10, 12, 44) + Pa('M70 13l6 6M76 13l-6 6', S, 1.3) + R(0, 28, 86, 1, B) +
+                    L(10, 40, 54, P) + L(10, 52, 46, P) + L(10, 64, 58, P) + L(10, 76, 40, P);
+            },
+            'divider': function () {
+                return R(0, 0, 200, 110, W) + Hd(30, 17, 70) + L(30, 31, 140) + L(30, 39, 116) + R(30, 54, 140, 1.6, '#adb5bd') +
+                    L(30, 67, 136) + L(30, 75, 120) + L(30, 83, 90);
+            },
+            'callout': function () {
+                return R(0, 0, 200, 110, W) + R(22, 28, 156, 54, '#e7f1ff') + R(22, 28, 4, 54, P) + Hd(36, 38, 40) + L(36, 53, 124, S) + L(36, 61, 96, S);
+            },
+            'spinner': function () {
+                return R(0, 0, 200, 110, W) + C(100, 55, 18, 'none', G, ' stroke-width="5"') +
+                    C(100, 55, 18, 'none', P, ' stroke-width="5" stroke-linecap="round" stroke-dasharray="70 200" transform="rotate(-90 100 55)"');
+            },
+            'pagination': function () {
+                var out = R(0, 0, 200, 110, W);
+                ['«', '1', '2', '3', '»'].forEach(function (s, i) {
+                    var x = 35 + i * 26, on = (i === 2);
+                    out += R(x + .5, 43.5, 26, 24, on ? P : W, 0, on ? P : B) + Tx(x + 13.5, 59, s, 10, on ? W : P, 'middle');
+                });
+                return out;
+            },
+            'input-group': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 44.5, 159, 22, W, 4, T) + R(21, 45, 26, 21, G, 3.5) + R(40, 45, 7, 21, G) + R(47, 45, 1, 21, T) +
+                    Tx(34, 59, '@', 10, S, 'middle') + L(56, 53, 50, T) + R(140, 45, 1, 21, S) + L(150, 53, 20, S);
+            },
+            'blockquote': function () {
+                return R(0, 0, 200, 110, W) + Tx(26, 58, '“', 42, T) + L(52, 36, 116, D) + L(52, 45, 124, D) + L(52, 54, 90, D) +
+                    Tx(52, 74, '—', 10, S) + L(66, 69, 64, S);
+            },
+            'btn-group': function () {
+                return R(0, 0, 200, 110, W) + R(40, 43, 120, 24, P, 5) + R(80, 43, 1, 24, '#0a58ca') + R(120, 43, 1, 24, '#0a58ca') +
+                    L(48, 53, 24, W) + L(88, 53, 24, W) + L(128, 53, 24, W);
+            },
+            'close': function () {
+                return R(0, 0, 200, 110, W) + R(84.5, 39.5, 31, 31, LG, 5) + Pa('M93 48l14 14M107 48l-14 14', D, 2.4);
+            },
+            'placeholder': function () {
+                return R(0, 0, 200, 110, W) + R(20, 30, 96, 10, T, 2) + R(122, 30, 58, 10, T, 2) + R(20, 47, 62, 10, T, 2) +
+                    R(88, 47, 92, 10, T, 2) + R(20, 64, 124, 10, T, 2);
+            },
+            'popover': function () {
+                return R(0, 0, 200, 110, W) + R(70, 78, 60, 18, S, 4) + L(80, 85, 40, W) + R(48.5, 6.5, 103, 58, W, 5, B) +
+                    R(49, 7, 102, 16, LG, 4.5) + R(49, 17, 102, 6, LG) + R(49, 23, 102, 1, B) + Hd(57, 11.5, 44) +
+                    L(57, 33, 84) + L(57, 42, 70) + L(57, 51, 78) + Pa('M94 64.5L100 71L106 64.5', B, 1, W) + R(95, 63, 10, 2, W);
+            },
+            'ratio': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 10.5, 119, 67, LG, 3, '#adb5bd', DASH) + C(100, 44, 13, 'none', S, ' stroke-width="1.5"') +
+                    Pa('M96 37.5v13l11 -6.5z', '', 0, S) + Tx(100, 95, '16:9', 10, S, 'middle');
+            },
+            'figure': function () {
+                return R(0, 0, 200, 110, W) + Pic(50, 8, 100, 68) + L(50, 86, 72, S);
+            },
+            'vr': function () {
+                return R(0, 0, 200, 110, W) + R(28.5, 40.5, 56, 30, LG, 3, B) + L(38, 53, 36) + R(99.25, 34, 1.5, 42, S) +
+                    R(115.5, 40.5, 56, 30, LG, 3, B) + L(126, 53, 36);
+            },
+            'hstack': function () {
+                var out = R(0, 0, 200, 110, W);
+                [14, 76, 138].forEach(function (x) { out += R(x + .5, 40.5, 47, 29, LG, 0, B) + L(x + 8, 53, 30); });
+                return out;
+            },
+            'vstack': function () {
+                var out = R(0, 0, 200, 110, W);
+                [10, 42, 74].forEach(function (y) { out += R(40.5, y + .5, 119, 25, LG, 0, B) + L(50, y + 11, 60); });
+                return out;
+            }
+        };
+        if (!draw[key]) return '';
+        return '<svg class="sd-pal-tip-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+            draw[key]() + '</svg>';
+    }
+
+    // ── The hover card ──────────────────────────────────────────────────
+    // One card for every palette list, drawn beside the panel so it never
+    // covers the list being scanned. It does not take the pointer and goes
+    // away on press, drag and scroll: a drag starts exactly as before.
+    var _sdPalTip = { el: null, item: null, mute: null, timer: 0, closedAt: 0 };
+
+    function _sdPalTipHTML(item) {
+        var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
+        try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
+        var info = _sdPalInfo()[_sdPalKey(it)];
+        if (!info) return '';
+        var en = _sdEnglishOf(it.label).filter(function (k) { return _sdFold(k) !== _sdFold(it.label); })
+            .sort(function (a, b) { return a.length - b.length; })[0] || '';
+        var svg = info.v ? _sdPalDrawing(info.v) : '';
+        return (svg ? '<div class="sd-pal-tip-preview">' + svg + '</div>' : '') +
+            '<div class="sd-pal-tip-head">' +
+                (item.dataset.icon ? '<span class="bi ' + esc(item.dataset.icon) + '" aria-hidden="true"></span>' : '') +
+                '<span class="sd-pal-tip-name">' + esc(it.label) + '</span>' +
+                (en ? '<span class="sd-pal-tip-en">' + esc(en) + '</span>' : '') +
+            '</div>' +
+            (info.h ? '<code class="sd-pal-tip-code">' + esc(info.h) + '</code>' : '') +
+            '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>';
+    }
+
+    function _sdPalTipHide() {
+        clearTimeout(_sdPalTip.timer);
+        _sdPalTip.item = null;
+        var el = _sdPalTip.el;
+        if (!el || el.hidden) return;
+        el.classList.remove('is-on');
+        el.hidden = true;
+        _sdPalTip.closedAt = Date.now();
+    }
+
+    function _sdPalTipShow(item) {
+        if (dragData || !document.body.contains(item)) return;
+        var html = _sdPalTipHTML(item);
+        if (!html) { _sdPalTipHide(); return; }
+        var el = _sdPalTip.el;
+        if (!el || !document.body.contains(el)) {
+            el = document.createElement('div');
+            el.id = 'sd-pal-tip';
+            el.className = 'sd-pal-tip';
+            el.setAttribute('role', 'tooltip');
+            document.body.appendChild(el);
+            _sdPalTip.el = el;
+        }
+        el.innerHTML = html;
+        el.hidden = false;
+        var r = item.getBoundingClientRect();
+        var list = (item.closest('.sd-comp-items-scroll') || item).getBoundingClientRect();
+        var w = el.offsetWidth, h = el.offsetHeight;
+        var left = list.right + 8;
+        if (left + w > window.innerWidth - 8) left = Math.max(8, list.left - w - 8);
+        var top = Math.max(8, Math.min(r.top - 8, window.innerHeight - h - 8));
+        el.style.left = Math.round(left) + 'px';
+        el.style.top = Math.round(top) + 'px';
+        requestAnimationFrame(function () { if (!el.hidden) el.classList.add('is-on'); });
+    }
+
+    function _sdPalTipWire(root) {
+        if (!root || root._sdPalTipWired) return;
+        root._sdPalTipWired = true;
+        root.addEventListener('mouseover', function (e) {
+            var item = e.target && e.target.closest ? e.target.closest('.sd-drag-item') : null;
+            if (!item || item === _sdPalTip.item || item === _sdPalTip.mute) return;
+            clearTimeout(_sdPalTip.timer);
+            _sdPalTip.item = item;
+            // While a card is up, or was a moment ago, the next row answers
+            // at once: the operator is reading down the list.
+            var warm = (_sdPalTip.el && !_sdPalTip.el.hidden) || (Date.now() - _sdPalTip.closedAt < 500);
+            _sdPalTip.timer = setTimeout(function () {
+                if (_sdPalTip.item === item) _sdPalTipShow(item);
+            }, warm ? 60 : 450);
+        });
+        root.addEventListener('mouseout', function (e) {
+            var item = e.target && e.target.closest ? e.target.closest('.sd-drag-item') : null;
+            if (!item || (e.relatedTarget && item.contains(e.relatedTarget))) return;
+            if (_sdPalTip.mute === item) _sdPalTip.mute = null;
+            if (_sdPalTip.item === item) _sdPalTipHide();
+        });
+        var quiet = function (e) {
+            var item = e.target && e.target.closest ? e.target.closest('.sd-drag-item') : null;
+            if (item) _sdPalTip.mute = item;
+            _sdPalTipHide();
+        };
+        root.addEventListener('mousedown', quiet, true);
+        root.addEventListener('dragstart', quiet, true);
+        root.addEventListener('scroll', _sdPalTipHide, true);
+    }
+
     // ── Palette lists ───────────────────────────────────────────────────
     // Three lists draw the same kind of row: the component palette, the
     // ready-made block palette and the recently-used strip. They share the
@@ -50014,7 +51404,7 @@ const StyleDesigner = (function () {
 
     function _sdPaletteItemHTML(it, extraClass) {
         return '<div class="sd-drag-item' + (extraClass ? ' ' + extraClass : '') + '" draggable="true"' +
-            ' data-type="' + it.type + '" data-search="' + (it.label || '').toLowerCase() + '"' +
+            ' data-type="' + it.type + '" data-search="' + _sdPalSearchText(it) + '"' +
             ' data-label="' + (it.label || '').replace(/"/g, '&quot;') + '" data-icon="' + (it.icon || '') + '"' +
             (it.extra && Object.keys(it.extra).length ? " data-extra='" + JSON.stringify(it.extra).replace(/'/g, '&#39;') + "'" : '') + '>' +
             '<span class="sd-drag-icon bi ' + (it.icon || '') + '"></span><span class="sd-drag-label">' + it.label + '</span>' +
@@ -50112,10 +51502,20 @@ const StyleDesigner = (function () {
     function _sdWirePaletteSearch(input, clear, list) {
         if (!input || !list) return;
         input.addEventListener('input', function () {
-            var q = this.value.toLowerCase().trim();
+            var q = this.value.trim();
+            // Every word has to match, in any order: "link a", "button group".
+            // A word of one or two letters ("a", "hr", "ul") has to start a
+            // word of the item, or "a" would match nearly every row; a
+            // longer one may sit anywhere in it, as before.
+            var words = _sdFold(q).split(/\s+/).filter(Boolean);
             if (clear) clear.style.display = q ? 'block' : 'none';
+            _sdPalTipHide();
             list.querySelectorAll('.sd-drag-item').forEach(function (item) {
-                item.style.display = (!q || item.dataset.search.indexOf(q) !== -1) ? '' : 'none';
+                var hay = ' ' + (item.dataset.search || '');
+                var hit = words.every(function (w) {
+                    return hay.indexOf((w.length < 3 ? ' ' : '') + w) !== -1;
+                });
+                item.style.display = hit ? '' : 'none';
             });
             list.querySelectorAll('.sd-category').forEach(function (cat) {
                 var hasVisible = false;

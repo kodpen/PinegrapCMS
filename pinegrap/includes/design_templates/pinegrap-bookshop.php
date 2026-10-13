@@ -2194,9 +2194,9 @@ $widgets = array(
         'slug'   => 'form',
         'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
         'tree'   => $widget_root(array(
-            $field('bk-post-title', lang('Title'), $input('bk-post-title', 'text', 'title', 'off')),
-            $field('bk-post-summary', lang('Summary'), $textarea('bk-post-summary', 'summary', 3)),
-            $field('bk-post-cover', lang('Cover Image'), $file('bk-post-cover', 'cover_image', 'public')),
+            $field('bk-post-title', lang('Title'), pg_cf_with_role($input('bk-post-title', 'text', 'title', 'off'), 'title')),
+            $field('bk-post-summary', lang('Summary'), pg_cf_with_role($textarea('bk-post-summary', 'summary', 3), 'description')),
+            $field('bk-post-cover', lang('Cover Image'), pg_cf_with_role($file('bk-post-cover', 'cover_image', 'public'), 'media')),
             $field('bk-post-content', lang('Content'), $textarea('bk-post-content', 'content', 14)),
             $submit(lang('Publish')),
             $loop(array()),

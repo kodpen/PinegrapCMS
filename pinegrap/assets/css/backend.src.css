@@ -7909,6 +7909,28 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sm-burger .bi { font-size: 1.1rem; }
 
+/* Help for the category on view. An icon beside the close button, the same
+   height as the title line it sits on, and quiet until the pointer reaches it,
+   like the icon-only controls of the header. */
+.pg-sm-help {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-top: -.3rem;
+  border-radius: 50%;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+}
+.pg-sm-help:hover,
+.pg-sm-help:focus-visible {
+  background: var(--pg-tint-hover);
+  color: var(--bs-body-color);
+}
+.pg-sm-help .bi { font-size: 1.1rem; line-height: 1; }
+
 .pg-sm-body {
   flex: 1 1 auto;
   min-height: 0;

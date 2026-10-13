@@ -566,7 +566,13 @@ function pg_sw_index_form_data($data_rows)
         }
 
         $keys = array();
-        if (!empty($data_row['field_name']))  $keys[] = (string)$data_row['field_name'];
+        if (!empty($data_row['field_name'])) {
+            $keys[] = (string)$data_row['field_name'];
+            // A binding typed before hyphens were kept in tokens reads the
+            // name without them ("publish-date" → "publishdate").
+            $bare = preg_replace('/[^a-z0-9_]/i', '', (string)$data_row['field_name']);
+            if ($bare !== '') $keys[] = $bare;
+        }
         if (!empty($data_row['data_name']))   $keys[] = (string)$data_row['data_name'];
         if (!empty($data_row['field_label'])) {
             $label  = (string)$data_row['field_label'];

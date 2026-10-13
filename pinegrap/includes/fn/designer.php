@@ -3942,8 +3942,10 @@ function _apply_bindings($props)
     $bind_pairs = array();
     foreach ($props['_bindings'] as $prop_name => $field_name) {
         if (!$field_name) continue;
-        // Sanitize: field tokens must be [a-z0-9_] only
-        $safe = preg_replace('/[^a-z0-9_]/i', '', (string)$field_name);
+        // Sanitize: field tokens are [a-z0-9_-]. The hyphen is kept: a form
+        // field may be named "publish-date", and without it the token named
+        // no field and printed nothing.
+        $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
 
         // A date field may carry the format the classic screens read:

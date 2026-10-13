@@ -19,17 +19,41 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 
-// this function outputs the includes for the files needed for the control panel
-function output_control_panel_header_includes($include_assistant = true)
+/**
+ * The documentation address for a screen, or '' where help is not offered.
+ *
+ * A private-labelled site carries no Pinegrap links, help included. The table
+ * of screens and the lookup are in get_help_url.php, which is only loaded
+ * here, so the requests that draw no header never read it.
+ *
+ * @param array $properties topic and/or screen, see get_help_url()
+ * @return string
+ */
+function pg_help_url($properties = array())
 {
-    $help_url = '';
-    // If the site is not private labeled, then get help URL.  We hide the help button if site
-    // is private labeled, so no reason to get help url.
-    if (!defined('PRIVATE_LABEL') or PRIVATE_LABEL != true) {
-        require(PG_FUNCTIONS_DIR . '/get_help_url.php');
-        $languageinfo = lang(array('info' => ''));
-        $help_url = get_help_url(array('languageinfo' => $languageinfo));
+    if (defined('PRIVATE_LABEL') && PRIVATE_LABEL == true) {
+        return '';
     }
+
+    require_once(PG_FUNCTIONS_DIR . '/get_help_url.php');
+
+    if (!is_array($properties)) {
+        $properties = array();
+    }
+
+    $properties['languageinfo'] = lang(array('info' => ''));
+
+    return get_help_url($properties);
+}
+
+
+// this function outputs the includes for the files needed for the control panel
+//
+// $help_topic is the "page#anchor" a screen names for its help through
+// output_header()'s 'help' property; '' looks the screen up by its script.
+function output_control_panel_header_includes($include_assistant = true, $help_topic = '')
+{
+    $help_url = pg_help_url(array('topic' => (string) $help_topic));
 
     if (defined('DB_CONNECTED')) {
         $query = "SELECT custom_css FROM config";
@@ -217,7 +241,7 @@ function output_control_panel_header_includes($include_assistant = true)
             software_backend_user = ' . (defined('USER_ROLE') ? 'true' : 'false') . ',
             software_user_manage_ecommerce = ' . ((defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) ? 'true' : 'false') . ',
             software_update_check_needed = ' . ((defined('SOFTWARE_UPDATE_CHECK_NEEDED') && SOFTWARE_UPDATE_CHECK_NEEDED) ? 'true' : 'false') . ',
-            help_url = "' . $help_url . '",
+            help_url = "' . escape_javascript($help_url) . '",
             translate = ' . encode_json($translate) . ';
         (function() {
           const storedTheme = localStorage.getItem("pinegrap backend color scheme");
@@ -977,6 +1001,13 @@ function output_header($properties = false)
         $toolbar = $properties['toolbar'];
     }
 
+    // The documentation for this screen: the topic the screen names in its
+    // 'help' property ("page#anchor"), or the one its script maps to in
+    // get_help_url.php. '' on a private-labelled site, where no help control
+    // is drawn at all.
+    $help_topic = (isset($properties['help']) && is_string($properties['help'])) ? $properties['help'] : '';
+    $help_url = pg_help_url(array('topic' => $help_topic));
+
     $output_body_class = '';
     if (isset($properties['extra classes'])) {
         $output_body_class = $properties['extra classes'];
@@ -1208,12 +1239,16 @@ function output_header($properties = false)
             . '</span>'
             . '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none d-md-inline-block">' . get_short_version() . '</span>'
             . '</span>';
-        $output_help_link = '
+        // A plain link to the documentation of this screen, so a middle
+        // click, a copied address and a new tab all work like any other link.
+        if ($help_url !== '') {
+            $output_help_link = '
             <li id="help_link">
-                <a class="dropdown-item" href="#" title="' . lang('Help') . '">
+                <a class="dropdown-item no-popover" href="' . h($help_url) . '" target="_blank" rel="noopener" title="' . h(lang('Help for this screen')) . '">
                     <i class="bi bi-question-circle"></i><span>' . lang('Help') . '</span>
                 </a>
             </li>';
+        }
     } else {
         $output_logo = '<li class="nav-item"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' type="button" class="nav-link p-0 me-1 position-relative overflow-hidden" style="width:39.97px;;height:39.99px;border-radius:2px;"><img src="' . LOGO_URL . '" style="object-fit: scale-down;height: inherit;width: inherit;transform: rotate3d(0, 1, 0, 180deg);" border="0" alt="logo" title="" /></a></li>';
         $output_private_label_link_1 = '';
@@ -1706,6 +1741,24 @@ function output_header($properties = false)
         $output_settings_modal  = pg_settings_modal_markup($user);
     }
 
+    // Help for the screen on view, beside the settings. Not in the toolbar,
+    // for the same reason as the settings: that header is a thin strip inside
+    // the frame of the site being edited, and its account menu already
+    // carries the same link. Not on a phone either, where the row has no
+    // room left; the account menu is the way there.
+    $output_help_button = '';
+
+    if (($help_url !== '') && ($toolbar != true)) {
+        $output_help_button = '
+                <ul class="navbar-nav d-none d-sm-flex">
+                    <li class="nav-item no-popover" title="' . h(lang('Help for this screen')) . ' (F1)">
+                        <a id="help_button" class="nav-link nav-link-sm no-popover" href="' . h($help_url) . '" target="_blank" rel="noopener" aria-label="' . h(lang('Help for this screen')) . '">
+                            <span class="bi bi-question-circle" aria-hidden="true"></span>
+                        </a>
+                    </li>
+                </ul>';
+    }
+
     $output_header_search = '';
     if (empty($properties['hide_menu'])) {
         $output_header_search = '
@@ -1750,7 +1803,7 @@ function output_header($properties = false)
         <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
         <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . output_control_panel_header_includes() . '
+        ' . output_control_panel_header_includes(true, $help_topic) . '
         ' . $output_tour_head . '
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
     </head>
@@ -1781,6 +1834,7 @@ function output_header($properties = false)
                         <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '"><span class="bi bi-search"></span></button>
                     </li>
                 </ul>
+                ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown no-arrow  no-popover" title="' . lang('Notifications') . ' (Ctrl+Q | ⌘+Q)">
@@ -1897,6 +1951,12 @@ function output_header($properties = false)
                                                             <span class="badge bg-body-secondary text-body">K</span>
                                                         </span>
                                                         <span class="col form-text">' . lang('Show/Hide Search Box') . '</span>
+                                                    </div>
+                                                    <div class="row">
+                                                        <span class="col-auto form-text">
+                                                            <span class="badge bg-body-secondary text-body">F1</span>
+                                                        </span>
+                                                        <span class="col form-text">' . lang('Help for this screen') . '</span>
                                                     </div>
                                                 </div>
                                                 <div class="col-auto">
