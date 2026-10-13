@@ -3325,9 +3325,9 @@ function pg_pb_variant_sets_screen()
                     <input class="form-check-input" type="checkbox" name="group_ids[]" value="' . $set_id . '" />
                 </td>
                 <td class="align-middle text-start action-buttons text-nowrap">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" "
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2"
                         title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2" data-loading-content=" "
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2"
                         title="' . lang('Duplicate') . '" onclick="window.location.href=\'duplicate_product_group.php?id=' . $set_id . '\'"><i class="bi bi-files"></i></button>
                 </td>
                 <td class="chart_label align-middle">
@@ -3394,7 +3394,7 @@ function pg_pb_variant_sets_screen()
                         <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                             <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-2"></i>' . lang('Enable This') . '</button>
                             <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-2"></i>' . lang('Disable This') . '</button>
-                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang('Deleting') . '" data-confirm-content="' . lang('Delete the selected variant sets and all of their products? This cannot be undone.') . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
+                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang('Delete the selected variant sets and all of their products? This cannot be undone.') . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
                         </div>
                     </div>
                 </nav>
@@ -3483,8 +3483,8 @@ function pg_pb_variant_sets_screen()
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_product.php" data-loading-content="' . lang('Loading') . '"><i class="bi bi-plus-circle me-2"></i>' . lang('Create') . '</a>
-                            <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=products" data-loading-content="' . lang('Loading') . '"><i class="bi bi-list-ul me-2"></i>' . lang('All Products') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-2"></i>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=products"><i class="bi bi-list-ul me-2"></i>' . lang('All Products') . '</a>
                         </nav>
                     </div>
 
@@ -4413,7 +4413,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             the group tree for each.
         */
         ? '<nav class="navigation mb-3" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-link link-secondary" data-loading-content="' . lang('Duplicating') . '" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
+                <a class="btn btn-sm btn-link link-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
                 ' . (($v('product_form') or $v('pg_pb_has_form_fields'))
                     ? '<a class="btn btn-sm btn-link link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
                     : '') . '
@@ -5309,11 +5309,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 <nav class="buttons navigation text-center mb-4" aria-label="' . lang('data edit buttons') . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . (($pg_mode === 'edit') ? lang(array('string' => 'Saving')) : lang(array('string' => 'Creating'))) . '">
+                            <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success">
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="btn-text">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-loading-content="' . lang(array('string' => 'Deleting')) . '" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product')))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product')))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

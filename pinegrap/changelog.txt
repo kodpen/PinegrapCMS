@@ -1424,6 +1424,22 @@
          şu an görev sayacı çalışanlar. Kartlar yalnız Çalışma
          Alanı üyelerine görünüyor.
 
+  YÖNETİM PANELİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Düğmeler basılınca "Kaydediliyor",
+         "Oluşturuluyor", "Yükleniyor" yazısına dönüp on
+         saniye kilitlenmiyor. Ajax ile kaydeden ekranlarda
+         (Site Ayarları penceresi gibi) kayıt bitse de düğme
+         on saniye bekletiyordu. Artık etiket hiç değişmiyor;
+         yanlışlıkla çift tıklama ya da Enter'a iki kez basma
+         aynı formu veya bağlantıyı ikinci kez göndermiyor.
+
+  [DÜZELTME] Dosya yükleme ekranlarında yükleme hata
+         verirse Yükle düğmesi yeniden açılıyor; sayfa
+         tasarımcısında kayıt hata verince Kaydet
+         "Kaydediliyor" yazısında takılı kalmıyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

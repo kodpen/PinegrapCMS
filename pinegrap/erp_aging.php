@@ -74,7 +74,7 @@ foreach ($folded['accounts'] as $account) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_account.php?id=' . $account_id . '\'"><i class="bi bi-eye"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_account.php?id=' . $account_id . '\'"><i class="bi bi-eye"></i></button>
             </td>
             <td style="max-width:280px" class="text-nowrap text-truncate align-middle chart_label">' . h($account['title'])
                 . '<div class="small text-body-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></td>
@@ -127,7 +127,7 @@ pg_page_shell(array(
                     ' . h(lang(array('string' => '{var:1} as of {var:2}: {var:3} document(s) open on {var:4} account(s)', 'vars' => array($direction_titles[$direction], prepare_form_data_for_output($as_of, 'date', false), (int) $folded['totals']['count'], count($folded['accounts']))))) . '
                 </div>
                 <a class="btn btn-sm btn-ghost" href="erp_aging.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Invoices') . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Invoices') . '</a>
             </nav>
 
             <div class="card my-4">

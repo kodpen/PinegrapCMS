@@ -533,7 +533,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                 <div class="modal-footer">
                 <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşut application?') . '</p>
                     <button type="button" class="no-submit btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-success" data-loading-content="' . lang(array('string'=>'Generating') ) . '"><span class="material-icons me-2">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
+                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-success"><span class="material-icons me-2">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
             </div>
         </div>
@@ -2602,7 +2602,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '<tr id="' . $id . '">
                 <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="orders[]" value="' . $id . '" class="checkbox" /></td>
                 <td class="align-middle text-start col-reorder-none action-buttons">
-                    <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_cancel_button . '
                     ' . $output_shipping_tracking_cell . '
                 </td>
@@ -2953,7 +2953,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
                         </div>
                                 
                     </div>
@@ -3204,7 +3204,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <div class="pg-toolbar-grow"></div>
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
-                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
                 ' . $output_order_stats . '
@@ -3244,9 +3244,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_generate_xlsl_button . '
-                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-primary disabled" data-loading-content="' . lang(array('string'=>'Removing') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-2">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
-                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-warning disabled" data-loading-content="' . lang(array('string'=>'Cancelling') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-2"></i>' . lang('Cancel Selected') . '</button>
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-2">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
+                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-2"></i>' . lang('Cancel Selected') . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

@@ -86,7 +86,7 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
             <div class="card-body row g-2 align-items-end">
                 <div class="col-12 fw-semibold">' . $title . '</div>
                 ' . $fields . '
-                <div class="col-12 col-md-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100" data-loading-content="' . lang(array('string' => 'Please Wait')) . '">' . $button . '</button></div>
+                <div class="col-12 col-md-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
                 ' . (($note !== '') ? '<div class="col-12 form-text">' . $note . '</div>' : '') . '
             </div>
         </form>';

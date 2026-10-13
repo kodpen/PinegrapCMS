@@ -304,7 +304,7 @@ if (!$is_cancelled && ($unallocated > 0)) {
                             </table>
                         </div>
                         <div class="text-end mt-3">
-                            <button type="submit" name="submit_allocate" value="Allocate" class="btn btn-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the allocations') . '</span></button>
+                            <button type="submit" name="submit_allocate" value="Allocate" class="btn btn-primary"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the allocations') . '</span></button>
                         </div>
                     </div>
                 </div>
@@ -348,7 +348,7 @@ if (!$is_cancelled) {
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                                <button type="submit" name="submit_cancel" value="Cancel" class="btn btn-outline-warning" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Confirm the cancellation') . '</span></button>
+                                <button type="submit" name="submit_cancel" value="Cancel" class="btn btn-outline-warning"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Confirm the cancellation') . '</span></button>
                             </div>
                         </div>
                     </form>

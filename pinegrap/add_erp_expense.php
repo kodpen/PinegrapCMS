@@ -409,8 +409,8 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
-                            ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save and record another') . '</span></button>' : '') . '
+                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save and record another') . '</span></button>' : '') . '
                         </div>
                     </div>
                 </nav>

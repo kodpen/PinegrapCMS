@@ -337,8 +337,8 @@ foreach ($commissions as $commission) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start col-reorder-none">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_commission.php?id=' . $commission['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_commission.php?id=' . $commission['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . h($commission['affiliate_name']) . '</td>
             <td class="align-middle">' . h($commission['affiliate_code']) . '</td>
@@ -460,7 +460,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
                     </div>
                 </div>
                 <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                    <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                    <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
                 </div>
             </div>
            

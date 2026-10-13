@@ -403,8 +403,8 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
             // (pg_designer_target_modal()); the classic page screen stays
             // beside it.
             ? '<button type="button" class="btn btn-sm btn-primary m-1" data-pg-design-target="add" data-from="pages"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</button>
-               <a class="btn btn-sm btn-outline-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page (Legacy)') . '</a>'
-            : '<a class="btn btn-sm btn-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</a>') . '
+               <a class="btn btn-sm btn-outline-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page (Legacy)') . '</a>'
+            : '<a class="btn btn-sm btn-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</a>') . '
         ';
 
     // If advanced search is enabled and the user is a manager or above then output "Update Search Index" button.
@@ -420,8 +420,8 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     if (USER_ROLE < 3) {
         $output_button_bar .= '
         <div class=" btn-group btn-group-sm flex-wrap">
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
+            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
+            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
         </div>';
     }
 
@@ -1350,8 +1350,8 @@ if ($pages) {
             '<tr>
                 <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>
 			    <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
                 </td>
                 <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
@@ -1469,7 +1469,7 @@ $output_delete_selected_button = '';
 
 // if the user is at least a manager or has access to delete pages, then output the delete selected button
 if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
-    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
 }
 
 echo

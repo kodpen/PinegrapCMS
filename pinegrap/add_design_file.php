@@ -95,7 +95,6 @@ if (!$_POST) {
                 this.on("sendingmultiple", function() {
                     $("#submit").prop("disabled", true);
                     $("#submit").addClass("disabled");
-                    $("#submit").html("<span class=\'spinner-border spinner-border-sm\'></span> ' . lang('Uploading') . '...");
                 });
 
                 this.on("successmultiple", function(files, response) {
@@ -109,6 +108,8 @@ if (!$_POST) {
                     
                 });
                 this.on("errormultiple", function(files, response) {
+                    $("#submit").prop("disabled", false);
+                    $("#submit").removeClass("disabled");
                     console.log("' . lang('Sorry, the files could not be uploaded.  Please refresh and try again.') . '");
                 });
             }

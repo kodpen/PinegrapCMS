@@ -127,8 +127,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     '<tr class="unselectable ">
         
         <td class="align-middle text-start action-buttons">
-            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+            <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
         <td class="' . $row_style .'">' . h($row['order_number']) . '</td>
         <td class="' . $row_style .'" nowrap>' . h($row['total']) . '</td>

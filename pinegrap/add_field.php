@@ -141,7 +141,7 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     if (!$form_name) {
         $form_name = $page_name;
     }
-    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
+    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
     $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'Create a new field on this {var:1}.','vars'=>$form_type_name ) );
@@ -230,7 +230,7 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     }
     
 
-    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
+    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php');
     $output_form_designer_content_heading = lang('Create Product Form Field');
     $output_form_designer_content_subheading = lang('Create a new field on this product form.');
@@ -548,7 +548,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

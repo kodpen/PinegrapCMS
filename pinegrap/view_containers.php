@@ -171,8 +171,8 @@ foreach ($containers as $container) {
         '<tr>
             <td></td>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_container.php?id=' . $container['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2" data-loading-content=" " title="' . lang('Delete') . '"><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_container.php?id=' . $container['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2" title="' . lang('Delete') . '"><i class="material-icons">delete</i></button>-->
             </td>
             <td class="chart_label align-middle ' . ($container['enabled'] ? 'status_enabled' : 'status_disabled') . '">' . h($container['name']) . '</td>
             <td class="align-middle text-center">' . $output_enabled . '</td>
@@ -205,7 +205,7 @@ echo
                     <div class="col-12 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_container.php" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_container.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
                         </nav>
                     </div>
                 </div>

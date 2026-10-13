@@ -178,7 +178,7 @@ pg_page_shell([
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                             <div class="form-text">' . h($output_send_note) . '</div>
                         </div>
-                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Sending')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Send the letter') . '</span></button>
+                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Send the letter') . '</span></button>
                     </form>
                 </div>
             </div>

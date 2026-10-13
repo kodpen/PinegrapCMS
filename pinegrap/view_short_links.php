@@ -193,8 +193,8 @@ if ($short_links) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . ($short_link_token ? '' : '<a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                    ' . ($short_link_token ? '' : '<a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
                 </td>
                 <td class="align-middle chart_label">' . $output_name . '</td>
                 <td class="align-middle">' . $output_destination_type . '</td>
@@ -228,7 +228,7 @@ pg_page_shell(
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                     </nav>
                 </div>
             </div>

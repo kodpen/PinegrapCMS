@@ -1582,7 +1582,7 @@ if (!$_POST) {
         
         // if the order is complete, then output save
         if ($status != 'incomplete') {
-            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
+            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
         // if the order is cancelled, output a restore button to revert it to complete
@@ -2499,7 +2499,7 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
                 <input type="hidden" name="from_order_screen" value="1" />
-                <button type="submit" name="submit_create" value="Create" class="btn btn-link link-secondary py-0 mb-2" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
+                <button type="submit" name="submit_create" value="Create" class="btn btn-link link-secondary py-0 mb-2" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
             </form>' . $output_erp_waybill;
             } else {
                 $output_erp_buttons = '
@@ -2770,7 +2770,7 @@ if (!$_POST) {
                             <div class=" btn-group flex-wrap justify-content-center d-print-none">
                                 ' . $output_save_button . '
                                 ' . $output_restore_button . '
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

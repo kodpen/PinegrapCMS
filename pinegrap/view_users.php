@@ -1244,8 +1244,8 @@ foreach ($user_rows as $row) {
         '<tr class="' . $output_selectable_class . '">
             <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
 			<td class="align-middle text-start action-buttons">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_identity_badges . '</td>
             ' . $output_email_address_column . '
@@ -1287,7 +1287,7 @@ echo
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_users.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
@@ -1341,7 +1341,7 @@ echo
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

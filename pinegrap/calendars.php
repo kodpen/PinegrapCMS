@@ -72,7 +72,7 @@ if($calendar_name == ''){
     $pg_breadcrumb_items[] = array('label' => lang('All Calendars'));
 }else{
     $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
-    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
+    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
 }
 echo
 
@@ -102,7 +102,7 @@ pg_page_shell(
                 <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
 
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_calendar_event.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_calendar_event.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
                         ' . $output_edit_calendar_button . '
                     </nav>
                 </div>

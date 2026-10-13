@@ -642,7 +642,7 @@ if (!$_POST) {
                         </div>
                     </div>
                     <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                        <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1">
+                        <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1">
                             <i class="material-icons me-2">sync</i>' . lang('Update') . '
                         </button>
                     </div>
@@ -697,7 +697,7 @@ if (!$_POST) {
                         <div class="row justify-content-center justify-content-md-end">
                             <form action="view_log.php" method="get" name="form" class="search_form col-auto">
                                 <div class="input-group input-group-sm">   
-                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
+                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
                                 </div>
                             </form>
                         </div>

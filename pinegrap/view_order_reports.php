@@ -142,8 +142,8 @@ if ($order_reports) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>-->
                 </td>
                 <td class="chart_label align-middle">' . h($order_report['name']) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $order_report['created_timestamp'])) . ' ' . $created_username . '</td>
@@ -174,7 +174,7 @@ echo
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="view_order_report.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="view_order_report.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                     </nav>
                 </div>
             </div>

@@ -38,7 +38,7 @@ $output_add_calendar_button = '';
 // if user is a manager or above.
 if ($user['role'] < 3) {
    
-    $output_add_calendar_button = '<a class="btn btn-sm btn-primary m-1 " href="add_calendar.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+    $output_add_calendar_button = '<a class="btn btn-sm btn-primary m-1 " href="add_calendar.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
 }
 
 // if the sort is not set yet, then default it to empty so that the switch below falls
@@ -127,7 +127,7 @@ if ($calendars) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Expand') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-chevron-right"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Expand') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-chevron-right"></i></button>
                 </td>
                 <td class="align-middle chart_label">' . h($calendar['name']) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $calendar['created_timestamp'])) . ' ' . $created_username . '</td>

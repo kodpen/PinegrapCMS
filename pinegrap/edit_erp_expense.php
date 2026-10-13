@@ -257,7 +257,7 @@ if ($status === 'paid') {
                 <input type="text" class="form-control form-control-sm" id="paid_date" name="paid_date" value="' . h(prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
             </div>
             <div class="col-12 col-md-2">
-                <button type="submit" class="btn btn-sm btn-success w-100" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Pay') . '</button>
+                <button type="submit" class="btn btn-sm btn-success w-100"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Pay') . '</button>
             </div>
         </form>';
 } else {
@@ -318,7 +318,7 @@ if ($kept !== null) {
                         <input type="hidden" name="erp_action" value="replace" />
                         <div class="input-group input-group-sm">
                             <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
-                            <button type="submit" class="btn btn-outline-primary" data-confirm-content="' . h(lang('Take the new file in place of this one? The earlier file stays with the expense.')) . '" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Replace') . '</button>
+                            <button type="submit" class="btn btn-outline-primary" data-confirm-content="' . h(lang('Take the new file in place of this one? The earlier file stays with the expense.')) . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Replace') . '</button>
                         </div>
                         <div class="form-text">' . lang('For a blurred picture or the wrong page. The earlier file is not deleted; it stays listed with the expense.') . '</div>
                     </form>
@@ -336,7 +336,7 @@ if ($kept !== null) {
             <label for="receipt_file" class="form-label">' . lang('A picture or a PDF of the receipt') . '</label>
             <div class="input-group input-group-sm">
                 <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
-                <button type="submit" class="btn btn-outline-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Keep') . '</button>
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Keep') . '</button>
             </div>
             <div class="form-text">' . h(lang(array('string' => 'At most {var:1} MB. On a phone the camera can take it.', 'vars' => (int) (ERP_EXPENSE_FILE_MAX_BYTES / 1048576)))) . '</div>
         </form>';
@@ -467,8 +467,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ($can_change ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_expense.php?id=' . $id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
-                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_expense.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
+                ' . ($can_change ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_expense.php?id=' . $id . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
                 <span class="ms-2">' . $output_badge . '</span>
             </nav>
 

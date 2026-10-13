@@ -180,7 +180,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'notes', 'name' => 'notes', 'class' => 'form-control', 'maxlength' => '255')) . '
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                         <span class="form-text ms-2">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
                     </div>
                 </div>

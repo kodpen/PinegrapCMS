@@ -430,7 +430,7 @@ if ($files) {
                     if ($image_library_available && pg_image_can_be_resized($image_width, $image_height)) {
 
                         $output_resize_button =
-                            '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2" data-loading-content=" " title="'
+                            '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2" title="'
                             . lang(array(
                                 'string' => 'Resize to {var:1} pixels and optimize',
                                 'vars'   => array($image_resize_target))) . '" onclick="window.location.href=\''
@@ -455,13 +455,13 @@ if ($files) {
                                 $optimize_percent_html = '<span class="ps-1 pe-2 fs-smaller">' . (int) $file['optimization_percent'] . '%</span>';
                             }
                         }
-                        $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-success border-2 " data-loading-content=" " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle"></i>' . $optimize_percent_html . '</button>';
+                        $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle"></i>' . $optimize_percent_html . '</button>';
                     }
-                    $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file['name']) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-brush"></i></button>';
+                    $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file['name']) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-brush"></i></button>';
             }
 
             $output_edit_buttons = '
-            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_resize_button . $output_edit_image_button;
+            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_resize_button . $output_edit_image_button;
 
         }
 
@@ -512,7 +512,7 @@ if ($files) {
             <td class="select-all align-middle text-start">' . $output_check_box . '</td>
 			<td class="align-middle text-start action-buttons">
                 ' . $output_edit_buttons . '
-                <a class="m-1 btn-data-control btn btn-outline-warning border-2 " title="' . lang('Download') . '" data-loading-content=" " download="' . h($file['type']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
+                <a class="m-1 btn-data-control btn btn-outline-warning border-2 " title="' . lang('Download') . '" download="' . h($file['type']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
             </td>
             ' . $output_thumbnail_cell . '
             <td class="align-middle chart_label' . $output_design_class . '" title="' . h($file['name']) . '">' . h($file['name']) . '</td>
@@ -545,9 +545,9 @@ echo
                 ' . $liveform->output_notices() . '
                 <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
-                            <a class="btn btn-sm btn-primary m-1 " href="create_file.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <a class="btn btn-sm btn-outline-primary m-1 " href="view_folders.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-folder2-open me-2"></span>' . lang(array('string'=>'File Manager') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1 " href="add_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1 " href="create_file.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-outline-primary m-1 " href="view_folders.php"><span class="bi bi-folder2-open me-2"></span>' . lang(array('string'=>'File Manager') ) . '</a>
                             <div class="pg-toolbar-grow"></div>
                             <form id="search_form" action="view_files.php" method="get" class="search_form">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
@@ -592,7 +592,7 @@ echo
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-primary disabled" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

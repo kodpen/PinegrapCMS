@@ -261,7 +261,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Importing') ) . '" ><span class="material-icons me-2">file_upload</span><span class="btn-text" >' . lang(array('string'=>'Import Users') ) . '</span></button>
+                                <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="btn-text" >' . lang(array('string'=>'Import Users') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

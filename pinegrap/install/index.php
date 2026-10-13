@@ -1851,7 +1851,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	$output_version_warning = '';
 	$output_submit_button_value = 'Install';
 	$output_submit_button_label = lang('Start the installation');
-	$output_submit_button_process_label = lang('Installing');
 	$output_submit_button_icon ='bi-play-fill';
 
 	$output_upgrade = '';
@@ -1957,7 +1956,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						$liveform->assign_field_value('install_type', 'upgrade');
 						$output_submit_button_value = 'Upgrade';
 						$output_submit_button_label = lang('Start the upgrade');
-						$output_submit_button_process_label = lang('Upgrading');
 						$output_submit_button_icon ='bi-arrow-up-circle';
 
 					}
@@ -2481,7 +2479,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			<div class="small text-body-secondary mb-2">' . lang(array('string' => 'Only .zip files, and the server accepts at most {var:1}.', 'vars' => get_install_size_label(get_install_upload_limit()))) . '</div>
 			<input type="file" name="backup_zip" id="backup_zip" accept=".zip,application/zip" class="form-control form-control-sm mb-2" data-limit="' . (int) get_install_upload_limit() . '">
 			<div class="alert alert-danger small text-start d-none mb-2" id="pg_zip_too_large"></div>
-			<button type="submit" class="btn btn-sm btn-outline-primary" name="submit_backup_zip" value="1" data-loading-content="' . lang('Please Wait') . '"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
+			<button type="submit" class="btn btn-sm btn-outline-primary" name="submit_backup_zip" value="1"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
 			<div class="alert alert-warning small text-start mt-3 mb-0 d-flex gap-2">
 				<i class="bi bi-shield-check"></i>
 				<div>' . lang('The archive has to contain a folder with sql.sql inside it, otherwise nothing is extracted. Paths in the archive are trimmed, so a prepared file cannot write outside of the backups folder.') . '</div>
@@ -2977,7 +2975,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	</style>
 	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 	  	<ul class="navbar-nav me-auto">
-			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 	  	</ul>
 	  	<ul class="navbar-nav ms-auto">
 			<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
@@ -3501,7 +3499,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					</div>
     	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
-    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success " data-loading-content="' . $output_submit_button_process_label . '"><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
+    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>
     	  	  	  	</div>
     	  	  	</form>
@@ -4793,7 +4791,7 @@ else {
 			get_header() . '
 			<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 				  <ul class="navbar-nav me-auto">
-					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 				  </ul>
 				  <ul class="navbar-nav ms-auto">	
 					<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
@@ -6121,7 +6119,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			get_header() . '
 		<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 			  <ul class="navbar-nav me-auto">
-				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 			  </ul>
 		</nav>';
 

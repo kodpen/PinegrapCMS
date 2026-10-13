@@ -113,7 +113,7 @@ if (!$_POST) {
         $output_button_bar =
             '<nav id="button_bar" class="navigation " aria-label="Button Bar">
                 <div class=" btn-group btn-group-sm flex-wrap">
-                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1">send</span>' . lang('Send Campaign') . '</a>
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1">send</span>' . lang('Send Campaign') . '</a>
                 </div>
             </nav>';
     }
@@ -196,7 +196,7 @@ if (!$_POST) {
             '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                 <div class="container">
                     <div class=" btn-group flex-wrap justify-content-center">
-                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
+                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
                     </div>
                 </div>
             </nav>';

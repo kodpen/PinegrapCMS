@@ -231,8 +231,8 @@ if ($email_campaigns) {
             '<tr>
                 <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="email_campaigns[]" value="' . $email_campaign['id'] . '" class="checkbox" /></td>
 			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle">' . $output_to . '</td>
                 <td class="align-middle">' . h($email_campaign['email_campaign_profile_name']) . '</td>
@@ -270,7 +270,7 @@ pg_page_shell(
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_email_campaign.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_email_campaign.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <div class="disable_shortcut d-inline-block">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 m-1" href="view_email_campaign_history.php"><span class="material-icons me-1">history</span>' . lang(array('string'=>'My Campaign History') ) . '</a>
@@ -310,7 +310,7 @@ pg_page_shell(
                         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                 </div>
                             </div>
                         </nav>

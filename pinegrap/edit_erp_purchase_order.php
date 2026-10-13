@@ -144,7 +144,7 @@ $money = function ($kurus) use ($order) {
 $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id) {
     return '<form method="post" action="edit_erp_purchase_order.php" class="d-inline">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $order_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
-        . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . ' data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
+        . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
 // What has come against each line, and the invoices it came on.
@@ -197,7 +197,7 @@ if ($editable) {
                 ' . erp_invoice_form_cards($liveform, array('purchase_order' => true, 'lines' => erp_invoice_form_lines($liveform, erp_purchase_order_editor_rows($order)))) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                        <button type="submit" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
             </form>
@@ -356,7 +356,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The purchase order PDF is attached. Once it has gone, the order is marked as sent.') . '</div>
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-sm btn-primary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
                 </div>
             </form>';
     }
@@ -381,7 +381,7 @@ $status = $statuses[$status_key] ?? array($status_key, 'secondary');
 
 // A copy is always a new open order, whatever became of this one.
 $output_copy_button = (!$readonly && erp_purchase_orders_ready())
-    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?copy=' . $order_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?copy=' . $order_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
     : '';
 
 // The same gate as the audit trail screen: the ERP settings managers and the accountant.

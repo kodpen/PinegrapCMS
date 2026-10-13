@@ -40,14 +40,14 @@ if (!$_POST) {
     $pg_breadcrumb_items = array();
     if(($_REQUEST['from'] ?? '') == 'edit_design_file'){
         $output_breadcrumb_content =
-        '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php">' . lang('All Design Files') . '</a></li>
-        <li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . h($_REQUEST['id']) . '">' . lang('Edit Design File') . '</a></li>';
+        '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php">' . lang('All Design Files') . '</a></li>
+        <li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . h($_REQUEST['id']) . '">' . lang('Edit Design File') . '</a></li>';
         $pg_breadcrumb_items[] = array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php');
         $pg_breadcrumb_items[] = array('label' => lang('Edit Design File'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . h($_REQUEST['id']));
     }else if(($_REQUEST['from'] ?? '') == 'edit_theme_file'){
         $output_breadcrumb_content =
-        '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php">' . lang('All Themes') . '</a></li>
-        <li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . h($_REQUEST['id']) . '">' . lang('Edit Theme') . '</a></li>';
+        '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php">' . lang('All Themes') . '</a></li>
+        <li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . h($_REQUEST['id']) . '">' . lang('Edit Theme') . '</a></li>';
         $pg_breadcrumb_items[] = array('label' => lang('All Themes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php');
         $pg_breadcrumb_items[] = array('label' => lang('Edit Theme'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . h($_REQUEST['id']));
     }
@@ -101,9 +101,9 @@ if (!$_POST) {
                         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">control_point_duplicate</span><span class="btn-text">' . lang(array('string'=>'Duplicate') ) . '</span></button>
+                                    <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
+                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="btn-text">' . lang(array('string'=>'Duplicate') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

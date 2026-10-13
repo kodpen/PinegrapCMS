@@ -2638,7 +2638,7 @@ function output_menu($properties = false)
             . '<span class=\'input-group-text\'>' . h(lang('seconds')) . '</span>'
             . '</div>'
             . '<button type=\'submit\' class=\'btn btn-sm btn-primary w-100 mb-1\'>' . h(lang('Update')) . '</button>'
-            . '<button type=\'button\' onclick=\'reset_widgets()\' data-loading-content=\' \' class=\'btn btn-sm btn-secondary w-100\'>' . h(lang('Reset Widgets')) . '</button>'
+            . '<button type=\'button\' onclick=\'reset_widgets()\' class=\'btn btn-sm btn-secondary w-100\'>' . h(lang('Reset Widgets')) . '</button>'
             . '</form>';
     }
 

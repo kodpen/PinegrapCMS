@@ -25,7 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="col-12 text-center text-md-start">
                     <h2 class="d-inline-block " data-bs-content="<?=lang('All key codes assigned to specific offers.')?>" title="<?=lang('All Key Codes')?>"><?=lang('All Key Codes')?></h2>
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                    	<a class="btn btn-sm btn-primary m-1 " href="add_key_code.php" data-loading-content="<?=lang(array('string'=>'Loading') )?>"><span class="bi bi-plus-circle me-2"></span><?=lang('Create')?></a>
+                    	<a class="btn btn-sm btn-primary m-1 " href="add_key_code.php"><span class="bi bi-plus-circle me-2"></span><?=lang('Create')?></a>
 						<form  class="disable_shortcut d-inline-block" method="get">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 m-1" href="import_key_codes.php"><span class="bi bi-box-arrow-in-right me-1"></span><?=lang(array('string'=>'Import') )?></a>
@@ -60,7 +60,7 @@ if (!defined('PG_INIT_LOADED')) {
 							<?php foreach($key_codes as $key_code): ?>
 								<tr>
 									<td class="align-middle text-start">
-                					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
+                					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
                 					</td>
 									<td class="chart_label align-middle <?php if ($key_code['status_enabled']): ?>status_enabled text-success<?php else: ?>status_disabled text-danger<?php endif ?>">
 										<?=h($key_code['code'])?>

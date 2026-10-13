@@ -243,8 +243,8 @@ if (!$_POST) {
             '<tr id="' . $item['id'] . '" class="' . $output_product_group_class . '">
                 <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
 			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 ' . $output_image_column . '
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . '</td>
@@ -283,7 +283,7 @@ if (!$_POST) {
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
             '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
@@ -508,7 +508,7 @@ if (!$_POST) {
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -545,7 +545,7 @@ if (!$_POST) {
 
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-2 " href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                                 ' . $output_workspace_button . '
                             </div>
                         </nav>
@@ -803,7 +803,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 

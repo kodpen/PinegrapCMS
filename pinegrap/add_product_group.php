@@ -65,7 +65,7 @@ if (!$_POST) {
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
             '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="align-middle chart_label ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
@@ -360,7 +360,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

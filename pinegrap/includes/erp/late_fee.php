@@ -413,7 +413,7 @@ function erp_late_fee_panel($account, $from = '', $as_of = '', $back = 'account'
             . '<input type="hidden" name="from" value="' . h((string) $from) . '" />'
             . '<input type="hidden" name="as_of" value="' . h((string) $as_of) . '" />'
             . '<input type="hidden" name="back" value="' . h(($back === 'reconciliation') ? 'reconciliation' : 'account') . '" />'
-            . '<button type="submit" class="btn btn-sm btn-outline-primary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('Late payment fee invoice')) . '</button>'
+            . '<button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('Late payment fee invoice')) . '</button>'
             . '</form>';
     }
 

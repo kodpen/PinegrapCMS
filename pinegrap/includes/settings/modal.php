@@ -207,8 +207,7 @@ function pg_settings_modal_markup($user)
                     <span class="pg-sm-meta small text-body-secondary" id="pg_settings_modal_meta"></span>
                     <div class="ms-auto d-flex align-items-center gap-2">
                         <button type="button" class="btn btn-sm btn-link link-body-emphasis text-decoration-none no-popover" data-bs-dismiss="modal">' . h(lang('Close')) . '</button>
-                        <button type="button" class="btn btn-success btn-sm" id="pg_settings_modal_save" disabled="disabled"
-                            data-loading-content="' . h(lang('Saving')) . '">
+                        <button type="button" class="btn btn-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
                             <i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang('Save')) . '</span>
                         </button>
                     </div>
