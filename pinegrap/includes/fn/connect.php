@@ -21,7 +21,9 @@
  *                                         and who may own the connection.
  *
  * Adding a provider or a purpose is adding a file: nothing here changes and
- * no column is added.
+ * no column is added. A provider marked 'accounts' => false only signs people
+ * in (the sign-in screens): Connected accounts does not list it and no
+ * account can be connected through it.
  *
  * Every provider is the site's own application (registered by the operator
  * in the provider's console, credentials in connect_apps), so the consent
@@ -1177,7 +1179,9 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
     $provider = pg_connect_provider($provider_key);
     $purpose = pg_connect_purpose($purpose_key);
 
-    if (!is_array($provider) || !pg_connect_purpose_allows($purpose, $provider_key, $owner)) {
+    // A sign-in-only provider (accounts => false) has nothing to connect.
+    if (!is_array($provider) || (isset($provider['accounts']) && ($provider['accounts'] === false))
+        || !pg_connect_purpose_allows($purpose, $provider_key, $owner)) {
         return $fail(lang('This kind of connection is not available.'));
     }
 

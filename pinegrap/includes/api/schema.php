@@ -606,6 +606,128 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		/* ----- Site log ----------------------------------------------------- */
+
+		array(
+			'id'      => 'site_log.list',
+			'method'  => 'GET',
+			'path'    => '/site-log',
+			'scope'   => 'site_log:read',
+			'handler' => 'api_site_log_list',
+			'returns' => array('list' => 'SiteLogEntry'),
+			'summary' => 'Site log',
+			'description' => 'What was done on the site, newest first, cursor paged, as the Site Log screen lists it: the sentence it was logged with (in the site\'s language), the account that did it and the address it came from. user is null for what visitors and the site\'s own jobs did. Read only. The PHP error logs on the same screen are not here.',
+			'params'  => array(
+				array('name' => 'from',   'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'user',   'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only what this username did.'),
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the description.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		/* ----- Gift cards -------------------------------------------------- */
+
+		array(
+			'id'      => 'gift_cards.list',
+			'method'  => 'GET',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_list',
+			'returns' => array('list' => 'GiftCard'),
+			'summary' => 'Gift cards',
+			'description' => 'Newest first, cursor paged. Money is in minor units. status: active (balance left and not expired), used (nothing left) or expired (past expires_on, whatever is left on it). A card bought in an order carries order_id, from_name, recipient_email, message and delivery_date. code is the money itself: whoever holds it can spend the balance at checkout.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'used', 'expired')),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the cards bought in this order.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the code (with or without its dashes), the notes, who it is from or the recipient\'s e-mail address.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.get',
+			'method'  => 'GET',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_get',
+			'returns' => 'GiftCard',
+			'summary' => 'One gift card',
+			'description' => 'With redemptions: each order the card was spent in, how much, and the balance before and after.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.create',
+			'method'  => 'POST',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_create',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Issue a gift card',
+			'description' => 'One card worth amount, with a new sixteen-digit code, as the gift cards screen issues it - for a prize, a refund or a card sold outside the store. The answer carries the code; nothing is mailed to anyone.',
+			'params'  => array(
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero. The balance starts at the same amount.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be spent. Left out, it never expires.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only.')
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_update',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Change a gift card',
+			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'description' => 'Minor units, zero or more.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete',
+			'method'  => 'DELETE',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card',
+			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete_post',
+			'method'  => 'POST',
+			'path'    => '/gift-cards/{id}/delete',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card, addressed as a POST',
+			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Calendars ---------------------------------------------------- */
 
 		array(
@@ -982,6 +1104,55 @@ function api_schema() {
 				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),
 				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'month'), 'default' => 'day'),
 				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled'), 'description' => 'One status instead of the two that count as sales.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.traffic',
+			'method'  => 'GET',
+			'path'    => '/reports/traffic',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_traffic',
+			'returns' => 'TrafficReport',
+			'summary' => 'Visits and page views by day or hour',
+			'description' => 'From the hourly counters the Welcome screen draws its traffic chart with, so any window costs the same. A visit is a visitor session started in that period; page views are the pages it opened. Every day (or hour) of the window is in periods, empty ones as zeros, by the site\'s own clock. Defaults to the last thirty days by day. A window is at most 400 days by day and 31 by hour. visitor_tracking false means the site is not counting visits, so the figures stay at zero.',
+			'params'  => array(
+				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'hour'), 'default' => 'day')
+			)
+		),
+
+		array(
+			'id'      => 'reports.top_content',
+			'method'  => 'GET',
+			'path'    => '/reports/top-content',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_top_content',
+			'returns' => array('list' => 'TopContent'),
+			'summary' => 'Most viewed pages and items',
+			'description' => 'The pages, products, product groups and form records opened most in the window, most views first, with the title and the address they are opened at. One page. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 10)
+			)
+		),
+
+		array(
+			'id'      => 'reports.visitors',
+			'method'  => 'GET',
+			'path'    => '/reports/visitors',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_visitors',
+			'returns' => 'VisitorBreakdown',
+			'summary' => 'Visits by source, campaign, landing page or place',
+			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (pay_per_click when the tracking code carries the pay-per-click flag of the SEO settings, organic when a search engine referred it, otherwise neither), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted) or site_search_terms. A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('referrer_host', 'search_engine', 'search_terms', 'channel', 'landing_page', 'tracking_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'country', 'state', 'city', 'form', 'site_search_terms'), 'required' => true),
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
 			)
 		),
 
