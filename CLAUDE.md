@@ -55,9 +55,10 @@ zaten verilmiş kararlar listeleniyor.
   PR #238, etiket `1c3703e`) ve **kapalıdır**; etiket taşınmaz,
   `2026.4.9.php`'ye, `versions.php` satırına ve changelog başlığına
   dokunulmaz. **Açık sürüm: 2026.4.10** (2026-10-13'te açıldı:
-  `versions.php` satırı ve `changelog.txt` başlığı; henüz şema adımı yok,
-  ilk şema adımı `includes/migrations/2026.4.10.php` →
-  `upgrade_to_2026_4_10()` dosyasını açar, alt adım etiketleri `10.x`).
+  `versions.php` satırı ve `changelog.txt` başlığı; migration dosyası
+  `includes/migrations/2026.4.10.php` → `upgrade_to_2026_4_10()` ilk şema
+  adımıyla (OAuth, 10.70) açıldı, yeni adım oraya çağrı olarak eklenir,
+  alt adım etiketleri `10.x`).
   Sonraki numarayı ürün sahibine sor. Geliştirme `development` dalında sürer; yayın,
   `development`'ın ağacından `CLAUDE.md`, `.claude/`, `docs/`, `tools/` ve
   `tests/` çıkarılarak

@@ -8373,6 +8373,8 @@ function get_tables() {
 		'menus',
 		'messages',
 		'next_order_number',
+		'oauth_clients',
+		'oauth_codes',
 		'offer_actions',
 		'offer_actions_shipping_methods_xref',
 		'offer_conditions',

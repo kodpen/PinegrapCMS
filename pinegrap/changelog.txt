@@ -32,6 +32,20 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Bağlı uygulamalar (OAuth 2.1): Ayarlar › API'de
+         "Bağlı uygulamalar (OAuth)" türünde bir uygulama
+         açıldığında dış uygulamalar (Claude gibi bir MCP
+         istemcisi) siteye kişi adına bağlanabilir. Uygulama
+         siteyi adresinden bulur, kendini kaydeder ve kişiyi
+         sitenin kendi giriş sayfasına gönderir; kişi
+         uygulamanın neler isteyeceğini görür, istemediğini
+         kaldırır ve onaylar ya da reddeder. Uygulama parolayı
+         hiç görmez, kişinin kendi hesabının yapabildiğinden
+         fazlasını alamaz. Bağlantılar uygulamanın Bağlantılar
+         sekmesinde görünür ve tek tek sonlandırılabilir; yeni
+         parola ya da her yerden çıkış kişinin bağlantılarını
+         da sonlandırır.
+
   [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
          okuma (GET /webhooks/{id}), adres, olay listesi ve
          durum değiştirme (PATCH /webhooks/{id} ya da POST
@@ -80,6 +94,10 @@
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
          gibi listede kalıyordu.
+
+  [ŞEMA] Bağlı uygulamalar için iki yeni tablo (kayıtlı
+         istemciler ve kısa ömürlü onay kodları) ve oturum
+         tablosuna üç kolon eklenir.
 
 
 

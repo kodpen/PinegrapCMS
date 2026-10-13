@@ -1,0 +1,365 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The authorization endpoint: the page where a person signed in on the site
+ * lets an outside application act for them, or refuses.
+ *
+ * Two kinds of failure are told apart, as RFC 6749 4.1.2.1 requires. Until
+ * the client and its redirect address are known to be genuine, nothing is
+ * sent anywhere: the page says what is wrong, because redirecting to an
+ * address that was never registered would turn this endpoint into an open
+ * redirect. After that, every refusal goes back to the client with an error
+ * code, so the application can tell its user what happened.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_OAUTH_ENTRY')) {
+	exit;
+}
+
+// A page with nothing but a message, for the failures that cannot go back to
+// the client.
+function pg_oauth_authorize_page_error($message) {
+
+	http_response_code(400);
+
+	pg_oauth_authorize_headers();
+
+	echo output_header_secure(array('title' => lang('Connect an application')))
+		. '<main class="container py-4 py-md-5">
+			<div class="card mx-auto shadow-sm" style="max-width: 30rem;">
+				<div class="card-body p-4">
+					<h1 class="h5 mb-3"><i class="bi bi-plug me-2" aria-hidden="true"></i>' . h(lang('Connect an application')) . '</h1>
+					<div class="alert alert-danger mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($message) . '</div>
+				</div>
+			</div>
+		</main>'
+		. output_footer_secure();
+
+	exit();
+
+}
+
+// The consent screen is never drawn inside another site's frame: a page that
+// can be framed can be clicked through by a person who cannot see it.
+function pg_oauth_authorize_headers() {
+
+	if (headers_sent()) {
+
+		return;
+
+	}
+
+	header('X-Frame-Options: DENY');
+
+	header("Content-Security-Policy: frame-ancestors 'none'", false);
+
+	header('Cache-Control: no-store');
+
+	header('Referrer-Policy: no-referrer');
+
+}
+
+// Sends the answer back to the client and stops. state is returned exactly as
+// it came; iss names this server (RFC 9207), so a client talking to several
+// cannot be handed a code from the wrong one.
+function pg_oauth_authorize_return($redirect_uri, $params, $state) {
+
+	if ($state !== '') {
+
+		$params['state'] = $state;
+
+	}
+
+	$params['iss'] = pg_oauth_issuer();
+
+	header('Location: ' . pg_oauth_redirect_with($redirect_uri, $params), true, 302);
+
+	exit();
+
+}
+
+function pg_oauth_authorize() {
+
+	$post = ($_SERVER['REQUEST_METHOD'] === 'POST');
+
+	$request = $post ? $_POST : $_GET;
+
+	$param = function ($name) use ($request) {
+
+		return (isset($request[$name]) && is_string($request[$name])) ? $request[$name] : '';
+
+	};
+
+	// Is there anything to connect to at all.
+	if (!pg_oauth_ready() || !api_settings()['enabled'] || !pg_oauth_active()) {
+
+		pg_oauth_authorize_page_error(lang('Connecting applications is not switched on for this site.'));
+
+	}
+
+	if (api_settings()['require_https'] && !pg_request_is_https()) {
+
+		pg_oauth_authorize_page_error(lang('This API requires a secure (https) connection.'));
+
+	}
+
+	// The client and where it wants the answer. Nothing is sent to the client
+	// until both are known to be its own.
+	$client = pg_oauth_client($param('client_id'));
+
+	if (($client === null) || ($client['status'] !== 'active')) {
+
+		pg_oauth_authorize_page_error(lang('The application asking to connect is not known to this site. Start again from the application.'));
+
+	}
+
+	$registered = pg_oauth_client_redirect_uris($client);
+
+	$redirect_uri = $param('redirect_uri');
+
+	if (($redirect_uri === '') && (count($registered) === 1)) {
+
+		$redirect_uri = $registered[0];
+
+	}
+
+	if (!pg_oauth_redirect_uri_matches($registered, $redirect_uri)) {
+
+		pg_oauth_authorize_page_error(lang('The return address does not belong to the application asking to connect.'));
+
+	}
+
+	$state = mb_substr($param('state'), 0, 1000);
+
+	// From here a refusal goes back to the client. Its description is for the
+	// client's developer and RFC 6749 4.1.2.1 keeps it to printable ASCII, so
+	// it is written in English; the person reads the client's own message.
+	$fail = function ($error, $description) use ($redirect_uri, $state) {
+
+		pg_oauth_authorize_return($redirect_uri, array(
+			'error'             => $error,
+			'error_description' => $description
+		), $state);
+
+	};
+
+	if ($param('response_type') !== 'code') {
+
+		$fail('unsupported_response_type', 'Only response_type=code is supported.');
+
+	}
+
+	// PKCE on every request, S256 only (OAuth 2.1 4.1.1).
+	$challenge = $param('code_challenge');
+
+	if (!pg_oauth_challenge_is_valid($challenge) || ($param('code_challenge_method') !== 'S256')) {
+
+		$fail('invalid_request', 'A code_challenge with code_challenge_method=S256 is required.');
+
+	}
+
+	// The resource the tokens are for. Stored in the site's own spelling, so
+	// the token endpoint and the resource compare like with like.
+	$resource = '';
+
+	if ($param('resource') !== '') {
+
+		$key = pg_oauth_resource_key($param('resource'));
+
+		if ($key === '') {
+
+			$fail('invalid_target', 'The resource is not one this site serves.');
+
+		}
+
+		$resources = pg_oauth_resources();
+
+		$resource = rtrim($resources[$key], '/');
+
+	}
+
+	// Who is connecting. Somebody who is not signed in goes to the sign-in
+	// screen, two-step verification included, and comes back here.
+	if (!isset($_SESSION['sessionuserid']) || ((string)$_SESSION['sessionuserid'] === '')) {
+
+		if ($post) {
+
+			pg_oauth_authorize_page_error(lang('Your session has ended. Start again from the application.'));
+
+		}
+
+		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
+
+		exit();
+
+	}
+
+	validate_user();
+
+	$user_id = (int)$_SESSION['sessionuserid'];
+
+	$owner = api_load_owner($user_id);
+
+	if (($owner === null) || !api_device_account_has_rights($owner)) {
+
+		$fail('access_denied', 'This account cannot connect applications.');
+
+	}
+
+	$app = pg_oauth_app();
+
+	$available = pg_oauth_available_scopes($app, $owner);
+
+	// No scope asked for means everything this person may hand over; the
+	// screen lists it and they choose. Values the site does not know are
+	// passed over rather than refused, so a client that asks for a generic
+	// scope alongside real ones still connects with the real ones.
+	$asked = ($param('scope') !== '')
+		? array_values(array_intersect($available, pg_oauth_scope_parse($param('scope'))))
+		: $available;
+
+	if (empty($asked)) {
+
+		$fail('invalid_scope', 'None of the requested scopes can be granted by this account.');
+
+	}
+
+	if ($post) {
+
+		validate_token_field();
+
+		if ((isset($_POST['pg_oauth_action']) ? (string)$_POST['pg_oauth_action'] : '') !== 'allow') {
+
+			$fail('access_denied', 'The person declined the connection.');
+
+		}
+
+		$chosen = (isset($_POST['grant']) && is_array($_POST['grant']))
+			? array_values(array_intersect($asked, array_map('strval', $_POST['grant'])))
+			: array();
+
+		if (empty($chosen)) {
+
+			$fail('access_denied', 'No permission was granted.');
+
+		}
+
+		$code = pg_oauth_code_issue($client, $user_id, $redirect_uri, $chosen, $resource, $challenge);
+
+		pg_oauth_authorize_return($redirect_uri, array('code' => $code), $state);
+
+	}
+
+	pg_oauth_authorize_consent($client, $owner, $asked, array(
+		'client_id'             => (string)$client['client_id'],
+		'redirect_uri'          => $redirect_uri,
+		'response_type'         => 'code',
+		'state'                 => $state,
+		'code_challenge'        => $challenge,
+		'code_challenge_method' => 'S256',
+		'scope'                 => $param('scope'),
+		'resource'              => $param('resource')
+	));
+
+}
+
+// The consent screen itself.
+function pg_oauth_authorize_consent($client, $owner, $asked, $hidden) {
+
+	pg_oauth_authorize_headers();
+
+	$name = pg_oauth_client_name($client);
+
+	$site = (defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== '')) ? ORGANIZATION_NAME : pg_oauth_host();
+
+	$return_host = parse_url($hidden['redirect_uri'], PHP_URL_HOST);
+
+	$return_host = is_string($return_host) ? $return_host : $hidden['redirect_uri'];
+
+	// One line per permission, grouped the way the API settings screen shows
+	// them, every box ticked to begin with: the person narrows what the
+	// application asked for, never widens it.
+	$rows = '';
+
+	foreach (api_scope_groups() as $group) {
+
+		$halves = array(
+			'read'  => lang('Read only'),
+			'write' => ($group['read'] === '') ? lang('Manage') : lang('Read and write')
+		);
+
+		foreach ($halves as $half => $label) {
+
+			$scope = $group[$half];
+
+			if (($scope === '') || !in_array($scope, $asked, true)) {
+
+				continue;
+
+			}
+
+			$id = 'grant_' . preg_replace('/[^a-z0-9]+/', '_', $scope);
+
+			$rows .= '
+				<div class="form-check mb-1">
+					<input class="form-check-input" type="checkbox" name="grant[]" value="' . h($scope) . '" id="' . h($id) . '" checked="checked"/>
+					<label class="form-check-label" for="' . h($id) . '">' . h(lang($group['label'])) . ' <span class="text-muted">&middot; ' . h($label) . '</span></label>
+				</div>';
+
+		}
+
+	}
+
+	$fields = get_token_field();
+
+	foreach ($hidden as $field => $value) {
+
+		$fields .= '<input type="hidden" name="' . h($field) . '" value="' . h($value) . '"/>';
+
+	}
+
+	$unverified = ((string)$client['registered_by'] === 'dynamic')
+		? '<div class="alert alert-warning small" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>'
+			. h(lang('This application registered itself with the site. Connect it only if you started this from the application yourself.')) . '</div>'
+		: '';
+
+	$title = lang(array('string' => 'Connect {var:1}', 'vars' => $name));
+
+	echo output_header_secure(array('title' => $title))
+		. '<main class="container py-4 py-md-5">
+			<div class="card mx-auto shadow-sm" style="max-width: 30rem;">
+				<div class="card-body p-4">
+					<h1 class="h5 mb-3"><i class="bi bi-plug me-2" aria-hidden="true"></i>' . h($title) . '</h1>
+					<p class="mb-3">' . h(lang(array(
+						'string' => '{var:1} wants to use {var:2} on your behalf.',
+						'vars'   => array($name, $site)
+					))) . '</p>
+					' . $unverified . '
+					<dl class="small mb-3">
+						<dt>' . h(lang('Signed in as')) . '</dt>
+						<dd>' . h($owner['username']) . '</dd>
+						<dt>' . h(lang('Answer goes to')) . '</dt>
+						<dd><code>' . h($return_host) . '</code></dd>
+					</dl>
+					<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/oauth.php/authorize') . '">
+						' . $fields . '
+						<p class="fw-semibold mb-2">' . h(lang('It will be able to:')) . '</p>
+						<div class="border rounded p-3 mb-3">' . $rows . '</div>
+						<p class="small text-muted">' . h(lang('It never gets more than your own account may do. You can end the connection at any time by signing out everywhere or changing your password.')) . '</p>
+						<button type="submit" name="pg_oauth_action" value="allow" class="btn btn-primary w-100">' . h(lang('Allow')) . '</button>
+						<button type="submit" name="pg_oauth_action" value="deny" class="btn btn-outline-secondary w-100 mt-2">' . h(lang('Cancel')) . '</button>
+					</form>
+				</div>
+			</div>
+		</main>'
+		. output_footer_secure();
+
+	exit();
+
+}

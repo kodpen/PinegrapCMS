@@ -400,6 +400,20 @@ function api_fail($status_code, $code, $message, $field = null) {
 
 	}
 
+	// Refused for want of a valid token: say where one is to be had, the way
+	// an OAuth client expects to find out (includes/oauth/server.php).
+	if (($status_code === 401) && function_exists('pg_oauth_bearer_challenge')) {
+
+		$challenge = pg_oauth_bearer_challenge();
+
+		if ($challenge !== '') {
+
+			api_extra_headers('WWW-Authenticate', $challenge);
+
+		}
+
+	}
+
 	api_send($status_code, array('error' => $error), $code);
 
 }

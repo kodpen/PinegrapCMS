@@ -95,6 +95,24 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Sahibin `manage_*` evet/hayır bayrakları `api_load_owner()`'da boolean'a
   çevrilir; ham 'no' stringi `== true` ile doğru çıkar.
 
+## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)
+
+- Üçüncü kimlik: kişinin onay ekranında bağladığı dış uygulama (MCP
+  istemcisi). Jetonu **`api_devices` satırıdır** (`oauth_client_id > 0`);
+  ayrı jeton tablosu açma — iptal kancaları (parola, her yerden çıkış,
+  hesap silme) o tabloya bağlı.
+- Operatörün anahtarı `api_apps.kind = 'oauth'`; `pg_oauth_app()` etkin en
+  eskisini döner, yoksa uçlar ve `.well-known` 404.
+- Bağlantının kapsamı onaylanan ∩ tavan ∩ kişinin hakları, her istekte
+  (`pg_oauth_effective_scopes()`); `webhooks:manage` OAuth ile verilmez,
+  `account:*` kendiliğinden eklenmez.
+- Yeni bir kaynak (MCP ucu) `pg_oauth_resources()`'a girer ve kendi giriş
+  dosyasında `PG_OAUTH_RESOURCE` tanımlar; başka kaynağın jetonu reddedilir.
+- OAuth uçları API'nin hata biçimini kullanmaz: `pg_oauth_fail()`,
+  `error_description` İngilizce düz metin (RFC: yalnız ASCII), `lang()` yok.
+- Yenilemeyi kendi biçiminde cevaplayan kod `api_device_rotate_pair()`
+  kullanır; `api_device_rotate()` API biçiminde `api_fail` eder.
+
 ## Webhook olayları
 
 - Olay duyurmak için `pg_announce('<ad>', array(...))` (`includes/fn/events.php`,

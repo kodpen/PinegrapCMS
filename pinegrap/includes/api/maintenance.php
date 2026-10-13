@@ -98,6 +98,18 @@ function api_maintenance_purge() {
 
 	}
 
+	// OAuth: codes long past their minute, and clients that registered
+	// themselves and never connected, or stopped a month ago.
+	if (@mysqli_query(db::$con, "SELECT 1 FROM oauth_clients LIMIT 1")) {
+
+		require_once(dirname(dirname(__FILE__)) . '/oauth/server.php');
+
+		pg_oauth_codes_sweep();
+
+		pg_oauth_clients_sweep();
+
+	}
+
 	// The documentation screen's temporary credentials. They stop working when
 	// they expire, but there is no reason to keep the rows.
 	db("DELETE FROM api_apps
