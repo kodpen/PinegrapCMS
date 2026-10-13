@@ -15,7 +15,8 @@
  * list. A full list does not close the task; the screens offer to.
  *
  * Notes are dated lines on a task: what was tried, what the customer said.
- * Tags work in them; a person mentioned in one is told.
+ * Tags work in them; a person mentioned in one is told, and so are the people
+ * on the task and the one who made it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -584,6 +585,44 @@ function ws_task_note_notify($viewer, $task, $tokens)
 }
 
 /**
+ * Tells the people on a task, and the one who made it, that somebody else
+ * wrote a note on it. The ones the note mentions already have their own line
+ * (ws_task_note_notify()); a line not read yet takes the next notes too.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @param array $tokens
+ */
+function ws_task_note_tell($viewer, $task, $tokens)
+{
+    $people = array();
+
+    foreach (ws_task_assignee_ids($task['id']) as $user_id) {
+        $people[(int) $user_id] = true;
+    }
+
+    $people[(int) $task['creator_id']] = true;
+
+    unset($people[0], $people[(int) $viewer['id']]);
+
+    foreach ($tokens as $token) {
+        if ($token['type'] === 'user') {
+            unset($people[(int) $token['id']]);
+        } elseif ($token['type'] === 'dept') {
+            foreach (ws_department_member_ids($token['id']) as $user_id) {
+                unset($people[(int) $user_id]);
+            }
+        }
+    }
+
+    foreach (array_keys($people) as $user_id) {
+        if (ws_is_team_member($user_id) && ws_can_see_task(ws_rights_for_id($user_id), $task)) {
+            ws_notify($user_id, 'task_note', array('task_id' => $task['id'], 'actor_id' => $viewer['id']));
+        }
+    }
+}
+
+/**
  * Checks the text of a note.
  *
  * @param string $body
@@ -706,6 +745,7 @@ function ws_task_note_add($viewer, $task, $body, $app_id = 0)
     ws_task_notes_recount($task['id']);
     ws_task_refs_add($task, $tokens);
     ws_task_note_notify($viewer, $task, $tokens);
+    ws_task_note_tell($viewer, $task, $tokens);
 
     // The words go along only where a message's would: for a task of a
     // private channel the receiver learns that a note came, not what it says.

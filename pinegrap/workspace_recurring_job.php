@@ -76,10 +76,14 @@ if (ws_enabled() && function_exists('ws_threads_purge')) {
     ws_threads_purge();
 }
 
-// Task reminders by e-mail whose time has come; the general job looks on
-// every tick as well (includes/workspace/reminders.php).
+// Task reminders whose time has come, and the tasks that went overdue; the
+// general job looks on every tick as well (includes/workspace/reminders.php).
 if (ws_enabled() && function_exists('ws_task_reminders_run')) {
     ws_task_reminders_run();
+}
+
+if (ws_enabled() && function_exists('ws_task_overdue_run')) {
+    ws_task_overdue_run();
 }
 
 if (function_exists('pg_cron_ran')) {
