@@ -1,5 +1,11 @@
 {
     "Card Style": "Kart Tarzı",
+    "This campaign has been sent, so it can no longer be changed.": "Bu kampanya gönderildi, artık değiştirilemez.",
+    "An HTML campaign sends the page as it was when the campaign was made, so its message cannot be changed.": "HTML kampanya, sayfayı kampanyanın oluşturulduğu andaki haliyle gönderir; bu yüzden mesajı değiştirilemez.",
+    "Only an automatic campaign takes a blind copy address.": "Gizli kopya (BCC) adresi yalnız otomatik kampanyada olur.",
+    "Campaign (subject: {var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Kampanya (konu: {var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
+    "Campaign (subject: {var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Kampanya (konu: {var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
+    "E-mail campaigns, how far sending has got and who they go to; writing holds, releases, cancels, corrects or removes one, not putting one together": "E-posta kampanyaları, gönderimin ne kadar ilerlediği ve kime gittikleri; yazma bir kampanyayı bekletir, serbest bırakır, iptal eder, düzeltir ya da siler, yeni kampanya oluşturmaz",
     "The window is longer than {var:1} days. Ask for a shorter one.": "Aralık {var:1} günden uzun. Daha kısa bir aralık isteyin.",
     "Visits and page views, the most viewed content and where visits came from, as totals - never a single visit": "Ziyaretler ve sayfa görüntülemeleri, en çok görüntülenen içerik ve ziyaretlerin nereden geldiği, toplam olarak; tek bir ziyaret asla verilmez",
     "Who did what on the site and from which address - read only": "Sitede kimin neyi hangi adresten yaptığı; yalnız okuma",

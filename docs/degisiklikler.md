@@ -84,6 +84,76 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: e-posta kampanyaları (2026-10-13)
+
+**Sorun.** E-posta kampanyaları API'de yoktu. Bir bülten ya da CRM
+entegrasyonu, Claude veya bir izleme aracı "hangi kampanya bekliyor, kaçı
+gitti, kime gidemedi" sorusunu soramıyor; bekleyen bir kampanyayı durdurmak,
+saatini kaydırmak ya da konusundaki yazım hatasını düzeltmek için Kampanyalarım
+ekranına girmek gerekiyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/campaigns.php` ve yeni izin
+grubu `campaigns` (`campaigns:read`, `campaigns:write`); ekranın kapısı
+`validate_email_access()` olduğu için rol < 3 ya da e-posta yetkisi. Rol 3
+hesabın uygulaması, ekranlardaki gibi yalnız kendi oluşturduğu kampanyalara
+ulaşır (`api_campaign_owner_filter()`, liste, okuma, yazma ve silmede).
+
+- `GET /campaigns` (`status`, `type` manual/automatic, `purpose`,
+  `profile_id`, `q` konu, `created_since`; imleçli, yeniden eskiye): her
+  kampanya alıcı toplamlarıyla (`total`, `sent`, `failed`, `pending`; tek
+  sorguda, `GROUP BY`). İş vazgeçtiği alıcıyı `complete = 1` ile de
+  işaretlediği için `failed` gönderilmiş sayılmaz; 2026.4.8 tekrar
+  kolonları yoksa (`pg_email_retry_ready()`) hiçbir alıcı başarısız değil.
+- `GET /campaigns/{id}`: mesaj (`body`: düz metinde metin, HTML'de
+  kampanya oluşturulurken işlenmiş sayfa) ve elle kampanyada kişi grupları:
+  `contact_group_ids` (dahil) ile `excluded_contact_group_ids` (hariç;
+  `contact_groups_email_campaigns_xref.type`).
+- `GET /campaigns/{id}/recipients` (`status` sent/pending/failed, imleçli,
+  gönderim sırasıyla): adres, kişi, deneme sayısı, son hata.
+- `POST|PATCH /campaigns/{id}`: ekranın değiştirdikleri: `status`
+  ready/paused/cancelled, `subject`, düz metinde `body`, `from_name`,
+  `from_email`, `reply_to`, yalnız otomatikte `bcc`, `send_at` (boş dize:
+  hemen; sütunun varsayılanı `1000-01-01 00:00:00` yazılır), `purpose`.
+  Gönderilmiş (`complete`) kampanya 409 `campaign_complete`; HTML
+  kampanyanın gövdesi 409 `campaign_body_is_a_page`; elle kampanyada bcc
+  409 `campaign_bcc_automatic_only`. Adresler `validate_email_address()`,
+  boş adres ekrandaki gibi kabul.
+- `DELETE /campaigns/{id}` ve `POST /campaigns/{id}/delete`: ekrandaki gibi
+  kampanya, grup bağları ve alıcılar birlikte silinir; gönderilmiş olan
+  gönderilmiş kalır.
+
+API hiçbir e-posta göndermez: `ready` kampanyayı zamanlanmış işin
+kuyruğuna bırakır; iş kapalıysa ekrandaki "Kampanyayı Gönder" düğmesini
+bekler. Kampanya oluşturma (kişi gruplarından alıcı seçimi) bilerek yok:
+dışarıya toplu e-posta açar, ayrı karar. Yazmalar `dry_run` destekler,
+günlüğe uygulama ve anahtarla yazılır. Yeni izin mevcut uygulamalara
+verilmez (kayıtlı kapsamlar olduğu gibi saklanır); operatör Uygulama
+Erişimi'nde işaretler. Şema değişikliği yok.
+
+Testler: `tests/api_campaigns_test.php` (gönderim saati yazma/okuma ve
+temizleme, toplamlar, alıcı durumu ve süzgeci, rol 3 süzgeci, rotalar ve
+kapsamları, aynı yöntem+yol çakışması yok, kapsamın ekran kapısı ve
+mevcut anahtarlara verilmemesi).
+
+**Doğrulandı (sandbox).** Liste, `status`/`type`/`purpose`/`profile_id`/`q`
+süzgeçleri, imleç ve okunamayan imleç 400; dört kampanyanın toplamları
+(6 alıcı: 3 gönderildi, 1 başarısız, 2 bekliyor); tek okuma, dahil/hariç
+gruplar, HTML gövde; alıcılar ve üç durum süzgeci, imleç; `send_at`
+İstanbul saatine yazıldı (07:00Z → 10:00), `null` sütunun varsayılanını
+yazdı; geçersiz adres, boş konu, boş istek, tanınmayan alan, `complete`
+durumu 422; üç 409; otomatikte bcc; `X-Dry-Run` güncelleme ve silmede
+hiçbir şey yazmadı; iki silme yolu kampanyayı, alıcıları ve grup
+bağlarını birlikte sildi, ikinci silme 404; rol 3 + e-posta yetkili
+uygulama yalnız kendi kampanyasını gördü ve değiştirdi, başkasınınkine
+404; izni olmayan ve e-posta yetkisi olmayan rol 3 uygulamaya 403
+`insufficient_scope`; site günlüğü satırları; OpenAPI iki nesne, dört yol.
+
+**Doğrulanamayan.** Zamanlanmış işin `ready`'ye alınan kampanyayı gerçekten
+göndermesi denenmedi (sandbox'ta posta sunucusu yok); işin seçtiği
+koşullar (`status`, `start_time <= NOW()`) ekranın yazdığıyla aynı.
+
+---
+
 ## 2026.4.10 — Ödemede "Cari hesabıma yaz" (ERP Faz 8c, 10.60) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 8c: kredi limiti tanımlı bir
