@@ -530,19 +530,20 @@ function ws_api_my_day_ack_present($ack, $times)
 function ws_api_my_day_present($day)
 {
     return array(
-        'date'            => (string) $day['date'],
-        'left_out'        => array_values($day['left_out']),
-        'tasks_open'      => (int) $day['tasks_open'],
-        'tasks_overdue'   => (int) $day['tasks_overdue'],
-        'tasks_due_today' => (int) $day['tasks_due_today'],
-        'tasks_new'       => (int) $day['tasks_new'],
-        'due'             => array_values($day['due']),
-        'timer'           => $day['timer'],
-        'plan_items'      => array_values($day['plan_items']),
-        'approvals'       => array_values($day['approvals']),
-        'read_receipts'   => array_values($day['read_receipts']),
-        'written_to_me'   => array_values($day['written_to_me']),
-        'inbox_unread'    => (int) $day['inbox_unread'],
+        'date'             => (string) $day['date'],
+        'left_out'         => array_values($day['left_out']),
+        'tasks_open'       => (int) $day['tasks_open'],
+        'tasks_overdue'    => (int) $day['tasks_overdue'],
+        'tasks_due_today'  => (int) $day['tasks_due_today'],
+        'tasks_new'        => (int) $day['tasks_new'],
+        'due'              => array_values($day['due']),
+        'timer'            => $day['timer'],
+        'plan_items'       => array_values($day['plan_items']),
+        'approvals'        => array_values($day['approvals']),
+        'proposed_changes' => array_values($day['proposed_changes']),
+        'read_receipts'    => array_values($day['read_receipts']),
+        'written_to_me'    => array_values($day['written_to_me']),
+        'inbox_unread'     => (int) $day['inbox_unread'],
     );
 }
 
@@ -550,17 +551,18 @@ function ws_api_my_day_present($day)
 function ws_api_my_day_schema()
 {
     return array(
-        'date'            => 'string',
-        'left_out'        => array('string'),
-        'tasks_open'      => 'integer',
-        'tasks_overdue'   => 'integer',
-        'tasks_due_today' => 'integer',
-        'tasks_new'       => 'integer',
-        'due'             => 'WorkspaceTask[]',
-        'timer'           => 'WorkspaceTaskTime?',
-        'plan_items'      => 'WorkspacePlanItem[]',
-        'approvals'       => 'WorkspaceApproval[]',
-        'read_receipts'   => array(array(
+        'date'             => 'string',
+        'left_out'         => array('string'),
+        'tasks_open'       => 'integer',
+        'tasks_overdue'    => 'integer',
+        'tasks_due_today'  => 'integer',
+        'tasks_new'        => 'integer',
+        'due'              => 'WorkspaceTask[]',
+        'timer'            => 'WorkspaceTaskTime?',
+        'plan_items'       => 'WorkspacePlanItem[]',
+        'approvals'        => 'WorkspaceApproval[]',
+        'proposed_changes' => 'WorkspaceChange[]',
+        'read_receipts'    => array(array(
             'message_id' => 'integer',
             'channel_id' => 'integer',
             'channel'    => 'string',
@@ -568,7 +570,7 @@ function ws_api_my_day_schema()
             'text'       => 'string',
             'created_at' => 'string?',
         )),
-        'written_to_me'   => array(array(
+        'written_to_me'    => array(array(
             'message_id' => 'integer',
             'channel_id' => 'integer',
             'channel'    => 'string',
@@ -578,7 +580,7 @@ function ws_api_my_day_schema()
             'text'       => 'string',
             'created_at' => 'string?',
         )),
-        'inbox_unread'    => 'integer',
+        'inbox_unread'     => 'integer',
     );
 }
 
@@ -590,19 +592,20 @@ function ws_api_my_day_get($params)
     $tasks_read = api_has_scope(api_current_scopes(), 'tasks:read');
 
     $day = array(
-        'date'            => $today,
-        'left_out'        => $tasks_read ? array() : array('tasks:read'),
-        'tasks_open'      => 0,
-        'tasks_overdue'   => 0,
-        'tasks_due_today' => 0,
-        'tasks_new'       => 0,
-        'due'             => array(),
-        'timer'           => null,
-        'plan_items'      => array(),
-        'approvals'       => array(),
-        'read_receipts'   => array(),
-        'written_to_me'   => array(),
-        'inbox_unread'    => ws_inbox_unread_count($me),
+        'date'             => $today,
+        'left_out'         => $tasks_read ? array() : array('tasks:read'),
+        'tasks_open'       => 0,
+        'tasks_overdue'    => 0,
+        'tasks_due_today'  => 0,
+        'tasks_new'        => 0,
+        'due'              => array(),
+        'timer'            => null,
+        'plan_items'       => array(),
+        'approvals'        => array(),
+        'proposed_changes' => array(),
+        'read_receipts'    => array(),
+        'written_to_me'    => array(),
+        'inbox_unread'     => ws_inbox_unread_count($me),
     );
 
     if ($tasks_read) {
@@ -630,7 +633,7 @@ function ws_api_my_day_get($params)
             }
         }
 
-        $known = array('links' => ws_task_links_map($ids), 'time' => ws_task_time_totals($ids));
+        $known = ws_api_tasks_known($ids);
 
         foreach ($ids as $id) {
             $day['due'][] = ws_api_task_present($viewer, ws_task($id), array(), $known);
@@ -664,6 +667,16 @@ function ws_api_my_day_get($params)
         if ($row) {
             $day['approvals'][] = ws_api_approval_present($viewer, $row);
         }
+    }
+
+    // What the assistants proposed at the owner's request and only the
+    // owner may apply: in the channels they read and on the tasks they see.
+    if (function_exists('ws_changes_ready') && ws_changes_ready()) {
+        $day['proposed_changes'] = ws_api_changes_present($viewer, ws_api_changes_rows(array(
+            ws_api_changes_reach_sql($viewer),
+            "c.status = 'pending'",
+            "c.requested_by = '" . $me . "'",
+        ), 20));
     }
 
     $acks = array();

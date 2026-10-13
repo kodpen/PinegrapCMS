@@ -84,6 +84,70 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı API ve MCP: görevi asistana verme ve önerileri onaylama (2026-10-13)
+
+**Neden.** Görevi asistana verme işinin üçüncü ve son PR'ı (araştırmanın P1
+1.2 maddesi). İlk iki PR ekranı kurdu; dış API ve MCP görevin asistanda
+olduğunu, asistanın cevabını ve önerilerini göremiyor, öneri de
+uygulanamıyordu. Mobil API planına (`docs/_plan_api_mobil.md`) uygun olarak
+uygulamaya özel uç yazılmadı: mevcut uçlara alan ve süzgeç eklendi, yeni uçlar
+genel eylemler.
+
+**Ne değişti.**
+
+- `WorkspaceTask`: `delegate` (ai / claude / null), `delegated_by`,
+  `delegated_at`, `assistant_working` (şu an çalışan asistan),
+  `waiting_changes` (onay bekleyen öneri sayısı). Liste tek sorguda okur
+  (`ws_api_tasks_known()`, yeni `ws_task_delegation_open_map()`).
+- `GET /workspace/tasks?delegate=any|none|ai|claude` (`ws_tasks_list()`
+  süzgeci `delegate`).
+- `POST /workspace/tasks/{id}/delegate` {agent, instruction}: ekrandaki
+  `ws_task_delegate()`; cevap çalışmanın kendisi (`WorkspaceAssistantRequest`,
+  201). Çalışma sürerken 409 `assistant_busy`. `POST
+  /workspace/tasks/{id}/delegate/stop` {take_back}: `ws_task_delegation_stop()`.
+  Asistanın çalıştığı uygulamadan (Claude, Pinegrap AI) ikisi de 403:
+  asistan görev devretmez, geri almaz.
+- `GET /workspace/assistant-requests`: görevdeki çalışmalar (origin `task`,
+  `task_id`), görevi görebilen herkes için; bu çalışmalarda `instruction` ve
+  `answer` düz metin olarak gelir. `task_id` süzgeci.
+- `GET /workspace/changes`: görevdeki öneriler de (`task_id`, kanal ve mesaj
+  0), `task_id` süzgeci; her öneride `can_apply`, `can_dismiss`.
+  Okunabilirlik tek SQL'de: kanallar + görülebilen görevler
+  (`ws_api_task_seen_sql()`, `ws_can_see_task()` kuralının SQL'i; sandbox'ta
+  beş kullanıcı × yedi görev düzeninde PHP kuralıyla birebir aynı çıktı).
+- `POST /workspace/changes/{id}/apply` ve `/dismiss`: kartın düğmeleriyle
+  aynı fonksiyonlar (`ws_change_apply()`, `ws_change_dismiss()`), yalnız
+  cihaz oturumu ya da kişinin bağladığı OAuth uygulaması
+  (`ws_api_person_only()`); uygulama anahtarı 403, yani asistan kendi
+  önerisini uygulayamaz. Eskimiş öneri 409 `stale`, karar verilmiş öneri 409
+  `already_decided`.
+- `GET /workspace/my-day`: `proposed_changes` (kişinin istediği, onu
+  bekleyen öneriler; kanal ve görev, en çok 20).
+- API'den uygulanan değişikliğin etkinlik kaydı kişinin kullanıcı adıyla
+  yazılır (`ws_change_log()`, oturum yoksa API sahibinin adı).
+- `workspace.task.assistant_answered` olayının açıklaması cevabın ve
+  önerilerin nereden okunacağını söylüyor.
+- MCP araçları uçlardan kendiliğinden geliyor: `workspace_tasks_delegate`,
+  `workspace_tasks_delegate_stop`, `workspace_changes_apply`,
+  `workspace_changes_dismiss`.
+
+**Bilerek yapılmayan.** Panelin "Benim günüm" ekranına öneri listesi
+eklenmedi (yalnız API). Pinegrap AI'ı API'den başlatmak bekleyen bir ekran
+ya da saatlik iş ister; uç bunu açıklamasında söylüyor.
+
+**Doğrulama.** Sandbox'ta cihaz oturumuyla (`POST /auth/login`): görevi
+Claude'a verme, ikinci istekte 409, Claude uygulamasıyla talep alma ve
+cevaplama (iki öneri) → `my-day` iki öneri → Claude anahtarıyla apply 403 →
+cihazla apply (görev güncellendi, etkinlik kaydı kişinin adıyla) → aynı
+öneriye tekrar 409 `already_decided` → dismiss → kayıt arada değişince 409
+`stale` → durdur + geri al (delegate null, çalışma iptal). OpenAPI belgesinde
+dört yeni yol ve yeni alanlar var.
+
+**Doğrulanamayan.** Gerçek mobil uygulama ve MCP istemcisiyle deneme;
+dev.pinegrap.com'da yapılmalı.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: asistanın görevdeki önerileri için onay kuyruğu (2026-10-13)
 
 **Neden.** Görevi asistana verme işinin ikinci PR'ı (araştırmanın P1 1.2

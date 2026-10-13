@@ -20410,6 +20410,8 @@
     "Write to the assistant": "Asistana yaz",
     "You may not change this task.": "Bu görevi değiştiremezsiniz.",
     "You may not hand this task to an assistant.": "Bu görevi bir asistana veremezsiniz.",
+    "An assistant does not hand tasks to assistants or take them back.": "Bir asistan görevleri asistanlara veremez ve geri alamaz.",
+    "{var:1} is not switched on on this site.": "Bu sitede {var:1} açık değil.",
     "{var:1} already has {var:2} requests of yours waiting. Please wait for those to be answered.": "{var:1} için bekleyen {var:2} isteğiniz var. Lütfen önce onların cevaplanmasını bekleyin.",
     "{var:1} answered on {var:2}": "{var:1}, {var:2} görevinde cevap verdi",
     "{var:1} could not do what you asked on {var:2}": "{var:1}, {var:2} görevinde istediğinizi yapamadı",

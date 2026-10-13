@@ -799,7 +799,8 @@ function ws_task_event_payload($task, $assignees)
  * @param array $filters scope (mine | created | department | channel | all),
  *                       status (open | done | all | a status), department_id,
  *                       channel_id, from, to (due date range), ref_type, ref_id,
- *                       updated_since, limit
+ *                       updated_since, delegate (any | none | an assistant's
+ *                       key), limit
  * @return array[] briefs
  */
 function ws_tasks_list($viewer, $filters)
@@ -875,6 +876,21 @@ function ws_tasks_list($viewer, $filters)
         $where[] = "t.priority IN ('urgent', 'high')";
     } elseif (isset(ws_task_priorities()[$priority])) {
         $where[] = "t.priority = '" . e($priority) . "'";
+    }
+
+    // Handed to an assistant (delegation.php): to any, to none, or to one.
+    $delegate = (string) ($filters['delegate'] ?? '');
+
+    if (($delegate !== '') && ws_delegation_ready()) {
+        if ($delegate === 'none') {
+            $where[] = "t.delegate = ''";
+        } elseif ($delegate === 'any') {
+            $where[] = "t.delegate <> ''";
+        } else {
+            $where[] = "t.delegate = '" . e($delegate) . "'";
+        }
+    } elseif (($delegate !== '') && ($delegate !== 'none')) {
+        $where[] = '0 = 1';
     }
 
     // Coming up: due within so many days from today, the overdue ones with

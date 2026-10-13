@@ -271,6 +271,19 @@
          bir göreve not ya da Çalışma Alanı notu eklemeyi
          önerebiliyor; uygulanınca kanala karar düşer.
 
+  [YENİ] Dış API ve MCP: görev asistana verilebiliyor ve
+         asistanın çalışması durdurulabiliyor; görev
+         listesi asistandaki görevlere göre süzülebiliyor;
+         görevde asistanın kim olduğu, şu an çalışıp
+         çalışmadığı ve onay bekleyen öneri sayısı
+         görünüyor. Asistanın görevdeki cevapları ve
+         önerileri görev numarasıyla okunuyor. Öneriler
+         telefondan ya da bağlanan bir uygulamadan, kişinin
+         kendi oturumuyla uygulanıp kenara ayrılabiliyor;
+         bir uygulama anahtarı (asistanın kendisi dahil)
+         öneri uygulayamaz. "Benim günüm" kişinin onayını
+         bekleyen önerileri de getiriyor.
+
   [ŞEMA] Görevler tablosuna asistan için üç kolon,
          asistan istekleri ve önerilen değişiklikler
          tablolarına görev kolonu eklenir.
