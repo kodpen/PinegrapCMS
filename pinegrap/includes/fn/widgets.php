@@ -69,6 +69,7 @@ function pg_sw_type_labels()
         'email_preferences'   => lang('Email Preferences'),
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
+        'account_invoices'    => lang('My Invoices'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),

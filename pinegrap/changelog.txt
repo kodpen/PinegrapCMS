@@ -470,6 +470,20 @@
          X-Dry-Run ile denenebilir; erp:write yetkisi
          gerekir.
 
+  [YENİ] Mağazada "Faturalarım": görsel editörde yeni
+         "Faturalarım" sistem widget'ı, oturum açmış
+         müşteriye ERP'de kesilmiş faturalarını ve
+         iadelerini gösteriyor: tutar, vade, kalan,
+         gecikme rozeti, carinin bakiyesi ve vadesi
+         geçen toplam. Her belge PDF olarak açılıyor;
+         "Ekstreyi indir" yılbaşından bugüne mutabakat
+         PDF'ini veriyor. Müşteri yalnız kendi carisinin
+         belgelerini görür; taslak ve iptal edilmiş
+         belge görünmez. ERP kapalıysa ya da müşterinin
+         kişisi bir cariye bağlı değilse widget hiçbir şey
+         göstermez. Hazır şablonların Hesabım sayfasında
+         hesap özetinin altında yer alıyor.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.

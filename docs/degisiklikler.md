@@ -84,6 +84,61 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Mağazada "Faturalarım" (ERP Faz 8a) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 8 (#14), ilk parça: müşteri
+ERP'de kesilen faturasını ancak e-postayla gelirse görüyordu; hesabında
+faturaları, ne kadar borcu kaldığı ve ekstresi yoktu.
+
+**Ne değişti.** Yeni sistem widget türü `account_invoices` ("My
+Invoices"; `pg_sw_type_labels()`, `SW_TYPES`, oluşturucu
+`_render_system_widget_account_invoices()`, `widgets_account.php`).
+Oturumdaki üyenin kişisine bağlı cari `pg_erp_member_account()` ile
+okunur (`ecommerce.php`; `erp_accounts.contact_id`, istek başına bir kez,
+ERP yüklenmeden). Cari yoksa ya da ERP kapalıysa widget hiçbir şey
+basmaz; bu yüzden ayrı bir ayar yok ve şema adımı yok. Okumalar yeni
+`includes/erp/storefront.php`'de:
+
+- `erp_storefront_documents()`: carinin kesilmiş satış faturaları ve
+  iadeleri (taslak, iptal ve numarasız yok), en yeni önce, ayardaki sayı
+  kadar (varsayılan 50, en çok 500). Kalan ve gecikme günü yaşlandırma
+  modülünden (`erp_aging_invoices()`): alacak ekranlarıyla aynı rakam.
+- `erp_storefront_document_state()`: iade / ödendi / gecikti / kısmen
+  ödendi / açık (saf, `tests/erp_storefront_test.php`).
+- `erp_storefront_account_figures()`: bakiye defterden
+  (`erp_reconciliation_balance()`, cari dövizliyse kendi para biriminde,
+  mutabakat mektubu nasıl yazıyorsa), vadesi geçen toplam yaşlandırmadan.
+- `erp_storefront_document()`: belge bu carinin kesilmiş satış belgesi
+  mi; değilse null.
+
+Belgeler yeni `get_account_document.php`'den açılır: `?id=` faturanın
+kesildiğinde saklanan PDF'i (`erp_archive_invoice()`; saklanmamışsa şimdi
+üretip saklar, panel gibi), `?statement=1` mutabakat PDF'i
+(`erp_reconciliation_pdf()`, varsayılan yılbaşından bugüne).
+Panelin `get_erp_invoice_pdf.php`'si ERP hakkı ister ve değişmedi; yeni
+uç yalnız belgenin oturumdaki üyenin carisine ait olup olmadığını sorar.
+Başkasının belgesi, taslak, iptal ve carisi olmayan üye aynı 404'ü alır;
+adres başına dakikada 30 istek (`waf_rate_exceeded()`, kapsam
+`erp_doc`). Oturum yoksa giriş sayfasına yönlenir.
+
+Widget'ın jetonları, bayrakları ve başlangıç ağacı (`style_designer.js`):
+bakiye, vadesi geçen toplam, belge sayısı, "Ekstreyi indir"; satırda
+numara, tür, tarih, vade, tutar, kalan, durum ("12 gün gecikmiş"),
+gecikme günü, sipariş numarası ve PDF bağlantısı. Satır durum bayrakları
+birbirini dışlar (`invoice_is_paid`, `_unpaid`, `_partial`, `_overdue`;
+iade `invoice_is_return`), başlangıç ağacındaki rozetler bunlara bire
+bir bağlı. Hiçbir şey göndermediği için Mesajlar düğümü kendi adıyla
+damgalanır ve JS'te `_SW_NO_MESSAGES`'tadır. Beş hazır şablonun Hesabım
+sayfasına hesap özeti ile güvenlik kartı arasına eklendi (şablon
+sürümleri birer arttı).
+
+**Bilerek yapılmayan.** Müşteri faturayı ödeyemez (ödeme linki bu fazda
+yok, plan §4). Belge listesinde sayfalama yok; ayardaki sayıdan eskisi
+ekstrede görünür. Bir kişiye birden çok cari bağlıysa ilk açılan
+(en küçük id) okunur; panel de kişi başına bir cari varsayar.
+
+---
+
 ## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
 
 **Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
