@@ -246,6 +246,12 @@ function pg_parasut_credentials_for_save()
             erp_credit_limit_mode = '" . ((post_value('erp_credit_limit_mode') === 'block') ? 'block' : 'warn') . "',";
     }
 
+    // The prices agreed with an account, in the store (10.59).
+    if (waf_table_has_column('config', 'erp_storefront_account_prices')) {
+        $sql_erp_due .= "
+            erp_storefront_account_prices = '" . ((post_value('erp_storefront_account_prices') == 1) ? 1 : 0) . "',";
+    }
+
     // Notices on the bell and the devices (4.91); the amount arrives in whole
     // units of the base currency and is kept in kurus.
     if (waf_table_has_column('config', 'erp_notify_collections')) {

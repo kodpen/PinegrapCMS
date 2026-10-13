@@ -8,8 +8,9 @@
  * which gives every order line one of its own; for what is read from them:
  * erp_purchase_order_progress(), erp_purchase_order_receipt_state() and the
  * quantity suggested from the minimum stock; for the moves an order allows;
- * and for the order's routes in the external API (includes/erp/api.php,
- * api_purchase_orders.php).
+ * for the order's routes in the external API (includes/erp/api.php,
+ * api_purchase_orders.php); and for the series a purchase bill is numbered
+ * in (erp_invoice_series()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -301,4 +302,25 @@ function test_erp_purchase_order_events_are_offered()
 	foreach (array('created', 'sent', 'received', 'cancelled', 'reopened') as $name) {
 		pg_assert_true(isset($offered['erp.purchase_order.' . $name]), 'erp.purchase_order.' . $name);
 	}
+}
+
+// A purchase bill is numbered in a series of its own, so it never prints the
+// number of a sales invoice: the invoice series with an A after it, unless
+// config.php names one. A sales invoice keeps the invoice series.
+function test_erp_purchase_invoice_series_is_its_own()
+{
+	$sales = defined('ERP_DEFAULT_SERIES') ? trim((string) ERP_DEFAULT_SERIES) : 'PGF';
+
+	pg_assert_same($sales, erp_invoice_series('sales'));
+	pg_assert_same($sales, erp_invoice_series());
+
+	if (!defined('ERP_PURCHASE_INVOICE_SERIES')) {
+		pg_assert_same($sales . 'A', erp_invoice_series('purchase'));
+	}
+
+	pg_assert_true(erp_invoice_series('purchase') !== erp_invoice_series('sales'));
+	// Nor the purchase orders', the delivery notes' or the returns'.
+	pg_assert_true(erp_invoice_series('purchase') !== erp_purchase_order_series());
+	pg_assert_true(erp_invoice_series('purchase') !== $sales . 'S');
+	pg_assert_true(erp_invoice_series('purchase') !== $sales . 'I');
 }

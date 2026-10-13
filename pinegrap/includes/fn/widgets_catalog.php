@@ -5850,7 +5850,7 @@ function _pg_build_catalog_listing_rss_parts($page_id, $page_name, $widget)
     }
 
     // Offer prices + category trails, resolved once for the whole feed.
-    $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices() : array();
+    $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices(false) : array();
     if (!is_array($_disc)) $_disc = array();
     $_paths = ($active_group_id > 0) ? _pg_catalog_product_group_paths($active_group_id) : array();
 
@@ -5895,7 +5895,7 @@ function _pg_build_catalog_item_rss_parts($page_id, $page_name, $widget)
     $title = $page_name;
     if (is_array($product)) {
         $_pid   = (int)$product['id'];
-        $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices() : array();
+        $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices(false) : array();
         if (!is_array($_disc)) $_disc = array();
         $_paths = ($widget['product_group_id'] > 0) ? _pg_catalog_product_group_paths($widget['product_group_id']) : array();
         $items  = _pg_build_product_rss_item($product, $channel_link, array(

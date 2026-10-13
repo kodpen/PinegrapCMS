@@ -213,6 +213,10 @@ Muhasebeci paketine ve KDV raporuna girmez.
 
 ### 8b. Cariye özel fiyat ön yüzde (10.59)
 
+**Durum (2026-10-13):** yapıldı. Kural `erp_storefront_price()`, mağaza tarafı
+`pg_erp_member_prices()`; ayrıca `get_best_offer_id()` de aynı kuralı uygular. Plana ek: hediye
+kartı ve bağış cari fiyatı almaz, ürün RSS beslemeleri liste fiyatında kalır.
+
 - Ayar `config.erp_storefront_account_prices` (varsayılan kapalı). Açıkken, oturumdaki
   kişinin carisinde fiyat satırı ya da genel iskonto varsa (`erp_account_price_terms()`)
   ürün listesi, ürün sayfası ve sepet o fiyatı gösterir ve sipariş o fiyatla yazılır.
