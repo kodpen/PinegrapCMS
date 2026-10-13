@@ -34,6 +34,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param string $kind     mention | assigned | completed | invited | note | note_shared | note_updated | note_answer
  *                         | unblocked (a task waited for is done: task_links.php)
  *                         | approval_requested | approval_decided | approval_reminder | ack_reminder
+ *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
  *                         | task_reminder | task_overdue (reminders.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner;
@@ -364,10 +365,11 @@ function ws_inbox_describe($viewer, $row)
             );
 
         // Approval requests (approvals.php): asked, settled, a day before
-        // the deadline.
+        // the deadline, answered from outside the team.
         case 'approval_requested':
         case 'approval_decided':
         case 'approval_reminder':
+        case 'approval_answered':
             if (function_exists('ws_approval_inbox_describe')) {
                 return ws_approval_inbox_describe($viewer, $row, $actor, $base);
             }
