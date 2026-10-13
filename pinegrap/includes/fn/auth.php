@@ -2786,16 +2786,22 @@ function asc_or_desc($column, $type, $extras = '')
     }
 }
 // return content for column heading
-function get_column_heading($column, $sort, $order, $extras = '')
+// $key is the value the link sorts by and $sort is compared with; it defaults
+// to the heading, for screens that still keep the heading as their sort.
+function get_column_heading($column, $sort, $order, $extras = '', $key = null)
 {
-    if ($column == $sort) {
+    if ($key === null) {
+        $key = $column;
+    }
+
+    if ($key == $sort) {
         if ($order == 'asc') {
-            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($column)) . '&order=desc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_up</span></a>');
+            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=desc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_up</span></a>');
         } else {
-            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($column)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_down</span></a>');
+            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_down</span></a>');
         }
     } else {
-        return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($column)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '<span class="material-icons">unfold_more</span></a>');
+        return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '<span class="material-icons">unfold_more</span></a>');
     }
 }
 function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '')

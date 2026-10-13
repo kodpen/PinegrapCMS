@@ -727,6 +727,65 @@ function pg_period_nav($url, $range, $periods, $range_html, $class = '')
                     </div>';
 }
 
+/**
+ * The sort, direction and page number of a sortable list screen, kept in the
+ * session per screen. The sort is stored as a column code, never as the
+ * translated heading, so a choice survives a language change, and only a
+ * column the current view offers is ever handed back: anything else falls
+ * back to the default, which keeps a stale or forged value out of ORDER BY.
+ *
+ * A sort picked without a direction starts in the default direction when it
+ * is the default column and ascending otherwise. A link that still carries a
+ * heading instead of a code is matched against the labels.
+ *
+ * @param string $screen  the list's session key, e.g. 'view_products'
+ * @param array  $columns code => heading of the columns this view sorts by
+ * @param array  $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @return array array('sort' => code, 'order' => 'asc'|'desc',
+ *               'screen' => page number, 1 or more)
+ */
+function pg_list_state($screen, $columns, $default)
+{
+    $state = $_SESSION['software']['list_state'][$screen] ?? array();
+
+    if (isset($_REQUEST['sort'])) {
+        $sort = is_scalar($_REQUEST['sort']) ? (string) $_REQUEST['sort'] : '';
+
+        if (!array_key_exists($sort, $columns)) {
+            $code = array_search($sort, $columns, true);
+
+            if ($code !== false) {
+                $sort = (string) $code;
+            }
+        }
+
+        $state['sort'] = $sort;
+        $state['order'] = '';
+    }
+
+    if (isset($_REQUEST['order'])) {
+        $state['order'] = (is_scalar($_REQUEST['order']) && (strtolower((string) $_REQUEST['order']) === 'desc')) ? 'desc' : 'asc';
+    }
+
+    $sort = (string) ($state['sort'] ?? '');
+    $order = (string) ($state['order'] ?? '');
+
+    if (($sort === '') || !array_key_exists($sort, $columns)) {
+        $sort = $default['sort'];
+        $order = $default['order'];
+    } elseif (($order !== 'asc') && ($order !== 'desc')) {
+        $order = ($sort === $default['sort']) ? $default['order'] : 'asc';
+    }
+
+    $_SESSION['software']['list_state'][$screen] = array('sort' => $sort, 'order' => $order);
+
+    // A positive whole number, or the first page: the value reaches LIMIT.
+    $page = $_REQUEST['screen'] ?? '';
+    $page = (is_scalar($page) && is_numeric($page) && ($page > 0) && ($page == round($page))) ? (int) $page : 1;
+
+    return array('sort' => $sort, 'order' => $order, 'screen' => $page);
+}
+
 
 /**
  * Where to send a browser that has finished with a tool and wants the settings.
