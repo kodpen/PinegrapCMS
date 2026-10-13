@@ -5522,6 +5522,86 @@ function pg_design_framework($key)
     return array('key' => $key) + $all[$key];
 }
 
+// The Bootstrap Icons stylesheet a visual design loads: on the site, on the
+// canvas and in the previews. The editor's icon picker lists the icons of the
+// copy under assets/fonts/bootstrap-icons/, so this is the same version; an
+// older one draws the newer icons the picker offers as empty boxes.
+function pg_design_icons_url()
+{
+    return 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css';
+}
+
+// Whether a stylesheet address is a Bootstrap Icons sheet. A design that
+// links its own (an import keeps the project's) is not given the stock one
+// on top of it: the same classes twice and two copies of the font.
+function pg_design_is_icons_url($url)
+{
+    return (bool) preg_match('~bootstrap-icons~i', (string) $url);
+}
+
+// Whether a design asset row (style_custom_css / style_custom_js) loads on a
+// page. `pages` lists the pages the row is limited to, as page ids, or as
+// `tab:<key>` for a page the editor had not saved yet (the save turns it into
+// the id). No list, or an empty one, means every page of the design.
+function pg_design_asset_on_page($entry, $page_id)
+{
+    if (!is_array($entry) || empty($entry['pages']) || !is_array($entry['pages'])) return true;
+    foreach ($entry['pages'] as $ref) {
+        if (is_scalar($ref) && (string) $ref === (string) (int) $page_id) return true;
+    }
+    return false;
+}
+
+// The design's asset list (style_custom_css / style_custom_js JSON) with its
+// page references moved to new pages: `$prefix<key>` becomes the page id
+// $ids[<key>]. The editor's save turns `tab:<key>` into the ids it has just
+// handed out, a design made from a template turns `key:<template page key>`
+// into its own, a duplicated design maps the original's ids ($prefix '') to
+// the copies'. A reference with no match stays as it is (a tab that was
+// closed matches no page). Returns the JSON untouched when nothing moved.
+function pg_designer_resolve_asset_page_refs($json, $prefix, $ids)
+{
+    $list = json_decode((string) $json, true);
+    if (!is_array($list) || !$ids) return $json;
+    $prefix = (string) $prefix;
+    $changed = false;
+    foreach ($list as $i => $entry) {
+        if (!is_array($entry) || empty($entry['pages']) || !is_array($entry['pages'])) continue;
+        $refs = array();
+        foreach ($entry['pages'] as $ref) {
+            $ref = is_scalar($ref) ? (string) $ref : '';
+            $key = ($prefix === '' || strncmp($ref, $prefix, strlen($prefix)) === 0) ? substr($ref, strlen($prefix)) : null;
+            if ($key !== null && $key !== false && isset($ids[$key])) {
+                $ref = (string) (int) $ids[$key];
+                $changed = true;
+            }
+            if ($ref !== '' && !in_array($ref, $refs, true)) $refs[] = $ref;
+        }
+        $list[$i]['pages'] = $refs;
+    }
+    return $changed ? json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $json;
+}
+
+// The design's asset list as one of its pages loads it, for a page that
+// leaves to become a design of its own: the files limited to other pages go,
+// and the ones limited to this page load everywhere (the new design has no
+// other page). Returns the JSON untouched when nothing is limited.
+function pg_design_assets_for_page($json, $page_id)
+{
+    $list = json_decode((string) $json, true);
+    if (!is_array($list)) return $json;
+    $out = array();
+    $changed = false;
+    foreach ($list as $entry) {
+        if (!is_array($entry) || !isset($entry['pages'])) { $out[] = $entry; continue; }
+        $changed = true;
+        if (!pg_design_asset_on_page($entry, $page_id)) continue;
+        unset($entry['pages']);
+        $out[] = $entry;
+    }
+    return $changed ? json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $json;
+}
+
 // The framework columns (style_framework, style_template,
 // style_template_version) exist - 2026.4.5.
 function pg_style_framework_ready($recheck = false)
@@ -6770,6 +6850,15 @@ function pg_design_template_install($template_id, $user, $opts = array())
     $tab_id_map = array();
     foreach ($tab_ids as $tab_key => $tab_page_id) $tab_id_map[] = array('key' => (string)$tab_key, 'page_id' => (int)$tab_page_id);
     pg_designer_resolve_page_tab_refs($pages, $tab_id_map, $tab_ids);
+    // A file the design limited to some of its pages names them by their
+    // template keys (pg_dtc_asset_page_keys()); now they are pages.
+    $asset_css = pg_designer_resolve_asset_page_refs($style_data['style_custom_css'], 'key:', $id_map);
+    $asset_js  = pg_designer_resolve_asset_page_refs($style_data['style_custom_js'], 'key:', $id_map);
+    if ($asset_css !== $style_data['style_custom_css'] || $asset_js !== $style_data['style_custom_js']) {
+        db("UPDATE style
+            SET style_custom_css = '" . escape($asset_css) . "', style_custom_js = '" . escape($asset_js) . "'
+            WHERE style_id = '" . (int)$style_id . "'");
+    }
     if (function_exists('pg_cf_reconcile_page_form')) {
         foreach ($pages as $p) {
             $settings = pg_designer_resolve_tab_values($p['form_settings'], $tab_ids);
@@ -6982,7 +7071,7 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
     $fw = pg_design_framework($tpl['framework']);
     $head = '';
     if ($fw['css'] !== '') $head .= '<link rel="stylesheet" href="' . h($fw['css']) . '">';
-    if (!empty($fw['bootstrap'])) $head .= '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">';
+    if (!empty($fw['bootstrap'])) $head .= '<link rel="stylesheet" href="' . h(pg_design_icons_url()) . '">';
     if (function_exists('pg_design_theme_links')) $head .= pg_design_theme_links($look, $palette, $tpl['framework']);
     // A preview is looked at, not used: nothing on it is submitted.
     $head .= '<style>form{pointer-events:none}</style>';

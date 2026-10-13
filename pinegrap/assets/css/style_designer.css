@@ -46,6 +46,9 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 56px);
+    /* On a phone or tablet 100vh counts the browser's own bars too, and
+       the status bar (its warnings button) ended up under them. */
+    height: calc(100dvh - 56px);
     min-height: 500px;
     overflow: hidden;
 }
@@ -278,6 +281,20 @@
 @media (max-width: 991.98px) {
     .sd-tabs-add-txt { display: none; }
 }
+/* All pages: the list after the strip, shown while the strip overflows. */
+.sd-tabs-all { flex: 0 0 auto; display: flex; align-items: center; }
+.sd-tabs-all[hidden] { display: none; }
+.sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
+.sd-tabs-all-count { font-size: .66rem; font-weight: 600; }
+.sd-tabs-all-count:empty { display: none; }
+.sd-tabs-all-menu { width: min(300px, calc(100vw - 16px)); padding: .4rem 0; }
+.sd-tabs-all-find { padding: 0 .5rem .4rem; }
+.sd-tabs-all-list { max-height: min(60vh, 420px); overflow-y: auto; }
+.sd-tabs-all-item { display: flex; align-items: center; gap: .45rem; font-size: .78rem; }
+.sd-tabs-all-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-tabs-all-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
+.sd-tabs-all-dirty { flex: 0 0 auto; color: #f0b95d; font-size: .6rem; }
+.sd-tabs-all-empty { padding: .4rem .75rem; font-size: .75rem; color: var(--sd-text-muted, #8b949e); }
 
 /* Settings modal */
 .sd-settings-scope { font-size: .74rem; color: var(--sd-text-muted, #8b949e); margin-bottom: 1rem; }
@@ -883,7 +900,9 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-statusbar .sd-breadcrumb span { cursor:pointer; padding:.05rem .2rem; border-radius:.15rem; transition:background .1s; white-space:nowrap; }
 .sd-statusbar .sd-breadcrumb span:hover { background:rgba(var(--sd-accent-rgb),.1); }
 /* Status bar right actions */
-.sd-status-last-modified { margin-left:auto; white-space:nowrap; flex-shrink:0; opacity:.75; }
+/* The "last changed" line gives way before the buttons do: a long user name
+   pushed the warnings button off a narrow window. */
+.sd-status-last-modified { margin-left:auto; white-space:nowrap; flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; opacity:.75; }
 .sd-status-last-modified:empty { display:none; }
 .sd-status-actions { margin-left:auto; display:flex; align-items:center; gap:.3rem; flex-shrink:0; }
 .sd-status-last-modified + .sd-status-actions { margin-left:0; }
@@ -4743,6 +4762,12 @@ body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; us
     font-size: .58rem; flex-shrink: 0; color: #f0b95d;
     display: inline-flex; align-items: center;
 }
+/* A file kept to some pages: how many (the title lists them). */
+.sd-as-badge-pages {
+    font-size: .58rem; padding: 0 3px; border-radius: 2px; flex-shrink: 0;
+    background: rgba(63,185,80,.18); color: #3fb950;
+    display: inline-flex; align-items: center; gap: 2px;
+}
 .sd-as-item-locked { cursor: default; }
 .sd-as-item-locked:hover { background: transparent; border-left-color: transparent; }
 .sd-as-item-locked .sd-as-item-name { color: #8b949e; }
@@ -5633,7 +5658,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     .sd-tabs-add-btn { padding-left: .45rem; padding-right: .45rem; }
     .sd-toolbar-pages { padding-right: .25rem; gap: .15rem; }
     .sd-toolbar-actions { gap: 2px; }
-    .sd-tabs-scroll { min-width: 60px; }
+    /* The strip gives way all the way down; the page list reaches the tabs
+       it can no longer show, and Save never leaves the screen. */
+    .sd-tabs-scroll { min-width: 0; }
 
     /* ── Canvas view bar (breakpoints, zoom, tools) ── */
     .sd-bp-bar {

@@ -307,6 +307,9 @@ function pg_designer_screen_render($ctx)
             'js'        => $sd_framework['js'],
             'bootstrap' => (bool)$sd_framework['bootstrap'],
         ),
+        // The Bootstrap Icons sheet the site loads (pg_design_icons_url()),
+        // for the canvas, the assets panel row and the preview.
+        'iconsUrl'      => pg_design_icons_url(),
         // Add mode from a template: the editor asks for its pages
         // (designer/template_prepare) behind the "preparing" curtain.
         'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
@@ -428,6 +431,15 @@ function pg_designer_screen_render($ctx)
                             ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
                         </div>
                         <div class="sd-tabs-scroll" id="sd-tabs-list" role="tablist"></div>
+                        <!-- Every page in one list, for when the strip cannot
+                             show them all. Shown only then (_pgTabsAllSync()). -->
+                        <div class="dropdown sd-tabs-all" id="sd-tabs-all" hidden>
+                            <button type="button" class="sd-icon-btn sd-tabs-all-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . h(lang('All pages')) . '" aria-label="' . h(lang('All pages')) . '"><span class="bi bi-list-ul" aria-hidden="true"></span><span class="sd-tabs-all-count" id="sd-tabs-all-count"></span></button>
+                            <div class="dropdown-menu dropdown-menu-dark dropdown-menu-end sd-tabs-all-menu">
+                                <div class="sd-tabs-all-find"><input type="search" class="form-control form-control-sm" id="sd-tabs-all-filter" placeholder="' . h(lang('Find a page…')) . '" autocomplete="off"></div>
+                                <div class="sd-tabs-all-list" id="sd-tabs-all-list"></div>
+                            </div>
+                        </div>
                         <div class="sd-toolbar-group sd-toolbar-actions">
                             <!-- Who else has this design open. Empty and
                                  invisible when nobody else does, so a single
@@ -2315,6 +2327,19 @@ function pg_designer_screen_post($ctx)
     }
     pg_designer_resolve_tab_refs($pages, $tab_ids);
     pg_designer_resolve_page_tab_refs($pages, $id_map, $tab_ids, $locked_pages);
+    // A design file limited to some pages names a page saved for the first
+    // time by its tab, the same way (pg_design_asset_on_page()).
+    if ($can_write_design && $tab_ids && pg_multi_page_design_ready()) {
+        $asset_css = pg_designer_resolve_asset_page_refs($style_data['style_custom_css'], 'tab:', $tab_ids);
+        $asset_js  = pg_designer_resolve_asset_page_refs($style_data['style_custom_js'], 'tab:', $tab_ids);
+        if ($asset_css !== $style_data['style_custom_css'] || $asset_js !== $style_data['style_custom_js']) {
+            $style_data['style_custom_css'] = $asset_css;
+            $style_data['style_custom_js']  = $asset_js;
+            db("UPDATE style
+                SET style_custom_css = '" . escape($asset_css) . "', style_custom_js = '" . escape($asset_js) . "'
+                WHERE style_id = '" . (int)$style_id . "'");
+        }
+    }
     foreach ($cf_jobs as $cf_page_id => $cf_set) {
         $cf_set = pg_designer_resolve_tab_values($cf_set, $tab_ids);
         $cf_res = pg_cf_reconcile_page_form($cf_page_id, $user['id'], $cf_set);

@@ -105,6 +105,98 @@ const StyleDesigner = (function () {
     // design. A custom design has no framework: they would write classes
     // nothing styles.
     function _sdUsesBootstrap() { return _sdFrameworkInfo().bootstrap !== false; }
+    // The Bootstrap Icons sheet the site loads (sdDesign.iconsUrl, from
+    // pg_design_icons_url()): the version the icon picker lists.
+    function _sdIconsUrl() {
+        return (_design && _design.iconsUrl) ? _design.iconsUrl
+            : 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css';
+    }
+    // How a page names itself in an asset row's `pages`: its id once saved,
+    // `tab:<key>` until then (the save swaps it for the id). The server's
+    // twin is pg_design_asset_on_page().
+    function _sdAssetPageRef(p) { return (p && p.page_id > 0) ? String(p.page_id) : ('tab:' + (p ? p.key : '')); }
+    function _sdAssetOnPage(f, p) {
+        if (!f || !Array.isArray(f.pages) || !f.pages.length) return true;
+        return !!p && f.pages.map(String).indexOf(_sdAssetPageRef(p)) !== -1;
+    }
+    // The asset rows the page loads, in their order: switched on, not limited
+    // to other pages, and without the stock Bootstrap Icons row when the
+    // design links an icons sheet of its own (the renderer drops it then).
+    // `page` defaults to the page on the canvas.
+    function _sdAssetsInPlay(list, page) {
+        if (page === undefined) page = _pgActivePage();
+        var on = (list || []).filter(function (f) { return f && f.enabled !== false && _sdAssetOnPage(f, page); });
+        var ownIcons = on.some(function (f) { return !f.meta && f.type === 'external-css' && /bootstrap-icons/i.test(f.content || ''); });
+        return ownIcons ? on.filter(function (f) { return f.meta !== 'bootstrap-icons'; }) : on;
+    }
+    // The names of the pages an asset row's `pages` points at, for its badge.
+    function _sdAssetPageNames(refs) {
+        return (refs || []).map(function (ref) {
+            ref = String(ref);
+            for (var i = 0; i < _pages.length; i++) {
+                if (_sdAssetPageRef(_pages[i]) === ref) return _pages[i].page_name || _sdT('New Page');
+            }
+            return _sdT('(deleted page)');
+        });
+    }
+    // Asks which pages a file loads on: every page, or the ticked ones.
+    // `done` gets the new `pages` list ([] for every page); dismissing the
+    // dialog changes nothing.
+    function _sdAssetPagesDialog(entry, done) {
+        if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+        var current = Array.isArray(entry.pages) ? entry.pages.map(String) : [];
+        var all = !current.length;
+        var rows = _pages.map(function (p) {
+            var ref = _sdAssetPageRef(p);
+            return '<label class="form-check d-flex align-items-center gap-2 mb-1">' +
+                       '<input class="form-check-input mt-0" type="checkbox" data-page-ref="' + esc(ref).replace(/"/g, '&quot;') + '"' +
+                           (current.indexOf(ref) !== -1 ? ' checked' : '') + (all ? ' disabled' : '') + '>' +
+                       '<span class="form-check-label text-truncate">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
+                   '</label>';
+        }).join('');
+        var el = document.createElement('div');
+        el.className = 'modal fade';
+        el.tabIndex = -1;
+        el.innerHTML =
+            '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
+                '<div class="modal-header py-2"><h6 class="modal-title mb-0 text-truncate">' + esc(_sdT('Pages for "{var}"', entry.name)) + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+                '<div class="modal-body small">' +
+                    '<p class="text-body-secondary mb-2">' + esc(_sdT('A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.')) + '</p>' +
+                    '<label class="form-check mb-1"><input class="form-check-input" type="radio" name="sd-ap-mode" value="all"' + (all ? ' checked' : '') + '>' +
+                        '<span class="form-check-label">' + esc(_sdT('Every page')) + '</span></label>' +
+                    '<label class="form-check mb-2"><input class="form-check-input" type="radio" name="sd-ap-mode" value="some"' + (all ? '' : ' checked') + '>' +
+                        '<span class="form-check-label">' + esc(_sdT('Only these pages:')) + '</span></label>' +
+                    '<div class="sd-ap-pages ps-4">' + rows + '</div>' +
+                    '<div class="text-danger mt-2 d-none" data-ap-error>' + esc(_sdT('Choose at least one page, or pick every page.')) + '</div>' +
+                '</div>' +
+                '<div class="modal-footer py-2">' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Cancel')) + '</button>' +
+                    '<button type="button" class="btn btn-sm btn-primary" data-ap-apply>' + esc(_sdT('Apply')) + '</button>' +
+                '</div>' +
+            '</div></div>';
+        document.body.appendChild(el);
+        var boxes = Array.prototype.slice.call(el.querySelectorAll('[data-page-ref]'));
+        el.addEventListener('change', function (e) {
+            if (e.target.name !== 'sd-ap-mode') return;
+            var some = e.target.value === 'some';
+            boxes.forEach(function (b) { b.disabled = !some; });
+            if (some && !boxes.some(function (b) { return b.checked; })) {
+                var act = _pgActivePage();
+                var mine = act ? el.querySelector('[data-page-ref="' + _sdAssetPageRef(act).replace(/"/g, '\\"') + '"]') : null;
+                if (mine) mine.checked = true;
+            }
+        });
+        el.querySelector('[data-ap-apply]').addEventListener('click', function () {
+            var some = !!el.querySelector('input[name="sd-ap-mode"][value="some"]:checked');
+            var refs = some ? boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.dataset.pageRef; }) : [];
+            if (some && !refs.length) { el.querySelector('[data-ap-error]').classList.remove('d-none'); return; }
+            bootstrap.Modal.getOrCreateInstance(el).hide();
+            done(refs);
+        });
+        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    }
     let _pages     = [];     // [{ key, page_id, page_name, …settings, tree, undoStack, redoStack, nodeIdCounter, baseline }]
     let _activeKey = null;   // key of the page currently on the canvas
     let _styleBaseline = null; // JSON of shared fields (name/theme/assets…) at load / last save
@@ -5976,7 +6068,7 @@ const StyleDesigner = (function () {
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
-            '<link rel="stylesheet" id="sd-icons-css" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">' +
+            '<link rel="stylesheet" id="sd-icons-css" crossorigin="anonymous" href="' + esc(_sdIconsUrl()) + '">' +
             '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body' +
             (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') +
             (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '></body></html>');
@@ -16420,7 +16512,11 @@ const StyleDesigner = (function () {
                     return createNode('semantic', { tag: 'div', cssClass: 'offcanvas offcanvas-start show', id: ocId, customName: 'Offcanvas',
                         _attrs: [{ name: 'tabindex', value: '-1' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'offcanvas-header', customName: _sdT('Offcanvas Header') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Menu'), cssClass: 'offcanvas-title' }),
+                            // Not a heading element: a drawer usually sits in the
+                            // header, ahead of the page's H1, and an <h5> there
+                            // makes every page's outline start at H5. The h5
+                            // class keeps the look.
+                            createNode('content', { contentType: 'heading', tag: 'p', text: _sdT('Menu'), cssClass: 'offcanvas-title h5' }),
                             createNode('semantic', { tag: 'button', cssClass: 'btn-close ms-auto', text: '', customName: _sdT('Close Button'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'offcanvas' }, { name: 'aria-label', value: 'Close' }] })
                         ]),
@@ -21031,10 +21127,12 @@ const StyleDesigner = (function () {
         }
     }
 
-    // What the canvas scripts are made of: every enabled JS entry, with the
-    // stamp of a managed file so saving its body counts as a change.
+    // What the canvas scripts are made of: every JS entry the page on the
+    // canvas loads, with the stamp of a managed file so saving its body
+    // counts as a change (and a tab whose page loads other scripts gets a
+    // fresh canvas document).
     function _sdCanvasJsSig(jsFiles) {
-        return JSON.stringify(jsFiles.filter(function (f) { return f.enabled !== false; }).map(function (f) {
+        return JSON.stringify(_sdAssetsInPlay(jsFiles).map(function (f) {
             return [f.type || '', f.name || '', f.type === 'external-js' ? _sdAssetHref(f) : (f.content || ''), f.module ? 1 : 0];
         }));
     }
@@ -21049,6 +21147,9 @@ const StyleDesigner = (function () {
     function applyAssetsToIframe() {
         if (!canvasDoc) return;
         var assets = _readAssetsFromFields();
+        // Only the rows the page on the canvas loads (_sdAssetsInPlay()).
+        var cssRows = _sdAssetsInPlay(assets.cssFiles);
+        var jsRows  = _sdAssetsInPlay(assets.jsFiles);
 
         // A script change first: the fresh document applies everything again.
         var jsSig = _sdCanvasJsSig(assets.jsFiles);
@@ -21068,8 +21169,7 @@ const StyleDesigner = (function () {
 
         // ── CSS: external links ──
         var cssHrefs = [];
-        assets.cssFiles.forEach(function(f) {
-            if (f.enabled === false) return;
+        cssRows.forEach(function(f) {
             if (f.type === 'external-css' && f.content && f.content.trim()) cssHrefs.push(_sdAssetHref(f));
         });
         _sdSyncCanvasLinks('pg-ext-css-', cssHrefs, true);
@@ -21100,8 +21200,8 @@ const StyleDesigner = (function () {
         // new stylesheet the whole canvas is restyled for.
         var inlineCss = '';
         var userStylesCss = '';
-        assets.cssFiles.forEach(function(f) {
-            if (f.enabled === false || f.type === 'external-css') return;
+        cssRows.forEach(function(f) {
+            if (f.type === 'external-css') return;
             if (f.meta === 'user-styles') {
                 if (f.content && f.content.trim()) userStylesCss += f.content.trim() + '\n';
                 return;
@@ -21164,8 +21264,7 @@ const StyleDesigner = (function () {
             // every delegated click twice (a collapse opens and shuts again).
             var _fwJs = canvasDoc._sdFwJs || '';
             var jsIdx = 0;
-            assets.jsFiles.forEach(function(f) {
-                if (f.enabled === false) return;
+            jsRows.forEach(function(f) {
                 if (f.type === 'external-js' && f.content && f.content.trim()) {
                     var src = _sdAssetHref(f);
                     if (_fwJs && src === _fwJs) return;
@@ -21186,8 +21285,8 @@ const StyleDesigner = (function () {
             });
 
             // ── JS: inline (one <script> block per file, keyed by id) ──
-            assets.jsFiles.forEach(function(f, idx) {
-                if (f.enabled === false || f.type === 'external-js' || !f.content) return;
+            jsRows.forEach(function(f, idx) {
+                if (f.type === 'external-js' || !f.content) return;
                 var scr = canvasDoc.createElement('script');
                 scr.id = 'pg-inline-js-' + idx;
                 if (f.type === 'json') {
@@ -21259,56 +21358,44 @@ const StyleDesigner = (function () {
                             '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">meta</span>' +
                             '&nbsp;<span class="sd-ht-attr">charset</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"utf-8"</span>' +
                             '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        // Bootstrap CSS — a custom design has no framework file
-                        if (_sdUsesBootstrap()) buildHtmlLockedRow(headWrap, d,
-                            '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                            '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                            '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"bootstrap@5.3.8/dist/css/bootstrap.min.css"</span>' +
-                            '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        // Bootstrap Icons CSS
-                        buildHtmlLockedRow(headWrap, d,
-                            '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                            '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                            '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"</span>' +
-                            '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        // Theme CSS
-                        if (hasThemeCss) {
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                                '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                                '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"/' + esc(themeStr) + '"</span>' +
-                                '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        }
-                        // ── Custom assets: Google Fonts + CSS files ──
+                        // The design's stylesheets as the page on the canvas
+                        // gets them (get_page_content.php): the Google Fonts,
+                        // the linked files in their order - the framework and
+                        // Bootstrap Icons rows among them, at their real
+                        // addresses - then the inline files in one <style>
+                        // and the User Styles in their own.
                         var _assets = _readAssetsFromFields();
-                        _assets.gfFonts.forEach(function(f) {
-                            if (f.enabled === false || !f.family) return;
-                            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-                            var href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap';
+                        var _htLink = function (href) {
                             buildHtmlLockedRow(headWrap, d,
                                 '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
                                 '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
                                 '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(href) + '"</span>' +
                                 '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
+                        };
+                        var _htStyle = function (id, names) {
+                            buildHtmlLockedRow(headWrap, d,
+                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">style</span>' +
+                                '&nbsp;<span class="sd-ht-attr">id</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + id + '"</span>' +
+                                '<span class="sd-ht-bracket">&gt;</span>' +
+                                (names ? '<span class="sd-ht-comment">/* ' + esc(names) + ' */</span>' : '<span class="sd-ht-comment">…</span>') +
+                                '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">style</span><span class="sd-ht-bracket">&gt;</span>');
+                        };
+                        _assets.gfFonts.forEach(function(f) {
+                            if (f.enabled === false || !f.family) return;
+                            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
+                            _htLink('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap');
                         });
-                        _assets.cssFiles.forEach(function(f) {
-                            if (f.enabled === false) return;
-                            if (f.type === 'external-css') {
-                                buildHtmlLockedRow(headWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                                    '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                                    '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(f.content || '') + '"</span>' +
-                                    '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                            } else {
-                                // Inline CSS — show as <link rel="stylesheet" href="name.css">
-                                var cssHref = (f.name && f.name.indexOf('.') === -1) ? f.name + '.css' : (f.name || 'style.css');
-                                buildHtmlLockedRow(headWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                                    '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                                    '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(cssHref) + '"</span>' +
-                                    '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                            }
+                        var _cssRows = _sdAssetsInPlay(_assets.cssFiles);
+                        var _inlineNames = [], _userStyles = false;
+                        _cssRows.forEach(function(f) {
+                            if (f.meta === 'user-styles') { if (f.content && f.content.trim()) _userStyles = true; return; }
+                            if (f.type === 'external-css') { if (f.content && f.content.trim()) _htLink(f.content.trim()); return; }
+                            if (f.content) _inlineNames.push(f.name || '');
                         });
+                        // Theme CSS
+                        if (hasThemeCss) _htLink('/' + themeStr);
+                        if (_inlineNames.length) _htStyle('pg-page-css', _inlineNames.join(', '));
+                        if (_userStyles) _htStyle('pg-user-styles', '');
                         // Meta tags from pageSettings
                         pageSettings.meta.forEach(function(m) {
                             if (!m.name && !m.property) return;
@@ -21332,31 +21419,35 @@ const StyleDesigner = (function () {
                         if (tree) buildHtmlTreeEl(bodyWrap, tree, 2);
                         // Footer scripts (locked)
                         var d = 2;
-                        // ── Custom assets: JS files (before framework scripts) ──
+                        // ── The design's scripts, as the page gets them: the
+                        // linked files in their order (jQuery and the framework
+                        // bundle among them), then the JSON blocks, the classic
+                        // inline code in one <script>, the modules.
                         var _assetsJs = _readAssetsFromFields();
-                        _assetsJs.jsFiles.forEach(function(f) {
-                            if (f.enabled === false) return;
-                            var _modAttr = f.module ? '&nbsp;<span class="sd-ht-attr">type</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"module"</span>' : '';
-                            if (f.type === 'external-js') {
-                                buildHtmlLockedRow(bodyWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + _modAttr +
-                                    '&nbsp;<span class="sd-ht-attr">src</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(f.content || '') + '"</span>' +
-                                    '<span class="sd-ht-bracket">&gt;&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
-                            } else if (f.type === 'json') {
-                                buildHtmlLockedRow(bodyWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' +
-                                    '&nbsp;<span class="sd-ht-attr">type</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"application/json"</span>' +
-                                    '&nbsp;<span class="sd-ht-attr">id</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(f.name) + '"</span>' +
-                                    '<span class="sd-ht-bracket">&gt;…&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
-                            } else {
-                                var preview = (f.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 60);
-                                if ((f.content || '').length > 60) preview += '…';
-                                buildHtmlLockedRow(bodyWrap, d,
-                                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + _modAttr +
-                                    '&nbsp;<span class="sd-ht-attr">id</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(f.name) + '"</span>' +
-                                    '<span class="sd-ht-bracket">&gt;</span>' +
-                                    '<span class="sd-ht-comment">' + preview + '</span>' +
-                                    '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
+                        var _jsRows = _sdAssetsInPlay(_assetsJs.jsFiles);
+                        var _htScript = function (attrs, body) {
+                            buildHtmlLockedRow(bodyWrap, d,
+                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + attrs +
+                                '<span class="sd-ht-bracket">&gt;</span>' + body +
+                                '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
+                        };
+                        var _htAttr = function (name, value) {
+                            return '&nbsp;<span class="sd-ht-attr">' + name + '</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(value) + '"</span>';
+                        };
+                        var _classic = [];
+                        _jsRows.forEach(function(f) {
+                            if (f.type === 'external-js' && f.content && f.content.trim()) {
+                                _htScript((f.module ? _htAttr('type', 'module') : '') + _htAttr('src', f.content.trim()), '');
+                            }
+                        });
+                        _jsRows.forEach(function(f) {
+                            if (f.type === 'json' && f.content) _htScript(_htAttr('type', 'application/json') + _htAttr('id', f.name || ''), '<span class="sd-ht-comment">…</span>');
+                            else if (f.type !== 'external-js' && f.type !== 'json' && f.content && !f.module) _classic.push(f.name || '');
+                        });
+                        if (_classic.length) _htScript(_htAttr('id', 'pg-page-js'), '<span class="sd-ht-comment">/* ' + esc(_classic.join(', ')) + ' */</span>');
+                        _jsRows.forEach(function(f) {
+                            if (f.type !== 'external-js' && f.type !== 'json' && f.content && f.module) {
+                                _htScript(_htAttr('type', 'module'), '<span class="sd-ht-comment">/* ' + esc(f.name || '') + ' */</span>');
                             }
                         });
                         // jQuery + Bootstrap bundle are now emitted via the
@@ -36616,6 +36707,10 @@ const StyleDesigner = (function () {
                             meta: f.meta || '',
                             // Loaded as an ES module (<script type="module">).
                             module: !!f.module,
+                            // The pages the file loads on: page ids, or
+                            // "tab:<key>" for a page not saved yet. Empty
+                            // means every page of the design.
+                            pages: Array.isArray(f.pages) ? f.pages.map(String) : [],
                             // The CSS file currently designated as the
                             // overlay flush target. The Save handler reads
                             // this to know where to append unmoved Google
@@ -36657,7 +36752,7 @@ const StyleDesigner = (function () {
         // (_sdFrameworkInfo()); the Bootstrap 5 addresses are what a design
         // from before the framework choice uses.
         var BS_CSS_URL   = _sdFrameworkInfo().css || 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css';
-        var BS_ICONS_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
+        var BS_ICONS_URL = _sdIconsUrl();
         var BS_JS_URL    = _sdFrameworkInfo().js || 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js';
         var JQUERY_URL   = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
 
@@ -36808,7 +36903,9 @@ const StyleDesigner = (function () {
         // of a document's <head> and this merges it in. Duplicates are
         // skipped by URL for linked files and by name+content for inline
         // blocks; fonts merge their weight lists. Everything lands in the
-        // shared design, since that is where assets live now.
+        // shared design, since that is where assets live now. A file that
+        // carries `pages` loads only on those pages; a duplicate joins the
+        // page lists, and a file wanted on every page stays on every page.
         window.sdImportAssets = function (payload) {
             payload = payload || {};
             var added = { css: 0, js: 0, fonts: 0 };
@@ -36816,15 +36913,27 @@ const StyleDesigner = (function () {
                 incoming.forEach(function (a) {
                     if (!a || !a.type) return;
                     var isLink = (a.type === 'external-css' || a.type === 'external-js');
-                    var dup = list.some(function (x) {
-                        if (isLink) return x.type === a.type && (x.content || '') === (a.content || '');
-                        return x.type === a.type && x.name === a.name && (x.content || '') === (a.content || '');
+                    var aPages = Array.isArray(a.pages) ? a.pages.map(String) : [];
+                    var dup = null;
+                    list.some(function (x) {
+                        var same = isLink
+                            ? (x.type === a.type && (x.content || '') === (a.content || ''))
+                            : (x.type === a.type && x.name === a.name && (x.content || '') === (a.content || ''));
+                        if (same) dup = x;
+                        return same;
                     });
-                    if (dup) return;
+                    if (dup) {
+                        var xPages = Array.isArray(dup.pages) ? dup.pages : [];
+                        if (!xPages.length) return;
+                        if (!aPages.length) { dup.pages = []; return; }
+                        aPages.forEach(function (ref) { if (xPages.indexOf(ref) === -1) xPages.push(ref); });
+                        dup.pages = xPages;
+                        return;
+                    }
                     var entry = {
                         id: a.id || mkId(), name: a.name || (isLink ? 'external' : 'imported'), type: a.type,
                         content: a.content || '', enabled: a.enabled !== false, _file: !!a._file,
-                        locked: false, meta: '', _overlayTarget: false
+                        locked: false, meta: '', pages: aPages, _overlayTarget: false
                     };
                     if (a.module) entry.module = true;
                     // Keep the user-styles sentinel last so the operator's own
@@ -36859,6 +36968,36 @@ const StyleDesigner = (function () {
             renderFileList('js');
             renderFontList();
             return added;
+        };
+
+        // ── Bridge for page references ────────────────────────────────
+        // A file's `pages` names pages by id, or as "tab:<key>" before the
+        // page is first saved (and "key:<template key>" in a template's
+        // own copy). The page-tabs code hands a mapping function here when
+        // those names change: after a save gives new pages their ids, and
+        // when a template's pages become tabs. `fn` returns the new name,
+        // or the same one to keep it. Returns true when anything changed.
+        window.sdAssetsRemapPages = function (fn) {
+            if (typeof fn !== 'function') return false;
+            var changed = { css: false, js: false };
+            function remap(list, kind) {
+                list.forEach(function (f) {
+                    if (!f || !Array.isArray(f.pages) || !f.pages.length) return;
+                    var out = [];
+                    f.pages.forEach(function (ref) {
+                        var to = fn(String(ref));
+                        to = (to === undefined || to === null || to === '') ? String(ref) : String(to);
+                        if (to !== String(ref)) changed[kind] = true;
+                        if (out.indexOf(to) === -1) out.push(to);
+                    });
+                    f.pages = out;
+                });
+            }
+            remap(cssFiles, 'css');
+            remap(jsFiles, 'js');
+            if (changed.css) { saveFiles('sd-custom-css-field', cssFiles); renderFileList('css'); }
+            if (changed.js)  { saveFiles('sd-custom-js-field', jsFiles);   renderFileList('js'); }
+            return changed.css || changed.js;
         };
 
         // ── Build panel HTML ──────────────────────────────────────────────────
@@ -37672,6 +37811,10 @@ const StyleDesigner = (function () {
                 { label: _sdT('Duplicate'),            action: 'dup',    icon: 'bi-copy',    disabled: isLocked },
                 { label: tgl,                 action: 'toggle', icon: 'bi-toggles' },
                 { label: _sdT('Load as a Module'), action: 'module', icon: file.module ? 'bi-check2-square' : 'bi-square', hidden: !canModule },
+                // Which pages the file loads on. Not for the framework rows,
+                // and only where the design has pages to choose between.
+                { label: _sdT('Pages It Loads On…'), action: 'pages', icon: 'bi-file-earmark-check',
+                  hidden: isLocked || (_pages.length < 2 && !(Array.isArray(file.pages) && file.pages.length)) },
                 { divider: true },
                 { label: _sdT('Remove from Design'), action: 'unlink', icon: 'bi-eject',   disabled: isLocked },
                 { label: _sdT('Delete (permanent)'),      action: 'delete', icon: 'bi-trash',   danger: true, disabled: isLocked || !hasFile }
@@ -37695,9 +37838,18 @@ const StyleDesigner = (function () {
             else if (action === 'dn' && idx < files.length-1) { var t=files[idx]; files[idx]=files[idx+1]; files[idx+1]=t; }
             else if (action === 'toggle') { files[idx].enabled = !files[idx].enabled; }
             else if (action === 'module') { if (entry.locked) return; files[idx].module = !files[idx].module; }
+            else if (action === 'pages') {
+                if (entry.locked) return;
+                _sdAssetPagesDialog(entry, function (refs) {
+                    entry.pages = refs;
+                    saveFiles(fieldId, files); renderFileList(type);
+                });
+                return;
+            }
             else if (action === 'dup') {
                 var dup = { id: mkId(), name: files[idx].name.replace(/(\.\w+)$/, '-copy$1'), type: files[idx].type, content: files[idx].content, enabled: files[idx].enabled };
                 if (files[idx].module) dup.module = true;
+                if (Array.isArray(files[idx].pages) && files[idx].pages.length) dup.pages = files[idx].pages.slice();
                 files.splice(idx+1, 0, dup);
             } else if (action === 'rename') {
                 var nn = prompt(_sdT('New name:'), files[idx].name);
@@ -37815,7 +37967,13 @@ const StyleDesigner = (function () {
                 if (f.module) extBadge += '<span class="sd-as-badge-ext" title="' + esc(_sdT('Loaded as an ES module (type="module")')).replace(/"/g, '&quot;') + '">module</span>';
                 var offBadge = f.enabled === false ? '<span class="sd-as-badge-off">off</span>' : '';
                 var lockBadge = f.locked ? '<span class="sd-as-badge-lock" title="' + esc(_sdT('A system file — it cannot be deleted')) + '"><span class="bi bi-lock-fill"></span></span>' : '';
-                item.innerHTML = '<span class="bi ' + ic + ' sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(f.name) + '</span>' + extBadge + offBadge + lockBadge;
+                // A file kept to some pages says how many, and which.
+                var pagesBadge = '';
+                if (Array.isArray(f.pages) && f.pages.length) {
+                    pagesBadge = '<span class="sd-as-badge-pages" title="' + esc(_sdT('Loads only on: {var}', _sdAssetPageNames(f.pages).join(', '))).replace(/"/g, '&quot;') + '">' +
+                                 '<span class="bi bi-file-earmark"></span>' + f.pages.length + '</span>';
+                }
+                item.innerHTML = '<span class="bi ' + ic + ' sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(f.name) + '</span>' + extBadge + pagesBadge + offBadge + lockBadge;
                 // Locked entries point at fixed CDN URLs — clicking opens nothing
                 // (no rename, no content edit), but right-click still surfaces
                 // up/down/toggle so the user can reorder or disable them.
@@ -45007,16 +45165,28 @@ const StyleDesigner = (function () {
         }
         html = html.replace('<meta_tags></meta_tags>', _metaHtml.trim());
 
-        // Replace <stylesheet> placeholder with Bootstrap 5 + BI CDN
+        // Inject custom CSS/JS assets (from assets panel) into preview: the
+        // rows the page on the canvas loads, as the renderer picks them.
+        var _pvAssets = _readAssetsFromFields();
+        var _pvCssRows = _sdAssetsInPlay(_pvAssets.cssFiles);
+        var _pvJsRows  = _sdAssetsInPlay(_pvAssets.jsFiles);
+
+        // Replace <stylesheet> placeholder with the framework and Bootstrap
+        // Icons, unless the assets panel's rows carry them - the renderer's
+        // fallback for a design without those rows, and only then.
         var _pvFw = _sdFrameworkInfo();
+        var _pvSentinel = _pvAssets.cssFiles.some(function (f) {
+            return f && f.enabled !== false && (f.meta === 'bootstrap-css' || f.meta === 'bootstrap-icons');
+        });
+        var _pvOwnIcons = _pvCssRows.some(function (f) { return !f.meta && f.type === 'external-css' && /bootstrap-icons/i.test(f.content || ''); });
         // The look and the palette follow the last Bootstrap link: the
         // framework's here, or the assets panel's Bootstrap row below.
         var _pvTheme = _sdThemeHeadHtml('        ');
         var _pvThemeDone = false;
         html = html.replace('<stylesheet></stylesheet>',
-            (_pvFw.css ? '<link rel="stylesheet" href="' + esc(_pvFw.css) + '">\n        ' : '') +
+            (!_pvSentinel && _pvFw.css ? '<link rel="stylesheet" href="' + esc(_pvFw.css) + '">\n        ' : '') +
             '<!--pg-theme-slot-->' +
-            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">');
+            (!_pvSentinel && !_pvOwnIcons ? '<link rel="stylesheet" href="' + esc(_sdIconsUrl()) + '">' : ''));
 
         // Replace Pinegrap region tags with visible placeholders
         var _rph = function(label) {
@@ -45035,8 +45205,6 @@ const StyleDesigner = (function () {
         html = html.replace(/<mobile_switch><\/mobile_switch>/g,    _rph(_sdT('Mobile Switch')));
         html = html.replace(/<pdf><\/pdf>/g,                        _rph(_sdT('PDF')));
 
-        // Inject custom CSS/JS assets (from assets panel) into preview
-        var _pvAssets = _readAssetsFromFields();
         // Google Fonts
         var _pvFontLinks = '';
         _pvAssets.gfFonts.forEach(function(f) {
@@ -45048,8 +45216,7 @@ const StyleDesigner = (function () {
         var _pvExtCss = '';
         var _pvInlineCss = '';
         var _pvUserStylesCss = '';
-        _pvAssets.cssFiles.forEach(function(f) {
-            if (f.enabled === false) return;
+        _pvCssRows.forEach(function(f) {
             // user-styles emits into its own <style id="pg-user-styles">
             // (built below) — collect separately so it doesn't end up in
             // pg-page-css.
@@ -45085,8 +45252,7 @@ const StyleDesigner = (function () {
         var _pvInlineJs = '';
         var _pvJsonJs = '';
         var _pvModuleJs = '';
-        _pvAssets.jsFiles.forEach(function(f) {
-            if (f.enabled === false) return;
+        _pvJsRows.forEach(function(f) {
             if (f.type === 'external-js') {
                 if (f.content && f.content.trim()) _pvExtJs += '    <script' + (f.module ? ' type="module"' : '') + ' src="' + f.content.trim() + '"><\/script>\n';
             } else if (f.type === 'json') {
@@ -46376,6 +46542,7 @@ const StyleDesigner = (function () {
         list.innerHTML = html;
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
+        _pgTabsAllSync();
         // The strip scrolls on its own; keep the active tab in view.
         var act = list.querySelector('.sd-tab.active');
         if (act && list.scrollWidth > list.clientWidth) {
@@ -46385,8 +46552,91 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── All pages ──
+    // A design with many pages does not fit the strip, and a strip that
+    // scrolls sideways is slow to search. The button after it lists every
+    // page; it shows only while the strip overflows (or a group is folded),
+    // with the number of pages on it.
+    function _pgTabsAllSync() {
+        var wrap = document.getElementById('sd-tabs-all');
+        var list = document.getElementById('sd-tabs-list');
+        if (!wrap || !list) return;
+        var count = document.getElementById('sd-tabs-all-count');
+        if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
+        var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
+        if (wrap.hidden !== hidden) {
+            if (hidden && wrap.classList.contains('show')) return;
+            wrap.hidden = hidden;
+        }
+    }
+    function _pgTabsAllFill() {
+        var box = document.getElementById('sd-tabs-all-list');
+        if (!box) return;
+        var q = ((document.getElementById('sd-tabs-all-filter') || {}).value || '').trim().toLocaleLowerCase();
+        var html = '';
+        _pages.forEach(function (p) {
+            var name = p.page_name ? p.page_name : _sdT('New Page');
+            if (q && name.toLocaleLowerCase().indexOf(q) === -1) return;
+            var locked = (p.access === 'locked');
+            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
+            html += '<button type="button" class="dropdown-item sd-tabs-all-item' + (p.key === _activeKey ? ' active' : '') + '"' +
+                    ' data-key="' + esc(p.key) + '"' + (locked ? ' disabled' : '') + '>' +
+                    // A page in a group carries the group's colour.
+                    '<span class="sd-tabs-all-dot' + (gid ? ' sd-tab-color-dot' : '') + '"' + (gid ? ' data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') + ' aria-hidden="true"></span>' +
+                    '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
+                    (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
+                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    (locked ? '<span class="bi bi-lock-fill"></span>' : '') +
+                    '</button>';
+        });
+        box.innerHTML = html || '<div class="sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+    }
+
     function _pgTabsBind() {
         var list = document.getElementById('sd-tabs-list');
+        var all = document.getElementById('sd-tabs-all');
+        if (all && !all._pgBound) {
+            all._pgBound = true;
+            var filter = document.getElementById('sd-tabs-all-filter');
+            all.addEventListener('show.bs.dropdown', function () {
+                if (filter) filter.value = '';
+                _pgTabsAllFill();
+            });
+            all.addEventListener('shown.bs.dropdown', function () {
+                if (filter) filter.focus();
+                var act = all.querySelector('.sd-tabs-all-item.active');
+                if (act) act.scrollIntoView({ block: 'nearest' });
+            });
+            all.addEventListener('hidden.bs.dropdown', function () { _pgTabsAllSync(); });
+            if (filter) {
+                filter.addEventListener('input', _pgTabsAllFill);
+                filter.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    var first = all.querySelector('.sd-tabs-all-item:not([disabled])');
+                    if (first) first.click();
+                });
+            }
+            all.addEventListener('click', function (e) {
+                var it = e.target.closest('.sd-tabs-all-item');
+                if (!it || it.disabled) return;
+                var btn = all.querySelector('[data-bs-toggle="dropdown"]');
+                if (btn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) bootstrap.Dropdown.getOrCreateInstance(btn).hide();
+                if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
+            });
+            window.addEventListener('resize', function () { _pgTabsAllSync(); });
+        }
+        if (list && !list._pgWheelBound) {
+            list._pgWheelBound = true;
+            // A mouse wheel turns the strip sideways: most mice have no
+            // horizontal wheel, and the strip's scrollbar is a few pixels tall.
+            list.addEventListener('wheel', function (e) {
+                if (e.ctrlKey || e.metaKey || list.scrollWidth <= list.clientWidth) return;
+                if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+                list.scrollLeft += e.deltaY;
+                e.preventDefault();
+            }, { passive: false });
+        }
         if (list && !list._pgBound) {
             list._pgBound = true;
             list.addEventListener('click', function (e) {
@@ -46678,6 +46928,10 @@ const StyleDesigner = (function () {
         var ids = Object.keys(sids).map(Number).filter(function (id) { return id > 0; });
         if (ids.length) { render(); prefetchShared(ids, function () { render(); }); }
         else render();
+        // A stylesheet or script kept to some pages comes or goes with the
+        // page (_sdAssetsInPlay()); a change of scripts gets a fresh canvas.
+        applyAssetsToIframe();
+        renderHtmlTree();
 
         if (next.treeLoadWarning) {
             next.treeLoadWarning = false;
@@ -48881,8 +49135,29 @@ const StyleDesigner = (function () {
     }
 
     function _pgImportApplyPages(d, projectName, sharedMade) {
+            // The new tabs' keys are settled first: a stylesheet or script
+            // that only some of the imported pages used (`page_names`, from
+            // pg_di_scope_assets()) is kept to those tabs, as "tab:<key>"
+            // until the save gives them ids.
+            var tabKeys = [], keyByName = {};
+            (d.pages || []).forEach(function (sp) {
+                _pgNewTabSeq++;
+                var k = 'new' + Date.now() + '_' + _pgNewTabSeq;
+                tabKeys.push(k);
+                if (sp.page_name) keyByName[sp.page_name] = k;
+            });
+            function scoped(list) {
+                return (Array.isArray(list) ? list : []).map(function (a) {
+                    if (!a || !Array.isArray(a.page_names)) return a;
+                    var c = Object.assign({}, a);
+                    delete c.page_names;
+                    var refs = a.page_names.filter(function (n) { return !!keyByName[n]; }).map(function (n) { return 'tab:' + keyByName[n]; });
+                    if (refs.length) c.pages = refs;
+                    return c;
+                });
+            }
             // Assets first, so the canvas paints the new pages with their CSS.
-            var added = (typeof window.sdImportAssets === 'function') ? window.sdImportAssets({ css: d.css, js: d.js, fonts: d.fonts }) : { css: 0, js: 0, fonts: 0 };
+            var added = (typeof window.sdImportAssets === 'function') ? window.sdImportAssets({ css: scoped(d.css), js: scoped(d.js), fonts: d.fonts }) : { css: 0, js: 0, fonts: 0 };
             // A brand-new design opens with one blank, unnamed tab. Once the
             // import brings real pages, that placeholder is only in the way.
             if ((d.pages || []).length) {
@@ -48909,13 +49184,12 @@ const StyleDesigner = (function () {
             // Pages as unsaved tabs, in their order right of the open one.
             var firstKey = null;
             var afterKey = _activeKey;
-            (d.pages || []).forEach(function (sp) {
-                _pgNewTabSeq++;
+            (d.pages || []).forEach(function (sp, i) {
                 var tree = sp.tree || createDefaultTree();
                 _backfillIds(tree);
                 _stripToggleableShowState(tree);
                 var p = {
-                    key: 'new' + Date.now() + '_' + _pgNewTabSeq,
+                    key: tabKeys[i],
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
                     page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
@@ -49161,6 +49435,7 @@ const StyleDesigner = (function () {
             return !(p.page_id === 0 && !p.page_name && (!pt || !pt.children || !pt.children.length));
         });
         var firstKey = null;
+        var tplKeyMap = {};
         res.pages.forEach(function (sp) {
             _pgNewTabSeq++;
             var pt = sp.tree || createDefaultTree();
@@ -49190,8 +49465,17 @@ const StyleDesigner = (function () {
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
             };
             _pages.push(p);
+            if (sp.key) tplKeyMap[sp.key] = p.key;
             if (!firstKey) firstKey = p.key;
         });
+        // A stylesheet or script the template keeps to some of its pages
+        // names them by template key (`key:<key>`, pg_dtc_asset_page_keys());
+        // here they become the tabs, and Publish gives them their ids.
+        if (typeof window.sdAssetsRemapPages === 'function') {
+            window.sdAssetsRemapPages(function (ref) {
+                return (ref.indexOf('key:') === 0 && tplKeyMap[ref.slice(4)]) ? ('tab:' + tplKeyMap[ref.slice(4)]) : ref;
+            });
+        }
         if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
         if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
     }
@@ -49328,6 +49612,13 @@ const StyleDesigner = (function () {
             var keyMap = {};
             data.pages.forEach(function (m) { if (m.key && m.page_id > 0) keyMap[m.key] = m.page_id; });
             if (typeof _swResolveTabRefs === 'function') _swResolveTabRefs(keyMap);
+            // A file kept to an unsaved page names it the same way; the
+            // server swapped the ids into the stored design too.
+            if (typeof window.sdAssetsRemapPages === 'function') {
+                window.sdAssetsRemapPages(function (ref) {
+                    return (ref.indexOf('tab:') === 0 && keyMap[ref.slice(4)]) ? String(keyMap[ref.slice(4)]) : ref;
+                });
+            }
             data.pages.forEach(function (m) {
                 var p = _pgPageByKey(m.key);
                 // The state the server left the page in: a draft of the home

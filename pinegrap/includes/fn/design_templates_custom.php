@@ -346,6 +346,38 @@ function pg_dtc_tokenize_tree($node, $ctx, &$dropped = 0, $depth = 0)
     return $node;
 }
 
+// The design's asset list (style_custom_css / style_custom_js) with the pages
+// a file is limited to named by their template keys (`key:<key>`): a design
+// made from the template limits it to its own copy of each page
+// (pg_designer_resolve_asset_page_refs()). A page the template does not carry
+// (one deleted since) is left out: its id could be any page of the site the
+// template is opened on. A file left with none of its pages gets the bare
+// `key:`, which matches no page, rather than loading everywhere.
+function pg_dtc_asset_page_keys($json, $ctx)
+{
+    $keys = array();
+    foreach ((array)$ctx['page_ids'] as $id => $key) $keys[(string)$id] = 'key:' . $key;
+    $list = json_decode((string)$json, true);
+    if (!is_array($list)) return $json;
+    $changed = false;
+    foreach ($list as $i => $entry) {
+        if (!is_array($entry) || empty($entry['pages']) || !is_array($entry['pages'])) continue;
+        $refs = array();
+        foreach ($entry['pages'] as $ref) {
+            $ref = is_scalar($ref) ? (string)$ref : '';
+            if (isset($keys[$ref])) $ref = $keys[$ref];
+            elseif (strncmp($ref, 'key:', 4) !== 0) $ref = '';
+            if ($ref !== '' && !in_array($ref, $refs, true)) $refs[] = $ref;
+        }
+        if (!$refs) $refs = array('key:');
+        if ($refs !== $entry['pages']) {
+            $list[$i]['pages'] = $refs;
+            $changed = true;
+        }
+    }
+    return $changed ? json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $json;
+}
+
 /**
  * A system widget's settings (system_region_config) made portable. The mark
  * of the template a widget row was made for (template_origin) goes. A
@@ -760,8 +792,8 @@ function pg_design_template_from_style($style_id, $meta, $user)
         'widgets'        => $widgets,
         'shared'         => $shared,
         'assets'         => array(
-            'css'          => isset($style['style_custom_css']) ? (string)$style['style_custom_css'] : '',
-            'js'           => isset($style['style_custom_js']) ? (string)$style['style_custom_js'] : '',
+            'css'          => pg_dtc_asset_page_keys(isset($style['style_custom_css']) ? (string)$style['style_custom_css'] : '', $ctx),
+            'js'           => pg_dtc_asset_page_keys(isset($style['style_custom_js']) ? (string)$style['style_custom_js'] : '', $ctx),
             'fonts'        => isset($style['style_custom_fonts']) ? (string)$style['style_custom_fonts'] : '',
             'head'         => isset($style['style_head']) ? (string)$style['style_head'] : '',
             'body_classes' => isset($style['additional_body_classes']) ? (string)$style['additional_body_classes'] : '',

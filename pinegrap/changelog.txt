@@ -22,6 +22,49 @@
   2026.4.10
   ==========================================================
 
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Tasarımın bir CSS ya da JS dosyası yalnız seçilen
+         sayfalarda yüklenebiliyor: dosyaya sağ tıklayıp
+         "Yüklendiği Sayfalar…" ile "Her sayfa" ya da sayfa
+         seçilir. Harita, form betiği gibi tek sayfanın
+         dosyası artık bütün sayfaları yavaşlatmıyor. ZIP içe
+         aktarmada yalnız bazı sayfaların kullandığı dosyalar
+         kendiliğinden o sayfalarla sınırlanır; şablon ve
+         tasarım kopyası bu seçimi korur.
+
+  [YENİ] Sekmeler araç çubuğuna sığmadığında "Tüm sayfalar"
+         düğmesi çıkıyor: bütün sayfalar aranabilir bir
+         listede. Fare tekerleği sekme şeridini yana kaydırır.
+
+  [DÜZELTME] Dar pencerede Kaydet / Yayınla ve uyarı düğmesi
+         ekranda kalıyor; sekme şeridi ve "son değişiklik"
+         yazısı onlara yer açmak için daralıyor.
+
+  [DÜZELTME] Bootstrap Icons her sayfada tek sürümle (1.13.1)
+         yükleniyor. Önceden site eski sürümü, ikon seçici
+         yenisini kullanıyordu; seçicide olup sitede görünmeyen
+         ikonlar vardı. Kendi ikon dosyasını bağlayan tasarıma
+         ikinci kopya eklenmiyor.
+
+  [DÜZELTME] HTML görünümü sayfanın gerçekte yüklediği
+         dosyaları tam adresleriyle gösteriyor; olmayan
+         "Kullanıcı Stilleri.css" dosyası ve eski ikon yolu
+         görünmüyor.
+
+  [DÜZELTME] Paletteki çekmece (offcanvas) başlığını başlık
+         etiketi yerine paragraf olarak ekliyor; sayfanın
+         başlık sırası menüdeki "Menü" yazısıyla başlamıyor.
+
+  SEO
+  --------------------------------------------------------
+
+  [DÜZELTME] Yapı denetimi, kayıt gösteren detay sayfalarını
+         (blog yazısı, gönderim ya da etkinlik ayrıntısı) bir
+         kayıtla ölçüyor. Önceden sayfa kayıtsız çizildiği için
+         "H1 yok" ve "ince içerik" uyarıları alıyordu.
+
   ÜRÜNLER
   --------------------------------------------------------
 

@@ -84,6 +84,100 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: detay sayfası denetimi, sayfaya özel dosyalar, tek ikon sürümü, dar pencere (2026-10-13)
+
+**Kaynak.** kodpen.com'da bir ajanın bulduğu hatalardan 10, 11 ve 12.
+maddeler.
+
+**Denetim detay sayfalarını kayıtla ölçüyor (madde 10).** Görsel editörün
+detay sayfaları (`page_type = 'standard'`, içinde `form_item_view` ya da
+`calendar_event_view` widget'ı) yapı denetiminde `?r=` / `?id=` olmadan
+çiziliyordu; widget boş halini basınca her detay sayfası "H1 yok", "H2 ile
+başlıyor", "ince içerik" alıyordu. `pg_seo_render_context()` artık bu
+sayfalar için bir `query` taşır (`pg_seo_widget_record_query()`): formun en
+yeni gönderiminin `reference_code`'u (`r`) ya da widget'ın takvimlerindeki
+en yeni yayımlanmış etkinlik (`id`). Kaydı olmayan, ya da erişimi herkese
+açık olmayan (`submitter_only` gibi) bir detay sayfası denetlenmez, eski
+yanlış bulgu yazılmaz. `pg_seo_analyze_page()` `$_GET`'i ödünç alır ve
+`finally`'de geri koyar. Sandbox'ta hello-pinegrap'in blog yazısı sayfası:
+önce `h1_missing`, `heading_starts_at_h2`, `thin_content 154`; sonra H1
+bulguları yok, sayfa kayıtla çiziliyor.
+
+Her sayfanın H5 ile başlaması tasarım tarafında: kodpen.com'un ortak üst
+bölümündeki çekmece başlığı (`<h5 id="navbarDarkDrawerLabel">Menü</h5>`)
+sayfanın H1'inden önce geliyor. Paletin offcanvas bileşeni bundan sonra
+başlığı `<p class="offcanvas-title h5">` olarak yazar (görünüm aynı);
+mevcut tasarımlardaki etiketi operatör değiştirir.
+
+**Tek Bootstrap Icons sürümü (madde 11).** Site, tuval ve önizleme
+1.11.3'ü, editörün ikon seçicisi panelin yerel 1.13.1 kopyasını
+kullanıyordu; seçicide olup 1.11.3'te olmayan ikon sitede görünmüyordu.
+Tek kaynak `pg_design_icons_url()` (1.13.1, jsDelivr) ve JS'te
+`_sdIconsUrl()` (`sdDesign.iconsUrl`). Kendi `bootstrap-icons` sayfasını
+bağlayan bir tasarıma (`pg_design_is_icons_url()`) sabit satır ikinci kez
+eklenmez: `get_page_content.php`, tuval ve önizleme aynı kuralı uygular.
+
+**HTML görünümü (madde 11).** Editörün HTML ağacı `<head>`'de sabit yazılmış
+iki satır (göreli `bootstrap-icons@1.11.3/...` ve `bootstrap@5.3.8`) ve
+"Kullanıcı Stilleri.css" adlı var olmayan bir dosya gösteriyordu. Ağaç artık
+sayfanın gerçekte yüklediklerini sırasıyla gösterir: Google Fonts, açık
+harici CSS satırları tam adresleriyle, tema, satır içi dosyalar için tek
+`<style id="pg-page-css">`, kullanıcı stilleri için `<style
+id="pg-user-styles">`; gövdenin sonunda harici betikler (`type="module"`
+dahil) ve satır içi betikler için tek `<script id="pg-page-js">`.
+
+**Sayfaya özel dosyalar (madde 11).** Tasarımın CSS/JS satırları
+(`style_custom_css` / `style_custom_js`) isteğe bağlı bir `pages` listesi
+taşır: sayfa kimlikleri, kaydedilmemiş sekme için `tab:<anahtar>`. Liste
+yoksa ya da boşsa dosya her sayfada yüklenir (eski tasarımlar aynen
+çalışır). `pg_design_asset_on_page()` sunucu tarafı, `_sdAssetsInPlay()`
+editör tarafıdır.
+
+- Editör: dosya satırının sağ tık menüsünde "Yüklendiği Sayfalar…"
+  (kilitli çerçeve satırlarında yok); "Her sayfa" ya da sekmelerden seçim.
+  Satırda sayfa sayısı rozeti, üzerine gelince sayfa adları. Tuval ve HTML
+  görünümü sekme değişince o sayfanın dosyalarına geçer.
+- Kayıt: `tab:<anahtar>` kaydın verdiği kimliğe çevrilir
+  (`pg_designer_resolve_asset_page_refs()`, sunucuda ve `_pgTabsAfterSave`).
+- ZIP içe aktarma: her dosya onu kullanan sayfaları hatırlar
+  (`page_names`); bütün sayfaların kullandığı dosya her sayfada kalır
+  (`pg_di_scope_assets()`), yalnız bazılarının kullandığı o sayfalarla
+  sınırlanır. Editöre aktarımda sekmeler, doğrudan tasarım oluşturmada
+  (`import_design_zip.php`) sayfa kimlikleri yazılır.
+- Şablon: tasarımdan yapılan şablon sayfaları şablon anahtarıyla
+  (`key:<anahtar>`) adlandırır (`pg_dtc_asset_page_keys()`); şablonda
+  olmayan sayfa düşer, hiç sayfası kalmayan dosya hiçbir sayfayla
+  eşleşmeyen `key:` alır. Şablondan açılan editör `key:` → `tab:` çevirir,
+  sunucu kurulumu `key:` → kimlik.
+- Tasarım kopyalama (`duplicate_style.php`) eski kimlikleri kopyaların
+  kimliklerine çevirir. Tasarımdan ayrılan sayfa (`page_detach`) yüklediğini
+  götürür: başka sayfalara ait dosyalar geride kalır, kendi dosyaları yeni
+  tasarımda her sayfada yüklenir (`pg_design_assets_for_page()`).
+- Sandbox: `harita.js` iki sayfayla sınırlandı, yalnız o sayfaların
+  HTML'inde; yeni sekmeyle sınırlanan dosya kayıtta sekmenin kimliğini
+  aldı; iki sayfalık ZIP'te `ana.js` yalnız ana sayfada, ortak `site.js`
+  her sayfada.
+
+jQuery ve jQuery UI değişmedi: tasarımın jQuery satırı tasarımın kendi
+jQuery'sidir; yazılımın `frontend.js`'i (formlar, takvim, tarih seçici,
+iletişim kutuları) jQuery ve jQuery UI üzerine yazılı ve `get_page_content`
+onları bu yüzden her sayfaya ekliyor. Kaldırmak `frontend.js`'in yeniden
+yazılmasını gerektirir.
+
+**Dar pencere (madde 12).** Development sürümünde araç çubuğu ve durum
+çubuğu 420px'e kadar sığıyordu; kodpen.com'daki taşma burada tekrar
+edilemedi. Yine de taşma yolları kapatıldı: 992px altında sekme şeridi
+sıfıra kadar daralır (`min-width: 0`), Kaydet / Yayınla yerinden oynamaz;
+durum çubuğundaki "son değişiklik" satırı uzun bir kullanıcı adında üç
+noktayla kısalır, uyarı düğmesini itmez; editör yüksekliği `100dvh` ile
+ölçülür (telefon ve tablette tarayıcı çubukları durum çubuğunu
+örtmüyor). Şerit taşınca yanında "Tüm sayfalar" düğmesi çıkar: sayfa
+sayısı, arama kutusu, gruplar renkleriyle, taslak ve kaydedilmemiş
+işaretleri; Enter ilk eşleşeni açar. Fare tekerleği şeridi yatay kaydırır.
+Sandbox'ta 34 sekmeyle 360–1400px arası ölçüldü.
+
+- `tests/designer_asset_scope_test.php`.
+
 ## 2026.4.10 — WAF: bot politikası kimlikle girilen uçlarda uygulanmaz (Claude-User engeli) (2026-10-13)
 
 **Neden.** dev.pinegrap.com'da Claude bağlayıcısı OAuth onayını ve token'ı

@@ -20133,5 +20133,15 @@
     "Identified by": "Kimlik adresi",
     "The answer goes to a different address than the one this application is identified by. Connect it only if you expected that.": "Yanıt, bu uygulamanın kimlik adresinden farklı bir adrese gidecek. Yalnız bunu bekliyorsanız bağlayın.",
     "MCP server address": "MCP sunucu adresi",
-    "Give this address to an AI application that speaks MCP. In Claude it is the URL of a custom connector.": "Bu adresi MCP destekleyen bir yapay zeka uygulamasına verin. Claude'da özel bağlayıcının (custom connector) adresidir."
+    "Give this address to an AI application that speaks MCP. In Claude it is the URL of a custom connector.": "Bu adresi MCP destekleyen bir yapay zeka uygulamasına verin. Claude'da özel bağlayıcının (custom connector) adresidir.",
+    "Pages It Loads On…": "Yüklendiği Sayfalar…",
+    "Pages for \"{var}\"": "\"{var}\" hangi sayfalarda yüklensin",
+    "A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.": "Yalnızca bazı sayfaların ihtiyaç duyduğu bir dosyayı (harita, form betiği) o sayfalarla sınırlayın; diğer sayfalar daha hızlı açılır.",
+    "Every page": "Her sayfa",
+    "Only these pages:": "Yalnızca şu sayfalar:",
+    "Choose at least one page, or pick every page.": "En az bir sayfa seçin ya da her sayfayı seçin.",
+    "Loads only on: {var}": "Yalnızca şu sayfalarda yüklenir: {var}",
+    "(deleted page)": "(silinmiş sayfa)",
+    "Find a page…": "Sayfa bul…",
+    "No page matches.": "Eşleşen sayfa yok."
 }
