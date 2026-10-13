@@ -186,6 +186,61 @@ metin uygulamanın siteye bağlanıp jeton alması gerektiğini söyler. Kod
 
 ---
 
+## 2026.4.10 — Görsel editör: panel ipuçlarında ^^token^^ yerine bağlama seçenekleri, form detayında alan etiketleri (2026-10-13)
+
+**Kaynak.** Koordinatörün notu: #248'de detay sayfası ipuçları bağlama
+seçeneğinin adına çevrilmişti, panelde ^^token^^ gösteren ipuçları
+kalmıştı. Kural: sayfa içeriği ve tasarımcının gördüğü yönlendirme
+^^__x^^ yer tutucusu kullanmaz.
+
+- **Widget ayarlarındaki ipuçları token adı söylüyordu.** 37 ipucu
+  (giriş formu, giriş bölgesi, sepet bağlantısı, dil seçici, şifremi
+  unuttum, kayıt, üyelik, çıkış, şifre belirleme, profil, e-posta
+  tercihleri, adres defteri, hesap güvenliği, Hesabım, sepet, sipariş
+  özeti, takvim, ödeme, katalog filtresi, form listesi döngüsü, form
+  alanı adı) artık Veri Bağla listesindeki seçeneğin adını söylüyor:
+  `_swBindLabel(tür, token)` seçeneği widget'ın kendi token paletinden
+  okur; `_swLinkHint()`, `_swTextHint()`, `_swStaffHint()` ortak
+  cümleleri kurar. Bağlı öğenin araç çubuğu ipucu da (`Veri bağlı: href
+  → …`) seçenek adını gösterir. Veri Bağla panelinin giriş cümleleri
+  "tokenler" yerine "alanlar" der. Yerel test raporu (madde 3): href'i
+  bağlı linkteki not `form_item_view` yerine "Detay sayfası adresi"
+  yazıyor.
+- **Giriş bölgesi ve sepet bağlantısında Veri Bağla paneli yanlış
+  widget'ı görüyordu.** `_getSystemWidgetRegionType()` bu iki türü
+  tanımıyor, `form_list_view` dönüyordu: içlerindeki bir öğe seçilince
+  panel "önce widget'a bir form seçin" diyor, kendi paletini
+  (`SW_LOGIN_REGION_TOKEN_GROUPS`, `SW_CART_LINK_TOKEN_GROUPS`) ve
+  görünürlük koşullarını (`SW_VISIBILITY_FLAGS`) hiç sunmuyordu. Kendi
+  paleti olan her tür artık kendi adıyla döner. Bağlı link alanındaki
+  not da ("URL ... bağlamasından geliyor") token yerine seçenek adını
+  söyler.
+- **"Field label tokens" ayarı işe yaramıyordu.** Form detayında açılınca
+  sunucu `<alan>__label` değerini dolduruyordu ama Veri Bağla listesinde
+  bunu seçmenin yolu yoktu (yalnız "Özel…" ile elle yazılabiliyordu).
+  Ayarın adı "Alan etiketleri"; açıkken liste "Alan etiketleri" başlığı
+  altında her alanın etiketini sunar, canvas etiketin kendisini gösterir.
+- **E-posta tercihleri kutusunun adı token taşıyordu.** Hazır ağaç liste
+  kutusunu `contact_group_^^__group_id^^` adıyla kuruyordu. Kutunun adı
+  artık `contact_group`; sunucu her satırda `contact_group_<liste id>`
+  yapar (`_pg_email_preferences_name_box()`). Eski ağaçlardaki ad da aynı
+  yoldan okunur. Ödeme widget'ının alıcı başlığı `^^__recipient_name^^`
+  metni yerine örnek metinle gelir (bağlama aynı).
+
+Sandbox'ta doğrulandı: 15 widget panelindeki ipuçlarında ^^ kalmadı,
+Türkçe metinler seçenek adlarıyla okunuyor. Sepet bağlantısının linki
+seçilince panel öncesinde "önce widget'a bir form seçin" diyordu;
+sonrasında sepet alanlarını ve "Sepette ürün var / Sepet boş"
+koşullarını sunuyor, araç çubuğu ipucu "href → Sepet sayfası adresi …".
+Form detayında (blog yazısı) ayar açıkken listede `title__label=Başlık`
+vb. var; başlığa bağlanınca canvas ve yayındaki sayfa `Başlık` yazıyor.
+E-posta tercihleri
+sayfası eski ve yeni adla aynı kutuları (`contact_group_11` …) çiziyor;
+yeni adla kaydedilen seçim sayfa yeniden açılınca korunuyor.
+dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Görsel editör: hizmet, randevu, saat, şube, menü ve etkinlik blokları (2026-10-13)
 
 **Neden.** Ürün sahibi bir yerel hekim ve bir kurumsal kafe şablonu istedi
