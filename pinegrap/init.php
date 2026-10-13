@@ -706,6 +706,8 @@ define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');
 define('PARASUT_API_BASE', 'https://api.parasut.com');
+// Where the Parasut token was kept until 2026.4.10, in plain text. Read once
+// to move it into the sealed service tokens (includes/fn/parasut.php).
 define('PARASUT_TOKEN_CACHE', dirname(__FILE__) . '/data/parasut_token.json');
 define('ENABLE_IYZIPAY_PROTECTED_CURRENCY', $row['enable_iyzipay_protected_currency']);
 define('IYZIPAY_PROTECTED_CURRENCY_CODE', $row['iyzipay_protected_currency_code']);

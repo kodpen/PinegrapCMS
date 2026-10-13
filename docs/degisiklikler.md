@@ -155,6 +155,71 @@ olması, kapat/aç/kaldır, etkinlik kaydı. Şema adımı üç kez koşturuldu.
 
 **Doğrulanamayan.** Sandbox dış adresleri çözemediği için gerçek bir uzak
 sunucu (GitHub MCP gibi) denenemedi; dev.pinegrap.com'da denenmeli.
+## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
+
+**Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
+Exchange Online'da parolayla SMTP girişini (Basic auth) 2026 sonunda
+kapatıyor; Gmail parolayla SMTP'ye yalnız uygulama parolasıyla izin
+veriyor. Müşteri sitelerinin çoğu e-postayı bu iki hesaptan gönderiyor.
+
+**Nasıl.** Yeni amaç dosyası `includes/connect/purposes/mail.php`
+(`owner = site`; Google `gmail.send`, Microsoft Graph `Mail.Send`) her
+sağlayıcı için iletinin nasıl teslim edileceğini de taşır (`send`: adres,
+içerik türü, `raw`/`base64`, en büyük boyut, belirteç kapsamları).
+`email()` (`includes/fn/mail.php`) ileti türü için bir bağlı hesap
+seçiliyse (`SYSTEM_MAIL_CONNECTION` / `CAMPAIGN_MAIL_CONNECTION`,
+`data/config.php`) iletiyi SMTP'deki gibi PHPMailer'la kurar (`isSMTP()`:
+CRLF satır sonları; ekler, DKIM, List-Unsubscribe aynı), `preSend()` ile
+bitirir ve sunucuya bağlanmak yerine sağlayıcının API'sine verir: Gmail
+`upload/gmail/v1/users/me/messages/send?uploadType=media`
+(`message/rfc822`, 35 MB'a kadar), Graph `me/sendMail` (MIME base64
+`text/plain`, istek 4 MB'a kadar). SMTP'de yalnız zarfta giden Bcc
+alıcıları sağlayıcının okuması için başlık olarak öne eklenir (imzadan
+sonra; DKIM Bcc'yi kapsamaz). Posta kutusu kendi adına gönderdiği için
+From bağlı hesabın adresi olur, ad korunur; Reply-To yoksa asıl gönderen
+adresi Reply-To olur (`pg_mail_connection_from()`). Hata `email()`'in
+mevcut yoluna düşer: günlük, `pg_mail_last_error()`, gönderene bildirim.
+Kuyruk aynı `email()`'i çağırdığı için kampanya işi de bu yoldan gider.
+
+**Ne değişti.** SMTP Ayarları'nda Sistem ve Kampanya kartlarında
+"Gönderim yolu" seçimi (bu sunucu ya da `mail` amacıyla bağlanmış site
+hesapları) ve uygulaması kurulu sağlayıcılar için "… hesabı bağla"
+düğmeleri (formlar iç içe olamadığı için düğmeler gizli formları `form`
+özniteliğiyle gönderir; dönüş yine SMTP Ayarları). Bir hesap seçiliyse
+"Test Gönder" düğmesi SMTP bilgisi olmadan da görünür. Kayıtta yalnız
+`mail` amacı taşıyan site hesabı seçilebilir.
+
+**Bilerek yapılmayan.** Bağlantı başarısız olunca SMTP'ye ya da `mail()`'e
+geri düşülmez: hata görünür kalır, hesap "Yeniden bağla" durumundaysa
+günlükte yazar. Seçili hesap silinmişse ya da artık posta amacı
+taşımıyorsa ileti eskisi gibi SMTP / `mail()` ile gider. Graph'ın 4 MB
+sınırını aşan ekler için yükleme oturumu yok; ileti boyutu açıkça
+reddedilir. Microsoft'un SMTP XOAUTH2 yolu bilerek seçilmedi: posta
+kutusunda SMTP AUTH'un açık olmasını ister, Graph istemez.
+
+---
+
+## 2026.4.10 — Paraşüt jetonu şifreli depoda (2026-10-13)
+
+**Neden.** Tersine OAuth planının yan bulgusu (§4.14): Paraşüt'ün erişim ve
+yenileme jetonu `data/parasut_token.json`'da düz metindi. Erişim jetonu
+süresi boyunca Paraşüt API'sine doğrudan girer; dosya `data/` yedeğine de
+giriyordu. Ürün sahibi "sorunları çöz" dedi.
+
+**Nasıl.** `includes/fn/parasut.php`'de yalnız önbelleğin iki fonksiyonu
+değişti: `_parasut_token_cache_read()` / `_parasut_token_cache_write()`
+artık `pg_connect_service_get/put('parasut')` kullanıyor (bağlı hesaplar
+tablosunda `provider = 'service'` satırı, site anahtarıyla şifreli). Eski
+dosya ilk okumada şifreli kayda taşınıp silinir; şifreli kayıt zaten varsa
+dosya artık kullanılmaz ve silinir. Şema 10.72 henüz koşmamış sitede dosya
+eskisi gibi okunur ve yazılır (atomik yeniden adlandırma korundu). Kayıt
+firma, istemci ve kullanıcı adının özetini (`owner`) taşır; Paraşüt
+ayarları başka bir hesaba çevrilince eski jeton sunulmaz. Kilit ve yenileme
+akışı (`parasut_get_token()`) değişmedi.
+
+**Bilerek yapılmayan.** `includes/erp/edoc/` sürücüleri ve Paraşüt kimlik
+bilgilerinin saklanışı (`config.parasut_credentials_enc`, zaten şifreli)
+değişmedi. `PARASUT_TOKEN_CACHE` sabiti eski dosyayı bulmak için kaldı.
 
 ---
 
