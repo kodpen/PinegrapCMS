@@ -97,6 +97,11 @@ function api_scope_groups() {
 		// and all, stays on its own screen.
 		'campaigns' => array('label' => 'Campaigns',  'read' => 'campaigns:read', 'write' => 'campaigns:write'),
 
+		// The lists campaigns go to and who is on them. Writing puts contacts
+		// in or takes them out and records their choice for the group's
+		// e-mail; a group is made, renamed or removed on its own screen.
+		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
+
 		// Who did what on the site, from which address. Read only.
 		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
 
@@ -266,6 +271,12 @@ function api_owner_scopes($owner) {
 		// The address book is the same right in both directions: whoever may
 		// open a contact in the panel may let a machine add one.
 		$scopes[] = 'customers:write';
+
+		// The contact group screens open to the same people; below the
+		// manager role a user reaches only the groups given to it, which the
+		// endpoints filter for.
+		$scopes[] = 'contact_groups:read';
+		$scopes[] = 'contact_groups:write';
 
 	}
 
