@@ -394,6 +394,37 @@
   [ŞEMA] Ayarlar tablosuna dil yönlendirmesi için dört
          kolon eklenir.
 
+  GÜVENLİK DUVARI
+  --------------------------------------------------------
+
+  [YENİ] Ülke kısıtlaması: Ayarlar › Güvenlik Duvarı'nda
+         seçilen ülkelerden gelen istekler reddediliyor,
+         ya da yalnız seçilen ülkeler içeri alınıyor
+         (varsayılan kapalı). Ülke, dil yönlendirmesiyle
+         aynı kaynaktan okunuyor: Cloudflare, yoksa
+         sitenin IP-ülke veritabanı. Tor ağı (T1) ayrıca
+         seçilebiliyor. Ülkesi bilinmeyen istek isteğe
+         bağlı olarak reddediliyor; varsayılan olarak
+         içeri alınıyor, böylece veritabanı eksik olsa da
+         site kapanmıyor.
+
+  [YENİ] Kısıtlama dışında tutulabilenler ayrı ayrı
+         seçiliyor: yönetim paneli ve giriş sayfası
+         (yurt dışındaki personel giriş yapabiliyor),
+         API, MCP ve OAuth uçları, adresi adını doğrulayan
+         arama motoru botları. İzin verilen IP adresleri,
+         robots.txt ve sertifika yenilemesi (.well-known)
+         her zaman açık. İzleme modunda istek reddedilmiyor,
+         yalnız güvenlik duvarı kaydına yazılıyor.
+
+  [YENİ] Ekran, kaydeden kişinin bulunduğu ülkenin içeri
+         alınıp alınmadığını gösteriyor. Panel kısıtlama
+         dışında değilken kendi ülkesini kapatan ayar,
+         adresi izin listesinde değilse kaydedilmiyor.
+
+  [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
+         kolon eklenir.
+
 
 
   2026.4.9
