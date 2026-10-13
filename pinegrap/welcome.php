@@ -441,6 +441,10 @@ $placeholder_w24 = $pg_ph_card(
     . '</div>'
 );
 $placeholder_w25 = $pg_ph_card($pg_ph_blocks(array(35)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
+// The agenda: a day heading over small rows, twice.
+$placeholder_w29 = $pg_ph_card('<div class="pg-list">'
+    . $pg_ph_heading . str_repeat($pg_ph_row_sm, 3)
+    . $pg_ph_heading . str_repeat($pg_ph_row_sm, 3) . '</div>');
 
 // ── Widget registry ─────────────────────────────────────────────────────────
 //
@@ -586,6 +590,40 @@ $widget_registry[9] = array(
     'body'  => $placeholder_w9,
     'wide'  => true,
     'show'  => ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
+
+// Workspace cards: what the reader's own work looks like from here -- the
+// tasks on their list, what colleagues wait on them for, their week on the
+// calendar, and, for whoever leads a team, how that team stands today. Shown
+// to workspace members only (pg_dashboard_workspace_rights(), the same gate
+// as the strip under the greeting). The three lane cards wear the Operations
+// Desk skeleton, which is their shape.
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+
+$pg_ws_rights = pg_dashboard_workspace_rights($user);
+
+$widget_registry[27] = array(
+    'title' => lang('My Tasks'),
+    'icon'  => 'bi-list-check',
+    'body'  => $placeholder_w9,
+    'show'  => ($pg_ws_rights !== null));
+
+$widget_registry[28] = array(
+    'title' => lang('Waiting on Me'),
+    'icon'  => 'bi-hourglass-split',
+    'body'  => $placeholder_w9,
+    'show'  => ($pg_ws_rights !== null));
+
+$widget_registry[29] = array(
+    'title' => lang('My Week'),
+    'icon'  => 'bi-calendar-week',
+    'body'  => $placeholder_w29,
+    'show'  => ($pg_ws_rights !== null));
+
+$widget_registry[30] = array(
+    'title' => lang('Team Pulse'),
+    'icon'  => 'bi-activity',
+    'body'  => $placeholder_w9,
+    'show'  => (($pg_ws_rights !== null) && ($pg_ws_rights['board'] || !empty(ws_led_people($pg_ws_rights['id'])))));
 
 // Subscriptions. Administrator only, and only where the installation has a
 // subscription key to report on. Carries no icon, as it always has.
@@ -998,7 +1036,7 @@ $output_header_includes .
     // view. A card whose markup comes back unchanged is left alone -- its
     // charts are not rebuilt and its list keeps its scroll position.
     var pg_widgets = {
-        refresh: ["4","7","8","9","16","25"],
+        refresh: ["4","7","8","9","16","25","27","28","30"],
         solo: ["1","2","5","21","23"],
         interval: Math.max(10, parseInt("' . (int) $widget_refresh_time . '", 10) || 60) * 1000,
         html: {},

@@ -23,14 +23,14 @@ function pg_test_dashboard_widget_ids()
 {
 	$ids = array('clock');
 
-	for ($id = 1; $id <= 26; $id++) {
+	for ($id = 1; $id <= 30; $id++) {
 		$ids[] = (string) $id;
 	}
 
 	return $ids;
 }
 
-// Each of the 27 ids has its file, and loading it defines its function.
+// Each of the 31 ids has its file, and loading it defines its function.
 function test_dashboard_every_widget_has_file_and_function()
 {
 	foreach (pg_test_dashboard_widget_ids() as $id) {
@@ -55,7 +55,7 @@ function test_dashboard_invalid_ids_are_refused()
 	$ids = array(
 		'empty'      => '',
 		'zero'       => '0',
-		'27'         => '27',
+		'31'         => '31',
 		'99'         => '99',
 		'traversal'  => '../x',
 		'nested'     => '1/../2',
@@ -217,4 +217,44 @@ function test_dashboard_filter_button()
 	pg_assert_false(strpos($plain, 'pg-bars') !== false, 'no bars');
 	pg_assert_false(strpos($plain, 'pg-filter-sub') !== false, 'no second line');
 	pg_assert_false(strpos($plain, 'style=') !== false, 'no colour');
+}
+
+// A lane card opens on the first urgent lane with something in it, then on
+// the first lane with anything, then on the first lane; an empty lane wears
+// the green check, and each lane carries its own body.
+function test_dashboard_lanes_pick_the_lane_that_opens()
+{
+	$lane = function ($count, $urgent = false) {
+		return array('label' => 'L', 'icon' => 'bi-x', 'color' => '#6366f1', 'count' => $count, 'urgent' => $urgent, 'body' => '<p>b' . $count . '</p>');
+	};
+
+	$pick = function ($html) {
+		return preg_match('/data-pg-default="([^"]*)"/', $html, $match) ? $match[1] : null;
+	};
+
+	pg_assert_same('late', $pick(pg_widget_lanes('t', 'T', array('open' => $lane(4), 'late' => $lane(2, true)))), 'urgent first');
+	pg_assert_same('open', $pick(pg_widget_lanes('t', 'T', array('late' => $lane(0, true), 'today' => $lane(0), 'open' => $lane(3)))), 'then any');
+	pg_assert_same('late', $pick(pg_widget_lanes('t', 'T', array('late' => $lane(0, true), 'open' => $lane(0)))), 'then the first');
+	pg_assert_same('open', $pick(pg_widget_lanes('t', 'T', array('late' => $lane(2, true), 'open' => $lane(3)), 'open')), 'caller decides');
+
+	$html = pg_widget_lanes('ws-tasks', 'My <Tasks>', array('late' => $lane(0, true), 'open' => $lane(3)));
+
+	pg_assert_contains('data-pg-filterable="ws-tasks"', $html, 'name');
+	pg_assert_contains('aria-label="My &lt;Tasks&gt;"', $html, 'label escaped');
+	pg_assert_contains('<div class="pg-ops-lane d-none" data-kind="open"><p>b3</p></div>', $html, 'lane body');
+	pg_assert_contains('bi-check2-circle', $html, 'empty lane checked');
+	pg_assert_contains('<span class="pg-filter-count is-clear">0</span>', $html, 'empty lane count');
+}
+
+// The workspace cards answer nothing when the module is off, which is how
+// the unit runner sees an installation: no WORKSPACE_ENABLED.
+function test_dashboard_workspace_cards_need_the_module()
+{
+	$denied = array('status' => 'error', 'message' => 'Access denied');
+
+	foreach (array('27', '28', '29', '30') as $id) {
+		pg_assert_same($denied, pg_dashboard_widget_run(array('widget_id' => $id), array('id' => 1, 'role' => 0)), 'widget ' . $id);
+	}
+
+	pg_assert_same(null, pg_dashboard_workspace_rights(array('id' => 1, 'role' => 0)), 'no rights');
 }

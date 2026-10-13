@@ -84,6 +84,57 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Pano: dört Çalışma Alanı kartı (Görevlerim, Beni Bekleyenler, Haftam, Ekip Nabzı) (2026-10-13)
+
+**İstenen.** Erdal: Workspace hakkında daha fazla takip widget'ı.
+
+**Kapı.** `pg_dashboard_workspace_rights($user)` (`includes/dashboard/widgets.php`):
+modül açık, hesap kullanabiliyor (rol < 3 ya da `manage_workspace`) ve
+`ws_rights()` üye sayıyor; karşılamanın Çalışma Alanı şeridiyle aynı kapı.
+Evetse modülü yükleyip haklarla döner. `welcome.php` kayıt defterinde dört
+kartın `show`'u buna bağlı; Ekip Nabzı ayrıca plan panosu hakkı ya da
+yönetilen bölüm ister (`ws_led_people()`).
+
+**Şeritli kart yardımcısı.** `pg_widget_lanes($name, $label, $lanes,
+$default)`: Operasyon Masası'nın düzeni (üstte sayılı şerit karoları, altta
+basılı şeridin listesi) ortak fonksiyon oldu; widget 9 da bunu kullanıyor.
+Her şeridin kendi gövdesi olduğundan bir öğe iki şeritte birden durabilir.
+Açılan şerit: verilmezse içi dolu ilk acil şerit, sonra içi dolu ilk şerit.
+
+**Kartlar.**
+- 27 Görevlerim: `ws_tasks_list()` (scope mine, açık, 60) tek okumayla üç
+  şerit: Gecikmiş, Bugün, Açık (ilk 12 ve "N açık daha"). Açık şeridin alt
+  satırı pazartesiden beri biten görev sayısı. Karo rengi önceliği taşır.
+- 28 Beni Bekleyenler: `ws_approvals_waiting()`, `ws_acks_waiting()`,
+  `ws_home_talk()` (Çalışma Alanı ana ekranının okuyucuları). Anılmalar
+  şeridinin sayısı okunmamışlar; okunmamış satırın adından sonra nokta var.
+- 29 Haftam: bugünden altı gün sonrasına `ws_events_between()` ile
+  kişiyi ilgilendiren etkinlikler (`ws_event_applies()`), bitmiş olanlar
+  hariç; birkaç gün süren olay görünen ilk günde bir kez, bitiş günüyle.
+  Aynı aralıkta teslimi olan açık görevler. Gün başlıkları Bugün, Yarın,
+  sonra `ws_day_label()`. En çok 24 satır.
+- 30 Ekip Nabzı: `ws_board()` ile bugünün tek günü. Dışarıda (izin ya da
+  ziyaret), Yoğun (planlanan dakika kapasiteyi aşıyor, yüzdeye göre
+  sıralı), Çalışıyor (`ws_task_time`'da açık sayaç; süre
+  `data-pg-elapsed` ile dakikada bir ilerler; görülemeyen görevin adı
+  "Bir görev").
+
+Yenileme listesine 27, 28 ve 30 girdi (görünürken). 29 sayfa açılışında
+gelir. Renkler açık ve koyu temada tanımlandı.
+
+**Doğrulama.**
+- `php tools/test.php`: kimlik testleri 30'a çıktı (`31` geçersiz);
+  `pg_widget_lanes()` açılış seçimi ve işaretlemesi; modül kapalıyken dört
+  kart da "Access denied".
+- Sandbox + Playwright (iki ekip üyesi; biri izinde, birinin sayacı
+  açık; gecikmiş, bugünkü ve haftalık görevler; onay isteği, okundu isteği
+  ve anılma): dört kart 313×313, şerit seçimi yenilemeden sonra korundu,
+  koyu tema. Çalışma Alanı kapatılınca kartlar listeden çıktı, hata yok.
+
+Rol 3 bir kullanıcıyla ve canlı veriyle bakılmadı.
+
+---
+
 ## 2026.4.10 — Güvenlik duvarı: ülke kısıtlaması (10.2) (2026-10-13)
 
 **İstek.** Erdal: "bunu yaparken ayrıca waf altına ülke kısıtlama ekleyelim
