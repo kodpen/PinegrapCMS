@@ -978,7 +978,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Page',
 			'summary' => 'Change a page',
-			'description' => 'The title, the description, the site search settings and the indexing switches. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
+			'description' => 'The title, the description, the keywords, the site search settings, the indexing switches, the comment switches and the folder. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. A move to another folder may keep the page as open as it is or close it further, never open it up: a move that would serve the page to more people answers 409 access_widening_refused. The home page, the pages the storefront and the account area run on, drafts and pages in the recycle bin are not moved from here. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
@@ -987,7 +987,13 @@ function api_schema() {
 				array('name' => 'search_keywords',  'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Words that promote the page in the site search. A list of words; send an empty list to clear it.'),
 				array('name' => 'sitemap',          'in' => 'body', 'type' => 'bool', 'description' => 'Whether the page is listed in the site map.'),
 				array('name' => 'noindex',          'in' => 'body', 'type' => 'bool', 'description' => 'Closes the page to search engines: a noindex robots tag, blocked in robots.txt and left out of the site map.'),
-				array('name' => 'nofollow',         'in' => 'body', 'type' => 'bool', 'description' => 'Qualifies noindex. Only accepted while noindex is on.')
+				array('name' => 'nofollow',         'in' => 'body', 'type' => 'bool', 'description' => 'Qualifies noindex. Only accepted while noindex is on.'),
+				array('name' => 'meta_keywords',    'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'The keywords meta tag, as one comma separated string.'),
+				array('name' => 'comments',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether the page shows comments at all.'),
+				array('name' => 'comments_open',    'in' => 'body', 'type' => 'bool', 'description' => 'Whether visitors may add new comments.'),
+				array('name' => 'comments_publish', 'in' => 'body', 'type' => 'bool', 'description' => 'Publish a new comment at once instead of holding it for moderation.'),
+				array('name' => 'comments_login',   'in' => 'body', 'type' => 'bool', 'description' => 'Only signed-in visitors may comment.'),
+				array('name' => 'folder_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Move the page into this folder (GET /folders). Refused when the folder would serve it to more people than its current one.')
 			)
 		),
 
@@ -1020,6 +1026,111 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
+			)
+		),
+
+		/* ----- Folders ------------------------------------------------------ */
+
+		array(
+			'id'      => 'folders.list',
+			'method'  => 'GET',
+			'path'    => '/folders',
+			'scope'   => 'pages:read',
+			'handler' => 'api_folders_list',
+			'returns' => array('list' => 'Folder'),
+			'summary' => 'List folders',
+			'description' => 'The tree pages and files are filed in. access is the rule the folder is served under - public, guest, registration, membership or private - whether written on it or inherited from above (access_inherited). system names the drafts folder and the recycle bin, which belong to their own screens; whatever is inside the bin is left out. folders, pages and files count what sits directly in each folder. Cursor paged by id.',
+			'params'  => array(
+				array('name' => 'parent_id',     'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the folders directly inside this one; 0 for the top folder.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the folder name.'),
+				array('name' => 'archived',      'in' => 'query', 'type' => 'bool', 'description' => 'Limit to archived folders, or to the rest.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'folders.get',
+			'method'  => 'GET',
+			'path'    => '/folders/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_folders_get',
+			'returns' => 'Folder',
+			'summary' => 'One folder',
+			'description' => 'A folder inside the recycle bin is answered too, with recycled true.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'folders.create',
+			'method'  => 'POST',
+			'path'    => '/folders',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_create',
+			'dry_run' => true,
+			'returns' => 'Folder',
+			'summary' => 'Create a folder',
+			'description' => 'A new, empty folder. Left without access it inherits the rule of its parent. A private folder admits the people given access to it on the folder screen; until then only staff open what is in it. Nothing is created inside the drafts folder or the recycle bin.',
+			'params'  => array(
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The folder it goes in. The top folder when left out.'),
+				array('name' => 'access',    'in' => 'body', 'type' => 'enum', 'values' => array('inherit', 'public', 'guest', 'registration', 'membership', 'private'), 'default' => 'inherit'),
+				array('name' => 'order',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 99999, 'description' => 'Where it sorts among its siblings.'),
+				array('name' => 'archived',  'in' => 'body', 'type' => 'bool', 'description' => 'Archived folders are struck out of the everyday views.')
+			)
+		),
+
+		array(
+			'id'      => 'folders.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/folders/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_update',
+			'dry_run' => true,
+			'returns' => 'Folder',
+			'summary' => 'Change a folder',
+			'description' => 'Rename it, sort it, archive it, move it under another parent, or give it a stricter access rule. Only what is sent is changed. A change that would serve the folder to more people than today - a looser access type, or a move out from under a stricter parent - answers 409 access_widening_refused: opening part of the site up is done on the folder screen. The top folder is not moved, and the drafts folder and the recycle bin are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Move it into this folder. Not into itself or a folder inside it.'),
+				array('name' => 'access',    'in' => 'body', 'type' => 'enum', 'values' => array('inherit', 'public', 'guest', 'registration', 'membership', 'private')),
+				array('name' => 'order',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 99999),
+				array('name' => 'archived',  'in' => 'body', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'folders.delete',
+			'method'  => 'DELETE',
+			'path'    => '/folders/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an empty folder',
+			'description' => 'Only a folder with nothing in it - no folder, page or file - is deleted, as on the folder screen; otherwise 409 folder_not_empty. Move or delete what is inside first through its own endpoint. The top folder, the drafts folder and the recycle bin are refused. A default IIS install answers DELETE itself before PHP is reached: POST /folders/{id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'folders.delete_post',
+			'method'  => 'POST',
+			'path'    => '/folders/{id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an empty folder, addressed as a POST',
+			'description' => 'The same deletion as DELETE /folders/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

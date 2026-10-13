@@ -493,6 +493,7 @@ function api_openapi_objects()
         'Order'        => 'api_order_schema',
         'Customer'     => 'api_customer_schema',
         'Page'         => 'api_page_schema',
+        'Folder'       => 'api_folder_schema',
         'File'         => 'api_file_schema',
         'Offer'        => 'api_offer_schema',
         'Webhook'      => 'api_webhook_schema',

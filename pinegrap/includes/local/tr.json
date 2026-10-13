@@ -20471,5 +20471,22 @@
     "ended the calendar subscription of their workspace": "Çalışma Alanı takvim aboneliğini sonlandırdı",
     "made a calendar subscription address for their workspace": "Çalışma Alanı için takvim aboneliği adresi oluşturdu",
     "made a new calendar subscription address for their workspace": "Çalışma Alanı için yeni bir takvim aboneliği adresi oluşturdu",
-    "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})"
+    "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})",
+    "A folder in the recycle bin cannot be used here.": "Geri dönüşüm kutusundaki bir klasör burada kullanılamaz.",
+    "The drafts folder is filled by the Visual Page Editor and cannot be used here.": "Taslaklar klasörünü Görsel Sayfa Editörü doldurur, burada kullanılamaz.",
+    "The folder must have a name.": "Klasörün bir adı olmalı.",
+    "The recycle bin and the drafts folder are kept by their own screens and are not changed through the API.": "Geri dönüşüm kutusu ve taslaklar klasörü kendi ekranlarından yönetilir, API üzerinden değiştirilmez.",
+    "The top folder cannot be moved.": "En üst klasör taşınamaz.",
+    "A folder cannot be moved into itself or into a folder inside it.": "Bir klasör kendi içine ya da içindeki bir klasöre taşınamaz.",
+    "The top folder cannot be deleted.": "En üst klasör silinemez.",
+    "Folder ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Klasör ({var:1}), {var:2} uygulaması tarafından API üzerinden oluşturuldu (anahtar {var:3}).",
+    "This change would serve the folder as {var:1} instead of {var:2}, which opens what is in it to more people. Change it on the folder screen.": "Bu değişiklik klasörü {var:2} yerine {var:1} olarak sunar ve içindekileri daha çok kişiye açar. Bunu klasör ekranından değiştirin.",
+    "Folder ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Klasör ({var:1}), {var:2} uygulaması tarafından API üzerinden değiştirildi (anahtar {var:3}).",
+    "Folder ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Klasör ({var:1}), {var:2} uygulaması tarafından API üzerinden silindi (anahtar {var:3}).",
+    "The home page is not moved through the API.": "Ana sayfa API üzerinden taşınmaz.",
+    "This page is in the recycle bin.": "Bu sayfa geri dönüşüm kutusunda.",
+    "This page is a draft. It is published, and its folder chosen, in the Visual Page Editor.": "Bu sayfa bir taslak. Yayına alınması ve klasörünün seçilmesi Görsel Sayfa Editöründe yapılır.",
+    "A page of type {var:1} is part of how the site works and is not moved through the API.": "{var:1} tipindeki sayfa sitenin işleyişinin parçasıdır ve API üzerinden taşınmaz.",
+    "This change would serve the page as {var:1} instead of {var:2}, which opens it to more people. Move it on the page screen.": "Bu değişiklik sayfayı {var:2} yerine {var:1} olarak sunar ve daha çok kişiye açar. Sayfayı sayfa ekranından taşıyın.",
+    "Page details, comment settings and folders": "Sayfa bilgileri, yorum ayarları ve klasörler"
 }

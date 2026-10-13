@@ -84,6 +84,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: klasörler ve sayfa güncellemesinde yorum ayarları, meta anahtar kelimeler, klasör taşıma (2026-10-13)
+
+**Sorun.** Dış API sayfanın `folder_id`'sini veriyordu ama klasörün kendisini
+okumanın, açmanın ya da sayfayı bir klasöre taşımanın yolu yoktu; siteyi MCP
+üzerinden kuran bir asistan bölüm açamıyor, hangi klasörün kime açık
+olduğunu göremiyordu. Sayfa güncellemesi yorum ayarlarını ve meta anahtar
+kelimeleri yazmıyordu (Çalışma Alanı'nın Claude önerileri bunları panel
+yoluyla zaten yazıyordu).
+
+**Çözüm** (yeni `includes/api/resources/folders.php`, kapsam `pages:read` /
+`pages:write`; şema değişikliği yok).
+
+- `GET /folders` (parent_id, q, archived; id imleci), `GET /folders/{id}`:
+  ad, üst klasör, seviye, sıra, **etkin erişim** (`access`: kendi türü ya da
+  üstten gelen; `access_inherited`), arşiv, `system` (`drafts` |
+  `recycle_bin`), `recycled`, doğrudan içindeki klasör/sayfa/dosya sayısı
+  (sayfa başına üç `GROUP BY` sorgusu). Geri Dönüşüm Kutusu ve içindekiler
+  listede yok, kimlikle okunur.
+- `POST /folders` (name, parent_id — verilmezse en üst klasör, access —
+  varsayılan `inherit`, order, archived). Stil sütunları 0 (miras):
+  `add_folder.php`'de stil seçemeyen kişinin aldığı değer.
+- `POST|PATCH /folders/{id}`: ad, sıra, arşiv, üst klasör, erişim. Taşımada
+  döngü (klasörün kendi dalına taşınması) reddedilir, alt dalın seviyeleri
+  tek geçişte düzeltilir (`api_folder_relevel()`).
+- `DELETE /folders/{id}` + `POST …/delete`: yalnız boş klasör (klasör ekranının
+  kuralı, 409 `folder_not_empty`); `aclfolder` satırları da silinir. En üst
+  klasör, taslaklar klasörü ve kutu 409 `system_folder_protected`.
+- **Erişim genişletme API'de yok.** Klasörün ya da sayfanın sunulduğu erişim
+  yalnız aynı kalabilir ya da daralabilir (public < guest < registration <
+  membership < private); daha çok kişiye açacak yazım (tür değişikliği, özel
+  bir üstten çıkaran taşıma, sayfayı daha açık klasöre taşıma) 409
+  `access_widening_refused`. Gerekçe: satır yazıldığı an içindekiler herkese
+  sunulur ve bunu içeriği gören bir kişi yapmalı. Kural saf fonksiyonlarda
+  (`api_folder_access_walk()`, `api_folder_access_widens()`,
+  `api_folder_within()`), `tests/api_folders_test.php`.
+- Taslaklar klasörü ve kutu hedef olarak kullanılamaz (422): ikisini kendi
+  ekranları doldurur.
+- `POST /pages/{id}`: `meta_keywords`, `comments`, `comments_open`,
+  `comments_publish`, `comments_login` (Çalışma Alanı'nın `page` değişiklik
+  türüyle aynı sütunlar) ve `folder_id`. Ana sayfa (409
+  `home_page_protected`), sistem sayfaları (409 `system_page_protected`),
+  taslak (409 `page_is_draft`) ve kutudaki sayfa (409 `already_recycled`)
+  taşınmaz.
+- Sayfa cevabına `meta_keywords`, `comments` nesnesi (`enabled`, `open`,
+  `auto_publish`, `login_required`), `draft`, `recycled` eklendi.
+- Panel: API ayarlarında Sayfalar satırının açıklaması, konsolda Klasörler
+  grubu. MCP araçları kendiliğinden geldi (`folders_list` … `folders_delete`).
+
+**Doğrulama.** Sandbox'ta (`tools/setup_sandbox.sh`) sunucu uygulaması
+anahtarıyla gerçek isteklerle: liste/tekil, oluşturma (dry-run dahil),
+yeniden adlandırma, arşiv, daraltma, genişletme reddi (tür ve taşıma), döngü
+reddi, en üst klasör, boş olmayan klasör, kutu ve kutudaki sayfa yolları;
+sayfada meta anahtar kelime ve yorum ayarları, daraltan taşıma, genişleten
+taşıma reddi, ana sayfa ve giriş sayfası reddi veritabanından okundu. MCP
+`tools/list` yeni araçları ve silmenin `destructiveHint`'ini, OpenAPI yeni
+yolları ve `Folder` nesnesini veriyor. Denenmeyen: rolü 2 (yönetici) olan
+sahibin klasör hakkı (pages:write rol ≤ 2'ye verilir, `pg_folder_edit_access()`
+onlara her klasörde evet der).
+
 ## 2026.4.10 — Görsel editör: sayfa seçicilerinde Geri Dönüşüm Kutusu, link seçicide adres kodlaması (2026-10-13)
 
 **Kaynak.** Bir önceki taramada (aşağıda, PR #257) bilerek bırakılan iki

@@ -420,6 +420,24 @@
          yetiyor. Arama, uygulamaya izin verilmeyen kayıt
          türlerini (sipariş, müşteri, fatura…) göstermez.
 
+  [YENİ] Klasörler API'de: GET /folders ve GET /folders/{id}
+         klasör ağacını, her klasörün erişim türünü (kendi ya
+         da üstten gelen) ve içindeki klasör, sayfa ve dosya
+         sayısını verir. POST /folders klasör açar, POST
+         /folders/{id} adını, sırasını, arşiv durumunu ve
+         yerini değiştirir, boş klasör silinebilir. Klasörü ya
+         da sayfayı daha çok kişiye açacak bir değişiklik (özel
+         klasörü herkese açık yapmak, özel bir klasörden herkese
+         açık bir klasöre taşımak) API'den yapılmaz, klasör
+         ekranında yapılır.
+
+  [YENİ] Sayfa güncellemede (POST /pages/{id}) meta anahtar
+         kelimeleri, yorum ayarları (yorumlar, yeni yorum alma,
+         otomatik yayın, giriş şartı) ve sayfanın klasörü
+         değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
+         taslak ya da geri dönüşüm kutusunda olup olmadığını
+         da gösteriyor.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün

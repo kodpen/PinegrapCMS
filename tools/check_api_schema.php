@@ -57,6 +57,7 @@ $presenters = array(
 	'api_order_schema'         => 'api_order_present',
 	'api_customer_schema'      => 'api_customer_present',
 	'api_page_schema'          => 'api_page_present',
+	'api_folder_schema'        => 'api_folder_present',
 	'api_file_schema'          => 'api_file_present',
 	'api_offer_schema'         => 'api_offer_present',
 	'api_webhook_schema'       => 'api_webhook_present',
