@@ -184,6 +184,38 @@ function api_schema() {
 		/* ----- Inventory ---------------------------------------------------- */
 
 		array(
+			'id'      => 'products.delete',
+			'method'  => 'DELETE',
+			'path'    => '/products/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_products_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product',
+			'description' => 'Moves the product to the catalogue\'s Recycle Bin, where an operator can put it back: it is switched off, leaves the listing and stays readable by id with recycled=true. Send permanent=true to delete it outright with the whole cleanup the product screen performs, which cannot be undone. Both send product.deleted, with recycled saying which it was. 409 recycle_bin_unavailable on a site without the bin, 409 already_recycled for a product already in it. A default IIS install answers DELETE itself before PHP is reached: POST /products/{id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		array(
+			'id'      => 'products.delete_post',
+			'method'  => 'POST',
+			'path'    => '/products/{id}/delete',
+			'scope'   => 'products:write',
+			'handler' => 'api_products_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product, addressed as a POST',
+			'description' => 'The same deletion as DELETE /products/{id}, for clients and servers that cannot send DELETE. It has an address of its own because POST /products/{id} is already the update.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		array(
 			'id'      => 'inventory.write',
 			'method'  => 'POST',
 			'path'    => '/products/{id}/inventory',
@@ -290,6 +322,79 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'product_groups.create',
+			'method'  => 'POST',
+			'path'    => '/product-groups',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_create',
+			'dry_run' => true,
+			'returns' => 'ProductGroup',
+			'summary' => 'Add a product group',
+			'description' => 'A new category page under the parent named, or under the top of the catalogue when none is. It starts switched off unless enabled=true is sent, so a category an import is still filling does not appear in the navigation half-empty. The address is made from the short description or the name by the catalogue\'s own rule. A name another group already has is refused with 409 name_taken: the name is the group\'s code in the panel. Existing groups are not moved through the API.',
+			'params'  => array(
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'parent_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The group to file it under. Omitted: the top of the catalogue.'),
+				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool', 'description' => 'Published. Off when not sent.'),
+				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long description; full_description on the record.'),
+				array('name' => 'meta_description',  'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'meta_keywords',     'in' => 'body', 'type' => 'string', 'max_length' => 2000),
+				array('name' => 'keywords',          'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'Words that promote the group in the site search.'),
+				array('name' => 'product_ids',       'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Products to file in it. Each has to exist and not be in the Recycle Bin.')
+			)
+		),
+
+		array(
+			'id'      => 'product_groups.products',
+			'method'  => 'POST',
+			'path'    => '/product-groups/{id}/products',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_products',
+			'dry_run' => true,
+			'returns' => 'ProductGroup',
+			'summary' => 'Put products into a group, or take them out',
+			'description' => 'Both lists in one call, so re-filing a category\'s products leaves no moment where they are in neither group. A product added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed. Products are never deleted here, only their link to this group.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Product ids to put into the group. Each has to exist and not be in the Recycle Bin.'),
+				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Product ids to take out of the group.')
+			)
+		),
+
+		array(
+			'id'      => 'product_groups.delete',
+			'method'  => 'DELETE',
+			'path'    => '/product-groups/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product group',
+			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		array(
+			'id'      => 'product_groups.delete_post',
+			'method'  => 'POST',
+			'path'    => '/product-groups/{id}/delete',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product group, addressed as a POST',
+			'description' => 'The same deletion as DELETE /product-groups/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
 		/* ----- Orders ------------------------------------------------------- */
 
 		array(
@@ -385,6 +490,87 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'customers.delete',
+			'method'  => 'DELETE',
+			'path'    => '/customers/{id}',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a customer',
+			'description' => 'Removes the address-book record with its contact groups and opt-in rows, as the contact screen does - for an erasure request received outside the panel. It cannot be undone. Orders keep their own copy of the billing and shipping details. A contact that is a user account\'s own is refused (409 customer_has_account), and so is one linked to an ERP account (409 customer_has_erp_account). Sends customer.deleted. POST /customers/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.delete_post',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/delete',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a customer, addressed as a POST',
+			'description' => 'The same deletion as DELETE /customers/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Calendars ---------------------------------------------------- */
+
+		array(
+			'id'      => 'calendars.list',
+			'method'  => 'GET',
+			'path'    => '/calendars',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendars_list',
+			'returns' => array('list' => 'Calendar'),
+			'summary' => 'The site\'s calendars',
+			'description' => 'Every calendar the application\'s owner may open - all of them for roles 0 to 2, the assigned ones for a user with the calendars right - with how many events each holds. One page; a site has a handful. 503 service_unavailable where the site does not run its calendars.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'calendars.events',
+			'method'  => 'GET',
+			'path'    => '/calendars/events',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_events_list',
+			'returns' => array('list' => 'CalendarEvent'),
+			'summary' => 'Events on the calendars',
+			'description' => 'In date order, cursor paged. A repeating event is answered once, with its first start and end and its recurrence rule: unit (day, week, month, year), times (how many repeats follow the first), days (the weekdays a daily or weekly repeat is limited to) and month_by (date or weekday). skipped_occurrences numbers the repeats that were cancelled. Times are the site\'s wall-clock times written with its offset. Only events on calendars the owner may open are listed.',
+			'params'  => array(
+				array('name' => 'calendar_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only events on this calendar.'),
+				array('name' => 'published',     'in' => 'query', 'type' => 'bool'),
+				array('name' => 'upcoming',      'in' => 'query', 'type' => 'bool', 'description' => 'Only events that have not ended yet, and repeating events.'),
+				array('name' => 'starts_after',  'in' => 'query', 'type' => 'datetime', 'description' => 'First start at or after this moment.'),
+				array('name' => 'starts_before', 'in' => 'query', 'type' => 'datetime', 'description' => 'First start before this moment.'),
+				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the location.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_get',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_events_get',
+			'returns' => 'CalendarEvent',
+			'summary' => 'One event',
+			'description' => 'With its long description. An event on none of the calendars the owner may open is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -426,6 +612,101 @@ function api_schema() {
 			'status'  => 204,
 			'summary' => 'Remove a subscription',
 			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.get',
+			'method'  => 'GET',
+			'path'    => '/webhooks/{id}',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_get',
+			'returns' => 'Webhook',
+			'summary' => 'One of your event subscriptions',
+			'description' => 'With what is still queued for it and the last delivery error on file. Another application\'s subscription is answered 404, the same as one that does not exist.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.update',
+			'method'  => 'PATCH',
+			'path'    => '/webhooks/{id}',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_update',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Change a subscription',
+			'description' => 'Move the address, change the events, or switch deliveries off (disabled) and on again (active) without losing the signing secret. A subscription the site marked failing is switched back on with status=active; what is still waiting is sent again by POST /webhooks/{id}/retry, not by this call. A disabled subscription receives nothing, and the events queued for it are dropped. A plain POST to /webhooks/{id} is not this call - it has removed the subscription since the first release - so a client that cannot send PATCH, or talks to an IIS server, uses POST /webhooks/{id}/update.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'Event names; replaces the whole list. GET /webhooks lists them.'),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled'))
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.update_post',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/update',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_update',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Change a subscription, addressed as a POST',
+			'description' => 'The same change as PATCH /webhooks/{id}, for clients and servers that cannot send PATCH. It has an address of its own because POST /webhooks/{id} removes the subscription.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'Event names; replaces the whole list. GET /webhooks lists them.'),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled'))
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.retry',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/retry',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_retry',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Send again what is waiting',
+			'description' => 'For a receiver that is answering again: the subscription goes back to active and every queued event, including the ones that ran out of attempts, gets its full set of attempts back. The scheduled task sends them on its next run. requeued says how many.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.test',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/test',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_test',
+			'dry_run' => true,
+			'returns' => array('webhook_id' => 'integer', 'delivery_id' => 'integer', 'event' => 'string', 'queued' => 'boolean'),
+			'summary' => 'Send a test event',
+			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.rotate_secret',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/rotate-secret',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_rotate_secret',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Renew the signing secret',
+			'description' => 'The new secret is returned once, here, and the old one stops verifying at once: deliveries are signed when they are sent, so anything still queued goes out under the new secret as well.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -606,6 +887,40 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'forms.submission_get',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_get',
+			'returns' => 'FormSubmission',
+			'summary' => 'One submission',
+			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_update',
+			'dry_run' => true,
+			'returns' => 'FormSubmission',
+			'summary' => 'Mark a submission complete, or fill in its text answers',
+			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'complete',      'in' => 'body', 'type' => 'bool'),
+				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each; an empty value clears it.')
+			)
+		),
+
 		/* ----- Pages -------------------------------------------------------- */
 
 		array(
@@ -757,6 +1072,23 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'files.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/files/{id}',
+			'scope'   => 'files:write',
+			'handler' => 'api_files_update',
+			'dry_run' => true,
+			'returns' => 'File',
+			'summary' => 'Change a file\'s description',
+			'description' => 'The description is what the site uses as an image\'s alternative text and what the file manager shows beside the name. Only that is writable: the name is the file\'s address, which pages refer to, and the folder is the operator\'s filing. Only files the read endpoints show can be changed.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 500)
+			)
+		),
+
+		array(
 			'id'      => 'files.delete',
 			'method'  => 'DELETE',
 			'path'    => '/files/{id}',
@@ -796,7 +1128,7 @@ function api_schema() {
 			'handler' => 'api_offers_list',
 			'returns' => array('list' => 'Offer'),
 			'summary' => 'List offers',
-			'description' => 'An offer is a campaign rule applied to the cart at checkout - a discount, a gift product, free shipping - and not a sales quote; this resource is read only. offer_status is what the offer is doing today, derived from the enabled switch and the date range; incomplete marks a saved offer that cannot do anything at checkout yet. The conditions and the results are on the single-offer endpoint. Cursor paged.',
+			'description' => 'An offer is a campaign rule applied to the cart at checkout - a discount, a gift product, free shipping - and not a sales quote. offer_status is what the offer is doing today, derived from the enabled switch and the date range; incomplete marks a saved offer that cannot do anything at checkout yet. The conditions and the results are on the single-offer endpoint. Cursor paged.',
 			'params'  => array(
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'scheduled', 'expired', 'disabled'), 'description' => 'Offers in one derived status: running today, not started yet, past their end date, or switched off.'),
 				array('name' => 'code',          'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Exact match on the offer code.'),
@@ -818,6 +1150,26 @@ function api_schema() {
 			'description' => 'Adds the conditions the cart has to meet and what the offer then does, each flattened into readable objects: products and groups are named, amounts are minor units, percentages are 0-100, and an open-ended offer reports end_date null.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'offers.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/offers/{id}',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_update',
+			'dry_run' => true,
+			'returns' => 'Offer',
+			'summary' => 'Switch an offer on or off, reword it or move its dates',
+			'description' => 'The offer\'s own row, the way the offer editor writes it: dates are YYYY-MM-DD, an empty end_date is an offer that runs until it is switched off, and the end may not come before the start. The conditions and the results are not writable here; an offer the editor marks incomplete stays incomplete, and switching it on does not make it do anything at checkout.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'enabled',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The message the offer shows.'),
+				array('name' => 'start_date',  'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD.'),
+				array('name' => 'end_date',    'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'YYYY-MM-DD, or empty or null for an offer with no end.')
 			)
 		),
 

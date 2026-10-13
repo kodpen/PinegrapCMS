@@ -53,6 +53,7 @@ require_once($pg_api_directory . '/resources/customers.php');
 require_once($pg_api_directory . '/resources/pages.php');
 require_once($pg_api_directory . '/resources/files.php');
 require_once($pg_api_directory . '/resources/offers.php');
+require_once($pg_api_directory . '/resources/calendars.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');
 require_once($pg_api_directory . '/resources/account.php');

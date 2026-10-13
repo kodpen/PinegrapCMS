@@ -24,6 +24,9 @@
 //     by name and an application removing the wrong one should not take part
 //     of the site down with it.
 //
+// A file's description can be written afterwards; its name and its folder
+// cannot, for the same reasons.
+//
 // The name rules, the collision suffix and the blocked extension list are the
 // panel's own (includes/fn/files.php), reused rather than restated.
 
@@ -656,6 +659,62 @@ function api_files_create($params) {
 	$row = api_row(api_file_select() . " WHERE files.id = '" . $id . "' LIMIT 1");
 
 	api_ok(api_file_present($row), 201);
+
+}
+
+// Changing what a file is described as.
+//
+// The description is the text the site uses for an image's alternative text
+// and the file manager shows beside its name, and it is what an SEO tool or a
+// DAM that keeps the descriptions elsewhere wants to write back. Only that:
+// the name is the file's address, which pages refer to, and the folder is the
+// operator's filing, which the upload already keeps out of an application's
+// hands.
+function api_files_update($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	// The same files the read endpoints show: an application cannot change a
+	// file it is not allowed to see.
+	$file = api_row(api_file_select() . " WHERE files.id = '" . $id . "'
+		AND " . api_files_public_clause() . "
+		LIMIT 1");
+
+	if ($file === null) {
+
+		api_fail_not_found(lang('File'));
+
+	}
+
+	if (!pg_folder_edit_access($file['folder'], $app['owner']['id'], $app['owner']['role'])) {
+
+		api_fail(403, 'forbidden', lang('The account that owns this application cannot edit this folder.'));
+
+	}
+
+	if (!array_key_exists('description', $params)) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	api_dry_run_stop('updated', 'file', array('id' => $id, 'name' => $file['name']));
+
+	api_exec("UPDATE files SET
+			description = '" . escape($params['description']) . "',
+			user = '" . (int)$app['owner']['id'] . "',
+			timestamp = UNIX_TIMESTAMP()
+		WHERE id = '" . $id . "'
+		LIMIT 1");
+
+	log_activity(lang(array(
+		'string' => 'File ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($file['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(api_file_present(api_row(api_file_select() . " WHERE files.id = '" . $id . "' LIMIT 1")));
 
 }
 

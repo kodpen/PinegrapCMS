@@ -29,6 +29,58 @@
          değiştirilince korunuyor. Önceden liste "Son
          Değişiklik" sıralamasına dönüyordu.
 
+  DIŞ API
+  --------------------------------------------------------
+
+  [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
+         okuma (GET /webhooks/{id}), adres, olay listesi ve
+         durum değiştirme (PATCH /webhooks/{id} ya da POST
+         /webhooks/{id}/update), bekleyen gönderimleri yeniden
+         deneme (/retry), deneme olayı gönderme (/test) ve imza
+         anahtarını yenileme (/rotate-secret). Gönderimleri
+         başarısız olup "failing" durumuna düşen abonelik artık
+         silinip yeniden oluşturulmadan açılabiliyor.
+
+  [YENİ] Ürün silme: DELETE /products/{id} (ya da POST
+         /products/{id}/delete) ürünü katalog Geri Dönüşüm
+         Kutusuna taşır, permanent=true kalıcı siler. Kutudaki
+         ürünler listede görünmez, kimliğiyle okunduğunda
+         recycled: true döner.
+
+  [YENİ] Ürün grupları API'den oluşturuluyor (POST
+         /product-groups), silinebiliyor (Geri Dönüşüm Kutusuna
+         ya da kalıcı) ve gruba ürün eklenip çıkarılabiliyor
+         (POST /product-groups/{id}/products). Kök grup ve
+         içinde grup olan grup silinmez.
+
+  [YENİ] Müşteri silme: DELETE /customers/{id}. Bir kullanıcı
+         hesabına ya da ERP carisine bağlı kişi silinmez.
+
+  [YENİ] Dosya açıklaması (görselin alternatif metni) API'den
+         yazılabiliyor: POST /files/{id}.
+
+  [YENİ] Kampanyalar API'den açılıp kapatılabiliyor, mesajı ve
+         tarihleri değiştirilebiliyor: POST /offers/{id}.
+         Kampanyanın koşulları ve sonuçları editörde kalır.
+
+  [YENİ] Form gönderimleri: tek gönderim okunabiliyor ve
+         "tamamlandı" işareti ile metin cevapları (ofis
+         kullanımı alanları dahil) yazılabiliyor. Yeni
+         forms:write yetkisi gerekir.
+
+  [YENİ] Takvimler API'de: GET /calendars, GET
+         /calendars/events ve GET /calendars/events/{id}. Tekrar
+         eden etkinlik, tekrar kuralıyla bir kez döner. Yeni
+         calendars:read yetkisi gerekir.
+
+  [YENİ] Yeni webhook olayları: customer.deleted,
+         product_group.created, product_group.deleted.
+
+  [DÜZELTME] GET /products ve GET /product-groups, katalogda
+         Geri Dönüşüm Kutusuna taşınmış kayıtları artık
+         listelemiyor. Önceden kutudaki ürün kapalı bir ürün
+         gibi listede kalıyordu.
+
 
 
   2026.4.9

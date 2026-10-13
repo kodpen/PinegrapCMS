@@ -38,7 +38,11 @@ function api_webhook_events() {
 		'order.cancelled'      => 'An order was cancelled',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
-		'product.deleted'      => 'A product was deleted',
+		// Moving a product to the Recycle Bin through the API announces this
+		// too, with recycled: true in the data: the product leaves the listing
+		// either way, and a receiver that only heard of outright deletions
+		// would keep selling one the shop no longer offers.
+		'product.deleted'      => 'A product was deleted, or moved to the Recycle Bin through the API (recycled: true)',
 		'inventory.changed'    => 'A product stock level changed',
 		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
 		// has no settings screen yet, and without a threshold there is no low to
@@ -55,9 +59,12 @@ function api_webhook_events() {
 		// honest about its edge.
 		'customer.created'     => 'A customer record was created (not bulk imports)',
 		'customer.updated'     => 'A customer record was changed through the API',
+		'customer.deleted'     => 'A customer record was deleted through the API',
 		'page.created'         => 'A page was created (not duplicated or imported pages)',
 		'page.updated'         => 'A page was changed through the API',
+		'product_group.created' => 'A product group was created through the API',
 		'product_group.updated' => 'A product group was changed',
+		'product_group.deleted' => 'A product group was deleted or moved to the Recycle Bin through the API',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.

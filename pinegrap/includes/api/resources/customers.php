@@ -379,3 +379,68 @@ function api_customers_update($params) {
 	api_ok(api_customer_present($row));
 
 }
+
+// Removing a customer record.
+//
+// The address-book record and what hangs off it - its contact groups and its
+// opt-in rows - the same three deletes the contact screen performs. The case
+// this exists for is an erasure request: a person asks a shop to forget them,
+// and the system that received the request is not the panel.
+//
+// Two records are refused where the panel would go ahead. A contact that is a
+// user account's own is the name and address of somebody who signs in, and the
+// account would be left without them. A contact linked to an ERP account
+// carries the ledger's name for that account. Both are decisions an operator
+// makes while looking at the person, so the API says which one it is and stops.
+//
+// Orders keep their own copy of the billing and shipping details, so an order
+// placed by this customer stays complete; its contact_id points at nothing
+// afterwards, which is what the panel's delete leaves as well.
+function api_customers_delete($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$existing = api_row("SELECT id, email_address FROM contacts WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($existing === null) {
+
+		api_fail_not_found(lang('Customer'));
+
+	}
+
+	if ((int)api_value("SELECT COUNT(*) FROM user WHERE user_contact = '" . $id . "'") > 0) {
+
+		api_fail(409, 'customer_has_account', lang('This contact belongs to a user account and is not deleted through the API.'));
+
+	}
+
+	if ((api_row("SHOW TABLES LIKE 'erp_accounts'") !== null)
+		&& ((int)api_value("SELECT COUNT(*) FROM erp_accounts WHERE contact_id = '" . $id . "'") > 0)) {
+
+		api_fail(409, 'customer_has_erp_account', lang('This contact is linked to an ERP account and is not deleted through the API.'));
+
+	}
+
+	api_dry_run_stop('deleted', 'customer', array('id' => $id));
+
+	api_exec("DELETE FROM contacts WHERE id = '" . $id . "' LIMIT 1");
+
+	api_exec("DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . $id . "'");
+
+	api_exec("DELETE FROM opt_in WHERE contact_id = '" . $id . "'");
+
+	log_activity(lang(array(
+		'string' => 'Customer ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($id, $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_webhook_enqueue('customer.deleted', array(
+		'id'    => $id,
+		'email' => (string)$existing['email_address']
+	));
+
+	api_ok(array('id' => $id, 'deleted' => true));
+
+}

@@ -514,6 +514,9 @@ function api_openapi_objects()
         'Me'             => 'api_auth_me_schema',
         'Device'         => 'api_device_schema',
         'Notification'   => 'api_notification_schema',
+        'Calendar'           => 'api_calendar_schema',
+        'CalendarEvent'      => 'api_calendar_event_schema',
+        'CalendarRecurrence' => 'api_calendar_recurrence_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way
