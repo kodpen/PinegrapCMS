@@ -243,6 +243,15 @@
          kayıtla ölçüyor. Önceden sayfa kayıtsız çizildiği için
          "H1 yok" ve "ince içerik" uyarıları alıyordu.
 
+  [DÜZELTME] Görsel editörde yapılan detay ve katalog
+         sayfaları, adresteki kayıt, ürün ya da kategori
+         yoksa 404 kodu ve noindex ile cevap veriyor
+         (/blog-yazisi/olmayan-kayit, ?r=…, ?pid=…,
+         /magaza/olmayan-kategori). Önceden "bulunamadı"
+         ekranı 200 koduyla geliyor, arama motorları onu
+         sayfanın adresine kanonik bağlıyordu. Ziyaretçi
+         aynı "bulunamadı" mesajını görür.
+
   ÜRÜNLER
   --------------------------------------------------------
 
@@ -609,6 +618,19 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] Menüler API'de: GET /menus ve GET /menus/{id}
+         menüleri ve öğelerini sitenin çizdiği sırayla (alt
+         öğeler, bağlantı, yeni pencere, güvenlik) verir. Menü
+         öğesi eklenir, değiştirilir, başka bir öğenin altına
+         ya da başka bir sıraya taşınır, altındakilerle
+         birlikte silinir. Yeni menü açmak ve menünün
+         görünüşünü (efekt, açılır konumlar, sınıflar)
+         değiştirmek tasarımcı hakkı ister. Menünün adı
+         tasarımlarda menüyü yerleştiren addır, API'den
+         değiştirilmez; menü de API'den silinmez. Geri dönüşüm
+         kutusundaki ya da taslak bir sayfaya ve javascript:
+         gibi adreslere bağlantı verilmez.
 
   [YENİ] Görsel tasarımlar API'de: GET /design/designs
          tasarımları sayfa, taslak sayısı ve durumlarıyla

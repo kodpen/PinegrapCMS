@@ -1898,6 +1898,24 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         || pg_sw_submitted_form_visible($form_row, $access_control, _pg_sw_current_page_id());
     $found_and_allowed = ($form_row && $allowed);
 
+    // The address asked for a record (?r=, or a name under the page when the
+    // form has pretty URLs on and no catalog widget on the page reads that
+    // segment instead) and there is none to show: a 404, not the page.
+    if (!$found_and_allowed && $email_record_id === 0) {
+        $asked = ($reference_code !== '');
+        if (!$asked && pg_sw_request_segment() !== '' && pg_sw_form_pretty_urls($custom_form_page_id)) {
+            $asked = true;
+            foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
+                $type = isset($w['cfg']['regionType']) ? (string)$w['cfg']['regionType'] : '';
+                if ($type === 'catalog_listing' || $type === 'catalog_item_view') {
+                    $asked = false;
+                    break;
+                }
+            }
+        }
+        if ($asked) pg_sw_item_missing(true);
+    }
+
     // No record to show: the record's layout would print as a column of
     // empty fields. Unless the widget is set to keep it, the record template
     // keeps only what is meant for this state, and a design that shows the
@@ -4568,6 +4586,42 @@ function pg_sw_render_context($set = null)
         return $old;
     }
     return $ctx;
+}
+
+/**
+ * The page's address names a record, product or product group that is not
+ * there, or a record the visitor may not see: the widget draws its not-found
+ * state, and the response says so. The status is 404 with an X-Robots-Tag
+ * noindex header, and get_page_content() writes a robots noindex tag and no
+ * canonical link, so search engines drop the address instead of indexing the
+ * not-found screen under it.
+ *
+ * Pass true to mark (a widget that found nothing for the address), false to
+ * clear (get_page_content() before its widget pass), nothing to read. An
+ * e-mail body and the SEO pass (which renders pages inside another request)
+ * are never marked: the status there belongs to another response.
+ *
+ * @param bool|null $mark
+ * @return bool
+ */
+function pg_sw_item_missing($mark = null)
+{
+    static $missing = false;
+    if ($mark === null) return $missing;
+    if (!$mark) {
+        $missing = false;
+        return false;
+    }
+    $sw_ctx = pg_sw_render_context();
+    if (!empty($sw_ctx['email']) || (function_exists('pg_seo_rendering') && pg_seo_rendering())) {
+        return false;
+    }
+    $missing = true;
+    if (!headers_sent()) {
+        set_response_code(404);
+        header('X-Robots-Tag: noindex');
+    }
+    return true;
 }
 
 /**

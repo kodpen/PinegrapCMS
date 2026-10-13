@@ -1134,6 +1134,159 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Menus -------------------------------------------------------- */
+
+		array(
+			'id'      => 'menus.list',
+			'method'  => 'GET',
+			'path'    => '/menus',
+			'scope'   => 'pages:read',
+			'handler' => 'api_menus_list',
+			'returns' => array('list' => 'Menu'),
+			'summary' => 'Menus',
+			'description' => 'The site\'s menus without their items (GET /menus/{id} has them). A design places a menu by its name. Cursor paged.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the menu name.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'menus.get',
+			'method'  => 'GET',
+			'path'    => '/menus/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_menus_get',
+			'returns' => 'Menu',
+			'summary' => 'A menu and its items',
+			'description' => 'items in the order the site draws them: each item followed by the items under it (parent_id, level), siblings by order. url is where the item leads: the linked page\'s address, or link_url. security hides the item from visitors who may not open its page.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'menus.create',
+			'method'  => 'POST',
+			'path'    => '/menus',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menus_create',
+			'dry_run' => true,
+			'returns' => 'Menu',
+			'summary' => 'Add a menu',
+			'description' => 'An empty menu, shown nowhere until a designer places it in a design. Only for an application whose owner is an administrator or a designer (403 otherwise), as on the menus screen. The name is how designs place the menu: letters, numbers and dashes, unique (409 name_taken), and it is not changed through the API afterwards. Menus are not removed through the API either: the menus screen shows where a menu is used.',
+			'params'  => array(
+				array('name' => 'name',                        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'effect',                      'in' => 'body', 'type' => 'enum', 'values' => array('none', 'popup', 'accordion'), 'description' => 'How the items under an item open.'),
+				array('name' => 'first_level_popup_position',  'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'second_level_popup_position', 'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'class',                       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'CSS class of the menu.'),
+				array('name' => 'active_item_class',           'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'CSS class of the item of the page being shown.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/menus/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menus_update',
+			'dry_run' => true,
+			'returns' => 'Menu',
+			'summary' => 'Change how a menu is drawn',
+			'description' => 'The effect, the pop-up positions and the classes. Only for an application whose owner is an administrator or a designer (403 otherwise). The name stays: designs place the menu by it. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'effect',                      'in' => 'body', 'type' => 'enum', 'values' => array('none', 'popup', 'accordion')),
+				array('name' => 'first_level_popup_position',  'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'second_level_popup_position', 'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'class',                       'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'active_item_class',           'in' => 'body', 'type' => 'string', 'max_length' => 255)
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.create',
+			'method'  => 'POST',
+			'path'    => '/menus/{id}/items',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_create',
+			'dry_run' => true,
+			'returns' => 'MenuItem',
+			'summary' => 'Add a menu item',
+			'description' => 'It links to a page (page_id) or to an address (url), or to nothing (a heading for the items under it). A page in the Recycle Bin or kept off the site as a draft is refused; an address must be http, https, mailto or tel, or a path on this site. It goes last among its siblings, or after the one named in after (0: first).',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The text of the item.'),
+				array('name' => 'parent_id',  'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The item it goes under; 0 or left out for the top level.'),
+				array('name' => 'page_id',    'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The page it leads to.'),
+				array('name' => 'url',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address it leads to, when it does not lead to a page.'),
+				array('name' => 'new_window', 'in' => 'body', 'type' => 'bool', 'description' => 'Open the link in a new window.'),
+				array('name' => 'security',   'in' => 'body', 'type' => 'bool', 'description' => 'Show the item only to visitors who may open its page.'),
+				array('name' => 'class',      'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'after',      'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The sibling it goes after; 0 puts it first.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/menus/{id}/items/{item_id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_update',
+			'dry_run' => true,
+			'returns' => 'MenuItem',
+			'summary' => 'Change a menu item',
+			'description' => 'Only what is sent is changed. A page_id clears the address and a url clears the page; page_id 0 removes the page link and url "" the address. A new parent_id moves the item with everything under it, last among its new siblings unless after says where; it cannot go under itself or an item under it. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'parent_id',  'in' => 'body', 'type' => 'int', 'min' => 0),
+				array('name' => 'page_id',    'in' => 'body', 'type' => 'int', 'min' => 0),
+				array('name' => 'url',        'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'new_window', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'security',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'class',      'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'after',      'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The sibling it goes after; 0 puts it first.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.delete',
+			'method'  => 'DELETE',
+			'path'    => '/menus/{id}/items/{item_id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'removed' => 'integer'),
+			'summary' => 'Remove a menu item',
+			'description' => 'The item and every item under it, as on the menu item screen; removed counts them. Try it with X-Dry-Run first to see the count.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.delete_post',
+			'method'  => 'POST',
+			'path'    => '/menus/{id}/items/{item_id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'removed' => 'integer'),
+			'summary' => 'Remove a menu item, addressed as a POST',
+			'description' => 'The same removal as DELETE /menus/{id}/items/{item_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Files -------------------------------------------------------- */
 
 		array(

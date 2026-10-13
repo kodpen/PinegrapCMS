@@ -151,6 +151,46 @@ için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
 
 ---
 
+## 2026.4.10 — Görsel editör: olmayan kayıt, ürün ve kategoride 404 + noindex (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 2. maddesi:
+`/blog-yazisi/olmayan-kayit-xyz` 200 dönüyor, "Yazı bulunamadı" gösteriyor,
+noindex yok, kanonik `/blog-yazisi`. Klasik form detay sayfası (`/blog/olmayan`)
+bu durumda zaten 404 veriyordu; görsel editörün widget'ları vermiyordu.
+
+**Nasıl.** `pg_sw_item_missing()` (`widgets.php`): adresin istediği öğe yoksa
+widget onu işaretler; yanıt 404 olur, `X-Robots-Tag: noindex` gider,
+`get_page_content.php` sayfaya `<meta name="robots" content="noindex, follow">`
+yazar ve kanonik bağlantıyı çıkarır. Bayrak sayfanın widget geçişinden önce
+sıfırlanır. E-posta gövdesi ve SEO geçişi (başka bir isteğin içinde çizilen
+sayfa) hiç işaretlenmez. İşaretleyen üç yer:
+
+- **Form detay widget'ı** (`_render_system_widget_form_item_view`): `?r=` dolu
+  ya da form güzel URL'liyken sayfa adının ardında bir ad var, ama kayıt yok
+  veya ziyaretçi göremiyor. Erişimi olmayan kayıt da 404 olur; widget onu
+  zaten "bulunamadı" gibi gösteriyordu (kaydın varlığı sızmasın diye). Aynı
+  sayfada katalog widget'ı varsa ad onundur, işaretlenmez.
+- **Ürün detay widget'ı**: adres ya da `?pid=` bir ürün ya da seçim tipi grup
+  bulmadı. Aynı sayfada katalog listesi varsa ad önce onundur, işaretlenmez.
+- **Katalog listesi**: adresteki kategori yok. Aynı sayfada ürün detay widget'ı
+  varsa işaretlenmez (ürünü o gösterebilir).
+
+Çıplak detay sayfası (`/blog-yazisi`, `/urun-detay`) 200 kalır. Liste sayfasının
+ardındaki olmayan ad (`/blog-2/olmayan`) bu PR'da değişmedi: her sayfanın
+ardındaki fazladan parça gibi 200 dönüyor.
+
+**Doğrulama (sandbox).** Form 1109'da güzel URL geçici açıldı:
+`/blog-yazisi/olmayan-kayit-xyz` ve `/blog-yazisi?r=NOPE123` → 404,
+`X-Robots-Tag: noindex`, robots meta, kanonik yok, gövdede "bulunamadı"
+mesajı. `/blog-yazisi/ilk-yazi`, `/blog-yazisi`, `/blog-yazisi/` → 200 ve
+kanonik. `/urun-detay/olmayan-urun`, `/urun-detay?pid=999999`,
+`/magaza/olmayan-grup` → 404 + noindex; `/urun-detay/Recurring_Donation`,
+`/magaza/Donations`, `/magaza` → 200. `php tools/test.php` 405 geçti.
+dev.pinegrap.com'da denenmedi. IIS'te sunucunun kendi hata sayfası 404 gövdesini
+değiştirirse (httpErrors), hata sayfası widget'ının 404'ünde de aynısı olur.
+
+---
+
 ## 2026.4.10 — Yerel test bulguları: ülke kısıtında panel girişi, IIS'te çift başlık, MCP 401 metni, Bağlı uygulamalar, iki PHP uyarısı, çekmecede not başlığı (2026-10-13)
 
 **Neden.** dev.pinegrap.com'daki yerel test turunun ikinci raporu (OAuth/MCP,
@@ -260,6 +300,51 @@ ekranının anahtarı `my_notes` oldu; JS'te `t('notes')`'u yalnız çekmece
 başlığı okuyor, `my_notes`'u okuyan yok (menü `nav_notes`'u kullanır). Diğer
 Çalışma Alanı dizge tablolarında farklı metinle tekrarlanan anahtar yok
 (misafir sayfasınınki ayrı tablodur).
+
+---
+
+## 2026.4.10 — Dış API: menüler ve menü öğeleri (2026-10-13)
+
+**Sorun.** Siteyi API ya da MCP üzerinden kuran bir asistan sayfa açıp
+içeriğini önerebiliyordu ama sitenin menüsüne bağlantı ekleyemiyordu; menü
+yalnız panelden düzenleniyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/menus.php`, kapsam
+`pages:read` / `pages:write` (menü sitenin kendisidir, sayfalarla aynı
+karar: rol ≤ 2):
+
+- `GET /menus`, `GET /menus/{id}`: menü ayarları (efekt, açılır konumlar,
+  sınıflar) ve öğeler, sitenin çizdiği sırayla düz liste (`parent_id`,
+  `level`, `order`); `url` sayfanın adresi ya da `link_url`. Üstü silinmiş
+  öğe sitede çizilmediği için listede de yok.
+- `POST /menus`, `POST /menus/{id}`: menü açma ve görünüş ayarları; panelde
+  olduğu gibi (`view_menus.php` designer kapısı) sahibin rolü 0–1 olmalı,
+  yoksa 403. Ad kuralı menü ekranınınki (harf, rakam, tire; benzersiz, 409
+  `name_taken`).
+- `POST /menus/{id}/items`, `POST /menus/{id}/items/{item_id}`, `DELETE`
+  (ve `POST …/delete`): öğe ekleme, değiştirme, taşıma (`parent_id`,
+  `after`: 0 ilk, kardeş kimliği ardına; kendi altına taşıma 422), alt
+  öğeleriyle silme (`removed` sayısı, dry-run ile önce görülebilir). Sıra
+  her yazımda o seviye için 1, 2, 3… diye yeniden yazılır.
+
+**Kararlar.** Menünün adı tasarımlarda menüyü yerleştiren addır
+(`<menu>ad</menu>`, editörün menü öğesi); API'den değiştirilmez ve menü
+API'den silinmez, ikisi de menüyü kullanan her tasarımda boş bir yer
+bırakırdı. Bağlantı ya sayfa ya adres: sayfa verilince adres, adres
+verilince sayfa temizlenir (menü öğesi ekranı gibi). Geri Dönüşüm
+Kutusu'ndaki ve taslak sayfaya bağlantı verilmez; adres yalnız http, https,
+mailto, tel ya da bu sitede bir yol (`//` ile başlayan ve `\` içeren
+reddedilir). Günlüğe uygulama adıyla yazılır.
+
+**Doğrulandı (sandbox).** Liste ve tekil; menü açma (geçersiz ad, ad
+çakışması, dry-run), ayar değiştirme, `name` gönderilince 422, rolü 2 olan
+sahibe 403 (öğe yazımı açık); öğe ekleme (sayfa, adres, mailto, yeni
+pencere, güvenlik, `after: 0`), taslak sayfa, `javascript:`, `//evil.com`,
+sayfa ve adres birlikte reddi; iç içe ekleme, döngü reddi, üst değiştirme
+ve sıra, başka üstün öğesinin `after` olarak reddi, alt öğeleriyle silme
+(dry-run sayısı), olmayan menü ve öğe 404; MCP araçları ve OpenAPI
+(`Menu`, `MenuItem`). Denenmeyen: sitede menünün çizimi (veri panelin
+yazdığıyla aynı sütunlara yazılıyor).
 
 ---
 
