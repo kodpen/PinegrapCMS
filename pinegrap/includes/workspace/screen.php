@@ -662,6 +662,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
     // Approval requests and read receipts (approvals.php, acks.php).
     $strings = array_merge($strings, ws_approvals_js_strings(), ws_acks_js_strings());
+    // A task handed to an assistant (delegation.php,
+    // assets/js/workspace_task_delegate.js).
+    $strings = array_merge($strings, ws_delegation_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -705,6 +708,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'calc'         => function_exists('ws_calc_js_config') ? ws_calc_js_config() : array(),
         'task_time'    => ws_task_time_ready() ? array('ready' => true, 'manager' => ws_task_time_is_manager($viewer)) : array('ready' => false),
         'task_links'   => ws_task_links_ready(),
+        'delegation'   => ws_delegation_js_config(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,

@@ -755,6 +755,32 @@ function ws_ai_channel_allowed($channel)
 }
 
 /**
+ * The channel a request reads: the one it was asked in or, for a run on a
+ * task (delegation.php), the task's channel where Pinegrap AI may be asked
+ * and the person who asked may read. A request from a note has none.
+ *
+ * @param array      $row
+ * @param array|null $asker
+ * @return array|null
+ */
+function ws_ai_request_channel($row, $asker = null)
+{
+    if ((int) ($row['note_id'] ?? 0) > 0) {
+        return null;
+    }
+
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        $task = ws_task((int) $row['task_id']);
+        $channel = ($task && ((int) $task['channel_id'] > 0)) ? ws_channel($task['channel_id']) : null;
+        $asker = $asker ?: ws_ai_viewer((int) $row['requested_by']);
+
+        return ($channel && $asker && ws_ai_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? $channel : null;
+    }
+
+    return ws_channel($row['channel_id']);
+}
+
+/**
  * What the channel screen needs to know about Pinegrap AI in a channel.
  *
  * @param array $channel
@@ -1600,11 +1626,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         // utility class outweighs: the page would not look as proposed.
         $result = array('ok' => false, 'error' => 'The page would not look as you mean yet. ' . implode(' ', $looks) . ' Fix it with the page tools, then call answer again with new words on what the proposal now does.');
         $state['css_nudged'] = 1;
-    } elseif (empty($state['proposals']['tasks']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['tasks']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
         // proposed: nothing was changed, and the words must not say so.
@@ -2037,6 +2063,11 @@ function ws_ai_finish_fail($row, $reason)
             answered_at = '" . time() . "', ai_state = NULL
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
+    // A run on a task: the person who asked is told it ended undone.
+    if (((int) ($row['task_id'] ?? 0) > 0) && (mysqli_affected_rows(db::$con) > 0) && function_exists('ws_task_delegation_told')) {
+        ws_task_delegation_told($row, 'failed');
+    }
+
     ws_ai_react((int) $row['message_id'], '👀', false);
 }
 
@@ -2165,6 +2196,16 @@ function ws_ai_deliver($row, $text, $proposals)
         }
 
         ws_ai_log(lang('Pinegrap AI answered a request written in a note'));
+
+        return array('ok' => true, 'error' => '');
+    }
+
+    // A run on a task (delegation.php): the answer is kept on the run and
+    // shown on the task, and the person who asked is told.
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        if (ws_task_delegation_answer($row, $text)) {
+            ws_ai_log(lang(array('string' => 'Pinegrap AI answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
+        }
 
         return array('ok' => true, 'error' => '');
     }
@@ -2860,6 +2901,7 @@ function ws_ai_changes_guide($asker, $channel_id)
 function ws_ai_system_prompt($row, $asker, $readable)
 {
     $note = ((int) ($row['note_id'] ?? 0) > 0);
+    $task = ((int) ($row['task_id'] ?? 0) > 0);
     $name = ws_person_name($asker['id']);
     $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
 
@@ -2871,7 +2913,9 @@ function ws_ai_system_prompt($row, $asker, $readable)
         'How to work:',
         $note
             ? '- The request was written in a note. The note is in the first message: read it, not a channel, as the context.'
-            : '- The channel\'s summary, decisions, latest messages and open tasks are in the first message. Read more only when the request needs it.',
+            : ($task
+                ? '- A task of the Workspace is in the first message: its details, its notes and, when it has one, its channel. Read more only when the task needs it.'
+                : '- The channel\'s summary, decisions, latest messages and open tasks are in the first message. Read more only when the request needs it.'),
         '- Records of these kinds can be looked up with search_records and read with read_record: '
             . (empty($readable) ? 'none' : implode(', ', array_keys($readable))) . '. Tasks are read with read_task.',
         '- Finish with one call of answer, or of fail when you cannot do the request.',
@@ -2882,6 +2926,10 @@ function ws_ai_system_prompt($row, $asker, $readable)
 
     if ($note) {
         $lines[] = '- Answer with text only. Your answer is written into the note under the line that asked, so write it as part of the note, without addressing anybody.';
+    } elseif ($task) {
+        $lines[] = '- The people on the task stay responsible for it. You do the part of the work that reading and writing can do: look things up, work figures out, draft texts, plans and replies.';
+        $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted.';
+        $lines[] = '- Finish with answer: what you did and found, what you propose, and what you need from ' . $name . ' to go on. Your answer is shown on the task, to ' . $name . '; write to them.';
     } else {
         $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted: write that you propose it.';
         $lines[] = '- When the request asks for tasks, call propose_task once for each task (at most 10; assignees are user ids from the list of people). A task written only in the text cannot be opened. Somebody in the channel opens a proposed task with one click.';
@@ -2977,6 +3025,62 @@ function ws_ai_start($row)
 
         $parts[] = 'The line of the note that asks you:';
         $parts[] = $request_text;
+    } elseif ((int) ($row['task_id'] ?? 0) > 0) {
+        // A run on a task (delegation.php): the task is the context, with its
+        // channel when it has one the assistant may be asked in.
+        $context = function_exists('ws_task_delegation_context') ? ws_task_delegation_context($asker, $row) : null;
+
+        if (!$context) {
+            return array('ok' => false, 'error' => lang('The task could not be found, or the person who asked may no longer see it.'), 'state' => null);
+        }
+
+        $task = $context['task'];
+        $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+
+        if ($channel && !ws_ai_channel_allowed($channel)) {
+            return array('ok' => false, 'error' => lang('Pinegrap AI may not be asked in the channel of this task.'), 'state' => null);
+        }
+
+        $tries = (int) ($row['ai_attempts'] ?? 0);
+        $present = ws_ai_task_present($asker, $task);
+
+        $parts[] = $context['delegated']
+            ? 'The task, handed to you. The people on it stay responsible for it:'
+            : 'The task. A note on it asks you; it is not handed to you:';
+        $parts[] = (string) json_encode($present, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $parts[] = '';
+
+        // The channel's words go along only to somebody who reads the channel:
+        // a person on a task of a private channel may not be in it.
+        if ($channel && ws_can_read_channel($asker, $channel)) {
+            $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000);
+            $parts[] = '';
+        }
+
+        $parts[] = 'People in the workspace:';
+        $parts[] = ws_ai_team_text();
+        $parts[] = '';
+
+        if (!empty($context['earlier'])) {
+            $parts[] = 'What the assistants were asked on this task before, and what they answered:';
+
+            foreach ($context['earlier'] as $item) {
+                $parts[] = '- ' . $item['asked_by'] . ' asked ' . $item['agent'] . ': ' . (($item['instruction'] !== '') ? mb_substr($item['instruction'], 0, 600) : '(the task itself)')
+                    . (($item['answer'] !== '') ? "\n  Answer: " . mb_substr($item['answer'], 0, 1200) : "\n  Not done: " . $item['error']);
+            }
+
+            $parts[] = 'Carry the work on from there.';
+            $parts[] = '';
+        }
+
+        $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
+
+        $parts[] = 'The instruction of ' . ws_person_name($asker['id']) . ':';
+        $parts[] = ($request_text !== '') ? $request_text : '(none: work on the task as its title, description and notes say)';
+
+        if ($request_text === '') {
+            $request_text = (string) $task['title'] . ' ' . (string) $task['description'];
+        }
     } else {
         $channel = ws_channel($row['channel_id']);
 
@@ -3051,8 +3155,9 @@ function ws_ai_start($row)
     ws_ai_seen_add($state, implode("\n", $parts));
 
     // A designer may have pages changed from a channel as well. A page the
-    // message names comes with the request, already read.
-    if (ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
+    // message names comes with the request, already read. A run on a task
+    // proposes no page changes.
+    if (((int) ($row['task_id'] ?? 0) === 0) && ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
         $state['design_tools'] = 1;
         $state['proposals']['pages'] = array();
 
@@ -3080,6 +3185,7 @@ function ws_ai_start($row)
 function ws_ai_tools($row)
 {
     $note = ((int) ($row['note_id'] ?? 0) > 0);
+    $task = ((int) ($row['task_id'] ?? 0) > 0);
     $asker = ws_ai_viewer((int) $row['requested_by']);
     $types = $asker ? array_keys(ws_ai_readable_types($asker)) : array();
 
@@ -3109,8 +3215,8 @@ function ws_ai_tools($row)
         return array_merge($tools, pg_design_ai_tools());
     }
 
-    if (!$note) {
-        $tools[] = $tool('read_channel', 'Read more of the channel the request came from: its summary, decisions, latest messages and open tasks.', array(
+    if (!$note && (!$task || ws_ai_request_channel($row, $asker))) {
+        $tools[] = $tool('read_channel', $task ? 'Read more of the task\'s channel: its summary, decisions, latest messages and open tasks.' : 'Read more of the channel the request came from: its summary, decisions, latest messages and open tasks.', array(
             'limit' => array('type' => 'integer', 'description' => 'How many of the latest messages, 1 to 100.'),
         ), array());
     }
@@ -3131,7 +3237,7 @@ function ws_ai_tools($row)
         ), array('type', 'id'));
     }
 
-    if (!$note) {
+    if (!$note && !$task) {
         $tools[] = $tool('propose_task', 'Propose one task, only when the request asks for tasks. It is shown under your answer; somebody in the channel opens it with one click.', array(
             'title'       => array('type' => 'string'),
             'description' => array('type' => 'string'),
@@ -3204,10 +3310,11 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
     $readable = ws_ai_readable_types($asker);
     $note = ((int) ($row['note_id'] ?? 0) > 0);
+    $task = ((int) ($row['task_id'] ?? 0) > 0);
 
     switch ($name) {
         case 'read_channel':
-            $channel = $note ? null : ws_channel($row['channel_id']);
+            $channel = ws_ai_request_channel($row, $asker);
 
             if (!$channel) {
                 return array('error' => 'This request did not come from a channel.');
@@ -3326,17 +3433,17 @@ function ws_ai_tool_run($row, &$state, $name, $args)
             return $present;
 
         case 'propose_task':
-            return $note ? array('error' => 'Not from a note.') : ws_ai_propose_task($state, $args);
+            return ($note || $task) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_task($state, $args);
 
         case 'propose_change':
-            return $note ? array('error' => 'Not from a note.') : ws_ai_propose_change($row, $state, $args);
+            return ($note || $task) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_change($row, $state, $args);
 
         case 'propose_bulk_change':
-            return ($note || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note.') : ws_ai_propose_bulk($row, $state, $args);
+            return ($note || $task || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_bulk($row, $state, $args);
 
         case 'add_task_note':
-            if ($note) {
-                return array('error' => 'Not from a note.');
+            if ($note || $task) {
+                return array('error' => 'Not from a note or a task.');
             }
 
             $task = ws_task((int) ($args['task_id'] ?? 0));
@@ -3870,9 +3977,13 @@ function ws_ai_settings_card($self_url, $viewer)
         WHERE r.agent = 'ai'
         ORDER BY r.id DESC LIMIT 10") as $row) {
         $line = ws_ai_request_state($viewer, $row);
-        $where = ((int) ($row['note_id'] ?? 0) > 0)
-            ? '<span>' . h(lang('A note')) . '</span>'
-            : '<a href="workspace.php?channel=' . (int) $row['channel_id'] . '">#' . h((string) $row['channel_name']) . '</a>';
+        if ((int) ($row['task_id'] ?? 0) > 0) {
+            $where = '<a href="workspace_tasks.php?task=' . (int) $row['task_id'] . '">' . h(ws_task_number($row['task_id'])) . '</a>';
+        } elseif ((int) ($row['note_id'] ?? 0) > 0) {
+            $where = '<span>' . h(lang('A note')) . '</span>';
+        } else {
+            $where = '<a href="workspace.php?channel=' . (int) $row['channel_id'] . '">#' . h((string) $row['channel_name']) . '</a>';
+        }
 
         $recent .= '
             <li class="ws-claude-recent-row">

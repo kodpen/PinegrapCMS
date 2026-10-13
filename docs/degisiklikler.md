@@ -84,6 +84,93 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: görevi asistana verme (Pinegrap AI, Claude) (10.80) (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırmasının P1 1.2 maddesi
+(`/mnt/project-files/notes/workspace-arastirma.md`): asistanlar kanalda ve
+notta sorulabiliyordu ama bir görev onlara verilemiyordu. Model Linear'ınki:
+görevin sorumlusu insan kalır, asistan vekildir (delegate). Bu PR veri
+modelini, asistan üyeyi ve devri getirir; asistanın önerdiği değişikliklerin
+tek tıkla onayı (onay kuyruğu) ve API/MCP uçları sonraki iki PR'dır.
+
+**Görev asistana nasıl ulaşır.** Yeni taşıma yolu yok. Her çalışma, iki
+asistanın zaten çalıştığı kuyrukta (`ws_ai_requests`) bir istektir; görevle
+`task_id` üzerinden bağlanır, kanal ve mesaj 0'dır (nottan ve sayfa
+editöründen gelen istekler gibi): talimat `note_text`'te, cevap
+`note_reply`'da. Pinegrap AI'ı site kendisi koşturur (`ws_ai_kick`, ekran
+bekledikçe); Claude'un rutini yükü taşımayan tetikle uyandırılır ve kuyruğu
+API'den çeker (`GET /workspace/claude/requests`), bu yüzden kişi başı sınır,
+nöbetçi, günlük hak ve tetik aynı kalır. `docs/_plan_api_mobil.md` (mobil
+uygulama aynı API'yi okur) ve `docs/_plan_claude_kanal.md` (Claude kanal
+istekleri, yükte talimat yok) ile uyumlu: Claude isteğin içeriğini yine
+kimliği doğrulanmış API'den okur. Dış sistemler için iki webhook olayı.
+
+**Ne değişti.**
+
+- Şema 10.80 (`upgrade_2026_4_10_workspace_delegation()`):
+  `ws_tasks.delegate/delegated_by/delegated_at` (+ `idx_delegate`),
+  `ws_ai_requests.task_id`, `ws_ai_changes.task_id` (onay kuyruğu için
+  şimdiden).
+- `includes/workspace/delegation.php`: `ws_assistants()` görevin
+  verilebileceği asistanların tek listesi (bağlantısı açık olanlar; ileride
+  Faz F'nin MCP sunucusu takma adı buraya bir satırla katılır),
+  `ws_task_delegate()` (görevi değiştirebilen kişi, açık görev; görevde kimse
+  yoksa ve bir departman havuzunda değilse devreden kişi göreve eklenir),
+  `ws_task_delegation_run()` (görev başına tek açık çalışma, kişi başı
+  sınır), `ws_task_delegation_stop()` (durdur / geri al),
+  `ws_task_delegation_from_note()` (notta @ai/@Claude görevi devretmeden
+  sorar; uygulamanın yazdığı not sormaz), `ws_task_delegation_context()`
+  (asistanın okuduğu görev: notlar, önceki üç çalışma, isteyen kişinin
+  haklarıyla).
+- Pinegrap AI (`ai.php`): görev çalışması için ayrı istem (görev JSON'u,
+  isteyen kişi okuyorsa kanal bağlamı, önceki çalışmalar, talimat); öneri
+  araçları (`propose_*`, `add_task_note`) ve tasarım araçları görev
+  çalışmasında kapalı; `read_channel` yalnız görevin kanalı ve yalnız isteyen
+  okuyabiliyorsa (`ws_ai_request_channel()`). Kanal bağlamında okuma hakkı
+  kontrolü yoktu; özel kanal görevinde kanal üyesi olmayan biri sorarsa kanal
+  içeriği sızmasın diye eklendi.
+- Claude (`api_claude.php`, `claude.php`): istek nesnesine `task` bloğu
+  (`WorkspaceClaudeRequest.task`: başlık, açıklama, tarihler, durum,
+  sorumlular, notlar, önceki çalışmalar, `handed_over`), `channel.kind`
+  `task`; görev çalışmasına cevap yalnız metin (görev/değişiklik 422);
+  `fail` artık kapanmış isteği yeniden yazmıyor. Rutin istemine görev
+  paragrafı eklendi — **claude.ai'deki rutinin istemi Ayarlar › Çalışma
+  Alanı › Claude kartından yeniden kopyalanmalı.**
+- Bildirim: `task_assistant` gelen kutusu satırı ("Claude, G-12 görevinde
+  cevap verdi" / "… istediğinizi yapamadı"); webhook
+  `workspace.task.delegated`, `workspace.task.assistant_answered`.
+- Panel: `ws_task_delegate`, `ws_task_delegation` (çalışma sürerken okuma),
+  `ws_task_delegation_stop`; `ws_task_note_add` artık `notice` döndürüyor
+  (not kaydedildi ama asistan sorulamadı: neden).
+- Ekran: `assets/js/workspace_task_delegate.js` (workspace.min.js
+  paketinde) görev çekmecesinin Asistan bölümü (asistan seçimi + talimat,
+  "Asistan: Claude · Devreden" rozeti, Durdur, Görevi geri al, çalışmalar ve
+  cevaplar, aynı asistana yeni talimat) ve görev satırındaki asistan
+  etiketi. Çalışma sürerken bölüm 4 sn (AI) / 8 sn (Claude) arayla okunur,
+  çekmece kapanınca durur.
+
+**Faz F için.** Asistan üyenin görünüşü (ad, avatar, simge), devir, not
+içinde çağırma ve etkinlik kaydı (çalışma satırları) `ws_assistants()`
+listesinden okunuyor; MCP istemcisi olarak Çalışma Alanı aynı kuyruğa
+cevap veren yeni bir anahtar ekleyerek katılabilir. Faz F yapılmadı.
+
+**Bilerek yapılmayan.** Görev çalışmasında asistan taslak (`ws_ai_drafts`)
+yazamaz: taslaklar kanala bağlı. Asistanın görevi kendisi değiştirmesi ya
+da not yazması yok; bunlar onay kuyruğu PR'ında "öneri" olarak gelir.
+
+**Doğrulama.** Sandbox'ta adım iki kez koşturuldu; Claude uygulamasıyla
+uçtan uca: devret → kuyrukta `task` bloğu → claim → görev/değişiklikli
+cevap 422 → metin cevabı → çekmecede cevap ve gelen kutusu satırı; notta
+@Claude (açık çalışma varken ikinci not uyarı veriyor), önceki çalışmalar
+bloğu, Durdur (geç gelen cevap/fail 409 `closed`), geri al, başarısız
+çalışma bildirimi. Chromium'da çekmece ve satır etiketi.
+`tests/workspace_delegation_test.php`.
+
+**Doğrulanamayan.** Pinegrap AI'ın gerçek model çağrısı (ağ geçidi
+sandbox'ta yok) ve gerçek Claude rutini; dev.pinegrap.com'da denenmeli.
+
+---
+
 ## 2026.4.10 — Pano: dört Çalışma Alanı kartı (Görevlerim, Beni Bekleyenler, Haftam, Ekip Nabzı) (2026-10-13)
 
 **İstenen.** Erdal: Workspace hakkında daha fazla takip widget'ı.

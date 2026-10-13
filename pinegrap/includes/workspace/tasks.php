@@ -209,6 +209,9 @@ function ws_task_brief($task, $assignees)
         'time_minutes'     => $time,
         'time_label'       => ($time > 0) ? ws_task_time_label($time) : '',
         'blocked_by'       => $blockers,
+        // The assistant the task is handed to (delegation.php).
+        'delegate'         => (string) ($task['delegate'] ?? ''),
+        'delegate_name'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_name($task['delegate']) : '',
     );
 }
 
@@ -277,6 +280,7 @@ function ws_task_detail($viewer, $task)
     $detail['recurrence'] = function_exists('ws_recurrence_detail') ? ws_recurrence_detail($task) : null;
     $detail['time'] = ws_task_time_detail($viewer, $task, $assignees);
     $detail['links'] = ws_task_links_detail($viewer, $task, $detail['can_edit']);
+    $detail['delegation'] = ws_task_delegation_detail($viewer, $task);
 
     // The time on the due date and the e-mail reminder (reminders.php).
     if (function_exists('ws_task_reminder_detail')) {

@@ -2452,7 +2452,8 @@
     }
 
     // The helpers lent to the files that draw parts of the screens on their
-    // own (assets/js/workspace_task_time.js, workspace_task_links.js).
+    // own (assets/js/workspace_task_time.js, workspace_task_links.js,
+    // workspace_task_delegate.js).
     function partHelpers() {
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
@@ -2769,6 +2770,15 @@
                 });
             }
 
+            // The assistant the task is handed to, its runs and answers
+            // (workspace_task_delegate.js): drawn again with the notes.
+            self.delegatePart = null;
+
+            if (task && task.delegation && window.PGWsTaskDelegate) {
+                self.delegatePart = window.PGWsTaskDelegate.drawer(task, partHelpers(), function () { self.changed(); });
+                body.appendChild(self.delegatePart.node);
+            }
+
             // The time spent and the tasks it waits for: their own rights,
             // their own requests (workspace_task_time.js, workspace_task_links.js).
             if (task && task.time && window.PGWsTaskTime) {
@@ -2944,6 +2954,11 @@
             var self = this;
 
             self.task = task;
+
+            // A note that called an assistant started a run.
+            if (self.delegatePart && task.delegation) {
+                self.delegatePart.update(task.delegation);
+            }
 
             if (self.workBox) {
                 var box = clear(self.workBox);
@@ -3307,6 +3322,12 @@
                 api(note ? 'ws_task_note_edit' : 'ws_task_note_add', note ? { note_id: note.id, body: body } : { task_id: self.task.id, body: body }).then(function (data) {
                     self.drawWork(data.task);
                     self.changed();
+
+                    // The note was kept, but the assistant it called could
+                    // not be asked: why.
+                    if (data.notice) {
+                        toast(data.notice, 'warning');
+                    }
                 }).catch(function (error) {
                     save.disabled = false;
                     fail(error);
@@ -14679,6 +14700,10 @@
 
             if (window.PGWsTaskLinks) {
                 window.PGWsTaskLinks.rowTag(sub, task, partHelpers());
+            }
+
+            if (window.PGWsTaskDelegate) {
+                window.PGWsTaskDelegate.rowTag(sub, task, partHelpers());
             }
 
             main.appendChild(sub);
