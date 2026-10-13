@@ -284,24 +284,6 @@ if (!empty($language_redirect_ready)) {
                     </div>';
     }
 
-    // Where this request comes from, and the database behind the answer
-    // when no edge says it.
-    $language_redirect_geo = pg_geo_status();
-
-    $output_language_redirect_location = ($language_redirect_geo['code'] !== '')
-        ? lang(array(
-            'string' => 'Location of this request: {var:1} ({var:2}), from {var:3}.',
-            'vars'   => array($language_redirect_geo['name'], $language_redirect_geo['code'], $language_redirect_geo['source_label'])))
-        : lang('The location of this request is not known.');
-
-    $language_redirect_database = $language_redirect_geo['database'];
-
-    $output_language_redirect_database = is_array($language_redirect_database)
-        ? lang(array(
-            'string' => 'Location database: {var:1}, {var:2} address ranges, built on {var:3}.',
-            'vars'   => array((string) $language_redirect_database['version'], number_format((int) $language_redirect_database['rows4'] + (int) $language_redirect_database['rows6']), get_absolute_time(array('timestamp' => (int) $language_redirect_database['built_at'], 'type' => 'date')))))
-        : lang('There is no location database yet. It is downloaded when a setting needs the visitor\'s location: on saving, and then once a month by the general job.');
-
     $output_language_redirect = '
                     <div class="col-12">
                         <div class="form-check form-switch">
@@ -331,15 +313,7 @@ if (!empty($language_redirect_ready)) {
                             </div>
                         </div>
                     </div>' . $output_language_redirect_check . '
-                    <div class="col-12">
-                        <div class="form-text">
-                            <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . h($output_language_redirect_location) . '<br/>
-                            <i class="bi bi-database me-1" aria-hidden="true"></i>' . h($output_language_redirect_database) . '<br/>
-                            ' . lang('Behind Cloudflare the country comes with every request; the database answers when it does not, for example for a request that reaches the server directly.') . ' ' . lang(array(
-                                'string' => 'IP geolocation by {var:1}.',
-                                'vars'   => array('<a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>'))) . '
-                        </div>
-                        <button type="submit" name="geo_db_refresh" value="1" class="btn btn-sm btn-outline-secondary mt-2"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>' . lang('Download the location database now') . '</button>
+                    <div class="col-12">' . pg_geo_settings_note() . '
                     </div>';
 }
 

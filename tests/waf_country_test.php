@@ -1,0 +1,76 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the firewall's country restriction in waf.php: reading a list of
+ * country codes, deciding whether a country is refused, and the paths the
+ * restriction always leaves alone.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/waf.php');
+
+// Upper-cased, in the order written, each once; T1 kept, anything else dropped.
+function test_waf_country_codes_reads_a_list()
+{
+	pg_assert_same(array('TR', 'DE', 'US'), waf_country_codes('tr, de;US'), 'separators and case');
+	pg_assert_same(array('TR', 'DE'), waf_country_codes("TR\nDE\nTR"), 'duplicates');
+	pg_assert_same(array('T1', 'NL'), waf_country_codes('t1 nl'), 'Tor');
+	pg_assert_same(array('FR'), waf_country_codes('TUR, 1, X, FR, ;'), 'junk');
+	pg_assert_same(array(), waf_country_codes(''), 'empty');
+}
+
+// Block refuses the listed countries, allow refuses every other one.
+function test_waf_country_refused_by_mode()
+{
+	$list = array('TR', 'DE');
+
+	pg_assert_true(waf_country_refused('DE', 'block', $list, false), 'block: listed');
+	pg_assert_false(waf_country_refused('US', 'block', $list, false), 'block: not listed');
+	pg_assert_false(waf_country_refused('TR', 'allow', $list, false), 'allow: listed');
+	pg_assert_true(waf_country_refused('US', 'allow', $list, false), 'allow: not listed');
+	pg_assert_true(waf_country_refused('T1', 'allow', $list, false), 'allow: Tor is not a listed country');
+	pg_assert_false(waf_country_refused('US', 'off', $list, true), 'off');
+	pg_assert_false(waf_country_refused('US', '', $list, true), 'no mode');
+}
+
+// An unknown country is let in unless the operator asked otherwise, in either mode.
+function test_waf_country_refused_unknown_country()
+{
+	pg_assert_false(waf_country_refused('', 'allow', array('TR'), false), 'allow, let in');
+	pg_assert_true(waf_country_refused('', 'allow', array('TR'), true), 'allow, refused');
+	pg_assert_false(waf_country_refused('', 'block', array('TR'), false), 'block, let in');
+	pg_assert_true(waf_country_refused('', 'block', array('TR'), true), 'block, refused');
+}
+
+// robots.txt and .well-known are never restricted; a page is.
+function test_waf_country_exempts_always_served_paths()
+{
+	$saved = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null;
+
+	$_SERVER['REQUEST_URI'] = '/.well-known/acme-challenge/abc';
+	pg_assert_true(waf_country_request_exempt(), 'ACME challenge');
+
+	$_SERVER['REQUEST_URI'] = '/robots.txt?x=1';
+	pg_assert_true(waf_country_request_exempt(), 'robots.txt');
+
+	if ($saved === null) {
+		unset($_SERVER['REQUEST_URI']);
+	} else {
+		$_SERVER['REQUEST_URI'] = $saved;
+	}
+}
+
+// No proof was recorded in this process, so no crawler is let past.
+function test_waf_country_bot_proof_starts_absent()
+{
+	pg_assert_false(waf_bot_verified());
+}

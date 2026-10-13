@@ -67,6 +67,24 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
   Claude'un MCP istemcisi `Claude-User` adıyla yayımlanan tarayıcı
   listesinde olmayan API çıkışından gelir ve `bot-spoof` sayılıyordu.
 
+## Ülke kısıtlaması
+
+- `waf_handle_country()` bot sınıflandırmasından **sonra**, hız sınırından
+  önce koşar: `waf_bot_verified()` işaretini `waf_handle_bot()` koyar. Sırayı
+  değiştirirsen doğrulanmış arama botu muafiyeti ölür.
+- Ülke yalnız `pg_geo_country()`'den (`includes/geo.php`) alınır; başlığı
+  kendin okuma. Kenar başlığı yalnız güvenilen eşte geçerlidir.
+- Bilinmeyen ülke varsayılan olarak **geçer** (`waf_country_unknown` 0);
+  veritabanı eksikken site kapanmamalı.
+- Suç sayma (`waf_register_offence()` yok); kayıt `geo-country` / `country`.
+- `api.php` panel muafiyetine yalnız personel oturumuyla girer
+  (`waf_country_staff_signed_in()`); ön yüz sayfaları ve dosyalar router
+  aşamasında oturumsuz karar verir. Oturum çerezine bakıp kararı
+  ertelemek bilerek yapılmadı: çerez kanıt değildir, dosya yolu init'e
+  uğramaz. Yurt dışındaki personel için cevap izin listesidir.
+- Panel muaf değilken kendi ülkesini kapatan kayıt, gönderilen izin listesi
+  adresini kapsamıyorsa reddedilir (`firewall.save.php`); bu korumayı kaldırma.
+
 ## Modlar ve kapatma
 
 - `waf_deny()`'ın ilk satırındaki `waf_mode() !== 'block'` kontrolü kalır:

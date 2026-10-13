@@ -46,7 +46,7 @@ function pg_test_panel_exempt_names()
 		'designer_file', 'edit_notifications', 'eo_default_tree',
 		'eo_get_installments', 'eo_required_sections', 'file_explorer',
 		'generate_product_barcode', 'get_cross_sell_for_product',
-		'get_cross_sell_items', 'get_delivery_date',
+		'get_cross_sell_items', 'get_dashboard_brief', 'get_delivery_date',
 		'get_installment_options', 'get_notifications', 'get_product',
 		'get_product_barcodes', 'get_shipping_methods',
 		'get_unselected_products', 'get_widget_data', 'get_widgets_data',

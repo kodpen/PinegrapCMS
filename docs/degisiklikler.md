@@ -84,6 +84,274 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Pano: dört Çalışma Alanı kartı (Görevlerim, Beni Bekleyenler, Haftam, Ekip Nabzı) (2026-10-13)
+
+**İstenen.** Erdal: Workspace hakkında daha fazla takip widget'ı.
+
+**Kapı.** `pg_dashboard_workspace_rights($user)` (`includes/dashboard/widgets.php`):
+modül açık, hesap kullanabiliyor (rol < 3 ya da `manage_workspace`) ve
+`ws_rights()` üye sayıyor; karşılamanın Çalışma Alanı şeridiyle aynı kapı.
+Evetse modülü yükleyip haklarla döner. `welcome.php` kayıt defterinde dört
+kartın `show`'u buna bağlı; Ekip Nabzı ayrıca plan panosu hakkı ya da
+yönetilen bölüm ister (`ws_led_people()`).
+
+**Şeritli kart yardımcısı.** `pg_widget_lanes($name, $label, $lanes,
+$default)`: Operasyon Masası'nın düzeni (üstte sayılı şerit karoları, altta
+basılı şeridin listesi) ortak fonksiyon oldu; widget 9 da bunu kullanıyor.
+Her şeridin kendi gövdesi olduğundan bir öğe iki şeritte birden durabilir.
+Açılan şerit: verilmezse içi dolu ilk acil şerit, sonra içi dolu ilk şerit.
+
+**Kartlar.**
+- 27 Görevlerim: `ws_tasks_list()` (scope mine, açık, 60) tek okumayla üç
+  şerit: Gecikmiş, Bugün, Açık (ilk 12 ve "N açık daha"). Açık şeridin alt
+  satırı pazartesiden beri biten görev sayısı. Karo rengi önceliği taşır.
+- 28 Beni Bekleyenler: `ws_approvals_waiting()`, `ws_acks_waiting()`,
+  `ws_home_talk()` (Çalışma Alanı ana ekranının okuyucuları). Anılmalar
+  şeridinin sayısı okunmamışlar; okunmamış satırın adından sonra nokta var.
+- 29 Haftam: bugünden altı gün sonrasına `ws_events_between()` ile
+  kişiyi ilgilendiren etkinlikler (`ws_event_applies()`), bitmiş olanlar
+  hariç; birkaç gün süren olay görünen ilk günde bir kez, bitiş günüyle.
+  Aynı aralıkta teslimi olan açık görevler. Gün başlıkları Bugün, Yarın,
+  sonra `ws_day_label()`. En çok 24 satır.
+- 30 Ekip Nabzı: `ws_board()` ile bugünün tek günü. Dışarıda (izin ya da
+  ziyaret), Yoğun (planlanan dakika kapasiteyi aşıyor, yüzdeye göre
+  sıralı), Çalışıyor (`ws_task_time`'da açık sayaç; süre
+  `data-pg-elapsed` ile dakikada bir ilerler; görülemeyen görevin adı
+  "Bir görev").
+
+Yenileme listesine 27, 28 ve 30 girdi (görünürken). 29 sayfa açılışında
+gelir. Renkler açık ve koyu temada tanımlandı.
+
+**Doğrulama.**
+- `php tools/test.php`: kimlik testleri 30'a çıktı (`31` geçersiz);
+  `pg_widget_lanes()` açılış seçimi ve işaretlemesi; modül kapalıyken dört
+  kart da "Access denied".
+- Sandbox + Playwright (iki ekip üyesi; biri izinde, birinin sayacı
+  açık; gecikmiş, bugünkü ve haftalık görevler; onay isteği, okundu isteği
+  ve anılma): dört kart 313×313, şerit seçimi yenilemeden sonra korundu,
+  koyu tema. Çalışma Alanı kapatılınca kartlar listeden çıktı, hata yok.
+
+Rol 3 bir kullanıcıyla ve canlı veriyle bakılmadı.
+
+---
+
+## 2026.4.10 — Güvenlik duvarı: ülke kısıtlaması (10.2) (2026-10-13)
+
+**İstek.** Erdal: "bunu yaparken ayrıca waf altına ülke kısıtlama ekleyelim
+(varsayılan kapalı.)" Ülkeyi dil yönlendirmesinin konum katmanı
+(`pg_geo_country()`, bir önceki bölüm) verir; ikinci bir kaynak yazılmadı.
+
+**Yer (`waf.php`).** `waf_run()`'da bot sınıflandırmasından sonra, hız
+sınırından önce, kendi mandalıyla (`$done['country']`). Router aşamasında
+koştuğu için `get_file.php`, `robots.txt` ve `sitemap.xml` de kapsanır.
+İzin listesindeki adres ve `waf_is_excluded()` yolu bu noktaya hiç gelmez.
+Bot sınıflandırmasından sonra olmasının sebebi `waf_verify_bot()`'un
+"verified" kararıdır: `waf_handle_bot()` onu `waf_bot_verified(true)` ile
+işaretler, kısıtlama okur.
+
+**Karar (`waf_country_refused()`).** `block` kipi listedekileri, `allow` kipi
+listede olmayanları reddeder. Ülkesi bilinmeyen istek `waf_country_unknown`
+açık değilse içeri alınır: veritabanı eksik ya da indirilemiyorsa site
+kapanmaz. `T1` (Cloudflare'in Tor kodu) listeye ayrıca yazılabilir.
+Liste `waf_country_codes()` ile okunur (büyük harf, sıra korunur, tekrar ve
+geçersiz kod atılır); kayıtta kodlar `pg_sales_map_iso_countries()` + T1'e
+karşı denetlenir.
+
+**Muafiyetler (`waf_country_request_exempt()`).**
+- `robots.txt` ve `.well-known/` her zaman (`waf_path_is_always_served()`):
+  sertifika yenilemesi birkaç ülkeden denetlenir.
+- API, MCP, OAuth (`waf_country_exempt_api`, varsayılan açık): çağıran kimlik
+  sunar ve sağlayıcısının bulunduğu yerden gelir. `api.php` bu sınıfa girmez,
+  sitenin kendi sayfalarının (mağaza, sepet, canlı sohbet) konuştuğu uçtur.
+- Yönetim paneli (`waf_country_exempt_panel`, varsayılan açık): yazılım
+  dizini altındaki her adres; `get_file.php` ve `router.php` hariç (yeniden
+  yazma kuralları sitenin her adresini `router.php` ile koşar). `api.php` yalnız
+  oturumu personele (rolü 3'ten küçük) aitse panel sayılır; panelin kendi
+  XHR'ları böylece çalışır, ziyaretçi mağaza API'sine kısıtlanmış ülkeden
+  ulaşamaz.
+- Adını adresiyle doğrulayan arama motoru botu (`waf_country_exempt_bots`,
+  varsayılan açık); "Arama Motoru Botlarını Doğrula" açık olmalıdır.
+
+Sitenin sayfaları ve dosyaları panel muafiyetiyle açılmaz: router aşamasında
+oturum yoktur. Yurt dışındaki personelin bunlara da ulaşması için adresi
+izin listesine eklenir; kart bunu söyler. Oturum çerezi taşıyan isteği
+init aşamasına bırakıp personeli orada tanımak düşünüldü, çerezin kendisi
+bir şey kanıtlamadığı ve dosya yolu init'e uğramadığı için yapılmadı.
+
+**Kayıt ve yanıt.** `waf_log_event('block' | 'would-block', 'geo-country',
+'country', 10, 'COUNTRY', 'DE (cloudflare)')`; engelleme sayfası `waf_deny(403)`.
+İzleme kipinde yalnız kayıt. Suç sayılmaz (`waf_register_offence()` yok):
+ülkesi kısıtlı ziyaretçi saldırmadı, otomatik yasak onu ikinci kez cezalandırır.
+Güvenlik Duvarı Kaydı ve pano kartı 22'de kategori "Ülke Kısıtlaması".
+
+**Panel.** Ayarlar › Güvenlik Duvarı'nda `pgset-countries` kartı (arama
+kayıt defterinde de): kip, ülke kodları (tagin; altında ülke adları),
+bilinmeyen ülke, üç muafiyet, ekranı açanın ülkesine ne olduğu (izin
+listesindeyse onu da söyler), konum ve veritabanı satırı
+(`pg_geo_settings_note()`, Diller ekranıyla ortak) ve "şimdi indir" düğmesi.
+Kayıt kuralları: `allow` kipinde boş liste reddedilir; panel muaf değilken
+kaydeden kişinin ülkesi reddedilecekse, gönderilen izin listesi adresini
+kapsamıyorsa kayıt reddedilir (kendini kilitleme).
+
+**Konum veritabanı.** `pg_geo_db_needed()` güvenlik duvarı açık ve kısıtlama
+`allow`/`block` iken de doğru döner; genel iş veritabanını bu durumda da
+güncel tutar. Ayarlar ekranının kendiliğinden indirmesi
+(`pg_geo_db_refresh_for_screen()`, iki ekranda ortak) artık 12 saatlik
+deneme bekleyişine uyar: indiremeyen sunucuda her kayıt beklemez.
+
+**Şema (10.2).** `config.waf_country_mode` ENUM('off','allow','block') 'off',
+`waf_country_list` TEXT NULL, `waf_country_unknown` TINYINT(1) 0,
+`waf_country_exempt_panel` / `_api` / `_bots` TINYINT(1) 1.
+`tests/innodb_test.php`: 424 kolon, TEXT dönüşümünden önce MySQL 8.0'da 8602
+bayt, sunucu satırı 64.110 bayt.
+
+**Doğrulama.** `tests/waf_country_test.php` (liste okuma, kip kararı,
+bilinmeyen ülke, her zaman açık yollar). Sandbox'ta migration iki kez koştu;
+kart ve kayıt kuralları panelden denendi. Engelleme kipinde, 127.0.0.1
+güvenilen vekil, CF-IPCountry ile:
+- `allow TR,US`: US 200, DE ve T1 403, başlıksız ve XX 200; tema dosyası
+  DE 403, US 200; `sitemap.xml` DE 403; `robots.txt` DE 200;
+- panel giriş sayfası ve giriş DE'den çalışır, panel ekranları 200;
+  personel oturumuyla `api.php` 200, ziyaretçiyle 403; giriş sonrası ön
+  yüz sayfası 403;
+- `integration.php` ve `mcp.php` DE'den kısıtlanmaz, API muafiyeti
+  kapalıyken `integration.php` 403;
+- panel muafiyeti kapalıyken panel DE 403, FR 200;
+- `waf_country_unknown=1`: başlıksız ve XX 403;
+- `block DE,T1`: DE ve T1 403, FR ve başlıksız 200;
+- izleme kipinde DE 200 ve "would-block" kaydı; izin listesindeki adres DE'den
+  200;
+- sahte Googlebot DE'den bot kuralıyla 403.
+
+**Doğrulanmayan.** Gerçek Cloudflare arkasında ve IIS'te deneme, gerçek arama
+motoru botunun ters DNS doğrulamasıyla geçişi.
+
+---
+
+## 2026.4.10 — Pano üst alanı: karşılama ve saat tek satırda, sıradaki toplantı geri sayımı, "Başka bir şey söyle" (2026-10-13)
+
+**İstenen.** Erdal: ekranın üst kısmındaki saat ve brief alanları
+geliştirilsin.
+
+**Brief ayrı dosyada.** `welcome.php`'deki yaklaşık 1.700 satırlık
+karşılama kodu `includes/dashboard/brief.php` → `pg_dashboard_brief($user,
+$changelog_sections)` oldu. Davranış aynı; tek fark sistem durumu önbellek
+yolunun `dirname(__FILE__)` yerine `PG_FUNCTIONS_DIR` ile kurulması. Dönen
+dizi: `icon`, `greeting`, `line`, `strip`, `next`, `ws`. Sayfa da yeni
+`get_dashboard_brief` paneli eylemi de bu fonksiyondan geçer.
+
+**"Başka bir şey söyle".** Kartın sağında yuvarlak düğme.
+`get_dashboard_brief`'i çağırır (muaf, jetonsuz, yazmaz; oturum açık
+kalır çünkü cümle seçimi son söyleneni oturumda tutuyor). Gelen selam,
+cümle, şerit ve saatin altındaki satır yerine konur, giriş animasyonu
+yeniden oynar. İstek sürerken düğme döner ve kilitlenir.
+
+**Saatin altında sıradaki etkinlik.**
+- `ws_dashboard_signals()` artık `events_next` da döner: bugünün bitmemiş,
+  kişiyi ilgilendiren toplantı ve ziyaretlerinden ilk üçü (`event_first`
+  alanları + `id`, `ends_at`).
+- `pg_dashboard_brief_next()` hepsini yazar, CSS ilkini gösterir.
+  Saatli olanlar tüm gün olanlardan önce gelir.
+- `pg_dashboard_brief_until()` kalan süreyi yazar: "25 dk sonra", "2 sa
+  30 dk sonra", başladıysa "Şimdi". Dakika yukarı yuvarlanır. Sayfa
+  betiği (`pg_clock_next()`) aynı hesabı saatin dakika tikinde yapar;
+  biten etkinliği siler, sıradaki kendiliğinden öne çıkar, istek yok.
+
+**Şeritte iki yeni öğe.** Çalışan görev sayacı (`ws_task_time_running()`,
+en başta, yeşil nefes alan nokta, süre `data-pg-elapsed`'den dakikada bir
+ilerler) ve onayını bekleyen istekler (`ws_approvals_waiting()`, bağlantı
+en yenisinin kanalına). Cümle havuzuna da onay bekleyen istek cümlesi
+girdi.
+
+**Düzen.** 992 px ve üstünde `.pg-clockbar` satır: kart solda, saat
+sağda sağa yaslı; altında tarih ve sıradaki etkinlik. Daha dar ekranda
+eskisi gibi alt alta.
+
+**Doğrulama.**
+- `php tools/test.php`: `tests/dashboard_brief_test.php` (geri sayım
+  yuvarlaması, durumlar, işaretleme, sıralama, kaçış).
+- Sandbox + Playwright (Çalışma Alanı açık, bir görev sayacı, iki toplantı,
+  bir tüm gün ziyaret): 1440, 1100 ve 390 px, koyu tema. Düğmeye üç kez
+  basıldı; her seferinde farklı cümle geldi, tek `.pg-brief-line`, tek
+  şerit, tek etkinlik satırı kaldı. Sayfada zaman ileri alınınca toplantı
+  "Şimdi" oldu, bitince sıradaki geldi, hepsi bitince satır kalktı.
+
+Onay isteği şeridi sandbox'ta denenmedi (kanal ve mesaj kurmak gerekiyordu);
+`ws_approvals_waiting()` Çalışma Alanı ekranının kullandığı fonksiyon.
+
+---
+
+## 2026.4.10 — Pano: Operasyon Masası; en çok satanlar E-ticaret Özeti'nde, en çok ziyaret edilenler Ziyaretçi Özetleri'nde; panoda CodeMirror yok (2026-10-13)
+
+**İstenen.** Erdal: bekleyen sevkiyat, bekleyen iade ve stokta tükenen
+kartları güzel bir başlık ve kurguyla tek geniş karta insin. En çok
+satanlar E-ticaret Özeti'ne, en çok ziyaret edilen sayfalar Ziyaretçi
+Özetleri'ne girsin.
+
+**Operasyon Masası (widget 9, eski Bekleyen Sevkiyatlar).**
+- Üç şerit:
+  - `pg_dashboard_ops_shipping()`: eski 9'un sorgusu aynen. 30 günlük
+    pencere, `ship_tos.complete`, `saved_for_later` yoklaması. Özet
+    satırı sipariş, paket, tutar ve en eski tarih; liste en çok 10 alıcı.
+  - `pg_dashboard_ops_refunds()`: eski 26. `refund_status` kolonu yoksa
+    şerit yok. Para birimine göre gruplu toplam: tek para biriminde
+    tutar, birden çoksa "Birden çok para biriminde".
+  - `pg_dashboard_ops_stock()`: eski 12'nin 8 satırı ve toplam sayı.
+    `ECOMMERCE_LOW_STOCK_THRESHOLD` elle ayarlıysa eşiğin altına inen
+    stoklu, ön siparişsiz ürünler "Azalıyor" başlığıyla. Eşik yoksa
+    uydurma bir eşik konmaz.
+- Şerit düğmeleri Aktivite'nin süzgeç düğmesi (`pg_widget_filter()`).
+  Gövde `data-pg-filterable="ops"`, şerit gövdeleri `data-kind`. Seçim
+  aynı mekanizmayla hatırlanır. `data-pg-default` en acil şerittir:
+  - Ödenmemiş iade varsa iade.
+  - Yoksa iki günü geçmiş sevkiyat.
+  - Yoksa sayısı sıfırdan büyük ilk şerit.
+- Sıfır olan şerit yeşil onay simgesi ve "Hepsi gönderildi" / "Bekleyen
+  iade yok" / "Hepsi stokta" alt satırıyla durur. İki günü geçen sevkiyat
+  ya da iade sayıyı kırmızı yapar.
+- Kart artık `ECOMMERCE_SHIPPING`'e bağlı değil. Kargo kapalıysa yalnız
+  gönderim şeridi çıkmaz. 12 ve 26 emekli (boş başarı, yeniden
+  kullanılmaz).
+
+**En çok satanlar (widget 3).** `pg_dashboard_best_sellers($since,
+$limit)`: `complete` / `exported` siparişlerin satırlarından ürün başına
+adet ve tutar. Eşit adette ürün kimliği sıralar. Eski Trend İçerik tüm
+zamanları okuyordu. Şimdi son 30 gün okunur, o ay satış yoksa tüm
+zamanlar. Başlık hangisi olduğunu söyler. Kart geniş oldu: solda özet,
+sağda liste.
+
+**En çok ziyaret edilenler (widget 5).** Şeridin dördüncü hücresi ("En Çok
+Ziyaret Edilen") düğme oldu (`data-vs5="p"`). Tıklanınca grafiğin
+yerinde `#vs5_pages` açılır:
+- Son 7 günün en çok görüntülenen 8 içeriği
+  (`pg_visitor_top_content()`).
+- Bugünün en çok görüntüleneni listede alevle işaretli. Listede değilse
+  "Bugün Yükselen" başlığıyla altta.
+- Aynı hücreye ya da başka bir döneme tıklayınca grafik döner.
+- Kart boyu değişmez.
+
+Trend İçerik (6) emekli.
+
+**CodeMirror.** `pg_page_shell()`'e `'code_editor' => false` (#254'teki
+seçenek). Hiçbir pano kartı kod alanı çizmiyor. Site Ayarları diyaloğu
+CodeMirror'ı gerektiğinde `window.pgCodeEditorReady()` ile yükler.
+Sandbox'ta panoda yüklenen betik dosyası 47'den 14'e, betik baytı
+1,48 MB'tan 0,68 MB'a indi (sıkıştırmasız).
+
+**Doğrulama.** Sandbox + Playwright:
+- 1440 px'te Operasyon Masası 658×316. Tükenen şeridi varsayılan açıldı,
+  iki ürün listelendi. Seçim yenilemeden sonra korundu.
+- 390 px'te şeritler ikinci satırsız sığdı.
+- E-ticaret Özeti'nde en çok satanlar "Tüm Zamanlar"la geldi (sandbox
+  siparişleri eski).
+- Ziyaretçi Özetleri'nde liste grafiğin yerinde açıldı (veri yok
+  durumu).
+
+Bekleyen sevkiyat ve iade satırları sandbox'ta yoktu. Sorguları eski
+kartlardan aynen taşındı, canlıda bakılmalı.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı API ve MCP: not yazma, plan kayıtları, arama, "benim günüm" (2026-10-13)
 
 **Neden.** Çalışma Alanı araştırmasının P1 1.3 maddesi: dış API (ve ondan
