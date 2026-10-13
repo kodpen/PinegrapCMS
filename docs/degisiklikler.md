@@ -8,19 +8,23 @@ Yeniden eskiye sıralıdır. 2026.2.4 öncesi için `install/index.php` içindek
 
 ## Dağıtım durumu
 
-**Yayındaki en güncel sürüm: 2026.4.8** — GitHub release `v2026.4.8`
-(PR #236, etiket `348b8a2`, 2026-10-11; önceki 2026.4.7 `8eb2716`, 2026-10-06;
-2026.4.6 `a05c986`, 2026-10-05). Release dalı main'in üstünde tek bir
-"Release 2026.4.8" commit'idir: ağacı `development`'ınkidir, yalnız
-`CLAUDE.md`, `.claude/` ve `docs/` çıkarılmıştır. `tests/` ve `tools/` bu
-sürümde yayına girdi, aynı gün PR #237 ile main'den kaldırıldı (ürün
-sahibinin kararı): 2026.4.9'dan itibaren release ağacından `tools/` ve
-`tests/` de çıkarılır, ikisi yalnız `development`'ta izlenir. GitHub
-kontrolünün (`php-checks.yml`) PHP adımları `tools/` olmayan dalda atlanır;
-PR'lar `development`'a açılır (`CONTRIBUTING.md`). Artık **kapalıdır**: `2026.4.8.php`'nin getirdiği şemaya,
-`versions.php` satırına ve changelog başlığına dokunulmaz. Etiket taşınmaz —
-bütünlük denetiminin referansı bu etiketin ağacıdır; sunucu paketi de bu
-etiketten üretilir.
+**Yayındaki en güncel sürüm: 2026.4.9** — GitHub release `v2026.4.9`
+(PR #238, etiket `1c3703e` — PR'ın birleştirme commit'i, 2026-10-13; önceki
+2026.4.8 `348b8a2`, 2026-10-11; 2026.4.7 `8eb2716`, 2026-10-06; 2026.4.6
+`a05c986`, 2026-10-05). Release dalı (`release/2026.4.9`) main'in üstünde
+tek bir "Release 2026.4.9" commit'idir (`1534890`): ağacı `development`'ınkidir
+(`96072dd`), yalnız `CLAUDE.md`, `.claude/`, `docs/`, `tools/` ve `tests/`
+çıkarılmıştır; ağaç commit edilmeden önce çalışma kopyasına dokunmadan
+(geçici index + `commit-tree`) kuruldu, dev makine `development`'ta kaldı.
+Release notu `Claude outputs/release-notes-v2026.4.9.md` (depo dışı).
+`tests/` ve `tools/` 2026.4.8'de yayına girmiş, aynı gün PR #237 ile
+main'den kaldırılmıştı (ürün sahibinin kararı); ikisi yalnız
+`development`'ta izlenir. GitHub kontrolünün (`php-checks.yml`) PHP adımları
+`tools/` olmayan dalda atlanır; PR'lar `development`'a açılır
+(`CONTRIBUTING.md`). 2026.4.9 artık **kapalıdır**: `2026.4.9.php`'nin
+getirdiği şemaya, `versions.php` satırına ve changelog başlığına dokunulmaz.
+Etiket taşınmaz — bütünlük denetiminin referansı bu etiketin ağacıdır;
+sunucu paketi de bu etiketten üretilir.
 
 **Yayına girmeyenler (ürün sahibinin kararı, 2026-10-05):** barındırma
 platformuna (pinegrap.site) özgü özellikler — barındırılan site kipi
@@ -33,20 +37,19 @@ etkisizdir ve yerinde kalır. 2026.4.6 yayınında bu yüzden changelog'daki
 "Barındırılan site ve tanıtım sitesi" bölümü kaldırıldı, genel güvenlik
 maddeleri "Oturum, hesap ve güvenlik"e taşındı.
 
-**Açık sürüm: 2026.4.9** — 2026-10-12'de ilk şema adımıyla açıldı
-(`includes/migrations/2026.4.9.php`, 9.1 `upgrade_2026_4_9_translation_index()`;
-`versions.php`'de `'2026.4.9'` satırı; dev yükseltildi). Sonraki şema
-adımları `upgrade_to_2026_4_9()` girişine `upgrade_2026_4_9_<konu>()` alt
-adımı olarak eklenir; dosya yeniden oluşturulmaz. **2026-10-12: 2026.4.9 beta olarak
-yayınlandı, pinegrap.com güncellendi** (ürün sahibi): beta'yı koşmuş bir
-site `config.version`'ı 2026.4.9 olduğu için sonradan eklenen bir 2026.4.9
-alt adımını koşmaz; böyle bir değişiklik ya kodda kendini düzeltmeli
-(örnek: `pg_tr_render_rules_check()`) ya da yayından sonra açılacak sürüme
-girmeli. Alt adım etiketleri 2026.4.8'deki aralık düzenini
-önek `9.` ile korur: genel işler 9.1'den, ERP 9.58–9.69 ve 9.90'dan sonrası,
-API 9.70–9.79, Çalışma Alanı 9.80–9.89 ve 9.110–9.119. Yeni bölüm başlıkları
-`## 2026.4.9 — …`; `changelog.txt`'de maddeler en üste açılacak `2026.4.9`
-bölümüne girer. Geliştirme `development` dalında sürer.
+**Açık sürüm: yok.** 2026.4.9 2026-10-13'te yayınlandı ve kapandı. Sonraki
+sürüm ilk şema adımı ya da changelog maddesiyle açılır: yeni
+`includes/migrations/<sürüm>.php` → `upgrade_to_<sürüm>()`, `versions.php`'ye
+satır, `changelog.txt`'de en üste yeni sürüm başlığı, bu dosyada
+`## <sürüm> — …` bölümleri; numara ürün sahibinindir. Alt adım etiketleri
+önceki sürümlerin aralık düzenini yeni önekle korur (genel işler .1'den,
+ERP .58–.69 ve .90'dan sonrası, API .70–.79, Çalışma Alanı .80–.89 ve
+.110–.119). 2026.4.9 beta olarak 2026-10-12'de yayınlanmıştı (pinegrap.com
+onunla güncellendi); beta'yı koşmuş site `config.version`'ı zaten 2026.4.9
+olduğu için kararlı sürüme geçerken 9.x alt adımlarını yeniden koşmaz, beta
+sonrası düzeltmeler bu yüzden kodda kendini düzeltecek biçimde yazıldı
+(örnek: `pg_tr_render_rules_check()`). Geliştirme `development` dalında
+sürer.
 
 2026.4.4'ün geçmişi: 2026.4.3'ten sonra dev makinada biriken sekiz çalışma
 numarası (4.4–4.11) 2026-08-28'de tek 2026.4.4 olarak birleştirildi
@@ -58,7 +61,7 @@ anlatımıdır — kullanıcı o sürümü hiç görmediğinden geliştirme içi
 düzeltmeler [DÜZELTME] olarak yazılmaz, geliştirme sırasında eklenip
 kaldırılan iç adreslerden (örn. view_folder_and_files.php) söz edilmez. Dev
 veritabanı açık sürümü zaten koşmuşsa yeniden koşturmak için
-`config.version` bir önceki yayınlanmış sürüme (bugün `2026.4.8`) çekilir;
+`config.version` bir önceki yayınlanmış sürüme (bugün `2026.4.9`) çekilir;
 adımlar idempotent olduğu için uygulanmış olanlar atlanır. Yeni numara
 yalnız yayın sonrası açılır.
 
