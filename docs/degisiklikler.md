@@ -84,6 +84,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: iletişim grubu oluşturma, değiştirme, silme ve üyelik olayı (2026-10-13)
+
+**Sorun.** #317 iletişim gruplarını okuyup üyelerini değiştirebiliyordu ama
+grubun kendisini değil: bir bülten aracı ya da CRM yeni bir liste açmak, adını
+değiştirmek ya da kaldırmak için panele gitmek zorundaydı. Bir kişinin gruba
+girdiğini ya da çıktığını duymanın yolu da yoktu; entegrasyon üyeleri
+zamanlayıcıyla yeniden okuyordu.
+
+**Değişiklik.** `includes/api/resources/contact_groups.php`'ye üç uç, mevcut
+`contact_groups:write` izniyle (yeni kapsam yok):
+
+- `POST /contact-groups`: `name` (zorunlu, en çok 100; kolon `varchar(100)`),
+  `description` (255), `email_subscription` (yoksa kapalı),
+  `subscription_type` (`open`/`closed`, yoksa `open`). Boş grup, uygulamanın
+  sahibi oluşturan olarak yazılır; 201. Ekleme ekranı gibi yalnız rol < 3
+  (`api_contact_group_may_create()`); rol 3 + kişi yetkisi 403 `forbidden`
+  alır, çünkü oluşturduğu grup kimseye verilmemiş olurdu.
+- `POST /contact-groups/{id}` (`PATCH` de): yalnız gönderilen alan değişir
+  (`api_contact_group_fields()` mevcut satırın üstüne koyar); hiçbir alan
+  yoksa 422. Abonelik kapatılınca tür ve üyelerin `opt_in` satırları kalır,
+  ekran da silmiyor.
+- `DELETE /contact-groups/{id}` ve `POST /contact-groups/{id}/delete`: grup
+  ekranının kuralı: içinde kişi olan grup silinmez (409
+  `contact_group_has_members`, üyeleri `remove` ile çıkarma yolunu söyler).
+  Silinince ekrandaki gibi `contacts_contact_groups_xref`,
+  `users_contact_groups_xref`, `opt_in` ve
+  `contact_groups_email_campaigns_xref` satırları da gider; gönderilmiş
+  kampanya gönderilmiş kalır. Ekrandan tek fark: üyeler `members` alanının
+  saydığı gibi sayılır (kişisi silinmiş bağ sayılmaz), yoksa API'de 0 üyeli
+  görünen grup silinemezdi; o artık bağ grupla birlikte gider.
+
+Ad, ekranlar gibi büyük/küçük harf ayırmadan tekil: başka grupta varsa 409
+`name_taken` (sahibinin id'siyle). Rol 3 hesap, grup düzenleme ekranındaki gibi
+kendisine verilen grubun adını değiştirebilir ve boşsa silebilir. Üç uç da
+`dry_run` destekler ve site günlüğüne uygulama + anahtarla yazar.
+
+**Webhook olayı `contact_group.members_changed`.** Veri: `id`, `name`,
+`added` ve `removed` (kişi kimlik listeleri); kişi başına değil değişiklik
+başına bir olay, kimse gerçekten yer değiştirmediyse olay yok
+(`pg_contact_group_members_event()`, `pg_announce_contact_group_members()`,
+`includes/fn/events.php`). Duyuran yerler: `POST /contact-groups/{id}/members`,
+panelde kişi ekleme, kişi düzenleme (yalnız gerçekten eklendiği ya da
+çıkarıldığı gruplar; çıkarmada `mysqli_affected_rows()`) ve seçili kişileri
+gruplara düzenleme. Yalnız `opt_in` yazılan üye olay üretmez. Bilerek sessiz:
+ödeme, özel formlar, e-posta tercihleri ekranı, üyelik/ortaklık kayıtları,
+içe aktarmalar ve kişinin silinmesi; katalog metni bunu söylüyor.
+
+OpenAPI ve MCP araçları rotalardan gelir: `contact_groups_create`,
+`contact_groups_update`, `contact_groups_delete` (`_post` takma adı araç
+olmaz). İzin açıklaması (Uygulama Erişimi) artık grup yazmayı da anıyor. Şema
+değişikliği yok.
+
+Testler: `tests/api_contact_groups_test.php` (oluşturma kapısı, yeni grubun
+varsayılanları, değişiklikte gönderilmeyenin kalması ve kapalı abonelikte
+türün korunması, olayın verisi: tekilleştirme, yalnız çıkarma, kimse
+değişmediyse `null`; rota sayısı 8).
+
+---
+
 ## 2026.4.10 — Dış API: para alanlarında en az / en çok sınırı yönlendiricide (2026-10-13)
 
 **Sorun.** Yönlendirici `int` ve `decimal` türlerinde şemadaki `min`/`max`'ı

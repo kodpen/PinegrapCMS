@@ -886,6 +886,7 @@ if (!$_POST) {
         $query =
             "SELECT
                id,
+               name,
                email_subscription
             FROM contact_groups";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -921,6 +922,8 @@ if (!$_POST) {
                                 '" . escape($_POST['id'] ?? '') . "',
                                 '" . $contact_group['id'] . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                        pg_announce_contact_group_members($contact_group['id'], array((int) ($_POST['id'] ?? 0)), array(), $contact_group['name']);
                     }
                     
                     // if contact group has email subscription turned on, add opt-in selection
@@ -967,6 +970,12 @@ if (!$_POST) {
                             (contact_id = '" . escape($_POST['id'] ?? '') . "')
                             AND (contact_group_id = '" . $contact_group['id'] . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                    // Every group the contact is not ticked in comes through here, so
+                    // only the ones it was actually in are announced.
+                    if (mysqli_affected_rows(db::$con) > 0) {
+                        pg_announce_contact_group_members($contact_group['id'], array(), array((int) ($_POST['id'] ?? 0)), $contact_group['name']);
+                    }
                 }
             }
         }
