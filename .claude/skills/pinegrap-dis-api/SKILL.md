@@ -222,14 +222,18 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   bilgisini (`send`) taşır; yeni posta sağlayıcısı = sağlayıcı dosyası +
   `send` girdisi. Tablolar yokken (`pg_connect_schema_ready()`) bütün
   okumalar "hesap yok" der.
-- Giriş (Microsoft, Apple): `includes/fn/signin.php`, dönüş adresi
+- Giriş (Google, Microsoft, Apple): `includes/fn/signin.php`, dönüş adresi
   `signin.php`. Sağlayıcı dosyasındaki `signin` bloğu girişi tanımlar
   (`order`, `scopes`, `pkce`, `subject_claims`, `verified_tenants`,
-  `verified_claims`, `client_secret => 'apple_jwt'`, `user_field`); yeni
+  `verified_claims`, `client_secret => 'apple_jwt'`, `user_field`,
+  `return` — başka dönüş dosyası, `authorize_params`); yeni
   sağlayıcı = bu blok + Ayarlar › Güvenlik'te anahtarı
   (`config.signin_providers`). Kimlik `user_identities`'te; giriş belirteç
-  saklamaz. Düğmeler yalnız `pg_signin_buttons()` ile (Google dahil).
-  Google kendi yolunda: `google_auth.php`, `user.user_google_id`.
+  saklamaz. Düğmeler yalnız `pg_signin_buttons()` ile. Google'ın dönüşü
+  `google_auth.php` (Google Cloud'daki adres değişmesin diye; dosya yalnız
+  `signin.php`'yi çağırır), uygulaması `config.oauth_google_*`, anahtarı
+  `oauth_google_enabled`. `user.user_google_id` 10.75'ten beri yalnız
+  taşınmamış eski bağlar için okunur.
 - Örnek kullanıcı: bulut yedek (`purposes/backup.php`,
   `includes/fn/backup_cloud.php`). Ayar formunun içindeki bağlan düğmesi
   `form="..."` ile formun dışındaki gizli formu gönderir

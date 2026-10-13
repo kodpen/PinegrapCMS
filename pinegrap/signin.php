@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Sign in with Microsoft, Apple and the other providers of
- * includes/fn/signin.php. Google has its own screen, google_auth.php.
+ * Sign in with Google, Microsoft, Apple and the other providers of
+ * includes/fn/signin.php. Google sends people back to google_auth.php, which
+ * runs this file.
  *
  * One file, two phases:
  *   ?provider=  START:    plant state, nonce and PKCE in the session, send the
@@ -15,8 +16,8 @@
  *                         posts its answer (form_post).
  *
  * The return address to register with each provider is exactly this file's
- * address with no query (pg_signin_redirect_uri(); the security settings
- * show it).
+ * address with no query, google_auth.php's for Google
+ * (pg_signin_redirect_uri(); the security settings show it).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -37,7 +38,12 @@ $params = (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') ? $_POST : $_GET;
 // ---------------------------------------------------------------------------
 if (!isset($params['state']) && !isset($params['code']) && !isset($params['error'])) {
 
-    $provider_key = (isset($_GET['provider']) && is_string($_GET['provider'])) ? $_GET['provider'] : '';
+    // google_auth.php names its provider; the old links to it carry none.
+    if (defined('PG_SIGNIN_PROVIDER')) {
+        $provider_key = PG_SIGNIN_PROVIDER;
+    } else {
+        $provider_key = (isset($_GET['provider']) && is_string($_GET['provider'])) ? $_GET['provider'] : '';
+    }
 
     if (!pg_signin_enabled($provider_key)) {
         go(PATH);
@@ -56,10 +62,9 @@ if (!isset($params['state']) && !isset($params['code']) && !isset($params['error
     // cross-site POST, which a browser sends without a Lax session cookie;
     // the session the state is in would be lost. Same remedy as the payment
     // gateway returns.
-    $providers = pg_signin_providers();
+    $authorize_params = pg_signin_authorize_params(pg_connect_provider($provider_key));
 
-    if (isset($providers[$provider_key]['authorize_params']['response_mode'])
-        && ($providers[$provider_key]['authorize_params']['response_mode'] === 'form_post')) {
+    if (isset($authorize_params['response_mode']) && ($authorize_params['response_mode'] === 'form_post')) {
         pg_session_cookie_allow_cross_site();
     }
 
@@ -125,8 +130,7 @@ if (!$user_id && ($signup_mode === 'none')) {
 }
 
 // Membership: the identity is handed to the membership form, which still
-// checks the membership number against the member list. The record is the
-// one the Google sign-in leaves, with the provider named.
+// checks the membership number against the member list.
 if (!$user_id && ($signup_mode === 'membership')) {
     $_SESSION['software']['google_membership_pending'] = array(
         'provider'   => $identity['provider'],

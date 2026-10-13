@@ -84,6 +84,90 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Google ile Giriş signin.php akışında; listelerde sağlayıcı rozetleri (2026-10-13, şema 10.75)
+
+**Sorun.** #306 Microsoft ve Apple ile girişi `signin.php` /
+`includes/fn/signin.php` akışına ve `user_identities` tablosuna kurdu; Google
+eski yolunda kaldı (`google_auth.php`'de kendi kopyası, kimlik
+`user.user_google_id`'de). Aynı kurallar iki yerde yazılıydı, her ekran
+Google'ı ayrı, ötekileri ayrı okuyordu. Kullanıcılar listesi ve Oturumlar
+ekranı yalnız Google'ı gösteriyordu: Microsoft ya da Apple ile bağlı hesap,
+hatta tek giriş yolu Apple olan hesap orada "bağlı değil" görünüyordu.
+
+**Değişiklik.**
+
+- `providers/google.php`'ye `signin` bloğu (sıra 10, `openid email
+  profile`, PKCE). Blokta iki yeni anahtar: `return` (dönüş kök betiği;
+  Google'da `google_auth.php`) ve `authorize_params` (girişe özel istek
+  parametreleri; Google'da `access_type=online`, `prompt=select_account` —
+  bağlı hesap tarafındaki `offline` + `consent` girişte istenmez).
+  `pg_signin_return_file()`, `pg_signin_authorize_params()`,
+  `pg_signin_redirect_uri($key)`.
+- Google'ın uygulaması Güvenlik ayarlarındaki istemci (`config.oauth_google_*`,
+  `pg_signin_google_app()`; `pg_connect_app()`'in Google yedeği de artık
+  bunu çağırıyor), anahtarı `config.oauth_google_enabled` (`pg_signin_switched_on()`
+  Google'ı ekler). Bağlı hesaplar'da ayrı bir Google uygulaması kayıtlıysa
+  bile giriş Güvenlik'teki istemciyle yapılır: o istemcide `google_auth.php`
+  kayıtlı, ötekinde olmayabilir.
+- `google_auth.php` yalnız `PG_SIGNIN_PROVIDER = 'google'` tanımlayıp
+  `signin.php`'yi çalıştırıyor. Eski bağlantılar (`google_auth.php?create=0`,
+  özel düzenler, `__google_signin_url`) çalışmaya devam ediyor.
+  `pg_google_signin_url()` artık `signin.php?provider=google` döndürüyor.
+- **Geçiş kararı: şema adımı.** 10.75 (`upgrade_2026_4_10_signin_google()`)
+  `user.user_google_id` değerlerini `user_identities`'e (`provider =
+  'google'`, `subject` = Google `sub`, `email` = hesabın adresi) taşıyor ve
+  taşınan her satırın eski kolonunu NULL yapıyor; ikinci koşuda taşınacak bir
+  şey kalmıyor ("yeniden koş" güvenli). Kolon silinmedi. Adım koşmadan önce
+  (dev'de 10.74 elle yeniden koşturulmuşsa) giriş yine çalışsın diye
+  `pg_signin_identity_user('google', …)` kayıt bulamazsa eski kolona bakıyor
+  ve bulduğu bağı o anda taşıyor (`pg_signin_google_legacy_user()`); e-posta
+  eşleştirmesi eski kolonda başka bir `sub` taşıyan hesabı devralmıyor;
+  Google bağlantısı kesilirken eski kolon da temizleniyor.
+  Seçilmeyen yol (eski kolonu okumaya devam): her ekran iki kaynağı
+  birleştirmek zorunda kalırdı, listeler için tek sorgu olmazdı.
+- Ekranlar tek kaynaktan: Hesabım bölümü (`pg_account_security_section()`),
+  `account_security.php` (`unlink_google` artık genel `unlink_<sağlayıcı>`
+  dalında), hesap güvenliği widget'ı (`has_google`), `pg_google_account_notice()`,
+  kullanıcı düzenleme ekranı (Google'a özel rozet, satır ve panel kalktı;
+  hiç bağı olmayan hesapta "Yalnız parolayla giriyor" satırı;
+  `pg_unlink_google` formu `pg_unlink_identity=google` olarak hâlâ kabul),
+  üyelik formu (bekleyen Google kaydı da `pg_signin_identity_add()` ile).
+- Listeler: `pg_signin_identities_of($user_ids)` tek sorguda hesap başına
+  sağlayıcıları düğme sırasıyla verir (`pg_signin_group_identities()`, saf),
+  `pg_signin_identity_badges()` rozetleri çizer: sağlayıcı başına bir rozet,
+  parolasız hesapta tek sağlayıcı varsa "Yalnız X" uyarısı.
+  `view_users.php` adın yanında, `view_sessions.php` oturum satırında ve Bağlı
+  hesaplar tablosunda (artık `user_identities`'teki her hesap).
+  `pg_connected_account_label()` sağlayıcı listesi alıyor.
+- Ayarlar › Güvenlik: üç kart tek kart (`pgset-signin`, "Google, Microsoft ve
+  Apple ile Giriş"), her sağlayıcının anahtarı ve alanları aynı; kayıt
+  (`security.save.php`) değişmedi. Ayar arama kayıtlarında
+  `pgset-signin-microsoft` ve `pgset-signin-apple` bölümleri kalktı,
+  anahtar kelimeleri `pgset-signin`'e eklendi.
+- Görsel editör: `siteFlags.signin` (herhangi bir sağlayıcı açık) giriş
+  düğmeleri bölümünü, `siteFlags.google` yalnız Google bağlantı
+  token'larını soluklaştırıyor; önceden yalnız Microsoft açıkken de bölüm
+  "kapalı" görünüyordu.
+
+**Davranış farkları (Google).** Google girişi PKCE gönderiyor ve id_token'da
+`exp` de denetleniyor. Daha önce bağlı bir Google hesabı, Google adresini
+doğrulanmamış bildirse de girebiliyor (kimlik `sub` ile tanınıyor); bilinmeyen
+hesapta doğrulanmamış adres eskisi gibi reddediliyor. Uygulamanın gizli
+anahtarı boşsa düğme artık hiç çıkmıyor (önceden çıkıp dönüşte hata
+veriyordu). Günlük satırları sağlayıcı adlı genel metinler.
+
+**Google Cloud Console.** Değişiklik gerekmez: yönlendirme adresi
+`<site>/pinegrap/google_auth.php` olarak kaldı.
+
+**Doğrulanamayan.** Gerçek Google ile uçtan uca giriş (sandbox dışarı
+çıkamıyor). Sandbox'ta taklit token sunucusuyla denendi: taşınmış bağ,
+eski kolonda kalmış bağ (taşındı), aynı doğrulanmış adresle personel
+hesabına bağlanma, bilinmeyen hesap reddi, doğrulanmamış adres reddi,
+kayıtla üye açma, üyelik formuna devir ve üyelik tamamlanınca kimlik,
+vazgeçme, tekrar kullanılan state, token ucunun `invalid_grant` cevabı.
+
+---
+
 ## 2026.4.10 — Dış API: iletişim (kişi) grupları (2026-10-13)
 
 **Sorun.** Kampanyaların gönderildiği iletişim grupları API'de yoktu. Bir
@@ -147,6 +231,8 @@ gönderilmeden geri eklenince çıkmış kaldı; aboneliksiz grupta `opt_in`
 yok sayıldı; rol 3 yalnız kendi grubunu gördü, başkasına 404. HTTP
 katmanı (kimlik doğrulama, yönlendirici, OpenAPI) diğer uçlarla ortak,
 ayrıca denenmedi.
+
+---
 
 ## 2026.4.10 — Dış API: e-posta kampanyaları (2026-10-13)
 

@@ -746,24 +746,7 @@ function pg_connect_app($provider_key)
         );
     }
 
-    if (($provider_key === 'google') && defined('OAUTH_GOOGLE_CLIENT_ID') && (OAUTH_GOOGLE_CLIENT_ID !== '')) {
-        $secret_row = db_item("SELECT oauth_google_client_secret, oauth_google_secret_iv FROM config");
-
-        $client_secret = is_array($secret_row)
-            ? decode_ssl_keys((string) $secret_row['oauth_google_client_secret'], (string) $secret_row['oauth_google_secret_iv'])
-            : '';
-
-        return array(
-            'client_id'     => (string) OAUTH_GOOGLE_CLIENT_ID,
-            'client_secret' => (string) $client_secret,
-            'secret_stored' => ((string) $client_secret !== ''),
-            'options'       => array(),
-            'enabled'       => true,
-            'source'        => 'signin',
-        );
-    }
-
-    return null;
+    return ($provider_key === 'google') ? pg_signin_google_app() : null;
 }
 
 /**

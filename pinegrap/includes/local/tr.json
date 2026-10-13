@@ -22648,5 +22648,10 @@
     "The server's sign-in metadata is about another address, so it is not followed.": "Sunucunun giriş üst verisi başka bir adres için, bu yüzden izlenmedi.",
     "The sign-in server's metadata could not be found.": "Giriş sunucusunun üst verisi bulunamadı.",
     "The server does not ask for a sign-in. Choose another way to sign in, or none.": "Sunucu giriş istemiyor. Başka bir giriş yolu seçin ya da kimlik bilgisi seçmeyin.",
-    "The sign-in server did not register the site: {var:1}": "Giriş sunucusu siteyi kaydetmedi: {var:1}"
+    "The sign-in server did not register the site: {var:1}": "Giriş sunucusu siteyi kaydetmedi: {var:1}",
+    "Sign in with Google, Microsoft and Apple": "Google, Microsoft ve Apple ile Giriş",
+    "Every provider follows the same rules: an account is found by the provider account connected to it, else by the same verified e-mail address. The staff login never opens an account, the registration and membership pages do. Two-step verification still applies.": "Her sağlayıcıda kurallar aynı: hesap önce ona bağlı sağlayıcı hesabıyla, yoksa aynı doğrulanmış e-posta adresiyle bulunur. Personel girişi hiç hesap açmaz, kayıt ve üyelik sayfaları açar. İki adımlı doğrulama yine sorulur.",
+    "This account has no password of its own - disconnecting {var:1} would lock it out.": "Bu hesabın kendi parolası yok — {var:1} bağlantısı kaldırılırsa hesap tamamen kilitlenir.",
+    "{var:1} only": "Yalnız {var:1}",
+    "No Google, Microsoft or Apple account is connected.": "Bağlı Google, Microsoft ya da Apple hesabı yok."
 }

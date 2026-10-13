@@ -146,15 +146,15 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
-// ── Sign in with Google ──
-$pg_settings_cards[] = '
-    <div id="pgset-signin" class="pg-set-card">
-        <div class="card">
-            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Sign in with Google') . '</span>
-            </div>
-            <div class="card-body">
-                <div class="row gy-3">
+// ── Sign in with Google, Microsoft and Apple ──
+// One card, a switch per provider. Google's application and switch are the
+// config columns it always had, and its return address is still
+// google_auth.php. The other switches go to config.signin_providers, their
+// applications to connect_apps: Microsoft's is the one of Connected
+// accounts (mail and the other features use it too), Apple's is entered
+// here because Apple only signs people in. Until the 10.74 upgrade has run
+// the card says so and only Google's fields are there.
+$signin_google_body = '
                                         <div class="col-12 ">
                                             <div class="form-check form-switch ">
                                                 <input value="1"' . $oauth_google_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="oauth_google_enabled" name="oauth_google_enabled" data-bs-target="#oauth_google_row"/>
@@ -174,23 +174,14 @@ $pg_settings_cards[] = '
                                                             <div class="form-text">' . lang('Shown as plain text on purpose: a password-type box invites the browser\'s password manager to overwrite it, which silently replaces the key on save.') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <label class="form-label">' . lang('Authorized redirect URI (add this to your Google Cloud OAuth client)') . '</label>
-                                                            <input class="form-control" type="text" readonly onclick="this.select()" value="' . h(URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/google_auth.php') . '"/>
+                                                            <label class="form-label" for="oauth_google_redirect">' . lang('Authorized redirect URI (add this to your Google Cloud OAuth client)') . '</label>
+                                                            <input class="form-control font-monospace" type="text" id="oauth_google_redirect" readonly onclick="this.select()" value="' . h(URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/google_auth.php') . '"/>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                </div>
-            </div>
-        </div>
-    </div>';
+                                        </div>';
 
-// ── Sign in with Microsoft and Apple ──
-// The switches go to config.signin_providers, the applications to
-// connect_apps: Microsoft's is the one of Connected accounts (mail and the
-// other features use it too), Apple's is entered here because Apple only
-// signs people in. Until the 10.74 upgrade has run the cards only say so.
 $signin_redirect_field = function ($id, $label) {
     return '
                                                         <div class="col-12">
@@ -280,27 +271,27 @@ if ($signin_ready) {
                                             </div>
                                         </div>';
 } else {
-    $signin_microsoft_body = '<div class="col-12">' . $signin_not_ready . '</div>';
-    $signin_apple_body = $signin_microsoft_body;
+    $signin_microsoft_body = '';
+    $signin_apple_body = '';
 }
 
-foreach (array(
-    'pgset-signin-microsoft' => array(lang('Sign in with Microsoft'), $signin_microsoft_body),
-    'pgset-signin-apple'     => array(lang('Sign in with Apple'), $signin_apple_body),
-) as $signin_card_id => $signin_card) {
-    $pg_settings_cards[] = '
-    <div id="' . $signin_card_id . '" class="pg-set-card">
+$pg_settings_cards[] = '
+    <div id="pgset-signin" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . $signin_card[0] . '</span>
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Sign in with Google, Microsoft and Apple') . '</span>
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . $signin_card[1] . '
+                <div class="row gy-3">
+                                        <div class="col-12">
+                                            <div class="form-text mt-0">' . h(lang('Every provider follows the same rules: an account is found by the provider account connected to it, else by the same verified e-mail address. The staff login never opens an account, the registration and membership pages do. Two-step verification still applies.')) . '</div>
+                                        </div>'
+                    . ($signin_ready ? '' : '<div class="col-12">' . $signin_not_ready . '</div>')
+                    . $signin_google_body . $signin_microsoft_body . $signin_apple_body . '
                 </div>
             </div>
         </div>
     </div>';
-}
 
 // ── Registration & Membership ──
 $pg_settings_cards[] = '
