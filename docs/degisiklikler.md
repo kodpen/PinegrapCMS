@@ -84,6 +84,102 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: takvim aboneliği (iCal) (10.81) (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırmasının P1 1.4 maddesi
+(`/mnt/project-files/notes/workspace-arastirma.md`): görevler ve plan
+kayıtları yalnız panelde görünüyordu. Her üyeye kendi gizli takvim adresi;
+Google, Apple ve Outlook bu adresi kendisi okuyup günceller. OpenAPI/MCP
+değişikliği yok.
+
+**Takvimde ne var.** Dört tür, ekrandan seçilir (varsayılan dördü de):
+
+- Görevler (`tasks`): kişiye atanmış, tarihli görevler (açık olanlar ve son
+  60 gün içinde bitenler, iptal hariç). Gün `ws_task_window()`'un bitişi;
+  `due_time` varsa o saatte bir an (DTEND yok, RFC 5545 §3.6.1), yoksa tam
+  gün. Biten görevin başlığı "✓ " ile başlar. Tekrarlayan görevlerin
+  önümüzdeki 90 günlük kopyaları `ws_recurrence_projections()`'tan
+  `STATUS:TENTATIVE` olarak gelir (tatile denk gelen kopya kaydırılmış
+  günüyle), UID `ws-series-<id>-<gün>`.
+- Plan (`plan`): `ws_event_applies()` ile kişiyi ilgilendiren toplantı,
+  ziyaret, izin vb. (kişiye, departmanına ya da herkese). Meşgul (OPAQUE)
+  yazılır.
+- Tatil günleri (`holidays`): resmî tatiller ve şirket/departman kapalı
+  günleri, boş (TRANSPARENT). Yıllık kayıtlar `RRULE:FREQ=YEARLY` ile tek
+  olay; 29 Şubat `BYMONTH=2;BYMONTHDAY=-1`.
+- Onaylar (`approvals`): kişinin cevabını bekleyen, kapanış saati olan onay
+  istekleri, kapanış anında (`ws_can_post_channel()` ile kanal hakkı
+  yeniden kontrol edilir).
+
+Görevler takvimde VEVENT'tir: Google, Outlook ve Apple abone olunan
+takvimde VTODO'yu göstermez. Pencere geçmiş 60, ileri 400 gün; en çok 2000
+olay. "Açıklamaları ve notları ekle" varsayılan kapalı: kapalıyken yalnız
+başlık, tarih, durum/öncelik, kanal ve panel bağlantısı gider (takvim
+servisi içeriğin kopyasını tutar).
+
+**Adres ve uç.** `workspace_ical.php?token=<43 karakter base64url>`:
+
+- Oturumsuz (`PG_NO_SESSION`); aynı tarayıcıdaki panel çerezi adresin
+  gösterdiğini değiştiremez. Jeton `pg_short_link_new_token()` (256 bit),
+  `token_hash` (SHA-256) ile aranır. Ekran adresi yeniden gösterebilsin diye
+  jeton ayrıca site anahtarıyla şifreli saklanır (`token_secret`); anahtarı
+  olmayan sitede adres yalnız oluşturulduğu anda bir kez gösterilir.
+- Açmayan her şey 404 (bilinmeyen/yenilenmiş/sonlandırılmış jeton, modül
+  kapalı, kişi silinmiş ya da artık ekipte değil); suç sayılmaz. Silinmiş
+  kişinin aboneliği o an silinir.
+- `ETag` (gövdenin sha1'i) ve `If-None-Match` ile 304 (zayıf etiket ve
+  liste dahil), `HEAD`, diğer yöntemlere 405. `Cache-Control: private,
+  max-age=300`, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`.
+- Çıktı RFC 5545: CRLF, 75 oktette UTF-8 sınırında katlama, TEXT kaçışları,
+  saatler UTC, tam gün DATE (DTEND son günden sonraki gün), `X-WR-CALNAME`,
+  `X-WR-TIMEZONE`, `REFRESH-INTERVAL`/`X-PUBLISHED-TTL` PT1H.
+- Son okuma (`fetched_at/ip/agent`) dakikada en çok bir kez yazılır; ekran
+  okuyanı adıyla gösterir (Google Takvim, Apple Takvim, Outlook…).
+
+**Güvenlik duvarı.** `workspace_ical.php`, `waf_is_api_request()`
+listesinde: takvim sunucuları kendi kullanıcı ajanıyla, kendi ülkelerinden
+okur, bu yüzden bot politikası, boş/genel kullanıcı ajanı engeli ve hassas
+hız sınırı uygulanmaz; ülke kısıtlamasının "API, MCP, OAuth" muafiyeti bu
+adresi de kapsar (ayar etiketi güncellendi). Saldırı aracı kontrolü, IP
+kara listesi ve kurallar yine işler.
+
+**Ekran.** `workspace_calendar_feed.php` (Hesap menüsü › Takvim aboneliği;
+Çalışma Alanı çekmecesinin İş grubu; İş Takvimi'nin altındaki bağlantı):
+adres oluştur, kopyala, Google'a ekle (`calendar.google.com/calendar/render
+?cid=webcal://…`, yalnız https sitede), Apple/Outlook'ta aç (`webcal://`),
+türleri ve açıklama anahtarını kaydet, yeni adres oluştur (eskisi hemen
+404), aboneliği sonlandır, Google/Outlook/Apple için ekleme yardımı. Her
+işlem kişinin etkinlik kaydına yazılır. Menü bağlantısı yalnız modül açık
+ve kişi Çalışma Alanı üyesiyken görünür.
+
+**Şema 10.81** (`upgrade_2026_4_10_workspace_calendar_feeds()`):
+`ws_calendar_feeds`, kişi başı bir satır (`uk_user`), `uk_token`. Görev
+tablosuna dokunulmadı. Adımı 10.80'den (görev devri) sonra koşar.
+**2026.4.10'a zaten geçmiş siteler (dev dahil) tabloyu almak için Yazılımı
+Onar › 2026.4.9'dan yeniden koşturmalı.**
+
+**Bilerek yapılmayan.** VTIMEZONE yazılmıyor (saatler UTC, takvim kendi
+saat dilimine çevirir). Görevlerin tekrar kuralı RRULE olarak değil, kopya
+olaylar olarak gider: kopyalar tatil kaydırması ve kural sonu bilgisini
+taşır. Ekip ya da departman takvimi (kişi dışı adres) yok; adres kişinin
+kendi görünümü.
+
+**Doğrulama.** Sandbox'ta uçtan uca: oluştur, kaydet, boş tür hatası,
+yenile (eski 404, yeni 200), sonlandır (404, satır silindi, etkinlik
+kaydı); ICS içeriği (iptal, başkasının ve tarihsiz görev yok; 17:00 görevi
+14:00Z; ✓; TENTATIVE kopyalar ve tatil kaydırması; yıllık tatil RRULE; 29
+Şubat; izin OPAQUE; toplantı UTC; onay anı; açıklama açık/kapalı); 304,
+HEAD, 405, bilinmeyen/dizi jeton 404; modül kapalı ve ekipten çıkarılmış
+kişi 404; son okuma "Google Calendar" olarak; WAF engelleme modunda ve
+bilinmeyen botlar kapalıyken boş ve genel kullanıcı ajanıyla adres açılıyor,
+panel betiği engelleniyor. Şema adımı iki kez koşturuldu (ikincide "zaten
+var"). `tests/workspace_calendar_feed_test.php` (9 test).
+
+**Doğrulanamayan.** Gerçek Google/Apple/Outlook aboneliği ve Cloudflare'in
+bu sunucuları geçirmesi; dev.pinegrap.com'da denenmeli.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: görevi asistana verme (Pinegrap AI, Claude) (10.80) (2026-10-13)
 
 **Neden.** Çalışma Alanı araştırmasının P1 1.2 maddesi
