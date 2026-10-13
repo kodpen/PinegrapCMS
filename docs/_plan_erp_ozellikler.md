@@ -138,10 +138,12 @@ stok uyarısı bir eyleme bağlanmıyor.
 PDF, e-posta, gönderildi/iptal/yeniden aç, kopyala), menü, olaylar
 (`created|sent|cancelled`, ek olarak `reopened`) ve denetim izi nesne türü (PR #274).
 ✓ 3–4. adım (faturaya dönüşüm, türetilen durum, `received` olayı), minimum stok
-bağlantısı ve pano kartı; kanıt senaryosu sandbox'ta koşturuldu (ikinci PR).
+bağlantısı ve pano kartı; kanıt senaryosu sandbox'ta koşturuldu (PR #278).
+✓ API `GET/POST /erp/purchase-orders…` (liste, tek, PDF, yazma/değiştirme, durum,
+faturaya dönüşüm, e-posta; `includes/erp/api_purchase_orders.php`), `ErpPurchaseOrder`
+nesnesi ve `erp.purchase_order.*` web kancası olayları (üçüncü PR). **Faz 7 bitti.**
 Plandan sapma: seri fatura serisi + `P`, `S` değil (`S` irsaliyenin,
-`erp_waybill_series()`). Sıradaki: API `GET/POST /erp/purchase-orders…` ve webhook
-olayları.
+`erp_waybill_series()`).
 
 **Şema (10.58, `upgrade_2026_4_10_erp_purchase_orders()`):**
 

@@ -355,6 +355,37 @@ function erp_purchase_order_save($data, $order_id, $user_id)
 }
 
 /**
+ * Why the order cannot be moved to a status, or '' when it can: sent (it went
+ * to the supplier), cancelled, or open again. The screen's buttons and the
+ * API ask the same question before they move it.
+ *
+ * @param array  $order  From erp_purchase_order()
+ * @param string $to     sent | cancelled | open
+ * @return string
+ */
+function erp_purchase_order_status_refusal($order, $to)
+{
+    $status = (string) $order['status'];
+
+    switch ((string) $to) {
+        case 'sent':
+            return ($status === 'cancelled') ? lang('A cancelled purchase order is not sent. Open it again first.') : '';
+
+        case 'cancelled':
+            if ($status === 'received') {
+                return lang('Everything on the purchase order has come in; there is nothing left to cancel.');
+            }
+
+            return ($status === 'cancelled') ? lang('The purchase order is already cancelled.') : '';
+
+        case 'open':
+            return ($status !== 'cancelled') ? lang('Only a cancelled purchase order is opened again.') : '';
+    }
+
+    return lang('The purchase order cannot be moved to that status.');
+}
+
+/**
  * Mark the order as gone to the supplier, by hand (it went by phone, or on
  * paper) or after the e-mail. The first time is kept: sending it again does
  * not move sent_at.
@@ -370,8 +401,8 @@ function erp_purchase_order_mark_sent($order_id)
         return array('success' => false, 'error' => lang('The purchase order could not be found.'));
     }
 
-    if ((string) $order['status'] === 'cancelled') {
-        return array('success' => false, 'error' => lang('A cancelled purchase order is not sent. Open it again first.'));
+    if (($refusal = erp_purchase_order_status_refusal($order, 'sent')) !== '') {
+        return array('success' => false, 'error' => $refusal);
     }
 
     $first = ((int) $order['sent_at'] === 0);
@@ -408,15 +439,11 @@ function erp_purchase_order_set_status($order_id, $to)
         return array('success' => false, 'error' => lang('The purchase order could not be found.'));
     }
 
-    $status = (string) $order['status'];
+    if (($refusal = erp_purchase_order_status_refusal($order, $to)) !== '') {
+        return array('success' => false, 'error' => $refusal);
+    }
 
     if ($to === 'cancelled') {
-        if (in_array($status, array('received', 'cancelled'), true)) {
-            return array('success' => false, 'error' => ($status === 'received')
-                ? lang('Everything on the purchase order has come in; there is nothing left to cancel.')
-                : lang('The purchase order is already cancelled.'));
-        }
-
         db("UPDATE erp_purchase_orders SET status = 'cancelled', updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
         erp_event_purchase_order((int) $order['id'], 'erp.purchase_order.cancelled');
 
@@ -424,10 +451,6 @@ function erp_purchase_order_set_status($order_id, $to)
     }
 
     if ($to === 'open') {
-        if ($status !== 'cancelled') {
-            return array('success' => false, 'error' => lang('Only a cancelled purchase order is opened again.'));
-        }
-
         db("UPDATE erp_purchase_orders SET status = IF(sent_at > 0, 'sent', 'open'), updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
 
         if (function_exists('erp_purchase_order_refresh')) {
@@ -609,8 +632,8 @@ function erp_purchase_order_mail_send($order_id, $to, $subject, $message, $user_
         return $fail(lang('The purchase order could not be found.'));
     }
 
-    if ((string) $order['status'] === 'cancelled') {
-        return $fail(lang('A cancelled purchase order is not sent. Open it again first.'));
+    if (($refusal = erp_purchase_order_status_refusal($order, 'sent')) !== '') {
+        return $fail($refusal);
     }
 
     if (!function_exists('erp_mail_ready') || !erp_mail_ready()) {
@@ -1017,7 +1040,10 @@ function erp_purchase_order_refresh($order_id)
     $state = erp_purchase_order_receipt_state(erp_purchase_order_order_progress($order));
     $to = ($state === 'none') ? (((int) $order['sent_at'] > 0) ? 'sent' : 'open') : $state;
 
+    // The quantities came or went even when the status stays: a client that
+    // follows changes by updated_at reads the order again.
     if ($to === $status) {
+        db("UPDATE erp_purchase_orders SET updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
         return $status;
     }
 
@@ -1054,6 +1080,34 @@ function erp_purchase_order_refresh_for_invoice($invoice_id)
 }
 
 /**
+ * Why no purchase invoice draft can be made from the order now, or '' when
+ * one can: a cancelled order, one that has come in full, or one whose every
+ * line is already on an invoice or a draft.
+ *
+ * @param array $order     From erp_purchase_order()
+ * @param array $progress  erp_purchase_order_order_progress()
+ * @return string
+ */
+function erp_purchase_order_invoice_refusal($order, $progress)
+{
+    if ((string) $order['status'] === 'cancelled') {
+        return lang('A cancelled purchase order is not invoiced. Open it again first.');
+    }
+
+    if ((string) $order['status'] === 'received') {
+        return lang('Everything on the purchase order has come in.');
+    }
+
+    foreach ((array) $progress as $row) {
+        if ((float) $row['remaining'] > 0) {
+            return '';
+        }
+    }
+
+    return lang('Every line of the purchase order is already on a purchase invoice or a draft.');
+}
+
+/**
  * Make a purchase invoice draft from the order, for what has not come yet
  * and is not already on a draft: the order's prices, today's date, the
  * account's payment term. Repeatable, one draft per delivery. Stock and cost
@@ -1075,15 +1129,12 @@ function erp_purchase_order_to_invoice($order_id, $user_id)
         return $fail(lang('The purchase order could not be found.'));
     }
 
-    if ((string) $order['status'] === 'cancelled') {
-        return $fail(lang('A cancelled purchase order is not invoiced. Open it again first.'));
-    }
-
-    if ((string) $order['status'] === 'received') {
-        return $fail(lang('Everything on the purchase order has come in.'));
-    }
-
     $progress = erp_purchase_order_order_progress($order);
+
+    if (($refusal = erp_purchase_order_invoice_refusal($order, $progress)) !== '') {
+        return $fail($refusal);
+    }
+
     $lines = array();
 
     foreach (array_values(erp_purchase_order_lines($order)) as $index => $line) {
@@ -1106,10 +1157,6 @@ function erp_purchase_order_to_invoice($order_id, $user_id)
             'withholding_rate' => (float) ($line['withholding_rate'] ?? 0),
             'source_line' => (string) ($line['source_line'] ?? ''),
         );
-    }
-
-    if (empty($lines)) {
-        return $fail(lang('Every line of the purchase order is already on a purchase invoice or a draft.'));
     }
 
     $data = array(
@@ -1143,6 +1190,10 @@ function erp_purchase_order_to_invoice($order_id, $user_id)
     if (empty($saved['success'])) {
         return $fail((string) $saved['error']);
     }
+
+    // What is on drafts is part of the order as it is read; a client that
+    // follows changes by updated_at sees it.
+    db("UPDATE erp_purchase_orders SET updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
 
     return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'error' => '');
 }

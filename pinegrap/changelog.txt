@@ -454,6 +454,22 @@
          siparişleri" kartı var; teslim günü geçenlerin
          sayısını gösteriyor.
 
+  [YENİ] Satın alma siparişleri API'de ve MCP'de: listeleme
+         (durum, gecikme, tedarikçi, tarih ve değişiklik
+         zamanıyla süzülerek), tek sipariş ve PDF'i, yazma ve
+         değiştirme, gönderildi, iptal ya da yeniden açma,
+         alış faturası taslağına dönüştürme ve tedarikçiye
+         e-postayla gönderme (GET/POST /erp/purchase-orders).
+         Her satırda alınan, taslaktaki ve gelecek miktar
+         yazıyor. Siparişten yapılan taslak API'den
+         düzeltilirken satırlar sipariş satırının anahtarını
+         taşıyor; GET /erp/invoices?purchase_order_id= o
+         siparişin faturalarını veriyor. Web kancası
+         olayları: erp.purchase_order.created, sent,
+         received, cancelled ve reopened. Yazmalar önce
+         X-Dry-Run ile denenebilir; erp:write yetkisi
+         gerekir.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
