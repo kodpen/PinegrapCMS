@@ -73,6 +73,21 @@ function api_send($status_code, $body, $error_code = '') {
 
 	}
 
+	// A route run by the MCP endpoint answers inside a JSON-RPC result rather
+	// than as a response of its own (includes/mcp/tools.php). The request is
+	// logged as any other; the answer is written by the hook, which exits.
+	$hook = api_send_hook();
+
+	if ($hook !== null) {
+
+		api_log_request($status_code, $error_code);
+
+		call_user_func($hook, $status_code, $body);
+
+		exit();
+
+	}
+
 	// A read may ask for part of each record (?fields=) and may already hold
 	// the answer (If-None-Match). Both are settled on the finished body, so
 	// every endpoint gets them without a line of its own - see the two helpers
@@ -142,6 +157,21 @@ function api_send($status_code, $body, $error_code = '') {
 	}
 
 	exit();
+
+}
+
+// Where api_send() hands its answer instead of sending it, when set.
+function api_send_hook($hook = null) {
+
+	static $current = null;
+
+	if ($hook !== null) {
+
+		$current = $hook;
+
+	}
+
+	return $current;
 
 }
 

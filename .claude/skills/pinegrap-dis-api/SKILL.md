@@ -112,6 +112,26 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `error_description` İngilizce düz metin (RFC: yalnız ASCII), `lang()` yok.
 - Yenilemeyi kendi biçiminde cevaplayan kod `api_device_rotate_pair()`
   kullanır; `api_device_rotate()` API biçiminde `api_fail` eder.
+- `client_id` bir https adresiyse istemci kimlik belgesidir (CIMD):
+  `pg_oauth_client_resolve()` yalnız yetkilendirme ekranında ve kişi giriş
+  yaptıktan sonra çeker (`api_http_request()`, 5 KB, yönlendirme yok);
+  token ucu belgeyi çekmez, `pg_oauth_client()` ile kayıtlı kopyayı okur.
+
+## MCP sunucusu (2026.4.10, `mcp.php`, `includes/mcp/`)
+
+- Araçlar **rotaların kendisidir** (`pg_mcp_tool_from_route()`): yeni bir uç
+  yazınca araç kendiliğinden gelir. `summary`/`description`/parametre
+  açıklamaları modelin okuduğu metindir — İngilizce, kısa ve doğru yaz.
+- Dışarıda kalanlar `pg_mcp_route_is_offered()`'da: `auth.*`, `push.*`,
+  `docs.*`, `*_post` takma adları, kapsamsız rotalar. IIS için POST takma
+  adı açarken kimliği `_post` ile bitir, yoksa iki araç olur.
+- `tools/call` rotayı süreç içinde çalıştırır; işleyici yine `api_send()` /
+  `api_fail()` ile çıkar, `api_send_hook()` cevabı JSON-RPC'ye çevirir.
+  İşleyici `$_SERVER`/`php://input` okumamalı, `api_request_input()` ve
+  `api_header()` kullanmalı (MCP bunları ayarlayıcıyla doldurur).
+- İki protokol kuşağı: 2026-07-28 (oturumsuz, `Mcp-Method`/`Mcp-Name`
+  başlıkları zorunlu) ve `initialize` ile açılan 2025-xx. Oturum kimliği
+  verilmez, akış (SSE) yok.
 
 ## Webhook olayları
 

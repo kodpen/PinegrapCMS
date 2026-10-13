@@ -53,6 +53,29 @@ function pg_oauth_registration_limit() {
 
 }
 
+// How long a client metadata document is trusted before it is read again, and
+// how long an old copy may stand in when reading it again fails: the client's
+// own server being down for an afternoon should not stop people connecting.
+function pg_oauth_metadata_lifetime() {
+
+	return 86400;
+
+}
+
+function pg_oauth_metadata_stale_limit() {
+
+	return 7 * 86400;
+
+}
+
+// Client metadata documents one address may make the site read in an hour.
+// Each read is a request the site makes to an address somebody else chose.
+function pg_oauth_metadata_fetch_limit() {
+
+	return 30;
+
+}
+
 // Whether the schema is there. Files land before the upgrade does.
 function pg_oauth_ready() {
 
@@ -67,6 +90,25 @@ function pg_oauth_ready() {
 			&& ((int)db_value("SELECT COUNT(*) FROM information_schema.TABLES
 			WHERE TABLE_SCHEMA = DATABASE()
 			AND TABLE_NAME = 'oauth_clients'") > 0);
+
+	}
+
+	return $ready;
+
+}
+
+// Whether clients may name themselves with a metadata document: the column
+// that holds the copy's age arrived a step after the tables.
+function pg_oauth_metadata_ready() {
+
+	static $ready = null;
+
+	if ($ready === null) {
+
+		$ready = pg_oauth_ready() && ((int)db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+			WHERE TABLE_SCHEMA = DATABASE()
+			AND TABLE_NAME = 'oauth_clients'
+			AND COLUMN_NAME = 'metadata_expires'") > 0);
 
 	}
 
@@ -159,11 +201,14 @@ function pg_oauth_endpoint($name) {
 
 // The resources a token can be issued for (RFC 8707), by a short key. Each is
 // the address its requests are made to; a token issued for one is refused by
-// the others. The MCP endpoint joins this list when it is added.
+// the others.
 function pg_oauth_resources() {
 
+	$base = pg_oauth_scheme() . pg_oauth_host() . PATH . SOFTWARE_DIRECTORY;
+
 	return array(
-		'integration' => pg_oauth_scheme() . pg_oauth_host() . PATH . SOFTWARE_DIRECTORY . '/integration.php'
+		'integration' => $base . '/integration.php',
+		'mcp'         => $base . '/mcp.php'
 	);
 
 }
@@ -358,7 +403,8 @@ function pg_oauth_metadata() {
 		'token_endpoint_auth_methods_supported'          => $methods,
 		'revocation_endpoint_auth_methods_supported'     => $methods,
 		'scopes_supported'                               => ($app !== null) ? pg_oauth_ceiling($app) : array(),
-		'authorization_response_iss_parameter_supported' => true
+		'authorization_response_iss_parameter_supported' => true,
+		'client_id_metadata_document_supported'          => pg_oauth_metadata_ready()
 	);
 
 }
@@ -377,7 +423,7 @@ function pg_oauth_resource_metadata($key) {
 		'authorization_servers'    => array(pg_oauth_issuer()),
 		'scopes_supported'         => ($app !== null) ? pg_oauth_ceiling($app) : array(),
 		'bearer_methods_supported' => array('header'),
-		'resource_name'            => $name . ' API'
+		'resource_name'            => $name . (($key === 'mcp') ? ' MCP' : ' API')
 	);
 
 }
@@ -390,7 +436,7 @@ function pg_oauth_client($client_id) {
 
 	$client_id = trim((string)$client_id);
 
-	if (($client_id === '') || (strlen($client_id) > 64) || !pg_oauth_ready()) {
+	if (($client_id === '') || (strlen($client_id) > 255) || !pg_oauth_ready()) {
 
 		return null;
 
@@ -399,6 +445,134 @@ function pg_oauth_client($client_id) {
 	$row = db_item("SELECT * FROM oauth_clients WHERE client_id = '" . escape($client_id) . "' LIMIT 1");
 
 	return (is_array($row) && !empty($row)) ? $row : null;
+
+}
+
+// The client a person is asked to connect, on the authorization screen.
+//
+// A registered client is looked up. A client_id that is an https address is
+// a client metadata document (draft-ietf-oauth-client-id-metadata-document):
+// the document is read from that address and kept as an oauth_clients row, so
+// the token endpoint, the API and the panel find the client like any other.
+// The copy is read again once a day; when that fails an older copy stands in
+// for a week. Answers array('client' => row|null, 'error' => string), error
+// being English for the client's developer.
+//
+// Only this screen reads a document, and only for a person signed in to the
+// panel (includes/oauth/authorize.php): the read is a request the site makes
+// to an address in the request, and nobody without an account should be able
+// to make the site send one.
+function pg_oauth_client_resolve($client_id) {
+
+	$client_id = trim((string)$client_id);
+
+	if (!pg_oauth_client_id_is_url($client_id)) {
+
+		return array('client' => pg_oauth_client($client_id), 'error' => '');
+
+	}
+
+	if (!pg_oauth_metadata_ready()) {
+
+		return array('client' => null, 'error' => 'This site does not read client metadata documents yet.');
+
+	}
+
+	$row = pg_oauth_client($client_id);
+
+	if (($row !== null) && ((string)$row['registered_by'] !== 'metadata')) {
+
+		$row = null;
+
+	}
+
+	if (($row !== null) && ((int)$row['metadata_expires'] > time())) {
+
+		return array('client' => $row, 'error' => '');
+
+	}
+
+	// A copy still within its week stands in when the read fails or is not
+	// allowed right now.
+	$stale = (($row !== null) && ((int)$row['metadata_expires'] + pg_oauth_metadata_stale_limit() > time())) ? $row : null;
+
+	if (function_exists('waf_rate_exceeded') && function_exists('waf_client_ip')
+		&& waf_rate_exceeded(waf_client_ip(), 'oauth_cimd', pg_oauth_metadata_fetch_limit(), 3600)) {
+
+		return array('client' => $stale, 'error' => ($stale === null) ? 'Too many client metadata documents read from this address. Try again later.' : '');
+
+	}
+
+	require_once(dirname(dirname(__FILE__)) . '/api/outbound/http.php');
+
+	$answer = api_http_request('GET', $client_id, array(
+		'headers'  => array('Accept: application/json'),
+		'timeout'  => 5,
+		'max_body' => pg_oauth_metadata_document_limit() + 1,
+		'agent'    => 'oauth'
+	));
+
+	if (!$answer['ok'] || ($answer['status'] !== 200)) {
+
+		return array(
+			'client' => $stale,
+			'error'  => ($stale === null) ? 'The client metadata document could not be read'
+				. (($answer['status'] > 0) ? ' (HTTP ' . $answer['status'] . ').' : ': ' . $answer['error']) : ''
+		);
+
+	}
+
+	$read = pg_oauth_metadata_document_client($client_id, $answer['body']);
+
+	if (!$read['ok']) {
+
+		return array('client' => null, 'error' => $read['error']);
+
+	}
+
+	$client = $read['client'];
+
+	$fields = "name = '" . escape($client['name']) . "',
+		client_uri = '" . escape($client['client_uri']) . "',
+		redirect_uris = '" . escape(json_encode($client['redirect_uris'], JSON_UNESCAPED_SLASHES)) . "',
+		software_id = '" . escape($client['software_id']) . "',
+		software_version = '" . escape($client['software_version']) . "',
+		metadata_expires = '" . (time() + pg_oauth_metadata_lifetime()) . "'";
+
+	if ($row !== null) {
+
+		db("UPDATE oauth_clients SET " . $fields . " WHERE id = '" . (int)$row['id'] . "'");
+
+	} else {
+
+		db("INSERT INTO oauth_clients SET
+			client_id = '" . escape($client_id) . "',
+			auth_method = 'none',
+			registered_by = 'metadata',
+			status = 'active',
+			created_ip = '" . escape(function_exists('waf_client_ip') ? substr((string)waf_client_ip(), 0, 45) : '') . "',
+			created_timestamp = UNIX_TIMESTAMP(),
+			" . $fields);
+
+	}
+
+	return array('client' => pg_oauth_client($client_id), 'error' => '');
+
+}
+
+// The host a metadata client is identified by: the part of its client_id a
+// person can check, unlike the name the document gives itself.
+function pg_oauth_client_identity_host($client) {
+
+	if ((string)$client['registered_by'] !== 'metadata') {
+
+		return '';
+
+	}
+
+	$host = parse_url((string)$client['client_id'], PHP_URL_HOST);
+
+	return is_string($host) ? strtolower($host) : '';
 
 }
 
@@ -483,9 +657,10 @@ function pg_oauth_codes_sweep() {
 
 }
 
-// Removes dynamically registered clients that never connected, or have not
-// connected for a month, together with nothing else: a client that holds a
-// connection is in use by definition and is kept.
+// Removes dynamically registered clients and copies of metadata documents
+// that never connected, or have not connected for a month, together with
+// nothing else: a client that holds a connection is in use by definition and
+// is kept.
 function pg_oauth_clients_sweep() {
 
 	if (!pg_oauth_ready()) {
@@ -498,7 +673,7 @@ function pg_oauth_clients_sweep() {
 
 	db("DELETE oauth_clients FROM oauth_clients
 		LEFT JOIN api_devices ON api_devices.oauth_client_id = oauth_clients.id
-		WHERE oauth_clients.registered_by = 'dynamic'
+		WHERE oauth_clients.registered_by IN ('dynamic', 'metadata')
 		AND GREATEST(oauth_clients.last_used_timestamp, oauth_clients.created_timestamp) < '" . $before . "'
 		AND api_devices.id IS NULL");
 
