@@ -592,6 +592,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_ai_js_strings());
     }
 
+    // Asking an MCP server by its alias (includes/workspace/mcp_ask.php).
+    if (function_exists('ws_mcp_js_strings')) {
+        $strings = array_merge($strings, ws_mcp_js_strings());
+    }
+
     // Page changes the assistants propose (includes/designer_ai.php).
     if (function_exists('ws_design_ai') && ws_design_ai()) {
         $strings = array_merge($strings, pg_design_ai_ws_strings());

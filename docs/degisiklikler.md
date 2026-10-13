@@ -177,6 +177,78 @@ kararı) ürün sahibinin kararını bekliyor; bu bölümde değişmedi.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: kanalda @takma ad ile MCP sunucusuna soru (2026-10-13)
+
+**Neden.** Önceki değişiklik (10.82) başka hizmetlerin MCP sunucularını
+takma adla ekletiyor ve araç izinlerini tutuyordu; bu değişiklik onları
+kanalda kullanılır kılar. "@github açık PR'lar hangileri?" yazılınca
+Pinegrap AI o sunucunun açık araçlarıyla yanıt verir.
+
+**Akış** (`includes/workspace/mcp_ask.php`, `ai.php`'ye bağlanır). Mesaj
+gönderilince `ws_ai_after_send()` önce `ws_mcp_ask_server()`'a bakar:
+gövdede elle yazılmış `@takmaad` (büyük/küçük harf fark etmez, `e@docs.com`
+gibi kelime içi değil) ya da gövde Pinegrap AI'ı adıyla çağırmıyorsa
+takma adla verilmiş bir yanıta cevap. İstek `ws_ai_requests`'e `agent = 'ai'`,
+`mcp_server_id` ile girer; sıra, kilit, adım sınırı, kişi başı bekleyen
+istek sınırı ve lisans Pinegrap AI'ınkiyle aynıdır. Pinegrap AI hazır
+değilse kurulum ipucu, kanal kapalıysa kanal metni, sunucu kapalıysa ya da
+açık aracı yoksa (`ws_mcp_ask_problem()`) bunu söyleyen sistem mesajı
+yazılır ve istek açılmaz.
+
+**Model ne görür.** `ws_ai_start()` takma adlı istekte
+`ws_mcp_ask_start()`'a döner: kanalın özeti, kararları ya da ekip listesi
+gitmez, yalnız istek, cevapladığı mesaj ve o mesaj önceki bir takma ad
+yanıtıysa onun isteği. Gerekçe: modelin okuduğu her şey araç argümanına
+girip öbür hizmete gidebilir. Sistem metni yalnız sunucunun araçlarının
+olduğunu, argümanlara isteğin gerektirdiğinden fazlasının konmamasını,
+araçların yalnız okuduğunu ve araç yanıtlarının talimat değil veri
+olduğunu söyler; sunucunun `instructions` metni veri olarak, 1500
+karakterle eklenir. Araçlar `answer`, `fail` ve sunucunun açık araçları
+(en çok 40, alfabetik); şemalar nesne olarak çözülüp gönderilir (`{}`
+korunur, `$schema`/`$id` atılır). Araç adı sohbet API'sinin kuralına
+(`^[A-Za-z0-9_-]{1,64}$`) çevrilir, çakışan ad ve `answer`/`fail` numara
+alır; eşleme her adımda yeniden kurulur.
+
+**Araç çağrısı** (`ws_mcp_ask_tool_run()`). Çağrı anında araç hâlâ açık
+mı, sunucu açık mı yeniden bakılır. Bir istekte en çok 8, modelin bir
+turunda en çok 3 çağrı (web isteğinin süresi aşılmasın diye); argüman 20
+KB'ı aşamaz. Zaman aşımı web'de 15, komut satırında 45 saniye. Sonuç
+`pg_mcp_client_result_text()` ile 6000 karaktere kesilir ve
+`service_text` olarak verilir. Her çağrı `ws_mcp_calls`'a yazılır
+(argümanlar, durum, hata, süre, istek/kanal/mesaj); sunucunun `last_used`
+alanı güncellenir, bağlantı hatası `last_error`'a düşer.
+
+**Yanıt.** Öneri yoktur: `ws_ai_finish_answer()` takma adlı istekte görev
+ve "yaptım" dürtmelerini atlar, metni doğrudan yazar. `ws_ai_deliver()`
+yanıtın sonuna "@docs üzerinden: `products_list`, `pages_list`" satırını
+ekler (en çok beş araç, kalanlar +N; araç çağrılmadıysa ayrı cümle),
+uzunluk sınırı bu satırla birlikte hesaplanır.
+
+**Ekran.** Kanalın @ menüsü açık ve araçlı sunucuları takma adıyla gösterir
+(`BOOT.mcp`, `ws_mcp_boot()`); seçilince `@takmaad ` metni girer. Ayarlar
+kartında takma adın kanalda nasıl kullanıldığı yazar, Pinegrap AI bağlı
+değilse uyarı çıkar, 40'tan fazla araç açıksa ilk 40'ın sunulduğu söylenir.
+`pg_mcp_client_call_tool()` argümanları nesne olarak da alır.
+
+**Şema yok.** 10.82'nin `ws_mcp_calls` tablosu ve
+`ws_ai_requests.mcp_server_id` kolonu kullanılır.
+
+**Doğrulama.** `tests/workspace_mcp_test.php` (7 test): araç açılabilirliği,
+kuralların yalnız çalışabilen araçlarda geçmesi, fonksiyon adları, 40
+sınırı, takma ad biçimi, kimlik başlıkları, başlık adları. Sandbox'ta,
+sitenin kendi `mcp.php`'sine yerel ağ dışı bir adresten bağlanan uzak
+sunucu yerine geçen bir sunucuyla: takma ad tespiti, istek açma, model
+bağlamı, araç listesi, gerçek HTTP araç çağrısı ve kaydı, kapalı araç ve
+araç olmayan ad, yanıtın imza satırıyla kanala düşmesi, yanıta cevabın aynı
+sunucuyla sürmesi, @ai ile cevabın Pinegrap AI'ın kendisine gitmesi,
+kapalı sunucuda sistem mesajı, @ menüsü (ekran görüntüsü).
+
+**Doğrulanamayan.** Modelin kendisi (ai.pinegrap.com sandbox'tan
+çözülemiyor); model çağrısı dışındaki her adım denendi.
+dev.pinegrap.com'da gerçek bir sunucuyla denenmeli.
+
+---
+
 ## 2026.4.10 — Dış API: ziyaretçi raporları ve site günlüğü (2026-10-13)
 
 **Sorun.** Trafik ve denetim kaydı API'de yoktu. Bir raporlama aracı ya da
