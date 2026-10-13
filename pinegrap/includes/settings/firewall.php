@@ -343,7 +343,7 @@ if (!empty($waf_country_ready)) {
 
     foreach (array(
         'waf_country_exempt_panel' => array($waf_country_exempt_panel, lang('The control panel'), lang('Its screens and its sign-in page stay open from every country, so staff abroad can still sign in. The site\'s pages and files stay restricted; to open them for someone abroad as well, add their address to the Allowed IP Addresses.')),
-        'waf_country_exempt_api'   => array($waf_country_exempt_api, lang('The API, MCP and OAuth endpoints'), lang('Integrations and AI applications present their own credentials and run wherever their provider does.')),
+        'waf_country_exempt_api'   => array($waf_country_exempt_api, lang('The API, MCP, OAuth and calendar subscription addresses'), lang('Integrations, AI applications and calendar services present their own credentials and run wherever their provider does.')),
         'waf_country_exempt_bots'  => array($waf_country_exempt_bots, lang('Verified search engine crawlers'), lang('Googlebot, Bingbot and the other search engines, once their address proves the name (Verify Search Engine Crawlers has to be on). Without this a site open to one country drops out of search results.')),
     ) as $waf_country_field => $waf_country_exemption) {
         $output_waf_country_exemptions .= '

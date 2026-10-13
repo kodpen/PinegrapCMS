@@ -41,6 +41,7 @@ function ws_nav_groups($viewer)
             array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php'),
             array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php'),
             array('key' => 'calendar', 'label' => lang('Work Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php'),
+            array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php', 'rail' => false),
         ),
         'records' => array(
             array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php'),
