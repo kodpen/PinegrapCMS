@@ -13,8 +13,9 @@
  * module has no endpoints, no events and no permission to hand out.
  *
  * The handlers and the presenters are in api_resources.php next to this file,
- * and the ones that write invoices and quotes in api_documents.php; this one
- * stays a table, the way schema.php is a table.
+ * the ones that write invoices and quotes in api_documents.php, and the ones
+ * that write delivery notes, stock counts and minimums in api_stock.php; this
+ * one stays a table, the way schema.php is a table.
  *
  * Two permissions, mirroring the panel: 'erp' is the ledger - accounts,
  * invoices, delivery notes, expenses, quotes, stock and the reports - and
@@ -42,6 +43,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_documents.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -126,6 +128,7 @@ function erp_webhook_events()
         'erp.receipt.created' => 'A receipt or a payment was recorded in the ERP',
         'erp.receipt.cancelled' => 'A receipt or a payment was cancelled in the ERP',
         'erp.waybill.created' => 'An ERP delivery note was issued',
+        'erp.waybill.cancelled' => 'An ERP delivery note was cancelled',
         'erp.expense.created' => 'An ERP expense was recorded (from a screen, the API or a repeating expense)',
         'erp.expense.paid' => 'An ERP expense was paid from a till or bank account',
         'erp.expense.cancelled' => 'An ERP expense was cancelled',
@@ -136,6 +139,7 @@ function erp_webhook_events()
         'erp.quote.reopened' => 'An ERP sales quote was opened again (editable, running from today if it had expired)',
         'erp.quote.invoiced' => 'An ERP sales quote was turned into an invoice draft at the prices quoted',
         'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on. Also carries signer_name and signed_at',
+        'erp.stock_count.applied' => 'An ERP stock count was applied: the store\'s stock of every product on it was set to what was counted. Carries line_count and changed (the products whose stock moved)',
     );
 }
 
@@ -745,6 +749,74 @@ function erp_api_routes()
             ),
         ),
 
+        array(
+            'id' => 'erp.waybills.create',
+            'method' => 'POST',
+            'path' => '/erp/waybills',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_waybills_create',
+            'dry_run' => true,
+            'returns' => 'ErpWaybill',
+            'summary' => 'Write a delivery note',
+            'description' => 'Writes a delivery note and gives it the next number of its series; it carries goods and no money. Three ways, as the panel offers them: invoice_id for an issued sales invoice (its account, lines, carrier and shipment date; an invoice written from an order ships as that order\'s note, with the invoice attached), order_id for an order (its customer\'s account, opened from the customer record when there is none, its items, its first recipient\'s address and the carrier and ship date the order screen recorded), or account_id with lines for goods typed by hand. What is sent takes the place of what the invoice or order gives: lines sent are the part that goes out. A recipient left empty is the account at the address on its card. An order or an invoice has one note: a second answers 409 order_already_shipped or 409 invoice_already_shipped; cancel the first to write another. A draft, cancelled or purchase invoice answers 409 invoice_not_shippable. Announced as erp.waybill.created. Try it with X-Dry-Run first.',
+            'params' => array(
+                array('name' => 'invoice_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The issued sales invoice the goods were sold on.'),
+                array('name' => 'order_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The order whose goods go out.'),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The account the goods go to, for a note typed without an invoice or an order; lines are then required. Not sent with invoice_id or order_id, which bring their own.'),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The note\'s date. Today when left out.'),
+                array('name' => 'ship_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day the goods leave. The note\'s date when left out, or what the order or invoice recorded.'),
+                array('name' => 'ship_time', 'in' => 'body', 'type' => 'string', 'max_length' => 5, 'description' => 'The hour the goods leave, HH:MM.'),
+                array('name' => 'carrier_title', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+                array('name' => 'carrier_tax_number', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'For a Turkish store a VKN or TCKN (10 or 11 digits).'),
+                array('name' => 'plate', 'in' => 'body', 'type' => 'string', 'max_length' => 20),
+                array('name' => 'driver_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'driver_id_number', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'Printed on the note; never sent back by the API. For a Turkish store an 11-digit TCKN.'),
+                array('name' => 'ship_to_title', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+                array('name' => 'ship_to_address', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+                array('name' => 'ship_to_district', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'ship_to_city', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'ship_to_state', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Not kept in Turkey, where the province is the city.'),
+                array('name' => 'ship_to_country', 'in' => 'body', 'type' => 'string', 'max_length' => 2, 'description' => 'ISO 3166-1 alpha-2. The store\'s own country when left out.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000),
+                array('name' => 'lines', 'in' => 'body', 'type' => 'list', 'max_items' => 200, 'of' => array(
+                    'product_id' => 'integer',
+                    'description' => 'string',
+                    'quantity' => 'number',
+                    'unit' => 'string',
+                ), 'description' => 'The goods, in order. quantity is a decimal number written with a point (1.5), 1 when left out. product_id ties the line to a product, whose name fills description when it is left out; without a product description is required. unit is the UN/ECE unit code, C62 (piece) when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.waybills.cancel',
+            'method' => 'POST',
+            'path' => '/erp/waybills/{id}/cancel',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_waybills_cancel',
+            'dry_run' => true,
+            'returns' => 'ErpWaybill',
+            'summary' => 'Cancel a delivery note',
+            'description' => 'Cancels the note for good: it keeps its number, prints with its cancellation mark, and its order or invoice can be shipped on a new note. It cannot be undone. A note that has been invoiced answers 409 waybill_invoiced (the invoice is what to cancel or return), one already cancelled 409 waybill_cancelled. Announced as erp.waybill.cancelled.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.waybills.invoice',
+            'method' => 'POST',
+            'path' => '/erp/waybills/{id}/invoice',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_waybills_invoice',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Invoice a delivery note',
+            'description' => 'Bills the goods on the note. A note written for an order is billed the way the order is: the order\'s invoice is issued dated today (taking a number, refused for the reasons POST /erp/orders/{order_id}/invoice gives, 422 period_locked among them), or the note is tied to the invoice the order already has, which answers 200 instead of 201. A note typed by hand becomes an invoice draft with its lines and the catalogue prices where a product is known: finish the prices, then POST /erp/invoices/{id}/issue. A note already invoiced answers 409 waybill_invoiced, a cancelled one 409 waybill_cancelled. The answer is the invoice.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
         /* ----- Expenses ---------------------------------------------------- */
 
         array(
@@ -1109,6 +1181,24 @@ function erp_api_routes()
         ),
 
         array(
+            'id' => 'erp.stock.minimums',
+            'method' => 'POST',
+            'path' => '/erp/stock/minimums',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_stock_minimums_save',
+            'dry_run' => true,
+            'returns' => array('changed' => 'integer', 'levels' => 'ErpStockLevel[]'),
+            'summary' => 'Set minimum stock',
+            'description' => 'Sets the minimum of each product named, the way the panel\'s minimum stock screen does: a whole number of pieces, 0 for none. A product on sale at or below its minimum is in the ERP\'s low stock notice and reorder list. Only products that track stock take a minimum. Read them with GET /erp/stock/levels. changed counts the products whose minimum moved; levels is each product named, as it stands now.',
+            'params' => array(
+                array('name' => 'minimums', 'in' => 'body', 'type' => 'list', 'max_items' => 500, 'required' => true, 'of' => array(
+                    'product_id' => 'integer',
+                    'minimum' => 'integer',
+                ), 'description' => 'One or more of {product_id, minimum}; each product once.'),
+            ),
+        ),
+
+        array(
             'id' => 'erp.stock.moves',
             'method' => 'GET',
             'path' => '/erp/stock/moves',
@@ -1150,6 +1240,72 @@ function erp_api_routes()
             'returns' => 'ErpStockCount',
             'summary' => 'One stock count with its lines',
             'description' => 'The count and every product on it. stock_before is what the store had when the count was applied and difference is counted less that; both are null until the count is applied. stock_now is the product\'s count today.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.stock_counts.create',
+            'method' => 'POST',
+            'path' => '/erp/stock-counts',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_stock_counts_create',
+            'dry_run' => true,
+            'returns' => 'ErpStockCount',
+            'summary' => 'Start a stock count',
+            'description' => 'Opens an empty count. Nothing changes in the store until the count is applied: add what is on the shelves with POST /erp/stock-counts/{id}/items, then POST /erp/stock-counts/{id}/apply.',
+            'params' => array(
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => '"Count of" and today\'s date when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.stock_counts.items',
+            'method' => 'POST',
+            'path' => '/erp/stock-counts/{id}/items',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_stock_counts_items',
+            'dry_run' => true,
+            'returns' => 'ErpStockCount',
+            'summary' => 'Count products on an open count',
+            'description' => 'What was found on the shelves, as the panel\'s scanner records it, taken in order and all together or not at all. Each item names its product by product_id or by code (a barcode or the product code) and says what to do: add (the default) adds quantity to what has been counted, 1 when left out, the way one scan does; set makes quantity the count; remove takes the product off the count. Only products that track stock are counted. The store\'s stock does not change until the count is applied. A count that is applied or cancelled answers 409 stock_count_not_open. The answer is the whole count.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'items', 'in' => 'body', 'type' => 'list', 'max_items' => 500, 'required' => true, 'of' => array(
+                    'product_id' => 'integer',
+                    'code' => 'string',
+                    'quantity' => 'integer',
+                    'mode' => 'string',
+                ), 'description' => 'One or more of {product_id or code, quantity, mode}. mode is add, set or remove. quantity is a whole number of pieces: from 1 to add, from 0 to set; it is not read for remove.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.stock_counts.apply',
+            'method' => 'POST',
+            'path' => '/erp/stock-counts/{id}/apply',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_stock_counts_apply',
+            'dry_run' => true,
+            'returns' => 'ErpStockCount',
+            'summary' => 'Apply a stock count',
+            'description' => 'Sets the store\'s stock of every product on the count to what was counted, at once; products not on the count are left as they are. It cannot be undone: what each product had before is kept on the count as stock_before, and the count can no longer change. A product counted at 0 goes out of stock. A rehearsal with X-Dry-Run tells how many products would change. A count with nothing on it answers 409 stock_count_empty, one already applied or cancelled 409 stock_count_not_open. Announced as erp.stock_count.applied.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.stock_counts.cancel',
+            'method' => 'POST',
+            'path' => '/erp/stock-counts/{id}/cancel',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_stock_counts_cancel',
+            'dry_run' => true,
+            'returns' => 'ErpStockCount',
+            'summary' => 'Cancel a stock count',
+            'description' => 'Leaves an open count without applying it: no stock changes, and the count can no longer change. A count already applied or cancelled answers 409 stock_count_not_open.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),

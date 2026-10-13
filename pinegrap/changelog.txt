@@ -453,6 +453,21 @@
          yetkisi gerekir; e-Belge sağlayıcısına gönderim
          paneldeki fatura ekranında kalır.
 
+  [YENİ] ERP irsaliyeleri, stok sayımları ve minimum stok
+         API'den ve MCP'den yazılıyor. İrsaliye: kesilmiş
+         faturadan, siparişten ya da cari ve satırlarla yazma
+         (POST /erp/waybills; gönderilen satırlar kısmi sevkiyat
+         olur), iptal ve faturalama. Stok sayımı: başlatma,
+         barkod, ürün kodu ya da ürün numarasıyla sayma
+         (ekleme, sayıyı belirleme, sayımdan çıkarma), uygulama
+         ve iptal. Minimum stok: POST /erp/stock/minimums ile
+         toplu ayar. Geri alınamayan adımlar (irsaliye iptali,
+         sayımın uygulanması) önce X-Dry-Run ile denenebilir.
+         Yeni web kancası olayları: erp.waybill.cancelled ve
+         erp.stock_count.applied; ikisi de panelden yapılınca
+         da yayılır ve denetim izine düşer. erp:write yetkisi
+         gerekir.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
