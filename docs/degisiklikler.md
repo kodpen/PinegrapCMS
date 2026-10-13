@@ -84,6 +84,44 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: MCP sunucusu sitenin kök adresinde (`site.com/mcp.php`) (2026-10-13)
+
+**Neden.** Erdal dev.pinegrap.com'da Claude'a `https://dev.pinegrap.com/mcp.php`
+verdi ve 404 aldı. Dosya yazılım klasöründe (`pinegrap/mcp.php`) durduğu için
+gerçek adres `.../pinegrap/mcp.php` idi; kökteki `mcp.php` dosya olmadığından
+yönlendiriciye düşüyor, yönlendirici de onu sayfa adı sanıp sitenin 404
+sayfasını veriyordu (sandbox'ta yeniden üretildi). Bir kişinin yapay zekâ
+uygulamasına yazacağı adres `site.com/mcp.php`'dir.
+
+**Ne değişti.**
+- `router.php`: `.well-known` bloğunun hemen ardından `mcp.php` adı
+  `pinegrap/mcp.php`'ye devredilir (oauth.php'nin keşif belgeleriyle aynı yol).
+  Apache ve IIS'te ek kural gerekmez; mevcut "dosya değilse yönlendiriciye"
+  kuralı yeter.
+- `pg_oauth_resource_addresses()`: her kaynağın cevap verdiği adresler; ilki
+  sitenin verdiği adres. MCP için kök adres önce, yazılım klasöründeki adres
+  ikinci. `pg_oauth_resources()` ilk adresleri döndürür, panel artık kök adresi
+  gösterir.
+- İstemci (Claude, MCP SDK'ları) korumalı kaynak belgesindeki `resource`'un
+  bağlandığı adresle aynı olduğunu denetler. Bu yüzden iki adres de kendi
+  belgesini alır: 401'deki `resource_metadata` isteğin geldiği adrese göre
+  kurulur (`pg_oauth_request_resource()`, IIS için `HTTP_X_ORIGINAL_URL`
+  önce okunur), `/.well-known/oauth-protected-resource/<yol>` de istenen
+  adresi `resource` olarak döndürür.
+- Jeton ucu kaynağı yazımla değil anahtarla karşılaştırır: bir adres için
+  verilmiş jeton diğerinde de geçer, `integration.php` ile karşılıklı ret
+  sürer.
+
+**Doğrulama.** Sandbox'ta (`php -S` + Apache benzeri yönlendirme): düzeltmeden
+önce kök `POST /mcp.php` → sitenin 404 sayfası; sonra iki adreste 401 ve doğru
+`resource_metadata`, iki belge de kendi `resource`'u ile; kök adres için ve
+klasör adresi için alınan jetonlar iki adreste `tools/list` / `tools/call`
+çalıştırdı; MCP jetonu `integration.php`'de, entegrasyon jetonu kök MCP'de
+401; `GET /mcp.php` 405; bilinmeyen sayfa hâlâ 404. IIS'te ve gerçek bir
+Claude bağlayıcısıyla denenmedi.
+
+---
+
 ## 2026.4.10 — Dış API: MCP sunucusu (`mcp.php`) ve istemci kimlik belgesi (10.71) (2026-10-13)
 
 **Neden.** OAuth Faz A'nın amacı buydu: Claude, ChatGPT ya da bir editörün

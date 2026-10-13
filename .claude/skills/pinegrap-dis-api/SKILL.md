@@ -129,6 +129,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `api_fail()` ile çıkar, `api_send_hook()` cevabı JSON-RPC'ye çevirir.
   İşleyici `$_SERVER`/`php://input` okumamalı, `api_request_input()` ve
   `api_header()` kullanmalı (MCP bunları ayarlayıcıyla doldurur).
+- Verilen adres sitenin kökü: `site.com/mcp.php` (yönlendirici
+  `pinegrap/mcp.php`'ye devreder). Bir kaynağın birden çok adresi
+  `pg_oauth_resource_addresses()`'tadır; istemci belgedeki `resource`'u
+  bağlandığı adresle karşılaştırdığı için her adres kendi belgesini alır.
+  Kaynak karşılaştırması yazımla değil `pg_oauth_resource_key()` ile yapılır.
 - İki protokol kuşağı: 2026-07-28 (oturumsuz, `Mcp-Method`/`Mcp-Name`
   başlıkları zorunlu) ve `initialize` ile açılan 2025-xx. Oturum kimliği
   verilmez, akış (SSE) yok.

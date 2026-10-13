@@ -128,8 +128,10 @@ kimliği verilmez, eski sürüm buna izin veriyor), `MCP-Protocol-Version:
 2026-07-28` gelirse yeni yol (`Mcp-Method` / `Mcp-Name` başlıkları gövdeyle
 karşılaştırılır, uyuşmazsa 400 / -32020).
 
-**Uç.** `pinegrap/mcp.php` — tek adres, PATH_INFO yok, yeniden yazma kuralı
-gerekmez. Kaynak listesine `mcp` olarak girer (RFC 8707): `integration.php`
+**Uç.** `pinegrap/mcp.php` — PATH_INFO yok. Site onu kök adreste verir
+(`site.com/mcp.php`, yönlendirici dosyaya devreder); klasördeki adres de
+çalışır, iki adres de kendi korumalı kaynak belgesini alır
+(`pg_oauth_resource_addresses()`). Kaynak listesine `mcp` olarak girer (RFC 8707): `integration.php`
 için verilmiş jeton burada, burası için verilmiş jeton orada geçmez. 401'de
 `WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource/<yol>/mcp.php"`.
 GET/DELETE 405; bildirimler 202; tarayıcı istemcileri için CORS.

@@ -199,17 +199,40 @@ function pg_oauth_endpoint($name) {
 
 }
 
-// The resources a token can be issued for (RFC 8707), by a short key. Each is
-// the address its requests are made to; a token issued for one is refused by
-// the others.
-function pg_oauth_resources() {
+// The addresses each resource answers on, by a short key; the first is the
+// one the site gives out. The MCP server is given out at the site's own
+// address - site.com/mcp.php is what a person types into an AI application -
+// which the router hands to the file in the software directory, where it
+// answers too. A client checks that the resource its metadata names is the
+// address it connected to, so either address is a resource of its own name
+// with the same key.
+function pg_oauth_resource_addresses() {
 
-	$base = pg_oauth_scheme() . pg_oauth_host() . PATH . SOFTWARE_DIRECTORY;
+	$site = pg_oauth_scheme() . pg_oauth_host() . PATH;
+
+	$base = $site . SOFTWARE_DIRECTORY;
 
 	return array(
-		'integration' => $base . '/integration.php',
-		'mcp'         => $base . '/mcp.php'
+		'integration' => array($base . '/integration.php'),
+		'mcp'         => array($site . 'mcp.php', $base . '/mcp.php')
 	);
+
+}
+
+// The resources a token can be issued for (RFC 8707), by a short key, each at
+// the address the site gives out. A token issued for one is refused by the
+// others.
+function pg_oauth_resources() {
+
+	$resources = array();
+
+	foreach (pg_oauth_resource_addresses() as $key => $addresses) {
+
+		$resources[$key] = $addresses[0];
+
+	}
+
+	return $resources;
 
 }
 
@@ -224,11 +247,15 @@ function pg_oauth_resource_key($resource) {
 
 	}
 
-	foreach (pg_oauth_resources() as $key => $url) {
+	foreach (pg_oauth_resource_addresses() as $key => $addresses) {
 
-		if (strcasecmp(rtrim($url, '/'), $resource) === 0) {
+		foreach ($addresses as $url) {
 
-			return $key;
+			if (strcasecmp(rtrim($url, '/'), $resource) === 0) {
+
+				return $key;
+
+			}
 
 		}
 
@@ -238,13 +265,11 @@ function pg_oauth_resource_key($resource) {
 
 }
 
-// Where a resource's metadata is read (RFC 9728 3.1): the well-known name put
-// in front of the resource's path. The site's router answers it, which is why
-// it is built on the site's own address - at the root of the host on a site
-// installed there, under the installation's folder otherwise, where the
-// router can still reach it. The resource names this address in its 401
-// answers, so a client never has to work it out.
-function pg_oauth_resource_metadata_url($key) {
+// The address of a resource this request was made to, or the one the site
+// gives out when the request came in some other way. The router is reached
+// through a rewrite, so IIS's original address is read first, as the router
+// reads it.
+function pg_oauth_request_resource($key) {
 
 	$resources = pg_oauth_resources();
 
@@ -254,31 +279,84 @@ function pg_oauth_resource_metadata_url($key) {
 
 	}
 
-	$path = parse_url($resources[$key], PHP_URL_PATH);
+	$uri = '';
+
+	foreach (array('HTTP_X_ORIGINAL_URL', 'HTTP_X_REWRITE_URL', 'REQUEST_URI') as $name) {
+
+		if (isset($_SERVER[$name]) && is_string($_SERVER[$name]) && ($_SERVER[$name] !== '')) {
+
+			$uri = $_SERVER[$name];
+
+			break;
+
+		}
+
+	}
+
+	$path = (string)parse_url($uri, PHP_URL_PATH);
+
+	if ($path !== '') {
+
+		$address = pg_oauth_scheme() . pg_oauth_host() . $path;
+
+		if (pg_oauth_resource_key($address) === $key) {
+
+			return rtrim($address, '/');
+
+		}
+
+	}
+
+	return $resources[$key];
+
+}
+
+// Where a resource's metadata is read (RFC 9728 3.1): the well-known name put
+// in front of the resource's path. The site's router answers it, which is why
+// it is built on the site's own address - at the root of the host on a site
+// installed there, under the installation's folder otherwise, where the
+// router can still reach it. The resource names this address in its 401
+// answers, so a client never has to work it out.
+function pg_oauth_resource_metadata_url($resource) {
+
+	if (pg_oauth_resource_key($resource) === '') {
+
+		return '';
+
+	}
+
+	$path = parse_url($resource, PHP_URL_PATH);
 
 	return pg_oauth_scheme() . pg_oauth_host() . PATH . '.well-known/oauth-protected-resource' . (is_string($path) ? $path : '');
 
 }
 
-// Which resource a request for /.well-known/oauth-protected-resource<suffix>
-// is about. No suffix is the API, the one resource every site has.
+// Which resource address a request for
+// /.well-known/oauth-protected-resource<suffix> is about, or ''. No suffix is
+// the API, the one resource every site has.
 function pg_oauth_resource_for_suffix($suffix) {
 
 	$suffix = '/' . trim((string)$suffix, '/');
 
 	if ($suffix === '/') {
 
-		return 'integration';
+		$resources = pg_oauth_resources();
+
+		return $resources['integration'];
 
 	}
 
-	foreach (pg_oauth_resources() as $key => $url) {
+	foreach (pg_oauth_resource_addresses() as $addresses) {
 
-		$path = parse_url($url, PHP_URL_PATH);
+		foreach ($addresses as $url) {
 
-		if (is_string($path) && (strcasecmp(rtrim($path, '/'), $suffix) === 0)) {
+			$path = parse_url($url, PHP_URL_PATH);
 
-			return $key;
+			if (is_string($path) && (strcasecmp(rtrim($path, '/'), $suffix) === 0)) {
+
+				return $url;
+
+			}
 
 		}
 
@@ -311,7 +389,7 @@ function pg_oauth_bearer_challenge() {
 
 	}
 
-	$url = pg_oauth_resource_metadata_url(defined('PG_OAUTH_RESOURCE') ? PG_OAUTH_RESOURCE : 'integration');
+	$url = pg_oauth_resource_metadata_url(pg_oauth_request_resource(defined('PG_OAUTH_RESOURCE') ? PG_OAUTH_RESOURCE : 'integration'));
 
 	if ($url === '') {
 
@@ -409,17 +487,17 @@ function pg_oauth_metadata() {
 
 }
 
-// RFC 9728.
-function pg_oauth_resource_metadata($key) {
+// RFC 9728, for one of a resource's addresses.
+function pg_oauth_resource_metadata($resource) {
 
-	$resources = pg_oauth_resources();
+	$key = pg_oauth_resource_key($resource);
 
 	$app = pg_oauth_app();
 
 	$name = defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== '') ? ORGANIZATION_NAME : pg_oauth_host();
 
 	return array(
-		'resource'                 => $resources[$key],
+		'resource'                 => rtrim($resource, '/'),
 		'authorization_servers'    => array(pg_oauth_issuer()),
 		'scopes_supported'         => ($app !== null) ? pg_oauth_ceiling($app) : array(),
 		'bearer_methods_supported' => array('header'),
