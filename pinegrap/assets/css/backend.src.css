@@ -16222,6 +16222,49 @@ a.ws-form-card-head:hover span {
   font-size: .78rem;
   color: var(--bs-secondary-color);
 }
+.ws-approval-guest {
+  font-size: .68rem;
+  font-weight: 500;
+}
+/* ── Workspace: the customer asked to approve a task (assets/js/workspace_task_approval.js) ── */
+.ws-task-approvals {
+  margin: 1rem 0;
+  padding-top: .75rem;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-approvals-item {
+  margin-top: .5rem;
+  padding: .5rem .6rem;
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: .5rem;
+}
+.ws-task-approvals-item-head {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .3rem;
+  font-size: .85rem;
+}
+.ws-task-approvals-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: .2rem;
+  font-size: .82rem;
+}
+.ws-task-approvals-person.ws-approval-approved .ws-approval-state {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-task-approvals-person.ws-approval-rejected .ws-approval-state {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-task-approvals-form {
+  margin-top: .5rem;
+  padding: .6rem;
+  border-radius: .5rem;
+  background: var(--bs-tertiary-bg);
+}
 /* ── Workspace: read receipts (assets/js/workspace_acks.js) ── */
 .ws-ack {
   display: flex;

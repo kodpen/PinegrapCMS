@@ -717,9 +717,11 @@ function ws_task_item_add($viewer, $task, $text)
  * @param array  $task
  * @param string $body
  * @param int    $app_id an application writing for its owner (0 = the person)
+ * @param bool   $ask    false: the note never calls an assistant, whatever it
+ *                       says (a note that quotes somebody outside the team)
  * @return array ok, error, note_id
  */
-function ws_task_note_add($viewer, $task, $body, $app_id = 0)
+function ws_task_note_add($viewer, $task, $body, $app_id = 0, $ask = true)
 {
     if (!ws_task_work_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'), 'note_id' => 0);
@@ -765,7 +767,7 @@ function ws_task_note_add($viewer, $task, $body, $app_id = 0)
 
     // A person's note that calls an assistant by name asks it about the task
     // (delegation.php); an application's note never does.
-    $notice = (($app_id <= 0) && function_exists('ws_task_delegation_from_note')) ? ws_task_delegation_from_note($viewer, $task, $clean['body']) : '';
+    $notice = ($ask && ($app_id <= 0) && function_exists('ws_task_delegation_from_note')) ? ws_task_delegation_from_note($viewer, $task, $clean['body']) : '';
 
     return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'notice' => $notice);
 }

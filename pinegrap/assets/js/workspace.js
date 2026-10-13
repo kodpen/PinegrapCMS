@@ -2789,6 +2789,11 @@
                 body.appendChild(window.PGWsTaskLinks.drawer(task, partHelpers(), function () { self.changed(); }));
             }
 
+            // The customer asked to approve the task (workspace_task_approval.js).
+            if (task && task.approvals && window.PGWsTaskApproval) {
+                body.appendChild(window.PGWsTaskApproval.drawer(task, partHelpers()));
+            }
+
             // Notes: anyone who can see the task may add one.
             self.notesBox = (task && task.work) ? el('div', 'ws-task-notes') : null;
 
@@ -4203,7 +4208,8 @@
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
-            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG
+            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG,
+            openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
         };
     }
 
