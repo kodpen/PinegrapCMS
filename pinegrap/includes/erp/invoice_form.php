@@ -89,6 +89,7 @@ function erp_invoice_form_line($source, $stored = false)
             'tax2_rate' => ((float) ($source['tax2_rate'] ?? 0) > 0) ? $trim_number($source['tax2_rate'], 3) : '',
             'withholding_code' => (string) ($source['withholding_code'] ?? ''),
             'withholding_rate' => ((float) ($source['withholding_rate'] ?? 0) > 0) ? $trim_number($source['withholding_rate'], 3) : '',
+            'source_line' => (string) ($source['source_line'] ?? ''),
         );
     }
 
@@ -106,6 +107,7 @@ function erp_invoice_form_line($source, $stored = false)
         'tax2_rate' => trim((string) ($source['tax2_rate'] ?? '')),
         'withholding_code' => trim((string) ($source['withholding_code'] ?? '')),
         'withholding_rate' => trim((string) ($source['withholding_rate'] ?? '')),
+        'source_line' => trim((string) ($source['source_line'] ?? '')),
     );
 }
 
@@ -162,7 +164,9 @@ function erp_invoice_form_lines($liveform, $stored_rows = array())
  *
  * The same markup serves the rendered rows and the <template> the script
  * clones; the template is rendered with the index placeholder the script
- * replaces.
+ * replaces. source_line rides along unseen: on a purchase invoice line made
+ * from a purchase order it names the order line, on an order line it is the
+ * line's own key (includes/erp/purchase_orders.php), and every save keeps it.
  *
  * @param liveform   $liveform
  * @param int|string $index  Row index, or the placeholder for the template
@@ -208,6 +212,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                 <td class="text-body-secondary align-middle text-nowrap" data-erp-line-no>' . (is_int($index) ? ($index + 1) : '') . '</td>
                 <td class="position-relative">
                     <input type="hidden" name="' . h($name('product_id')) . '" value="' . (int) $line['product_id'] . '" data-erp-product-id />
+                    <input type="hidden" name="' . h($name('source_line')) . '" value="' . h((string) ($line['source_line'] ?? '')) . '" />
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => $id('product_search'), 'name' => $name('product_name'),
                         'value' => h($line['product_name']),
@@ -277,17 +282,21 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
  * The cards of the typed invoice form.
  *
  * @param liveform $liveform
- * @param array    $options  lines (display rows), invoice_id
+ * @param array    $options  lines (display rows), invoice_id, quote (bool),
+ *                           valid_days, purchase_order (bool)
  * @return string  HTML
  */
 function erp_invoice_form_cards($liveform, $options = array())
 {
     $lines = isset($options['lines']) ? (array) $options['lines'] : erp_invoice_form_lines($liveform);
     // A quote (includes/erp/quotes.php) is always a sale and runs until a
-    // date rather than falling due on one.
+    // date rather than falling due on one. A purchase order
+    // (includes/erp/purchase_orders.php) is always a purchase, has the day
+    // the goods are expected instead, and no supplier's bill yet.
     $is_quote = !empty($options['quote']);
-    $direction = $is_quote ? 'sales' : (string) $liveform->get_field_value('direction');
-    $is_purchase = ($direction === 'purchase');
+    $is_order = !empty($options['purchase_order']) && !$is_quote;
+    $direction = $is_quote ? 'sales' : ($is_order ? 'purchase' : (string) $liveform->get_field_value('direction'));
+    $is_purchase = ($direction === 'purchase') && !$is_order;
 
     $account_options = array();
     $account_options[lang('Choose an account')] = '';
@@ -377,18 +386,21 @@ function erp_invoice_form_cards($liveform, $options = array())
          data-text-max-lines="' . lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)) . '">
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-            ' . ($is_quote ? lang('Sales quote') : lang('Invoice')) . '
+            ' . ($is_quote ? lang('Sales quote') : ($is_order ? lang('Purchase order') : lang('Invoice'))) . '
         </div>
         <div class="card-body">
             <div class="row">
-                ' . ($is_quote ? '<input type="hidden" name="direction" value="sales" />' : '<div class="col-12 col-lg-3 my-2">
+                ' . ($is_quote ? '<input type="hidden" name="direction" value="sales" />' : '') . ($is_order
+                    // The id lets the line editor read the side it prices on
+                    // (the last purchase price, no campaign).
+                    ? '<input type="hidden" id="direction" name="direction" value="purchase" />' : '') . (($is_quote || $is_order) ? '' : '<div class="col-12 col-lg-3 my-2">
                     <label for="direction" class="form-label">' . lang('Direction') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'direction', 'name' => 'direction',
                         'class' => 'form-select', 'options' => $direction_options)) . '
                 </div>') . '
-                <div class="col-12 ' . ($is_quote ? 'col-lg-9' : 'col-lg-6') . ' my-2">
-                    <label for="account_id" class="form-label">' . lang('Account') . '</label>
+                <div class="col-12 ' . (($is_quote || $is_order) ? 'col-lg-9' : 'col-lg-6') . ' my-2">
+                    <label for="account_id" class="form-label">' . ($is_order ? lang('Supplier') : lang('Account')) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
                         'class' => 'form-select select2', 'options' => $account_options)) . '
@@ -404,18 +416,19 @@ function erp_invoice_form_cards($liveform, $options = array())
             </div>
             <div class="row">
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
-                    <label for="due_date" class="form-label">' . ($is_quote ? lang('Valid until') : lang('Due Date')) . '</label>
+                    <label for="due_date" class="form-label">' . ($is_quote ? lang('Valid until') : ($is_order ? lang('Expected delivery') : lang('Due Date'))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'due_date', 'name' => 'due_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . ($is_quote
                         ? h(lang(array('string' => 'Leave empty for {var:1} days from the date.', 'vars' => (int) ($options['valid_days'] ?? 30))))
-                        : lang('Leave empty for the account\'s payment term, or the store default.')) . '</div>
+                        : ($is_order ? lang('The day the goods should arrive; leave empty when none was agreed.')
+                        : lang('Leave empty for the account\'s payment term, or the store default.'))) . '</div>
                 </div>
                 ' . $output_fx . '
             </div>
-            <div class="row' . ($is_purchase ? '' : ' d-none') . '" data-erp-purchase-only>
+            ' . ($is_order ? '' : '<div class="row' . ($is_purchase ? '' : ' d-none') . '" data-erp-purchase-only>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="supplier_invoice_no" class="form-label">' . lang('Supplier Invoice Number') . '</label>
                     ' . $liveform->output_field(array(
@@ -430,7 +443,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
-            </div>
+            </div>') . '
             <div class="row">
                 <div class="col-12 my-2">
                     <label for="notes" class="form-label">' . lang('Notes') . '</label>
@@ -680,6 +693,7 @@ function erp_invoice_form_read($liveform, $user)
                 'tax2_rate' => erp_fx_rate_in($line['tax2_rate'] ?? ''),
                 'withholding_code' => trim((string) ($line['withholding_code'] ?? '')),
                 'withholding_rate' => erp_fx_rate_in($line['withholding_rate'] ?? ''),
+                'source_line' => (string) ($line['source_line'] ?? ''),
             );
         }
     }

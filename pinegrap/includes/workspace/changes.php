@@ -2559,7 +2559,15 @@ function ws_change_log($what)
         $what = ws_ai_voice($what);
     }
 
-    log_activity($what, (string) ($_SESSION['sessionusername'] ?? ''));
+    $user = (string) ($_SESSION['sessionusername'] ?? '');
+
+    // Applied through the API (POST /workspace/changes/{id}/apply): the
+    // person signed in on the device.
+    if (($user === '') && function_exists('api_current_app')) {
+        $user = (string) (api_current_app()['owner']['username'] ?? '');
+    }
+
+    log_activity($what, $user);
 }
 
 /**

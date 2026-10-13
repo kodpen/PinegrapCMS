@@ -8331,6 +8331,7 @@ function get_tables() {
 		'erp_invoices',
 		'erp_parasut_log',
 		'erp_product_costs',
+		'erp_purchase_orders',
 		'erp_quotes',
 		'erp_reconciliation_log',
 		'erp_settlements',

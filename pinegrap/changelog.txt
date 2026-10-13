@@ -297,6 +297,19 @@
          bir göreve not ya da Çalışma Alanı notu eklemeyi
          önerebiliyor; uygulanınca kanala karar düşer.
 
+  [YENİ] Dış API ve MCP: görev asistana verilebiliyor ve
+         asistanın çalışması durdurulabiliyor; görev
+         listesi asistandaki görevlere göre süzülebiliyor;
+         görevde asistanın kim olduğu, şu an çalışıp
+         çalışmadığı ve onay bekleyen öneri sayısı
+         görünüyor. Asistanın görevdeki cevapları ve
+         önerileri görev numarasıyla okunuyor. Öneriler
+         telefondan ya da bağlanan bir uygulamadan, kişinin
+         kendi oturumuyla uygulanıp kenara ayrılabiliyor;
+         bir uygulama anahtarı (asistanın kendisi dahil)
+         öneri uygulayamaz. "Benim günüm" kişinin onayını
+         bekleyen önerileri de getiriyor.
+
   [ŞEMA] Görevler tablosuna asistan için üç kolon,
          asistan istekleri ve önerilen değişiklikler
          tablolarına görev kolonu eklenir.
@@ -326,6 +339,35 @@
 
   [ŞEMA] Takvim abonelikleri için yeni bir tablo
          oluşturulur.
+
+  ERP (ÖN MUHASEBE)
+  --------------------------------------------------------
+
+  [YENİ] Satın alma siparişi: ERP menüsündeki "Satın alma
+         siparişleri" ekranında tedarikçiden ne istendiği
+         yazılıyor. Sipariş alış faturasıyla aynı satır
+         editöründe ürün, miktar, fiyat, iskonto ve KDV
+         ile yazılır; beklenen teslim tarihi isteğe
+         bağlı. Kaydedilince kendi serisinden numara alır
+         (fatura serisinin sonuna P eklenir, ör. PGFP).
+         Para, stok ve vergi hareketi yaratmaz.
+
+  [YENİ] Sipariş PDF olarak açılıyor, indiriliyor ve
+         ekranından tedarikçiye PDF ekiyle e-postalanıyor;
+         e-posta gidince sipariş "Tedarikçiye gönderildi"
+         olur. Telefonla ya da kâğıtla verilen sipariş
+         elle işaretlenebiliyor. Sipariş iptal edilip
+         yeniden açılabiliyor ve kopyalanabiliyor; her adım
+         denetim izine yazılıyor. Liste durumla, numarayla
+         ya da tedarikçi adıyla süzülüyor; teslim tarihi
+         geçmiş bekleyen sipariş "Gecikti" ile işaretli.
+         Tedarikçi carisinin kartında "Satın alma
+         siparişleri" ve "Yeni satın alma siparişi"
+         düğmeleri var.
+
+  [ŞEMA] Satın alma siparişleri için yeni bir tablo
+         oluşturulur; faturalara sipariş, fatura
+         satırlarına sipariş satırı kolonu eklenir.
 
   DIŞ API
   --------------------------------------------------------
