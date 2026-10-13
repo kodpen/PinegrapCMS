@@ -121,6 +121,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `pg_oauth_client_resolve()` yalnız yetkilendirme ekranında ve kişi giriş
   yaptıktan sonra çeker (`api_http_request()`, 5 KB, yönlendirme yok);
   token ucu belgeyi çekmez, `pg_oauth_client()` ile kayıtlı kopyayı okur.
+- İstemciyi durdurmanın yolu `oauth_clients.status = 'disabled'`
+  (Uygulama Erişimi → "Bağlı uygulamalar" kartı): bağlantılar kalır, açılınca
+  geri gelir. Kapalı satırı süpürme silmez ve CIMD belgesi yeniden çekilmez;
+  silinirse istemci kendini yeniden kaydeder. Kişi kendi bağlantılarını
+  `connected_apps.php`'de görür ve sonlandırır; bağlantıyı formdan gelen
+  kimlikle kapatan kod kişiye ait olduğunu sorguda denetler
+  (`pg_oauth_connection_end()`).
 - İstemci uyumu (Cursor, VS Code, Gemini CLI, Codex, mcp-remote): kural
   değiştirirken `tests/oauth_test.php`'deki gerçek kayıt gövdelerini koru.
   Kayıt fazla `grant_types`/`response_types`'ı reddetmez, yerine

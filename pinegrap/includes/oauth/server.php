@@ -564,7 +564,9 @@ function pg_oauth_client_resolve($client_id) {
 
 	}
 
-	if (($row !== null) && ((int)$row['metadata_expires'] > time())) {
+	// A copy the operator turned off is not read again: it is refused
+	// whatever the document says now.
+	if (($row !== null) && (((int)$row['metadata_expires'] > time()) || ((string)$row['status'] !== 'active'))) {
 
 		return array('client' => $row, 'error' => '');
 
@@ -738,7 +740,9 @@ function pg_oauth_codes_sweep() {
 // Removes dynamically registered clients and copies of metadata documents
 // that never connected, or have not connected for a month, together with
 // nothing else: a client that holds a connection is in use by definition and
-// is kept.
+// is kept. So is one the operator turned off: the row is the record of that
+// decision, and a metadata client removed here would be read back in, switched
+// on, the next time it asked.
 function pg_oauth_clients_sweep() {
 
 	if (!pg_oauth_ready()) {
@@ -752,7 +756,155 @@ function pg_oauth_clients_sweep() {
 	db("DELETE oauth_clients FROM oauth_clients
 		LEFT JOIN api_devices ON api_devices.oauth_client_id = oauth_clients.id
 		WHERE oauth_clients.registered_by IN ('dynamic', 'metadata')
+		AND oauth_clients.status = 'active'
 		AND GREATEST(oauth_clients.last_used_timestamp, oauth_clients.created_timestamp) < '" . $before . "'
 		AND api_devices.id IS NULL");
+
+}
+
+/* ---------------------------------------------------------------------------
+   The panel: the clients the operator looks after, and the connections a
+   person looks after for themselves
+   --------------------------------------------------------------------------- */
+
+// Every registered client with the number of connections it holds, the
+// clients still in use first. Empty before the schema is there.
+function pg_oauth_clients_overview($limit = 200) {
+
+	if (!pg_oauth_ready()) {
+
+		return array();
+
+	}
+
+	$rows = db_items("SELECT oauth_clients.id, oauth_clients.client_id, oauth_clients.name,
+			oauth_clients.client_uri, oauth_clients.redirect_uris, oauth_clients.registered_by,
+			oauth_clients.status, oauth_clients.software_id, oauth_clients.software_version,
+			oauth_clients.created_timestamp, oauth_clients.last_used_timestamp,
+			COUNT(api_devices.id) AS connections
+		FROM oauth_clients
+		LEFT JOIN api_devices ON api_devices.oauth_client_id = oauth_clients.id
+		GROUP BY oauth_clients.id
+		ORDER BY (COUNT(api_devices.id) > 0) DESC,
+			GREATEST(oauth_clients.last_used_timestamp, oauth_clients.created_timestamp) DESC
+		LIMIT " . max(1, (int)$limit));
+
+	return is_array($rows) ? $rows : array();
+
+}
+
+// One person's connections, the most recently used first, each with the
+// client it belongs to. A connection whose client row is gone is listed too,
+// under no name, so that it can still be ended.
+function pg_oauth_connections_of_user($user_id) {
+
+	$user_id = (int)$user_id;
+
+	if (($user_id < 1) || !pg_oauth_ready()) {
+
+		return array();
+
+	}
+
+	$rows = db_items("SELECT api_devices.id, api_devices.scopes, api_devices.resource,
+			api_devices.created_timestamp, api_devices.last_used_timestamp, api_devices.last_used_ip,
+			oauth_clients.id AS client_row_id, oauth_clients.client_id, oauth_clients.name,
+			oauth_clients.registered_by, oauth_clients.status
+		FROM api_devices
+		LEFT JOIN oauth_clients ON oauth_clients.id = api_devices.oauth_client_id
+		WHERE api_devices.user_id = '" . $user_id . "'
+		AND api_devices.oauth_client_id > 0
+		ORDER BY GREATEST(api_devices.last_used_timestamp, api_devices.created_timestamp) DESC");
+
+	return is_array($rows) ? $rows : array();
+
+}
+
+// Ends one of a person's connections. Only a connection that belongs to them
+// and is an OAuth connection: the id comes from a form. Answers the client's
+// name, or null when there was nothing of theirs to end.
+function pg_oauth_connection_end($user_id, $device_id) {
+
+	$row = db_item("SELECT api_devices.id, oauth_clients.name
+		FROM api_devices
+		LEFT JOIN oauth_clients ON oauth_clients.id = api_devices.oauth_client_id
+		WHERE api_devices.id = '" . (int)$device_id . "'
+		AND api_devices.user_id = '" . (int)$user_id . "'
+		AND api_devices.oauth_client_id > 0
+		LIMIT 1");
+
+	if (!is_array($row) || empty($row)) {
+
+		return null;
+
+	}
+
+	api_device_revoke((int)$row['id']);
+
+	return ((string)$row['name'] !== '') ? (string)$row['name'] : lang('Unnamed application');
+
+}
+
+// Turns a client off or back on. While it is off it cannot start a
+// connection, its refresh tokens are refused at the token endpoint and its
+// access tokens on every request (api_device_oauth_check()); its connections
+// are kept, so turning it back on gives them back without anybody agreeing
+// again.
+function pg_oauth_client_set_status($client_row_id, $active) {
+
+	db("UPDATE oauth_clients SET status = '" . ($active ? 'active' : 'disabled') . "'
+		WHERE id = '" . (int)$client_row_id . "'");
+
+}
+
+// Removes a client with every connection it holds and the codes waiting for
+// it. An application that registered itself may register again; one that is
+// to stay out is turned off instead.
+function pg_oauth_client_delete($client_row_id) {
+
+	$client_row_id = (int)$client_row_id;
+
+	if ($client_row_id < 1) {
+
+		return;
+
+	}
+
+	foreach (db_values("SELECT id FROM api_devices WHERE oauth_client_id = '" . $client_row_id . "'") as $device_id) {
+
+		api_device_revoke((int)$device_id);
+
+	}
+
+	db("DELETE FROM oauth_codes WHERE client_id = '" . $client_row_id . "'");
+
+	db("DELETE FROM oauth_clients WHERE id = '" . $client_row_id . "'");
+
+}
+
+// What a set of granted scopes lets an application do, one line per resource
+// in the order the permission screens use: array(label, 'Read only' or 'Read
+// and write' or 'Manage').
+function pg_oauth_scope_lines($scopes) {
+
+	$scopes = api_scopes_expand(is_array($scopes) ? $scopes : array());
+
+	$lines = array();
+
+	foreach (api_scope_groups() as $group) {
+
+		if (($group['write'] !== '') && in_array($group['write'], $scopes, true)) {
+
+			$lines[] = array(lang($group['label']), ($group['read'] === '') ? lang('Manage') : lang('Read and write'));
+
+		} elseif (($group['read'] !== '') && in_array($group['read'], $scopes, true)) {
+
+			$lines[] = array(lang($group['label']), lang('Read only'));
+
+		}
+
+	}
+
+	return $lines;
 
 }

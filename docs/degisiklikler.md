@@ -84,6 +84,90 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: OAuth'la bağlanan uygulamalar panelde (operatör kapatır/kaldırır, kişi kendi bağlantılarını sonlandırır) (2026-10-13)
+
+**Neden.** Faz A'dan beri kişi bir bağlantıyı ancak parolasını
+değiştirerek ya da her yerden çıkış yaparak sonlandırabiliyordu; bu, bütün
+oturumlarını ve bütün bağlantılarını birlikte kapatıyordu. Operatör
+bağlantıları OAuth uygulamasının Bağlantılar sekmesinde tek tek
+sonlandırabiliyordu, ama kendini kaydetmiş istemcileri göremiyor, birini
+durduramıyordu. `oauth_clients.status` alanı Faz A'dan beri vardı, onay
+ekranı ve token ucu `disabled`'ı reddediyordu, ama onu yazan bir ekran
+yoktu (`docs/_plan_oauth.md` Kapsam, Faz B).
+
+**Tasarım.**
+
+- **Kişinin ekranı: `connected_apps.php` (Bağlı uygulamalar).** Panel
+  hakkı olan herkes yalnız kendi OAuth bağlantılarını görür
+  (`pg_oauth_connections_of_user()`: `api_devices` satırları,
+  `oauth_client_id > 0`). Her kartta uygulamanın adı, kimlik adresi
+  (kimlik belgesiyle gelen istemcide), bağlandığı adres (MCP sunucusu ya da
+  API, `pg_oauth_resource_key()`), "Yapabilecekleri" listesi
+  (`pg_oauth_scope_lines()`: onaylanan kapsamlar, `api_scope_groups()`
+  sırasıyla "Salt okunur / Okuma ve yazma / Yönetim"), bağlanma tarihi, son
+  kullanım ve adres var. "Bağlantıyı sonlandır" yalnız o bağlantıyı
+  `api_device_revoke()` ile kapatır. "Tüm bağlantıları sonlandır" kişinin
+  diğer oturumlarına dokunmaz. Kimlik formdan gelir, bu yüzden
+  `pg_oauth_connection_end()` satırın kişiye ait ve OAuth bağlantısı
+  olduğunu sorguda denetler. Operatörün kapattığı uygulamanın kartında
+  "Site tarafından kapatıldı" yazar. Ekran kullanıcı menüsünde Hesabım'ın
+  altında, yalnız etkin bir OAuth uygulaması varken çıkar
+  (`output_header()`; sorgu `@mysqli_query` ile, db yardımcıları sorgu
+  hatasında ölümcül olduğu ve 10.70 öncesi şemada `kind` sütunu olmadığı
+  için). Yardım bağlantısı `api#mcp`.
+- **Operatörün kartı: Uygulama Erişimi → "Bağlı uygulamalar".** Bir OAuth
+  uygulaması varken ya da kayıtta istemci kaldıkça çıkar
+  (`pg_oauth_clients_overview()`: bağlantısı olanlar önce, sonra son
+  kullanıma göre). Her istemcide ad, kaynağı ("Kimliği: alan adı",
+  "Kendini kaydetti" ya da "Site ekledi"), durum, yanıtın gittiği yerler
+  (loopback adresler tek "Bu bilgisayardaki bir program" etiketi, diğerleri
+  `pg_oauth_redirect_destination()` metni), bağlantı sayısı, son kullanım,
+  kayıt tarihi ve yazılım sürümü var.
+  - **Kapat / Aç** (`pg_oauth_client_set_status()`): kapalı istemci yeni
+    bağlantı başlatamaz (onay ekranında ayrı bir "bu sitede kapatıldı"
+    mesajı), yenileme jetonu token ucunda `invalid_client`, erişim jetonu
+    her istekte 401 alır (`api_device_oauth_check()`, Faz A'dan beri).
+    Bağlantılar silinmez; açılınca kimseye yeniden sorulmadan geri gelir.
+  - **Kaldır** (`pg_oauth_client_delete()`): istemcinin bütün
+    bağlantılarını `api_device_revoke()` ile kapatır, bekleyen kodlarını ve
+    satırını siler. Kendini kaydeden istemci (açık dinamik kayıt) ve kimlik
+    belgesiyle gelen istemci tekrar gelebilir; kişiye onay ekranı yeniden
+    sorulur. Kartın notu bunu ve kalıcı durdurmanın "Kapat" olduğunu söyler.
+- **Kapatma kararı korunuyor.**
+  - `pg_oauth_clients_sweep()` kapalı istemciyi silmiyor. Satır kararın
+    kaydıdır; süpürme kimlik belgeli kapalı istemciyi silseydi istemci bir
+    sonraki gelişinde belgeden açık olarak yeniden okunurdu.
+  - `pg_oauth_client_resolve()` kapalı satırın belgesini süresi geçse de
+    yeniden çekmiyor; istemci belgeyi değiştirse de kapalı kalır.
+- Onay ekranının alt notu artık bağlantının "panelde hesap menünüzdeki Bağlı
+  uygulamalar ekranından" sonlandırılabileceğini söylüyor (önce parola ya da
+  her yerden çıkış diyordu).
+- Kapatma, açma, kaldırma ve sonlandırma etkinlik günlüğüne yazılıyor.
+  Türkçe metinler `tr.json`'da (34 anahtar).
+
+**Bilinen sınır.** İzin verilen istemci listesi (allowlist) yok: dinamik
+kayıt açık kalır, operatör istemciyi geldikten sonra kapatır. Onaylanmamış
+istemciyi baştan bekleten bir kip istenirse ayrı iş.
+
+**Doğrulama.** Sandbox'ta (PHP yerleşik sunucu, IIS kuralını taklit eden
+yönlendirici) Claude ve Cursor kayıt gövdeleriyle iki istemci bağlandı:
+- Kişinin ekranı iki kartı, kapsam satırlarını ve son kullanımı gösteriyor.
+  Masaüstü ve 390 px genişlikte görüntüsü alındı.
+- Kapat: aynı jetonla `mcp.php` 401, yenileme `invalid_client`, authorize
+  "kapatıldı" sayfası, kişinin kartında rozet. Aç: aynı jeton 200.
+- Kaldır: istemci, bağlantıları ve kodları silindi, jeton 401.
+- Başka kişinin `connection_id`'si yok sayıldı. Tek ve tümünü sonlandırma
+  çalıştı. Günlük satırları yazıldı.
+- `pg_oauth_clients_sweep()` kapalı ve eski istemciyi silmedi, açık ve eski
+  bağlantısızı sildi.
+- Menü bağlantısı yalnız etkin OAuth uygulaması varken çıktı. Yardım
+  bağlantısı `pinegrap.com/tr/api#mcp`. Sunucu logunda uyarı yok.
+
+**Doğrulanmayan.** Gerçek bir istemciyle (Claude, Cursor) kapatıp açma
+canlı denenmedi; dev.pinegrap.com'da denenmesi gerekiyor.
+
+---
+
 ## 2026.4.10 — Pano: kartlar tek istekte, yalnız görünürken yenileniyor; saat tarayıcıda (2026-10-13)
 
 **Belirti.** Erdal: "Welcome ekranı çok kasmaya başladı." Pano yavaş

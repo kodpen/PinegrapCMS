@@ -1233,6 +1233,16 @@ function output_header($properties = false)
         }
     }
 
+    // Connected applications (connected_apps.php), offered while the site has
+    // an OAuth application switched on: that is when a person can have one.
+    // Read without the db() helpers, which treat a failed query as fatal, so
+    // that a screen drawn before the upgrade has added the column still opens.
+    $output_connected_apps_link = '';
+    $oauth_on = @mysqli_query(db::$con, "SELECT 1 FROM api_apps WHERE kind = 'oauth' AND status = 'active' LIMIT 1");
+    if ($oauth_on && (mysqli_num_rows($oauth_on) > 0)) {
+        $output_connected_apps_link = '<li><a class="connected_apps_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connected_apps.php"' . $output_parent_target . '><i class="bi bi-plug"></i><span>' . lang('Connected applications') . '</span></a></li>';
+    }
+
     $output_home_page_link_url = '';
     // get home page(s)
     $query = "SELECT page_name FROM page WHERE page_home = 'yes'";
@@ -1959,6 +1969,7 @@ function output_header($properties = false)
                                     <i class="bi bi-person"></i><span>' . lang('My Account') . '</span>
                                 </a>
                             </li>
+                            ' . $output_connected_apps_link . '
                             ' . $output_start_page_link . '
                             <li class="pg-um-section-row"><span class="pg-um-section">' . lang('Help & Support') . '</span></li>
                             ' . $output_tour_link . '
