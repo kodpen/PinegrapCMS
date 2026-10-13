@@ -2199,7 +2199,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 				// get all products in the current product group
 				$products = get_products_in_product_group($product_group['id'], $multilevel);
 				// Get prices for products that have been discounted by offers, so we can include sale price in RSS.
-				$discounted_product_prices = get_discounted_product_prices();
+				$discounted_product_prices = get_discounted_product_prices(false);
 				// loop through all products in order to prepare RSS
 				foreach ($products as $product)
 				{

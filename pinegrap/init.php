@@ -690,6 +690,10 @@ define('ERP_FX_ENABLED', isset($row['erp_fx_enabled']) ? (int) $row['erp_fx_enab
 define('ERP_FX_CURRENCIES', $row['erp_fx_currencies'] ?? 'USD,EUR,GBP');
 define('ERP_FX_AUTO_DIFF', isset($row['erp_fx_auto_diff']) ? (int) $row['erp_fx_auto_diff'] : 1);
 define('ERP_DEFAULT_DUE_DAYS', isset($row['erp_default_due_days']) ? (int) $row['erp_default_due_days'] : 0);
+// The prices an account has agreed, shown and charged in the store to the
+// member whose contact the account is linked to (2026.4.10, 10.59;
+// pg_erp_member_prices()). Off by default.
+define('ERP_STOREFRONT_ACCOUNT_PRICES', !empty($row['erp_storefront_account_prices']));
 
 // Overdue receivable reminders; zero days is off. The switches default on so
 // that setting the days is the only step.

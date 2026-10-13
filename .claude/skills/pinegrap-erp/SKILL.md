@@ -358,7 +358,13 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   denemede otomatik gönderimin kapalı olduğunu önce kontrol et.
 - Cari fiyatı (`includes/erp/price_lists.php`): `erp_product_for_line()`
   sonucu `account_terms` taşır; editör yalnız satış yönünde uygular ve
-  kampanya iskontosunu üstüne eklemez. Siparişin fiyatına dokunmaz.
+  kampanya iskontosunu üstüne eklemez. Mağazada yalnız
+  `erp_storefront_account_prices` açıkken, oturumdaki üyenin carisine:
+  `pg_erp_member_prices()` vitrin haritasına (`get_discounted_product_prices()`)
+  ve sepete (`update_order_item_prices()`, `apply_offers_to_cart()`,
+  `get_best_offer_id()`) girer; kampanyayla kural `erp_storefront_price()`
+  (düşük olan geçer, eşitlikte kampanya). Mağaza fiyatına yeni bir yol
+  eklersen bu fonksiyondan geçir; beslemeler `get_discounted_product_prices(false)`.
 - Stok sayımı (`includes/erp/stock_counts.php`): uygulama tek işlemde
   `products.inventory_quantity` + `out_of_stock` yazar, `erp_stock_moves`'a
   dokunmaz (düzeltmenin maliyeti yok), önceki stok `system_before`'da kalır.
@@ -597,7 +603,7 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
 | Satın alma siparişleri | `includes/erp/purchase_orders.php`, `erp_purchase_orders.php`, `add_erp_purchase_order.php`, `edit_erp_purchase_order.php`, `get_erp_purchase_order_pdf.php`, `templates/purchase_order.html` |
 | Belge imzası (teklif) | `includes/erp/signatures.php` |
 | Tekrarlayan faturalar | `includes/erp/invoice_recurring.php`, `erp_invoice_recurrences.php`, `erp_invoice_recurring_job.php` |
-| Cari fiyatları | `includes/erp/price_lists.php`, `erp_account_prices.php` |
+| Cari fiyatları | `includes/erp/price_lists.php`, `erp_account_prices.php`; mağazada (ayar `erp_storefront_account_prices`): kural `erp_storefront_price()` (`storefront.php`), uygulama `pg_erp_member_prices()` (`includes/fn/ecommerce.php`) |
 | Stok sayımı | `includes/erp/stock_counts.php`, `erp_stock_counts.php`, `erp_stock_count.php` |
 | Çek ve senetler | `includes/erp/cheques.php`, `erp_cheques.php`, `erp_cheque.php` |
 | Banka ekstresi | `includes/erp/bank_import.php`, `erp_bank_statements.php`, `erp_bank_statement.php` |

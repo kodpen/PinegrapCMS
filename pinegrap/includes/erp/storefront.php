@@ -14,6 +14,11 @@
  * figures the receivables screens show; the balance is the ledger's, as the
  * statement letter states it.
  *
+ * And the prices the account has agreed (price_lists.php), as the store shows
+ * and charges them to that customer when config.erp_storefront_account_prices
+ * is on: erp_storefront_price() is the one rule, pg_erp_member_prices()
+ * (includes/fn/ecommerce.php) applies it to the catalogue and the cart.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -46,6 +51,70 @@ function erp_storefront_document_state($doc_type, $open, $days, $paid)
     }
 
     return ((int) $paid > 0) ? 'partial' : 'open';
+}
+
+/**
+ * The price an account's terms put on a product: its own price for the
+ * product, or the list price less the account's discount (the per-product
+ * discount, else the account-wide one, as erp_account_price_terms() gives
+ * it). An own price wins over a discount on the same row, as in the line
+ * editor.
+ *
+ * @param int|float  $list_price  products.price (kurus)
+ * @param array|null $terms       erp_account_price_terms() for the product
+ * @return int|null  Kurus, or null when the terms set nothing
+ */
+function erp_storefront_account_price($list_price, $terms)
+{
+    if (!is_array($terms)) {
+        return null;
+    }
+
+    if ((int) ($terms['price'] ?? 0) > 0) {
+        return (int) $terms['price'];
+    }
+
+    $rate = min(100.0, (float) ($terms['discount_rate'] ?? 0));
+
+    if ($rate <= 0) {
+        return null;
+    }
+
+    $list = (int) round((float) $list_price);
+
+    return max(0, $list - erp_apply_rate($list, $rate));
+}
+
+/**
+ * What a signed-in customer pays for a product in the store.
+ *
+ * The account's terms do not stack on the store's campaign: whichever of the
+ * two is lower is the price, the storefront form of the line editor's rule
+ * that agreed terms stand in for the campaign. A tie leaves the campaign. A
+ * price the terms would put at or above what the customer pays anyway is no
+ * price at all: the list price, or the campaign's, stands.
+ *
+ * With no terms the answer is the list price or the campaign's price exactly
+ * as given, so a store with the setting off prices bit for bit as before.
+ *
+ * @param int|float      $list_price   products.price (kurus)
+ * @param array|null     $terms        erp_account_price_terms() for the product
+ * @param int|float|null $offer_price  What the campaign makes it, null for none
+ * @return array  ['price' => int|float, 'source' => 'list' | 'offer' | 'account']
+ */
+function erp_storefront_price($list_price, $terms, $offer_price = null)
+{
+    $best = ($offer_price !== null)
+        ? array('price' => $offer_price, 'source' => 'offer')
+        : array('price' => $list_price, 'source' => 'list');
+
+    $account = erp_storefront_account_price($list_price, $terms);
+
+    if (($account !== null) && ($account < $best['price'])) {
+        return array('price' => $account, 'source' => 'account');
+    }
+
+    return $best;
 }
 
 /**

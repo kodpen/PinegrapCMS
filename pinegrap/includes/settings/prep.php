@@ -525,6 +525,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_invoice_mail_message = (string) ($row['erp_invoice_mail_message'] ?? '');
     // What a sale past a credit limit does (4.98).
     $erp_credit_ready = array_key_exists('erp_credit_limit_mode', $row);
+    // The prices agreed with an account, in the store (10.59).
+    $erp_storefront_prices_ready = array_key_exists('erp_storefront_account_prices', $row);
+    $erp_storefront_account_prices_checked = ((int) ($row['erp_storefront_account_prices'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in
     // kurus and shown in whole units of the base currency.

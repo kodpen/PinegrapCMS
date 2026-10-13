@@ -573,6 +573,13 @@ $pg_settings_cards[] = '
                             <option value="block"' . (($erp_credit_limit_mode === 'block') ? ' selected' : '') . '>' . lang('Is refused until a payment comes in') . '</option>
                         </select>
                         <div class="form-text">' . lang('The limit is set on each account card. Weighed on invoices typed in the ERP; an order\'s invoice is never held back.') . '</div>
+                    </div>' : '') . ($erp_storefront_prices_ready ? '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_storefront_account_prices_checked . ' class="form-check-input" type="checkbox" id="erp_storefront_account_prices" name="erp_storefront_account_prices" />
+                            <label class="form-check-label" for="erp_storefront_account_prices">' . lang('Account prices in the store') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('A customer whose contact is linked to an account sees and pays that account\'s prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.') . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>

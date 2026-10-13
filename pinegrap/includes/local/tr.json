@@ -21606,5 +21606,7 @@
     "My Invoices Card": "Faturalarım Kartı",
     "In your favour": "Alacaklısınız",
     "Download the statement": "Ekstreyi indir",
-    "You have no invoices yet.": "Henüz faturanız yok."
+    "You have no invoices yet.": "Henüz faturanız yok.",
+    "Account prices in the store": "Cari fiyatları mağazada",
+    "A customer whose contact is linked to an account sees and pays that account's prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.": "Kişisi bir cariye bağlı müşteri, oturum açtığında mağazada o carinin fiyatlarını görür ve öder: ürüne tanımlı kendi fiyatını ya da liste fiyatı üzerinden iskontosunu. Daha düşük bir kampanya yine geçerlidir; ikisi toplanmaz. Kapalıyken herkes liste fiyatını görür."
 }

@@ -32,6 +32,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_calendar_feeds(); // 10.81
 	upgrade_2026_4_10_erp_purchase_orders();    // 10.58
 	upgrade_2026_4_10_connect();                // 10.72
+	upgrade_2026_4_10_erp_storefront_prices();  // 10.59
 
 }
 
@@ -426,5 +427,23 @@ function upgrade_2026_4_10_connect() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Connected accounts: the site can connect Google and Microsoft accounts with an application of its own (Settings, Connections), keeping their tokens encrypted and renewing them, so that features such as sending mail through them can follow.');
+
+}
+
+// The prices an account has agreed, in the store (2026.4.10, 10.59;
+// pg_erp_member_prices() in includes/fn/ecommerce.php, the rule in
+// erp_storefront_price(), includes/erp/storefront.php).
+//
+// One switch, off: a member whose contact is linked to an active customer
+// account sees and pays the account's own price for a product, or the list
+// price less the account's discount (erp_account_prices, erp_accounts.
+// discount_rate), wherever the store shows a price and in the cart; a
+// campaign that goes lower still wins, the two never stack. Off, the store's
+// prices are untouched.
+function upgrade_2026_4_10_erp_storefront_prices() {
+
+	install_add_column('config', 'erp_storefront_account_prices', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('ERP: the prices agreed with an account can be shown and charged in the store to the member linked to it. It is off until it is switched on under Settings, Ecommerce, ERP.');
 
 }
