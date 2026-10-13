@@ -465,6 +465,17 @@
          yeniden okunabiliyor ve kaldırılabiliyor; her
          değişiklik etkinlik kaydına yazılıyor.
 
+  [YENİ] Kanalda @takma ad: Pinegrap AI'ın çağrılabildiği
+         bir kanalda @github gibi bir takma ada yazılan
+         soruyu Pinegrap AI o sunucunun açık araçlarıyla
+         yanıtlıyor; yanıtın altında hangi araçların
+         kullanıldığı yazıyor. Bu yanıta verilen cevap aynı
+         sunucuyla sürüyor. Pinegrap AI kanalın geri
+         kalanını okumuyor, yalnızca soruyu ve cevapladığı
+         mesajı. Sunucu kapalıysa ya da açık aracı yoksa
+         kanal bunu söylüyor. @ menüsü takma adları da
+         gösteriyor.
+
   [ŞEMA] MCP sunucuları ve araç çağrıları için iki yeni
          tablo oluşturulur; asistan isteklerine sunucu
          kolonu eklenir.
