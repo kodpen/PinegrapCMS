@@ -787,6 +787,17 @@
          Microsoft 365 ve Gmail ile posta gönderme gibi
          özellikler bu bağlantıyı kullanacak.
 
+  [YENİ] SMTP Ayarları'nda "Gönderim yolu": sistem ve
+         kampanya e-postaları SMTP sunucusu yerine bağlı bir
+         Google (Gmail) ya da Microsoft 365 / Outlook
+         hesabından gönderilebiliyor; SMTP parolası ya da
+         uygulama parolası gerekmiyor. Hesap ekrandaki
+         düğmeyle bağlanıyor. İleti o hesaptan çıkıyor,
+         yanıtlar iletinin asıl gönderen adresine gidiyor;
+         ekler, DKIM ve abonelikten çıkma başlıkları
+         eskisi gibi. Microsoft, parolayla SMTP girişini
+         2026 sonunda kapatıyor.
+
   [GÜVENLİK] Paraşüt'ün erişim ve yenileme jetonu artık
          sitenin şifreleme anahtarıyla şifreli saklanıyor.
          Önceden data klasöründe düz metin bir dosyadaydı;

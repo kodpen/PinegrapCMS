@@ -173,6 +173,50 @@ dev.pinegrap.com'da yerel oturum dener.
 
 ---
 
+## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
+
+**Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
+Exchange Online'da parolayla SMTP girişini (Basic auth) 2026 sonunda
+kapatıyor; Gmail parolayla SMTP'ye yalnız uygulama parolasıyla izin
+veriyor. Müşteri sitelerinin çoğu e-postayı bu iki hesaptan gönderiyor.
+
+**Nasıl.** Yeni amaç dosyası `includes/connect/purposes/mail.php`
+(`owner = site`; Google `gmail.send`, Microsoft Graph `Mail.Send`) her
+sağlayıcı için iletinin nasıl teslim edileceğini de taşır (`send`: adres,
+içerik türü, `raw`/`base64`, en büyük boyut, belirteç kapsamları).
+`email()` (`includes/fn/mail.php`) ileti türü için bir bağlı hesap
+seçiliyse (`SYSTEM_MAIL_CONNECTION` / `CAMPAIGN_MAIL_CONNECTION`,
+`data/config.php`) iletiyi SMTP'deki gibi PHPMailer'la kurar (`isSMTP()`:
+CRLF satır sonları; ekler, DKIM, List-Unsubscribe aynı), `preSend()` ile
+bitirir ve sunucuya bağlanmak yerine sağlayıcının API'sine verir: Gmail
+`upload/gmail/v1/users/me/messages/send?uploadType=media`
+(`message/rfc822`, 35 MB'a kadar), Graph `me/sendMail` (MIME base64
+`text/plain`, istek 4 MB'a kadar). SMTP'de yalnız zarfta giden Bcc
+alıcıları sağlayıcının okuması için başlık olarak öne eklenir (imzadan
+sonra; DKIM Bcc'yi kapsamaz). Posta kutusu kendi adına gönderdiği için
+From bağlı hesabın adresi olur, ad korunur; Reply-To yoksa asıl gönderen
+adresi Reply-To olur (`pg_mail_connection_from()`). Hata `email()`'in
+mevcut yoluna düşer: günlük, `pg_mail_last_error()`, gönderene bildirim.
+Kuyruk aynı `email()`'i çağırdığı için kampanya işi de bu yoldan gider.
+
+**Ne değişti.** SMTP Ayarları'nda Sistem ve Kampanya kartlarında
+"Gönderim yolu" seçimi (bu sunucu ya da `mail` amacıyla bağlanmış site
+hesapları) ve uygulaması kurulu sağlayıcılar için "… hesabı bağla"
+düğmeleri (formlar iç içe olamadığı için düğmeler gizli formları `form`
+özniteliğiyle gönderir; dönüş yine SMTP Ayarları). Bir hesap seçiliyse
+"Test Gönder" düğmesi SMTP bilgisi olmadan da görünür. Kayıtta yalnız
+`mail` amacı taşıyan site hesabı seçilebilir.
+
+**Bilerek yapılmayan.** Bağlantı başarısız olunca SMTP'ye ya da `mail()`'e
+geri düşülmez: hata görünür kalır, hesap "Yeniden bağla" durumundaysa
+günlükte yazar. Seçili hesap silinmişse ya da artık posta amacı
+taşımıyorsa ileti eskisi gibi SMTP / `mail()` ile gider. Graph'ın 4 MB
+sınırını aşan ekler için yükleme oturumu yok; ileti boyutu açıkça
+reddedilir. Microsoft'un SMTP XOAUTH2 yolu bilerek seçilmedi: posta
+kutusunda SMTP AUTH'un açık olmasını ister, Graph istemez.
+
+---
+
 ## 2026.4.10 — Paraşüt jetonu şifreli depoda (2026-10-13)
 
 **Neden.** Tersine OAuth planının yan bulgusu (§4.14): Paraşüt'ün erişim ve
