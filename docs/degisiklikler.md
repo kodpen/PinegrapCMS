@@ -196,6 +196,98 @@ başlığı okuyor, `my_notes`'u okuyan yok (menü `nav_notes`'u kullanır). Di�
 
 ---
 
+## 2026.4.10 — Dış API ve MCP: ERP irsaliyeleri, stok sayımları ve minimum stok yazılıyor (Faz 6, ikinci parça) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), ikinci parça:
+irsaliye ve stok API'de ve MCP'de yalnız okunuyordu. Virman, çek/senet ve
+raporlar üçüncü parçada.
+
+**Ne değişti.** Sekiz yeni rota `erp_api_routes()`'ta; MCP'de sekiz yeni
+araç. İşleyiciler yeni `includes/erp/api_stock.php`'de ve panelin alan
+fonksiyonlarını çağırır. Yeni iki olay `erp_webhook_events()`'ta.
+
+| Rota | Fonksiyon |
+|---|---|
+| `POST /erp/waybills` (`invoice_id`, `order_id` ya da `account_id` + `lines`) | `erp_waybill_data_from_invoice()` / `_from_order()` + `erp_waybill_create()` |
+| `POST /erp/waybills/{id}/cancel` | `erp_waybill_cancel()` |
+| `POST /erp/waybills/{id}/invoice` | `erp_waybill_invoice()` |
+| `POST /erp/stock-counts`, `POST …/{id}/items`, `POST …/{id}/apply`, `POST …/{id}/cancel` | `erp_stock_count_create()`, `erp_stock_count_add()` / `erp_stock_count_save()`, `erp_stock_count_apply()`, `erp_stock_count_cancel()` |
+| `POST /erp/stock/minimums` | `erp_stock_minimums_save()` |
+
+Ayrıntılar:
+
+- **İrsaliye.** Panel formu nasıl doluyorsa öyle: faturadan (siparişten
+  kesilmiş fatura o siparişin irsaliyesi olur, fatura bağlı), siparişten
+  ya da cari + satırlarla. Gönderilen alanlar faturanın ya da siparişin
+  verdiğinin yerine geçer; gönderilen `lines` kısmi sevkiyattır. Boş
+  alıcı carinin kartındaki adrestir — panel formundaki bu kural yeni
+  `erp_waybill_ship_to_default()`'a alındı, form da onu çağırır. Sipariş
+  ya da faturanın ikinci irsaliyesi 409 `order_already_shipped` /
+  `invoice_already_shipped` (panel bu durumda var olana yönlendiriyordu;
+  `erp_waybill_create()` yalnız siparişi sorduğu için fatura kontrolü
+  API'de). Taslak, iptal ya da alış faturası 409 `invoice_not_shippable`.
+  Başlık reddi alan adıyla döner (`erp_api_waybill_field()`): `ship_time`,
+  `carrier_tax_number`, `driver_id_number`. Şoför TCKN yazılır ama
+  API'den geri okunmaz (var olan sunucu kuralı).
+- **Cari açılması ve prova.** Carisi olmayan müşterinin siparişinde
+  `erp_waybill_data_from_order()` müşteri kaydından cari açıyordu; prova
+  bunu yapmamalı. Fonksiyona `$open_account` (varsayılan true) eklendi:
+  false iken yazmadan okur, cari yoksa `account_id` 0 döner;
+  `erp_waybill_header_build()`'e de `$account_required` (varsayılan true).
+  İşleyici önce yazmadan denetler, prova orada durur, gerçek çağrıda cari
+  açılıp irsaliye yazılır. Panel çağrıları değişmedi.
+- **Faturalama.** Siparişin irsaliyesi siparişin faturasıyla kesilir;
+  `POST /erp/orders/{order_id}/invoice` ile aynı ön denetimler
+  (`erp_api_order_invoice_check()`, PR #270'teki işleyiciden ayrıldı) ve
+  aynı 422 `period_locked`. Sipariş zaten faturalıysa irsaliye ona bağlanır
+  ve 200 döner. Elle yazılmış irsaliye katalog fiyatlarıyla taslak olur.
+- **İptal.** Faturalanmış irsaliye 409 `waybill_invoiced`, iptal edilmiş
+  409 `waybill_cancelled`. `erp_waybill_cancel()` artık
+  `erp.waybill.cancelled` yayar (`erp_event_waybill()` olay adını
+  parametre alır; arşiv yalnız kesimde); panelden iptal de yayar.
+- **Sayım.** `items` sırayla ve hepsi ya da hiçbiri (tek işlem): ürün
+  `product_id` ya da `code` (barkod ya da ürün kodu) ile; `mode` add
+  (varsayılan, `quantity` yoksa 1 — bir okutma), set ya da remove. Barkod
+  okutmanın ürün bulunduktan sonraki kısmı yeni `erp_stock_count_add()`'e
+  ayrıldı, `erp_stock_count_scan()` onu çağırır. Uygulamanın provası kaç
+  ürünün stokunun değişeceğini söyler; boş sayım 409 `stock_count_empty`,
+  açık olmayan 409 `stock_count_not_open`. `erp_stock_count_apply()` yeni
+  `erp.stock_count.applied` olayını yayar (`erp_event_stock_count()`;
+  panelden de). Denetim izinde yeni nesne türü `stock_count`.
+- **Minimum stok.** `minimums: [{product_id, minimum}]`, en çok 500; 0
+  temizler. Alan fonksiyonu stok takip etmeyen ürünü sessizce atlıyordu;
+  API 422 ile söyler. Yanıt `changed` ve ürünlerin güncel seviyeleri.
+  Plandaki `GET /erp/stock/minimums` açılmadı: `GET /erp/stock/levels`
+  minimumu ve `low=true` süzgecini zaten veriyor, ikinci bir okuma rotası
+  aynısı olurdu.
+- Yanıt yardımcıları `erp_api_waybill_answer()` ve
+  `erp_api_stock_count_answer()` `api_resources.php`'de; GET rotaları da
+  onları kullanır.
+
+**Doğrulama.** Sandbox'ta curl: sayım başlat (prova, aynı
+`Idempotency-Key` ile tekrar `Idempotent-Replay: true`), ürün numarası ve
+barkodla say, set, remove, tekrar isteğin ikinci kez saymadığı, uygula
+(prova "changes": 1; stok 9986 → 9990, 0 sayılan ürün stok dışı), uygulanmış
+sayımda değiştirme/uygulama/iptal 409, boş sayım 409, iptal; yalnız okuma
+anahtarı 403. Minimum: doğrulamalar (eksi, tekrar eden ürün, stok takip
+etmeyen, olmayan ürün, 1000000 üstü, bilinmeyen alan), kaydet, temizle,
+`GET /erp/stock/levels?low=true`. İrsaliye: on yedi ret durumu; faturadan
+yaz (plaka büyük harf, saat 09:30), aynı fatura 409; carisi olmayan
+siparişte prova cari açmadı (2 → 2), gerçek çağrı cariyi açıp yazdı;
+siparişin faturasından kısmi satırla (1,5 KGM); elle yazılan irsaliyeyi
+faturala (taslak) → taslağı sil → irsaliyeyi iptal (olay denetim izinde);
+siparişin irsaliyesini faturala (kesildi); sonradan faturalanan siparişin
+irsaliyesi bağlandı (200). OpenAPI'de rotalar ve iki olay; MCP
+`tools/list`'te sekiz araç, `tools/call` ile sayım başlatma ve prova.
+Panelin kullandığı `erp_stock_count_scan()` ve `erp_waybill_ship_to_default()`
+CLI'dan sandbox veritabanında. `tests/erp_api_test.php` genişletildi.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com); web kancasının teslimi
+(sandbox'ta DNS olmadığı için abonelik açılamadı; olaylar denetim izinde
+görüldü); barkod tablosu olan bir mağaza (kod ürün koduyla denendi).
+
+---
+
 ## 2026.4.10 — ERP: satın alma siparişinden alış faturası, teslim durumu, minimum stoktan sipariş (2026-10-13)
 
 **Neden.** Faz 7'nin ikinci parçası (`docs/_plan_erp_ozellikler.md` §3, akışın
@@ -260,6 +352,67 @@ teslim sayısı. `tests/erp_purchase_order_test.php`'ye 5 test (13 test).
 
 **Doğrulanamayan.** IIS (dev.pinegrap.com) ve e-Belge sağlayıcısı açık
 mağazada alış faturası kesme.
+
+---
+
+## 2026.4.10 — Dış API: klasörler ve sayfa güncellemesinde yorum ayarları, meta anahtar kelimeler, klasör taşıma (2026-10-13)
+
+**Sorun.** Dış API sayfanın `folder_id`'sini veriyordu ama klasörün kendisini
+okumanın, açmanın ya da sayfayı bir klasöre taşımanın yolu yoktu; siteyi MCP
+üzerinden kuran bir asistan bölüm açamıyor, hangi klasörün kime açık
+olduğunu göremiyordu. Sayfa güncellemesi yorum ayarlarını ve meta anahtar
+kelimeleri yazmıyordu (Çalışma Alanı'nın Claude önerileri bunları panel
+yoluyla zaten yazıyordu).
+
+**Çözüm** (yeni `includes/api/resources/folders.php`, kapsam `pages:read` /
+`pages:write`; şema değişikliği yok).
+
+- `GET /folders` (parent_id, q, archived; id imleci), `GET /folders/{id}`:
+  ad, üst klasör, seviye, sıra, **etkin erişim** (`access`: kendi türü ya da
+  üstten gelen; `access_inherited`), arşiv, `system` (`drafts` |
+  `recycle_bin`), `recycled`, doğrudan içindeki klasör/sayfa/dosya sayısı
+  (sayfa başına üç `GROUP BY` sorgusu). Geri Dönüşüm Kutusu ve içindekiler
+  listede yok, kimlikle okunur.
+- `POST /folders` (name, parent_id — verilmezse en üst klasör, access —
+  varsayılan `inherit`, order, archived). Stil sütunları 0 (miras):
+  `add_folder.php`'de stil seçemeyen kişinin aldığı değer.
+- `POST|PATCH /folders/{id}`: ad, sıra, arşiv, üst klasör, erişim. Taşımada
+  döngü (klasörün kendi dalına taşınması) reddedilir, alt dalın seviyeleri
+  tek geçişte düzeltilir (`api_folder_relevel()`).
+- `DELETE /folders/{id}` + `POST …/delete`: yalnız boş klasör (klasör ekranının
+  kuralı, 409 `folder_not_empty`); `aclfolder` satırları da silinir. En üst
+  klasör, taslaklar klasörü ve kutu 409 `system_folder_protected`.
+- **Erişim genişletme API'de yok.** Klasörün ya da sayfanın sunulduğu erişim
+  yalnız aynı kalabilir ya da daralabilir (public < guest < registration <
+  membership < private); daha çok kişiye açacak yazım (tür değişikliği, özel
+  bir üstten çıkaran taşıma, sayfayı daha açık klasöre taşıma) 409
+  `access_widening_refused`. Gerekçe: satır yazıldığı an içindekiler herkese
+  sunulur ve bunu içeriği gören bir kişi yapmalı. Kural saf fonksiyonlarda
+  (`api_folder_access_walk()`, `api_folder_access_widens()`,
+  `api_folder_within()`), `tests/api_folders_test.php`.
+- Taslaklar klasörü ve kutu hedef olarak kullanılamaz (422): ikisini kendi
+  ekranları doldurur.
+- `POST /pages/{id}`: `meta_keywords`, `comments`, `comments_open`,
+  `comments_publish`, `comments_login` (Çalışma Alanı'nın `page` değişiklik
+  türüyle aynı sütunlar) ve `folder_id`. Ana sayfa (409
+  `home_page_protected`), sistem sayfaları (409 `system_page_protected`),
+  taslak (409 `page_is_draft`) ve kutudaki sayfa (409 `already_recycled`)
+  taşınmaz.
+- Sayfa cevabına `meta_keywords`, `comments` nesnesi (`enabled`, `open`,
+  `auto_publish`, `login_required`), `draft`, `recycled` eklendi.
+- Panel: API ayarlarında Sayfalar satırının açıklaması, konsolda Klasörler
+  grubu. MCP araçları kendiliğinden geldi (`folders_list` … `folders_delete`).
+
+**Doğrulama.** Sandbox'ta (`tools/setup_sandbox.sh`) sunucu uygulaması
+anahtarıyla gerçek isteklerle: liste/tekil, oluşturma (dry-run dahil),
+yeniden adlandırma, arşiv, daraltma, genişletme reddi (tür ve taşıma), döngü
+reddi, en üst klasör, boş olmayan klasör, kutu ve kutudaki sayfa yolları;
+sayfada meta anahtar kelime ve yorum ayarları, daraltan taşıma, genişleten
+taşıma reddi, ana sayfa ve giriş sayfası reddi veritabanından okundu. MCP
+`tools/list` yeni araçları ve silmenin `destructiveHint`'ini, OpenAPI yeni
+yolları ve `Folder` nesnesini veriyor. Denenmeyen: rolü 2 (yönetici) olan
+sahibin klasör hakkı (pages:write rol ≤ 2'ye verilir, `pg_folder_edit_access()`
+onlara her klasörde evet der).
 
 ---
 
