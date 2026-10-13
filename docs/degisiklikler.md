@@ -151,6 +151,35 @@ için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
 
 ---
 
+## 2026.4.10 — Tek dilli sitede sayfanın dili: büyük harfte Türkçe İ (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 6. maddesi: "Tasarımın dili `en`
+olarak ayarlı ama metinler Türkçe; büyük harfe çevrilen metin MÜŞTERI
+görünüyor."
+
+**Neden.** `generate_style_code_from_tree()` kaydedilen gövdeye sabit
+`<html lang="en">` yazıyor. Bunu sitenin diline çeviren adım
+(`pg_tr_render_finalize()`) yalnız sitede hedef dil varken çalışıyordu; tek
+dilli sitede sayfa "en" kalıyordu. Tarayıcı `text-transform: uppercase`'i
+(Bootstrap `.text-uppercase`) sayfanın diline göre uyguluyor: "en"de
+i → I, "tr"de i → İ.
+
+**Düzeltme** (`includes/fn/translate.php`, `pg_tr_finalize()`). Hedef dilde
+çizilmeyen her sayfada, kaynak dil (`pg_tr_source_language()`: Diller ve
+Çeviri'deki kaynak dil, boşsa panel dili) "en" değilse, `<html>`'deki `lang`
+eksikse ya da "en" ise kaynak dile çevriliyor. Stile elle yazılmış başka bir
+dil (`lang="de"`) korunuyor. Dili olan sitelerde mevcut dil adımı her
+sayfanın dilini zaten yazıyor; sonuç değişmiyor.
+
+**Doğrulama (sandbox, kaynak dil boş, panel dili tr, hedef dil yok).**
+Öncesi `/hakkimizda` `<html lang="en">`, Chromium'da `text-transform:
+uppercase` "Müşteri Hizmetleri, İletişim, ılık" → "MÜŞTERI HIZMETLERI,
+İLETIŞIM, ILIK". Sonrası `<html lang="tr">` → "MÜŞTERİ HİZMETLERİ, İLETİŞİM,
+ILIK". `/anasayfa`, `/magaza` de `lang="tr"`. `php tools/test.php` geçti.
+dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Görsel editör: özellikler panelindeki değişiklik kendi geri alma adımını açıyor (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 1. maddesi: link adresi seçiciyle ya
@@ -221,6 +250,40 @@ kanonik. `/urun-detay/olmayan-urun`, `/urun-detay?pid=999999`,
 `/magaza/Donations`, `/magaza` → 200. `php tools/test.php` 405 geçti.
 dev.pinegrap.com'da denenmedi. IIS'te sunucunun kendi hata sayfası 404 gövdesini
 değiştirirse (httpErrors), hata sayfası widget'ının 404'ünde de aynısı olur.
+
+---
+
+## 2026.4.10 — Dış API: yorum moderasyonu (2026-10-13)
+
+**Sorun.** Ziyaretçi yorumları yalnız yorumlar ekranından yönetiliyordu; bir
+entegrasyon ya da asistan bekleyen yorumları göremiyor, yayınlayamıyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/comments.php` ve yeni izin
+grubu `comments` (`comments:read`, `comments:write`; rol ≤ 2, yorumlar
+ekranının kapısı). İzin ayrı tutuldu: SEO için `pages:read` verilmiş bir
+uygulama bekleyen yorumları ve ziyaretçi adlarını okumamalı.
+
+- `GET /comments`, `GET /comments/{id}`: en yeni önce; süzgeçler sayfa,
+  konu (`item_type`: page, submitted_form, calendar_event, product_group,
+  product; `item_id`), durum (published / pending / scheduled), öne çıkan,
+  metin, tarih. Zamanlanmış yorumda `publish_at` ve `cancel_if_newer`.
+- `POST /comments/{id}`: `published`, `featured`. İki `published` değeri de
+  zamanlamayı bitirir. Yayında olmayan bir yorum yayınlanınca yorumlar
+  ekranının gönderdiği e-postalar gider (sayfayı izleyenler; form kaydında
+  kaydı gönderen); dry-run `emails` ile söyler. Form kaydı sayfasında
+  `submitted_form_info` sayacı yorumlar ekranındaki gibi yeniden yazılır.
+- `DELETE /comments/{id}` (ve `POST …/delete`): ekli dosya başka yorum
+  paylaşmıyorsa onunla, paneldeki bildirimiyle birlikte.
+
+Ziyaretçinin adı ve metni API'den değiştirilmez (alan gönderilirse 422).
+
+**Doğrulandı (sandbox).** Liste süzgeçleri ve imleç; bekleyeni yayınlama ve
+öne çıkarma, zamanlanmışı bekletme (`publish_at` temizlendi), boş istek ve
+`message` 422; form kaydındaki yorumu bekletince sayaç 1→0, yayınlayınca
+0→1 (dry-run `emails: true`); silme ve sonra 404; günlük satırları.
+Denenmeyen: gönderilen e-postanın kendisi (sandbox'ta posta sunucusu yok;
+örnek verideki form kaydı silinmiş olduğundan eski e-posta fonksiyonu uyarı
+yazdı, yorumlar ekranında da aynısı olur).
 
 ---
 

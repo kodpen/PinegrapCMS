@@ -56,6 +56,7 @@ function api_console_endpoints_html($try_hint = '') {
 		'pages'          => lang('Pages'),
 		'folders'        => lang('Folders'),
 		'menus'          => lang('Menus'),
+		'comments'       => lang('Comments'),
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
