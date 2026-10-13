@@ -23,12 +23,14 @@ Hiyerarşide **Designer (1), Manager'ın (2) üstündedir.**
   `'designer'` → rol ≤ 1; `'manager'` → rol ≤ 2.
 - E-ticaret: rol 0–2 `manage_ecommerce` bayrağından muaftır, rol 3 için
   zorunludur. Aynı kalıp dış API sahibi kapsamlarında da geçerlidir.
-- `api.php`'de `switch ($action)` öncesinde genel bir rol kapısı vardır; `case`
-  içine yazdığın izin listesi oraya ulaşmayan isteği durduramaz — yeni eylemi
-  muafiyet listesine **ve** ilgili alt izin listesine ekle.
-  `includes/panel/actions.php` tablosuna alınan eylemler için de muafiyet hâlâ
-  `api.php` zincirindedir; tablonun `exempt` sütunu onunla uyuşmak zorundadır
-  (test karşılaştırır).
+- `api.php`'de handler'dan önce genel bir kapı vardır (oturum, sonra rol ≤ 1);
+  handler içine yazdığın izin listesi oraya ulaşmayan isteği durduramaz.
+  Kapıyı `includes/panel/actions.php` tablosu belirler (`pg_panel_gate()`):
+  `exempt => true` kapıyı atlatır, `any_role => true` yalnız oturum ister,
+  tabloda olmayan ad kapıdan geçer. Rol 2/3'e açık yeni eylem `exempt => true`
+  **ve** handler'da kendi oturum/token/rol kontrolüyle yazılır; muaf adlar
+  `tests/panel_actions_test.php`'de sabit listeyle karşılaştırılır, ekleme
+  iki yerde bilerek yapılır.
 - Okuma ve yazma uçlarını ayır (ör. `shared_component`'in `list/get/prefetch`
   uçları içerik rolüne açık, yazan her şey rol ≤ 1).
 - Yeni `explorer_*` alt eylemini iki yere yaz: `pg_explorer_handle()` switch'i

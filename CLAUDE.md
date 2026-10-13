@@ -54,10 +54,11 @@ zaten verilmiş kararlar listeleniyor.
 - **Sürüm durumu (2026-10-13):** 2026.4.9 yayında (GitHub release `v2026.4.9`,
   PR #238, etiket `1c3703e`) ve **kapalıdır**; etiket taşınmaz,
   `2026.4.9.php`'ye, `versions.php` satırına ve changelog başlığına
-  dokunulmaz. **Açık sürüm yok:** sonraki sürüm ilk şema adımı ya da
-  changelog maddesiyle açılır (yeni `includes/migrations/<sürüm>.php`,
-  `versions.php` satırı, `changelog.txt`'de en üste yeni başlık); numarayı
-  ürün sahibine sor. Geliştirme `development` dalında sürer; yayın,
+  dokunulmaz. **Açık sürüm: 2026.4.10** (2026-10-13'te açıldı:
+  `versions.php` satırı ve `changelog.txt` başlığı; henüz şema adımı yok,
+  ilk şema adımı `includes/migrations/2026.4.10.php` →
+  `upgrade_to_2026_4_10()` dosyasını açar, alt adım etiketleri `10.x`).
+  Sonraki numarayı ürün sahibine sor. Geliştirme `development` dalında sürer; yayın,
   `development`'ın ağacından `CLAUDE.md`, `.claude/`, `docs/`, `tools/` ve
   `tests/` çıkarılarak
   main'in üstüne kurulan tek "Release <sürüm>" commit'li `release/<sürüm>`
