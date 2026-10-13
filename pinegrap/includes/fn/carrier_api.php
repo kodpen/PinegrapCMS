@@ -633,7 +633,7 @@ function pg_carrier_api_settings_save($post, $user_id, $liveform)
 
         if (!pg_carrier_api_save($carrier, $client_id, $client_secret, $environment, $user_id)) {
             $liveform->add_notice(lang(array(
-                'string' => 'The {var:1} client ID and client secret were not saved: {var:2}',
+                'string' => 'The {var:1} credentials were not saved: {var:2}',
                 'vars'   => array(
                     pg_carrier_api_definition($carrier)['label'],
                     !pg_connect_schema_ready()
@@ -652,7 +652,7 @@ function pg_carrier_api_settings_save($post, $user_id, $liveform)
     $token = pg_carrier_api_token($test, true);
 
     if ($token['token'] !== '') {
-        $liveform->add_notice(lang(array('string' => '{var:1} accepted the client ID and client secret.', 'vars' => array($definition['label']))));
+        $liveform->add_notice(lang(array('string' => '{var:1} accepted the credentials.', 'vars' => array($definition['label']))));
     } else {
         $liveform->add_notice(lang(array('string' => '{var:1} refused the connection: {var:2}', 'vars' => array($definition['label'], h($token['error'])))));
     }
