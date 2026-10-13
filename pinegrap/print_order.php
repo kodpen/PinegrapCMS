@@ -1302,7 +1302,7 @@ if ($ship_to_exists == true) {
     
     // if the order is complete, then output save
     if ($status != 'incomplete') {
-        $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
+        $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
     }
 // else a real ship to does not exist
 } else {

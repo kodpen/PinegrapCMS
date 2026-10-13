@@ -115,7 +115,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_migrate" name="submit_migrate" value="Migrate" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Migrating') ) . '"><span class="material-icons me-2">drive_file_move</span><span class="btn-text">' . lang(array('string'=>'Migrate') ) . '</span></button>
+                                <button type="submit" id="submit_migrate" name="submit_migrate" value="Migrate" class="btn my-1  btn-success "><span class="material-icons me-2">drive_file_move</span><span class="btn-text">' . lang(array('string'=>'Migrate') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

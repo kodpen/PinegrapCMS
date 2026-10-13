@@ -777,7 +777,7 @@ function pg_designer_start_screen($ctx)
         $output_rows .= '
         <tr>
             <td class="align-middle text-start" nowrap>
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_system_style.php?id=' . (int)$d['style_id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_system_style.php?id=' . (int)$d['style_id'] . '\'"><i class="bi bi-pencil"></i></button>
                 ' . ($can_create ? '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>' : '') . '
             </td>
             <td class="align-middle chart_label" nowrap>' . h($d['style_name']) . ($count == 0 ? ' <span class="badge text-bg-secondary ms-1" title="' . lang('No pages — open it to add one, or delete it from the toolbar') . '">' . lang('Empty') . '</span>' : '') . '</td>
@@ -802,7 +802,7 @@ function pg_designer_start_screen($ctx)
             // Opens a choice first (framework, template); nothing loads yet.
             $tag_open = '<a href="#" role="button" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-bs-toggle="modal" data-bs-target="' . h($modal) . '"' . ($start !== '' ? ' data-sd-start="' . h($start) . '"' : '') . '>';
         } else {
-            $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">';
+            $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '">';
         }
         $tag_close = $disabled ? '</div>' : '</a>';
         return
@@ -1190,7 +1190,7 @@ function pg_designer_new_design_modal($from_pages)
     $option = function ($framework, $icon, $title, $text, $recommended, $import_text) use ($extra) {
         return
             '<div class="col-12 col-md-6">
-                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '" data-loading-content="' . lang('Loading') . '">
+                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '">
                     <div class="card-body d-flex flex-column align-items-start gap-2">
                         <div class="d-flex w-100 align-items-start">
                             <i class="bi ' . h($icon) . ' fs-2 ' . ($recommended ? 'text-primary' : 'text-body-secondary') . '" aria-hidden="true"></i>
@@ -1410,7 +1410,7 @@ function pg_designer_template_modal($templates, $from_pages)
                             <div class="d-flex align-items-center gap-2 ms-auto">
                                 ' . $theme_apply . '
                                 ' . $delete_btn . '
-                                <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                                <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small text-muted text-truncate">' . h($s['description']) . '</span>

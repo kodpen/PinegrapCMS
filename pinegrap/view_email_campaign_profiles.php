@@ -456,8 +456,8 @@ if (isset($_GET['export'])) {
             '<tr class="unselectable">
                 <td class="select-all align-middle text-start"><input class="form-check-input disabled" disabled="" type="checkbox" name="fake_checkbox[]" value="1"></td>
 			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_email_campaign_profile.php?id=' . $email_campaign_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_email_campaign_profile.php?id=' . $email_campaign_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="chart_label ' . $output_name_color_class . '">' . h($email_campaign_profile['name']) . '</td>
                 <td class="align-middle text-center ' . $output_name_color_class . '">' . $output_enabled_check_mark . '</td>
@@ -495,7 +495,7 @@ if (isset($_GET['export'])) {
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_email_campaign_profile.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_email_campaign_profile.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 m-1" href="import_email_campaign_profiles.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>

@@ -90,7 +90,7 @@ if (!$_POST) {
     // form therefore needs the id the attribute names. It is only drawn when
     // a provider that can answer is on.
     $output_einvoice_check = (erp_edoc_installed() && erp_edoc_supports('check_taxpayer'))
-        ? '<button type="submit" form="erp_account_form" name="erp_action" value="einvoice_check" class="btn btn-sm btn-outline-secondary m-1" data-loading-content="' . lang(array('string' => 'Asking')) . '"><i class="bi bi-patch-question me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask GİB about the tax number') . '</span></button>'
+        ? '<button type="submit" form="erp_account_form" name="erp_action" value="einvoice_check" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-patch-question me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask GİB about the tax number') . '</span></button>'
         : '';
 
     // The account's card at the e-document provider, when the provider hands
@@ -245,7 +245,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>

@@ -25,7 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="col-12 col-sm-12 text-center text-md-start">
                     <h2 class="d-inline-block " data-bs-content="<?=lang('All dialogs that can automatically popup for visitors.')?>" title="<?=lang('All Auto Dialogs')?>"><?=lang('All Auto Dialogs')?></h2>
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                    	<a class="btn btn-sm btn-primary m-1 " href="add_auto_dialog.php" data-loading-content="<?=lang(array('string'=>'Loading') )?>"><span class="bi bi-plus-circle me-2"></span><?=lang('Create')?></a>
+                    	<a class="btn btn-sm btn-primary m-1 " href="add_auto_dialog.php"><span class="bi bi-plus-circle me-2"></span><?=lang('Create')?></a>
                     </nav>
                 </div>
             </div>
@@ -51,7 +51,7 @@ if (!defined('PG_INIT_LOADED')) {
 							<?php foreach($auto_dialogs as $auto_dialog): ?>
 								<tr>
 									<td class="align-middle text-start action-buttons">
-                					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_auto_dialog.php?id=<?=$auto_dialog['id']?>'"><i class="bi bi-pencil"></i></button>
+                					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_auto_dialog.php?id=<?=$auto_dialog['id']?>'"><i class="bi bi-pencil"></i></button>
 										<a class="m-1 btn-data-control btn btn-outline-secondary border-2 " href="<?=(PATH . encode_url_path($home_page_name) . '?preview_auto_dialog=' . $auto_dialog['id'])?>" target="_blank"  title="<?=lang(array('string'=>'Preview'))?>"><i class="bi bi-link"></i></a>
 
 

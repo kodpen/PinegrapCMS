@@ -108,7 +108,7 @@ foreach ($rows as $row) {
     $output_rows .=
         '<tr' . (($row_state === 'ignored') ? ' class="text-body-secondary"' : '') . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'erp_inbox_document.php?id=' . $id . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'erp_inbox_document.php?id=' . $id . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
             </td>
             <td class="align-middle text-nowrap" data-order="' . h($row['issue_date']) . '">' . h(prepare_form_data_for_output($row['issue_date'], 'date')) . '</td>
             <td class="align-middle text-nowrap chart_label">' . h($row['gib_number']) . '</td>
@@ -158,7 +158,7 @@ if ($provider !== '') {
                     <input type="date" name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
                     <span class="text-body-secondary">&ndash;</span>
                     <input type="date" name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
                 </form>') . '
                 ' . (($read_at > 0)
                     ? '<span class="small text-body-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'

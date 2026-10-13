@@ -116,7 +116,7 @@ foreach ($ship_date_adjustments as $item) {
         '<tr>
             <td></td>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_ship_date_adjustment.php?id=' . $item['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_ship_date_adjustment.php?id=' . $item['id'] . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label align-middle">' . h($item['zip_code_prefix']) . '</td>
             <td class="align-middle">' . $output_shipping_method . '</td>
@@ -145,7 +145,7 @@ echo
                     <div class="col-12 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_ship_date_adjustment.php" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_ship_date_adjustment.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
                         </nav>
                     </div>
                 </div>

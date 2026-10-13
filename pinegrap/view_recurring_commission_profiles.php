@@ -238,8 +238,8 @@ foreach ($recurring_commission_profiles as $recurring_commission_profile) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start col-reorder-none">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . $recurring_commission_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . $recurring_commission_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . h($recurring_commission_profile['affiliate_name']) . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['affiliate_code']) . '</td>

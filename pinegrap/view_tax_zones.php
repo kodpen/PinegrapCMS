@@ -80,7 +80,7 @@ foreach ($tax_zones as $tax_zone) {
         '<tr>
             <td></td>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_tax_zone.php?id=' . $tax_zone['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_tax_zone.php?id=' . $tax_zone['id'] . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label align-middle">' . h($tax_zone['name']) . '</td>
             <td class="align-middle">' . h($tax_zone['tax_rate']) . '%</td>
@@ -107,7 +107,7 @@ echo
                     <div class="col-12 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_tax_zone.php" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_tax_zone.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
                         </nav>
                     </div>
                 </div>

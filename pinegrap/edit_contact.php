@@ -43,7 +43,7 @@ if (!$_POST) {
     // if ecommerce is on, then output orders button to show orders for contact
     if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
         $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
     }
 
     // The ledger account behind this contact, for a user the ERP module lets
@@ -60,11 +60,11 @@ if (!$_POST) {
             $erp_side = ($erp_balance > 0) ? lang('owes you') : (($erp_balance < 0) ? lang('you owe') : '');
 
             $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
         } elseif (($user['role'] < 3) || empty($user['manage_erp_readonly'])) {
             // The ERP's read-only right opens no account.
             $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
         }
     }
 
@@ -735,8 +735,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

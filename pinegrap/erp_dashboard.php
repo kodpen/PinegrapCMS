@@ -46,7 +46,7 @@ $can_see_cash = ((int) $user['role'] < 3) || !empty($user['manage_erp_cash']);
 $card = function ($label, $figure, $note, $icon, $url, $figure_class = '') {
     return '
             <div class="col-12 col-md-6 col-xl-3 my-2">
-                <a href="' . h($url) . '" class="card h-100 text-decoration-none link-body-emphasis" data-loading-content="' . lang(array('string' => 'Loading')) . '">
+                <a href="' . h($url) . '" class="card h-100 text-decoration-none link-body-emphasis">
                     <div class="card-body d-flex align-items-start gap-3">
                         <i class="bi ' . $icon . ' fs-2 text-body-secondary"></i>
                         <div class="min-w-0">

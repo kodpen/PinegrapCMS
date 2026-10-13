@@ -406,7 +406,7 @@ if (!isset($_POST['name'])) {
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
-                $optimize_button ='<a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Processing') . '" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name) . ' )</a>';
+                $optimize_button ='<a class="btn btn-link link-secondary py-0 mb-2" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name) . ' )</a>';
             }
 
             // The second half of the pair. Offered whatever the optimized flag
@@ -420,14 +420,14 @@ if (!isset($_POST['name'])) {
                 $image_settings = pg_image_settings();
 
                 $resize_button =
-                    '<a class="btn btn-link link-warning py-0 mb-2" data-loading-content="' . lang('Processing') . '" href="optimize.php?id='
+                    '<a class="btn btn-link link-warning py-0 mb-2" href="optimize.php?id='
                     . h($_GET['id']) . get_token_query_string_field() . '&amp;mode=resize"><i class="bi bi-arrows-angle-contract bi-me-2"></i>'
                     . lang(array(
                         'string' => 'Resize to {var:1} pixels and optimize',
                         'vars'   => array($image_settings['file_max_dimension']))) . '</a>';
             }
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Loading') . '" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
@@ -527,7 +527,7 @@ if (!isset($_POST['name'])) {
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     ' . $image_buttons . '
                                     <a class="btn btn-link link-secondary py-0 mb-2"  href="' . OUTPUT_PATH . $file_name . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                    <a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Downloading') . '" download="image" href="' . OUTPUT_PATH . $file_name . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                    <a class="btn btn-link link-secondary py-0 mb-2" download="image" href="' . OUTPUT_PATH . $file_name . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                                 </div>
                             </nav>
                             <div class="row mb-2">
@@ -590,10 +590,10 @@ if (!isset($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary "><span class="material-icons me-2">arrow_backsave</span><span class="btn-text" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
                                 <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="btn-text">' . lang('Duplicate') . '</span></button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

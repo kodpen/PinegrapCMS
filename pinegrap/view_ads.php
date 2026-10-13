@@ -287,7 +287,7 @@ if ($ads) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 </td>
                 <td class="chart_label">' . h($ad['ad_name']) . '</td>
                 <td class="chart_label">' . h($ad['ad_region_name']) . '</td>
@@ -319,7 +319,7 @@ print
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_ad.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1 " href="add_ad.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         </nav>
                     </div>
                     <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">

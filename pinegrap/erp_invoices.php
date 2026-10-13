@@ -358,7 +358,7 @@ foreach ($invoices as $invoice) {
         '<tr' . erp_drawer_row_attributes($id) . $row_class . '>
             ' . $output_pick_cell . '
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . ($is_draft ? lang('Edit') : lang('View')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi ' . ($is_draft ? 'bi-pencil' : 'bi-eye') . '"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . ($is_draft ? lang('Edit') : lang('View')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi ' . ($is_draft ? 'bi-pencil' : 'bi-eye') . '"></i></button>
             </td>
             <td class="align-middle text-nowrap chart_label" data-order="' . h($is_draft ? ('~' . $id) : $invoice['full_number']) . '">' . $output_number . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($invoice['issue_date']) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
@@ -406,9 +406,9 @@ $output_bulk_buttons = '';
 if ($edoc_bulk) {
     $output_bulk_buttons = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline-secondary disabled" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
                 </span>';
 }
 
@@ -429,11 +429,11 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_manual_invoice.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="add_erp_invoice.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_export.php?entity=invoices" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_aging.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
-                ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_invoice_recurrences.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '
+                <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="erp_aging.php"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
+                ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '
                 ' . $output_bulk_buttons . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_edoc_menu . '

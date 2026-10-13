@@ -57,7 +57,7 @@ foreach ($products as $row) {
     $output_rows .= '
         <tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Stock movements') . '" onclick="window.location.href=\'erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves\'"><i class="bi bi-list-ul"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Stock movements') . '" onclick="window.location.href=\'erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves\'"><i class="bi bi-list-ul"></i></button>
             </td>
             <td style="max-width:280px" class="text-truncate align-middle">' . h($name)
                 . ((trim((string) $row['product_sku']) !== '') ? '<div class="small text-body-secondary font-monospace">' . h($row['product_sku']) . '</div>' : '') . '</td>
@@ -152,9 +152,9 @@ pg_page_shell(array(
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?direction=purchase" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-bag-plus me-1"></i>' . lang('New purchase invoice') . '</a>' : '') . '
-                ' . ((function_exists('erp_stock_minimums_ready') && erp_stock_minimums_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_minimums.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-sliders me-1"></i>' . lang('Minimum stock') . '</a>' : '') . '
-                ' . ((function_exists('erp_stock_counts_ready') && erp_stock_counts_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_counts.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upc-scan me-1"></i>' . lang('Stock counts') . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?direction=purchase"><i class="bi bi-bag-plus me-1"></i>' . lang('New purchase invoice') . '</a>' : '') . '
+                ' . ((function_exists('erp_stock_minimums_ready') && erp_stock_minimums_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_minimums.php"><i class="bi bi-sliders me-1"></i>' . lang('Minimum stock') . '</a>' : '') . '
+                ' . ((function_exists('erp_stock_counts_ready') && erp_stock_counts_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_stock_counts.php"><i class="bi bi-upc-scan me-1"></i>' . lang('Stock counts') . '</a>' : '') . '
                 <div class="pg-toolbar-grow small text-body-secondary text-truncate">
                     ' . h(lang(array('string' => '{var:1} product(s) with a cost; stock on hand worth {var:2}', 'vars' => array(count($products), erp_money_out($total_value))))) . '
                 </div>

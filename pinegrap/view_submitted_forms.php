@@ -966,7 +966,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         '<tr>
             <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="forms[]" value="' . $id . '" class="checkbox" /></td>
             <td class="align-middle text-start action-buttons">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label">' . h($form_name) . '</td>
             <td class="align-middle">' . h($reference_code) . '</td>
@@ -1152,7 +1152,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
                         </div>
                     </div>
                 </form>
@@ -1194,7 +1194,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     if (MASS_DELETION == true) {
         $output_delete_forms_button = ' 
         <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="submit" name="submit_data" value="Delete Forms" class="btn btn-link link-danger py-0 m-1" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang('WARNING: All forms that match the filters will be permanently deleted. This includes forms from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which forms will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Forms') ) . '</button>
+            <button type="submit" name="submit_data" value="Delete Forms" class="btn btn-link link-danger py-0 m-1" data-confirm-content="' . lang('WARNING: All forms that match the filters will be permanently deleted. This includes forms from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which forms will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Forms') ) . '</button>
         </div>';
     }
 
@@ -1250,7 +1250,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
                                 ' . get_token_field() . '
                                 <div class=" btn-group btn-group-sm flex-wrap">
@@ -1266,7 +1266,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
-                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),
@@ -1303,7 +1303,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

@@ -442,7 +442,7 @@ pg_page_shell(array(
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 <a class="btn btn-sm btn-ghost" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_cash.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
             </nav>
 
             <div class="card my-4">

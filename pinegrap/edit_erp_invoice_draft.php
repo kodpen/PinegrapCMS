@@ -94,7 +94,7 @@ if (!$_POST) {
                 : '') . '
             ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
             </nav>' : '') . '
 
             <form name="form" action="edit_erp_invoice_draft.php" method="post" autocomplete="off">
@@ -104,9 +104,9 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
-                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Delete Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
+                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Delete Draft') . '</span></button>
                         </div>
                     </div>
                 </nav>

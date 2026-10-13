@@ -200,7 +200,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
                     <td class="align-middle">' . $output_display_type . '</td>
@@ -393,7 +393,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
                     <td class="align-middle">' . $not_logged_in_header . '</td>
@@ -521,7 +521,7 @@ switch ($filter) {
                 $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($row['dregion_name']) . '</td>
                     <td class="align-middle">'.$code_preview.'</td>
@@ -642,7 +642,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($row['cregion_name']) . '</td>
                     <td class="align-middle">' . $content_preview . '</td>
@@ -763,7 +763,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($row['cregion_name']) . '</td>
                     <td class="align-middle">' . $content_preview . '</td>

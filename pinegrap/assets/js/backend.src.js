@@ -186,12 +186,16 @@ $(document).ready(function () {
     });
 
 
+    // Buttons are never relabelled or held while a request runs. A label
+    // swapped to "Saving" and a button kept disabled for a fixed time made
+    // screens that save over Ajax wait long after the answer had come back.
+    // Double submits are stopped on the form instead (see below), and a
+    // screen that sends its own request disables its button for exactly as
+    // long as that request runs.
     $('a:not(.no-submit),button[type=submit]:not(.no-submit),button[type=button]:not(.no-submit)').on('click', function () {
         var el = $(this);
-        var loading_content = el.attr("data-loading-content");
         var confirm_content = el.attr("data-confirm-content");
         var confirm_action = el.attr("data-confirm-action");
-        var default_content = el.html();
         var value = el.attr("value");
         var result;
         var autoconfirm = false;
@@ -234,65 +238,118 @@ $(document).ready(function () {
                 confirmation = true;
             }
         }
-        if (loading_content || confirm_content || autoconfirm == true) {
-            if (confirm_content || autoconfirm == true) {
-                if (confirmation == true) {
-                    // if this is parasut export button, than output page refresh for user to see the changed order results.
-                    if (value == 'Export Orders For Parasut') {
-                        $('#xlsl_setup_modal').modal('hide');
-                        //reload this page to show user exported orders.
-                        $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
-                        $('body').attr('style', 'overflow:hidden');
-                        setTimeout(function () {
-                            window.location.reload();
-                        }, 4000);//4sec wait
-                    }
-
-                    if (loading_content) {
-                        loading_triggered();
-
-                        //if form need to be send also send it.
-                        if (result == true) {
-                            document.form.submit();
-                        }
-                        if (confirm_action && confirm_action == 'history-back') {
-                            javascript: history.go(-1);
-                        }
-                    } else {
-                        //if no loading needed pass it.
-                        //if form need to be send also send it.
-                        if (result == true) {
-                            document.form.submit();
-                        }
-                        if (confirm_action && confirm_action == 'history-back') {
-                            javascript: history.go(-1);
-                        }
-                        return true;
-                    }
-                } else {
-                    //user selected NO
-                    return false;
+        if (confirm_content || autoconfirm == true) {
+            if (confirmation == true) {
+                // if this is parasut export button, than output page refresh for user to see the changed order results.
+                if (value == 'Export Orders For Parasut') {
+                    $('#xlsl_setup_modal').modal('hide');
+                    //reload this page to show user exported orders.
+                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
+                    $('body').attr('style', 'overflow:hidden');
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 4000);//4sec wait
                 }
+
+                //if form need to be send also send it.
+                if (result == true) {
+                    document.form.submit();
+                }
+                if (confirm_action && confirm_action == 'history-back') {
+                    history.go(-1);
+                }
+                return true;
             } else {
-                if (loading_content) {
-                    loading_triggered();
-                }
+                //user selected NO
+                return false;
             }
         }
-
-        function loading_triggered() {
-            el.addClass('disabled');
-            setTimeout(function () {
-                el.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + loading_content);
-            }, 0);
-            setTimeout(function () {
-                el.html(default_content);
-                el.removeClass('disabled');
-            }, 10000);
-            return true;
-        }
-
     });
+
+    // A double click, or Enter pressed twice, must not send the same form or
+    // open the same link twice: some of them do something (create, delete,
+    // duplicate) rather than only show a page. The guard lives on the form
+    // or link, not on the button: nothing on screen changes, and the
+    // submitting button keeps its name and value in the request (a disabled
+    // button would drop them). It only lasts a moment, because a request
+    // whose answer is a download leaves the page where it is and has to be
+    // repeatable straight away.
+    //
+    // Installed once per window: a second copy would find the form just
+    // marked by the first and cancel the submit.
+    if (!window.pgSubmitGuard) {
+        window.pgSubmitGuard = true;
+
+        var pg_sent = new WeakMap();
+
+        var pg_just_sent = function (el) {
+            var now = Date.now();
+
+            if ((now - (pg_sent.get(el) || 0)) < 3000) {
+                return true;
+            }
+
+            pg_sent.set(el, now);
+
+            return false;
+        };
+
+        // An answer that opens in another tab or frame leaves this page as
+        // it is; sending again from here is a new request.
+        var pg_opens_here = function (target) {
+            return !target || (target.toLowerCase() === '_self');
+        };
+
+        // Both listeners are on window, so they run after every handler on
+        // the element and on document: a screen that sends the form over
+        // Ajax, or handles the link itself, has cancelled the event by then
+        // and is left alone.
+        window.addEventListener('submit', function (e) {
+            var form = e.target;
+
+            if (e.defaultPrevented || !form || (form.nodeName !== 'FORM')) {
+                return;
+            }
+
+            if (!pg_opens_here((e.submitter && e.submitter.getAttribute('formtarget')) || form.getAttribute('target'))) {
+                return;
+            }
+
+            if (pg_just_sent(form)) {
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('click', function (e) {
+            if (e.defaultPrevented || (e.button !== 0) || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
+            var link = (e.target && e.target.closest) ? e.target.closest('a[href]') : null;
+
+            if (!link || link.hasAttribute('download') || !pg_opens_here(link.getAttribute('target'))) {
+                return;
+            }
+
+            var href = link.getAttribute('href');
+
+            if (!href || (href.charAt(0) === '#') || /^\s*javascript:/i.test(href)) {
+                return;
+            }
+
+            if (pg_just_sent(link)) {
+                e.preventDefault();
+            }
+        });
+
+        // Back to this page from the history: everything on it can be sent
+        // again.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) {
+                pg_sent = new WeakMap();
+            }
+        });
+    }
 
 
 
@@ -6355,7 +6412,7 @@ function editBarcodeTemplate(opts) {
         // Save button
         $('#pg-bc-save-btn').off('click').on('click', function () {
             var $btn = $(this);
-            $btn.prop('disabled', true).text(_L('Saving...'));
+            $btn.prop('disabled', true);
             var templateJson = JSON.stringify(editor.getTemplate());
 
             var apiUrl = pg_api_url();
@@ -6375,20 +6432,19 @@ function editBarcodeTemplate(opts) {
                         bsModal.hide();
                     } else {
                         alert(res.message || _L('Error saving template.'));
-                        $btn.prop('disabled', false).text(_L('Save Template'));
+                        $btn.prop('disabled', false);
                     }
                 })
                 .catch(function () {
                     alert(_L('Network error.'));
-                    $btn.prop('disabled', false).text(_L('Save Template'));
+                    $btn.prop('disabled', false);
                 });
         });
     });
 
-    // Reset save-btn text each time the modal opens
+    // Re-enable the save button each time the modal opens
     $modal.one('show.bs.modal', function () {
-        var _L2 = (typeof pgLang !== 'undefined') ? pgLang : function (k) { return k; };
-        $('#pg-bc-save-btn').prop('disabled', false).text(_L2('Save Template'));
+        $('#pg-bc-save-btn').prop('disabled', false);
     });
 
     bsModal.show();

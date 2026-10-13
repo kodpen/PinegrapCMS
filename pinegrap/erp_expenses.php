@@ -289,9 +289,9 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_expense.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
-                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_expense_categories.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Categories') . '</a>' : '') . '
-                <a class="btn btn-sm btn-outline-secondary" href="erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-graph-up me-1" aria-hidden="true"></i>' . lang('Profit and loss') . '</a>
+                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
+                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_expense_categories.php"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Categories') . '</a>' : '') . '
+                <a class="btn btn-sm btn-outline-secondary" href="erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '"><i class="bi bi-graph-up me-1" aria-hidden="true"></i>' . lang('Profit and loss') . '</a>
                 ' . ($ready ? '<a class="btn btn-sm btn-outline-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>' : '') . '
             </nav>
 

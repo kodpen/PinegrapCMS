@@ -232,7 +232,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky " style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-success" data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-success"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                         </div>
                     </div>
                 </nav>

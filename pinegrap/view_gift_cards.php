@@ -312,8 +312,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
             $output_rows .=
                 '<tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_gift_card.php?id=' . $gift_card['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_gift_card.php?id=' . $gift_card['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     <td class="chart_label align-middle"><span class=" badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span></td>
                     <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
@@ -390,7 +390,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                     <div class="col-12 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_gift_card.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1 " href="add_gift_card.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-link link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>

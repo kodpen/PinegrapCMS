@@ -146,9 +146,9 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                             ' . (empty($movements)
-                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger" data-loading-content="' . lang(array('string' => 'Deleting')) . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

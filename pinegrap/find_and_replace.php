@@ -352,14 +352,12 @@ if (!$_POST) {
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" name="submit_button" value="Find"
-                                    class="btn my-1 btn-outline-primary"
-                                    data-loading-content="' . lang('Searching') . '">
+                                    class="btn my-1 btn-outline-primary">
                                     <span class="material-icons me-2">search</span>
                                     <span class="btn-text">' . lang('Find') . '</span>
                                 </button>
                                 <button type="submit" name="submit_button" value="Find &amp; Replace"
-                                    class="btn my-1 btn-success"
-                                    data-loading-content="' . lang(array('string'=>'Replacing')) . '">
+                                    class="btn my-1 btn-success">
                                     <span class="material-icons me-2">find_replace</span>
                                     <span class="btn-text">' . lang(array('string'=>'Find & Replace')) . '</span>
                                 </button>

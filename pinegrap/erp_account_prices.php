@@ -165,7 +165,7 @@ pg_page_shell([
                 </div>
                 ' . ((!$readonly && $ready) ? '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                     </div>
                 </nav>' : '') . '
             </form>

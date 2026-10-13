@@ -99,9 +99,9 @@ if (empty($_POST['name'])) {
         ){
              if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
                 $optimize_button =
-                    '<a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Processing') . '" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
+                    '<a class="btn btn-link link-secondary py-0 mb-2" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
-            $image_buttons = $optimize_button . ' <a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Loading') . '" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . ' <a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
     }
 
     // Convert file size to a user friendly output.
@@ -143,7 +143,7 @@ if (empty($_POST['name'])) {
             $edit_file_button_location = 'edit_javascript.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri());
         }
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" data-loading-content="' . lang('Loading') . '" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
     
     }
     
@@ -153,7 +153,7 @@ if (empty($_POST['name'])) {
         $edit_file_button_label = lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($file_extension)) );
         $edit_file_button_location = 'editor_edit_file.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" data-loading-content="' . lang('Loading') . '" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
     }
 
     $output_theme_rows = '';
@@ -217,7 +217,7 @@ if (empty($_POST['name'])) {
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . $image_buttons . '
                                 <a class="btn btn-link link-secondary py-0 mb-2"  href="' . OUTPUT_PATH . $file_name . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                <a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Downloading') . '" download="image" href="' . OUTPUT_PATH . $file_name . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-2" download="image" href="' . OUTPUT_PATH . $file_name . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                             </div>
                         </nav>
                     </div>
@@ -279,9 +279,9 @@ if (empty($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_edit_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

@@ -55,8 +55,8 @@ if($directory){
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">
-        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
+        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'

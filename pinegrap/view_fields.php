@@ -163,12 +163,12 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         if ($layout_type == 'custom') {
             $output_layout_buttons =
             '<div class=" btn-group btn-group-sm flex-wrap ">
-                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name))) . '&amp;type=layout&amp;id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
-                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
+                <a class="btn btn-link link-secondary py-0 mb-2 " href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name))) . '&amp;type=layout&amp;id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-link link-secondary py-0 mb-2 " href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
             </div>';
         }
     }
-    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
+    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
     $output_breadcrumb_second_level_item ='';
     $pg_breadcrumb_parent_items = array(
         array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
@@ -184,7 +184,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         $delete_data_warning = lang(' and ALL SUBMITTED FORM DATA for the selected field(s)');
     }
     $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(($_GET['send_to'] ?? ''))) . '\'';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
 // else if there is a product_id supplied in the query string, this is a product form
 } elseif ((isset($_GET['product_id'])) && ($_GET['product_id'] != '')) {
@@ -224,8 +224,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_form_designer_subnav_subheading = '
     <p class="p-0 m-0">' . lang('Product ID / SKU') . ': ' . h($product_name) . '</p>
     <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>';
-    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
-    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '">' . lang('Edit Product') . '</a></li>';
+    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
+    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '">' . lang('Edit Product') . '</a></li>';
     $pg_breadcrumb_parent_items = array(
         array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'),
         array('label' => lang('Edit Product'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product.php?id=' . h(escape_javascript($_GET['product_id']))),
@@ -235,9 +235,9 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_cancel_onclick = 'window.location.href=\'edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '\'';
     $output_preview_button = '
     <div class=" btn-group btn-group-sm flex-wrap ">
-        <button type="button" class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
+        <button type="button" class="btn btn-link link-secondary py-0 mb-2 " onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
     </div>';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
     $output_product_id_to_url = '&product_id=' . h(escape_javascript(urlencode($_GET['product_id'])));
@@ -290,8 +290,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         'vars'   => array($variant_count),
         'suffix' => ($variant_count === 1) ? '' : 's')) . '</p>';
 
-    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets">' . lang('Variant Sets') . '</a></li>';
-    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
+    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets">' . lang('Variant Sets') . '</a></li>';
+    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
 
     $pg_breadcrumb_parent_items = array(
         array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets'),
@@ -304,7 +304,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
 
     // No preview button: a template belongs to no single product, and
     // preview_form.php renders one product's form.
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-2"></span>' . lang('Delete Selected') . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-2"></span>' . lang('Delete Selected') . '</button>';
 
     $output_product_id_to_url = '&product_group_id=' . h(escape_javascript(urlencode($_GET['product_group_id'])));
 
@@ -380,8 +380,8 @@ while ($row = mysqli_fetch_assoc($result)) {
         '<tr> 
             <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="fields[]" value="' . $id . '" class="checkbox" /></td>
 			<td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="chart_label">' . h($name) . '</td>
             <td title="' . h($label_or_information) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>
@@ -412,7 +412,7 @@ pg_page_shell(array(
 <h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
                     ' . $output_form_designer_subnav_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $output_layout_buttons . '
                         ' . $output_preview_button . '
                     </nav>
