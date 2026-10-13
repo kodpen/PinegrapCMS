@@ -168,6 +168,80 @@ tek kartta; izni olmayan uygulamaya 403 `insufficient_scope`; OpenAPI.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: başka hizmetlerin MCP sunucuları takma adla, MCP istemcisi (10.82) (2026-10-13)
+
+**Neden.** Site bugüne kadar yalnız MCP *sunucusuydu* (`mcp.php`): Claude
+ve diğer istemciler siteye bağlanıyordu. Bu değişiklikle site bir MCP
+*istemcisi* de oluyor: yönetici başka bir hizmetin uzak MCP sunucusunu
+(GitHub, bir proje takip aracı, bir dokümantasyon sitesi) `@takma ad` ile
+ekliyor; kanalda bu takma ada yazılan istek Pinegrap AI tarafından o
+sunucunun izin verilen araçlarıyla yanıtlanacak (kanal tarafı ayrı
+değişiklikle gelir). Bu parça istemciyi, sunucu dizinini ve araç izinlerini
+getirir.
+
+**İstemci** (`includes/mcp/client.php`). Streamable HTTP; stdio sunucuları
+web sitesinden çağrılamaz. Önce güncel nesil (2026-07-28) denenir:
+oturum yok, `server/discover`, her istekte `MCP-Protocol-Version`,
+`Mcp-Method`, `Mcp-Name` başlıkları ve `_meta` içinde sürüm ile istemci
+bilgisi. Sunucu bunu tanımazsa eski el sıkışmaya düşülür: `initialize`
+(2025-11-25 önerilir; 2025-06-18 ve 2025-03-26 kabul), `Mcp-Session-Id`,
+`notifications/initialized`. 401/403 ya da ağ hatasında düşülmez (kimlik
+bilgisi ya da adres yanlıştır, eski sürüm denemek bir şey değiştirmez).
+Yanıt JSON ya da SSE (`text/event-stream`) olabilir; SSE'de isteğin
+kimliğine eşleşen mesaj aranır. Oturum 404 ya da -32022 ile düşerse bir kez
+yeniden el sıkışılır. `tools/list` sayfalanır (en çok 10 sayfa, 200 araç);
+araç şemaları nesne olarak çözülür ki boş `{}` diziye dönüşmesin. Arka
+planda süren iş (`resultType` ≠ `complete`) şimdilik hata sayılır.
+Bütün istekler `api_http_request()` üstünden gider: yalnız https, adres
+DNS'te çözülüp iç ağ adresleri reddedilir, curl o adrese sabitlenir,
+yönlendirme izlenmez. `api_http_request()`'e `response_headers` seçeneği
+eklendi (oturum ve içerik türü başlıkları için).
+
+**Dizin ve ekran** (`includes/workspace/mcp.php`, Çalışma Alanı Ayarları ›
+"MCP sunucuları" kartı; yalnız yönetici). Takma ad: harfle başlar, 2–32
+karakter `a-z0-9_-`, benzersiz; bir kullanıcı adıyla ya da ayrılmış adlarla
+(`ai`, `claude`, `pinegrap`, `herkes`, `kanal` …) çakışamaz, böylece `@`
+tek anlama gelir. Kimlik bilgisi: yok, Bearer jetonu, hizmetin kendi başlığı
+(`Host`, `Content-Type`, `Accept`, `Cookie`, `Mcp-*` gibi bağlantının
+kendi başlıkları reddedilir) ya da kullanıcı adı ve parola; JSON olarak site anahtarıyla
+şifrelenir, ekrana geri yazılmaz (boş bırakılan alan saklananı korur),
+satır sonu içeremez. En çok 20 sunucu. Kaydedince el sıkışılır ve araçlar
+okunur; hata metni kaydedilir ve satırda görünür. Sunucu kapatılabilir,
+araçları yeniden okunabilir, kaldırılabilir; her işlem etkinlik kaydına
+yazılır.
+
+**Araç izinleri.** Her araç kapalı başlar. Herkes tek bağlantıyla
+(yöneticinin girdiği kimlik bilgisiyle) çalıştığı için yazan araç, yetkisi
+olmayan birinin o hesapla iş yapması demektir (confused deputy); bu yüzden
+yalnız sunucunun `readOnlyHint: true` dediği araçlar (`auto`) açılabilir.
+Sunucu hiçbir ipucu vermiyorsa yönetici "yalnız okuyor" diyerek açabilir
+(`auto_declared`); `destructiveHint`/`idempotentHint` gibi bir ipucu verip
+`readOnlyHint` vermeyen araç yazan sayılır ve kapalı kalır. Yazan araçlar
+kişi başı bağlantı ve onay ile ayrı değişiklikte gelecek. Araç adı
+`^[A-Za-z0-9_./-]{1,128}$` dışındaysa liste dışı kalır. Listede yeniden
+okununca kaybolan aracın izni silinir.
+
+**Şema 10.82** (`upgrade_2026_4_10_workspace_mcp()`): `ws_mcp_servers`,
+`ws_mcp_calls` (çağrı kaydı; bu parçada henüz yazılmıyor),
+`ws_ai_requests.mcp_server_id`. Ayrıntı `CLAUDE-tam.md` sürüm tablosunda.
+**2026.4.10'a zaten geçmiş siteler (dev dahil) tabloları almak için
+Yazılımı Onar › 2026.4.9'dan yeniden koşturmalı.**
+
+**Doğrulama.** `tests/mcp_client_test.php` (12 test): adres kuralları, SSE
+okuma, kimlik eşleşmesi, güncel nesil el sıkışma ve iki sayfalık araç
+listesi, `initialize`'a düşüş ve unutulan oturum, 401'de düşmeme,
+2024-11-05'i reddetme, arka plan işi, araç normalleştirme, sonuç metni,
+oturum kimliği, başlıkta CR/LF temizliği. Sandbox'ta: sitenin kendi
+`mcp.php`'sine karşı iki nesilde de el sıkışma ve araç listesi; ekle,
+kaydet, jetonun şifreli saklanması, boş alanın jetonu koruması, araç
+izinlerinde yazan aracın reddedilmesi, ipucusuz aracın `auto_declared`
+olması, kapat/aç/kaldır, etkinlik kaydı. Şema adımı üç kez koşturuldu.
+
+**Doğrulanamayan.** Sandbox dış adresleri çözemediği için gerçek bir uzak
+sunucu (GitHub MCP gibi) denenemedi; dev.pinegrap.com'da denenmeli.
+
+---
+
 ## 2026.4.10 — Yayınla: yalnız düzenlenen sayfanın zamanı ve kaydı (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel testinin ikinci raporu (koordinatör üzerinden): tek
