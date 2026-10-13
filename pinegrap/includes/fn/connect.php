@@ -382,6 +382,12 @@ function pg_connect_authorize_url($provider, $app, $request)
         'code_challenge_method' => 'S256',
     );
 
+    // A server that asks for no scope (an MCP server that says none) gets no
+    // empty scope parameter, which some refuse.
+    if ($params['scope'] === '') {
+        unset($params['scope']);
+    }
+
     if (isset($request['nonce']) && ((string) $request['nonce'] !== '')) {
         $params['nonce'] = (string) $request['nonce'];
     }
@@ -697,6 +703,20 @@ function pg_connect_redirect_uri()
 }
 
 /**
+ * The address of the site's client ID metadata document
+ * (draft-ietf-oauth-client-id-metadata-document): an authorization server
+ * that reads those takes this address as the site's client_id and reads the
+ * site's name and redirect address from it, so nothing is registered there.
+ * Served by connect_client.php.
+ *
+ * @return string
+ */
+function pg_connect_client_metadata_url()
+{
+    return URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/connect_client.php';
+}
+
+/**
  * A provider's application on this site, or null when none is set up.
  *
  * Google falls back to the "Sign in with Google" application of the security
@@ -960,6 +980,12 @@ function pg_connect_disconnect($id)
 
     $token = isset($secret['refresh_token']) ? (string) $secret['refresh_token'] : '';
 
+    // A connection without a refresh token (a provider whose tokens do not
+    // end) is ended with its access token (RFC 7009).
+    if (($token === '') && is_array($provider) && !empty($provider['refresh_optional'])) {
+        $token = pg_connect_cached_access($secret, 'default', time(), 0);
+    }
+
     if (is_array($provider) && ($token !== '') && (pg_connect_endpoint($provider, $app, 'revoke_url') !== '')) {
         require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
@@ -978,9 +1004,27 @@ function pg_connect_disconnect($id)
                 ));
             }
         } else {
+            $params = array('token' => $token);
+            $headers = array('Content-Type: application/x-www-form-urlencoded');
+
+            // A provider whose revocation endpoint wants the client to say
+            // who it is (RFC 7009 2.1) gets what its token endpoint gets.
+            if (!empty($provider['revoke_client_auth']) && is_array($app)) {
+                $params['client_id'] = $app['client_id'];
+
+                if (!pg_connect_app_public($app) && ($app['client_secret'] !== '')) {
+                    if (isset($provider['client_auth']) && ($provider['client_auth'] === 'basic')) {
+                        $headers[] = 'Authorization: Basic ' . base64_encode(rawurlencode($app['client_id']) . ':' . rawurlencode($app['client_secret']));
+                        unset($params['client_id']);
+                    } else {
+                        $params['client_secret'] = $app['client_secret'];
+                    }
+                }
+            }
+
             api_http_request('POST', pg_connect_endpoint($provider, $app, 'revoke_url'), array(
-                'body'    => http_build_query(array('token' => $token), '', '&'),
-                'headers' => array('Content-Type: application/x-www-form-urlencoded'),
+                'body'    => http_build_query($params, '', '&'),
+                'headers' => $headers,
                 'timeout' => 10,
                 'agent'   => 'connect',
             ));

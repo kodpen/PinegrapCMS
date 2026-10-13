@@ -573,6 +573,20 @@
          tablo oluşturulur; asistan isteklerine sunucu
          kolonu eklenir.
 
+  [YENİ] OAuth ile giriş isteyen MCP sunucuları: sunucu
+         eklenirken "Hizmete giriş yaparak (OAuth)"
+         seçilince site, sunucunun nereden giriş
+         istediğini kendisi buluyor ve kendini orada
+         kaydediyor. Kartta "Bağla" düğmesiyle yönetici
+         hizmete gidip izni veriyor, site araçları hemen
+         okuyor. Bağlantının süresi dolunca kendiliğinden
+         yenileniyor; yenilenemezse kart "Yeniden bağla"
+         diyor. "Bağlantıyı kes" izni hizmette de geri
+         alıyor. Kendi uygulamasını isteyen hizmetler
+         (GitHub gibi) için istemci kimliği ve gizli
+         anahtarı girilebiliyor; yönlendirme adresi
+         formda yazıyor.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

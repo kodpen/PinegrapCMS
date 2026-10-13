@@ -355,12 +355,17 @@ if ($_POST) {
         case 'mcp_toggle':
         case 'mcp_delete':
         case 'mcp_tools':
+        case 'mcp_connect':
+        case 'mcp_disconnect':
             $anchor = ws_mcp_settings_post($viewer, $action, $liveform);
             break;
     }
 
     go($self_url . $anchor);
 }
+
+// Back from connecting an MCP server's sign-in (connect.php).
+ws_mcp_settings_returned($viewer, $liveform);
 
 // ── Output ────────────────────────────────────────────────────────────
 
