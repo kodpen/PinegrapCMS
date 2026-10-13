@@ -1430,7 +1430,7 @@ function ws_guest_file_send($context, $message_id)
 
     header('Content-Type: ' . ($inline ? $types[$extension] : 'application/octet-stream'));
     header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($name));
-    header('X-Content-Type-Options: nosniff');
+    pg_send_nosniff();
     header('Cache-Control: private, max-age=3600');
     header('Content-Length: ' . filesize($path));
 

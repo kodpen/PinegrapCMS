@@ -20980,6 +20980,7 @@
     "Its text can be bound to the form's fields.": "Metni formun alanlarına bağlanabilir.",
     "You can bind it to the calendar's fields, and inside the loop_area to each event's fields.": "Takvimin alanlarına, loop_area içinde her etkinliğin alanlarına bağlayabilirsin.",
     "Bind the content (text/href) to the order's fields, and the form controls (input/select) with the <strong>Express Order Field</strong> dropdown below.": "İçeriği (metin/href) siparişin alanlarına, form kontrollerini (input/select) alttaki <strong>Hızlı Sipariş Alanı</strong> listesiyle bağlayın.",
+    "Sign-in required. Connect your application to this site so it can sign you in and receive an access token.": "Oturum açmanız gerekiyor. Uygulamanızı bu siteye bağlayın; oturumunuzu açsın ve erişim jetonu alsın.",
     "A cancelled purchase order is not invoiced. Open it again first.": "İptal edilmiş satın alma siparişi faturalanmaz. Önce yeniden açın.",
     "Every line of the purchase order is already on a purchase invoice or a draft.": "Satın alma siparişinin her satırı zaten bir alış faturasında ya da taslakta.",
     "Everything on the purchase order has come in.": "Satın alma siparişindeki her şey teslim alındı.",
