@@ -362,6 +362,7 @@ function pg_cf_load_page_form_settings($page_id)
         'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
+        'pretty_urls' => 0,
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
 
@@ -371,7 +372,7 @@ function pg_cf_load_page_form_settings($page_id)
                 administrator_email_format, administrator_email_page_id,
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
-                membership, membership_days
+                membership, membership_days, pretty_urls
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -402,6 +403,9 @@ function pg_cf_load_page_form_settings($page_id)
         'membership'           => (int)$row['membership'] === 1 ? 1 : 0,
         'membership_days'      => (int)$row['membership_days'],
         'auto_registration'    => (int)$row['auto_registration'] === 1 ? 1 : 0,
+        // Records addressed by their name (/<page>/<title>) rather than by
+        // their reference code; the name comes from the Title field.
+        'pretty_urls'          => (int)$row['pretty_urls'] === 1 ? 1 : 0,
     );
 }
 
@@ -622,6 +626,11 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     if (array_key_exists('auto_registration', $settings)) {
         $set['auto_registration'] = !empty($settings['auto_registration']) ? '1' : '0';
     }
+    // The records' names are written by pg_cf_sync_page_form() once the
+    // fields (the Title field among them) are in place.
+    if (array_key_exists('pretty_urls', $settings)) {
+        $set['pretty_urls'] = !empty($settings['pretty_urls']) ? '1' : '0';
+    }
     if (array_key_exists('confirmation_message', $settings)) {
         $msg = trim((string)$settings['confirmation_message']);
         if ($msg !== '') $set['confirmation_message'] = $msg;
@@ -707,12 +716,14 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     // insert and find what the operator removed.
     $existing = array();
     $old_list = array();
+    $old_title_id = 0;
     foreach ((array)db_items(
-        "SELECT id, name, label FROM form_fields
+        "SELECT id, name, label, rss_field FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
         $existing[(int)$row['id']] = $row;
         $old_list[] = array('name' => $row['name'], 'label' => $row['label']);
+        if ($old_title_id === 0 && (string)$row['rss_field'] === 'title') $old_title_id = (int)$row['id'];
     }
 
     $kept         = array();
@@ -831,9 +842,64 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
         db("DELETE FROM form_fields WHERE id = '" . (int)$id . "'");
     }
 
+    // The pretty URL state before the settings are written: turning it on,
+    // or moving the Title role to another field, renames the records.
+    $was_pretty   = check_if_pretty_urls_are_enabled($page_id) == true;
+    $title_before = $old_title_id;
+
     pg_cf_write_form_settings($page_id, $settings, $old_list, $written_list);
 
+    $result['addresses'] = pg_cf_refresh_address_names($page_id, $was_pretty, $title_before);
+
     return $result;
+}
+
+/**
+ * Give a form's records the names its pretty URLs need.
+ *
+ * The name comes from the record's Title field (update_submitted_form_address_name()),
+ * and custom_form.php writes it on every new submission while the setting is
+ * on. What was there before has none: turning the setting on, or moving the
+ * Title role to another field, renames every record, as the classic page and
+ * field screens do (edit_page.php, edit_field.php). While the setting stays
+ * on, a record that still has no name (written while it was off, or through
+ * the API) gets one. Returns how many records were given a name.
+ */
+function pg_cf_refresh_address_names($page_id, $was_pretty, $title_before)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || !pg_cf_page_form_ready()) return 0;
+    if (check_if_pretty_urls_are_enabled($page_id) != true) return 0;
+    if (function_exists('pg_sw_form_pretty_urls')) pg_sw_form_pretty_urls(0, true);
+
+    $title_now = (int)db_value(
+        "SELECT id FROM form_fields
+         WHERE page_id = '$page_id' AND rss_field = 'title'
+         ORDER BY sort_order ASC LIMIT 1");
+    if ($title_now <= 0) return 0;
+
+    // Every record when the names may all be stale; otherwise only the
+    // unnamed ones that have a title to be named after, so a save does not
+    // walk the records that never will.
+    if (!$was_pretty || (int)$title_before !== $title_now) {
+        $records = db_items(
+            "SELECT id FROM forms
+             WHERE page_id = '$page_id'
+             ORDER BY submitted_timestamp ASC, id ASC");
+    } else {
+        $records = db_items(
+            "SELECT DISTINCT forms.id, forms.submitted_timestamp
+             FROM forms
+             INNER JOIN form_data ON form_data.form_id = forms.id AND form_data.data != ''
+             INNER JOIN form_fields ON form_fields.id = form_data.form_field_id AND form_fields.rss_field = 'title'
+             WHERE forms.page_id = '$page_id' AND forms.address_name = ''
+             ORDER BY forms.submitted_timestamp ASC, forms.id ASC");
+    }
+    $named = 0;
+    foreach ((array)$records as $record) {
+        if (update_submitted_form_address_name($record['id']) !== '') $named++;
+    }
+    return $named;
 }
 
 /**

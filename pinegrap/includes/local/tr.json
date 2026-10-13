@@ -20182,5 +20182,12 @@
     "Loads only on: {var}": "Yalnızca şu sayfalarda yüklenir: {var}",
     "(deleted page)": "(silinmiş sayfa)",
     "Find a page…": "Sayfa bul…",
-    "No page matches.": "Eşleşen sayfa yok."
+    "No page matches.": "Eşleşen sayfa yok.",
+    "Record addresses": "Kayıt adresleri",
+    "A record opens at the address of the page that shows it followed by its title (/blog-post/my-first-post), not by a reference code (?r=…). The name is made from the field with the Title role; turning this on names the records already submitted, and old links keep working.": "Kayıt, referans koduyla (?r=…) değil, onu gösteren sayfanın adresinin ardından başlığıyla açılır (/blog-yazisi/ilk-yazim). Ad, Başlık rolündeki alandan üretilir; bunu açmak önceden gönderilmiş kayıtlara da ad verir ve eski linkler çalışmaya devam eder.",
+    "No field carries the <strong>Title</strong> role, so the records get no name and keep their reference code. Select a control and assign it in Form Field → RSS / list role.": "Hiçbir alana <strong>Başlık</strong> rolü verilmedi: kayıtlar ad almaz ve referans koduyla açılmaya devam eder. Bir kontrolü seçip Form Alanı → RSS / liste rolü'nden atayın.",
+    "Pretty URLs are on: a record opens at its detail page followed by its title.": "Güzel URL'ler açık: kayıt, detay sayfasının adresinin ardından başlığıyla açılır.",
+    "Pretty URLs are off: a record opens by its reference code (?r=…). They are turned on on the form's own page.": "Güzel URL'ler kapalı: kayıt referans koduyla (?r=…) açılır. Formun kendi sayfasından açılabilir.",
+    "A link bound to the address name opens the record on its detail page, by its name when the form has pretty URLs on.": "Adres adına bağlı bir link kaydı detay sayfasında açar; formda güzel URL'ler açıksa kaydın adıyla.",
+    "{var:1} record{suffix:1} of the form now open at their own address.": "Formun {var:1} kaydı artık kendi adresinde açılıyor."
 }
