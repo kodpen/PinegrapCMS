@@ -1397,6 +1397,164 @@ function pg_mail_envelope_sender($mail, $from_email_address)
     return $login;
 }
 
+/**
+ * The connected account a kind of mail is sent from, or null when it goes
+ * through the SMTP server or mail() as before.
+ *
+ * SMTP Settings stores the choice per kind (SYSTEM_MAIL_CONNECTION,
+ * CAMPAIGN_MAIL_CONNECTION in data/config.php). An account that has since
+ * been disconnected, or no longer serves sending e-mail, is no choice.
+ *
+ * @param string $type 'system' or 'campaign'
+ * @return array|null the account (pg_connect_account())
+ */
+function pg_mail_connection($type)
+{
+    $constant = ($type === 'campaign') ? 'CAMPAIGN_MAIL_CONNECTION' : 'SYSTEM_MAIL_CONNECTION';
+    $connection_id = defined($constant) ? (int) constant($constant) : 0;
+
+    if ($connection_id <= 0) {
+        return null;
+    }
+
+    $account = pg_connect_account($connection_id);
+
+    if (!is_array($account) || !in_array('mail', $account['purposes'], true)) {
+        return null;
+    }
+
+    return $account;
+}
+
+/**
+ * The From and Reply-To of a message sent from a connected account.
+ *
+ * A mailbox sends as itself: Gmail rewrites any other From to the account,
+ * Microsoft refuses one the account may not send as. So the message is from
+ * the account, under the name it was given, and replies go to the address
+ * it was meant to come from unless it already names where replies go.
+ *
+ * @param string $account_address the connected account
+ * @param string $from_email_address
+ * @param string $reply_to
+ * @return array array('from' => string, 'reply_to' => string)
+ */
+function pg_mail_connection_from($account_address, $from_email_address, $reply_to)
+{
+    $account_address = trim((string) $account_address);
+    $from_email_address = (string) $from_email_address;
+    $reply_to = (string) $reply_to;
+
+    if (!filter_var($account_address, FILTER_VALIDATE_EMAIL) || (strcasecmp($account_address, $from_email_address) === 0)) {
+        return array('from' => $from_email_address, 'reply_to' => $reply_to);
+    }
+
+    return array(
+        'from'     => $account_address,
+        'reply_to' => (trim($reply_to) !== '') ? $reply_to : $from_email_address,
+    );
+}
+
+/**
+ * The finished message, as an SMTP server would have received it.
+ *
+ * PHPMailer builds and signs it (preSend()) without connecting anywhere.
+ * Over SMTP the Bcc recipients travel only in the envelope; a provider's API
+ * reads them from the message, so the header is put back in front - after
+ * signing, which never covers Bcc.
+ *
+ * @param PHPMailer $mail set to SMTP, for CRLF line ends
+ * @return string
+ * @throws Exception when PHPMailer cannot build it
+ */
+function pg_mail_connection_mime($mail)
+{
+    $mail->preSend();
+
+    $mime = $mail->getSentMIMEMessage();
+    $bcc = $mail->getBccAddresses();
+
+    if ($bcc) {
+        $mime = $mail->addrAppend('Bcc', $bcc) . $mime;
+    }
+
+    return $mime;
+}
+
+/**
+ * The request that hands a message to a provider (the purpose 'mail' says
+ * how, per provider).
+ *
+ * @param array  $send the provider's entry under 'send'
+ * @param string $mime
+ * @return array ok, body, headers, error
+ */
+function pg_mail_connection_request($send, $mime)
+{
+    $body = (isset($send['encoding']) && ($send['encoding'] === 'base64')) ? base64_encode($mime) : $mime;
+    $max_bytes = isset($send['max_bytes']) ? (int) $send['max_bytes'] : 0;
+
+    if (($max_bytes > 0) && (strlen($body) > $max_bytes)) {
+        return array(
+            'ok'      => false,
+            'body'    => '',
+            'headers' => array(),
+            'error'   => lang(array(
+                'string' => 'The message is {var:1} and the account takes at most {var:2}. Send large files as a link.',
+                'vars'   => array(convert_bytes_to_string(strlen($body)), convert_bytes_to_string($max_bytes)))),
+        );
+    }
+
+    return array(
+        'ok'      => true,
+        'body'    => $body,
+        'headers' => array('Content-Type: ' . $send['content_type'], 'Accept: application/json'),
+        'error'   => '',
+    );
+}
+
+/**
+ * Sends a finished message from a connected account.
+ *
+ * @param array  $account pg_connect_account()
+ * @param string $mime
+ * @return string '' when the provider took it, otherwise why not
+ */
+function pg_mail_connection_deliver($account, $mime)
+{
+    $purpose = pg_connect_purpose('mail');
+
+    if (!is_array($purpose) || !isset($purpose['send'][$account['provider']])) {
+        return lang('This kind of connection is not available.');
+    }
+
+    $send = $purpose['send'][$account['provider']];
+    $request = pg_mail_connection_request($send, $mime);
+
+    if (!$request['ok']) {
+        return $request['error'];
+    }
+
+    $result = pg_connect_api($account['id'], 'POST', $send['url'], array(
+        'body'     => $request['body'],
+        'headers'  => $request['headers'],
+        'timeout'  => 60,
+        'max_body' => 65536,
+        'agent'    => 'mail',
+    ), isset($send['scopes']) ? $send['scopes'] : array());
+
+    if ($result['ok']) {
+        return '';
+    }
+
+    // Google and Microsoft both answer {"error": {"message": ...}}.
+    if (is_array($result['data']) && isset($result['data']['error']['message']) && is_string($result['data']['error']['message'])) {
+        return pg_connect_clip($account['label'] . ': ' . $result['data']['error']['message']);
+    }
+
+    return pg_connect_clip($account['label'] . ': ' . (($result['error'] !== '') ? $result['error'] : 'HTTP ' . (int) $result['status']));
+}
+
 function email($properties)
 {
     $to = isset($properties['to']) ? $properties['to'] : '';
@@ -1448,8 +1606,16 @@ function email($properties)
         $mail->XMailer = '';
         PHPMailer::$validator = 'html5';
 
+        // A connected account, chosen on SMTP Settings, comes before the SMTP
+        // server. The message is still built as for SMTP (CRLF line ends, the
+        // headers a submission server receives); it is handed to the
+        // provider's API at the end instead of to a server.
+        $connection = (($type === 'system') || ($type === 'campaign')) ? pg_mail_connection($type) : null;
+
         // SMTP config
-        if ($type === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
+        if ($connection) {
+            $mail->isSMTP();
+        } elseif ($type === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
             $mail->isSMTP();
             $mail->Host = SYSTEM_SMTP_HOSTNAME;
             if (defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '') {
@@ -1504,10 +1670,19 @@ function email($properties)
             $mail->addBCC($bcc);
         }
 
-        $mail->setFrom($from_email_address, $from_name);
-        $mail->Sender = pg_mail_envelope_sender($mail, $from_email_address);
-        if (!empty($reply_to)) {
-            $mail->addReplyTo($reply_to);
+        $header_from = $from_email_address;
+        $header_reply_to = $reply_to;
+
+        if ($connection) {
+            $sender = pg_mail_connection_from($connection['label'], $from_email_address, $reply_to);
+            $header_from = $sender['from'];
+            $header_reply_to = $sender['reply_to'];
+        }
+
+        $mail->setFrom($header_from, $from_name);
+        $mail->Sender = pg_mail_envelope_sender($mail, $header_from);
+        if (!empty($header_reply_to)) {
+            $mail->addReplyTo($header_reply_to);
         }
 
         // One-click unsubscribe for commercial campaigns (RFC 8058). The
@@ -1585,6 +1760,17 @@ function email($properties)
             if ($list_unsubscribe_headers) {
                 $mail->DKIM_extraHeaders = array_keys($list_unsubscribe_headers);
             }
+        }
+
+        if ($connection) {
+            $error = pg_mail_connection_deliver($connection, pg_mail_connection_mime($mail));
+
+            if ($error !== '') {
+                $mail->ErrorInfo = $error;
+                throw new Exception($error);
+            }
+
+            return true;
         }
 
         return $mail->send();

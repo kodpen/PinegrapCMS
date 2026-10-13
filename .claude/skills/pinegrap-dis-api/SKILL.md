@@ -209,6 +209,11 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   `config` kolonuna belirteç yazma.
 - Şifreleme `ENCRYPTION_KEY` ister (`pg_connect_can_seal()`); yoksa ekran
   bağlamayı kapatır.
+- Örnek kullanıcı: e-posta (`purposes/mail.php`, `includes/fn/mail.php`
+  `pg_mail_connection*()`). Amaç dosyası sağlayıcı başına teslim
+  bilgisini (`send`) taşır; yeni posta sağlayıcısı = sağlayıcı dosyası +
+  `send` girdisi. Tablolar yokken (`pg_connect_schema_ready()`) bütün
+  okumalar "hesap yok" der.
 
 ## Modül dikişi (ERP → API)
 
