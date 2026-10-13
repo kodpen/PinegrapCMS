@@ -342,6 +342,20 @@
   [YENİ] Yeni webhook olayları: customer.deleted,
          product_group.created, product_group.deleted.
 
+  [YENİ] Çalışma Alanı API'de ve MCP'de genişledi: not
+         yazma ve değiştirme (POST /workspace/notes), plan
+         kayıtları (toplantı, müşteri ziyareti, izin, tatil:
+         /workspace/plan-items ile listeleme, ekleme,
+         değiştirme, silme), Ctrl+K araması (GET
+         /workspace/search) ve kişinin günü (GET
+         /workspace/my-day: bugün biten ve geciken görevler,
+         çalışan süre sayacı, bugünkü plan kayıtları, bekleyen
+         onaylar, okundu onayları, kişiye yazılanlar). Claude
+         gibi bağlı bir uygulamadan "bu toplantının notunu
+         Çalışma Alanı'na yaz" ya da "bugün neyim var" demek
+         yetiyor. Arama, uygulamaya izin verilmeyen kayıt
+         türlerini (sipariş, müşteri, fatura…) göstermez.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
