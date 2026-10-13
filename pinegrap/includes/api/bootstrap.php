@@ -31,6 +31,7 @@ require_once($pg_api_directory . '/keys.php');
 require_once($pg_api_directory . '/scopes.php');
 require_once($pg_api_directory . '/auth.php');
 require_once($pg_api_directory . '/devices.php');
+require_once(dirname($pg_api_directory) . '/oauth/server.php');
 require_once($pg_api_directory . '/ratelimit.php');
 require_once($pg_api_directory . '/idempotency.php');
 require_once($pg_api_directory . '/dry_run.php');

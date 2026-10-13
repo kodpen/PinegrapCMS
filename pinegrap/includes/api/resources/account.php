@@ -221,6 +221,21 @@ function api_auth_refresh($params) {
 
 	}
 
+	// An OAuth connection renews at the OAuth token endpoint, which checks
+	// the client it belongs to. Turned away before anything is rotated, so a
+	// client that called the wrong address keeps the token it holds.
+	if (pg_oauth_ready()) {
+
+		$found = api_device_find_refresh(api_account_raw_input('refresh_token'));
+
+		if (($found !== null) && ((int)$found['oauth_client_id'] > 0)) {
+
+			api_fail(401, 'unauthorized', lang('This token belongs to an OAuth connection. Renew it at the OAuth token endpoint.'));
+
+		}
+
+	}
+
 	$rotated = api_device_rotate(api_account_raw_input('refresh_token'));
 
 	$row = $rotated['row'];
@@ -368,7 +383,7 @@ function api_auth_me($params) {
 	$app_name = (string)api_value("SELECT name FROM api_apps WHERE id = '" . (int)$app['id'] . "' LIMIT 1");
 
 	api_ok(array(
-		'kind' => ($device !== null) ? 'device' : 'application',
+		'kind' => ($device === null) ? 'application' : ((isset($app['kind']) && ($app['kind'] === 'oauth')) ? 'oauth' : 'device'),
 		'user' => array(
 			'id'         => (int)$user['user_id'],
 			'username'   => (string)$user['user_username'],

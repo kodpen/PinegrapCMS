@@ -336,6 +336,16 @@ if (
 
 $item_name_lowercase = mb_strtolower($item_name);
 
+// The OAuth discovery documents (oauth.php, includes/oauth/). Clients look
+// for them at fixed well-known names, which only the router can answer: the
+// authorization server's metadata, its openid-configuration twin, and each
+// protected resource's metadata with the resource's path after the name.
+if (preg_match('#^\.well-known/(oauth-authorization-server|openid-configuration|oauth-protected-resource(?:/.*)?)$#', $item_name_lowercase, $router_well_known)) {
+    define('PG_OAUTH_WELL_KNOWN', $router_well_known[1]);
+    require(dirname(__FILE__) . '/oauth.php');
+    exit();
+}
+
 // If item is "robots.txt", then run that script.
 if ($item_name_lowercase == 'robots.txt') {
     require(dirname(__FILE__) . '/get_robots.txt.php');

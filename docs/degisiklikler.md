@@ -38,9 +38,9 @@ etkisizdir ve yerinde kalır. 2026.4.6 yayınında bu yüzden changelog'daki
 maddeleri "Oturum, hesap ve güvenlik"e taşındı.
 
 **Açık sürüm: 2026.4.10** (2026-10-13'te ürün sahibinin isteğiyle açıldı:
-`versions.php` satırı ve `changelog.txt` başlığı; henüz şema adımı ve
-migration dosyası yok, ilk şema adımı `includes/migrations/2026.4.10.php`'yi
-açar, alt adımlar `10.x`). 2026.4.9 2026-10-13'te yayınlandı ve kapandı.
+`versions.php` satırı ve `changelog.txt` başlığı; migration dosyası
+`includes/migrations/2026.4.10.php` ilk şema adımıyla — OAuth, 10.70 —
+açıldı, alt adımlar `10.x`). 2026.4.9 2026-10-13'te yayınlandı ve kapandı.
 Bir sürüm ilk şema adımı ya da changelog maddesiyle açılır: yeni
 `includes/migrations/<sürüm>.php` → `upgrade_to_<sürüm>()`, `versions.php`'ye
 satır, `changelog.txt`'de en üste yeni sürüm başlığı, bu dosyada
@@ -81,6 +81,92 @@ Aşağıdaki bölümlerin `İç tur` ve `(iç tur 4.x)` başlıkları **çalış
 numaralarıdır**, dağıtılmış sürüm değildir. `İç tur 2026.4.x` başlıkları
 2026.4.2 birleştirmesine, `2026.4.4 (iç tur 4.x)` başlıkları 2026.4.4
 birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
+
+---
+
+## 2026.4.10 — Dış API: OAuth 2.1 yetkilendirme sunucusu, MCP hazırlığı (10.70) (2026-10-13)
+
+**Neden.** Pinegrap'a MCP sunucusu eklendiğinde Claude gibi dış
+uygulamalar siteye **kişi adına** bağlanacak; MCP'nin yetkilendirme belgesi
+bunun için OAuth 2.1 ister (keşif, dinamik kayıt, PKCE'li yetkilendirme
+kodu, kaynak göstergesi). Mevcut iki kimlik — uygulama anahtarı+gizli ve
+cihaz girişi (kullanıcı adı+parola) — buna uymuyordu: dış uygulama
+parolayı görmemeli, kişi neyi verdiğini ekranda seçmeli. Plan:
+`docs/_plan_oauth.md` (bu PR Faz A).
+
+**Tasarım.**
+
+- Operatörün anahtarı `api_apps.kind = 'oauth'` uygulaması (cihaz
+  uygulamasının eşi): gizlisi yok, durumu OAuth'u açar/kapatır, kapsamları
+  tavandır. Etkin bir tane yokken `.well-known` belgeleri ve uç noktalar 404
+  döner. Birden fazla varsa en eskisi (`pg_oauth_app()`).
+- **Jeton = `api_devices` satırı.** Bağlantı, kişinin API'ye bir başka
+  girişidir; `oauth_client_id`, `scopes` (onaylanan, JSON) ve `resource`
+  kolonlarıyla işaretlenir. Erişim/yenileme jetonları, 60 sn'lik yeniden
+  deneme penceresi, çalıntı yenilemenin bağlantıyı kapatması, kişi başına
+  20 sınırı, cihaz başına dakika sınırı ve **parola değişince / her yerden
+  çıkışta / hesap silinince kapanma** olduğu gibi gelir — ayrı bir jeton
+  tablosu bunların hepsini ikinci kez yazdırırdı.
+- `api_device_authenticate()` satırın `oauth_client_id`'sine bakar: uygulama
+  türü `'oauth'` aranır, istemci kapalıysa 401, jetonun kaynağı bu giriş
+  noktası değilse 401 (RFC 8707; `PG_OAUTH_RESOURCE`, varsayılan
+  `integration`). Kapsam = onaylanan ∩ tavan ∩ kişinin bugünkü hakları,
+  her istekte (`pg_oauth_effective_scopes()`); cihazdaki gibi `account:*`
+  kendiliğinden eklenmez, `webhooks:manage` OAuth ile hiç verilmez.
+- Yenileme ortak çekirdekte: `api_device_rotate_pair()` hata kodu döner,
+  `api_device_rotate()` onu API biçiminde, token ucu OAuth biçiminde
+  (`invalid_grant`) cevaplar. `POST /auth/refresh` OAuth satırının jetonunu
+  **döndürmeden önce** reddeder (yanlış adrese gelen istemci jetonunu
+  kaybetmesin).
+- `oauth.php` tek giriş: `/authorize` oturumlu (onay ekranı), `/token`,
+  `/register`, `/revoke` oturumsuz (`PG_NO_SESSION`, integration.php'nin
+  gerekçesi). API bootstrap'ını yükler (`PG_API_ENTRY`); cevaplar OAuth'un
+  kendi biçiminde (`{"error": …}`), `error_description` RFC gereği ASCII
+  olduğu için İngilizce ve çevrilmez.
+- Keşif: `router.php` `.well-known/oauth-authorization-server`,
+  `openid-configuration` (alt klasöre kurulumda istemcinin ulaşabildiği tek
+  ad; OIDC alanı iddia etmez) ve `oauth-protected-resource/<yol>` adlarını
+  `oauth.php`'ye verir. `integration.php`'nin 401'leri OAuth açıkken
+  `WWW-Authenticate: Bearer resource_metadata="…"` taşır; Basic kimlik
+  gönderen istek Basic meydan okumasını almaya devam eder (`api_fail()`).
+- Yetkilendirme: istemci ve dönüş adresi doğrulanmadan hiçbir yere
+  yönlendirilmez (açık yönlendirme yok); sonra her hata istemciye `error`,
+  `state`, `iss` (RFC 9207) ile döner. PKCE zorunlu, yalnız S256. Dönüş
+  adresi birebir eşleşir, yalnız loopback http'de port serbest (RFC 8252).
+  Giriş yoksa panel girişine (`send_to` ile, iki adımlı doğrulama dahil)
+  gider. Onay ekranı çerçeveye alınamaz (`X-Frame-Options: DENY`,
+  `frame-ancestors 'none'`), CSRF jetonu ister; kişi kutuları kaldırarak
+  daraltır, genişletemez. Kod 60 sn yaşar, kullanılınca işaretlenir;
+  ikinci kez gelirse ondan çıkan bağlantı kapatılır (RFC 6749 4.1.2).
+- Dinamik kayıt (RFC 7591) açık, adres başına saatte 10 (`waf_rate`).
+  Gizli istemci (`client_secret_basic/post`) için `pgcs_…` gizli bir kez
+  verilir, HMAC'i saklanır; yanlış gizli `api_offence()`. Hiç bağlanmamış ya
+  da 30 gündür kullanılmayan dinamik istemciler ve eski kodlar günlük API
+  bakımında silinir.
+- Panel (`api_settings.php`): yeni uygulama penceresinde üçüncü tür,
+  satırda `bi-plug` ve bağlantı sayısı, çekmecede keşif adresi; Cihazlar
+  sekmesi bu türde "Bağlantılar" adıyla bağlantıları listeler ve tek tek
+  kapatır (mevcut `device_revoke`).
+
+**Ödün / sonraya kalan.** Kayıtlı istemci listesi (kapatma, silme) panelde
+yok — bağlantı kapatılabiliyor ama istemci satırı yalnız temizlikle gidiyor.
+Kişinin kendi "bağlı uygulamalarım" ekranı yok. İstemci kimlik belgesi
+(CIMD), `id_token`/OIDC ve MCP sunucusunun kendisi planın sonraki
+fazları. Yenilemede daha dar `scope` istenebilir ama saklanmaz (bağlantı
+onaylananı korur).
+
+**Doğrulama.** Sandbox'ta (PHP yerleşik sunucusu + `.htaccess` taklidi
+yönlendirici) uçtan uca: panelden OAuth uygulaması açma, keşif belgeleri,
+kaynak belgesi, 401'deki Bearer başlığı, kayıt (geçerli/geçersiz dönüş),
+girişsiz yönlendirme, yanlış dönüş adresi hata sayfası, plain PKCE reddi,
+onay ekranı (başlıklar, kaçışlı ad, kutular), izin/ret, yanlış doğrulayıcı,
+jeton, API'de kapsam (verilmeyen 403), kod tekrarında bağlantının
+kapanması, cihaz yenileme ucunun reddi, yenileme, daha geniş kapsam reddi,
+başka istemcinin jetonu, geri alma, gizli istemcide Basic/yanlış gizli,
+preflight. Migration boş şemada ve iki kez koşturuldu (ikincisinde "zaten
+var"). `tests/oauth_test.php` saf kuralları sınar. **Doğrulanmayan:**
+gerçek bir MCP istemcisiyle (Claude özel bağlayıcı) bağlantı, https'li
+sunucuda deneme, IIS'te `.well-known` yolunun yönlendiriciye düşmesi.
 
 ---
 

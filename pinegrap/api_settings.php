@@ -35,6 +35,7 @@ require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 require_once(dirname(__FILE__) . '/includes/api/devices.php');
+require_once(dirname(__FILE__) . '/includes/oauth/server.php');
 
 $liveform = new liveform('api_settings');
 
@@ -95,11 +96,13 @@ if ($_POST) {
 			// A team devices application is where staff sign in from their own
 			// phones (includes/api/devices.php). It is given no secret at all:
 			// the app it is typed into cannot keep one, and without a secret
-			// the key cannot be used as HTTP Basic credentials either.
-			$kind = (isset($_POST['kind']) && ($_POST['kind'] === 'device')) ? 'device' : 'server';
+			// the key cannot be used as HTTP Basic credentials either. An OAuth
+			// application (includes/oauth/) is the same kind of switch for
+			// outside applications a person connects, and has none either.
+			$kind = (isset($_POST['kind']) && in_array($_POST['kind'], array('device', 'oauth'), true)) ? $_POST['kind'] : 'server';
 
 			$key    = api_generate_key();
-			$secret = ($kind === 'device') ? '' : api_generate_secret();
+			$secret = ($kind === 'server') ? api_generate_secret() : '';
 
 			db("INSERT INTO api_apps
 				(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
@@ -791,17 +794,23 @@ foreach ($apps as $app) {
 
 	$stats = isset($traffic[(int)$app['id']]) ? $traffic[(int)$app['id']] : array('requests' => 0, 'failures' => 0);
 
+	$is_oauth = (isset($app['kind']) && ($app['kind'] === 'oauth'));
+
 	$is_device = (isset($app['kind']) && ($app['kind'] === 'device'));
+
+	$signed_in_count = pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0);
 
 	$app_rows .= '
 	<div class="api-row" data-app="' . (int)$app['id'] . '" role="button" tabindex="0">
 		<div class="api-name">
-			<i class="bi ' . ($is_device ? 'bi-phone' : 'bi-key') . '"></i>
+			<i class="bi ' . ($is_oauth ? 'bi-plug' : ($is_device ? 'bi-phone' : 'bi-key')) . '"></i>
 			<div>
 				<b>' . h($app['name']) . '</b>
-				' . ($is_device
-					? '<code>' . lang('Team devices') . ' &middot; ' . pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0) . ' ' . lang('devices') . '</code>'
-					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>') . '
+				' . ($is_oauth
+					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . $signed_in_count . ' ' . lang('connections') . '</code>'
+					: ($is_device
+					? '<code>' . lang('Team devices') . ' &middot; ' . $signed_in_count . ' ' . lang('devices') . '</code>'
+					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>')) . '
 			</div>
 		</div>
 		<div class="api-chips">' . $chips . '</div>
@@ -838,7 +847,7 @@ foreach ($apps as $app) {
 		'rate'        => (int)$app['rate_limit_per_min'],
 		'scopes'      => $scope_choices,
 		'has_secret'  => ($app['api_secret_hash'] !== ''),
-		'kind'        => $is_device ? 'device' : 'server',
+		'kind'        => $is_oauth ? 'oauth' : ($is_device ? 'device' : 'server'),
 		'devices'     => isset($device_rows[(int)$app['id']]) ? $device_rows[(int)$app['id']] : array(),
 		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']] : array(),
 		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array()
@@ -906,6 +915,12 @@ function api_settings_permission_rows($prefix, $id_prefix = '') {
 
 
 $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/integration.php';
+
+// Where an outside application starts when it connects with OAuth: the site
+// itself, and the authorization server's metadata under it.
+$oauth_issuer = pg_oauth_issuer();
+
+$oauth_metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
 
 $permission_rows = api_settings_permission_rows('scope', 'd_scope');
 
@@ -1253,7 +1268,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button">' . lang('General') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button">' . lang('Permissions') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button">' . lang('Security') . '</button></li>
-			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button">' . lang('Devices') . '</button></li>
+			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label"
+				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button></li>
 			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button">' . lang('Events') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button">' . lang('Log') . '</button></li>
 		</ul>
@@ -1289,6 +1305,13 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_login">' . lang('Copy') . '</button></div>
 					<div class="form-text">'
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
+				</div>
+				<div class="mb-3" id="d_oauth_block">
+					<label class="form-label small">' . lang('Discovery address') . '</label>
+					<div class="api-secret-box"><code id="d_oauth_meta">' . h($oauth_metadata_url) . '</code>
+						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_oauth_meta">' . lang('Copy') . '</button></div>
+					<div class="form-text">'
+						. lang('An outside application (an MCP client such as Claude) finds the site from its address and asks the person to connect on this site\'s own sign-in page. Each person grants at most what their own account may do, and never more than the permissions chosen here. Connections appear on the Connections tab, where each can be ended.') . '</div>
 				</div>
 				<div class="mb-3" id="d_auth_block">
 					<label class="form-label small">' . lang('Authentication') . '</label>
@@ -1428,6 +1451,11 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<label class="form-check-label small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
 							<span class="opacity-75">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</span></label>
 					</div>
+					<div class="form-check mt-2">
+						<input class="form-check-input" type="radio" name="kind" value="oauth" id="n_kind_oauth">
+						<label class="form-check-label small" for="n_kind_oauth"><b>' . lang('Connected apps (OAuth)') . '</b><br>
+							<span class="opacity-75">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</span></label>
+					</div>
 				</div>
 				<label class="form-label small">' . lang('Permissions') . '</label>
 				' . api_settings_permission_rows('scope', 'n_scope') . '
@@ -1440,6 +1468,48 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		</form>
 	</div>
 </div>';
+
+/* An OAuth application has nothing to reveal either. What the operator needs is
+   the address an outside application is pointed at. */
+if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'oauth')) {
+
+	echo '
+<div class="modal fade show" id="api_secret_sheet" tabindex="-1" style="display:block; background:rgba(0,0,0,.6)">
+	<div class="modal-dialog modal-lg modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header border-0 pb-0">
+				<h5 class="modal-title"><i class="bi bi-plug me-2 text-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
+			</div>
+			<div class="modal-body">
+				<p class="mb-3">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
+
+				<label class="form-label small text-uppercase opacity-75">' . lang('Site address') . '</label>
+				<div class="api-secret-box mb-3">
+					<code id="nc_issuer">' . h($oauth_issuer) . '</code>
+					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_issuer">' . lang('Copy') . '</button>
+				</div>
+
+				<label class="form-label small text-uppercase opacity-75">' . lang('Discovery address') . '</label>
+				<div class="api-secret-box mb-3">
+					<code id="nc_meta">' . h($oauth_metadata_url) . '</code>
+					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_meta">' . lang('Copy') . '</button>
+				</div>
+
+				<div class="alert alert-primary py-2 px-3 small mb-0">
+					<i class="bi bi-info-circle me-1"></i>'
+					. lang('Applications register themselves the first time they connect. Each connection appears on this application\'s Connections tab, where it can be ended; a new password, or signing out everywhere, ends a person\'s connections too.') . '
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-sm btn-success" id="nc_close">' . lang('Close') . '</button>
+			</div>
+		</div>
+	</div>
+</div>';
+
+	$new_credentials = null;
+
+}
 
 /* A team devices application has nothing to reveal once: its key is not a
    secret and stays readable in the drawer. What the operator needs on the way
@@ -1713,12 +1783,20 @@ echo '
 		// A team devices application has no secret to rotate and no curl line
 		// to hand over, and a phone never registers event subscriptions; what it
 		// has instead is the sign-in address and the list of devices.
+		//
+		// An OAuth application is the same, with the discovery address in place
+		// of the sign-in one and its connections in place of devices.
 		var device = (app.kind === "device");
-		document.getElementById("d_secret_block").classList.toggle("d-none", device);
-		document.getElementById("d_auth_block").classList.toggle("d-none", device);
+		var oauth = (app.kind === "oauth");
+		var keyless = device || oauth;
+		document.getElementById("d_secret_block").classList.toggle("d-none", keyless);
+		document.getElementById("d_auth_block").classList.toggle("d-none", keyless);
 		document.getElementById("d_device_block").classList.toggle("d-none", !device);
-		document.getElementById("d_devices_tab").classList.toggle("d-none", !device);
-		document.getElementById("d_hooks_tab").classList.toggle("d-none", device);
+		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
+		document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);
+		document.getElementById("d_hooks_tab").classList.toggle("d-none", keyless);
+		var devicesLabel = document.getElementById("d_devices_label");
+		devicesLabel.textContent = oauth ? devicesLabel.dataset.oauth : devicesLabel.dataset.device;
 		renderDevices(app.devices || []);
 		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
 		if (firstTab) { bootstrap.Tab.getOrCreateInstance(firstTab).show(); }
@@ -1788,7 +1866,7 @@ echo '
 	document.querySelectorAll("#api_new input[name=\'kind\']").forEach(function (radio) {
 		radio.addEventListener("change", function () {
 			var submit = document.getElementById("n_submit");
-			submit.textContent = (this.value === "device") ? submit.dataset.device : submit.dataset.server;
+			submit.textContent = (this.value === "server") ? submit.dataset.server : submit.dataset.device;
 		});
 	});
 
