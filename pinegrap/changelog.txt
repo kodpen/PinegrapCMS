@@ -652,6 +652,18 @@
          bağışlar etkilenmez; ürün RSS beslemeleri liste
          fiyatını yayımlar. Varsayılan kapalı.
 
+  [YENİ] Cari hesabıma yaz: Ayarlar › E-Ticaret › ERP'deki
+         'Ödemede "Cari hesabıma yaz"' açılınca, carisinde
+         kredi limiti olan ve oturum açmış müşteri ödeme
+         adımında siparişi cari hesabına yazdırabilir;
+         seçeneğin altında kullanılabilir limit yazar.
+         Sipariş, faturalanmamış cari siparişleriyle
+         birlikte limiti aşıyorsa reddedilir ve nedeni
+         yazılır. Sipariş o cariye, carinin vadesiyle
+         faturalanır; havale gelmedi diye otomatik iptal
+         edilmez. Sipariş ekranında "Cari hesapta" rozeti
+         görünür. Varsayılan kapalı.
+
   [DÜZELTME] Alış faturaları artık kendi serisinde
          numaralanıyor: fatura serisinin sonuna A eklenir
          (ör. PGFA2026000000001). Önceden yılın ilk alış
@@ -665,6 +677,10 @@
 
   [ŞEMA] Cari fiyatlarını mağazada açıp kapatan ayar
          için config tablosuna bir kolon eklenir.
+
+  [ŞEMA] "Cari hesabıma yaz" ayarı için config tablosuna,
+         siparişin cari hesaba yazıldığını gösteren işaret
+         için orders tablosuna birer kolon eklenir.
 
   DIŞ API
   --------------------------------------------------------

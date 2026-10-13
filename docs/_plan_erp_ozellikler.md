@@ -229,6 +229,14 @@ kartı ve bağış cari fiyatı almaz, ürün RSS beslemeleri liste fiyatında k
 
 ### 8c. "Cari hesaba yaz" ödeme yolu (10.60)
 
+**Durum (2026-10-13):** yapıldı. Kural `erp_storefront_on_account()`, uygunluk
+`pg_erp_open_account()`; sipariş 'Offline Payment' + `orders.erp_on_account = 1`. Okuma:
+`erp_credit_refusal()` yalnız engelleme modunda reddettiğinden mağaza aynı limit kuralını
+moddan bağımsız uygular ve faturalanmamış cari siparişlerini de sayar. "Otomatik fatura
+ayarı"nın kodu yok (`ERP_AUTO_INVOICE_ON` okunmuyor); fatura her sipariş gibi sipariş
+ekranından kesilir, cari ve vade siparişten gelir. Plana ek: havale iptal işi bu
+siparişleri iptal etmez; e-Arşiv ödeme şekli `DIGER`.
+
 - Kredi limiti tanımlı ve aktif bir cariye bağlı kişi ödeme adımında "Cari hesabıma yaz"
   seçeneğini görür. Var olan çevrimdışı ödeme yolunun üstüne kurulur (yeni enum değeri
   açılmaz); ayar `config.erp_open_account_payment`.

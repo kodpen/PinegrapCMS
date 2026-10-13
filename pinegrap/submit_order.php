@@ -982,6 +982,18 @@ function submit_order($type) {
         $liveform->assign_field_value('payment_method', 'Offline Payment');
     }
 
+    // "Put it on my account" (ERP, config.erp_open_account_payment) posts
+    // 'On Account'. orders.payment_method has no value of its own for it, so
+    // from here on the order is an offline payment; whether it may go on the
+    // account is decided with the other payment checks below, which set
+    // $erp_on_account, and orders.erp_on_account records it.
+    $erp_on_account_requested = ($liveform->get_field_value('payment_method') === 'On Account');
+    $erp_on_account = false;
+
+    if ($erp_on_account_requested) {
+        $liveform->assign_field_value('payment_method', 'Offline Payment');
+    }
+
     // if the mode is not paypal_express_checkout_return, then validate the rest of the fields
     if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         // if a nonrecurring transaction or recurring transaction is required, then require a payment method
@@ -1046,7 +1058,23 @@ function submit_order($type) {
                     $allowed_payment_methods[] = 'Offline Payment';
                 }
 
-                if (in_array($liveform->get_field_value('payment_method'), $allowed_payment_methods, TRUE) == FALSE) {
+                // An order goes on the account only for a member who has one
+                // to put it on (pg_erp_open_account()) and only while the
+                // account's credit limit still covers it; the offline payment
+                // settings above are not asked. A subscription is charged
+                // again and again, so it never goes on account.
+                if ($erp_on_account_requested) {
+                    $erp_on_account_refusal = ($recurring_transaction == TRUE)
+                        ? lang('The selected payment method is not available.')
+                        : pg_erp_open_account_refusal($total);
+
+                    if ($erp_on_account_refusal === '') {
+                        $erp_on_account = true;
+                    } else {
+                        $liveform->mark_error('payment_method', $erp_on_account_refusal);
+                    }
+
+                } elseif (in_array($liveform->get_field_value('payment_method'), $allowed_payment_methods, TRUE) == FALSE) {
                     $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
                 }
             }
@@ -1471,6 +1499,11 @@ function submit_order($type) {
     
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {
+        // The checkout comes back with "Put it on my account" still chosen.
+        if ($erp_on_account_requested) {
+            $liveform->assign_field_value('payment_method', 'On Account');
+        }
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
         exit();
     }
@@ -4257,6 +4290,22 @@ function submit_order($type) {
     }
 
 
+    // An order put on the customer's account is billed to that account
+    // (erp_invoice_from_order() reads orders.erp_account_id, the due date
+    // comes from the account) and marked, so the job that cancels bank
+    // transfers that never arrived leaves it alone. The receipt names the
+    // choice the way checkout offered it.
+    $sql_erp_on_account = '';
+
+    if ($erp_on_account && (($erp_open_account = pg_erp_open_account()) !== null)) {
+        $sql_erp_on_account = "erp_on_account = '1', erp_account_id = '" . (int) $erp_open_account['id'] . "',";
+        $_SESSION['ecommerce']['offline_payment_label'] = lang('Put it on my account');
+
+    // A later bank transfer in the same visit is not called that.
+    } elseif (($_SESSION['ecommerce']['offline_payment_label'] ?? '') === lang('Put it on my account')) {
+        unset($_SESSION['ecommerce']['offline_payment_label']);
+    }
+
     // add data to orders table
     // We update the user id again below, in case we now have new user info
     // from the auto-registration feature that ran above.
@@ -4265,6 +4314,7 @@ function submit_order($type) {
     $query = "UPDATE orders
              SET
                 payment_method = '" . escape($liveform->get_field_value('payment_method')) . "',
+                $sql_erp_on_account
                 $sql_credit_debit_card_values
                 subtotal = '$subtotal',
                 discount = '$discount',

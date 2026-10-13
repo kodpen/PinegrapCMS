@@ -22595,5 +22595,12 @@
     "Old automatic backups could not be deleted from the remote copy: {var:1}": "Eski otomatik yedekler uzak kopyadan silinemedi: {var:1}",
     "The storage service did not answer.": "Depolama hizmeti yanıt vermedi.",
     "The upload did not finish.": "Yükleme tamamlanmadı.",
-    "No {var:1} account is connected for backups. Connect one in the backup settings.": "Yedekler için bağlı bir {var:1} hesabı yok. Yedek ayarlarından bir hesap bağlayın."
+    "No {var:1} account is connected for backups. Connect one in the backup settings.": "Yedekler için bağlı bir {var:1} hesabı yok. Yedek ayarlarından bir hesap bağlayın.",
+    "Put it on my account": "Cari hesabıma yaz",
+    "Available credit: {var:1}": "Kullanılabilir limit: {var:1}",
+    "This order would take your account past its credit limit; {var:1} of it is available. Please choose another payment method.": "Bu sipariş cari hesabınızı kredi limitinin üstüne çıkarır; limitin {var:1} kadarı kullanılabilir. Lütfen başka bir ödeme yöntemi seçin.",
+    "On account": "Cari hesapta",
+    "Put on account": "Cari hesaba yazıldı",
+    "Put it on my account at checkout": "Ödemede \"Cari hesabıma yaz\"",
+    "A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account's payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order is invoiced from its screen as usual and is never cancelled for an unpaid transfer.": "Carisinde kredi limiti tanımlı, oturum açmış müşteri siparişi ödemek yerine cari hesabına yazdırabilir: sipariş o cariye, carinin vadesiyle faturalanır. Sipariş, henüz faturalanmamış cari siparişleriyle birlikte limiti aşıyorsa reddedilir. Sipariş her zamanki gibi kendi ekranından faturalanır ve havale gelmedi diye iptal edilmez."
 }

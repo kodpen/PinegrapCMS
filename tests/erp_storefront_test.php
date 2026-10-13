@@ -6,7 +6,9 @@
  * account (includes/erp/storefront.php): how a document reads in the
  * "My Invoices" widget, from what the aging module says is still owed on it
  * and how late it is; and the price the account's agreed terms put on a
- * product beside the store's campaign (erp_storefront_price()).
+ * product beside the store's campaign (erp_storefront_price()); and whether an
+ * order may go on the account against its credit limit
+ * (erp_storefront_on_account()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -124,4 +126,52 @@ function test_erp_storefront_member_prices_off()
 {
 	pg_assert_false(defined('ERP_STOREFRONT_ACCOUNT_PRICES') && ERP_STOREFRONT_ACCOUNT_PRICES, 'the runner has the setting off');
 	pg_assert_same(array(), pg_erp_member_prices());
+}
+
+// -- putting an order on the account -------------------------------------------
+
+// Inside the limit the order goes on the account; reaching the limit exactly
+// is still inside it.
+function test_erp_storefront_on_account_within_limit()
+{
+	pg_assert_same(array('allowed' => true, 'available' => 70000, 'after' => 80000), erp_storefront_on_account(100000, 30000, 0, 50000));
+	pg_assert_same(array('allowed' => true, 'available' => 50000, 'after' => 100000), erp_storefront_on_account(100000, 30000, 20000, 50000), 'exactly at the limit');
+}
+
+// One kurus past the limit is refused.
+function test_erp_storefront_on_account_past_limit()
+{
+	pg_assert_same(array('allowed' => false, 'available' => 50000, 'after' => 100001), erp_storefront_on_account(100000, 30000, 20000, 50001));
+}
+
+// The orders already on the account and not invoiced yet count: the ledger
+// does not hold them, so the balance alone would let one order follow another.
+function test_erp_storefront_on_account_counts_pending_orders()
+{
+	pg_assert_true(erp_storefront_on_account(10000, 0, 0, 3000)['allowed'], 'nothing pending');
+	pg_assert_same(array('allowed' => false, 'available' => 2000, 'after' => 11000), erp_storefront_on_account(10000, 0, 8000, 3000), 'with pending orders');
+}
+
+// Without a limit nothing goes on the account; an account already past its
+// limit has nothing available.
+function test_erp_storefront_on_account_no_limit_or_over()
+{
+	pg_assert_same(array('allowed' => false, 'available' => 0, 'after' => 1000), erp_storefront_on_account(0, 0, 0, 1000), 'no limit');
+	pg_assert_same(array('allowed' => false, 'available' => 0, 'after' => 12001), erp_storefront_on_account(10000, 12000, 0, 1), 'already over');
+}
+
+// What the store owes the customer (a balance below zero) widens what is
+// available.
+function test_erp_storefront_on_account_credit_balance()
+{
+	pg_assert_same(array('allowed' => true, 'available' => 15000, 'after' => 10000), erp_storefront_on_account(10000, -5000, 0, 15000));
+}
+
+// Golden for the store: with the setting off nobody can put an order on
+// account, so checkout offers what it offered before.
+function test_erp_storefront_open_account_off()
+{
+	pg_assert_false(defined('ERP_OPEN_ACCOUNT_PAYMENT') && ERP_OPEN_ACCOUNT_PAYMENT, 'the runner has the setting off');
+	pg_assert_same(null, pg_erp_open_account());
+	pg_assert_same(null, pg_erp_open_account_option());
 }
