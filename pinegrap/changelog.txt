@@ -1010,6 +1010,31 @@
          için yeni bir tablo ve ayarlar tablosuna bir
          kolon eklenir.
 
+  GOOGLE SEARCH CONSOLE
+  --------------------------------------------------------
+
+  [YENİ] Ziyaretçiler › Google Search Console: siteye hangi
+         aramaların ziyaretçi getirdiği, sayfaların
+         Google'da kaç kez ve kaçıncı sırada göründüğü;
+         7, 28 ve 90 günlük tıklama, gösterim, tıklama
+         oranı ve ortalama sıra, önceki döneme göre
+         değişimiyle, günlük grafik, en çok tıklanan
+         aramalar ve sayfalar. Kurulum tek tık: Google
+         hesabı bağlanınca site, hesabın Search Console
+         mülkleri arasında bulunuyor ya da sayfalara
+         konan bir meta etiketle doğrulanıp ekleniyor,
+         site haritası gönderiliyor ve son 90 günün
+         verileri indiriliyor; sonrası her gün
+         kendiliğinden. Hesap bağlanana kadar kapalı.
+
+  [YENİ] Pano'da "Google Arama" kartı: son 28 günün
+         tıklama ve gösterimi, önceki 28 güne göre
+         değişimi ve en çok tıklanan beş arama. Site
+         Search Console'a bağlıyken görünüyor.
+
+  [ŞEMA] Search Console verileri için yeni bir tablo ve
+         ayarlar tablosuna iki kolon eklenir.
+
   PANO
   --------------------------------------------------------
 

@@ -34,6 +34,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_connect();                // 10.72
 	upgrade_2026_4_10_workspace_mcp();          // 10.82
 	upgrade_2026_4_10_signin();                 // 10.74
+	upgrade_2026_4_10_search_console();         // 10.73
 
 }
 
@@ -540,5 +541,46 @@ function upgrade_2026_4_10_signin() {
 	install_add_column('config', 'signin_providers', "TEXT NULL");
 
 	install_note('Sign in with Microsoft and Apple: members and staff can sign in with a Microsoft or Apple account next to Google, once the operator sets up the application and turns the button on in Settings, Security.');
+
+}
+
+// Google Search Console (2026.4.10, 10.73; includes/fn/search_console.php,
+// search_console.php, seo_search_job.php).
+//
+// The site reads from Search Console which searches bring people to it and
+// how often its pages are shown, through a connected Google account
+// (connect_accounts, purpose search_console).
+//
+// seo_search_daily keeps the figures per day at three levels, told apart by
+// kind: 'site' (the day's totals), 'page' (one row per address) and 'query'
+// (one row per search). row_key is a hash of the kind, the page and the
+// query, so a day re-read from Google replaces its rows instead of adding
+// to them. position is Google's average position for the row; averages over
+// several days are weighted by impressions.
+//
+// config.search_console is the setup as JSON: the connected account, the
+// Search Console property and the state of the daily download.
+// config.google_site_verification is the code Google asks the home page to
+// carry in a meta tag, written by the one-click verification and kept when
+// the site is unlinked, so Google does not drop the verification.
+function upgrade_2026_4_10_search_console() {
+
+	install_create_table('seo_search_daily', "CREATE TABLE seo_search_daily (
+		day         DATE NOT NULL,
+		row_key     CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		kind        ENUM('site','page','query') NOT NULL,
+		page        VARCHAR(2048) NOT NULL DEFAULT '',
+		query       VARCHAR(500) NOT NULL DEFAULT '',
+		clicks      INT UNSIGNED NOT NULL DEFAULT 0,
+		impressions INT UNSIGNED NOT NULL DEFAULT 0,
+		position    DECIMAL(8,2) NOT NULL DEFAULT 0,
+		PRIMARY KEY (day, row_key),
+		KEY idx_kind_day (kind, day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'search_console', "TEXT NULL");
+	install_add_column('config', 'google_site_verification', "TEXT NULL");
+
+	install_note('Google Search Console: once a Google account is connected for it, the site verifies itself, adds itself to Search Console, submits its sitemap and downloads every day which searches brought visitors and how often its pages were shown.');
 
 }

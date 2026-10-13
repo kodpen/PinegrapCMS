@@ -8534,6 +8534,7 @@ function get_tables() {
 		'recycle_bin',
 		'seo_issue',
 		'seo_link',
+		'seo_search_daily',
 		'visitor_stats_hourly',
 		'visitor_content_hourly',
 		'local_sale_history',

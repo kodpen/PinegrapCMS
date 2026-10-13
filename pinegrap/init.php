@@ -714,6 +714,9 @@ define('PARASUT_TOKEN_CACHE', dirname(__FILE__) . '/data/parasut_token.json');
 define('ENABLE_IYZIPAY_PROTECTED_CURRENCY', $row['enable_iyzipay_protected_currency']);
 define('IYZIPAY_PROTECTED_CURRENCY_CODE', $row['iyzipay_protected_currency_code']);
 define('INDEXNOW_KEY', $row['indexnow_key']);
+// The code Google Search Console asks the pages to carry in a meta tag
+// (2026.4.10, 10.73; includes/fn/search_console.php). Empty before the upgrade.
+define('GOOGLE_SITE_VERIFICATION', (string) ($row['google_site_verification'] ?? ''));
 
 // Open Graph and structured data settings (2026.4.4). Read with a fallback so
 // an installation that takes the code without running the database upgrade

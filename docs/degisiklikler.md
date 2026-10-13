@@ -84,6 +84,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Google Search Console: arama verileri ve tek tıkla doğrulama (10.73) (2026-10-13)
+
+**Neden.** Tersine OAuth planının ikinci senaryosu (`docs/_plan_tersine_oauth.md`
+§4.2). Sitenin kendi sayacı gelen ziyaretçiyi sayar ama hangi aramayla
+geldiğini, sayfanın Google'da kaç kez ve kaçıncı sırada göründüğünü bilmez.
+Ürün sahibi "ilk 5 hemen" dedi; model A (her site kendi Google uygulaması).
+
+**Ne değişti.** Ziyaretçiler menüsünde `search_console.php`. Bağlı hesaplar
+altyapısı (#282) üzerinde `search_console` amacı: Google kapsamları
+`webmasters` ve `siteverification.verify_only`. Bağlama
+(`pg_gsc_link()`, `includes/fn/search_console.php`):
+
+1. `sites.list` → `pg_gsc_property_pick()`: önce bu adresin URL öneki
+   mülkü (yazımı fark etmez), yoksa ana makinenin ya da üst alan adının
+   alan mülkü, en yakını; aynı eşleşmede yüksek yetki. Doğrulanmamış mülk
+   atlanır.
+2. Mülk yoksa Site Verification `token` (META) → kod
+   `config.google_site_verification`'a yazılır, `get_page_content()` her
+   sayfaya `<meta name="google-site-verification">` basar (yer tutucu
+   yoksa `</head>` önüne) → `webResource.insert` → Search Console'a
+   `sites.add`.
+3. Sahip ya da tam yetkiliyse site haritası (`sitemaps.submit`).
+4. İlk indirme (60 sn bütçe), `seo_search_job` iş dağıtıcısı açıksa
+   listesine eklenir.
+
+Hesap bağlanıp ekrana `?connected=1` ile dönülünce ve seçilecek tek hesap
+varken bağlama kendiliğinden başlar; bu yüzden kurulum tek tık. Kendiliğinden
+başlama yalnız `connect.php`'nin bıraktığı bildirimle olur, adres tek başına
+hiçbir şey yapmaz.
+
+Günlük iş (`seo_search_job.php`) Search Analytics'ten üç düzey okur: `site`
+(tarih), `page` (tarih + sayfa), `query` (tarih + sorgu), 5000'lik
+sayfalarla en çok 50 000 satır. İlk seferde 90 gün, sonra son okunan günden
+üç gün geriden (Google son günleri düzeltir). 16 aydan eski satırlar silinir.
+Alan mülkünde yalnız bu sitenin adresleri sayılsın diye `includingRegex`
+sayfa süzgeci.
+
+Ekran: 7/28/90 gün; tıklama, gösterim, tıklama oranı, ortalama sıra (gösterimle
+ağırlıklı) ve önceki döneme göre değişim; Chart.js günlük grafik; en çok
+tıklanan 50 arama ve sayfa; durum kartında mülk, yetki, hesap, son indirme,
+site haritası, hatalar ve Şimdi indir / Site haritasını yeniden gönder /
+Bağı kaldır (yönetici ve üstü). Pano kartı 31 "Google Arama": son 28 gün,
+haftalık çubuk, ilk beş arama; site bağlıyken ve ziyaretçi yetkisi olana.
+
+**Bilerek yapılmayan.** Toplamlar sorgu satırlarından toplanmaz, `site`
+satırından okunur: Google anonim aramaları sorgu satırlarına koymaz, toplam
+Search Console'dakinden az görünürdü. Bağ kaldırılınca doğrulama etiketi
+sayfalarda kalır: silinirse Google doğrulamayı düşürür, bu sahibin Search
+Console'daki kararıdır. URL Denetimi (sayfa başına "dizinde mi") kotası
+mülk başına günlük olduğundan bu PR'da yok. Modül `functions.php`'ye
+eklenmedi; ekran, iş ve pano kartı kendisi yükler.
+
+**Şema 10.73** (`upgrade_2026_4_10_search_console()`): `seo_search_daily`,
+`config.search_console`, `config.google_site_verification`. dev.pinegrap.com
+gibi 2026.4.10'da olan site Yazılımı Onar › "Veritabanı yükseltme adımlarını
+yeniden koş" ile alır.
+
+---
+
 ## 2026.4.10 — Bağlı hesaplar: Dropbox'a hazırlık (2026-10-13)
 
 **Neden.** Buluta yedek senaryosu (`docs/_plan_tersine_oauth.md` §4.4)

@@ -79,6 +79,7 @@ function pg_panel_backend_search($request, $action)
     // ── Visitors ──────────────────────────────────────────────────────────
     $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
     $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
+    $actions[] = array('label' => lang('Google Search Console'), 'icon' => 'bi-google', 'url' => $base_url . '/search_console.php', 'keys' => array('search console', 'arama konsolu', 'google arama', 'gsc', 'site haritasi', 'sitemap', 'tiklama', 'gosterim'));
 
     // ── Contacts ──────────────────────────────────────────────────────────
     if ($can_contacts) {
