@@ -81,6 +81,8 @@ function api_page_select() {
 	return "SELECT page.page_id, page.page_name, page.page_folder, page.page_home,
 			page.page_type, page.layout_type, page.page_title, page.page_meta_description,
 			page.page_search, page.page_search_keywords, page.sitemap,
+			page.page_meta_keywords, page.comments, page.comments_allow_new_comments,
+			page.comments_automatic_publish, page.comments_require_login_to_comment,
 			" . $noindex . "
 			page.page_timestamp,
 			" . api_seo_columns('page.', true) . "
@@ -162,6 +164,19 @@ function api_page_keywords_in($list, $name) {
 
 }
 
+// What visitors may do with comments on a page. Moderating the comments
+// themselves is not part of the page.
+function api_page_comments_present($row) {
+
+	return array(
+		'enabled'        => ((int)$row['comments'] === 1),
+		'open'           => ((int)$row['comments_allow_new_comments'] === 1),
+		'auto_publish'   => ((int)$row['comments_automatic_publish'] === 1),
+		'login_required' => ((int)$row['comments_require_login_to_comment'] === 1)
+	);
+
+}
+
 function api_page_present($row, $with_issues = false) {
 
 	$base = URL_SCHEME . HOSTNAME_SETTING . PATH;
@@ -192,6 +207,16 @@ function api_page_present($row, $with_issues = false) {
 		$out['nofollow'] = ((int)$row['nofollow'] === 1);
 
 	}
+
+	$out['meta_keywords'] = (string)$row['page_meta_keywords'];
+
+	$out['comments'] = api_page_comments_present($row);
+
+	// A draft is a Visual Page Editor page kept off the site in the drafts
+	// folder; a recycled page sits in the recycle bin. Neither is served.
+	$out['draft']    = function_exists('pg_page_is_draft') && pg_page_is_draft($row['page_folder']);
+	$out['recycled'] = function_exists('pg_recycle_bin_folder_ids')
+		&& in_array((int)$row['page_folder'], array_map('intval', pg_recycle_bin_folder_ids()), true);
 
 	$out['layout_type']     = $row['layout_type'];
 	$out['updated_at']      = api_time($row['page_timestamp']);
@@ -376,6 +401,7 @@ function api_pages_update($params) {
 
 	$existing = api_row("SELECT page_id, page_name, page_type, page_title, page_meta_description,
 			page_search, page_search_keywords, sitemap, seo_analysis_current,
+			page_folder, page_home,
 			" . ($noindex_ready ? "noindex, nofollow" : "'0' AS noindex, '0' AS nofollow") . "
 		FROM page
 		WHERE page_id = '" . $id . "'
@@ -426,6 +452,32 @@ function api_pages_update($params) {
 		$keywords = api_page_keywords_in($params['search_keywords'], 'search_keywords');
 
 		$set[] = "page_search_keywords = '" . escape($keywords) . "'";
+
+	}
+
+	// The older keyword tag. Search engines ignore it, but some site searches
+	// and directories still read it, and the page screen still writes it.
+	if (array_key_exists('meta_keywords', $params)) {
+
+		$set[] = "page_meta_keywords = '" . escape(trim((string)$params['meta_keywords'])) . "'";
+
+	}
+
+	// What visitors may do with comments here, the four switches the page
+	// settings offer. The comments themselves are moderated elsewhere.
+	foreach (api_page_comment_columns() as $name => $column) {
+
+		if (array_key_exists($name, $params)) {
+
+			$set[] = $column . " = '" . ($params[$name] ? 1 : 0) . "'";
+
+		}
+
+	}
+
+	if (array_key_exists('folder_id', $params) && ((int)$params['folder_id'] !== (int)$existing['page_folder'])) {
+
+		$set[] = "page_folder = '" . api_page_move_target($existing, (int)$params['folder_id']) . "'";
 
 	}
 
@@ -574,6 +626,84 @@ function api_pages_update($params) {
 	$row = api_row(api_page_select() . " WHERE page.page_id = '" . $id . "' LIMIT 1");
 
 	api_ok(api_page_present($row, true));
+
+}
+
+// The comment switches a write may set, by the name the endpoint uses.
+function api_page_comment_columns() {
+
+	return array(
+		'comments'         => 'comments',
+		'comments_open'    => 'comments_allow_new_comments',
+		'comments_publish' => 'comments_automatic_publish',
+		'comments_login'   => 'comments_require_login_to_comment'
+	);
+
+}
+
+// The folder a page may be moved to, or the refusal. A folder is the page's
+// access rule, so a move is held to the folder endpoint's rule: the page may
+// stay as open as it is or become more closed, never more open - a private
+// page moved into a public folder is served to anyone from that moment on.
+// The home page and the pages the storefront and the account area run on
+// stay where they are, because a sign-in wall in front of either breaks the
+// site for every visitor. A draft and a page in the recycle bin belong to
+// the screens that put them there.
+function api_page_move_target($page, $folder_id) {
+
+	$app = api_current_app();
+
+	require_once(dirname(__FILE__) . '/folders.php');
+
+	if ($page['page_home'] === 'yes') {
+
+		api_fail(409, 'home_page_protected', lang('The home page is not moved through the API.'), 'folder_id');
+
+	}
+
+	if (in_array($page['page_type'], api_page_system_types(), true)) {
+
+		api_fail(409, 'system_page_protected', lang(array(
+			'string' => 'A page of type {var:1} is part of how the site works and is not moved through the API.',
+			'vars'   => $page['page_type']
+		)), 'folder_id');
+
+	}
+
+	if (in_array((int)$page['page_folder'], api_folder_bin_ids(), true)) {
+
+		api_fail(409, 'already_recycled', lang('This page is in the recycle bin.'), 'folder_id');
+
+	}
+
+	if (((int)$page['page_folder'] === api_folder_drafts_id()) && ((int)$page['page_folder'] > 0)) {
+
+		api_fail(409, 'page_is_draft', lang('This page is a draft. It is published, and its folder chosen, in the Visual Page Editor.'), 'folder_id');
+
+	}
+
+	if (!pg_folder_edit_access($page['page_folder'], $app['owner']['id'], $app['owner']['role'])) {
+
+		api_fail(403, 'forbidden', lang('The account that owns this application cannot edit this folder.'));
+
+	}
+
+	$folder_id = api_folder_destination_or_fail($folder_id, 'folder_id');
+
+	$before = api_folder_effective_access($page['page_folder']);
+
+	$after = api_folder_effective_access($folder_id);
+
+	if (api_folder_access_widens($before, $after)) {
+
+		api_fail(409, 'access_widening_refused', lang(array(
+			'string' => 'This change would serve the page as {var:1} instead of {var:2}, which opens it to more people. Move it on the page screen.',
+			'vars'   => array(get_access_control_type_name($after), get_access_control_type_name($before))
+		)), 'folder_id');
+
+	}
+
+	return $folder_id;
 
 }
 
@@ -737,6 +867,15 @@ function api_page_schema() {
 		'sitemap'          => 'boolean',
 		'noindex'          => 'boolean',
 		'nofollow'         => 'boolean',
+		'meta_keywords'    => 'string',
+		'comments'         => array(
+			'enabled'        => 'boolean',
+			'open'           => 'boolean',
+			'auto_publish'   => 'boolean',
+			'login_required' => 'boolean'
+		),
+		'draft'            => 'boolean',
+		'recycled'         => 'boolean',
 		'layout_type'      => 'string',
 		'updated_at'       => 'string?',
 		'updated_at_unix'  => 'integer',

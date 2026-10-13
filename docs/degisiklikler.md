@@ -186,6 +186,236 @@ okundu.
 
 ---
 
+## 2026.4.10 — Görsel editör: özellikler panelindeki değişiklik kendi geri alma adımını açıyor (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 1. maddesi: link adresi seçiciyle ya
+da URL kutusuyla değişince ayrı geri alma adımı açılmıyor. Başlık metni →
+link URL'si → Ctrl+Z yapılınca başlık metni de geri dönüyor.
+
+**Neden.** Geçmiş, değişiklikten ÖNCEKİ hâlin anlık görüntüsüyle çalışıyor
+(`saveState()`). Özellikler panelinin ortak `[data-prop]` işleyicisi metin
+kutularında hiç anlık görüntü almıyordu: URL kutusuna yazılan ya da seçicinin
+doldurduğu adres, bir önceki adımın içine düşüyordu. Açılır liste ve onay
+kutusunda görüntüyü değişiklikten SONRA alıyordu: ilk Ctrl+Z aynı hâle
+dönüp hiçbir şey yapmıyor, ikincisi iki düzenlemeyi birden geri alıyordu.
+Erişilebilirlik alanlarının `[data-nodeattr]` işleyicisi de görüntüyü
+değişiklikten sonra (`change`) alıyordu.
+
+**Düzeltme** (`style_designer.js`). İki işleyici de görüntüyü değişiklikten
+önce alıyor. Metin kutusunda yazma bir adım sayılıyor:
+`saveState(_sdEditRun('prop:' + prop))` aynı alandaki kesintisiz yazmayı tek
+adımda topluyor (`SAVE_STATE_RUN_MS`), başka alana ya da başka öğeye geçince
+yeni adım açılıyor. Seçici `input` + `change` olaylarını birlikte gönderiyor;
+işleyici yalnız `input`'u dinlediği için tek adım oluşuyor.
+
+**Doğrulama (sandbox, Playwright).** Hakkımızda sekmesinde h1 satır içi
+"BASLIK DEGISTI" yapıldı, ardından "Bize Yazın" linkinin adresi değişti.
+Öncesi (yazarak da, seçicinin olaylarıyla da): 1. geri al başlığı ve adresi
+birlikte geri aldı, 2. geri al kapalıydı. Sonrası: 1. geri al yalnız adresi
+(`/iletisim`), 2. geri al başlığı geri aldı; yinele başlığı getirdi. Hedef
+açılır listesi (`_blank`) için de 1. geri al yalnız hedefi geri aldı. Ortak
+başlıktaki linkte (marka linki) metin ve adres ayrı adımlarda geri alındı.
+dev.pinegrap.com'da denenmedi.
+
+---
+
+## 2026.4.10 — Görsel editör: olmayan kayıt, ürün ve kategoride 404 + noindex (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 2. maddesi:
+`/blog-yazisi/olmayan-kayit-xyz` 200 dönüyor, "Yazı bulunamadı" gösteriyor,
+noindex yok, kanonik `/blog-yazisi`. Klasik form detay sayfası (`/blog/olmayan`)
+bu durumda zaten 404 veriyordu; görsel editörün widget'ları vermiyordu.
+
+**Nasıl.** `pg_sw_item_missing()` (`widgets.php`): adresin istediği öğe yoksa
+widget onu işaretler; yanıt 404 olur, `X-Robots-Tag: noindex` gider,
+`get_page_content.php` sayfaya `<meta name="robots" content="noindex, follow">`
+yazar ve kanonik bağlantıyı çıkarır. Bayrak sayfanın widget geçişinden önce
+sıfırlanır. E-posta gövdesi ve SEO geçişi (başka bir isteğin içinde çizilen
+sayfa) hiç işaretlenmez. İşaretleyen üç yer:
+
+- **Form detay widget'ı** (`_render_system_widget_form_item_view`): `?r=` dolu
+  ya da form güzel URL'liyken sayfa adının ardında bir ad var, ama kayıt yok
+  veya ziyaretçi göremiyor. Erişimi olmayan kayıt da 404 olur; widget onu
+  zaten "bulunamadı" gibi gösteriyordu (kaydın varlığı sızmasın diye). Aynı
+  sayfada katalog widget'ı varsa ad onundur, işaretlenmez.
+- **Ürün detay widget'ı**: adres ya da `?pid=` bir ürün ya da seçim tipi grup
+  bulmadı. Aynı sayfada katalog listesi varsa ad önce onundur, işaretlenmez.
+- **Katalog listesi**: adresteki kategori yok. Aynı sayfada ürün detay widget'ı
+  varsa işaretlenmez (ürünü o gösterebilir).
+
+Çıplak detay sayfası (`/blog-yazisi`, `/urun-detay`) 200 kalır. Liste sayfasının
+ardındaki olmayan ad (`/blog-2/olmayan`) bu PR'da değişmedi: her sayfanın
+ardındaki fazladan parça gibi 200 dönüyor.
+
+**Doğrulama (sandbox).** Form 1109'da güzel URL geçici açıldı:
+`/blog-yazisi/olmayan-kayit-xyz` ve `/blog-yazisi?r=NOPE123` → 404,
+`X-Robots-Tag: noindex`, robots meta, kanonik yok, gövdede "bulunamadı"
+mesajı. `/blog-yazisi/ilk-yazi`, `/blog-yazisi`, `/blog-yazisi/` → 200 ve
+kanonik. `/urun-detay/olmayan-urun`, `/urun-detay?pid=999999`,
+`/magaza/olmayan-grup` → 404 + noindex; `/urun-detay/Recurring_Donation`,
+`/magaza/Donations`, `/magaza` → 200. `php tools/test.php` 405 geçti.
+dev.pinegrap.com'da denenmedi. IIS'te sunucunun kendi hata sayfası 404 gövdesini
+değiştirirse (httpErrors), hata sayfası widget'ının 404'ünde de aynısı olur.
+
+---
+
+## 2026.4.10 — Yerel test bulguları: ülke kısıtında panel girişi, IIS'te çift başlık, MCP 401 metni, Bağlı uygulamalar, iki PHP uyarısı, çekmecede not başlığı (2026-10-13)
+
+**Neden.** dev.pinegrap.com'daki yerel test turunun ikinci raporu (OAuth/MCP,
+Welcome, Workspace, dil yönlendirmesi, WAF). Bir önemli bulgu, dört küçük.
+
+### 1. Ülke kısıtı açıkken yurt dışındaki personel panele giremiyordu
+
+**Belirti.** "Listedekileri reddet" + listede AQ, "Yönetim paneli" muaf.
+AQ'dan `/pinegrap/` → 302 `/giris` → 403 (`geo-country`). Ayar metni "panel
+ekranları ve giriş sayfası her ülkeden açık kalır" diyor.
+
+**Kök sebep.** `waf_country_is_panel_request()` yalnız yazılım dizinindeki
+betikleri panel sayar; doğru. Ama `index.php` → `get_login_screen()` girişi
+sitenin kendi sayfasına gönderir: görsel editörle kurulmuş sitede giriş
+widget'ını taşıyan sayfaya (`pg_sw_screen_page_url('login')`), eski sitede
+`login` türündeki sayfayı panelin adresinde çizer (sayfanın teması ve
+görselleri yine router/get_file'dan, kısıtlı). Şifremi unuttum
+(`forgot_password.php`) ve sıfırlama bağlantısının açtığı yeni şifre sayfası
+da sitenin sayfalarıdır. `/pinegrap/login.php` diye bir betik yoktur; o adres
+router'da site sayfası sayılır, 403 orada doğrudur.
+
+**Seçilen yol: panel kendi ekranlarında kalır.** WAF'a "bu yol sitenin giriş
+sayfası mı" diye sayfa çözdürmek düşünüldü, alınmadı: `waf.php`
+functions.php'den bağımsızdır, tasarım sayfasının widget'ı taşıyıp taşımadığı
+`pg_sw_widget_pages()`'in `shared_components` + sayfa ağacı LIKE taramasıdır
+(kopyası WAF'ta ikinci bir tanım olurdu), ve sayfa açılsa bile teması ve
+görselleri dosya yolundan reddedilirdi — ayar metni "sitenin sayfaları ve
+dosyaları kısıtlı kalır" diyor. Bunun yerine:
+
+- `waf_country_keeps_to_panel()` (waf.php): güvenlik duvarı engelliyor
+  (`block`), ülke kısıtı açık, panel muaf, adres izin listesinde değil ve
+  ziyaretçinin ülkesi reddediliyor. Karar saf bir fonksiyonda
+  (`waf_country_keeps_to_panel_decision()`), testli. Belirleyemezse `false`:
+  panel eskisi gibi davranır. İzleme modunda kimse reddedilmediği için
+  `false`.
+- `pg_sign_in_kept_to_panel()` / `pg_sign_in_screen_url()` (forms.php).
+  `get_login_screen()` ve `get_forgot_password_screen()` bu ziyaretçiye
+  sitenin sayfasını (eski ya da tasarım) değil yerleşik formu çizer; yerleşik
+  ekranlar yalnız panelin statik dosyalarını yükler.
+- `forgot_password.php`: bu ziyaretçinin yönlendirmeleri `forgot_password.php`
+  üstünde kalır, sıfırlama bağlantısı `set_password.php?k=…`'yı açar.
+  Diğer ziyaretçiler için bağlantı sitenin yeni şifre sayfasıdır, sayfa
+  yoksa eskisi gibi durur.
+- `set_password.php` GET'te yerleşik formu çizer (`get_set_password()`,
+  `page_type` artık geçiliyor; `page_id` 0 ile sistem şablonu). Önceden GET
+  CSRF kontrolüne düşüp "oturum süresi doldu" diyordu. Hata ve onay dönüşleri
+  ile "yeni e-posta iste" linkleri `pg_sign_in_screen_url()`'den.
+- 2FA (`mfa.php`), cihaz sınırı ve giriş sonrası `welcome.php` zaten panel
+  betikleri, muaf.
+
+### 2. IIS'te `X-Content-Type-Options` ve `Referrer-Policy` iki kez
+
+Önceden "bilinen kozmetik" olarak bırakılmıştı (2026.4.x güvenlik başlıkları
+bölümü): web.config `<customHeaders>` ile ekliyor, PHP de gönderiyor, IIS
+ikisini birleştiriyor. Sunucu kuralı statik dosyalar için kalmalı, PHP kopyası
+kuralsız sunucular için gerekli. Şimdi PHP, IIS altında
+(`SERVER_SOFTWARE` Microsoft-IIS) sitenin kökündeki web.config'in
+`<customHeaders>` içinde bu başlığı `<add>` ettiğini görürse kendi kopyasını
+göndermez (`waf_server_adds_header()`, `waf_iis_custom_headers()`; yorumlar
+atılır). `nosniff` gönderen her yer `waf_send_nosniff()` /
+`pg_send_nosniff()` üzerinden geçer (API, MCP, OAuth uçları, Workspace
+misafir dosyası, ERP muhasebeci paketi, gelen kutusu dosyası, get_file'ın
+belge türleri). Apache'nin `Header always set`'i PHP'nin kopyasını zaten
+değiştirir; nginx'in `add_header`'ı buradan okunamaz, orada çift kalır.
+
+**Açık kalan:** `no-referrer` isteyen ekranlar (OAuth onay ekranı, API
+dokümanı, misafir sayfası, kısa link) IIS'te sunucunun
+`strict-origin-when-cross-origin` kopyasıyla birleşir; tarayıcı son geçerli
+değeri alır. PHP sunucunun eklediğini kaldıramaz; düzeltmesi web.config'te
+o yollar için `<location>` kuralıdır, bu iş kapsamında değil.
+
+### 3. MCP 401 metni
+
+`api_authenticate()` kimliksiz istekte "API anahtarı ve gizli anahtar
+gereklidir" diyordu; `/mcp.php` OAuth'la çalışır. `PG_MCP_ENTRY` tanımlıyken
+metin uygulamanın siteye bağlanıp jeton alması gerektiğini söyler. Kod
+(`credentials_missing`) ve `WWW-Authenticate` meydan okuması aynı.
+
+### 4. Bağlı uygulamalar
+
+- Kişinin ekranında (`connected_apps.php`) her kartta bağlantının adresi
+  (`/mcp.php`, `/pinegrap/mcp.php`, `/pinegrap/integration.php`). MCP iki
+  adreste yanıt verir; aynı Claude'un iki bağlantısı iki aynı kart gibi
+  görünüyordu. Birleştirilmedi: ikisi ayrı jetondur, biri sonlanınca öteki
+  çalışır.
+- `oauth_clients.last_used_timestamp` yalnız jeton verilirken
+  güncelleniyordu; `api_device_authenticate()` cihaz satırının son kullanımını
+  yazarken (dakikada bir) istemcininkini de yazar.
+
+### 5. PHP uyarıları
+
+- `edit_user.php`: son yönetici kendini düzenlerken rol kartları kapalıdır,
+  `role` gönderilmez; kaydetme `$_POST['role']`'u okuyordu. Artık kaydedilen
+  rol (`$saved_role`) kullanılır; rol gönderilmemişse `user_role` hiç
+  yazılmaz (boş değer gevşek sunucuda 0 olurdu).
+- `seo.php` `update_visitor_page_data()`: `init_tracking()` bot, başka
+  Pinegrap kurulumu ve izleme botu için ziyaretçi kaydı açmaz; fonksiyon
+  `visitor_id` yokken çıkar. Saatlik özet sayacı (`pg_record_visitor_page_view()`)
+  yine önce çalışır, davranışı değişmedi.
+
+### 6. Görev çekmecesinde "Notlarım" başlığı
+
+`ws_notes_js_strings()` ekranın dizgeleriyle (`ws_js_strings()`)
+`array_merge` ile birleşir ve ikisi de `'notes'` anahtarını tanımlıyordu:
+not ekranınınki ("My Notes") çekmecenin "Notes" başlığını eziyordu. Not
+ekranının anahtarı `my_notes` oldu; JS'te `t('notes')`'u yalnız çekmece
+başlığı okuyor, `my_notes`'u okuyan yok (menü `nav_notes`'u kullanır). Diğer
+Çalışma Alanı dizge tablolarında farklı metinle tekrarlanan anahtar yok
+(misafir sayfasınınki ayrı tablodur).
+
+---
+
+## 2026.4.10 — Dış API: menüler ve menü öğeleri (2026-10-13)
+
+**Sorun.** Siteyi API ya da MCP üzerinden kuran bir asistan sayfa açıp
+içeriğini önerebiliyordu ama sitenin menüsüne bağlantı ekleyemiyordu; menü
+yalnız panelden düzenleniyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/menus.php`, kapsam
+`pages:read` / `pages:write` (menü sitenin kendisidir, sayfalarla aynı
+karar: rol ≤ 2):
+
+- `GET /menus`, `GET /menus/{id}`: menü ayarları (efekt, açılır konumlar,
+  sınıflar) ve öğeler, sitenin çizdiği sırayla düz liste (`parent_id`,
+  `level`, `order`); `url` sayfanın adresi ya da `link_url`. Üstü silinmiş
+  öğe sitede çizilmediği için listede de yok.
+- `POST /menus`, `POST /menus/{id}`: menü açma ve görünüş ayarları; panelde
+  olduğu gibi (`view_menus.php` designer kapısı) sahibin rolü 0–1 olmalı,
+  yoksa 403. Ad kuralı menü ekranınınki (harf, rakam, tire; benzersiz, 409
+  `name_taken`).
+- `POST /menus/{id}/items`, `POST /menus/{id}/items/{item_id}`, `DELETE`
+  (ve `POST …/delete`): öğe ekleme, değiştirme, taşıma (`parent_id`,
+  `after`: 0 ilk, kardeş kimliği ardına; kendi altına taşıma 422), alt
+  öğeleriyle silme (`removed` sayısı, dry-run ile önce görülebilir). Sıra
+  her yazımda o seviye için 1, 2, 3… diye yeniden yazılır.
+
+**Kararlar.** Menünün adı tasarımlarda menüyü yerleştiren addır
+(`<menu>ad</menu>`, editörün menü öğesi); API'den değiştirilmez ve menü
+API'den silinmez, ikisi de menüyü kullanan her tasarımda boş bir yer
+bırakırdı. Bağlantı ya sayfa ya adres: sayfa verilince adres, adres
+verilince sayfa temizlenir (menü öğesi ekranı gibi). Geri Dönüşüm
+Kutusu'ndaki ve taslak sayfaya bağlantı verilmez; adres yalnız http, https,
+mailto, tel ya da bu sitede bir yol (`//` ile başlayan ve `\` içeren
+reddedilir). Günlüğe uygulama adıyla yazılır.
+
+**Doğrulandı (sandbox).** Liste ve tekil; menü açma (geçersiz ad, ad
+çakışması, dry-run), ayar değiştirme, `name` gönderilince 422, rolü 2 olan
+sahibe 403 (öğe yazımı açık); öğe ekleme (sayfa, adres, mailto, yeni
+pencere, güvenlik, `after: 0`), taslak sayfa, `javascript:`, `//evil.com`,
+sayfa ve adres birlikte reddi; iç içe ekleme, döngü reddi, üst değiştirme
+ve sıra, başka üstün öğesinin `after` olarak reddi, alt öğeleriyle silme
+(dry-run sayısı), olmayan menü ve öğe 404; MCP araçları ve OpenAPI
+(`Menu`, `MenuItem`). Denenmeyen: sitede menünün çizimi (veri panelin
+yazdığıyla aynı sütunlara yazılıyor).
+
+---
+
 ## 2026.4.10 — Dış API ve MCP: ERP irsaliyeleri, stok sayımları ve minimum stok yazılıyor (Faz 6, ikinci parça) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), ikinci parça:
@@ -278,6 +508,56 @@ görüldü); barkod tablosu olan bir mağaza (kod ürün koduyla denendi).
 
 ---
 
+## 2026.4.10 — Dış API: görsel tasarımlar listesi ve tasarıma taslak sayfa ekleme (2026-10-13)
+
+**Sorun.** API ve MCP görsel tasarımın sayfalarını okuyup onlara değişiklik
+önerebiliyordu ama yeni sayfa açamıyordu; hangi tasarımların olduğu da
+yalnız sayfaların üzerinden görülebiliyordu. Siteyi MCP üzerinden kuran bir
+asistan "Hizmetler sayfasını ekle" diyemiyordu.
+
+**Değişiklik.** `includes/api/resources/design.php`:
+
+- `GET /design/designs` (`design:read`): Görsel Sayfa Düzenleyici'nin
+  tasarımları (`pg_designer_list_designs()` ile aynı koşul), sayfa ve taslak
+  sayısı, ana sayfanın tasarımda olup olmadığı, `state` (empty / live /
+  draft / mixed, `pg_designer_design_state()`), başladığı şablon. Kimlikle
+  sayfalanır.
+- `POST /design/pages` (`design:write`, dry-run): tasarıma yeni sayfa. Kayıt
+  düzenleyicinin kendi kaydıyla (`pg_designer_save_page()`, `page_draft` 1)
+  yapılır; sayfa her zaman taslak klasörüne gider, `folder_id` yayınlanınca
+  gideceği klasördür (verilmezse en üst klasör; klasör uçlarının hedef
+  denetimi: kutu ve taslak klasörü olmaz, sahibin klasöre yazma hakkı
+  gerekir). `copy_from` aynı tasarımın bir sayfasının yerleşimini kopyalar
+  (düzenleyicideki "Sayfayı çoğalt" gibi; başlık, açıklama ve ayarlar
+  kopyalanmaz). Kendi formu olan sayfa kopyalanmaz (409 `page_has_form`):
+  formun alanları ve kayıtları sayfaya aittir, kopyanın formunu düzenleyici
+  kaydederken kurar. Ad, Sayfalar ekranındaki gibi boşluk ve `&` → `_`;
+  `? # % \ < > "` reddedilir; ad bir sayfa, dosya, kısa bağlantı ya da kök
+  klasörle çakışırsa 409 `name_taken`. Kayıt `page.created` olayını yayar
+  ve günlüğe uygulama adıyla yazılır.
+- Tasarım sayfası cevabına `draft` eklendi.
+- Düzeltme: `GET /design/pages` imleci `$cursor['id']` okuyordu, oysa
+  `api_cursor_decode()` `v` ve `i` verir; ikinci sayfa yine ilk sayfayı
+  döndürüyor, sayfalayan istemci döngüye giriyordu. `i` okunuyor.
+
+**Neden taslak.** `design:write` "yazmak önermektir" kuralıyla verilir:
+uygulama sitede görünen hiçbir şeyi kendi başına değiştirmez. Taslak sayfa
+siteye çıkmaz; içeriği öneriyle yazılır, bir tasarımcı uygular ve yayınlar.
+Düzenleyicinin kaydı yalnız açık sekmelerini yazar, API'nin açtığı sayfa
+açık bir düzenleyicinin kaydıyla silinmez; sayfayı yeniden yükleyince sekme
+olarak gelir.
+
+**Doğrulandı (sandbox).** Tasarım listesi ve sayfalama; dry-run; boş ve
+`copy_from` ile sayfa (ağaç kopyalandı, `page_tree_code` üretildi,
+`page_drafts` satırı yayın klasörüyle yazıldı); ad çakışması, geçersiz
+karakter, olmayan tasarım, görsel olmayan tasarım, olmayan klasör, başka
+tasarımın sayfası, formlu sayfa reddi; yeni sayfaya `page` önerisi; MCP
+`tools/list` ve OpenAPI (`Design`, `/design/designs`, `/design/pages`).
+Denenmeyen: gerçek düzenleyicide sekmenin açılması (bulut oturumunda tarayıcı
+yok).
+
+---
+
 ## 2026.4.10 — ERP: satın alma siparişinden alış faturası, teslim durumu, minimum stoktan sipariş (2026-10-13)
 
 **Neden.** Faz 7'nin ikinci parçası (`docs/_plan_erp_ozellikler.md` §3, akışın
@@ -342,6 +622,67 @@ teslim sayısı. `tests/erp_purchase_order_test.php`'ye 5 test (13 test).
 
 **Doğrulanamayan.** IIS (dev.pinegrap.com) ve e-Belge sağlayıcısı açık
 mağazada alış faturası kesme.
+
+---
+
+## 2026.4.10 — Dış API: klasörler ve sayfa güncellemesinde yorum ayarları, meta anahtar kelimeler, klasör taşıma (2026-10-13)
+
+**Sorun.** Dış API sayfanın `folder_id`'sini veriyordu ama klasörün kendisini
+okumanın, açmanın ya da sayfayı bir klasöre taşımanın yolu yoktu; siteyi MCP
+üzerinden kuran bir asistan bölüm açamıyor, hangi klasörün kime açık
+olduğunu göremiyordu. Sayfa güncellemesi yorum ayarlarını ve meta anahtar
+kelimeleri yazmıyordu (Çalışma Alanı'nın Claude önerileri bunları panel
+yoluyla zaten yazıyordu).
+
+**Çözüm** (yeni `includes/api/resources/folders.php`, kapsam `pages:read` /
+`pages:write`; şema değişikliği yok).
+
+- `GET /folders` (parent_id, q, archived; id imleci), `GET /folders/{id}`:
+  ad, üst klasör, seviye, sıra, **etkin erişim** (`access`: kendi türü ya da
+  üstten gelen; `access_inherited`), arşiv, `system` (`drafts` |
+  `recycle_bin`), `recycled`, doğrudan içindeki klasör/sayfa/dosya sayısı
+  (sayfa başına üç `GROUP BY` sorgusu). Geri Dönüşüm Kutusu ve içindekiler
+  listede yok, kimlikle okunur.
+- `POST /folders` (name, parent_id — verilmezse en üst klasör, access —
+  varsayılan `inherit`, order, archived). Stil sütunları 0 (miras):
+  `add_folder.php`'de stil seçemeyen kişinin aldığı değer.
+- `POST|PATCH /folders/{id}`: ad, sıra, arşiv, üst klasör, erişim. Taşımada
+  döngü (klasörün kendi dalına taşınması) reddedilir, alt dalın seviyeleri
+  tek geçişte düzeltilir (`api_folder_relevel()`).
+- `DELETE /folders/{id}` + `POST …/delete`: yalnız boş klasör (klasör ekranının
+  kuralı, 409 `folder_not_empty`); `aclfolder` satırları da silinir. En üst
+  klasör, taslaklar klasörü ve kutu 409 `system_folder_protected`.
+- **Erişim genişletme API'de yok.** Klasörün ya da sayfanın sunulduğu erişim
+  yalnız aynı kalabilir ya da daralabilir (public < guest < registration <
+  membership < private); daha çok kişiye açacak yazım (tür değişikliği, özel
+  bir üstten çıkaran taşıma, sayfayı daha açık klasöre taşıma) 409
+  `access_widening_refused`. Gerekçe: satır yazıldığı an içindekiler herkese
+  sunulur ve bunu içeriği gören bir kişi yapmalı. Kural saf fonksiyonlarda
+  (`api_folder_access_walk()`, `api_folder_access_widens()`,
+  `api_folder_within()`), `tests/api_folders_test.php`.
+- Taslaklar klasörü ve kutu hedef olarak kullanılamaz (422): ikisini kendi
+  ekranları doldurur.
+- `POST /pages/{id}`: `meta_keywords`, `comments`, `comments_open`,
+  `comments_publish`, `comments_login` (Çalışma Alanı'nın `page` değişiklik
+  türüyle aynı sütunlar) ve `folder_id`. Ana sayfa (409
+  `home_page_protected`), sistem sayfaları (409 `system_page_protected`),
+  taslak (409 `page_is_draft`) ve kutudaki sayfa (409 `already_recycled`)
+  taşınmaz.
+- Sayfa cevabına `meta_keywords`, `comments` nesnesi (`enabled`, `open`,
+  `auto_publish`, `login_required`), `draft`, `recycled` eklendi.
+- Panel: API ayarlarında Sayfalar satırının açıklaması, konsolda Klasörler
+  grubu. MCP araçları kendiliğinden geldi (`folders_list` … `folders_delete`).
+
+**Doğrulama.** Sandbox'ta (`tools/setup_sandbox.sh`) sunucu uygulaması
+anahtarıyla gerçek isteklerle: liste/tekil, oluşturma (dry-run dahil),
+yeniden adlandırma, arşiv, daraltma, genişletme reddi (tür ve taşıma), döngü
+reddi, en üst klasör, boş olmayan klasör, kutu ve kutudaki sayfa yolları;
+sayfada meta anahtar kelime ve yorum ayarları, daraltan taşıma, genişleten
+taşıma reddi, ana sayfa ve giriş sayfası reddi veritabanından okundu. MCP
+`tools/list` yeni araçları ve silmenin `destructiveHint`'ini, OpenAPI yeni
+yolları ve `Folder` nesnesini veriyor. Denenmeyen: rolü 2 (yönetici) olan
+sahibin klasör hakkı (pages:write rol ≤ 2'ye verilir, `pg_folder_edit_access()`
+onlara her klasörde evet der).
 
 ---
 

@@ -1386,8 +1386,34 @@ function get_error_screen($content)
     $output = output_header_secure() . $content . output_footer_secure();
     return $output;
 }
+// Whether the sign-in screens of the software directory keep this visitor on
+// their built-in forms instead of the site's sign-in pages: the country
+// restriction refuses the site's pages to them but leaves the control panel
+// open, so a page of the site would turn them away. See
+// waf_country_keeps_to_panel().
+function pg_sign_in_kept_to_panel()
+{
+    return function_exists('waf_country_keeps_to_panel') && waf_country_keeps_to_panel();
+}
+// The address of a sign-in screen for this visitor: the site's page of
+// $page_type ('forgot password', 'set password'), or the software
+// directory's own $script for a visitor kept to the panel. False when the
+// site has no such page, as get_page_type_url() answers.
+function pg_sign_in_screen_url($page_type, $script)
+{
+    if (pg_sign_in_kept_to_panel()) {
+        return PATH . SOFTWARE_DIRECTORY . '/' . $script;
+    }
+    return get_page_type_url($page_type);
+}
 function get_forgot_password_screen()
 {
+    // The site's forgot password page is a page of the site; a visitor the
+    // country restriction keeps to the panel gets the panel's own form.
+    if (pg_sign_in_kept_to_panel()) {
+        require_once(PG_FUNCTIONS_DIR . '/get_forgot_password.php');
+        return output_header_secure() . get_forgot_password() . output_footer_secure();
+    }
     // find if there is a forgot password page
     $query = "SELECT page_id FROM page WHERE page_type = 'forgot password'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
@@ -1413,6 +1439,13 @@ function get_forgot_password_screen()
 }
 function get_login_screen()
 {
+    // The site's login page, legacy or designed, is a page of the site; a
+    // visitor the country restriction keeps to the panel gets the panel's own
+    // form, which posts to index.php like the others.
+    if (pg_sign_in_kept_to_panel()) {
+        require_once(PG_FUNCTIONS_DIR . '/get_login.php');
+        return output_header_secure(array('title' => lang('Login'))) . get_login() . output_footer_secure();
+    }
     // find if there is a login page
     $query = "SELECT page_id FROM page WHERE page_type = 'login'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));

@@ -5372,3 +5372,17 @@ function pg_js_bundle_tags($bundle, $defer = true)
 
     return $tags;
 }
+
+/**
+ * X-Content-Type-Options: nosniff, once. The firewall's copy leaves the header
+ * to the web server where its rules add it already (waf_send_nosniff());
+ * before waf.php is loaded, PHP sends it.
+ */
+function pg_send_nosniff()
+{
+    if (function_exists('waf_send_nosniff')) {
+        waf_send_nosniff();
+    } elseif (!headers_sent()) {
+        header('X-Content-Type-Options: nosniff');
+    }
+}

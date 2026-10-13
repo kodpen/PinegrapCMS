@@ -103,6 +103,27 @@ function connected_apps_resource_label($resource) {
 
 }
 
+// The address a connection's tokens work at, as its path on this site. The
+// MCP server answers at two addresses, and an application connected at both
+// showed two cards that read alike.
+function connected_apps_resource_address($resource) {
+
+	$resource = (string)$resource;
+
+	if ($resource === '') {
+
+		$resources = pg_oauth_resources();
+
+		$resource = $resources['integration'];
+
+	}
+
+	$path = (string)parse_url($resource, PHP_URL_PATH);
+
+	return ($path !== '') ? $path : $resource;
+
+}
+
 function connected_apps_ago($timestamp) {
 
 	$timestamp = (int)$timestamp;
@@ -156,7 +177,8 @@ foreach ($connections as $connection) {
 							<div class="fw-semibold">' . h($name) . '</div>
 							<div class="small text-muted">'
 								. (($identity !== '') ? h(lang('Identified by')) . ' <code>' . h($identity) . '</code> &middot; ' : '')
-								. h(connected_apps_resource_label($connection['resource'])) . '</div>
+								. h(connected_apps_resource_label($connection['resource']))
+								. ' <code>' . h(connected_apps_resource_address($connection['resource'])) . '</code></div>
 						</div>
 						' . ($client_on
 							? ''

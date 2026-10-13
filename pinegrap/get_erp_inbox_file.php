@@ -49,7 +49,7 @@ $download = !empty($_GET['download']) || ($format === 'ubl');
 header('Content-Type: ' . (string) $result['mime']);
 header('Content-Length: ' . strlen((string) $result['content']));
 header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-header('X-Content-Type-Options: nosniff');
+pg_send_nosniff();
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 

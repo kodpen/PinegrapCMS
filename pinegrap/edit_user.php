@@ -1484,11 +1484,15 @@ if (!$_POST) {
             }
         }
 
-        // if the role is allowed to be changed
-        if ($allow_role_change == true) {
-            $sql_role = " user_role = '" . escape($_POST['role'] ?? '') . "',";
+        // if the role is allowed to be changed. The last administrator's role
+        // cards are disabled and post nothing; an empty role must not reach
+        // the column, where a lenient server would store it as 0.
+        if (($allow_role_change == true) && isset($_POST['role'])) {
+            $sql_role = " user_role = '" . escape($_POST['role']) . "',";
+            $saved_role = (int) $_POST['role'];
         } else {
             $sql_role = "";
+            $saved_role = (int) $role;
         }
         
         $sql_offline_payment = '';
@@ -1630,7 +1634,7 @@ if (!$_POST) {
         }
         
         // if user that was created has a user role, then prepare to assign access to various items for user
-        if ($_POST['role'] == 3) {
+        if ($saved_role == 3) {
             // delete user and common region references in users_common_regions_xref
             $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

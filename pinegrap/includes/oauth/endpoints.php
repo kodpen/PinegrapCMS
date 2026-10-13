@@ -47,7 +47,7 @@ function pg_oauth_send($status, $body, $headers = array()) {
 
 		header('Pragma: no-cache');
 
-		header('X-Content-Type-Options: nosniff');
+		pg_send_nosniff();
 
 		header('Access-Control-Allow-Origin: *');
 

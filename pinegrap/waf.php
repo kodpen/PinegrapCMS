@@ -2281,8 +2281,11 @@ function waf_send_security_headers()
         return;
     }
 
-    header('X-Content-Type-Options: nosniff');
-    header('Referrer-Policy: strict-origin-when-cross-origin');
+    waf_send_nosniff();
+
+    if (!waf_server_adds_header('Referrer-Policy')) {
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+    }
 
     // (self) rather than (): first-party use stays possible and only a
     // third-party frame is refused. A store locator or a barcode scanner on
@@ -2291,6 +2294,77 @@ function waf_send_security_headers()
 
     if ((int) waf_setting('security_frame_protection', 1) === 1) {
         header('X-Frame-Options: SAMEORIGIN');
+    }
+}
+
+/**
+ * Whether the web server adds this response header to every answer itself,
+ * so that sending it from PHP as well delivers it twice.
+ *
+ * IIS reads the site's web.config, and the rules the software gives it
+ * (includes/server_config.php) add X-Content-Type-Options and
+ * Referrer-Policy in <customHeaders>. IIS appends those to whatever PHP
+ * sent - its <remove> only reaches headers IIS itself added - so every PHP
+ * response arrived with "nosniff, nosniff". The server rule stays, because
+ * it is what covers the static files PHP never serves.
+ *
+ * Apache's "Header always set" replaces PHP's copy, so it never doubles.
+ * nginx's configuration cannot be read from here, so it is not detected.
+ *
+ * @param string $name header name, as written in the <add name="..."> rule
+ * @return bool
+ */
+function waf_server_adds_header($name)
+{
+    static $config = null;
+
+    if ($config === null) {
+        $config = '';
+
+        $software = isset($_SERVER['SERVER_SOFTWARE']) ? (string) $_SERVER['SERVER_SOFTWARE'] : '';
+
+        if (stripos($software, 'Microsoft-IIS') !== false) {
+            $config = waf_iis_custom_headers((string) @file_get_contents(dirname(dirname(__FILE__)) . '/web.config'));
+        }
+    }
+
+    return in_array(strtolower((string) $name), $config === '' ? array() : explode("\n", $config), true);
+}
+
+/**
+ * The header names a web.config adds in <customHeaders>, lower-cased, one per
+ * line. Commented-out rules are left out.
+ *
+ * @param string $xml the file's contents
+ * @return string
+ */
+function waf_iis_custom_headers($xml)
+{
+    $xml = preg_replace('/<!--.*?-->/s', '', (string) $xml);
+    $names = array();
+
+    if (preg_match_all('#<customHeaders\b[^>]*>(.*?)</customHeaders>#is', (string) $xml, $sections)) {
+        foreach ($sections[1] as $section) {
+            if (preg_match_all('#<add\s[^>]*\bname\s*=\s*["\']([^"\']+)["\']#i', $section, $adds)) {
+                foreach ($adds[1] as $added) {
+                    $names[] = strtolower(trim($added));
+                }
+            }
+        }
+    }
+
+    return implode("\n", array_unique($names));
+}
+
+/**
+ * X-Content-Type-Options: nosniff, from PHP only when the web server does not
+ * add it itself (waf_server_adds_header()). Every response that asks the
+ * browser not to sniff its type sends it through here.
+ */
+function waf_send_nosniff()
+{
+    if (!headers_sent() && !waf_server_adds_header('X-Content-Type-Options')) {
+        header('X-Content-Type-Options: nosniff');
     }
 }
 
@@ -2961,7 +3035,7 @@ function waf_deny($status, $reference, $always = false)
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store, no-cache, must-revalidate');
-        header('X-Content-Type-Options: nosniff');
+        waf_send_nosniff();
 
         if ($status === 429) {
             header('Retry-After: 60');
@@ -3866,6 +3940,91 @@ function waf_handle_country($blocking)
     if ($blocking) {
         waf_deny(403, waf_reference());
     }
+}
+
+/**
+ * Whether this visitor reaches the control panel but not the site's pages:
+ * the firewall blocks, the country restriction refuses their country, the
+ * panel is exempt from it, and their address is not on the allow list.
+ *
+ * The panel's sign-in screens ask this before handing a visitor to the
+ * site's own sign-in pages - a page built in the visual editor that carries
+ * the login, forgot password or set password widget, or a legacy page of
+ * that type. Those are pages of the site, which the restriction covers, so
+ * staff abroad were sent from the panel straight to a refusal. For such a
+ * visitor the screens keep to the panel's built-in forms, which load nothing
+ * from the site's files.
+ *
+ * False whenever it cannot tell: the panel then behaves as it always has.
+ */
+function waf_country_keeps_to_panel()
+{
+    static $answer = null;
+
+    if ($answer !== null) {
+        return $answer;
+    }
+
+    $answer = false;
+
+    try {
+        if (!isset(db::$con) || !db::$con) {
+            return $answer;
+        }
+
+        $mode = waf_mode();
+
+        // Read in this order so that an operator who has not turned the
+        // restriction on pays for no country lookup.
+        if (($mode !== 'block') || !in_array((string) waf_setting('waf_country_mode', 'off'), array('allow', 'block'), true)) {
+            return $answer;
+        }
+
+        $country = pg_geo_country();
+
+        $answer = waf_country_keeps_to_panel_decision(
+            $mode,
+            waf_config(),
+            $country['code'],
+            waf_ip_is_allowed(waf_client_ip()));
+    } catch (Exception $e) {
+        $answer = false;
+    } catch (Error $e) {
+        $answer = false;
+    }
+
+    return $answer;
+}
+
+/**
+ * The decision behind waf_country_keeps_to_panel(), from what it read.
+ *
+ * @param string $waf_mode from waf_mode()
+ * @param array  $config   the firewall's settings (waf_config())
+ * @param string $code     the visitor's country, '' when unknown
+ * @param bool   $allowed  whether the address is on the allow list
+ * @return bool
+ */
+function waf_country_keeps_to_panel_decision($waf_mode, $config, $code, $allowed)
+{
+    // Monitor mode refuses nobody, and an allowed address is never refused.
+    if (($waf_mode !== 'block') || $allowed) {
+        return false;
+    }
+
+    $config = is_array($config) ? $config : array();
+
+    // Without the exemption the panel's screens are refused too, so there is
+    // nothing to keep the visitor to.
+    if (!(int) (isset($config['waf_country_exempt_panel']) ? $config['waf_country_exempt_panel'] : 1)) {
+        return false;
+    }
+
+    return waf_country_refused(
+        (string) $code,
+        isset($config['waf_country_mode']) ? (string) $config['waf_country_mode'] : 'off',
+        waf_country_codes(isset($config['waf_country_list']) ? $config['waf_country_list'] : ''),
+        isset($config['waf_country_unknown']) && ((int) $config['waf_country_unknown'] === 1));
 }
 
 function waf_handle_rate_global($ip, $blocking)
