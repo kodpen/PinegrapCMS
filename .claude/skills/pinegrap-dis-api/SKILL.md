@@ -181,6 +181,35 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   çağrısından önce 300 sn kira (`run_after`, durum `waiting`). Ağ çağrısını
   istek akışında yapma.
 
+## Bağlı hesaplar: giden OAuth (2026.4.10, `includes/fn/connect.php`)
+
+Site bir OAuth istemcisi olarak Google/Microsoft hesabına bağlanır (plan
+`docs/_plan_tersine_oauth.md`, model A: her site sağlayıcının konsolunda
+kendi uygulamasını kaydeder). Ekran `connections.php` (Ayarlar ›
+Bağlantılar), geri dönüş adresi tek: `connect.php`
+(`pg_connect_redirect_uri()`).
+
+- Yeni sağlayıcı = `includes/connect/providers/<anahtar>.php` (uç
+  adresleri, `issuers`/`issuer_pattern`, `identity_scopes`,
+  `authorize_params`, `token_per_scope`, `options`, `setup` adımları).
+  Yeni özellik = `includes/connect/purposes/<anahtar>.php` (`label`,
+  `description`, `owner` site/person/any, `scopes` sağlayıcı başına). Şema
+  ve `connect.php` değişmez.
+- Bağlan düğmesi: `connect.php`'ye POST eden bir form içine
+  `pg_connect_start_fields($sağlayıcı, $amaç, 'ekranım.php')`. Aynı hesap
+  yeni amaçla yeniden bağlanırsa kapsamlar birleşir (`connection_id`).
+- Kullanmak: `pg_connect_accounts(array('purpose' => ...))` ile hesabı
+  bul, `pg_connect_api($id, 'POST', $url, $seçenekler, $kapsamlar)` ya da
+  yalnız belirteç için `pg_connect_access_token($id, $kapsamlar)`.
+  Microsoft'ta belirteç kaynak başınadır: çağrının kapsamlarını ver
+  (ör. `https://outlook.office.com/SMTP.Send`). Refresh token'ı asla
+  okuma; yenileme kilitli ve `invalid_grant` hesabı `reauth` yapar.
+- Sunucudan sunucuya alınan belirteçler (Paraşüt, kargo):
+  `pg_connect_service_get/put/delete($anahtar)` — düz dosyaya ya da
+  `config` kolonuna belirteç yazma.
+- Şifreleme `ENCRYPTION_KEY` ister (`pg_connect_can_seal()`); yoksa ekran
+  bağlamayı kapatır.
+
 ## Modül dikişi (ERP → API)
 
 - ERP, API'ye bir şey eklemek için `includes/api/**` altına **dokunmaz**; her şey
