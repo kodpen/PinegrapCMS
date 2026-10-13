@@ -84,6 +84,70 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: iletişim (kişi) grupları (2026-10-13)
+
+**Sorun.** Kampanyaların gönderildiği iletişim grupları API'de yoktu. Bir
+bülten aracı, CRM ya da form entegrasyonu "bu kişi hangi listede" sorusunu
+soramıyor, yeni aboneyi listeye ekleyemiyor, dışarıda abonelikten çıkanı
+sitede işaretleyemiyordu; bunun için kişi ekranında grup işaretlemek
+gerekiyordu. #315'ten sonra kampanyaların `contact_group_ids` alanı da bir
+grup adına bağlanamıyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/contact_groups.php` ve yeni
+izin grubu `contact_groups` (`contact_groups:read`, `contact_groups:write`);
+kişi ekranlarının kapısı `validate_contacts_access()` olduğu için rol < 3 ya
+da kişi yetkisi (`manage_contacts`, `customers:*` ile aynı koşul). Rol 3
+hesabın uygulaması, ekranlardaki gibi yalnız kendisine verilen gruplara
+ulaşır (`users_contact_groups_xref`, `api_contact_group_owner_filter()`;
+liste, okuma, üyeler ve yazmada).
+
+- `GET /contact-groups` (`email_subscription`, `q` ad/açıklama; imleçli,
+  id sırasıyla): ad, açıklama, e-posta aboneliği, `subscription_type`
+  (open: e-posta tercihleri sayfasında herkese, closed: yalnız üyelerine;
+  abonelik kapalıysa `null`), üye sayısı (tek sorguda `GROUP BY`; silinmiş
+  kişiden kalan bağ sayılmaz), oluşturan/değiştiren.
+- `GET /contact-groups/{id}`: aynı alanlar, tek grup.
+- `GET /contact-groups/{id}/members` (`email`; imleçli, kişi id sırasıyla):
+  kişi, ad, adres, şirket, `email_opt_in` (kişinin bütün kampanyalar için
+  anahtarı, `contacts.opt_in`) ve abonelikli grupta `opt_in` (bu grubun
+  e-postası için tercihi, `opt_in` tablosu; satırı yoksa kampanya ekranı
+  gibi abone sayılır; aboneliksiz grupta `null`).
+- `POST /contact-groups/{id}/members`: `add` ve `remove` listeleri (en çok
+  250'şer kişi kimliği) tek istekte, kişi ekranında grup işaretler gibi.
+  Zaten üye olanı eklemek ya da üye olmayanı çıkarmak hata değil; cevaptaki
+  `added`/`removed` gerçekten değişeni sayar. Eklenecek kişi var olmalı
+  (yoksa 422). `opt_in` gönderilirse `add`'deki her kişinin bu grup için
+  tercihi yazılır (üye olanlar dahil; dışarıdaki abonelikten çıkma
+  `add=[id], opt_in=false`); aboneliksiz grupta yok sayılır. Gönderilmezse
+  hiçbir tercih yazılmaz: yeni üye abone sayılır, daha önce çıkmış ve geri
+  eklenen kişi çıkmış kalır. Gruptan çıkarmak tercih satırını silmez, kişi
+  ekranı da silmiyor.
+
+Grup oluşturma, adını değiştirme ve silme bilerek yok: grup kendi
+ekranında yapılır. Kişi kaydına dokunulmaz; tam kayıt `GET /customers/{id}`,
+adresle arama `GET /customers?email=`. Yazma `dry_run` destekler, günlüğe
+uygulama ve anahtarla yazılır. Yeni izin mevcut uygulamalara verilmez
+(`customers:write` taşıyan anahtar dahil); operatör Uygulama Erişimi'nde
+işaretler. Şema değişikliği yok.
+
+Testler: `tests/api_contact_groups_test.php` (rol 3 süzgeci, üyenin
+tercihi ve satırsız üye, üye alanları ve şemaya uyması, kimlik listesi,
+gerçek değişiklik sayımı, rotalar ve kapsamları, aynı yöntem+yol çakışması
+yok, kapsamın kişi ekranı kapısı ve mevcut anahtarlara verilmemesi).
+
+**Doğrulandı (sandbox, MariaDB 10.11, varsayılan site dökümü).** İşleyiciler
+API yardımcıları taklit edilerek gerçek tablolarda koşturuldu: liste,
+`q`/`email_subscription` süzgeci, imleç ve okunamayan imleç 400; üye
+sayısı silinmiş kişinin bağını saymadı; tek okuma, abonelikli ve
+aboneliksiz grup, 404; üyeler, imleç, `email` süzgeci, `opt_in` satırlı,
+satırsız ve aboneliksiz; boş istek, aynı kişi iki listede, olmayan kişi
+422; `dry_run` hiçbir şey yazmadı; ekle + çıkar, zaten üye olan sayılmadı;
+`opt_in=false` üye kalırken tercihi yazdı; çıkmış kişi `opt_in`
+gönderilmeden geri eklenince çıkmış kaldı; aboneliksiz grupta `opt_in`
+yok sayıldı; rol 3 yalnız kendi grubunu gördü, başkasına 404. HTTP
+katmanı (kimlik doğrulama, yönlendirici, OpenAPI) diğer uçlarla ortak,
+ayrıca denenmedi.
+
 ## 2026.4.10 — Dış API: e-posta kampanyaları (2026-10-13)
 
 **Sorun.** E-posta kampanyaları API'de yoktu. Bir bülten ya da CRM
