@@ -2006,8 +2006,9 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
  * field name => value (a file field takes the address of a picture). They
  * are written newest first, dated over the last weeks, so the template's
  * blog opens the same on every site - a site installed from a template has
- * no sample data of its own to copy. At most twelve; a name the form has no
- * field for is skipped.
+ * no sample data of its own to copy. At most twenty-four (a café's menu);
+ * a name the form has no field for is skipped, and a list of values fills a
+ * field that holds several (a check box group, a multiple pick list).
  *
  * 'blog': the posts of the sample blog (the form the sample data names
  * BLOG) become posts of this form - title, a short summary, the body as
@@ -2136,15 +2137,8 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
     $pretty = (bool)db_value("SELECT pretty_urls FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     $now = time();
     $copied = 0;
-    foreach (array_slice(array_values($records), 0, 12) as $i => $record) {
-        if (!is_array($record)) continue;
-        $values = array();
-        foreach ($record as $name => $value) {
-            $key = mb_strtolower((string)$name, 'UTF-8');
-            if (!isset($fields[$key]) || !is_scalar($value)) continue;
-            $value = trim((string)$value);
-            if ($value !== '') $values[$key] = $value;
-        }
+    foreach (array_slice(array_values($records), 0, 24) as $i => $record) {
+        $values = _pg_cf_seed_record_values($record, $fields);
         if (!$values) continue;
 
         $when = $now - ($i * 4 + 1) * 86400;
@@ -2152,14 +2146,40 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
             VALUES ('$page_id', '1', '" . (int)$user_id . "', '" . e(generate_form_reference_code()) . "', '$when', '" . (int)$user_id . "', '$when')");
         $form_id = (int)mysqli_insert_id(db::$con);
         if ($form_id <= 0) continue;
-        foreach ($values as $key => $value) {
-            db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
-                VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', 'standard')");
+        // One row per value: a check box group keeps each ticked answer in
+        // a row of its own, which is what its filters and the edit screen read.
+        foreach ($values as $key => $list) {
+            foreach ($list as $value) {
+                db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
+                    VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', 'standard')");
+            }
         }
         if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
         $copied++;
     }
     return $copied;
+}
+
+// The values of one sample record that its form can hold, by the field's
+// lowercased name: a list of one value, or of several for a list of values
+// (a check box group, a multiple pick list). Names the form has no field
+// for, empty values and anything that is not a scalar are left out.
+function _pg_cf_seed_record_values($record, $fields)
+{
+    $out = array();
+    if (!is_array($record) || !is_array($fields)) return $out;
+    foreach ($record as $name => $value) {
+        $key = mb_strtolower((string)$name, 'UTF-8');
+        if (!isset($fields[$key])) continue;
+        $list = array();
+        foreach ((is_array($value) ? array_values($value) : array($value)) as $v) {
+            if (!is_scalar($v)) continue;
+            $v = trim((string)$v);
+            if ($v !== '' && !in_array($v, $list, true)) $list[] = $v;
+        }
+        if ($list) $out[$key] = $list;
+    }
+    return $out;
 }
 // Prepares custom shipping & billing form fields for custom layouts on express order, shipping
 // address, and billing info pages.  It prefills data, sets attributes for fields, and returns
