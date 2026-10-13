@@ -15,7 +15,8 @@
  * The handlers and the presenters are in api_resources.php next to this file,
  * the ones that write invoices and quotes in api_documents.php, the ones that
  * write delivery notes, stock counts and minimums in api_stock.php, transfers
- * and cheques in api_cash.php, the profit, cash flow and dashboard figures in
+ * and cheques in api_cash.php, the profit, cash flow, cash forecast, late
+ * payment fee and dashboard figures (and the fee's invoice draft) in
  * api_reports.php, and the purchase orders' in api_purchase_orders.php; this
  * one stays a table, the way schema.php is a table.
  *
@@ -185,6 +186,8 @@ function erp_openapi_objects()
         'ErpCashTransfer' => 'erp_api_cash_transfer_schema',
         'ErpProfitReport' => 'erp_api_profit_report_schema',
         'ErpCashflowReport' => 'erp_api_cashflow_report_schema',
+        'ErpCashForecast' => 'erp_api_cash_forecast_schema',
+        'ErpLateFee' => 'erp_api_late_fee_schema',
         'ErpDashboard' => 'erp_api_dashboard_schema',
         'ErpDashboardCash' => 'erp_api_dashboard_cash_schema',
     );
@@ -370,6 +373,39 @@ function erp_api_routes()
                 array('name' => 'as_of', 'in' => 'query', 'type' => 'datetime', 'description' => 'The day the balance is stated for. Today when left out; a future day is not a statement and falls back to today.'),
                 array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the movements listed. The first day of the as_of year when left out.'),
                 array('name' => 'reply_days', 'in' => 'query', 'type' => 'int', 'min' => 0, 'max' => 90, 'description' => 'Days the counterparty is given to object. 0 leaves the deadline sentence out. 7 when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.accounts.late_fee',
+            'method' => 'GET',
+            'path' => '/erp/accounts/{id}/late-fee',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_accounts_late_fee',
+            'returns' => 'ErpLateFee',
+            'summary' => 'The late payment fee an account has run up',
+            'description' => 'What the panel shows under a customer account\'s balance: the monthly rate set in the ERP settings, applied day by day to what the account owed past each sales invoice\'s due date (a month is 30 days). Payments and returns lower it from the day they came; an invoice paid late counts up to the day it was paid. A day an issued fee invoice has already charged is not counted again: from moves to the day after charged_through, and can then fall after to, with nothing to charge. rate 0 means late fees are switched off and total is 0. Fee invoices earn no fee themselves. Amounts are in the store currency. draft_invoice_id names a fee invoice draft of the account still waiting to be issued. Nothing is written.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period. 1 January of the as_of year when left out.'),
+                array('name' => 'as_of', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day counted, today at the latest. Today when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.accounts.late_fee_invoice',
+            'method' => 'POST',
+            'path' => '/erp/accounts/{id}/late-fee-invoice',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_accounts_late_fee_invoice',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Write an account\'s late payment fee on an invoice draft',
+            'description' => 'What the panel\'s late payment fee invoice button does: the fee GET /erp/accounts/{id}/late-fee gives for the same from and as_of goes on a one-line sales invoice draft dated today, in the store currency, at the fee tax rate set in the ERP settings (the account\'s own rate when none is set), with the period on the line and each invoice\'s days and fee in the notes. The draft takes no number and charges nothing: check it, then POST /erp/invoices/{id}/issue. Once it is issued, the account\'s next fee starts the day after the period (late_fee_through), so no day is charged twice; deleting the draft charges nothing. When a fee draft of the account is already waiting, nothing is written and the answer is that draft, with 200 instead of 201. Refused with 422 while late fees are switched off or when there is nothing to charge for the period. The answer is the draft.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'from', 'in' => 'body', 'type' => 'datetime', 'description' => 'The first day of the period. 1 January of the as_of year when left out.'),
+                array('name' => 'as_of', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day charged, today at the latest. Today when left out.'),
             ),
         ),
 
@@ -1614,6 +1650,21 @@ function erp_api_routes()
                 array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day, today at the latest. Today when left out.'),
                 array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'week', 'month'), 'description' => 'The row size. Picked from the length of the period when left out: days up to two months, weeks up to about a year, months beyond.'),
                 array('name' => 'cash_account_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One till only. All tills when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.reports.cash_forecast',
+            'method' => 'GET',
+            'path' => '/erp/reports/cash-forecast',
+            'scope' => 'erp_cash:read',
+            'handler' => 'erp_api_reports_cash_forecast',
+            'returns' => 'ErpCashForecast',
+            'summary' => 'Money expected in and out over the next 30, 60 or 90 days',
+            'description' => 'The panel\'s cash forecast: what the books say will come in and go out, read from what is open today. In: open sales invoices on their due dates, the next repeating invoices on the due date the account\'s term gives them, cheques and notes received on theirs. Out: open purchase invoices, unpaid expenses, the next repeating expenses, cheques and notes given. Drafts and cancelled documents are left out. columns are past due (already late, counted as if settled today), then thirty days each from today; position is the expected balance after each column, starting from cash: what the tills kept in the store currency hold today, less the tills the cheques are kept in (cheque_tills), whose cheques are counted on their own dates instead. kinds splits the figures by source, one amount per column in the order of columns. items lists the movements by date, up to limit; source and source_id name the record each comes from. A till in another currency is not counted (foreign_tills); a repeating document in another currency with no exchange rate recorded for today is left out (unpriced). Amounts are in the store currency. Nothing is written. The application owner must hold the ERP cash right.',
+            'params' => array(
+                array('name' => 'horizon', 'in' => 'query', 'type' => 'enum', 'values' => array('30', '60', '90'), 'default' => '90', 'description' => 'How many days ahead.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 500, 'default' => 100, 'description' => 'How many items to list; items_count says how many there are.'),
             ),
         ),
 

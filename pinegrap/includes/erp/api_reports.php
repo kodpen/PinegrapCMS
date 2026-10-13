@@ -2,16 +2,19 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * ERP - the profit report, the cash flow report and the dashboard figures
- * through the external API.
+ * ERP - the profit report, the cash flow report, the cash forecast, an
+ * account's late payment fee and the dashboard figures through the external
+ * API, and the fee's invoice draft.
  *
- * Each one reads the function its screen reads (profit.php, cashflow.php and
- * the functions behind the dashboard cards), so a figure an application gets
- * is the one an operator sees for the same day. Money is in the store
- * currency, in minor units.
+ * Each one reads the function its screen reads (profit.php, cashflow.php,
+ * cash_forecast.php, late_fee.php and the functions behind the dashboard
+ * cards), so a figure an application gets is the one an operator sees for
+ * the same day. Money is in the store currency, in minor units.
  *
- * The cash flow is about the tills, which the panel keeps behind the cash
- * right: it needs the erp_cash:read scope and an owner who holds that right.
+ * The cash flow and the cash forecast are about the tills, which the panel
+ * keeps behind the cash right: they need the erp_cash:read scope and an
+ * owner who holds that right. The late fee is read from the ledger and
+ * written, like the panel's button, only as a sales invoice draft.
  * The dashboard is ledger reading; its till figures are filled in only for a
  * key that could read the tills, and are null otherwise, the way the panel
  * leaves the till card out rather than showing it as zero.
@@ -389,6 +392,326 @@ function erp_api_reports_cashflow($params)
     ));
 
     api_ok(erp_api_cashflow_report_present($options, erp_cashflow_report($options), erp_cashflow_by_till($options), erp_cashflow_by_method($options)));
+}
+
+/* ---------------------------------------------------------------------------
+   Cash forecast
+   --------------------------------------------------------------------------- */
+
+/**
+ * One column of the forecast: past due, or thirty days of it.
+ *
+ * @param string $key       overdue | d30 | d60 | d90
+ * @param array  $forecast  erp_cash_forecast()
+ * @return array
+ */
+function erp_api_cash_forecast_column_present($key, $forecast)
+{
+    $bucket = $forecast['buckets'][$key];
+
+    return array(
+        'key' => (string) $key,
+        'start' => ((string) $bucket['start'] !== '') ? (string) $bucket['start'] : null,
+        'end' => (string) $bucket['end'],
+        'in' => api_money($forecast['in'][$key]),
+        'out' => api_money($forecast['out'][$key]),
+        'net' => api_money($forecast['net'][$key]),
+        'position' => api_money($forecast['position'][$key]),
+    );
+}
+
+/**
+ * One kind of expected movement, its amounts in the order of the columns.
+ *
+ * @param string $kind      erp_cash_forecast_kinds() key
+ * @param array  $forecast  erp_cash_forecast()
+ * @return array
+ */
+function erp_api_cash_forecast_kind_present($kind, $forecast)
+{
+    $amounts = $forecast['kinds'][$kind];
+
+    return array(
+        'kind' => (string) $kind,
+        'direction' => (string) erp_cash_forecast_kinds()[$kind]['direction'],
+        'total' => api_money($amounts['total']),
+        'amounts' => array_map(function ($key) use ($amounts) {
+            return api_money($amounts[$key]);
+        }, array_keys($forecast['buckets'])),
+    );
+}
+
+function erp_api_cash_forecast_item_present($item)
+{
+    return array(
+        'kind' => (string) $item['kind'],
+        'direction' => (string) $item['direction'],
+        'date' => (string) $item['date'],
+        'column' => (string) $item['bucket'],
+        'amount' => api_money($item['amount']),
+        'title' => (string) ($item['title'] ?? ''),
+        'party' => (string) ($item['party'] ?? ''),
+        'account_id' => (int) ($item['account_id'] ?? 0),
+        'source' => (string) ($item['source'] ?? ''),
+        'source_id' => (int) ($item['source_id'] ?? 0),
+    );
+}
+
+/**
+ * @param array $forecast  erp_cash_forecast()
+ * @param int   $limit     How many items to list
+ * @return array
+ */
+function erp_api_cash_forecast_present($forecast, $limit)
+{
+    return array(
+        'as_of' => (string) $forecast['today'],
+        'horizon' => (int) $forecast['horizon'],
+        'currency' => erp_base_currency(),
+        'cash' => api_money($forecast['cash']),
+        'in' => api_money($forecast['in']['total']),
+        'out' => api_money($forecast['out']['total']),
+        'net' => api_money($forecast['net']['total']),
+        'position' => api_money($forecast['position']['total']),
+        'columns' => array_values(array_map(function ($key) use ($forecast) {
+            return erp_api_cash_forecast_column_present($key, $forecast);
+        }, array_keys($forecast['buckets']))),
+        'kinds' => array_values(array_map(function ($kind) use ($forecast) {
+            return erp_api_cash_forecast_kind_present($kind, $forecast);
+        }, array_keys($forecast['kinds']))),
+        'items' => array_values(array_map('erp_api_cash_forecast_item_present', array_slice($forecast['items'], 0, max(0, (int) $limit)))),
+        'items_count' => count($forecast['items']),
+        'unpriced' => (int) $forecast['unpriced'],
+        'foreign_tills' => (int) $forecast['foreign_tills'],
+        'cheque_tills' => (int) $forecast['cheque_tills'],
+    );
+}
+
+// What erp_api_cash_forecast_present() returns, declared for the OpenAPI document.
+function erp_api_cash_forecast_schema()
+{
+    return array(
+        'as_of' => 'string',
+        'horizon' => 'integer',
+        'currency' => 'string',
+        'cash' => 'integer',
+        'in' => 'integer',
+        'out' => 'integer',
+        'net' => 'integer',
+        'position' => 'integer',
+        'columns' => array(array(
+            'key' => 'string',
+            'start' => 'string?',
+            'end' => 'string',
+            'in' => 'integer',
+            'out' => 'integer',
+            'net' => 'integer',
+            'position' => 'integer',
+        )),
+        'kinds' => array(array(
+            'kind' => 'string',
+            'direction' => 'string',
+            'total' => 'integer',
+            'amounts' => 'integer[]',
+        )),
+        'items' => array(array(
+            'kind' => 'string',
+            'direction' => 'string',
+            'date' => 'string',
+            'column' => 'string',
+            'amount' => 'integer',
+            'title' => 'string',
+            'party' => 'string',
+            'account_id' => 'integer',
+            'source' => 'string',
+            'source_id' => 'integer',
+        )),
+        'items_count' => 'integer',
+        'unpriced' => 'integer',
+        'foreign_tills' => 'integer',
+        'cheque_tills' => 'integer',
+    );
+}
+
+function erp_api_reports_cash_forecast($params)
+{
+    if (!erp_api_owner()['cash']) {
+        api_fail(403, 'forbidden', lang('The application owner does not hold the ERP cash right.'));
+    }
+
+    $forecast = erp_cash_forecast((int) ($params['horizon'] ?? 90));
+
+    api_ok(erp_api_cash_forecast_present($forecast, (int) ($params['limit'] ?? 100)));
+}
+
+/* ---------------------------------------------------------------------------
+   Late payment fee
+   --------------------------------------------------------------------------- */
+
+function erp_api_late_fee_line_present($line)
+{
+    return array(
+        'invoice_id' => (int) $line['invoice_id'],
+        'number' => (string) $line['full_number'],
+        'due_date' => (string) $line['due_date'],
+        'days' => (int) $line['days'],
+        'average' => api_money($line['average']),
+        'fee' => api_money($line['fee']),
+    );
+}
+
+/**
+ * @param int    $account_id
+ * @param array  $fee         erp_late_fee_account()
+ * @param string $charged     erp_late_fee_charged_through(), '' for never
+ * @param int    $draft_id    erp_late_fee_open_draft(), 0 for none
+ * @return array
+ */
+function erp_api_late_fee_present($account_id, $fee, $charged, $draft_id)
+{
+    return array(
+        'account_id' => (int) $account_id,
+        'currency' => erp_base_currency(),
+        'rate' => (float) $fee['rate'],
+        'tax_rate' => ($fee['tax_rate'] === null) ? null : (float) $fee['tax_rate'],
+        'from' => (string) $fee['from'],
+        'to' => (string) $fee['to'],
+        'charged_through' => erp_api_date($charged),
+        'total' => api_money($fee['total']),
+        'lines' => array_values(array_map('erp_api_late_fee_line_present', $fee['lines'])),
+        'draft_invoice_id' => ((int) $draft_id > 0) ? (int) $draft_id : null,
+    );
+}
+
+// What erp_api_late_fee_present() returns, declared for the OpenAPI document.
+function erp_api_late_fee_schema()
+{
+    return array(
+        'account_id' => 'integer',
+        'currency' => 'string',
+        'rate' => 'number',
+        'tax_rate' => 'number?',
+        'from' => 'string',
+        'to' => 'string',
+        'charged_through' => 'string?',
+        'total' => 'integer',
+        'lines' => array(array(
+            'invoice_id' => 'integer',
+            'number' => 'string',
+            'due_date' => 'string',
+            'days' => 'integer',
+            'average' => 'integer',
+            'fee' => 'integer',
+        )),
+        'draft_invoice_id' => 'integer?',
+    );
+}
+
+/**
+ * The account a late fee call is about, or a 404; a 503 while the update
+ * that brings late fees has not run.
+ *
+ * @param array $params
+ * @return int  Account id
+ */
+function erp_api_late_fee_account_id($params)
+{
+    $account_id = (int) $params['id'];
+
+    if (!is_array(erp_account($account_id))) {
+        api_fail_not_found(lang('Account'));
+    }
+
+    if (!erp_late_fee_ready()) {
+        api_fail(503, 'service_unavailable', lang('Late payment fees come with the software update; run the update to use them.'));
+    }
+
+    return $account_id;
+}
+
+/**
+ * The period a late fee call names. A day after today is refused rather
+ * than brought back to today: a fee for days still to come would be charged
+ * before they were owed.
+ *
+ * @param array $params
+ * @return array ['from' => Y-m-d, 'as_of' => Y-m-d]
+ */
+function erp_api_late_fee_period($params)
+{
+    $today = date('Y-m-d');
+    $as_of = isset($params['as_of']) ? erp_api_day($params['as_of']) : $today;
+    $from = isset($params['from']) ? erp_api_day($params['from']) : erp_late_fee_default_from($as_of);
+
+    if ($as_of > $today) {
+        api_fail_validation(lang('A late payment fee runs up to today at the latest, so as_of cannot be after today.'), 'as_of');
+    }
+
+    if ($from > $as_of) {
+        api_fail_validation(lang('Choose a start date on or before the end date.'), 'from');
+    }
+
+    return array('from' => $from, 'as_of' => $as_of);
+}
+
+function erp_api_accounts_late_fee($params)
+{
+    $account_id = erp_api_late_fee_account_id($params);
+    $period = erp_api_late_fee_period($params);
+
+    api_ok(erp_api_late_fee_present(
+        $account_id,
+        erp_late_fee_account($account_id, $period['from'], $period['as_of']),
+        erp_late_fee_charged_through($account_id),
+        erp_late_fee_open_draft($account_id)
+    ));
+}
+
+function erp_api_accounts_late_fee_invoice($params)
+{
+    $account_id = erp_api_late_fee_account_id($params);
+    $period = erp_api_late_fee_period($params);
+
+    // The panel opens the draft already waiting rather than writing a second
+    // one. Nothing is written on this path, so a dry run answers the same.
+    $waiting = erp_late_fee_open_draft($account_id);
+
+    if ($waiting > 0) {
+        erp_api_invoice_answer($waiting, 200);
+    }
+
+    if (erp_late_fee_settings()['rate'] <= 0) {
+        api_fail_validation(lang('Late payment fees are switched off: set a monthly rate in the ERP settings first.'));
+    }
+
+    $fee = erp_late_fee_account($account_id, $period['from'], $period['as_of']);
+
+    if ($fee['total'] <= 0) {
+        api_fail_validation(lang('There is no late payment fee to charge for this period.'));
+    }
+
+    api_dry_run_stop('created', 'erp_invoice', array(
+        'status' => 'draft',
+        'account_id' => $account_id,
+        'issue_date' => date('Y-m-d'),
+        'from' => (string) $fee['from'],
+        'to' => (string) $fee['to'],
+        'total' => api_money($fee['total']),
+        'invoice_count' => count($fee['lines']),
+    ));
+
+    $made = erp_late_fee_draft($account_id, $period['from'], $period['as_of'], erp_api_owner()['id']);
+
+    if (empty($made['success'])) {
+        api_fail_validation((string) $made['error']);
+    }
+
+    erp_api_log(lang(array(
+        'string' => 'erp late payment fee draft (#{var:1}) was written for account #{var:2}',
+        'vars' => array((int) $made['invoice_id'], $account_id),
+    )));
+
+    erp_api_invoice_answer((int) $made['invoice_id'], 201);
 }
 
 /* ---------------------------------------------------------------------------

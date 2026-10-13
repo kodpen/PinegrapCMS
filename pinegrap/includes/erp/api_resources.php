@@ -879,6 +879,8 @@ function erp_api_invoice_present($row, $lines)
         'quote_id' => (int) ($row['quote_id'] ?? 0),
         // The purchase order a purchase invoice was made from (10.58); 0 for none.
         'purchase_order_id' => (int) ($row['purchase_order_id'] ?? 0),
+        // On a late payment fee invoice, the last day it charges (10.61); null otherwise.
+        'late_fee_through' => erp_api_date($row['late_fee_through'] ?? ''),
         'supplier_invoice_no' => (string) $row['supplier_invoice_no'],
         'issue_date' => erp_api_date($row['issue_date']),
         'due_date' => erp_api_date($row['due_date']),
@@ -941,6 +943,7 @@ function erp_api_invoice_schema()
         'parent_invoice_id' => 'integer',
         'quote_id' => 'integer',
         'purchase_order_id' => 'integer',
+        'late_fee_through' => 'string?',
         'supplier_invoice_no' => 'string',
         'issue_date' => 'string?',
         'due_date' => 'string?',
