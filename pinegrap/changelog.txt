@@ -443,6 +443,26 @@
          listesi açıldıkça PHP hata günlüğüne düşen
          "Undefined variable" uyarıları kalktı.
 
+  E-POSTA KAMPANYALARI
+  --------------------------------------------------------
+
+  [YENİ] Kampanyalarım, Kampanya Geçmişim ve Kampanya
+         Profillerim listeleri de aynı anda birden çok
+         sütuna göre sıralanıyor, örneğin durum artan,
+         aynı durumda konu artan. Başlığa Shift ile
+         tıklamak sonraki düzeyi ekliyor; telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsü
+         kullanılıyor. Seçilen sıralama panel dili
+         değişince kaybolmuyor; profillerin dışa aktarımı
+         listedeki sırayla geliyor.
+
+  [GÜVENLİK] Bu üç listede adres çubuğuna yazılan
+         sıralama yönü veritabanı sorgusuna olduğu gibi
+         giriyordu; e-posta yetkisi olan oturum açmış bir
+         kullanıcı sorguya kendi komutunu ekleyebiliyordu.
+         Artık yalnız listenin sütunları ve artan/azalan
+         kabul ediliyor.
+
   E-TİCARET: AYARLAR
   --------------------------------------------------------
 
