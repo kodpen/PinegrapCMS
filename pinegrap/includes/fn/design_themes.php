@@ -1272,3 +1272,99 @@ function _pg_design_thumb_clinic()
         . '<circle cx="216" cy="195" r="1.2" style="fill:var(--tp)"/><rect x="220" y="194" width="30" height="1.8" rx=".9" fill="#adb5bd"/>'
         . '<rect x="276" y="189" width="34" height="1.8" rx=".9" fill="#6c757d"/><rect x="284" y="194" width="26" height="1.8" rx=".9" fill="#6c757d"/>';
 }
+
+// The café: the notice above the header, a header with the menu and the
+// booking button, the hero on a soft band (the words and buttons on the
+// left, a picture with a steaming cup and the opening hours on the right),
+// the four ways in, the favourites of the menu as cards with a round plate,
+// the table band and the dark footer. Same variables as the home page
+// drawing.
+function _pg_design_thumb_cafe()
+{
+    // A cup on its saucer, with a handle on the right; ($x, $y) is the top
+    // left of the cup, $w its width.
+    $cup = function ($x, $y, $w, $fill, $stroke) {
+        $h = $w * 0.62;
+        $r = $w * 0.32;
+        return '<path d="M' . $x . ' ' . $y . ' h' . $w . ' v' . ($h - $r) . ' a' . $r . ' ' . $r . ' 0 0 1 -' . $r . ' ' . $r
+            . ' h-' . ($w - 2 * $r) . ' a' . $r . ' ' . $r . ' 0 0 1 -' . $r . ' -' . $r . ' z" style="' . $fill . '"/>'
+            . '<path d="M' . ($x + $w) . ' ' . ($y + $h * 0.15) . ' h' . ($w * 0.08) . ' a' . ($w * 0.14) . ' ' . ($w * 0.14) . ' 0 0 1 0 ' . ($w * 0.28) . ' h-' . ($w * 0.08) . '" fill="none" style="' . $stroke . '"/>';
+    };
+
+    // The four ways in: a card with a round tile and two lines.
+    $actions = '';
+    foreach (array(10, 87, 164, 241) as $i => $x) {
+        $actions .= '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="104" width="69" height="18" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+            . '<circle cx="' . ($x + 10) . '" cy="113" r="5.5" style="fill:var(--tp);opacity:.14"/>'
+            . '<circle cx="' . ($x + 10) . '" cy="113" r="2.2" style="fill:var(--tp)"/>'
+            . '<rect x="' . ($x + 19) . '" y="108.5" width="' . (30 - $i * 3) . '" height="3" rx="1.5" fill="#1f2937"/>'
+            . '<rect x="' . ($x + 19) . '" y="114.5" width="44" height="2" rx="1" fill="#cbd5e1"/>';
+    }
+
+    // The favourites: a square picture with a plate on it, the name and the
+    // price on one line, a line of words.
+    $dishes = '';
+    foreach (array(10, 87, 164, 241) as $i => $x) {
+        $dishes .= '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="138" width="69" height="25" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+            . '<rect x="' . ($x + 3) . '" y="141" width="19" height="19" rx="2" style="fill:var(--ts);opacity:.22"/>'
+            . '<circle cx="' . ($x + 12.5) . '" cy="150.5" r="6.5" fill="#fff"/>'
+            . '<circle cx="' . ($x + 12.5) . '" cy="150.5" r="3.6" style="fill:var(--tp);opacity:' . (0.45 + $i * 0.12) . '"/>'
+            . '<rect x="' . ($x + 26) . '" y="144" width="' . (24 - $i * 2) . '" height="3" rx="1.5" fill="#1f2937"/>'
+            . '<rect x="' . ($x + 56) . '" y="144" width="10" height="3" rx="1.5" style="fill:var(--tp)"/>'
+            . '<rect x="' . ($x + 26) . '" y="150.5" width="40" height="2" rx="1" fill="#cbd5e1"/>'
+            . '<rect x="' . ($x + 26) . '" y="155" width="16" height="3.6" rx="1.8" style="fill:var(--ts);opacity:.25"/>';
+    }
+
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // the notice: a mark and the words; the sign-in on the right
+        . '<rect width="320" height="7" fill="#f8fafc"/><rect y="6.6" width="320" height=".5" fill="#e5e7eb"/>'
+        . '<circle cx="12" cy="3.5" r="1.4" style="fill:var(--tp)"/><rect x="16" y="2.6" width="58" height="1.8" rx=".9" fill="#94a3b8"/>'
+        . '<rect x="276" y="2.6" width="14" height="1.8" rx=".9" fill="#94a3b8"/><rect x="294" y="1.6" width="16" height="3.8" rx="1.2" fill="none" style="stroke:var(--tp)" stroke-width=".6"/>'
+        // header: the round brand mark with a cup, the name, the menu and the button
+        . '<circle cx="16" cy="17" r="6" style="fill:var(--tp)"/>' . $cup(13, 14.6, 5.4, 'fill:#fff', 'stroke:#fff;stroke-width:.8')
+        . '<rect x="26" y="14.5" width="34" height="5" rx="2" fill="#111827"/>'
+        . '<rect x="104" y="15.8" width="14" height="2.4" rx="1.2" fill="#94a3b8"/><rect x="124" y="15.8" width="20" height="2.4" rx="1.2" fill="#94a3b8"/>'
+        . '<rect x="150" y="15.8" width="18" height="2.4" rx="1.2" fill="#94a3b8"/><rect x="174" y="15.8" width="24" height="2.4" rx="1.2" fill="#94a3b8"/>'
+        . '<rect x="204" y="15.8" width="16" height="2.4" rx="1.2" fill="#94a3b8"/><rect x="226" y="15.8" width="16" height="2.4" rx="1.2" fill="#94a3b8"/>'
+        . '<rect x="262" y="11" width="48" height="12" rx="3" style="rx:var(--tbr);fill:var(--tp)"/><rect x="269" y="16" width="34" height="2" rx="1" fill="#fff"/>'
+        . '<rect y="27.5" width="320" height=".6" fill="#e5e7eb"/>'
+        // the hero on a soft band: the badge, the title, the words, two buttons, three marks
+        . '<rect y="28" width="320" height="70" style="fill:var(--tp);opacity:.08"/>'
+        . '<rect x="14" y="36" width="50" height="6" rx="3" fill="#fff"/><circle cx="19" cy="39" r="1.4" style="fill:var(--tp)"/><rect x="23" y="38.2" width="36" height="1.6" rx=".8" style="fill:var(--tp)"/>'
+        . '<rect x="14" y="47" width="132" height="8" rx="2" fill="#111827"/><rect x="14" y="58" width="104" height="8" rx="2" fill="#111827"/>'
+        . '<rect x="14" y="70" width="136" height="3" rx="1.5" fill="#94a3b8"/><rect x="14" y="75.5" width="118" height="3" rx="1.5" fill="#94a3b8"/>'
+        . '<rect x="14" y="83" width="46" height="10" rx="3" style="rx:var(--tbr);fill:var(--tp)"/><rect x="21" y="87" width="32" height="2" rx="1" fill="#fff"/>'
+        . '<rect x="64" y="83" width="46" height="10" rx="3" style="rx:var(--tbr);fill:#fff;stroke:var(--tp);stroke-width:.9"/><rect x="71" y="87" width="32" height="2" rx="1" style="fill:var(--tp)"/>'
+        . '<circle cx="118" cy="88" r="1.6" style="fill:var(--tp)"/><rect x="122" y="87.2" width="24" height="1.6" rx=".8" fill="#94a3b8"/>'
+        // the picture: a steaming cup on its saucer, and the opening hours card
+        . '<g style="filter:var(--tsh)"><rect x="170" y="34" width="140" height="60" rx="4" style="rx:var(--tr);fill:var(--ts)"/></g>'
+        . '<rect x="170" y="34" width="140" height="60" rx="4" style="rx:var(--tr);fill:var(--tp);opacity:.62"/>'
+        . '<path d="M249 52 q-3 -4 0 -7 q3 -3 0 -7 M257 52 q-3 -4 0 -7 q3 -3 0 -7 M265 52 q-3 -4 0 -7 q3 -3 0 -7" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".75"/>'
+        . $cup(240, 56, 34, 'fill:#fff;opacity:.92', 'stroke:#fff;stroke-width:2.4;opacity:.92')
+        . '<rect x="232" y="79" width="54" height="3" rx="1.5" fill="#fff" opacity=".92"/>'
+        . '<g style="filter:var(--tsh)"><rect x="176" y="66" width="50" height="22" rx="3" style="rx:var(--tr)" fill="#fff"/></g>'
+        . '<circle cx="182" cy="71" r="1.6" fill="none" style="stroke:var(--tp)" stroke-width=".8"/><rect x="186" y="70" width="24" height="2" rx="1" fill="#1f2937"/>'
+        . '<rect x="180" y="75.5" width="16" height="1.6" rx=".8" fill="#94a3b8"/><rect x="204" y="75.5" width="18" height="1.6" rx=".8" fill="#475569"/>'
+        . '<rect x="180" y="79.5" width="14" height="1.6" rx=".8" fill="#94a3b8"/><rect x="204" y="79.5" width="18" height="1.6" rx=".8" fill="#475569"/>'
+        . '<rect x="180" y="83.5" width="18" height="1.6" rx=".8" fill="#94a3b8"/><rect x="204" y="83.5" width="14" height="1.6" rx=".8" fill="#475569"/>'
+        . $actions
+        // the favourites' heading, its link and rule, and the cards
+        . '<rect x="10" y="126" width="30" height="2" rx="1" style="fill:var(--tp)"/><rect x="10" y="129.5" width="62" height="4" rx="2" fill="#111827"/>'
+        . '<rect x="270" y="130" width="40" height="2.4" rx="1.2" style="fill:var(--tp)"/><rect x="10" y="135" width="300" height=".6" fill="#e5e7eb"/>'
+        . $dishes
+        // the table band: a cup, the words and a light button
+        . '<rect y="166" width="320" height="18" style="fill:var(--tp)"/>'
+        . $cup(13, 171.5, 8, 'fill:#fff', 'stroke:#fff;stroke-width:1')
+        . '<rect x="28" y="171.5" width="110" height="3.4" rx="1.7" fill="#fff"/><rect x="28" y="177" width="80" height="2" rx="1" fill="#fff" opacity=".65"/>'
+        . '<rect x="206" y="170" width="44" height="10" rx="3" style="rx:var(--tbr)" fill="#fff"/><rect x="213" y="174" width="30" height="2" rx="1" style="fill:var(--tp)"/>'
+        . '<rect x="256" y="170" width="44" height="10" rx="3" style="rx:var(--tbr)" fill="none" stroke="#fff" stroke-width=".8"/><rect x="263" y="174" width="30" height="2" rx="1" fill="#fff"/>'
+        // the dark footer
+        . '<rect y="184" width="320" height="16" fill="#212529"/>'
+        . '<circle cx="14" cy="190" r="2.6" style="fill:var(--tp)"/><rect x="19" y="189" width="24" height="2.2" rx="1.1" fill="#f8fafc"/>'
+        . '<rect x="10" y="195" width="60" height="1.6" rx=".8" fill="#6c757d"/>'
+        . '<rect x="104" y="189" width="20" height="1.8" rx=".9" fill="#adb5bd"/><rect x="104" y="194" width="26" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<rect x="150" y="189" width="24" height="1.8" rx=".9" fill="#adb5bd"/><rect x="150" y="194" width="18" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<circle cx="216" cy="190" r="1.2" style="fill:var(--tp)"/><rect x="220" y="189" width="40" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<circle cx="216" cy="195" r="1.2" style="fill:var(--tp)"/><rect x="220" y="194" width="30" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<rect x="276" y="189" width="34" height="1.8" rx=".9" fill="#6c757d"/><rect x="284" y="194" width="26" height="1.8" rx=".9" fill="#6c757d"/>';
+}
