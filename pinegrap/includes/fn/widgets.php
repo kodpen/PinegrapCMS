@@ -418,29 +418,158 @@ function pg_sw_default_date_format($type)
     return '';
 }
 
-// A "label: value" row marked pg-hide-if-empty (the form starters mark each
-// field row so) is dropped when its pg-field-value element came out empty,
-// so a record that left the field blank does not show a bare label. An image,
-// a video or a link inside the value counts as content. The designer keeps a
-// row by taking the class off.
+// An element marked pg-hide-if-empty is dropped when it came out empty, so
+// a record that left a field blank shows no bare label and no empty box. A
+// "label: value" row (the form starters mark each field row so) is judged by
+// its pg-field-value element; an element without one by everything inside
+// it. Text counts as content, and so do a picture with an address, a video,
+// a frame, a link and a form control. Marked elements inside marked elements
+// go first, so a box whose rows all left goes with them. Any element can
+// carry the class; the designer keeps one by taking the class off.
 function pg_sw_hide_empty_fields($html)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
-    return preg_replace_callback(
-        '#<(p|div|li|tr)\b([^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*)>(.*?)</\1>#s',
-        function ($m) {
-            if (!preg_match('#<(span|p|div|dd|td)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>(.*?)</\1>#s', $m[3], $v)) {
-                return $m[0];
-            }
-            $text = trim(html_entity_decode(strip_tags($v[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            // An image counts once it has an address: a file field left empty
-            // comes out as <img src="">.
-            $media = preg_match('#<(video|iframe|a)\b#i', $v[2]) || preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', $v[2]);
-            if ($text === '' && !$media) return '';
-            return $m[0];
-        },
-        $html
-    );
+    if (!preg_match_all('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*>#i', $html, $opens, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        return $html;
+    }
+
+    // Last first: an element inside another one is met before it, and
+    // cutting it leaves the offsets of the elements before it as they were.
+    for ($i = count($opens) - 1; $i >= 0; $i--) {
+        $open  = $opens[$i][0][0];
+        $start = $opens[$i][0][1];
+        $tag   = strtolower($opens[$i][1][0]);
+
+        if (pg_sw_is_void_tag($tag)) {
+            if (!pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
+            continue;
+        }
+
+        $close = pg_sw_closing_tag($html, $tag, $start + strlen($open));
+        if ($close === null) continue;
+        $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
+        if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
+        $html = substr($html, 0, $start) . substr($html, $close[1]);
+    }
+
+    return $html;
+}
+
+// The elements that have no closing tag.
+function pg_sw_is_void_tag($tag)
+{
+    return in_array(strtolower((string)$tag), array('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'), true);
+}
+
+// Where the element whose content starts at $from closes: array(offset of
+// its closing tag, offset just past it), counting the same tag nested inside
+// it. null when it never closes.
+function pg_sw_closing_tag($html, $tag, $from)
+{
+    $depth = 1;
+    $re    = '#<(/?)' . preg_quote($tag, '#') . '\b[^>]*>#i';
+    while (preg_match($re, $html, $m, PREG_OFFSET_CAPTURE, $from)) {
+        $at   = $m[0][1];
+        $from = $at + strlen($m[0][0]);
+        if ($m[1][0] === '/') {
+            if (--$depth === 0) return array($at, $from);
+        } elseif (substr($m[0][0], -2) !== '/>') {
+            $depth++;
+        }
+    }
+    return null;
+}
+
+// What a marked element's value is: the inside of its pg-field-value
+// element (the element itself when it has no closing tag, a picture), or
+// the whole of $inner when it has none.
+function pg_sw_field_value($inner)
+{
+    if (!preg_match('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>#i', $inner, $m, PREG_OFFSET_CAPTURE)) {
+        return $inner;
+    }
+    if (pg_sw_is_void_tag($m[1][0])) return $m[0][0];
+    $from  = $m[0][1] + strlen($m[0][0]);
+    $close = pg_sw_closing_tag($inner, strtolower($m[1][0]), $from);
+    return ($close === null) ? substr($inner, $from) : substr($inner, $from, $close[0] - $from);
+}
+
+// Does this markup show anything: words (spaces and &nbsp; are not), a
+// picture with an address (a file field left empty comes out as
+// <img src="">), a video, a frame, a drawing, a link or a form control?
+function pg_sw_has_content($html)
+{
+    $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    if (trim($text) !== '') return true;
+    if (preg_match('#<(video|audio|iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
+    return (bool)preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', (string)$html);
+}
+
+// Can the element a widget prints its records into hold nothing but its
+// rows? A list holds list items and a table rows: a message, a search box
+// or a pagination written into one is broken markup (a <div> in a <ul>).
+function pg_sw_loop_parent_is_closed($tag)
+{
+    return in_array((string)$tag, array('ul', 'ol', 'menu', 'dl', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'select', 'datalist', 'optgroup'), true);
+}
+
+// How many cells a row of a table template has, so a message row can span
+// them all. 1 when the template is no table row.
+function pg_sw_row_cells($html)
+{
+    $html = (string)$html;
+    if (preg_match('#<tr\b.*?</tr>#is', $html, $m)) $html = $m[0];
+    return max(1, (int)preg_match_all('#<t[dh]\b#i', $html));
+}
+
+// A state message (no records, no record to show) printed where the records
+// would be, as an element that may stand there: an item in a list, a row
+// spanning a table, a column in a grid row, a line in text, a block anywhere
+// else. $class names the state (pg-sw-empty, pg-sw-not-found) for the
+// design's own stylesheet; the rest are Bootstrap 5.3 / 6 utilities.
+function pg_sw_state_message_html($message, $parent_tag, $class, $cells = 1)
+{
+    $text  = h((string)$message);
+    $class = h(trim($class));
+    $look  = 'text-body-secondary py-3';
+    switch ((string)$parent_tag) {
+        case 'ul':
+        case 'ol':
+        case 'menu':
+            return '<li class="' . $class . ' ' . $look . '">' . $text . '</li>';
+        case 'table':
+        case 'thead':
+        case 'tbody':
+        case 'tfoot':
+            return '<tr class="' . $class . '"><td colspan="' . max(1, (int)$cells) . '" class="' . $look . '">' . $text . '</td></tr>';
+        case 'tr':
+            return '<td colspan="' . max(1, (int)$cells) . '" class="' . $class . ' ' . $look . '">' . $text . '</td>';
+        case 'dl':
+            return '<dd class="' . $class . ' ' . $look . '">' . $text . '</dd>';
+        case 'select':
+        case 'datalist':
+        case 'optgroup':
+            return '<option value="" disabled>' . $text . '</option>';
+        case 'row':
+            return '<div class="col-12 ' . $class . ' ' . $look . '">' . $text . '</div>';
+        case 'p':
+        case 'span':
+        case 'a':
+        case 'button':
+        case 'label':
+        case 'strong':
+        case 'em':
+        case 'small':
+        case 'h1':
+        case 'h2':
+        case 'h3':
+        case 'h4':
+        case 'h5':
+        case 'h6':
+            return '<span class="' . $class . ' text-body-secondary">' . $text . '</span>';
+        default:
+            return '<div class="' . $class . ' ' . $look . '">' . $text . '</div>';
+    }
 }
 
 function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
@@ -874,7 +1003,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // deleted from its item view leaves its notice there). An unnamed node
     // would print and use up every form's messages on the page.
     _pg_inject_messages_node($tree_decoded, 'form_list_view');
-    $split = _split_widget_tree($tree_decoded);
+    $split = _split_widget_tree($tree_decoded, true);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
     // rendering the whole tree as the template (legacy widgets without a loop_area).
@@ -1095,15 +1224,35 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             '</form>';
     }
 
-    // Empty-state HTML used when no records match (with or without search active)
-    $empty_html = '<div class="pg-sw-empty text-muted py-3">' . h($empty_message) . '</div>';
+    // Empty-state HTML used when no records match (with or without search
+    // active), as an element the records' parent may hold.
+    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
+
+    // The records go where the loop_area was. The search box and the
+    // pagination go there too, except into a list or a table: those may
+    // hold only their rows, so the two stand before and after it.
+    // The surround renders once, outside any record, so no record's values
+    // are applied to it — but an identifier left standing there is one the
+    // visitor would read, and form_item_view and my_account both sweep theirs.
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html) {
+        if ($static_html === '') return $search_html . $rows . $pagination;
+        $html = pg_sw_sweep_tokens($static_html);
+        if (strpos($html, '<!--pg-loop-before-->') !== false) {
+            return str_replace(
+                array('<!--pg-loop-before-->', '<!--pg-loop-slot-->', '<!--pg-loop-after-->'),
+                array($search_html, $rows, $pagination),
+                $html
+            );
+        }
+        return str_replace('<!--pg-loop-slot-->', $search_html . $rows . $pagination, $html);
+    };
 
     // If the loop template is empty, we still want to honor empty/search/pagination
     // on the static surround. But absent a per-record visual there's nothing to repeat,
     // so just return the static HTML with search/empty injected at the slot.
     if ($loop_template === '') {
         if ($static_html === '') return '';
-        return str_replace('<!--pg-loop-slot-->', $search_html . $empty_html, pg_sw_sweep_tokens($static_html));
+        return $stitch($empty_html, '');
     }
 
     // ── Count total matching rows (for pagination) ────────────────────────
@@ -1117,11 +1266,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $sql_viewer_filter"
     );
 
-    if ($total_records === 0) {
-        $body = $search_html . $empty_html;
-        if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, pg_sw_sweep_tokens($static_html));
-    }
+    if ($total_records === 0) return $stitch($empty_html, '');
 
     // Apply the outer dataset cap BEFORE pagination math so the user only ever
     // pages through the first $max_results rows. Final page's LIMIT may be
@@ -1213,11 +1358,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
          ORDER BY $order_by_sql
          LIMIT $page_limit OFFSET $offset"
     );
-    if (!$forms) {
-        $body = $search_html . $empty_html;
-        if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, pg_sw_sweep_tokens($static_html));
-    }
+    if (!$forms) return $stitch($empty_html, '');
 
     // 2. Bulk-fetch form_data rows for all those submissions in one query.
     //    Pull BOTH form_fields.name AND form_fields.label (plus form_data.name denormalized
@@ -1281,6 +1422,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             'submitted_form_id' => (string)$fid,
             'submitter_user_id' => isset($f['user_id']) ? (string)$f['user_id'] : '',
         );
+        // The catalog's name for the same link. A link bound to it in a
+        // form list printed an empty address.
+        $extra['__detail_url'] = $extra['form_item_view'];
 
         $rendered = pg_sw_apply_tokens(
             $loop_template,
@@ -1307,20 +1451,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // 4. Pagination (Bootstrap 5 nav) — only when there is more than one page.
     $pagination_html = pg_sw_pagination_html($page_param, $current_page, $total_pages);
 
-    // 5. Stitch search + loop output + pagination into the static surround.
-    //    The static side (header, container, etc.) was rendered once with a
-    //    <!--pg-loop-slot--> marker where the loop_area used to be — that marker
-    //    is replaced with [search][loop][pagination].
-    $body = $search_html . $loop_output . $pagination_html;
-    if ($static_html === '') {
-        // Legacy (no loop_area) — output is purely the per-record loop with controls
-        return $body;
-    }
-    // The surround renders once, outside any record, so no record's values are
-    // applied to it — but an identifier left standing there is one the visitor
-    // would read, and form_item_view and my_account both sweep theirs.
-    $static_html = pg_sw_sweep_tokens($static_html);
-    return str_replace('<!--pg-loop-slot-->', $body, $static_html);
+    // 5. Stitch search + loop output + pagination into the static surround
+    //    (legacy widgets with no loop_area: the records with their controls).
+    return $stitch($loop_output, $pagination_html);
 }
 
 /**
@@ -1463,7 +1596,9 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
 //   ^^submitter_user_id^^   — forms.user_id
 //   ^^not_found^^           — empty when the record is shown; the configured
 //                             message when ?r= is missing or the visitor may
-//                             not see it (wrap a hide/show region around it)
+//                             not see it (wrap a hide/show region around it);
+//                             ^^__not_found_message^^ is the same value under
+//                             the name the catalog and calendar widgets use
 //   ^^{form_field.name}^^   — value from form_data
 //   ^^{form_field.name}__label^^  — when show_field_labels is on, the field's
 //                                   label as a separate token
@@ -1471,8 +1606,12 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
 // Config:
 //   custom_form_page_id   — bound custom form (page.page_id of page_type=custom_form)
 //   not_found_message     — string shown via ^^not_found^^ token when miss
+//   hide_when_not_found   — bool, default on: with no record, the loop_area
+//                           keeps only what is meant for that state
+//                           (pg_sw_prune_record_layout())
 //   access_control        — 'public' | 'submitter_only' | 'logged_in'
 //   show_field_labels     — bool: emit {field}__label tokens beside the values
+//   title_field, title_suffix — the page's <title> (pg_sw_record_title())
 //
 // URL params:
 //   r — reference_code (matches Pinegrap's classic form item view convention)
@@ -1502,23 +1641,25 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // Messages: liveform 'form_item_view', as on the legacy page (a record
     // saved through send_to leaves its notice there).
     _pg_inject_messages_node($tree_decoded, 'form_item_view');
-    // Visibility flag has_new_account, known once the record is read.
-    _pg_sw_mark_visibility($tree_decoded);
-    // The in-browser summary's button and box.
-    _pg_sw_apply_ai_summary_bindings($tree_decoded);
-    $split = _split_widget_tree($tree_decoded);
-
-    if ($split['loop_children'] === null) {
-        $loop_template = trim(_render_tree_node($tree_decoded, 0, 0));
-        $static_html   = '';
-    } else {
+    // The tree as designed, for the no-record layout below.
+    $tree_designed = $tree_decoded;
+    // The record template (loop_area) and the surround, drawn from a tree.
+    $draw = function ($tree) {
+        // Visibility flag has_new_account, known once the record is read.
+        _pg_sw_mark_visibility($tree);
+        // The in-browser summary's button and box.
+        _pg_sw_apply_ai_summary_bindings($tree);
+        $split = _split_widget_tree($tree);
+        if ($split['loop_children'] === null) {
+            return array(trim(_render_tree_node($tree, 0, 0)), '', $split);
+        }
         $loop_template = '';
         foreach ($split['loop_children'] as $child) {
             $loop_template .= _render_tree_node($child, 0, 0);
         }
-        $loop_template = trim($loop_template);
-        $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
-    }
+        return array(trim($loop_template), trim(_render_tree_node($split['static_tree'], 0, 0)), $split);
+    };
+    list($loop_template, $static_html, $split) = $draw($tree_decoded);
 
     // ── Resolve the requested record ─────────────────────────────────────
     // Empty ?r= is treated as "no record" (not an error) — designer might
@@ -1582,6 +1723,19 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         || pg_sw_submitted_form_visible($form_row, $access_control, _pg_sw_current_page_id());
     $found_and_allowed = ($form_row && $allowed);
 
+    // No record to show: the record's layout would print as a column of
+    // empty fields. Unless the widget is set to keep it, the record template
+    // keeps only what is meant for this state, and a design that shows the
+    // not-found state nowhere gets the message where the record would be.
+    if (!$found_and_allowed && (!isset($cfg['hide_when_not_found']) || !empty($cfg['hide_when_not_found']))) {
+        $tree_missing  = $tree_designed;
+        $shows_message = pg_sw_prune_record_layout($tree_missing);
+        list($loop_template, $static_html, $split) = $draw($tree_missing);
+        if (!$shows_message) {
+            $loop_template .= pg_sw_state_message_html($not_found_message, $split['loop_parent'], 'pg-sw-not-found');
+        }
+    }
+
     // Helper: build current page URL with `?r=<code>` for the ^^form_item_view^^ token.
     // Mirrors form_list_view's detail-link convention so the same token name
     // works in both widget kinds (designer can paste the same link patterns).
@@ -1612,6 +1766,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitted_form_id'      => '',
             'submitter_user_id'      => '',
             'not_found'              => $not_found_message,
+            '__not_found_message'    => $not_found_message,
             '__new_account_email'    => '',
             '__new_account_password' => '',
             '__edit_url'             => '',
@@ -1657,6 +1812,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitted_form_id'      => (string)$form_row['id'],
             'submitter_user_id'      => (string)$form_row['user_id'],
             'not_found'              => '',  // empty when found — the not_found region renders empty
+            '__not_found_message'    => '',
             '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
             '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
             // The record's edit screen, for whoever may edit this form's
@@ -1709,6 +1865,96 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     }
     if ($static === '') return _pg_sw_resolve_visibility($rendered, $flags);
     return _pg_sw_resolve_visibility(str_replace('<!--pg-loop-slot-->', $rendered, $static), $flags);
+}
+
+// Does $node stand for the no-record state of a form_item_view widget:
+// shown only when there is no record, or carrying the not-found message?
+function _pg_sw_is_not_found_node($node)
+{
+    $b = (is_array($node) && isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    return (isset($b['eo_visible_if']) && $b['eo_visible_if'] === 'record_not_found')
+        || (isset($b['text']) && in_array($b['text'], array('not_found', '__not_found_message'), true));
+}
+
+// $nodes cut to what a page with no record to show keeps: the elements for
+// that state (whole), the message area, and the elements around them.
+// Anything shown only in another state goes: with no record, every other
+// flag a form_item_view widget knows is off.
+function _pg_sw_keep_for_not_found($nodes)
+{
+    $out = array();
+    foreach ((array)$nodes as $node) {
+        if (!is_array($node)) continue;
+        if (_pg_sw_is_not_found_node($node)
+            || (isset($node['type'], $node['props']['contentType']) && $node['type'] === 'content' && $node['props']['contentType'] === 'messages')) {
+            $out[] = $node;
+            continue;
+        }
+        if (!empty($node['props']['_bindings']['eo_visible_if'])) continue;
+        if (empty($node['children']) || !is_array($node['children'])) continue;
+        $kept = _pg_sw_keep_for_not_found($node['children']);
+        if (!$kept) continue;
+        $node['children'] = $kept;
+        $out[] = $node;
+    }
+    return $out;
+}
+
+// A form_item_view tree as it shows when there is no record: the record
+// template (the loop_area's children; the whole widget when it has no
+// loop_area) cut by _pg_sw_keep_for_not_found(), the surround as designed.
+// Returns whether the tree still shows the no-record state anywhere - a
+// not-found message, an element shown only then. When it does not, the
+// renderer writes the message itself.
+function pg_sw_prune_record_layout(&$tree)
+{
+    if (!is_array($tree)) return false;
+    $cut = function (&$node) use (&$cut) {
+        if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return false;
+        foreach ($node['children'] as $i => $child) {
+            if (isset($child['type']) && $child['type'] === 'loop_area') {
+                $node['children'][$i]['children'] = _pg_sw_keep_for_not_found(isset($child['children']) ? $child['children'] : array());
+                return true;
+            }
+            if ($cut($node['children'][$i])) return true;
+        }
+        return false;
+    };
+    if (!$cut($tree) && !empty($tree['children'])) {
+        $tree['children'] = _pg_sw_keep_for_not_found($tree['children']);
+    }
+
+    $shows = function ($node) use (&$shows) {
+        if (!is_array($node)) return false;
+        if (_pg_sw_is_not_found_node($node)) return true;
+        foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+            if ($shows($child)) return true;
+        }
+        return false;
+    };
+    return $shows($tree);
+}
+
+// The <title> of a page that shows a record through its form_item_view
+// widget, from the widget's settings: the value of the field it names
+// (title_field, a field of the form or a standard field such as the
+// reference code), else $rss_title (the form's RSS title fields), followed
+// by title_suffix ("| Inbox"). '' when there is no text, and the page keeps
+// its own title. $values: field name => the record's value, as plain text.
+function pg_sw_record_title($cfg, $values, $rss_title = '')
+{
+    $cfg   = is_array($cfg) ? $cfg : array();
+    $field = isset($cfg['title_field']) ? strtolower(trim((string)$cfg['title_field'])) : '';
+    $title = '';
+    if ($field !== '' && is_array($values) && isset($values[$field])) {
+        $title = trim(preg_replace('/\s+/u', ' ', (string)$values[$field]));
+    }
+    if ($title === '') $title = trim((string)$rss_title);
+    if ($title === '') return '';
+
+    $suffix = isset($cfg['title_suffix']) ? trim((string)$cfg['title_suffix']) : '';
+    if ($suffix !== '' && function_exists('pg_tr_text')) $suffix = trim((string)pg_tr_text($suffix, 'text', 'seo'));
+    return ($suffix !== '') ? $title . ' ' . $suffix : $title;
 }
 
 // The in-browser summary (assets/js/pg_ai_summary.js), bound rather than
@@ -2126,6 +2372,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 $row_extra = array_merge($values, array(
                     'form_name'         => h(isset($sr['form_name']) ? (string)$sr['form_name'] : ''),
                     'form_item_view'    => $detail_url,
+                    // The name the settings once gave it; designs written
+                    // with it keep their links.
+                    '__detail_url'      => $detail_url,
                     'submitted_form_id' => (string)$sr['id'],
                 ));
 

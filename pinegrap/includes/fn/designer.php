@@ -1087,36 +1087,71 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
 //   'static_tree'    => deep-cloned tree with loop_area replaced by marker (or original
 //                       tree if no loop_area was found),
 //   'loop_children'  => the loop_area's children array (per-record template), or null
-//                       if no loop_area exists.
+//                       if no loop_area exists,
+//   'loop_parent'    => the element the records print into: its tag in lower
+//                       case ('ul', 'tbody', 'div'), 'row' for a grid row,
+//                       '' when the loop_area sits at the top of the widget.
 // )
-function _split_widget_tree($tree)
+// With $outside_markers, an element that may not hold anything but its rows
+// (a list, a table, a definition list) also gets `<!--pg-loop-before-->` and
+// `<!--pg-loop-after-->` beside it, where a search box or a pagination can
+// go without breaking the markup.
+function _split_widget_tree($tree, $outside_markers = false)
 {
-    if (!is_array($tree)) return array('static_tree' => $tree, 'loop_children' => null);
+    if (!is_array($tree)) return array('static_tree' => $tree, 'loop_children' => null, 'loop_parent' => '');
     // Deep-clone via JSON round-trip — the tree is small (a single widget), so this is fine.
     $clone = json_decode(json_encode($tree), true);
-    $loop_children = null;
 
-    $marker_node = array(
-        'type'     => 'content',
-        'props'    => array('contentType' => 'custom_html', 'html' => '<!--pg-loop-slot-->'),
-        'children' => array(),
-    );
-
-    $walk = function (&$node) use (&$walk, &$loop_children, $marker_node) {
-        if (!is_array($node) || empty($node['children']) || $loop_children !== null) return;
+    // The path of child indexes from the root to the first loop_area.
+    $find = function ($node, $path) use (&$find) {
+        if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return null;
         foreach ($node['children'] as $i => $child) {
-            if ($loop_children !== null) return;
-            if (isset($child['type']) && $child['type'] === 'loop_area') {
-                $loop_children = isset($child['children']) ? $child['children'] : array();
-                $node['children'][$i] = $marker_node;
-                return;
-            }
-            $walk($node['children'][$i]);
+            if (isset($child['type']) && $child['type'] === 'loop_area') return array_merge($path, array($i));
+            $found = $find($child, array_merge($path, array($i)));
+            if ($found !== null) return $found;
         }
+        return null;
     };
-    $walk($clone);
+    $path = $find($clone, array());
+    if ($path === null) return array('static_tree' => $clone, 'loop_children' => null, 'loop_parent' => '');
 
-    return array('static_tree' => $clone, 'loop_children' => $loop_children);
+    $marker = function ($html) {
+        return array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => $html), 'children' => array());
+    };
+
+    // The loop_area's parent, and the parent's parent.
+    $parent = &$clone;
+    $grand  = null;
+    foreach (array_slice($path, 0, -1) as $i) {
+        $grand  = &$parent;
+        $parent = &$parent['children'][$i];
+    }
+    $index = end($path);
+    $loop  = $parent['children'][$index];
+    $parent['children'][$index] = $marker('<!--pg-loop-slot-->');
+
+    $type = isset($parent['type']) ? $parent['type'] : '';
+    if ($type === 'root' || $type === 'loop_area') {
+        $tag = '';
+    } elseif ($type === 'row') {
+        $tag = 'row';
+    } elseif ($type === 'semantic') {
+        $tag = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', isset($parent['props']['tag']) ? (string)$parent['props']['tag'] : '')) ?: 'div';
+    } else {
+        $tag = 'div';
+    }
+
+    if ($outside_markers && $grand !== null && pg_sw_loop_parent_is_closed($tag)) {
+        $at = $path[count($path) - 2];
+        array_splice($grand['children'], $at, 1, array($marker('<!--pg-loop-before-->'), $grand['children'][$at], $marker('<!--pg-loop-after-->')));
+    }
+    unset($parent, $grand);
+
+    return array(
+        'static_tree'   => $clone,
+        'loop_children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(),
+        'loop_parent'   => $tag,
+    );
 }
 
 // Helper: build a URL query string with one or more keys removed.
@@ -2952,27 +2987,101 @@ function _build_node_sizing_attrs($props)
     );
 }
 
-// Returns true when `$children` (the node's direct children array) contains
-// an anchor element with `stretched-link` in its cssClass. Used by
-// _render_tree_node to auto-promote a node to position-relative so Bootstrap's
-// stretched-link mechanic works without manual designer fixes.
-function _has_stretched_link_child($children)
+// Bootstrap's `.stretched-link` covers its nearest *positioned* ancestor;
+// with none it covers the whole page. The renderer lends `position-relative`
+// to one element when nothing around the link is positioned, and never when
+// something already is: a .card, a list-group-item, an element marked
+// position-relative. Lending it to the link's own parent whatever stood
+// around it made the heading the link sits in the clickable box, not the
+// card the design positions for it.
+//
+// The element that takes it is the nearest box the link can reach through
+// text (a heading, a paragraph, inline formatting) and bare wrappers (a
+// <div> with no class): the card body, the column, the list row - not the
+// <h2> around the link, and not a classless <div> inside a box the design's
+// own stylesheet positions. Only with no such box (the link's heading is
+// the widget's first element) does the text element take it.
+// position-static on an element is an explicit "not this one".
+
+// Is $node an anchor marked to stretch?
+function _pg_is_stretched_link($node)
+{
+    if (!is_array($node) || empty($node['type'])) return false;
+    $cls = isset($node['props']['cssClass']) ? (string)$node['props']['cssClass'] : '';
+    if ($cls === '' || !in_array('stretched-link', preg_split('/\s+/', $cls), true)) return false;
+    return ($node['type'] === 'content' && isset($node['props']['contentType']) && $node['props']['contentType'] === 'link')
+        || ($node['type'] === 'semantic' && isset($node['props']['tag']) && strtolower((string)$node['props']['tag']) === 'a');
+}
+
+// A heading, a paragraph or inline formatting: a line of text, never the box
+// a stretched link is meant to cover.
+function _pg_stretch_is_text($node)
+{
+    static $text_tags = array('h1' => 1, 'h2' => 1, 'h3' => 1, 'h4' => 1, 'h5' => 1, 'h6' => 1, 'p' => 1,
+        'span' => 1, 'strong' => 1, 'em' => 1, 'b' => 1, 'i' => 1, 'small' => 1, 'label' => 1, 'mark' => 1,
+        'u' => 1, 's' => 1, 'q' => 1, 'cite' => 1, 'abbr' => 1, 'time' => 1, 'code' => 1, 'sub' => 1, 'sup' => 1);
+    return is_array($node) && isset($node['type']) && $node['type'] === 'semantic'
+        && isset($text_tags[strtolower(isset($node['props']['tag']) ? (string)$node['props']['tag'] : '')]);
+}
+
+// A wrapper that styles nothing: a semantic element with no class and no id.
+function _pg_stretch_is_bare($node)
+{
+    if (!is_array($node) || !isset($node['type']) || $node['type'] !== 'semantic') return false;
+    $props = isset($node['props']) && is_array($node['props']) ? $node['props'] : array();
+    return trim(isset($props['cssClass']) ? (string)$props['cssClass'] : '') === '' && empty($props['id']);
+}
+
+// Does a stretched link in $children reach the box of their parent: as a
+// child, or inside text elements and bare wrappers?
+function _pg_stretched_link_within($children)
 {
     if (!is_array($children)) return false;
     foreach ($children as $c) {
-        if (!is_array($c) || empty($c['type'])) continue;
-        $cls = (isset($c['props']) && isset($c['props']['cssClass'])) ? (string)$c['props']['cssClass'] : '';
-        if ($cls === '' || strpos($cls, 'stretched-link') === false) continue;
-        // Word-boundary check — guard against e.g. "non-stretched-link" matches.
-        $words = preg_split('/\s+/', $cls);
-        if (!in_array('stretched-link', $words, true)) continue;
-        // Anchor-ness: content/link OR semantic/<a>
-        $is_anchor =
-            ($c['type'] === 'content' && isset($c['props']['contentType']) && $c['props']['contentType'] === 'link')
-            || ($c['type'] === 'semantic' && isset($c['props']['tag']) && strtolower((string)$c['props']['tag']) === 'a');
-        if ($is_anchor) return true;
+        if (_pg_is_stretched_link($c)) return true;
+        if ((_pg_stretch_is_text($c) || _pg_stretch_is_bare($c))
+            && !_props_has_position_class(isset($c['props']) ? $c['props'] : array())
+            && _pg_stretched_link_within(isset($c['children']) ? $c['children'] : array())) {
+            return true;
+        }
     }
     return false;
+}
+
+// Does this element position its own box: a position utility, a Bootstrap
+// component its stylesheet positions, or a position written in its style?
+function _pg_node_is_positioned($type, $props)
+{
+    static $positioned = array('card' => 1, 'list-group-item' => 1, 'btn-group' => 1, 'btn-group-vertical' => 1,
+        'input-group' => 1, 'form-floating' => 1, 'dropdown' => 1, 'dropup' => 1, 'dropend' => 1, 'dropstart' => 1,
+        'dropdown-center' => 1, 'dropup-center' => 1, 'carousel' => 1, 'carousel-inner' => 1, 'carousel-item' => 1,
+        'modal-content' => 1, 'toast-container' => 1, 'offcanvas' => 1, 'navbar' => 1, 'accordion-button' => 1,
+        'ratio' => 1, 'page-link' => 1, 'sticky-top' => 1, 'sticky-bottom' => 1, 'fixed-top' => 1, 'fixed-bottom' => 1);
+    if (!is_array($props) || in_array($type, array('root', 'loop_area', 'recipient_loop_area', 'shared_ref', 'region'), true)) return false;
+    foreach (preg_split('/\s+/', trim(isset($props['cssClass']) ? (string)$props['cssClass'] : '')) as $word) {
+        if (isset($positioned[$word])) return true;
+        if (preg_match('/^position-(?:(?:sm|md|lg|xl|xxl)-)?(?:relative|absolute|fixed|sticky)$/', $word)) return true;
+    }
+    $style = (isset($props['inlineStyle']) ? (string)$props['inlineStyle'] : '') . ';' . _user_attr_value($props, 'style');
+    return (bool)preg_match('/(?:^|;)\s*position\s*:\s*(?:relative|absolute|fixed|sticky)\b/i', $style);
+}
+
+// Should this element take position-relative for a stretched link? Asked
+// only while nothing above it is positioned (see _render_tree_node).
+function _pg_stretch_claims($node)
+{
+    if (!is_array($node) || empty($node['type'])) return false;
+    if (in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area', 'shared_ref', 'region'), true)) return false;
+    if (_props_has_position_class(isset($node['props']) ? $node['props'] : array())) return false;
+    return _pg_stretched_link_within(isset($node['children']) ? $node['children'] : array());
+}
+
+// One entry per element being drawn: whether it, or anything above it, is
+// positioned. Read and written by _render_tree_node().
+function &_pg_stretch_stack()
+{
+    static $stack = array();
+    return $stack;
 }
 
 // Returns true when the node's cssClass already includes any Bootstrap
@@ -3301,19 +3410,16 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         $props = pg_tr_props($props, $type);
     }
 
-    // Bootstrap's `.stretched-link` only stretches to the nearest *positioned*
-    // ancestor — without `position: relative` on a parent it expands to <body>
-    // and silently breaks. Detect a stretched-link `<a>` in the current node's
-    // direct children and auto-promote this node to `position-relative` (only
-    // when it doesn't already carry an explicit position-* class). Designer
-    // can still override by adding their own `position-static` etc. manually.
-    if (_has_stretched_link_child($children) && !_props_has_position_class($props)) {
-        if (!isset($props['cssClass']) || $props['cssClass'] === '') {
-            $props['cssClass'] = 'position-relative';
-        } else {
-            $props['cssClass'] = trim($props['cssClass'] . ' position-relative');
-        }
+    // A stretched link covers the nearest positioned element around it; when
+    // nothing above is positioned, the box the link reaches takes
+    // position-relative (see _pg_stretch_claims()).
+    $_stretch = &_pg_stretch_stack();
+    $_positioned = ($_stretch && end($_stretch)) || _pg_node_is_positioned($type, $props);
+    if (!$_positioned && _pg_stretch_claims(array('type' => $type, 'props' => $props, 'children' => $children))) {
+        $props['cssClass'] = trim((isset($props['cssClass']) ? (string)$props['cssClass'] : '') . ' position-relative');
+        $_positioned = true;
     }
+    $_stretch[] = $_positioned;
 
     $_sz = _build_node_sizing_attrs($props);  // {style, class} — applied per-case below
 
@@ -3482,9 +3588,15 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 $html .= $pad . '<' . $tag . $attrs . '>' . $ws_inner . '</' . $tag . '>' . "\n";
             } else {
                 $inner_text = isset($props['text']) && $props['text'] !== '' ? h($props['text']) : '';
-                $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . "\n";
-                foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
-                $html .= $pad . '</' . $tag . '>' . "\n";
+                if (!$children) {
+                    // Closed on the same line: an element whose bound value
+                    // came out empty is then truly empty, and :empty matches it.
+                    $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . '</' . $tag . '>' . "\n";
+                } else {
+                    $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . "\n";
+                    foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
+                    $html .= $pad . '</' . $tag . '>' . "\n";
+                }
             }
             break;
 
@@ -3522,6 +3634,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             break;
     }
 
+    array_pop($_stretch);
     return $html;
 }
 
@@ -3930,7 +4043,7 @@ function _render_component_html($props, $pad, $kids = '')
 // group, finds every bound element, and live-updates the bound prop with
 // the new product's value (no full page reload). Rendering still substitutes
 // the ^^token^^ on the SSR pass so the page works without JS.
-function _apply_bindings($props)
+function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
     // Only these binding props produce render output that the variant
@@ -3957,7 +4070,13 @@ function _apply_bindings($props)
             if ($format !== '') $suffix = '%%' . $format . '%%';
         }
 
-        $props[$prop_name] = '^^' . $safe . '^^' . $suffix;
+        $token = '^^' . $safe . '^^' . $suffix;
+        // Rich text (a heading, a paragraph, a link label) may wrap its words
+        // in markup - a link, a <strong>. The value takes the place of the
+        // words, not of the markup around them.
+        $props[$prop_name] = ($rich_text && $prop_name === 'text' && isset($props['text']))
+            ? pg_binding_text_slot($props['text'], $token)
+            : $token;
         // Skip non-renderable bindings (action, section) — these are wiring
         // markers handled by per-widget binding pre-processes, not values
         // the variant chooser JS should swap into the DOM.
@@ -3977,6 +4096,38 @@ function _apply_bindings($props)
         $props['_attrs'][] = array('name' => 'data-pg-bind', 'value' => implode(';', $bind_pairs));
     }
     return $props;
+}
+
+/**
+ * The text a bound rich-text element prints: $token in place of the one run
+ * of words its markup wraps, so <a href="/post">Title</a> bound to a field
+ * prints <a href="/post">^^field^^</a> and keeps its link. Text without
+ * markup, markup around no words, and markup around several runs (which of
+ * them is the value?) give the token alone - the whole text, as before. The
+ * run keeps the spaces around it. The editor's canvas mirrors this in
+ * _sdBindTextSlot().
+ */
+function pg_binding_text_slot($text, $token)
+{
+    $text = (string)$text;
+    if (!preg_match('/<[a-z\/!]/i', $text)) return $token;
+
+    // Even indexes hold text, odd ones the tags between them.
+    $parts = preg_split('/(<[^>]*>)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $slot  = -1;
+    foreach ($parts as $i => $part) {
+        if ($i % 2 === 1 || $part === '') continue;
+        // A run of spaces or &nbsp; is layout, not a value.
+        $words = str_replace("\xC2\xA0", ' ', html_entity_decode($part, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if (trim($words) === '') continue;
+        if ($slot !== -1) return $token;
+        $slot = $i;
+    }
+    if ($slot === -1) return $token;
+
+    preg_match('/^(\s*).*?(\s*)$/s', $parts[$slot], $m);
+    $parts[$slot] = $m[1] . $token . $m[2];
+    return implode('', $parts);
 }
 
 /**
@@ -4014,9 +4165,10 @@ function pg_designer_svg_markup($raw)
 // Render a content node as HTML
 function _render_content_html($props, $pad, $kids = '')
 {
-    // Apply data bindings first — system widget feed tokens override literal values
-    $props = _apply_bindings($props);
+    // Apply data bindings first — system widget feed tokens override literal values.
+    // These five print their text as written, markup included.
     $ct = isset($props['contentType']) ? $props['contentType'] : '';
+    $props = _apply_bindings($props, in_array($ct, array('heading', 'link', 'paragraph', 'span', 'text'), true));
     $html = '';
 
     switch ($ct) {

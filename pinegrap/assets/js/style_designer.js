@@ -11639,6 +11639,8 @@ const StyleDesigner = (function () {
         return 'data:image/svg+xml,' + encodeURIComponent(svg);
     }
 
+    var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1 };
+
     function _displayValueForBinding(prop, fieldName, node) {
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
@@ -11718,7 +11720,11 @@ const StyleDesigner = (function () {
                 // return a tight realistic blurb instead of lorem so cart rows
                 // stay visually proportional to the live frontend output.
                 if (/(description|summary|excerpt|blurb|content)/.test(fn)) {
-                    return _sdT('A sample product description — short and clear.');
+                    // A product's only where there are products: a blog
+                    // post's summary read as a product blurb.
+                    return _SD_PRODUCT_REGIONS[_getSystemWidgetRegionType(node)]
+                        ? _sdT('A sample product description — short and clear.')
+                        : _sdT('A short sample text that shows how the record reads.');
                 }
             }
             // Anything else previews as its own name, not as lorem ipsum.
@@ -11727,6 +11733,51 @@ const StyleDesigner = (function () {
         // Unknown prop → fall back to the literal token (preserves visibility)
         var safe = String(fieldName || '').replace(/[^a-z0-9_-]/gi, '');
         return safe ? '^^' + safe + '^^' : '';
+    }
+
+    // The content types that print their text as written, markup included —
+    // the server's list in _render_content_html().
+    var _SD_RICH_TEXT_CONTENT = { heading: 1, link: 1, paragraph: 1, span: 1, text: 1 };
+
+    // The bound value in place of the one run of words the text's markup
+    // wraps, so <a href="/post">Title</a> bound to a field keeps its link —
+    // pg_binding_text_slot() on the server. Text without markup, or with
+    // several runs of words, gives the value alone.
+    function _sdBindTextSlot(text, value) {
+        text = (text == null) ? '' : String(text);
+        if (!/<[a-z\/!]/i.test(text)) return value;
+        var parts = text.split(/(<[^>]*>)/);
+        var slot = -1;
+        for (var i = 0; i < parts.length; i += 2) {
+            if (parts[i] === '') continue;
+            if (_sdDecodeEntities(parts[i]).replace(/\u00a0/g, ' ').trim() === '') continue;
+            if (slot !== -1) return value;
+            slot = i;
+        }
+        if (slot === -1) return value;
+        var m = /^(\s*)[\s\S]*?(\s*)$/.exec(parts[slot]);
+        parts[slot] = m[1] + value + m[2];
+        return parts.join('');
+    }
+
+    // How many runs of words the markup of a text wraps, and whether it has
+    // markup at all — for the binding panel's note.
+    function _sdTextRuns(text) {
+        text = (text == null) ? '' : String(text);
+        var parts = text.split(/(<[^>]*>)/);
+        var runs = 0;
+        for (var i = 0; i < parts.length; i += 2) {
+            if (parts[i] !== '' && _sdDecodeEntities(parts[i]).replace(/\u00a0/g, ' ').trim() !== '') runs++;
+        }
+        return { markup: /<[a-z\/!]/i.test(text), runs: runs };
+    }
+
+    var _sdEntityBox = null;
+    function _sdDecodeEntities(s) {
+        if (String(s).indexOf('&') === -1) return String(s);
+        if (!_sdEntityBox) _sdEntityBox = document.createElement('textarea');
+        _sdEntityBox.innerHTML = String(s);
+        return _sdEntityBox.value;
     }
 
     function _propsWithBindings(node) {
@@ -11741,9 +11792,11 @@ const StyleDesigner = (function () {
         for (var k in node.props) { if (Object.prototype.hasOwnProperty.call(node.props, k)) out[k] = node.props[k]; }
         if (hasBindings) {
             var b = node.props._bindings;
+            var richText = node.type === 'content' && _SD_RICH_TEXT_CONTENT[node.props.contentType];
             for (var prop in b) {
                 if (!b[prop]) continue;
-                out[prop] = _displayValueForBinding(prop, b[prop], node);
+                var shown = _displayValueForBinding(prop, b[prop], node);
+                out[prop] = (richText && prop === 'text') ? _sdBindTextSlot(node.props.text, shown) : shown;
             }
         }
         // The cart's Update / Proceed to Checkout buttons take their label
@@ -24033,7 +24086,7 @@ const StyleDesigner = (function () {
                             esc(_sdT('No content type is chosen. This widget stays empty on the page until one is.')) +
                         '</div>' +
                     '</div>';
-                _sourceInfoHtml = _sdT('Choosing a type loads that type\'s ready-made layout and renames the widget after the type instead of <code>{var}</code>.', esc(_swAutoName('')));
+                _sourceInfoHtml = _sdT('Choosing a type loads that type\'s ready-made layout and renames the widget after the type instead of <code>{var}</code>.', esc(_swAutoName('', null, { sid: sid })));
             } else if (_isErrorPage) {
                 // No source: the error arrives with the request.
                 _sourceInfoHtml = _sdT('The first published page carrying this widget becomes the site\'s error page: a page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
@@ -24347,7 +24400,13 @@ const StyleDesigner = (function () {
                 var _detailRaw  = (_cfg.detail_page_id != null) ? _cfg.detail_page_id : '';
                 // A catalog with no page picked links to the site's catalog
                 // detail page (pg_sw_catalog_detail_page_name on the server).
-                var _detailOpts = _swPageOptions(_detailRaw, _detailCache, { none: _isCatalogListing ? _sdT('— Automatic (the Catalog Detail page) —') : _sdT('— No detail —'), noneValue: '', types: _detailTypes, test: _detailTest });
+                var _detailOpts = _swPageOptions(_detailRaw, _detailCache, { none: _isCatalogListing ? _sdT('— Automatic (the Catalog Detail page) —') : _sdT('— No detail —'), noneValue: '', types: _detailTypes, test: _detailTest,
+                                                                         otherTabs: _sdT('This design — no detail widget yet') });
+                var _detailHint = _isCatalogListing
+                    ? ((String(_detailRaw) === '' || String(_detailRaw) === '0')
+                        ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Links bound to "{var}" open the page chosen here.', _sdT('Detail URL'))) + '</div>'
+                        : _swDetailPageHint(_detailRaw, _detailCache, _detailTypes, _detailTest, _sdT('Catalog Detail'), _sdT('Detail URL')))
+                    : _swDetailPageHint(_detailRaw, _detailCache, _detailTypes, _detailTest, _sdT('Form Item View'), _sdT('Detail page address'));
                 if (_detailCache) {
                     // A saved detail page that is no longer in the (newly
                     // filtered) list: surface it so the user can reselect —
@@ -24371,7 +24430,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__detail_url^^ token points at this page.') + '</div>'
+                        _detailHint
                     ) +
                     row(_sdT('Search box'),
                         '<label class="sd-prop-switch">' +
@@ -24702,7 +24761,7 @@ const StyleDesigner = (function () {
 
                 // Detail page dropdown (form_item_view pages — ^^__detail_url^^)
                 var _maDetailOpts = _swPageOptions(_cfg.submissions_detail_page_id, _myAccountDetailPagesCache,
-                    { none: _sdT('— No detail page —'), types: ['form_item_view'] });
+                    { none: _sdT('— No detail page —'), types: ['form_item_view'], otherTabs: _sdT('This design — no detail widget yet') });
                 if (!_myAccountDetailPagesCache) _fetchMyAccountDetailPages(function () { renderProperties(); });
 
                 systemSection += sect('bi-person-circle', _sdT('My Account Settings'),
@@ -24733,7 +24792,7 @@ const StyleDesigner = (function () {
                     ) : '') +
                     (_maShowSubs ? row(_sdT('Submission detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-ma-detail-page" data-sw-id="' + sid + '">' + _maDetailOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__detail_url^^ token points at this page.') + '</div>'
+                        _swDetailPageHint(_cfg.submissions_detail_page_id, _myAccountDetailPagesCache, ['form_item_view'], null, _sdT('Form Item View'), _sdT('Detail page address'))
                     ) : '') +
                     row(_sdT('Staff page'),
                         '<select class="form-select form-select-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
@@ -24862,11 +24921,52 @@ const StyleDesigner = (function () {
                                   ['public','submitter_only','logged_in'].indexOf(_cfg.access_control) !== -1)
                                     ? _cfg.access_control : 'public';
                 var _fivShowLabels = !!_cfg.show_field_labels;
+                // On unless turned off: with no record there is nothing for
+                // the layout's fields to show (pg_sw_prune_record_layout()).
+                var _fivHideMissing = (_cfg.hide_when_not_found === undefined) ? true : !!_cfg.hide_when_not_found;
+
+                // The page's <title>: a field of the record (else the
+                // form's RSS title fields) and the text after it.
+                var _fivFields = _formFieldsCache[_curFormId] || null;
+                if (_fivFields === null) _fetchFormFields(_curFormId, function () { renderProperties(); });
+                var _fivTitleField  = (typeof _cfg.title_field === 'string') ? _cfg.title_field : '';
+                var _fivTitleSuffix = (typeof _cfg.title_suffix === 'string') ? _cfg.title_suffix : '';
+                var _fivTitleOpts = '<option value="">' + esc(_sdT('— Automatic (the form\'s title fields) —')) + '</option>' +
+                    '<option value="reference_code"' + (_fivTitleField === 'reference_code' ? ' selected' : '') + '>' + esc(_sdT('Reference Code')) + '</option>';
+                var _fivTitleKnown = (_fivTitleField === '' || _fivTitleField === 'reference_code');
+                var _fivTitleLabel = '';
+                (_fivFields || []).forEach(function (ff) {
+                    if (ff.type === 'file upload' || ff.type === 'information') return;
+                    var name = (ff.name && ('' + ff.name).trim()) || '';
+                    if (!name) return;
+                    var on = (name.toLowerCase() === _fivTitleField.toLowerCase());
+                    if (on) { _fivTitleKnown = true; _fivTitleLabel = ff.label || name; }
+                    _fivTitleOpts += '<option value="' + esc(name) + '"' + (on ? ' selected' : '') + '>' + esc(ff.label || name) + '</option>';
+                });
+                if (!_fivTitleKnown && _fivFields) _fivTitleOpts += '<option value="' + esc(_fivTitleField) + '" selected>' + esc(_fivTitleField + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                var _fivHasRssTitle = (_fivFields || []).some(function (ff) { return ff.rss_field === 'title'; });
+                if (_fivTitleField === 'reference_code') _fivTitleLabel = _sdT('Reference Code');
+                var _fivTitleNote = (_fivTitleField === '' && _fivFields && !_fivHasRssTitle)
+                    ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px">' + esc(_sdT('No field of this form is marked as the RSS title, so the page keeps its own title. Pick a field here.')) + '</div>'
+                    : '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The browser tab and search results show this: for example "{var}".',
+                          (_fivTitleLabel || _sdT('Subject')) + (_fivTitleSuffix ? ' ' + _fivTitleSuffix : ''))) + '</div>';
 
                 systemSection += sect('bi-file-earmark-text', _sdT('Detail View Settings'),
                     row(_sdT('Not-found message'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-fiv-not-found" data-sw-id="' + sid + '" value="' + esc(_fivNotFound) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('It reaches the template through the ^^__not_found_message^^ token.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Shown when the record is missing or the visitor may not see it: in an element bound to "{var}", or in place of the layout.', _sdT('Not-found message (filled when there is no record)'))) + '</div>'
+                    ) +
+                    row(_sdT('Hide the layout when there is no record'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" id="sd-sw-fiv-hide-missing" data-sw-id="' + sid + '"' + (_fivHideMissing ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While on, a page with no record shows only what is meant for that case: the elements set to show when there is no record, and the not-found message. With none of those, the message stands in for the layout. Off: the layout is drawn with empty fields.')) + '</div>'
+                    ) +
+                    row(_sdT('Page title'),
+                        '<select class="form-select form-select-sm" id="sd-sw-fiv-title-field" data-sw-id="' + sid + '">' + _fivTitleOpts + '</select>' +
+                        '<input type="text" class="form-control form-control-sm mt-1" id="sd-sw-fiv-title-suffix" data-sw-id="' + sid + '" value="' + esc(_fivTitleSuffix) + '" maxlength="120" placeholder="' + esc(_sdT('Text after the title, e.g. | Inbox')) + '">' +
+                        _fivTitleNote
                     ) +
                     row(_sdT('Access control'),
                         '<select class="form-select form-select-sm" id="sd-sw-fiv-access" data-sw-id="' + sid + '">' +
@@ -26151,7 +26251,7 @@ const StyleDesigner = (function () {
                         // follows its kind: "home-widget" → "home-my-account-widget".
                         var cached = _sharedCache[sid];
                         if (cached && (cached.autoNamed || _swIsAutoName(cached.name))) {
-                            _swRename(sid, _swAutoName(newType), null);
+                            _swRename(sid, _swAutoName(newType, null, { sid: sid }), null);
                         }
                         if (!_offerStarterTree(sid, newType)) { render(); renderProperties(); }
                     }
@@ -26891,6 +26991,39 @@ const StyleDesigner = (function () {
                 if (!sid) return;
                 var v = ('' + this.value).slice(0, 255);
                 _patchSysCfg(sid, function (cfg) { cfg.not_found_message = v; });
+            });
+        }
+        var fivHideEl = document.getElementById('sd-sw-fiv-hide-missing');
+        if (fivHideEl) {
+            fivHideEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var on = !!this.checked;
+                _patchSysCfg(sid, function (cfg) { cfg.hide_when_not_found = on; });
+            });
+        }
+        var fivTitleEl = document.getElementById('sd-sw-fiv-title-field');
+        if (fivTitleEl) {
+            fivTitleEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = ('' + this.value).trim().slice(0, 100);
+                _patchSysCfg(sid, function (cfg) {
+                    if (v === '') delete cfg.title_field;
+                    else cfg.title_field = v;
+                }, { afterSave: function () { renderProperties(); } });
+            });
+        }
+        var fivSuffixEl = document.getElementById('sd-sw-fiv-title-suffix');
+        if (fivSuffixEl) {
+            fivSuffixEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = ('' + this.value).trim().slice(0, 120);
+                _patchSysCfg(sid, function (cfg) {
+                    if (v === '') delete cfg.title_suffix;
+                    else cfg.title_suffix = v;
+                }, { afterSave: function () { renderProperties(); } });
             });
         }
         var fivAiEl = document.getElementById('sd-sw-fiv-ai-prompt');
@@ -28142,7 +28275,7 @@ const StyleDesigner = (function () {
             ['form_name',               _sdT('Form name')],
             ['reference_code',          _sdT('Reference Code')],
             ['submitted_date_and_time', _sdT('Submitted Date & Time'), 'date'],
-            ['form_item_view',          _sdT('Form Item View URL')],
+            ['form_item_view',          _sdT('Detail page address')],
             ['submitted_form_id',       _sdT('Submitted Form ID')]
         ]}
     ];
@@ -29529,6 +29662,10 @@ const StyleDesigner = (function () {
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
         var extra = _sdBindingActionRows(node);
+        if (html) {
+            var note = _sdBindingTextNote(node);
+            if (note) extra = note + (extra || '');
+        }
         if (!extra) return html;
         // Node has an action/value binding but no token bindings (a plain
         // "Add to Cart" button, say) — still show the section, so every
@@ -29538,6 +29675,122 @@ const StyleDesigner = (function () {
         // so they land INSIDE the section body.
         var idx = html.lastIndexOf('</div></div>');
         return (idx === -1) ? (html + extra) : (html.slice(0, idx) + extra + html.slice(idx));
+    }
+
+    // The one <a> a text consists of, as an element, or null: the link a
+    // heading or paragraph wraps its whole text in.
+    function _sdSoleTextLink(text) {
+        text = (text == null) ? '' : String(text);
+        if (!/<a\b/i.test(text)) return null;
+        var tpl = document.createElement('template');
+        tpl.innerHTML = text;
+        var a = null;
+        var nodes = tpl.content.childNodes;
+        for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            if (n.nodeType === 3 && !n.nodeValue.replace(/\u00a0/g, ' ').trim()) continue;
+            if (n.nodeType === 1 && n.tagName === 'A' && !a && !n.querySelector('a')) { a = n; continue; }
+            return null;
+        }
+        return a;
+    }
+
+    // What a bound text does with its markup, said beside the binding: the
+    // value goes in place of the words a link or a bold wraps, so the markup
+    // stays (pg_binding_text_slot()); with several runs of words the value
+    // takes the whole text, and the markup goes. A text that is one link can
+    // become a link element of its own, whose address can be bound too.
+    function _sdBindingTextNote(node) {
+        if (!node || node.type !== 'content' || !node.props || !_SD_RICH_TEXT_CONTENT[node.props.contentType]) return '';
+        if (node.props.contentType === 'link') return '';
+        var runs = _sdTextRuns(node.props.text);
+        if (!runs.markup) return '';
+        var bound = !!(node.props._bindings && node.props._bindings.text);
+        var several = runs.runs > 1;
+        var msg = several
+            ? _sdT('The text has markup around several pieces of words. A bound value takes the place of the whole text, and the markup is lost. Put the words that should show the value in an element of their own and bind that.')
+            : _sdT('The text has markup around it, such as a link or bold. A bound value goes in place of the words inside the markup, so the markup stays.');
+        var split = _sdSoleTextLink(node.props.text)
+            ? '<button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="sd-bind-split-link">' +
+                  '<span class="bi bi-link-45deg me-1"></span>' + esc(_sdT('Make the link its own element')) +
+              '</button>' +
+              '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The element keeps its look, and the link\'s address can be bound as well, for example to the detail page.')) + '</div>'
+            : '';
+        var warn = several && bound;
+        return '<div class="mt-2" style="font-size:.7rem;line-height:1.45;padding:6px 8px;border-radius:3px;' +
+                   (warn ? 'color:#b45309;background:rgba(245,158,11,.08)' : 'color:#4b5563;background:rgba(99,102,241,.06)') + '">' +
+                   '<span class="bi ' + (warn ? 'bi-exclamation-triangle' : 'bi-info-circle') + ' me-1"></span>' + esc(msg) +
+                   split +
+               '</div>';
+    }
+
+    // A heading, paragraph or span whose whole text is one link, split into
+    // the element and a link element inside it: the text binding moves to
+    // the link, the look (tag, classes, style) stays on the outer element.
+    function _sdSplitTextLink(node) {
+        var a = node && node.props ? _sdSoleTextLink(node.props.text) : null;
+        if (!a) return;
+        var ctx = _findParentAnywhere(node);
+        if (!ctx || !ctx.parent || !ctx.parent.children) return;
+        var idx = ctx.parent.children.indexOf(node);
+        if (idx === -1) return;
+        saveState();
+
+        var p  = node.props;
+        var ct = p.contentType;
+        var tag = (ct === 'heading') ? (p.tag || 'h2') : (ct === 'paragraph') ? 'p' : 'span';
+        var cls = String(p.cssClass || '').split(/\s+/).filter(Boolean);
+        if (p.align && cls.indexOf('text-' + p.align) === -1) cls.unshift('text-' + p.align);
+        if (ct === 'paragraph' && p.lead && cls.indexOf('lead') === -1) cls.unshift('lead');
+
+        var outer = {};
+        Object.keys(p).forEach(function (k) {
+            if (['contentType', 'text', 'tag', 'align', 'lead', 'cssClass', 'fontFamily', 'inlineStyle',
+                 '_bindings', '_bindFormats', '_attrs'].indexOf(k) === -1) outer[k] = p[k];
+        });
+        outer.tag = tag;
+        outer.cssClass = cls.join(' ');
+        // The semantic element has no font picker or style field: both go
+        // into its style attribute, ahead of the one already typed there.
+        var style = [];
+        if (p.fontFamily) {
+            var fam = String(p.fontFamily);
+            style.push('font-family:' + ((/\s/.test(fam) || /^[0-9]/.test(fam)) ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif');
+        }
+        if (p.inlineStyle) style.push(String(p.inlineStyle).replace(/[;\s]+$/, ''));
+        var attrs = [];
+        (p._attrs || []).forEach(function (at) {
+            if (!at || !at.name) return;
+            if (at.name === 'style') { if (at.value) style.push(String(at.value).replace(/[;\s]+$/, '')); return; }
+            attrs.push({ name: at.name, value: at.value });
+        });
+        if (style.length) attrs.push({ name: 'style', value: style.join(';') });
+        if (attrs.length) outer._attrs = attrs;
+
+        var linkProps = { contentType: 'link', text: a.innerHTML.trim(), href: a.getAttribute('href') || '#',
+                          target: a.getAttribute('target') || '', rel: a.getAttribute('rel') || '', cssClass: a.getAttribute('class') || '' };
+        var linkAttrs = [];
+        Array.prototype.forEach.call(a.attributes, function (at) {
+            if (['href', 'target', 'rel', 'class'].indexOf(at.name) === -1) linkAttrs.push({ name: at.name, value: at.value });
+        });
+        if (linkAttrs.length) linkProps._attrs = linkAttrs;
+
+        var b = p._bindings || {};
+        var keep = {};
+        Object.keys(b).forEach(function (k) { if (k !== 'text') keep[k] = b[k]; });
+        if (Object.keys(keep).length) outer._bindings = keep;
+        if (b.text) linkProps._bindings = { text: b.text };
+        if (p._bindFormats && p._bindFormats.text) linkProps._bindFormats = { text: p._bindFormats.text };
+
+        var link = createNode('content', linkProps);
+        var wrap = createNode('semantic', outer, [link]);
+        ctx.parent.children.splice(idx, 1, wrap);
+        var sid = ctx.sid || _isInsideSystemWidget(wrap);
+        if (sid) _sharedDirty[sid] = true;
+        selectedNode = link;
+        selectedNodes = [link];
+        render();
+        sdToast(esc(_sdT('The link is an element of its own now. Bind its address in this panel.')), 'success');
     }
 
     function _propsDataBindingCore(node) {
@@ -29684,6 +29937,7 @@ const StyleDesigner = (function () {
         // ── my_account branch — fixed token palette grouped by purpose ────
         if (regionType === 'my_account') {
             function _buildMyAccountOpts(currentVal) {
+                if (currentVal === '__detail_url') currentVal = 'form_item_view';
                 var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
                 SW_MY_ACCOUNT_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
@@ -30297,6 +30551,15 @@ const StyleDesigner = (function () {
         var _isItemView = (regionType === 'form_item_view');
         var _builtins   = _isItemView ? SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS : SW_BUILTIN_FIELD_OPTIONS;
         var _hintLabel  = _isItemView ? _sdT('detail view') : _sdT('system widget');
+        // The record's address reads as what it is in each widget: in a list
+        // it opens the detail page, on the detail page it is the page itself.
+        var _builtinLabel = function (o) {
+            if (o[0] === 'form_item_view') return _isItemView ? _sdT('This record\'s address') : _sdT('Detail page address');
+            return o[1];
+        };
+        // Names the settings once gave these values: the server still fills
+        // them, the dropdown shows the option they stand for.
+        var _bindAlias = _isItemView ? { __not_found_message: 'not_found' } : { __detail_url: 'form_item_view' };
 
         var formId = _getSystemWidgetCustomFormPageId(node);
         var formFields = formId ? (_formFieldsCache[formId] || null) : null;
@@ -30322,6 +30585,7 @@ const StyleDesigner = (function () {
 
         // Build the field-select options:  form fields → built-ins → custom input
         function _buildOptionsHtml(currentVal) {
+            if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             // Form fields group
             if (formFields.length) {
@@ -30340,7 +30604,7 @@ const StyleDesigner = (function () {
             // depends on regionType — see _builtins resolution above.
             html += '<optgroup label="' + esc(_sdT('Built-in fields')) + '">';
             _builtins.forEach(function (o) {
-                html += '<option value="' + esc(o[0]) + '"' + (o[0] === currentVal ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                html += '<option value="' + esc(o[0]) + '"' + (o[0] === currentVal ? ' selected' : '') + '>' + esc(_builtinLabel(o)) + '</option>';
             });
             html += '</optgroup>';
             // Custom — shown when the saved binding doesn't match any known token
@@ -30617,8 +30881,19 @@ const StyleDesigner = (function () {
             row(_sdT('Relationship'), sel('rel', relOpts, rel)) +
             row(_sdT('Style'), linkStyleSel) +
             (lsVal === 'btn' ? _sdBtnClassRows(cls) : '') +
-            row(_sdT('Stretch'), swAttr('data-util-toggle="stretched-link"', isStretched))
+            row(_sdT('Stretch'), swAttr('data-util-toggle="stretched-link"', isStretched) + _sdStretchHint(isStretched))
         );
+    }
+
+    // What a stretched link covers, said while it is on: the nearest box
+    // that is positioned — a card, a list item, an element with a position
+    // class — and when none is, the heading or text it sits in, which the
+    // page then gives position-relative (_pg_stretch_claims()).
+    function _sdStretchHint(on) {
+        if (!on) return '';
+        return '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.4">' +
+                   esc(_sdT('The nearest card, list item or element with a position class becomes clickable as a whole. With none around it, only the heading or text it sits in does. A box positioned in your own CSS needs the "position-relative" class to count.')) +
+               '</div>';
     }
 
     // ── Text Options: Bootstrap typography utilities ──────────────────────────
@@ -30919,13 +31194,13 @@ const StyleDesigner = (function () {
             }
             h += row(_sdT('Disabled'), swAttr('data-util-toggle="disabled"', hasCls('disabled')));
             h += row(_sdT('Active'),   swAttr('data-util-toggle="active"',   hasCls('active')));
-            h += row(_sdT('Stretch'),  swAttr('data-util-toggle="stretched-link"', hasCls('stretched-link')));
+            h += row(_sdT('Stretch'),  swAttr('data-util-toggle="stretched-link"', hasCls('stretched-link')) + _sdStretchHint(hasCls('stretched-link')));
         } else {
             h += row(_sdT('Size'),     sel('size', [['',_sdT('Default')],['sm',_sdT('Small')],['lg',_sdT('Large')]], n.props.size || ''));
             h += row(_sdT('Disabled'), sw('disabled', !!n.props.disabled));
             h += row(_sdT('Active'),   sw('active',   !!n.props.active));
             var _stretchCls = (n.props.cssClass || '').split(/\s+/);
-            h += row(_sdT('Stretch'),  swAttr('data-util-toggle="stretched-link"', _stretchCls.indexOf('stretched-link') !== -1));
+            h += row(_sdT('Stretch'),  swAttr('data-util-toggle="stretched-link"', _stretchCls.indexOf('stretched-link') !== -1) + _sdStretchHint(_stretchCls.indexOf('stretched-link') !== -1));
         }
 
         // Font family picker
@@ -39927,6 +40202,8 @@ const StyleDesigner = (function () {
             _wireSystemWidgetProps();
         }
         _wireDataBindingProps();
+        var _splitLinkBtn = document.getElementById('sd-bind-split-link');
+        if (_splitLinkBtn) _splitLinkBtn.addEventListener('click', function () { _sdSplitTextLink(selectedNode); });
         // The Form Field panel of a control inside a custom form widget.
         if (typeof _cfBindFieldSection === 'function') _cfBindFieldSection();
         // The Membership Field panel of a control inside a registration widget.
@@ -40100,13 +40377,44 @@ const StyleDesigner = (function () {
             .slice(0, 40);
     }
 
-    // <page>-<kind>-widget. The page is the tab the widget is dropped on —
-    // its name if it has one, "page" while it is still untitled.
-    function _swAutoName(regionType, page) {
-        var p = page || (typeof _pgActivePage === 'function' ? _pgActivePage() : null);
-        var pageSlug = _swSlug(p ? p.page_name : '') || _swSlug(_sdT('page')) || 'page';
+    // <owner>-<kind>-widget. The owner is the tab the widget is dropped on —
+    // its name if it has one, "page" while it is still untitled — unless the
+    // widget belongs to the whole design: dropped into a shared component
+    // (a header, a footer) or placed on more than one page. That one is
+    // named after the design ("kodpen-login-region-widget"), not after
+    // whichever tab happened to be open. `where` = { target, sid }: the
+    // node it is dropped into, or the widget already placed.
+    function _swAutoName(regionType, page, where) {
+        var owner = _swBelongsToDesign(where) ? _swDesignSlug() : '';
+        if (!owner) {
+            var p = page || (typeof _pgActivePage === 'function' ? _pgActivePage() : null);
+            owner = _swSlug(p ? p.page_name : '') || _swSlug(_sdT('page')) || 'page';
+        }
         var info = _swTypeInfo(regionType);
-        return pageSlug + (info ? '-' + _swSlug(info.slug) : '') + '-widget';
+        return owner + (info ? '-' + _swSlug(info.slug) : '') + '-widget';
+    }
+    function _swDesignSlug() {
+        var el = document.getElementById('sd-style-name');
+        return _swSlug(el ? el.value : '') || _swSlug(_sdT('design')) || 'design';
+    }
+    function _swBelongsToDesign(where) {
+        if (!where) return false;
+        if (where.target && _sdSharedOwnerOf(where.target)) return true;
+        var sid = parseInt(where.sid, 10) || 0;
+        if (!sid) return false;
+        if (_sharedRefUsageInDesign(sid).pages.length > 1) return true;
+        return Object.keys(_sharedCache).some(function (k) {
+            var owner = parseInt(k, 10);
+            var oc = _sharedCache[owner];
+            if (!owner || owner === sid || !oc || !oc.tree) return false;
+            var hit = false;
+            (function walk(n) {
+                if (hit || !n) return;
+                if (n.type === 'shared_ref') { if (parseInt(n.props && n.props.sharedId, 10) === sid) hit = true; return; }
+                if (n.children) n.children.forEach(walk);
+            })(oc.tree);
+            return hit;
+        });
     }
     // Is `name` still the one the editor gave the widget (optionally with the
     // server's uniqueness suffix)? Only such a name is replaced when the kind
@@ -40258,7 +40566,8 @@ const StyleDesigner = (function () {
 
     // Create a system widget and place it: a row of the given kind with that
     // kind's starter layout, or — with no kind — a blank one whose kind the
-    // operator picks in the panel. Named after the page it lands on.
+    // operator picks in the panel. Named after the page it lands on, or the
+    // design when it lands in a shared component (_swAutoName()).
     // `extra` = { regionType?, label? } | `target` = drop target node |
     // `insertCtx` = sibling context or null.
     function _createSystemWidgetNode(extra, target, insertCtx) {
@@ -40266,7 +40575,7 @@ const StyleDesigner = (function () {
         var type = _swIsType(extra.regionType) ? extra.regionType : '';
         var cfg  = type ? _swTypeDefaults({}, type) : { regionType: '' };
         var starterTree = type ? _buildStarterTree(type) : _swBlankTree();
-        var widgetName  = _swAutoName(type);
+        var widgetName  = _swAutoName(type, null, { target: target });
 
         _swCreateRow(widgetName, cfg, starterTree, function (newId, newName) {
             saveState();
@@ -40568,6 +40877,28 @@ const StyleDesigner = (function () {
         return html;
     }
 
+    // The line under a detail page picker: where the links lead, or what is
+    // missing for them to work. `types`/`test` say what makes a page a
+    // detail page (as for _swPageOptions); `widget` names that widget.
+    function _swDetailPageHint(cur, serverPages, types, test, widget, bindLabel) {
+        cur = (cur == null) ? '' : String(cur);
+        var tabs = (typeof _pages !== 'undefined' && _pages) ? _pages : [];
+        var chosen = null;
+        tabs.forEach(function (p) { if (_swPageRef(p) === cur) chosen = p; });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        if (chosen && !_swTabHasWidget(chosen, types, test)) {
+            return note(_sdT('"{var:1}" has no {var:2} widget for this yet. Add one to that page, or the links open a page that does not show the record.', [chosen.page_name || _sdT('New Page'), widget]), true);
+        }
+        if (cur === '' || cur === '0') {
+            var any = tabs.some(function (p) { return _swTabHasWidget(p, types, test); }) || (serverPages && serverPages.length);
+            if (!any) return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
+        }
+        return note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
+    }
+
     function _swPageOptions(cur, serverPages, o) {
         o = o || {};
         cur = (cur == null) ? '' : String(cur);
@@ -40576,16 +40907,24 @@ const StyleDesigner = (function () {
         var html = '<option value="' + esc(noneVal) + '"' + (isNone ? ' selected' : '') + '>' + esc(o.none || _sdT('— Not selected —')) + '</option>';
         var listed = {};
         var mine = '';
+        // o.otherTabs: the design's tabs without the widget yet, under that
+        // label. A detail page is a page with the detail widget on it, and
+        // a design built in one go has none until it is made — so the
+        // page to become one has to be pickable before it is one.
+        var bare = '';
         ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) {
-            if (o.types && !_swTabHasWidget(p, o.types, o.test)) return;
+            var fits = !o.types || _swTabHasWidget(p, o.types, o.test);
+            if (!fits && !o.otherTabs) return;
             var val = _swPageRef(p);
             listed[val] = true;
             var lbl = (p.page_name || _sdT('New Page')) +
                       (p.page_id > 0 ? '' : ' (' + _sdT('unsaved') + ')') +
                       (p.key === _activeKey ? ' — ' + _sdT('this page') : '');
-            mine += '<option value="' + esc(val) + '"' + (val === cur ? ' selected' : '') + '>' + esc(lbl) + '</option>';
+            var opt = '<option value="' + esc(val) + '"' + (val === cur ? ' selected' : '') + '>' + esc(lbl) + '</option>';
+            if (fits) mine += opt; else bare += opt;
         });
         if (mine) html += '<optgroup label="' + esc(_sdT('This design')) + '">' + mine + '</optgroup>';
+        if (bare) html += '<optgroup label="' + esc(o.otherTabs) + '">' + bare + '</optgroup>';
         if (serverPages) {
             var rest = '';
             serverPages.forEach(function (p) {
