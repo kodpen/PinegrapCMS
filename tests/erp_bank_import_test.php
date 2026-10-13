@@ -6,7 +6,8 @@
  * (includes/erp/bank_import.php): erp_bank_sheet_value(), which turns a
  * number cell into the text a CSV would have carried,
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
- * erp_bank_read_file() over a small .xlsx written here.
+ * erp_bank_read_file() over a small .xlsx written here. The older .xls goes
+ * through PHPExcel, which is checked on the sandbox rather than here.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -132,4 +133,15 @@ function test_erp_bank_read_file_xlsx()
 
 	unlink($path);
 	rmdir($dir);
+}
+
+// A document that is not a workbook Pinegrap reads is refused by its name, not read as text.
+function test_erp_bank_read_file_refuses_other_documents()
+{
+	foreach (array('statement.ods', 'statement.PDF', 'statement.numbers') as $name) {
+		$read = erp_bank_read_file(__FILE__, $name);
+
+		pg_assert_same(array(), $read['rows'], $name . ' rows');
+		pg_assert_contains('.xlsx', $read['error'], $name . ' says what to save it as');
+	}
 }

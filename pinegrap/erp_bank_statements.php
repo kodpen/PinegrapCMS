@@ -106,7 +106,7 @@ pg_page_shell([
                     </div>
                     <div class="col-12 col-md-5">
                         <label class="form-label" for="statement">' . lang('Statement file (Excel or CSV)') . '</label>
-                        <input type="file" class="form-control" id="statement" name="statement" accept=".xlsx,.xls,.ods,.csv,.txt,text/csv" required />
+                        <input type="file" class="form-control" id="statement" name="statement" accept=".xlsx,.xls,.csv,.txt,text/csv" required />
                     </div>
                     <div class="col-12 col-md-3">
                         <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Take in') . '</button>

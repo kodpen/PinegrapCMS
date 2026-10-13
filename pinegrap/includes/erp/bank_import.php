@@ -18,9 +18,9 @@
  * that overlap, add each line once.
  *
  * The file is a CSV or the Excel workbook internet banking offers beside it
- * (.xlsx, and the older .xls and OpenDocument .ods); a workbook's first sheet
- * becomes the same rows of cells a CSV does, so the columns, the hash and the
- * matching never learn which one arrived.
+ * (.xlsx, or the older .xls); a workbook's first sheet becomes the same rows
+ * of cells a CSV does, so the columns, the hash and the matching never learn
+ * which one arrived.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -129,6 +129,8 @@ function erp_bank_read_csv($path)
  * machine gave it: a workbook is read from its first sheet, anything else as
  * CSV. The bank's title block above the transactions is dropped (see
  * erp_bank_rows_from_heading()), so the column screen opens on the heading.
+ * A document that is neither (OpenDocument, Numbers, PDF) is refused rather
+ * than read as text.
  *
  * @param string $path
  * @param string $file_name
@@ -138,7 +140,11 @@ function erp_bank_read_file($path, $file_name)
 {
     $extension = strtolower((string) pathinfo((string) $file_name, PATHINFO_EXTENSION));
 
-    $read = in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'), true)
+    if (in_array($extension, array('ods', 'numbers', 'pdf'), true)) {
+        return array('rows' => array(), 'error' => lang('Save the statement as Excel (.xlsx or .xls) or CSV and take it in again.'));
+    }
+
+    $read = in_array($extension, array('xlsx', 'xlsm', 'xls'), true)
         ? erp_bank_read_spreadsheet($path, $extension)
         : erp_bank_read_csv($path);
 
@@ -156,11 +162,10 @@ function erp_bank_read_file($path, $file_name)
  * helpers (import_products_f.php): no library holds the workbook. A number
  * that is a date by its cell format comes out as Y-m-d, any other number in
  * the machine form erp_bank_amount() reads without guessing (two decimals,
- * a point). The older .xls and OpenDocument go through PHPExcel by way of the
- * importer's CSV conversion.
+ * a point). The older .xls is read with PHPExcel.
  *
  * @param string $path
- * @param string $extension  xlsx | xlsm | xls | ods
+ * @param string $extension  xlsx | xlsm | xls
  * @return array ['rows' => array, 'error' => string]
  */
 function erp_bank_read_spreadsheet($path, $extension)
@@ -246,28 +251,33 @@ function erp_bank_read_spreadsheet($path, $extension)
 
         $reader->close();
     } else {
-        $error = '';
-        $csv = pg_products_import_to_csv($path, 'statement.' . $extension, $error);
+        // The older .xls is a binary record stream only PHPExcel reads. Read
+        // with its formats, unlike the product importer, because a date cell
+        // is known by its format alone; a statement is small enough for it.
+        require_once(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php');
 
-        if ($csv === '') {
+        try {
+            $book = PHPExcel_IOFactory::createReader('Excel5')->load($path);
+            $sheet = $book->getSheet(0);
+            $last_row = $sheet->getHighestDataRow();
+            $last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
+
+            for ($row_number = 1; ($row_number <= $last_row) && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS); $row_number++) {
+                $cells = array();
+
+                for ($column_number = 0; $column_number <= $last_column; $column_number++) {
+                    $cells[] = trim(erp_bank_xls_cell($sheet->getCellByColumnAndRow($column_number, $row_number, false)));
+                }
+
+                if (implode('', $cells) !== '') {
+                    $rows[] = $cells;
+                }
+            }
+
+            $book->disconnectWorksheets();
+        } catch (Throwable $e) {
             return $unreadable;
         }
-
-        $handle = fopen($csv, 'r');
-
-        while (($handle !== false) && (($cells = fgetcsv($handle, 0, ',', '"', '\\')) !== false) && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS)) {
-            $cells = array_map('trim', array_map('strval', (array) $cells));
-
-            if (implode('', $cells) !== '') {
-                $rows[] = $cells;
-            }
-        }
-
-        if ($handle !== false) {
-            fclose($handle);
-        }
-
-        @unlink($csv);
     }
 
     if (empty($rows)) {
@@ -275,6 +285,37 @@ function erp_bank_read_spreadsheet($path, $extension)
     }
 
     return array('rows' => $rows, 'error' => '');
+}
+
+/**
+ * One cell of an .xls as erp_bank_sheet_value() gives an .xlsx cell: a
+ * formula's answer (what is written when it cannot be worked out), a date by
+ * its format, a number in the machine form, text as it is.
+ *
+ * @param PHPExcel_Cell|null $cell
+ * @return string
+ */
+function erp_bank_xls_cell($cell)
+{
+    if ($cell === null) {
+        return '';
+    }
+
+    try {
+        $value = $cell->getCalculatedValue();
+    } catch (Throwable $e) {
+        $value = $cell->getValue();
+    }
+
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return erp_bank_sheet_value((string) $value, PHPExcel_Shared_Date::isDateTime($cell) ? 'date' : 'n');
+    }
+
+    return (string) $value;
 }
 
 /**

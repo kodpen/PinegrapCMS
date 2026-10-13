@@ -22668,5 +22668,6 @@
     "Expected in": "Beklenen giriş",
     "Expected out": "Beklenen çıkış",
     "Expected balance": "Beklenen bakiye",
-    "Expected movements": "Beklenen hareketler"
+    "Expected movements": "Beklenen hareketler",
+    "Save the statement as Excel (.xlsx or .xls) or CSV and take it in again.": "Ekstreyi Excel (.xlsx ya da .xls) veya CSV olarak kaydedip yeniden yükleyin."
 }

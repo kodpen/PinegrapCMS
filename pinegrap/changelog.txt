@@ -677,6 +677,36 @@
          edilmez. Sipariş ekranında "Cari hesapta" rozeti
          görünür. Varsayılan kapalı.
 
+  [YENİ] Banka ekstresi Excel'den: Banka ekstreleri
+         ekranı internet bankacılığından indirilen
+         .xlsx ve .xls dosyalarını CSV gibi doğrudan
+         alıyor. İlk sayfa okunur; tarih hücreleri tarih,
+         tutarlar tutar olarak gelir. Bankanın hareketlerin
+         üstündeki başlık satırları (banka adı, IBAN,
+         dönem) atlanır, sütun ekranı başlık satırıyla
+         açılır. CSV dosyalarında da aynı.
+
+  [YENİ] Vade farkı: ERP Ayarları'nda aylık oran ve
+         faturadaki KDV oranı. Oran girilince cari kartında
+         ve mutabakat mektubu ekranında, vadesi geçen
+         faturaların gün gün işleyen vade farkı yazar;
+         geç ödenmiş faturalar da ödendikleri güne kadar
+         sayılır. "Vade farkı faturası" düğmesi tutarı,
+         dönemi ve fatura fatura dökümüyle tek satırlı bir
+         satış faturası taslağına yazar; kontrol edilip
+         kesilir. Kesilen vade farkının son günü
+         hatırlanır, sonraki vade farkı ertesi günden
+         başlar. Oran 0 iken kapalı.
+
+  [YENİ] Nakit tahmini: Nakit akışı ekranında "Beklenen"
+         sekmesi önümüzdeki 30, 60 ya da 90 günü
+         gösteriyor: açık satış ve alış faturaları,
+         ödenmemiş giderler, tekrarlayan fatura ve
+         giderler, alınan ve verilen çek-senetler
+         vadelerinde; vadesi geçmişler ayrı sütunda.
+         Altında para girişi, çıkışı ve bugünkü kasa
+         bakiyesinden yürüyen beklenen bakiye.
+
   [DÜZELTME] Alış faturaları artık kendi serisinde
          numaralanıyor: fatura serisinin sonuna A eklenir
          (ör. PGFA2026000000001). Önceden yılın ilk alış
@@ -694,6 +724,11 @@
   [ŞEMA] "Cari hesabıma yaz" ayarı için config tablosuna,
          siparişin cari hesaba yazıldığını gösteren işaret
          için orders tablosuna birer kolon eklenir.
+
+  [ŞEMA] Vade farkı oranı ve KDV oranı için config
+         tablosuna iki, vade farkının hangi güne kadar
+         faturalandığı için erp_invoices tablosuna bir
+         kolon ve bir indeks eklenir.
 
   DIŞ API
   --------------------------------------------------------
