@@ -200,6 +200,277 @@ derleme uydurma listeyle sınandı. IIS'te ve Cloudflare arkasında deneme.
 
 ---
 
+## 2026.4.10 — Pano: Aktivite kartı, altı liste kartı tek süzgeçli akışta (2026-10-13)
+
+**İstenen.** Erdal: son form, rehber, kullanıcı, site günlüğü ve kampanya
+kartları aktivite özetiyle birleşsin. Akış filtreli olsun, başka aktivite
+türleri de süzülebilsin.
+
+**Değişiklik.** Widget 7 (eski adı Son Güncellemeler) Aktivite oldu.
+Geniş bir kart: solda türler, sağda zamana göre akış.
+- Türler ve kaynakları (`pg_dashboard_activity_kinds()`):
+  - İçerik: eski 7.
+  - Formlar: eski 13.
+  - Siparişler: yeni.
+  - Rehber: eski 10.
+  - Yorumlar: yeni.
+  - Kullanıcılar: eski 11.
+  - Kampanyalar: eski 19.
+  - Site Günlükleri: eski 17.
+- Her tür eski kartının kapısını ve kapsamını taşır:
+  - Formlar: rol 3 yalnız erişebildiği klasörlerdeki form sayfaları,
+    `complete = '1'`.
+  - Rehber: rol 3 düzenleyebildiği gruplar.
+  - Kullanıcılar: yönetici kendi rolünün altını görür.
+  - Siparişler: `manage_ecommerce`, sepette kalanlar hariç.
+  - Yorumlar: rol < 3. Rol 3'ün klasör kapsamı Yorum Moderasyonu
+    kartında.
+- Her tür en çok 12 satır getirir. "Tüm Aktivite" aynı satırları zamana göre
+  birleştirir. Aynı saniyedeki satırları kimlik sıralar, yenilemede yer
+  değiştirmezler.
+- Tür düğmesi bugünkü sayıyı ve yedi günlük çubukları gösterir
+  (`pg_activity_daily()`, tür başına tek sorgu). İçerikte günlük seri yok:
+  bir düzine tabloya yayılıyor. Bugünkü sayısı getirilen satırlardan
+  çıkar; bugün 12'den az değişiklik varsa kesindir, yoksa alt sınırdır.
+- Seçilen türün tam listesine bağlantı listenin altına çıkar (gönderilen
+  formlar, siparişler, rehber, yorumlar, kullanıcılar, kampanyalar,
+  günlük). Tür yoksa "Son zamanlarda bu türden bir şey yok." yazar.
+- Ortak parçalar (`includes/dashboard/widgets.php`):
+  - `pg_widget_row()` `data` özelliğiyle `data-*` öznitelikleri yazar.
+    Anahtar `[a-z0-9-]`, değer kaçışlı.
+  - `pg_widget_bars()`: yedi günlük CSS çubukları.
+  - `pg_widget_filter()`: süzgeç düğmesi. Renk düğmede `--pg-k`
+    olarak durur.
+- Sayfa betiği (`welcome.php`) genel bir süzgeç taşır:
+  `[data-pg-filterable]` gövde, `[data-pg-filter]` düğme, `[data-kind]`
+  satır, `.pg-filter-more`, `.pg-filter-none`. Seçim tarayıcıda
+  `localStorage`'da kart başına durur. `try/catch` içinde, yoksa
+  varsayılan. Her yeniden çizimden sonra (`pg:widget-drawn`) geri konur.
+  Operasyon Masası da aynı mekanizmayı kullanacak.
+- Dar kartta (telefon) türler akışın üstünde çip satırı olur. Çubuklar ve
+  ikinci satır gizlenir.
+
+**Hız.** Eski Son Güncellemeler page, files, folder, short_links ve menus
+tablolarını her dakika `LIMIT`'siz okuyordu (staff için her satır). Şimdi
+her tablo en yeniden sınırlı okunur. Rol 3'ün satırları okunduktan sonra
+klasöre göre süzüldüğü için onun tabloları 200 satıra kadar okunur.
+Kampanyalarda ilerleme, listelenen kampanyaların alıcıları üzerinden tek
+`GROUP BY` sorgusuyla gelir. Eskiden kampanya başına iki sorgu vardı:
+yirmi satır için kırk sorgu. Altı kart altı istek yerine tek kart tek
+istek.
+
+**Emekli kimlikler.** 10, 11, 13, 17 ve 19 boş başarı döndüren dosyalar
+olarak kalır. Yükseltme sırasında açık kalan sekme bunları istemeye devam
+eder; boş başarı iskeleti temizler. Kimlikler yeniden kullanılmaz. Kayıtlı
+dizilişte bu kimlikler yok sayılır; 7 yerinde kalır.
+
+**Ödün.** Formlar kartının başlığındaki "bugün N form" çizgisi ve form
+başına sayım yok; sayı tür düğmesinde. Eski Site Günlükleri satırı
+mesajdaki adresi link yapıyordu. Satırın kendisi link olduğu için
+(iç içe `<a>` geçersiz) adres artık düz metin. Rol 3 için form ve rehber
+günlük sayıları eskisi gibi site geneli sayılır, kapsamlı değildir;
+içerik değil yalnız sayı.
+
+**Doğrulama.** `php tools/test.php`: satır `data` öznitelikleri, çubuk
+ölçeği, süzgeç düğmesi. Sandbox + Playwright:
+- 1440 px'te kart 658×316.
+- "Formlar" seçilince 50 satırdan 12'si görünür kaldı.
+- Sayfa yenilenince seçim korundu.
+- 390 px'te çip düzeni ve koyu tema denendi.
+
+---
+
+## 2026.4.10 — Dış API: OAuth'la bağlanan uygulamalar panelde (operatör kapatır/kaldırır, kişi kendi bağlantılarını sonlandırır) (2026-10-13)
+
+**Neden.** Faz A'dan beri kişi bir bağlantıyı ancak parolasını
+değiştirerek ya da her yerden çıkış yaparak sonlandırabiliyordu; bu, bütün
+oturumlarını ve bütün bağlantılarını birlikte kapatıyordu. Operatör
+bağlantıları OAuth uygulamasının Bağlantılar sekmesinde tek tek
+sonlandırabiliyordu, ama kendini kaydetmiş istemcileri göremiyor, birini
+durduramıyordu. `oauth_clients.status` alanı Faz A'dan beri vardı, onay
+ekranı ve token ucu `disabled`'ı reddediyordu, ama onu yazan bir ekran
+yoktu (`docs/_plan_oauth.md` Kapsam, Faz B).
+
+**Tasarım.**
+
+- **Kişinin ekranı: `connected_apps.php` (Bağlı uygulamalar).** Panel
+  hakkı olan herkes yalnız kendi OAuth bağlantılarını görür
+  (`pg_oauth_connections_of_user()`: `api_devices` satırları,
+  `oauth_client_id > 0`). Her kartta uygulamanın adı, kimlik adresi
+  (kimlik belgesiyle gelen istemcide), bağlandığı adres (MCP sunucusu ya da
+  API, `pg_oauth_resource_key()`), "Yapabilecekleri" listesi
+  (`pg_oauth_scope_lines()`: onaylanan kapsamlar, `api_scope_groups()`
+  sırasıyla "Salt okunur / Okuma ve yazma / Yönetim"), bağlanma tarihi, son
+  kullanım ve adres var. "Bağlantıyı sonlandır" yalnız o bağlantıyı
+  `api_device_revoke()` ile kapatır. "Tüm bağlantıları sonlandır" kişinin
+  diğer oturumlarına dokunmaz. Kimlik formdan gelir, bu yüzden
+  `pg_oauth_connection_end()` satırın kişiye ait ve OAuth bağlantısı
+  olduğunu sorguda denetler. Operatörün kapattığı uygulamanın kartında
+  "Site tarafından kapatıldı" yazar. Ekran kullanıcı menüsünde Hesabım'ın
+  altında, yalnız etkin bir OAuth uygulaması varken çıkar
+  (`output_header()`; sorgu `@mysqli_query` ile, db yardımcıları sorgu
+  hatasında ölümcül olduğu ve 10.70 öncesi şemada `kind` sütunu olmadığı
+  için). Yardım bağlantısı `api#mcp`.
+- **Operatörün kartı: Uygulama Erişimi → "Bağlı uygulamalar".** Bir OAuth
+  uygulaması varken ya da kayıtta istemci kaldıkça çıkar
+  (`pg_oauth_clients_overview()`: bağlantısı olanlar önce, sonra son
+  kullanıma göre). Her istemcide ad, kaynağı ("Kimliği: alan adı",
+  "Kendini kaydetti" ya da "Site ekledi"), durum, yanıtın gittiği yerler
+  (loopback adresler tek "Bu bilgisayardaki bir program" etiketi, diğerleri
+  `pg_oauth_redirect_destination()` metni), bağlantı sayısı, son kullanım,
+  kayıt tarihi ve yazılım sürümü var.
+  - **Kapat / Aç** (`pg_oauth_client_set_status()`): kapalı istemci yeni
+    bağlantı başlatamaz (onay ekranında ayrı bir "bu sitede kapatıldı"
+    mesajı), yenileme jetonu token ucunda `invalid_client`, erişim jetonu
+    her istekte 401 alır (`api_device_oauth_check()`, Faz A'dan beri).
+    Bağlantılar silinmez; açılınca kimseye yeniden sorulmadan geri gelir.
+  - **Kaldır** (`pg_oauth_client_delete()`): istemcinin bütün
+    bağlantılarını `api_device_revoke()` ile kapatır, bekleyen kodlarını ve
+    satırını siler. Kendini kaydeden istemci (açık dinamik kayıt) ve kimlik
+    belgesiyle gelen istemci tekrar gelebilir; kişiye onay ekranı yeniden
+    sorulur. Kartın notu bunu ve kalıcı durdurmanın "Kapat" olduğunu söyler.
+- **Kapatma kararı korunuyor.**
+  - `pg_oauth_clients_sweep()` kapalı istemciyi silmiyor. Satır kararın
+    kaydıdır; süpürme kimlik belgeli kapalı istemciyi silseydi istemci bir
+    sonraki gelişinde belgeden açık olarak yeniden okunurdu.
+  - `pg_oauth_client_resolve()` kapalı satırın belgesini süresi geçse de
+    yeniden çekmiyor; istemci belgeyi değiştirse de kapalı kalır.
+- Onay ekranının alt notu artık bağlantının "panelde hesap menünüzdeki Bağlı
+  uygulamalar ekranından" sonlandırılabileceğini söylüyor (önce parola ya da
+  her yerden çıkış diyordu).
+- Kapatma, açma, kaldırma ve sonlandırma etkinlik günlüğüne yazılıyor.
+  Türkçe metinler `tr.json`'da (34 anahtar).
+
+**Bilinen sınır.** İzin verilen istemci listesi (allowlist) yok: dinamik
+kayıt açık kalır, operatör istemciyi geldikten sonra kapatır. Onaylanmamış
+istemciyi baştan bekleten bir kip istenirse ayrı iş.
+
+**Doğrulama.** Sandbox'ta (PHP yerleşik sunucu, IIS kuralını taklit eden
+yönlendirici) Claude ve Cursor kayıt gövdeleriyle iki istemci bağlandı:
+- Kişinin ekranı iki kartı, kapsam satırlarını ve son kullanımı gösteriyor.
+  Masaüstü ve 390 px genişlikte görüntüsü alındı.
+- Kapat: aynı jetonla `mcp.php` 401, yenileme `invalid_client`, authorize
+  "kapatıldı" sayfası, kişinin kartında rozet. Aç: aynı jeton 200.
+- Kaldır: istemci, bağlantıları ve kodları silindi, jeton 401.
+- Başka kişinin `connection_id`'si yok sayıldı. Tek ve tümünü sonlandırma
+  çalıştı. Günlük satırları yazıldı.
+- `pg_oauth_clients_sweep()` kapalı ve eski istemciyi silmedi, açık ve eski
+  bağlantısızı sildi.
+- Menü bağlantısı yalnız etkin OAuth uygulaması varken çıktı. Yardım
+  bağlantısı `pinegrap.com/tr/api#mcp`. Sunucu logunda uyarı yok.
+
+**Doğrulanmayan.** Gerçek bir istemciyle (Claude, Cursor) kapatıp açma
+canlı denenmedi; dev.pinegrap.com'da denenmesi gerekiyor.
+
+---
+
+## 2026.4.10 — Çalışma Alanı: betikler küçültülmüş tek dosyada, kayıt ekranlarında ilk tıkta yükleniyor, kod editörü gerektiğinde geliyor (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırmasının (P1 1.1) ölçümü: her Çalışma Alanı
+ekranı küçültülmemiş ~1 MB Workspace betiği yüklüyordu (12 dosya). Sandbox'ta
+Chromium ile ölçülen tablo daha ağırdı: kanal ekranı **59 betik, ~5,0 MB**.
+Bunun 2,27 MB'ı panel başlığının her ekrana koyduğu CodeMirror ve linterleri
+(jshint tek başına 1,2 MB), Çalışma Alanı ekranlarında hiç kullanılmıyordu.
+Sipariş, ürün, kişi, kullanıcı ve ERP ekranlarındaki Çalışma Alanı düğmesi
+(`ws_record_button()`) ise yalnız bir çekmece için ~1 MB betik yüklüyor ve
+her açılışta `ws_bootstrap` + `ws_tick` istekleri gönderiyordu.
+
+**Ne değişti.**
+
+- **Derleme aracı:** `tools/build_js.php`. Neyin neyden derlendiği
+  `pg_js_bundles()`'tadır (`includes/fn/output.php`); ekranlar da aynı
+  listeyi okur. terser sürümü sabittir (`terser@5.51.2`, `npx` ile gelir),
+  bayraklar eski reçeteyle aynıdır (`--compress --mangle --format
+  ascii_only=true`), lisans yorumları kalır. `--check` geçici klasöre
+  derleyip karşılaştırır; CI'da yeni adım olarak koşar, kaynağı değişip
+  yeniden derlenmemiş `.min.js` PR'ı kırmızıya çeker. Satır sonları
+  karşılaştırmaya girmez (Windows checkout'u CRLF'e çevirse de geçer).
+- **Paketler:**
+  - `workspace.min.js`: editör, tekrar, olaylar, şablonlar, süre,
+    bağımlılık, onay, okundu ve `workspace.js`, sayfanın eskiden yüklediği
+    sırayla (487 KB; kaynakları 1.017 KB).
+  - `workspace_palette.min.js`, `workspace_board_channel.min.js`,
+    `workspace_tour.min.js`, `workspace_guest.min.js`: bire bir ikizler.
+  - Hangi ekranın neyi yüklediği değişmedi: arama kutusu kayıt çekmecesi
+    dışında her ekranda, kanal panosu ve tur yalnız kanal ekranında.
+- **Sunuş:** `pg_js_bundle_files()` / `pg_js_bundle_urls()` /
+  `pg_js_bundle_tags()`. `ENVIRONMENT_SUFFIX` `min` ise (varsayılan)
+  `.min.js`, `src` ise (ENVIRONMENT `development`) kaynaklar tek tek
+  gelir. `.min.js` dosyası yoksa da kaynaklar gelir; eksik güncelleme ekranı
+  bozmaz.
+- **Kayıt ekranları:** `ws_screen_assets($viewer, 'record')` artık betik
+  yüklemiyor, `ws_record_loader()`'ın küçük satır içi betiğini basıyor.
+  Çalışma Alanı düğmesine ilk tıklama tutuluyor
+  (`window.PGWsPendingRecord`), paket dosya dosya sırayla yükleniyor,
+  `workspace.js` başlayınca `PGWsRecordReady`'yi yazıp tutulan çekmeceyi
+  açıyor. Ondan sonra `workspace.js`'in kendi dinleyicisi cevap veriyor.
+  Yüklenemeyen dosya sonraki tıklamada yeniden deneniyor.
+- **Kod editörü:** `output_header()`'a `'code_editor' => false` özelliği
+  (`output_control_panel_header_includes()`'un üçüncü parametresi). Açık
+  olmadığında CodeMirror etiketleri `<template id="pg-code-editor-assets">`
+  içinde bekliyor. `window.pgCodeEditorReady(markup, done)`
+  (`backend.src.js`): CodeMirror sayfada yoksa ve gelen işaretlemede
+  "CodeMirror" geçiyorsa dosyaları başlıktaki sırayla yükleyip `done`'ı
+  çağırıyor; başka her durumda `done` hemen, aynı çağrıda koşuyor. Site
+  Ayarları penceresi (`load()`) bölmeyi bununla boyuyor: kod alanlı bölme
+  (Genel'deki cron satırları, SEO) Çalışma Alanı ekranında editör yüklenince
+  çiziliyor, pencere o sırada "yükleniyor" kalıyor. Çalışma Alanı'nın sekiz
+  ekranı (`workspace*.php`) bu özelliği kapatıyor.
+
+**Ölçüm (sandbox, Chromium, `ENVIRONMENT_SUFFIX` min).**
+
+| Ekran | Önce | Sonra |
+|---|---|---|
+| Kanallar | 59 betik, 4.996 KB (Workspace 1.057 KB, CodeMirror 33 dosya) | 18 betik, 2.240 KB (Workspace 510 KB, CodeMirror yok) |
+| Görevler, Pano, Takvim, Zaman çizelgesi, Notlar, Şablon | 57 betik, 4.953 KB | 16 betik, 2.217 KB |
+| Kullanıcı düzenle (kayıt ekranı) | 57 betik, 4.973 KB, `ws_bootstrap` + `ws_tick` | 48 betik, 3.983 KB, Çalışma Alanı isteği yok |
+
+**Bilerek yapılmayan.**
+
+- **`workspace.js`'i ekran başına bölmek.** Ekran sabitini terser'a
+  `--define` ile verip ölü kodu attırarak ölçüldü: ekran başına yalnız
+  %10–17 kazanç (367 KB → 305–330 KB). Kanal ekranının `app` nesnesi
+  (8.000 satır) paylaşılan kodda da kullanılıyor (etiket alanları onun
+  yöntemlerini ödünç alıyor, kanal formu ve programlanmış işlem formu ona
+  bakıyor), terser nesne özelliklerini atamıyor. Ekran başına ayrı dosya
+  ayrıca ekranlar arasında önbelleği bozardı: tek dosya bir kez inip bütün
+  ekranlarda kullanılıyor. Gerçek bölme `app`'i parçalara ayıran ayrı bir
+  refactor'dür.
+- **DataTables, select2, Inputmask, jQuery UI'ı Çalışma Alanı ekranından
+  çıkarmak.** `backend.src.js`'in hazır olunca koşan bölümleri bunları
+  korumasız çağırıyor (`.inputmask()`, `.sortable()`); eksik eklenti
+  ekranın geri kalan başlatmasını durdurur. CodeMirror farklı: yalnız
+  ekranların kendi satır içi betikleri ve ayarlar bölmeleri kullanıyor.
+- **Kod editörünü bütün panelde ertelemek.** Kendi kod alanı olan ekranların
+  bir kısmı başlıktaki CodeMirror'a güveniyor; ekran ekran denetlenmeden
+  açılamaz. Pano için `'code_editor' => false` aynı biçimde kullanılabilir.
+
+**Davranış farkı.** Kayıt ekranları artık `ws_tick` göndermiyor. Zamanlayıcı
+olmayan sitelerde tekrarlayan görevler, bekleyen Claude istekleri ve
+programlanmış işlemler Çalışma Alanı ekranları açıldıkça ve genel iş (cron)
+koştukça yürür; sipariş ya da ürün ekranını açmak artık bunları tetiklemez.
+
+**Doğrulama.** `php tools/build_js.php --check` temiz (kaynağa tek karakter
+değişikliği STALE ile yakalanıyor). Yeni `tests/js_bundles_test.php`: her
+paket ve kaynak dosyası var, kaynak bir pakette bir kez geçiyor, her
+`assets/js/workspace*.js` bir pakette, `workspace.js` en sonda, min kipte
+yalnız `.min.js` seçiliyor. lint, check_lang, check_bindings,
+check_api_schema, check_copies, test.php (338 test) temiz. Sandbox'ta
+Playwright ile min ve src kipinde: yedi Çalışma Alanı ekranı ve ayarları
+konsol hatası vermeden açılıyor; kullanıcı ekranında Çalışma Alanı düğmesi
+paketi yükleyip çekmeceyi açıyor, ikinci tıklama `workspace.js`'in kendi
+dinleyicisiyle açılıyor; Görevler ekranında Site Ayarları › Genel bölmesi
+CodeMirror'u yükleyip 1 editör, SEO 3 editör çiziyor; yeni görev çekmecesi,
+Ctrl+K arama kutusu, kanalda tur ve mesaj gönderme çalışıyor. Kanal
+ekranında mesaj gönderildikten sonra görülen iki "jQuery is not defined"
+hatası ve çözülemeyen dış adresler değişiklik öncesinde de aynen var
+(sandbox dış ağa çıkamıyor).
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com) ve gerçek veriyle büyük kanal
+geçmişi denenmedi; ölçüm sandbox'ın boş veritabanında.
+
+---
+
 ## 2026.4.10 — Pano: kartlar tek istekte, yalnız görünürken yenileniyor; saat tarayıcıda (2026-10-13)
 
 **Belirti.** Erdal: "Welcome ekranı çok kasmaya başladı." Pano yavaş

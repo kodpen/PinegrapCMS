@@ -137,12 +137,18 @@ function pg_oauth_authorize() {
 
 	$client = $resolved['client'];
 
-	if (($client === null) || ($client['status'] !== 'active')) {
+	if ($client === null) {
 
 		// A client registered long ago and swept as unused still holds its
 		// old client_id and sends it here; only adding it again makes it
 		// register anew.
 		pg_oauth_authorize_page_error(lang('The application asking to connect is not known to this site. Start again from the application; if this keeps happening, remove the server there and add it again.'), $resolved['error']);
+
+	}
+
+	if ($client['status'] !== 'active') {
+
+		pg_oauth_authorize_page_error(lang('This application has been turned off on this site and cannot connect. Ask the site\'s administrator if you need it.'));
 
 	}
 
@@ -422,7 +428,7 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 						' . $fields . '
 						<p class="fw-semibold mb-2">' . h(lang('It will be able to:')) . '</p>
 						<div class="border rounded p-3 mb-3">' . $rows . '</div>
-						<p class="small text-muted">' . h(lang('It never gets more than your own account may do. You can end the connection at any time by signing out everywhere or changing your password.')) . '</p>
+						<p class="small text-muted">' . h(lang('It never gets more than your own account may do. You can end the connection at any time on the Connected applications screen, in your account menu on the panel.')) . '</p>
 						<button type="submit" name="pg_oauth_action" value="allow" class="btn btn-primary w-100">' . h(lang('Allow')) . '</button>
 						<button type="submit" name="pg_oauth_action" value="deny" class="btn btn-outline-secondary w-100 mt-2">' . h(lang('Cancel')) . '</button>
 					</form>

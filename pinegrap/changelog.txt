@@ -176,6 +176,25 @@
          değiştirilince korunuyor. Önceden liste "Son
          Değişiklik" sıralamasına dönüyordu.
 
+  ÇALIŞMA ALANI
+  --------------------------------------------------------
+
+  [HIZ] Çalışma Alanı ekranları daha hafif açılıyor. Bir
+         ekranın yüklediği JavaScript yaklaşık 5 MB'tan
+         2,2 MB'a, dosya sayısı 59'dan 16-18'e indi.
+         Çalışma Alanı'nın kendi betikleri küçültülmüş tek
+         dosyada geliyor ve bütün Çalışma Alanı ekranları
+         aynı dosyayı kullanıyor; kod editörü (yaklaşık
+         2 MB) yalnız Site Ayarları'nda kod alanı olan bir
+         bölüm açıldığında yükleniyor.
+
+  [HIZ] Sipariş, ürün, kişi, kullanıcı ve ERP kayıtlarının
+         ekranları Çalışma Alanı betiğini (yaklaşık 1 MB)
+         açılışta yüklemiyor ve Çalışma Alanı'na istek
+         göndermiyor. Betik, ekrandaki Çalışma Alanı
+         düğmesine ilk basıldığında geliyor ve çekmece
+         hemen açılıyor.
+
   DIŞ API
   --------------------------------------------------------
 
@@ -228,6 +247,19 @@
   [YENİ] Onay ekranı yanıtın nereye gideceğini türüyle
          söylüyor: bir web sitesi, bu bilgisayardaki bir program
          ya da bu cihazdaki bir uygulama.
+
+  [YENİ] Bağlı uygulamalar ekranı: panel kullanıcıları hesap
+         menüsündeki "Bağlı uygulamalar"dan siteye kendi
+         adlarına bağladıkları uygulamaları (Claude, Cursor gibi)
+         görür; her birinin neyi okuyup yazabildiğini ve ne
+         zaman kullanıldığını görür, bağlantıyı tek başına
+         sonlandırabilir. Diğer oturumlar kapanmaz.
+
+  [YENİ] Uygulama Erişimi'nde "Bağlı uygulamalar" kartı:
+         siteye OAuth ile bağlanan uygulamalar, bağlantı sayısı
+         ve son kullanımıyla listelenir. Bir uygulama
+         kapatılabilir (hemen durur, bağlantıları açılınca geri
+         gelir) ya da bütün bağlantılarıyla kaldırılabilir.
 
   [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
          okuma (GET /webhooks/{id}), adres, olay listesi ve
@@ -315,6 +347,23 @@
          değişiyor, gece yarısı tarih satırı da yenileniyor.
          Önceden saat dakikada bir sunucudan soruluyor ve bir
          dakikaya kadar geride kalabiliyordu.
+
+  [YENİ] Aktivite kartı: Son Güncellemeler, Formlar, Rehber,
+         Kullanıcılar, Site Günlükleri ve E-posta Kampanyaları
+         kartları tek bir geniş kartta, tek akışta. Solda
+         türler (İçerik, Formlar, Siparişler, Rehber, Yorumlar,
+         Kullanıcılar, Kampanyalar, Site Günlükleri) bugünkü
+         sayılarıyla ve son yedi günün küçük çubuklarıyla
+         duruyor; birine tıklayınca akış o türe süzülüyor ve
+         türün tam listesine bağlantı çıkıyor. Seçilen tür
+         hatırlanıyor. Siparişler ve yorumlar akışa yeni
+         girdi. Her tür, eski kartının yetkisiyle görünür.
+
+  [HIZ] Aktivite kartı sorgularını sınırlı okuyor. Eski Son
+         Güncellemeler kartı sayfa, dosya, klasör, kısa link
+         ve menü tablolarını her dakika baştan sona okuyordu;
+         E-posta Kampanyaları her kampanya için iki ek sorgu
+         atıyordu.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------

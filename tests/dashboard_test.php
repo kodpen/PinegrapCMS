@@ -172,3 +172,49 @@ function test_dashboard_batch_is_capped()
 
 	pg_assert_same(40, count(pg_dashboard_widgets_run_many(array('widget_ids' => $ids), array('role' => 0))['widgets']));
 }
+
+// Row data attributes: well-formed keys are written and their values escaped;
+// anything else is dropped rather than written into the markup.
+function test_dashboard_row_data_attributes()
+{
+	$row = pg_widget_row(array('name' => 'N', 'href' => 'x.php', 'data' => array('kind' => 'a"b', 'Bad Key' => 'x', 'on-click' => 'y')));
+
+	pg_assert_contains(' data-kind="a&quot;b"', $row, 'escaped value');
+	pg_assert_contains(' data-on-click="y"', $row, 'dashed key');
+	pg_assert_false(strpos($row, 'Bad Key') !== false, 'malformed key dropped');
+	pg_assert_contains(' data-kind=', pg_widget_row(array('name' => 'N', 'data' => array('kind' => 'k'))), 'div row');
+}
+
+// The bars keep the last seven days, scale to the busiest, and draw an empty
+// day as a stub marked zero.
+function test_dashboard_bars_scale_to_the_busiest_day()
+{
+	$bars = pg_widget_bars(array(9, 0, 1, 2, 0, 0, 4, 8));
+
+	pg_assert_same(7, substr_count($bars, '<i '), 'seven days');
+	pg_assert_contains('<i style="height:100%"></i>', $bars, 'busiest day fills the box');
+	pg_assert_contains('<i style="height:8%" class="is-zero"></i>', $bars, 'empty day');
+	pg_assert_contains('<i style="height:50%"></i>', $bars, 'half of the busiest');
+	pg_assert_same(7, substr_count(pg_widget_bars(array(0, 0, 0, 0, 0, 0, 0)), 'is-zero'), 'a quiet week');
+}
+
+// A filter button carries its key, its colour on the button itself, and the
+// count, bars and second line only when given.
+function test_dashboard_filter_button()
+{
+	$button = pg_widget_filter(array('key' => 'form', 'label' => 'Forms <b>', 'icon' => 'bi-x', 'color' => '#f59e0b', 'count' => '3', 'count_class' => 'is-urgent', 'bars' => array(1, 2)));
+
+	pg_assert_contains('data-pg-filter="form"', $button, 'key');
+	pg_assert_contains('aria-pressed="false"', $button, 'starts unpressed');
+	pg_assert_contains('class="pg-filter" data-pg-filter="form" aria-pressed="false" style="--pg-k:#f59e0b;--pg-k-ink:#18181b"', $button, 'colour on the button');
+	pg_assert_contains('Forms &lt;b&gt;', $button, 'label escaped');
+	pg_assert_contains('<span class="pg-filter-count is-urgent">3</span>', $button, 'count');
+	pg_assert_contains('pg-bars', $button, 'bars');
+
+	$plain = pg_widget_filter(array('key' => 'all', 'label' => 'All'));
+
+	pg_assert_false(strpos($plain, 'pg-filter-count') !== false, 'no count');
+	pg_assert_false(strpos($plain, 'pg-bars') !== false, 'no bars');
+	pg_assert_false(strpos($plain, 'pg-filter-sub') !== false, 'no second line');
+	pg_assert_false(strpos($plain, 'style=') !== false, 'no colour');
+}

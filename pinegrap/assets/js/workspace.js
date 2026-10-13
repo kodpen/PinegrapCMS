@@ -7,7 +7,11 @@
  * (workspace_timeline.php) and the Workspace drawer on the order, contact
  * and product screens.
  *
- * Served as it is, without a minified twin, like the ERP's editor scripts.
+ * Served minified as part of assets/js/workspace.min.js, together with the
+ * workspace_*.js files it leans on (pg_js_bundles(), includes/fn/output.php).
+ * After editing any of them run `php tools/build_js.php`; CI fails while the
+ * .min.js no longer matches.
+ *
  * Every text comes from the #ws-config block (translated on the PHP side);
  * this file holds no visible literal. Anything the server renders as HTML
  * (message bodies, task cards, tag chips) was escaped there; everything
@@ -18443,6 +18447,11 @@
                 api('ws_tick').catch(function () {});
             }, 1500);
 
+            function recordTrigger(trigger) {
+                var parts = trigger.getAttribute('data-ws-record').split(':');
+                openRecord(parts[0], parseInt(parts[1], 10), trigger.getAttribute('data-ws-label') || '');
+            }
+
             document.addEventListener('click', function (event) {
                 var trigger = event.target.closest('[data-ws-record]');
 
@@ -18451,10 +18460,21 @@
                 }
 
                 event.preventDefault();
-
-                var parts = trigger.getAttribute('data-ws-record').split(':');
-                openRecord(parts[0], parseInt(parts[1], 10), trigger.getAttribute('data-ws-label') || '');
+                recordTrigger(trigger);
             });
+
+            // On a record's screen this script is fetched by the click on its
+            // Workspace button (ws_record_loader(), screen.php): from here on
+            // the listener above answers, and the click that brought the
+            // script in is answered now.
+            window.PGWsRecordReady = true;
+
+            if (window.PGWsPendingRecord) {
+                var pending = window.PGWsPendingRecord;
+
+                window.PGWsPendingRecord = null;
+                recordTrigger(pending);
+            }
         }).catch(function (error) {
             var root = document.getElementById('ws-root');
 
