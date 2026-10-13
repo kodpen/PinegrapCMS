@@ -582,6 +582,24 @@
          yetiyor. Arama, uygulamaya izin verilmeyen kayıt
          türlerini (sipariş, müşteri, fatura…) göstermez.
 
+  [YENİ] Klasörler API'de: GET /folders ve GET /folders/{id}
+         klasör ağacını, her klasörün erişim türünü (kendi ya
+         da üstten gelen) ve içindeki klasör, sayfa ve dosya
+         sayısını verir. POST /folders klasör açar, POST
+         /folders/{id} adını, sırasını, arşiv durumunu ve
+         yerini değiştirir, boş klasör silinebilir. Klasörü ya
+         da sayfayı daha çok kişiye açacak bir değişiklik (özel
+         klasörü herkese açık yapmak, özel bir klasörden herkese
+         açık bir klasöre taşımak) API'den yapılmaz, klasör
+         ekranında yapılır.
+
+  [YENİ] Sayfa güncellemede (POST /pages/{id}) meta anahtar
+         kelimeleri, yorum ayarları (yorumlar, yeni yorum alma,
+         otomatik yayın, giriş şartı) ve sayfanın klasörü
+         değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
+         taslak ya da geri dönüşüm kutusunda olup olmadığını
+         da gösteriyor.
+
   [YENİ] ERP faturaları ve teklifleri API'den ve MCP'den
          yazılıyor. Faturada: taslak yazma, değiştirme ve
          silme (POST /erp/invoices), kesme, iptal, iade
@@ -598,6 +616,21 @@
          satış credit_limit koduyla reddedilir. erp:write
          yetkisi gerekir; e-Belge sağlayıcısına gönderim
          paneldeki fatura ekranında kalır.
+
+  [YENİ] ERP irsaliyeleri, stok sayımları ve minimum stok
+         API'den ve MCP'den yazılıyor. İrsaliye: kesilmiş
+         faturadan, siparişten ya da cari ve satırlarla yazma
+         (POST /erp/waybills; gönderilen satırlar kısmi sevkiyat
+         olur), iptal ve faturalama. Stok sayımı: başlatma,
+         barkod, ürün kodu ya da ürün numarasıyla sayma
+         (ekleme, sayıyı belirleme, sayımdan çıkarma), uygulama
+         ve iptal. Minimum stok: POST /erp/stock/minimums ile
+         toplu ayar. Geri alınamayan adımlar (irsaliye iptali,
+         sayımın uygulanması) önce X-Dry-Run ile denenebilir.
+         Yeni web kancası olayları: erp.waybill.cancelled ve
+         erp.stock_count.applied; ikisi de panelden yapılınca
+         da yayılır ve denetim izine düşer. erp:write yetkisi
+         gerekir.
 
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık

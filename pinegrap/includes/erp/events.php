@@ -217,12 +217,13 @@ function erp_event_account($account_id)
 }
 
 /**
- * Announce a delivery note that was just issued.
+ * Announce a delivery note: issued or cancelled.
  *
- * @param int $waybill_id
+ * @param int    $waybill_id
+ * @param string $event  'erp.waybill.created' | 'erp.waybill.cancelled'
  * @return int
  */
-function erp_event_waybill($waybill_id)
+function erp_event_waybill($waybill_id, $event = 'erp.waybill.created')
 {
     $waybill = db_item("SELECT id, full_number, status, account_id, order_id, invoice_id, issue_date, ship_date, carrier_title
         FROM erp_waybills WHERE id = '" . (int) $waybill_id . "' LIMIT 1");
@@ -231,11 +232,12 @@ function erp_event_waybill($waybill_id)
         return 0;
     }
 
-    if (function_exists('erp_archive_defer')) {
+    // The note as issued is kept; a cancelled one keeps that copy.
+    if (($event === 'erp.waybill.created') && function_exists('erp_archive_defer')) {
         erp_archive_defer('waybill', (int) $waybill['id']);
     }
 
-    return erp_event('erp.waybill.created', array(
+    return erp_event($event, array(
         'id' => (int) $waybill['id'],
         'number' => (string) $waybill['full_number'],
         'status' => (string) $waybill['status'],
@@ -371,5 +373,33 @@ function erp_event_purchase_order($order_id, $event)
         'currency' => (string) $order['currency'],
         'grand_total' => (int) $order['grand_total'],
         'sent_at' => erp_event_time($order['sent_at']),
+    ));
+}
+
+/**
+ * Announce a stock count that was applied: the store's stock of every product
+ * on it was set to what was counted.
+ *
+ * @param int $count_id
+ * @param int $changed  How many products' stock it changed
+ * @return int
+ */
+function erp_event_stock_count($count_id, $changed)
+{
+    $count = db_item("SELECT c.id, c.title, c.status, c.applied_at,
+            (SELECT COUNT(*) FROM erp_stock_count_items i WHERE i.count_id = c.id) AS line_count
+        FROM erp_stock_counts c WHERE c.id = '" . (int) $count_id . "' LIMIT 1");
+
+    if (!is_array($count)) {
+        return 0;
+    }
+
+    return erp_event('erp.stock_count.applied', array(
+        'id' => (int) $count['id'],
+        'title' => (string) $count['title'],
+        'status' => (string) $count['status'],
+        'line_count' => (int) $count['line_count'],
+        'changed' => (int) $changed,
+        'applied_at' => erp_event_time($count['applied_at']),
     ));
 }
