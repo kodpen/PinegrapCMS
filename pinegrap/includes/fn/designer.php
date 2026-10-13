@@ -2530,6 +2530,48 @@ function pg_designer_target_modal()
 }
 
 /**
+ * Is a page name taken by something other than a page: a file, a short
+ * link, a file or folder in the site root, or an address the site answers
+ * itself (sitemap.xml, robots.txt)? Each of them is served at that address
+ * in place of the page.
+ *
+ * check_name_availability() asks the same for the classic screens, but it
+ * reads the site root as '../' from the working directory, which is the
+ * software directory only there; a designer page is also saved through the
+ * API and the MCP server. The root is taken from the software directory's
+ * location instead.
+ *
+ * @param string $name page name
+ * @return bool
+ */
+function pg_designer_page_name_taken_elsewhere($name)
+{
+    $name  = trim((string)$name);
+    $lower = mb_strtolower($name, 'UTF-8');
+    if ($lower === '') {
+        return false;
+    }
+    if ($lower === 'sitemap.xml' || $lower === 'robots.txt') {
+        return true;
+    }
+    if ((int)db_value("SELECT COUNT(*) FROM files WHERE name = '" . e($name) . "'") > 0) {
+        return true;
+    }
+    if ((int)db_value("SELECT COUNT(*) FROM short_links WHERE name = '" . e($name) . "'") > 0) {
+        return true;
+    }
+    // Compared without case: Windows serves a folder whatever the case of
+    // the address, and a page should not depend on the host's file system.
+    $entries = @scandir(dirname(PG_FUNCTIONS_DIR));
+    foreach (is_array($entries) ? $entries : array() as $entry) {
+        if ($entry !== '.' && $entry !== '..' && mb_strtolower($entry, 'UTF-8') === $lower) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Validate and persist ONE page of a visual design.
  *
  * Everything that used to be inline in edit_system_style.php's POST branch —
@@ -2589,7 +2631,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
              WHERE page_name = '" . e($name) . "'"
              . ($page_id > 0 ? " AND page_id <> '$page_id'" : '') . "
              LIMIT 1");
-        if ($dup > 0) {
+        // A file, short link or root folder of that name only matters for
+        // a name being given now: a page that already has it keeps saving.
+        $renamed = ($page_id <= 0)
+            || ((string)db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1") !== $name);
+        if ($dup > 0 || ($renamed && pg_designer_page_name_taken_elsewhere($name))) {
             $errors[] = lang(array('string' => 'The page name "{var:1}" is already in use.', 'vars' => $name));
         }
         // A language directory (/en/...) would shadow a page of the same name.

@@ -81,7 +81,12 @@ if (isset($_GET['page']) && $_GET['page'])
 		// path segment is parsed here unconditionally so embedded system widgets
 		// can read their own context (product slug, drill-down group, etc.)
 		// without the page being forced into a legacy page_type.
-		if ($layout_type == 'system') {
+		//
+		// 'system' is also the default layout of a classic page, so a
+		// classic form list view is left to its own case below: it reads
+		// the record's address name from the segment (/blog/<name>), and
+		// cutting the segment off here made every such address miss.
+		if ($layout_type == 'system' && $page_type !== 'form list view') {
 			// A record of a form with pretty URLs on, named after the page
 			// that shows it (/blog-post/<name>) or, the classic shape, after
 			// a list of it (/blog/<name>, sent on to the record's address).

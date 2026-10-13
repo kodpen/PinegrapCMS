@@ -2297,28 +2297,43 @@ function ws_api_note_or_404($viewer, $note_id)
 {
     $note = ws_note_for($viewer, (int) $note_id, 'view');
 
-    if (!$note) {
+    if (!$note || !ws_api_note_reachable($viewer, $note)) {
         api_fail_not_found(lang('Note'));
     }
 
-    if (ws_api_is_claude() && ($note['access'] === 'view')) {
-        $reached = false;
+    return $note;
+}
 
-        foreach ((array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
-            if ((int) $share['user_id'] === (int) $viewer['id']) {
-                $reached = true;
-            } elseif ((int) $share['channel_id'] > 0) {
-                $channel = ws_channel($share['channel_id']);
-                $reached = $reached || ($channel && ws_can_read_channel($viewer, $channel) && ws_claude_channel_allowed($channel));
-            }
+/**
+ * Whether the current application reaches a note the owner may read: always,
+ * except for the application Claude works through and a note that reached
+ * the owner only through a channel Claude may not be asked in.
+ *
+ * @param array $viewer
+ * @param array $note with access (ws_note_for())
+ * @return bool
+ */
+function ws_api_note_reachable($viewer, $note)
+{
+    if (!ws_api_is_claude() || ($note['access'] !== 'view')) {
+        return true;
+    }
+
+    foreach ((array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
+        if ((int) $share['user_id'] === (int) $viewer['id']) {
+            return true;
         }
 
-        if (!$reached) {
-            api_fail_not_found(lang('Note'));
+        if ((int) $share['channel_id'] > 0) {
+            $channel = ws_channel($share['channel_id']);
+
+            if ($channel && ws_can_read_channel($viewer, $channel) && ws_claude_channel_allowed($channel)) {
+                return true;
+            }
         }
     }
 
-    return $note;
+    return false;
 }
 
 /**
@@ -2483,6 +2498,90 @@ function ws_api_notes_get($params)
     $note = ws_api_note_or_404($viewer, $params['id']);
 
     api_ok(ws_api_note_present($viewer, ws_note_present($viewer, $note)));
+}
+
+/**
+ * The fields of a note write, in the shape ws_note_save() reads; only those
+ * sent.
+ *
+ * @param array $params
+ * @return array
+ */
+function ws_api_note_input($params)
+{
+    $data = array();
+
+    foreach (array('title', 'body', 'pinned') as $field) {
+        if (array_key_exists($field, $params)) {
+            $data[$field] = $params[$field];
+        }
+    }
+
+    return $data;
+}
+
+function ws_api_notes_create($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_notes_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $data = ws_api_note_input($params);
+
+    if ((trim((string) ($data['title'] ?? '')) === '') && (trim((string) ($data['body'] ?? '')) === '')) {
+        api_fail_validation(lang('The note is empty.'), 'body');
+    }
+
+    $result = ws_note_save($viewer, $data);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $result['note_id'], 'view'))), 201);
+}
+
+function ws_api_notes_update($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_notes_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $note = ws_api_note_or_404($viewer, $params['id']);
+
+    if (!in_array($note['access'], array('owner', 'edit'), true)) {
+        api_fail(403, 'forbidden', lang('This note was shared with you to read only.'));
+    }
+
+    $data = ws_api_note_input($params);
+
+    if (array_key_exists('pinned', $data) && ($note['access'] !== 'owner')) {
+        api_fail_validation(lang('Only the one who wrote a note can pin it.'), 'pinned');
+    }
+
+    $data['note_id'] = (int) $note['id'];
+
+    // A change made by somebody else after the note was read is not written
+    // over; ws_note_save() says who made it.
+    if (isset($params['base'])) {
+        $data['base'] = (int) $params['base'];
+    }
+
+    $result = ws_note_save($viewer, $data);
+
+    if (!$result['ok']) {
+        if ($result['conflict']) {
+            api_fail(409, 'changed_meanwhile', $result['error'], 'base');
+        }
+
+        api_fail_validation($result['error'], 'body');
+    }
+
+    api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $note['id'], 'view'))));
 }
 
 /* ---------------------------------------------------------------------------

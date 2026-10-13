@@ -60,6 +60,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Sonradan kişinin kendi adıyla iş yapan kayıt (zamanlanmış mesaj gibi) yalnız
   cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
   iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
+- Çalışma Alanı araması (`GET /workspace/search`) panel kayıtlarını türü
+  okuyan kapsamla süzer: `ws_api_search_record_scopes()`
+  (`includes/workspace/api_day.php`). `ws_record_type_keys()`'e yeni bir
+  kayıt türü eklenirse oraya da kapsamıyla yaz; yazılmayan tür API'de
+  aranmaz.
 - Panelde yeni bir özellik kayıt yapısını değiştirdiyse (yeni durum, yeni bağ,
   yeni kanıt) var olan API nesnesine de yansıt: olay kataloğunda olup nesnede
   okunamayan alan bırakma (4.8'de teklif imzası ve tartışmalar böyle kaldı).

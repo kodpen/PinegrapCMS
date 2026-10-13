@@ -1959,6 +1959,11 @@ function pg_designer_resolve_tab_values($value, $tab_ids)
  * A widget can sit inside a shared component the page places (the login
  * region in an account bar) rather than on the page itself, so the trees of
  * the components found are read too, as deep as the renderer follows them.
+ *
+ * A page sent as unchanged carries no tree, yet its widgets may name a new
+ * tab: picking a page in a widget's settings writes the widget row at once
+ * and leaves the page's own tree and settings as they were. Such a page is
+ * read from its stored tree, and only when some widget still holds a key.
  */
 function pg_designer_resolve_tab_refs($pages, $tab_ids)
 {
@@ -1969,10 +1974,15 @@ function pg_designer_resolve_tab_refs($pages, $tab_ids)
             foreach ($mm[1] as $sid) { $sid = (int)$sid; if ($sid > 0) $into[$sid] = true; }
         }
     };
+    if (!(int)db_value("SELECT COUNT(*) FROM shared_components WHERE system_region_config LIKE '%\"tab:%'")) return;
     $sids = array();
     foreach ((array)$pages as $p) {
-        if (!is_array($p) || !isset($p['tree_json'])) continue;
-        $find_ids($p['tree_json'], $sids);
+        if (!is_array($p)) continue;
+        if (isset($p['tree_json'])) {
+            $find_ids($p['tree_json'], $sids);
+        } elseif (!empty($p['page_id']) && (int)$p['page_id'] > 0) {
+            $find_ids(pg_page_tree_json((int)$p['page_id']), $sids);
+        }
     }
     if (empty($sids)) return;
 
