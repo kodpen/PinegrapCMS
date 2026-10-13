@@ -186,6 +186,9 @@ if (!$_POST) {
     // A sales quote is written to a customer, so a pure supplier gets no quote links.
     $show_quotes = function_exists('erp_quotes_ready') && erp_quotes_ready() && ((string) $account['kind'] !== 'supplier');
 
+    // A purchase order goes to a supplier, so a pure customer gets no order links.
+    $show_purchase_orders = function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() && ((string) $account['kind'] !== 'customer');
+
     echo
     pg_page_shell([
         'title' => lang('Edit Account'),
@@ -213,6 +216,8 @@ if (!$_POST) {
                         ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
                         ' . ($show_quotes ? '<a class="btn btn-sm btn-outline-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
                         ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                        ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
+                        ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                         ' . $output_einvoice_check . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '

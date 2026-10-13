@@ -82,7 +82,8 @@ if (!defined('ERP_MANUAL_MAX_LINES')) {
  * @param array $lines_in  Each: description, quantity, unit_price (kurus),
  *                         tax_rate, and optionally product_id, unit_code,
  *                         discount_rate, offer_id, offer_discount_rate,
- *                         withholding_code, withholding_rate, tax2_rate
+ *                         withholding_code, withholding_rate, tax2_rate,
+ *                         source_line
  * @return array ['lines' => array, 'totals' => array, 'error' => string, 'field' => string]
  */
 function erp_manual_lines_build($lines_in)
@@ -185,7 +186,7 @@ function erp_manual_lines_build($lines_in)
         // never withheld.
         $line_withholding = ($withholding_rate > 0) ? erp_apply_rate($line_tax, $withholding_rate) : 0;
 
-        $lines[] = array(
+        $built_line = array(
             'product_id' => max(0, $product_id),
             'description' => $description,
             'quantity' => $quantity,
@@ -205,6 +206,16 @@ function erp_manual_lines_build($lines_in)
             'withholding_amount' => $line_withholding,
             'line_total' => $line_total,
         );
+
+        // The purchase order line this line stands for, or an order line's
+        // own key (includes/erp/purchase_orders.php): carried as it came,
+        // never worked out, and left off a line that has none.
+        $source_line = erp_source_line_key($line['source_line'] ?? '');
+        if ($source_line !== '') {
+            $built_line['source_line'] = $source_line;
+        }
+
+        $lines[] = $built_line;
 
         $subtotal += $line_total;
         $discount_total += $discount_amount;
@@ -226,6 +237,21 @@ function erp_manual_lines_build($lines_in)
         'error' => '',
         'field' => '',
     );
+}
+
+/**
+ * A purchase order line key as it is stored (erp_invoice_items.source_line,
+ * the order's line_data): letters and digits, at most 16 of them. Nothing
+ * but zeros is no key: the editor empties a cleared row's hidden fields to 0.
+ *
+ * @param mixed $value
+ * @return string  '' when there is no key
+ */
+function erp_source_line_key($value)
+{
+    $key = substr(preg_replace('/[^A-Za-z0-9]/', '', (string) $value), 0, 16);
+
+    return (trim($key, '0') === '') ? '' : $key;
 }
 
 /**
