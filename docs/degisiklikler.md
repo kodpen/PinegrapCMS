@@ -155,6 +155,122 @@ kartlardan aynen taşındı, canlıda bakılmalı.
 
 ---
 
+## 2026.4.10 — Çok dilli site: otomatik dil yönlendirmesi ve ziyaretçi konumu (10.1) (2026-10-13)
+
+**İstek.** Erdal: "kullanıcı diline veya konumuna göre otomatik uygun dile
+yönlendirme mekanizması ayarlıyalım. isabetli olsun." Aynı istekteki WAF
+ülke kısıtlaması ayrı PR'da gelir ve buradaki konum katmanını kullanır.
+
+**Konum katmanı (`includes/geo.php`).** `waf.php` gibi bağımsızdır
+(functions.php, oturum, `lang()` yok) ve `waf.php` onu yükler; böylece
+router'ın WAF aşaması da ülkeyi okuyabilir. `pg_geo_country()` istek başına
+bir kez `code` ve `source` döner. Kaynak sırası:
+
+1. Kenarın başlığı (`CF-IPCountry`, `CloudFront-Viewer-Country`), yalnız
+   `waf_client_ip()`'nin adres başlığına inandığı eşte (Cloudflare aralığı
+   ya da `waf_trusted_proxies`, Cloudflare Tunnel'da 127.0.0.1). Ülke ile
+   adres aynı yerden gelir; sunucuya doğrudan gelen sahte başlık okunmaz.
+   `XX` bilinmiyor sayılır, `T1` (Tor) korunur.
+2. Sunucu modülü (`GEOIP_COUNTRY_CODE`, `MM_COUNTRY_CODE`), yalnız arada
+   vekil yokken (modül bağlanan adresi bulur).
+3. Sitenin kendi veritabanı, `data/geo/`: DB-IP "IP to Country Lite" (CC BY
+   4.0, aylık). Sıralı, sabit boyutlu kayıtlar (IPv4 4 bayt, IPv6 /64'ün 8
+   baytı, ardından 2 harf); disk üzerinde ikili arama yaklaşık yirmi kayıt
+   okur. İstek hiçbir ağ çağrısı yapmaz. Özel ve ayrılmış adres sorulmaz.
+
+**Veritabanı (`includes/fn/geo.php`).**
+- `pg_geo_db_refresh()` bu ayın listesini, henüz yayınlanmadıysa geçen ayınkini
+  indirir (cURL, 60 sn, `pinegrap_user_agent()`, `pg_curl_tls()`).
+- Satırlar aralık kayıtlarına çevrilir (`pg_geo_db_records()`): komşu aynı
+  ülke birleşir, delikler ve uçlar `--` olur, sırası bozuk liste reddedilir.
+  Aile başına 1000 kaydın altı "eksik" sayılır ve eski veritabanı kalır.
+- Dosyalar derlemenin adını taşır; `meta.json` en son, rename ile yazılır.
+  Windows açık dosyayı yeniden adlandırmadığı için okunmakta olan çift hiç
+  değiştirilmez, eski çiftler sonradan silinir. Tek derleme `flock` ile;
+  başarısız deneme 12 saat beklenir (`attempt.txt`).
+- Genel iş (`job.php`) `pg_geo_db_due()` ile yalnız konumu okuyan bir ayar
+  açıkken ve veritabanı bu ayın değilse indirir. Ayarlar ekranı ilk kayıtta
+  ve "şimdi indir" düğmesiyle indirir.
+
+**Yönlendirme (`includes/fn/language_redirect.php`).** Kanca `get_page.php`'de,
+sayfa bulunup arşiv denetimi geçtikten sonra, sayfa türlerinden önce.
+Karar sırası (`pg_lang_redirect_decide()`):
+
+1. `pg_language` çerezi: ziyaretçinin kendi seçimi.
+2. Accept-Language: q'ya göre, eşitte yazılış sırasıyla. `de-AT` → `de`;
+   Çince yazı ya da bölgeyle zh-CN / zh-TW, Portekizce Brezilya'da pt-BR;
+   `iw`, `in`, `nb`, `nn`, `fil` eş adları; en son aynı dilin başka çeşidi.
+3. Ülke: `pg_lang_country_languages()` resmi dilleri en yaygını önde verir.
+4. Yedek dil: yalnız ziyaretçi bir işaret verdiyse ve site onun dillerinin
+   hiçbirinde yoksa. İşaret yoksa sayfa olduğu gibi kalır.
+
+Kip `language`, `country` ya da `both`; ülke yalnız gerekince sorulur.
+
+**Kim yönlendirilmez.** GET olmayan istek; `Sec-Fetch-Dest` belge olmayan
+(çerçeve, editör önizlemesi); XHR; `IS_BOT` ya da `waf_classify_bot()`
+insan demeyen istemci; oturum açmış personel; dil dizinindeki adres
+(`/en/...` istendiği gibi açılır); aynı siteden gelen istek (referer bu
+host). Yani yalnız ziyaretin ilk sayfası yönlenir. API, MCP, OAuth ve
+integration uçları `get_page.php`'ye hiç uğramaz.
+
+**Kapsam.** `home` (varsayılan) yalnız sitenin kökü, `all` görsel tasarımın
+her sayfası. Her iki durumda sayfanın çevrilmiş gövdesi olmalıdır:
+`layout_type = 'system'` ve ağaç (`pg_page_tree_sql_expr()`, çeviri
+çizicisinin kullandığı test). `layout_type` tek başına yetmez, eski sistem
+düzenleri de 'system' taşır.
+
+**Seçimin hatırlanması.** Aynı siteden gelen istekte referer'ın dili bu
+sayfanınkinden farklıysa (dil değiştirici ya da dizinler arası link), bu
+sayfanın dili `pg_language`'a yazılır (bir yıl, HttpOnly, SameSite=Lax).
+Tarayıcıların varsayılanı ve WAF güvenlik başlıklarındaki
+`Referrer-Policy: strict-origin-when-cross-origin` aynı kökende tam yolu
+gönderir.
+
+**Yanıt.** 302, `Cache-Control: private, no-store`, `Vary: Accept-Language,
+Cookie`; sorgu dizesi korunur. Arama motorunun dizinlediği adres sayfanın
+kendisidir; `hreflang` x-default kaynak adresi göstermeye devam eder.
+
+**Panel.** Ayarlar › Diller ve Çeviri'de `pgset-language-redirect` kartı:
+- anahtar, kip, kapsam ve yedek dil (yalnız yayındaki hedef diller);
+- ekranı açanın tarayıcısının nereye gönderileceği (`pg_lang_redirect_decide()`
+  kayıtlı ayarla);
+- bu isteğin konumu ve kaynağı, veritabanının durumu;
+- lisansın istediği DB-IP atfı ve "Konum veritabanını şimdi indir" düğmesi.
+
+Hedef dil yokken uyarı, kolonlar yokken not gösterir.
+
+**Şema (10.1).** `config.language_redirect` TINYINT(1) 0,
+`language_redirect_mode` ENUM('language','country','both') 'both',
+`language_redirect_scope` ENUM('home','all') 'home',
+`language_redirect_fallback` TEXT NULL. Sabitler `LANGUAGE_REDIRECT*`
+(`init.php`). `tests/innodb_test.php` sayıları güncellendi: 418 kolon, TEXT
+dönüşümünden önce MySQL 8.0'da 8556 bayt, sunucu satırı 64.095 bayt.
+
+**Ödün / sonraya kalan.** Ülke → dil haritası kodda sabittir; bölgesel diller
+(Katalonya gibi) ayrı ele alınmaz. `both` kipinde tarayıcı ile konum farklı
+dil derse tarayıcı kazanır.
+
+**Doğrulama.** Birim testleri: `tests/language_redirect_test.php` ve
+`tests/geo_test.php` (uydurma bir listeden derleme ve arama dahil).
+Sandbox'ta hello-pinegrap şablonu kuruldu (kaynak tr, hedef en), ayar panelden
+kaydedildi ve ön yüzde 30 durum denendi:
+- en tarayıcı 302 ile /en/'e gider, tr tarayıcı kalır;
+- aynı sitenin referer'ı kalır, Google referer'ı yönlenir;
+- /en/'e geçiş çerezi yazar; çerez tr iken en tarayıcı kalır;
+- Googlebot, iframe, HEAD, oturumlu personel ve eski düzen sayfası kalır;
+- home ve all kapsamları, yedek dil;
+- güvenilen vekilden gelen CF-IPCountry (both, country, T1) okunur,
+  güvenilmeyen eşten gelen sahte başlık okunmaz;
+- kapalıyken hiçbir istek yönlenmez.
+
+Migration taze kurulumda koştu, kolonlar silinip iki kez daha koşturuldu.
+
+**Doğrulanmayan.** DB-IP'den gerçek indirme: sandbox'ın ağı
+download.db-ip.com'a kapalıdır ("CONNECT tunnel failed, response 403"),
+derleme uydurma listeyle sınandı. IIS'te ve Cloudflare arkasında deneme.
+
+---
+
 ## 2026.4.10 — Pano: Aktivite kartı, altı liste kartı tek süzgeçli akışta (2026-10-13)
 
 **İstenen.** Erdal: son form, rehber, kullanıcı, site günlüğü ve kampanya

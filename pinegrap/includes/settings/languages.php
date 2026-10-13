@@ -199,6 +199,166 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Automatic Language Redirect ──
+
+if (!empty($language_redirect_ready)) {
+
+    // The languages a visitor can be sent to as a fallback: the served
+    // targets. The source language is where a visitor stays anyway.
+    $output_language_redirect_fallbacks = '<option value="">' . lang('-None- (the page stays as it is)') . '</option>';
+    $language_redirect_targets = 0;
+
+    foreach (($translation_settings_ready ? pg_tr_languages() : array()) as $language_redirect_code => $language_redirect_row) {
+        if ($language_redirect_code === $translation_source) {
+            continue;
+        }
+
+        $language_redirect_targets++;
+        $output_language_redirect_fallbacks .= '<option value="' . h($language_redirect_code) . '"' . (($language_redirect_code === $language_redirect_fallback) ? ' selected="selected"' : '') . '>'
+            . h(pg_tr_language_label($language_redirect_code)) . ' (' . h($language_redirect_code) . ')</option>';
+    }
+
+    $output_language_redirect_modes = '';
+
+    foreach (array(
+        'both'     => array(lang('Browser language, then location'), lang('The languages the visitor\'s browser asks for, in their order of preference; when the site is served in none of them, the languages of the country the visitor is in.')),
+        'language' => array(lang('Browser language only'), lang('The languages the visitor\'s browser asks for. Where the visitor is plays no part.')),
+        'country'  => array(lang('Location only'), lang('The languages of the country the visitor is in, whatever their browser asks for.')),
+    ) as $language_redirect_mode_key => $language_redirect_mode_text) {
+        $output_language_redirect_modes .= '
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="language_redirect_mode" id="language_redirect_mode_' . $language_redirect_mode_key . '" value="' . $language_redirect_mode_key . '"' . (($language_redirect_mode === $language_redirect_mode_key) ? ' checked="checked"' : '') . '/>
+                                        <label class="form-check-label" for="language_redirect_mode_' . $language_redirect_mode_key . '"><strong>' . h($language_redirect_mode_text[0]) . '</strong></label>
+                                        <div class="form-text">' . h($language_redirect_mode_text[1]) . '</div>
+                                    </div>';
+    }
+
+    $output_language_redirect_scopes = '';
+
+    foreach (array(
+        'home' => array(lang('The home page only'), lang('A visitor who opens the site\'s address is sent to the home page in their language. Recommended: a link to any other page opens that page as it was shared.')),
+        'all'  => array(lang('Every page of a visual design'), lang('A visitor who arrives on any page of a visual design, from a search result or a shared link, is sent to that page in their language.')),
+    ) as $language_redirect_scope_key => $language_redirect_scope_text) {
+        $output_language_redirect_scopes .= '
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="language_redirect_scope" id="language_redirect_scope_' . $language_redirect_scope_key . '" value="' . $language_redirect_scope_key . '"' . (($language_redirect_scope === $language_redirect_scope_key) ? ' checked="checked"' : '') . '/>
+                                        <label class="form-check-label" for="language_redirect_scope_' . $language_redirect_scope_key . '"><strong>' . h($language_redirect_scope_text[0]) . '</strong></label>
+                                        <div class="form-text">' . h($language_redirect_scope_text[1]) . '</div>
+                                    </div>';
+    }
+
+    // What the operator's own browser would get with the saved settings: the
+    // quickest way to see that the redirect reads a visitor right.
+    $output_language_redirect_check = '';
+
+    if ($translation_settings_ready && ($language_redirect_targets > 0)) {
+        $language_redirect_decision = pg_lang_redirect_decide($language_redirect_mode, $language_redirect_fallback);
+        $language_redirect_tags = $language_redirect_decision['tags'] ? implode(', ', $language_redirect_decision['tags']) : lang('none');
+        $language_redirect_label = ($language_redirect_decision['code'] !== '') ? pg_tr_language_label($language_redirect_decision['code']) : '';
+
+        if (($language_redirect_decision['code'] === '') || ($language_redirect_decision['code'] === $translation_source)) {
+            $language_redirect_sentence = lang(array(
+                'string' => 'Your browser asks for {var:1}: you would stay on the page in {var:2}.',
+                'vars'   => array($language_redirect_tags, pg_tr_language_label($translation_source))));
+        } elseif ($language_redirect_decision['reason'] === 'choice') {
+            $language_redirect_sentence = lang(array(
+                'string' => 'You chose {var:1} on this site before, so you would be sent to it.',
+                'vars'   => array($language_redirect_label)));
+        } elseif ($language_redirect_decision['reason'] === 'country') {
+            $language_redirect_sentence = lang(array(
+                'string' => 'From your location you would be sent to {var:1}.',
+                'vars'   => array($language_redirect_label)));
+        } elseif ($language_redirect_decision['reason'] === 'fallback') {
+            $language_redirect_sentence = lang(array(
+                'string' => 'Your browser asks for {var:1}, none of which the site is served in: you would be sent to the fallback, {var:2}.',
+                'vars'   => array($language_redirect_tags, $language_redirect_label)));
+        } else {
+            $language_redirect_sentence = lang(array(
+                'string' => 'Your browser asks for {var:1}: you would be sent to {var:2}.',
+                'vars'   => array($language_redirect_tags, $language_redirect_label)));
+        }
+
+        $output_language_redirect_check = '
+                    <div class="col-12">
+                        <div class="alert alert-secondary mb-0 py-2 small"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($language_redirect_sentence) . '</div>
+                    </div>';
+    }
+
+    // Where this request comes from, and the database behind the answer
+    // when no edge says it.
+    $language_redirect_geo = pg_geo_status();
+
+    $output_language_redirect_location = ($language_redirect_geo['code'] !== '')
+        ? lang(array(
+            'string' => 'Location of this request: {var:1} ({var:2}), from {var:3}.',
+            'vars'   => array($language_redirect_geo['name'], $language_redirect_geo['code'], $language_redirect_geo['source_label'])))
+        : lang('The location of this request is not known.');
+
+    $language_redirect_database = $language_redirect_geo['database'];
+
+    $output_language_redirect_database = is_array($language_redirect_database)
+        ? lang(array(
+            'string' => 'Location database: {var:1}, {var:2} address ranges, built on {var:3}.',
+            'vars'   => array((string) $language_redirect_database['version'], number_format((int) $language_redirect_database['rows4'] + (int) $language_redirect_database['rows6']), get_absolute_time(array('timestamp' => (int) $language_redirect_database['built_at'], 'type' => 'date')))))
+        : lang('There is no location database yet. It is downloaded when a setting needs the visitor\'s location: on saving, and then once a month by the general job.');
+
+    $output_language_redirect = '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . ($language_redirect ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" type="checkbox" id="language_redirect" name="language_redirect" data-bs-target="#language_redirect_row"/>
+                            <label class="form-check-label" for="language_redirect">' . lang('Send visitors to their language') . '</label>
+                            <div class="form-text">' . lang('A visitor who arrives on a page in the source language is sent to the same page in their own language, when the site is served in it. Only the first page of a visit is redirected, and only a person\'s browser: search engines, signed-in staff and visitors already moving around the site see the page they asked for. A visitor who changes the language is remembered and not redirected again.') . '</div>
+                        </div>' . (($language_redirect_targets === 0) ? '
+                        <div class="form-text text-warning-emphasis"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('The redirect needs a served target language. Add one under Site Languages.') . '</div>' : '') . '
+                        <div class="collapse popover fade bs-popover-bottom p-0 w-100" id="language_redirect_row">
+                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
+                            <div class="popover-body">
+                                <div class="row gy-3">
+                                    <div class="col-12">
+                                        <label class="form-label">' . lang('What decides the language') . '</label>' . $output_language_redirect_modes . '
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">' . lang('Pages that are redirected') . '</label>' . $output_language_redirect_scopes . '
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="pg-f-md">
+                                            <label for="language_redirect_fallback" class="form-label">' . lang('Fallback language') . '</label>
+                                            <select name="language_redirect_fallback" id="language_redirect_fallback" class="form-select">' . $output_language_redirect_fallbacks . '</select>
+                                            <div class="form-text">' . lang('For a visitor whose languages the site is not served in, for example English for every visitor who does not read the source language. A visitor whose browser and location say nothing stays on the page.') . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>' . $output_language_redirect_check . '
+                    <div class="col-12">
+                        <div class="form-text">
+                            <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . h($output_language_redirect_location) . '<br/>
+                            <i class="bi bi-database me-1" aria-hidden="true"></i>' . h($output_language_redirect_database) . '<br/>
+                            ' . lang('Behind Cloudflare the country comes with every request; the database answers when it does not, for example for a request that reaches the server directly.') . ' ' . lang(array(
+                                'string' => 'IP geolocation by {var:1}.',
+                                'vars'   => array('<a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>'))) . '
+                        </div>
+                        <button type="submit" name="geo_db_refresh" value="1" class="btn btn-sm btn-outline-secondary mt-2"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>' . lang('Download the location database now') . '</button>
+                    </div>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-language-redirect" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                ' . lang('Automatic Language Redirect') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">' . (!empty($language_redirect_ready) ? $output_language_redirect : '
+                    <div class="col-12">
+                        <div class="alert alert-secondary mb-0 py-2 small">' . lang('These settings arrive with the 2026.4.10 upgrade, which this site has not run yet.') . '</div>
+                    </div>') . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Translation Engines ──
 
 $output_translation_google_state = $translation_google_key_stored

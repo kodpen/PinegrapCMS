@@ -480,6 +480,16 @@ if (
 
 }
 
+// The visitor location database (includes/fn/geo.php): this month's list,
+// fetched while a setting reads the visitor's location. The look is a file
+// read; the fetch happens about once a month, and a failed one is tried again
+// twelve hours later, not on every tick.
+if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
+
+    pg_geo_db_refresh();
+
+}
+
 // Optional dispatcher: at most one other scheduled job per tick, and only as
 // the very last thing this script does. Several of those scripts call exit()
 // from inside their own control flow, which ends this process too - harmless

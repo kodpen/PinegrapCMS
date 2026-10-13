@@ -388,6 +388,35 @@
          dosya) artık yüklemiyor; Site Ayarları'nda kod alanı
          olan bir bölüm açılınca geliyor.
 
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [YENİ] Otomatik dil yönlendirmesi: siteye kaynak dildeki
+         bir sayfadan giren ziyaretçi, site onun dilinde de
+         yayınlanıyorsa aynı sayfanın o dildeki sürümüne
+         gönderiliyor. Dil önce ziyaretçinin daha önceki
+         seçiminden, sonra tarayıcısının dil tercihinden,
+         sonra bulunduğu ülkeden belirleniyor. Yalnız
+         ziyaretin ilk sayfası yönlendiriliyor; arama
+         motorları, oturum açmış personel ve site içinde
+         gezinen ziyaretçi istediği sayfayı görüyor. Dili
+         değiştiren ziyaretçinin seçimi hatırlanıyor.
+         Ayarlar › Diller ve Çeviri'de açılır (varsayılan
+         kapalı): yalnız ana sayfa ya da görsel tasarımın
+         tüm sayfaları; tarayıcı dili, konum ya da ikisi;
+         sitenin yayınlanmadığı dillerdeki ziyaretçi için
+         bir yedek dil. Ekran, ayarı açan kişinin kendi
+         tarayıcısının nereye gönderileceğini gösteriyor.
+
+  [YENİ] Ziyaretçinin ülkesi Cloudflare'in gönderdiği
+         bilgiden, o yoksa sitenin kendi IP-ülke
+         veritabanından (DB-IP, ücretsiz, ayda bir
+         kendiliğinden güncellenir) okunuyor. Ziyaretçinin
+         adresi hiçbir dış servise sorulmuyor.
+
+  [ŞEMA] Ayarlar tablosuna dil yönlendirmesi için dört
+         kolon eklenir.
+
 
 
   2026.4.9
