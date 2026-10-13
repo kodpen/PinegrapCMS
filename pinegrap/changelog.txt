@@ -243,6 +243,32 @@
          geri alıyor, açılır listede ilk Ctrl+Z hiçbir şey
          yapmıyordu.
 
+  [YENİ] Klinik şablonu (yerel hekim sitesi). Hizmetler,
+         hekimler, check-up paketleri, hasta rehberi, blog,
+         iletişim ve bülten; çevrimiçi randevu formu (bölüm,
+         hekim, görüşme şekli, tarih, saat aralığı). Randevu
+         kendi sayfasını açar, hastaya hesap açılır, altına
+         yazışma gelir; Randevularım'da durumuyla listelenir.
+         Personel Alanı'nda bugünden itibaren yaklaşan
+         randevular; personel durumu (Talep edildi, Onaylandı,
+         Tamamlandı, İptal) "Durumu Değiştir" ile günceller.
+         Hesap sayfaları, gelen kutusu, personel rehberi ve
+         altı e-posta sayfası dahil.
+
+  [DÜZELTME] Özel formda yalnız personelin gördüğü bir açılır
+         listenin seçili seçeneği ziyaretçi gönderdiğinde
+         kaydediliyor; önceden alan boş kalıyordu.
+
+  [DÜZELTME] Kayıt sayfasında yalnız düzenleme yetkisi
+         olanlara gösterilen Düzenle düğmesi ile yalnız formu
+         gönderen ziyaretçiye gösterilen teşekkür ve yeni hesap
+         kutuları herkese görünüyordu (Kitapçı şablonunun
+         blog yazısı sayfası dahil). Artık yalnız ilgili
+         kişiye görünüyor.
+
+  [DÜZELTME] Kitapçı şablonunun sayfa yolunda "Ev" yerine
+         "Ana Sayfa" yazıyor.
+
   SEO
   --------------------------------------------------------
 

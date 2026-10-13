@@ -84,6 +84,95 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Klinik şablonu: randevu, hekimler, hasta rehberi, blog ve hesaplar (2026-10-13)
+
+**Neden.** Ürün sahibi "yerel hekim sitesi olsun, hesap sayfaları, randevu
+vs. hepsi dahil, blog da var, hizmetler vs." diye tam donanımlı bir şablon
+istedi. Bir önceki PR (#276) şablonun kullanacağı Bootstrap 5.3 bloklarını
+paletin Bloklar sekmesine ekledi; bu PR şablonun kendisi.
+
+**Nasıl.** `includes/design_templates/pinegrap-clinic.php`, Kitapçı
+şablonunun yapısını izler: aynı düğüm kurucuları, ortak parçalar, sistem
+widget'ları ve kurulumda editörün ürettiği başlangıç düzenleri
+(`'tree' => 'starter'`). Randevu, ek modül istemeyen bir özel formdur:
+form kaydı kendi sayfasını açar (`form_item_view`, yalnız gönderen ve
+personel), altına yorum olarak yazışma gelir (iletişim sayfasındaki
+görüşme düzeni), otomatik kayıt hastaya hesap açar. Durum (Talep edildi /
+Onaylandı / Tamamlandı / İptal) yalnız personelin gördüğü bir seçim
+listesidir (`office_use_only`); personel randevuyu açıp "Durumu Değiştir"
+ile kaydı panelde düzenler. Randevularım listesi gönderen / izleyen /
+düzenleyen süzgeciyle, Personel Alanı'ndaki liste bugünden itibaren
+(`preferred_date` ≥ `current date`) tarih sırasıyla gelir. Görünüm
+`modern-soft`, palet `ocean`; küçük resim `_pg_design_thumb_clinic()`.
+Varsayılan olarak güzel adresler kapalı.
+
+**Ne değişti.** 37 sayfa ve 33 widget:
+
+- Ana sayfa (saatler kartlı hero, hızlı eylemler, hizmetler, rakamlar,
+  hekimler, üç adımda randevu, yorumlar, son yazılar), Hizmetlerimiz
+  (bölüm başına kapsam, süre, ücret; site aramasında bölüm başına sonuç),
+  Hekimlerimiz (dört profil), Check-up (üç paket, hazırlık, SSS), Randevu
+  Al (bölüm, hekim — "Fark etmez" seçili —, görüşme şekli, tarih, saat
+  aralığı, hasta bilgileri, sigorta, neden, açık rıza, doğrulama), randevu
+  sayfası, Randevularım, Hasta Rehberi (altı başlık + SSS), Hakkımızda,
+  İletişim (konu seçimli görüşme), Bülten, Blog (dört örnek yazı, YZ
+  özeti, yorumlar, tıbbi uyarı), Yardım Merkezi, 404.
+- Hesap: giriş, kayıt, şifremi unuttum, şifre belirle, çıkış, Hesabım
+  (randevu kartı; adres defteri yalnız e-ticaret açıksa), profil, şifre
+  değiştir, e-posta tercihleri, adres defteri, gelen kutusu, görüşme.
+- Personel (özel klasör): Personel Alanı (yaklaşan randevular, kısayollar),
+  yeni blog yazısı, personel rehberine ekleme, personel rehberi.
+- Altı e-posta sayfası: yeni randevu (personele), randevu talebiniz
+  alındı (hastaya), yeni mesaj, mesajınız alındı, yeni yanıt, bülten
+  hoş geldin.
+- Her sayfada acil durum satırı (telefonda da görünür), dil seçici ve
+  giriş bölgesi; başlık menüsü `xl` altında katlanır, telefon numarası
+  `xxl`'de görünür. Hastanın telefonu kişinin cep telefonu alanına
+  bağlıdır, sonraki randevuda ad, e-posta ve telefon dolu gelir.
+- `tr.json`'a 403 anahtar; Türkçe örnek ücretler TL'dir (ör. `$90` →
+  `₺2.800`), sayfa adları Türkçe (`randevu-al`, `randevularim`,
+  `hasta-rehberi`, `hekimlerimiz`).
+
+**Düzeltmeler (çekirdek).**
+
+- `_pg_cf_controls()` (`includes/fn/custom_form.php`) tek seçimli bir
+  listenin varsayılanını `selected` işaretli seçenekten okumuyordu;
+  ziyaretçinin görmediği personel alanı (randevu durumu) boş kaydediliyordu.
+  Artık seçili seçeneğin değeri (değer yoksa metni) varsayılan; çoklu
+  listeye dokunulmaz. `tests/custom_form_default_test.php`.
+- `_pg_sw_resolve_visibility()` (`includes/fn/widgets.php`) iç içe görünürlük
+  aralıklarını çözmüyordu: "kayıt bulundu" aralığının içindeki "düzenleyebilir"
+  ya da "bu oturumda gönderildi" aralıkları işaretleriyle sayfaya düşüyor,
+  düzenleme düğmesi (boş adresle) ve yeni hesap kutusu herkese görünüyordu.
+  Bu, Kitapçı şablonunun blog yazısı sayfasındaki Düzenle düğmesini de
+  etkiliyordu. Tutulan aralığın içi artık kendi bayraklarıyla çözülür.
+  `tests/widget_visibility_test.php`.
+- Kitapçı (1.0.7) ve klinik şablonunun sayfa yolunda "Home" "Ev" diye
+  çıkıyordu; ikisi de "Homepage" (Ana Sayfa) anahtarını kullanıyor.
+
+**Bilerek yapılmayan.** Takvimde dolu saat denetimi yok: hasta bir saat
+aralığı ister, personel saati e-postayla netleştirir ve durumu günceller.
+Çalışma Alanı ya da takvim modülüne bağlanmadı; şablon yalnız mevcut form,
+yorum ve hesap özelliklerini kullanır. Personel Alanı'ndaki "bugünden
+itibaren" süzgeci tarih alanı boş kayıtları göstermez.
+
+**Doğrulama.** `tools/lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php`, `check_copies.php`, `test.php`, `build_js.php
+--check` temiz. Şablon deneme sitesine (`tools/setup_sandbox.sh`, Türkçe)
+editörün başlangıç düzenleriyle kuruldu, uyarı yok; sayfalar Bootstrap 5.3.8
+ile 1440, 1280, 1024 ve 390 piksel genişlikte çekildi, yatay kaydırma ve
+JS hatası yok. Ziyaretçi olarak randevu gönderildi: hesap açıldı, kayıt
+sayfası açıldı, durum "Talep edildi" kaydedildi; hasta düzenleme düğmesini
+görmüyor, yönetici görüyor ve düğme kaydın panel ekranına gidiyor; kayıt
+Randevularım'da ve Personel Alanı'nda listeleniyor; iki randevu e-postası
+kayıtla doldu.
+
+**Doğrulanamayan.** E-postaların gerçekten gönderilmesi (deneme sitesinde
+posta yok) ve görsellerin yüklenmesi (dış adresler kapalı) denenmedi;
+dev.pinegrap.com'da yerel oturum dener.
+
+---
+
 ## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
 
 **Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
