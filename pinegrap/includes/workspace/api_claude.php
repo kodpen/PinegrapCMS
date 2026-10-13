@@ -216,13 +216,33 @@ function ws_api_claude_request_present($viewer, $row)
         );
     }
 
+    // A run on a task (delegation.php): the task as the person who asked sees
+    // it, its latest notes, and what the assistants were asked and answered
+    // on it before; message.text is the instruction, "" when the task itself
+    // says what to do.
+    $task = ws_api_claude_task_present($row);
+
+    if ($task['id'] > 0) {
+        $body = (string) $row['note_text'];
+    }
+
+    $kind = '';
+
+    if ($channel) {
+        $kind = (string) $channel['kind'];
+    } elseif ((int) ($row['note_id'] ?? 0) > 0) {
+        $kind = 'note';
+    } elseif ((int) ($row['task_id'] ?? 0) > 0) {
+        $kind = 'task';
+    }
+
     return array(
         'id'               => (int) $row['id'],
         'status'           => (string) $row['status'],
         'channel'          => array(
             'id'   => (int) $row['channel_id'],
             'name' => $channel ? (string) $channel['name'] : '',
-            'kind' => $channel ? (string) $channel['kind'] : (((int) ($row['note_id'] ?? 0) > 0) ? 'note' : ''),
+            'kind' => $kind,
         ),
         'message'          => array(
             'id'            => (int) $row['message_id'],
@@ -237,6 +257,7 @@ function ws_api_claude_request_present($viewer, $row)
             'body'  => $note ? ws_calc_plain((string) $note['body']) : '',
         ),
         'design'           => $design,
+        'task'             => $task,
         'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
         'error'            => (string) $row['error'],
@@ -255,6 +276,7 @@ function ws_api_claude_request_schema()
         'message'          => array('id' => 'integer', 'text' => 'string', 'body' => 'string', 'reply_to_id' => 'integer?', 'reply_to_text' => 'string'),
         'note'             => array('id' => 'integer', 'title' => 'string', 'body' => 'string'),
         'design'           => array('page_id' => 'integer', 'page_name' => 'string', 'node_id' => 'string', 'scope' => 'string', 'from_editor' => 'boolean'),
+        'task'             => ws_api_claude_task_schema(),
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
         'reply_message_id' => 'integer?',
         'error'            => 'string',
@@ -270,6 +292,96 @@ function ws_api_claude_request_schema()
  * @param array $list name => [kind, limit, label, column]
  * @return array[]
  */
+/**
+ * The task block of a request: filled for a run on a task, empty otherwise.
+ * The task is read with the rights of the person who asked; channel_id is
+ * set only where Claude may be asked in the task's channel and that person
+ * reads it.
+ *
+ * @param array $row
+ * @return array
+ */
+function ws_api_claude_task_present($row)
+{
+    $out = array(
+        'id'          => 0,
+        'number'      => '',
+        'title'       => '',
+        'description' => '',
+        'status'      => '',
+        'priority'    => '',
+        'start_date'  => null,
+        'due_date'    => null,
+        'channel_id'  => 0,
+        'handed_over' => false,
+        'assignees'   => array(),
+        'notes'       => array(),
+        'earlier'     => array(),
+    );
+
+    if (((int) ($row['task_id'] ?? 0) <= 0) || !function_exists('ws_task_delegation_context')) {
+        return $out;
+    }
+
+    $asker = ws_change_viewer_for_id((int) $row['requested_by']);
+    $context = $asker ? ws_task_delegation_context($asker, $row) : null;
+
+    if (!$context) {
+        return $out;
+    }
+
+    $task = $context['task'];
+    $read = ws_ai_task_present($asker, $task);
+    $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+    $earlier = array();
+
+    foreach ($context['earlier'] as $item) {
+        $earlier[] = array(
+            'assistant'   => $item['agent'],
+            'asked_by'    => $item['asked_by'],
+            'instruction' => $item['instruction'],
+            'answer'      => $item['answer'],
+            'error'       => $item['error'],
+        );
+    }
+
+    return array(
+        'id'          => (int) $task['id'],
+        'number'      => (string) $read['number'],
+        'title'       => (string) $read['title'],
+        'description' => (string) $read['description'],
+        'status'      => (string) $read['status'],
+        'priority'    => (string) $read['priority'],
+        'start_date'  => $read['start_date'],
+        'due_date'    => $read['due_date'],
+        'channel_id'  => ($channel && ws_claude_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? (int) $channel['id'] : 0,
+        'handed_over' => (bool) $context['delegated'],
+        'assignees'   => array_values($read['assignees']),
+        'notes'       => array_values($read['notes']),
+        'earlier'     => $earlier,
+    );
+}
+
+// What ws_api_claude_task_present() returns.
+function ws_api_claude_task_schema()
+{
+    return array(
+        'id'          => 'integer',
+        'number'      => 'string',
+        'title'       => 'string',
+        'description' => 'string',
+        'status'      => 'string',
+        'priority'    => 'string',
+        'start_date'  => 'string?',
+        'due_date'    => 'string?',
+        'channel_id'  => 'integer',
+        'handed_over' => 'boolean',
+        'assignees'   => array('string'),
+        'notes'       => array('string'),
+        'earlier'     => array(array('assistant' => 'string', 'asked_by' => 'string', 'instruction' => 'string', 'answer' => 'string', 'error' => 'string')),
+    );
+}
+
 function ws_api_claude_change_fields_present($list)
 {
     $out = array();
@@ -599,6 +711,20 @@ function ws_api_claude_answer($params)
         api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
     }
 
+    // A run on a task (delegation.php): the words are kept on the run and
+    // shown on the task, and the person who asked is told.
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        if (!empty($params['tasks']) || !empty($params['changes'])) {
+            api_fail_validation(lang('A run on a task is answered with text only: no tasks, no changes.'), empty($params['tasks']) ? 'changes' : 'tasks');
+        }
+
+        if (ws_task_delegation_answer($row, (string) $params['text'])) {
+            ws_api_log(lang(array('string' => 'Claude answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
+        }
+
+        api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
+    }
+
     $channel = ws_api_claude_channel($viewer, $row);
     $drafts = ws_api_claude_drafts_input($params['tasks'] ?? array());
 
@@ -688,7 +814,12 @@ function ws_api_claude_fail($params)
 
     db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "',
             answered_at = '" . time() . "'
-        WHERE id = '" . (int) $row['id'] . "'");
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    // A run on a task: the person who asked is told it ended undone.
+    if (((int) ($row['task_id'] ?? 0) > 0) && (mysqli_affected_rows(db::$con) > 0) && function_exists('ws_task_delegation_told')) {
+        ws_task_delegation_told($row, 'failed');
+    }
 
     ws_claude_react((int) $row['message_id'], '👀', false);
 

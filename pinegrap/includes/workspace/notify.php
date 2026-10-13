@@ -370,6 +370,27 @@ function ws_inbox_describe($viewer, $row)
                 'url'   => $base . 'workspace_notes.php' . ($note ? '?note=' . (int) $note['id'] : ''),
                 'icon'  => 'bi-cpu',
             );
+
+        // An assistant finished a run one asked for on a task (delegation.php):
+        // the latest of them names the assistant and how it ended.
+        case 'task_assistant':
+            $run = (($task !== null) && function_exists('ws_delegation_ready') && ws_delegation_ready())
+                ? db_item("SELECT agent, status FROM ws_ai_requests
+                    WHERE task_id = '" . (int) $task['id'] . "' AND requested_by = '" . (int) $row['user_id'] . "' AND status IN ('answered', 'failed')
+                    ORDER BY id DESC LIMIT 1")
+                : null;
+            $agent = is_array($run) ? (string) $run['agent'] : 'claude';
+            $name = function_exists('ws_assistant_name') ? ws_assistant_name($agent) : 'Claude';
+            $number = $task ? ws_task_number($task['id']) : '';
+
+            return array(
+                'title' => (is_array($run) && ($run['status'] === 'failed'))
+                    ? lang(array('string' => '{var:1} could not do what you asked on {var:2}', 'vars' => array($name, $number)))
+                    : lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number))),
+                'body'  => $task ? (string) $task['title'] : '',
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => ($agent === 'ai') ? 'bi-cpu' : 'bi-stars',
+            );
     }
 
     return array('title' => lang('Workspace'), 'body' => '', 'url' => $base . 'workspace.php', 'icon' => 'bi-bell');

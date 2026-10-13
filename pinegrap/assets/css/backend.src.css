@@ -15684,6 +15684,59 @@ a.ws-form-card-head:hover span {
     font-size: .75rem;
     color: var(--bs-warning-text-emphasis);
 }
+/* ── Workspace: a task handed to an assistant (workspace_task_delegate.js) ── */
+.ws-task-delegate {
+    margin: 1rem 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-delegate-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .5rem;
+    font-size: .9rem;
+}
+.ws-task-delegate-with {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem .65rem;
+    border: 1px solid var(--bs-border-color);
+    border-left: 3px solid rgb(var(--ws-accent-rgb));
+    border-radius: .6rem;
+    background: var(--bs-body-bg);
+    font-size: .85rem;
+}
+.ws-task-delegate-face {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.ws-task-delegate-ask {
+    font-size: .85rem;
+    white-space: pre-line;
+}
+.ws-task-delegate-answer {
+    margin-top: .3rem;
+    padding: .45rem .6rem;
+    border-radius: .5rem;
+    background: var(--bs-tertiary-bg);
+}
+.ws-task-delegate-form {
+    display: grid;
+    gap: .4rem;
+}
+.ws-task-delegate-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+.ws-task-delegate-tag {
+    font-size: .75rem;
+    color: rgb(var(--ws-accent-rgb));
+    white-space: nowrap;
+}
 /* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
 .ws-approval {
   max-width: 34rem;
