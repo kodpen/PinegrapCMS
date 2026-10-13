@@ -1287,6 +1287,91 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Comments ----------------------------------------------------- */
+
+		array(
+			'id'      => 'comments.list',
+			'method'  => 'GET',
+			'path'    => '/comments',
+			'scope'   => 'comments:read',
+			'handler' => 'api_comments_list',
+			'returns' => array('list' => 'Comment'),
+			'summary' => 'Comments',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. Cursor paged.',
+			'params'  => array(
+				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
+				array('name' => 'item_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
+				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'comments.get',
+			'method'  => 'GET',
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:read',
+			'handler' => 'api_comments_get',
+			'returns' => 'Comment',
+			'summary' => 'A comment',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'comments.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_update',
+			'dry_run' => true,
+			'returns' => 'Comment',
+			'summary' => 'Moderate a comment',
+			'description' => 'Publish it or hold it (published), feature it or not (featured). Either value of published ends a schedule. Publishing a comment that was not published sends what the comments screen sends: the e-mail to the people watching the page and, on a form record, to the person who submitted it; the dry run says whether it would (emails). The visitor\'s words are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'published', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'featured',  'in' => 'body', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'comments.delete',
+			'method'  => 'DELETE',
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a comment',
+			'description' => 'For good, with its attached file unless another comment shares it (file_deleted in the dry run), as on the comments screen.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'comments.delete_post',
+			'method'  => 'POST',
+			'path'    => '/comments/{id}/delete',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a comment, addressed as a POST',
+			'description' => 'The same removal as DELETE /comments/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Files -------------------------------------------------------- */
 
 		array(
