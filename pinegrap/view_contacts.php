@@ -1313,134 +1313,66 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_options = '<option value="[' . lang('All') . ']"' . $selected . '>[' . lang('All') . ']</option>' . $output_contact_group_options;
     }
     
-    $sort_order = '';
-    
-    // if the filter is set to all duplicate contacts then hard set the sql statement to sort by the email addresses in alphabetical order,
-    if ($filter == 'all_duplicate_contacts') {
-        $sort_column = "email_address";
-        $sort_order = 'asc';
-        
-    // else sort the view based on what the user selected
+    // The columns this view sorts by, in the order the table shows them. The
+    // address filters show the address columns in place of the e-mail, user
+    // and opt-in ones; pg_list_state() falls back to the default for any
+    // column the view does not show.
+    if ($filter == 'my_contacts_by_business_address') {
+        $address_prefix = 'contacts.business_';
+    } elseif ($filter == 'my_contacts_by_home_address') {
+        $address_prefix = 'contacts.home_';
     } else {
-        // if the sort is not set yet, then default it to empty so that the switch below falls
-        // through to its default case
-        if (isset($_SESSION['software']['view_contacts']['sort']) == false) {
-            $_SESSION['software']['view_contacts']['sort'] = '';
-        }
-
-        switch (($_SESSION['software']['view_contacts']['sort'] ?? '')) {
-            case lang('First Name'):
-                $sort_column = 'first_name';
-                break;
-
-            case lang('Last Name'):
-                $sort_column = 'last_name';
-                break;
-
-            case lang('Company'):
-                $sort_column = 'company';
-                break;
-
-            case lang('Email'):
-                $sort_column = 'email_address';
-                break;
-
-            case lang('User'):
-                $sort_column = 'contact_user.user_username';
-                break;
-
-            case lang('Opt-In'):
-                $sort_column = 'opt_in';
-                break;
-                
-            case lang('City'):
-                // if the my contacts by business address filter is on, then set sort column to business city
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_city';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home city
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_city';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-                
-            case lang('State'):
-                // if the my contacts by business address filter is on, then set sort column to business state
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_state';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home state
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_state';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-                
-            case lang('Zip Code'):
-                // if the my contacts by business address filter is on, then set sort column to business zip code
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_zip_code';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home zipe code
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_zip_code';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-                
-            case lang('Country'):
-                // if the my contacts by business address filter is on, then set sort column to business country
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_country';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home country
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_country';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-
-            case lang('Last Modified'):
-                $sort_column = 'timestamp';
-                break;
-
-            default:
-                $sort_column = 'timestamp';
-                $_SESSION['software']['view_contacts']['sort'] = lang('Last Modified');
-                $_SESSION['software']['view_contacts']['order'] = 'desc';
-                break;
-        }
-
-        if (!($_SESSION['software']['view_contacts']['order'] ?? '')) {
-            $_SESSION['software']['view_contacts']['order'] = 'asc';
-        }
-        
-        // if the sort order is blank then set it to the order in the session
-        if ($sort_order == '') {
-            $sort_order = sql_order_direction($_SESSION['software']['view_contacts']['order'] ?? '');
-        }
+        $address_prefix = '';
     }
+
+    $sort_columns = array(
+        'first_name' => lang('First Name'),
+        'last_name'  => lang('Last Name'),
+        'company'    => lang('Company'),
+    );
+
+    // What each sort code orders by. Only codes pg_list_state() let through
+    // reach pg_list_order_by(), and it writes nothing but these.
+    $sort_sql = array(
+        'first_name'    => 'contacts.first_name',
+        'last_name'     => 'contacts.last_name',
+        'company'       => 'contacts.company',
+        'email'         => 'contacts.email_address',
+        'last_modified' => 'contacts.timestamp',
+    );
+
+    if ($address_prefix === '') {
+        $sort_columns['email'] = lang('Email');
+        $sort_columns['user'] = lang('User');
+        $sort_columns['opt_in'] = lang('Opt-In');
+
+        $sort_sql['user'] = 'contact_user.user_username';
+        $sort_sql['opt_in'] = 'contacts.opt_in';
+    } else {
+        $sort_columns['city'] = lang('City');
+        $sort_columns['state'] = lang('State');
+        $sort_columns['zip_code'] = lang('Zip Code');
+        $sort_columns['country'] = lang('Country');
+
+        $sort_sql['city'] = $address_prefix . 'city';
+        $sort_sql['state'] = $address_prefix . 'state';
+        $sort_sql['zip_code'] = $address_prefix . 'zip_code';
+        $sort_sql['country'] = $address_prefix . 'country';
+    }
+
+    $sort_columns['last_modified'] = lang('Last Modified');
+    $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+    // Duplicates are listed by e-mail address so that the copies of a contact
+    // sit together. The sort kept for the other views is left as it is.
+    if ($filter == 'all_duplicate_contacts') {
+        $sort_levels = array(array('sort' => 'email', 'order' => 'asc'));
+    } else {
+        $list_state = pg_list_state('view_contacts', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
+    }
+
+    $order_by = pg_list_order_by($sort_levels, $sort_sql);
     
 
 
@@ -1524,7 +1456,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $join_table
         $where
         GROUP BY contacts.id
-        ORDER BY $sort_column " . sql_order_direction($sort_order) . " ";
+        ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $contacts = array();
@@ -2259,23 +2191,23 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     
     // If the contacts by user filter, my_contacts by business address, and my contacts by home address is not on, then output the user label
     if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-        $output_user_label = '<th>' . get_column_heading(lang('User'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_user_label = '<th>' . get_column_heading(lang('User'), $sort_levels, '', $output_filter_for_links, 'user') . '</th>';
 
     }
 
     // if the filter is not set to either my contacts by business address or my contacts by home address then output the op_in, phone and email address labels
     if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-        $output_opt_in_label = '<th class="text-center">' . get_column_heading(lang('Opt-In'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_opt_in_label = '<th class="text-center">' . get_column_heading(lang('Opt-In'), $sort_levels, '', $output_filter_for_links, 'opt_in') . '</th>';
         $output_phone_label = '<th>' . lang('Phone') . '</th>';
-        $output_email_address_label = '<th>' . get_column_heading(lang('Email'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_email_address_label = '<th>' . get_column_heading(lang('Email'), $sort_levels, '', $output_filter_for_links, 'email') . '</th>';
     
     // else one of the above filters has been selected so output the address table headings
     } else {
         $output_address_labels = '<th>' . lang('Address') . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('City'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('State'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('Zip Code'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('Country'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('City'), $sort_levels, '', $output_filter_for_links, 'city') . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('State'), $sort_levels, '', $output_filter_for_links, 'state') . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('Zip Code'), $sort_levels, '', $output_filter_for_links, 'zip_code') . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('Country'), $sort_levels, '', $output_filter_for_links, 'country') . '</th>';
     }
     
     $output_table_headings = '';
@@ -2333,16 +2265,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             </th>
             <th class="noVis">' . lang('Action') . '</th> 
             ' . $output_image_header . '
-            <th>' . get_column_heading(lang('First Name'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Name'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Company'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('First Name'), $sort_levels, '', $output_filter_for_links, 'first_name') . '</th>
+            <th>' . get_column_heading(lang('Last Name'), $sort_levels, '', $output_filter_for_links, 'last_name') . '</th>
+            <th>' . get_column_heading(lang('Company'), $sort_levels, '', $output_filter_for_links, 'company') . '</th>
             ' . $output_phone_label . '
             ' . $output_email_address_label . '
             ' . $output_user_label . '
             ' . $output_opt_in_label . '
             ' . $output_address_labels . '
             <th>' . $output_contact_groups_toggle . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>';
         
         // output the opt in and opt out buttons
         $output_modify_selected_buttons = '
@@ -2380,6 +2312,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . (($filter != 'all_duplicate_contacts') ? pg_list_sort_menu('view_contacts.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) : '') . '
                             <form id="search_form" action="view_contacts.php" method="get" class="search_form disable_shortcut">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">

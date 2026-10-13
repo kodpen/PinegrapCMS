@@ -84,6 +84,64 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Rehber (kişi listesi) ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
+
+**Neden.** #331 çoklu sıralamayı `pg_list_state()` kullanan tek sunucu
+listesine, ürünlere getirmişti; `view_contacts.php` sıralamayı oturumda
+çevrilmiş başlık adıyla tutup kendi `switch`'iyle ORDER BY kuruyordu ve
+tek sütunla kalıyordu. Eski liste grupları birer PR'la ortak yardımcıya
+taşınıyor; bu PR yalnız Rehber'i taşır.
+
+**Ne değişti.** Sıralanabilen sütunlar kodla tanımlandı (`first_name`,
+`last_name`, `company`, `email`, `user`, `opt_in`, `last_modified`; iş ve
+ev adresi görünümlerinde e-posta/kullanıcı/opt-in yerine `city`, `state`,
+`zip_code`, `country`, adres öneki görünüme göre `contacts.business_` ya
+da `contacts.home_`). Sıra `pg_list_state('view_contacts', …)` ile okunur,
+ORDER BY `pg_list_order_by()` ile yalnız ekranın kod → SQL eşlemesinden
+yazılır. Varsayılan eskisi gibi son değişiklik azalan. Başlıklar
+`get_column_heading()`'e düzey listesi verir; Shift+tık ve düzey numarası
+ürünlerdeki gibi çalışır, `backend.src.js`'e dokunulmadı. Araç çubuğuna
+`pg_list_sort_menu()` eklendi (yinelenen kişiler görünümünde yok).
+
+Rehber görünümü (`filter`) oturumdan değil adresten okunur. Menünün
+bağlantıları ve "Ardından şuna göre sırala" formu görünümü taşımazsa liste
+"Tüm Kişilerim"e dönerdi; bu yüzden `pg_list_sort_menu()`'ye isteğe bağlı
+beşinci parametre `$query` eklendi: verilen ad → değer çiftleri her
+bağlantının sonuna kodlanarak eklenir ve forma gizli alan olarak girer.
+Parametresiz çağrı (ürünler) aynı HTML'i üretir. Başlık bağlantıları
+görünümü zaten `$extras` ile taşıyordu.
+
+Davranış farkları: oturumda tutulan sıra artık başlık değil kod olduğu
+için panel dili değişince kaybolmuyor (eski kodda saklanan başlık yeni
+dilde eşleşmeyince sıra varsayılana dönüyordu). Bir görünümün göstermediği sütun düzeyi
+(örneğin iş adresi görünümüne geçerken e-posta) düşer, hiç düzey kalmazsa
+varsayılan döner; eski kod adres sütunlarında aynısını yapıyordu, e-posta
+ve kullanıcıda gizli sütuna göre sıralamaya devam ediyordu. Yinelenen
+kişiler görünümü her zaman e-posta artan sıralanır ve diğer görünümler
+için saklanan sıraya dokunmaz. Eski `sort=<başlık>&order=desc`
+bağlantıları `pg_list_sort_parse()` ile tek düzey olarak okunur. Dışa
+Aktar, toplu silme ve birleştirme kendi sabit sıralarını kullanıyordu,
+değişmedi.
+
+Testler: `tests/list_state_test.php`'ye menü testi (bağlantılar ve form
+görünümü taşıyor, değer bağlantıda kodlanıyor, formda kaçışlanıyor,
+parametresiz çağrı değişmedi). Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium).** `sort=company:asc,first_name:desc`
+şirketi boş olanlar önde, aynı şirkette ad azalan geldi; başlıkta
+Shift+tık aynı sekmede düzey ekledi ve sayfa yenilenince kaldı; iş adresi
+görünümünde Şehir tık + Posta kodu Shift+tık ve menüden düzey ekleme
+görünümü korudu; yinelenen kişilerde menü yok, sıra e-posta; eski başlıklı
+bağlantı tek sütunla sıraladı; grup filtresi ve gelişmiş filtre açıkken
+sıralama çalıştı; adresten gelen bozuk düzey düştü; Dışa Aktar 200 döndü;
+390 piksel genişlikte menü açıldı, yatay kaydırma yok; konsolda hata yok.
+Sunucu günlüğündeki `view_contacts.php` uyarıları (`$output_user_row`,
+gelişmiş filtre seçim değişkenleri, `$oldest_timestamp`) bu değişiklikten
+önce de vardı, dokunulmadı. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+rehber ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Dış API: iletişim grubu oluşturma, değiştirme, silme ve üyelik olayı (2026-10-13)
 
 **Sorun.** #317 iletişim gruplarını okuyup üyelerini değiştirebiliyordu ama

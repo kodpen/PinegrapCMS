@@ -6,7 +6,7 @@
  * a list screen keeps in the session, and the page number it reads from the
  * address. Also the sort levels of a list sorted by more than one column:
  * reading them from the address, the Shift+click step, the ORDER BY they
- * become and the heading links that carry them.
+ * become, the heading links that carry them and the sort menu's links.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -190,4 +190,25 @@ function test_list_sort_heading_links_keep_or_replace_the_levels()
 	} else {
 		$_SERVER['PHP_SELF'] = $saved;
 	}
+}
+
+function test_list_sort_menu_keeps_the_rest_of_the_address()
+{
+	$columns = array('name' => 'Name', 'price' => 'Price', 'modified' => 'Last Modified');
+	$default = array('sort' => 'modified', 'order' => 'desc');
+	$levels = array(array('sort' => 'price', 'order' => 'asc'), array('sort' => 'name', 'order' => 'desc'));
+
+	$menu = pg_list_sort_menu('view_contacts.php', $columns, $levels, $default, array('filter' => 'my_customers'));
+	pg_assert_contains('href="view_contacts.php?sort=price:desc,name:desc&amp;filter=my_customers"', $menu, 'reversing keeps the view');
+	pg_assert_contains('href="view_contacts.php?sort=name:desc&amp;filter=my_customers"', $menu, 'removing keeps the view');
+	pg_assert_contains('href="view_contacts.php?sort=modified:desc&amp;filter=my_customers"', $menu, 'the reset keeps the view');
+	pg_assert_contains('<input type="hidden" name="filter" value="my_customers"><select name="sort"', $menu, 'the form sends the view');
+
+	$odd = pg_list_sort_menu('view_contacts.php', $columns, $levels, $default, array('filter' => 'a&b="c"'));
+	pg_assert_contains('&amp;filter=a%26b%3D%22c%22"', $odd, 'the value is encoded in links');
+	pg_assert_contains('value="a&amp;b=&quot;c&quot;"', $odd, 'and escaped in the form');
+
+	$plain = pg_list_sort_menu('view_products.php', $columns, $levels, $default);
+	pg_assert_contains('href="view_products.php?sort=price:desc,name:desc"', $plain, 'no extra address without one');
+	pg_assert_false(strpos($plain, 'type="hidden"') !== false, 'no hidden field without one');
 }
