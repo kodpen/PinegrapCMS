@@ -20482,5 +20482,15 @@
     "ended the calendar subscription of their workspace": "Çalışma Alanı takvim aboneliğini sonlandırdı",
     "made a calendar subscription address for their workspace": "Çalışma Alanı için takvim aboneliği adresi oluşturdu",
     "made a new calendar subscription address for their workspace": "Çalışma Alanı için yeni bir takvim aboneliği adresi oluşturdu",
-    "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})"
+    "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})",
+    "Time and reminder": "Saat ve hatırlatma",
+    "Remind": "Hatırlat",
+    "The people on the task are reminded on {var:1}, in their notifications and by e-mail.": "Görevdeki kişilere {var:1} tarihinde bildirimlerinde ve e-postayla hatırlatılır.",
+    "The people on the task are reminded within a few minutes, in their notifications and by e-mail.": "Görevdeki kişilere birkaç dakika içinde bildirimlerinde ve e-postayla hatırlatılır.",
+    "The task is already due: no reminder will go.": "Görevin bitişi geçmiş: hatırlatma gitmez.",
+    "The reminder went on {var:1}.": "Hatırlatma {var:1} tarihinde gitti.",
+    "{var:1} wrote a note on {var:2}": "{var:1}, {var:2} görevine not yazdı",
+    "{var:1} is overdue": "{var:1} gecikti",
+    "Quick note": "Hızlı not",
+    "Write a note. Its first line becomes its title.": "Bir not yazın. İlk satırı başlığı olur."
 }
