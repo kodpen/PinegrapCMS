@@ -134,6 +134,96 @@ fiyatıyla aynı tabanda tutulur, dönüştürme yok.
 
 ---
 
+## 2026.4.10 — Yayınla: yalnız düzenlenen sayfanın zamanı ve kaydı (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel testinin ikinci raporu (koordinatör üzerinden): tek
+Yayınla tasarımdaki bütün sayfaları "düzenlendi" diye kaydediyor. Ortak
+başlıktaki tek değişiklik log tablosuna 1 stil ve 31 sayfa satırı yazdı, 35
+sayfanın değişiklik zamanı aynı ana çekildi. Welcome'daki Aktivite kartının
+İçerik filtresi değişmemiş sayfalarla doluyor, sitemap lastmod her sayfada
+değişiyor.
+
+**Neden.** Editör, gösterdiği ortak bileşen değişen sayfayı da gönderiyor
+(`_pgPageUnchanged()`): sunucu o sayfayı yeniden puanlıyor ve çeviri işine
+alıyor, bu doğru. Ama `pg_designer_save_page()` gönderilen her sayfada
+`page_timestamp` ve `page_user`'ı güncelliyor ve "sayfa düzenlendi" yazıyordu.
+
+**Düzeltme.** Sunucu, güncellenen sayfanın kendi kolonlarını (ad, tasarım,
+klasör, başlık, açıklama, arama, site haritası, noindex/nofollow, ana sayfa,
+yorum ayarları ve `page_tree_json`) kayıtlı satırla karşılaştırıyor. Hepsi
+aynıysa sayfa yalnız ortak bileşen yüzünden gelmiştir: satır yine yazılıyor ama
+değişiklik zamanına ve yazarına dokunulmuyor, log satırı yazılmıyor. Karar
+istekteki bir bayraktan değil, kayıtlı satırdan çıkıyor; elle hazırlanmış bir
+istek gerçek bir düzenlemeyi kayıttan saklayamaz. Ortak bileşen sayfa ağacında
+yalnız kimliğiyle durduğu için başlık değişikliği sayfa ağacını değiştirmiyor.
+Yeniden puanlama (`$written`) ve çeviri işi aynen sürüyor. Stil satırı ("stil
+düzenlendi") yerinde duruyor: ortak bileşen tasarımın parçası. Editör
+değişmedi.
+
+**Doğrulama (sandbox, Playwright).** Hakkımızda sekmesinde ortak başlıktaki
+marka linkinin metni değişip Yayınla'ya basıldı. Öncesi: 29 sayfanın zamanı
+değişti, 29 "sayfa düzenlendi" satırı yazıldı. Sonrası: hiçbir sayfanın zamanı
+değişmedi, yalnız "stil düzenlendi" satırı yazıldı, yeni metin sayfada
+görünüyor. Aynı sekmede h1 değişince yalnız `hakkimizda`'nın zamanı ve satırı
+yazıldı. Sandbox metinleri eski hâline getirildi. dev.pinegrap.com'da
+denenmedi.
+
+---
+
+## 2026.4.10 — Referrer-Policy sunucu kuralından çıktı; görev çekmecesinde hazır olmayan asistan seçilemiyor (2026-10-13)
+
+### 1. `no-referrer` sayfaları IIS'te de referrer göndermiyor
+
+**Neden.** Yerel testte IIS yanıtlarında `Referrer-Policy` iki kez
+görüldü. Kök web.config `<customHeaders>` içinde
+`strict-origin-when-cross-origin` ekliyordu. `waf_send_security_headers()`
+bunu görüp kendi kopyasını göndermiyordu, ama `no-referrer` isteyen
+betikler (`includes/oauth/authorize.php`, `includes/api/response.php`,
+`router.php` süreli kısa link kapısı, `workspace_guest.php`,
+`short_link_gone.php`, `includes/workspace/calendar_feed.php`) kendi
+başlıklarını yazıyor, IIS de kendi değerini ona ekliyordu. Referrer-Policy
+spec'i son geçerli değeri aldığı için bu sayfalar fiilen
+`strict-origin-when-cross-origin` ile gidiyordu. Bir önceki düzeltmede
+"açık kalan" olarak bırakılmıştı (aşağıda "Yerel test bulguları", madde 2).
+
+**Nasıl.** Referrer-Policy artık yalnız PHP'nin: kök `web.config`'ten ve
+yazılımın yazdığı kurallardan (`includes/server_config.php`: IIS bloğu,
+Apache `.htaccess` bloğu, nginx örneği) ekleme satırı çıktı. IIS bloğunda
+`<remove name="Referrer-Policy" />` kaldı: sunucu düzeyinden miras gelen bir
+kopya aynı şeyi yapmasın. Artık `waf_server_adds_header('Referrer-Policy')`
+false döner, `waf_send_security_headers()` her PHP yanıtına
+`strict-origin-when-cross-origin` yazar ve `no-referrer` betikleri
+`header()` ile onu değiştirir (hepsi `init.php` / router başlıklarından
+sonra koşuyor). Testler: `tests/waf_headers_test.php` kök web.config'in ve
+üç sunucu şablonunun Referrer-Policy eklemediğini denetler.
+
+**Ödün.** Statik dosyalar (CSS, JS, görsel) başlıksız kalır. Tarayıcıların
+varsayılanı aynı politika (`strict-origin-when-cross-origin`) olduğu için
+pratikte fark yok. `<location>` ile yol başına kural denenmedi: router'dan
+geçen kısa linkleri kapsamaz.
+
+**Bilerek yapılmayan.** "Sunucu kurallarını onar" yalnız ekler, operatörün
+dosyasından satır silmez; eski kurulumların web.config / .htaccess
+dosyasındaki Referrer-Policy satırı kendiliğinden gitmez. Changelog
+operatöre satırı silmesini söylüyor. O satır kaldıkça PHP normal
+sayfalarda kendi kopyasını göndermemeye devam eder (çift başlık yok).
+
+### 2. Görev çekmecesi: hazır olmayan asistan varsayılan değil
+
+**Neden.** Çekmecenin Asistan bölümündeki seçim listesi ilk asistanla
+açılıyordu; Pinegrap AI kurulu değilken "Pinegrap AI (hazır değil)" seçili
+geliyor, "Asistana ver" sunucudan kurulum uyarısıyla dönüyordu.
+
+**Nasıl.** `assets/js/workspace_task_delegate.js` (`composer()`): hazır
+olmayan asistan listede kalır ama `disabled`; varsayılan ilk hazır
+asistandır. Hazır asistan yoksa listenin başına "— Seçilmedi —" (`''`)
+eklenir, o seçili açılır ve "Asistana ver" düğmesi pasif kalır. Görev zaten
+bir asistandaysa liste hiç çizilmez, kayıtlı atama korunur (değişmedi).
+Metin `dg_not_chosen` (`ws_delegation_js_strings()`, mevcut
+"— Not selected —" anahtarı). `workspace.min.js` yeniden üretildi.
+
+---
+
 ## 2026.4.10 — Mağazada "Faturalarım" (ERP Faz 8a) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 8 (#14), ilk parça: müşteri
@@ -904,7 +994,8 @@ değiştirir; nginx'in `add_header`'ı buradan okunamaz, orada çift kalır.
 dokümanı, misafir sayfası, kısa link) IIS'te sunucunun
 `strict-origin-when-cross-origin` kopyasıyla birleşir; tarayıcı son geçerli
 değeri alır. PHP sunucunun eklediğini kaldıramaz; düzeltmesi web.config'te
-o yollar için `<location>` kuralıdır, bu iş kapsamında değil.
+o yollar için `<location>` kuralıdır, bu iş kapsamında değil. → Kapandı: en üstteki "Referrer-Policy
+sunucu kuralından çıktı" bölümü.
 
 ### 3. MCP 401 metni
 

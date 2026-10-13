@@ -157,3 +157,7 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
   `pg_send_nosniff()`. IIS web.config `<customHeaders>` ile ekliyorsa PHP
   kopyası gönderilmez (`waf_server_adds_header()`); IIS ekler, `<remove>`
   PHP'nin başlığına ulaşmaz, ikisi birleşir.
+- `Referrer-Policy`'yi sunucu kuralına (web.config, .htaccess, nginx örneği;
+  `server_config.php`) ekleme: PHP gönderir, `no-referrer` isteyen betikler
+  `header()` ile değiştirir. Sunucu kopyası onlara eklenir, tarayıcı son
+  geçerli değeri aldığı için `no-referrer`'ı ezer.

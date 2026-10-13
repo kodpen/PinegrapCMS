@@ -36,13 +36,28 @@ function test_waf_headers_reads_iis_custom_headers()
 	pg_assert_same("x-content-type-options\nreferrer-policy", waf_iis_custom_headers($xml));
 }
 
-// The repository's own web.config is what IIS sites run with.
-function test_waf_headers_shipped_web_config_adds_both()
+// The repository's own web.config is what IIS sites run with. It adds
+// nosniff; Referrer-Policy is PHP's, so that a page's no-referrer is not
+// overridden by a server copy appended after it.
+function test_waf_headers_shipped_web_config_leaves_referrer_policy_to_php()
 {
 	$names = explode("\n", waf_iis_custom_headers((string) file_get_contents(dirname(PG_FUNCTIONS_DIR) . '/web.config')));
 
 	pg_assert_true(in_array('x-content-type-options', $names, true), 'nosniff');
-	pg_assert_true(in_array('referrer-policy', $names, true), 'referrer policy');
+	pg_assert_false(in_array('referrer-policy', $names, true), 'referrer policy');
+}
+
+// The rules the software writes for a new site or a repair do not set
+// Referrer-Policy on any server.
+function test_waf_headers_server_rules_leave_referrer_policy_to_php()
+{
+	$iis = pg_server_config_default('iis');
+	$names = explode("\n", waf_iis_custom_headers($iis));
+
+	pg_assert_true(in_array('x-content-type-options', $names, true), 'iis nosniff');
+	pg_assert_false(in_array('referrer-policy', $names, true), 'iis referrer policy');
+	pg_assert_false((bool) preg_match('/Header\s+(always\s+)?set\s+Referrer-Policy/i', pg_server_config_default('apache')), 'apache');
+	pg_assert_false((bool) preg_match('/add_header\s+Referrer-Policy/i', pg_server_config_default('nginx')), 'nginx');
 }
 
 function test_waf_headers_nothing_without_custom_headers()

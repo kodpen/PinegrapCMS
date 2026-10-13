@@ -361,9 +361,27 @@
             var picker = null;
 
             if (withKey === '') {
-                picker = h.select(state.assistants.map(function (item) {
+                var ready = state.assistants.filter(function (item) { return item.ready; });
+                var options = state.assistants.map(function (item) {
                     return [item.key, item.ready ? item.name : (item.name + ' (' + h.t('dg_not_ready') + ')')];
-                }), (state.assistants[0] || {}).key);
+                });
+
+                // An assistant that is not set up stays in the list, so the
+                // reader sees it exists, but cannot be chosen: the server
+                // would only refuse it. With none ready the picker opens on
+                // nothing rather than on one that cannot work.
+                if (!ready.length) {
+                    options.unshift(['', h.t('dg_not_chosen')]);
+                }
+
+                picker = h.select(options, ready.length ? ready[0].key : '');
+
+                Array.prototype.forEach.call(picker.options, function (option) {
+                    option.disabled = (option.value !== '') && !ready.some(function (item) {
+                        return item.key === option.value;
+                    });
+                });
+
                 picker.setAttribute('aria-label', h.t('dg_title'));
                 form.appendChild(picker);
             }
@@ -378,8 +396,18 @@
             var send = h.button('btn btn-sm btn-outline-primary rounded-pill px-3', (withKey === '') ? h.t('dg_hand') : h.t('dg_send'), (withKey === '') ? 'bi-stars' : 'bi-send');
 
             send.addEventListener('click', function () {
-                act('ws_task_delegate', { agent: withKey || picker.value, text: text.value }, send, (withKey === '') ? h.t('dg_started') : h.t('dg_sent'));
+                var agent = withKey || picker.value;
+
+                if (agent === '') {
+                    return;
+                }
+
+                act('ws_task_delegate', { agent: agent, text: text.value }, send, (withKey === '') ? h.t('dg_started') : h.t('dg_sent'));
             });
+
+            if (picker) {
+                send.disabled = (picker.value === '');
+            }
 
             text.addEventListener('keydown', function (event) {
                 if ((event.key === 'Enter') && (event.ctrlKey || event.metaKey)) {
