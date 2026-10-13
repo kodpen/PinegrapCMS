@@ -606,6 +606,107 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		/* ----- Gift cards -------------------------------------------------- */
+
+		array(
+			'id'      => 'gift_cards.list',
+			'method'  => 'GET',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_list',
+			'returns' => array('list' => 'GiftCard'),
+			'summary' => 'Gift cards',
+			'description' => 'Newest first, cursor paged. Money is in minor units. status: active (balance left and not expired), used (nothing left) or expired (past expires_on, whatever is left on it). A card bought in an order carries order_id, from_name, recipient_email, message and delivery_date. code is the money itself: whoever holds it can spend the balance at checkout.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'used', 'expired')),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the cards bought in this order.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the code (with or without its dashes), the notes, who it is from or the recipient\'s e-mail address.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.get',
+			'method'  => 'GET',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_get',
+			'returns' => 'GiftCard',
+			'summary' => 'One gift card',
+			'description' => 'With redemptions: each order the card was spent in, how much, and the balance before and after.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.create',
+			'method'  => 'POST',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_create',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Issue a gift card',
+			'description' => 'One card worth amount, with a new sixteen-digit code, as the gift cards screen issues it - for a prize, a refund or a card sold outside the store. The answer carries the code; nothing is mailed to anyone.',
+			'params'  => array(
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero. The balance starts at the same amount.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be spent. Left out, it never expires.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only.')
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_update',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Change a gift card',
+			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'description' => 'Minor units, zero or more.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete',
+			'method'  => 'DELETE',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card',
+			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete_post',
+			'method'  => 'POST',
+			'path'    => '/gift-cards/{id}/delete',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card, addressed as a POST',
+			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Calendars ---------------------------------------------------- */
 
 		array(
