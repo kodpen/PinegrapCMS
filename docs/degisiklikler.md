@@ -84,6 +84,76 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — E-ticaret ayar listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar, #338 Kullanıcılar).
+Görünüm filtresi olmayan dört kısa e-ticaret ayar listesi aynı kalıba
+uyduğu için tek PR'da taşındı: Vergi Bölgeleri (`view_tax_zones.php`),
+Para Birimleri (`view_currencies.php`), Kargo Tarihi Düzeltmeleri
+(`view_ship_date_adjustments.php`) ve Doğrulanmış Teslimat Adresleri
+(`view_verified_shipping_addresses.php`). Dördü de sıralamayı
+`$_SESSION['software']['ecommerce'][<liste>]` altında başlık adıyla tutup
+kendi `switch`'iyle tek sütunluk ORDER BY kuruyordu.
+
+Üçünde başlık tıklaması hiç çalışmıyordu (sandbox'ta eski kodla
+denendi): Vergi Bölgeleri ve Kargo Tarihi Düzeltmeleri istekteki `sort`
+ve `order`'ı oturuma hiç yazmıyordu, liste hep son değişikliğe göre
+kalıyordu; Para Birimleri istekteki değeri yazıyor ama İngilizce adla
+(`'Name'`, `'Code'` …) karşılaştırıyordu, Türkçe panelde başlık `Adı`
+geldiği için hep varsayılana düşüyordu. Doğrulanmış Teslimat Adresleri
+çalışıyordu.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Vergi Bölgeleri `name`, `tax_rate`, `last_modified`; Para Birimleri
+`name`, `base`, `code`, `symbol`, `exchange_rate`, `created`,
+`last_modified`; Kargo Tarihi Düzeltmeleri `zip_code_prefix`,
+`shipping_method`, `adjustment`, `created`, `last_modified`; Doğrulanmış
+Teslimat Adresleri `company`, `address_1`, `address_2`, `city`, `state`,
+`zip_code`, `country`, `created`, `last_modified`. Varsayılan dördünde de
+eskisi gibi son değişiklik azalan. Sıra `pg_list_state('<liste>', …)` ile
+okunur, ORDER BY `pg_list_order_by()` ile yalnız ekranın kod → SQL
+eşlemesinden yazılır (sütunlar eskisiyle aynı). Başlıklar
+`get_column_heading()`'e düzey listesi verir; Shift+tık ve düzey numarası
+ürünlerdeki gibi çalışır. Araç çubuğunun sağına `pg_list_sort_menu()`
+eklendi (Kullanıcılar'daki gibi `pg-toolbar-grow` boşluğuyla). Ortak
+yardımcıya, `backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan
+metinler zaten vardı.
+
+Doğrulanmış Teslimat Adresleri'nde il/eyalet filtresi eskisi gibi oturumda
+tutulur; listeye gelen her istek değerini oturuma yazan döngü yalnız
+`state_id`'yi yazacak şekilde daraltıldı (döngünün başka okuyanı yoktu).
+Para Birimleri'ndeki aynı döngü ve iki listedeki `order` temizleme
+blokları yalnız sıralama için vardı, kaldırıldı. Oluştur bağlantısındaki
+`state_id` HTML'e SQL kaçışıyla (`escape()`) yazılıyordu; adresle gelen
+tırnaklı bir değer bağlantının dışına taşabiliyordu. Artık
+`h(urlencode())` ile yazılıyor.
+
+Davranış farkları: üç listede başlığa tıklamak artık sıralıyor; sıra
+panel dili değişince kaybolmuyor. Eski `sort=<başlık>&order=desc`
+bağlantıları `pg_list_sort_parse()` ile tek düzey olarak okunur. Sütunlar,
+tarayıcıdaki arama ve sayfa başına kayıt seçimi, Döviz Kurlarını Güncelle,
+il/eyalet filtresi ve düzenleme düğmeleri değişmedi; bu listelerde toplu
+işlem yok. Satır içi hızlı güncelleme bu PR'ın kapsamında değil. Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 8 vergi bölgesi, 7 para birimi,
+8 kargo tarihi düzeltmesi, iki ülkeden 8 adres).** Dört listede her sütun
+iki yönde ve birer iki düzeyli sıra, aynı ORDER BY'lı SQL'in satır
+sırasını verdi; varsayılan son değişiklik azalan; sayfa yenilenince sıra
+korundu; bozuk değer (`id;drop table x:desc`) varsayılana düştü; Türkçe
+başlıklı eski bağlantılar (`sort=Adı&order=desc`) sıraladı (80 denetim,
+hepsi geçti). Adreslerde il seçimi sırayı, sıra değişikliği il seçimini
+korudu; Oluştur bağlantısı ili taşıdı; `state_id` olarak verilen
+`x"><script>` sayfaya kaçışsız düşmedi. Tarayıcıda başlığa tık tek sütuna,
+Shift+tık aynı sekmede ikinci düzeye çevirdi; menü düzeyleri, yön
+çevirmeyi, kaldırmayı ve varsayılana dönmeyi gösterdi; 390 piksel
+genişlikte yatay kaydırma yok. Sunucu günlüğünde bu dört dosyadan uyarı
+yok. Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar ve gerçek bir
+telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: toplantı bağlantısı ve toplantı notu (2026-10-13)
 
 **Neden.** Workspace araştırması (`workspace-arastirma.md` §4, P2 2.6 a ve

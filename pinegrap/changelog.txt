@@ -443,6 +443,25 @@
          listesi açıldıkça PHP hata günlüğüne düşen
          "Undefined variable" uyarıları kalktı.
 
+  E-TİCARET: AYARLAR
+  --------------------------------------------------------
+
+  [YENİ] Vergi Bölgeleri, Para Birimleri, Kargo Tarihi
+         Düzeltmeleri ve Doğrulanmış Teslimat Adresleri
+         listeleri de aynı anda birden çok sütuna göre
+         sıralanıyor, örneğin vergi oranı azalan, aynı
+         oranda ad artan. Başlığa Shift ile tıklamak
+         sonraki düzeyi ekliyor; telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsü
+         kullanılıyor. Seçilen sıralama panel dili
+         değişince kaybolmuyor; adres listesinde seçilen
+         il sıralama değişince korunuyor.
+
+  [DÜZELTME] Vergi Bölgeleri ve Kargo Tarihi
+         Düzeltmeleri listelerinde, Türkçe panelde Para
+         Birimleri listesinde sütun başlığına tıklamak
+         listeyi sıralamıyordu; artık sıralıyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 

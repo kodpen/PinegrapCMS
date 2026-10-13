@@ -23,69 +23,35 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_currencies');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_currencies'][$key] = trim($value);
-    }
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'base'          => lang('Base'),
+    'code'          => lang('Code'),
+    'symbol'        => lang('Symbol'),
+    'exchange_rate' => lang('Exchange Rate'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
-if (isset($_SESSION['software']['ecommerce']['view_currencies']['order'])) {
-    $_SESSION['software']['ecommerce']['view_currencies']['order'] = sql_order_direction($_SESSION['software']['ecommerce']['view_currencies']['order'], '');
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
+$list_state = pg_list_state('view_currencies', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_currencies']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_currencies']['sort'] = '';
-}
-
-switch (($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? '')) {
-    case 'Name':
-        $sort_column = 'name';
-        break;
-
-    case 'Base':
-        $sort_column = 'base';
-        break;
-
-    case 'Code':
-        $sort_column = 'code';
-        break;
-
-    case 'Symbol':
-        $sort_column = 'symbol';
-        break;
-
-    case 'Exchange Rate':
-        $sort_column = 'exchange_rate';
-        break;
-
-    case 'Created':
-        $sort_column = 'created_timestamp';
-        break;
-
-    case 'Last Modified':
-        $sort_column = 'last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_currencies']['sort'] = 'Last Modified';
-        $_SESSION['software']['ecommerce']['view_currencies']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, default to ascending
-if (isset($_SESSION['software']['ecommerce']['view_currencies']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_currencies']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'currencies.name',
+    'base'          => 'currencies.base',
+    'code'          => 'currencies.code',
+    'symbol'        => 'currencies.symbol',
+    'exchange_rate' => 'currencies.exchange_rate',
+    'created'       => 'currencies.created_timestamp',
+    'last_modified' => 'currencies.last_modified_timestamp',
+));
 
 // get all of the currency information. Join user_id with username
 $query =
@@ -105,7 +71,7 @@ $query =
     FROM currencies
     LEFT JOIN user as created_user ON currencies.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '');
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -185,6 +151,8 @@ pg_page_shell(
                         <div class=" btn-group btn-group-sm flex-wrap">
                             <a class="btn btn-link link-secondary py-0 m-1 bi bi-currency-exchange bi-me-2" href="update_exchange_rates.php?send_to=' . h(get_request_uri()) . '">' . lang(array('string'=>'Update Exchange Rates') ) . '</a>
                         </div>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_currencies.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -195,13 +163,13 @@ pg_page_shell(
                             <tr>
                                 <th class="noVis"></th>
                                 <th class="noVis text-start">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Base'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Code'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Symbol'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
-                                <th class="text-start">' . get_column_heading(lang('Exchange Rate'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Base'), $sort_levels, '', '', 'base') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Symbol'), $sort_levels, '', '', 'symbol') . '</th>
+                                <th class="text-start">' . get_column_heading(lang('Exchange Rate'), $sort_levels, '', '', 'exchange_rate') . '</th>
+                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

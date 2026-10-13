@@ -24,16 +24,10 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_verified_shipping_addresses');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_verified_shipping_addresses'][$key] = trim($value);
-    }
-}
-
-// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
-if (isset($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'])) {
-    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] = sql_order_direction($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'], '');
+// The state filter is kept in the session, so the list opens on the state
+// picked last. The sort is kept by pg_list_state() below.
+if (isset($_REQUEST['state_id']) && is_string($_REQUEST['state_id'])) {
+    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] = trim($_REQUEST['state_id']);
 }
 
 // if state is not set yet, set default to [All]
@@ -72,60 +66,39 @@ foreach ($states as $state) {
     $output_state_options .= '<option value="' . $state['id'] . '"' . $selected . '>' . $output_state_label . ' (' . pg_format_number($count, 0) . ')</option>';
 }
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'company'       => lang('Company'),
+    'address_1'     => lang('Address 1'),
+    'address_2'     => lang('Address 2'),
+    'city'          => lang('City'),
+    'state'         => lang('State'),
+    'zip_code'      => lang('Zip Code'),
+    'country'       => lang('Country'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? '')) {
-    case lang('Company'):
-        $sort_column = 'verified_shipping_addresses.company';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Address 1'):
-        $sort_column = 'verified_shipping_addresses.address_1';
-        break;
+$list_state = pg_list_state('view_verified_shipping_addresses', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Address 2'):
-        $sort_column = 'verified_shipping_addresses.address_2';
-        break;
-
-    case lang('City'):
-        $sort_column = 'verified_shipping_addresses.city';
-        break;
-
-    case lang('State'):
-        $sort_column = 'states.name';
-        break;
-
-    case lang('Zip Code'):
-        $sort_column = 'verified_shipping_addresses.zip_code';
-        break;
-
-    case lang('Country'):
-        $sort_column = 'countries.name';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'verified_shipping_addresses.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'verified_shipping_addresses.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'verified_shipping_addresses.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'company'       => 'verified_shipping_addresses.company',
+    'address_1'     => 'verified_shipping_addresses.address_1',
+    'address_2'     => 'verified_shipping_addresses.address_2',
+    'city'          => 'verified_shipping_addresses.city',
+    'state'         => 'states.name',
+    'zip_code'      => 'verified_shipping_addresses.zip_code',
+    'country'       => 'countries.name',
+    'created'       => 'verified_shipping_addresses.created_timestamp',
+    'last_modified' => 'verified_shipping_addresses.last_modified_timestamp',
+));
 
 $all_verified_shipping_addresses = (int) db_value("SELECT COUNT(*) FROM verified_shipping_addresses");
 
@@ -156,7 +129,7 @@ $verified_shipping_addresses = db_items(
     LEFT JOIN user AS created_user ON verified_shipping_addresses.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON verified_shipping_addresses.last_modified_user_id = last_modified_user.user_id
     $where
-    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? ''));
+    ORDER BY $order_by");
 
 $output_rows = '';
 
@@ -211,7 +184,9 @@ echo
                     <div class="col-12 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_verified_shipping_address.php?state_id=' . escape(($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_verified_shipping_address.php?state_id=' . h(urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
@@ -231,15 +206,15 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Company'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Address 1'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Address 2'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('City'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('State'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Zip Code'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Country'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Company'), $sort_levels, '', '', 'company') . '</th>
+                                    <th>' . get_column_heading(lang('Address 1'), $sort_levels, '', '', 'address_1') . '</th>
+                                    <th>' . get_column_heading(lang('Address 2'), $sort_levels, '', '', 'address_2') . '</th>
+                                    <th>' . get_column_heading(lang('City'), $sort_levels, '', '', 'city') . '</th>
+                                    <th>' . get_column_heading(lang('State'), $sort_levels, '', '', 'state') . '</th>
+                                    <th>' . get_column_heading(lang('Zip Code'), $sort_levels, '', '', 'zip_code') . '</th>
+                                    <th>' . get_column_heading(lang('Country'), $sort_levels, '', '', 'country') . '</th>
+                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
