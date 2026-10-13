@@ -327,3 +327,253 @@ function test_mcp_client_headers_strip_line_breaks()
 	pg_assert_true(in_array('X-Key: aX-Other: b', $headers, true), 'a credential cannot add a header');
 	pg_assert_false(in_array('not a header', $headers, true));
 }
+
+// -- signing in (the MCP authorization specification) --------------------------
+
+function test_mcp_client_bearer_challenge_params()
+{
+	$params = pg_mcp_client_bearer_challenge('Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp", scope="repo read:org"');
+
+	pg_assert_same('https://mcp.example.com/.well-known/oauth-protected-resource/mcp', $params['resource_metadata'], 'resource_metadata');
+	pg_assert_same('repo read:org', $params['scope'], 'scope');
+
+	$second = pg_mcp_client_bearer_challenge('Basic realm="files", Bearer error="invalid_token", scope=files.read, error_description="say \"again\""');
+
+	pg_assert_same('invalid_token', $second['error'], 'the Bearer challenge after another one');
+	pg_assert_same('files.read', $second['scope'], 'a token value');
+	pg_assert_same('say "again"', $second['error_description'], 'an escaped quote');
+	pg_assert_false(isset($second['realm']), 'the Basic challenge\'s realm is not Bearer\'s');
+
+	$before = pg_mcp_client_bearer_challenge('Bearer realm="api", Basic realm="other"');
+
+	pg_assert_same(array('realm' => 'api'), $before, 'stops at the next challenge');
+	pg_assert_same(array(), pg_mcp_client_bearer_challenge('Basic realm="x"'), 'no Bearer challenge');
+	pg_assert_same(array(), pg_mcp_client_bearer_challenge(''), 'no header');
+	pg_assert_same(array(), pg_mcp_client_bearer_challenge('Bearer'), 'Bearer with nothing after it');
+}
+
+function test_mcp_client_auth_addresses()
+{
+	pg_assert_same('https://mcp.example.com', pg_mcp_client_origin('HTTPS://MCP.Example.com:443/mcp'), 'origin without the default port');
+	pg_assert_same('https://mcp.example.com:8443', pg_mcp_client_origin('https://mcp.example.com:8443/mcp'), 'origin with another port');
+	pg_assert_same('', pg_mcp_client_origin('not an address'), 'no origin');
+
+	pg_assert_same('https://mcp.example.com/mcp', pg_mcp_client_canonical_resource('https://MCP.example.com/mcp/'), 'canonical: lower-case host, no trailing slash');
+	pg_assert_same('https://mcp.example.com', pg_mcp_client_canonical_resource('https://mcp.example.com/'), 'canonical: the root');
+	pg_assert_same('https://mcp.example.com/mcp?team=7', pg_mcp_client_canonical_resource('https://mcp.example.com/mcp?team=7#x'), 'canonical: the query kept, the fragment dropped');
+
+	pg_assert_same(array(
+		'https://mcp.example.com/.well-known/oauth-protected-resource/v1/mcp',
+		'https://mcp.example.com/.well-known/oauth-protected-resource'
+	), pg_mcp_client_resource_metadata_urls('https://mcp.example.com/v1/mcp/'), 'the path form first, then the root');
+
+	pg_assert_same(array(
+		'https://auth.example.com/prm',
+		'https://mcp.example.com/.well-known/oauth-protected-resource'
+	), pg_mcp_client_resource_metadata_urls('https://mcp.example.com/', 'https://auth.example.com/prm'), 'the challenge\'s address first');
+
+	pg_assert_same(array('https://mcp.example.com/.well-known/oauth-protected-resource'), pg_mcp_client_resource_metadata_urls('https://mcp.example.com', 'http://inside/prm'), 'an http address in a challenge is not followed');
+
+	pg_assert_same(array(
+		'https://github.com/.well-known/oauth-authorization-server/login/oauth',
+		'https://github.com/.well-known/openid-configuration/login/oauth',
+		'https://github.com/login/oauth/.well-known/openid-configuration'
+	), pg_mcp_client_auth_server_metadata_urls('https://github.com/login/oauth'), 'an issuer with a path');
+
+	pg_assert_same(array(
+		'https://auth.example.com/.well-known/oauth-authorization-server',
+		'https://auth.example.com/.well-known/openid-configuration'
+	), pg_mcp_client_auth_server_metadata_urls('https://auth.example.com/'), 'an issuer at the root');
+
+	pg_assert_true(pg_mcp_client_resource_covers('https://mcp.example.com/mcp', 'https://mcp.example.com/mcp/'), 'the same resource');
+	pg_assert_true(pg_mcp_client_resource_covers('https://mcp.example.com/', 'https://mcp.example.com/mcp'), 'the server is under the resource');
+	pg_assert_false(pg_mcp_client_resource_covers('https://mcp.example.com/mcp', 'https://mcp.example.com/mcpx'), 'a sibling path is not under it');
+	pg_assert_false(pg_mcp_client_resource_covers('https://other.example.com/mcp', 'https://mcp.example.com/mcp'), 'another host');
+	pg_assert_false(pg_mcp_client_resource_covers('https://mcp.example.com/mcp/v2', 'https://mcp.example.com/mcp'), 'a resource deeper than the server');
+}
+
+// A stand-in authorization server's metadata.
+function mcp_client_test_as_metadata($issuer, $changes = array())
+{
+	return array_merge(array(
+		'issuer'                                         => $issuer,
+		'authorization_endpoint'                         => $issuer . '/authorize',
+		'token_endpoint'                                 => $issuer . '/token',
+		'revocation_endpoint'                            => $issuer . '/revoke',
+		'registration_endpoint'                          => $issuer . '/register',
+		'code_challenge_methods_supported'               => array('S256'),
+		'token_endpoint_auth_methods_supported'          => array('none', 'client_secret_post'),
+		'client_id_metadata_document_supported'          => true,
+		'authorization_response_iss_parameter_supported' => true,
+		'scopes_supported'                               => array('read', 'write')
+	), $changes);
+}
+
+function test_mcp_client_auth_server_metadata_is_checked()
+{
+	$read = pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://auth.example.com'), 'https://auth.example.com/');
+
+	pg_assert_true($read['ok'], 'a trailing slash aside, the same issuer');
+	pg_assert_same('https://auth.example.com/authorize', $read['authorize_url']);
+	pg_assert_same('https://auth.example.com/token', $read['token_url']);
+	pg_assert_same('https://auth.example.com/revoke', $read['revoke_url']);
+	pg_assert_same('https://auth.example.com/register', $read['registration_url']);
+	pg_assert_true($read['cimd'], 'reads client ID metadata documents');
+	pg_assert_true($read['iss_param'], 'names itself on the redirect');
+	pg_assert_same(array('none', 'client_secret_post'), $read['auth_methods']);
+
+	pg_assert_false(pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://evil.example.com'), 'https://auth.example.com')['ok'], 'another issuer');
+	pg_assert_false(pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://auth.example.com', array('code_challenge_methods_supported' => array('plain'))), 'https://auth.example.com')['ok'], 'no S256');
+	pg_assert_false(pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://auth.example.com', array('code_challenge_methods_supported' => null)), 'https://auth.example.com')['ok'], 'PKCE not said');
+	pg_assert_false(pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://auth.example.com', array('token_endpoint' => 'http://auth.example.com/token')), 'https://auth.example.com')['ok'], 'an http token endpoint');
+	pg_assert_false(pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://auth.example.com', array('authorization_endpoint' => 'javascript:alert(1)')), 'https://auth.example.com')['ok'], 'not an address');
+
+	$bare = pg_mcp_client_auth_server_read(mcp_client_test_as_metadata('https://auth.example.com', array(
+		'revocation_endpoint' => 'http://auth.example.com/revoke', 'registration_endpoint' => null, 'client_id_metadata_document_supported' => 'yes')), 'https://auth.example.com');
+
+	pg_assert_true($bare['ok'], 'the optional parts may be missing');
+	pg_assert_same('', $bare['revoke_url'], 'an unusable revocation address is left out');
+	pg_assert_same('', $bare['registration_url'], 'no registration');
+	pg_assert_false($bare['cimd'], 'only true says yes');
+}
+
+// A stand-in network for discovery: answers by method and address, and
+// writes every request to $log.
+function mcp_client_test_fetch($answers, &$log)
+{
+	return function ($method, $url, $body, $headers) use ($answers, &$log) {
+		$log[] = $method . ' ' . $url;
+
+		if (isset($answers[$method . ' ' . $url])) {
+			$answer = $answers[$method . ' ' . $url];
+
+			return array(
+				'status'  => $answer[0],
+				'headers' => isset($answer[2]) ? $answer[2] : array('content-type' => 'application/json'),
+				'body'    => is_array($answer[1]) ? json_encode($answer[1]) : (string)$answer[1],
+				'error'   => ''
+			);
+		}
+
+		return array('status' => 404, 'headers' => array(), 'body' => '', 'error' => '');
+	};
+}
+
+function test_mcp_client_discovers_how_to_sign_in()
+{
+	$log = array();
+
+	$fetch = mcp_client_test_fetch(array(
+		'POST https://mcp.example.com/mcp' => array(401, '', array('www-authenticate' => 'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp", scope="repo"')),
+		'GET https://mcp.example.com/.well-known/oauth-protected-resource/mcp' => array(200, array(
+			'resource'              => 'https://mcp.example.com/mcp',
+			'authorization_servers' => array('https://auth.example.com/tenant'),
+			'scopes_supported'      => array('repo', 'gist')
+		)),
+		'GET https://auth.example.com/.well-known/openid-configuration/tenant' => array(200, mcp_client_test_as_metadata('https://auth.example.com/tenant'))
+	), $log);
+
+	$found = pg_mcp_client_discover_auth('https://mcp.example.com/mcp', $fetch);
+
+	pg_assert_true($found['ok'], 'found');
+	pg_assert_true($found['challenged'], 'the server asked for a sign-in');
+	pg_assert_same('https://mcp.example.com/mcp', $found['resource'], 'the resource its metadata names');
+	pg_assert_same('https://auth.example.com/tenant', $found['issuer'], 'the issuer');
+	pg_assert_same('https://auth.example.com/tenant/token', $found['token_url'], 'the token endpoint');
+	pg_assert_same(array('repo'), $found['scopes'], 'the challenge\'s scope wins over scopes_supported');
+	pg_assert_same(array(
+		'POST https://mcp.example.com/mcp',
+		'GET https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+		'GET https://auth.example.com/.well-known/oauth-authorization-server/tenant',
+		'GET https://auth.example.com/.well-known/openid-configuration/tenant'
+	), $log, 'asked in the order of the specification');
+}
+
+function test_mcp_client_discovery_without_resource_metadata()
+{
+	// A server of the first authorization specification: no resource
+	// metadata; its own origin is the authorization server.
+	$log = array();
+
+	$fetch = mcp_client_test_fetch(array(
+		'POST https://mcp.example.com/v1/mcp' => array(401, '', array()),
+		'GET https://mcp.example.com/.well-known/oauth-authorization-server' => array(200, mcp_client_test_as_metadata('https://mcp.example.com'))
+	), $log);
+
+	$found = pg_mcp_client_discover_auth('https://mcp.example.com/v1/mcp/', $fetch);
+
+	pg_assert_true($found['ok'], 'found at the origin');
+	pg_assert_same('https://mcp.example.com/v1/mcp', $found['resource'], 'the canonical address is the resource');
+	pg_assert_same(array(), $found['scopes'], 'no scope asked for');
+
+	// Metadata about another resource is not followed.
+	$fetch = mcp_client_test_fetch(array(
+		'POST https://mcp.example.com/mcp' => array(401, '', array()),
+		'GET https://mcp.example.com/.well-known/oauth-protected-resource/mcp' => array(200, array(
+			'resource' => 'https://other.example.com/mcp', 'authorization_servers' => array('https://auth.example.com')))
+	), $log);
+
+	$other = pg_mcp_client_discover_auth('https://mcp.example.com/mcp', $fetch);
+
+	pg_assert_false($other['ok'], 'another resource');
+	pg_assert_true($other['error'] !== '', 'says why');
+
+	// A server that takes requests without a sign-in and names no
+	// authorization server.
+	$fetch = mcp_client_test_fetch(array(
+		'POST https://open.example.com/mcp' => array(200, array('jsonrpc' => '2.0', 'id' => 1, 'result' => array()))
+	), $log);
+
+	$open = pg_mcp_client_discover_auth('https://open.example.com/mcp', $fetch);
+
+	pg_assert_false($open['ok'], 'nothing to sign in to');
+	pg_assert_same('The server does not ask for a sign-in. Choose another way to sign in, or none.', $open['error']);
+
+	pg_assert_false(pg_mcp_client_discover_auth('http://mcp.example.com/mcp', $fetch)['ok'], 'not https');
+}
+
+function test_mcp_client_registers_as_a_public_client()
+{
+	$metadata = pg_mcp_client_client_metadata('https://site.example/pinegrap/connect.php', 'https://site.example/');
+
+	pg_assert_false(isset($metadata['client_id']), 'a registration names no client_id');
+	pg_assert_same(array('https://site.example/pinegrap/connect.php'), $metadata['redirect_uris']);
+	pg_assert_same('none', $metadata['token_endpoint_auth_method'], 'no secret');
+	pg_assert_same(array('authorization_code', 'refresh_token'), $metadata['grant_types']);
+
+	$document = pg_mcp_client_client_metadata('https://site.example/pinegrap/connect.php', 'https://site.example/', 'https://site.example/pinegrap/connect_client.php');
+
+	pg_assert_same('https://site.example/pinegrap/connect_client.php', $document['client_id'], 'the document names its own address');
+
+	$sent = null;
+
+	$fetch = function ($method, $url, $body, $headers) use (&$sent) {
+		$sent = array('method' => $method, 'url' => $url, 'body' => json_decode($body, true));
+
+		return array('status' => 201, 'headers' => array(), 'body' => json_encode(array('client_id' => 'abc123', 'token_endpoint_auth_method' => 'none')), 'error' => '');
+	};
+
+	$registered = pg_mcp_client_register('https://auth.example.com/register', $metadata, array('repo'), $fetch);
+
+	pg_assert_true($registered['ok'], 'registered');
+	pg_assert_same('abc123', $registered['client_id']);
+	pg_assert_same('', $registered['client_secret'], 'no secret');
+	pg_assert_same('none', $registered['auth_method']);
+	pg_assert_same('POST', $sent['method']);
+	pg_assert_same('repo', $sent['body']['scope'], 'the scope asked for');
+	pg_assert_same(array('https://site.example/pinegrap/connect.php'), $sent['body']['redirect_uris'], 'the redirect address');
+
+	$secret = pg_mcp_client_register('https://auth.example.com/register', $metadata, array(), function () {
+		return array('status' => 200, 'headers' => array(), 'body' => json_encode(array('client_id' => 'c', 'client_secret' => 's')), 'error' => '');
+	});
+
+	pg_assert_same('s', $secret['client_secret'], 'a secret handed out anyway');
+	pg_assert_same('client_secret_basic', $secret['auth_method'], 'sent as RFC 7591 says by default');
+
+	$refused = pg_mcp_client_register('https://auth.example.com/register', $metadata, array(), function () {
+		return array('status' => 400, 'headers' => array(), 'body' => json_encode(array('error' => 'invalid_redirect_uri', 'error_description' => 'not allowed')), 'error' => '');
+	});
+
+	pg_assert_false($refused['ok'], 'refused');
+	pg_assert_contains('invalid_redirect_uri: not allowed', $refused['error'], 'with the server\'s reason');
+}

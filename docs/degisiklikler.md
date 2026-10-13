@@ -84,6 +84,88 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — MCP sunucusuna OAuth ile bağlanma (OAuth Faz F2, ilk parça) (2026-10-13)
+
+**Neden.** `docs/_plan_tersine_oauth.md` §4.6 (senaryo 5), `docs/_plan_oauth.md`
+Faz F: Çalışma Alanı'nın MCP sunucuları kartı (#297) yalnız elle girilen
+jeton, başlık ya da kullanıcı adı/parolayla bağlanabiliyordu. Uzak MCP
+sunucularının çoğu (GitHub, Linear, Notion, Atlassian, Sentry ve başka bir
+Pinegrap sitesi) MCP yetkilendirme belgesine göre OAuth ister. Ortak altyapı
+#295 ve #309'la hazırdı; bu parça kartı ona bağlar.
+
+**Ne değişti.**
+
+- `includes/mcp/client.php`: giriş keşfi. Kimliksiz bir `initialize`
+  isteğine gelen 401'in `WWW-Authenticate: Bearer resource_metadata=...`
+  başlığı (`pg_mcp_client_bearer_challenge()`) → korumalı kaynak belgesi
+  (RFC 9728; başlıktaki adres, sonra yol ekli ve kökteki well-known adı) →
+  yetkilendirme sunucusu belgesi (RFC 8414 yol ekli, OIDC yol ekli, OIDC yol
+  sonu). Kaynak belgesi yoksa (2025-03-26 sunucusu) sunucunun kendi kökü
+  yetkilendirme sunucusu sayılır. Denetimler: belgenin `resource`'u sunucunun
+  adresini kapsamalı, AS belgesi istenen `issuer`'ı söylemeli, uçlar https,
+  `code_challenge_methods_supported`'ta S256 olmalı (yoksa MCP belgesi gereği
+  vazgeçilir). Kapsam sırası: meydan okumanın `scope`'u, yoksa
+  `scopes_supported`. `pg_mcp_client_register()` RFC 7591 dinamik kaydı
+  (`token_endpoint_auth_method none`), `pg_mcp_client_client_metadata()`
+  sitenin istemci tanımı. `pg_mcp_client_list_tools()` ve
+  `pg_mcp_client_call_tool()` artık HTTP `status` da döndürüyor.
+- Yeni uç `connect_client.php`: sitenin istemci kimlik belgesi (CIMD,
+  draft-ietf-oauth-client-id-metadata-document). Oturumsuz, salt okunur;
+  `client_id` kendi adresi, tek yönlendirme adresi `connect.php`. Adres
+  `pg_connect_client_metadata_url()`. Sitenin kendi OAuth sunucusu sorgu
+  dizgili `client_id`'yi reddettiği için ayrı dosya (sorgu yerine yol).
+- `includes/workspace/mcp.php`: `auth_kind = 'oauth'` (ENUM'da #297'den beri
+  hazırdı, şema yok). Sağlayıcı `mcp_<id>`, kurucusu
+  `ws_mcp_connect_provider()` dosya yüklenirken kaydedilir; tanım
+  `ws_mcp_connect_definition()`: `identity => false`,
+  `refresh_optional`, `default_ttl` 5 yıl (süresiz GitHub jetonu; bittiğini
+  sunucunun 401'i söyler), `nonce => false`, `authorize_params` ve
+  `token_params` = `resource` (RFC 8707), `iss_required` AS
+  `authorization_response_iss_parameter_supported` derse. İstemci olma sırası
+  (`ws_mcp_oauth_registration()`): yöneticinin girdiği istemci kimliği → site
+  https'teyse ve AS okuyorsa CIMD → dinamik kayıt → hiçbiri yoksa "geliştirici
+  ayarlarında uygulama kaydedin, yönlendirme adresi …" hatası. Bulunanlar
+  `connect_apps.options`'ta (`registered`, uçlar, `issuer`, `resource`,
+  `scopes`, `client_auth`). Dinamik kayıt aynı token adresi için tekrar
+  edilmez. İstemci kimliği değişince eski bağlantılar biter.
+- Bağlantı yalnız sitenin (`user_id = 0`, amaç `mcp`, `owner => 'site'`).
+  `ws_mcp_connection()` OAuth sunucusunda başlığı
+  `pg_connect_access_token()`'dan alır; 401'de `ws_mcp_reauthorize()` bir kez
+  `force` yeniler ve isteği tekrarlar (araç listesi, el sıkışma, Pinegrap AI'ın
+  araç çağrısı). Yenileme jetonu yoksa bağlantı `reauth` olur, kart
+  "Yeniden bağla" der; hata metni `ws_mcp_error_text()`.
+- Kart: OAuth sunucusunda durum rozeti (Bağlı değil / Yeniden bağla),
+  "Bağla" (yalnız yönetici; `mcp_connect` eylemi gerekirse keşfi yeniden
+  koşar, sonra `pg_connect_start()` ile hizmete yönlendirir) ve "Bağlantıyı
+  kes" (`mcp_disconnect`, `pg_connect_disconnect()`). Dönüş
+  `workspace_settings.php?mcp_connected=<id>#ws-mcp-<id>`;
+  `ws_mcp_settings_returned()` mesajı gösterir ve araçları hemen okur.
+  Formda isteğe bağlı istemci kimliği / gizli anahtar ve yönlendirme adresi.
+  Sunucu silinince ya da adresi veya giriş türü değişince
+  `ws_mcp_oauth_forget()` bağlantıları (hizmette iptal dahil) ve uygulamayı
+  siler. `connect.php` sağlayıcının kurucusu için `includes/workspace/mcp.php`'yi
+  yükler; genel bağlantı formu (POST) çalışma anında kurulan sağlayıcıyı
+  başlatmaz: o, özelliğin kendi ekranından ve onun kuralıyla (Çalışma Alanı'nda
+  yalnız yönetici) başlar, yoksa bir müdür sitenin MCP bağlantısını kendi
+  hesabıyla değiştirebilirdi.
+- `includes/fn/connect.php`: boş `scope` parametresi gönderilmez; yenileme
+  jetonu olmayan bağlantı iptalde erişim jetonuyla iptal edilir (RFC 7009);
+  sağlayıcıda `revoke_client_auth` iptal isteğine istemci kimliğini (gizliyse
+  token ucundaki gibi kimlik doğrulamayı) ekler.
+
+**Denendi.** Birim testleri (`tests/mcp_client_test.php`,
+`tests/workspace_mcp_test.php`, `tests/connect_test.php`). Sandbox'ta sitenin
+kendi OAuth sunucusu ve MCP ucuna karşı uçtan uca: keşif, gerçek kayıt ucu,
+yetkilendirme adresi (resource, S256, kapsamlar), yanlış `state` ve eksik
+`iss` reddi, kod → jeton, 12 araç okundu, bozuk jetonda 401 → yenileme
+jetonuyla yenileme → tekrar, `products_list` çağrısı, bağlantıyı kesince
+sunucudaki iznin silinmesi. CIMD yolu sandbox'ta denenemedi (https gerekiyor).
+
+**Kapsam dışı (devir notunda).** Kişi başı bağlantı, yazan araçların onay
+kartı (`ws_ai_changes` `record_type 'mcp_call'`), F3 (göreve takma ad).
+
+---
+
 ## 2026.4.10 — Yedekler Google Drive, OneDrive ve Dropbox'a (2026-10-13)
 
 **Neden.** `docs/_plan_tersine_oauth.md` §4.4: otomatik yedeğin uzak kopyası

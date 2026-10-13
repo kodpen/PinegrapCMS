@@ -178,6 +178,12 @@ function test_connect_authorize_url_carries_the_request()
 
 	pg_assert_false(strpos($plain, 'nonce=') !== false, 'no empty nonce');
 	pg_assert_false(strpos($plain, 'login_hint=') !== false, 'no empty login_hint');
+
+	$none = pg_connect_authorize_url(array('key' => 'mcp_7', 'authorize_url' => 'https://as.example/authorize', 'authorize_params' => array('resource' => 'https://mcp.example/mcp')),
+		array('client_id' => 'x'), array('redirect_uri' => 'https://example.com/c', 'scopes' => array(), 'state' => 's', 'challenge' => 'c'));
+
+	pg_assert_false(strpos($none, 'scope=') !== false, 'no empty scope (an MCP server that asks for none)');
+	pg_assert_contains('resource=https%3A%2F%2Fmcp.example%2Fmcp', $none, 'the resource');
 }
 
 function test_connect_token_response_shape()

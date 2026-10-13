@@ -137,3 +137,72 @@ function test_workspace_mcp_header_names()
 	pg_assert_true(ws_mcp_header_name_problem('Mcp-Session-Id') !== '', 'the connection sets Mcp-*');
 	pg_assert_true(ws_mcp_header_name_problem("X-Key\r\nHost") !== '', 'no line breaks');
 }
+
+function test_workspace_mcp_oauth_provider_definition()
+{
+	pg_assert_true(isset(ws_mcp_auth_kinds()['oauth']), 'OAuth is a way to sign in');
+
+	$server = array('id' => 7, 'alias' => 'github', 'auth_kind' => 'oauth');
+
+	pg_assert_same('mcp_7', ws_mcp_connect_key($server));
+	pg_assert_same(null, ws_mcp_connect_definition($server, array()), 'nothing found yet');
+
+	$provider = ws_mcp_connect_definition($server, array(
+		'authorize_url' => 'https://github.com/login/oauth/authorize',
+		'token_url'     => 'https://github.com/login/oauth/access_token',
+		'issuer'        => 'https://github.com/login/oauth',
+		'iss_param'     => false,
+		'resource'      => 'https://api.githubcopilot.com/mcp',
+		'scopes'        => array('repo', 'repo', 'read:org'),
+		'client_auth'   => 'basic',
+	));
+
+	pg_assert_same('@github', $provider['label']);
+	pg_assert_same('@github', $provider['account_label'], 'the connection is named after the alias');
+	pg_assert_false($provider['identity'], 'the service names no account');
+	pg_assert_true($provider['refresh_optional'], 'a refresh token is not required');
+	pg_assert_same(WS_MCP_TOKEN_TTL, $provider['default_ttl'], 'a token without an end lasts');
+	pg_assert_false($provider['nonce'], 'no nonce');
+	pg_assert_same(array('resource' => 'https://api.githubcopilot.com/mcp'), $provider['authorize_params'], 'RFC 8707 on the authorization');
+	pg_assert_same(array('resource' => 'https://api.githubcopilot.com/mcp'), $provider['token_params'], 'and on every token request');
+	pg_assert_same(array('repo', 'read:org'), $provider['identity_scopes'], 'the scopes the server asks for');
+	pg_assert_same(array('https://github.com/login/oauth'), $provider['issuers']);
+	pg_assert_false($provider['iss_required']);
+	pg_assert_same('basic', $provider['client_auth']);
+	pg_assert_same('', $provider['revoke_url'], 'no revocation endpoint');
+
+	$bare = ws_mcp_connect_definition($server, array('authorize_url' => 'https://a/authorize', 'token_url' => 'https://a/token'));
+
+	pg_assert_same(array(), $bare['issuers'], 'no issuer known');
+	pg_assert_same(array(), $bare['authorize_params'], 'no resource known');
+	pg_assert_same('post', $bare['client_auth'], 'the secret in the body by default');
+
+	pg_assert_same(null, ws_mcp_connect_provider('mcp_x'), 'not a server id');
+	pg_assert_same(null, ws_mcp_connect_provider('mcp_0'), 'no server 0');
+}
+
+function test_workspace_mcp_oauth_registration_order()
+{
+	$found = array('cimd' => true, 'registration_url' => 'https://auth.example.com/register');
+
+	pg_assert_same('manual', ws_mcp_oauth_registration($found, ' Iv1.abc ', true), 'the administrator\'s application first');
+	pg_assert_same('cimd', ws_mcp_oauth_registration($found, '', true), 'then the metadata document');
+	pg_assert_same('dcr', ws_mcp_oauth_registration($found, '', false), 'a site not on https cannot be fetched');
+	pg_assert_same('dcr', ws_mcp_oauth_registration(array('cimd' => false, 'registration_url' => 'https://a/register'), '', true), 'then a registration');
+	pg_assert_same('', ws_mcp_oauth_registration(array('cimd' => false, 'registration_url' => ''), '', true), 'no way');
+}
+
+function test_workspace_mcp_oauth_error_text()
+{
+	$oauth = array('alias' => 'docs', 'auth_kind' => 'oauth');
+
+	pg_assert_contains('@docs', ws_mcp_error_text($oauth, 401, 'refused'), 'a refused token asks for a new connection');
+	pg_assert_same('refused', ws_mcp_error_text($oauth, 500, 'refused'), 'another failure is said as it is');
+	pg_assert_same('refused', ws_mcp_error_text(array('alias' => 'docs', 'auth_kind' => 'bearer'), 401, 'refused'), 'a bearer token is the administrator\'s to fix');
+
+	$conn = array('headers' => array('x'));
+
+	pg_assert_false(ws_mcp_reauthorize($conn, array('auth_kind' => 'bearer', 'id' => 1, 'alias' => 'a'), 401), 'only an OAuth server renews');
+	pg_assert_false(ws_mcp_reauthorize($conn, $oauth + array('id' => 1), 500), 'only after a 401');
+	pg_assert_same(array('x'), $conn['headers'], 'the connection is left as it was');
+}

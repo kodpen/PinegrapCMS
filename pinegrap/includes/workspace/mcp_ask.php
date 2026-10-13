@@ -403,6 +403,16 @@ function ws_mcp_ask_tool_run($row, &$state, $function, $args)
 
     // Decoded as objects: an object the model wrote goes out as one.
     $out = pg_mcp_client_call_tool($conn, $tool['name'], json_decode($arguments));
+
+    // A token the service no longer takes is renewed once (OAuth servers).
+    if (!$out['ok'] && ws_mcp_reauthorize($conn, $server, $out['status'] ?? 0)) {
+        $out = pg_mcp_client_call_tool($conn, $tool['name'], json_decode($arguments));
+    }
+
+    if (!$out['ok']) {
+        $out['error'] = ws_mcp_error_text($server, $out['status'] ?? 0, $out['error']);
+    }
+
     $duration = (int) round((microtime(true) - $started) * 1000);
 
     ws_mcp_remember($server, $conn, $out['ok'] ? '' : $out['error']);
