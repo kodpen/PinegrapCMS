@@ -459,7 +459,7 @@ function erp_api_accounts_create($params)
     );
 
     if (isset($params['credit_limit'])) {
-        $data['credit_limit'] = max(0, (int) $params['credit_limit']);
+        $data['credit_limit'] = (int) $params['credit_limit'];
     }
 
     if (isset($params['invoice_email']) && ($params['invoice_email'] !== '')) {
@@ -622,7 +622,7 @@ function erp_api_accounts_update($params)
         }
 
         if ($name === 'credit_limit') {
-            $value = max(0, (int) $value);
+            $value = (int) $value;
         }
 
         if (($name === 'invoice_email') && ($value !== '') && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
@@ -1349,10 +1349,6 @@ function erp_api_receipts_create($params)
 
     if ((int) $till['is_active'] !== 1) {
         api_fail_validation(lang('That till or bank account is not active.'), 'cash_account_id');
-    }
-
-    if ((int) $params['amount'] <= 0) {
-        api_fail_validation(lang('Enter an amount greater than zero.'), 'amount');
     }
 
     $direction = (string) ($params['direction'] ?? 'collection');

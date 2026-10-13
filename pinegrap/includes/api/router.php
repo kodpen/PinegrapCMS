@@ -563,6 +563,29 @@ function api_validate_input($route, $input) {
 
 }
 
+// The 'min' and 'max' a number parameter declares. int, decimal and money all
+// answer through here, so one field is refused in the same words whatever its
+// type, and a bound written in the schema is never left to the handler.
+function api_validate_bounds($param, $value) {
+
+	$name = $param['name'];
+
+	if (isset($param['min']) && $value < $param['min']) {
+
+		api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
+
+	}
+
+	if (isset($param['max']) && $value > $param['max']) {
+
+		api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
+
+	}
+
+	return $value;
+
+}
+
 function api_validate_value($param, $raw) {
 
 	$name = $param['name'];
@@ -579,21 +602,7 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			$value = (int)$raw;
-
-			if (isset($param['min']) && $value < $param['min']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			if (isset($param['max']) && $value > $param['max']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			return $value;
+			return api_validate_bounds($param, (int)$raw);
 
 		case 'money':
 
@@ -609,7 +618,7 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			return (int)$raw;
+			return api_validate_bounds($param, (int)$raw);
 
 		case 'decimal':
 
@@ -619,24 +628,10 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			$value = (float)$raw;
-
 			// The bounds were declared in the schema and were being ignored
 			// here, so a tax rate of 150 reached the write and was silently
 			// clamped instead of refused.
-			if (isset($param['min']) && $value < $param['min']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			if (isset($param['max']) && $value > $param['max']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			return $value;
+			return api_validate_bounds($param, (float)$raw);
 
 		case 'bool':
 

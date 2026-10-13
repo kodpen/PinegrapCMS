@@ -162,11 +162,6 @@ function erp_api_cash_transfers_create($params)
     }
 
     $amount = (int) $params['amount'];
-
-    if ($amount <= 0) {
-        api_fail_validation(lang('Enter an amount greater than zero.'), 'amount');
-    }
-
     $date = isset($params['date']) ? erp_api_day($params['date']) : date('Y-m-d');
 
     erp_api_cash_lock_check($date, 'date');
@@ -283,11 +278,6 @@ function erp_api_cheques_create($params)
 
     $till = erp_api_cash_till((int) $params['cash_account_id'], 'cash_account_id');
     $amount = (int) $params['amount'];
-
-    if ($amount <= 0) {
-        api_fail_validation(lang('Enter an amount greater than zero.'), 'amount');
-    }
-
     $date = isset($params['date']) ? erp_api_day($params['date']) : date('Y-m-d');
     $due_date = erp_api_day($params['due_date']);
 

@@ -84,6 +84,84 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: para alanlarında en az / en çok sınırı yönlendiricide (2026-10-13)
+
+**Sorun.** Yönlendirici `int` ve `decimal` türlerinde şemadaki `min`/`max`'ı
+uyguluyordu ama `money` türünde uygulamıyordu (`api-genisletme-devir.md` 6.
+madde). Bu yüzden para alanının sınırı her işleyicide ayrı ayrı ve farklı
+sözlerle denetleniyordu: ürün fiyatı "price cannot be negative.", hediye
+kartı kendi `api_gift_card_money_or_fail()` yardımcısı, ERP tahsilat, virman
+ve çek "Enter an amount greater than zero.", ERP cari kartında
+`credit_limit` ise eksi değer **sessizce 0'a çekiliyordu**. Sınır OpenAPI
+belgesinde ve MCP araç tanımında da görünmüyordu; entegrasyon kuralı ancak
+422 alınca öğreniyordu. Bazı alanlarda hiç üst sınır yoktu: ürün fiyatı
+`products.price` (imzalı INT) kolonunun taşıyabileceğinden büyük gelince
+MySQL'e kadar gidiyordu.
+
+**Değişiklik.**
+
+- `api_validate_value()` `money` türünde de `min`/`max`'ı uygular. Üç sayı
+  türü (`int`, `decimal`, `money`) tek yardımcıdan geçer
+  (`api_validate_bounds()`), ret sözü ve alanı hepsinde aynı: 422
+  `validation_failed`, "{alan} is below the smallest accepted value." /
+  "... above the largest accepted value.", `field` alanın adı.
+- `api_openapi_type()` `money` için `minimum`/`maximum` yazar; MCP araçları
+  aynı fonksiyondan kurulduğu için `inputSchema`'da da görünür, API
+  konsolu (`/docs`) zaten her türde `min–max` notu gösteriyordu.
+- Bütün para parametrelerine sınır yazıldı:
+
+  | Uç | Alan | min | max |
+  |---|---|---|---|
+  | `POST /products`, `POST /products/{id}` | `price` | 0 | 2147483647 (`products.price` imzalı INT) |
+  | `POST /gift-cards` | `amount` | 1 | 4294967295 (INT UNSIGNED) |
+  | `POST /gift-cards/{id}` | `balance` | 0 | 4294967295 |
+  | `POST /erp/accounts`, `POST /erp/accounts/{id}` | `credit_limit` | 0 | — (BIGINT) |
+  | `POST /erp/accounts` | `opening_balance` | — | — (eksi: mağaza cariye borçlu) |
+  | `POST /erp/receipts` | `amount` | 1 | — |
+  | `POST /erp/cash-transfers` | `amount` | 1 | — |
+  | `POST /erp/cheques` | `amount` | 1 | — |
+  | `POST /erp/expenses`, `POST /erp/expenses/{id}` | `amount` | 1 | — |
+  | `POST /erp/expenses`, `POST /erp/expenses/{id}` | `tax_amount` | 0 | — |
+
+- İşleyicilerdeki tekrar denetimler kaldırıldı: ürün oluşturma/güncellemede
+  eksi fiyat denetimi, `api_gift_card_money_or_fail()`, ERP tahsilat,
+  virman ve çekte `amount <= 0` denetimi, cari kartta `max(0, ...)`.
+  Panelle ortak kayıt fonksiyonlarındaki denetimler (`erp_expense_figures()`,
+  `erp_account_save()` içindeki `max(0, ...)`) yerinde: panel de onlardan
+  geçiyor. Toplu fiyat ucundaki satır denetimi ("price cannot be
+  negative.") da yerinde; `list` türünün öğeleri yönlendiricide türlenmiyor.
+
+**Davranışı değişen uçlar.** Hepsi yine 422, alan adı aynı; değişen ret
+sözü ve sırası:
+
+- `credit_limit` eksi gelince artık 422 (önceden 0 olarak yazılıp 200/201
+  dönüyordu).
+- Ürün fiyatı 2147483647'den, hediye kartı tutarı/bakiyesi 4294967295'ten
+  büyükse 422 (ürün fiyatında önceden sınır yoktu).
+- Ürün fiyatı eksi: "price cannot be negative." yerine "price is below the
+  smallest accepted value.".
+- ERP tahsilat, virman, çek ve gider `amount` 0 ya da eksi: "Enter an
+  amount greater than zero." yerine "amount is below the smallest accepted
+  value.". Gider `tax_amount` eksi: önceden `field: amount` ile "The tax
+  amount cannot be negative." dönüyordu, artık `field: tax_amount`.
+- Sınır dışı tutar artık uygulama sahibinin ERP kasa hakkı, kasa/cari
+  varlığı gibi işleyici denetimlerinden **önce** reddedilir (diğer tür
+  hataları gibi); kasa hakkı olmayan sahibin `amount: 0` isteği 403 yerine
+  422 alır.
+
+Şema değişikliği yok; yeni izin yok.
+
+Testler: `tests/api_money_bounds_test.php` (her para alanının alt sınırı
+olması, bilerek eksi alan `opening_balance`'ın adıyla listelenmesi,
+yukarıdaki tablonun rotalarla aynı olması, OpenAPI'de `minimum`/`maximum`).
+Yönlendirici gerçek `api_validate_value()` ile ayrıca denendi: eksi fiyat,
+2147483648 fiyat, 0 hediye kartı, 4294967296 hediye kartı, eksi
+`credit_limit`, 0 tahsilat, eksi `tax_amount` 422 ve doğru `field`; 0
+fiyat, eksi `opening_balance`, `"500"` kabul; `int`/`decimal` sınırları
+eskisi gibi. HTTP katmanı ve MCP sandbox'ta denenmedi.
+
+---
+
 ## 2026.4.10 — Dış API ve MCP: ERP vade farkı ve nakit tahmini (ERP Faz 9'un API parçası) (2026-10-13)
 
 **Neden.** ERP Faz 9 (#319) vade farkını ve nakit tahminini yalnız panele

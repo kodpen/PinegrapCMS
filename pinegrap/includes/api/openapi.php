@@ -320,7 +320,21 @@ function api_openapi_type($param) {
 
 		case 'money':
 
-			return array('type' => 'integer', 'description' => 'Whole number of minor units. 1999 is 19.99.');
+			$schema = array('type' => 'integer', 'description' => 'Whole number of minor units. 1999 is 19.99.');
+
+			if (isset($param['min'])) {
+
+				$schema['minimum'] = $param['min'];
+
+			}
+
+			if (isset($param['max'])) {
+
+				$schema['maximum'] = $param['max'];
+
+			}
+
+			return $schema;
 
 		case 'decimal':
 

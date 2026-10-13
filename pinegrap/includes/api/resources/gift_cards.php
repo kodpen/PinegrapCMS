@@ -264,28 +264,6 @@ function api_gift_cards_get($params) {
 
 }
 
-// Minor units, from $min up to what the column holds. The router does not
-// bound money, so the screen's own rule is applied here.
-function api_gift_card_money_or_fail($value, $name, $min) {
-
-	$value = (int)$value;
-
-	if ($value < $min) {
-
-		api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
-
-	}
-
-	if ($value > 4294967295) {
-
-		api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
-
-	}
-
-	return $value;
-
-}
-
 // A day the card stops working on, or '' for never.
 function api_gift_card_expiry_in($params) {
 
@@ -303,7 +281,7 @@ function api_gift_cards_create($params) {
 
 	$app = api_current_app();
 
-	$amount = api_gift_card_money_or_fail($params['amount'], 'amount', 1);
+	$amount = (int)$params['amount'];
 
 	$expires = api_gift_card_expiry_in($params);
 
@@ -349,7 +327,7 @@ function api_gift_cards_update($params) {
 
 	if (isset($params['balance'])) {
 
-		$set['balance'] = (string)api_gift_card_money_or_fail($params['balance'], 'balance', 0);
+		$set['balance'] = (string)(int)$params['balance'];
 
 	}
 
