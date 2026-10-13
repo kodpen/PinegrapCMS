@@ -29,6 +29,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_language_redirect();      // 10.1
 	upgrade_2026_4_10_waf_countries();          // 10.2
 	upgrade_2026_4_10_workspace_delegation();   // 10.80
+	upgrade_2026_4_10_workspace_calendar_feeds(); // 10.81
 
 }
 
@@ -242,5 +243,42 @@ function upgrade_2026_4_10_workspace_delegation() {
 	install_add_index('ws_ai_changes', 'idx_task', "INDEX idx_task (task_id)");
 
 	install_note('Workspace: a task can be handed to an assistant (Pinegrap AI or Claude). The people on it stay responsible; what the assistant proposes waits for them to apply it.');
+
+}
+
+// Workspace calendar subscriptions (2026.4.10, 10.81;
+// includes/workspace/calendar_feed.php, workspace_ical.php).
+//
+// A member of the team subscribes to their own work in their phone's or
+// desktop's calendar: the tasks given to them, the plan items about them, the
+// days off and the approvals waiting for them, read from an address of their
+// own. One row per person (uk_user). token_hash is the SHA-256 of the token in
+// the address and what a request is looked up by (uk_token); token_secret is
+// the same token encrypted with the site's key, "<ciphertext>:<iv>", so the
+// screen can show the address again ('' where the site has no key). kinds is
+// what the calendar carries (tasks, plan, holidays, approvals), details
+// whether descriptions and notes go out with it. fetched_* is the last read,
+// written once a minute at most, so the person sees whether a calendar reads
+// the address and from where.
+function upgrade_2026_4_10_workspace_calendar_feeds() {
+
+	install_create_table('ws_calendar_feeds', "CREATE TABLE ws_calendar_feeds (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id        INT UNSIGNED NOT NULL,
+		token_hash     CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		token_secret   TEXT NULL,
+		kinds          VARCHAR(100) NOT NULL DEFAULT '',
+		details        TINYINT(1) NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		fetched_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		fetched_ip     VARCHAR(45) NOT NULL DEFAULT '',
+		fetched_agent  VARCHAR(255) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_user (user_id),
+		UNIQUE KEY uk_token (token_hash)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: every member can subscribe to their tasks, plan items, days off and approval deadlines in their phone or desktop calendar (Apple, Google, Outlook) with a private address of their own, from the account menu.');
 
 }
