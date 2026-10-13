@@ -84,6 +84,138 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: bağlanan metin linkini koruyor, kayıt yokken düzen gizleniyor, pg-hide-if-empty, boş liste etiketi, stretched-link, detay sayfası başlığı (2026-10-13)
+
+**Neden.** kodpen.com görsel editörle kurulurken çıkan sorun listesinin
+1–9 ve 13. maddeleri. Listedeki yollar canlı siteye aittir; sorunlar yerel
+kodda yeniden üretilip düzeltildi. Sayfa içinde `^^token^^` yer tutucusu
+kullanılmaz kuralı korunur: aşağıdaki takma adlar eski tasarımlar bozulmasın
+diye vardır, panel artık token adı göstermez.
+
+### 1. Bağlanan metin içindeki HTML (`includes/fn/designer.php`, `style_designer.js`)
+
+`_apply_bindings($props, $rich_text)`: metnini olduğu gibi basan beş içerik
+türünde (heading, link, paragraph, span, text — `_render_content_html()`)
+`text` bağlaması `pg_binding_text_slot()` ile yazılır: metnin işaretlemesi tek
+bir kelime grubunu sarıyorsa token o grubun yerine girer
+(`<a href="/blog-detay">Başlık</a>` → `<a href="/blog-detay">^^title^^</a>`),
+grubun çevresindeki boşluk kalır. İşaretleme yoksa, hiç kelime yoksa ya da
+birden çok grup varsa (hangisinin değer olduğu bilinmez) eskisi gibi tüm
+metin token olur. Bileşenler (metni kaçışlı basar) etkilenmez. Tuval aynı
+kuralı `_sdBindTextSlot()` ile uygular. Bağlama paneli (`_sdBindingTextNote()`)
+metinde işaretleme varken ne olacağını söyler (birden çok grup ve bağlama
+varsa uyarı rengiyle); metin tek bir `<a>` ise "Linki ayrı bir öğe yap"
+(`_sdSplitTextLink()`) öğeyi aynı etiketli bir semantic öğe + içinde content
+link'e çevirir: `text` bağlaması ve tarih biçimi linke geçer, diğer
+bağlamalar (`eo_visible_if`), sınıflar (align → `text-*`, lead), id ve
+özellikler dışta kalır; fontFamily ve inlineStyle semantic öğede alan
+olmadığı için `style` özelliğine katlanır. Linkin href, target, rel, sınıf ve
+diğer özellikleri korunur. Böylece linkin adresi de detay adresine
+bağlanabilir.
+
+### 2. Form listesinde `^^__detail_url^^` (`includes/fn/widgets.php`)
+
+Panel bu adı söylüyordu ama form listesi yalnız `form_item_view`'ı
+dolduruyordu. Form listesi satırına ve Hesabım gönderim satırına
+`__detail_url` aynı değerle eklendi. Panel artık token adı göstermez: detay
+sayfası seçicisinin altında `_swDetailPageHint()` bağlama listesindeki
+seçeneğin adını söyler. `form_item_view` seçeneği bölgeye göre adlanır:
+listede "Detay sayfası adresi", detayda "Bu kaydın adresi"; eski adla
+kaydedilmiş bağlama açılır listede bu seçenek olarak görünür.
+
+### 3. `^^__not_found_message^^` ve kayıt yokken düzen (`widgets.php`)
+
+Form detay widget'ı `__not_found_message`'ı `not_found` ile aynı değerle
+doldurur (katalog ve takvim bu adı kullanıyor). Yeni ayar
+`hide_when_not_found` (varsayılan açık): kayıt yoksa ya da ziyaretçi
+göremiyorsa `pg_sw_prune_record_layout()` loop_area'nın çocuklarını (loop_area
+yoksa kökün çocuklarını) `_pg_sw_keep_for_not_found()` ile keser: "kayıt
+yokken göster" (`record_not_found`) öğeleri ve bulunamadı mesajına bağlı
+öğeler bütün, Mesajlar düğümü ve bunları saran öğeler kalır; başka bir
+duruma bağlı öğeler ve kayıt alanları gider. Ağaçta bu duruma ait hiçbir şey
+yoksa renderer mesajı `pg_sw_state_message_html()` ile kendisi yazar. Kapalı
+ayar eski davranıştır (düzen boş alanlarla). Panelde "Kayıt yoksa düzeni
+gizle" anahtarı.
+
+### 4. `pg-hide-if-empty` ve boş öğe (`widgets.php`, `designer.php`)
+
+`pg_sw_hide_empty_fields()` yeniden yazıldı: sınıfı taşıyan her öğe, aynı
+etiketin iç içe geçmesini sayan `pg_sw_closing_tag()` ile kapanışına kadar
+bulunur, sondan başa işlenir (içteki boşalınca dıştaki de gider). Değer,
+varsa `pg-field-value` öğesinin içidir (`pg_sw_field_value()`), yoksa öğenin
+tamamı; `pg_sw_has_content()` metin, adresli img, video/iframe/svg, link ve
+form denetimlerini içerik sayar. Önceki düzenli ifade iç içe div'de erken
+kapanıyor ve hiçbir şeyi silmiyordu. Çocuğu olmayan semantic öğe artık tek
+satırda kapanır (`<div class="x"></div>`), bağlı değeri boş kalan öğe gerçekten
+boştur ve `:empty` eşleşir.
+
+### 5. Boş liste mesajı (`widgets.php`, `widgets_catalog.php`, `designer.php`)
+
+`_split_widget_tree()` kayıtların basıldığı öğeyi `loop_parent` olarak döner
+(`ul`, `tbody`, grid için `row`, üst seviyede `''`). `pg_sw_state_message_html()`
+mesajı buna uygun yazar: li, tüm kolonları kaplayan tr/td
+(`pg_sw_row_cells()`), dd, `div.col-12`, satır içi öğede span, aksi halde div.
+Sınıf `text-body-secondary py-3` (Bootstrap 5.3/6; `text-muted` kullanımdan
+kalkıyor). `$outside_markers` ile liste/tablo gibi yalnız satır tutabilen
+ebeveynin yanına `<!--pg-loop-before-->` / `<!--pg-loop-after-->` konur; form
+listesi arama kutusunu öncesine, sayfalamayı sonrasına yazar.
+
+### 6. Stretched link (`designer.php`)
+
+`_has_stretched_link_child` yerine ataya bakan kural: `_render_tree_node()`
+bir yığın (`_pg_stretch_stack()`) tutar; bir öğe kendisi konumlanmışsa
+(`_pg_node_is_positioned()`: position sınıfları, card, list-group-item,
+btn-group, input-group, dropdown, modal-content, navbar, ratio, sticky/fixed
+ve satır içi `position:`) ya da bir atası öyleyse `position-relative`
+eklenmez. Değilse, stretched link'e yalnız metin öğeleri ve sınıfsız/id'siz
+yalın kutular üzerinden ulaşan ilk öğe (`_pg_stretch_claims()`) sınıfı alır.
+Sonuç: `.card > h2 > a.stretched-link`'te h2 artık position-relative almaz,
+kart tıklanır. Bilinen sınır: yalnız kendi CSS'iyle konumlanan bir kutu
+tanınmaz; panel Stretch satırında `position-relative` sınıfını eklemeyi
+söyler.
+
+### 7. Detay sayfası seçicisi (`style_designer.js`)
+
+`_swPageOptions(..., { otherTabs })`: tasarımın detay widget'ı henüz olmayan
+sekmeleri ayrı grupta listeler (form listesi, katalog ve Hesabım detay
+seçicileri). `_swDetailPageHint()` seçilen sekmede widget yoksa uyarır, hiç
+detay sayfası yoksa ne yapılacağını söyler.
+
+### 8. Widget adı (`style_designer.js`)
+
+`_swAutoName(type, page, where)`: paylaşılan bir parçaya (`_sdSharedOwnerOf()`
+— başlık, altlık) bırakılan ya da birden çok sayfada duran widget tasarımın
+adını alır (`#sd-style-name`, boşsa "tasarım"); tek sayfadakiler sayfanın
+adını almaya devam eder. Tür seçilince yeniden adlandırma da aynı kuralla.
+"Bu sayfa için kopya" (`_swForkForThisPage`) sayfa adında kalır.
+
+### 9. Detay sayfasının başlığı (`get_page_content.php`, `widgets.php`)
+
+Form detay widget'ı ayarları: `title_field` (formun bir alanı ya da
+`reference_code`; boşsa formun RSS başlık alanları) ve `title_suffix`
+("| Gelen Kutusu", çevrilen sayfada `pg_tr_text(..., 'seo')` ile).
+`pg_sw_record_title()` başlığı kurar; `get_page_content.php` widget'lı sayfada
+alan değerlerini `form_data`'dan düz metin olarak (html alanı
+`convert_html_to_text`) okur. Formda RSS başlık alanı yoksa panel uyarır.
+
+### 13. Küçükler
+
+Tuvalde açıklama/özet biçimli alanın örnek metni yalnız katalog, sepet,
+sipariş bölgelerinde ürün metnidir, diğerlerinde nötr. `shared_component`
+panel eylemlerinden `list_form_fields` ve `list_form_item_view_pages` formu
+`form_id` ya da `page_id` ile kabul eder (`_sc_custom_form_page_id()`);
+eksikse "Geçersiz ID." yerine beklenen parametreyi söyler.
+
+**Doğrulama.** `tests/designer_widget_fixes_test.php` (23 test): metin
+yuvası, hide-if-empty (iç içe, alan değeri, resim), boş öğe, durum mesajı
+etiketleri, `loop_parent` ve dış işaretler, stretched-link (kart, yalın kutu,
+satır içi position), kayıt yokken budama, kayıt başlığı. Tuval yuvası ve
+link ayırma headless Chromium'da sunucu durumlarıyla karşılaştırıldı.
+`tools/test.php`, `lint.php`, `check_lang.php`, `check_bindings.php`,
+`check_api_schema.php` temiz.
+
+---
+
 ## 2026.4.10 — Dış API: ürün güncellemede grup, varyant, görsel ve barkod; yazımdan sonra SEO puanı (2026-10-13)
 
 **Neden.** Erdal, Claude bağlayıcısıyla bir ürünün "tüm alanlarını" doldurttu
