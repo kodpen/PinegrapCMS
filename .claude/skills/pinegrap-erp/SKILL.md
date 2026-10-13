@@ -390,7 +390,8 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   hücresi biçiminden tanınır). Her yol `erp_bank_read_file()` → aynı hücre
   satırları; sayı hücresi `erp_bank_sheet_value()` ile CSV metnine, başlık
   bloğu `erp_bank_rows_from_heading()` ile atılır. `.ods` reddedilir (vendored
-  OOCalc PHP 8'de ölür). Satır
+  OOCalc'ın PHP 8 çökmesi ürün içe aktarımı düzeltmesiyle gitti; banka yolunda
+  `.ods` henüz açılmadı). Satır
   `UNIQUE (cash_account_id, line_hash)` ile bir kez alınır; eşleşme defterde
   aynı kasa + tutar + ±3 gün; kayıt tahsilat/ödeme ya da gider kapısından.
   Sütun seçimi kasaya göre hatırlanır.

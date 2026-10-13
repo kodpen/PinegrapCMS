@@ -101,7 +101,7 @@ function pg_products_import_cell($cell)
 
         // A whole day carries no time of day, so it is not given one: the
         // importer's date columns are days.
-        return date((((float) $value) == floor((float) $value)) ? 'Y-m-d' : 'Y-m-d H:i:s', $stamp);
+        return gmdate((((float) $value) == floor((float) $value)) ? 'Y-m-d' : 'Y-m-d H:i:s', $stamp);
     }
 
     return (string) $value;
@@ -425,7 +425,7 @@ function pg_products_import_xlsx_date($serial)
     // the format has been wrong about since Lotus 1-2-3.
     $stamp = ((float) $serial - 25569) * 86400;
 
-    return date(((((float) $serial) == floor((float) $serial)) ? 'Y-m-d' : 'Y-m-d H:i:s'), (int) round($stamp));
+    return gmdate(((((float) $serial) == floor((float) $serial)) ? 'Y-m-d' : 'Y-m-d H:i:s'), (int) round($stamp));
 }
 
 // Turn a .xlsx into the CSV the importer reads, and return its path.
