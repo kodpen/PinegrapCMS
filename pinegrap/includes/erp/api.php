@@ -12,8 +12,9 @@
  * includes/api/modules.php) and only while ERP_ENABLED is on: a switched-off
  * module has no endpoints, no events and no permission to hand out.
  *
- * The handlers and the presenters are in api_resources.php next to this file;
- * this one stays a table, the way schema.php is a table.
+ * The handlers and the presenters are in api_resources.php next to this file,
+ * and the ones that write invoices and quotes in api_documents.php; this one
+ * stays a table, the way schema.php is a table.
  *
  * Two permissions, mirroring the panel: 'erp' is the ledger - accounts,
  * invoices, delivery notes, expenses, quotes, stock and the reports - and
@@ -40,6 +41,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // The module's own helpers: the API entry does not load them for us.
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_documents.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -149,6 +151,7 @@ function erp_openapi_objects()
         'ErpAccount' => 'erp_api_account_schema',
         'ErpAccountTransaction' => 'erp_api_account_transaction_schema',
         'ErpInvoice' => 'erp_api_invoice_schema',
+        'ErpInvoiceRecurrence' => 'erp_api_invoice_recurrence_schema',
         'ErpReceipt' => 'erp_api_receipt_schema',
         'ErpCashAccount' => 'erp_api_cash_account_schema',
         'ErpWaybill' => 'erp_api_waybill_schema',
@@ -183,6 +186,22 @@ function erp_api_routes()
         array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
         array('name' => 'include_count', 'in' => 'query', 'type' => 'bool', 'description' => 'Also count every matching row. Costs an extra query, so it is off by default.'),
     );
+
+    // The lines of a typed invoice or a quote. The ERP works the figures out
+    // (erp_manual_lines_build()); a client sends what was sold and reads the
+    // tax, the discounts and the totals back from the answer.
+    $lines = array('name' => 'lines', 'in' => 'body', 'type' => 'list', 'max_items' => 200, 'of' => array(
+        'product_id' => 'integer',
+        'description' => 'string',
+        'quantity' => 'number',
+        'unit' => 'string',
+        'unit_price' => 'integer',
+        'discount_rate' => 'number',
+        'tax_rate' => 'number',
+        'tax2_rate' => 'number',
+        'withholding_code' => 'string',
+        'withholding_rate' => 'number',
+    ), 'description' => 'The lines, in order. unit_price is required: minor units of the document currency, before tax and discount. quantity is a decimal number written with a point (1.5), 1 when left out. discount_rate, tax_rate, tax2_rate and withholding_rate are percentages (20 for 20%). product_id ties the line to a product, whose name and tax rate fill description and tax_rate when they are left out; without a product both are required. unit is the UN/ECE unit code, C62 (piece) when left out. withholding_code is the VAT withholding code (601 and the like); a code on the list carries its own share, withholding_rate is read only for one that is not. tax2_rate only where the store names a second tax. Totals cannot be sent: the answer carries them.');
 
     return array(
 
@@ -333,14 +352,14 @@ function erp_api_routes()
             'handler' => 'erp_api_invoices_list',
             'returns' => array('list' => 'ErpInvoice'),
             'summary' => 'List ERP invoices',
-            'description' => 'Issued invoices, return invoices and purchase invoices with their lines and totals; drafts are not on the wire because a draft is not a document yet. Cursor paged by the moment the record last changed, so updated_since plus the cursor is how an accounting integration keeps itself in step: a payment that closes an invoice changes it, and it shows up again.',
+            'description' => 'Issued invoices, return invoices and purchase invoices with their lines and totals. Drafts are left out unless status=draft is asked for: a draft has no number yet and may still be thrown away. Cursor paged by the moment the record last changed, so updated_since plus the cursor is how an accounting integration keeps itself in step: a payment that closes an invoice changes it, and it shows up again.',
             'params' => array_merge(array(
                 array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
                 array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The store order the invoice was written from.'),
                 array('name' => 'number', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Exact match on the full document number, PGF2026000000012 for example.'),
                 array('name' => 'direction', 'in' => 'query', 'type' => 'enum', 'values' => array('sales', 'purchase')),
                 array('name' => 'doc_type', 'in' => 'query', 'type' => 'enum', 'values' => array('invoice', 'return')),
-                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('issued', 'partially_paid', 'paid', 'cancelled'), 'description' => 'issued means open and unpaid.'),
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'issued', 'partially_paid', 'paid', 'cancelled'), 'description' => 'issued means open and unpaid; draft lists the drafts, which no other filter shows.'),
                 array('name' => 'open', 'in' => 'query', 'type' => 'bool', 'description' => 'Only invoices still carrying an open amount (issued or partially paid).'),
                 array('name' => 'issued_from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Issue date on or after this day.'),
                 array('name' => 'issued_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Issue date on or before this day.'),
@@ -356,6 +375,7 @@ function erp_api_routes()
             'handler' => 'erp_api_invoices_get',
             'returns' => 'ErpInvoice',
             'summary' => 'One ERP invoice',
+            'description' => 'An issued invoice, a return, or a draft (status draft, no number yet).',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -369,7 +389,219 @@ function erp_api_routes()
             'handler' => 'erp_api_invoices_document',
             'returns' => 'ErpDocument',
             'summary' => 'The invoice as a PDF',
-            'description' => 'The printed document, the same file the panel downloads, base64 encoded inside the JSON answer. For an integration that mails the invoice to the customer or files it in a document store.',
+            'description' => 'The printed document, the same file the panel downloads, base64 encoded inside the JSON answer. For an integration that mails the invoice to the customer or files it in a document store. A draft has no document until it is issued and answers 404.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.create',
+            'method' => 'POST',
+            'path' => '/erp/invoices',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_create',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Write an invoice draft',
+            'description' => 'Saves a sales or purchase invoice as a draft, the way the panel\'s invoice form does: no number is taken, nothing is posted to the account, stock and the books are untouched until POST /erp/invoices/{id}/issue. The ERP works out every line\'s discount, tax and withholding and the totals; they come back in the answer. A draft in another currency may be saved without a rate: the rate recorded for its date is used, or the one of the day it is issued. Send an Idempotency-Key so a retried call does not write two drafts.',
+            'params' => array(
+                array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('sales', 'purchase'), 'description' => 'sales when left out. A purchase is a supplier\'s bill typed in.'),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The customer or supplier card, see /erp/accounts.'),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The invoice date. Today when left out.'),
+                array('name' => 'due_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'When it is due. Worked out from the account\'s payment days when left out.'),
+                array('name' => 'currency', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The store currency when left out; another one only when the ERP has foreign currency switched on.'),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of currency. The rate recorded for the issue date when left out.'),
+                array('name' => 'supplier_invoice_no', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'A purchase only: the number on the supplier\'s bill.'),
+                array('name' => 'supplier_invoice_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'A purchase only: the date on the supplier\'s bill.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'Printed on the document.'),
+                array_merge($lines, array('required' => true)),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.update',
+            'method' => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path' => '/erp/invoices/{id}',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_update',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Change an invoice draft',
+            'description' => 'Changes only the fields sent; lines, when sent, replace every line of the draft. Only a draft can be changed: an issued invoice answers 409 invoice_not_draft and is corrected with a return. The totals are worked out again from the lines. PATCH is accepted beside POST.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('sales', 'purchase')),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime'),
+                array('name' => 'due_date', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string works it out again from the account\'s payment days.'),
+                array('name' => 'currency', 'in' => 'body', 'type' => 'string', 'max_length' => 3),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of currency. 0 takes the rate recorded for the issue date.'),
+                array('name' => 'supplier_invoice_no', 'in' => 'body', 'type' => 'string', 'max_length' => 32),
+                array('name' => 'supplier_invoice_date', 'in' => 'body', 'type' => 'datetime', 'nullable' => true),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000),
+                $lines,
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.delete',
+            'method' => 'DELETE',
+            'path' => '/erp/invoices/{id}',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_delete',
+            'dry_run' => true,
+            'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary' => 'Delete an invoice draft',
+            'description' => 'Deletes a draft outright: it never had a number or a movement, so nothing is reversed. An issued invoice answers 409 invoice_not_draft; it is cancelled with POST /erp/invoices/{id}/cancel instead.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.delete_post',
+            'method' => 'POST',
+            'path' => '/erp/invoices/{id}/delete',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_delete',
+            'dry_run' => true,
+            'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary' => 'Delete an invoice draft, addressed as a POST',
+            'description' => 'The same deletion as DELETE /erp/invoices/{id}, for clients and servers that cannot send DELETE.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.issue',
+            'method' => 'POST',
+            'path' => '/erp/invoices/{id}/issue',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_issue',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Issue an invoice draft',
+            'description' => 'Issues the draft: it takes the next number of the series, is posted to the account and moves stock, and it cannot be edited afterwards - a mistake is then put right with a return or a cancellation. The figures are worked out again from the stored lines. Refused with 422 period_locked when the issue date is in a locked period, and with 422 credit_limit when a sale would take the customer past a credit limit the store enforces. A draft in another currency without a rate takes the one recorded for its date. What the store does on its own once an invoice is issued (e-mailing it to the customer, where that is switched on) happens as it does from the panel; sending it to the e-document provider stays a step on the panel\'s invoice screen. An issued invoice answers 409 invoice_not_draft. Try it with X-Dry-Run first.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.cancel',
+            'method' => 'POST',
+            'path' => '/erp/invoices/{id}/cancel',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_cancel',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Cancel an issued invoice',
+            'description' => 'Cancels an issued invoice or return for good: its movement on the account is reversed with an entry dated today, the stock it moved goes back, and the number stays used. It cannot be undone. Refused with 409 invoice_has_payments while money is allocated to it, 409 invoice_has_returns while a return stands against it, 409 invoice_at_provider once the e-document provider has it (that one is taken back from the panel\'s invoice screen, or corrected with a return), and 422 period_locked when its date is in a locked period. A draft answers 409 invoice_is_draft: delete it instead.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.return',
+            'method' => 'POST',
+            'path' => '/erp/invoices/{id}/returns',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_return',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Raise a return against an invoice',
+            'description' => 'Issues a return invoice (its own number, in the return series) for the lines and quantities given: the account is credited for a sale or debited for a purchase, and the goods go back to stock the way the invoice moved them. It cannot be undone except by cancelling the return. Name each invoice line by its id (lines[].id of the invoice) with the quantity coming back, or send all true for everything still returnable. Never more than was sold and not yet returned; a full return copies the invoice\'s figures to the kurus. A draft answers 409 invoice_is_draft and a cancelled invoice 409 invoice_cancelled; refused with 422 period_locked when the return\'s date is in a locked period. The answer is the return.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'lines', 'in' => 'body', 'type' => 'list', 'max_items' => 200, 'of' => array('line_id' => 'integer', 'quantity' => 'number'), 'description' => 'Objects of {line_id, quantity}: the invoice line and how much of it comes back, as a decimal number. Lines left out do not come back.'),
+                array('name' => 'all', 'in' => 'body', 'type' => 'bool', 'description' => 'true returns everything still returnable; lines is then left out.'),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The date of the return. Today when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoices.email',
+            'method' => 'POST',
+            'path' => '/erp/invoices/{id}/email',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_email',
+            'dry_run' => true,
+            'returns' => array('invoice_id' => 'integer', 'to' => 'string[]', 'official' => 'boolean'),
+            'summary' => 'E-mail an invoice',
+            'description' => 'Sends an issued sales invoice or return to the customer with its PDF attached - the official copy once GİB has accepted the e-document - from the store\'s address, and records it with the invoice the way the panel does. An e-mail cannot be called back: try it with X-Dry-Run first. A draft, a cancelled document or a purchase invoice answers 409 invoice_not_sendable. A send the mail server refuses answers 503 and is recorded as failed.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'to', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'Addresses, separated by commas. The account\'s invoice address, or its main address, when left out.'),
+                array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The store\'s default subject when left out.'),
+                array('name' => 'message', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'The covering text. The store\'s default text when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.orders.invoice',
+            'method' => 'POST',
+            'path' => '/erp/orders/{order_id}/invoice',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_orders_invoice',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Issue the invoice of a store order',
+            'description' => 'Issues the sales invoice of a complete order, dated today, the way the order screen does: the lines, shipping and fees as the customer was charged, posted to the customer\'s account (opened from the order when the customer has none). It takes a number and cannot be edited afterwards. An order has one invoice: one already invoiced answers 409 order_already_invoiced. Refused with 422 period_locked when today is in a locked period. An order\'s invoice is never stopped by a credit limit.',
+            'params' => array(
+                array('name' => 'order_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        /* ----- Repeating invoices ------------------------------------------ */
+
+        array(
+            'id' => 'erp.invoice_recurrences.list',
+            'method' => 'GET',
+            'path' => '/erp/invoice-recurrences',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_invoice_recurrences_list',
+            'returns' => array('list' => 'ErpInvoiceRecurrence'),
+            'summary' => 'List repeating invoices',
+            'description' => 'Sales invoices set to be written again every month, three months, six months or year: from which invoice, the next date, whether each one is left as a draft or issued straight away, and the last one written. last_error says why the last date could not be written, when it could not. Cursor paged by id.',
+            'params' => array_merge(array(
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('active', 'stopped')),
+                array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.invoices.recurrence',
+            'method' => 'POST',
+            'path' => '/erp/invoices/{id}/recurrence',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoices_recurrence',
+            'dry_run' => true,
+            'returns' => 'ErpInvoiceRecurrence',
+            'summary' => 'Repeat an issued invoice',
+            'description' => 'Writes the same invoice again on a schedule, with the lines and prices it has now: as a draft to check, or issued straight away (then whatever the store does after an invoice is issued happens too). Only an issued sales invoice typed in the ERP repeats; an order\'s invoice does not. An invoice that already repeats answers 409 invoice_already_repeats: stop it first.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'every_months', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 12, 'required' => true, 'description' => '1, 3, 6 or 12.'),
+                array('name' => 'first_date', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'The date of the first new invoice, after this one\'s date. Later ones fall on the same day of the month.'),
+                array('name' => 'end_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last date it may write one. Runs until stopped when left out.'),
+                array('name' => 'mode', 'in' => 'body', 'type' => 'enum', 'values' => array('draft', 'issue'), 'description' => 'draft when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.invoice_recurrences.stop',
+            'method' => 'POST',
+            'path' => '/erp/invoice-recurrences/{id}/stop',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_invoice_recurrences_stop',
+            'dry_run' => true,
+            'returns' => 'ErpInvoiceRecurrence',
+            'summary' => 'Stop a repeating invoice',
+            'description' => 'No more invoices are written from it; the ones it wrote stay. A stopped one answers 409 recurrence_stopped and is not started again: repeat the invoice anew.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -714,6 +946,113 @@ function erp_api_routes()
             'summary' => 'One quote',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quotes.document',
+            'method' => 'GET',
+            'path' => '/erp/quotes/{id}/document',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_quotes_document',
+            'returns' => 'ErpDocument',
+            'summary' => 'The quote as a PDF',
+            'description' => 'The printed quote in the store\'s invoice template, the same file the panel downloads and e-mails, base64 encoded inside the JSON answer. A signed quote carries its signature block.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quotes.create',
+            'method' => 'POST',
+            'path' => '/erp/quotes',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quotes_create',
+            'dry_run' => true,
+            'returns' => 'ErpQuote',
+            'summary' => 'Write a quote',
+            'description' => 'Writes a priced offer to a customer, the way the panel\'s quote form does: it takes the next number of the quote series and is open until valid_until. A quote moves no money, no stock and no tax. The ERP works out every line\'s discount, tax and withholding and the totals; they come back in the answer. Announced as erp.quote.created. Send an Idempotency-Key so a retried call does not write two quotes.',
+            'params' => array(
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The customer card, see /erp/accounts.'),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The quote date. Today when left out.'),
+                array('name' => 'valid_until', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day the offer stands. 30 days after the quote date when left out.'),
+                array('name' => 'currency', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The store currency when left out; another one only when the ERP has foreign currency switched on.'),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of currency. The rate recorded for the quote date when left out.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'Printed on the quote.'),
+                array_merge($lines, array('required' => true)),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quotes.update',
+            'method' => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path' => '/erp/quotes/{id}',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quotes_update',
+            'dry_run' => true,
+            'returns' => 'ErpQuote',
+            'summary' => 'Change an open quote',
+            'description' => 'Changes only the fields sent; lines, when sent, replace every line. The number stays. Only an open quote can be changed, an expired one included: any other answers 409 quote_not_open - open it again with POST /erp/quotes/{id}/status first, or write a new one. A signed quote that is changed reads as changed since signing. PATCH is accepted beside POST.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime'),
+                array('name' => 'valid_until', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string sets it to 30 days after the quote date again.'),
+                array('name' => 'currency', 'in' => 'body', 'type' => 'string', 'max_length' => 3),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of currency. 0 takes the rate recorded for the quote date.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000),
+                $lines,
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quotes.status',
+            'method' => 'POST',
+            'path' => '/erp/quotes/{id}/status',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quotes_status',
+            'dry_run' => true,
+            'returns' => 'ErpQuote',
+            'summary' => 'Mark a quote accepted, rejected, cancelled or open again',
+            'description' => 'What the customer said, the way the panel\'s buttons record it. accepted is taken from an open or expired quote; rejected and cancelled from an open, expired or accepted one; open takes back any of them, and a quote opened again past its date runs for 30 days from today. An invoiced quote is not moved: the invoice is where it goes on from there. A move the quote\'s state does not allow answers 409 quote_status_not_allowed. Announced as erp.quote.accepted, erp.quote.rejected, erp.quote.cancelled or erp.quote.reopened.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('open', 'accepted', 'rejected', 'cancelled'), 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quotes.invoice',
+            'method' => 'POST',
+            'path' => '/erp/quotes/{id}/invoice',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quotes_invoice',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Turn a quote into an invoice draft',
+            'description' => 'Writes an invoice draft dated today at the prices quoted, with the quote\'s number in its notes, and marks the quote invoiced. The draft takes no number: check it, then POST /erp/invoices/{id}/issue. Taken from an open, expired or accepted quote; one already invoiced, rejected or cancelled answers 409 quote_not_invoiceable. A quote in another currency leaves the rate to the day the draft is issued when none is recorded for today. Deleting the draft makes the quote accepted again. Announced as erp.quote.invoiced. The answer is the draft.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quotes.email',
+            'method' => 'POST',
+            'path' => '/erp/quotes/{id}/email',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quotes_email',
+            'dry_run' => true,
+            'returns' => array('quote_id' => 'integer', 'to' => 'string[]'),
+            'summary' => 'E-mail a quote',
+            'description' => 'Sends the quote to the customer with its PDF attached, from the store\'s address, and records it with the quote the way the panel does. A rejected or cancelled quote answers 409 quote_not_sendable. An e-mail cannot be called back: try it with X-Dry-Run first. A send the mail server refuses answers 503 and is recorded as failed.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'to', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'Addresses, separated by commas. The account\'s invoice address, or its main address, when left out.'),
+                array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The store\'s default subject when left out.'),
+                array('name' => 'message', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'The covering text. A sentence naming the valid-until date when left out.'),
             ),
         ),
 

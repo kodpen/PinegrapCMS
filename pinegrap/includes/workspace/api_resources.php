@@ -1023,8 +1023,10 @@ function ws_api_approvals_decide($params)
  * @param array      $task
  * @param string[]   $warnings
  * @param array|null $known what a list read for all its tasks at once: links
- *                          (ws_task_links_map()) and time (ws_task_time_totals());
- *                          null reads them for this task
+ *                          (ws_task_links_map()), time (ws_task_time_totals()),
+ *                          waiting (ws_task_delegation_waiting_map()) and
+ *                          working (ws_task_delegation_open_map()); null reads
+ *                          them for this task
  * @return array
  */
 function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
@@ -1032,6 +1034,9 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
     $id = (int) $task['id'];
     $assignees = ws_task_assignee_ids($task['id']);
     $minutes = isset($known['time']) ? $known['time'] : ws_task_time_totals(array($task['id']));
+    $waiting = isset($known['waiting']) ? $known['waiting'] : ws_task_delegation_waiting_map(array($id));
+    $working = isset($known['working']) ? $known['working'] : ws_task_delegation_open_map(array($id));
+    $delegate = (string) ($task['delegate'] ?? '');
     $refs = array();
 
     foreach ((array) db_items("SELECT ref_type, ref_id FROM ws_refs WHERE source_type = 'task' AND source_id = '" . (int) $task['id'] . "'") as $ref) {
@@ -1041,33 +1046,40 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
     }
 
     return array(
-        'id'               => (int) $task['id'],
-        'number'           => ws_task_number($task['id']),
-        'title'            => (string) $task['title'],
-        'description'      => (string) $task['description'],
-        'status'           => (string) $task['status'],
-        'priority'         => (string) $task['priority'],
-        'start_date'       => $task['start_date'] ?: null,
-        'due_date'         => $task['due_date'] ?: null,
-        'estimate_minutes' => (int) $task['estimate_minutes'],
-        'department_id'    => ((int) $task['department_id'] > 0) ? (int) $task['department_id'] : null,
-        'channel_id'       => ((int) $task['channel_id'] > 0) ? (int) $task['channel_id'] : null,
-        'creator_id'       => (int) $task['creator_id'],
-        'assignees'        => $assignees,
-        'refs'             => $refs,
-        'completed_at'     => ((int) $task['completed_at'] > 0) ? api_time($task['completed_at']) : null,
-        'recurrence_id'    => ((int) ($task['recurrence_id'] ?? 0) > 0) ? (int) $task['recurrence_id'] : null,
-        'checklist_done'   => (int) ($task['items_done'] ?? 0),
-        'checklist_total'  => (int) ($task['items_total'] ?? 0),
-        'notes_count'      => (int) ($task['notes_count'] ?? 0),
+        'id'                => (int) $task['id'],
+        'number'            => ws_task_number($task['id']),
+        'title'             => (string) $task['title'],
+        'description'       => (string) $task['description'],
+        'status'            => (string) $task['status'],
+        'priority'          => (string) $task['priority'],
+        'start_date'        => $task['start_date'] ?: null,
+        'due_date'          => $task['due_date'] ?: null,
+        'estimate_minutes'  => (int) $task['estimate_minutes'],
+        'department_id'     => ((int) $task['department_id'] > 0) ? (int) $task['department_id'] : null,
+        'channel_id'        => ((int) $task['channel_id'] > 0) ? (int) $task['channel_id'] : null,
+        'creator_id'        => (int) $task['creator_id'],
+        'assignees'         => $assignees,
+        'refs'              => $refs,
+        'completed_at'      => ((int) $task['completed_at'] > 0) ? api_time($task['completed_at']) : null,
+        'recurrence_id'     => ((int) ($task['recurrence_id'] ?? 0) > 0) ? (int) $task['recurrence_id'] : null,
+        'checklist_done'    => (int) ($task['items_done'] ?? 0),
+        'checklist_total'   => (int) ($task['items_total'] ?? 0),
+        'notes_count'       => (int) ($task['notes_count'] ?? 0),
         // The tasks it cannot start before, and the ones that wait for it
         // (task_links.php); the minutes spent on it (task_time.php).
-        'blocked_by'       => isset($known['links'][$id]) ? $known['links'][$id]['blocked_by'] : ws_task_link_ids($task['id']),
-        'blocks'           => isset($known['links'][$id]) ? $known['links'][$id]['blocks'] : ws_task_link_waiting_ids($task['id']),
-        'time_minutes'     => (int) ($minutes[$id] ?? 0),
-        'created_at'       => api_time($task['created_at']),
-        'updated_at'       => api_time($task['updated_at']),
-        'warnings'         => array_values($warnings),
+        'blocked_by'        => isset($known['links'][$id]) ? $known['links'][$id]['blocked_by'] : ws_task_link_ids($task['id']),
+        'blocks'            => isset($known['links'][$id]) ? $known['links'][$id]['blocks'] : ws_task_link_waiting_ids($task['id']),
+        'time_minutes'      => (int) ($minutes[$id] ?? 0),
+        // The assistant the task was handed to, the one on a run on it now,
+        // and what they proposed that waits to be applied (delegation.php).
+        'delegate'          => ($delegate !== '') ? $delegate : null,
+        'delegated_by'      => (($delegate !== '') && ((int) ($task['delegated_by'] ?? 0) > 0)) ? (int) $task['delegated_by'] : null,
+        'delegated_at'      => ($delegate !== '') ? api_time((int) ($task['delegated_at'] ?? 0)) : null,
+        'assistant_working' => isset($working[$id]) ? (string) $working[$id] : null,
+        'waiting_changes'   => (int) ($waiting[$id] ?? 0),
+        'created_at'        => api_time($task['created_at']),
+        'updated_at'        => api_time($task['updated_at']),
+        'warnings'          => array_values($warnings),
     );
 }
 
@@ -1075,31 +1087,36 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
 function ws_api_task_schema()
 {
     return array(
-        'id'               => 'integer',
-        'number'           => 'string',
-        'title'            => 'string',
-        'description'      => 'string',
-        'status'           => 'string',
-        'priority'         => 'string',
-        'start_date'       => 'string?',
-        'due_date'         => 'string?',
-        'estimate_minutes' => 'integer',
-        'department_id'    => 'integer?',
-        'channel_id'       => 'integer?',
-        'creator_id'       => 'integer',
-        'assignees'        => array('integer'),
-        'refs'             => array(array('type' => 'string', 'id' => 'integer')),
-        'completed_at'     => 'string?',
-        'recurrence_id'    => 'integer?',
-        'checklist_done'   => 'integer',
-        'checklist_total'  => 'integer',
-        'notes_count'      => 'integer',
-        'blocked_by'       => array('integer'),
-        'blocks'           => array('integer'),
-        'time_minutes'     => 'integer',
-        'created_at'       => 'string',
-        'updated_at'       => 'string',
-        'warnings'         => array('string'),
+        'id'                => 'integer',
+        'number'            => 'string',
+        'title'             => 'string',
+        'description'       => 'string',
+        'status'            => 'string',
+        'priority'          => 'string',
+        'start_date'        => 'string?',
+        'due_date'          => 'string?',
+        'estimate_minutes'  => 'integer',
+        'department_id'     => 'integer?',
+        'channel_id'        => 'integer?',
+        'creator_id'        => 'integer',
+        'assignees'         => array('integer'),
+        'refs'              => array(array('type' => 'string', 'id' => 'integer')),
+        'completed_at'      => 'string?',
+        'recurrence_id'     => 'integer?',
+        'checklist_done'    => 'integer',
+        'checklist_total'   => 'integer',
+        'notes_count'       => 'integer',
+        'blocked_by'        => array('integer'),
+        'blocks'            => array('integer'),
+        'time_minutes'      => 'integer',
+        'delegate'          => 'string?',
+        'delegated_by'      => 'integer?',
+        'delegated_at'      => 'string?',
+        'assistant_working' => 'string?',
+        'waiting_changes'   => 'integer',
+        'created_at'        => 'string',
+        'updated_at'        => 'string',
+        'warnings'          => array('string'),
     );
 }
 
@@ -1112,6 +1129,22 @@ function ws_api_task_or_404($viewer, $id)
     }
 
     return $task;
+}
+
+/**
+ * What ws_api_task_present() reads for a whole list of tasks at once.
+ *
+ * @param int[] $ids
+ * @return array
+ */
+function ws_api_tasks_known($ids)
+{
+    return array(
+        'links'   => ws_task_links_map($ids),
+        'time'    => ws_task_time_totals($ids),
+        'waiting' => ws_task_delegation_waiting_map($ids),
+        'working' => ws_task_delegation_open_map($ids),
+    );
 }
 
 function ws_api_tasks_list($params)
@@ -1140,6 +1173,10 @@ function ws_api_tasks_list($params)
         $filters['updated_since'] = (int) $params['updated_since'];
     }
 
+    if (!empty($params['delegate'])) {
+        $filters['delegate'] = (string) $params['delegate'];
+    }
+
     $briefs = ws_tasks_list($viewer, $filters);
     $ids = array();
 
@@ -1147,8 +1184,9 @@ function ws_api_tasks_list($params)
         $ids[] = (int) $brief['id'];
     }
 
-    // The links and the minutes of the whole page, one read each.
-    $known = array('links' => ws_task_links_map($ids), 'time' => ws_task_time_totals($ids));
+    // The links, the minutes and the assistants of the whole page, one read
+    // each.
+    $known = ws_api_tasks_known($ids);
     $out = array();
 
     foreach ($briefs as $brief) {
@@ -1997,9 +2035,21 @@ function ws_api_change_record_present($row, $entry)
 }
 
 /**
+ * The task a proposed change waits on, or 0 for one under an answer in a
+ * channel (delegation.php).
+ *
+ * @param array $row ws_ai_changes
+ * @return int
+ */
+function ws_api_change_task_id($row)
+{
+    return ((int) $row['channel_id'] === 0) ? (int) ($row['task_id'] ?? 0) : 0;
+}
+
+/**
  * One proposed record change as the API shows it. What the reader may see of
- * it - its values and its reason - is what the card in the channel shows them
- * (ws_changes_map()).
+ * it - its values and its reason - is what the card in the channel, or on the
+ * task, shows them (ws_changes_map()).
  *
  * @param array $row    ws_ai_changes, with agent when the requests carry it
  * @param array $entry  ws_changes_map() for this change
@@ -2008,6 +2058,8 @@ function ws_api_change_record_present($row, $entry)
  */
 function ws_api_change_present($row, $entry, $people)
 {
+    $task_id = ws_api_change_task_id($row);
+
     return array(
         'id'                  => (int) $row['id'],
         'status'              => (string) $row['status'],
@@ -2015,6 +2067,7 @@ function ws_api_change_present($row, $entry, $people)
         'request_id'          => ((int) $row['request_id'] > 0) ? (int) $row['request_id'] : null,
         'channel_id'          => (int) $row['channel_id'],
         'message_id'          => (int) $row['message_id'],
+        'task_id'             => ($task_id > 0) ? $task_id : null,
         'action'              => (string) $entry['action'],
         'record'              => ws_api_change_record_present($row, $entry),
         'hidden'              => !empty($entry['hidden']),
@@ -2025,6 +2078,8 @@ function ws_api_change_present($row, $entry, $people)
         'decided_by'          => ws_api_person_ref($row['decided_by'], $people),
         'decided_at'          => api_time($row['decided_at']),
         'decision_message_id' => ((int) $row['decision_message_id'] > 0) ? (int) $row['decision_message_id'] : null,
+        'can_apply'           => !empty($entry['can_apply']),
+        'can_dismiss'         => !empty($entry['can_dismiss']),
         'created_at'          => api_time($row['created_at']),
     );
 }
@@ -2039,6 +2094,7 @@ function ws_api_change_schema()
         'request_id'          => 'integer?',
         'channel_id'          => 'integer',
         'message_id'          => 'integer',
+        'task_id'             => 'integer?',
         'action'              => 'string',
         'record'              => array('type' => 'string', 'type_label' => 'string', 'id' => 'integer?', 'tag' => 'string?', 'name' => 'string'),
         'hidden'              => 'boolean',
@@ -2049,8 +2105,144 @@ function ws_api_change_schema()
         'decided_by'          => array('user_id' => 'integer', 'name' => 'string'),
         'decided_at'          => 'string?',
         'decision_message_id' => 'integer?',
+        'can_apply'           => 'boolean',
+        'can_dismiss'         => 'boolean',
         'created_at'          => 'string?',
     );
+}
+
+/**
+ * The proposed changes of these rows as the API shows them, each drawn for
+ * this reader from the card it has: under an answer in a channel, or under a
+ * run on a task. A kind of record the site no longer runs has no card and is
+ * left out.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_ai_changes, with agent when the requests carry it
+ * @return array[]
+ */
+function ws_api_changes_present($viewer, $rows)
+{
+    $message_ids = array();
+    $request_ids = array();
+    $people_ids = array();
+
+    foreach ($rows as $row) {
+        if (ws_api_change_task_id($row) > 0) {
+            $request_ids[] = (int) $row['request_id'];
+        } else {
+            $message_ids[] = (int) $row['message_id'];
+        }
+
+        $people_ids[] = (int) $row['requested_by'];
+        $people_ids[] = (int) $row['decided_by'];
+    }
+
+    $entries = array();
+    $maps = array(
+        ws_changes_map($viewer, array_unique($message_ids)),
+        ws_changes_map($viewer, array_unique($request_ids), 'request_id'),
+    );
+
+    foreach ($maps as $map) {
+        foreach ($map as $list) {
+            foreach ($list as $entry) {
+                $entries[(int) $entry['id']] = $entry;
+            }
+        }
+    }
+
+    $people = ws_people(array_unique(array_filter($people_ids)));
+    $out = array();
+
+    foreach ($rows as $row) {
+        if (isset($entries[(int) $row['id']])) {
+            $out[] = ws_api_change_present($row, $entries[(int) $row['id']], $people);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The tasks the owner may see, as SQL over ws_tasks: the rule of
+ * ws_can_see_task() for a whole table at once. A task opened in a discussion
+ * is a task of the discussion's channel, so the channels the owner reads are
+ * all it takes.
+ *
+ * @param array  $viewer
+ * @param string $alias
+ * @return string
+ */
+function ws_api_task_seen_sql($viewer, $alias)
+{
+    $me = (int) $viewer['id'];
+    $or = array(
+        $alias . ".creator_id = '" . $me . "'",
+        "EXISTS (SELECT 1 FROM ws_task_assignees sa WHERE sa.task_id = " . $alias . ".id AND sa.user_id = '" . $me . "')",
+    );
+
+    $channel_ids = array_map('intval', array_keys(ws_timeline_channels($viewer)));
+
+    if (!empty($channel_ids)) {
+        $or[] = $alias . ".channel_id IN (" . implode(',', $channel_ids) . ")";
+    }
+
+    if ($viewer['board']) {
+        $or[] = $alias . ".channel_id = 0";
+    } else {
+        $lead = array_map('intval', (array) ws_lead_departments($me));
+
+        if (!empty($lead)) {
+            $or[] = "(" . $alias . ".channel_id = 0 AND " . $alias . ".department_id IN (" . implode(',', $lead) . "))";
+        }
+    }
+
+    return "(" . implode(' OR ', $or) . ")";
+}
+
+/**
+ * Which proposed changes the owner may read, as SQL over ws_ai_changes c:
+ * those under answers in the channels the owner reads, and those waiting on
+ * the tasks they see.
+ *
+ * @param array $viewer
+ * @return string
+ */
+function ws_api_changes_reach_sql($viewer)
+{
+    $reach = array();
+    $channel_ids = ws_api_readable_channel_ids($viewer);
+
+    if (!empty($channel_ids)) {
+        $reach[] = "c.channel_id IN (" . implode(',', $channel_ids) . ")";
+    }
+
+    if (ws_delegation_ready()) {
+        $reach[] = "(c.channel_id = 0 AND c.task_id IN (SELECT t.id FROM ws_tasks t WHERE " . ws_api_task_seen_sql($viewer, 't') . "))";
+    }
+
+    return empty($reach) ? '0 = 1' : "(" . implode(' OR ', $reach) . ")";
+}
+
+/**
+ * Proposed changes, newest first, with the assistant that proposed each when
+ * the requests say (ai.php).
+ *
+ * @param string[] $where SQL over ws_ai_changes c
+ * @param int      $limit
+ * @return array[]
+ */
+function ws_api_changes_rows($where, $limit)
+{
+    $agent = function_exists('ws_ai_schema_ready') && ws_ai_schema_ready();
+
+    return (array) db_items("SELECT c.*" . ($agent ? ", r.agent" : '') . "
+        FROM ws_ai_changes c
+        " . ($agent ? "LEFT JOIN ws_ai_requests r ON r.id = c.request_id" : '') . "
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY c.id DESC
+        LIMIT " . max(1, (int) $limit));
 }
 
 function ws_api_changes_list($params)
@@ -2070,15 +2262,21 @@ function ws_api_changes_list($params)
         api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('type', implode(', ', array_keys($types))))), 'type');
     }
 
-    $channel_ids = !empty($params['channel_id'])
-        ? array((int) ws_api_channel_or_404($viewer, $params['channel_id'])['id'])
-        : ws_api_readable_channel_ids($viewer);
+    $where = array(ws_api_changes_reach_sql($viewer));
 
-    if (empty($channel_ids)) {
-        api_ok_list(array(), $limit);
+    if (!empty($params['channel_id'])) {
+        $where[] = "c.channel_id = '" . (int) ws_api_channel_or_404($viewer, $params['channel_id'])['id'] . "'";
     }
 
-    $where = array("c.channel_id IN (" . implode(',', $channel_ids) . ")");
+    if (!empty($params['task_id'])) {
+        $task = ws_api_task_or_404($viewer, $params['task_id']);
+
+        if (!ws_delegation_ready()) {
+            api_ok_list(array(), $limit);
+        }
+
+        $where[] = "c.channel_id = 0 AND c.task_id = '" . (int) $task['id'] . "'";
+    }
 
     if (!empty($params['status'])) {
         $where[] = "c.status = '" . e($params['status']) . "'";
@@ -2092,16 +2290,7 @@ function ws_api_changes_list($params)
         $where[] = "c.id < '" . (int) $cursor['i'] . "'";
     }
 
-    // Which assistant proposed it, when the requests say (ai.php).
-    $agent = function_exists('ws_ai_schema_ready') && ws_ai_schema_ready();
-
-    $rows = (array) db_items("SELECT c.*" . ($agent ? ", r.agent" : '') . "
-        FROM ws_ai_changes c
-        " . ($agent ? "LEFT JOIN ws_ai_requests r ON r.id = c.request_id" : '') . "
-        WHERE " . implode(' AND ', $where) . "
-        ORDER BY c.id DESC
-        LIMIT " . ($limit + 1));
-
+    $rows = ws_api_changes_rows($where, $limit + 1);
     $next = null;
 
     if (count($rows) > $limit) {
@@ -2110,40 +2299,117 @@ function ws_api_changes_list($params)
         $next = api_cursor_encode($last['id'], $last['id']);
     }
 
-    $message_ids = array();
-    $people_ids = array();
-
-    foreach ($rows as $row) {
-        $message_ids[] = (int) $row['message_id'];
-        $people_ids[] = (int) $row['requested_by'];
-        $people_ids[] = (int) $row['decided_by'];
-    }
-
-    // The cards of those answers, drawn for this reader.
-    $entries = array();
-
-    foreach (ws_changes_map($viewer, array_unique($message_ids)) as $list) {
-        foreach ($list as $entry) {
-            $entries[(int) $entry['id']] = $entry;
-        }
-    }
-
-    $people = ws_people(array_unique(array_filter($people_ids)));
-    $out = array();
-
-    foreach ($rows as $row) {
-        // A kind of record the site no longer runs has no card either.
-        if (isset($entries[(int) $row['id']])) {
-            $out[] = ws_api_change_present($row, $entries[(int) $row['id']], $people);
-        }
-    }
-
-    api_ok_list($out, $limit, $next);
+    api_ok_list(ws_api_changes_present($viewer, $rows), $limit, $next);
 }
 
 /**
- * Where a request was asked: in a channel, in a note, or in the Visual Page
- * Editor.
+ * A proposed change the owner may read, or a 404.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array the row
+ */
+function ws_api_change_or_404($viewer, $id)
+{
+    $rows = (function_exists('ws_changes_ready') && ws_changes_ready())
+        ? ws_api_changes_rows(array("c.id = '" . (int) $id . "'", ws_api_changes_reach_sql($viewer)), 1)
+        : array();
+
+    if (empty($rows)) {
+        api_fail_not_found(lang('Proposal'));
+    }
+
+    return $rows[0];
+}
+
+/**
+ * Answers with a proposed change as it stands now, after it was applied or
+ * set aside.
+ *
+ * @param array $viewer
+ * @param int   $id
+ */
+function ws_api_change_answer($viewer, $id)
+{
+    $out = ws_api_changes_present($viewer, ws_api_changes_rows(array("c.id = '" . (int) $id . "'"), 1));
+
+    if (empty($out)) {
+        api_fail_not_found(lang('Proposal'));
+    }
+
+    api_ok($out[0]);
+}
+
+/**
+ * An apply or a set-aside that was refused, as the API answers it.
+ *
+ * @param array $result ws_change_apply() or ws_change_dismiss()
+ */
+function ws_api_change_refused($result)
+{
+    $error = (string) $result['error'];
+
+    if (!empty($result['stale'])) {
+        api_fail(409, 'stale', $error);
+    }
+
+    if ($error === lang('Somebody has already decided about this proposal.')) {
+        api_fail(409, 'already_decided', $error);
+    }
+
+    $forbidden = array(
+        lang('Only the person who asked Pinegrap AI can apply this change.'),
+        lang('Only the person who asked Claude can apply this change.'),
+        lang('Only the person who asked Pinegrap AI can set this change aside.'),
+        lang('Only the person who asked Claude can set this change aside.'),
+        lang('You may not change a record of this kind.'),
+        lang('You cannot post in that channel.'),
+        lang('That task could not be found.'),
+    );
+
+    if (in_array($error, $forbidden, true)) {
+        api_fail(403, 'forbidden', $error);
+    }
+
+    api_fail_validation($error);
+}
+
+function ws_api_changes_apply($params)
+{
+    $viewer = ws_api_viewer();
+    $change = ws_api_change_or_404($viewer, $params['id']);
+
+    // Applying is the person's own decision, as on the card.
+    ws_api_person_only();
+
+    $result = ws_change_apply($viewer, (int) $change['id']);
+
+    if (!$result['ok']) {
+        ws_api_change_refused($result);
+    }
+
+    ws_api_change_answer($viewer, $change['id']);
+}
+
+function ws_api_changes_dismiss($params)
+{
+    $viewer = ws_api_viewer();
+    $change = ws_api_change_or_404($viewer, $params['id']);
+
+    ws_api_person_only();
+
+    $result = ws_change_dismiss($viewer, (int) $change['id']);
+
+    if (!$result['ok']) {
+        ws_api_change_refused($result);
+    }
+
+    ws_api_change_answer($viewer, $change['id']);
+}
+
+/**
+ * Where a request was asked: in a channel, on a task, in a note, or in the
+ * Visual Page Editor.
  *
  * @param array $row ws_ai_requests
  * @return string
@@ -2154,6 +2420,10 @@ function ws_api_assistant_request_origin($row)
         return 'channel';
     }
 
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        return 'task';
+    }
+
     if ((int) ($row['note_id'] ?? 0) > 0) {
         return 'note';
     }
@@ -2161,10 +2431,15 @@ function ws_api_assistant_request_origin($row)
     return ((int) ($row['page_id'] ?? 0) > 0) ? 'editor' : '';
 }
 
-function ws_api_assistant_request_present($row, $people)
+function ws_api_assistant_request_present($viewer, $row, $people)
 {
     $note_id = (int) ($row['note_id'] ?? 0);
     $page_id = (int) ($row['page_id'] ?? 0);
+
+    // A run on a task (delegation.php) is read with the task, by whoever
+    // sees it: what it was told and what it answered. Elsewhere the words are
+    // read where they were asked.
+    $task_id = ((int) $row['channel_id'] === 0) ? (int) ($row['task_id'] ?? 0) : 0;
 
     return array(
         'id'               => (int) $row['id'],
@@ -2173,6 +2448,9 @@ function ws_api_assistant_request_present($row, $people)
         'origin'           => ws_api_assistant_request_origin($row),
         'channel_id'       => ((int) $row['channel_id'] > 0) ? (int) $row['channel_id'] : null,
         'message_id'       => ((int) $row['message_id'] > 0) ? (int) $row['message_id'] : null,
+        'task_id'          => ($task_id > 0) ? $task_id : null,
+        'instruction'      => ($task_id > 0) ? ws_plain_text($viewer, (string) ($row['note_text'] ?? '')) : null,
+        'answer'           => (($task_id > 0) && ($row['status'] === 'answered')) ? ws_plain_text($viewer, (string) ($row['note_reply'] ?? '')) : null,
         'note_id'          => ($note_id > 0) ? $note_id : null,
         'page_id'          => ($page_id > 0) ? $page_id : null,
         'node_id'          => (($page_id > 0) && ((string) ($row['node_id'] ?? '') !== '')) ? (string) $row['node_id'] : null,
@@ -2196,6 +2474,9 @@ function ws_api_assistant_request_schema()
         'origin'           => 'string',
         'channel_id'       => 'integer?',
         'message_id'       => 'integer?',
+        'task_id'          => 'integer?',
+        'instruction'      => 'string?',
+        'answer'           => 'string?',
         'note_id'          => 'integer?',
         'page_id'          => 'integer?',
         'node_id'          => 'string?',
@@ -2209,6 +2490,31 @@ function ws_api_assistant_request_schema()
     );
 }
 
+/**
+ * Requests to the assistants, newest first, with the columns later steps
+ * added where they exist; the conversation and page trees kept on the row
+ * are never read here.
+ *
+ * @param string $where SQL over ws_ai_requests
+ * @param int    $limit
+ * @return array[]
+ */
+function ws_api_assistant_requests_rows($where, $limit)
+{
+    $columns = array('id', 'channel_id', 'message_id', 'requested_by', 'status', 'reply_message_id', 'error', 'created_at', 'sent_at', 'claimed_at', 'answered_at');
+
+    foreach (array('agent', 'note_id', 'page_id', 'node_id', 'task_id', 'note_text', 'note_reply') as $column) {
+        if (function_exists('waf_table_has_column') && waf_table_has_column('ws_ai_requests', $column)) {
+            $columns[] = $column;
+        }
+    }
+
+    return (array) db_items("SELECT " . implode(', ', $columns) . " FROM ws_ai_requests
+        WHERE " . $where . "
+        ORDER BY id DESC
+        LIMIT " . max(1, (int) $limit));
+}
+
 function ws_api_assistant_requests_list($params)
 {
     $viewer = ws_api_viewer();
@@ -2219,16 +2525,31 @@ function ws_api_assistant_requests_list($params)
         api_ok_list(array(), $limit);
     }
 
-    // Asked in a channel the owner reads, or by the owner where no channel
-    // is: in a note or in the page editor.
-    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer['id'] . "')");
+    // Asked in a channel the owner reads; on a task the owner sees; or by
+    // the owner where neither is: in a note or in the page editor.
+    $tasks = ws_delegation_ready();
+    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer['id'] . "'" . ($tasks ? " AND task_id = 0" : '') . ")");
     $channel_ids = ws_api_readable_channel_ids($viewer);
 
     if (!empty($channel_ids)) {
         $reach[] = "channel_id IN (" . implode(',', $channel_ids) . ")";
     }
 
+    if ($tasks) {
+        $reach[] = "(channel_id = 0 AND task_id IN (SELECT t.id FROM ws_tasks t WHERE " . ws_api_task_seen_sql($viewer, 't') . "))";
+    }
+
     $where = "(" . implode(' OR ', $reach) . ")";
+
+    if (!empty($params['task_id'])) {
+        $task = ws_api_task_or_404($viewer, $params['task_id']);
+
+        if (!$tasks) {
+            api_ok_list(array(), $limit);
+        }
+
+        $where .= " AND channel_id = 0 AND task_id = '" . (int) $task['id'] . "'";
+    }
 
     if (!empty($params['status'])) {
         $where .= " AND status = '" . e($params['status']) . "'";
@@ -2242,21 +2563,7 @@ function ws_api_assistant_requests_list($params)
         $where .= " AND id < '" . (int) $cursor['i'] . "'";
     }
 
-    // The columns later steps added are read only where they exist; the
-    // conversation and page trees kept on the row are never read here.
-    $columns = array('id', 'channel_id', 'message_id', 'requested_by', 'status', 'reply_message_id', 'error', 'created_at', 'sent_at', 'claimed_at', 'answered_at');
-
-    foreach (array('agent', 'note_id', 'page_id', 'node_id') as $column) {
-        if (function_exists('waf_table_has_column') && waf_table_has_column('ws_ai_requests', $column)) {
-            $columns[] = $column;
-        }
-    }
-
-    $rows = (array) db_items("SELECT " . implode(', ', $columns) . " FROM ws_ai_requests
-        WHERE " . $where . "
-        ORDER BY id DESC
-        LIMIT " . ($limit + 1));
-
+    $rows = ws_api_assistant_requests_rows($where, $limit + 1);
     $next = null;
 
     if (count($rows) > $limit) {
@@ -2275,10 +2582,99 @@ function ws_api_assistant_requests_list($params)
     $out = array();
 
     foreach ($rows as $row) {
-        $out[] = ws_api_assistant_request_present($row, $people);
+        $out[] = ws_api_assistant_request_present($viewer, $row, $people);
     }
 
     api_ok_list($out, $limit, $next);
+}
+
+/* ---------------------------------------------------------------------------
+   A task handed to an assistant (delegation.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * Is the current application one an assistant works through? An assistant
+ * does not hand tasks to assistants, nor take them back.
+ *
+ * @return bool
+ */
+function ws_api_is_assistant()
+{
+    $app_id = ws_api_app_id();
+
+    if ($app_id <= 0) {
+        return false;
+    }
+
+    foreach (ws_assistants() as $assistant) {
+        if ((int) $assistant['app_id'] === $app_id) {
+            return true;
+        }
+    }
+
+    return ws_api_is_claude();
+}
+
+function ws_api_tasks_delegate($params)
+{
+    $viewer = ws_api_viewer();
+    $task = ws_api_task_or_404($viewer, $params['id']);
+
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not hand tasks to assistants or take them back.'));
+    }
+
+    if (!ws_delegation_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $key = (string) $params['agent'];
+
+    if (!ws_assistant($key)) {
+        api_fail_validation(lang(array('string' => '{var:1} is not switched on on this site.', 'vars' => ws_assistant_name($key))), 'agent');
+    }
+
+    $result = ws_task_delegate($viewer, $task, $key, (string) ($params['instruction'] ?? ''));
+
+    if (!$result['ok']) {
+        if ($result['error'] === lang('You may not hand this task to an assistant.')) {
+            api_fail(403, 'forbidden', $result['error']);
+        }
+
+        if (ws_task_delegation_open_run($task['id'])) {
+            api_fail(409, 'assistant_busy', $result['error']);
+        }
+
+        api_fail_validation($result['error']);
+    }
+
+    ws_task_delegation_start($key);
+
+    $rows = ws_api_assistant_requests_rows("id = '" . (int) $result['request_id'] . "'", 1);
+
+    api_ok(ws_api_assistant_request_present($viewer, $rows[0], ws_people(array((int) $viewer['id']))), 201);
+}
+
+function ws_api_tasks_delegate_stop($params)
+{
+    $viewer = ws_api_viewer();
+    $task = ws_api_task_or_404($viewer, $params['id']);
+
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not hand tasks to assistants or take them back.'));
+    }
+
+    if (!ws_delegation_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $result = ws_task_delegation_stop($viewer, $task, !empty($params['take_back']));
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_ok(ws_api_task_present($viewer, ws_task($task['id'])));
 }
 
 /* ---------------------------------------------------------------------------

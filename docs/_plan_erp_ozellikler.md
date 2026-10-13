@@ -66,21 +66,28 @@ yeni araç; MCP tarafında kod yok.
 `includes/erp/api_resources.php`, nesne şeması `erp_openapi_objects()`, olay listesi
 `erp_webhook_events()`. `includes/api/schema.php`'ye dokunulmaz.
 
+**Durum (2026-10-13):** ✓ işaretli satırlar bitti — faturalar, tekrarlayan faturalar,
+siparişin faturası ve teklifler (işleyiciler `includes/erp/api_documents.php`'de;
+`api_resources.php` 3500 satırı geçtiği için ayrı dosya). `period_locked` ve
+`credit_limit` kodları `check_api_schema.php` gereği `api_error_catalogue()`'a eklendi;
+`schema.php`'de başka değişiklik yok. Sıradakiler: irsaliye + sayım + stok alt sınırları,
+sonra virman + çek/senet + raporlar.
+
 **Rotalar** (kapsam parantezde; her işleyici var olan alan fonksiyonunu çağırır, ikinci bir
 hesap yolu açmaz):
 
 | Rota | Fonksiyon |
 |---|---|
-| `POST /erp/invoices` (erp:write) — satış ya da alış **taslağı** | `erp_invoice_draft_save($data, 0)` |
-| `POST /erp/invoices/{id}` (+PATCH) — yalnız taslak; kesilmişte 409 | `erp_invoice_draft_save($data, $id)` |
-| `DELETE /erp/invoices/{id}` — yalnız taslak | `erp_invoice_draft_delete()` |
-| `POST /erp/invoices/{id}/issue` | `erp_invoice_issue()` |
-| `POST /erp/invoices/{id}/cancel` | `erp_invoice_cancel()` |
-| `POST /erp/invoices/{id}/returns` — kalem (`parent_line_id`) + adet | `erp_return_build()` + `erp_invoice_return()` |
-| `POST /erp/invoices/{id}/email` | `erp_mail_invoice_send()` |
-| `POST /erp/orders/{order_id}/invoice` (erp:write) | `erp_invoice_from_order()` |
-| `GET /erp/invoice-recurrences`, `POST /erp/invoices/{id}/recurrence`, `POST /erp/invoice-recurrences/{id}/stop` | `includes/erp/invoice_recurring.php` |
-| `POST /erp/quotes`, `POST /erp/quotes/{id}`, `POST /erp/quotes/{id}/status`, `POST /erp/quotes/{id}/invoice`, `POST /erp/quotes/{id}/email`, `GET /erp/quotes/{id}/document` | `erp_quote_save()`, `erp_quote_set_status()`, `erp_quote_to_invoice()`, `erp_quote_mail_send()`, `erp_quote_html()` |
+| ✓ `POST /erp/invoices` (erp:write) — satış ya da alış **taslağı** | `erp_invoice_draft_save($data, 0)` |
+| ✓ `POST /erp/invoices/{id}` (+PATCH) — yalnız taslak; kesilmişte 409 | `erp_invoice_draft_save($data, $id)` |
+| ✓ `DELETE /erp/invoices/{id}` — yalnız taslak | `erp_invoice_draft_delete()` |
+| ✓ `POST /erp/invoices/{id}/issue` | `erp_invoice_issue()` |
+| ✓ `POST /erp/invoices/{id}/cancel` | `erp_invoice_cancel()` |
+| ✓ `POST /erp/invoices/{id}/returns` — kalem (`parent_line_id`) + adet | `erp_return_build()` + `erp_invoice_return()` |
+| ✓ `POST /erp/invoices/{id}/email` | `erp_mail_invoice_send()` |
+| ✓ `POST /erp/orders/{order_id}/invoice` (erp:write) | `erp_invoice_from_order()` |
+| ✓ `GET /erp/invoice-recurrences`, `POST /erp/invoices/{id}/recurrence`, `POST /erp/invoice-recurrences/{id}/stop` | `includes/erp/invoice_recurring.php` |
+| ✓ `POST /erp/quotes`, `POST /erp/quotes/{id}`, `POST /erp/quotes/{id}/status`, `POST /erp/quotes/{id}/invoice`, `POST /erp/quotes/{id}/email`, `GET /erp/quotes/{id}/document` | `erp_quote_save()`, `erp_quote_set_status()`, `erp_quote_to_invoice()`, `erp_quote_mail_send()`, `erp_quote_html()` |
 | `POST /erp/waybills` (`invoice_id` ya da `order_id` ya da satırlar), `POST /erp/waybills/{id}/cancel`, `POST /erp/waybills/{id}/invoice` | `erp_waybill_data_from_invoice()` / `_from_order()` + `erp_waybill_create()`, `erp_waybill_cancel()`, `erp_waybill_invoice()` |
 | `POST /erp/stock-counts`, `POST /erp/stock-counts/{id}/items`, `POST /erp/stock-counts/{id}/apply`, `POST /erp/stock-counts/{id}/cancel` | `includes/erp/stock_counts.php` |
 | `GET /erp/stock/minimums`, `POST /erp/stock/minimums` | `includes/erp/stock_levels.php` |

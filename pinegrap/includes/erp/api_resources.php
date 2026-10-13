@@ -857,7 +857,8 @@ function erp_api_payment_method_code($code)
 
 function erp_api_invoice_present($row, $lines)
 {
-    $open = erp_invoice_open_amount($row);
+    // A draft is owed by nobody until it is issued.
+    $open = ((string) $row['status'] === 'draft') ? 0 : erp_invoice_open_amount($row);
 
     return array(
         'id' => (int) $row['id'],
@@ -1005,8 +1006,9 @@ function erp_api_invoice_schema()
 function erp_api_invoices_list($params)
 {
     // A draft is not a document: it has no number and may still be thrown
-    // away. The wire carries what was issued.
-    $where = array("i.status <> 'draft'");
+    // away. The wire carries what was issued, and the drafts only to a
+    // caller who asks for them by name.
+    $where = (($params['status'] ?? '') === 'draft') ? array() : array("i.status <> 'draft'");
 
     if (isset($params['account_id'])) {
         $where[] = "i.account_id = '" . (int) $params['account_id'] . "'";
@@ -1068,15 +1070,17 @@ function erp_api_invoices_list($params)
 }
 
 /**
- * One issued invoice row, or a 404. A draft answers 404 too: it is not on the
- * wire until it is a document.
+ * One invoice row, or a 404. A draft is found only where the caller takes
+ * drafts: it has no number and no printed document yet.
  *
- * @param int $invoice_id
+ * @param int  $invoice_id
+ * @param bool $drafts
  * @return array
  */
-function erp_api_invoice_row($invoice_id)
+function erp_api_invoice_row($invoice_id, $drafts = false)
 {
-    $row = db_item(erp_api_invoice_select() . " WHERE i.id = '" . (int) $invoice_id . "' AND i.status <> 'draft' LIMIT 1");
+    $row = db_item(erp_api_invoice_select() . " WHERE i.id = '" . (int) $invoice_id . "'"
+        . ($drafts ? '' : " AND i.status <> 'draft'") . " LIMIT 1");
 
     if (!is_array($row)) {
         api_fail_not_found(lang('Invoice'));
@@ -1087,7 +1091,7 @@ function erp_api_invoice_row($invoice_id)
 
 function erp_api_invoices_get($params)
 {
-    $row = erp_api_invoice_row((int) $params['id']);
+    $row = erp_api_invoice_row((int) $params['id'], true);
 
     $lines = erp_api_invoice_lines(array((int) $row['id']));
 
