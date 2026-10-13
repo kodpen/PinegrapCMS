@@ -4,8 +4,9 @@
  *
  * Tests for the pure parts of other services' MCP servers in the Workspace
  * (includes/workspace/mcp.php, mcp_ask.php): which tools may be turned on
- * with one connection for the whole site, which are on, the names the model
- * knows them by, aliases and the credential headers.
+ * with one connection for the whole site, which ask first on a server people
+ * sign in to, which are on, the names the model knows them by, aliases, the
+ * credential headers and the arguments a waiting call shows.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -27,12 +28,13 @@ function workspace_mcp_test_tool($name, $annotations = array())
 }
 
 // A server row with these tools and rules.
-function workspace_mcp_test_server($tools, $rules)
+function workspace_mcp_test_server($tools, $rules, $auth_kind = 'none')
 {
 	return array(
 		'id'         => 1,
 		'alias'      => 'docs',
 		'status'     => 'active',
+		'auth_kind'  => $auth_kind,
 		'tools'      => json_encode(array_values($tools)),
 		'tool_rules' => json_encode((object) $rules),
 	);
@@ -69,6 +71,60 @@ function test_workspace_mcp_rules_count_only_for_tools_that_may_run()
 	));
 
 	pg_assert_same(array('reads', 'declared'), array_keys(ws_mcp_tools_on($server)));
+}
+
+function test_workspace_mcp_tools_that_write_ask_first_only_where_people_sign_in()
+{
+	$tools = array(
+		workspace_mcp_test_tool('reads', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('unsaid'),
+		workspace_mcp_test_tool('writes', array('readOnlyHint' => false)),
+		workspace_mcp_test_tool('deletes', array('destructiveHint' => true)),
+	);
+	$rules = array('reads' => 'auto', 'unsaid' => 'approve', 'writes' => 'approve', 'deletes' => 'approve');
+
+	pg_assert_same(array('reads'), array_keys(ws_mcp_tools_on(workspace_mcp_test_server($tools, $rules, 'bearer'))), 'one connection for everybody: approve counts for nothing');
+
+	$on = ws_mcp_tools_on(workspace_mcp_test_server($tools, $rules, 'oauth'));
+
+	pg_assert_same(array('reads', 'unsaid', 'writes', 'deletes'), array_keys($on), 'a server people sign in to');
+	pg_assert_true(empty($on['reads']['approve']), 'a tool that reads runs at once');
+	pg_assert_true(!empty($on['writes']['approve']) && !empty($on['deletes']['approve']) && !empty($on['unsaid']['approve']), 'the others wait for approval');
+
+	// The model is offered them, under their own names.
+	pg_assert_same(array('deletes', 'reads', 'unsaid', 'writes'), array_keys(ws_mcp_ask_functions(workspace_mcp_test_server($tools, $rules, 'oauth'))));
+}
+
+function test_workspace_mcp_rule_from_the_settings_form()
+{
+	$oauth = workspace_mcp_test_server(array(), array(), 'oauth');
+	$shared = workspace_mcp_test_server(array(), array(), 'basic');
+	$reads = workspace_mcp_test_tool('a', array('readOnlyHint' => true));
+	$unsaid = workspace_mcp_test_tool('b');
+	$writes = workspace_mcp_test_tool('c', array('readOnlyHint' => false));
+
+	pg_assert_same('', ws_mcp_tool_rule_for($oauth, $reads, ''), 'off');
+	pg_assert_same('', ws_mcp_tool_rule_for($oauth, $writes, '0'), 'off');
+	pg_assert_same('auto', ws_mcp_tool_rule_for($shared, $reads, '1'));
+	pg_assert_same('auto', ws_mcp_tool_rule_for($oauth, $reads, 'approve'), 'a tool that reads never asks');
+	pg_assert_same('auto_declared', ws_mcp_tool_rule_for($shared, $unsaid, '1'));
+	pg_assert_same('auto_declared', ws_mcp_tool_rule_for($shared, $unsaid, 'approve'), 'one connection for everybody cannot ask');
+	pg_assert_same('auto_declared', ws_mcp_tool_rule_for($oauth, $unsaid, 'auto_declared'));
+	pg_assert_same('approve', ws_mcp_tool_rule_for($oauth, $unsaid, 'approve'));
+	pg_assert_same('', ws_mcp_tool_rule_for($shared, $writes, 'approve'), 'a tool that writes stays off with one connection');
+	pg_assert_same('approve', ws_mcp_tool_rule_for($oauth, $writes, '1'), 'a tool that writes always asks');
+	pg_assert_same('approve', ws_mcp_tool_rule_for($oauth, $writes, 'auto_declared'), 'it cannot be declared to read');
+}
+
+function test_workspace_mcp_arguments_as_the_card_prints_them()
+{
+	pg_assert_same('octo/repo', ws_mcp_argument_show(' octo/repo '));
+	pg_assert_same('42', ws_mcp_argument_show(42));
+	pg_assert_same(lang('Yes'), ws_mcp_argument_show(true));
+	pg_assert_same(lang('(empty)'), ws_mcp_argument_show(null));
+	pg_assert_same(lang('(empty)'), ws_mcp_argument_show(''));
+	pg_assert_same('{"labels":["bug"]}', ws_mcp_argument_show(array('labels' => array('bug'))));
+	pg_assert_same(300, mb_strlen(ws_mcp_argument_show(str_repeat('ğ', 400))), 'cut to 300 characters');
 }
 
 function test_workspace_mcp_function_names_suit_the_chat_api()
@@ -200,9 +256,16 @@ function test_workspace_mcp_oauth_error_text()
 	pg_assert_same('refused', ws_mcp_error_text($oauth, 500, 'refused'), 'another failure is said as it is');
 	pg_assert_same('refused', ws_mcp_error_text(array('alias' => 'docs', 'auth_kind' => 'bearer'), 401, 'refused'), 'a bearer token is the administrator\'s to fix');
 
-	$conn = array('headers' => array('x'));
+	pg_assert_contains('@docs', ws_mcp_error_text($oauth, 401, 'refused', true), 'a person\'s own account');
+	pg_assert_true(ws_mcp_error_text($oauth, 401, 'refused', true) !== ws_mcp_error_text($oauth, 401, 'refused'), 'a person connects their own account again, not an administrator');
+
+	$conn = array('headers' => array('x'), 'account_id' => 5);
 
 	pg_assert_false(ws_mcp_reauthorize($conn, array('auth_kind' => 'bearer', 'id' => 1, 'alias' => 'a'), 401), 'only an OAuth server renews');
 	pg_assert_false(ws_mcp_reauthorize($conn, $oauth + array('id' => 1), 500), 'only after a 401');
+
+	$anonymous = array('headers' => array('x'));
+
+	pg_assert_false(ws_mcp_reauthorize($anonymous, $oauth + array('id' => 1), 401), 'only a connection opened with an account');
 	pg_assert_same(array('x'), $conn['headers'], 'the connection is left as it was');
 }

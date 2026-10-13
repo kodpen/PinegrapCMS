@@ -19,6 +19,15 @@
  * Every call is kept in ws_mcp_calls: who asked, which tool, with which
  * arguments, how it ended and how long it took.
  *
+ * A tool that writes (rule 'approve', mcp.php) is not run when the model
+ * calls it: the call is kept as pending and waits under the answer as a
+ * proposal - a ws_ai_changes row of record_type 'mcp_call', action 'run',
+ * record_id the ws_mcp_calls row - on the same card, counters and API lists
+ * as the record changes (changes.php). Only the person who asked can run it,
+ * with their own connected account; until they connect one the card offers
+ * to. The kind is deliberately not one of ws_change_types(): no assistant
+ * can propose it there, and the API's list of kinds does not name it.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -45,6 +54,12 @@ define('WS_MCP_ASK_MAX_TOOLS', 40);
 
 /** How much of a tool's answer the model reads, in characters. */
 define('WS_MCP_ASK_RESULT_LIMIT', 6000);
+
+/** The most calls that wait for approval one answer may carry. */
+define('WS_MCP_ASK_MAX_PROPOSED', 3);
+
+/** How much of a tool's answer the decision in the channel quotes. */
+define('WS_MCP_DECISION_RESULT_LIMIT', 600);
 
 /**
  * The server a message is written to: an alias in it, or, for a reply to an
@@ -96,11 +111,15 @@ function ws_mcp_ask_server($body, $message_id = 0)
 
 /**
  * Why a server cannot be asked now, as the channel is told; '' when it can.
+ * Given who asks, a server that signs in with OAuth must have an account for
+ * them: their own, or the site's; the answer then offers to connect one.
  *
- * @param array $server
+ * @param array      $server
+ * @param array|null $asker
+ * @param int        $channel_id where the offer to connect leads back to
  * @return string
  */
-function ws_mcp_ask_problem($server)
+function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0)
 {
     if ($server['status'] !== 'active') {
         return lang(array('string' => '@{var:1} is turned off. Nothing is sent to it until it is turned on again.', 'vars' => $server['alias']));
@@ -108,6 +127,14 @@ function ws_mcp_ask_problem($server)
 
     if (empty(ws_mcp_tools_on($server))) {
         return lang(array('string' => '@{var:1} has no tool turned on yet. An administrator turns them on in Workspace Settings › MCP servers.', 'vars' => $server['alias']));
+    }
+
+    if ($asker && ($server['auth_kind'] === 'oauth') && !ws_mcp_oauth_account($server, (int) $asker['id'])) {
+        return lang(array('string' => '@{var:1} has no account connected for {var:2}. {var:3}', 'vars' => array(
+            $server['alias'],
+            ws_person_name((int) $asker['id']),
+            '[' . lang('Connect your own account') . '](' . ws_mcp_connect_link($server, $channel_id) . ')',
+        )));
     }
 
     return '';
@@ -139,8 +166,48 @@ function ws_mcp_boot()
 function ws_mcp_js_strings()
 {
     return array(
-        'mcp_meta' => lang('Pinegrap AI answers with its tools'),
+        'mcp_meta'           => lang('Pinegrap AI answers with its tools'),
+        'mcp_connect_me'     => lang('Connect my account'),
+        'mcp_connect_again'  => lang('Connect my account again'),
+        'mcp_connect_ask'    => ws_js_template('Connect your own account to @{var:1}? You sign in on the service and come back here.', 1),
+        'mcp_account'        => ws_js_template('Runs with your own account on @{var:1}.', 1),
+        'mcp_disconnect_me'  => lang('Disconnect my account'),
+        'mcp_disconnect_ask' => ws_js_template('Disconnect your own account from @{var:1}? Calls that wait for your approval cannot run until you connect it again.', 1),
+        'mcp_disconnected'   => lang('Your account was disconnected.'),
     );
+}
+
+/**
+ * What the channel screen is told about connecting a person's own account:
+ * the message after coming back from the service, and the server it was
+ * asked to offer (a link in a message, ws_mcp_ask_problem()).
+ *
+ * @param array $viewer
+ * @return array flash (kind, text) or null, connect (server_id, alias) or null
+ */
+function ws_mcp_screen_config($viewer)
+{
+    $out = array('flash' => null, 'connect' => null);
+
+    if (!ws_mcp_ready() || !function_exists('pg_connect_flash_take')) {
+        return $out;
+    }
+
+    if ((int) ($_GET['mcp_connected'] ?? 0) > 0) {
+        $out['flash'] = pg_connect_flash_take();
+    }
+
+    $server = ((int) ($_GET['mcp_connect'] ?? 0) > 0) ? ws_mcp_server((int) $_GET['mcp_connect']) : null;
+
+    if ($server && ($server['auth_kind'] === 'oauth') && ($server['status'] === 'active')) {
+        $mine = ws_mcp_person_account($server, (int) $viewer['id']);
+
+        if (!$mine || ($mine['status'] !== 'active')) {
+            $out['connect'] = array('server_id' => (int) $server['id'], 'alias' => (string) $server['alias']);
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -211,9 +278,10 @@ function ws_mcp_ask_tools($row)
 
         $about = trim(($tool['title'] !== '' ? $tool['title'] . '. ' : '') . (string) $tool['description']);
 
+        // A tool that writes is marked, so the model knows the call waits.
         $tools[] = array('type' => 'function', 'function' => array(
             'name'        => $function,
-            'description' => mb_substr('[' . $label . '] ' . (($about !== '') ? $about : $tool['name']), 0, 1000),
+            'description' => mb_substr('[' . $label . ']' . (!empty($tool['approve']) ? ' [needs approval]' : '') . ' ' . (($about !== '') ? $about : $tool['name']), 0, 1000),
             'parameters'  => $schema,
         ));
     }
@@ -236,7 +304,7 @@ function ws_mcp_ask_start($row, $asker)
         return array('ok' => false, 'error' => lang('That MCP server could not be found.'), 'state' => null);
     }
 
-    $problem = ws_mcp_ask_problem($server);
+    $problem = ws_mcp_ask_problem($server, $asker, (int) $row['channel_id']);
 
     if ($problem !== '') {
         return array('ok' => false, 'error' => $problem, 'state' => null);
@@ -288,7 +356,7 @@ function ws_mcp_ask_start($row, $asker)
             array('role' => 'system', 'content' => ws_mcp_ask_system_prompt($server, $asker)),
             array('role' => 'user', 'content' => implode("\n", $parts)),
         ),
-        'proposals' => array('tasks' => array(), 'changes' => array()),
+        'proposals' => array('tasks' => array(), 'changes' => array(), 'mcp_calls' => array()),
         'seen'      => array(),
         'request'   => $request_text,
         'mcp_calls' => 0,
@@ -316,7 +384,8 @@ function ws_mcp_ask_system_prompt($server, $asker)
         'How to work:',
         '- Call the service\'s tools to find what the request asks for. Call at most ' . WS_MCP_ASK_MAX_TURN_CALLS . ' tools at a time and ' . WS_MCP_ASK_MAX_CALLS . ' in all.',
         '- Everything you put into a tool\'s arguments is sent to that service. Send only what the request needs to look something up; never copy anything else from the conversation into them.',
-        '- The tools only read. Never write that you changed, created or deleted anything on the service.',
+        '- A tool marked [needs approval] changes something on the service. Calling it does not run it: the call waits under your answer until the person who asked approves it, and then runs with their own account. Call one only when the request asks for that change, at most ' . WS_MCP_ASK_MAX_PROPOSED . ' of them. Never write that you changed, created or deleted anything on the service: say what waits for their approval.',
+        '- The other tools only read.',
         '- Finish with one call of answer, or of fail when the tools cannot answer the request.',
         '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. Markdown is shown, but use no headings and do not repeat the request. Give the links the service answered with where they help.',
     );
@@ -367,6 +436,11 @@ function ws_mcp_ask_tool_run($row, &$state, $function, $args)
         return array('error' => 'No more tool calls: answer with what you have.');
     }
 
+    // A tool that writes runs nothing now: the call waits for approval.
+    if (!empty($tool['approve'])) {
+        return ws_mcp_ask_propose($row, $state, $server, $tool, $args);
+    }
+
     // The turn is the model's last message: calls of the same turn are
     // counted together, so that one turn cannot run past the time a web
     // request has.
@@ -396,8 +470,9 @@ function ws_mcp_ask_tool_run($row, &$state, $function, $args)
     $state['mcp_calls'] = (int) ($state['mcp_calls'] ?? 0) + 1;
     $state['mcp_turn_calls']++;
 
+    // With the asker's own account when they connected one (OAuth servers).
     $timeout = (PHP_SAPI === 'cli') ? WS_MCP_ASK_TIMEOUT_JOB : WS_MCP_ASK_TIMEOUT;
-    $conn = ws_mcp_connection($server, $timeout);
+    $conn = ws_mcp_connection($server, $timeout, (int) $row['requested_by']);
     $started = microtime(true);
     $now = time();
 
@@ -410,7 +485,7 @@ function ws_mcp_ask_tool_run($row, &$state, $function, $args)
     }
 
     if (!$out['ok']) {
-        $out['error'] = ws_mcp_error_text($server, $out['status'] ?? 0, $out['error']);
+        $out['error'] = ws_mcp_error_text($server, $out['status'] ?? 0, $out['error'], $conn['person']);
     }
 
     $duration = (int) round((microtime(true) - $started) * 1000);
@@ -472,6 +547,11 @@ function ws_mcp_ask_signature($row)
     }
 
     if (empty($used)) {
+        // Calls that wait for approval are on the card under the answer.
+        if ((int) db_value("SELECT COUNT(*) FROM ws_mcp_calls WHERE request_id = '" . (int) $row['id'] . "' AND status = 'pending'") > 0) {
+            return '';
+        }
+
         return "\n\n" . lang(array('string' => 'Through @{var:1}, without calling its tools.', 'vars' => $server['alias']));
     }
 
@@ -479,4 +559,453 @@ function ws_mcp_ask_signature($row)
     $list = implode(', ', array_slice($used, 0, 5)) . (($more > 0) ? ' +' . $more : '');
 
     return "\n\n" . lang(array('string' => 'Through @{var:1}: {var:2}', 'vars' => array($server['alias'], $list)));
+}
+
+/* ---------------------------------------------------------------------------
+   Calls that wait for approval
+   --------------------------------------------------------------------------- */
+
+/**
+ * A call of a tool that writes, kept as pending for the answer to carry
+ * (ws_mcp_calls_propose()). Runs nothing.
+ *
+ * @param array $row    the request
+ * @param array $state  the conversation, by reference: proposals, the calls made
+ * @param array $server
+ * @param array $tool
+ * @param array $args
+ * @return array what the model is told
+ */
+function ws_mcp_ask_propose($row, &$state, $server, $tool, $args)
+{
+    // The card waits under an answer in a channel.
+    if (((int) $row['channel_id'] <= 0) || ((int) ($row['task_id'] ?? 0) > 0)) {
+        return array('error' => 'This tool changes things on the service and needs the approval of the person who asked, which only a request in a channel can have. Answer without it.');
+    }
+
+    $pending = (array) ($state['proposals']['mcp_calls'] ?? array());
+
+    if (count($pending) >= WS_MCP_ASK_MAX_PROPOSED) {
+        return array('error' => 'At most ' . WS_MCP_ASK_MAX_PROPOSED . ' calls that change things wait under one answer. Answer with those.');
+    }
+
+    $arguments = (string) json_encode((object) $args, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    if (strlen($arguments) > 20000) {
+        return array('error' => 'The arguments are too long. Send only what the request needs.');
+    }
+
+    db("INSERT INTO ws_mcp_calls (server_id, tool, arguments, via, requested_by, channel_id, message_id, request_id, status, created_at)
+        VALUES (
+            '" . (int) $server['id'] . "',
+            '" . e($tool['name']) . "',
+            '" . e($arguments) . "',
+            'ai',
+            '" . (int) $row['requested_by'] . "',
+            '" . (int) $row['channel_id'] . "',
+            '" . (int) $row['message_id'] . "',
+            '" . (int) $row['id'] . "',
+            'pending',
+            '" . time() . "')");
+
+    $call_id = (int) mysqli_insert_id(db::$con);
+
+    if ($call_id <= 0) {
+        return array('error' => 'The call could not be kept. Answer without it.');
+    }
+
+    $state['proposals']['mcp_calls'][] = $call_id;
+    $state['mcp_calls'] = (int) ($state['mcp_calls'] ?? 0) + 1;
+
+    return array(
+        'ok'   => true,
+        'note' => 'Not run yet: the call waits under your answer for ' . ws_person_name((int) $row['requested_by']) . ' to approve it, and then runs with their own account. '
+            . 'Do not say it was done. When you answer, say what waits for their approval.',
+    );
+}
+
+/**
+ * Puts the calls an answer carries under it, as proposals on the card
+ * (changes.php): one ws_ai_changes row each, the arguments as its fields.
+ *
+ * @param array $row        the request
+ * @param int   $message_id the answer
+ * @param int[] $call_ids   ws_mcp_calls rows the model proposed
+ */
+function ws_mcp_calls_propose($row, $message_id, $call_ids)
+{
+    $rows = array();
+
+    foreach (array_unique(array_map('intval', (array) $call_ids)) as $call_id) {
+        $call = db_item("SELECT * FROM ws_mcp_calls WHERE id = '" . $call_id . "' AND request_id = '" . (int) $row['id'] . "' AND status = 'pending'");
+
+        if (!is_array($call)) {
+            continue;
+        }
+
+        $fields = array();
+
+        foreach ((array) json_decode((string) $call['arguments'], true) as $name => $value) {
+            $fields[] = array('name' => (string) $name, 'from' => '', 'to' => $value);
+        }
+
+        $rows[] = array(
+            'type'      => 'mcp_call',
+            'action'    => 'run',
+            'record_id' => $call_id,
+            'fields'    => $fields,
+            'reason'    => '',
+            'snapshot'  => null,
+        );
+    }
+
+    if (!empty($rows) && function_exists('ws_changes_store')) {
+        ws_changes_store($row, (int) $message_id, $rows);
+    }
+}
+
+/**
+ * A request that ended without an answer leaves no call waiting.
+ *
+ * @param array $row the request
+ */
+function ws_mcp_ask_drop_pending($row)
+{
+    if (((int) ($row['mcp_server_id'] ?? 0) <= 0) || !ws_mcp_ready()) {
+        return;
+    }
+
+    db("UPDATE ws_mcp_calls SET status = 'dismissed', finished_at = '" . time() . "'
+        WHERE request_id = '" . (int) $row['id'] . "' AND status = 'pending'
+            AND id NOT IN (SELECT record_id FROM ws_ai_changes WHERE record_type = 'mcp_call' AND request_id = '" . (int) $row['id'] . "')");
+}
+
+/**
+ * An argument as the card prints it.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_mcp_argument_show($value)
+{
+    if (is_bool($value)) {
+        return $value ? lang('Yes') : lang('No');
+    }
+
+    if ($value === null) {
+        return lang('(empty)');
+    }
+
+    $text = is_scalar($value) ? trim((string) $value) : (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    if ($text === '') {
+        return lang('(empty)');
+    }
+
+    return (mb_strlen($text) > 300) ? rtrim(mb_substr($text, 0, 299)) . '…' : $text;
+}
+
+/**
+ * A call that waits, by its id.
+ *
+ * @param int $id
+ * @return array|null
+ */
+function ws_mcp_call_row($id)
+{
+    $row = ws_mcp_ready() ? db_item("SELECT * FROM ws_mcp_calls WHERE id = '" . (int) $id . "'") : null;
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Why a call that waits cannot run now, whoever approves it; '' when it can.
+ *
+ * @param array|null $call
+ * @param array|null $server
+ * @return string
+ */
+function ws_mcp_call_state_problem($call, $server)
+{
+    if (!$call) {
+        return lang('That proposal could not be found.');
+    }
+
+    if (!$server) {
+        return lang('That MCP server could not be found.');
+    }
+
+    if ($server['status'] !== 'active') {
+        return lang(array('string' => '@{var:1} is turned off. Nothing is sent to it until it is turned on again.', 'vars' => $server['alias']));
+    }
+
+    if (!ws_mcp_can_approve($server)) {
+        return lang(array('string' => '@{var:1} no longer signs in with OAuth, so a call that changes things cannot run there.', 'vars' => $server['alias']));
+    }
+
+    if (!isset(ws_mcp_tools_on($server)[(string) $call['tool']])) {
+        return lang(array('string' => 'The tool {var:1} of @{var:2} is no longer turned on.', 'vars' => array((string) $call['tool'], $server['alias'])));
+    }
+
+    return '';
+}
+
+/**
+ * A proposed call as the card draws it (ws_changes_map()), in the card's
+ * shape plus: blocked (why the one who asked cannot run it), connect (the
+ * server to connect their own account to) and account (the server their own
+ * account runs it on).
+ *
+ * @param array $viewer
+ * @param array $row      ws_ai_changes
+ * @param array $people   ws_people()
+ * @param bool  $can_post may act on the channel's (or the task's) proposals
+ * @return array
+ */
+function ws_mcp_change_entry($viewer, $row, $people, $can_post)
+{
+    $call = ws_mcp_call_row((int) $row['record_id']);
+    $server = $call ? ws_mcp_server((int) $call['server_id']) : null;
+    $alias = $server ? (string) $server['alias'] : '';
+    $tool = $call ? (string) $call['tool'] : '';
+    $pending = ($row['status'] === 'pending');
+    $asker = ((int) $row['requested_by'] === (int) $viewer['id']);
+    $problem = ($pending && $asker) ? ws_mcp_call_state_problem($call, $server) : '';
+    $mine = ($pending && $asker && $server) ? ws_mcp_person_account($server, (int) $viewer['id']) : null;
+    $works = $mine && ($mine['status'] === 'active');
+    $tools = $server ? ws_mcp_tools($server) : array();
+    $deletes = isset($tools[$tool]) && (($tools[$tool]['hints']['destructiveHint'] ?? null) === true);
+    $fields = json_decode((string) $row['fields'], true);
+    $items = array();
+
+    foreach (is_array($fields) ? $fields : array() as $item) {
+        $items[] = array(
+            'name'  => (string) ($item['name'] ?? ''),
+            'label' => (string) ($item['name'] ?? ''),
+            'from'  => '',
+            'to'    => ws_mcp_argument_show($item['to'] ?? null),
+            'html'  => '',
+        );
+    }
+
+    $blocked = '';
+
+    if ($pending && $asker) {
+        if ($problem !== '') {
+            $blocked = $problem;
+        } elseif (!$works) {
+            $blocked = lang(array('string' => 'Connect your own account to @{var:1} to run it: the call runs with it.', 'vars' => $alias));
+        }
+    }
+
+    $warning = '';
+
+    if ($pending && $asker && ($tool !== '')) {
+        $warning = $deletes
+            ? lang(array('string' => 'This runs {var:1} on @{var:2} with your own account. It may delete things there.', 'vars' => array($tool, $alias)))
+            : lang(array('string' => 'This runs {var:1} on @{var:2} with your own account.', 'vars' => array($tool, $alias)));
+    }
+
+    return array(
+        'id'           => (int) $row['id'],
+        'type'         => 'mcp_call',
+        'type_label'   => lang('Tool call'),
+        'action'       => 'run',
+        'action_label' => ($alias !== '') ? '@' . $alias : '',
+        'record_html'  => '',
+        'record_label' => $tool,
+        'fields'       => $items,
+        'count'        => count($items),
+        'hidden'       => false,
+        'reason'       => '',
+        'warning'      => $warning,
+        'status'       => (string) $row['status'],
+        'error'        => (string) $row['error'],
+        'asker'        => (string) ($people[(int) $row['requested_by']]['name'] ?? ''),
+        'decided_by'   => (string) ($people[(int) $row['decided_by']]['name'] ?? ''),
+        'decided'      => ((int) $row['decided_at'] > 0) ? ws_time_label($row['decided_at']) : '',
+        'decision_id'  => (int) $row['decision_message_id'],
+        'can_apply'    => $pending && $asker && $can_post && ($problem === '') && $works,
+        'no_right'     => false,
+        'can_dismiss'  => $pending && $can_post && ($asker || ((int) $viewer['role'] < 3)),
+        'blocked'      => $blocked,
+        'connect'      => ($pending && $asker && ($problem === '') && !$works) ? array('server_id' => (int) $server['id'], 'alias' => $alias, 'again' => (bool) $mine) : null,
+        'account'      => ($pending && $asker && $works) ? array('server_id' => (int) $server['id'], 'alias' => $alias) : null,
+    );
+}
+
+/**
+ * Why the viewer cannot run a proposed call now ('' when they can): checked
+ * before the proposal is taken, so it stays to be run once they can.
+ *
+ * @param array $viewer
+ * @param array $change ws_ai_changes
+ * @return string
+ */
+function ws_mcp_call_problem($viewer, $change)
+{
+    $call = ws_mcp_call_row((int) $change['record_id']);
+
+    if ($call && ($call['status'] !== 'pending')) {
+        return lang('Somebody has already decided about this proposal.');
+    }
+
+    $server = $call ? ws_mcp_server((int) $call['server_id']) : null;
+    $problem = ws_mcp_call_state_problem($call, $server);
+
+    if ($problem !== '') {
+        return $problem;
+    }
+
+    if (!ws_mcp_oauth_account($server, (int) $viewer['id'], true)) {
+        return lang(array('string' => 'Connect your own account to @{var:1} to run it: the call runs with it.', 'vars' => $server['alias']));
+    }
+
+    return '';
+}
+
+/**
+ * Runs a proposed call that the person who asked applied, with their own
+ * account and never the site's, and keeps how it ended: the call
+ * (ws_mcp_calls: done or failed, approved_by), the proposal, and a locked
+ * decision under the answer that names the tool and quotes what it answered.
+ * A token the service refused gives the proposal back to be run again once
+ * the account is connected again; anything else ends it.
+ *
+ * @param array      $viewer
+ * @param array      $change  ws_ai_changes, taken (status applying)
+ * @param array|null $channel null for a proposal on a task
+ * @return array ok, error, stale, decision_id
+ */
+function ws_mcp_call_run($viewer, $change, $channel)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'stale' => false, 'decision_id' => 0);
+    };
+
+    $end = function ($status, $error = '') use ($change, $viewer) {
+        db("UPDATE ws_ai_changes SET status = '" . e($status) . "', error = '" . e(mb_substr((string) $error, 0, 250)) . "',
+                decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+            WHERE id = '" . (int) $change['id'] . "'");
+        ws_message_touch($change['message_id']);
+    };
+
+    $give_back = function () use ($change) {
+        db("UPDATE ws_ai_changes SET status = 'pending' WHERE id = '" . (int) $change['id'] . "' AND status = 'applying'");
+        ws_message_touch($change['message_id']);
+    };
+
+    $call = ws_mcp_call_row((int) $change['record_id']);
+    $server = $call ? ws_mcp_server((int) $call['server_id']) : null;
+    $problem = ws_mcp_call_state_problem($call, $server);
+
+    if (($problem === '') && ($call['status'] !== 'pending')) {
+        $problem = lang('Somebody has already decided about this proposal.');
+    }
+
+    if ($problem !== '') {
+        $end('failed', $problem);
+
+        return $fail($problem);
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(WS_MCP_ASK_TIMEOUT_JOB + 30);
+    }
+
+    $conn = ws_mcp_connection($server, WS_MCP_ASK_TIMEOUT_JOB, (int) $viewer['id'], true);
+
+    if (empty($conn['headers'])) {
+        $give_back();
+
+        return $fail(lang(array('string' => 'Connect your own account to @{var:1} to run it: the call runs with it.', 'vars' => $server['alias'])));
+    }
+
+    $started = microtime(true);
+    $out = pg_mcp_client_call_tool($conn, (string) $call['tool'], json_decode((string) $call['arguments']));
+
+    if (!$out['ok'] && ws_mcp_reauthorize($conn, $server, $out['status'] ?? 0)) {
+        $out = pg_mcp_client_call_tool($conn, (string) $call['tool'], json_decode((string) $call['arguments']));
+    }
+
+    // Refused before anything ran: it can be run again once connected again.
+    if (!$out['ok'] && ((int) ($out['status'] ?? 0) === 401)) {
+        $give_back();
+
+        return $fail(ws_mcp_error_text($server, 401, '', true));
+    }
+
+    $duration = (int) round((microtime(true) - $started) * 1000);
+    $text = $out['ok'] ? pg_mcp_client_result_text($out['result'], WS_MCP_DECISION_RESULT_LIMIT) : '';
+
+    if (!$out['ok']) {
+        $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], $out['error'])));
+    } elseif ($out['is_error']) {
+        $error = lang(array('string' => 'The tool answered with an error: {var:1}', 'vars' => trim(preg_replace('/\s+/u', ' ', $text))));
+    } else {
+        $error = '';
+    }
+
+    db("UPDATE ws_mcp_calls SET
+            status = '" . (($error === '') ? 'done' : 'failed') . "',
+            approved_by = '" . (int) $viewer['id'] . "',
+            error = '" . e(mb_substr($error, 0, 250)) . "',
+            duration_ms = '" . $duration . "',
+            finished_at = '" . time() . "'
+        WHERE id = '" . (int) $call['id'] . "'");
+
+    db("UPDATE ws_mcp_servers SET last_used = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
+
+    log_activity(lang(array('string' => 'ran the tool {var:1} of the MCP server @{var:2} with their own account', 'vars' => array((string) $call['tool'], $server['alias']))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($error !== '') {
+        $end('failed', $error);
+
+        return $fail($error);
+    }
+
+    if ($channel === null) {
+        $end('applied');
+
+        return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
+    }
+
+    // What the service answered is its text, quoted: a tag in it would
+    // mention somebody here, so its angle bracket is changed.
+    $quote = trim(preg_replace('/<(?=[@#])/', '‹', $text));
+
+    $body = lang(array(
+        'string' => '@{var:1}: {var:2} was run with the account of {var:3}, on Pinegrap AI\'s proposal. {var:4}',
+        'vars'   => array($server['alias'], '`' . str_replace('`', '', (string) $call['tool']) . '`', ws_person_name((int) $viewer['id']), ($quote !== '') ? "\n" . $quote : ''),
+    ));
+
+    $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision', 'parent_id' => (int) $change['message_id']));
+    $decision_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
+
+    if ($decision_id > 0) {
+        db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $decision_id . "'");
+
+        if (function_exists('ws_thread_copy_sync')) {
+            ws_thread_copy_sync($decision_id);
+        }
+    }
+
+    db("UPDATE ws_ai_changes SET status = 'applied', error = '', decision_message_id = '" . $decision_id . "',
+            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+        WHERE id = '" . (int) $change['id'] . "'");
+
+    ws_message_touch($change['message_id']);
+
+    return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => $decision_id);
+}
+
+/**
+ * A proposed call set aside: the call is kept as dismissed.
+ *
+ * @param array $change ws_ai_changes
+ */
+function ws_mcp_call_dismissed($change)
+{
+    db("UPDATE ws_mcp_calls SET status = 'dismissed', finished_at = '" . time() . "'
+        WHERE id = '" . (int) $change['record_id'] . "' AND status = 'pending'");
 }

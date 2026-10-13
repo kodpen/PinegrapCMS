@@ -169,8 +169,9 @@ function ws_handle_action($action, $request)
         return ws_action_error(lang('Access denied.'));
     }
 
-    // The session lock is only needed by the actions that write to it.
-    if (!in_array($action, array('ws_channel_audit'), true)) {
+    // The session lock is only needed by the actions that write to it
+    // (connecting an MCP account keeps its pending state there).
+    if (!in_array($action, array('ws_channel_audit', 'ws_mcp_connect'), true)) {
         session_write_close();
     }
 
@@ -2004,6 +2005,28 @@ function ws_handle_action($action, $request)
             $result = ws_change_dismiss($viewer, (int) ($request['change_id'] ?? 0));
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
+
+        // A person's own account on an MCP server (mcp.php): connecting one
+        // sends them to the service and back to the channel they were in.
+        case 'ws_mcp_connect':
+        case 'ws_mcp_disconnect_me':
+            $server = ws_mcp_ready() ? ws_mcp_server((int) ($request['server_id'] ?? 0)) : null;
+
+            if (!$server || ($server['auth_kind'] !== 'oauth')) {
+                return ws_action_error(lang('That MCP server could not be found.'));
+            }
+
+            if ($action === 'ws_mcp_disconnect_me') {
+                ws_mcp_person_disconnect($viewer, $server);
+
+                return ws_action_ok();
+            }
+
+            $channel = ws_channel((int) ($request['channel_id'] ?? 0));
+            $channel_id = ($channel && ws_can_read_channel($viewer, $channel)) ? (int) $channel['id'] : 0;
+            $start = ws_mcp_person_connect_start($viewer, $server, 'workspace.php?' . (($channel_id > 0) ? 'channel=' . $channel_id . '&' : '') . 'mcp_connected=' . (int) $server['id']);
+
+            return $start['ok'] ? ws_action_ok(array('url' => $start['url'])) : ws_action_error($start['error']);
 
         // A page change an answer proposes: written to the saved page by the
         // person who asked, taken back by whoever applied it, or set aside.

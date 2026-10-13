@@ -2021,6 +2021,18 @@ function ws_api_change_fields_present($row, $action)
     $fields = is_array($fields) ? $fields : array();
     $out = array();
 
+    // A call of an MCP server's tool: its arguments, as the card shows them.
+    if ($type === 'mcp_call') {
+        foreach ($fields as $item) {
+            if (is_array($item) && function_exists('ws_mcp_argument_show')) {
+                $name = (string) ($item['name'] ?? '');
+                $out[] = array('name' => $name, 'label' => $name, 'from_shown' => null, 'to_shown' => ws_mcp_argument_show($item['to'] ?? null));
+            }
+        }
+
+        return $out;
+    }
+
     foreach ($fields as $item) {
         if (!is_array($item)) {
             continue;
@@ -2051,6 +2063,18 @@ function ws_api_change_record_present($row, $entry)
     $types = ws_change_types();
     $type = (string) $row['record_type'];
     $id = (int) $row['record_id'];
+
+    // A call of an MCP server's tool (mcp_ask.php): the call is the record,
+    // named by its tool; it has no tag.
+    if ($type === 'mcp_call') {
+        return array(
+            'type'       => $type,
+            'type_label' => (string) $entry['type_label'],
+            'id'         => ($id > 0) ? $id : null,
+            'tag'        => null,
+            'name'       => trim((string) $entry['action_label'] . ' ' . (string) $entry['record_label']),
+        );
+    }
 
     // A record deleted by the change is gone: no tag points at it any more.
     // A note has no tag at all.
@@ -2289,8 +2313,9 @@ function ws_api_changes_list($params)
     $types = ws_change_types();
     $type = (string) ($params['type'] ?? '');
 
-    if (($type !== '') && !isset($types[$type])) {
-        api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('type', implode(', ', array_keys($types))))), 'type');
+    // mcp_call: the calls of MCP server tools that wait the same way.
+    if (($type !== '') && !isset($types[$type]) && ($type !== 'mcp_call')) {
+        api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('type', implode(', ', array_merge(array_keys($types), array('mcp_call')))))), 'type');
     }
 
     $where = array(ws_api_changes_reach_sql($viewer));

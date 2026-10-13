@@ -960,8 +960,12 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    if ($server && (ws_mcp_ask_problem($server) !== '')) {
-        ws_message_system($channel['id'], ws_mcp_ask_problem($server));
+    // A server people sign in to answers only somebody with an account
+    // there: their own, or the site's.
+    $problem = $server ? ws_mcp_ask_problem($server, $viewer, (int) $channel['id']) : '';
+
+    if ($problem !== '') {
+        ws_message_system($channel['id'], $problem);
         return false;
     }
 
@@ -1612,7 +1616,7 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         $text = pg_design_ai_channel_words($text, !empty($state['proposals']['pages']));
     }
 
-    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']))) {
+    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['mcp_calls']))) {
         $text = lang('I propose it below. Nothing is changed until you press Apply under it.');
     }
 
@@ -1622,9 +1626,9 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
     // A request that asks for a task, answered without proposing one: sent
     // back once, since a task written only in the words cannot be opened.
     if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
-        // Written to an MCP server's alias: nothing is proposed there, the
-        // words are the answer.
-        $result = ws_ai_deliver($row, $text, array());
+        // Written to an MCP server's alias: the words are the answer, with the
+        // calls of its tools that write waiting under it (mcp_ask.php).
+        $result = ws_ai_deliver($row, $text, array('mcp_calls' => (array) ($state['proposals']['mcp_calls'] ?? array())));
     } elseif (!empty($state['design']) && empty($state['proposals']['pages']) && empty($state['page_nudged']) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // Asked from the editor and answered without a proposal: the words
         // alone change nothing on the page.
@@ -2082,6 +2086,11 @@ function ws_ai_finish_fail($row, $reason)
         ws_task_delegation_told($row, 'failed');
     }
 
+    // Calls of an MCP server's tools that waited for this answer wait no more.
+    if (function_exists('ws_mcp_ask_drop_pending')) {
+        ws_mcp_ask_drop_pending($row);
+    }
+
     ws_ai_react((int) $row['message_id'], '👀', false);
 }
 
@@ -2307,6 +2316,11 @@ function ws_ai_deliver($row, $text, $proposals)
     }
 
     ws_changes_store($row, (int) $sent['message_id'], $checked['rows']);
+
+    // Calls of an MCP server's tools that write, waiting for approval.
+    if (!empty($proposals['mcp_calls']) && function_exists('ws_mcp_calls_propose')) {
+        ws_mcp_calls_propose($row, (int) $sent['message_id'], $proposals['mcp_calls']);
+    }
 
     if (!empty($pages) && ws_design_ai()) {
         pg_design_ai_store_proposals($row, $pages, 'ai', (int) ws_ai_config()['app_id'], (int) $channel['id'], (int) $sent['message_id']);

@@ -299,6 +299,7 @@ function pg_panel_actions()
         'ws_task_link_add', 'ws_task_link_remove', 'ws_task_delegate',
         'ws_task_delegation', 'ws_task_delegation_stop',
         'ws_task_approval_create', 'ws_approval_guest_resend',
+        'ws_mcp_connect', 'ws_mcp_disconnect_me',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }
