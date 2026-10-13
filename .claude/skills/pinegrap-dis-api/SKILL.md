@@ -216,6 +216,14 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   bilgisini (`send`) taşır; yeni posta sağlayıcısı = sağlayıcı dosyası +
   `send` girdisi. Tablolar yokken (`pg_connect_schema_ready()`) bütün
   okumalar "hesap yok" der.
+- Giriş (Microsoft, Apple): `includes/fn/signin.php`, dönüş adresi
+  `signin.php`. Sağlayıcı dosyasındaki `signin` bloğu girişi tanımlar
+  (`order`, `scopes`, `pkce`, `subject_claims`, `verified_tenants`,
+  `verified_claims`, `client_secret => 'apple_jwt'`, `user_field`); yeni
+  sağlayıcı = bu blok + Ayarlar › Güvenlik'te anahtarı
+  (`config.signin_providers`). Kimlik `user_identities`'te; giriş belirteç
+  saklamaz. Düğmeler yalnız `pg_signin_buttons()` ile (Google dahil).
+  Google kendi yolunda: `google_auth.php`, `user.user_google_id`.
 
 ## Modül dikişi (ERP → API)
 

@@ -409,8 +409,9 @@ Efor: K küçük, O orta, B büyük. "Şart" sağlayıcının istediğidir (2026
 | Talep gelince | 4.11, 4.12, 4.13, 4.15 | |
 | Erdal'ın yerel işi | 4.14 sürücüleri | |
 
-Şema etiketleri API bloğundan: `connect_apps` + `connect_accounts` + `user_identities` **10.72**,
-Arama Konsolu tablosu **10.73**, `ws_mcp_servers` Workspace bloğundan (10.82+).
+Şema etiketleri API bloğundan: `connect_apps` + `connect_accounts` **10.72**,
+Arama Konsolu tablosu **10.73**, `user_identities` + `config.signin_providers` **10.74**,
+`ws_mcp_servers` Workspace bloğundan (10.82+).
 
 ## 6. Erdal'ın kararları
 

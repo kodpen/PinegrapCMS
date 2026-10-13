@@ -84,6 +84,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Microsoft ile Giriş ve Apple ile Giriş (2026-10-13)
+
+**Neden.** Tersine OAuth planının (`docs/_plan_tersine_oauth.md`) dördüncü
+senaryosu, model A (her site kendi Microsoft ve Apple uygulamasını kaydeder).
+Google ile Giriş zaten vardı; iş ve okul hesapları Microsoft'ta, iPhone
+kullanıcılarının çoğu Apple'da. App Store kuralları (4.8) üçüncü taraf
+girişi sunan bir uygulamadan gizlilik odaklı bir seçenek de ister; Apple ile
+Giriş bunu karşılar.
+
+**Nasıl.** Bağlı hesaplar altyapısının (`includes/fn/connect.php`) sağlayıcı
+dosyaları ve uygulama deposu (`connect_apps`) kullanılır; ikinci bir
+belirteç deposu yok, çünkü giriş belirteç saklamaz: yalnız id_token okunur.
+Sağlayıcı dosyasındaki `signin` bloğu girişi tanımlar (sıra, kapsamlar,
+PKCE, kimliği oluşturan talepler, doğrulanmış sayılan kiracılar ve
+talepler, istemci sırrının türü). Apple yalnız giriş içindir
+(`'accounts' => false`, PR #293): Bağlı hesaplar ekranında görünmez,
+onunla hesap bağlanamaz. `includes/fn/signin.php` akışı yürütür, dönüş
+adresi `signin.php` (kök betik; `connect.php` oturum açmış kullanıcı
+istediği için ayrı). Durum, nonce ve PKCE oturumda (en çok beş bekleyen
+deneme, 15 dakika), RFC 9207 `iss`, id_token'da `iss`/`aud`/`exp`/`nonce`/
+`sub` denetimi (`pg_connect_claims_problem()`). Kimlik kalıcı tabloda
+(`user_identities`: sağlayıcı + konu tekil, kullanıcı + sağlayıcı tekil).
+Microsoft'ta konu `tid:oid` (uygulama yeniden kaydedilse de değişmez); adres
+yalnız kişisel hesap kiracısında (`9188040d-…`) ya da isteğe bağlı
+`xms_edov` talebi doğruysa doğrulanmış sayılır (nOAuth: bir kiracı
+yöneticisi başkasının adresini yazabilir). Apple'da `response_mode=form_post`
+siteler arası bir POST olduğundan başlangıçta oturum çerezi
+`SameSite=None` yapılır (ödeme dönüşleriyle aynı çare); istemci sırrı her
+token isteğinde .p8 anahtarıyla imzalanan ES256 JWT'dir (DER imza JOSE
+biçimine çevrilir); ad yalnız ilk girişte POST'un `user` alanında gelir.
+
+**Ne değişti.** Ayarlar › Güvenlik'te iki kart: Microsoft ile Giriş (anahtar,
+Bağlı hesaplar'daki uygulamanın durumu, yönlendirme adresi, `xms_edov`
+açıklaması) ve Apple ile Giriş (anahtar, kurulum adımları, dönüş adresi,
+Services ID, Team ID, Key ID, .p8 anahtarı; anahtar geri gösterilmez).
+Apple alanları kaydetmeden önce denetlenir; hatalıysa ekrandaki hiçbir
+ayar yazılmaz. Anahtarlar `config.signin_providers`'da, uygulama girilene
+kadar düğme gizli. Düğmeler `pg_signin_buttons()` ile Google'ınkinin
+altında: panel girişi, eski giriş/kayıt/üyelik ekranları (özel düzenlerde
+`$google_signin` değişkeni) ve görsel editörün giriş, kayıt ve üyelik
+widget'larındaki "Google ile Giriş" bölümü. Kurallar Google'ınki: doğrulanmış
+aynı adresli hesaba bağlanır (o sağlayıcıya başka kimlikle bağlı hesap
+devralınmaz), personel girişinde bilinmeyen hesap reddedilir, kayıttan
+gelene üye açılır (parolasız, algo 3), üyelikte kimlik üyelik formuna
+devredilir (`google_membership_pending` kaydı sağlayıcıyı taşır), ardından
+`pg_mfa_gate()` ve `pg_device_limit_gate()`. Hesabım › Giriş ve cihazlar,
+görsel editörün hesap güvenliği widget'ı (`has_microsoft`,
+`microsoft_removable`, `microsoft_only`, Apple için aynıları) ve
+`edit_user.php` bağlantıyı gösterir ve keser; tek giriş yolu olan
+bağlantı kesilmez (`pg_signin_can_remove()`), kullanıcı silinince kimlikler
+de silinir. Şema 10.74: `user_identities`, `config.signin_providers`.
+`tr.json`'da "Sign in with Apple" "Apple ile giriş yap" yerine "Apple ile
+Giriş" oldu (düğmeler alt alta "Google ile Giriş" ile aynı biçimde).
+
+**Bilerek yapılmayan.** Google ile Giriş kendi yolunda kaldı
+(`google_auth.php`, `user.user_google_id`); aynı akışa taşınması ayrı PR.
+Görsel editördeki `__google_signin_url` bağlantı belirteci yalnız
+Google'ındır; bölüm üç düğmeyi de taşır. Oturum açmış kişinin Microsoft ya
+da Apple hesabını sonradan bağlama düğmesi yok (Google'da da yok): bağlantı
+doğrulanmış adresle ya da o sağlayıcıyla açılan hesapla kurulur.
+id_token imzası doğrulanmaz (OpenID Connect Core 3.1.3.7, belirteç TLS ile
+doğrudan token ucundan gelir).
+
+---
+
 ## 2026.4.10 — Dış API: hediye kartları (2026-10-13)
 
 **Sorun.** Hediye kartları API'de yoktu. Ödül, iade ya da mağaza dışında
