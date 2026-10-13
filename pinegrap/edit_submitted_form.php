@@ -720,6 +720,12 @@ if (!$_POST) {
         $output_workspace_button = ws_record_button($user, 'form', (int) $_GET['id'], trim($form_name . ' ' . $reference_code));
     }
 
+    // The page a site's Edit button opened this screen from
+    // (pg_sw_backend_edit_url()): saving or cancelling goes back there.
+    // Only a path on this site.
+    $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
+    if ($send_to === '/__none__') $send_to = '';
+
     echo
     pg_page_shell(
         array(
@@ -728,7 +734,7 @@ if (!$_POST) {
             'icon'=>'form',
             'heading'=>lang('Edit Submitted Form'),
             'heading_description' => lang('View or update this submitted form. Office use only fields are also visible.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
+            'cancel'=>array('enable'=>'true','url'=>($send_to !== '') ? $send_to : 'view_submitted_forms.php'),
             'breadcrumb' => array(
                 array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
                 array('label' => lang('Edit Submitted Form')),
@@ -757,6 +763,7 @@ if (!$_POST) {
                     <form' . $output_enctype . ' name="form" action="edit_submitted_form.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
+                        ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-4 ">
@@ -1469,13 +1476,17 @@ if (!$_POST) {
             
         // else an error does exist, so forward user back to edit submitted form
         } else {
-            // if there is a send to, then forward user to send
-            if ((isset($_POST['send_to']) == TRUE) && ($_POST['send_to'] != '')) {
+            // The page's own edit form (form_item_view_page_id) shows the
+            // errors where it was posted from; this screen shows them itself
+            // and keeps the page to go back to.
+            if (!empty($_POST['form_item_view_page_id']) && (isset($_POST['send_to']) == TRUE) && ($_POST['send_to'] != '')) {
                 header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
                 
             // else forward user to edit submitted form in backend
             } else {
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $_POST['id']);
+                $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
+                if ($send_to === '/__none__') $send_to = '';
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . (int) $_POST['id'] . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : ''));
             }
         }
     }
