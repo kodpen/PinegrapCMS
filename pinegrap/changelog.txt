@@ -79,6 +79,17 @@
          verilemiyor; böyle bir sayfa hiç
          görünmüyordu.
 
+  [DÜZELTME] Widget ve form ayarlarındaki sayfa
+         seçicileri Geri Dönüşüm Kutusu'ndaki sayfaları
+         listelemiyor. Seçili sayfa kutuya gittiyse ya da
+         silindiyse seçici "seçilmedi" göstermiyor; sayfa
+         "(silinmiş)" etiketiyle seçili kalıyor.
+
+  [DÜZELTME] Link seçicinin eklediği sayfa, dosya ve
+         kısa link adresi kodlanıyor. Adında boşluk, "#"
+         ya da "?" olan sayfanın linki önceden yarıda
+         kesiliyordu.
+
   [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
          yapılan değişiklik kaydediliyor. Bir kayıttan
          sonra aynı parçada yapılan düzenleme, ya da öğe

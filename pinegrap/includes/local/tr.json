@@ -20417,5 +20417,6 @@
     "{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.": "Bu görevin kanalında {var:1} çağrılamaz. Kanalı yöneten biri kanal menüsünden izin verebilir.",
     "Assistant: {var:1}": "Asistan: {var:1}",
     "Handed over by {var:1}, {var:2}": "Devreden: {var:1}, {var:2}",
-    "{var:1} asked, {var:2}": "{var:1} istedi, {var:2}"
+    "{var:1} asked, {var:2}": "{var:1} istedi, {var:2}",
+    "(deleted)": "(silinmiş)"
 }
