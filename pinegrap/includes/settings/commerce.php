@@ -152,10 +152,9 @@ $pg_settings_cards[] = '
                                                                                 <label class="form-check-label" for="ecommerce_recipient_mode_multirecipient">'. lang('Multi-Recipient') . '</label>
                                                                             </div>
                                                                         </div>
-                                                                        <div class="pg-f-md">
-                                                                            <label for="usps_user_id" class="form-label">' . lang('USPS Web Tools User ID') . '</label>
-                                                                            <input type="text" name="usps_user_id" id="usps_user_id" class="form-control" value="' . h($usps_user_id) . '" maxlength="100"/>
-                                                                        </div>
+                                                                        <div class="col-12 "><h6 class="text-muted mb-0">' . lang('USPS') . '</h6></div>
+                                                                        ' . pg_carrier_api_settings_fields('usps', $usps_legacy_set) . '
+                                                                        ' . pg_carrier_api_test_button('usps') . '
                                                                         <div class="col-12 ">
                                                                             <div class="form-check form-switch">
                                                                                 <input value="1"' . $ecommerce_address_verification_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_address_verification" name="ecommerce_address_verification" data-bs-target="#ecommerce_address_verification_row"/>
@@ -165,7 +164,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-3">
-                                                                                        <div class="alert alert-primary">' . lang('Requires an approved USPS Web Tools account') . '</div>
+                                                                                        <div class="alert alert-primary">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
                                                                                         <div class="col-12 ">
                                                                                             <label class="form-label">'. lang('Enforcement') . '</label>
                                                                                             <div class="form-check">
@@ -561,6 +560,13 @@ $pg_settings_cards[] = '
                             <label class="form-check-label" for="erp_storefront_account_prices">' . lang('Account prices in the store') . '</label>
                         </div>
                         <div class="form-text">' . lang('A customer whose contact is linked to an account sees and pays that account\'s prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.') . '</div>
+                    </div>' : '') . ($erp_open_account_ready ? '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_open_account_payment_checked . ' class="form-check-input" type="checkbox" id="erp_open_account_payment" name="erp_open_account_payment" />
+                            <label class="form-check-label" for="erp_open_account_payment">' . lang('Put it on my account at checkout') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order is invoiced from its screen as usual and is never cancelled for an unpaid transfer.') . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>

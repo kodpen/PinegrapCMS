@@ -696,6 +696,9 @@ define('ERP_DEFAULT_DUE_DAYS', isset($row['erp_default_due_days']) ? (int) $row[
 // member whose contact the account is linked to (2026.4.10, 10.59;
 // pg_erp_member_prices()). Off by default.
 define('ERP_STOREFRONT_ACCOUNT_PRICES', !empty($row['erp_storefront_account_prices']));
+// "Put it on my account" at checkout for a member whose account has a credit
+// limit (2026.4.10, 10.60; pg_erp_open_account()). Off by default.
+define('ERP_OPEN_ACCOUNT_PAYMENT', !empty($row['erp_open_account_payment']));
 
 // Overdue receivable reminders; zero days is off. The switches default on so
 // that setting the days is the only step.

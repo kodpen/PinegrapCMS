@@ -244,7 +244,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_tax_exempt_label = $row['ecommerce_tax_exempt_label'];
     $ecommerce_shipping = $row['ecommerce_shipping'];
     $ecommerce_recipient_mode = $row['ecommerce_recipient_mode'];
-    $usps_user_id = $row['usps_user_id'];
+    // The Web Tools user ID USPS retired, kept on file but no longer used:
+    // the Shipping card says why rates stopped.
+    $usps_legacy_set = ($row['usps_user_id'] != '');
     $ecommerce_address_verification = $row['ecommerce_address_verification'];
     $ecommerce_address_verification_enforcement_type = $row['ecommerce_address_verification_enforcement_type'];
     $ups = $row['ups'];
@@ -537,6 +539,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The prices agreed with an account, in the store (10.59).
     $erp_storefront_prices_ready = array_key_exists('erp_storefront_account_prices', $row);
     $erp_storefront_account_prices_checked = ((int) ($row['erp_storefront_account_prices'] ?? 0) === 1) ? ' checked' : '';
+    // Putting an order on the account at checkout (10.60).
+    $erp_open_account_ready = array_key_exists('erp_open_account_payment', $row);
+    $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in
     // kurus and shown in whole units of the base currency.

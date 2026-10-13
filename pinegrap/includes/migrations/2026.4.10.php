@@ -36,6 +36,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_signin();                 // 10.74
 	upgrade_2026_4_10_search_console();         // 10.73
 	upgrade_2026_4_10_erp_storefront_prices();  // 10.59
+	upgrade_2026_4_10_erp_open_account();       // 10.60
 
 }
 
@@ -601,5 +602,27 @@ function upgrade_2026_4_10_erp_storefront_prices() {
 	install_add_column('config', 'erp_storefront_account_prices', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('ERP: the prices agreed with an account can be shown and charged in the store to the member linked to it. It is off until it is switched on under Settings, Ecommerce, ERP.');
+
+}
+
+// Open-account payment at checkout (2026.4.10, 10.60; pg_erp_open_account()
+// in includes/fn/ecommerce.php, the rule in erp_storefront_on_account(),
+// includes/erp/storefront.php).
+//
+// One switch, off: a member whose contact is linked to an active customer
+// account with a credit limit can put an order on that account at checkout.
+// The order is an offline payment as far as orders.payment_method goes (no
+// new value of the ENUM); orders.erp_on_account says which kind it was, so
+// the job that cancels bank transfers that never arrived leaves it alone,
+// the screens can say so, and the orders on the account that are not
+// invoiced yet count against its limit. The index is for that sum.
+function upgrade_2026_4_10_erp_open_account() {
+
+	install_add_column('config', 'erp_open_account_payment', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('orders', 'erp_on_account', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('orders', 'idx_erp_on_account', "KEY idx_erp_on_account (erp_on_account, erp_account_id)");
+
+	install_note('ERP: a member whose account has a credit limit can put an order on the account at checkout. It is off until it is switched on under Settings, Ecommerce, ERP.');
 
 }
