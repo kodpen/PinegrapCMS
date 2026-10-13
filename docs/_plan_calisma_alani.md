@@ -490,6 +490,13 @@ bağlı (bugünkü görevler, gecikenler).
 | 2 | `GET /schedule?user=…&from=…&to=…` (yük dahil) · `GET/POST /events` · `GET /conflicts` |
 | 3 | Uygulama üyeliği uçları · komut kaydı |
 
+Durum (2026-10-13, 2026.4.10): Faz 2'nin `/events` karşılığı
+`/workspace/plan-items` (liste, tek kayıt, ekleme, değiştirme, silme) olarak
+geldi; ayrı `planning:read` yerine `GET /workspace/plan` gibi
+`tasks:read/write` kullanılıyor. Aynı turda not yazma
+(`POST /workspace/notes`, `/notes/{id}`), arama (`GET /workspace/search`) ve
+kişinin günü (`GET /workspace/my-day`) eklendi.
+
 **Webhook olayları:** `task.created`, `task.assigned`, `task.status_changed`,
 `task.completed`, `message.created` (yalnız uygulamanın üye olduğu kanallar),
 `app.mentioned` (uygulama `@` ile anıldığında — yapay zekânın kapısı).

@@ -456,21 +456,26 @@ function ws_palette_record_type($types, $query)
  * that match, with the address of their own screen. The workspace's own
  * kinds - tasks, channels, plan items - have groups of their own.
  *
- * @param array  $viewer
- * @param string $query
- * @param int    $limit
- * @param string $type   one kind, '' for every kind
+ * @param array      $viewer
+ * @param string     $query
+ * @param int        $limit
+ * @param string     $type   one kind, '' for every kind
+ * @param array|null $only   the kinds that may be looked in, null for all
  * @return array[]
  */
-function ws_palette_records($viewer, $query, $limit, $type = '')
+function ws_palette_records($viewer, $query, $limit, $type = '', $only = null)
 {
     $types = ws_ref_types($viewer);
     $kinds = array();
 
     foreach ($types as $key => $info) {
-        if (!empty($info['record'])) {
+        if (!empty($info['record']) && (($only === null) || in_array($key, $only, true))) {
             $kinds[] = $key;
         }
+    }
+
+    if (empty($kinds) || (($type !== '') && !in_array($type, $kinds, true))) {
+        return array();
     }
 
     $found = ($type !== '')
@@ -614,7 +619,9 @@ function ws_palette_commands($query)
  *
  * @param array  $viewer
  * @param string $q       as typed, with its first character
- * @param array  $options channel_id (only in that channel), types (the groups to ask), limit
+ * @param array  $options channel_id (only in that channel), types (the groups to ask), limit,
+ *                        record_kinds (the kinds of record that may be looked in;
+ *                        every kind the person may tag when left out)
  * @return array mode, query, groups (key, title, icon, items)
  */
 function ws_palette_search($viewer, $q, $options = array())
@@ -623,6 +630,7 @@ function ws_palette_search($viewer, $q, $options = array())
     $query = $read['query'];
     $limit = max(1, min(20, (int) ($options['limit'] ?? WS_PALETTE_LIMIT)));
     $channel_id = (int) ($options['channel_id'] ?? 0);
+    $record_kinds = isset($options['record_kinds']) ? array_map('strval', (array) $options['record_kinds']) : null;
     $known = ws_palette_groups();
     $out = array('mode' => $read['mode'], 'query' => $query, 'groups' => array());
 
@@ -648,7 +656,7 @@ function ws_palette_search($viewer, $q, $options = array())
         $asked = ws_palette_record_type(ws_ref_types($viewer), $query);
 
         if (mb_strlen($asked['query']) >= (($asked['type'] !== '') ? 1 : 2)) {
-            $out['groups'][] = array('key' => 'records') + $known['records'] + array('items' => ws_palette_records($viewer, $asked['query'], $limit, $asked['type']));
+            $out['groups'][] = array('key' => 'records') + $known['records'] + array('items' => ws_palette_records($viewer, $asked['query'], $limit, $asked['type'], $record_kinds));
         }
 
         return $out;
@@ -722,7 +730,7 @@ function ws_palette_search($viewer, $q, $options = array())
                 break;
 
             case 'records':
-                $items = ws_palette_records($viewer, $query, $limit);
+                $items = ws_palette_records($viewer, $query, $limit, '', $record_kinds);
                 break;
         }
 
