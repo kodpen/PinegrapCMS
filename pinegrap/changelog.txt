@@ -90,6 +90,32 @@
          ya da "?" olan sayfanın linki önceden yarıda
          kesiliyordu.
 
+  [DÜZELTME] Widget ayarlarındaki açıklamalar
+         ^^token^^ yerine Veri Bağla listesindeki
+         seçeneğin adını söylüyor (ör. "Giriş sayfası
+         adresi" alanına bağlanan linkler). Bağlı öğenin
+         araç çubuğundaki ipucu da seçenek adını
+         gösteriyor.
+
+  [DÜZELTME] Giriş bölgesi ve sepet bağlantısı
+         widget'ının içindeki öğelerde Veri Bağla paneli
+         "önce widget'a bir form seçin" diyordu; bağlama
+         değiştirilemiyor, "Yalnız şu durumda göster"
+         seçenekleri çıkmıyordu. Panel artık widget'ın
+         kendi alanlarını ve koşullarını sunuyor.
+
+  [DÜZELTME] Form detayında "Alan etiketleri" açıkken
+         Veri Bağla listesi her alanın etiketini sunuyor.
+         Önceden ayar açılabiliyor ama etiketi bağlamanın
+         yolu yoktu.
+
+  [DÜZELTME] E-posta tercihleri widget'ında liste
+         kutusunun adı "contact_group"; sunucu her listeye
+         kendi adını veriyor. Eski sayfalardaki
+         contact_group_^^__group_id^^ adı da çalışıyor.
+         Ödeme widget'ının alıcı başlığı da örnek metinle
+         geliyor.
+
   [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
          yapılan değişiklik kaydediliyor. Bir kayıttan
          sonra aynı parçada yapılan düzenleme, ya da öğe
