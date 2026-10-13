@@ -84,6 +84,68 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: ortak bileşende yapılan düzenleme kayıtta kaybolmuyor (2026-10-13)
+
+**Belirti.** kodpen.com'da Erdal, menüdeki bir linkin adresini beş kez
+değiştirdi. URL kutusunu da dosya/sayfa seçicisini de denedi. Editör her
+seferinde "kaydedildi" dedi ama sitede link eski adreste kaldı.
+
+**Kök sebep.** Ortak bileşenin (başlık, altlık, menü) ağacı editörde
+`_sharedCache[sid].tree` içinde durur. Kayıt yalnız `_sharedDirty`
+işaretli bileşenleri yazar (`_flushDirtyShared()`). Özellik panelleri
+seçili düğümü değiştirir ama bileşeni işaretlemez: işareti seçim koyar
+(`_sdTrackSharedEditing()`). Bu işaret iki durumda yoktu:
+
+1. Seçim `render()` yerine `renderSelectionOnly()` ile yapıldıysa.
+   Bu yol yalnız `_editingSharedSid`'i yazıyordu. Sağ tık, form kontrolüne
+   mousedown, Bootstrap'a bağlı öğeye tıklama (`data-bs-toggle`, açılır
+   menü, akordeon), Ctrl/Shift ile çoklu seçim, "Üst öğeyi seç" ve
+   tasarım asistanının `select()`'i bu yoldan seçiyordu.
+2. Bir kayıttan sonra. `_flushDirtyShared()` yazdığı bileşenin işaretini ve
+   snapshot'ını siliyordu. Seçim bileşenin içinde kaldıkça yeni bir seçim
+   olayı gelmediği için sonraki düzenlemeler hiç işaretlenmedi. Sayfa da
+   değişmemiş sayıldı (`_pgPageUnchanged()`) ve hiçbir şey yazılmadı.
+
+Sandbox'ta yeniden üretildi (hello-pinegrap şablonu, "Site Üst Bölümü"
+başlığındaki marka linki). Düzeltmeden önce kayıt sonrası 2. ve 3.
+düzenleme ile sağ tıkla seçilip yapılan düzenleme DB'ye gitmiyordu.
+Düzeltmeden sonra hepsi gidiyor.
+
+**Düzeltme (`style_designer.js`).**
+- `renderSelectionOnly()` `_sdTrackSharedEditing()`'i çağırıyor. Her seçim
+  yolu bileşeni işaretliyor ve ilk girişte snapshot alıyor.
+  `_sdSelectRender()`'daki ayrı çağrı kalktı.
+- `_flushDirtyShared()` başarılı yazımdan sonra gönderdiği JSON'u
+  snapshot olarak tutuyor. Değişmemiş dalda da snapshot'ı siliyor değil,
+  tutuyor. Yazım reddedilirse ya da yanıt gelmezse snapshot yok olur ve
+  bir sonraki kayıt bileşeni koşulsuz gönderir.
+- Yeni `_sdSharedCatchEdits()` kayıttan önce (`_saveAjaxImpl()` ve
+  `prepareFormData()` içinde, `_pgTabsSerialize()`'dan önce) snapshot'ı
+  olan her bileşeni bugünkü ağaçla karşılaştırıyor. Farklıysa işaretliyor.
+  Böylece seçimsiz yapılan bir düzenleme de bulunuyor. Değişmemiş bileşen
+  yine gönderilmiyor.
+- Önbellekteki ağacı sunucudaki satırla değiştiren `prefetchShared()`, o
+  bileşenin eski snapshot'ını siliyor.
+
+**Ödün.** Bir bileşen, kayıttan sonra oturum boyunca karşılaştırılmaya devam
+ediyor. Kayıt başına bileşen başına bir `JSON.stringify` maliyeti var.
+`_pgPageUnchanged()`'e dokunulmadı: işaretli bileşeni gösteren sayfalar
+eskisi gibi yeniden yazılıyor. Widget ayarları sekme referanslarını sayfa
+kaydında çözdüğü için bu işarete güveniyor.
+
+**Doğrulama.** Sandbox'ta Playwright ile şu senaryolar denendi:
+- Kayıt, düzenleme, kayıt, düzenleme, kayıt.
+- Sağ tıkla seçip düzenleme.
+- Düzenlemeden kayıt (bileşen gönderilmedi).
+- Sayfa linki.
+- Başlığa geri dönüp düzenleme.
+
+Her senaryoda hem DB hem ön yüz doğrulandı. kodpen.com'daki ağaç
+görülemedi; linkin hangi yoldan seçildiği bilinmiyor. Yukarıdaki iki
+yoldan biri olduğu düşünülüyor.
+
+---
+
 ## 2026.4.10 — Görsel editör: detay sayfası denetimi, sayfaya özel dosyalar, tek ikon sürümü, dar pencere (2026-10-13)
 
 **Kaynak.** kodpen.com'da bir ajanın bulduğu hatalardan 10, 11 ve 12.

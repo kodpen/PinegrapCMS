@@ -25,6 +25,14 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
+         yapılan değişiklik kaydediliyor. Bir kayıttan
+         sonra aynı parçada yapılan düzenleme, ya da öğe
+         sağ tıkla, form alanına veya açılır menü
+         düğmesine tıklanarak seçildiyse yapılan
+         düzenleme yazılmıyordu: editör "kaydedildi"
+         diyor, sitede eski hâli kalıyordu.
+
   [DÜZELTME] Bağlantı içeren bir başlık ya da paragraf
          bir alana bağlandığında bağlantı korunuyor:
          değer bağlantının içine yazılıyor. Önceden
