@@ -24,12 +24,18 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Whether a feature reads the database: the language redirect when it looks
- * at the visitor's location.
+ * at the visitor's location, and the firewall's country restriction while
+ * the firewall is on.
  */
 function pg_geo_db_needed()
 {
     if (defined('LANGUAGE_REDIRECT') && LANGUAGE_REDIRECT
         && defined('LANGUAGE_REDIRECT_MODE') && (LANGUAGE_REDIRECT_MODE !== 'language')) {
+        return true;
+    }
+
+    if (function_exists('waf_setting') && (waf_mode() !== 'off')
+        && in_array((string) waf_setting('waf_country_mode', 'off'), array('allow', 'block'), true)) {
         return true;
     }
 
@@ -79,9 +85,17 @@ function pg_geo_db_due()
         return false;
     }
 
+    return !pg_geo_db_tried_recently();
+}
+
+/**
+ * Whether a download was tried in the last twelve hours, successful or not.
+ */
+function pg_geo_db_tried_recently()
+{
     $attempt = pg_geo_db_dir() . '/attempt.txt';
 
-    return !(is_file($attempt) && ((int) @file_get_contents($attempt) > time() - 43200));
+    return (is_file($attempt) && ((int) @file_get_contents($attempt) > time() - 43200));
 }
 
 /**
@@ -156,6 +170,40 @@ function pg_geo_db_refresh($force = false)
     fclose($lock);
 
     return $result;
+}
+
+/**
+ * Fetches the database for a settings screen and says how it went: when the
+ * button asks for it, and on its own when a setting that reads the visitor's
+ * location is saved and the site has none yet, at most once in twelve hours,
+ * so a server that cannot download does not make every save wait. After that
+ * the general job keeps it current.
+ *
+ * @param object $liveform the screen's form, for the notices
+ * @param bool   $forced   the "download now" button was pressed
+ * @param bool   $wanted   a setting saved in this request reads the location
+ */
+function pg_geo_db_refresh_for_screen($liveform, $forced, $wanted)
+{
+    if (!$forced && !($wanted && (pg_geo_db_meta() === null) && !pg_geo_db_tried_recently())) {
+        return;
+    }
+
+    $refresh = pg_geo_db_refresh($forced);
+
+    if ($refresh['status'] === 'updated') {
+        $liveform->add_notice(lang(array(
+            'string' => 'The location database was downloaded ({var:1}).',
+            'vars'   => array($refresh['version']))));
+    } elseif ($refresh['status'] === 'fresh') {
+        $liveform->add_notice(lang('The location database is already the newest one.'));
+    } elseif ($refresh['status'] === 'busy') {
+        $liveform->add_notice(lang('The location database is being downloaded by another request. Look again in a minute.'));
+    } else {
+        $liveform->add_notice(lang(array(
+            'string' => 'The location database could not be downloaded: {var:1}. The country Cloudflare sends is still used.',
+            'vars'   => array(($refresh['reason'] !== '') ? $refresh['reason'] : lang('unknown error')))));
+    }
 }
 
 /**
@@ -545,6 +593,42 @@ function pg_geo_status()
         'name'         => ($country['code'] !== '') ? pg_geo_country_name($country['code']) : '',
         'database'     => pg_geo_db_meta(),
     );
+}
+
+/**
+ * The lines the settings screens show under a setting that reads the
+ * visitor's location: where this request comes from, the database and its
+ * age, the attribution DB-IP's licence asks for, and the button that fetches
+ * the database now (the screen's save handler answers it with
+ * pg_geo_db_refresh_for_screen()).
+ *
+ * @return string HTML
+ */
+function pg_geo_settings_note()
+{
+    $status = pg_geo_status();
+
+    $location = ($status['code'] !== '')
+        ? lang(array(
+            'string' => 'Location of this request: {var:1} ({var:2}), from {var:3}.',
+            'vars'   => array($status['name'], $status['code'], $status['source_label'])))
+        : lang('The location of this request is not known.');
+
+    $database = is_array($status['database'])
+        ? lang(array(
+            'string' => 'Location database: {var:1}, {var:2} address ranges, built on {var:3}.',
+            'vars'   => array((string) $status['database']['version'], number_format((int) $status['database']['rows4'] + (int) $status['database']['rows6']), get_absolute_time(array('timestamp' => (int) $status['database']['built_at'], 'type' => 'date')))))
+        : lang('There is no location database yet. It is downloaded when a setting needs the visitor\'s location: on saving, and then once a month by the general job.');
+
+    return '
+                        <div class="form-text">
+                            <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . h($location) . '<br/>
+                            <i class="bi bi-database me-1" aria-hidden="true"></i>' . h($database) . '<br/>
+                            ' . lang('Behind Cloudflare the country comes with every request; the database answers when it does not, for example for a request that reaches the server directly.') . ' ' . lang(array(
+                                'string' => 'IP geolocation by {var:1}.',
+                                'vars'   => array('<a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>'))) . '
+                        </div>
+                        <button type="submit" name="geo_db_refresh" value="1" class="btn btn-sm btn-outline-secondary mt-2"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>' . lang('Download the location database now') . '</button>';
 }
 
 /**

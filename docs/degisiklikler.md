@@ -84,6 +84,99 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Güvenlik duvarı: ülke kısıtlaması (10.2) (2026-10-13)
+
+**İstek.** Erdal: "bunu yaparken ayrıca waf altına ülke kısıtlama ekleyelim
+(varsayılan kapalı.)" Ülkeyi dil yönlendirmesinin konum katmanı
+(`pg_geo_country()`, bir önceki bölüm) verir; ikinci bir kaynak yazılmadı.
+
+**Yer (`waf.php`).** `waf_run()`'da bot sınıflandırmasından sonra, hız
+sınırından önce, kendi mandalıyla (`$done['country']`). Router aşamasında
+koştuğu için `get_file.php`, `robots.txt` ve `sitemap.xml` de kapsanır.
+İzin listesindeki adres ve `waf_is_excluded()` yolu bu noktaya hiç gelmez.
+Bot sınıflandırmasından sonra olmasının sebebi `waf_verify_bot()`'un
+"verified" kararıdır: `waf_handle_bot()` onu `waf_bot_verified(true)` ile
+işaretler, kısıtlama okur.
+
+**Karar (`waf_country_refused()`).** `block` kipi listedekileri, `allow` kipi
+listede olmayanları reddeder. Ülkesi bilinmeyen istek `waf_country_unknown`
+açık değilse içeri alınır: veritabanı eksik ya da indirilemiyorsa site
+kapanmaz. `T1` (Cloudflare'in Tor kodu) listeye ayrıca yazılabilir.
+Liste `waf_country_codes()` ile okunur (büyük harf, sıra korunur, tekrar ve
+geçersiz kod atılır); kayıtta kodlar `pg_sales_map_iso_countries()` + T1'e
+karşı denetlenir.
+
+**Muafiyetler (`waf_country_request_exempt()`).**
+- `robots.txt` ve `.well-known/` her zaman (`waf_path_is_always_served()`):
+  sertifika yenilemesi birkaç ülkeden denetlenir.
+- API, MCP, OAuth (`waf_country_exempt_api`, varsayılan açık): çağıran kimlik
+  sunar ve sağlayıcısının bulunduğu yerden gelir. `api.php` bu sınıfa girmez,
+  sitenin kendi sayfalarının (mağaza, sepet, canlı sohbet) konuştuğu uçtur.
+- Yönetim paneli (`waf_country_exempt_panel`, varsayılan açık): yazılım
+  dizini altındaki her adres; `get_file.php` ve `router.php` hariç (yeniden
+  yazma kuralları sitenin her adresini `router.php` ile koşar). `api.php` yalnız
+  oturumu personele (rolü 3'ten küçük) aitse panel sayılır; panelin kendi
+  XHR'ları böylece çalışır, ziyaretçi mağaza API'sine kısıtlanmış ülkeden
+  ulaşamaz.
+- Adını adresiyle doğrulayan arama motoru botu (`waf_country_exempt_bots`,
+  varsayılan açık); "Arama Motoru Botlarını Doğrula" açık olmalıdır.
+
+Sitenin sayfaları ve dosyaları panel muafiyetiyle açılmaz: router aşamasında
+oturum yoktur. Yurt dışındaki personelin bunlara da ulaşması için adresi
+izin listesine eklenir; kart bunu söyler. Oturum çerezi taşıyan isteği
+init aşamasına bırakıp personeli orada tanımak düşünüldü, çerezin kendisi
+bir şey kanıtlamadığı ve dosya yolu init'e uğramadığı için yapılmadı.
+
+**Kayıt ve yanıt.** `waf_log_event('block' | 'would-block', 'geo-country',
+'country', 10, 'COUNTRY', 'DE (cloudflare)')`; engelleme sayfası `waf_deny(403)`.
+İzleme kipinde yalnız kayıt. Suç sayılmaz (`waf_register_offence()` yok):
+ülkesi kısıtlı ziyaretçi saldırmadı, otomatik yasak onu ikinci kez cezalandırır.
+Güvenlik Duvarı Kaydı ve pano kartı 22'de kategori "Ülke Kısıtlaması".
+
+**Panel.** Ayarlar › Güvenlik Duvarı'nda `pgset-countries` kartı (arama
+kayıt defterinde de): kip, ülke kodları (tagin; altında ülke adları),
+bilinmeyen ülke, üç muafiyet, ekranı açanın ülkesine ne olduğu (izin
+listesindeyse onu da söyler), konum ve veritabanı satırı
+(`pg_geo_settings_note()`, Diller ekranıyla ortak) ve "şimdi indir" düğmesi.
+Kayıt kuralları: `allow` kipinde boş liste reddedilir; panel muaf değilken
+kaydeden kişinin ülkesi reddedilecekse, gönderilen izin listesi adresini
+kapsamıyorsa kayıt reddedilir (kendini kilitleme).
+
+**Konum veritabanı.** `pg_geo_db_needed()` güvenlik duvarı açık ve kısıtlama
+`allow`/`block` iken de doğru döner; genel iş veritabanını bu durumda da
+güncel tutar. Ayarlar ekranının kendiliğinden indirmesi
+(`pg_geo_db_refresh_for_screen()`, iki ekranda ortak) artık 12 saatlik
+deneme bekleyişine uyar: indiremeyen sunucuda her kayıt beklemez.
+
+**Şema (10.2).** `config.waf_country_mode` ENUM('off','allow','block') 'off',
+`waf_country_list` TEXT NULL, `waf_country_unknown` TINYINT(1) 0,
+`waf_country_exempt_panel` / `_api` / `_bots` TINYINT(1) 1.
+`tests/innodb_test.php`: 424 kolon, TEXT dönüşümünden önce MySQL 8.0'da 8602
+bayt, sunucu satırı 64.110 bayt.
+
+**Doğrulama.** `tests/waf_country_test.php` (liste okuma, kip kararı,
+bilinmeyen ülke, her zaman açık yollar). Sandbox'ta migration iki kez koştu;
+kart ve kayıt kuralları panelden denendi. Engelleme kipinde, 127.0.0.1
+güvenilen vekil, CF-IPCountry ile:
+- `allow TR,US`: US 200, DE ve T1 403, başlıksız ve XX 200; tema dosyası
+  DE 403, US 200; `sitemap.xml` DE 403; `robots.txt` DE 200;
+- panel giriş sayfası ve giriş DE'den çalışır, panel ekranları 200;
+  personel oturumuyla `api.php` 200, ziyaretçiyle 403; giriş sonrası ön
+  yüz sayfası 403;
+- `integration.php` ve `mcp.php` DE'den kısıtlanmaz, API muafiyeti
+  kapalıyken `integration.php` 403;
+- panel muafiyeti kapalıyken panel DE 403, FR 200;
+- `waf_country_unknown=1`: başlıksız ve XX 403;
+- `block DE,T1`: DE ve T1 403, FR ve başlıksız 200;
+- izleme kipinde DE 200 ve "would-block" kaydı; izin listesindeki adres DE'den
+  200;
+- sahte Googlebot DE'den bot kuralıyla 403.
+
+**Doğrulanmayan.** Gerçek Cloudflare arkasında ve IIS'te deneme, gerçek arama
+motoru botunun ters DNS doğrulamasıyla geçişi.
+
+---
+
 ## 2026.4.10 — Pano üst alanı: karşılama ve saat tek satırda, sıradaki toplantı geri sayımı, "Başka bir şey söyle" (2026-10-13)
 
 **İstenen.** Erdal: ekranın üst kısmındaki saat ve brief alanları

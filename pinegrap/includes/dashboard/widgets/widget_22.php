@@ -82,6 +82,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             'tool'     => lang('Scanners'),
             'rate'     => lang('Rate Limit'),
             'iplist'   => lang('IP List'),
+            'country'  => lang('Country Restriction'),
             'ban'      => lang('Bans'),
         );
 
