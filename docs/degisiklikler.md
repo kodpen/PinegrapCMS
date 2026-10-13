@@ -145,6 +145,72 @@ onlara her klasörde evet der).
 
 ---
 
+## 2026.4.10 — Görsel editör: hizmet, randevu, saat, şube, menü ve etkinlik blokları (2026-10-13)
+
+**Neden.** Ürün sahibi bir yerel hekim ve bir kurumsal kafe şablonu istedi
+ve "bu iki şablon için yeni Bootstrap 5 bileşenleri eklensin" dedi. Paletin
+Bloklar sekmesinde hizmet kartı, fiyat listesi, çalışma saatleri, şube,
+menü ve etkinlik gibi yerel işletmenin her sayfada kullandığı parçalar
+yoktu; operatör bunları başlık, paragraf ve kartlardan elle kuruyordu.
+Bloklar şablonlardan önce geldi ki her tasarım (şablonla kurulmamış olanlar
+da) aynı parçaları kullanabilsin.
+
+**Nasıl.** `assets/js/style_designer.js`'te `createFromPalette()`'in bileşen
+dalına tek bir aile eklendi: tür öneki `services-`, `steps-`, `booking-`,
+`hours-`, `locations-`, `menu-`, `events-`, `notice-` olan ya da
+`team-profiles` / `testimonial-ratings` olan bloklar ortak yardımcıları
+(`_bkSection`, `_bkRow`, `_bkCol`, `_bkMenuItem`…) bir kez tanımlayan bir
+`if` içinde üretilir. Palet öğeleri `_sdBlockPaletteItems()`'a, gruplar
+`_sdBlockPaletteGroups()`'a eklendi (Hizmetler ve Randevu, Saatler ve
+Şubeler, Yiyecek ve İçecek; `events-` İçerik Listeleri'ne, `notice-` Durum
+ve Yardımcılar'a). Tam genişlikte bölüm oldukları için hepsi kökte kaba
+sarılmayanlar listesinde (`_noWrapCtypes`). Görselli üç blok mevcut oran
+kurallarını (`pg-ratio-16x9`, `pg-ratio-1x1`) `_SD_BLOCK_CSS_NEEDS` üzerinden
+Stiller paneline yazar; yeni CSS kuralı yok, gerisi Bootstrap 5.3
+yardımcıları.
+
+**Ne değişti.** On sekiz blok:
+
+- Hizmetler: Simgeli Kartlar (altı kart, kartın tamamı link —
+  `stretched-link`), Görselli Kartlar (süre rozeti, fiyat ve düğme), Fiyat
+  Listesi (iki sütun `list-group-flush`).
+- Adımlar: Numaralı (dört kart, numara rozeti ve simge).
+- Randevu: Eylem Çağrısı (renkli panel, randevu ve `tel:` düğmesi),
+  İkiye Bölünmüş (görsel + kontrol listesi + iki düğme).
+- Çalışma Saatleri: Kart (gün başına satır, kapalı gün soluk), Konum
+  (16:9 harita yeri, adres, saat, telefon, yol tarifi).
+- Şubeler: Kartlar (görsel, adres, saat, telefon).
+- Menü: Sekmeler (Bootstrap `nav-pills` + `tab-pane`, her bölmede iki
+  sütun), İki Sütun, Görselli Kartlar (kare görsel, rozet), Pano
+  (`data-bs-theme="dark"` bölüm, boy fiyatlı tablo), Günün Önerileri.
+  Menü satırı ad, fiyata uzanan kılavuz çizgi (`border-bottom` taşıyan boş
+  `flex-grow-1`), açıklama ve diyet rozetlerinden oluşur.
+- Etkinlikler: Liste (`<time datetime>` tarih yaprağı).
+- Duyuru: Şerit (sayfa üstü acil durum satırı, `tel:` bağlantısı).
+- Ekip: Profiller (yatay kart, uzmanlık, dil rozetleri, randevu düğmesi).
+- Referans: Puanlar (ortalama puan ve yıldızlar + üç yorum kartı).
+
+Bütün görünen metinler `_sdT()` ile; 340 yeni anahtar `tr.json`'a eklendi.
+Türkçe fiyatlar gerçekçi TL tutarlarına çevrildi (ör. `$2.80` → `₺95`).
+Örnek görseller picsum.photos, örnek adlar mevcut kanondan (Jane Cooper →
+Ayşe Yılmaz).
+
+**Bilerek yapılmayan.** Randevu ve rezervasyon blokları form içermiyor.
+Paletteki statik `<form>` blokları (Contact: Form gibi) gönderilmez; çalışan
+form Pinegrap'ta özel form widget'ıdır. Bloklar bu yüzden düzen ve eylem
+çağrısı verir, form şablonların kendi sayfalarında widget olarak gelir.
+Harita için bir bileşen yok; konum blokları yer tutucu taşır.
+
+**Doğrulama.** `node --check`, `tools/check_lang.php` temiz. Blok ağaçları
+editörün dışında küçük bir Node betiğiyle HTML'e çevrildi ve Bootstrap
+5.3.8 ile 1280 ve 390 piksel genişlikte, İngilizce ve Türkçe çekildi:
+sütunlar, kılavuz çizgiler, koyu pano ve kartlar beklenen gibi.
+
+**Doğrulanamayan.** Bloklar canlı editörde sürüklenip bırakılarak
+denenmedi; dev.pinegrap.com'da yerel oturum dener.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: hatırlatıcı, gecikme ve görev notu bildirimleri; başlıkta hızlı not (2026-10-13)
 
 **Neden.** Ürün sahibinin üç isteği: panelin service worker'lı bildirim
