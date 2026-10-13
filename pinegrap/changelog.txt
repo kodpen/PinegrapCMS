@@ -799,7 +799,8 @@
 
   [YENİ] Banka ekstresi Excel'den: Banka ekstreleri
          ekranı internet bankacılığından indirilen
-         .xlsx ve .xls dosyalarını CSV gibi doğrudan
+         .xlsx ve .xls dosyalarını, LibreOffice'te
+         kaydedilmiş .ods dosyalarını da CSV gibi doğrudan
          alıyor. İlk sayfa okunur; tarih hücreleri tarih,
          tutarlar tutar olarak gelir. Bankanın hareketlerin
          üstündeki başlık satırları (banka adı, IBAN,

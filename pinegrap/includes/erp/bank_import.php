@@ -18,7 +18,8 @@
  * that overlap, add each line once.
  *
  * The file is a CSV or the Excel workbook internet banking offers beside it
- * (.xlsx, or the older .xls); a workbook's first sheet becomes the same rows
+ * (.xlsx, or the older .xls), or an OpenDocument sheet (.ods) for a statement
+ * saved again from LibreOffice; a workbook's first sheet becomes the same rows
  * of cells a CSV does, so the columns, the hash and the matching never learn
  * which one arrived.
  *
@@ -129,8 +130,8 @@ function erp_bank_read_csv($path)
  * machine gave it: a workbook is read from its first sheet, anything else as
  * CSV. The bank's title block above the transactions is dropped (see
  * erp_bank_rows_from_heading()), so the column screen opens on the heading.
- * A document that is neither (OpenDocument, Numbers, PDF) is refused rather
- * than read as text.
+ * A document that is neither (Numbers, PDF) is refused rather than read as
+ * text.
  *
  * @param string $path
  * @param string $file_name
@@ -140,11 +141,11 @@ function erp_bank_read_file($path, $file_name)
 {
     $extension = strtolower((string) pathinfo((string) $file_name, PATHINFO_EXTENSION));
 
-    if (in_array($extension, array('ods', 'numbers', 'pdf'), true)) {
-        return array('rows' => array(), 'error' => lang('Save the statement as Excel (.xlsx or .xls) or CSV and take it in again.'));
+    if (in_array($extension, array('numbers', 'pdf'), true)) {
+        return array('rows' => array(), 'error' => lang('Save the statement as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in again.'));
     }
 
-    $read = in_array($extension, array('xlsx', 'xlsm', 'xls'), true)
+    $read = in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'), true)
         ? erp_bank_read_spreadsheet($path, $extension)
         : erp_bank_read_csv($path);
 
@@ -162,10 +163,10 @@ function erp_bank_read_file($path, $file_name)
  * helpers (import_products_f.php): no library holds the workbook. A number
  * that is a date by its cell format comes out as Y-m-d, any other number in
  * the machine form erp_bank_amount() reads without guessing (two decimals,
- * a point). The older .xls is read with PHPExcel.
+ * a point). The older .xls and an .ods are read with PHPExcel.
  *
  * @param string $path
- * @param string $extension  xlsx | xlsm | xls
+ * @param string $extension  xlsx | xlsm | xls | ods
  * @return array ['rows' => array, 'error' => string]
  */
 function erp_bank_read_spreadsheet($path, $extension)
@@ -251,13 +252,37 @@ function erp_bank_read_spreadsheet($path, $extension)
 
         $reader->close();
     } else {
-        // The older .xls is a binary record stream only PHPExcel reads. Read
-        // with its formats, unlike the product importer, because a date cell
-        // is known by its format alone; a statement is small enough for it.
+        // The older .xls is a binary record stream and an .ods a different
+        // zip; PHPExcel reads both, with the reader the product importer
+        // names for the extension. Read with formats, unlike the product
+        // importer, because a date cell is known by its format alone; a
+        // statement is small enough for it.
+        if ($extension === 'ods') {
+            // The OpenDocument reader takes any file for a zip and fails on
+            // the first missing part with warnings; a file that is not one is
+            // turned away here, as a broken .xlsx is above.
+            if (!class_exists('ZipArchive')) {
+                return $unreadable;
+            }
+
+            $zip = new ZipArchive();
+
+            if ($zip->open($path) !== true) {
+                return $unreadable;
+            }
+
+            $found = ($zip->locateName('content.xml') !== false) && ($zip->locateName('meta.xml') !== false);
+            $zip->close();
+
+            if (!$found) {
+                return $unreadable;
+            }
+        }
+
         require_once(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php');
 
         try {
-            $book = PHPExcel_IOFactory::createReader('Excel5')->load($path);
+            $book = PHPExcel_IOFactory::createReader(pg_products_import_reader('statement.' . $extension))->load($path);
             $sheet = $book->getSheet(0);
             $last_row = $sheet->getHighestDataRow();
             $last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
@@ -288,9 +313,9 @@ function erp_bank_read_spreadsheet($path, $extension)
 }
 
 /**
- * One cell of an .xls as erp_bank_sheet_value() gives an .xlsx cell: a
- * formula's answer (what is written when it cannot be worked out), a date by
- * its format, a number in the machine form, text as it is.
+ * One cell of an .xls or .ods as erp_bank_sheet_value() gives an .xlsx
+ * cell: a formula's answer (what is written when it cannot be worked out), a
+ * date by its format, a number in the machine form, text as it is.
  *
  * @param PHPExcel_Cell|null $cell
  * @return string

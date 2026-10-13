@@ -84,6 +84,51 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Banka ekstresi `.ods` dosyasını da alıyor (2026-10-13)
+
+**Neden.** ERP Faz 9 (10.61) banka ekstresinde `.ods`'yi adla reddediyordu,
+çünkü PHPExcel'in OpenDocument okuyucusu PHP 8'de ölüyordu. Okuyucu ürün içe
+aktarımı düzeltmesiyle (`implode()` sırası, `Europe/London` çevirisi, saat
+hücresi) onarıldı; ekstreyi LibreOffice'te açıp yeniden kaydeden operatörün
+dosyası artık geri çevrilmiyor.
+
+**Değişiklik.** `erp_bank_read_file()` `.ods`'yi çalışma kitabı sayar; ret
+listesinde `.numbers` ve `.pdf` kaldı, ret metni `.ods`'yi de sayar.
+`erp_bank_read_spreadsheet()`'in PHPExcel kolu `.xls` ile `.ods`'yi birlikte
+okur; okuyucu adı ürün içe aktarımının `pg_products_import_reader()`'ından
+gelir (`OOCalc`), ayrı bir okuyucu ya da kopya yok. `.xls` gibi
+**biçimleriyle** okunur (`setReadDataOnly` yok): OOCalc tarih hücresine
+tarih biçimi koyar, `erp_bank_xls_cell()` onu `Y-m-d` (saatliyse `Y-m-d H:i`)
+yazar; kuruşlu ve para birimli (`currency`) hücre aynı makine biçimine döner.
+Dosya OOCalc'a verilmeden önce zip olarak açılıp `content.xml` ve `meta.xml`
+aranır: okuyucu açılamayan zip'te hata vermeden devam edip uyarılarla
+düşüyordu, şimdi bozuk `.xlsx` gibi "Dosya okunamadı" der. Başlık bloğunun
+atlanması (`erp_bank_rows_from_heading()`), sütun ekranı, satır karması ve
+eşleştirme değişmedi; satırlar `raw_rows`'a `.xlsx`'tekiyle aynı yazılır.
+Yükleme formu `.ods`'yi kabul eder; alan adı ve yardım metni onu da sayar
+(`tr.json`'da üç anahtar yenilendi). Şema değişikliği yok.
+
+**Bilinen.** PHPExcel `getLibXmlLoaderOptions()` içinde
+`libxml_disable_entity_loader(true)` çağırır ve geri açmaz: aynı istekte
+PHPExcel'den sonra `XMLReader::open()` ile dosya açılamaz. Ekstre yüklemesi
+istek başına bir dosya okuduğu için etkisiz; `.xls`/`.ods` ile `.xlsx`'i aynı
+istekte okuyacak bir kod (toplu içe aktarım, test) `.xlsx`'i önce okumalı.
+
+**Doğrulama.** `tests/erp_bank_import_test.php`: elle yazılmış `.ods`
+(başlık bloğu, boş sütun, `span`'lı metin, tarih ve tarih-saat, `currency` ve
+eksi kuruşlu `float`, LibreOffice'in tekrarlı boş satır/sütunları) UTC,
+Europe/Istanbul ve America/New_York'ta aynı satırları verir; zip olmayan ve
+`content.xml`'siz `.ods` okunamaz der; `.pdf`/`.numbers` ret metni `.ods`'yi
+sayar. Sandbox'ta örnek ekstre (`ornek-banka-ekstresi.xlsx`) LibreOffice ile
+`.ods`'ye çevrildi; `erp_bank_read_file()` dört saat diliminde (Kiritimati
+dahil) `.xlsx` ile birebir aynı sonucu verdi (7 satır: başlık + 6 hareket).
+Panelden yüklenen `.ods`'de sütun ekranı "İşlem Tarihi" başlığıyla açıldı;
+tarih, açıklama ve tutar seçilince 6 satır geldi (+10.000, −15.000, −3.000,
++2.450,75, −12,50, +1.141). Bozuk `.ods` "Dosya okunamadı", `.pdf` yeni ret
+metnini verdi.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: seçili mesajları kopyalama, telefonda mesaj kopyalama, ayırt edilen kanal listesi düğmesi (2026-10-13)
 
 **Neden.** Ürün sahibi telefonda mesaj kopyalayamadı. Asıl eksik: "Mesajları
