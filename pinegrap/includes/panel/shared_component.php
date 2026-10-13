@@ -329,7 +329,9 @@ function pg_panel_shared_component($request, $action)
         // Backwards compat: if `form_id` is missing or 0, return everything
         // (preserves existing callers).
         case 'list_form_item_view_pages':
-            $sc_iv_form_id = isset($request['form_id']) ? (int)$request['form_id'] : 0;
+            // The custom form's page id, under either name list_form_fields
+            // also takes.
+            $sc_iv_form_id = _sc_custom_form_page_id($request);
             if ($sc_iv_form_id > 0) {
                 $sc_iv_rows = db_items(
                     "SELECT page.page_id, page.page_name, page.page_title
@@ -639,9 +641,9 @@ function pg_panel_shared_component($request, $action)
         // data binding section to populate the per-prop field dropdowns with the
         // ACTUAL fields of the selected form (instead of a generic hardcoded list).
         case 'list_form_fields':
-            $sc_ff_pid = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            $sc_ff_pid = _sc_custom_form_page_id($request);
             if ($sc_ff_pid <= 0) {
-                respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+                respond(array('status' => 'error', 'message' => lang('Pass the custom form\'s page ID as form_id or page_id.')));
             }
             // rss_field names a field's role (title / description /
             // media / category), wysiwyg says whether a text area holds
@@ -660,6 +662,17 @@ function pg_panel_shared_component($request, $action)
         default:
             respond(array('status' => 'error', 'message' => lang('Invalid action.')));
     }
+}
+
+// The custom form a request names, by its page id. The form actions take it
+// as form_id or page_id alike, so a caller that knows one action's name does
+// not get a bare "Invalid ID." from the other.
+function _sc_custom_form_page_id($request)
+{
+    foreach (array('form_id', 'page_id') as $key) {
+        if (isset($request[$key]) && is_scalar($request[$key]) && (int)$request[$key] > 0) return (int)$request[$key];
+    }
+    return 0;
 }
 
 // Returns a name that does not yet exist in shared_components.
