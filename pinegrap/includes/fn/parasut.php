@@ -316,45 +316,86 @@ function _parasut_credentials()
 }
 
 /**
- * Get a valid OAuth2 access token, using a file cache to avoid repeated logins.
+ * Which Parasut account a cached token belongs to. A token kept from another
+ * company, client or user is not offered after the settings change.
  *
- * @return array ['success' => bool, 'token' => string|null, 'error' => string]
+ * @return string
  */
+function _parasut_token_owner()
+{
+    return md5(PARASUT_COMPANY_ID . '|' . PARASUT_CLIENT_ID . '|' . PARASUT_USERNAME);
+}
+
 /**
- * Read the cached token, if it is still good for a while.
+ * Read the cached token.
+ *
+ * The token and its refresh token are kept sealed with the site's key among
+ * the connected accounts' service tokens (pg_connect_service_get()). Until
+ * 2026.4.10 they were a plain JSON file, data/parasut_token.json; a file left
+ * from then is moved in on the first read and deleted. Before the database
+ * upgrade has run there is nowhere to move it, and the file is read as it was.
  *
  * @return array  Cache contents, or an empty array
  */
 function _parasut_token_cache_read()
 {
-    if (!file_exists(PARASUT_TOKEN_CACHE)) {
+    $cache = pg_connect_service_get('parasut');
+
+    if (file_exists(PARASUT_TOKEN_CACHE)) {
+        if ($cache) {
+            // The sealed copy is the one in use; the file is a leftover.
+            @unlink(PARASUT_TOKEN_CACHE);
+        } else {
+            $raw = @file_get_contents(PARASUT_TOKEN_CACHE);
+            $legacy = ($raw === false) ? null : json_decode($raw, true);
+            $legacy = is_array($legacy) ? $legacy : [];
+
+            // The file was written for the settings of its day, which are the
+            // settings of today on every site that has not changed them since.
+            $legacy['owner'] = _parasut_token_owner();
+
+            if (pg_connect_service_put('parasut', 'Paraşüt', $legacy)) {
+                @unlink(PARASUT_TOKEN_CACHE);
+            }
+
+            $cache = $legacy;
+        }
+    }
+
+    if (!isset($cache['owner']) || ($cache['owner'] !== _parasut_token_owner())) {
         return [];
     }
 
-    $raw = file_get_contents(PARASUT_TOKEN_CACHE);
-    if ($raw === false) {
-        return [];
-    }
-
-    $cache = json_decode($raw, true);
-
-    return is_array($cache) ? $cache : [];
+    return $cache;
 }
 
 /**
- * Write the token cache in one step.
+ * Write the token cache.
  *
- * Written to a temporary file and renamed into place: rename is atomic on the
- * same filesystem, so a second request reading the cache sees either the old
- * file or the new one, never a half-written one. The previous code wrote in
- * place, and a truncated file read back as no token at all, which sent every
- * request off to log in again.
+ * Sealed among the service tokens, so the refresh token - which renews
+ * access without the account password - is not readable from the disk or a
+ * backup of it. Before the database upgrade has run, the file it replaces is
+ * written as before: written to a temporary file and renamed into place, so a
+ * second request reads either the old file or the new one, never a half
+ * one.
  *
  * @param array $cache
  * @return void
  */
 function _parasut_token_cache_write($cache)
 {
+    $cache['owner'] = _parasut_token_owner();
+
+    if (pg_connect_service_put('parasut', 'Paraşüt', $cache)) {
+        return;
+    }
+
+    if (pg_connect_schema_ready()) {
+        // No encryption key: the credentials could not have been read either,
+        // so there is nothing to keep.
+        return;
+    }
+
     $temporary = PARASUT_TOKEN_CACHE . '.' . getmypid() . '.tmp';
 
     if (file_put_contents($temporary, json_encode($cache), LOCK_EX) === false) {
@@ -444,7 +485,8 @@ function _parasut_token_exchange($body, $credentials)
 }
 
 /**
- * Get a valid OAuth2 access token, using a file cache to avoid repeated logins.
+ * Get a valid OAuth2 access token, cached between requests to avoid repeated
+ * logins (_parasut_token_cache_read()).
  *
  * Renewal is taken by one request at a time. Without that, every page that found
  * the token expired asked Parasut for a new one at the same moment, and each
