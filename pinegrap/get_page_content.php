@@ -844,7 +844,22 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 break;
         }
     }
-    
+
+    // A page built in the visual editor that shows one product, product
+    // group or record through a system widget is that item's page: the
+    // item's address, not the bare page's, is canonical, and the title and
+    // description further below are the item's (pg_sw_page_item()).
+    $pg_sw_item = null;
+
+    if (($page_type == 'standard') && ($email == FALSE) && function_exists('pg_sw_page_item')) {
+        $pg_sw_item = pg_sw_page_item($page_id, $page_name, ($page_home == 'yes'));
+
+        if (is_array($pg_sw_item)) {
+            $path = $pg_sw_item['path'];
+            $query_string = $pg_sw_item['query'];
+        }
+    }
+
     $canonical_url = URL_SCHEME . HOSTNAME_SETTING . $path . $query_string;
 
     // We purposely replace the designer regions up above, before we prepare the JS
@@ -2033,7 +2048,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // widget-built product page shares with the product's
                         // picture and og:type=product, like its legacy twin.
                         $pg_og_sw_product_image_name = (string) ($_pg_sw_product['image_name'] ?? '');
-                        $_pg_sw_canonical_url = URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
+                        $_pg_sw_canonical_url = is_array($pg_sw_item) ? $canonical_url : URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
                         $_pg_sw_jsonld = _pg_build_product_jsonld($_pg_sw_product, $_pg_sw_canonical_url);
                         $content = preg_replace(
                             '/<\/head>/i',
@@ -5428,6 +5443,31 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             
             // store image name for open graph code later
             $image_name = $row['image_name'];
+        }
+    }
+
+    // The product or product group a visual-editor page shows names the
+    // page, as the item of a catalog page does above; the share picture of a
+    // product page is the product's. A record is named by its fields below.
+    if (is_array($pg_sw_item) && ($pg_sw_item['type'] !== 'record')) {
+        $pg_sw_item_title = $pg_sw_item['title'];
+        $pg_sw_item_description = $pg_sw_item['description'];
+
+        if (defined('FRONTEND_LANGUAGE')) {
+            $pg_sw_item_title = pg_tr_text($pg_sw_item_title, 'text', 'seo');
+            $pg_sw_item_description = pg_tr_text($pg_sw_item_description, 'text', 'seo');
+        }
+
+        if ($pg_sw_item_title != '') {
+            $page_title = $pg_sw_item_title;
+        }
+
+        if ($pg_sw_item_description != '') {
+            $page_meta_description = $pg_sw_item_description;
+        }
+
+        if (($pg_sw_item['type'] == 'product') && empty($pg_og_sw_product_image_name) && ($pg_sw_item['image_name'] != '')) {
+            $pg_og_sw_product_image_name = $pg_sw_item['image_name'];
         }
     }
 

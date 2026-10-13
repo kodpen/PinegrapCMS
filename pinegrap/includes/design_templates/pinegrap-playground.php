@@ -1960,9 +1960,9 @@ $widgets = array(
         'slug'   => 'form',
         'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
         'tree'   => $widget_root(array(
-            $field('pl-post-title', lang('Title'), $input('pl-post-title', 'text', 'title', 'off', true, array($attr('maxlength', '150')))),
-            $field('pl-post-summary', lang('Summary'), $textarea('pl-post-summary', 'summary', 3)),
-            $field('pl-post-cover', lang('Cover Image'), $file('pl-post-cover', 'cover_image', 'public')),
+            $field('pl-post-title', lang('Title'), pg_cf_with_role($input('pl-post-title', 'text', 'title', 'off', true, array($attr('maxlength', '150'))), 'title')),
+            $field('pl-post-summary', lang('Summary'), pg_cf_with_role($textarea('pl-post-summary', 'summary', 3), 'description')),
+            $field('pl-post-cover', lang('Cover Image'), pg_cf_with_role($file('pl-post-cover', 'cover_image', 'public'), 'media')),
             $field('pl-post-content', lang('Content'), $textarea('pl-post-content', 'content', 14)),
             $submit(lang('Publish'), 'bi-rocket-takeoff'),
             $loop(array()),

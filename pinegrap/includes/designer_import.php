@@ -740,6 +740,20 @@ function pg_di_node($node, $ctx)
         ), $id !== '' ? array('id' => $id) : array(), $attrs ? array('_attrs' => $attrs) : array()));
     }
     if ($tag === 'p') {
+        // A paragraph of links and nothing else (a row of buttons) is built
+        // from elements: as one text its links could not be selected, edited
+        // or moved apart.
+        if (pg_di_only_links($node)) {
+            $props = array('tag' => 'p', 'cssClass' => $cls);
+            if ($id !== '') $props['id'] = $id;
+            if ($attrs) $props['_attrs'] = $attrs;
+            $children = array();
+            foreach ($node->childNodes as $cn) {
+                $n = pg_di_node($cn, $ctx);
+                if ($n !== null) $children[] = $n;
+            }
+            return pg_di_mk('semantic', $props, $children);
+        }
         return pg_di_mk('content', array_merge(array(
             'contentType' => 'paragraph', 'text' => pg_di_inner_html($node, $ctx),
             'lead' => false, 'align' => '', 'cssClass' => $cls,
@@ -836,6 +850,22 @@ function pg_di_has_icon_child($node)
         if (($t === 'i' || $t === 'span') && pg_di_icon_props($cn, trim((string)$cn->getAttribute('class'))) !== null) return true;
     }
     return false;
+}
+
+// Links and nothing else, the separators between them aside (" · ", " | ").
+function pg_di_only_links($node)
+{
+    $links = 0;
+    foreach ($node->childNodes as $cn) {
+        if ($cn->nodeType === XML_TEXT_NODE || $cn->nodeType === XML_CDATA_SECTION_NODE) {
+            if (!preg_match('/^[\s\x{00a0}·•|\/–—-]*$/u', (string)$cn->nodeValue)) return false;
+            continue;
+        }
+        if ($cn->nodeType === XML_COMMENT_NODE) continue;
+        if ($cn->nodeType !== XML_ELEMENT_NODE || strtolower($cn->nodeName) !== 'a') return false;
+        $links++;
+    }
+    return $links > 0;
 }
 
 function pg_di_only_text_children($node)

@@ -56,8 +56,14 @@ function pg_tr_scope_owners($scope)
 
 /**
  * Extracts the scope, so what is pending reflects the pages as they are now.
+ * The whole site can be extracted in turns (pg_tr_extract_all()); a page or
+ * a group always is in one.
+ *
+ * @param string $scope
+ * @param float  $deadline microtime(true) to stop after; 0 = no limit
+ * @param int    $from     the step of the whole site to start at
  */
-function pg_tr_scope_extract($scope)
+function pg_tr_scope_extract($scope, $deadline = 0, $from = 0)
 {
     if (preg_match('/^page:(\d+)$/', (string) $scope, $m)) {
         $result = pg_tr_extract_page((int) $m[1]);
@@ -71,7 +77,7 @@ function pg_tr_scope_extract($scope)
         return array('pages' => 0, 'segments' => $result['segments']);
     }
 
-    return pg_tr_extract_all();
+    return pg_tr_extract_all($deadline, $from);
 }
 
 /**
@@ -391,10 +397,16 @@ function pg_tr_jobs_run_due($budget = 40)
  * @param string $language
  * @param string $scope    all | page:ID
  * @param int    $user_id
+ * With $from (0 and up) the scan is done in turns of about 20 seconds: a
+ * turn that has not reached the end answers 'extracting' with the step the
+ * next one starts at ('next' of 'total'), and opens no job yet. Without it
+ * (-1) the scope is extracted in one go, as before.
+ *
  * @param string $engine   '' = the language's engine
+ * @param int    $from     -1, or the step of the scan to go on from
  * @return array
  */
-function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
+function pg_tr_update($language, $scope, $user_id = 0, $engine = '', $from = -1)
 {
     $row = pg_tr_language_row($language);
 
@@ -413,7 +425,22 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '')
         @set_time_limit(120);
     }
 
-    $extracted = pg_tr_scope_extract($scope);
+    $extracted = ($from >= 0) ? pg_tr_scope_extract($scope, microtime(true) + 20, $from) : pg_tr_scope_extract($scope);
+
+    if (isset($extracted['next'], $extracted['total']) && ($extracted['next'] < $extracted['total'])) {
+        return array(
+            'ok'         => true,
+            'engine'     => $engine,
+            'extracting' => true,
+            'next'       => (int) $extracted['next'],
+            'total'      => (int) $extracted['total'],
+            'pending'    => 0,
+            'job_id'     => 0,
+            'job'        => null,
+            'finished'   => false,
+            'error'      => '',
+        );
+    }
 
     // The cookie window of a language with a language file comes from that
     // file (pg_tr_ui_text()): nothing to send.

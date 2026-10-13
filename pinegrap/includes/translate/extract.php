@@ -332,10 +332,13 @@ function pg_tr_store_segments($owner_type, $owner_id, $segments, $kind = 'conten
  * and - through the references the tree holds - the shared components and
  * menus it shows, with the records of a form a widget on it includes.
  *
- * @param int $page_id
+ * @param int        $page_id
+ * @param array|null $memo  shared components and menus already extracted in
+ *                          this request (pg_tr_extract_all()): a header every
+ *                          page shows is not extracted again for each of them
  * @return array('ok' => bool, 'segments' => int, 'shared' => int, 'menus' => int)
  */
-function pg_tr_extract_page($page_id)
+function pg_tr_extract_page($page_id, &$memo = null)
 {
     $page_id = (int) $page_id;
     $result = array('ok' => false, 'segments' => 0, 'shared' => 0, 'menus' => 0);
@@ -420,7 +423,16 @@ function pg_tr_extract_page($page_id)
         }
 
         $done[$shared_id] = true;
-        $extracted = pg_tr_extract_shared($shared_id);
+
+        if (is_array($memo) && isset($memo['s' . $shared_id])) {
+            $extracted = $memo['s' . $shared_id];
+        } else {
+            $extracted = pg_tr_extract_shared($shared_id);
+
+            if (is_array($memo)) {
+                $memo['s' . $shared_id] = $extracted;
+            }
+        }
 
         foreach ($extracted['shared'] as $nested_id) {
             if (!isset($done[$nested_id])) {
@@ -444,7 +456,14 @@ function pg_tr_extract_page($page_id)
         $menu_id = (int) db_value("SELECT id FROM menus WHERE name = '" . e($menu_name) . "' LIMIT 1");
 
         if ($menu_id > 0) {
-            pg_tr_extract_menu($menu_id);
+            if (!is_array($memo) || !isset($memo['m' . $menu_id])) {
+                pg_tr_extract_menu($menu_id);
+
+                if (is_array($memo)) {
+                    $memo['m' . $menu_id] = true;
+                }
+            }
+
             $result['menus']++;
             $ref_rows[] = array('string_id' => 0, 'node_id' => 'menu', 'field' => (string) $menu_id, 'position' => 0);
         }
@@ -562,27 +581,46 @@ function pg_tr_translatable_pages()
 }
 
 /**
- * Extracts every translatable page.
+ * Extracts every translatable page, then what the pages draw from the
+ * database: the catalog and the forms.
  *
- * @return array('pages' => int, 'segments' => int)
+ * With a deadline the work is done in turns. It stops after the step that
+ * passes the deadline and says where the next turn starts: 'next' out of
+ * 'total' steps (the pages, then the two groups). A site of many pages took
+ * longer than the server's time limit in one request.
+ *
+ * @param float $deadline microtime(true) to stop after; 0 = no limit
+ * @param int   $from     the step to start at
+ * @return array('pages' => int, 'segments' => int, 'next' => int, 'total' => int)
  */
-function pg_tr_extract_all()
+function pg_tr_extract_all($deadline = 0, $from = 0)
 {
-    $summary = array('pages' => 0, 'segments' => 0);
+    $pages = pg_tr_translatable_pages();
+    $groups = array('catalog', 'forms');
+    $total = count($pages) + count($groups);
+    $summary = array('pages' => 0, 'segments' => 0, 'next' => $total, 'total' => $total);
 
-    foreach (pg_tr_translatable_pages() as $page) {
-        $result = pg_tr_extract_page($page['page_id']);
+    // The components and menus the pages share: once in a turn.
+    $memo = array();
 
-        if ($result['ok']) {
-            $summary['pages']++;
+    for ($step = max(0, (int) $from); $step < $total; $step++) {
+        if ($step < count($pages)) {
+            $result = pg_tr_extract_page($pages[$step]['page_id'], $memo);
+
+            if ($result['ok']) {
+                $summary['pages']++;
+                $summary['segments'] += $result['segments'];
+            }
+        } else {
+            $result = pg_tr_extract_group($groups[$step - count($pages)]);
             $summary['segments'] += $result['segments'];
         }
-    }
 
-    // What the pages draw from the database: the catalog and the forms.
-    foreach (array('catalog', 'forms') as $group) {
-        $result = pg_tr_extract_group($group);
-        $summary['segments'] += $result['segments'];
+        if (($deadline > 0) && ($step + 1 < $total) && (microtime(true) >= $deadline)) {
+            $summary['next'] = $step + 1;
+
+            return $summary;
+        }
     }
 
     return $summary;

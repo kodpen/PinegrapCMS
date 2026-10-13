@@ -82,6 +82,21 @@ function pg_cf_rss_fields()
     );
 }
 
+// A control of a form widget tree with an RSS role (`_cf.rss_field`) on it,
+// for code that builds form trees itself - the design templates. The role is
+// what names a record: its page title and description, its feed item and its
+// share picture. A role outside the ones pg_cf_rss_fields() offers leaves the
+// control as it is.
+function pg_cf_with_role($node, $role)
+{
+    $role = (string)$role;
+    if (!is_array($node) || !in_array($role, array('category', 'title', 'description', 'media'), true)) return $node;
+    if (!isset($node['props']) || !is_array($node['props'])) $node['props'] = array();
+    if (!isset($node['props']['_cf']) || !is_array($node['props']['_cf'])) $node['props']['_cf'] = array();
+    $node['props']['_cf']['rss_field'] = $role;
+    return $node;
+}
+
 // Values `contact_field` accepts, read out of the same list the legacy field
 // screen uses so the two screens can never offer different sets.
 function pg_cf_contact_fields()

@@ -626,6 +626,22 @@ function pg_tr_lookup($hash, $language)
 }
 
 /**
+ * Whether a translation is the source text itself, letter case and the
+ * spaces around it aside: a name, a code, a word the engine gave back as it
+ * was. The page shows its own words there, so a machine translation like
+ * that does not keep the page from the search engines the way engine output
+ * does (pg_tr_render_text(), pg_tr_index_stats()).
+ *
+ * @param string $source normalised source
+ * @param string $text   the translation
+ * @return bool
+ */
+function pg_tr_same_as_source($source, $text)
+{
+    return mb_strtolower(trim((string) $text), 'UTF-8') === mb_strtolower(trim((string) $source), 'UTF-8');
+}
+
+/**
  * The map of a language if a render already loaded it; null otherwise. Lets a
  * title lookup stay a single query on a request that never drew a tree.
  */
@@ -710,15 +726,19 @@ function pg_tr_set_status($string_id, $language, $status, $user_id = 0)
 /**
  * The machine translations of a language in a scope of the Translations
  * screen ('all', 'page:12', 'group:catalog') that one click may mark
- * reviewed. The ones flagged suspicious are left to be looked at one by one.
+ * reviewed. The ones flagged suspicious are left to be looked at one by one
+ * unless $suspicious takes them in as well.
  *
+ * @param string $language
+ * @param string $scope
+ * @param bool   $suspicious whether the flagged ones are marked too
  * @return string SQL condition on translations t
  */
-function pg_tr_review_all_where($language, $scope = 'all')
+function pg_tr_review_all_where($language, $scope = 'all', $suspicious = false)
 {
     $owner_where = pg_tr_owner_where(pg_tr_scope_owners($scope));
 
-    return "t.language = '" . e($language) . "' AND t.status = 'machine' AND t.suspicious = 0
+    return "t.language = '" . e($language) . "' AND t.status = 'machine'" . ($suspicious ? '' : ' AND t.suspicious = 0') . "
         AND EXISTS (SELECT 1 FROM translation_uses u WHERE u.string_id = t.string_id"
         . (($owner_where !== '') ? " AND ($owner_where)" : '') . ')';
 }
@@ -728,21 +748,23 @@ function pg_tr_review_all_where($language, $scope = 'all')
  *
  * @return int
  */
-function pg_tr_review_all_count($language, $scope = 'all')
+function pg_tr_review_all_count($language, $scope = 'all', $suspicious = false)
 {
-    return (int) db_value('SELECT COUNT(*) FROM translations t WHERE ' . pg_tr_review_all_where($language, $scope));
+    return (int) db_value('SELECT COUNT(*) FROM translations t WHERE ' . pg_tr_review_all_where($language, $scope, $suspicious));
 }
 
 /**
  * Marks the machine translations of a language in a scope reviewed in one
- * go, for a translation that is trusted as it came from the engine.
+ * go, for a translation that is trusted as it came from the engine. The
+ * suspicious flag stays on the ones that had it, as it does when a
+ * translation is reviewed on its own.
  *
  * @return int how many were marked
  */
-function pg_tr_review_all($language, $scope = 'all', $user_id = 0)
+function pg_tr_review_all($language, $scope = 'all', $user_id = 0, $suspicious = false)
 {
     db("UPDATE translations t SET t.status = 'reviewed', t.updated_by = '" . ((int) $user_id) . "', t.updated_at = '" . time() . "'
-        WHERE " . pg_tr_review_all_where($language, $scope));
+        WHERE " . pg_tr_review_all_where($language, $scope, $suspicious));
 
     $count = (int) mysqli_affected_rows(db::$con);
 

@@ -16,494 +16,503 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-function get_help_url($properties) {
-    $languageinfo = 'en';
+/**
+ * The address of the documentation for a control panel screen.
+ *
+ * The documentation lives on pinegrap.com: English at the root
+ * (pinegrap.com/introduction) and every other language under a prefix of its
+ * own (pinegrap.com/tr/introduction). Page names and the anchors inside them
+ * are the same in every language, so a topic is written once, as
+ * "page#anchor", and only the prefix follows the panel language.
+ *
+ * Read through pg_help_url() (includes/fn/output.php), which also leaves help
+ * out on a private-labelled site. This file is loaded only when a header is
+ * drawn, so the table below costs nothing on the requests that draw none.
+ *
+ * Properties:
+ *   languageinfo  the panel language; one the documentation is not written in
+ *                 gets the English pages
+ *   topic         "page#anchor" to use as it is, instead of looking the
+ *                 screen up -- for a screen whose subject depends on more
+ *                 than its script name
+ *   screen        the screen to look up, without ".php"; defaults to the
+ *                 script that is running
+ *
+ * A screen that is not in the table gets the introduction rather than
+ * nothing, so a new screen is never left without a way to the documentation.
+ * A new screen still belongs in the table.
+ *
+ * @param array $properties
+ * @return string
+ */
+function get_help_url($properties = array())
+{
+    if (!is_array($properties)) {
+        $properties = array();
+    }
 
-    if(isset($properties['languageinfo'])){
-        switch ($properties['languageinfo']) {
-            case 'tr':
-                $languageinfo = 'tr';
-                break;
-            default:
-                $languageinfo = 'en';
-                break;
+    // The languages the documentation is written in, and the prefix each one
+    // is served under.
+    $languages = array(
+        'en' => '',
+        'tr' => 'tr/',
+    );
+
+    // Screen => topic. A screen whose list changes with ?filter= maps to an
+    // array of filter => topic, where '' is the topic without a filter.
+    static $topics = array(
+
+        // Introduction
+        'index'   => 'introduction#welcome',
+        'welcome' => 'introduction#welcome',
+
+        // Site Settings: the eight categories of the settings dialog, opened
+        // as screens of their own, and the tools that live beside them.
+        'settings_general'    => 'site-settings#general',
+        'settings_appearance' => 'site-settings#appearance',
+        'settings_features'   => 'site-settings#features',
+        'settings_seo'        => 'site-settings#seo',
+        'settings_languages'  => 'site-settings#languages',
+        'settings_contact'    => 'site-settings#communication',
+        'settings_security'   => 'site-settings#security',
+        'settings_firewall'   => 'site-settings#firewall',
+        'settings_commerce'   => 'site-settings#commerce',
+        'settings_api'        => 'site-settings#api',
+        'smtp_settings'       => 'site-settings#smtp-settings',
+        'mail_queue'          => 'site-settings#mail-queue',
+        'software_repair'     => 'site-settings#repair-software',
+        'backups'             => 'site-settings#backups',
+        'cloudflare'          => 'site-settings#cloudflare',
+        'view_log'            => 'site-settings#site-log',
+
+        // File Manager
+        'view_folders'     => 'folders',
+        'add_folder'       => 'folders#create-edit-folder',
+        'edit_folder'      => 'folders#create-edit-folder',
+        'create_file'      => 'folders#create-edit-folder',
+        'duplicate_folder' => 'folders#duplicate-folder',
+
+        // Pages
+        'view_pages' => array(
+            ''                           => 'pages',
+            'all_my_pages'               => 'pages',
+            'all_my_archived_pages'      => 'pages-cont#archived-pages',
+            'my_home_pages'              => 'pages-cont#home-pages',
+            'my_searchable_pages'        => 'pages-cont#searchable-pages',
+            'my_unsearchable_pages'      => 'pages-cont#unsearchable-pages',
+            'my_sitemap_pages'           => 'pages-cont#site-map-pages',
+            'my_rss_enabled_pages'       => 'pages-cont#rss-enabled-pages',
+            'my_standard_pages'          => 'pages-cont#standard-pages',
+            'my_photo_gallery_pages'     => 'pages-cont#photo-gallery-pages',
+            'my_calendar_pages'          => 'pages-cont#calendar-pages',
+            'my_custom_form_pages'       => 'pages-cont#custom-form-pages',
+            'my_form_view_pages'         => 'pages-cont#form-view-pages',
+            'my_affiliate_pages'         => 'pages-cont#affiliate-pages',
+            'my_commerce_pages'          => 'pages-cont#commerce-pages',
+            'my_account_pages'           => 'pages-cont#account-pages',
+            'my_login_pages'             => 'pages-cont#login-pages',
+            'my_miscellaneous_pages'     => 'pages-cont#miscellaneous-pages',
+            'my_public_pages'            => 'pages-cont#public-access-pages',
+            'my_guest_pages'             => 'pages-cont#guest-access-pages',
+            'my_registration_pages'      => 'pages-cont#registration-access-pages',
+            'my_membership_pages'        => 'pages-cont#membership-access-pages',
+            'my_private_pages'           => 'pages-cont#private-access-pages',
+            'seo_not_calculated'         => 'seo#seo-score',
+            'seo_critical'               => 'seo#seo-score',
+            'seo_weak'                   => 'seo#seo-score',
+            'seo_broken_links'           => 'seo#seo-checks',
+            'seo_duplicate'              => 'seo#seo-checks',
+            'seo_img_no_alt'             => 'seo#seo-checks',
+            'seo_orphan'                 => 'seo#seo-checks',
+            'seo_search_weak_keywords'   => 'seo#seo-checks',
+            'seo_sitemap_no_description' => 'seo#seo-checks',
+            'seo_sitemap_no_title'       => 'seo#seo-checks',
+            'seo_struct_error'           => 'seo#seo-checks',
+        ),
+        'toolbar'             => 'pages#editing-page-content',
+        'view_comments'       => 'pages#edit-comment',
+        'edit_comment'        => 'pages#edit-comment',
+        'add_page'            => 'pages#edit-page-properties',
+        'edit_page'           => 'pages#edit-page-properties',
+        'view_fields'         => 'pages#edit-custom-form',
+        'preview_form'        => 'pages#edit-custom-form',
+        'add_field'           => 'pages#edit-custom-form-field',
+        'edit_field'          => 'pages#edit-custom-form-field',
+        'edit_form_list_view' => 'pages#edit-form-list-view',
+        'edit_form_item_view' => 'pages#edit-form-item-view',
+        'view_short_links'    => 'pages-cont#short-links',
+        'add_short_link'      => 'pages-cont#create-edit-short-link',
+        'edit_short_link'     => 'pages-cont#create-edit-short-link',
+        'view_auto_dialogs'   => 'pages-cont#auto-dialogs',
+        'add_auto_dialog'     => 'pages-cont#create-edit-auto-dialog',
+        'edit_auto_dialog'    => 'pages-cont#create-edit-auto-dialog',
+
+        // Files
+        'view_files' => array(
+            ''                      => 'files',
+            'all_my_files'          => 'files',
+            'all_my_archived_files' => 'files#archived-files',
+            'my_photos'             => 'files#photos',
+            'my_documents'          => 'files#browsing-by-type',
+            'my_media'              => 'files#browsing-by-type',
+            'my_attachments'        => 'files#browsing-by-type',
+            'my_public_files'       => 'files#browsing-by-access',
+            'my_guest_files'        => 'files#browsing-by-access',
+            'my_registration_files' => 'files#browsing-by-access',
+            'my_member_files'       => 'files#browsing-by-access',
+            'my_private_files'      => 'files#browsing-by-access',
+        ),
+        'add_file'          => 'files#upload-files',
+        'edit_file'         => 'files#edit-file',
+        'editor_edit_file'  => 'files#edit-file',
+        'image_editor_edit' => 'files#image-editor',
+
+        // Calendars
+        'view_calendars'                => 'calendars',
+        'calendars'                     => 'calendars#create-edit-calendar',
+        'add_calendar'                  => 'calendars#create-edit-calendar-properties',
+        'edit_calendar'                 => 'calendars#create-edit-calendar-properties',
+        'add_calendar_event'            => 'calendars#create-edit-calendar-event',
+        'edit_calendar_event'           => 'calendars#create-edit-calendar-event',
+        'view_calendar_event_locations' => 'calendars#event-locations',
+        'add_calendar_event_location'   => 'calendars#create-edit-calendar-event-location',
+        'edit_calendar_event_location'  => 'calendars#create-edit-calendar-event-location',
+
+        // Forms
+        'view_submitted_forms'   => 'forms#submitted-forms',
+        'add_submitted_form'     => 'forms#add-submitted-form',
+        'edit_submitted_form'    => 'forms#edit-submitted-form',
+        'import_submitted_forms' => 'forms#import-submitted-forms',
+
+        // Visitors
+        'view_visitor_reports' => 'visitors#visitor-reports',
+        'view_visitor_report'  => 'visitors#create-edit-visitor-report',
+        'view_visitor'         => 'visitors#visit-details',
+
+        // Contacts
+        'view_contacts' => array(
+            ''                                => 'contacts',
+            'all_my_contacts'                 => 'contacts',
+            'my_subscribers'                  => 'contacts#subscribers',
+            'my_affiliates'                   => 'contacts#affiliates',
+            'my_customers'                    => 'contacts#customers',
+            'my_members'                      => 'contacts#members',
+            'my_active_members'               => 'contacts#active-members',
+            'my_expired_members'              => 'contacts#expired-members',
+            'my_unregistered_members'         => 'contacts#unregistered-members',
+            'my_contacts_by_user'             => 'contacts#contacts-by-user',
+            'my_contacts_by_business_address' => 'contacts#contacts-by-business-address',
+            'my_contacts_by_home_address'     => 'contacts#contacts-by-home-address',
+            'all_duplicate_contacts'          => 'contacts#duplicate-contacts',
+        ),
+        'add_contact'             => 'contacts#create-edit-contact',
+        'edit_contact'            => 'contacts#create-edit-contact',
+        'import_contacts'         => 'contacts#import-contacts',
+        'view_contact_groups'     => 'contacts#contact-groups',
+        'add_contact_group'       => 'contacts#create-edit-contact-group',
+        'edit_contact_group'      => 'contacts#create-edit-contact-group',
+        'view_orders_for_contact' => 'contacts#orders-for-contact',
+        'approve_affiliate'       => 'contacts#affiliates',
+
+        // Users
+        'view_users' => array(
+            ''                            => 'users',
+            'all_my_users'                => 'users',
+            'my_registered_users'         => 'users#registered-users',
+            'my_private_users'            => 'users#private-users',
+            'my_member_users'             => 'users#member-users',
+            'my_content_managers'         => 'users#content-managers',
+            'my_calendar_managers'        => 'users#calendar-managers',
+            'my_submitted_forms_managers' => 'users#submitted-forms-managers',
+            'my_visitor_report_managers'  => 'users#visitor-report-managers',
+            'my_contact_managers'         => 'users#contact-managers',
+            'my_campaign_managers'        => 'users#campaign-managers',
+            'my_commerce_managers'        => 'users#commerce-managers',
+            'all_site_designers'          => 'users#site-designers',
+            'all_site_administrators'     => 'users#site-administrators',
+            'all_site_managers'           => 'users#site-managers',
+        ),
+        'add_user'      => 'users#create-edit-user',
+        'edit_user'     => 'users#create-edit-user',
+        'import_users'  => 'users#import-users',
+        'view_sessions' => 'users#sessions',
+
+        // Campaigns
+        'view_email_campaigns'           => 'campaigns',
+        'add_email_campaign'             => 'campaigns#create-edit-campaign',
+        'edit_email_campaign'            => 'campaigns#create-edit-campaign',
+        'view_email_campaign_history'    => 'campaigns#campaign-history',
+        'view_email_campaign_profiles'   => 'campaigns#campaign-profiles',
+        'add_email_campaign_profile'     => 'campaigns#create-edit-campaign-profile',
+        'edit_email_campaign_profile'    => 'campaigns#create-edit-campaign-profile',
+        'import_email_campaign_profiles' => 'campaigns#import-campaign-profiles',
+
+        // Commerce
+        'view_orders'                        => 'commerce#orders',
+        'view_order'                         => 'commerce#view-order',
+        'print_order'                        => 'commerce#view-order',
+        'add_order'                          => 'commerce#add-local-order',
+        'view_parasut_inbox'                 => 'commerce#parasut-inbox',
+        'view_order_reports'                 => 'commerce#order-reports',
+        'view_order_report'                  => 'commerce#create-edit-order-report',
+        'view_commissions'                   => 'commerce#commissions',
+        'edit_commission'                    => 'commerce#edit-commission',
+        'view_recurring_commission_profiles' => 'commerce#recurring-commission-profiles',
+        'edit_recurring_commission_profile'  => 'commerce#edit-recurring-commission-profile',
+        'view_products' => array(
+            ''                          => 'commerce#products',
+            'seo_weak_products'         => 'seo#seo-score',
+            'seo_struct_error_products' => 'seo#seo-checks',
+        ),
+        'duplicate_products'          => 'commerce#products',
+        'product_builder'             => 'commerce#variant-sets',
+        'add_product'                 => 'commerce#create-edit-product',
+        'edit_product'                => 'commerce#create-edit-product',
+        'import_products'             => 'commerce#import-products',
+        'barcode_increase_inventory'  => 'commerce#barcode-inventory',
+        'barcode_decrease_inventory'  => 'commerce#barcode-inventory',
+        'view_product_groups'         => 'commerce#product-groups',
+        'add_product_group'           => 'commerce#create-edit-product-group',
+        'edit_product_group'          => 'commerce#create-edit-product-group',
+        'duplicate_product_group'     => 'commerce#duplicate-product-group',
+        'edit_featured_and_new_items' => 'commerce#edit-featured-and-new-items',
+        'view_product_attributes'     => 'commerce#product-attributes',
+        'add_product_attribute'       => 'commerce#create-edit-product-attribute',
+        'edit_product_attribute'      => 'commerce#create-edit-product-attribute',
+        'view_gift_cards'             => 'commerce#gift-cards',
+        'add_gift_card'               => 'commerce#create-gift-card',
+        'edit_gift_card'              => 'commerce#edit-gift-card',
+
+        // Commerce, continued
+        'view_offers'                      => 'commerce-cont#offers',
+        'add_offer'                        => 'commerce-cont#create-edit-offer',
+        'edit_offer'                       => 'commerce-cont#create-edit-offer',
+        'view_key_codes'                   => 'commerce-cont#key-codes',
+        'add_key_code'                     => 'commerce-cont#create-edit-key-code',
+        'edit_key_code'                    => 'commerce-cont#create-edit-key-code',
+        'import_key_codes'                 => 'commerce-cont#import-key-codes',
+        'delete_key_codes'                 => 'commerce-cont#key-codes',
+        'view_zones'                       => 'commerce-cont#zones',
+        'add_zone'                         => 'commerce-cont#create-edit-zone',
+        'edit_zone'                        => 'commerce-cont#create-edit-zone',
+        'view_shipping_methods'            => 'commerce-cont#shipping-methods',
+        'add_shipping_method'              => 'commerce-cont#create-edit-shipping-method',
+        'edit_shipping_method'             => 'commerce-cont#create-edit-shipping-method',
+        'view_arrival_dates'               => 'commerce-cont#arrival-dates',
+        'add_arrival_date'                 => 'commerce-cont#create-edit-arrival-date',
+        'edit_arrival_date'                => 'commerce-cont#create-edit-arrival-date',
+        'view_verified_shipping_addresses' => 'commerce-cont#verified-shipping-addresses',
+        'add_verified_shipping_address'    => 'commerce-cont#create-edit-verified-shipping-address',
+        'edit_verified_shipping_address'   => 'commerce-cont#create-edit-verified-shipping-address',
+        'view_containers'                  => 'commerce-cont#containers',
+        'add_container'                    => 'commerce-cont#create-edit-container',
+        'edit_container'                   => 'commerce-cont#create-edit-container',
+        'view_shipping_report'             => 'commerce-cont#shipping-report',
+        'view_ship_date_adjustments'       => 'commerce-cont#ship-date-adjustments',
+        'add_ship_date_adjustment'         => 'commerce-cont#create-edit-ship-date-adjustment',
+        'edit_ship_date_adjustment'        => 'commerce-cont#create-edit-ship-date-adjustment',
+        'view_tax_zones'                   => 'commerce-cont#tax-zones',
+        'add_tax_zone'                     => 'commerce-cont#create-edit-tax-zone',
+        'edit_tax_zone'                    => 'commerce-cont#create-edit-tax-zone',
+        'view_referral_sources'            => 'commerce-cont#referral-sources',
+        'add_referral_source'              => 'commerce-cont#create-edit-referral-source',
+        'edit_referral_source'             => 'commerce-cont#create-edit-referral-source',
+        'view_currencies'                  => 'commerce-cont#currencies',
+        'add_currency'                     => 'commerce-cont#create-edit-currency',
+        'edit_currency'                    => 'commerce-cont#create-edit-currency',
+        'view_countries'                   => 'commerce-cont#countries',
+        'add_country'                      => 'commerce-cont#create-edit-country',
+        'edit_country'                     => 'commerce-cont#create-edit-country',
+        'view_states'                      => 'commerce-cont#states',
+        'add_state'                        => 'commerce-cont#create-edit-state',
+        'edit_state'                       => 'commerce-cont#create-edit-state',
+
+        // Ads
+        'view_ads' => 'ads',
+        'add_ad'   => 'ads#create-edit-ad',
+        'edit_ad'  => 'ads#create-edit-ad',
+
+        // Design
+        'view_styles'              => 'design#styles',
+        'add_style'                => 'design#create-style',
+        'add_custom_style'         => 'design#create-edit-custom-style',
+        'edit_custom_style'        => 'design#create-edit-custom-style',
+        'generate_layout'          => 'design#create-edit-custom-style',
+        'view_system_style_source' => 'design#view-system-style-source',
+        'page_designer'            => 'design#page_designer',
+        'view_menus'               => 'design#menus',
+        'add_menu'                 => 'design#create-edit-menu',
+        'edit_menu'                => 'design#create-edit-menu',
+        'view_menu_items'          => 'design#menu-items',
+        'add_menu_item'            => 'design#create-edit-menu-item',
+        'edit_menu_item'           => 'design#create-edit-menu-item',
+        'view_regions' => array(
+            ''                     => 'design#common-regions',
+            'all_common_regions'   => 'design#common-regions',
+            'all_designer_regions' => 'design#designer-regions',
+            'all_ad_regions'       => 'design#ad-regions',
+            'all_dynamic_regions'  => 'design#dynamic-regions',
+            'all_login_regions'    => 'design#login-regions',
+        ),
+        'add_common_region'    => 'design#create-edit-common-region',
+        'edit_common_region'   => 'design#create-edit-common-region',
+        'add_designer_region'  => 'design#create-edit-designer-region',
+        'edit_designer_region' => 'design#create-edit-designer-region',
+        'add_ad_region'        => 'design#create-edit-ad-region',
+        'edit_ad_region'       => 'design#create-edit-ad-region',
+        'add_dynamic_region'   => 'design#create-edit-dynamic-region',
+        'edit_dynamic_region'  => 'design#create-edit-dynamic-region',
+        'add_login_region'     => 'design#create-edit-login-region',
+        'edit_login_region'    => 'design#create-edit-login-region',
+        'view_themes'          => 'design#themes',
+        'add_theme_file'       => 'design#add-theme-file',
+        'edit_theme_file'      => 'design#edit-theme-file',
+        'edit_theme_css'       => 'design#edit-theme-css',
+        'theme_designer'       => 'design#theme-designer',
+        'view_design_files'    => 'design#design-files',
+        'add_design_file'      => 'design#upload-design-files',
+        'edit_design_file'     => 'design#edit-design-file',
+        'edit_javascript'      => 'design#edit-javascript',
+        'import_design'        => 'design#import-my-site',
+        'import_zip'           => 'design#import-zip-file',
+        'find_and_replace'     => 'design#find-and-replace',
+        'find_replace'         => 'design#find-and-replace',
+        'mass_edit'            => 'design#mass-edit',
+        'migration'            => 'design#migration',
+
+        // Visual Page Editor
+        'view_system_styles' => 'visual-page-editor#designs',
+        'add_system_style'   => 'visual-page-editor#create-design',
+        'edit_system_style'  => 'visual-page-editor#editor',
+
+        // Multilingual site
+        'translations' => 'multilingual#translations',
+
+        // ERP
+        'erp_dashboard'           => 'erp#erp-dashboard',
+        'erp_accounts'            => 'erp#accounts',
+        'add_erp_account'         => 'erp#create-edit-account',
+        'edit_erp_account'        => 'erp#create-edit-account',
+        'erp_account_prices'      => 'erp#account-prices',
+        'erp_reconciliation'      => 'erp#reconciliation',
+        'erp_accounts_import'     => 'erp#import-accounts',
+        'erp_invoices'            => 'erp#invoices',
+        'add_erp_manual_invoice'  => 'erp#create-edit-invoice',
+        'edit_erp_invoice_draft'  => 'erp#create-edit-invoice',
+        'add_erp_invoice'         => 'erp#invoice-order',
+        'edit_erp_invoice'        => 'erp#view-invoice',
+        'erp_invoice_recurrences' => 'erp#recurring-invoices',
+        'add_erp_return'          => 'erp#returns',
+        'erp_quotes'              => 'erp#quotes',
+        'add_erp_quote'           => 'erp#create-edit-quote',
+        'edit_erp_quote'          => 'erp#create-edit-quote',
+        'erp_inbox'               => 'erp#incoming-e-invoices',
+        'erp_inbox_document'      => 'erp#incoming-e-invoices',
+        'erp_account_sync'        => 'erp#account-sync',
+        'erp_account_sync_item'   => 'erp#account-sync',
+        'erp_aging'               => 'erp#aging-report',
+        'erp_profit'              => 'erp#profit-and-loss',
+        'erp_vat_report'          => 'erp#vat-report',
+
+        // ERP, continued
+        'erp_stock'              => 'erp-cont#stock',
+        'erp_stock_minimums'     => 'erp-cont#stock-minimums',
+        'erp_stock_counts'       => 'erp-cont#stock-counts',
+        'erp_stock_count'        => 'erp-cont#stock-count',
+        'erp_expenses'           => 'erp-cont#expenses',
+        'add_erp_expense'        => 'erp-cont#create-edit-expense',
+        'edit_erp_expense'       => 'erp-cont#view-expense',
+        'erp_expense_categories' => 'erp-cont#expense-categories',
+        'erp_waybills'           => 'erp-cont#delivery-notes',
+        'add_erp_waybill'        => 'erp-cont#create-edit-delivery-note',
+        'edit_erp_waybill'       => 'erp-cont#create-edit-delivery-note',
+        'erp_export'             => 'erp-cont#export',
+        'erp_accountant'         => 'erp-cont#accountant-pack',
+        'erp_cash'               => 'erp-cont#cash-and-bank',
+        'add_erp_till'           => 'erp-cont#create-edit-till',
+        'edit_erp_till'          => 'erp-cont#create-edit-till',
+        'add_erp_receipt'        => 'erp-cont#receipts',
+        'erp_receipt'            => 'erp-cont#view-receipt',
+        'add_erp_transfer'       => 'erp-cont#transfers',
+        'erp_cashflow'           => 'erp-cont#cash-flow',
+        'erp_cheques'            => 'erp-cont#cheques',
+        'erp_cheque'             => 'erp-cont#cheque',
+        'erp_bank_statements'    => 'erp-cont#bank-statements',
+        'erp_bank_statement'     => 'erp-cont#bank-statement',
+        'erp_audit'              => 'erp-cont#audit-trail',
+        'erp_settings'           => 'erp-cont#erp-settings',
+
+        // Workspace
+        'workspace'          => 'workspace#channels',
+        'workspace_board'    => 'workspace#planning-board',
+        'workspace_calendar' => 'workspace#work-calendar',
+        'workspace_tasks'    => 'workspace#my-tasks',
+        'workspace_timeline' => 'workspace#decision-timeline',
+        'workspace_settings' => 'workspace#workspace-settings',
+        'workspace_notes'    => 'workspace-cont#notes',
+        'workspace_template' => 'workspace-cont#channel-templates',
+
+        // API and integrations
+        'api_settings'         => 'api#api-keys',
+        'api_docs'             => 'api#api-reference',
+        'marketplace_settings' => 'api#marketplaces',
+
+        // System tools
+        'software_update'      => 'system#software-update',
+        'clean_up'             => 'system#caches',
+        'database_engine'      => 'system#database-engine',
+        'view_performance_log' => 'system#performance-log',
+        'private_label'        => 'system#private-label',
+
+        // Security
+        'view_waf_log'   => 'security#waf-log',
+        'developer_lock' => 'security#developer-lock',
+        'device_limit'   => 'security#devices',
+        'mfa'            => 'security#two-step-verification',
+    );
+
+    $language = isset($properties['languageinfo']) ? (string) $properties['languageinfo'] : 'en';
+    $prefix = isset($languages[$language]) ? $languages[$language] : '';
+
+    $topic = isset($properties['topic']) ? (string) $properties['topic'] : '';
+
+    if ($topic === '') {
+
+        $screen = isset($properties['screen']) ? (string) $properties['screen'] : '';
+
+        // SCRIPT_NAME rather than PHP_SELF: PHP_SELF carries any path info
+        // after the script, and its last segment is then not the screen.
+        if ($screen === '') {
+            $script = isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : (string) ($_SERVER['PHP_SELF'] ?? '');
+            $screen = pathinfo(basename($script), PATHINFO_FILENAME);
         }
+
+        $entry = isset($topics[$screen]) ? $topics[$screen] : '';
+
+        if (is_array($entry)) {
+
+            // Most lists take the filter from the address only; the product
+            // list also keeps the last one in the session, and shows it again
+            // when the address carries none.
+            $filter = '';
+
+            if (isset($_GET['filter']) && is_scalar($_GET['filter'])) {
+                $filter = (string) $_GET['filter'];
+            } elseif (isset($_SESSION['software'][$screen]['filter']) && is_scalar($_SESSION['software'][$screen]['filter'])) {
+                $filter = (string) $_SESSION['software'][$screen]['filter'];
+            }
+
+            $entry = isset($entry[$filter]) ? $entry[$filter] : $entry[''];
+        }
+
+        $topic = (string) $entry;
     }
 
-    // Get script name for current screen.
-    $php_self_parts = explode('/', $_SERVER['PHP_SELF']);
-    $script_name = $php_self_parts[count($php_self_parts) - 1];
-    
-    // Get screen by removing extension from script name.
-    $screen = mb_substr($script_name, 0, mb_strrpos($script_name, '.'));
-
-    $url = '';
-
-    switch ($screen) {
-
-        case 'welcome': $url = 'introduction#welcome'; break;
-        case 'index': $url = 'introduction#welcome'; break;
-        case 'view_log': $url = 'site-settings#site-log'; break;
-		case 'settings': $url = 'site-settings'; break;
-		case 'smtp_settings': $url = 'site-settings#smtp-settings'; break;
-		case 'mailchimp_settings': $url = 'site-settings#mailchimp-settings'; break;
-		case 'backups':  $url = 'site-settings#backups'; break;
-		case 'cloudflare':  $url = 'site-settings#cloudflare'; break;
-        case 'view_folders': $url = 'folders'; break;
-
-        case 'add_folder':
-        case 'create_file':
-        case 'edit_folder':
-            $url = 'folders#create-edit-folder';
-            break;
-
-        case 'view_pages':
-
-            switch($_GET['filter'] ?? '') {
-
-                case 'all_my_pages': $url = 'pages'; break;
-                case 'all_my_archived_pages': $url = 'pages-cont#archived-pages'; break;
-                case 'my_home_pages': $url = 'pages-cont#home-pages'; break;
-                case 'my_searchable_pages': $url = 'pages-cont#searchable-pages'; break;
-                case 'my_unsearchable_pages': $url = 'pages-cont#unsearchable-pages'; break;
-                case 'my_sitemap_pages': $url = 'pages-cont#site-map-pages'; break;
-                case 'my_rss_enabled_pages': $url = 'pages-cont#rss-enabled-pages'; break;
-                case 'my_standard_pages': $url = 'pages-cont#standard-pages'; break;
-                case 'my_photo_gallery_pages': $url = 'pages-cont#photo-gallery-pages'; break;
-                case 'my_calendar_pages': $url = 'pages-cont#calendar-pages'; break;
-                case 'my_custom_form_pages': $url = 'pages-cont#custom-form-pages'; break;
-                case 'my_form_view_pages': $url = 'pages-cont#form-view-pages'; break;
-                case 'my_affiliate_pages': $url = 'pages-cont#affiliate-pages'; break;
-                case 'my_commerce_pages': $url = 'pages-cont#commerce-pages'; break;
-                case 'my_account_pages': $url = 'pages-cont#account-pages'; break;
-                case 'my_login_pages': $url = 'pages-cont#login-pages'; break;
-                case 'my_miscellaneous_pages': $url = 'pages-cont#miscellaneous-pages'; break;
-                case 'my_public_pages': $url = 'pages-cont#public-access-pages'; break;
-                case 'my_guest_pages': $url = 'pages-cont#guest-access-pages'; break;
-                case 'my_registration_pages': $url = 'pages-cont#registration-access-pages'; break;
-                case 'my_membership_pages': $url = 'pages-cont#membership-access-pages'; break;
-                case 'my_private_pages': $url = 'pages-cont#private-access-pages'; break;
-
-				
-                default: $url = 'pages'; break;
-
-            }
-
-            break;
-
-        case 'toolbar': $url = 'pages#editing-page-content'; break;
-		case 'view_comments':
-        case 'edit_comment': $url = 'pages#edit-comment'; break;
-
-        case 'add_page':
-        case 'edit_page':
-		
-            $url = 'pages#edit-page-properties';
-            break;
-
-        case 'view_fields': $url = 'pages#edit-custom-form'; break;
-
-        case 'add_field':
-        case 'edit_field':
-            $url = 'pages#edit-custom-form-field';
-            break;
-
-        case 'edit_form_list_view': $url = 'pages#edit-form-list-view'; break;
-        case 'edit_form_item_view': $url = 'pages#edit-form-item-view'; break;
-        case 'view_short_links': $url = 'pages-cont#short-links'; break;
-
-        case 'add_short_link':
-        case 'edit_short_link':
-		
-            $url = 'pages-cont#create-edit-short-link';
-            break;
-
-        case 'view_auto_dialogs': $url = 'pages-cont#auto-dialogs'; break;
-
-        case 'add_auto_dialog':
-        case 'edit_auto_dialog':
-            $url = 'pages-cont#create-edit-auto-dialog';
-            break;
-
-        case 'view_files':
-
-            switch($_GET['filter'] ?? '') {
-
-                case 'all_my_files': $url = 'files'; break;
-                case 'all_my_archived_files': $url = 'files' . '#archived-files'; break;
-                case 'my_documents': $url = 'files' . '#documents'; break;
-                case 'my_photos': $url = 'files' . '#photos'; break;
-                case 'my_media': $url = 'files' . '#media'; break;
-                case 'my_attachments': $url = 'files' . '#attachments'; break;
-                case 'my_public_files': $url = 'files' . '#public-access-files'; break;
-                case 'my_guest_files': $url = 'files' . '#guest-access-files'; break;
-                case 'my_registration_files': $url = 'files' . '#registration-access-files'; break;
-                case 'my_member_files': $url = 'files' . '#membership-access-files'; break;
-                case 'my_private_files': $url = 'files' . '#private-access-files'; break;
-
-                default: $url = 'files'; break;
-                
-            }
-
-            break;
-
-        case 'add_file': $url = 'files' . '#upload-files'; break;
-        case 'edit_file': $url = 'files' . '#edit-file'; break;
-
-        case 'view_calendars': $url = 'calendars'; break;
-        case 'calendars': $url = 'calendars' . '#create-edit-calendar'; break;
-
-        case 'add_calendar':
-        case 'edit_calendar':
-            $url = 'calendars' . '#create-edit-calendar-properties';
-            break;
-
-        case 'add_calendar_event':
-        case 'edit_calendar_event':
-            $url = 'calendars' . '#create-edit-calendar-event';
-            break;
-
-        case 'view_calendar_event_locations': $url = 'calendars' . '#event-locations'; break;
-
-        case 'add_calendar_event_location':
-        case 'edit_calendar_event_location':
-            $url = 'calendars' . '#create-edit-calendar-event-location';
-            break;
-
-        case 'view_submitted_forms': $url = 'forms'; break;
-        case 'edit_submitted_form': $url = 'forms' . '#edit-submitted-form'; break;
-        case 'import_submitted_forms': $url = 'forms' . '#import-submitted-forms'; break;
-
-        case 'view_visitor_reports': $url = 'visitors'; break;
-        case 'view_visitor_report': $url = 'visitors' . '#create-edit-visitor-report'; break;
-        case 'view_visitor': $url = 'visitors' . '#visit-details'; break;
-
-        case 'view_contacts':
-
-            switch($_GET['filter'] ?? '') {
-
-                case 'all_my_contacts': $url = 'contacts'; break;
-                case 'my_subscribers': $url = 'contacts' . '#subscribers'; break;
-                case 'my_affiliates': $url = 'contacts' . '#affiliates'; break;
-                case 'my_customers': $url = 'contacts' . '#customers'; break;
-                case 'my_members': $url = 'contacts' . '#members'; break;
-                case 'my_active_members': $url = 'contacts' . '#active-members'; break;
-                case 'my_expired_members': $url = 'contacts' . '#expired-members'; break;
-                case 'my_unregistered_members': $url = 'contacts' . '#unregistered-members'; break;
-                case 'my_contacts_by_user': $url = 'contacts' . '#contacts-by-user'; break;
-                case 'my_contacts_by_business_address': $url = 'contacts' . '#contacts-by-business-address'; break;
-                case 'my_contacts_by_home_address': $url = 'contacts' . '#contacts-by-home-address'; break;
-                case 'all_duplicate_contacts': $url = 'contacts' . '#duplicate-contacts'; break;
-
-                default: $url = 'contacts'; break;
-                
-            }
-
-            break;
-
-        case 'add_contact':
-        case 'edit_contact':
-            $url = 'contacts' . '#create-edit-contact';
-            break;
-
-        case 'import_contacts': $url = 'contacts' . '#import-contacts'; break;
-        case 'view_contact_groups': $url = 'contacts' . '#contact-groups'; break;
-        case 'view_contact_groups': $url = 'contacts' . '#contact-groups'; break;
-
-        case 'add_contact_group':
-        case 'edit_contact_group':
-            $url = 'contacts' . '#create-edit-contact-group';
-            break;
-
-        case 'view_users':
-
-            switch($_GET['filter'] ?? '') {
-
-                case 'all_my_users': $url = 'users'; break;
-                case 'my_registered_users': $url = 'users' . '#registered-users'; break;
-                case 'my_private_users': $url = 'users' . '#private-users'; break;
-                case 'my_member_users': $url = 'users' . '#member-users'; break;
-                case 'my_content_managers': $url = 'users' . '#content-managers'; break;
-                case 'my_calendar_managers': $url = 'users' . '#calendar-managers'; break;
-                case 'my_submitted_forms_managers': $url = 'users' . '#submitted-forms-managers'; break;
-                case 'my_visitor_report_managers': $url = 'users' . '#visitor-report-managers'; break;
-                case 'my_contact_managers': $url = 'users' . '#contact-managers'; break;
-                case 'my_campaign_managers': $url = 'users' . '#campaign-managers'; break;
-                case 'my_commerce_managers': $url = 'users' . '#commerce-managers'; break;
-                case 'all_site_designers': $url = 'users' . '#site-designers'; break;
-                case 'all_site_administrators': $url = 'users' . '#site-administrators'; break;
-                case 'all_site_managers': $url = 'users' . '#site-managers'; break;
-                
-                default: $url = 'users' . ''; break;
-                
-            }
-
-            break;
-
-        case 'add_user':
-        case 'edit_user':
-            $url = 'users' . '#create-edit-user';
-            break;
-
-        case 'import_users': $url = 'users' . '#import-users'; break;
-
-        case 'view_email_campaigns': $url = 'campaigns'; break;
-
-        case 'add_email_campaign':
-        case 'edit_email_campaign':
-            $url = 'campaigns' . '#create-edit-campaign';
-            break;
-
-        case 'view_email_campaign_history': $url = 'campaigns' . '#campaign-history'; break;
-        case 'view_email_campaign_profiles': $url = 'campaigns' . '#campaign-profiles'; break;
-
-        case 'add_email_campaign_profile':
-        case 'edit_email_campaign_profile':
-            $url = 'campaigns' . '#create-edit-campaign-profile';
-            break;
-
-        case 'import_email_campaign_profiles': $url = 'campaigns' . '#import-campaign-profiles'; break;
-
-        case 'view_orders': $url = 'commerce'; break;
-        case 'view_order': $url = 'commerce' . '#view-order'; break;
-        case 'view_order_reports': $url = 'commerce' . '#order-reports'; break;
-        case 'view_order_report': $url = 'commerce' . '#create-edit-order-report'; break;
-        case 'view_commissions': $url = 'commerce' . '#commissions'; break;
-        case 'edit_commission': $url = 'commerce' . '#edit-commission'; break;
-        case 'view_recurring_commission_profiles': $url = 'commerce' . '#recurring-commission-profiles'; break;
-        case 'edit_recurring_commission_profile': $url = 'commerce' . '#edit-recurring-commission-profile'; break;
-        case 'view_products': $url = 'commerce' . '#products'; break;
-
-        case 'add_product':
-        case 'edit_product':
-            $url = 'commerce' . '#create-edit-product';
-            break;
-
-        case 'import_products': $url = 'commerce' . '#import-products'; break;
-        case 'edit_featured_and_new_items': $url = 'commerce' . '#edit-featured-and-new-items'; break;
-        case 'edit_featured_and_new_items': $url = 'commerce' . '#edit-featured-and-new-items'; break;
-        case 'view_product_groups': $url = 'commerce' . '#product-groups'; break;
-
-        case 'add_product_group':
-        case 'edit_product_group':
-            $url = 'commerce' . '#create-edit-product-group';
-            break;
-
-        case 'duplicate_product_group': $url = 'commerce' . '#duplicate-product-group'; break;
-        case 'view_product_attributes': $url = 'commerce' . '#product-attributes'; break;
-
-        case 'add_product_attribute':
-        case 'edit_product_attribute':
-            $url = 'commerce' . '#create-edit-product-attribute';
-            break;
-
-        case 'view_gift_cards': $url = 'commerce' . '#gift-cards'; break;
-        case 'add_gift_card': $url = 'commerce' . '#create-gift-card'; break;
-        case 'edit_gift_card': $url = 'commerce' . '#edit-gift-card'; break;
-        case 'view_offers': $url = 'commerce-cont' . '#offers'; break;
-
-        case 'add_offer':
-        case 'edit_offer':
-            $url = 'commerce-cont' . '#create-edit-offer';
-            break;
-
-        case 'view_offer_rules': $url = 'commerce-cont' . '#offer-rules'; break;
-
-        case 'add_offer_rule':
-        case 'edit_offer_rule':
-            $url = 'commerce-cont' . '#create-edit-offer-rule';
-            break;
-
-        case 'view_offer_actions': $url = 'commerce-cont' . '#offer-actions'; break;
-
-        case 'add_offer_action':
-        case 'edit_offer_action':
-            $url = 'commerce-cont' . '#create-edit-offer-action';
-            break;
-
-        case 'view_key_codes': $url = 'commerce-cont' . '#key-codes'; break;
-
-        case 'add_key_code':
-        case 'edit_key_code':
-            $url = 'commerce-cont' . '#create-edit-key-code';
-            break;
-
-        case 'import_key_codes': $url = 'commerce-cont' . '#import-key-codes'; break;
-
-        case 'view_zones': $url = 'commerce-cont' . '#zones'; break;
-
-        case 'add_zone':
-        case 'edit_zone':
-            $url = 'commerce-cont' . '#create-edit-zone';
-            break;
-
-        case 'view_shipping_methods': $url = 'commerce-cont' . '#shipping-methods'; break;
-
-        case 'add_shipping_method':
-        case 'edit_shipping_method':
-            $url = 'commerce-cont' . '#create-edit-shipping-method';
-            break;
-
-        case 'view_arrival_dates': $url = 'commerce-cont' . '#arrival-dates'; break;
-
-        case 'add_arrival_date':
-        case 'edit_arrival_date':
-            $url = 'commerce-cont' . '#create-edit-arrival-date';
-            break;
-
-        case 'view_verified_shipping_addresses': $url = 'commerce-cont' . '#verified-shipping-addresses'; break;
-
-        case 'add_verified_shipping_address':
-        case 'edit_verified_shipping_address':
-            $url = 'commerce-cont' . '#create-edit-verified-shipping-address';
-            break;
-
-        case 'view_containers': $url = 'commerce-cont' . '#containers'; break;
-
-        case 'add_container':
-        case 'edit_container':
-            $url = 'commerce-cont' . '#create-edit-container';
-            break;
-
-        case 'view_shipping_report': $url = 'commerce-cont' . '#shipping-report'; break;
-        case 'view_ship_date_adjustments': $url = 'commerce-cont' . '#ship-date-adjustments'; break;
-
-        case 'add_ship_date_adjustment':
-        case 'edit_ship_date_adjustment':
-            $url = 'commerce-cont' . '#create-edit-ship-date-adjustment';
-            break;
-
-        case 'view_tax_zones': $url = 'commerce-cont' . '#tax-zones'; break;
-
-        case 'add_tax_zone':
-        case 'edit_tax_zone':
-            $url = 'commerce-cont' . '#create-edit-tax-zone';
-            break;
-
-        case 'view_referral_sources': $url = 'commerce-cont' . '#referral-sources'; break;
-
-        case 'add_referral_source':
-        case 'edit_referral_source':
-            $url = 'commerce-cont' . '#create-edit-referral-source';
-            break;
-
-        case 'view_currencies': $url = 'commerce-cont' . '#currencies'; break;
-
-        case 'add_currency':
-        case 'edit_currency':
-            $url = 'commerce-cont' . '#create-edit-currency';
-            break;
-
-        case 'view_countries': $url = 'commerce-cont' . '#countries'; break;
-
-        case 'add_country':
-        case 'edit_country':
-            $url = 'commerce-cont' . '#create-edit-country';
-            break;
-
-        case 'view_states': $url = 'commerce-cont' . '#states'; break;
-
-        case 'add_state':
-        case 'edit_state':
-            $url = 'commerce-cont' . '#create-edit-state';
-            break;
-
-        case 'view_ads': $url = 'ads'; break;
-
-        case 'add_ad':
-        case 'edit_ad':
-            $url = 'ads' . '#create-edit-ad';
-            break;
-
-        case 'page_designer': $url = 'design#page_designer'; break;
-
-        case 'view_styles': $url = 'design'; break;
-        case 'add_style': $url = 'design' . '#create-style'; break;
-
-        case 'add_system_style':
-        case 'edit_system_style':
-            $url = 'design' . '#create-edit-system-style';
-            break;
-
-        case 'view_system_style_source': $url = 'design' . '#view-system-style-source'; break;
-
-        case 'add_custom_style':
-        case 'edit_custom_style':
-            $url = 'design' . '#create-edit-custom-style';
-            break;
-
-        case 'view_menus': $url = 'design' . '#menus'; break;
-
-        case 'add_menu':
-        case 'edit_menu':
-            $url = 'design' . '#create-edit-menu';
-            break;
-
-        case 'view_menu_items': $url = 'design' . '#menu-items'; break;
-
-        case 'add_menu_item':
-        case 'edit_menu_item':
-            $url = 'design' . '#create-edit-menu-item';
-            break;
-
-        case 'view_regions':
-
-            switch($_GET['filter'] ?? '') {
-
-                case 'all_common_regions': $url = 'design' . '#common-regions'; break;
-                case 'all_designer_regions': $url = 'design' . '#designer-regions'; break;
-                case 'all_ad_regions': $url = 'design' . '#ad-regions'; break;
-                case 'all_dynamic_regions': $url = 'design' . '#dynamic-regions'; break;
-                case 'all_login_regions': $url = 'design' . '#login-regions'; break;
-
-                default: $url = 'design' . '#common-regions'; break;
-            }
-
-            break;
-
-        case 'add_common_region':
-        case 'edit_common_region':
-            $url = 'design' . '#create-edit-common-region';
-            break;
-
-        case 'add_designer_region':
-        case 'edit_designer_region':
-            $url = 'design' . '#create-edit-designer-region';
-            break;
-
-        case 'add_ad_region':
-        case 'edit_ad_region':
-            $url = 'design' . '#create-edit-ad-region';
-            break;
-
-        case 'add_dynamic_region':
-        case 'edit_dynamic_region':
-            $url = 'design' . '#create-edit-dynamic-region';
-            break;
-
-        case 'add_login_region':
-        case 'edit_login_region':
-            $url = 'design' . '#create-edit-login-region';
-            break;
-
-        case 'view_themes': $url = 'design' . '#themes'; break;
-        case 'add_theme_file': $url = 'design' . '#add-theme-file'; break;
-        case 'edit_theme_file': $url = 'design' . '#edit-theme-file'; break;
-        case 'edit_theme_css': $url = 'design' . '#edit-theme-css'; break;
-        case 'theme_designer': $url = 'design' . '#theme-designer'; break;
-        case 'view_design_files': $url = 'design' . '#design-files'; break;
-        case 'add_design_file': $url = 'design' . '#upload-design-files'; break;
-        case 'edit_design_file': $url = 'design' . '#edit-design-file'; break;
-        case 'edit_javascript': $url = 'design' . '#edit-javascript'; break;
-        case 'import_design': $url = 'design' . '#import-my-site'; break;
-        case 'import_zip': $url = 'design' . '#import-zip-file'; break;
-
+    // A topic is a page name and an anchor and nothing else, which is also
+    // what keeps it out of the way of the href and the script it lands in.
+    if (($topic === '') || !preg_match('/^[a-z0-9_-]+(#[a-z0-9_-]+)?$/', $topic)) {
+        $topic = 'introduction';
     }
-    return 'https://1drv.ms/b/s!AtFjifE5cgNcgqsMUui6rjx8v6_q7A?e=DrbNvb';
-    //if ($url) {
-    //    return 'https://www.kodpen.com/docs/' . $languageinfo . '/' . $url;
-    //} else {
-    //    return 'https://www.kodpen.com/docs/';
-    //}
 
+    return 'https://pinegrap.com/' . $prefix . $topic;
 }

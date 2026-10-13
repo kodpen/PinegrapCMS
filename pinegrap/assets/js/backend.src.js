@@ -160,18 +160,26 @@ $(document).ready(function () {
     // existed in the shell. The shortcut works through the handler further
     // down this file, and through the one in frontend.src.js on the front end.
 
-    // If there is a help URL, then set help button so it loads help popup when clicked.
-    if (typeof help_url !== 'undefined' && help_url) {
-        $('#help_link, .green_help_button, .white_help_button').click(function () {
-            window.open(help_url, 'help', 'location=1, status=1, scrollbars=1, resizable=1, directories=1, toolbar=1, titlebar=1').focus();
-            return false;
-        });
+    // F1 opens the documentation of what is on screen, in a new tab. While the
+    // settings dialog is open that is the category in it, not the screen
+    // underneath. The help controls are plain links; this only follows one,
+    // so a private-labelled site, which prints none, gets nothing here either.
+    $(document).on('keydown', function (e) {
+        if ((e.key !== 'F1') || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
+            return;
+        }
 
-        // Otherwise, there is not a help URL, so hide help button.  This should only happen if site
-        // is private labeled.
-    } else {
-        $('#help_link, .green_help_button, .white_help_button').hide();
-    }
+        var link = $('#pg_settings_modal.show #pg_settings_modal_help:not(.d-none)').get(0)
+            || document.getElementById('help_button')
+            || $('#help_link a').get(0);
+
+        if (!link || !link.href) {
+            return;
+        }
+
+        e.preventDefault();
+        window.open(link.href, '_blank', 'noopener');
+    });
     $('.software_warning.alert-dismissible,.software_notice.alert-dismissible,.software_error.alert-dismissible').each(function () {
         $(this).addClass('fade');
         $(this).find('button.btn-close').attr('style', '');
@@ -1438,18 +1446,6 @@ $(document).ready(function () {
 
 
 
-    // If there is a help URL, then set help button so it loads help popup when clicked.
-    if (help_url) {
-        $('#help_link').click(function () {
-            window.open(help_url, 'help', 'location=1, status=1, scrollbars=1, resizable=1, directories=1, toolbar=1, titlebar=1').focus();
-            return false;
-        });
-
-        // Otherwise, there is not a help URL, so hide help button.  This should only happen if site
-        // is private labeled.
-    } else {
-        $('#help_link').hide();
-    }
 
 
     $("#backup").click(function () {
@@ -9311,6 +9307,7 @@ var pgSettingsModal = (function () {
     var form = null;            // the pane's form, which is also its scroller
     var endpoint = '';
     var anchors = {};
+    var helps = {};             // category => its section of the documentation
 
     var pane = '';              // the category on screen
     var dirty = false;
@@ -9363,6 +9360,12 @@ var pgSettingsModal = (function () {
             anchors = JSON.parse(el.getAttribute('data-pganchors') || '{}');
         } catch (error) {
             anchors = {};
+        }
+
+        try {
+            helps = JSON.parse(el.getAttribute('data-pghelp') || '{}');
+        } catch (error) {
+            helps = {};
         }
 
         modal = new bootstrap.Modal(el);
@@ -10221,6 +10224,19 @@ window.pgReleaseEditors = function (scope) {
 
         byId('pg_settings_modal_title').textContent = response.title || '';
         byId('pg_settings_modal_desc').textContent = response.description || '';
+
+        // The help in the header follows the category: each one is a section
+        // of the Site Settings page of the documentation.
+        var help = byId('pg_settings_modal_help');
+
+        if (help) {
+            if (helps[key]) {
+                help.href = helps[key];
+                help.classList.remove('d-none');
+            } else {
+                help.classList.add('d-none');
+            }
+        }
         // innerHTML: the helper returns markup -- a <time> element carrying the
         // exact moment as its title, and the operator's name, which it escapes.
         byId('pg_settings_modal_meta').innerHTML = response.meta || '';

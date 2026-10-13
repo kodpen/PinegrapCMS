@@ -1655,9 +1655,9 @@ $widgets = array(
         'slug'   => 'form',
         'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
         'tree'   => $widget_root(array(
-            $field('hp-post-title', lang('Title'), $input('hp-post-title', 'text', 'title', 'off', true, array(array('name' => 'maxlength', 'value' => '150')))),
-            $field('hp-post-summary', lang('Summary'), $textarea('hp-post-summary', 'summary', 3)),
-            $field('hp-post-cover', lang('Cover Image'), $file('hp-post-cover', 'cover_image', 'public')),
+            $field('hp-post-title', lang('Title'), pg_cf_with_role($input('hp-post-title', 'text', 'title', 'off', true, array(array('name' => 'maxlength', 'value' => '150'))), 'title')),
+            $field('hp-post-summary', lang('Summary'), pg_cf_with_role($textarea('hp-post-summary', 'summary', 3), 'description')),
+            $field('hp-post-cover', lang('Cover Image'), pg_cf_with_role($file('hp-post-cover', 'cover_image', 'public'), 'media')),
             $field('hp-post-content', lang('Content'), $textarea('hp-post-content', 'content', 14)),
             $submit(lang('Publish'), lang('Send')),
             $loop(array()),

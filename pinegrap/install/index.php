@@ -4942,6 +4942,16 @@ else {
 
 		if (($liveform->get_field_value('design_template') != '') && ($liveform->get_field_value('design_template') != 'standard')) {
 
+			// The templates are read the way the design step offered them: both starter sites
+			// ship with the shop switched on, so a template made for the shop (Online Store,
+			// Boutique, Bookshop) is found here too. Without this the step offered them and
+			// the installation then stopped with "The template could not be found".
+			if (!defined('ECOMMERCE')) {
+
+				define('ECOMMERCE', true);
+
+			}
+
 			$install_design_template_row = pg_design_template($liveform->get_field_value('design_template'));
 
 			if (get_starter_site_language($liveform->get_field_value('install_from_folder')) == '') {

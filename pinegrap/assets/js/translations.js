@@ -343,6 +343,28 @@
         }, Promise.resolve(false));
     }
 
+    // Whether the model writes the target language: false when no
+    // availability() answer above allowed it. The model writes a handful of
+    // languages, and Turkish is not one of them; such a language is
+    // translated with the Translator API instead (the click handler), and the
+    // note says so as soon as it is known.
+    var modelWrites = null;
+
+    modelPlanned.then(function (found) {
+        modelWrites = found;
+
+        if (!found && (config.engine === 'chrome_ai') && modelSupported() && translatorSupported()) {
+            var note = document.querySelector('.pg-tr-chrome-note');
+
+            if (note) {
+                var line = document.createElement('div');
+                line.className = 'small mt-2 fw-semibold';
+                line.textContent = text('model_fallback', config.language);
+                note.appendChild(line);
+            }
+        }
+    });
+
     // Created in the click handler itself, like the translator: a model that
     // still has to be downloaded wants the gesture.
     function createModel() {
@@ -370,7 +392,9 @@
         return Promise.resolve(created).catch(function (error) {
             return modelPlanned.then(function (found) {
                 if (!found) {
-                    throw new Error(text('model_unavailable', config.language));
+                    var unwritable = new Error(text('model_unavailable', config.language));
+                    unwritable.unwritable = true;
+                    throw unwritable;
                 }
                 throw error;
             });
@@ -626,8 +650,21 @@
             updateButton.disabled = true;
             showProgress(text('scanning'), 0, 1);
 
-            var browserPromise = (config.engine === 'chrome') ? createTranslator().then(translatorItem)
-                : ((config.engine === 'chrome_ai') ? createModel().then(modelItem) : Promise.resolve(null));
+            // A language the model does not write goes to the Translator API,
+            // in a job of that engine (the server then packages its texts in
+            // runs). Decided before anything is awaited: the click is the
+            // gesture a download wants. Before the check has answered, a
+            // create() refused for the language tells the same.
+            var jobEngine = ((config.engine === 'chrome_ai') && (modelWrites === false) && modelSupported() && translatorSupported()) ? 'chrome' : config.engine;
+
+            var browserPromise = (jobEngine === 'chrome') ? createTranslator().then(translatorItem)
+                : ((jobEngine === 'chrome_ai') ? createModel().then(modelItem, function (error) {
+                    if (!error.unwritable || !translatorSupported()) {
+                        throw error;
+                    }
+                    jobEngine = 'chrome';
+                    return createTranslator().then(translatorItem);
+                }) : Promise.resolve(null));
 
             browserPromise.then(function (translateItem) {
                 // A model's download progress may have taken the line.
@@ -635,13 +672,30 @@
                     showProgress(text('scanning'), 0, 1);
                 }
 
+                if (jobEngine !== config.engine) {
+                    toast(text('model_fallback', config.language), 'info');
+                }
+
                 // A browser job an earlier visit left open is picked up where
                 // it stopped rather than opened again.
-                if (translateItem && config.open_job && (config.open_job.engine === config.engine) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
+                if (translateItem && config.open_job && (config.open_job.engine === jobEngine) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
                     return runBrowserJob(translateItem, { id: config.open_job.id, total: config.open_job.total, done: config.open_job.done, failed: config.open_job.failed });
                 }
 
-                return call({ action: 'update', scope: config.scope }).then(function (data) {
+                // The site is scanned in turns: a site of many pages takes
+                // longer than one request may. Each answer says where the
+                // next turn starts; the last one opens the job.
+                var scan = function (from) {
+                    return call({ action: 'update', scope: config.scope, engine: (jobEngine !== config.engine) ? jobEngine : '', from: from }).then(function (data) {
+                        if (data.extracting) {
+                            showProgress(text('scanning_progress', data.next, data.total), data.next, data.total);
+                            return scan(data.next);
+                        }
+                        return data;
+                    });
+                };
+
+                return scan(0).then(function (data) {
                     if (!data.pending) {
                         hideProgress();
                         toast(text('nothing_pending'), 'info');
@@ -730,23 +784,51 @@
     }
 
     // ── "approve all": every machine translation of the scope reviewed at
-    //    once, for a translation that is trusted as the engine gave it ──
+    //    once, for a translation that is trusted as the engine gave it. The
+    //    dialog names the count; the ones flagged suspicious go along only
+    //    when ticked, and are ticked already when nothing else is left ──
 
     var reviewAllButton = document.getElementById('pg_tr_review_all');
+    var reviewAllModal = document.getElementById('pg_tr_review_all_modal');
 
-    if (reviewAllButton) {
+    if (reviewAllButton && reviewAllModal && window.bootstrap) {
+        var reviewAllGo = reviewAllModal.querySelector('.pg-tr-review-all-go');
+        var reviewAllFlagged = reviewAllModal.querySelector('.pg-tr-review-all-flagged');
+        var reviewAllCount = reviewAllModal.querySelector('.pg-tr-review-all-count');
+        var reviewAllPlain = parseInt(reviewAllGo.getAttribute('data-plain'), 10) || 0;
+        var reviewAllFlaggedCount = parseInt(reviewAllGo.getAttribute('data-flagged'), 10) || 0;
+
+        function syncReviewAll() {
+            var count = reviewAllPlain + (reviewAllFlagged.checked ? reviewAllFlaggedCount : 0);
+            reviewAllCount.textContent = text('review_all_count', count);
+            reviewAllGo.disabled = (count === 0);
+        }
+
+        reviewAllFlagged.addEventListener('change', syncReviewAll);
+
+        reviewAllModal.addEventListener('show.bs.modal', function () {
+            reviewAllFlagged.checked = (reviewAllPlain === 0) && (reviewAllFlaggedCount > 0);
+            syncReviewAll();
+        });
+
         reviewAllButton.addEventListener('click', function () {
-            if (running || !window.confirm(text('confirm_review_all', reviewAllButton.getAttribute('data-count')))) {
+            if (!running) {
+                window.bootstrap.Modal.getOrCreateInstance(reviewAllModal).show();
+            }
+        });
+
+        reviewAllGo.addEventListener('click', function () {
+            if (running) {
                 return;
             }
 
-            reviewAllButton.disabled = true;
+            reviewAllGo.disabled = true;
 
-            call({ action: 'review_all', scope: config.scope }).then(function (data) {
+            call({ action: 'review_all', scope: config.scope, suspicious: reviewAllFlagged.checked ? 1 : 0 }).then(function (data) {
                 toast(data.message, 'success');
                 window.setTimeout(function () { window.location.reload(); }, 800);
             }).catch(function (error) {
-                reviewAllButton.disabled = false;
+                reviewAllGo.disabled = false;
                 toast(error.message, 'error');
             });
         });

@@ -19,6 +19,246 @@
 
 
 
+  2026.4.9
+  ==========================================================
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Bileşen panelinde bir öğenin üstüne gelince ne
+         olduğunu anlatan bir kart açılıyor: ne işe yaradığı,
+         yazdığı HTML ve İngilizce adı. Izgara öğelerinde ve
+         Bootstrap bileşenlerinde kartta küçük bir çizim de var.
+         Panel araması İngilizce ve HTML adlarını da tanıyor:
+         "link", "button", "a", "div" yazınca Bağlantı, Düğme ve
+         Div bulunuyor; Türkçe harfsiz yazılan "baglanti" da.
+
+  [YENİ] Katmanlar paneli paragraf ve başlıkların içindeki
+         bağlantıları da altlarında listeliyor. Tıklanınca
+         bağlantı Seçenekler panelinde açılıyor; yanındaki
+         düğmeyle metinden çıkarılıp ayrı bir öğe yapılıyor.
+
+  [DÜZELTME] Loop alanı bir div'in, bölümün ya da listenin
+         (ul, ol, tbody) içine sürüklenemiyordu; yalnız üstüne
+         ya da altına bırakılabiliyordu. Artık içine
+         bırakılıyor. Loop alanını kendi içindeki bir öğeye
+         sürüklemek de artık geçerli bir hedef gibi
+         vurgulanmıyor; önceden vurgulanıp hiçbir şey olmuyordu.
+
+  [DÜZELTME] Bir widget'ın içindeki öğenin üstüne ya da altına
+         bırakılan öğe kimi zaman o öğenin içine ya da
+         kapsayıcının sonuna düşüyordu. Artık işaretlenen yere
+         iniyor. Katmanlar panelinde widget içindeki bir öğenin
+         üstüne ya da altına paletten bırakmak da çalışıyor.
+
+  [DÜZELTME] Form liste görünümü widget'ının varsayılan düzeni
+         her kaydı ayrı bir satıra sarıyordu; kartlar yan yana
+         dizilemiyordu. Artık satır loop alanının dışında,
+         kayıtlar onun sütunları: varsayılan olarak geniş
+         ekranda üç, orta ekranda iki kart yan yana. Sütunun
+         genişliği değiştirilince bütün kayıtlar ona uyuyor.
+
+  [DÜZELTME] Adında tire olan bir form alanına (örneğin
+         publish-date) yapılan bağlama form liste ve form öğesi
+         görünümünde boş çıkıyordu: tire bağlamadan siliniyordu.
+         Artık alan adı olduğu gibi kullanılıyor; tiresiz
+         yazılmış eski bağlamalar da çalışıyor.
+
+  [HIZ] Kendi CSS'iyle kurulan (özel) tasarımlarda görsel
+         editör takılmıyor. Fareyi tuvalde gezdirmek, öğe
+         sürüklemek ve bırakmak artık beklemiyor: editörün
+         tasarım CSS'ine yaptığı uyarlama yalnız sayfada
+         kullanılan kurallara uygulanıyor. Bootstrap 6 gibi büyük
+         bir çatıyla kurulan bir sayfada tuvalin her stil hesabı
+         yaklaşık sekiz kat kısaldı; tuvalin görünüşü aynı.
+
+  [HIZ] Büyük sayfalarda tuval daha hafif. Her öğenin araç
+         çubuğu artık öğenin üstüne gelindiğinde ya da
+         seçildiğinde kuruluyor; tuvaldeki öğe sayısı üçte
+         birine indi. Katmanlar panelinden seçim ağacı baştan
+         çizmiyor, kaydedilmemiş sayfa işaretleri de arka planda
+         bütün sayfaları durmadan karşılaştırmıyor.
+
+  [HIZ] Kaydet ve Yayınla yalnız değişen sayfaları yazıyor.
+         Çok sayfalı bir tasarımda her kayıt bütün sayfaları
+         yeniden yazıp puanlıyordu; 30 küsur sayfada birkaç
+         saniye sürüyordu. Artık yalnız değişen sayfalar ve
+         değişen bir ortak bileşeni gösteren sayfalar yazılıyor.
+         Bir kayıtta çok sayıda sayfa yazıldığında (yeni bir
+         tasarımın ilk kaydı, içe aktarma) SEO yapı puanı iki
+         saniyeden sonrası için gece işine ya da Sayfalar
+         ekranındaki düğmeye bırakılıyor.
+
+  [YENİ] Paragraf ve başlıkların içindeki bağlantılar artık
+         düzenlenebiliyor. Seçenekler panelindeki "Metindeki
+         bağlantılar" bölümünde her bağlantının adresi, hedefi,
+         sınıfları ve rel'i değiştirilebiliyor; bir bağlantı
+         metinden çıkarılıp hemen arkasında ayrı bir öğe
+         yapılabiliyor ya da bağlantısı kaldırılıp sözcükleri
+         bırakılabiliyor. Yalnız bağlantılardan oluşan bir
+         paragraf (bir düğme sırası) "Öğelere ayır" ile tek
+         seferde ayrı bağlantı öğelerine dönüşüyor. HTML içe
+         aktarma da böyle bir paragrafı baştan öğe olarak alıyor.
+
+  [DÜZELTME] Açılır-kapanır (details/summary) bloklar, örneğin
+         SSS listeleri, tuvalde bozuk görünüyordu: her soru
+         yerine tarayıcının "Ayrıntılar" etiketi çıkıyor, soru
+         ancak açılınca cevabın içinde görünüyordu. Artık tuval
+         sayfadaki gibi; soruya tıklanınca açılıp kapanıyor,
+         açık kalan madde düzenleme sırasında kapanmıyor, ağaçta
+         seçilen bir cevabın maddesi kendiliğinden açılıyor.
+
+  [DÜZELTME] Bootstrap 6 ile kurulan tasarımlarda sığmayan
+         bağlantılarını "Diğer" menüsüne toplayan menü
+         (nav-overflow) tuvalde çalışmıyordu; dar genişlikte
+         bağlantılar üst üste biniyordu. Artık tuvalde de
+         sayfadaki gibi davranıyor.
+
+  KURULUM
+  --------------------------------------------------------
+
+  [DÜZELTME] Kurulum sihirbazı mağazalı tasarım şablonlarını
+         (Online Mağaza, Butik, Kitapçı) kuramıyordu: tasarım
+         adımında seçilebiliyorlardı, ama kurulum "Şablon
+         bulunamadı" diyerek başlamadan duruyordu. Artık
+         kuruluyorlar.
+
+  [DÜZELTME] Aynı MySQL sunucusunda iki site aynı anda
+         kurulunca biri "Başka bir yükseltme çalışıyor" diyerek
+         yarıda kalıyordu: paylaşımlı hostingde aynı anda kurulan
+         siteler birbirini bekliyordu. Kurulum artık yalnız kendi
+         veritabanını kilitler.
+
+  ÇOK DİLLİ SİTE
+  --------------------------------------------------------
+
+  [DÜZELTME] Tarayıcı yapay zekâsı (Gemini Nano) motoru Türkçe
+         gibi modelin yazmadığı bir dile çeviremiyordu. Böyle bir
+         dil artık tarayıcının çeviri modeliyle (Translator API)
+         çevriliyor; Çeviriler ekranı bunu motor notunda söylüyor.
+
+  [DÜZELTME] Çok sayfalı sitelerde "Çevirileri güncelle"
+         sunucunun zaman sınırına takılıp hata veriyordu.
+         Sayfaların ortak bileşenleri (üst bilgi, alt bilgi,
+         menüler) artık her sayfa için yeniden taranmıyor; tarama
+         uzun sürerse parça parça yapılıyor ve ilerlemesi
+         ekranda görünüyor.
+
+  [DÜZELTME] Bir sayfanın RSS akışı başka bir dilde açıldığında
+         (örneğin /en/magaza?rss=true) başlıklar ve açıklamalar
+         çevriliyordu, ama akıştaki bağlantılar kaynak dildeki
+         sayfalara gidiyordu. Bağlantılar artık o dildeki
+         sayfalara gidiyor; akış dilini de bildiriyor.
+
+  [DÜZELTME] Sayfaların başındaki hreflang bağlantıları, arama
+         motorlarına kapalı (noindex) dil sayfalarını da
+         gösteriyordu; sitemap.xml ise göstermiyordu. Artık ikisi
+         aynı kuralı izliyor: bir dildeki sayfa yalnız arama
+         motorlarına açıksa alternatif olarak gösteriliyor. Başka
+         dildeki hiçbir sürümü açık olmayan sayfa hreflang
+         yazmıyor.
+
+  [DÜZELTME] "Arama motorları indeksler: Yalnız gözden
+         geçirilmiş metinler" ayarlı dillerde, makine çevirisi
+         kaynak metnin aynısı olan tek bir metin (LinkedIn,
+         SEO, ERP gibi bir ad ya da kısaltma) bütün sayfayı
+         arama motorlarına kapatıyordu (noindex); sayfa
+         sitemap.xml'e de girmiyordu. Motorun olduğu gibi geri
+         verdiği böyle metinler artık sayfayı kapatmıyor:
+         sayfada gösterilen zaten sizin yazdığınız sözcükler.
+         Güncellemeden sonra çevrilmiş sayfalar ve site
+         haritası yeni kurala göre bir kez yeniden hazırlanır.
+
+  [DÜZELTME] Çeviriler ekranında geriye yalnız şüpheli işaretli
+         makine çevirileri kaldığında "Tümünü onayla" düğmesi
+         görünmüyordu. Düğme artık görünüyor ve bir pencere
+         açıyor: kaç çevirinin onaylanacağını yazıyor,
+         şüphelileri de onaylama seçeneği sunuyor (yalnız
+         şüpheliler kaldıysa işaretli gelir) ve şüphelileri
+         listeleyen bağlantıyı veriyor.
+
+  [ŞEMA] "Arama motorları indeksler: Yalnız gözden geçirilmiş
+         metinler" ayarlı dillerde sitemap.xml, noindex diyen bir
+         sayfayı listeleyebiliyordu: üst bilgi, menü ya da
+         katalogdaki makine çevirisini göremiyordu. Bir dildeki
+         sayfa artık her açılışında arama motorlarına verdiği
+         yanıtı saklıyor; sitemap.xml ve hreflang bu yanıtı
+         izliyor. Yükseltme, çevrilmiş sayfaların önbelleğini bir
+         kez boşaltır; sayfalar ilk ziyarette yeniden hazırlanır.
+
+  SEO VE PAYLAŞIM
+  --------------------------------------------------------
+
+  [YENİ] sitemap.xml tarayıcıda açıldığında artık okunur bir
+         liste olarak görünüyor: adresler numaralı, her birinin
+         son düzenleme tarihi, önceliği ve dil sürümleriyle;
+         altta adres sayısı. Çok dilli sitelerde dil
+         bağlantıları yüzünden tarayıcı dosyayı birbirine
+         karışmış düz metin gibi gösteriyordu. Arama motorları
+         dosyayı eskisi gibi okur.
+
+  [DÜZELTME] sitemap.xml ana sayfayı iki kez listeliyordu: site
+         kökünde ve sayfanın kendi adıyla (örneğin /index). Ana
+         sayfa artık yalnız kökte listeleniyor. Bir alt klasöre
+         kurulmuş sitede kök adresi de artık o klasörü gösteriyor.
+
+  [DÜZELTME] Görsel editörle kurulan sitelerde bütün ürün
+         sayfaları arama motorlarına tek bir sayfa gibi
+         görünüyordu: ürün sayfasının canonical adresi ürünün
+         kendi adresi değil, ürün detay sayfasının adresiydi
+         (örneğin /urun-detay). Kategori ve blog yazısı sayfaları
+         da aynı durumdaydı. Ürün, kategori ve yazı sayfaları
+         artık canonical olarak kendi adreslerini veriyor;
+         paylaşım adresi (og:url) ve dil alternatifleri de bu
+         adresi izliyor.
+
+  [DÜZELTME] Görsel editörle kurulan ürün ve kategori
+         sayfalarının başlığı ve açıklaması, sayfanın kendi
+         başlığı ve açıklamasıydı (her ürün "Ürün"). Artık ürünün
+         ya da kategorinin SEO başlığı ve açıklaması kullanılıyor;
+         bunlar boşsa ürünün adı ve açıklamasının başı. Ürün
+         sayfası paylaşıldığında ürünün görseli gösteriliyor.
+
+  [DÜZELTME] sitemap.xml, görsel editörle kurulan mağazanın
+         kategorilerini ve ürünlerini, blog listelerindeki
+         yazıları içermiyordu. Artık içeriyor. Ürün detay ya da
+         yazı sayfası "Site Haritasına Dahil Et" kapalıyken de
+         (şablonlarda böyle gelir) ürünler ve yazılar listeleniyor;
+         listeden çıkarmak için o sayfayı "Arama Motorlarına Kapat
+         (noindex)" yapın.
+
+  [DÜZELTME] Şablonla kurulan sitelerde blog yazısı sayfalarının
+         başlığı ve açıklaması yazıdan değil, yazı sayfasının
+         kendisinden geliyordu (her yazı "Günce Yazısı"); blog
+         listesi de RSS akışı sunmuyordu. Şablonların blog
+         formunda başlık, özet ve kapak görseli alanları artık
+         RSS rolleriyle (Başlık, Açıklama, Medya) geliyor. Güncelleme
+         bu rolleri şablondan kurulmuş mevcut blog formlarına da
+         veriyor; alanlarına kendiniz rol verdiyseniz formunuza
+         dokunulmuyor.
+
+  YÖNETİM PANELİ
+  --------------------------------------------------------
+
+  [YENİ] Her ekranın üst çubuğunda bir "?" düğmesi var: o
+         ekranın belgesini pinegrap.com'da yeni sekmede açıyor.
+         Kişiler ekranında kişiler bölümüne, bir faturada
+         ERP belgesinin fatura bölümüne gidiyor; listelerde
+         seçili süzgecin başlığına iniyor. Panel Türkçe ise
+         belge de Türkçe açılıyor. Aynı bağlantı hesap
+         menüsündeki Yardım satırında ve F1 tuşunda. Site
+         Ayarları penceresinde başlıktaki "?" açık olan bölümün
+         belgesini açıyor. Önceden her ekranın yardımı aynı PDF
+         dosyasına gidiyordu.
+
+  [DÜZELTME] Bildirimlerdeki "Tüm Bildirimleri Sil" çalışma
+         alanı bildirimlerini (anmalar, görev atamaları, kanal
+         davetleri) silmiyordu; bu bildirimler tek tek de
+         silinemiyordu. Artık siliniyor. Başka bir kişiye
+         gönderilmiş bildirimlere dokunulmuyor.
+
+
+
   2026.4.8
   ==========================================================
 

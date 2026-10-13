@@ -93,7 +93,9 @@ function pg_tr_render_text($text, $format = 'text', $kind = 'content')
 
     pg_tr_render_counter('hits');
 
-    if ($found['status'] !== 'reviewed') {
+    // A machine translation that is the source text itself shows the page's
+    // own words: no engine output is drawn, nothing to attribute.
+    if (($found['status'] !== 'reviewed') && !pg_tr_same_as_source($normalized, $found['text'])) {
         pg_tr_render_counter('machine');
 
         if ($found['engine'] === 'google') {
@@ -137,6 +139,50 @@ function pg_tr_render_props($props, $type)
 }
 
 /**
+ * The rules a page is drawn by in a language: what is translated, and what
+ * keeps the page from the search engines. A body drawn under other rules is
+ * drawn again (pg_tr_render_page_body()), and what the pages answered the
+ * search engines is dropped once when they change (pg_tr_render_rules_check()).
+ *
+ * @return string
+ */
+function pg_tr_render_rules()
+{
+    return '2026.4.9';
+}
+
+/**
+ * Drops the drawn bodies and the kept robots answers of every language once
+ * after the rules changed (an update), so the sitemap does not go on reading
+ * answers given under the old ones for pages nobody has visited since. A
+ * marker in data/temp says the rules in force were applied; when it cannot
+ * be written nothing is dropped, rather than dropping on every request - the
+ * bodies are still drawn again by their fingerprint.
+ */
+function pg_tr_render_rules_check()
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+
+    $marker = PG_FUNCTIONS_DIR . '/data/temp/translate_rules_' . pg_tr_render_rules();
+
+    if (is_file($marker)) {
+        return;
+    }
+
+    if (@file_put_contents($marker, (string) time()) === false) {
+        return;
+    }
+
+    pg_tr_invalidate_pages();
+}
+
+/**
  * The drawn body of a page in the current language. Served from
  * page_translations while the source body it was drawn from is unchanged;
  * otherwise drawn now and kept.
@@ -151,10 +197,11 @@ function pg_tr_render_page_body($page_id, $page_tree_code, $style_name, $additio
 {
     $language = pg_tr_language();
 
+    pg_tr_render_rules_check();
+
     // The source body, and the rules a body is drawn by: a body drawn before
-    // they changed (placeholder Latin left as written, the software's
-    // wording from the site's translations) is drawn again.
-    $fingerprint = sha1('2026.4.7' . "\n" . $page_tree_code);
+    // they changed is drawn again.
+    $fingerprint = sha1(pg_tr_render_rules() . "\n" . $page_tree_code);
 
     $cached = db_item("SELECT tree_code, fingerprint, coverage, reviewed, mt_google FROM page_translations
                        WHERE page_id = '$page_id' AND language = '" . e($language) . "' LIMIT 1");
@@ -197,28 +244,47 @@ function pg_tr_render_page_body($page_id, $page_tree_code, $style_name, $additio
    --------------------------------------------------------------------------- */
 
 /**
- * The page names of the site, lower-cased, for the link prefixer.
+ * The pages of the site by name, read once per request: the link prefixer
+ * asks whether a name is a page, the search engine helpers which page an
+ * address is.
  *
- * @return array name => true
+ * @return array names (lower-cased name => page id), home (the page id the
+ *               site root shows, 0 when no page is marked)
  */
-function pg_tr_page_names()
+function pg_tr_page_index()
 {
-    static $names = null;
+    static $index = null;
 
-    if ($names !== null) {
-        return $names;
+    if ($index !== null) {
+        return $index;
     }
 
-    $names = array();
-    $rows = db_items("SELECT page_name FROM page");
+    $index = array('names' => array(), 'home' => 0);
+    $rows = db_items("SELECT page_id, page_name, page_home FROM page");
 
     if (is_array($rows)) {
         foreach ($rows as $row) {
-            $names[mb_strtolower((string) $row['page_name'], 'UTF-8')] = true;
+            $index['names'][mb_strtolower((string) $row['page_name'], 'UTF-8')] = (int) $row['page_id'];
+
+            if (($index['home'] === 0) && ($row['page_home'] === 'yes')) {
+                $index['home'] = (int) $row['page_id'];
+            }
         }
     }
 
-    return $names;
+    return $index;
+}
+
+/**
+ * The page names of the site, lower-cased, for the link prefixer.
+ *
+ * @return array name => page id
+ */
+function pg_tr_page_names()
+{
+    $index = pg_tr_page_index();
+
+    return $index['names'];
 }
 
 /**
@@ -541,15 +607,17 @@ function pg_tr_render_finalize($content)
     }
 
     // The canonical address of the page as the pipeline wrote it: the source
-    // address, from which the alternates are derived.
+    // address, from which the alternates are derived. Unescaped here, so an
+    // address with a query string is not escaped twice on its way out.
     $canonical = '';
 
     if (preg_match('~<link\s+rel="canonical"\s+href="([^"]+)"~i', $content, $m)) {
-        $canonical = $m[1];
+        $canonical = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     $active = pg_tr_active();
     $current = $active ? pg_tr_language() : $source;
+    $noindex = false;
 
     if (!$active) {
         // The page in its own language: the stored body carries the fixed
@@ -652,7 +720,6 @@ function pg_tr_render_finalize($content)
         // output is not to be indexed until somebody has read it. Counted
         // again: the database texts swapped in above count as well.
         $counts = pg_tr_render_counter('get');
-        $noindex = false;
 
         if ($row['index_policy'] === 'none') {
             $noindex = true;
@@ -668,26 +735,59 @@ function pg_tr_render_finalize($content)
                 $content = preg_replace('~</head>~i', '        <meta name="robots" content="noindex, follow">' . "\n" . '</head>', $content, 1);
             }
         }
+
+        // Under the reviewed policy the answer depends on everything drawn
+        // on the page - shared components, menus, the catalog - which
+        // sitemap.xml and the alternates on the other languages' pages
+        // cannot draw to find out. It is kept for them (pg_tr_indexable()).
+        if (($row['index_policy'] === 'reviewed') && ($canonical !== '')) {
+            pg_tr_page_verdict_keep($canonical, $current, !$noindex);
+        }
     }
 
-    // The alternates: the source, every enabled target, and x-default on the
-    // source. Only for an address that is a page.
+    // The alternates: the source and x-default on the source, and every
+    // enabled target whose address of the page the search engines may index
+    // - the rule sitemap.xml follows; for the language being drawn, the
+    // robots directive just written. Only for an address that is a page, and
+    // none at all when no other language may be indexed.
     if (($canonical !== '') && !preg_match('~<link\b[^>]*\shreflang=~i', $content)) {
         $links = '';
         $source_url = pg_tr_alternate_url($canonical, $source);
 
         if ($source_url !== '') {
-            $links .= '        <link rel="alternate" hreflang="' . h($source) . '" href="' . h($source_url) . '">' . "\n";
+            $versions = array();
 
             foreach ($targets as $code => $row) {
+                if ($active && ($code === $current)) {
+                    // Under the reviewed policy an address below a page (a
+                    // catalog item) is offered in no language, as in
+                    // pg_tr_indexable(), so the set stays the same on every
+                    // page that names it.
+                    $indexable = !$noindex && (($row['index_policy'] !== 'reviewed') || (pg_tr_page_id_of_url($canonical) > 0));
+                } else {
+                    $indexable = pg_tr_indexable($row, $canonical, true);
+                }
+
+                if (!$indexable) {
+                    continue;
+                }
+
                 $url = pg_tr_alternate_url($canonical, $code);
 
                 if ($url !== '') {
-                    $links .= '        <link rel="alternate" hreflang="' . h($code) . '" href="' . h($url) . '">' . "\n";
+                    $versions[$code] = $url;
                 }
             }
 
-            $links .= '        <link rel="alternate" hreflang="x-default" href="' . h($source_url) . '">' . "\n";
+            if ($versions) {
+                $links .= '        <link rel="alternate" hreflang="' . h($source) . '" href="' . h($source_url) . '">' . "\n";
+
+                foreach ($versions as $code => $url) {
+                    $links .= '        <link rel="alternate" hreflang="' . h($code) . '" href="' . h($url) . '">' . "\n";
+                }
+
+                $links .= '        <link rel="alternate" hreflang="x-default" href="' . h($source_url) . '">' . "\n";
+            }
         }
 
         if ($links !== '') {
@@ -695,7 +795,81 @@ function pg_tr_render_finalize($content)
         }
     }
 
+    // A feed of the page (?rss=true) comes through here as well: it says its
+    // language, and in a target language its addresses lead to the pages in
+    // that language. Anything else passes unchanged.
+    $feed_prefix = $active ? pg_tr_prefix($current) : '';
+
+    $content = pg_tr_rss_localize($content, $current, $active ? function ($value) use ($feed_prefix) {
+        return pg_tr_rewrite_url($value, $feed_prefix, true);
+    } : null);
+
     return $content;
+}
+
+/**
+ * A feed (RSS 2.0) in a language: the channel names the language with
+ * <language>, unless it already does, and given a rewrite the addresses of
+ * the channel and of its items - <link> and a permalink <guid> - are passed
+ * through it. An enclosure is a file and keeps its address. Content that is
+ * not an RSS document comes back unchanged.
+ *
+ * @param string        $content
+ * @param string        $language language code
+ * @param callable|null $rewrite  takes an escaped address, returns one
+ * @return string
+ */
+function pg_tr_rss_localize($content, $language, $rewrite = null)
+{
+    $content = (string) $content;
+
+    if (!preg_match('~^\s*(?:<\?xml\b[^>]*\?>\s*)?<rss\b~i', $content)) {
+        return $content;
+    }
+
+    if ($rewrite !== null) {
+        $content = preg_replace_callback('~(<link>)([^<]*)(</link>)~i', function ($m) use ($rewrite) {
+            return $m[1] . call_user_func($rewrite, $m[2]) . $m[3];
+        }, $content);
+
+        // A guid is an address unless it says otherwise: isPermaLink
+        // defaults to true.
+        $content = preg_replace_callback('~(<guid\b([^>]*)>)([^<]*)(</guid>)~i', function ($m) use ($rewrite) {
+            if (preg_match('~\bisPermaLink\s*=\s*("|\')false\1~i', $m[2])) {
+                return $m[0];
+            }
+
+            return $m[1] . call_user_func($rewrite, $m[3]) . $m[4];
+        }, $content);
+    }
+
+    $language = trim((string) $language);
+
+    if (($language === '') || !preg_match('~<channel\b[^>]*>~i', $content, $open, PREG_OFFSET_CAPTURE)) {
+        return $content;
+    }
+
+    // The channel's own elements are the ones before its first item.
+    $start = $open[0][1] + strlen($open[0][0]);
+    $first_item = stripos($content, '<item', $start);
+    $head = ($first_item === false) ? substr($content, $start) : substr($content, $start, $first_item - $start);
+
+    if (stripos($head, '<language>') !== false) {
+        return $content;
+    }
+
+    $element = '<language>' . h($language) . '</language>';
+    $description = stripos($head, '</description>');
+
+    if ($description === false) {
+        return substr($content, 0, $start) . $element . substr($content, $start);
+    }
+
+    $eol = (strpos($content, "\r\n") !== false) ? "\r\n" : "\n";
+    $indent = preg_match('~([ \t]*)<description>~i', $head, $im) ? $im[1] : '';
+    $at = $start + $description + strlen('</description>');
+
+    return substr($content, 0, $at) . $eol . $indent . $element . substr($content, $at);
 }
 
 /**
