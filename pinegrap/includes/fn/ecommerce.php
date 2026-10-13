@@ -8000,3 +8000,113 @@ function pg_variant_price_rules_store($group_id, $rules, $base_cents)
         SET variant_price_rules = '" . e(encode_json($rules)) . "'
         WHERE id = '$group_id'");
 }
+
+
+/**
+ * The image cell of a product row in a panel list.
+ *
+ * The thumbnail opens the product's pictures full size in the panel's image
+ * viewer (assets/js/pg_lightbox.js, loaded by _pg_lightbox_assets_once()), so
+ * an operator can tell similar products apart without opening each one. The
+ * viewer builds a gallery from every element that shares a gallery id: the
+ * thumbnail is the cover, and the further pictures sit in the same cell as
+ * empty hidden elements, in the order the product screen lists them.
+ *
+ * The thumbnail is a button rather than a clickable picture so that it can be
+ * reached with the keyboard. "no-submit" keeps the panel's button handler in
+ * backend.js, which swaps a button's label for a loading text, away from it.
+ *
+ * @param string $key               unique on the screen, e.g. 'product-12'
+ * @param string $image_name        the cover (products.image_name), as stored
+ * @param string $name              with the short description below, the
+ * @param string $short_description caption under the picture in the viewer
+ * @param array  $more_images       further file names, see pg_product_more_images()
+ * @return string a <td>
+ */
+function pg_product_image_cell($key, $image_name, $name, $short_description = '', $more_images = array())
+{
+    $image_name = trim((string) $image_name);
+
+    $caption = trim((string) $name);
+    $short_description = trim((string) $short_description);
+
+    if ($short_description !== '') {
+        $caption .= (($caption !== '') ? ' - ' : '') . $short_description;
+    }
+
+    if ($image_name === '') {
+        return '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string' => 'No Image')) . '</text></svg></td>';
+    }
+
+    $gallery = 'pg-thumb-' . $key;
+
+    $output =
+        '<td class="align-middle text-start">'
+        . '<button type="button" class="btn p-0 border-0 no-submit" style="cursor: zoom-in;"'
+        . ' data-pg-lb-gallery="' . h($gallery) . '" data-pg-lb-index="0"'
+        . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
+        . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
+        . ' aria-label="' . h(lang('View images')) . '">'
+        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($image_name)) . '" />'
+        . '</button>';
+
+    $index = 1;
+
+    foreach ((array) $more_images as $more_image) {
+        $more_image = trim((string) $more_image);
+
+        if (($more_image === '') || ($more_image === $image_name)) {
+            continue;
+        }
+
+        $output .=
+            '<span hidden data-pg-lb-gallery="' . h($gallery) . '" data-pg-lb-index="' . $index . '"'
+            . ' data-pg-lb-src="' . h(PATH . encode_url_path($more_image)) . '"'
+            . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"></span>';
+
+        $index++;
+    }
+
+    return $output . '</td>';
+}
+
+
+/**
+ * The pictures of the given products beyond the cover, for
+ * pg_product_image_cell().
+ *
+ * One query for a whole list. Unordered, the same as the product screen reads
+ * them: products_images_xref has no order column, and rows come back in the
+ * order they were written.
+ *
+ * @param array $product_ids
+ * @return array product id => list of file names
+ */
+function pg_product_more_images($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        $product_id = (int) $product_id;
+
+        if ($product_id > 0) {
+            $ids[$product_id] = $product_id;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $images = array();
+
+    foreach (db_items(
+        "SELECT product, file_name
+        FROM products_images_xref
+        WHERE product IN (" . implode(',', $ids) . ") AND file_name != ''") as $row) {
+
+        $images[(int) $row['product']][] = $row['file_name'];
+    }
+
+    return $images;
+}

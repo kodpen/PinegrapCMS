@@ -202,6 +202,9 @@ if (!$_POST) {
     // sort the items by sort order and then by name
     array_multisort($item_sort_orders, $item_names, $items);
 
+    // The pictures behind each product's cover, for the image viewer.
+    $more_images = $show_image ? pg_product_more_images($selected_products) : array();
+
     foreach ($items as $item) {
         // if this is a product
         if ($item['type'] == "product") {
@@ -230,11 +233,10 @@ if (!$_POST) {
         }
         $output_image_column = '';
         if ($show_image) {
-            if (!$item['image_name']) {
-                $output_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image') ) . '</text></svg></td>';
-            } else {
-                $output_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $item['image_name'] . '" /></td>';
-            }
+            $output_image_column = ($item['type'] == 'product')
+                ? pg_product_image_cell('product-' . (int) $item['id'], $item['image_name'], $item['name'], $item['short_description'],
+                    isset($more_images[(int) $item['id']]) ? $more_images[(int) $item['id']] : array())
+                : pg_product_image_cell('product-group-' . (int) $item['id'], $item['image_name'], $item['name'], $item['short_description']);
         }
        
         $output_rows .=
@@ -268,16 +270,15 @@ if (!$_POST) {
          LIMIT 20"
     );
 
+    $more_images = $show_image ? pg_product_more_images(array_column($initial_unselected, 'id')) : array();
+
     foreach ($initial_unselected as $urow) {
         $urow['price'] = $urow['price'] / 100;
         $ustatus_class = $urow['enabled'] == 1 ? 'text-success' : 'text-danger';
         $uoutput_image_column = '';
         if ($show_image) {
-            if (!$urow['image_name']) {
-                $uoutput_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image')) . '</text></svg></td>';
-            } else {
-                $uoutput_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . $urow['image_name'] . '" /></td>';
-            }
+            $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
+                isset($more_images[(int) $urow['id']]) ? $more_images[(int) $urow['id']] : array());
         }
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
@@ -850,6 +851,7 @@ if (!$_POST) {
         </div>
     ' .
         pg_pb_render_image_picker_assets() .
+        ($show_image ? _pg_lightbox_assets_once() : '') .
         '</main>' . output_footer();
         
         $liveform->remove_form();

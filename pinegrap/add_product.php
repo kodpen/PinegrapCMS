@@ -86,9 +86,14 @@ if ($_POST) {
     //
     // Group mode goes to the set's template: one form, copied to every variant.
     // Single mode goes to the product's own fields, exactly as before.
+    //
+    // Every notice below is queued for the screen the save lands on; queued for
+    // any other it would wait in the session and turn up on some later visit.
     if (!empty($result['form'])) {
 
         $liveform->remove_form();
+
+        $liveform_target = new liveform('view_fields');
 
         if ($result['mode'] === 'group') {
             log_activity(
@@ -98,12 +103,20 @@ if ($_POST) {
                     'suffix' => count($result['product_ids']) == 1 ? '' : 's')),
                 $_SESSION['sessionusername']);
 
+            $liveform_target->add_notice(
+                lang(array(
+                    'string' => '{var:1} variant product{suffix:1} were created.',
+                    'vars'   => array(count($result['product_ids'])),
+                    'suffix' => count($result['product_ids']) == 1 ? '' : 's')));
+
             go(PATH . SOFTWARE_DIRECTORY . '/view_fields.php?product_group_id=' . (int) $result['group_id']);
         }
 
         log_activity(
             lang(array('string' => 'product ({var:1}) was created', 'vars' => array($result['name']))),
             $_SESSION['sessionusername']);
+
+        $liveform_target->add_notice(lang(array('string' => 'product ({var:1}) was created', 'vars' => array($result['name']))));
 
         go(PATH . SOFTWARE_DIRECTORY . '/view_fields.php?product_id=' . (int) $result['product_ids'][0]);
     }
@@ -127,7 +140,7 @@ if ($_POST) {
     // check the variants together. Single mode lands on the product list, the
     // same place the previous screen ended.
     if ($result['mode'] === 'group') {
-        $liveform_target = new liveform('view_products');
+        $liveform_target = new liveform('edit_product_group');
         $liveform_target->add_notice(
             lang(array(
                 'string' => '{var:1} variant product{suffix:1} were created.',

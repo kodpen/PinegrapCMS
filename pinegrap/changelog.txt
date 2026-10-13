@@ -363,6 +363,23 @@
          kadar, Amerika saat dilimlerinde tarihler bir gün
          geri kayıyordu.
 
+  [YENİ] Ürün listelerinde görsele tıklayınca ürünün
+         bütün görselleri büyük açılıyor: kapak önce,
+         sonra diğerleri; yakınlaştırma, kaydırma ve
+         klavyeyle geçiş var. Ürünler, Ürün Grubu
+         (gruptaki ve eklenebilecek ürünler) ve Ürün
+         Çoğaltma listelerinde çalışıyor; ürünü açmadan
+         benzer ürünleri ayırt etmeye yarıyor.
+
+  [DÜZELTME] Ürün kaydedilince "ürün güncellendi"
+         bildirimi döndüğünüz ürün listesinde hemen
+         görünüyor. Önceden bildirim gösterilmiyor,
+         sonradan başka bir ürün açılınca beliriyordu.
+         Varyantlı ürün oluşturunca bildirim açılan
+         grup ekranında, ürün formu istenince alan
+         ekranında çıkıyor; silme bildirimi de yalnız
+         ürün listesine dönülünce gösteriliyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 

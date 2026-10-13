@@ -22807,5 +22807,6 @@
     "{var:1} (customer) approved": "{var:1} (müşteri) onayladı",
     "workspace approval request \"{var:1}\" was approved by {var:2} ({var:3}) from outside the team, through the link {var:4}…": "Çalışma Alanı onay isteği \"{var:1}\", ekip dışından {var:2} ({var:3}) tarafından {var:4}… bağlantısıyla onaylandı",
     "workspace approval request \"{var:1}\" was rejected by {var:2} ({var:3}) from outside the team, through the link {var:4}…": "Çalışma Alanı onay isteği \"{var:1}\", ekip dışından {var:2} ({var:3}) tarafından {var:4}… bağlantısıyla reddedildi",
-    "Left empty, the link works for {var:1} days. The customer gets no reminder.": "Boş bırakılırsa bağlantı {var:1} gün geçerli olur. Müşteriye hatırlatma gönderilmez."
+    "Left empty, the link works for {var:1} days. The customer gets no reminder.": "Boş bırakılırsa bağlantı {var:1} gün geçerli olur. Müşteriye hatırlatma gönderilmez.",
+    "View images": "Görselleri aç"
 }
