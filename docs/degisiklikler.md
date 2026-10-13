@@ -84,6 +84,28 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Bağlı hesaplar: Dropbox'a hazırlık (2026-10-13)
+
+**Neden.** Buluta yedek senaryosu (`docs/_plan_tersine_oauth.md` §4.4)
+Dropbox'u getiriyor; Dropbox ortak altyapıda iki küçük boşluğa çarpıyordu.
+Altyapı ayrı thread'lerin ortak dosyası olduğu için bu ek kendi küçük
+PR'ında.
+
+**Ne değişti.** Sağlayıcı dosyası iki yeni bayrak alabilir:
+`'nonce' => false` (kimlik belirtecine nonce taşımayan sağlayıcı; nonce ne
+gönderilir ne beklenir, belirteç yine doğrudan token ucundan, PKCE
+doğrulayıcısı ve istemci sırrıyla gelir) ve `'revoke_auth' => 'bearer'`
+(Dropbox: iptal, bağlantının erişim belirteciyle ve JSON `null` gövdeyle
+yapılır, refresh token'ı da sonlandırır; öteki sağlayıcılar eskisi gibi
+form gövdesinde refresh token gönderir). Google Drive'ın sürdürülebilir
+yüklemesinin istediği cevap başlıkları (`api_http_request()`
+`'response_headers'`) #297 ile aynı biçimde geldiği için bu PR'dan çıktı.
+
+**Bilerek yapılmayan.** Davranışı değişen mevcut sağlayıcı yok; Google ve
+Microsoft dosyalarına dokunulmadı.
+
+---
+
 ## 2026.4.10 — Microsoft ile Giriş ve Apple ile Giriş (2026-10-13)
 
 **Neden.** Tersine OAuth planının (`docs/_plan_tersine_oauth.md`) dördüncü
