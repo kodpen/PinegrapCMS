@@ -237,6 +237,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Confirm' => lang('Confirm'),
         'OK' => lang('OK'),
         'Sort' => lang('Sort'),
+        'Sort (Shift+click adds a level)' => lang('Sort (Shift+click adds a level)'),
         'Ascending' => lang('Ascending'),
         'Descending' => lang('Descending'),
     );
@@ -748,52 +749,343 @@ function pg_period_nav($url, $range, $periods, $range_html, $class = '')
  * is the default column and ascending otherwise. A link that still carries a
  * heading instead of a code is matched against the labels.
  *
+ * A list can also be sorted by several columns at once, each one ordering
+ * the rows the one before it leaves equal. The address then names the
+ * levels in order as code:direction pairs, e.g.
+ * sort=inventory_quantity:desc,price:asc (pg_list_sort_value() writes it).
+ * Every level goes through the same check as a single sort, a column named
+ * twice counts once, and when no level is left the default applies. The
+ * first level is kept in the session the way a single sort always was; the
+ * ones after it are kept under 'then', only when there are any.
+ *
  * @param string $screen  the list's session key, e.g. 'view_products'
  * @param array  $columns code => heading of the columns this view sorts by
  * @param array  $default array('sort' => code, 'order' => 'asc'|'desc')
- * @return array array('sort' => code, 'order' => 'asc'|'desc',
+ * @return array array('sort' => code, 'order' => 'asc'|'desc' (the first
+ *               level), 'sorts' => every level in order, each
+ *               array('sort' => code, 'order' => 'asc'|'desc'),
  *               'screen' => page number, 1 or more)
  */
 function pg_list_state($screen, $columns, $default)
 {
     $state = $_SESSION['software']['list_state'][$screen] ?? array();
+    $levels = array(array('sort' => (string) ($state['sort'] ?? ''), 'order' => (string) ($state['order'] ?? '')));
+
+    if (isset($state['then']) && is_array($state['then'])) {
+        $levels = array_merge($levels, $state['then']);
+    }
 
     if (isset($_REQUEST['sort'])) {
-        $sort = is_scalar($_REQUEST['sort']) ? (string) $_REQUEST['sort'] : '';
-
-        if (!array_key_exists($sort, $columns)) {
-            $code = array_search($sort, $columns, true);
-
-            if ($code !== false) {
-                $sort = (string) $code;
-            }
-        }
-
-        $state['sort'] = $sort;
-        $state['order'] = '';
+        $levels = pg_list_sort_parse(is_scalar($_REQUEST['sort']) ? (string) $_REQUEST['sort'] : '', $columns);
     }
 
+    // The direction alone, from an older link: it turns the first level.
     if (isset($_REQUEST['order'])) {
-        $state['order'] = (is_scalar($_REQUEST['order']) && (strtolower((string) $_REQUEST['order']) === 'desc')) ? 'desc' : 'asc';
+        $levels[0]['order'] = (is_scalar($_REQUEST['order']) && (strtolower((string) $_REQUEST['order']) === 'desc')) ? 'desc' : 'asc';
     }
 
-    $sort = (string) ($state['sort'] ?? '');
-    $order = (string) ($state['order'] ?? '');
+    $levels = pg_list_sort_clean($levels, $columns, $default);
+    $kept = $levels[0];
 
-    if (($sort === '') || !array_key_exists($sort, $columns)) {
-        $sort = $default['sort'];
-        $order = $default['order'];
-    } elseif (($order !== 'asc') && ($order !== 'desc')) {
-        $order = ($sort === $default['sort']) ? $default['order'] : 'asc';
+    if (count($levels) > 1) {
+        $kept['then'] = array_slice($levels, 1);
     }
 
-    $_SESSION['software']['list_state'][$screen] = array('sort' => $sort, 'order' => $order);
+    $_SESSION['software']['list_state'][$screen] = $kept;
 
     // A positive whole number, or the first page: the value reaches LIMIT.
     $page = $_REQUEST['screen'] ?? '';
     $page = (is_scalar($page) && is_numeric($page) && ($page > 0) && ($page == round($page))) ? (int) $page : 1;
 
-    return array('sort' => $sort, 'order' => $order, 'screen' => $page);
+    return array('sort' => $levels[0]['sort'], 'order' => $levels[0]['order'], 'sorts' => $levels, 'screen' => $page);
+}
+
+/**
+ * The sort levels a list's address asks for, not yet checked. A bare code,
+ * or a heading from an older link, is a single level with no direction;
+ * anything else is read as code:direction pairs separated by commas.
+ *
+ * @param string $value   the sort value from the address
+ * @param array  $columns code => heading of the columns the view sorts by
+ * @return array list of array('sort' => code, 'order' => direction or '')
+ */
+function pg_list_sort_parse($value, $columns)
+{
+    $value = (string) $value;
+
+    if (array_key_exists($value, $columns)) {
+        return array(array('sort' => $value, 'order' => ''));
+    }
+
+    $code = array_search($value, $columns, true);
+
+    if ($code !== false) {
+        return array(array('sort' => (string) $code, 'order' => ''));
+    }
+
+    $levels = array();
+
+    foreach (explode(',', $value) as $item) {
+        $parts = explode(':', trim($item), 2);
+        $levels[] = array('sort' => trim($parts[0]), 'order' => strtolower(trim($parts[1] ?? '')));
+    }
+
+    return $levels;
+}
+
+/**
+ * Sort levels reduced to what the view offers: unknown columns and repeats
+ * dropped, every direction asc or desc (a missing one starts the way
+ * pg_list_state() describes), and the default when nothing is left. Only
+ * what this returns may reach ORDER BY.
+ *
+ * @param array $levels  list of array('sort' => code, 'order' => direction)
+ * @param array $columns code => heading of the columns the view sorts by
+ * @param array $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @return array list of array('sort' => code, 'order' => 'asc'|'desc'), never empty
+ */
+function pg_list_sort_clean($levels, $columns, $default)
+{
+    $clean = array();
+
+    foreach ((array) $levels as $level) {
+        $sort = (is_array($level) && isset($level['sort']) && is_scalar($level['sort'])) ? (string) $level['sort'] : '';
+
+        if (($sort === '') || !array_key_exists($sort, $columns) || isset($clean[$sort])) {
+            continue;
+        }
+
+        $order = (isset($level['order']) && is_scalar($level['order'])) ? (string) $level['order'] : '';
+
+        if (($order !== 'asc') && ($order !== 'desc')) {
+            $order = ($sort === $default['sort']) ? $default['order'] : 'asc';
+        }
+
+        $clean[$sort] = array('sort' => $sort, 'order' => $order);
+    }
+
+    if (!$clean) {
+        return array(array('sort' => $default['sort'], 'order' => $default['order']));
+    }
+
+    return array_values($clean);
+}
+
+/**
+ * Sort levels as the address carries them: code:direction pairs in order,
+ * separated by commas, e.g. 'inventory_quantity:desc,price:asc'.
+ *
+ * @param array $levels list of array('sort' => code, 'order' => 'asc'|'desc')
+ * @return string
+ */
+function pg_list_sort_value($levels)
+{
+    $pairs = array();
+
+    foreach ($levels as $level) {
+        $pairs[] = rawurlencode((string) $level['sort']) . ':' . (($level['order'] === 'desc') ? 'desc' : 'asc');
+    }
+
+    return implode(',', $pairs);
+}
+
+/**
+ * The levels after a Shift+click on a column heading: a column not yet
+ * sorted by joins at the end, ascending; an ascending level turns
+ * descending; a descending one leaves the list, unless it is the only
+ * level, which turns ascending again.
+ *
+ * @param array  $levels list of array('sort' => code, 'order' => 'asc'|'desc')
+ * @param string $code   the column clicked
+ * @return array
+ */
+function pg_list_sort_toggle($levels, $code)
+{
+    $code = (string) $code;
+
+    foreach ($levels as $index => $level) {
+        if ((string) $level['sort'] !== $code) {
+            continue;
+        }
+
+        if ($level['order'] === 'asc') {
+            $levels[$index]['order'] = 'desc';
+        } elseif (count($levels) > 1) {
+            array_splice($levels, $index, 1);
+        } else {
+            $levels[$index]['order'] = 'asc';
+        }
+
+        return array_values($levels);
+    }
+
+    $levels[] = array('sort' => $code, 'order' => 'asc');
+
+    return $levels;
+}
+
+/**
+ * The ORDER BY list for sort levels. Each code is looked up in $map, which
+ * holds the SQL for every column the view sorts by; a code missing from it
+ * is skipped, so nothing from the address is ever written into the query.
+ *
+ * @param array $levels list of array('sort' => code, 'order' => 'asc'|'desc'),
+ *                      as pg_list_state() returns them
+ * @param array $map    code => column or expression to sort by
+ * @return string e.g. 'products.inventory_quantity desc, products.price asc'
+ */
+function pg_list_order_by($levels, $map)
+{
+    $parts = array();
+
+    foreach ($levels as $level) {
+        $code = (string) ($level['sort'] ?? '');
+
+        if (!isset($map[$code])) {
+            continue;
+        }
+
+        $parts[] = $map[$code] . ((($level['order'] ?? '') === 'desc') ? ' desc' : ' asc');
+    }
+
+    return implode(', ', $parts);
+}
+
+/**
+ * A sortable column heading on a list sorted by levels (get_column_heading()
+ * hands over to this when it is given the levels instead of one sort).
+ *
+ * A click sorts by this column alone, reversing it when it already leads.
+ * Shift+click keeps the other levels (pg_list_sort_toggle()); the browser
+ * follows data-pg-sort-add for it (backend.src.js). Once there is more than
+ * one level, a sorted column shows its number. The number and the arrow are
+ * icons, not text, so the heading's text stays the column's name wherever
+ * it is read (the column chooser lists it).
+ *
+ * @param string $label  the heading, not escaped
+ * @param string $code   the column's sort code
+ * @param array  $levels the levels the list is sorted by
+ * @param string $extras more of the query string, starting with '&', escaped
+ * @return string
+ */
+function pg_list_sort_heading($label, $code, $levels, $extras = '')
+{
+    $code = (string) $code;
+    $levels = array_values($levels);
+    $rank = -1;
+
+    foreach ($levels as $index => $level) {
+        if ((string) $level['sort'] === $code) {
+            $rank = $index;
+            break;
+        }
+    }
+
+    $order = ($rank >= 0) ? $levels[$rank]['order'] : '';
+    $next = (($rank === 0) && ($order === 'asc')) ? 'desc' : 'asc';
+    $base = h($_SERVER['PHP_SELF'] ?? '') . '?sort=';
+
+    if ($order === '') {
+        $icon = '<i class="bi bi-arrow-down-up opacity-50 ms-1" aria-hidden="true"></i>';
+        $title = lang('Sort (Shift+click adds a level)');
+    } else {
+        $icon = '<i class="bi bi-caret-' . (($order === 'asc') ? 'up' : 'down') . '-fill ms-1" aria-hidden="true"></i>';
+        $title = ($order === 'asc') ? lang('Ascending') : lang('Descending');
+    }
+
+    $number = ((count($levels) > 1) && ($rank >= 0) && ($rank < 9))
+        ? '<i class="bi bi-' . ($rank + 1) . '-circle-fill small ms-1" aria-hidden="true"></i>'
+        : '';
+
+    return '<a href="' . $base . h(pg_list_sort_value(array(array('sort' => $code, 'order' => $next)))) . $extras . '"'
+        . ' data-pg-sort-add="' . $base . h(pg_list_sort_value(pg_list_sort_toggle($levels, $code))) . $extras . '"'
+        . ' class="link-top-row btn btn-sm" title="' . h($title) . '">' . h($label) . $icon . $number . '</a>';
+}
+
+/**
+ * The toolbar's sort menu for a list sorted by levels: the levels in order,
+ * each with its direction to reverse and a way to drop it, a list to add
+ * the next level from, and a way back to the default. Everything in it is a
+ * plain link or a GET form, so it works by touch, by keyboard and without
+ * Shift+click.
+ *
+ * @param string $url     the list screen, e.g. 'view_products.php'
+ * @param array  $columns code => heading of the columns the view sorts by
+ * @param array  $levels  the levels the list is sorted by
+ * @param array  $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @return string
+ */
+function pg_list_sort_menu($url, $columns, $levels, $default)
+{
+    $link = function ($to) use ($url) {
+        return $url . '?sort=' . pg_list_sort_value($to);
+    };
+
+    $levels = array_values($levels);
+    $count = count($levels);
+    $used = array();
+    $rows = '';
+
+    foreach ($levels as $index => $level) {
+        $used[(string) $level['sort']] = true;
+        $ascending = ($level['order'] === 'asc');
+
+        $reversed = $levels;
+        $reversed[$index]['order'] = $ascending ? 'desc' : 'asc';
+
+        $removed = $levels;
+        array_splice($removed, $index, 1);
+
+        $rows .= '<li class="d-flex align-items-center gap-1 px-3 py-1">'
+            . '<span class="text-body-secondary small">' . ($index + 1) . '.</span>'
+            . '<span class="flex-grow-1 text-truncate">' . h((string) ($columns[$level['sort']] ?? $level['sort'])) . '</span>'
+            . '<a class="btn btn-sm btn-ghost text-nowrap" href="' . h($link($reversed)) . '" title="' . h(lang('Reverse the direction')) . '">'
+            . '<i class="bi bi-caret-' . ($ascending ? 'up' : 'down') . '-fill me-1" aria-hidden="true"></i>' . h($ascending ? lang('Ascending') : lang('Descending')) . '</a>'
+            . (($count > 1)
+                ? '<a class="btn btn-sm btn-ghost" href="' . h($link($removed)) . '" title="' . h(lang('Remove this sort level')) . '" aria-label="' . h(lang('Remove this sort level')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>'
+                : '')
+            . '</li>';
+    }
+
+    $options = '';
+
+    foreach ($columns as $code => $label) {
+        $code = (string) $code;
+
+        if (isset($used[$code])) {
+            continue;
+        }
+
+        $choices = array(
+            'asc'  => lang(array('string' => '{var:1}, ascending', 'vars' => array($label))),
+            'desc' => lang(array('string' => '{var:1}, descending', 'vars' => array($label))),
+        );
+
+        foreach ($choices as $order => $text) {
+            $options .= '<option value="' . h(pg_list_sort_value(array_merge($levels, array(array('sort' => $code, 'order' => $order))))) . '">' . h($text) . '</option>';
+        }
+    }
+
+    // An empty first choice keeps the form from sending an empty sort, which
+    // would put the list back to the default.
+    $form = ($options === '') ? '' : '<li><form method="get" action="' . h($url) . '" class="d-flex gap-1 px-3 py-2 disable_shortcut">'
+        . '<select name="sort" class="form-select form-select-sm" required aria-label="' . h(lang('Then sort by')) . '">'
+        . '<option value="" selected>' . h(lang('Then sort by')) . '</option>' . $options . '</select>'
+        . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Add')) . '</button>'
+        . '</form></li>';
+
+    $reset = (($count === 1) && ($levels[0]['sort'] === $default['sort']) && ($levels[0]['order'] === $default['order']))
+        ? ''
+        : '<li><hr class="dropdown-divider"></li>'
+            . '<li><a class="dropdown-item link-body-emphasis" href="' . h($link(array($default))) . '"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . h(lang('Reset the sort order')) . '</a></li>';
+
+    return '<div class="dropdown">'
+        . '<button type="button" class="btn btn-sm btn-ghost dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">'
+        . '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' . h(lang('Sort by'))
+        . (($count > 1) ? ' <span class="badge rounded-pill text-bg-secondary">' . $count . '</span>' : '')
+        . '</button>'
+        . '<ul class="dropdown-menu dropdown-menu-end" style="min-width: min(20rem, 90vw);">' . $rows . $form . $reset . '</ul>'
+        . '</div>';
 }
 
 
