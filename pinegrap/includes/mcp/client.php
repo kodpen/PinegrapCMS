@@ -784,13 +784,14 @@ function pg_mcp_client_tool_normalise($tool, $schema_json) {
 
 }
 
-// Calls a tool. Answers ok (the call was answered), is_error (the tool says
-// it failed), result, error.
+// Calls a tool. The arguments are an array or, to keep an empty object one,
+// what json_decode() gives without its second argument. Answers ok (the call
+// was answered), is_error (the tool says it failed), result, error.
 function pg_mcp_client_call_tool(&$conn, $name, $arguments) {
 
 	$answer = pg_mcp_client_request($conn, 'tools/call', array(
 		'name'      => (string)$name,
-		'arguments' => (object)(is_array($arguments) ? $arguments : array())
+		'arguments' => is_object($arguments) ? $arguments : (object)(is_array($arguments) ? $arguments : array())
 	));
 
 	if (!$answer['ok']) {

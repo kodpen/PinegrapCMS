@@ -896,7 +896,8 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
             <input type="hidden" name="ws_action" value="mcp_tools">
             <input type="hidden" name="mcp_id" value="' . (int) $server['id'] . '">
             <div class="d-flex align-items-center gap-2 mb-2">
-                <div class="small fw-semibold ws-grow">' . h(lang(array('string' => 'Tools ({var:1} of {var:2} turned on)', 'vars' => array(count($on), count($tools))))) . '</div>
+                <div class="small fw-semibold ws-grow">' . h(lang(array('string' => 'Tools ({var:1} of {var:2} turned on)', 'vars' => array(count($on), count($tools)))))
+                    . ((defined('WS_MCP_ASK_MAX_TOOLS') && (count($on) > WS_MCP_ASK_MAX_TOOLS)) ? '<span class="d-block fw-normal text-warning-emphasis">' . h(lang(array('string' => 'Pinegrap AI is offered the first {var:1} of them, in alphabetical order.', 'vars' => WS_MCP_ASK_MAX_TOOLS))) . '</span>' : '') . '</div>
                 ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '') . '
             </div>
             <div class="d-flex align-items-center gap-2 mb-2">
@@ -999,7 +1000,9 @@ function ws_mcp_settings_card($self_url, $viewer)
                 ' . ($admin ? '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</button>' : '') . '
             </div>
             <div class="card-body">
-                <p class="small text-body-secondary">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. Each tool stays off until you turn it on here; only tools that read can be turned on.')) . '</p>
+                <p class="small text-body-secondary">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. Each tool stays off until you turn it on here; only tools that read can be turned on.'))
+                    . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.')) . '</p>
+                ' . ((function_exists('ws_ai_ready') && !ws_ai_ready()) ? '<div class="alert alert-warning small py-2">' . h(lang('Pinegrap AI is not connected yet, so the aliases cannot be asked. Connect it on the Pinegrap AI card.')) . '</div>' : '') . '
                 ' . ($admin ? '<div class="collapse mb-3" id="ws-mcp-new">' . ws_mcp_settings_form($self_url, null, true) . '</div>' : '<div class="form-text mb-2">' . h(lang('Only an administrator can add MCP servers.')) . '</div>') . '
                 ' . $list . '
             </div>

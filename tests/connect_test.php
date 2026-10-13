@@ -30,7 +30,11 @@ function test_connect_providers_load_with_their_endpoints()
 		pg_assert_true($provider['label'] !== '', $key . ': label');
 		pg_assert_same(0, strpos($provider['authorize_url'], 'https://'), $key . ': authorize over https');
 		pg_assert_same(0, strpos($provider['token_url'], 'https://'), $key . ': token over https');
-		pg_assert_true(in_array('openid', $provider['identity_scopes'], true), $key . ': asks who the account is');
+		// A sign-in-only provider (Apple) is never connected, so it asks for
+		// what its sign-in needs instead (tests/signin_test.php).
+		if (!isset($provider['accounts']) || ($provider['accounts'] !== false)) {
+			pg_assert_true(in_array('openid', $provider['identity_scopes'], true), $key . ': asks who the account is');
+		}
 		pg_assert_true(!empty($provider['issuers']) || !empty($provider['issuer_pattern']), $key . ': knows its issuer');
 		pg_assert_true(is_array($provider['setup']) && $provider['setup'], $key . ': setup steps');
 	}

@@ -507,6 +507,17 @@
          yeniden okunabiliyor ve kaldırılabiliyor; her
          değişiklik etkinlik kaydına yazılıyor.
 
+  [YENİ] Kanalda @takma ad: Pinegrap AI'ın çağrılabildiği
+         bir kanalda @github gibi bir takma ada yazılan
+         soruyu Pinegrap AI o sunucunun açık araçlarıyla
+         yanıtlıyor; yanıtın altında hangi araçların
+         kullanıldığı yazıyor. Bu yanıta verilen cevap aynı
+         sunucuyla sürüyor. Pinegrap AI kanalın geri
+         kalanını okumuyor, yalnızca soruyu ve cevapladığı
+         mesajı. Sunucu kapalıysa ya da açık aracı yoksa
+         kanal bunu söylüyor. @ menüsü takma adları da
+         gösteriyor.
+
   [ŞEMA] MCP sunucuları ve araç çağrıları için iki yeni
          tablo oluşturulur; asistan isteklerine sunucu
          kolonu eklenir.
@@ -970,6 +981,44 @@
 
   [ŞEMA] Bağlı hesaplar için iki yeni tablo (sağlayıcı
          uygulamaları ve bağlı hesaplar) eklenir.
+
+  GİRİŞ VE ÜYELİK
+  --------------------------------------------------------
+
+  [YENİ] Microsoft ile Giriş ve Apple ile Giriş: Google ile
+         Giriş düğmesinin yanında, panel girişinde, mağaza
+         giriş, kayıt ve üyelik sayfalarında ve görsel
+         editörün giriş, kayıt ve üyelik widget'larında
+         görünüyor. İkisi de varsayılan kapalı; Ayarlar ›
+         Güvenlik'te açılıyor ve uygulama bilgileri
+         girilene kadar düğme gizli kalıyor. Microsoft
+         uygulaması Bağlı hesaplar ekranındaki uygulamanın
+         aynısı; Apple için Services ID, ekip kimliği,
+         anahtar kimliği ve .p8 anahtarı Güvenlik
+         ekranına giriliyor (anahtar şifreli saklanıyor).
+
+  [YENİ] Google'daki kurallar geçerli: aynı doğrulanmış
+         e-posta adresli hesap varsa ona bağlanıyor, yoksa
+         kayıt sayfasından gelen kişiye üye hesabı
+         açılıyor, üyelik sayfasında üye numarası
+         soruluyor, personel girişinde bilinmeyen hesap
+         reddediliyor. İki adımlı doğrulama ve cihaz
+         sınırı parolayla girişteki gibi soruluyor.
+         Microsoft iş ve okul hesaplarının adresi yalnız
+         dizin alan adını doğruluyorsa (xms_edov) kabul
+         ediliyor. Apple adı yalnız ilk girişte veriyor;
+         adresini gizleyen kişi Apple aktarma adresiyle
+         kaydoluyor.
+
+  [YENİ] Hesabım › Giriş ve cihazlar ile panelde kullanıcı
+         düzenleme ekranı Microsoft ve Apple bağlantısını
+         gösteriyor ve kesiyor. Hesaba başka giriş yolu
+         yoksa (parola ya da başka bir sağlayıcı)
+         bağlantı kesilemiyor.
+
+  [ŞEMA] Hesaplara bağlı Microsoft ve Apple kimlikleri
+         için yeni bir tablo ve ayarlar tablosuna bir
+         kolon eklenir.
 
   PANO
   --------------------------------------------------------

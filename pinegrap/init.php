@@ -424,6 +424,8 @@ define('REMEMBER_ME', $row['remember_me']);
 define('FORGOT_PASSWORD_LINK', $row['forgot_password_link']);
 define('OAUTH_GOOGLE_ENABLED', $row['oauth_google_enabled']);
 define('OAUTH_GOOGLE_CLIENT_ID', $row['oauth_google_client_id']);
+// Sign-in providers besides Google whose buttons are shown (10.74).
+define('SIGNIN_PROVIDERS', (string) ($row['signin_providers'] ?? ''));
 define('BANNED_EMAIL_ADDRESSES', (string) ($row['banned_email_addresses'] ?? ''));
 define('REMEMBER_ME_DEVICE_LIMIT_ENABLED', (int) ($row['remember_me_device_limit_enabled'] ?? 0));
 define('REMEMBER_ME_DEVICE_LIMIT', (int) ($row['remember_me_device_limit'] ?? 0));

@@ -166,6 +166,71 @@ fiyatıyla aynı tabanda tutulur, dönüştürme yok.
 
 ---
 
+## 2026.4.10 — Microsoft ile Giriş ve Apple ile Giriş (2026-10-13)
+
+**Neden.** Tersine OAuth planının (`docs/_plan_tersine_oauth.md`) dördüncü
+senaryosu, model A (her site kendi Microsoft ve Apple uygulamasını kaydeder).
+Google ile Giriş zaten vardı; iş ve okul hesapları Microsoft'ta, iPhone
+kullanıcılarının çoğu Apple'da. App Store kuralları (4.8) üçüncü taraf
+girişi sunan bir uygulamadan gizlilik odaklı bir seçenek de ister; Apple ile
+Giriş bunu karşılar.
+
+**Nasıl.** Bağlı hesaplar altyapısının (`includes/fn/connect.php`) sağlayıcı
+dosyaları ve uygulama deposu (`connect_apps`) kullanılır; ikinci bir
+belirteç deposu yok, çünkü giriş belirteç saklamaz: yalnız id_token okunur.
+Sağlayıcı dosyasındaki `signin` bloğu girişi tanımlar (sıra, kapsamlar,
+PKCE, kimliği oluşturan talepler, doğrulanmış sayılan kiracılar ve
+talepler, istemci sırrının türü). Apple yalnız giriş içindir
+(`'accounts' => false`, PR #293): Bağlı hesaplar ekranında görünmez,
+onunla hesap bağlanamaz. `includes/fn/signin.php` akışı yürütür, dönüş
+adresi `signin.php` (kök betik; `connect.php` oturum açmış kullanıcı
+istediği için ayrı). Durum, nonce ve PKCE oturumda (en çok beş bekleyen
+deneme, 15 dakika), RFC 9207 `iss`, id_token'da `iss`/`aud`/`exp`/`nonce`/
+`sub` denetimi (`pg_connect_claims_problem()`). Kimlik kalıcı tabloda
+(`user_identities`: sağlayıcı + konu tekil, kullanıcı + sağlayıcı tekil).
+Microsoft'ta konu `tid:oid` (uygulama yeniden kaydedilse de değişmez); adres
+yalnız kişisel hesap kiracısında (`9188040d-…`) ya da isteğe bağlı
+`xms_edov` talebi doğruysa doğrulanmış sayılır (nOAuth: bir kiracı
+yöneticisi başkasının adresini yazabilir). Apple'da `response_mode=form_post`
+siteler arası bir POST olduğundan başlangıçta oturum çerezi
+`SameSite=None` yapılır (ödeme dönüşleriyle aynı çare); istemci sırrı her
+token isteğinde .p8 anahtarıyla imzalanan ES256 JWT'dir (DER imza JOSE
+biçimine çevrilir); ad yalnız ilk girişte POST'un `user` alanında gelir.
+
+**Ne değişti.** Ayarlar › Güvenlik'te iki kart: Microsoft ile Giriş (anahtar,
+Bağlı hesaplar'daki uygulamanın durumu, yönlendirme adresi, `xms_edov`
+açıklaması) ve Apple ile Giriş (anahtar, kurulum adımları, dönüş adresi,
+Services ID, Team ID, Key ID, .p8 anahtarı; anahtar geri gösterilmez).
+Apple alanları kaydetmeden önce denetlenir; hatalıysa ekrandaki hiçbir
+ayar yazılmaz. Anahtarlar `config.signin_providers`'da, uygulama girilene
+kadar düğme gizli. Düğmeler `pg_signin_buttons()` ile Google'ınkinin
+altında: panel girişi, eski giriş/kayıt/üyelik ekranları (özel düzenlerde
+`$google_signin` değişkeni) ve görsel editörün giriş, kayıt ve üyelik
+widget'larındaki "Google ile Giriş" bölümü. Kurallar Google'ınki: doğrulanmış
+aynı adresli hesaba bağlanır (o sağlayıcıya başka kimlikle bağlı hesap
+devralınmaz), personel girişinde bilinmeyen hesap reddedilir, kayıttan
+gelene üye açılır (parolasız, algo 3), üyelikte kimlik üyelik formuna
+devredilir (`google_membership_pending` kaydı sağlayıcıyı taşır), ardından
+`pg_mfa_gate()` ve `pg_device_limit_gate()`. Hesabım › Giriş ve cihazlar,
+görsel editörün hesap güvenliği widget'ı (`has_microsoft`,
+`microsoft_removable`, `microsoft_only`, Apple için aynıları) ve
+`edit_user.php` bağlantıyı gösterir ve keser; tek giriş yolu olan
+bağlantı kesilmez (`pg_signin_can_remove()`), kullanıcı silinince kimlikler
+de silinir. Şema 10.74: `user_identities`, `config.signin_providers`.
+`tr.json`'da "Sign in with Apple" "Apple ile giriş yap" yerine "Apple ile
+Giriş" oldu (düğmeler alt alta "Google ile Giriş" ile aynı biçimde).
+
+**Bilerek yapılmayan.** Google ile Giriş kendi yolunda kaldı
+(`google_auth.php`, `user.user_google_id`); aynı akışa taşınması ayrı PR.
+Görsel editördeki `__google_signin_url` bağlantı belirteci yalnız
+Google'ındır; bölüm üç düğmeyi de taşır. Oturum açmış kişinin Microsoft ya
+da Apple hesabını sonradan bağlama düğmesi yok (Google'da da yok): bağlantı
+doğrulanmış adresle ya da o sağlayıcıyla açılan hesapla kurulur.
+id_token imzası doğrulanmaz (OpenID Connect Core 3.1.3.7, belirteç TLS ile
+doğrudan token ucundan gelir).
+
+---
+
 ## 2026.4.10 — Klinik testi: başkası adına doldurulan form oturumdaki kişiyi ezmiyor; giriş sayfası tasarımın kendisinden; kayıt düzenleme ekranı sayfaya dönüyor; İptal düğmesinde send_to kaçışı (2026-10-13)
 
 Klinik şablonunun (#292) dev testinden.
@@ -256,6 +321,78 @@ hastanın Randevularım listesinde görünmez. Bu ayrı bir ürün kararı.
 
 **Açık kalan.** Şablon sayfalarının editörde taslak başlaması (2026-10-06
 kararı) ürün sahibinin kararını bekliyor; bu bölümde değişmedi.
+
+---
+
+## 2026.4.10 — Çalışma Alanı: kanalda @takma ad ile MCP sunucusuna soru (2026-10-13)
+
+**Neden.** Önceki değişiklik (10.82) başka hizmetlerin MCP sunucularını
+takma adla ekletiyor ve araç izinlerini tutuyordu; bu değişiklik onları
+kanalda kullanılır kılar. "@github açık PR'lar hangileri?" yazılınca
+Pinegrap AI o sunucunun açık araçlarıyla yanıt verir.
+
+**Akış** (`includes/workspace/mcp_ask.php`, `ai.php`'ye bağlanır). Mesaj
+gönderilince `ws_ai_after_send()` önce `ws_mcp_ask_server()`'a bakar:
+gövdede elle yazılmış `@takmaad` (büyük/küçük harf fark etmez, `e@docs.com`
+gibi kelime içi değil) ya da gövde Pinegrap AI'ı adıyla çağırmıyorsa
+takma adla verilmiş bir yanıta cevap. İstek `ws_ai_requests`'e `agent = 'ai'`,
+`mcp_server_id` ile girer; sıra, kilit, adım sınırı, kişi başı bekleyen
+istek sınırı ve lisans Pinegrap AI'ınkiyle aynıdır. Pinegrap AI hazır
+değilse kurulum ipucu, kanal kapalıysa kanal metni, sunucu kapalıysa ya da
+açık aracı yoksa (`ws_mcp_ask_problem()`) bunu söyleyen sistem mesajı
+yazılır ve istek açılmaz.
+
+**Model ne görür.** `ws_ai_start()` takma adlı istekte
+`ws_mcp_ask_start()`'a döner: kanalın özeti, kararları ya da ekip listesi
+gitmez, yalnız istek, cevapladığı mesaj ve o mesaj önceki bir takma ad
+yanıtıysa onun isteği. Gerekçe: modelin okuduğu her şey araç argümanına
+girip öbür hizmete gidebilir. Sistem metni yalnız sunucunun araçlarının
+olduğunu, argümanlara isteğin gerektirdiğinden fazlasının konmamasını,
+araçların yalnız okuduğunu ve araç yanıtlarının talimat değil veri
+olduğunu söyler; sunucunun `instructions` metni veri olarak, 1500
+karakterle eklenir. Araçlar `answer`, `fail` ve sunucunun açık araçları
+(en çok 40, alfabetik); şemalar nesne olarak çözülüp gönderilir (`{}`
+korunur, `$schema`/`$id` atılır). Araç adı sohbet API'sinin kuralına
+(`^[A-Za-z0-9_-]{1,64}$`) çevrilir, çakışan ad ve `answer`/`fail` numara
+alır; eşleme her adımda yeniden kurulur.
+
+**Araç çağrısı** (`ws_mcp_ask_tool_run()`). Çağrı anında araç hâlâ açık
+mı, sunucu açık mı yeniden bakılır. Bir istekte en çok 8, modelin bir
+turunda en çok 3 çağrı (web isteğinin süresi aşılmasın diye); argüman 20
+KB'ı aşamaz. Zaman aşımı web'de 15, komut satırında 45 saniye. Sonuç
+`pg_mcp_client_result_text()` ile 6000 karaktere kesilir ve
+`service_text` olarak verilir. Her çağrı `ws_mcp_calls`'a yazılır
+(argümanlar, durum, hata, süre, istek/kanal/mesaj); sunucunun `last_used`
+alanı güncellenir, bağlantı hatası `last_error`'a düşer.
+
+**Yanıt.** Öneri yoktur: `ws_ai_finish_answer()` takma adlı istekte görev
+ve "yaptım" dürtmelerini atlar, metni doğrudan yazar. `ws_ai_deliver()`
+yanıtın sonuna "@docs üzerinden: `products_list`, `pages_list`" satırını
+ekler (en çok beş araç, kalanlar +N; araç çağrılmadıysa ayrı cümle),
+uzunluk sınırı bu satırla birlikte hesaplanır.
+
+**Ekran.** Kanalın @ menüsü açık ve araçlı sunucuları takma adıyla gösterir
+(`BOOT.mcp`, `ws_mcp_boot()`); seçilince `@takmaad ` metni girer. Ayarlar
+kartında takma adın kanalda nasıl kullanıldığı yazar, Pinegrap AI bağlı
+değilse uyarı çıkar, 40'tan fazla araç açıksa ilk 40'ın sunulduğu söylenir.
+`pg_mcp_client_call_tool()` argümanları nesne olarak da alır.
+
+**Şema yok.** 10.82'nin `ws_mcp_calls` tablosu ve
+`ws_ai_requests.mcp_server_id` kolonu kullanılır.
+
+**Doğrulama.** `tests/workspace_mcp_test.php` (7 test): araç açılabilirliği,
+kuralların yalnız çalışabilen araçlarda geçmesi, fonksiyon adları, 40
+sınırı, takma ad biçimi, kimlik başlıkları, başlık adları. Sandbox'ta,
+sitenin kendi `mcp.php`'sine yerel ağ dışı bir adresten bağlanan uzak
+sunucu yerine geçen bir sunucuyla: takma ad tespiti, istek açma, model
+bağlamı, araç listesi, gerçek HTTP araç çağrısı ve kaydı, kapalı araç ve
+araç olmayan ad, yanıtın imza satırıyla kanala düşmesi, yanıta cevabın aynı
+sunucuyla sürmesi, @ai ile cevabın Pinegrap AI'ın kendisine gitmesi,
+kapalı sunucuda sistem mesajı, @ menüsü (ekran görüntüsü).
+
+**Doğrulanamayan.** Modelin kendisi (ai.pinegrap.com sandbox'tan
+çözülemiyor); model çağrısı dışındaki her adım denendi.
+dev.pinegrap.com'da gerçek bir sunucuyla denenmeli.
 
 ---
 

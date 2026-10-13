@@ -2974,7 +2974,8 @@ function pg_member_widget_register_opts($widget_id, $form, $type = 'registration
 // Posts to <software>/index.php, the same script the legacy login page and
 // the login region post to. Controls by name: email, password, remember_me.
 // Tokens: ^^__site_name^^, ^^__redirect_url^^, ^^__forgot_password_url^^,
-// ^^__register_url^^, ^^__google_signin_url^^. Sections: google_signin,
+// ^^__register_url^^, ^^__google_signin_url^^. Sections: google_signin
+// (every sign-in button that is on: Google, Microsoft, Apple),
 // forgot_password_link, register_link. Errors: liveform 'login', printed by
 // the Messages node.
 //
@@ -3058,10 +3059,10 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
         if ($legacy !== false && $legacy !== '') $register_url = (string)$legacy;
     }
 
-    // Google: sign-in only from here (the staff login does the same); a
-    // Google identity nobody matches is refused, not registered.
+    // Google, Microsoft, Apple: sign-in only from here (the staff login does
+    // the same); an identity nobody matches is refused, not registered.
     $google_url  = function_exists('pg_google_signin_url') ? pg_google_signin_url($send_to, 'none') : '';
-    $google_html = function_exists('pg_google_signin_button') ? pg_google_signin_button($send_to, 'none') : '';
+    $google_html = function_exists('pg_signin_buttons') ? pg_signin_buttons($send_to, 'none') : '';
 
     $sections = array(
         'google_signin'        => $google_html,
@@ -4456,8 +4457,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 //
 // Tokens: ^^__site_name^^, ^^__login_url^^, ^^__google_signup_url^^,
 // ^^__password_rules^^, ^^__opt_in_label^^. Sections: captcha,
-// password_rules, google_signup, login_link. Errors and the "you are
-// registered" notice: liveform 'register', printed by the Messages node.
+// password_rules, google_signup (every sign-in button that is on),
+// login_link. Errors and the "you are registered" notice: liveform
+// 'register', printed by the Messages node.
 //
 // cfg: redirect_page_id (after sign-up), login_page_id (the "already a
 // member" link; the legacy login page type is the fallback), contact_group_id
@@ -4529,7 +4531,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
     $captcha     = (defined('CAPTCHA') && CAPTCHA && function_exists('get_captcha_fields')) ? (string)get_captcha_fields($lf) : '';
     $google_url  = function_exists('pg_google_signin_url') ? pg_google_signin_url($send_to, 'create') : '';
-    $google_html = function_exists('pg_google_signin_button') ? pg_google_signin_button($send_to, 'create') : '';
+    $google_html = function_exists('pg_signin_buttons') ? pg_signin_buttons($send_to, 'create') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
     pg_cf_apply_section_bindings($tree, array(
@@ -5725,9 +5727,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 //
 // Tokens: ^^__site_name^^, ^^__member_id_label^^, ^^__login_url^^,
 // ^^__google_signup_url^^, ^^__password_rules^^, ^^__opt_in_label^^.
-// Sections: password_rules, google_signup, login_link. Errors and the
-// "membership active" notice: liveform 'membership_entrance', printed by
-// the Messages node.
+// Sections: password_rules, google_signup (every sign-in button that is
+// on), login_link. Errors and the "membership active" notice: liveform
+// 'membership_entrance', printed by the Messages node.
 //
 // cfg: redirect_page_id, login_page_id, contact_group_id (the site setting
 // when empty), show_remember_me (default on).
@@ -5796,7 +5798,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
         _pg_member_fill_from_form($tree, $lf, array('password', 'password_verify'));
     }
     if ($google_signup) {
-        $lf->add_notice(lang('Your Google account is verified. Enter your membership details to finish - a password is optional, because you can keep signing in with Google.'));
+        $lf->add_notice(pg_signin_membership_notice($google_pending));
         foreach (array('password', 'password_verify') as $n) {
             _pg_member_edit_control($tree, $n, function (&$node) { _pg_member_set_attr($node, 'required', null); });
         }
@@ -5815,7 +5817,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
     $rules_html  = (defined('STRONG_PASSWORD') && STRONG_PASSWORD && function_exists('get_strong_password_requirements'))
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
     $google_url  = (!$google_signup && function_exists('pg_google_signin_url')) ? pg_google_signin_url($send_to, 'membership') : '';
-    $google_html = (!$google_signup && function_exists('pg_google_signin_button')) ? pg_google_signin_button($send_to, 'membership') : '';
+    $google_html = (!$google_signup && function_exists('pg_signin_buttons')) ? pg_signin_buttons($send_to, 'membership') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
     pg_cf_apply_section_bindings($tree, array(

@@ -33,6 +33,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_erp_purchase_orders();    // 10.58
 	upgrade_2026_4_10_connect();                // 10.72
 	upgrade_2026_4_10_workspace_mcp();          // 10.82
+	upgrade_2026_4_10_signin();                 // 10.74
 	upgrade_2026_4_10_erp_storefront_prices();  // 10.59
 
 }
@@ -505,6 +506,41 @@ function upgrade_2026_4_10_workspace_mcp() {
 	install_add_column('ws_ai_requests', 'mcp_server_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: an administrator can add other services\' MCP servers under an alias (Workspace Settings › MCP servers) and choose which of their tools may be used.');
+
+}
+
+// Sign in with Microsoft and Apple (2026.4.10, 10.74; includes/fn/signin.php,
+// signin.php).
+//
+// user_identities ties an account to who the person is at a provider: the
+// provider key (a file in includes/connect/providers/), subject (the stable
+// id the provider gives the person: Apple's sub, Microsoft's directory and
+// object id) and the e-mail address it last reported. One row per person and
+// provider; the same subject cannot belong to two accounts. Google keeps its
+// own column (user.user_google_id), which every Google screen reads.
+//
+// config.signin_providers lists the providers whose sign-in buttons are
+// shown, comma separated; empty means none, so a site upgrading changes
+// nothing until the operator turns one on. The applications themselves live
+// in connect_apps (10.72).
+function upgrade_2026_4_10_signin() {
+
+	install_create_table('user_identities', "CREATE TABLE user_identities (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id             INT UNSIGNED NOT NULL DEFAULT 0,
+		provider            VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		subject             VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		email               VARCHAR(255) NOT NULL DEFAULT '',
+		created_timestamp   INT UNSIGNED NOT NULL DEFAULT 0,
+		last_used_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_subject (provider, subject),
+		UNIQUE KEY uk_user_provider (user_id, provider)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'signin_providers', "TEXT NULL");
+
+	install_note('Sign in with Microsoft and Apple: members and staff can sign in with a Microsoft or Apple account next to Google, once the operator sets up the application and turns the button on in Settings, Security.');
 
 }
 

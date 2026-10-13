@@ -792,16 +792,23 @@ function pg_member_activate($form, $opts = array())
         'password_hint' => $password_hint,
         'contact_id'    => $contact_id,
     );
-    // Bind the account to the Google identity that started this, and spend
+    // Bind the account to the identity that started this (Google, or a
+    // provider of signin.php, which names itself in the record), and spend
     // the pending record so it cannot be replayed.
+    $pending_provider = $google_signup ? (string) ($google_pending['provider'] ?? 'google') : '';
     if ($google_signup) {
-        $create['google_id'] = (string) ($google_pending['sub'] ?? '');
+        if ($pending_provider === 'google') {
+            $create['google_id'] = (string) ($google_pending['sub'] ?? '');
+        }
         unset($_SESSION['software']['google_membership_pending']);
     }
     if (!empty($_SESSION['software']['start_page_id'])) {
         $create['home'] = $_SESSION['software']['start_page_id'];
     }
     $new_user_id = (int) create_member_user($create);
+    if ($new_user_id && ($pending_provider !== '') && ($pending_provider !== 'google') && function_exists('pg_signin_identity_add')) {
+        pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
+    }
 
     $remember = false;
     if (REMEMBER_ME == TRUE) {
@@ -974,12 +981,12 @@ function pg_user_agent_label($ua)
     return implode(' · ', $parts);
 }
 
-// The "sign-in and devices" block on the my-account screen: the Google link
-// status (with a disconnect that is withheld when Google is the only way in),
-// the active remember-me sessions, and a sign-out-everywhere button. Returns ''
-// when nobody is signed in. It only renders; every change goes through
-// account_security.php, which re-checks the CSRF token and re-enforces the
-// Google-only guard server-side.
+// The "sign-in and devices" block on the my-account screen: the Google,
+// Microsoft and Apple link status (with a disconnect that is withheld when the
+// provider is the only way in), the active remember-me sessions, and a
+// sign-out-everywhere button. Returns '' when nobody is signed in. It only
+// renders; every change goes through account_security.php, which re-checks the
+// CSRF token and re-enforces the only-way-in guard server-side.
 function pg_account_security_section()
 {
     $user_id = (int) ($_SESSION['sessionuserid'] ?? 0);
@@ -1002,7 +1009,7 @@ function pg_account_security_section()
     $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
     $google_html = '';
     if ((string) $google_id !== '') {
-        if ($algo === 3) {
+        if (!pg_signin_can_remove($user_id, 'google')) {
             $google_html =
                 '<p>' . h(lang('This account signs in with Google.')) . ' '
                 . h(lang('To disconnect Google, set a password first with Forgot Password, otherwise you would lose access.')) . '</p>';
@@ -1012,6 +1019,24 @@ function pg_account_security_section()
                 . '<form method="post" action="' . h($action_url) . '" style="margin-bottom:1em">' . $token
                 . '<input type="hidden" name="pg_security_action" value="unlink_google"/>'
                 . '<button type="submit" class="software_input_submit_secondary">' . h(lang('Disconnect Google')) . '</button></form>';
+        }
+    }
+
+    // Microsoft, Apple and the other providers of signin.php, the same way:
+    // a disconnect only while another way in remains.
+    foreach (pg_signin_identities($user_id) as $identity_provider => $identity) {
+        $identity_label = pg_signin_provider_label($identity_provider);
+
+        if (!pg_signin_can_remove($user_id, $identity_provider)) {
+            $google_html .=
+                '<p>' . h(lang(array('string' => 'This account signs in with {var:1}.', 'vars' => $identity_label))) . ' '
+                . h(lang(array('string' => 'To disconnect {var:1}, set a password first with Forgot Password, otherwise you would lose access.', 'vars' => $identity_label))) . '</p>';
+        } else {
+            $google_html .=
+                '<p>' . h(lang(array('string' => 'This account is connected to {var:1}.', 'vars' => $identity_label))) . '</p>'
+                . '<form method="post" action="' . h($action_url) . '" style="margin-bottom:1em">' . $token
+                . '<input type="hidden" name="pg_security_action" value="unlink_' . h($identity_provider) . '"/>'
+                . '<button type="submit" class="software_input_submit_secondary">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button></form>';
         }
     }
 
