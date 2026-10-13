@@ -497,6 +497,7 @@ function api_openapi_objects()
         'Menu'         => 'api_menu_schema',
         'MenuItem'     => 'api_menu_item_schema',
         'Comment'      => 'api_comment_schema',
+        'ShortLink'    => 'api_short_link_schema',
         'File'         => 'api_file_schema',
         'Offer'        => 'api_offer_schema',
         'Webhook'      => 'api_webhook_schema',

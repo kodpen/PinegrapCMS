@@ -1676,6 +1676,17 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                     if ($tag === 'textarea')      $default = isset($n['props']['text']) && is_string($n['props']['text']) ? $n['props']['text'] : '';
                     elseif ($tag === 'input' && !$check && $it !== 'file' && $it !== 'password') {
                         $default = isset($a['value']) ? (string)$a['value'] : '';
+                    } elseif ($tag === 'select' && !array_key_exists('multiple', $a) && !empty($n['children']) && is_array($n['children'])) {
+                        // A single pick list's default is the answer marked
+                        // selected: what an office-use-only list stores for
+                        // a visitor, who never sees it.
+                        foreach ($n['children'] as $o) {
+                            if ($tag_of($o) !== 'option') continue;
+                            $oa = _pg_cf_node_attrs($o);
+                            if (!array_key_exists('selected', $oa)) continue;
+                            $default = isset($oa['value']) ? (string)$oa['value'] : _pg_cf_node_text($o);
+                            break;
+                        }
                     }
 
                     $pattern = ($tag === 'input' && !$check

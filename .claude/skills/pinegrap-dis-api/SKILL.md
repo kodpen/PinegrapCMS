@@ -215,6 +215,11 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
 - Giden istekte cevap başlığı gerekiyorsa (sürdürülebilir yüklemenin
   `Location`'ı) `api_http_request()`'e `'response_headers' => true` ver;
   cevap `headers` (küçük harfli ad => değer) taşır.
+- Örnek kullanıcı: e-posta (`purposes/mail.php`, `includes/fn/mail.php`
+  `pg_mail_connection*()`). Amaç dosyası sağlayıcı başına teslim
+  bilgisini (`send`) taşır; yeni posta sağlayıcısı = sağlayıcı dosyası +
+  `send` girdisi. Tablolar yokken (`pg_connect_schema_ready()`) bütün
+  okumalar "hesap yok" der.
 
 ## Modül dikişi (ERP → API)
 

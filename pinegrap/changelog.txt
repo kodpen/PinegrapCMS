@@ -243,6 +243,32 @@
          geri alıyor, açılır listede ilk Ctrl+Z hiçbir şey
          yapmıyordu.
 
+  [YENİ] Klinik şablonu (yerel hekim sitesi). Hizmetler,
+         hekimler, check-up paketleri, hasta rehberi, blog,
+         iletişim ve bülten; çevrimiçi randevu formu (bölüm,
+         hekim, görüşme şekli, tarih, saat aralığı). Randevu
+         kendi sayfasını açar, hastaya hesap açılır, altına
+         yazışma gelir; Randevularım'da durumuyla listelenir.
+         Personel Alanı'nda bugünden itibaren yaklaşan
+         randevular; personel durumu (Talep edildi, Onaylandı,
+         Tamamlandı, İptal) "Durumu Değiştir" ile günceller.
+         Hesap sayfaları, gelen kutusu, personel rehberi ve
+         altı e-posta sayfası dahil.
+
+  [DÜZELTME] Özel formda yalnız personelin gördüğü bir açılır
+         listenin seçili seçeneği ziyaretçi gönderdiğinde
+         kaydediliyor; önceden alan boş kalıyordu.
+
+  [DÜZELTME] Kayıt sayfasında yalnız düzenleme yetkisi
+         olanlara gösterilen Düzenle düğmesi ile yalnız formu
+         gönderen ziyaretçiye gösterilen teşekkür ve yeni hesap
+         kutuları herkese görünüyordu (Kitapçı şablonunun
+         blog yazısı sayfası dahil). Artık yalnız ilgili
+         kişiye görünüyor.
+
+  [DÜZELTME] Kitapçı şablonunun sayfa yolunda "Ev" yerine
+         "Ana Sayfa" yazıyor.
+
   SEO
   --------------------------------------------------------
 
@@ -627,6 +653,19 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Kısa linkler API'de: GET /short-links kısa
+         linkleri, nereye gittikleriyle (sayfa, ürün grubu,
+         ürün, dosya, adres), türleriyle (kalıcı, süreli, tek
+         kullanımlık) ve kaç kez açıldıklarıyla listeler. Kısa
+         link eklenir, adı ve hedefi değiştirilir, süreli
+         linke yeni süre verilir, Geri Dönüşüm Kutusu'na
+         taşınır ya da silinir. Tek kullanımlık linkin adresi
+         yalnız oluşturulduğu yanıtta bir kez verilir.
+
+  [DÜZELTME] Geri Dönüşüm Kutusu'ndaki kısa link hâlâ
+         yönlendiriyordu; artık açılmıyor (404), geri
+         yüklenince yeniden çalışıyor.
+
   [YENİ] Takvim etkinlikleri API'den eklenip
          değiştirilebiliyor ve silinebiliyor: ad, açıklamalar,
          yer, başlangıç ve bitiş (tüm gün dahil), takvimler ve
@@ -760,6 +799,17 @@
          kaldırılır (Google'da izin de geri alınır).
          Microsoft 365 ve Gmail ile posta gönderme gibi
          özellikler bu bağlantıyı kullanacak.
+
+  [YENİ] SMTP Ayarları'nda "Gönderim yolu": sistem ve
+         kampanya e-postaları SMTP sunucusu yerine bağlı bir
+         Google (Gmail) ya da Microsoft 365 / Outlook
+         hesabından gönderilebiliyor; SMTP parolası ya da
+         uygulama parolası gerekmiyor. Hesap ekrandaki
+         düğmeyle bağlanıyor. İleti o hesaptan çıkıyor,
+         yanıtlar iletinin asıl gönderen adresine gidiyor;
+         ekler, DKIM ve abonelikten çıkma başlıkları
+         eskisi gibi. Microsoft, parolayla SMTP girişini
+         2026 sonunda kapatıyor.
 
   [GÜVENLİK] Paraşüt'ün erişim ve yenileme jetonu artık
          sitenin şifreleme anahtarıyla şifreli saklanıyor.
