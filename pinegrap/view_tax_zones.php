@@ -24,36 +24,27 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_tax_zones');
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_tax_zones']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_tax_zones']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'tax_rate'      => lang('Tax Rate'),
+    'last_modified' => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'tax_zones.name';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Tax Rate'):
-        $sort_column = 'tax_zones.tax_rate';
-        break;
+$list_state = pg_list_state('view_tax_zones', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Last Modified'):
-        $sort_column = 'tax_zones.timestamp';
-        break;
-
-    default:
-        $sort_column = 'tax_zones.timestamp';
-        $_SESSION['software']['ecommerce']['view_tax_zones']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_tax_zones']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_tax_zones']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_tax_zones']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'tax_zones.name',
+    'tax_rate'      => 'tax_zones.tax_rate',
+    'last_modified' => 'tax_zones.timestamp',
+));
 
 $tax_zones = db_items(
     "SELECT
@@ -64,7 +55,7 @@ $tax_zones = db_items(
         tax_zones.timestamp AS last_modified_timestamp
     FROM tax_zones
     LEFT JOIN user ON tax_zones.user = user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')));
+    ORDER BY $order_by");
 
 $output_rows = '';
 
@@ -108,6 +99,8 @@ echo
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1" href="add_tax_zone.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_tax_zones.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
@@ -118,9 +111,9 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Tax Rate'), ($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th>' . get_column_heading(lang('Tax Rate'), $sort_levels, '', '', 'tax_rate') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
