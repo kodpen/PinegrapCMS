@@ -1253,6 +1253,19 @@ function output_header($properties = false)
         $output_connected_apps_link = '<li><a class="connected_apps_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connected_apps.php"' . $output_parent_target . '><i class="bi bi-plug"></i><span>' . lang('Connected applications') . '</span></a></li>';
     }
 
+    // Calendar subscription (workspace_calendar_feed.php), offered to the
+    // members of the team while the workspace is on: a person's own address
+    // for the calendar on their phone or computer. The module is loaded the
+    // way the main menu loads it, and only then.
+    $output_calendar_feed_link = '';
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_calendar_feed_rights = ws_ready() ? ws_rights($user) : null;
+        if ($output_calendar_feed_rights && $output_calendar_feed_rights['member']) {
+            $output_calendar_feed_link = '<li><a class="calendar_feed_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar_feed.php"' . $output_parent_target . '><i class="bi bi-calendar-plus"></i><span>' . lang('Calendar subscription') . '</span></a></li>';
+        }
+    }
+
     $output_home_page_link_url = '';
     // get home page(s)
     $query = "SELECT page_name FROM page WHERE page_home = 'yes'";
@@ -1980,6 +1993,7 @@ function output_header($properties = false)
                                 </a>
                             </li>
                             ' . $output_connected_apps_link . '
+                            ' . $output_calendar_feed_link . '
                             ' . $output_start_page_link . '
                             <li class="pg-um-section-row"><span class="pg-um-section">' . lang('Help & Support') . '</span></li>
                             ' . $output_tour_link . '

@@ -211,8 +211,12 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             if ($include == true) {
                 $url = PATH . $page['name'];
 
+                // url is what the list shows and sorts by; href, the encoded
+                // form, is what goes into the link (a name with a space, "#"
+                // or "?" would otherwise end the path early).
                 $items[] = array(
                     'url' => $url,
+                    'href' => PATH . encode_url_path($page['name']),
                     'folder_id' => $page['folder_id'],
                     'folder_name' => $page['folder_name'],
                     'page_type' => $page['type'],
@@ -360,6 +364,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
                 $items[] = array(
                     'name' => $file['name'],
                     'url' => $url,
+                    'href' => PATH . encode_url_path($file['name']),
                     'folder_id' => $file['folder_id'],
                     'folder_name' => $file['folder_name'],
                     'size' => $file['size'],
@@ -557,6 +562,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
                 $items[] = array(
                     'url' => $url,
+                    'href' => PATH . encode_url_path($short_link['name']),
                     'destination_type' => $short_link['destination_type'],
                     'destination_url' => $destination_url,
                     'folder_id' => $folder_id,
@@ -619,7 +625,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
                         <td class="align-middle">' . h(get_page_type_name($item['page_type'])) . '</td>
@@ -671,7 +677,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
@@ -696,7 +702,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['destination_url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>

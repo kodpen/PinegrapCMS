@@ -3159,7 +3159,11 @@ function waf_user_is_authenticated()
  * OAuth server are called the same way - by an AI application's backend,
  * often from addresses it shares with every other site it connects to - and
  * count their callers the same way: per application, per token, and per
- * address for registrations (includes/mcp/, includes/oauth/).
+ * address for registrations (includes/mcp/, includes/oauth/). The workspace
+ * calendar address (workspace_ical.php) is read by a calendar service's
+ * servers - Google's, Microsoft's, Apple's - with the token in the address
+ * as its credential, under whatever user agent that service sends, from
+ * whichever country it runs in.
  */
 /**
  * Is this a call to the REST API?
@@ -3187,7 +3191,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php'));
+        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php'));
     }
 
     return $answer;
@@ -3553,9 +3557,9 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
         return;
     }
 
-    // The external API, the MCP server and the OAuth endpoints admit a caller
-    // by the credential it presents, never by its user agent, so a crawler
-    // name decides nothing there. An AI assistant working through the MCP
+    // The external API, the MCP server, the OAuth endpoints and the workspace
+    // calendar address admit a caller by the credential it presents, never by
+    // its user agent, so a crawler name decides nothing there. An AI assistant working through the MCP
     // server sends its fetcher's name (Claude-User) from its operator's API
     // egress, which is not in the crawler ranges that operator publishes;
     // judged as a crawler it read as a forged one and was refused - and
@@ -3794,9 +3798,10 @@ function waf_country_staff_signed_in()
  *   - robots.txt and .well-known/ (waf_path_is_always_served()): certificate
  *     renewal is checked from several countries, and a refused challenge
  *     takes the site's certificate down months later;
- *   - the external API, the MCP server and the OAuth endpoints, when the
- *     operator keeps them open: their callers present a credential, and an
- *     integration or an AI application runs wherever its provider does;
+ *   - the external API, the MCP server, the OAuth endpoints and the
+ *     workspace calendar address, when the operator keeps them open: their
+ *     callers present a credential, and an integration, an AI application or
+ *     a calendar service runs wherever its provider does;
  *   - the control panel, when the operator keeps it open, so staff abroad can
  *     still sign in;
  *   - a search engine crawler whose address proved its name, when the

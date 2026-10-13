@@ -8,7 +8,7 @@ description: "Pinegrap CMS'in ERP (ön muhasebe) modülünde çalışırken kull
 Bu modüldeki hatalar sessiz muhasebe hatasıdır: aynı para iki kez sayılır,
 numara boşa harcanır, KDV iki yerden farklı hesaplanır. Maddeleri atlama.
 
-Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinasında).
+Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_ozellikler.md` (Faz 6–9).
 
 ## Modül kapısı ve kurulum
 
@@ -310,12 +310,12 @@ Plan dosyası `docs/_plan_erp.md` (depo dışında, yalnız geliştirme makinas�
 
 ## Teklif, tekrarlayan fatura, cari fiyatı, sayım, çek, ekstre (4.92–4.102)
 
-- Şema etiketleri: 2026.4.4 (son ERP adımı 4.103 muhasebe kuralları) ve
-  2026.4.5, 2026.4.6 ve 2026.4.7 yayında ve kapalı. Yeni ERP adımları açık
-  sürüm **2026.4.8**'e girer (`2026.4.8.php`, `upgrade_2026_4_8_erp_<konu>()`),
-  etiketler 2026.4.7'deki yapıyla **8.58–8.69**, dolunca 8.90'dan sonrası.
-  Etiket yalnız addır, çalışma sırası `2026.4.8.php`'deki çağrı listesidir
-  (yeni adımı listenin sonuna ekle).
+- Şema etiketleri: 2026.4.4 (son ERP adımı 4.103 muhasebe kuralları) ile
+  2026.4.5–2026.4.9 yayında ve kapalı. Yeni ERP adımları açık sürüm
+  **2026.4.10**'a girer (`2026.4.10.php`, `upgrade_2026_4_10_erp_<konu>()`),
+  etiketler **10.58–10.69**, dolunca 10.90'dan sonrası. Etiket yalnız addır,
+  çalışma sırası `2026.4.10.php`'deki çağrı listesidir (yeni adımı listenin
+  sonuna ekle).
 - Teklif (`includes/erp/quotes.php`, `erp_quotes`) `erp_invoices`'a yazılmaz:
   fatura sorgularının bir kısmı `doc_type`'a bakmıyor, teklif oraya girerse
   bakiyeye, KDV'ye ve raporlara sızar. Numara `erp_next_number($seri,
