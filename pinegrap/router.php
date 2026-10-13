@@ -346,6 +346,14 @@ if (preg_match('#^\.well-known/(oauth-authorization-server|openid-configuration|
     exit();
 }
 
+// The MCP server at the site's own address (mcp.php in the software
+// directory). It is the address the site gives out, because it is the one a
+// person types into an AI application.
+if ($item_name_lowercase == 'mcp.php') {
+    require(dirname(__FILE__) . '/mcp.php');
+    exit();
+}
+
 // If item is "robots.txt", then run that script.
 if ($item_name_lowercase == 'robots.txt') {
     require(dirname(__FILE__) . '/get_robots.txt.php');

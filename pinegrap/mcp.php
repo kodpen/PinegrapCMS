@@ -15,7 +15,10 @@
 //
 //   POST mcp.php   {"jsonrpc":"2.0","id":1,"method":"tools/list"}
 //
-// One address and no path after it, so no rewrite rule is needed.
+// The site gives it out at its own address, site.com/mcp.php, which the
+// router hands over to this file; it answers at its own place in the software
+// directory too. One address and no path after it, so the site's usual
+// rewrite rule is all it needs.
 
 define('PG_MCP_ENTRY', true);
 

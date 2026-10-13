@@ -166,11 +166,11 @@ function pg_oauth_well_known($name) {
 
 	if (strpos($name, 'oauth-protected-resource') === 0) {
 
-		$key = pg_oauth_resource_for_suffix((string)substr($name, strlen('oauth-protected-resource')));
+		$resource = pg_oauth_resource_for_suffix((string)substr($name, strlen('oauth-protected-resource')));
 
-		if ($key !== '') {
+		if ($resource !== '') {
 
-			pg_oauth_send(200, pg_oauth_resource_metadata($key));
+			pg_oauth_send(200, pg_oauth_resource_metadata($resource));
 
 		}
 
@@ -316,8 +316,10 @@ function pg_oauth_check_resource($stored) {
 
 	$asked = pg_oauth_resource_normalise((string)$_POST['resource']);
 
+	// Compared by resource rather than by spelling: the MCP server answers on
+	// two addresses, and a token for one is a token for the other.
 	if (($asked === '') || (pg_oauth_resource_key($asked) === '')
-		|| (((string)$stored !== '') && (strcasecmp($asked, (string)$stored) !== 0))) {
+		|| (((string)$stored !== '') && (pg_oauth_resource_key($asked) !== pg_oauth_resource_key((string)$stored)))) {
 
 		pg_oauth_fail(400, 'invalid_target', 'The resource is not one this token can be issued for.');
 
