@@ -190,7 +190,9 @@ Hata verdirmeden yanlış çalıştıkları için burada duruyorlar; ayrıntıs�
 - **Fiyatlar kuruş cinsinden `int`**; kesirli kuruşta `(int)` ile kırpma,
   `round()` kullan.
 - **`.src.js` düzenlenir, `.min.js` servis edilir — ikisi birden.** Yalnız
-  `.src.js` düzenlemek hiçbir şey yapmaz ve hata vermez.
+  `.src.js` düzenlemek hiçbir şey yapmaz ve hata vermez. Çalışma Alanı
+  betikleri (`workspace*.js`) de böyledir: düzenledikten sonra
+  `php tools/build_js.php` (liste `pg_js_bundles()`).
 - **Rol hiyerarşisinde Designer (1), Manager'ın (2) üstündedir.**
   `validate_area_access($user, 'designer')` rol ≤ 1, `'manager'` rol ≤ 2 ister.
 
@@ -211,6 +213,7 @@ php tools/check_bindings.php   # tasarimci acilir listesi ile renderer tokenlari
 php tools/check_api_schema.php # dis API alanlari sema ile ortusuyor mu
 php tools/test.php [filtre]    # tests/*_test.php birim testleri (saf fonksiyonlar)
 php tools/check_copies.php     # get_file.php'de yalniz bilerek birakilan fonksiyon kopyalari var mi
+php tools/build_js.php --check # .min.js paketleri kaynaklariyla ayni mi (Node/npx ister)
 ```
 
 1. `php tools/lint.php` temiz.
@@ -227,7 +230,8 @@ php tools/check_copies.php     # get_file.php'de yalniz bilerek birakilan fonksi
 6. Yeni ve dokunulan yorumlar İngilizce, süreç/AI izi taşımıyor.
 7. Şema değişikliği varsa migration üzerinden ve tekrar koşulabilir; dev DB'de
    iki kez koşturuldu.
-8. `.src.js` düzenlendiyse ikizi `.min.js` de güncellendi.
+8. `.src.js` düzenlendiyse ikizi `.min.js` de güncellendi; paketli betik
+   (`pg_js_bundles()`) düzenlendiyse `php tools/build_js.php` koşturuldu.
 9. Değişiklik, değişiklik günlüğüne yazılacak şekilde PR açıklamasında özetlendi.
 
 PR açıklamasında ne değiştiğini, neden öyle yapıldığını ve **neyi

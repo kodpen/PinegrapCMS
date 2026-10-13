@@ -518,6 +518,9 @@ echo
 pg_page_shell([
         'title' => lang('Workspace Settings'),
         'extra classes' => 'workspace workspace_settings',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('Workspace Settings'),
         'heading_description' => lang('Departments, working days and what the planning board counts with.'),

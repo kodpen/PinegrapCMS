@@ -16,6 +16,33 @@ description: "Pinegrap CMS'te JavaScript düzenlerken kullan: .src.js / .min.js 
 `assets/js/backend.src.js`, `style_designer.js`, `page_designer.js`,
 `assets/js/erp_invoice_editor.js`.
 
+## Paketler: `pg_js_bundles()` + `tools/build_js.php`
+
+Çalışma Alanı betikleri (`workspace.js` ve `workspace_*.js`) adlarında
+`.src` olmadan da derlenir: `pg_js_bundles()` (`includes/fn/output.php`)
+hangi `.min.js`'in hangi kaynaklardan, hangi sırayla yapıldığını söyler.
+`workspace.min.js` dokuz kaynağı birleştirir; diğerleri bire bir ikizdir.
+
+- Kaynağı düzenledikten sonra `php tools/build_js.php` koş (Node + `npx`
+  gerekir, terser sürümü araçta sabit). CI `--check` ile denetler; eski
+  kalan `.min.js` PR'ı kırmızıya çeker.
+- Ekran kaynak dosya adı yazmaz: `pg_js_bundle_tags('assets/js/x.min.js')`
+  ya da `pg_js_bundle_urls()`. `src` kipinde kaynaklar tek tek gelir.
+- Yeni bir `workspace_*.js` bir pakete girmeli
+  (`tests/js_bundles_test.php` denetler); yeni paketi listeye ekleyip
+  aracı koşmak yeter.
+- Kayıt ekranlarındaki Çalışma Alanı çekmecesi betiği ilk tıkta yükler
+  (`ws_record_loader()`); orada sayfa açılırken `workspace.js` yoktur.
+
+## Kod editörü (CodeMirror) başlıkta olmayabilir
+
+`pg_page_shell()`/`output_header()`'a `'code_editor' => false` verilen
+ekranda (Çalışma Alanı ekranları) CodeMirror başlıkta değil,
+`<template id="pg-code-editor-assets">` içinde bekler. AJAX ile kod alanı
+getiren yol işaretlemeyi basmadan önce
+`window.pgCodeEditorReady(markup, done)` çağırmalı (Site Ayarları penceresi
+böyle yapar); CodeMirror zaten varsa `done` hemen koşar.
+
 ## İki yerde birden ara
 
 Ön yüzde çalışan JS iki yerde yaşar: panel ekranları `backend.src.js`, ziyaretçi
@@ -84,7 +111,8 @@ kısayol sessizce düşer.
 
 ## Bitirmeden önce
 
-- `.src.js` düzenlediysen ikizi `.min.js` de güncellendi mi?
+- `.src.js` düzenlediysen ikizi `.min.js` de güncellendi mi? Paketli
+  betikte (`pg_js_bundles()`) `php tools/build_js.php --check` temiz mi?
 - `node --check assets/js/style_designer.js` (sandbox'ta `php -l` bu dosyayı
   denetlemez).
 - Metin ekledin mi? `pinegrap-ceviri` skill'i ve `php tools/check_lang.php`.
