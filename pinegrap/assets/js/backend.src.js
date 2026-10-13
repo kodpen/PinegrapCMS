@@ -10123,6 +10123,13 @@ var pgSettingsModal = (function () {
         // one is allowed to paint -- otherwise the pane can end up showing a
         // category the sidebar is no longer pointing at.
         var mine = ++seq;
+        var later = false;
+
+        var settle = function () {
+            $(form).removeClass('is-loading');
+            $(shell()).removeClass('is-busy');
+            setDirty(false);
+        };
 
         busy++;
         touched = false;
@@ -10151,7 +10158,21 @@ var pgSettingsModal = (function () {
                 return;
             }
 
-            paint(key, response);
+            // A pane with a code field, on a screen that left CodeMirror out
+            // of its head, is painted once the editor has loaded; the dialog
+            // stays busy until then.
+            later = window.pgCodeEditorReady(String(response.html || '') + String(response.modals || '') + String(response.scripts || ''), function () {
+
+                if (mine !== seq) {
+                    return;
+                }
+
+                paint(key, response);
+
+                if (later) {
+                    settle();
+                }
+            });
 
         }).fail(function (xhr) {
 
@@ -10166,13 +10187,11 @@ var pgSettingsModal = (function () {
 
             busy--;
 
-            if (mine !== seq) {
+            if ((mine !== seq) || later) {
                 return;
             }
 
-            $(form).removeClass('is-loading');
-            $(shell()).removeClass('is-busy');
-            setDirty(false);
+            settle();
         });
     }
 
@@ -10218,6 +10237,90 @@ window.pgReleaseEditors = function (scope) {
         try { editor.setOption('autoRefresh', false); } catch (e) {}
     }
 };
+
+// Makes sure CodeMirror is on the page before markup that starts an editor is
+// put into it, then calls done.
+//
+// A screen with no code field of its own (the workspace's) leaves CodeMirror
+// and its linters out of its head and parks the tags in
+// <template id="pg-code-editor-assets"> (output_control_panel_header_includes()).
+// Markup that arrives later and mentions CodeMirror -- a pane of the settings
+// dialog, whose inline scripts call CodeMirror.fromTextArea as .html() runs
+// them -- waits here until the files are in, one script after the other in the
+// order the head would have run them. Anywhere else CodeMirror is already
+// there and done runs at once, before this returns.
+//
+// Returns true when done will run later. A file that fails to load still ends
+// in done: the textarea stays a plain field, which is what a missing editor
+// looked like before.
+window.pgCodeEditorReady = (function () {
+
+    var waiting = null;     // callbacks while the files load; null otherwise
+
+    return function (markup, done) {
+
+        var template = document.getElementById('pg-code-editor-assets');
+
+        if (window.CodeMirror || !template || !template.content || (String(markup || '').indexOf('CodeMirror') === -1)) {
+            done();
+            return false;
+        }
+
+        if (waiting) {
+            waiting.push(done);
+            return true;
+        }
+
+        waiting = [done];
+
+        var nodes = Array.prototype.slice.call(template.content.childNodes);
+
+        var finish = function () {
+            var callbacks = waiting;
+
+            waiting = null;
+            callbacks.forEach(function (callback) { callback(); });
+        };
+
+        var next = function (index) {
+
+            while ((index < nodes.length) && (nodes[index].nodeType !== 1)) {
+                index++;
+            }
+
+            if (index >= nodes.length) {
+                finish();
+                return;
+            }
+
+            var node = nodes[index];
+
+            if (node.tagName === 'LINK') {
+                var sheet = document.createElement('link');
+                sheet.rel = 'stylesheet';
+                sheet.href = node.getAttribute('href');
+                document.head.appendChild(sheet);
+                next(index + 1);
+                return;
+            }
+
+            if ((node.tagName !== 'SCRIPT') || !node.getAttribute('src')) {
+                next(index + 1);
+                return;
+            }
+
+            var script = document.createElement('script');
+            script.src = node.getAttribute('src');
+            script.onload = function () { next(index + 1); };
+            script.onerror = function () { next(index + 1); };
+            document.head.appendChild(script);
+        };
+
+        next(0);
+
+        return true;
+    };
+})();
     function paint(key, response) {
 
         pane = key;

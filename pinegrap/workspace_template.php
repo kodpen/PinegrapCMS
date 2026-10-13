@@ -179,6 +179,9 @@ echo
 pg_page_shell([
         'title' => $is_new ? lang('New channel template') : lang('Channel template'),
         'extra classes' => 'workspace workspace_template',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => $is_new ? lang('New channel template') : lang('Channel template'),
         'heading_description' => lang('The tasks, notes and texts a channel is set up with.'),

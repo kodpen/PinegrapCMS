@@ -16,6 +16,9 @@
  * server counts it again when it is stopped (includes/workspace/task_time.php),
  * so what is kept never depends on this page having stayed open.
  *
+ * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen

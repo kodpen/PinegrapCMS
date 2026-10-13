@@ -19,6 +19,9 @@
  * (.pg-tour-art in assets/css/pg_tour.css), so they read the same in every
  * language and in the light and the dark appearance alike.
  *
+ * Served minified as assets/js/workspace_tour.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen

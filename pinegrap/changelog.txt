@@ -176,6 +176,25 @@
          değiştirilince korunuyor. Önceden liste "Son
          Değişiklik" sıralamasına dönüyordu.
 
+  ÇALIŞMA ALANI
+  --------------------------------------------------------
+
+  [HIZ] Çalışma Alanı ekranları daha hafif açılıyor. Bir
+         ekranın yüklediği JavaScript yaklaşık 5 MB'tan
+         2,2 MB'a, dosya sayısı 59'dan 16-18'e indi.
+         Çalışma Alanı'nın kendi betikleri küçültülmüş tek
+         dosyada geliyor ve bütün Çalışma Alanı ekranları
+         aynı dosyayı kullanıyor; kod editörü (yaklaşık
+         2 MB) yalnız Site Ayarları'nda kod alanı olan bir
+         bölüm açıldığında yükleniyor.
+
+  [HIZ] Sipariş, ürün, kişi, kullanıcı ve ERP kayıtlarının
+         ekranları Çalışma Alanı betiğini (yaklaşık 1 MB)
+         açılışta yüklemiyor ve Çalışma Alanı'na istek
+         göndermiyor. Betik, ekrandaki Çalışma Alanı
+         düğmesine ilk basıldığında geliyor ve çekmece
+         hemen açılıyor.
+
   DIŞ API
   --------------------------------------------------------
 

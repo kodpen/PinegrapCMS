@@ -28,6 +28,9 @@ echo
 pg_page_shell([
         'title' => lang('Workspace'),
         'extra classes' => 'workspace workspace_channels',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('Channels'),
         'heading_description' => lang('Conversations about customers and work, with the tasks that come out of them.'),
