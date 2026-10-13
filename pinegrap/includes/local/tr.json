@@ -21105,5 +21105,13 @@
     "ERP stock count {var:1} was applied through the API: {var:2} of {var:3} product(s) changed.": "ERP stok sayımı {var:1} API üzerinden uygulandı: {var:3} üründen {var:2} tanesinin stoku değişti.",
     "ERP stock count {var:1} was cancelled through the API.": "ERP stok sayımı {var:1} API üzerinden iptal edildi.",
     "{var:1} does not track stock, so it takes no minimum.": "{var:1} stok takibi yapmıyor, bu yüzden minimum stok almaz.",
-    "ERP minimum stock was changed through the API for {var:1} product(s).": "ERP minimum stoku API üzerinden {var:1} ürün için değiştirildi."
+    "ERP minimum stock was changed through the API for {var:1} product(s).": "ERP minimum stoku API üzerinden {var:1} ürün için değiştirildi.",
+    "The cash flow covers what has happened, so the end date cannot be after today.": "Kasa akışı olmuş olanı gösterir, bu yüzden bitiş tarihi bugünden sonra olamaz.",
+    "The report covers at most {var:1} days at a time.": "Rapor bir seferde en fazla {var:1} günü kapsar.",
+    "That account is not active.": "Bu cari aktif değil.",
+    "Pass it on to an account other than the one it came from.": "Geldiği cariden başka bir cariye ciro edin.",
+    "ERP transfer #{var:1} from {var:2} to {var:3} was recorded through the API.": "#{var:1} numaralı ERP virmanı ({var:2} → {var:3}) API üzerinden kaydedildi.",
+    "ERP cheque or note #{var:1} was recorded through the API.": "#{var:1} numaralı ERP çek/senedi API üzerinden kaydedildi.",
+    "The {var:1} step does not take {var:2}.": "{var:1} adımı {var:2} almaz.",
+    "ERP cheque or note #{var:1} was marked {var:2} through the API.": "#{var:1} numaralı ERP çek/senedi API üzerinden şu duruma alındı: {var:2}"
 }

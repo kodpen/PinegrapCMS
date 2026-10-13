@@ -136,6 +136,108 @@ düşürmesi `reauth` olarak görünür.
 
 ---
 
+## 2026.4.10 — Dış API ve MCP: ERP virmanı, çek/senet, kâr, kasa akışı ve pano (Faz 6, üçüncü parça) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), son parça: kasalar
+arası para aktarma ve çek/senet API'de yoktu, çekler yalnız okunuyordu;
+kâr raporu, kasa akışı ve ERP panosunun rakamları API'den alınamıyordu.
+
+**Ne değişti.** Altı yeni rota `erp_api_routes()`'ta; MCP'de altı yeni
+araç. Yazma işleyicileri yeni `includes/erp/api_cash.php`'de, raporlar
+yeni `includes/erp/api_reports.php`'de; ikisi de panelin kullandığı
+fonksiyonları çağırır. Yeni web kancası olayı yok.
+
+| Rota | Kapsam | Fonksiyon |
+|---|---|---|
+| `POST /erp/cash-transfers` | `erp_cash:write` | `erp_post_transfer()` |
+| `POST /erp/cheques` | `erp_cash:write` | `erp_cheque_create()` |
+| `POST /erp/cheques/{id}/step` | `erp_cash:write` | `erp_cheque_step()` |
+| `GET /erp/reports/profit` | `erp:read` | `erp_profit_report()` |
+| `GET /erp/reports/cashflow` | `erp_cash:read` | `erp_cashflow_report()`, `_by_till()`, `_by_method()` |
+| `GET /erp/dashboard` | `erp:read` | `erp_aging_summary()`, `erp_profit_report()`, pano kartlarının sayımları |
+
+Ayrıntılar:
+
+- **Kasa kapısı.** Kasayı yürüten üç yazma `erp_api_expense_cash_gate()`
+  ile anahtarın `erp_cash:write` kapsamını ve sahibinin kasa hakkını
+  sorar; üçü de `X-Dry-Run` ile denenebilir. Dönem kilidi 422
+  `period_locked` (`date` alanıyla).
+- **Virman.** Ekrandaki gibi: iki kasa da var ve aktif olmalı, aynı olamaz,
+  döviz açıkken aynı para biriminde olmalı. `erp_post_transfer()` kayıtlı
+  kur yoksa sessizce 1 kullanıyordu; API'de kayıtlı kur yoksa ve
+  `exchange_rate` gönderilmediyse 422 `exchange_rate`, kayıtlı kur varsa o
+  kullanılır. Yanıt iki hareketin numarası (`out_id`, `in_id`) ve iki
+  kasanın güncel bakiyesi. Panelde de API'de de virman geri alınmaz; ters
+  virmanla düzeltilir (açıklamada yazıyor).
+- **Çek ve senet.** Kayıt ekrandaki `erp_cheque_create()`: alınan çek
+  portföy kasasına tahsilat, verilen çek verilen çekler kasasından ödeme;
+  kur ve para birimi denetimi provadan önce yapılır. Adımlar
+  (`deposit`, `collect`, `endorse`, `bounce`, `pay`) ekrandaki
+  `erp_cheque_step()`. Hangi adımın hangi durumdan atılabileceği
+  fonksiyonun içindeydi; yeni `erp_cheque_step_from()`'a alındı,
+  `erp_cheque_step()` ve API onu okur. Atılamayan adım 409
+  `cheque_step_not_allowed` (mesajda şu anki durum). Ekranın kısıtları API'de
+  de var: banka hesabı portföy kasası olamaz, ciro edilen cari aktif ve
+  çekin geldiği cariden başka olmalı. Her adım yalnız kullandığı alanı
+  alır (`cash_account_id` yalnız deposit/collect/pay, `account_id` yalnız
+  endorse, `reason` deposit dışında); başka alan 422. Ciro ve karşılıksız
+  `erp_post_receipt()` üzerinden geçtiği için `erp.receipt.created`
+  yayılır (panelde de öyle).
+- **Kâr raporu.** Dönem KDV raporuyla aynı okunur (`month` ya da `from` +
+  `to`, en çok iki yıl): bunun için `erp_api_reports_vat()`'taki okuma
+  `erp_api_report_period()`'a ayrıldı. Ekran siparişleri sayma seçimini
+  çerezde tutuyor; API'de `orders` parametresi. Ürün ve cari satırları
+  `limit` (varsayılan 50, en çok 500) kadar, toplam sayılarıyla.
+- **Kasa akışı.** Panelde kasa hakkı isteyen ekran olduğu için
+  `erp_cash:read` kapsamı ve sahibin kasa hakkı istenir (plan `erp:read`
+  diyordu). Ekran bugünden sonrasını ve 1100 günden uzununu sessizce
+  kırpıyor; API 422 ile söyler, rakamlar istenenden kısa dönemi kapsamasın.
+  Satır etiketleri (yerelleştirilmiş tarih) yerine `start`/`end`.
+- **Pano.** Panelin kartları: alacak ve borç (toplam, vadesi geçen, yedi
+  gün içinde vadesi gelen, yaşlandırma, en eski borçlu cariler), bu ayın
+  satış/kâr/gideri, ödenecek giderler, minimum stoğun altındaki ürün
+  sayısı, kredi limitini aşan cariler, açık teklifler, bekleyen satın alma
+  siparişleri. Ödenecek giderlerin sorgusu `erp_dashboard.php`'den
+  `erp_expense_unpaid_summary()`'ye alındı, ekran da onu çağırır. Kasa
+  kartı (`cash`: bakiyeler ve bugünün giriş/çıkışı) yalnız `erp_cash:read`
+  tutan ve sahibi kasa hakkına sahip anahtara dolu gelir, ötekine `null`
+  (panelin kasa kartını gizlemesi gibi). e-Belge kartı eklenmedi
+  (`includes/erp/edoc/*` Erdal'ın yerel işi).
+- `tools/check_api_schema.php` yeni nesnelerin sunucu–şema eşlerini de
+  karşılaştırıyor.
+
+**Doğrulama.** Sandbox'ta curl: virman (prova, aynı kasa, aktif olmayan,
+olmayan, sıfır tutar, yalnız okuma anahtarı 403, gerçek 201 ve bakiyeler
+100000 → 75000 / 500000 → 525000, aynı `Idempotency-Key` ile
+`Idempotent-Replay: true`); döviz açıkken TRY → USD 422, kayıtsız kurda
+422 `exchange_rate`, gönderilen kurla prova, kayıtlı kurun gönderilene
+üstün gelmesi (41,2); kilitli dönem 422 `period_locked`. Çek: due_date
+eksik, olmayan cari, aktif olmayan kasa, kilitli tarih, geçersiz kind,
+prova, yalnız okuma 403; dört alınan ve bir verilen çek, tekrar istek
+yeni çek açmadı; adımlar: geçersiz adım, 404, alınana pay 409, banka
+yok/portföy kasası/aktif olmayan 422, adımın almadığı alan 422; bankaya
+ver, tahsil (portföy → banka virmanı), aynı adım tekrar 409, ciro (aynı
+cari ve cari yok 422, pasif cari 422), karşılıksız, verilen çekin ödenmesi;
+dört adımın provası hareket yazmadı (15 → 15); döviz açıkken TRY portföy
+→ USD banka 422. Raporlar: kâr (ay, `orders`, `limit`, hatalı ay, iki
+yıldan uzun, `limit=0`), kasa akışı (gün, tek kasa + ay, bugünden sonrası,
+ters tarih, 1100 günden uzun, olmayan kasa, geçersiz group 422; yalnız
+`erp:read` anahtarı 403), pano (tam anahtar `cash` dolu, döviz açıkken USD
+kasalar toplama girmedi; okuma anahtarı `cash: null`; bekleyen ve geciken
+satın alma siparişi 2/1). Sahibinin kasa hakkı yokken kasa akışı ve virman
+403, pano `cash: null`. OpenAPI'de altı rota ve beş nesne; MCP
+`tools/list`'te altı araç (`erp_cheques_step` destructiveHint true),
+`tools/call` ile pano, adım ve virman provası. `php tools/lint.php`,
+`check_lang.php`, `check_api_schema.php`, `test.php` temiz;
+`tests/erp_api_test.php` genişletildi.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com); panel ekranlarının
+(`erp_dashboard.php`, çek ekranı) tarayıcıda görünümü — değişiklik
+ekranın kullandığı fonksiyonu taşımaktan ibaret, CLI'dan aynı değerler
+okundu.
+
+---
+
 ## 2026.4.10 — Tek dilli sitede sayfanın dili: büyük harfte Türkçe İ (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 6. maddesi: "Tasarımın dili `en`
