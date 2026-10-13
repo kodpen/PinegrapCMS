@@ -36,6 +36,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_signin();                 // 10.74
 	upgrade_2026_4_10_search_console();         // 10.73
 	upgrade_2026_4_10_erp_storefront_prices();  // 10.59
+	upgrade_2026_4_10_erp_late_fee();           // 10.61
 
 }
 
@@ -601,5 +602,30 @@ function upgrade_2026_4_10_erp_storefront_prices() {
 	install_add_column('config', 'erp_storefront_account_prices', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('ERP: the prices agreed with an account can be shown and charged in the store to the member linked to it. It is off until it is switched on under Settings, Ecommerce, ERP.');
+
+}
+
+// ERP: late payment fees (2026.4.10, 10.61; includes/erp/late_fee.php).
+//
+// config.erp_late_fee_rate is the monthly rate on what a customer owes past
+// the due date, 0 (the default) for off; config.erp_late_fee_tax_rate the
+// tax rate of the fee's invoice line, NULL for the rate the account is sold
+// at when a product names none. Both are DECIMAL like every other rate of
+// the module, so they cost config's row a few bytes.
+//
+// erp_invoices.late_fee_through is the last day a fee invoice charged for,
+// NULL on every other invoice. Written on the draft, it counts once the
+// draft is issued: the next fee of the account starts the day after, so no
+// day is charged twice, and a deleted draft charges nothing. The index
+// answers "the latest charged day of this account".
+function upgrade_2026_4_10_erp_late_fee() {
+
+	install_add_column('config', 'erp_late_fee_rate', "DECIMAL(6,3) NOT NULL DEFAULT 0.000");
+	install_add_column('config', 'erp_late_fee_tax_rate', "DECIMAL(6,3) NULL DEFAULT NULL");
+
+	install_add_column('erp_invoices', 'late_fee_through', "DATE NULL DEFAULT NULL");
+	install_add_index('erp_invoices', 'idx_late_fee', "INDEX idx_late_fee (account_id, late_fee_through)");
+
+	install_note('ERP: late payment fees. A monthly rate set under ERP Settings is worked out day by day on what a customer owes past the due date; the account screen shows it and writes it on a sales invoice draft. It is off until a rate is set.');
 
 }

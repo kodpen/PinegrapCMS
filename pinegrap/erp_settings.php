@@ -94,6 +94,23 @@ if ($_POST && ((string) ($_POST['rules'] ?? '') === '1')) {
     go($self_url . '#erp_rules');
 }
 
+// The late payment fee terms have a form of their own too.
+if ($_POST && ((string) ($_POST['late_fee'] ?? '') === '1')) {
+
+    validate_token_field();
+
+    $saved = erp_late_fee_settings_save((string) ($_POST['late_fee_rate'] ?? ''), (string) ($_POST['late_fee_tax_rate'] ?? ''));
+
+    if (!$saved['success']) {
+        $liveform->mark_error($saved['field'], h($saved['error']));
+    } else {
+        $liveform->add_notice(lang('The late payment fee terms were saved.'));
+        log_activity(lang('erp late payment fee terms were changed'), $_SESSION['sessionusername']);
+    }
+
+    go($self_url . '#erp_late_fee');
+}
+
 if ($_POST) {
 
     validate_token_field();
@@ -347,6 +364,43 @@ $output_rules .= '
                         <p class="mb-0">' . lang('Whether an expense category takes its VAT back is set with the categories.') . '
                             <a href="erp_expense_categories.php">' . lang('Expense categories') . '</a></p>';
 
+// The late payment fee: a monthly rate on what is owed past the due date,
+// and the tax rate of the fee's invoice line (includes/erp/late_fee.php).
+$output_late_fee = '';
+
+if (erp_late_fee_ready()) {
+    $late_fee = erp_late_fee_settings();
+    $rate_mark = erp_decimal_comma() ? ',' : '.';
+    $rate_out = function ($rate) use ($rate_mark) {
+        return rtrim(rtrim(number_format((float) $rate, 3, $rate_mark, ''), '0'), $rate_mark);
+    };
+
+    $output_late_fee = '
+            <form action="erp_settings.php" method="post" id="erp_late_fee">
+                ' . get_token_field() . '
+                <input type="hidden" name="late_fee" value="1">
+                <div class="card my-4">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Late payment fee') . '</div>
+                    <div class="card-body">
+                        <p class="text-body-secondary">' . lang('A monthly rate on what a customer owes past the due date, counted day by day until it is paid. The account screen and the reconciliation letter screen show what an account has run up and write it on a sales invoice draft for you to check and issue; nothing is charged by itself.') . '</p>
+                        <div class="row g-3" style="max-width:36rem">
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label" for="late_fee_rate">' . lang('Monthly rate (%)') . '</label>
+                                <input type="text" class="form-control text-end" id="late_fee_rate" name="late_fee_rate" value="' . (($late_fee['rate'] > 0) ? h($rate_out($late_fee['rate'])) : '') . '" inputmode="decimal" placeholder="0" autocomplete="off" />
+                                <div class="form-text">' . lang('Empty or 0 turns the fee off.') . '</div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label" for="late_fee_tax_rate">' . h(lang(array('string' => '{var:1} rate of the fee (%)', 'vars' => erp_tax_label('tax')))) . '</label>
+                                <input type="text" class="form-control text-end" id="late_fee_tax_rate" name="late_fee_tax_rate" value="' . (($late_fee['tax_rate'] !== null) ? h($rate_out($late_fee['tax_rate'])) : '') . '" inputmode="decimal" placeholder="—" autocomplete="off" />
+                                <div class="form-text">' . lang('Empty: the rate the account is sold at when a product names none.') . '</div>
+                            </div>
+                        </div>
+                        <div class="mt-3"><button type="submit" class="btn btn-sm btn-primary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-check2 me-2" aria-hidden="true"></i>' . lang('Save') . '</button></div>
+                    </div>
+                </div>
+            </form>';
+}
+
 $output_document_pills = '';
 foreach ($documents as $key => $item) {
     $output_document_pills .= '
@@ -358,7 +412,7 @@ echo pg_page_shell(array(
     'extra classes'       => 'erp erp_settings',
     'icon'                => 'erp',
     'heading'             => lang('ERP Settings'),
-    'heading_description' => lang('Where the seller is named, the accounting rules and how the printed documents look.'),
+    'heading_description' => lang('Where the seller is named, the accounting rules, the late payment fee and how the printed documents look.'),
     'cancel'              => false,
 )) . '
 <main id="content" class="container-fluid">
@@ -394,6 +448,7 @@ echo pg_page_shell(array(
                     </div>
                 </div>
             </form>
+' . $output_late_fee . '
 
             <form name="form" action="erp_settings.php" method="post">
                 ' . get_token_field() . '
