@@ -25,6 +25,34 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Özel form widget'ında "Güzel URL'leri
+         Etkinleştir": kayıt, referans kodu (?r=…)
+         yerine onu gösteren sayfanın adresinin ardından
+         başlığıyla açılıyor (/blog-yazisi/ilk-yazim).
+         Açıldığında daha önce gönderilmiş kayıtlar da
+         adını alıyor; eski linkler çalışmaya devam
+         ediyor. Başlık rolünde alan yoksa panel uyarıyor.
+
+  [DÜZELTME] Güzel URL'si açık formların kayıtları
+         görsel editör sayfalarında adlarıyla açılıyor.
+         Önceden /blog/kayit-adi adresi blog listesini
+         yeniden açıyordu; bu adres artık kaydın
+         sayfasına yönleniyor. Liste, detay, Hesabım,
+         RSS, site haritası ve kanonik adres aynı
+         adresi kullanıyor.
+
+  [DÜZELTME] Adresi "Adres adı" alanına bağlanan link
+         kaydın sayfasını açıyor. Önceden adres
+         bulunulan sayfanın sonuna ekleniyor ve liste
+         yeniden açılıyordu.
+
+  [DÜZELTME] Başlığı API ya da Çalışma Alanı üzerinden
+         değişen kayıt, güzel URL açıksa yeni adını
+         alıyor.
+
+  [DÜZELTME] Link seçici Geri Dönüşüm Kutusu'ndaki
+         sayfaları listelemiyor.
+
   [DÜZELTME] Bağlantı içeren bir başlık ya da paragraf
          bir alana bağlandığında bağlantı korunuyor:
          değer bağlantının içine yazılıyor. Önceden

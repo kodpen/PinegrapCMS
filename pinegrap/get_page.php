@@ -82,6 +82,18 @@ if (isset($_GET['page']) && $_GET['page'])
 		// can read their own context (product slug, drill-down group, etc.)
 		// without the page being forced into a legacy page_type.
 		if ($layout_type == 'system') {
+			// A record of a form with pretty URLs on, named after the page
+			// that shows it (/blog-post/<name>) or, the classic shape, after
+			// a list of it (/blog/<name>, sent on to the record's address).
+			if (function_exists('pg_sw_route_record_address')) {
+				$pg_record_address = pg_sw_route_record_address($page_id, pg_sw_request_segment($page_name));
+				if ($pg_record_address !== '') {
+					$pg_record_query = $_GET;
+					unset($pg_record_query['page']);
+					header('Location: ' . URL_SCHEME . HOSTNAME . $pg_record_address . ($pg_record_query ? '?' . http_build_query($pg_record_query) : ''), true, 301);
+					exit();
+				}
+			}
 			$page_name = $page_name_before_slash;
 		}
 		switch ($page_type)

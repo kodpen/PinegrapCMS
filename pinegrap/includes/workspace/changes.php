@@ -3133,6 +3133,12 @@ function ws_change_write_form($viewer, $action, $record, $values)
 
     db("UPDATE forms SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
 
+    // A form with pretty URLs on names its records after their Title field;
+    // a retyped title renames the record, as the submission screen does.
+    if (!empty($values['answers']) && check_if_pretty_urls_are_enabled((int) db_value("SELECT page_id FROM forms WHERE id = '" . $id . "' LIMIT 1"))) {
+        update_submitted_form_address_name($id);
+    }
+
     ws_change_log(lang(array('string' => 'The submitted form ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['reference_code'])));
 
     return array('ok' => true, 'error' => '', 'id' => $id);

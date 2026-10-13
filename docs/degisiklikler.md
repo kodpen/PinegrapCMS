@@ -84,6 +84,90 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: formlarda güzel URL, Adres Adı'na bağlı linkler, link seçicide Geri Dönüşüm Kutusu (2026-10-13)
+
+**Kaynak.** Ürün sahibinin görsel editörde bulduğu üç sorun: formlarda güzel
+URL hiç etki etmiyor; güzel URL linkleri kaydı referansla değil, blog
+sayfasının adının sonuna eklenen bir adresle açmaya çalışıyor; özel form
+widget'ında klasik sayfa eklemedeki "Güzel URL'leri Etkinleştir" seçeneği
+yok, var olan kayıtların adresleri de açılamıyor.
+
+**Kök neden.** Klasik akışta güzel URL'yi form liste görünümü sayfası
+çözüyordu: `/blog/<adres adı>` gelince `get_page.php` listenin detay
+sayfasına geçip kaydı adından buluyordu. Görsel editör sayfaları
+`page_type = 'standard'`, `layout_type = 'system'`; `get_page.php` bu
+sayfalarda `/X/<her şey>`'i X'e çevirip segmenti atıyordu, yani
+`/blog/ilk-yazim` blog listesini yeniden açıyordu. Editör widget'ları
+(form listesi, form detayı, Hesabım gönderimleri, form RSS'i, site haritası,
+kanonik adres) `custom_form_pages.pretty_urls`'ü hiç okumuyor, her zaman
+`?r=` basıyordu. Linkinin adresini "Adres adı" alanına bağlayan tasarım
+göreli bir slug basıyordu; tarayıcı onu bulunduğu sayfanın adresine
+ekliyordu (`/blog/ilk-yazim` gibi), o adres de listeyi açıyordu. Editörde
+ayar yoktu, `pg_cf_write_form_settings()` da `pretty_urls`'ü yazmıyordu.
+
+**Adres biçimi.** Kaydın güzel adresi onu gösteren detay sayfası + adı:
+`/blog-yazisi/ilk-yazim`, katalog widget'larının ürün adresiyle aynı biçim.
+Klasik biçim (`/blog/ilk-yazim`, liste sayfası + ad) kaybolmasın diye kaydın
+adresine 301 ile yönlenir; sorgu dizesi korunur. `?r=` her yerde çalışmaya
+devam eder; adı olmayan kayıt (gönderildiğinde Başlık rolünde alan yoktu)
+`?r=` ile basılır. Liste + ad yerine detay + ad seçildi çünkü görsel
+editörde bir formun birden çok listesi olabilir: adres kaydı gösteren
+sayfaya bağlanınca bütün listeler aynı kanonik adrese gider.
+
+- Yönlendirme: `pg_sw_route_record_address()` (`includes/fn/widgets.php`),
+  `get_page.php`'nin system bloğundan. Sayfada güzel URL'si açık bir formun
+  `form_item_view`'ı varsa segment `forms.address_name`'de aranır ve
+  `$_GET['r']` kurulur (bulunamazsa boş kalır, widget bulunamadı halini
+  basar). Sayfada liste widget'ı varsa ve listenin detay sayfası aynı formu
+  gösteriyorsa kaydın adresine 301. `?r=` verilmişse ya da sayfada katalog
+  widget'ı varsa dokunulmaz (katalog kendi segmentini okur).
+- Link üretimi: tek kaynak `pg_sw_record_url()`. `pg_sw_list_detail_target()`
+  listenin detay sayfasının klasik mi editör sayfası mı olduğunu ayırır:
+  klasik detay sayfası `/x/<ad>`'ı çözmez, `?r=` alır. Kullananlar: form
+  listesi, form detayı (`self_url`: yorum ve paylaşım linkleri), Hesabım
+  gönderim listesi, form RSS'i (`pg_sw_form_feed_parts()`), site haritası,
+  kanonik adres (`pg_sw_page_item()`, `seo.php`).
+- Adres adına bağlı link: render öncesi `pg_sw_record_href_bindings()`
+  `_bindings.href = 'address_name'`'i `form_item_view`'a çevirir; link
+  kaydın tam adresine gider (güzel URL kapalıysa `?r=`). Metin olarak basılan
+  adres adı değişmez. Bağlama paneli bunu söyler.
+
+**Ayar.** Özel form widget'ının ayarlarında (formun kendi sayfasında)
+"Kayıt adresleri → Güzel URL'leri Etkinleştir". `pretty_urls` diğer form
+ayarlarıyla kaydedilir (`pg_cf_load_page_form_settings()`,
+`pg_cf_write_form_settings()`). Anahtar açıkken Başlık rolünde alan yoksa
+panel uyarır. Başka bir sayfanın formunu gösteren widget, güzel URL'nin açık
+ya da kapalı olduğunu ve formun kendi sayfasından açıldığını söyler.
+
+**Var olan kayıtlar.** Anahtar açılınca, ya da açıkken Başlık alanı
+değişince, `pg_cf_refresh_address_names()` formun bütün kayıtlarını gönderim
+sırasıyla adlandırır (`update_submitted_form_address_name()`; aynı ada sayı
+eklenir, klasik "Sayfayı Düzenle"deki `update_multiple_submitted_form_address_names()`
+ile aynı kural). Zaten açıkken yalnız adı boş kayıtlar adlandırılır. Kayıt
+ekranı kaç kaydın kendi adresini aldığını söyler. Klasikteki gibi kapatmak
+adları silmez; linkler `?r=`'ye döner.
+
+**Komşu düzeltmeler.**
+
+- Dış API (`POST|PATCH /forms/{id}/submissions/{submission_id}`) ve Çalışma
+  Alanı form değişikliği (`ws_change_write_form()`) cevapları değiştirince,
+  formun güzel URL'si açıksa kaydın adı yeniden üretilir. Önceden başlığı
+  değişen kayıt eski adıyla kalıyordu; panelin gönderim ekranı bunu zaten
+  yapıyordu.
+- Link seçici (`editor_select_page_or_file.php`, editörün ve CKEditor'ün
+  sayfa/dosya seçicisi) Geri Dönüşüm Kutusu'ndaki sayfaları listelemiyor
+  (`pg_designer_not_binned_sql()`); seçilen link silinmiş sayfaya gidiyordu.
+
+**Yapılmayanlar.** Hazır tasarım şablonlarının formlarında güzel URL
+varsayılan açılmadı: kurulu sitelerin adresleri kendiliğinden değişmesin.
+Site içi arama dizini (`update_search_index.php`) yalnız klasik liste
+sayfalarını tarıyor, editör kayıtları dizine girmiyor; bu ayrı bir iş.
+Ziyaretçi raporlarındaki içerik linkleri (`pg_visitor_label_content_rows()`)
+editör kayıtları için `?r=` kalır (çalışır, yalnız kanonik değil). Bulut oturumu dev.pinegrap.com'a
+erişemediği için canlıda denenmedi.
+
+- `tests/designer_pretty_url_test.php`.
+
 ## 2026.4.10 — Görsel editör: detay sayfası denetimi, sayfaya özel dosyalar, tek ikon sürümü, dar pencere (2026-10-13)
 
 **Kaynak.** kodpen.com'da bir ajanın bulduğu hatalardan 10, 11 ve 12.

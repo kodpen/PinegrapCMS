@@ -2343,6 +2343,13 @@ function pg_designer_screen_post($ctx)
     foreach ($cf_jobs as $cf_page_id => $cf_set) {
         $cf_set = pg_designer_resolve_tab_values($cf_set, $tab_ids);
         $cf_res = pg_cf_reconcile_page_form($cf_page_id, $user['id'], $cf_set);
+        if (!empty($cf_res['addresses'])) {
+            $warnings[] = lang(array(
+                'string' => '{var:1} record{suffix:1} of the form now open at their own address.',
+                'vars'   => array((int)$cf_res['addresses']),
+                'suffix' => array((int)$cf_res['addresses'] === 1 ? '' : 's'),
+            ));
+        }
         if (!empty($cf_res['deleted'])) {
             $warnings[] = lang(array(
                 'string' => '{var:1} form field{suffix:1} deleted, along with {var:2} submitted value{suffix:2}.',

@@ -41,6 +41,11 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   adını söyle. Sayfa içeriğinde de token yazma: bir değer bağlamayla gelir.
   Eski adlar (`__detail_url` form listesinde, `__not_found_message` form
   detayında) yalnız eski tasarımlar için renderer'da takma addır.
+- Bir kaydın adresini tek yerden üret: `pg_sw_record_url()` (formun güzel
+  URL'si açıksa `/<detay sayfası>/<address_name>`, değilse `?r=`). Yolu
+  `get_page.php` → `pg_sw_route_record_address()` çözer; klasik
+  `/<liste>/<ad>` biçimi oraya 301 ile gider. `href`'i `address_name`'e bağlı
+  link render öncesi `form_item_view`'a çevrilir (`pg_sw_record_href_bindings()`).
 - Fonksiyonel class ve `data-*` hook'larını silme: `pg-eo-form`,
   `pg-eo-cc-fields`, `pg-eo-total-formatted`, `pg-qty-stepper`,
   `data-pg-qty-action`, `data-pg-remove-href`, `data-pg-eo-form`,

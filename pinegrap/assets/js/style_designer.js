@@ -10926,6 +10926,11 @@ const StyleDesigner = (function () {
                'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
                '<span class="bi bi-link-45deg me-1"></span>' +
                _sdT('The URL comes from a data binding: <code>{var}</code>. To type a URL by hand, pick “— No binding —” in the <strong>Bind Data</strong> panel.', esc(tok)) +
+               // The name alone is no address; the server links the record
+               // instead (pg_sw_record_href_bindings()).
+               (tok === 'address_name'
+                   ? '<br>' + esc(_sdT('A link bound to the address name opens the record on its detail page, by its name when the form has pretty URLs on.'))
+                   : '') +
                '</div>';
     }
 
@@ -25836,6 +25841,24 @@ const StyleDesigner = (function () {
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="form_name" value="' + esc(_cfFS.form_name || '') + '" maxlength="100" placeholder="' + esc((_pgActivePage() || {}).page_title || _sdT('Contact us')) + '">' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('This form\'s name in the submission lists and the form pickers.')) + '</div>'
                         ) +
+                        // Pretty URLs: the record's name in its address,
+                        // made from the Title field (the server names the
+                        // records already there when this is turned on).
+                        row(_sdT('Record addresses'),
+                            '<div class="form-check form-switch">' +
+                                '<input class="form-check-input sd-cf-sb" data-s="pretty_urls" type="checkbox" id="sd-sw-cf-pretty"' + (_cfFS.pretty_urls ? ' checked' : '') + '>' +
+                                '<label class="form-check-label" for="sd-sw-cf-pretty" style="font-size:.72rem">' + esc(_sdT('Enable Pretty URLs')) + '</label>' +
+                            '</div>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('A record opens at the address of the page that shows it followed by its title (/blog-post/my-first-post), not by a reference code (?r=…). The name is made from the field with the Title role; turning this on names the records already submitted, and old links keep working.')) +
+                            '</div>' +
+                            ((_cfFS.pretty_urls && _cfTree && !_cfRolesSummary(_cfTree).some(function (r) { return r.role === 'title' && r.field; }))
+                                ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                                      '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                                      _sdT('No field carries the <strong>Title</strong> role, so the records get no name and keep their reference code. Select a control and assign it in Form Field → RSS / list role.') +
+                                  '</div>'
+                                : '')
+                        ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>'
@@ -25958,6 +25981,16 @@ const StyleDesigner = (function () {
                             } else {
                                 _cfFL = '<div style="font-size:.7rem;color:#888">' +
                                         (_cfF.failed ? _sdT('The form could not be loaded.') : _sdT('This form has no fields.')) + '</div>';
+                            }
+                            // Whether that form names its records in their
+                            // addresses: set on the form's own page.
+                            if (_cfF.settings && _cfF.settings.exists) {
+                                _cfFL += '<div style="font-size:.66rem;color:#888;line-height:1.4;margin-bottom:4px">' +
+                                    '<span class="bi bi-link-45deg me-1"></span>' +
+                                    esc(_cfF.settings.pretty_urls
+                                        ? _sdT('Pretty URLs are on: a record opens at its detail page followed by its title.')
+                                        : _sdT('Pretty URLs are off: a record opens by its reference code (?r=…). They are turned on on the form\'s own page.')) +
+                                '</div>';
                             }
                             if (_cfF.settings && _cfF.settings.orphan) {
                                 _cfFL += '<div class="alert alert-warning py-2 px-2 mb-1" style="font-size:.68rem;line-height:1.45">' +

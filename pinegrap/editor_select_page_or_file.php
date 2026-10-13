@@ -150,6 +150,9 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
         }
 
+        // Pages in the Recycle Bin are not offered: a link to one stops working.
+        $where .= function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
+
         // Get all pages.
         $pages = db_items(
             "SELECT
