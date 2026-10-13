@@ -8525,6 +8525,7 @@ function get_tables() {
 		'ws_task_links',
 		'ws_approvals',
 		'ws_approval_people',
+		'ws_approval_guests',
 		'ws_ack_requests',
 		'ws_acks',
 		'ws_calendar_feeds',

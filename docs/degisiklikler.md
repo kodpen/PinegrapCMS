@@ -84,6 +84,82 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: müşteri onayı, ekip dışından e-postayla onay (10.84) (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırma notunun P1 1.5 maddesi: onay
+istekleri yalnız ekipten kişilere soruluyordu; ajans/serbest çalışan
+senaryosunda asıl onaylayan müşteridir ve onay e-posta yazışmasında
+kayboluyordu. Hedef: görev ya da plan maddesi için müşteriye hesap açtırmadan,
+tek kullanımlık, süreli, imzalı bir bağlantıyla sormak; yanıtın kim tarafından,
+hangi bağlantıyla verildiği denetim izine yazılsın.
+
+**Ne değişti.** Yeni `includes/workspace/approval_guests.php` ve herkese açık
+`workspace_approval.php`.
+- `ws_approval_create()` `guests` (ad + e-posta, en çok `WS_APPROVAL_MAX_GUESTS`
+  = 5) alır; müşteri varken kanaldan onaylayan seçmek zorunlu değildir.
+  Yalnız personel (rol ≤ 2, misafir olmayan) müşteri sorabilir
+  (`ws_approval_can_ask_guests()`). Her kişiye `pg_short_link_new_token()`
+  ile 43 karakterlik bir jeton üretilir; tabloda yalnız SHA-256'sı ve ilk 6
+  karakteri (`token_hint`, site günlüğünde bağlantıyı ayırt etmek için) durur.
+  Bağlantı isteğin son tarihine kadar, son tarih yoksa 30 gün geçerli; en
+  fazla 90 gün (`ws_approval_guest_expiry()`).
+- E-posta düz metin, `email(... 'queue' => true)` ile kuyruğa gider (dev'de
+  `mail_outbox`), Reply-To isteyen kişinin adresi. İçerikteki ilk `**başlık**`
+  satırı çıkarılır, etiketler okunur metne çevrilir.
+- `workspace_approval.php` oturum açmaz (`PG_NO_SESSION`); `noindex`,
+  `no-referrer`, `no-store`, `X-Frame-Options: DENY`. GET hiçbir şey
+  değiştirmez; POST (`approve` / `reject` + not) koşullu `UPDATE ... WHERE
+  decision = 'pending' AND token_hash = ... AND expires_at > now` ile tek
+  yanıt alır, 303 ile adrese döner. Ret not ister; not tek satıra, 500
+  karaktere indirilir, `<@...>`/`<#...>` etiketleri ve HTML işaretleri
+  ayıklanır. IP (`waf_client_ip()`), tarayıcı ve bağlantı ipucu yanıtla
+  saklanır. Tabloda olmayan jeton `ws_guest_offence()` ile güvenlik duvarına
+  sayılır (misafir odası bağlantılarıyla aynı kural).
+- Yanıt `ws_approval_evaluate()`'e girer: kural "herhangi biri"/"hepsi"
+  müşterileri de sayar; sonuç mesajı müşteriyi "Ad (müşteri)" diye yazar.
+  İstek açık kalırsa isteyene yeni `approval_answered` bildirimi gider;
+  kapanınca mevcut `approval_decided`.
+- Görev: `ws_task_approval_create()` isteği görevin kanalında
+  `record_type = 'task'` ile açar; `ws_task_approvals_detail()` görev
+  çekmecesindeki "Müşteri onayı" bölümünü (`assets/js/workspace_task_approval.js`)
+  besler. İstek kapanınca sonuç cümlesi `ws_task_note_add(..., $ask = false)`
+  ile göreve not olarak yazılır. Plan maddesi için kanaldaki formda `#plan`
+  etiketi yeter: `ws_approval_record_of()` önce site kaydını, yoksa ilk
+  `#task`/`#plan` etiketini kayıt sayar.
+- Kart: müşteri satırları "müşteri" rozetiyle; yöneticiye e-posta ve
+  denetim satırı (gönderim/geçerlilik ya da "… bağlantısıyla … adresinden
+  yanıtlandı") görünür, "Yeni bağlantı gönder" (`ws_approval_guest_resend`)
+  hash'i değiştirir, eski bağlantı açılmaz olur.
+- Dış API: `approvals.create` `guests` alır, `approvers` artık zorunlu
+  değil; yanıtta `guests` dizisi (`ws_api_approval_guest_present()`, e-posta
+  yalnız personele); `workspace.approval.*` webhook'ları `guests` taşır.
+- Panel eylemleri `ws_task_approval_create` ve `ws_approval_guest_resend`
+  `includes/panel/actions.php` tablosuna eklendi.
+
+Şema 10.84: `ws_approval_guests` (approval_id, name, email, token_hash
+`CHAR(64) ascii_bin` UNIQUE, token_hint, expires_at, sent_at, sent_by,
+decision, note, decided_at, decided_ip, decided_agent, decided_hint);
+`install/index.php` tablo listesine eklendi.
+
+**Güvenlik.** Müşterinin notu göreve ve karta yalnız metin olarak gider:
+`ws_task_note_add()` `$ask = false` ile asistanı çağırmaz (notta "@claude"
+yazsa da). Sayfa misafir odasının güvenli işleyicisini (`ws_guest_render()`)
+kullanır.
+
+**Bilerek yapılmayan.** Müşteriye hatırlatma e-postası yok (hatırlatma
+yalnız ekip içi). Müşteri isteğe yanıtını değiştiremez, sayfada yazışamaz.
+Jeton adres satırında durduğu için sunucu erişim günlüğüne düşer; bağlantı
+kişiye özel, tek yanıtlık ve süreli olduğu için kabul edildi.
+
+**Doğrulama.** `tests/approval_guests_test.php` (18 test). Sandbox'ta 10.84
+iki kez koşturuldu, ikincisi "zaten var". Görev çekmecesinden ve kanal
+formundan tarayıcıyla istek gönderildi; `mail_outbox` satırı, sayfanın
+açık / yanıtlanmış / süresi dolmuş / kapanmış / geçersiz (404) halleri,
+notsuz ret uyarısı, ikinci yanıtın reddi, iki müşterili "hepsi" kuralı,
+yeni bağlantı (eskisi geçersiz), bildirim ve görev notu denendi.
+
+---
+
 ## 2026.4.10 — Dış API: ortaklık komisyonları (salt okuma) ve `?dry_run=true` (2026-10-13)
 
 **Sorun.** İki ayrı eksik (`api-genisletme-devir.md` 5. ve 7. madde).

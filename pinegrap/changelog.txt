@@ -587,6 +587,42 @@
          anahtarı girilebiliyor; yönlendirme adresi
          formda yazıyor.
 
+  [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
+         örneğin müşteriye e-postayla sorulabiliyor. Onay
+         formunda "Ekip dışından müşteriler" bölümüne ad ve
+         e-posta yazılıyor (en çok 5 kişi). Her kişiye
+         kendine ait, imzalı ve süreli bir bağlantı
+         gidiyor; müşteri hesap açmadan isteği okuyup
+         onaylıyor ya da nedenini yazarak reddediyor.
+         Bağlantı tek yanıt alıyor, son tarihe kadar (son
+         tarih yoksa 30 gün) geçerli. Müşteri sorulduğunda
+         kanaldaki kişiler boş bırakılabiliyor.
+
+  [YENİ] Görev çekmecesinde "Müşteri onayı" bölümü: görev
+         hakkında açılan onay istekleri ve kimin ne
+         yanıt verdiği görünüyor. "Müşteriden onay iste"
+         ile ad, e-posta, mesaj ve son tarih yazılıp istek
+         görevin kanalına açılıyor. Sonuç göreve not
+         olarak yazılıyor; isteyen kişi gelen her yanıtı
+         bildirimlerinde görüyor.
+
+  [YENİ] Onay kartında müşteri satırı "müşteri" rozetiyle
+         görünüyor; yöneticiler üzerine gelince e-posta
+         adresini, bağlantının ne zaman gönderildiğini ve
+         yanıtın hangi bağlantıyla, hangi IP'den geldiğini
+         görüyor. Yanıt vermeyen müşteriye "Yeni bağlantı
+         gönder" ile yeni bağlantı gidiyor; eskisi açılmaz
+         oluyor. Her gönderim ve yanıt etkinlik kaydına
+         yazılıyor. E-postalar e-posta kuyruğundan
+         gönderiliyor.
+
+  [YENİ] Dış API ve MCP: approvals.create isteği guests
+         listesi alıyor (ad ve e-posta); approvals yanıtı
+         ve webhook'lar müşterilerin yanıtlarını taşıyor.
+
+  [ŞEMA] Ekip dışından sorulan kişiler için yeni bir tablo
+         oluşturulur.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

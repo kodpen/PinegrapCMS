@@ -842,6 +842,14 @@ function ws_api_approval_present($viewer, $row)
         $people[] = ws_api_approval_person_present($answer, $briefs);
     }
 
+    // People outside the team: their address is for staff alone.
+    $guests = array();
+    $staff = !empty($viewer['member']) && ((int) ($viewer['role'] ?? 3) <= 2);
+
+    foreach (function_exists('ws_approval_guests_of') ? ws_approval_guests_of($row['id']) : array() as $guest) {
+        $guests[] = ws_api_approval_guest_present($guest, $staff);
+    }
+
     $message = ws_message($row['message_id']);
 
     return array(
@@ -854,6 +862,7 @@ function ws_api_approval_present($viewer, $row)
         'rule'              => (string) $row['rule'],
         'record'            => ((string) $row['record_type'] !== '') ? array('type' => (string) $row['record_type'], 'id' => (int) $row['record_id']) : null,
         'people'            => $people,
+        'guests'            => $guests,
         'outcome'           => (string) $row['outcome'],
         'requested_by'      => ws_api_person_ref($row['created_by'], $briefs),
         'closed_by'         => ws_api_person_ref($row['closed_by'], $briefs),
@@ -882,6 +891,26 @@ function ws_api_approval_person_present($answer, $briefs)
     );
 }
 
+/**
+ * One person asked from outside the team, with their answer.
+ *
+ * @param array $guest ws_approval_guests row
+ * @param bool  $staff the reader may see the address
+ * @return array
+ */
+function ws_api_approval_guest_present($guest, $staff)
+{
+    return array(
+        'id'              => (int) $guest['id'],
+        'name'            => (string) $guest['name'],
+        'email'           => $staff ? (string) $guest['email'] : null,
+        'decision'        => (string) $guest['decision'],
+        'note'            => ((string) $guest['note'] !== '') ? (string) $guest['note'] : null,
+        'decided_at'      => api_time($guest['decided_at']),
+        'link_expires_at' => ((string) $guest['decision'] === 'pending') ? api_time($guest['expires_at']) : null,
+    );
+}
+
 // What ws_api_approval_present() returns.
 function ws_api_approval_schema()
 {
@@ -894,6 +923,7 @@ function ws_api_approval_schema()
         'rule'              => 'string',
         'record'            => array('type' => 'string', 'id' => 'integer'),
         'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
+        'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
         'outcome'           => 'string',
         'requested_by'      => array('user_id' => 'integer', 'name' => 'string'),
         'closed_by'         => array('user_id' => 'integer', 'name' => 'string'),
@@ -971,6 +1001,7 @@ function ws_api_approvals_create($params)
         'title'     => (string) ($params['title'] ?? ''),
         'text'      => (string) ($params['text'] ?? ''),
         'approvers' => (array) ($params['approvers'] ?? array()),
+        'guests'    => (array) ($params['guests'] ?? array()),
         'rule'      => (string) ($params['rule'] ?? 'any'),
         'closes_at' => (int) ($params['closes_at'] ?? 0),
     );
@@ -983,7 +1014,7 @@ function ws_api_approvals_create($params)
         api_fail_validation($checked['error'], (($checked['field'] ?? '') !== '') ? $checked['field'] : null);
     }
 
-    api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers']));
+    api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers'], 'guests' => $checked['guests']));
 
     $result = ws_approval_create($viewer, $channel, $data, ws_api_app_id());
 

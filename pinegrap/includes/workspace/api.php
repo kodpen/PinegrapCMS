@@ -102,8 +102,8 @@ function ws_webhook_events()
         'workspace.task.time_logged'    => 'Time spent on a workspace task was written: a stopped timer or minutes written by hand (minutes, worked_on, billable, user_id)',
         'workspace.task.delegated'      => 'A workspace task was handed to an assistant (agent: ai or claude); the people on it stay responsible (delegated_by, request_id)',
         'workspace.task.assistant_answered' => 'An assistant finished a run on a workspace task (outcome: answered or failed; agent, request_id, requested_by). The answer itself, and what it proposed, are read with GET /workspace/assistant-requests and GET /workspace/changes by task_id',
-        'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked and the record it is about',
-        'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer',
+        'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked (guests: the names of the people outside the team) and the record it is about',
+        'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer, the answers from outside the team under guests',
     );
 }
 
@@ -469,12 +469,13 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
             'summary'     => 'Ask for approval in a channel',
-            'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application, and the people asked are told. approvers have to be members of the channel who may write in it, one to ten. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision. Send an Idempotency-Key so a retried call does not ask twice.',
+            'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application, and the people asked are told. approvers have to be members of the channel who may write in it, up to ten. guests are people outside the team - a customer - asked by e-mail: each gets a link of their own and answers with no account; only staff (roles 0-2) may name them, up to five, and with them approvers may be left out. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision, and onto the task when the request is about one. Send an Idempotency-Key so a retried call does not ask twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'What is to be approved, in a line.'),
-                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3800, 'description' => 'The details. Tags such as <#invoice:88> are kept; the first record tagged is the record the request is about.'),
-                array('name' => 'approvers', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 10, 'required' => true, 'description' => 'User ids of the people asked.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3800, 'description' => 'The details. Tags such as <#invoice:88> are kept; the first record tagged is the record the request is about, or else the first task or plan item tagged.'),
+                array('name' => 'approvers', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 10, 'description' => 'User ids of the people asked. Needed unless guests are named.'),
+                array('name' => 'guests', 'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'email' => 'string'), 'max_items' => 5, 'description' => 'Objects of {name, email}: people outside the team asked by e-mail, each with a link of their own. Staff only.'),
                 array('name' => 'rule', 'in' => 'body', 'type' => 'enum', 'values' => array('any', 'all'), 'default' => 'any'),
                 array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'The deadline. Left out, it waits until it is answered.'),
             ),
