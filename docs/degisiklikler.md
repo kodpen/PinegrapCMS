@@ -84,6 +84,310 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Banka ekstresi Excel'den, vade farkı, nakit tahmini (ERP Faz 9, 10.61) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 9: bankalar ekstreyi çoğunlukla
+Excel olarak veriyor, CSV'ye çevirmek operatöre kalıyordu; geç ödeyen müşteriye
+vade farkı elle hesaplanıyordu; nakit akışı ekranı yalnız olanı gösteriyor,
+önümüzdeki günleri göstermiyordu.
+
+**9a. Ekstre Excel'den.** `erp_bank_statement_upload()` dosyayı artık
+`erp_bank_read_file()` ile okur: `.xlsx`/`.xlsm` ilk sayfası ürün
+içe aktarıcısının zip yardımcılarıyla satır satır (`erp_bank_read_spreadsheet()`,
+kütüphane yok), eski `.xls` PHPExcel ile **biçimleriyle** okunur; ürün
+içe aktarıcısı `setReadDataOnly(true)` kullandığı için tarih hücresi orada
+gün sayısı olarak gelir, burada gelmez. Sayı hücresi `erp_bank_sheet_value()`
+ile CSV'nin taşıyacağı metne döner: tarih biçimli hücre `Y-m-d` (UTC ile, batı
+saat diliminde gün kaymasın), tam sayı olduğu gibi, gerisi iki ondalık ve
+noktayla (1234.5599999999999 → 1234.56). Bankanın başlık bloğu
+(`erp_bank_rows_from_heading()`): ilk 60 satırda bir hücresi tarih, başka bir
+hücresi tutar (rakam, en çok üç harf, sıfır olmayan) olan ilk satır bulunur,
+üstündeki başlık satırı kalır, gerisi atılır; bulunamazsa satırlar olduğu gibi
+kalır. CSV de aynı süzgeçten geçer. `.ods`, `.numbers`, `.pdf` adla reddedilir
+("Excel veya CSV olarak kaydedip yeniden yükleyin"): PHPExcel'in OpenDocument
+okuyucusu PHP 8'de `implode()` argüman sırasından ölüyor (bkz. bilinen sorun).
+Sütun seçimi, satır özeti ve eşleştirme değişmedi.
+
+**9b. Vade farkı.** Yeni `includes/erp/late_fee.php`. Ayar ERP Ayarları'nda
+yeni kart: `config.erp_late_fee_rate` (aylık %, 0 = kapalı, en çok 50) ve
+`config.erp_late_fee_tax_rate` (faturadaki KDV oranı; boşsa carinin satış
+bölgesi oranı, `erp_account_zone_rate()`). Hesap `erp_late_fee_for_invoice()`:
+vadeden (ya da son faturalanan günden, hangisi sonraysa) itibaren gün gün,
+tahsilat (`erp_settlements.amount_base`) ve iadeler (iade faturası
+`grand_total_base`) kendi günlerinde borcu düşürür; ay 30 gün, yuvarlama bir
+kez sonda. Geç ödenmiş fatura da günlerini kazanır. `erp_late_fee_account()`
+carinin satış faturalarını (kesilmiş, kısmen ödenmiş, ödenmiş; vadesi as-of'tan
+önce; vade farkı faturası olmayan) dönemden önce kapananları eleyerek toplar.
+Dönem varsayılanı mutabakat mektubundaki gibi as-of yılının 1 Ocak'ı.
+Cari kartının bakiye kartı ve mutabakat mektubu ekranı (`erp_late_fee_panel()`,
+yalnız ekranda, mektupta değil) tutarı söyler; "Vade farkı faturası" düğmesi
+(`add_erp_late_fee_invoice.php`, salt okunur kullanıcıda yok) tek satırlı satış
+faturası **taslağı** yazar: açıklama dönem, notlar fatura fatura gün ve tutar,
+seri satış serisi, para birimi ana para birimi. Açık taslak varken düğme
+yerine taslağa bağlantı çıkar, ikinci taslak yazılmaz.
+
+Şema 10.61: `config.erp_late_fee_rate DECIMAL(6,3)`, `erp_late_fee_tax_rate
+DECIMAL(6,3) NULL` (config VARCHAR almaz) ve `erp_invoices.late_fee_through
+DATE NULL` + `idx_late_fee (account_id, late_fee_through)`. Taslak dönemin
+son gününü `late_fee_through`'a yazar (`erp_invoice_draft_save()` yalnız
+çağıran anahtarı verirse yazar; taslağı düzenlemek onu silmez). Fatura
+kesilince sayılır: sonraki vade farkı ertesi günden başlar, aynı gün iki kez
+faturalanmaz; silinen taslak hiçbir şey saymaz.
+
+**9c. Nakit tahmini.** Yeni `includes/erp/cash_forecast.php`. Nakit akışı
+ekranında "Gerçekleşen / Beklenen" sekmesi (`erp_cashflow.php?view=forecast`,
+`horizon` 30/60/90, varsayılan 90). Tablo: vadesi geçmiş + 30'ar günlük
+sütunlar; satırlar açık satış ve alış faturaları (`erp_aging_invoices()`,
+açık tutar etkin vadede), ödenmemiş giderler, tekrarlayan fatura ve giderler
+(sonraki tarihten adım adım, `erp_cash_forecast_repeats()`; geçmiş tarih bugün
+sayılır), portföydeki/tahsildeki alınan ve verilen çek-senetler vadelerinde.
+Altında para girişi, çıkışı, net ve beklenen bakiye (bugünkü kasa + birikimli
+net). Bugünkü nakit: ana para birimindeki kasalar, çek-senet portföy kasaları
+hariç (çek hem portföyde hem satırda sayılmasın). Kurusu bilinmeyen yabancı
+paralı tekrarlayan belge ve yabancı para kasaları notta sayılır, toplama
+girmez. Hesaplama saf `erp_cash_forecast_build()`; liste en çok 300 hareket.
+
+**Bilerek yapılmayan.** API/MCP uçları (vade farkı ve tahmin) yok; ekranlarla
+sınırlı tutuldu. Vade farkı otomatik kesilmez, e-posta atmaz; yalnız taslak.
+Tedarikçiye vade farkı yok. Tahmin geçmiş tahsilat alışkanlığından gecikme
+tahmini yapmaz; vadeyi olduğu gibi alır.
+
+**Bilinen sorun (bu PR dışında).** Ürün içe aktarımı da `.ods` dosyasında
+PHP 8'de ölümcül hata verir: `includes/phpexcel/PHPExcel/Reader/OOCalc.php:538`
+`implode($dataArray, "\n")`.
+
+**Doğrulama.** Birim testleri: `tests/erp_late_fee_test.php`,
+`tests/erp_cash_forecast_test.php`, `tests/erp_bank_import_test.php` (elle
+yazılmış .xlsx dahil); `innodb_test` config sütun sayısı 431. Sandbox'ta 10.61
+iki kez koşturuldu, ikincisinde dördü de "zaten var". Ayar kaydı (3,5 / 20),
+cari kartında "₺950,83" (74 gün × ₺10.000 + 15 gün × ₺5.000, %3,5) ve taslak
+(₺950,83 + %20 KDV = ₺1.141,00), taslağın kesilmesi (`late_fee_through`
+korundu), kesilen faturadan sonra yeni dönemin ertesi günden başlaması
+(₺151,67), tahmin tablosu 90 ve 60 gün, örnek .xlsx ve .xls ekstrenin
+yüklenip sütun eşlenmesi gerçek POST'larla denendi.
+
+---
+
+## 2026.4.10 — Google ile Giriş signin.php akışında; listelerde sağlayıcı rozetleri (2026-10-13, şema 10.75)
+
+**Sorun.** #306 Microsoft ve Apple ile girişi `signin.php` /
+`includes/fn/signin.php` akışına ve `user_identities` tablosuna kurdu; Google
+eski yolunda kaldı (`google_auth.php`'de kendi kopyası, kimlik
+`user.user_google_id`'de). Aynı kurallar iki yerde yazılıydı, her ekran
+Google'ı ayrı, ötekileri ayrı okuyordu. Kullanıcılar listesi ve Oturumlar
+ekranı yalnız Google'ı gösteriyordu: Microsoft ya da Apple ile bağlı hesap,
+hatta tek giriş yolu Apple olan hesap orada "bağlı değil" görünüyordu.
+
+**Değişiklik.**
+
+- `providers/google.php`'ye `signin` bloğu (sıra 10, `openid email
+  profile`, PKCE). Blokta iki yeni anahtar: `return` (dönüş kök betiği;
+  Google'da `google_auth.php`) ve `authorize_params` (girişe özel istek
+  parametreleri; Google'da `access_type=online`, `prompt=select_account` —
+  bağlı hesap tarafındaki `offline` + `consent` girişte istenmez).
+  `pg_signin_return_file()`, `pg_signin_authorize_params()`,
+  `pg_signin_redirect_uri($key)`.
+- Google'ın uygulaması Güvenlik ayarlarındaki istemci (`config.oauth_google_*`,
+  `pg_signin_google_app()`; `pg_connect_app()`'in Google yedeği de artık
+  bunu çağırıyor), anahtarı `config.oauth_google_enabled` (`pg_signin_switched_on()`
+  Google'ı ekler). Bağlı hesaplar'da ayrı bir Google uygulaması kayıtlıysa
+  bile giriş Güvenlik'teki istemciyle yapılır: o istemcide `google_auth.php`
+  kayıtlı, ötekinde olmayabilir.
+- `google_auth.php` yalnız `PG_SIGNIN_PROVIDER = 'google'` tanımlayıp
+  `signin.php`'yi çalıştırıyor. Eski bağlantılar (`google_auth.php?create=0`,
+  özel düzenler, `__google_signin_url`) çalışmaya devam ediyor.
+  `pg_google_signin_url()` artık `signin.php?provider=google` döndürüyor.
+- **Geçiş kararı: şema adımı.** 10.75 (`upgrade_2026_4_10_signin_google()`)
+  `user.user_google_id` değerlerini `user_identities`'e (`provider =
+  'google'`, `subject` = Google `sub`, `email` = hesabın adresi) taşıyor ve
+  taşınan her satırın eski kolonunu NULL yapıyor; ikinci koşuda taşınacak bir
+  şey kalmıyor ("yeniden koş" güvenli). Kolon silinmedi. Adım koşmadan önce
+  (dev'de 10.74 elle yeniden koşturulmuşsa) giriş yine çalışsın diye
+  `pg_signin_identity_user('google', …)` kayıt bulamazsa eski kolona bakıyor
+  ve bulduğu bağı o anda taşıyor (`pg_signin_google_legacy_user()`); e-posta
+  eşleştirmesi eski kolonda başka bir `sub` taşıyan hesabı devralmıyor;
+  Google bağlantısı kesilirken eski kolon da temizleniyor.
+  Seçilmeyen yol (eski kolonu okumaya devam): her ekran iki kaynağı
+  birleştirmek zorunda kalırdı, listeler için tek sorgu olmazdı.
+- Ekranlar tek kaynaktan: Hesabım bölümü (`pg_account_security_section()`),
+  `account_security.php` (`unlink_google` artık genel `unlink_<sağlayıcı>`
+  dalında), hesap güvenliği widget'ı (`has_google`), `pg_google_account_notice()`,
+  kullanıcı düzenleme ekranı (Google'a özel rozet, satır ve panel kalktı;
+  hiç bağı olmayan hesapta "Yalnız parolayla giriyor" satırı;
+  `pg_unlink_google` formu `pg_unlink_identity=google` olarak hâlâ kabul),
+  üyelik formu (bekleyen Google kaydı da `pg_signin_identity_add()` ile).
+- Listeler: `pg_signin_identities_of($user_ids)` tek sorguda hesap başına
+  sağlayıcıları düğme sırasıyla verir (`pg_signin_group_identities()`, saf),
+  `pg_signin_identity_badges()` rozetleri çizer: sağlayıcı başına bir rozet,
+  parolasız hesapta tek sağlayıcı varsa "Yalnız X" uyarısı.
+  `view_users.php` adın yanında, `view_sessions.php` oturum satırında ve Bağlı
+  hesaplar tablosunda (artık `user_identities`'teki her hesap).
+  `pg_connected_account_label()` sağlayıcı listesi alıyor.
+- Ayarlar › Güvenlik: üç kart tek kart (`pgset-signin`, "Google, Microsoft ve
+  Apple ile Giriş"), her sağlayıcının anahtarı ve alanları aynı; kayıt
+  (`security.save.php`) değişmedi. Ayar arama kayıtlarında
+  `pgset-signin-microsoft` ve `pgset-signin-apple` bölümleri kalktı,
+  anahtar kelimeleri `pgset-signin`'e eklendi.
+- Görsel editör: `siteFlags.signin` (herhangi bir sağlayıcı açık) giriş
+  düğmeleri bölümünü, `siteFlags.google` yalnız Google bağlantı
+  token'larını soluklaştırıyor; önceden yalnız Microsoft açıkken de bölüm
+  "kapalı" görünüyordu.
+
+**Davranış farkları (Google).** Google girişi PKCE gönderiyor ve id_token'da
+`exp` de denetleniyor. Daha önce bağlı bir Google hesabı, Google adresini
+doğrulanmamış bildirse de girebiliyor (kimlik `sub` ile tanınıyor); bilinmeyen
+hesapta doğrulanmamış adres eskisi gibi reddediliyor. Uygulamanın gizli
+anahtarı boşsa düğme artık hiç çıkmıyor (önceden çıkıp dönüşte hata
+veriyordu). Günlük satırları sağlayıcı adlı genel metinler.
+
+**Google Cloud Console.** Değişiklik gerekmez: yönlendirme adresi
+`<site>/pinegrap/google_auth.php` olarak kaldı.
+
+**Doğrulanamayan.** Gerçek Google ile uçtan uca giriş (sandbox dışarı
+çıkamıyor). Sandbox'ta taklit token sunucusuyla denendi: taşınmış bağ,
+eski kolonda kalmış bağ (taşındı), aynı doğrulanmış adresle personel
+hesabına bağlanma, bilinmeyen hesap reddi, doğrulanmamış adres reddi,
+kayıtla üye açma, üyelik formuna devir ve üyelik tamamlanınca kimlik,
+vazgeçme, tekrar kullanılan state, token ucunun `invalid_grant` cevabı.
+
+---
+
+## 2026.4.10 — Dış API: iletişim (kişi) grupları (2026-10-13)
+
+**Sorun.** Kampanyaların gönderildiği iletişim grupları API'de yoktu. Bir
+bülten aracı, CRM ya da form entegrasyonu "bu kişi hangi listede" sorusunu
+soramıyor, yeni aboneyi listeye ekleyemiyor, dışarıda abonelikten çıkanı
+sitede işaretleyemiyordu; bunun için kişi ekranında grup işaretlemek
+gerekiyordu. #315'ten sonra kampanyaların `contact_group_ids` alanı da bir
+grup adına bağlanamıyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/contact_groups.php` ve yeni
+izin grubu `contact_groups` (`contact_groups:read`, `contact_groups:write`);
+kişi ekranlarının kapısı `validate_contacts_access()` olduğu için rol < 3 ya
+da kişi yetkisi (`manage_contacts`, `customers:*` ile aynı koşul). Rol 3
+hesabın uygulaması, ekranlardaki gibi yalnız kendisine verilen gruplara
+ulaşır (`users_contact_groups_xref`, `api_contact_group_owner_filter()`;
+liste, okuma, üyeler ve yazmada).
+
+- `GET /contact-groups` (`email_subscription`, `q` ad/açıklama; imleçli,
+  id sırasıyla): ad, açıklama, e-posta aboneliği, `subscription_type`
+  (open: e-posta tercihleri sayfasında herkese, closed: yalnız üyelerine;
+  abonelik kapalıysa `null`), üye sayısı (tek sorguda `GROUP BY`; silinmiş
+  kişiden kalan bağ sayılmaz), oluşturan/değiştiren.
+- `GET /contact-groups/{id}`: aynı alanlar, tek grup.
+- `GET /contact-groups/{id}/members` (`email`; imleçli, kişi id sırasıyla):
+  kişi, ad, adres, şirket, `email_opt_in` (kişinin bütün kampanyalar için
+  anahtarı, `contacts.opt_in`) ve abonelikli grupta `opt_in` (bu grubun
+  e-postası için tercihi, `opt_in` tablosu; satırı yoksa kampanya ekranı
+  gibi abone sayılır; aboneliksiz grupta `null`).
+- `POST /contact-groups/{id}/members`: `add` ve `remove` listeleri (en çok
+  250'şer kişi kimliği) tek istekte, kişi ekranında grup işaretler gibi.
+  Zaten üye olanı eklemek ya da üye olmayanı çıkarmak hata değil; cevaptaki
+  `added`/`removed` gerçekten değişeni sayar. Eklenecek kişi var olmalı
+  (yoksa 422). `opt_in` gönderilirse `add`'deki her kişinin bu grup için
+  tercihi yazılır (üye olanlar dahil; dışarıdaki abonelikten çıkma
+  `add=[id], opt_in=false`); aboneliksiz grupta yok sayılır. Gönderilmezse
+  hiçbir tercih yazılmaz: yeni üye abone sayılır, daha önce çıkmış ve geri
+  eklenen kişi çıkmış kalır. Gruptan çıkarmak tercih satırını silmez, kişi
+  ekranı da silmiyor.
+
+Grup oluşturma, adını değiştirme ve silme bilerek yok: grup kendi
+ekranında yapılır. Kişi kaydına dokunulmaz; tam kayıt `GET /customers/{id}`,
+adresle arama `GET /customers?email=`. Yazma `dry_run` destekler, günlüğe
+uygulama ve anahtarla yazılır. Yeni izin mevcut uygulamalara verilmez
+(`customers:write` taşıyan anahtar dahil); operatör Uygulama Erişimi'nde
+işaretler. Şema değişikliği yok.
+
+Testler: `tests/api_contact_groups_test.php` (rol 3 süzgeci, üyenin
+tercihi ve satırsız üye, üye alanları ve şemaya uyması, kimlik listesi,
+gerçek değişiklik sayımı, rotalar ve kapsamları, aynı yöntem+yol çakışması
+yok, kapsamın kişi ekranı kapısı ve mevcut anahtarlara verilmemesi).
+
+**Doğrulandı (sandbox, MariaDB 10.11, varsayılan site dökümü).** İşleyiciler
+API yardımcıları taklit edilerek gerçek tablolarda koşturuldu: liste,
+`q`/`email_subscription` süzgeci, imleç ve okunamayan imleç 400; üye
+sayısı silinmiş kişinin bağını saymadı; tek okuma, abonelikli ve
+aboneliksiz grup, 404; üyeler, imleç, `email` süzgeci, `opt_in` satırlı,
+satırsız ve aboneliksiz; boş istek, aynı kişi iki listede, olmayan kişi
+422; `dry_run` hiçbir şey yazmadı; ekle + çıkar, zaten üye olan sayılmadı;
+`opt_in=false` üye kalırken tercihi yazdı; çıkmış kişi `opt_in`
+gönderilmeden geri eklenince çıkmış kaldı; aboneliksiz grupta `opt_in`
+yok sayıldı; rol 3 yalnız kendi grubunu gördü, başkasına 404. HTTP
+katmanı (kimlik doğrulama, yönlendirici, OpenAPI) diğer uçlarla ortak,
+ayrıca denenmedi.
+
+---
+
+## 2026.4.10 — Dış API: e-posta kampanyaları (2026-10-13)
+
+**Sorun.** E-posta kampanyaları API'de yoktu. Bir bülten ya da CRM
+entegrasyonu, Claude veya bir izleme aracı "hangi kampanya bekliyor, kaçı
+gitti, kime gidemedi" sorusunu soramıyor; bekleyen bir kampanyayı durdurmak,
+saatini kaydırmak ya da konusundaki yazım hatasını düzeltmek için Kampanyalarım
+ekranına girmek gerekiyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/campaigns.php` ve yeni izin
+grubu `campaigns` (`campaigns:read`, `campaigns:write`); ekranın kapısı
+`validate_email_access()` olduğu için rol < 3 ya da e-posta yetkisi. Rol 3
+hesabın uygulaması, ekranlardaki gibi yalnız kendi oluşturduğu kampanyalara
+ulaşır (`api_campaign_owner_filter()`, liste, okuma, yazma ve silmede).
+
+- `GET /campaigns` (`status`, `type` manual/automatic, `purpose`,
+  `profile_id`, `q` konu, `created_since`; imleçli, yeniden eskiye): her
+  kampanya alıcı toplamlarıyla (`total`, `sent`, `failed`, `pending`; tek
+  sorguda, `GROUP BY`). İş vazgeçtiği alıcıyı `complete = 1` ile de
+  işaretlediği için `failed` gönderilmiş sayılmaz; 2026.4.8 tekrar
+  kolonları yoksa (`pg_email_retry_ready()`) hiçbir alıcı başarısız değil.
+- `GET /campaigns/{id}`: mesaj (`body`: düz metinde metin, HTML'de
+  kampanya oluşturulurken işlenmiş sayfa) ve elle kampanyada kişi grupları:
+  `contact_group_ids` (dahil) ile `excluded_contact_group_ids` (hariç;
+  `contact_groups_email_campaigns_xref.type`).
+- `GET /campaigns/{id}/recipients` (`status` sent/pending/failed, imleçli,
+  gönderim sırasıyla): adres, kişi, deneme sayısı, son hata.
+- `POST|PATCH /campaigns/{id}`: ekranın değiştirdikleri: `status`
+  ready/paused/cancelled, `subject`, düz metinde `body`, `from_name`,
+  `from_email`, `reply_to`, yalnız otomatikte `bcc`, `send_at` (boş dize:
+  hemen; sütunun varsayılanı `1000-01-01 00:00:00` yazılır), `purpose`.
+  Gönderilmiş (`complete`) kampanya 409 `campaign_complete`; HTML
+  kampanyanın gövdesi 409 `campaign_body_is_a_page`; elle kampanyada bcc
+  409 `campaign_bcc_automatic_only`. Adresler `validate_email_address()`,
+  boş adres ekrandaki gibi kabul.
+- `DELETE /campaigns/{id}` ve `POST /campaigns/{id}/delete`: ekrandaki gibi
+  kampanya, grup bağları ve alıcılar birlikte silinir; gönderilmiş olan
+  gönderilmiş kalır.
+
+API hiçbir e-posta göndermez: `ready` kampanyayı zamanlanmış işin
+kuyruğuna bırakır; iş kapalıysa ekrandaki "Kampanyayı Gönder" düğmesini
+bekler. Kampanya oluşturma (kişi gruplarından alıcı seçimi) bilerek yok:
+dışarıya toplu e-posta açar, ayrı karar. Yazmalar `dry_run` destekler,
+günlüğe uygulama ve anahtarla yazılır. Yeni izin mevcut uygulamalara
+verilmez (kayıtlı kapsamlar olduğu gibi saklanır); operatör Uygulama
+Erişimi'nde işaretler. Şema değişikliği yok.
+
+Testler: `tests/api_campaigns_test.php` (gönderim saati yazma/okuma ve
+temizleme, toplamlar, alıcı durumu ve süzgeci, rol 3 süzgeci, rotalar ve
+kapsamları, aynı yöntem+yol çakışması yok, kapsamın ekran kapısı ve
+mevcut anahtarlara verilmemesi).
+
+**Doğrulandı (sandbox).** Liste, `status`/`type`/`purpose`/`profile_id`/`q`
+süzgeçleri, imleç ve okunamayan imleç 400; dört kampanyanın toplamları
+(6 alıcı: 3 gönderildi, 1 başarısız, 2 bekliyor); tek okuma, dahil/hariç
+gruplar, HTML gövde; alıcılar ve üç durum süzgeci, imleç; `send_at`
+İstanbul saatine yazıldı (07:00Z → 10:00), `null` sütunun varsayılanını
+yazdı; geçersiz adres, boş konu, boş istek, tanınmayan alan, `complete`
+durumu 422; üç 409; otomatikte bcc; `X-Dry-Run` güncelleme ve silmede
+hiçbir şey yazmadı; iki silme yolu kampanyayı, alıcıları ve grup
+bağlarını birlikte sildi, ikinci silme 404; rol 3 + e-posta yetkili
+uygulama yalnız kendi kampanyasını gördü ve değiştirdi, başkasınınkine
+404; izni olmayan ve e-posta yetkisi olmayan rol 3 uygulamaya 403
+`insufficient_scope`; site günlüğü satırları; OpenAPI iki nesne, dört yol.
+
+**Doğrulanamayan.** Zamanlanmış işin `ready`'ye alınan kampanyayı gerçekten
+göndermesi denenmedi (sandbox'ta posta sunucusu yok); işin seçtiği
+koşullar (`status`, `start_time <= NOW()`) ekranın yazdığıyla aynı.
+
+---
+
 ## 2026.4.10 — Ödemede "Cari hesabıma yaz" (ERP Faz 8c, 10.60) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 8c: kredi limiti tanımlı bir
@@ -243,6 +547,88 @@ Dev'de: USPS Developer Portal uygulamasının anahtarlarıyla Test ortamında
 "Kaydet ve bağlantıyı test et"; USPS hizmetli yöntemde fiyat ve teslim
 tarihi; "ABD Adreslerini Doğrulama" açıkken ABD adresli ödeme. 10.72 adımı
 ve `ENCRYPTION_KEY` gerekir.
+
+---
+
+## 2026.4.10 — MCP sunucusuna OAuth ile bağlanma (OAuth Faz F2, ilk parça) (2026-10-13)
+
+**Neden.** `docs/_plan_tersine_oauth.md` §4.6 (senaryo 5), `docs/_plan_oauth.md`
+Faz F: Çalışma Alanı'nın MCP sunucuları kartı (#297) yalnız elle girilen
+jeton, başlık ya da kullanıcı adı/parolayla bağlanabiliyordu. Uzak MCP
+sunucularının çoğu (GitHub, Linear, Notion, Atlassian, Sentry ve başka bir
+Pinegrap sitesi) MCP yetkilendirme belgesine göre OAuth ister. Ortak altyapı
+#295 ve #309'la hazırdı; bu parça kartı ona bağlar.
+
+**Ne değişti.**
+
+- `includes/mcp/client.php`: giriş keşfi. Kimliksiz bir `initialize`
+  isteğine gelen 401'in `WWW-Authenticate: Bearer resource_metadata=...`
+  başlığı (`pg_mcp_client_bearer_challenge()`) → korumalı kaynak belgesi
+  (RFC 9728; başlıktaki adres, sonra yol ekli ve kökteki well-known adı) →
+  yetkilendirme sunucusu belgesi (RFC 8414 yol ekli, OIDC yol ekli, OIDC yol
+  sonu). Kaynak belgesi yoksa (2025-03-26 sunucusu) sunucunun kendi kökü
+  yetkilendirme sunucusu sayılır. Denetimler: belgenin `resource`'u sunucunun
+  adresini kapsamalı, AS belgesi istenen `issuer`'ı söylemeli, uçlar https,
+  `code_challenge_methods_supported`'ta S256 olmalı (yoksa MCP belgesi gereği
+  vazgeçilir). Kapsam sırası: meydan okumanın `scope`'u, yoksa
+  `scopes_supported`. `pg_mcp_client_register()` RFC 7591 dinamik kaydı
+  (`token_endpoint_auth_method none`), `pg_mcp_client_client_metadata()`
+  sitenin istemci tanımı. `pg_mcp_client_list_tools()` ve
+  `pg_mcp_client_call_tool()` artık HTTP `status` da döndürüyor.
+- Yeni uç `connect_client.php`: sitenin istemci kimlik belgesi (CIMD,
+  draft-ietf-oauth-client-id-metadata-document). Oturumsuz, salt okunur;
+  `client_id` kendi adresi, tek yönlendirme adresi `connect.php`. Adres
+  `pg_connect_client_metadata_url()`. Sitenin kendi OAuth sunucusu sorgu
+  dizgili `client_id`'yi reddettiği için ayrı dosya (sorgu yerine yol).
+- `includes/workspace/mcp.php`: `auth_kind = 'oauth'` (ENUM'da #297'den beri
+  hazırdı, şema yok). Sağlayıcı `mcp_<id>`, kurucusu
+  `ws_mcp_connect_provider()` dosya yüklenirken kaydedilir; tanım
+  `ws_mcp_connect_definition()`: `identity => false`,
+  `refresh_optional`, `default_ttl` 5 yıl (süresiz GitHub jetonu; bittiğini
+  sunucunun 401'i söyler), `nonce => false`, `authorize_params` ve
+  `token_params` = `resource` (RFC 8707), `iss_required` AS
+  `authorization_response_iss_parameter_supported` derse. İstemci olma sırası
+  (`ws_mcp_oauth_registration()`): yöneticinin girdiği istemci kimliği → site
+  https'teyse ve AS okuyorsa CIMD → dinamik kayıt → hiçbiri yoksa "geliştirici
+  ayarlarında uygulama kaydedin, yönlendirme adresi …" hatası. Bulunanlar
+  `connect_apps.options`'ta (`registered`, uçlar, `issuer`, `resource`,
+  `scopes`, `client_auth`). Dinamik kayıt aynı token adresi için tekrar
+  edilmez. İstemci kimliği değişince eski bağlantılar biter.
+- Bağlantı yalnız sitenin (`user_id = 0`, amaç `mcp`, `owner => 'site'`).
+  `ws_mcp_connection()` OAuth sunucusunda başlığı
+  `pg_connect_access_token()`'dan alır; 401'de `ws_mcp_reauthorize()` bir kez
+  `force` yeniler ve isteği tekrarlar (araç listesi, el sıkışma, Pinegrap AI'ın
+  araç çağrısı). Yenileme jetonu yoksa bağlantı `reauth` olur, kart
+  "Yeniden bağla" der; hata metni `ws_mcp_error_text()`.
+- Kart: OAuth sunucusunda durum rozeti (Bağlı değil / Yeniden bağla),
+  "Bağla" (yalnız yönetici; `mcp_connect` eylemi gerekirse keşfi yeniden
+  koşar, sonra `pg_connect_start()` ile hizmete yönlendirir) ve "Bağlantıyı
+  kes" (`mcp_disconnect`, `pg_connect_disconnect()`). Dönüş
+  `workspace_settings.php?mcp_connected=<id>#ws-mcp-<id>`;
+  `ws_mcp_settings_returned()` mesajı gösterir ve araçları hemen okur.
+  Formda isteğe bağlı istemci kimliği / gizli anahtar ve yönlendirme adresi.
+  Sunucu silinince ya da adresi veya giriş türü değişince
+  `ws_mcp_oauth_forget()` bağlantıları (hizmette iptal dahil) ve uygulamayı
+  siler. `connect.php` sağlayıcının kurucusu için `includes/workspace/mcp.php`'yi
+  yükler; genel bağlantı formu (POST) çalışma anında kurulan sağlayıcıyı
+  başlatmaz: o, özelliğin kendi ekranından ve onun kuralıyla (Çalışma Alanı'nda
+  yalnız yönetici) başlar, yoksa bir müdür sitenin MCP bağlantısını kendi
+  hesabıyla değiştirebilirdi.
+- `includes/fn/connect.php`: boş `scope` parametresi gönderilmez; yenileme
+  jetonu olmayan bağlantı iptalde erişim jetonuyla iptal edilir (RFC 7009);
+  sağlayıcıda `revoke_client_auth` iptal isteğine istemci kimliğini (gizliyse
+  token ucundaki gibi kimlik doğrulamayı) ekler.
+
+**Denendi.** Birim testleri (`tests/mcp_client_test.php`,
+`tests/workspace_mcp_test.php`, `tests/connect_test.php`). Sandbox'ta sitenin
+kendi OAuth sunucusu ve MCP ucuna karşı uçtan uca: keşif, gerçek kayıt ucu,
+yetkilendirme adresi (resource, S256, kapsamlar), yanlış `state` ve eksik
+`iss` reddi, kod → jeton, 12 araç okundu, bozuk jetonda 401 → yenileme
+jetonuyla yenileme → tekrar, `products_list` çağrısı, bağlantıyı kesince
+sunucudaki iznin silinmesi. CIMD yolu sandbox'ta denenemedi (https gerekiyor).
+
+**Kapsam dışı (devir notunda).** Kişi başı bağlantı, yazan araçların onay
+kartı (`ws_ai_changes` `record_type 'mcp_call'`), F3 (göreve takma ad).
 
 ---
 

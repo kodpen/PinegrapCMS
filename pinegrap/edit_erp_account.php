@@ -134,6 +134,10 @@ if (!$_POST) {
             . '</span>';
     }
 
+    // What the account has run up in late payment fees this year, with the
+    // button that writes it on an invoice draft (includes/erp/late_fee.php).
+    $output_late_fee = function_exists('erp_late_fee_panel') ? erp_late_fee_panel($account) : '';
+
     // ------------------------------------------------------------ statement
     //
     // Deliberately not a DataTable: a statement is read down the page in date
@@ -231,6 +235,7 @@ if (!$_POST) {
                     ' . $output_balance_fc . '
                     ' . $output_credit . '
                 </div>
+                ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
             </div>
 
             <form name="form" id="erp_account_form" action="edit_erp_account.php" method="post">

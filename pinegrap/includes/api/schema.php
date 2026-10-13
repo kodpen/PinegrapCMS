@@ -606,6 +606,183 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		/* ----- E-mail campaigns -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_list',
+			'returns' => array('list' => 'Campaign'),
+			'summary' => 'E-mail campaigns',
+			'description' => 'Newest first, cursor paged, with how far sending has got (recipients: total, sent, failed - the job gave up after its retries - and pending). status: ready (waiting for send_at, or being sent), paused, cancelled or complete. type: manual (sent to contact groups) or automatic (made by a campaign profile when an order, reservation or form came in; profile_id, action and action_item_id say which). An account with the e-mail right but the user role sees only the campaigns it created, as on the campaign screens.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('ready', 'paused', 'cancelled', 'complete')),
+				array('name' => 'type',          'in' => 'query', 'type' => 'enum', 'values' => array('manual', 'automatic')),
+				array('name' => 'purpose',       'in' => 'query', 'type' => 'enum', 'values' => array('commercial', 'transactional')),
+				array('name' => 'profile_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the campaigns this campaign profile made.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the subject.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.get',
+			'method'  => 'GET',
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_get',
+			'returns' => 'Campaign',
+			'summary' => 'One e-mail campaign',
+			'description' => 'With the message (body: the text of a plain-text campaign, or for an HTML one the page as it was rendered when the campaign was made) and, for a manual campaign, the contact groups it was put together from: contact_group_ids it went to, excluded_contact_group_ids whose members were left out.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.recipients',
+			'method'  => 'GET',
+			'path'    => '/campaigns/{id}/recipients',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_recipients',
+			'returns' => array('list' => 'CampaignRecipient'),
+			'summary' => 'Who a campaign goes to',
+			'description' => 'In the order the job sends them, cursor paged: the address, the contact it came from, sent, pending or failed, how many attempts were made and why the last one did not go through.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('sent', 'pending', 'failed')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_update',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Hold, release, cancel or correct a campaign',
+			'description' => 'Only what is sent is changed, as on the campaign screen. status paused holds it, ready lets the scheduled e-mail job send it (again), cancelled stops it; recipients already sent stay sent. Nothing is sent by this call: a ready campaign goes out when the job reaches it, and where the site runs no job it waits for Send Campaign on its screen. A sent (complete) campaign cannot be changed (409 campaign_complete). The body of an HTML campaign is the page as it was rendered and cannot be changed (409 campaign_body_is_a_page); bcc is for automatic campaigns only (409 campaign_bcc_automatic_only). A campaign is put together, recipients and all, on its own screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status',     'in' => 'body', 'type' => 'enum', 'values' => array('ready', 'paused', 'cancelled')),
+				array('name' => 'subject',    'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'body',       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'from_name',  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'reply_to',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'Automatic campaigns only. An empty string removes it.'),
+				array('name' => 'send_at',    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending it. An empty string means as soon as the job runs.'),
+				array('name' => 'purpose',    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.delete',
+			'method'  => 'DELETE',
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign',
+			'description' => 'Removes the campaign with its recipients and contact groups, as the campaign screens do; whatever was already sent stays sent and nothing more goes out. It cannot be undone. POST /campaigns/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.delete_post',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/delete',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign, addressed as a POST',
+			'description' => 'The same deletion as DELETE /campaigns/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Contact groups ---------------------------------------------- */
+
+		array(
+			'id'      => 'contact_groups.list',
+			'method'  => 'GET',
+			'path'    => '/contact-groups',
+			'scope'   => 'contact_groups:read',
+			'handler' => 'api_contact_groups_list',
+			'returns' => array('list' => 'ContactGroup'),
+			'summary' => 'Contact groups',
+			'description' => 'The lists campaigns are sent to, by id, cursor paged, each with how many contacts it holds. email_subscription says whether campaigns may go to it and its members choose whether they get them; subscription_type open offers it to every contact on the e-mail preferences page, closed only to its members. An account with the contacts right but the user role sees only the groups given to it, as on the contact screens.',
+			'params'  => array(
+				array('name' => 'email_subscription', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the groups that take e-mail subscriptions, or only the ones that do not.'),
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the description.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.get',
+			'method'  => 'GET',
+			'path'    => '/contact-groups/{id}',
+			'scope'   => 'contact_groups:read',
+			'handler' => 'api_contact_groups_get',
+			'returns' => 'ContactGroup',
+			'summary' => 'One contact group',
+			'description' => 'The same fields as the list, for one group.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.members',
+			'method'  => 'GET',
+			'path'    => '/contact-groups/{id}/members',
+			'scope'   => 'contact_groups:read',
+			'handler' => 'api_contact_groups_members',
+			'returns' => array('list' => 'ContactGroupMember'),
+			'summary' => 'Who is in a contact group',
+			'description' => 'By contact id, cursor paged: the contact, its own switch for all e-mail campaigns (email_opt_in) and, in a group that takes subscriptions, its choice for this group\'s e-mail (opt_in; a contact that never chose counts as opted in, as the campaign screen reads it). A campaign put together from the group reaches a member only when both are on. The full address book record is GET /customers/{id}.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'email',  'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the member with this exact address.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.members_update',
+			'method'  => 'POST',
+			'path'    => '/contact-groups/{id}/members',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_members_update',
+			'dry_run' => true,
+			'returns' => 'ContactGroup',
+			'summary' => 'Put contacts into a group, or take them out',
+			'description' => 'Both lists in one call, as the contact screen ticks a group. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
+				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to take out of the group.'),
+				array('name' => 'opt_in', 'in' => 'body', 'type' => 'bool', 'description' => 'The choice for this group\'s e-mail, written for every contact in add. Only for a group that takes subscriptions.')
+			)
+		),
+
 		/* ----- Site log ----------------------------------------------------- */
 
 		array(

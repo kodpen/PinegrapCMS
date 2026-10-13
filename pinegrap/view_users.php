@@ -659,7 +659,7 @@ $query =
         user.user_username as username,
         user.user_email as email,
         user.user_role as role,
-        user.user_google_id as user_google_id,
+        user.user_password_algo as password_algo,
         user.user_manage_contacts as manage_contacts,
         user.user_manage_visitors as manage_visitors,
         user.user_manage_ecommerce as manage_ecommerce,
@@ -678,12 +678,19 @@ $query =
     $where
     ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_users']['order'] ?? '') . " ";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$user_rows = array();
 while ($row = mysqli_fetch_assoc($result)) {
+    $user_rows[] = $row;
+}
+
+// The sign-in providers of the accounts on this screen, in one query.
+$user_identity_providers = pg_signin_identities_of(array_column($user_rows, 'id'));
+
+foreach ($user_rows as $row) {
     $id = $row['id'];
     $username = $row['username'];
     $email = $row['email'];
     $role = $row['role'];
-    $user_google_id_value = $row['user_google_id'];
     $manage_contacts = $row['manage_contacts'];
     $manage_visitors = $row['manage_visitors'];
     $manage_ecommerce = $row['manage_ecommerce'];
@@ -1220,14 +1227,12 @@ while ($row = mysqli_fetch_assoc($result)) {
                 'vars'   => $sign_in_lock_minutes))) . '">' . lang('Locked') . '</span>';
     }
 
-    // Google badge beside the name, next to the sign-in lock, so the admin
-    // can see at a glance which accounts can sign in with Google.
-    $output_google_badge = '';
-    if (!empty($user_google_id_value)) {
-        $output_google_badge =
-            ' <span class="badge bg-light text-dark border fw-light" title="'
-            . h(lang('This account can sign in with Google.')) . '">' . lang('Google') . '</span>';
-    }
+    // Google, Microsoft and Apple badges beside the name, next to the
+    // sign-in lock, so the admin can see at a glance which accounts can sign
+    // in with which provider, and which have no other way in.
+    $output_identity_badges = isset($user_identity_providers[(int) $id])
+        ? ' ' . pg_signin_identity_badges($user_identity_providers[(int) $id], $row['password_algo'])
+        : '';
 
     if($last_seen >= 1){
         $output_last_seen = '<td class="align-middle">' . get_relative_time(array('timestamp' => $last_seen)) . ' </td>';
@@ -1242,7 +1247,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_google_badge . '</td>
+            <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_identity_badges . '</td>
             ' . $output_email_address_column . '
             ' . $output_user_role_column . '
             ' . $output_user_start_page_column . '

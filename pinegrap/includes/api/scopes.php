@@ -92,6 +92,16 @@ function api_scope_groups() {
 		// a place.
 		'visitors'  => array('label' => 'Visitors',   'read' => 'visitors:read',  'write' => ''),
 
+		// E-mail campaigns and who they go to. Writing holds, releases,
+		// cancels, corrects or removes one; putting one together, recipients
+		// and all, stays on its own screen.
+		'campaigns' => array('label' => 'Campaigns',  'read' => 'campaigns:read', 'write' => 'campaigns:write'),
+
+		// The lists campaigns go to and who is on them. Writing puts contacts
+		// in or takes them out and records their choice for the group's
+		// e-mail; a group is made, renamed or removed on its own screen.
+		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
+
 		// Who did what on the site, from which address. Read only.
 		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
 
@@ -262,6 +272,12 @@ function api_owner_scopes($owner) {
 		// open a contact in the panel may let a machine add one.
 		$scopes[] = 'customers:write';
 
+		// The contact group screens open to the same people; below the
+		// manager role a user reaches only the groups given to it, which the
+		// endpoints filter for.
+		$scopes[] = 'contact_groups:read';
+		$scopes[] = 'contact_groups:write';
+
 	}
 
 	// Form submissions are the site's own incoming post: names, e-mail
@@ -300,6 +316,17 @@ function api_owner_scopes($owner) {
 		|| (isset($owner['manage_visitors']) && in_array(strtolower(trim((string)$owner['manage_visitors'])), array('yes', '1', 'true'), true))) {
 
 		$scopes[] = 'visitors:read';
+
+	}
+
+	// The campaign screens open to roles 0 to 2 or the e-mail right
+	// (validate_email_access()); below the manager role a user reaches only
+	// the campaigns it created, which the endpoints filter for.
+	if (($role < 3)
+		|| (isset($owner['manage_emails']) && in_array(strtolower(trim((string)$owner['manage_emails'])), array('yes', '1', 'true'), true))) {
+
+		$scopes[] = 'campaigns:read';
+		$scopes[] = 'campaigns:write';
 
 	}
 

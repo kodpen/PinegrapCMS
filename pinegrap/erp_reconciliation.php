@@ -82,6 +82,11 @@ if (erp_fx_enabled() && ($balance['currency'] !== '') && ($balance['currency'] !
 
 $pdf_url = 'get_erp_reconciliation_pdf.php?' . h($query);
 
+// The late payment fee over the letter's period, beside the balance: on
+// screen only, the letter states what the books hold and a fee is not in
+// them until its invoice is issued.
+$output_late_fee = function_exists('erp_late_fee_panel') ? erp_late_fee_panel($account, $options['from'], $options['as_of'], 'reconciliation') : '';
+
 if (!$liveform->field_in_session('to')) {
     $liveform->assign_field_value('to', (string) $account['email']);
 }
@@ -125,6 +130,7 @@ pg_page_shell([
                     ' . $output_balance_fc . '
                     <span class="text-body-secondary ms-auto small">' . h(lang(array('string' => '{var:1} movement(s) between {var:2} and {var:3}', 'vars' => array($movement_count, prepare_form_data_for_output($options['from'], 'date', false), prepare_form_data_for_output($options['as_of'], 'date', false))))) . '</span>
                 </div>
+                ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
             </div>
         </div>
     </div>

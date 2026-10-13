@@ -37,6 +37,8 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_search_console();         // 10.73
 	upgrade_2026_4_10_erp_storefront_prices();  // 10.59
 	upgrade_2026_4_10_erp_open_account();       // 10.60
+	upgrade_2026_4_10_signin_google();          // 10.75
+	upgrade_2026_4_10_erp_late_fee();           // 10.61
 	upgrade_2026_4_10_workspace_approval_guests(); // 10.84
 
 }
@@ -519,8 +521,8 @@ function upgrade_2026_4_10_workspace_mcp() {
 // provider key (a file in includes/connect/providers/), subject (the stable
 // id the provider gives the person: Apple's sub, Microsoft's directory and
 // object id) and the e-mail address it last reported. One row per person and
-// provider; the same subject cannot belong to two accounts. Google keeps its
-// own column (user.user_google_id), which every Google screen reads.
+// provider; the same subject cannot belong to two accounts. Google kept its
+// own column (user.user_google_id) until 10.75 moved its links here.
 //
 // config.signin_providers lists the providers whose sign-in buttons are
 // shown, comma separated; empty means none, so a site upgrading changes
@@ -625,6 +627,95 @@ function upgrade_2026_4_10_erp_open_account() {
 	install_add_index('orders', 'idx_erp_on_account', "KEY idx_erp_on_account (erp_on_account, erp_account_id)");
 
 	install_note('ERP: a member whose account has a credit limit can put an order on the account at checkout. It is off until it is switched on under Settings, Ecommerce, ERP.');
+
+}
+
+// Sign in with Google on signin.php (2026.4.10, 10.75; includes/fn/signin.php,
+// google_auth.php).
+//
+// Google identities move from user.user_google_id to user_identities
+// (provider 'google', subject = Google's sub, the account's e-mail address),
+// next to Microsoft's and Apple's, so every screen reads one table. Each
+// moved link is cleared from the old column, which is what makes a second
+// run find nothing to move. A link the move cannot take (that Google account
+// is already tied to another account here) is left in the column and
+// counted in the note. The column itself is kept.
+function upgrade_2026_4_10_signin_google() {
+
+	if (!install_table_exists('user_identities') || !install_column_exists('user', 'user_google_id')) {
+
+		install_skipped('user_identities or user.user_google_id does not exist, skipped');
+
+		return;
+
+	}
+
+	$waiting = (int) db_value("SELECT COUNT(*) FROM user WHERE user_google_id IS NOT NULL AND user_google_id <> ''");
+
+	if ($waiting === 0) {
+
+		install_skipped('No Google link left in user.user_google_id');
+
+		install_note('Sign in with Google now runs through the same flow as Microsoft and Apple. Nothing changes in Google Cloud Console: the redirect address is still google_auth.php.');
+
+		return;
+
+	}
+
+	// INSERT IGNORE: an account that already has a Google identity, or a sub
+	// already held by another account, keeps what user_identities says.
+	db("INSERT IGNORE INTO user_identities (user_id, provider, subject, email, created_timestamp, last_used_timestamp)
+		SELECT user_id, 'google', user_google_id, user_email, UNIX_TIMESTAMP(), 0
+		FROM user
+		WHERE user_google_id IS NOT NULL AND user_google_id <> ''");
+
+	db("UPDATE user
+		INNER JOIN user_identities
+			ON user_identities.user_id = user.user_id
+			AND user_identities.provider = 'google'
+			AND user_identities.subject = CONVERT(user.user_google_id USING ascii) COLLATE ascii_bin
+		SET user.user_google_id = NULL");
+
+	$moved = max(0, (int) mysqli_affected_rows(db::$con));
+	$left = $waiting - $moved;
+
+	if ($moved === 0) {
+
+		install_skipped('No Google link could be moved from user.user_google_id, ' . $left . ' already tied to another account');
+
+	} else {
+
+		install_ran('Google sign-in: ' . $moved . ' link(s) moved from user.user_google_id to user_identities'
+			. (($left > 0) ? ', ' . $left . ' already tied to another account left in the column' : ''));
+
+	}
+
+	install_note('Sign in with Google now runs through the same flow as Microsoft and Apple. Nothing changes in Google Cloud Console: the redirect address is still google_auth.php.');
+
+}
+
+// ERP: late payment fees (2026.4.10, 10.61; includes/erp/late_fee.php).
+//
+// config.erp_late_fee_rate is the monthly rate on what a customer owes past
+// the due date, 0 (the default) for off; config.erp_late_fee_tax_rate the
+// tax rate of the fee's invoice line, NULL for the rate the account is sold
+// at when a product names none. Both are DECIMAL like every other rate of
+// the module, so they cost config's row a few bytes.
+//
+// erp_invoices.late_fee_through is the last day a fee invoice charged for,
+// NULL on every other invoice. Written on the draft, it counts once the
+// draft is issued: the next fee of the account starts the day after, so no
+// day is charged twice, and a deleted draft charges nothing. The index
+// answers "the latest charged day of this account".
+function upgrade_2026_4_10_erp_late_fee() {
+
+	install_add_column('config', 'erp_late_fee_rate', "DECIMAL(6,3) NOT NULL DEFAULT 0.000");
+	install_add_column('config', 'erp_late_fee_tax_rate', "DECIMAL(6,3) NULL DEFAULT NULL");
+
+	install_add_column('erp_invoices', 'late_fee_through', "DATE NULL DEFAULT NULL");
+	install_add_index('erp_invoices', 'idx_late_fee', "INDEX idx_late_fee (account_id, late_fee_through)");
+
+	install_note('ERP: late payment fees. A monthly rate set under ERP Settings is worked out day by day on what a customer owes past the due date; the account screen shows it and writes it on a sales invoice draft. It is off until a rate is set.');
 
 }
 

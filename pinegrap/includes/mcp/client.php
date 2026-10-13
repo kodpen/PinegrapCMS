@@ -656,7 +656,8 @@ function pg_mcp_client_request(&$conn, $method, $params) {
 
 // The tools of a server, as pg_mcp_client_tool_normalise() keeps them.
 // Answers ok, error, tools, ttl (seconds the list may be kept, 0 when the
-// server does not say).
+// server does not say) and status (HTTP: a 401 is a credential the server no
+// longer takes).
 function pg_mcp_client_list_tools(&$conn) {
 
 	$tools = array();
@@ -673,7 +674,7 @@ function pg_mcp_client_list_tools(&$conn) {
 
 		if (!$answer['ok']) {
 
-			return array('ok' => false, 'error' => $answer['error'], 'tools' => array(), 'ttl' => 0);
+			return array('ok' => false, 'error' => $answer['error'], 'tools' => array(), 'ttl' => 0, 'status' => $answer['status']);
 
 		}
 
@@ -723,7 +724,7 @@ function pg_mcp_client_list_tools(&$conn) {
 
 	}
 
-	return array('ok' => true, 'error' => '', 'tools' => $tools, 'ttl' => $ttl);
+	return array('ok' => true, 'error' => '', 'tools' => $tools, 'ttl' => $ttl, 'status' => 200);
 
 }
 
@@ -786,7 +787,8 @@ function pg_mcp_client_tool_normalise($tool, $schema_json) {
 
 // Calls a tool. The arguments are an array or, to keep an empty object one,
 // what json_decode() gives without its second argument. Answers ok (the call
-// was answered), is_error (the tool says it failed), result, error.
+// was answered), is_error (the tool says it failed), result, error and status
+// (HTTP).
 function pg_mcp_client_call_tool(&$conn, $name, $arguments) {
 
 	$answer = pg_mcp_client_request($conn, 'tools/call', array(
@@ -796,7 +798,7 @@ function pg_mcp_client_call_tool(&$conn, $name, $arguments) {
 
 	if (!$answer['ok']) {
 
-		return array('ok' => false, 'is_error' => true, 'result' => null, 'error' => $answer['error']);
+		return array('ok' => false, 'is_error' => true, 'result' => null, 'error' => $answer['error'], 'status' => $answer['status']);
 
 	}
 
@@ -806,7 +808,8 @@ function pg_mcp_client_call_tool(&$conn, $name, $arguments) {
 		'ok'       => true,
 		'is_error' => !empty($result['isError']),
 		'result'   => $result,
-		'error'    => ''
+		'error'    => '',
+		'status'   => $answer['status']
 	);
 
 }
@@ -864,5 +867,559 @@ function pg_mcp_client_result_text($result, $limit = 6000) {
 	}
 
 	return $text;
+
+}
+
+/* ---------------------------------------------------------------------------
+   Signing in to a server (the MCP authorization specification)
+   ---------------------------------------------------------------------------
+
+   A server that wants a sign-in answers a request without one with 401 and a
+   WWW-Authenticate header naming its protected resource metadata (RFC 9728);
+   that names the authorization server, whose own metadata (RFC 8414, or
+   OpenID Connect discovery) gives the endpoints. The site is then a client of
+   that server: by its client ID metadata document when the server reads
+   those, by dynamic registration (RFC 7591) when it offers that, otherwise by
+   an application the administrator registered there. The code, the tokens and
+   their renewal are includes/fn/connect.php's.
+
+   Every request goes through api_http_request(). $fetch, where a function
+   takes it, is a callable taking (method, url, body, headers) and answering
+   like api_http_request() with response_headers; only the tests pass one. */
+
+// The parameters of the Bearer challenge in a WWW-Authenticate header, by
+// lower-case name (resource_metadata, scope, error, ...). Empty when the
+// header has no Bearer challenge.
+function pg_mcp_client_bearer_challenge($header) {
+
+	$header = (string)$header;
+
+	if (!preg_match('/(?:^|,)\s*Bearer(?=\s|,|$)/i', $header, $match, PREG_OFFSET_CAPTURE)) {
+
+		return array();
+
+	}
+
+	$rest = (string)substr($header, $match[0][1] + strlen($match[0][0]));
+
+	$params = array();
+
+	// Each auth-param is a name, = and a token or a quoted string. The next
+	// challenge ("Basic realm=...") is a word not followed by =, so the
+	// parameters of this one end there.
+	while (preg_match('/^\s*,?\s*([A-Za-z0-9_.\-]+)\s*=\s*(?:"((?:[^"\\\\]|\\\\.)*)"|([^\s,"]*))/', $rest, $param)) {
+
+		$name = strtolower($param[1]);
+
+		if (!isset($params[$name])) {
+
+			$params[$name] = array_key_exists(3, $param) ? $param[3] : preg_replace('/\\\\(.)/s', '$1', $param[2]);
+
+		}
+
+		$rest = (string)substr($rest, strlen($param[0]));
+
+	}
+
+	return $params;
+
+}
+
+// scheme://host[:port] of an address, in lower case, without a default port.
+// '' when the address has no scheme or host.
+function pg_mcp_client_origin($url) {
+
+	$parts = @parse_url(trim((string)$url));
+
+	if (!is_array($parts) || !isset($parts['scheme'], $parts['host']) || ($parts['host'] === '')) {
+
+		return '';
+
+	}
+
+	$scheme = strtolower($parts['scheme']);
+
+	$port = isset($parts['port']) ? (int)$parts['port'] : 0;
+
+	$default = ($scheme === 'https') ? 443 : 80;
+
+	return $scheme . '://' . strtolower($parts['host']) . ((($port > 0) && ($port !== $default)) ? ':' . $port : '');
+
+}
+
+// Whether an address of the sign-in (a metadata document, an endpoint) may be
+// used: https, like a server's own address, or http where the site allows
+// outgoing http at all (API_WEBHOOK_ALLOW_HTTP, which only a test setup sets).
+function pg_mcp_client_auth_url_is_valid($url) {
+
+	$url = trim((string)$url);
+
+	if (pg_mcp_client_url_is_valid($url)) {
+
+		return true;
+
+	}
+
+	if (!defined('API_WEBHOOK_ALLOW_HTTP') || (API_WEBHOOK_ALLOW_HTTP !== true) || (stripos($url, 'http://') !== 0)) {
+
+		return false;
+
+	}
+
+	return pg_mcp_client_url_is_valid('https://' . substr($url, 7));
+
+}
+
+// A server's address as the resource a token is asked for (RFC 8707, in the
+// MCP specification's canonical form): the scheme and host in lower case, the
+// path without a trailing slash, the query kept, no fragment.
+function pg_mcp_client_canonical_resource($url) {
+
+	$origin = pg_mcp_client_origin($url);
+
+	if ($origin === '') {
+
+		return '';
+
+	}
+
+	$path = rtrim((string)parse_url(trim((string)$url), PHP_URL_PATH), '/');
+
+	$query = (string)parse_url(trim((string)$url), PHP_URL_QUERY);
+
+	return $origin . $path . (($query !== '') ? '?' . $query : '');
+
+}
+
+// Whether the resource a metadata document names is this server: the same
+// origin, and the server's path that path or under it. A document about
+// another resource is not this server's (RFC 9728 3.3) and is not followed.
+function pg_mcp_client_resource_covers($resource, $server_url) {
+
+	$resource = trim((string)$resource);
+
+	$origin = pg_mcp_client_origin($resource);
+
+	if (($origin === '') || ($origin !== pg_mcp_client_origin($server_url)) || (strpos($resource, '#') !== false)) {
+
+		return false;
+
+	}
+
+	$base = rtrim((string)parse_url($resource, PHP_URL_PATH), '/');
+
+	$path = rtrim((string)parse_url(trim((string)$server_url), PHP_URL_PATH), '/');
+
+	return ($base === '') || (strpos($path . '/', $base . '/') === 0);
+
+}
+
+// Where a server's protected resource metadata may be, in the order the MCP
+// specification asks: the address its challenge named, then the well-known
+// name with the server's path after it, then the well-known name at the root
+// (RFC 9728 3.1).
+function pg_mcp_client_resource_metadata_urls($server_url, $named = '') {
+
+	$urls = array();
+
+	if (((string)$named !== '') && pg_mcp_client_auth_url_is_valid($named)) {
+
+		$urls[] = (string)$named;
+
+	}
+
+	$origin = pg_mcp_client_origin($server_url);
+
+	if ($origin !== '') {
+
+		$path = rtrim((string)parse_url(trim((string)$server_url), PHP_URL_PATH), '/');
+
+		if ($path !== '') {
+
+			$urls[] = $origin . '/.well-known/oauth-protected-resource' . $path;
+
+		}
+
+		$urls[] = $origin . '/.well-known/oauth-protected-resource';
+
+	}
+
+	return array_values(array_unique($urls));
+
+}
+
+// Where an authorization server's metadata may be, in the order the MCP
+// specification asks: RFC 8414 with the issuer's path after the well-known
+// name, OpenID Connect discovery the same way, then OpenID Connect's own form
+// with the well-known name after the path. An issuer without a path has the
+// first two, at the root.
+function pg_mcp_client_auth_server_metadata_urls($issuer) {
+
+	$origin = pg_mcp_client_origin($issuer);
+
+	if ($origin === '') {
+
+		return array();
+
+	}
+
+	$path = rtrim((string)parse_url(trim((string)$issuer), PHP_URL_PATH), '/');
+
+	if ($path === '') {
+
+		return array($origin . '/.well-known/oauth-authorization-server', $origin . '/.well-known/openid-configuration');
+
+	}
+
+	return array(
+		$origin . '/.well-known/oauth-authorization-server' . $path,
+		$origin . '/.well-known/openid-configuration' . $path,
+		$origin . $path . '/.well-known/openid-configuration'
+	);
+
+}
+
+// An authorization server's metadata, checked: it names the issuer it was
+// asked for (RFC 8414 3.3; a trailing slash aside), its endpoints are
+// addresses that may be called, and it takes PKCE with S256 - the MCP
+// specification has a client refuse a server that does not say so. Answers
+// ok, error, issuer, authorize_url, token_url, revoke_url, registration_url,
+// cimd (it reads client ID metadata documents), iss_param (it names itself on
+// the redirect, RFC 9207), auth_methods (token_endpoint_auth_methods_supported)
+// and scopes (scopes_supported).
+function pg_mcp_client_auth_server_read($metadata, $issuer) {
+
+	$fail = function ($error) {
+
+		return array('ok' => false, 'error' => $error);
+
+	};
+
+	if (!is_array($metadata) || !isset($metadata['issuer']) || !is_string($metadata['issuer'])
+		|| (rtrim($metadata['issuer'], '/') !== rtrim((string)$issuer, '/'))) {
+
+		return $fail(lang('The sign-in server\'s metadata names another issuer, so it is not followed.'));
+
+	}
+
+	foreach (array('authorization_endpoint', 'token_endpoint') as $name) {
+
+		if (!isset($metadata[$name]) || !is_string($metadata[$name]) || !pg_mcp_client_auth_url_is_valid($metadata[$name])) {
+
+			return $fail(lang('The sign-in server gives no usable authorization or token address.'));
+
+		}
+
+	}
+
+	$list = function ($name) use ($metadata) {
+
+		return (isset($metadata[$name]) && is_array($metadata[$name])) ? array_values(array_filter($metadata[$name], 'is_string')) : array();
+
+	};
+
+	if (!in_array('S256', $list('code_challenge_methods_supported'), true)) {
+
+		return $fail(lang('The sign-in server does not say that it takes PKCE (S256), so the site does not sign in there.'));
+
+	}
+
+	$optional = function ($name) use ($metadata) {
+
+		return (isset($metadata[$name]) && is_string($metadata[$name]) && pg_mcp_client_auth_url_is_valid($metadata[$name])) ? $metadata[$name] : '';
+
+	};
+
+	return array(
+		'ok'               => true,
+		'error'            => '',
+		'issuer'           => $metadata['issuer'],
+		'authorize_url'    => $metadata['authorization_endpoint'],
+		'token_url'        => $metadata['token_endpoint'],
+		'revoke_url'       => $optional('revocation_endpoint'),
+		'registration_url' => $optional('registration_endpoint'),
+		'cimd'             => (isset($metadata['client_id_metadata_document_supported']) && ($metadata['client_id_metadata_document_supported'] === true)),
+		'iss_param'        => (isset($metadata['authorization_response_iss_parameter_supported']) && ($metadata['authorization_response_iss_parameter_supported'] === true)),
+		'auth_methods'     => $list('token_endpoint_auth_methods_supported'),
+		'scopes'           => $list('scopes_supported')
+	);
+
+}
+
+// What the sign-in's requests go through when the caller passes nothing.
+function pg_mcp_client_fetcher($timeout = 20) {
+
+	return function ($method, $url, $body, $headers) use ($timeout) {
+
+		if (!function_exists('api_http_request')) {
+
+			require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+
+		}
+
+		$options = array(
+			'headers'          => $headers,
+			'timeout'          => $timeout,
+			'max_body'         => 65536,
+			'agent'            => 'mcp',
+			'response_headers' => true
+		);
+
+		if ($body !== null) {
+
+			$options['body'] = $body;
+
+		}
+
+		return api_http_request($method, $url, $options);
+
+	};
+
+}
+
+// A metadata document: a JSON object answered with 200, or null.
+function pg_mcp_client_fetch_json($fetch, $url) {
+
+	$got = call_user_func($fetch, 'GET', $url, null, array('Accept: application/json'));
+
+	if (!is_array($got) || !isset($got['status']) || ((int)$got['status'] !== 200)) {
+
+		return null;
+
+	}
+
+	$data = json_decode(isset($got['body']) ? (string)$got['body'] : '', true);
+
+	return is_array($data) ? $data : null;
+
+}
+
+// Finds out how to sign in to a server. Answers ok, error, resource (what a
+// token is asked for), what pg_mcp_client_auth_server_read() gives, scopes
+// (those the server's challenge asked for, else those its resource metadata
+// lists, else none, the MCP specification's order) and challenged (the server
+// refused a request without a sign-in).
+function pg_mcp_client_discover_auth($url, $fetch = null, $timeout = 20) {
+
+	$fail = function ($error) {
+
+		return array('ok' => false, 'error' => $error);
+
+	};
+
+	$url = trim((string)$url);
+
+	if (!pg_mcp_client_auth_url_is_valid($url)) {
+
+		return $fail(lang('The address must be an https address, without a user name, a password or a # part.'));
+
+	}
+
+	$fetch = is_callable($fetch) ? $fetch : pg_mcp_client_fetcher($timeout);
+
+	// Asked without a credential, a server that wants a sign-in says where.
+	$conn = pg_mcp_client_connection($url, array(), '', '', $timeout);
+
+	$conn['transport'] = function ($to, $body, $headers, $seconds, $max_body) use ($fetch) {
+
+		return call_user_func($fetch, 'POST', $to, $body, $headers);
+
+	};
+
+	$probe = pg_mcp_client_send($conn, 'initialize', array(
+		'protocolVersion' => '2025-11-25',
+		'capabilities'    => (object)array(),
+		'clientInfo'      => pg_mcp_client_info()
+	), '');
+
+	if ($probe['status'] === 0) {
+
+		return $fail($probe['error']);
+
+	}
+
+	$challenged = ($probe['status'] === 401);
+
+	$challenge = $challenged ? pg_mcp_client_bearer_challenge(isset($probe['headers']['www-authenticate']) ? $probe['headers']['www-authenticate'] : '') : array();
+
+	$resource_metadata = null;
+
+	foreach (pg_mcp_client_resource_metadata_urls($url, isset($challenge['resource_metadata']) ? $challenge['resource_metadata'] : '') as $metadata_url) {
+
+		$document = pg_mcp_client_fetch_json($fetch, $metadata_url);
+
+		if (is_array($document) && isset($document['authorization_servers']) && is_array($document['authorization_servers']) && $document['authorization_servers']) {
+
+			$resource_metadata = $document;
+
+			break;
+
+		}
+
+	}
+
+	if (is_array($resource_metadata)) {
+
+		$resource = (isset($resource_metadata['resource']) && is_string($resource_metadata['resource'])) ? trim($resource_metadata['resource']) : '';
+
+		if (($resource !== '') && !pg_mcp_client_resource_covers($resource, $url)) {
+
+			return $fail(lang('The server\'s sign-in metadata is about another address, so it is not followed.'));
+
+		}
+
+		if ($resource === '') {
+
+			$resource = pg_mcp_client_canonical_resource($url);
+
+		}
+
+		$issuers = array_values(array_filter($resource_metadata['authorization_servers'], 'is_string'));
+
+	} else {
+
+		// A server of the first authorization specification (2025-03-26)
+		// has no resource metadata: its own origin is the authorization
+		// server.
+		$resource = pg_mcp_client_canonical_resource($url);
+
+		$issuers = array(pg_mcp_client_origin($url));
+
+	}
+
+	$server = null;
+
+	$error = lang('The sign-in server\'s metadata could not be found.');
+
+	foreach (array_slice($issuers, 0, 3) as $issuer) {
+
+		if (!pg_mcp_client_auth_url_is_valid($issuer)) {
+
+			continue;
+
+		}
+
+		foreach (pg_mcp_client_auth_server_metadata_urls($issuer) as $metadata_url) {
+
+			$document = pg_mcp_client_fetch_json($fetch, $metadata_url);
+
+			if (!is_array($document)) {
+
+				continue;
+
+			}
+
+			$read = pg_mcp_client_auth_server_read($document, $issuer);
+
+			if ($read['ok']) {
+
+				$server = $read;
+
+				break 2;
+
+			}
+
+			$error = $read['error'];
+
+		}
+
+	}
+
+	if (!is_array($server)) {
+
+		return $fail((!$challenged && !is_array($resource_metadata)) ? lang('The server does not ask for a sign-in. Choose another way to sign in, or none.') : $error);
+
+	}
+
+	if (isset($challenge['scope']) && (trim($challenge['scope']) !== '')) {
+
+		$scopes = preg_split('/\s+/', trim($challenge['scope']));
+
+	} elseif (is_array($resource_metadata) && isset($resource_metadata['scopes_supported']) && is_array($resource_metadata['scopes_supported'])) {
+
+		$scopes = array_values(array_filter($resource_metadata['scopes_supported'], 'is_string'));
+
+	} else {
+
+		$scopes = array();
+
+	}
+
+	return array_merge($server, array(
+		'resource'   => $resource,
+		'scopes'     => array_slice(array_values(array_unique($scopes)), 0, 50),
+		'challenged' => $challenged
+	));
+
+}
+
+// What the site says about itself as an OAuth client, in its client ID
+// metadata document (with client_id, the document's own address) and in a
+// dynamic registration (without). It has no secret: PKCE proves it.
+function pg_mcp_client_client_metadata($redirect_uri, $home, $client_id = '') {
+
+	$info = pg_mcp_client_info();
+
+	$metadata = ($client_id !== '') ? array('client_id' => (string)$client_id) : array();
+
+	return $metadata + array(
+		'client_name'                => $info['title'],
+		'client_uri'                 => (string)$home,
+		'redirect_uris'              => array((string)$redirect_uri),
+		'grant_types'                => array('authorization_code', 'refresh_token'),
+		'response_types'             => array('code'),
+		'token_endpoint_auth_method' => 'none',
+		'software_id'                => 'pinegrap',
+		'software_version'           => $info['version']
+	);
+
+}
+
+// Registers the site with an authorization server (RFC 7591). A server that
+// hands out a secret anyway says how it wants it sent. Answers ok, error,
+// client_id, client_secret ('' for none) and auth_method.
+function pg_mcp_client_register($registration_url, $metadata, $scopes = array(), $fetch = null, $timeout = 20) {
+
+	$fetch = is_callable($fetch) ? $fetch : pg_mcp_client_fetcher($timeout);
+
+	if ($scopes) {
+
+		$metadata['scope'] = implode(' ', $scopes);
+
+	}
+
+	$got = call_user_func($fetch, 'POST', $registration_url, json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), array('Content-Type: application/json', 'Accept: application/json'));
+
+	$status = (is_array($got) && isset($got['status'])) ? (int)$got['status'] : 0;
+
+	$data = json_decode((is_array($got) && isset($got['body'])) ? (string)$got['body'] : '', true);
+
+	if ((($status !== 200) && ($status !== 201)) || !is_array($data) || !isset($data['client_id']) || !is_string($data['client_id']) || ($data['client_id'] === '')) {
+
+		if (is_array($data) && isset($data['error']) && is_string($data['error'])) {
+
+			$reason = $data['error'] . ((isset($data['error_description']) && is_string($data['error_description'])) ? ': ' . $data['error_description'] : '');
+
+		} elseif ($status === 0) {
+
+			$reason = pg_mcp_client_transport_text((is_array($got) && isset($got['error'])) ? $got['error'] : '');
+
+		} else {
+
+			$reason = 'HTTP ' . $status;
+
+		}
+
+		return array('ok' => false, 'error' => lang(array('string' => 'The sign-in server did not register the site: {var:1}', 'vars' => mb_substr($reason, 0, 200))));
+
+	}
+
+	$secret = (isset($data['client_secret']) && is_string($data['client_secret'])) ? $data['client_secret'] : '';
+
+	$method = (isset($data['token_endpoint_auth_method']) && is_string($data['token_endpoint_auth_method']))
+		? $data['token_endpoint_auth_method']
+		: (($secret !== '') ? 'client_secret_basic' : 'none');
+
+	return array('ok' => true, 'error' => '', 'client_id' => $data['client_id'], 'client_secret' => $secret, 'auth_method' => $method);
 
 }

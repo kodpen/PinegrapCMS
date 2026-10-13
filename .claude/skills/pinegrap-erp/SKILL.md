@@ -385,10 +385,27 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   `erp_post_transfer()` ile; her adım yeni hareket, önceki hareket yeniden
   yazılmaz (karşılıksız = cariye yeniden borç). Portföy ve verilen çek
   kasaları kullanıcının açtığı ERP kasalarıdır; yoksa ekran söyler.
-- Banka ekstresi (`includes/erp/bank_import.php`): yalnız CSV. Satır
+- Banka ekstresi (`includes/erp/bank_import.php`): CSV, `.xlsx`/`.xlsm` (zip
+  yardımcılarıyla, kütüphanesiz) ve `.xls` (PHPExcel, biçimleriyle; tarih
+  hücresi biçiminden tanınır). Her yol `erp_bank_read_file()` → aynı hücre
+  satırları; sayı hücresi `erp_bank_sheet_value()` ile CSV metnine, başlık
+  bloğu `erp_bank_rows_from_heading()` ile atılır. `.ods` reddedilir (vendored
+  OOCalc PHP 8'de ölür). Satır
   `UNIQUE (cash_account_id, line_hash)` ile bir kez alınır; eşleşme defterde
   aynı kasa + tutar + ±3 gün; kayıt tahsilat/ödeme ya da gider kapısından.
   Sütun seçimi kasaya göre hatırlanır.
+- Vade farkı (`includes/erp/late_fee.php`, 10.61): oran `erp_late_fee_settings()`
+  (config, sabit değil), hesap saf `erp_late_fee_for_invoice()` (gün gün, ay 30
+  gün, tahsilat ve iade kendi gününde). Yalnız taslak yazılır
+  (`erp_late_fee_draft()`); `erp_invoices.late_fee_through` kesilince sayılır,
+  sonraki dönem ertesi günden başlar. Vade farkı faturası (late_fee_through
+  dolu) kendisi vade farkı doğurmaz. Yeni bir borç düşüren kaynak eklersen
+  `erp_late_fee_account()` indirimlerine ekle.
+- Nakit tahmini (`includes/erp/cash_forecast.php`): kaynakları
+  `erp_cash_forecast_items()` toplar, saf `erp_cash_forecast_build()` sütunlara
+  döker. Yeni bir vadeli para kaynağı (ör. taksit) eklenirse buraya bir tür
+  (`erp_cash_forecast_kinds()`) ve kaynak ekle. Çek kasaları bugünkü nakitten
+  düşülür, çek satırlarda sayılır.
 - Çeviri tuzakları: `'Quote'` "Alıntı", `'By'` "Şuna Göre", `'From'`/`'To'`
   "Şundan"/"Şuna", `'Count'` "Adet", `'Record'` "Kayıt", `'Due'` "Bitiş"
   demek; ERP metninde yeni anahtar kullan (`'Sales quote'`, `'Sent by'`,
@@ -621,6 +638,8 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
 | Stok sayımı | `includes/erp/stock_counts.php`, `erp_stock_counts.php`, `erp_stock_count.php` |
 | Çek ve senetler | `includes/erp/cheques.php`, `erp_cheques.php`, `erp_cheque.php` |
 | Banka ekstresi | `includes/erp/bank_import.php`, `erp_bank_statements.php`, `erp_bank_statement.php` |
+| Vade farkı | `includes/erp/late_fee.php`, `add_erp_late_fee_invoice.php`; ayar kartı `erp_settings.php`; panel `edit_erp_account.php`, `erp_reconciliation.php` |
+| Nakit tahmini | `includes/erp/cash_forecast.php`, `erp_cashflow.php?view=forecast` |
 | Tezgâh satışı (ERP tarafı) | `includes/local_sale.php` (karışık ödeme: `local_sale_split_parts()`) |
 | Vade & yaşlandırma | `includes/erp/aging.php` |
 | Gecikme bildirimi | `includes/erp/notify.php` |
@@ -643,4 +662,5 @@ Otomatik tahsis eşleştirme yok (FIFO yalnız öneri) · e-İrsaliye yok
 akışı türetilmiş durumdur, yeni enum değeri değil · kâr/zarar resmî gelir tablosu değildir (amortisman,
 dönemsellik yok) · siparişi birden çok faturaya bölme yok · faturaya ödeme
 linki yok (müşteri faturasını "Faturalarım" widget'ında görür, ödeyemez) · iyzico ve pazaryeri hakedişi yok
-· banka ekstresi yalnız CSV, bankaya API bağlantısı yok.
+· bankaya API bağlantısı yok (ekstre dosyayla) · vade farkı ve nakit tahmini
+API'de ve MCP'de yok.

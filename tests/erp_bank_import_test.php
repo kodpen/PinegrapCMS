@@ -1,0 +1,147 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for taking a bank statement in as a workbook
+ * (includes/erp/bank_import.php): erp_bank_sheet_value(), which turns a
+ * number cell into the text a CSV would have carried,
+ * erp_bank_rows_from_heading(), which drops the bank's title block, and
+ * erp_bank_read_file() over a small .xlsx written here. The older .xls goes
+ * through PHPExcel, which is checked on the sandbox rather than here.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/bank_import.php');
+
+// Whole numbers keep their digits; the rest is two decimals with a point.
+function test_erp_bank_sheet_value_numbers()
+{
+	pg_assert_same('1250', erp_bank_sheet_value('1250'));
+	pg_assert_same('-75', erp_bank_sheet_value('-75'));
+	pg_assert_same('1234.56', erp_bank_sheet_value('1234.5599999999999'));
+	pg_assert_same('-0.10', erp_bank_sheet_value('-0.1'));
+	pg_assert_same('', erp_bank_sheet_value(''));
+	pg_assert_same('n/a', erp_bank_sheet_value('n/a'));
+}
+
+// A date cell is a day count; it comes out as Y-m-d, with the time when it has one.
+function test_erp_bank_sheet_value_dates()
+{
+	pg_assert_same('2026-09-23', erp_bank_sheet_value('46288', 'date'));
+	pg_assert_same('2026-09-23 12:30', erp_bank_sheet_value('46288.520833333336', 'date'));
+	pg_assert_same('1', erp_bank_sheet_value('1', 'b'));
+	pg_assert_same('0', erp_bank_sheet_value('0', 'b'));
+}
+
+// The bank's title block goes; the heading over the first transaction stays.
+function test_erp_bank_rows_from_heading_drops_the_title_block()
+{
+	$rows = array(
+		array('Example Bank', ''),
+		array('Account statement 01.09.2026 - 30.09.2026', ''),
+		array('IBAN TR00 0000 0000 0000 0000 0000 00', ''),
+		array('Date', 'Description', 'Amount', 'Balance'),
+		array('23.09.2026', 'Invoice 1042', '1.250,00 TRY', '5.000,00'),
+		array('24.09.2026', 'Rent', '-800,00', '4.200,00'),
+	);
+
+	$kept = erp_bank_rows_from_heading($rows);
+
+	pg_assert_same(3, count($kept), 'rows');
+	pg_assert_same('Date', $kept[0][0], 'heading first');
+}
+
+// A period written as two dates is not a transaction, nor is a reference number.
+function test_erp_bank_rows_from_heading_needs_an_amount()
+{
+	$rows = array(
+		array('Period', '01.09.2026', '30.09.2026'),
+		array('Printed', '2026-10-01', 'Ref. TX-20260901-ABCDEF'),
+		array('Tarih', 'Açıklama', 'Tutar'),
+		array('2026-09-23', 'EFT', '1250.00'),
+	);
+
+	$kept = erp_bank_rows_from_heading($rows);
+
+	pg_assert_same('Tarih', $kept[0][0], 'heading first');
+	pg_assert_same(2, count($kept), 'rows');
+}
+
+// A file whose first row is a transaction, or that has none, is left as it is.
+function test_erp_bank_rows_from_heading_leaves_others()
+{
+	$first = array(array('23.09.2026', 'EFT', '100,00'), array('24.09.2026', 'EFT', '200,00'));
+	pg_assert_same($first, erp_bank_rows_from_heading($first), 'first row a transaction');
+
+	$none = array(array('Date', 'Amount'), array('no', 'transactions'));
+	pg_assert_same($none, erp_bank_rows_from_heading($none), 'none found');
+}
+
+// A small workbook as banks write them: a title, shared strings, a date
+// format, inline text and an amount stored as a binary float.
+function test_erp_bank_read_file_xlsx()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$dir = sys_get_temp_dir() . '/pg_bank_test_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+	$path = $dir . '/statement.xlsx';
+
+	$zip = new ZipArchive();
+	pg_assert_true($zip->open($path, ZipArchive::CREATE) === true, 'zip written');
+
+	$zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
+	$zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+	$zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Hareketler" sheetId="1" r:id="rId1"/></sheets></workbook>');
+	$zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
+	$zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><cellXfs count="3"><xf numFmtId="0"/><xf numFmtId="164"/><xf numFmtId="4"/></cellXfs></styleSheet>');
+	$zip->addFromString('xl/sharedStrings.xml', '<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="5" uniqueCount="5"><si><t>Örnek Bankası hesap özeti</t></si><si><t>Tarih</t></si><si><t>Açıklama</t></si><si><t>Tutar</t></si><si><t>Kira</t></si></sst>');
+	$zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+		. '<row r="1"><c r="A1" t="s"><v>0</v></c></row>'
+		. '<row r="2"></row>'
+		. '<row r="4"><c r="A4" t="s"><v>1</v></c><c r="B4" t="s"><v>2</v></c><c r="D4" t="s"><v>3</v></c></row>'
+		. '<row r="5"><c r="A5" s="1"><v>46288</v></c><c r="B5" t="inlineStr"><is><r><t>Fatura </t></r><r><t>1042</t></r></is></c><c r="D5" s="2"><v>1250.0000000000002</v></c></row>'
+		. '<row r="6"><c r="A6" s="1"><v>46289</v></c><c r="B6" t="s"><v>4</v></c><c r="D6" s="2"><v>-800</v></c></row>'
+		. '</sheetData></worksheet>');
+	$zip->close();
+
+	$read = erp_bank_read_file($path, 'Hesap Hareketleri.XLSX');
+
+	pg_assert_same('', $read['error'], 'read');
+	pg_assert_same(array(
+		array('Tarih', 'Açıklama', '', 'Tutar'),
+		array('2026-09-23', 'Fatura 1042', '', '1250.00'),
+		array('2026-09-24', 'Kira', '', '-800'),
+	), $read['rows'], 'rows from the heading on, columns kept in place');
+
+	pg_assert_same(125000, erp_bank_amount($read['rows'][1][3]), 'amount reads back');
+	pg_assert_same('2026-09-23', erp_bank_date($read['rows'][1][0]), 'date reads back');
+
+	file_put_contents($path, 'not a workbook');
+	pg_assert_same(array(), erp_bank_read_file($path, 'statement.xlsx')['rows'], 'a broken file');
+	pg_assert_true(erp_bank_read_file($path, 'statement.xlsx')['error'] !== '', 'says so');
+
+	unlink($path);
+	rmdir($dir);
+}
+
+// A document that is not a workbook Pinegrap reads is refused by its name, not read as text.
+function test_erp_bank_read_file_refuses_other_documents()
+{
+	foreach (array('statement.ods', 'statement.PDF', 'statement.numbers') as $name) {
+		$read = erp_bank_read_file(__FILE__, $name);
+
+		pg_assert_same(array(), $read['rows'], $name . ' rows');
+		pg_assert_contains('.xlsx', $read['error'], $name . ' says what to save it as');
+	}
+}
