@@ -393,6 +393,22 @@
          aynı sırayla geçiyor. Başlığa Shift'siz tıklamak
          eskisi gibi tek sütuna göre sıralıyor.
 
+  REHBER
+  --------------------------------------------------------
+
+  [YENİ] Rehber (kişi listesi) de aynı anda birden çok
+         sütuna göre sıralanıyor, örneğin şirket artan,
+         aynı şirkette ad artan. Ürün listesindeki gibi
+         başlığa Shift ile tıklamak sonraki düzeyi
+         ekliyor; telefonda ya da klavyeyle araç
+         çubuğundaki "Sıralama" menüsü kullanılıyor.
+         Seçilen görünüm (abonelerim, iş adresine göre
+         gibi), grup ve gelişmiş filtreler sıralama
+         değişince korunuyor. Seçilen sıralama panel
+         dili değişince kaybolmuyor. Yinelenen kişiler
+         görünümü eskisi gibi e-posta adresine göre
+         sıralanıyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 

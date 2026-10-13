@@ -1013,13 +1013,24 @@ function pg_list_sort_heading($label, $code, $levels, $extras = '')
  * @param array  $columns code => heading of the columns the view sorts by
  * @param array  $levels  the levels the list is sorted by
  * @param array  $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @param array  $query   name => value of the rest of the address that every
+ *                        link and the form keep, for a list that reads its
+ *                        view from the address, e.g. array('filter' => ...)
  * @return string
  */
-function pg_list_sort_menu($url, $columns, $levels, $default)
+function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
 {
-    $link = function ($to) use ($url) {
-        return $url . '?sort=' . pg_list_sort_value($to);
+    $kept = $query ? '&' . http_build_query($query) : '';
+
+    $link = function ($to) use ($url, $kept) {
+        return $url . '?sort=' . pg_list_sort_value($to) . $kept;
     };
+
+    $hidden = '';
+
+    foreach ($query as $name => $value) {
+        $hidden .= '<input type="hidden" name="' . h((string) $name) . '" value="' . h((string) $value) . '">';
+    }
 
     $levels = array_values($levels);
     $count = count($levels);
@@ -1069,6 +1080,7 @@ function pg_list_sort_menu($url, $columns, $levels, $default)
     // An empty first choice keeps the form from sending an empty sort, which
     // would put the list back to the default.
     $form = ($options === '') ? '' : '<li><form method="get" action="' . h($url) . '" class="d-flex gap-1 px-3 py-2 disable_shortcut">'
+        . $hidden
         . '<select name="sort" class="form-select form-select-sm" required aria-label="' . h(lang('Then sort by')) . '">'
         . '<option value="" selected>' . h(lang('Then sort by')) . '</option>' . $options . '</select>'
         . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Add')) . '</button>'
