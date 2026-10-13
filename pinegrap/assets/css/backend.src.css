@@ -5680,9 +5680,15 @@ html[data-bs-theme="dark"] [data-widget-theme="aurora"] {
 }
 
 /* ── Glass ────────────────────────────────────────────────────────────────
-   Translucent card over a blurred backdrop. It is the one theme that needs
+   Translucent card over the panel backdrop. It is the one theme that needs
    something behind it to be worth anything, which is why choosing it also
    turns the panel backdrop on -- see the auto mapping in welcome.php.
+
+   No backdrop-filter. What is behind a card is the wash: a few radial
+   gradients so soft that blurring them changes nothing you can see. The blur
+   still had to be redone for every card on every frame of a scroll, and again
+   under any dialog or menu laid over the dashboard -- twenty-odd filtered
+   surfaces paying for a difference nobody could point at.
 
    The tint runs down the card rather than across it, and it is finished by 58%
    -- roughly where the header ends and the first row begins. The card is still
@@ -5700,8 +5706,6 @@ html[data-bs-theme="dark"] [data-widget-theme="aurora"] {
       color-mix(in srgb, var(--pg-accent, #64748b) var(--pg-fx-top), transparent) 0%,
       transparent 58%),
     rgba(255, 255, 255, 0.58);
-  -webkit-backdrop-filter: blur(16px) saturate(130%);
-  backdrop-filter: blur(16px) saturate(130%);
   border-color: color-mix(in srgb, var(--pg-accent, #64748b) var(--pg-fx-edge), transparent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.40),
@@ -6168,7 +6172,9 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 
    A quiet card rather than bare text: a translucent surface over the panel
    backdrop, so the line reads as one object sitting on the page instead of a
-   caption floating above the widgets. */
+   caption floating above the widgets. Translucent without a blur, for the
+   reason the glass cards give: the wash behind it is too soft for a blur to
+   show, and the filter was redone on every frame of a scroll. */
 .pg-brief {
   position: relative;
   align-self: flex-start;
@@ -6183,12 +6189,6 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 }
 html[data-bs-theme="dark"] .pg-brief {
   background: color-mix(in srgb, var(--bs-body-bg) 55%, transparent);
-}
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .pg-brief {
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
 }
 /* A thin stroke of the clock's gradient down the left edge, inset from the
    corners so it does not have to follow the radius. Positioned rather than
@@ -8137,6 +8137,21 @@ body.pg-side-panel-open .pg-chat-launcher {
    same way and with the same filter values rather than a second recipe of its
    own. One look, one place to change it.
 
+   Only the section list is frosted, not the whole dialog. A backdrop filter is
+   run again on every frame in which anything inside or under the frosted box
+   changes, and the pane is a scroller: with the filter on the dialog, every
+   frame of scrolling a category re-blurred all 1180x860 pixels of it, and so
+   did every frame of any animation on the screen behind -- the dashboard has
+   several that never stop. Measured in headless Chromium over the dashboard
+   in dark, that held the dialog to about ten frames a second, scrolling or
+   idle; with the filter on the list alone it stays near sixty. The radius was
+   not the cost (24px and 100px measured the same), the area was, so the
+   values are unchanged.
+
+   The pane is drawn on the panel's own background, solid. Without a blur any
+   translucency there is a second layer of text under the settings -- at 90%
+   the dashboard's figures and headings could still be read through the form.
+
    The scrim behind it is lightened to match, and that is not decoration: a
    frosted sheet over an opaque black one is not frosted. What a dropdown has
    behind it is the screen, and having the screen back there is the whole point.
@@ -8145,13 +8160,24 @@ body.pg-side-panel-open .pg-chat-launcher {
    step of the pane it sits on -- measured rgb(16,17,19) on rgb(16,17,20) --
    so what draws a card is its border, not its colour, and leaving the fill in
    would have laid an opaque sheet over the glass for no gain. */
-.advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm,
-.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
-  background-color: rgba(var(--bs-body-bg-rgb), 0.62);
-  -webkit-backdrop-filter: brightness(1) saturate(1.5) blur(20px); backdrop-filter: brightness(1) saturate(1.5) blur(20px);
+.advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm {
+  background-color: transparent;
+}
+.advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-main {
+  background-color: var(--bs-body-bg);
 }
 
-[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm,
+/* The dialogs a category opens over the settings are small and hold still,
+   so they keep the whole sheet frosted. */
+.advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-side,
+.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+  -webkit-backdrop-filter: brightness(1) saturate(1.5) blur(20px); backdrop-filter: brightness(1) saturate(1.5) blur(20px);
+}
+.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+  background-color: rgba(var(--bs-body-bg-rgb), 0.62);
+}
+
+[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-side,
 [data-bs-theme="dark"] .advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
   -webkit-backdrop-filter: brightness(0.7) saturate(1.7) blur(100px); backdrop-filter: brightness(0.7) saturate(1.7) blur(100px);
 }

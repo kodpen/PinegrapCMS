@@ -1571,6 +1571,13 @@
          şu an görev sayacı çalışanlar. Kartlar yalnız Çalışma
          Alanı üyelerine görünüyor.
 
+  [HIZ] Cam balon temasında pano kaydırılırken takılmıyor.
+         Kartlar ve karşılama kartı yarı saydam kalıyor,
+         arkalarındaki bulanıklaştırma kaldırıldı. Arkada
+         yalnız yumuşak renk geçişi olduğu için görünüm aynı;
+         ama tarayıcı her kaydırma karesinde yirmiye yakın
+         kartı yeniden bulanıklaştırıyordu.
+
   YÖNETİM PANELİ
   --------------------------------------------------------
 
@@ -1586,6 +1593,14 @@
          verirse Yükle düğmesi yeniden açılıyor; sayfa
          tasarımcısında kayıt hata verince Kaydet
          "Kaydediliyor" yazısında takılı kalmıyor.
+
+  [HIZ] Şeffaf Akrilik Efekt açıkken Site Ayarları penceresi
+         takılmadan açılıyor ve kaydırılıyor. Buzlu cam
+         görünümü soldaki bölüm listesinde kalıyor, ayarların
+         durduğu bölme düz arka planda. Önceden pencerenin
+         tamamı bulanıklaştırılıyordu: ayarlar kaydırıldıkça
+         ya da arkadaki panoda bir şey kıpırdadıkça tarayıcı
+         bütün pencereyi yeniden bulanıklaştırıyordu.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
