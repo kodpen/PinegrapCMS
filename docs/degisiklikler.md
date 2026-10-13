@@ -155,6 +155,139 @@ kartlardan aynen taşındı, canlıda bakılmalı.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı API ve MCP: not yazma, plan kayıtları, arama, "benim günüm" (2026-10-13)
+
+**Neden.** Çalışma Alanı araştırmasının P1 1.3 maddesi: dış API (ve ondan
+türeyen MCP araçları) notları ve planlama panosunu yalnız okuyabiliyordu,
+Ctrl+K araması ve kişinin "bugün neyim var" görünümü hiç yoktu. Claude ya da
+ChatGPT'den "bu toplantının notunu Çalışma Alanı'na yaz", "perşembe 14:00'e
+müşteri görüşmesi koy", "bugün neyim var" istekleri bu yüzden karşılıksızdı.
+
+**Ne değişti.** On yeni rota; hepsi `ws_api_routes()`'ta
+(`includes/workspace/api.php`) ve MCP'de kendiliğinden araç olur
+(`pg_mcp_tool_from_route()`). İşleyiciler panelin kendi fonksiyonlarını
+çağırır; kim neyi yazabilir sorusu orada cevaplanır.
+
+| Rota | Kapsam | Ne yapar |
+|---|---|---|
+| `POST /workspace/notes` | workspace:write | Sahibin yeni kişisel notu (`ws_note_save()`); paylaşılana kadar kimse görmez |
+| `POST`/`PATCH /workspace/notes/{id}` | workspace:write | Yalnız gönderilen alanlar; `base` ile çakışma 409 `changed_meanwhile` |
+| `GET /workspace/plan-items`, `/{id}` | tasks:read | Toplantı, ziyaret, izin, tatil (`ws_events_between()`); `user_id`, `kind`, `from`, `days` |
+| `POST /workspace/plan-items`, `POST`/`PATCH /{id}` | tasks:write | `ws_event_save()` üzerinden; kimin için plan yapılabileceğini o söyler |
+| `DELETE /workspace/plan-items/{id}`, `POST …/{id}/delete` | tasks:write | `dry_run` destekli; POST takma adı MCP'de ayrı araç değil |
+| `GET /workspace/search` | workspace:read | `ws_palette_search()`; `#` kayıt, `@` kişi; `type`, `channel_id`, `limit` |
+| `GET /workspace/my-day` | workspace:read | Bugün biten/geciken görevler, sayaç, bugünkü plan, onaylar, okundu onayları, kişiye yazılanlar |
+
+Ayrıntılar:
+
+- **Notlar.** Boş not (başlık ve metin boş) 422. Okumak için paylaşılmış
+  not 403; `pinned` yalnız sahibinin, başkası gönderirse 422 (ekran onu
+  sessizce yok sayıyordu, API'de sessiz yok sayma yanıltıcı olurdu). Eski
+  hâl ekrandaki gibi sürümlere girer, notu tutan diğerlerine haber gider.
+  `ws_api_note_or_404()`'ün Claude kanalı süzgeci `ws_api_note_reachable()`
+  olarak ayrıldı; arama da onu kullanıyor.
+- **Plan kayıtları.** Kısmi güncelleme kaydın tam hâlini kurup gelen
+  alanları üstüne koyar. Yalnız `start_date` gönderilirse kayıt gün
+  uzunluğunu korur (iki günlük izin taşınınca bitişi de kayar). Saat
+  `HH:MM` değilse 422 (ekranın sessizce 09:00'a düşmesi API'de yok).
+  `ws_event_save()`'in tarih hataları 422 `start_date`/`end_date`, geri
+  kalan reddi (şirket geneli, başkası için plan, kayıt sahibi değil) 403.
+  Takvim adresinden okunan tatil (`from_calendar`) değiştirilebilir ama
+  takvimin sonraki okunuşunda yeniden yazılır; açıklamada söyleniyor.
+- **Arama.** Görevler yalnız `tasks:read` ile aranır (`type=tasks` onsuz
+  403 `insufficient_scope`). Panel kayıtları türüne göre süzülür:
+  `ws_api_search_record_scopes()` her türü okuyan kapsama eşler (sipariş
+  `orders:read`, kişi `customers:read`, fatura `erp:read`, makbuz
+  `erp_cash:read` …); kullanıcı hesabını okuyan kapsam olmadığı için o tür
+  aranmaz. Bunun için `ws_palette_records()` ve `ws_palette_search()`
+  isteğe bağlı tür listesi aldı (`record_kinds`); panel çağrıları değişmedi.
+  `/` komut araması API'de boş döner. Adresler tam adres olarak verilir.
+- **Benim günüm.** Görev, sayaç ve plan parçaları `tasks:read` ister;
+  yoksa boş gelir ve `left_out` kapsamı adlandırır. Onaylar
+  `WorkspaceApproval`, görevler `WorkspaceTask`, sayaç `WorkspaceTaskTime`
+  nesnesiyle döner. Claude'un uygulaması yalnız sorulabildiği kanalları
+  görür (onay, okundu, bahsetme).
+- Yeni nesneler: `WorkspacePlanItem`, `WorkspaceSearchHit`,
+  `WorkspaceMyDay` (`includes/workspace/api_day.php`);
+  `tools/check_api_schema.php` sunucu–bildirim çiftlerini tanıyor.
+
+**Bilerek yapılmayan.** Not silme ve paylaşma API'ye açılmadı: kanal
+paylaşımı kanala kişinin adıyla kart yazar (API'nin "uygulamanın yazdığı
+uygulama adıyla görünür" kuralına aykırı), silme geri alınamaz. Not ve plan
+yazmada `dry_run` yok (doğrulama `ws_note_save()`/`ws_event_save()` içinde,
+yazmadan ayrılmıyor; görev yazma da böyle); plan silmede var.
+
+**Doğrulama.** Sandbox'ta iki kullanıcı ve üç uygulamayla (tam, yalnız
+`workspace:read`, ikinci kişi) bütün yollar: oluşturma, kısmi güncelleme,
+taşıma, 403/404/409/422 dalları, `dry_run`, `left_out`, kapsamla süzülen
+kayıt araması; OAuth jetonuyla `mcp.php` `tools/list` (yeni dokuz araç
+listede, `delete_post` yok) ve `tools/call`; panelin Ctrl+K araması
+değişmeden çalışıyor (Chromium). `tests/workspace_api_test.php`: her
+rotanın işleyicisi var, iki rota aynı yöntem+yolu paylaşmıyor, silme tek
+araç, arama kapsam eşlemesi bilinen türleri adlandırıyor.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com) ve gerçek bir Claude bağlantısı.
+
+---
+
+## 2026.4.10 — Görsel editör: klasik blog adresi, yeni sekmeye verilen sayfa, katalog sepete ekle ve hedef sayfa, sayfa adı çakışması (2026-10-13)
+
+**Kaynak.** Güzel URL düzeltmesinden (aşağıda, PR #251) sonra görsel
+editörün komşu alanlarında yapılan hata taraması. Beş hata, her biri ayrı
+commit.
+
+- **Klasik blog adresleri 404 (2026.4.9'da da var).** `layout_type`
+  klasik sayfanın da varsayılanı `'system'`. `get_page.php`'nin system
+  bloğu `/X/<segment>`'i X'e çevirip segmenti atıyordu; düzeni `system`
+  olan klasik form liste görünümünde `/blog/<adres adı>` bu yüzden
+  kaydı bulamıyor, adres 404 dönüyordu (düzeni `custom` olan sayfa
+  etkilenmiyordu). System bloğu artık `page_type = 'form list view'`
+  sayfayı kendi durumuna bırakıyor, o da segmentten adı okuyor.
+- **Yeni sekmeye verilen detay sayfası kaydedilmiyordu.** Widget ayarı
+  (`_patchSysCfg`) sunucuya hemen yazılıyor, değişmeyen sayfa ise kayıtta
+  ağacı olmadan (`unchanged: 1`) gidiyor. `pg_designer_resolve_tab_refs()`
+  `tab:<anahtar>`'ı yalnız gönderilen ağaçlardaki widget'larda çözüyordu;
+  liste sayfası değişmemişse ayar `tab:…` olarak kalıyor, link hiçbir
+  sayfaya gitmiyordu. Değişmeyen sayfanın ağacı artık veritabanından
+  okunuyor; ayarında `tab:` geçen widget yoksa hiç okunmuyor.
+- **Katalog listesinde kart üzerindeki "Sepete Ekle" ana sayfaya atıyordu.**
+  Sepet sayfası seçilmemişse form `next_page_id = 0` gönderiyor,
+  `catalog_detail.php` sonraki sayfayı `catalog_detail_pages`'te arıyordu;
+  editör sayfasının orada satırı yok, ziyaretçi ana sayfaya gidiyor, logda
+  PHP uyarısı kalıyordu. Kart artık ürün detayı widget'ı gibi listeye
+  bildirimle (`?cart_added=`) dönüyor; `catalog_detail.php` satır yoksa
+  sonraki sayfa yok sayıyor.
+- **Katalogda "Grup gezinmesi → Hedef sayfa" hiç çalışmıyordu.** Ayar
+  kaydediliyor ama okunmuyordu: içerik haritası, grup ağacı ve grup kartları
+  yalnız `drill_down` için kuruluyordu; bu kipte grup görünmüyor, kökünde
+  ürün olmayan katalog boş görünüyordu. Grup linkleri artık
+  `/<hedef sayfa>/<grup>`'a gidiyor; editör kataloğu da klasik katalog
+  sayfası da grubu bu adresten alıyor. Hedef seçilmemiş ya da silinmişse
+  drill-down'a düşülür. Hedef seçici yalnız klasik katalog sayfalarını
+  listeliyordu; artık katalog listesi widget'ı olan editör sayfalarını da
+  listeliyor (ürün detayı widget'ının katalog seçicisiyle aynı liste,
+  `list_catalog_listing_pages`; JS'teki `_fetchCatalogPages()` kalktı).
+- **Sayfa adı dosya, kısa link ya da kök klasörle çakışabiliyordu.** Editör
+  kaydı yalnız diğer sayfalara bakıyordu; klasik sayfa ekranları
+  (`check_name_availability()`) dosyalara, kısa linklere, site kökündeki
+  dosya ve klasörlere, `sitemap.xml` / `robots.txt`'ye de bakar. Böyle
+  adlandırılan editör sayfası hiç görünmüyordu (`/pinegrap` yönetim
+  klasörünü açar). Yeni `pg_designer_page_name_taken_elsewhere()` ad
+  verilirken ya da değişirken çalışır; bu adı zaten taşıyan sayfa
+  kaydedilmeye devam eder. `check_name_availability()` kullanılmadı: site
+  kökünü çalışma dizininden `'../'` diye okur, MCP sunucusundan gelen
+  kayıtta çalışma dizini yazılım klasörü değildir.
+
+**Yapılmayanlar.** Taramada çıkan iki küçük nokta bırakıldı: CKEditor'ün
+link seçicisi sayfa adresini kodlamadan basıyor (Türkçe karakter
+tarayıcıda çalışıyor; `#`/`?` içeren ad nadir) ve tasarımcı sayfa
+seçicileri (`list_all_pages` ve diğerleri) Geri Dönüşüm Kutusu'ndaki
+sayfaları da listeliyor (seçili sayfa listeden düşerse seçici "seçilmedi"
+gösterir, ayrı karar ister). Sandbox'ta doğrulandı (hello-pinegrap
+tasarımı, editör için Playwright); dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Çok dilli site: otomatik dil yönlendirmesi ve ziyaretçi konumu (10.1) (2026-10-13)
 
 **İstek.** Erdal: "kullanıcı diline veya konumuna göre otomatik uygun dile

@@ -20303,6 +20303,8 @@
     "Awaiting approval": "Onay bekliyor",
     "{var:1} today": "Bugün {var:1}",
     "{var:1} recipient{suffix:1}": "{var:1} alıcı",
+    "This note was shared with you to read only.": "Bu not sizinle yalnız okumanız için paylaşıldı.",
+    "Only the one who wrote a note can pin it.": "Notu yalnız yazan sabitleyebilir.",
     "Operations Desk": "Operasyon Masası",
     "To ship": "Gönderilecek",
     "To refund": "İade edilecek",

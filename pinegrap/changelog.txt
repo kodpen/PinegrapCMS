@@ -53,6 +53,32 @@
   [DÜZELTME] Link seçici Geri Dönüşüm Kutusu'ndaki
          sayfaları listelemiyor.
 
+  [DÜZELTME] Düzeni "system" olan klasik blog (form
+         liste görünümü) sayfasında kayıtların güzel
+         adresi (/blog/kayit-adi) 404 veriyordu; kayıt
+         yeniden açılıyor.
+
+  [DÜZELTME] Bir widget'ta yeni açılan sekmeye detay
+         sayfası olarak verilen sayfa, widget'ın durduğu
+         sayfa değişmemiş olsa da kaydediliyor. Önceden
+         link hiçbir sayfaya gitmiyordu.
+
+  [DÜZELTME] Katalog listesindeki "Sepete Ekle"
+         düğmesi, sepet sayfası seçilmemişse ziyaretçiyi
+         ana sayfaya göndermiyor; listede kalıp
+         bildirimi gösteriyor.
+
+  [DÜZELTME] Katalog listesinde "Grup gezinmesi →
+         Hedef sayfa" çalışıyor: gruplar görünüyor ve
+         seçilen katalog sayfasında açılıyor. Önceden
+         hiç grup çıkmıyordu. Hedef olarak katalog
+         listesi olan editör sayfaları da seçilebiliyor.
+
+  [DÜZELTME] Editörde bir sayfaya bir dosyanın, kısa
+         linkin ya da site kökündeki bir klasörün adı
+         verilemiyor; böyle bir sayfa hiç
+         görünmüyordu.
+
   [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
          yapılan değişiklik kaydediliyor. Bir kayıttan
          sonra aynı parçada yapılan düzenleme, ya da öğe
@@ -315,6 +341,20 @@
 
   [YENİ] Yeni webhook olayları: customer.deleted,
          product_group.created, product_group.deleted.
+
+  [YENİ] Çalışma Alanı API'de ve MCP'de genişledi: not
+         yazma ve değiştirme (POST /workspace/notes), plan
+         kayıtları (toplantı, müşteri ziyareti, izin, tatil:
+         /workspace/plan-items ile listeleme, ekleme,
+         değiştirme, silme), Ctrl+K araması (GET
+         /workspace/search) ve kişinin günü (GET
+         /workspace/my-day: bugün biten ve geciken görevler,
+         çalışan süre sayacı, bugünkü plan kayıtları, bekleyen
+         onaylar, okundu onayları, kişiye yazılanlar). Claude
+         gibi bağlı bir uygulamadan "bu toplantının notunu
+         Çalışma Alanı'na yaz" ya da "bugün neyim var" demek
+         yetiyor. Arama, uygulamaya izin verilmeyen kayıt
+         türlerini (sipariş, müşteri, fatura…) göstermez.
 
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
