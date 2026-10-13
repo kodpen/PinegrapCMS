@@ -4,8 +4,8 @@
  *
  * Tests for the toolbar helpers in includes/fn/output.php: the list filter
  * (pg_filter_select() - the selected option, the values carried along from
- * the address, escaping) and the period navigator (pg_period_unit(),
- * pg_period_nav()).
+ * the address, escaping), the period navigator (pg_period_unit(),
+ * pg_period_nav()) and the cancel button's handler (pg_output_go_script()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -94,4 +94,17 @@ function test_output_period_nav_steps_by_the_unit()
 	pg_assert_same(1, substr_count($html, 'dropdown-item link-body-emphasis active'), 'one unit marked');
 	pg_assert_contains('Oct 10 &amp; on', $html, 'range text as given');
 	pg_assert_contains('class="d-inline-block d-none"', $html, 'extra class');
+}
+
+// A cancel address read from the request stays a string inside the button's
+// handler: the attribute's entities are decoded before the script runs.
+function test_output_go_script_keeps_the_address_a_string()
+{
+	pg_assert_same('pgSettingsGo(&quot;view_submitted_forms.php&quot;);', pg_output_go_script('view_submitted_forms.php'), 'plain address');
+
+	$attack = "/x');alert(1);//\"<b>";
+	$decoded = html_entity_decode(pg_output_go_script($attack), ENT_QUOTES, 'UTF-8');
+
+	pg_assert_same('pgSettingsGo("/x\u0027);alert(1);//\u0022\u003Cb\u003E");', $decoded, 'quotes and tags stay escaped for the script');
+	pg_assert_same($attack, json_decode(substr($decoded, strlen('pgSettingsGo('), -2)), 'the script gets the address back unchanged');
 }
