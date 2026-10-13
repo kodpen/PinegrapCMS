@@ -84,6 +84,75 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: asistanın görevdeki önerileri için onay kuyruğu (2026-10-13)
+
+**Neden.** Görevi asistana verme işinin ikinci PR'ı (araştırmanın P1 1.2
+maddesi). İlk PR'da asistan görevde yalnız metinle cevap veriyordu.
+İstenen: asistanın yazdıkları (yorum, durum değişikliği, not) "onay
+bekliyor" olarak düşsün, sorumlu kişi tek tıkla onaylasın ya da reddetsin.
+
+**Nasıl.** Yeni bir kuyruk yazılmadı; kanalda zaten çalışan önerilen
+değişiklikler (`ws_ai_changes`, `changes.php`) kullanıldı. Görev
+çalışmasının önerileri mesaja değil göreve bağlı durur (`task_id`, kanal
+0, mesaj 0; kolon 10.80'de eklenmişti). Aynı kontroller geçerli: öneri
+yapılırken ve uygulanırken isteyen kişinin hakları sorulur, kayıt bu arada
+değiştiyse öneri "eskimiş" olur, yalnız isteyen kişi uygular (kenara ayırmayı
+yetkililer de yapabilir). Görevdeki önerinin kanala kararı yok; çekmecedeki
+kart ve etkinlik kaydı izi tutar.
+
+**Ne değişti.**
+
+- `ws_change_types()`'a üç tür: `task` (güncelleme: başlık, açıklama, durum,
+  öncelik, başlangıç ve bitiş tarihi; görevi değiştirebilen kişi,
+  `ws_task_validate()` ile), `task_note` (oluşturma: metin ve `task_id`;
+  görev çalışmasında `task_id` verilmezse o görev; uygulanınca önerenin
+  uygulaması adıyla yazılır, uygulama bağlantısı yoksa uygulayan kişinin
+  adıyla), `note` (oluşturma: başlık, metin; uygulayan kişinin Çalışma Alanı
+  notu). Üçü kanalda da önerilebilir; kanalda uygulanınca karar mesajı
+  düşer.
+- `ws_changes_input()` dördüncü parametre `$task_id`: görev bağlamında toplu
+  değişiklik ve kanal özeti reddedilir. `ws_changes_store()` `task_id`
+  yazar. `ws_changes_map()` istek kimliğine göre de okur (`$by =
+  'request_id'`); görev bağlamında işlem hakkı kanal yerine görevi görme
+  hakkına bakar. `ws_change_apply()` / `ws_change_dismiss()` görev
+  bağlamında kanal kararı yazmaz.
+- Pinegrap AI: görev çalışmasında `propose_change` açık (görev istemi ve
+  değişiklik türleri rehberi eklendi; "değiştirdim" diyen cevaba bir kez geri
+  dönüş görevde de çalışır); `ws_ai_deliver()` görev önerilerini cevapla
+  birlikte saklar.
+- Claude: görev çalışmasının cevabı `changes` alır (`tasks` 422); cevap
+  ucunun açıklaması ve rutin istemi güncellendi — **claude.ai'deki rutinin
+  istemi Ayarlar › Çalışma Alanı › Claude kartından yeniden
+  kopyalanmalı.** Eski istemle de çalışır, yalnız öneri yapmaz.
+- Ekran: görev çekmecesinin Asistan bölümünde her cevabın altında öneri
+  kartları (kanaldakiyle aynı görünüm: Uygula / Kenara ayır, uygulandı /
+  eskimiş / reddedildi satırları), bölüm başında "Önerilen N değişiklik onay
+  bekliyor", görev satırında "N onay bekliyor" etiketi (görev brief'inde
+  `waiting_changes`). Görev ya da görev notu uygulanınca çekmece yeniden
+  çizilir.
+- Zamanlanmış eylemler yeni türleri almaz (`ws_scheduled_change_skipped()`).
+- Bağlantısı kapatılmış asistanın çalışmaları boş resim yerine varsayılan
+  avatarla görünür (`ws_assistant_avatar()`).
+
+**Bilerek yapılmayan.** Görev çalışmasında görev önerisi (`ws_ai_drafts`)
+ve toplu değişiklik yok. Pinegrap AI'ın kanalda doğrudan not yazan
+`add_task_note` aracı olduğu gibi kaldı. API/MCP uçları (görev başına öneri
+listesi, uygula/reddet) üçüncü PR'da.
+
+**Doğrulama.** Sandbox'ta Claude uygulamasıyla: görev çalışmasına üç öneri
+(durum/öncelik/tarih, göreve not, Çalışma Alanı notu) → çekmecede kartlar
+→ uygula (görev güncellendi, not Claude adına, kişinin notu oluştu,
+etkinlik kaydı "Claude'un önerisiyle") → kenara ayır → kayıt arada
+değişince "eskimiş"; toplu değişiklik, görev önerisi, geçersiz durum ve ters
+tarihler 422. Kanalda aynı türler: karar mesajları. Pinegrap AI akışı CLI'da
+(`propose_change` → `ws_ai_deliver`) ve uygulanınca "Pinegrap AI'ın
+önerisiyle" kaydı. Chromium'da kartlar ve düğmeler.
+
+**Doğrulanamayan.** Gerçek Pinegrap AI model çağrısı ve gerçek Claude
+rutini; dev.pinegrap.com'da denenmeli.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: görevi asistana verme (Pinegrap AI, Claude) (10.80) (2026-10-13)
 
 **Neden.** Çalışma Alanı araştırmasının P1 1.2 maddesi

@@ -10,10 +10,12 @@
  *   PGWsTaskDelegate.rowTag(container, task, helpers) the assistant on a task row
  *
  * The server keeps the runs and decides who may start, stop or take back
- * one (includes/workspace/delegation.php). While a run is under way the
- * part reads it again every few seconds; a run of Pinegrap AI is carried on
- * by the screens waiting for it (ws_ai_kick), one call at a time and not
- * more often than every few seconds, as the channel screen does.
+ * one (includes/workspace/delegation.php). What a run proposes waits under
+ * its answer, drawn as the channel draws a change, for the person who asked
+ * to apply or set aside (includes/workspace/changes.php). While a run is
+ * under way the part reads it again every few seconds; a run of Pinegrap AI
+ * is carried on by the screens waiting for it (ws_ai_kick), one call at a
+ * time and not more often than every few seconds, as the channel screen does.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -40,6 +42,153 @@
         var img = h.avatar({ avatar: src }, '');
         img.className = className;
         return img;
+    }
+
+    // ── A change a run proposed ─────────────────────────────────────────
+
+    // The card of one proposed change, as the channel draws it
+    // (changesNode in assets/js/workspace.js), with the decision taken on
+    // the task instead of in a channel. done(change) runs after it is
+    // applied or set aside.
+    function changeCard(change, agent, h, done) {
+        var card = h.el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
+        var head = h.el('div', 'ws-draft-head');
+        var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right' };
+
+        head.appendChild(h.icon(change.status === 'applied' ? 'bi-check2-circle' : (icons[change.action] || 'bi-pencil-square')));
+
+        var what = h.el('span', 'ws-change-record');
+
+        if (change.record_html) {
+            html(what, change.record_html);
+        } else if (change.record_label) {
+            what.appendChild(h.el('b', '', change.record_label));
+        }
+
+        head.appendChild(what);
+
+        if (change.action_label) {
+            head.appendChild(h.el('span', 'ws-change-action', change.action_label));
+        }
+
+        head.appendChild(h.el('span', 'ws-change-type', change.type_label));
+        card.appendChild(head);
+
+        if (change.hidden) {
+            card.appendChild(h.el('div', 'ws-draft-meta', h.t('change_hidden', change.count)));
+        } else if (change.fields.length) {
+            var list = h.el('dl', 'ws-change-fields');
+
+            change.fields.forEach(function (field) {
+                var value = h.el('dd');
+
+                list.appendChild(h.el('dt', '', field.label));
+
+                if (field.html) {
+                    value.appendChild(html(h.el('span', 'ws-change-to'), field.html));
+                } else if ((field.to === '') && (field.from !== '')) {
+                    value.appendChild(h.el('span', 'ws-change-held', field.from));
+                } else {
+                    if (field.from !== '') {
+                        value.appendChild(h.el('span', 'ws-change-from', field.from));
+                        value.appendChild(h.icon('bi-arrow-right', 'ws-change-arrow'));
+                    }
+
+                    value.appendChild(h.el('span', 'ws-change-to', field.to));
+                }
+
+                list.appendChild(value);
+            });
+
+            card.appendChild(list);
+        }
+
+        if (change.reason) {
+            card.appendChild(h.el('div', 'ws-draft-text', change.reason));
+        }
+
+        if (change.warning && (change.status === 'pending')) {
+            var warning = h.el('div', 'ws-change-warning');
+            warning.appendChild(h.icon('bi-exclamation-triangle', 'me-1'));
+            warning.appendChild(document.createTextNode(change.warning));
+            card.appendChild(warning);
+        }
+
+        var actions = h.el('div', 'ws-draft-actions');
+        var buttons = [];
+
+        function decide(action) {
+            buttons.forEach(function (other) { other.disabled = true; });
+
+            h.api(action, { change_id: change.id }).then(function () {
+                if (action === 'ws_ai_change_apply') {
+                    h.toast(h.t('dg_change_done'), 'success');
+                }
+
+                done(change);
+            }).catch(function (error) {
+                h.fail(error);
+                done(change);
+            });
+        }
+
+        if (change.can_apply) {
+            var apply = h.button('btn btn-sm btn-primary rounded-pill px-3', h.t('change_apply'), 'bi-check2');
+
+            apply.addEventListener('click', function () {
+                var go = change.warning ? h.ask(change.warning, h.t('change_apply'), true) : Promise.resolve(true);
+
+                go.then(function (yes) {
+                    if (yes) {
+                        decide('ws_ai_change_apply');
+                    }
+                });
+            });
+
+            buttons.push(apply);
+            actions.appendChild(apply);
+        }
+
+        if (change.can_dismiss) {
+            var dismiss = h.button('btn btn-sm btn-ghost', h.t('change_dismiss'), 'bi-x-lg');
+
+            dismiss.addEventListener('click', function () {
+                decide('ws_ai_change_dismiss');
+            });
+
+            buttons.push(dismiss);
+            actions.appendChild(dismiss);
+        }
+
+        if (actions.childNodes.length) {
+            card.appendChild(actions);
+        }
+
+        if ((change.status === 'pending') && !change.can_apply) {
+            card.appendChild(h.el('div', 'ws-draft-done', change.no_right ? h.t('change_no_right') : h.t('change_waiting', change.asker)));
+        } else if (change.status === 'applied') {
+            card.appendChild(h.el('div', 'ws-draft-done', h.t('change_applied', change.decided_by, change.decided)));
+        } else if (change.status === 'dismissed') {
+            card.appendChild(h.el('div', 'ws-draft-done', h.t('change_dismissed', change.decided_by)));
+        } else if (change.status === 'stale') {
+            card.appendChild(h.el('div', 'ws-draft-done text-warning-emphasis', h.t((agent === 'ai') ? 'ai_change_stale' : 'change_stale')));
+        } else if (change.status === 'failed') {
+            card.appendChild(h.el('div', 'ws-draft-done text-danger-emphasis', h.t('change_failed', change.error)));
+        }
+
+        return card;
+    }
+
+    function changesBox(item, h, done) {
+        var box = h.el('div', 'ws-drafts ws-changes ws-task-delegate-changes');
+
+        box.appendChild(h.el('div', 'ws-drafts-title', h.t((item.agent === 'ai') ? 'ai_changes' : 'claude_changes')));
+
+        item.changes.forEach(function (change) {
+            box.appendChild(changeCard(change, item.agent, h, done));
+        });
+
+        return box;
     }
 
     // ── The drawer ─────────────────────────────────────────────────────
@@ -145,6 +294,23 @@
             });
         }
 
+        // A proposal applied or set aside: the task drawn again when it was
+        // the task or its notes that changed, the runs read again otherwise.
+        function decided(change) {
+            if (onChange) {
+                onChange();
+            }
+
+            if ((change.type === 'task') || (change.type === 'task_note')) {
+                h.openTask(task.id);
+                return;
+            }
+
+            h.api('ws_task_delegation', { task_id: task.id }).then(function (data) {
+                update(data.delegation);
+            }).catch(function () {});
+        }
+
         function run(item) {
             var row = h.el('div', 'ws-task-note ws-task-delegate-run');
             var main = h.el('div', 'ws-task-note-main');
@@ -169,6 +335,10 @@
 
             if (item.answer) {
                 main.appendChild(html(h.el('div', 'ws-msg-body ws-task-delegate-answer'), item.answer));
+            }
+
+            if (item.changes && item.changes.length) {
+                main.appendChild(changesBox(item, h, decided));
             }
 
             if (!item.answer || item.open) {
@@ -271,6 +441,13 @@
                 wrap.appendChild(h.el('div', 'form-text mt-0 mb-2', h.t('dg_responsible')));
             }
 
+            if (state.waiting) {
+                var waiting = h.el('div', 'ws-task-delegate-waiting');
+                waiting.appendChild(h.icon('bi-hourglass-split', 'me-1'));
+                waiting.appendChild(document.createTextNode(h.t('dg_waiting', state.waiting)));
+                wrap.appendChild(waiting);
+            }
+
             if (!state.runs.length) {
                 wrap.appendChild(h.el('div', 'small text-body-secondary mb-2', h.t('dg_none')));
             } else {
@@ -309,14 +486,28 @@
     // ── A task row ─────────────────────────────────────────────────────
 
     function rowTag(container, task, h) {
-        if (!task.delegate_name) {
+        if (task.delegate_name) {
+            var tag = h.el('span', 'ws-task-delegate-tag ms-2');
+            tag.appendChild(h.icon((task.delegate === 'ai') ? 'bi-cpu' : 'bi-stars', 'me-1'));
+            tag.appendChild(document.createTextNode(task.delegate_name));
+            tag.title = h.t('dg_with', task.delegate_name);
+            container.appendChild(tag);
+        }
+
+        waitingTag(container, task, h);
+    }
+
+    // What the assistants proposed on a task and nobody has decided yet,
+    // also on a task that was only asked about in a note.
+    function waitingTag(container, task, h) {
+        if (!task.waiting_changes) {
             return;
         }
 
-        var tag = h.el('span', 'ws-task-delegate-tag ms-2');
-        tag.appendChild(h.icon((task.delegate === 'ai') ? 'bi-cpu' : 'bi-stars', 'me-1'));
-        tag.appendChild(document.createTextNode(task.delegate_name));
-        tag.title = h.t('dg_with', task.delegate_name);
+        var tag = h.el('span', 'ws-task-delegate-tag ws-task-delegate-tag-waiting ms-2');
+        tag.appendChild(h.icon('bi-hourglass-split', 'me-1'));
+        tag.appendChild(document.createTextNode(h.t('dg_waiting_short', task.waiting_changes)));
+        tag.title = h.t('dg_waiting', task.waiting_changes);
         container.appendChild(tag);
     }
 

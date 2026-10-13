@@ -20388,7 +20388,6 @@
     "To read": "Okunacak",
     "Out of office": "Dışarıda",
     "Working": "Çalışıyor",
-    "A run on a task is answered with text only: no tasks, no changes.": "Görev üzerindeki bir çalışma yalnız metinle cevaplanır: görev de değişiklik de eklenmez.",
     "An assistant is already working on this task. Wait for its answer or stop it first.": "Bu görev üzerinde zaten bir asistan çalışıyor. Cevabını bekleyin ya da önce durdurun.",
     "Another instruction on the same task; it sees what it answered before.": "Aynı görev için yeni bir talimat; asistan önceki cevaplarını görür.",
     "Claude answered on task {var:1}": "Claude, {var:1} görevinde cevap verdi",
@@ -20417,5 +20416,17 @@
     "{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.": "Bu görevin kanalında {var:1} çağrılamaz. Kanalı yöneten biri kanal menüsünden izin verebilir.",
     "Assistant: {var:1}": "Asistan: {var:1}",
     "Handed over by {var:1}, {var:2}": "Devreden: {var:1}, {var:2}",
-    "{var:1} asked, {var:2}": "{var:1} istedi, {var:2}"
+    "{var:1} asked, {var:2}": "{var:1} istedi, {var:2}",
+    "Task note": "Görev notu",
+    "Workspace note": "Çalışma Alanı notu",
+    "task_id is one task.": "task_id tek bir görevdir.",
+    "Many records at once are proposed in a channel, not on a task.": "Birden çok kayıt birden önerilecekse kanalda önerilir, görevde değil.",
+    "Task {var:1} was changed in the Workspace, on Claude's proposal.": "{var:1} görevi Çalışma Alanında, Claude'un önerisiyle değiştirildi.",
+    "A note was added to task {var:1} in the Workspace, on Claude's proposal.": "{var:1} görevine Çalışma Alanında, Claude'un önerisiyle not eklendi.",
+    "A note was added in the Workspace, on Claude's proposal.": "Çalışma Alanına Claude'un önerisiyle not eklendi.",
+    "A run on a task proposes no tasks: its changes wait on the task.": "Görev üzerindeki bir çalışma görev önermez: önerdiği değişiklikler görevde onay bekler.",
+    "The change was applied.": "Değişiklik uygulandı.",
+    "{var:1} proposed change(s) wait for approval": "Önerilen {var:1} değişiklik onay bekliyor",
+    "{var:1} awaiting approval": "{var:1} onay bekliyor",
+    "A note was added to {var:1} on Claude's proposal. {var:2}": "{var:1} görevine Claude'un önerisiyle not eklendi. {var:2}"
 }
