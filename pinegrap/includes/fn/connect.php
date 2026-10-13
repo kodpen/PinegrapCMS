@@ -864,12 +864,28 @@ function pg_connect_disconnect($id)
     if (is_array($provider) && ($token !== '') && (pg_connect_endpoint($provider, $app, 'revoke_url') !== '')) {
         require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
-        api_http_request('POST', pg_connect_endpoint($provider, $app, 'revoke_url'), array(
-            'body'    => http_build_query(array('token' => $token), '', '&'),
-            'headers' => array('Content-Type: application/x-www-form-urlencoded'),
-            'timeout' => 10,
-            'agent'   => 'connect',
-        ));
+        if (isset($provider['revoke_auth']) && ($provider['revoke_auth'] === 'bearer')) {
+            // Dropbox: the call is made with an access token and ends it
+            // together with the refresh token it came from. An RPC endpoint
+            // that takes no arguments wants a JSON null, not an empty form.
+            $access = pg_connect_access_token($row['id']);
+
+            if ($access['ok']) {
+                api_http_request('POST', pg_connect_endpoint($provider, $app, 'revoke_url'), array(
+                    'body'    => 'null',
+                    'headers' => array('Authorization: Bearer ' . $access['token'], 'Content-Type: application/json'),
+                    'timeout' => 10,
+                    'agent'   => 'connect',
+                ));
+            }
+        } else {
+            api_http_request('POST', pg_connect_endpoint($provider, $app, 'revoke_url'), array(
+                'body'    => http_build_query(array('token' => $token), '', '&'),
+                'headers' => array('Content-Type: application/x-www-form-urlencoded'),
+                'timeout' => 10,
+                'agent'   => 'connect',
+            ));
+        }
     }
 
     db("DELETE FROM connect_accounts WHERE id = '" . (int) $row['id'] . "'");
@@ -1218,7 +1234,12 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
 
     $state = bin2hex(random_bytes(16));
     $pkce = pg_connect_pkce();
-    $nonce = bin2hex(random_bytes(16));
+
+    // A provider that does not carry the nonce into its identity token says
+    // so ('nonce' => false); none is sent and none is expected back. The
+    // token still comes straight from its token endpoint, in answer to a
+    // request that carried the PKCE verifier and the client secret.
+    $nonce = (isset($provider['nonce']) && ($provider['nonce'] === false)) ? '' : bin2hex(random_bytes(16));
 
     $pending = (isset($_SESSION['software']['connect']) && is_array($_SESSION['software']['connect']))
         ? $_SESSION['software']['connect']
