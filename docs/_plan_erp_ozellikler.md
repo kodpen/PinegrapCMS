@@ -196,8 +196,8 @@ Muhasebeci paketine ve KDV raporuna girmez.
 ### 8a. "Faturalarım" sistem widget'ı (şema yok)
 
 **Durum (2026-10-13):** yapıldı. Okumalar `includes/erp/storefront.php`'de, PDF ucu
-`get_account_document.php`; şablon sayısı plandaki dört değil beş (hello-pinegrap da
-Hesabım sayfası taşıyor). Ayrıntı `docs/degisiklikler.md`.
+`get_account_document.php`; Hesabım sayfası taşıyan şablonlar plandaki dört değil altı
+(hello-pinegrap ve klinik de). Ayrıntı `docs/degisiklikler.md`.
 
 - Yeni sistem widget türü `account_invoices` ("My Invoices"): `pg_sw_type_labels()` ve
   `assets/js/style_designer.js` `SW_TYPES` birlikte. `account_security` (2026.4.8) örnek

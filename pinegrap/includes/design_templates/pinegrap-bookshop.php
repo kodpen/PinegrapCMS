@@ -490,7 +490,7 @@ $page_header = function ($title, $lead, $more = array()) use ($el, $heading, $pa
         $container(array_merge(array(
             $el('nav', '', lang('Breadcrumb'), array(
                 $el('ol', 'breadcrumb small mb-2', lang('Breadcrumb List'), array(
-                    $el('li', 'breadcrumb-item', lang('Breadcrumb Item'), array($link(lang('Home'), '{{page:home}}', 'link-secondary text-decoration-none'))),
+                    $el('li', 'breadcrumb-item', lang('Breadcrumb Item'), array($link(lang('Homepage'), '{{page:home}}', 'link-secondary text-decoration-none'))),
                     $el('li', 'breadcrumb-item active', lang('Breadcrumb Item'), array(), array('text' => $title, '_attrs' => array($attr('aria-current', 'page')))),
                 )),
             ), array('_attrs' => array($attr('aria-label', lang('Breadcrumb'))))),

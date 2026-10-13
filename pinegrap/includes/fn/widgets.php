@@ -3603,11 +3603,14 @@ function _pg_sw_render_message_only($tree, $form_name, $message_html, $kind = 'n
     return trim(_render_tree_node($tree, 0, 0));
 }
 
+// Keeps or cuts each span _pg_sw_mark_visibility() marked. Spans nest (a
+// record's part holds the button only its editors see), so a span that is
+// kept has the spans inside it resolved in turn.
 function _pg_sw_resolve_visibility($html, $flags)
 {
     if (!is_string($html) || strpos($html, '<!--pg-vis:') === false) return $html;
     return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
-        return !empty($flags[$m[1]]) ? $m[3] : '';
+        return !empty($flags[$m[1]]) ? _pg_sw_resolve_visibility($m[3], $flags) : '';
     }, $html);
 }
 
