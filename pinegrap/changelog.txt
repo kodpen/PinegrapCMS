@@ -439,6 +439,18 @@
          dakikada bir ilerliyor) ve onayını bekleyen istekler
          de görünüyor.
 
+  [YENİ] Panoya dört Çalışma Alanı kartı. Görevlerim:
+         gecikmiş, bugün teslim ve tüm açık görevler üç
+         şeritte. Beni Bekleyenler: yanıt bekleyen onay
+         istekleri, okundu onayı istenen mesajlar, seni anan
+         ve sana yanıt veren mesajlar. Haftam: önümüzdeki yedi
+         günün toplantıları, ziyaretleri, izin ve tatilleri ile
+         o günlere düşen görevler, gün gün. Ekip Nabzı (ekibi
+         olan ya da plan panosunu gören kişiye): bugün izinde
+         ya da ziyarette olanlar, günü aşan iş planlananlar ve
+         şu an görev sayacı çalışanlar. Kartlar yalnız Çalışma
+         Alanı üyelerine görünüyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

@@ -434,3 +434,98 @@ function pg_widget_filter($properties)
         . (($count !== '') ? '<span class="pg-filter-count ' . h((string) ($properties['count_class'] ?? '')) . '">' . h($count) . '</span>' : '')
         . '</button>';
 }
+
+// A card of lanes, the way the Operations Desk lays out what the shop owes:
+// one .pg-filter tile per lane across the top with its count, and the pressed
+// lane's own list filling the rest of the card. Each lane brings a whole body,
+// so one item may sit in two lanes -- a task due today is in "Today" and in
+// "Open" -- which a filter over one list of rows could not do.
+//
+// $lanes: key => label, icon, color, count (int), sub (escaped), body (markup),
+// urgent (bool, the count in red). A lane with nothing in it shows a green
+// check in place of its icon. $default is the lane that opens; '' picks the
+// first urgent lane with something in it, then the first with anything.
+function pg_widget_lanes($name, $label, $lanes, $default = '')
+{
+    if ($default === '') {
+        foreach ($lanes as $key => $lane) {
+            if (!empty($lane['urgent']) && ((int) $lane['count'] > 0)) {
+                $default = (string) $key;
+                break;
+            }
+        }
+    }
+
+    if ($default === '') {
+        foreach ($lanes as $key => $lane) {
+            if ((int) $lane['count'] > 0) {
+                $default = (string) $key;
+                break;
+            }
+        }
+    }
+
+    if ($default === '') {
+        $default = (string) key($lanes);
+    }
+
+    $output_tiles = '';
+    $output_bodies = '';
+
+    foreach ($lanes as $key => $lane) {
+
+        $clear = ((int) $lane['count'] === 0);
+
+        $output_tiles .= pg_widget_filter(array(
+            'key'         => (string) $key,
+            'label'       => $lane['label'],
+            'icon'        => $clear ? 'bi-check2-circle' : $lane['icon'],
+            'color'       => $clear ? '#10b981' : $lane['color'],
+            'count'       => pg_format_number((int) $lane['count'], 0),
+            'count_class' => $clear ? 'is-clear' : (!empty($lane['urgent']) ? 'is-urgent' : ''),
+            'sub'         => (string) ($lane['sub'] ?? ''),
+        ));
+
+        $output_bodies .= '<div class="pg-ops-lane d-none" data-kind="' . h((string) $key) . '">' . $lane['body'] . '</div>';
+    }
+
+    return '
+    <div class="card-body p-0 pg-ops" data-pg-filterable="' . h($name) . '" data-pg-default="' . h($default) . '">
+        <div class="pg-lanes" role="group" aria-label="' . h($label) . '">' . $output_tiles . '</div>
+        <div class="pg-ops-body">' . $output_bodies . '</div>
+    </div>';
+}
+
+/**
+ * The reader's workspace rights when the dashboard may show workspace cards,
+ * or null when it may not.
+ *
+ * The same gate as the workspace strip under the greeting: the module is on,
+ * the account may use it (staff below role 3, or the workspace permission),
+ * and ws_rights() counts it as a member -- a profile can take an account out
+ * of the team, and only ws_rights() reads that. Loads the module when it
+ * answers yes, so a card can call into it straight away.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array|null ws_rights()
+ */
+function pg_dashboard_workspace_rights($user)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return null;
+    }
+
+    if (!(((int) $user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (!ws_enabled()) {
+        return null;
+    }
+
+    $rights = ws_rights($user);
+
+    return !empty($rights['member']) ? $rights : null;
+}
