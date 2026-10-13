@@ -84,6 +84,86 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Pano: Aktivite kartı, altı liste kartı tek süzgeçli akışta (2026-10-13)
+
+**İstenen.** Erdal: son form, rehber, kullanıcı, site günlüğü ve kampanya
+kartları aktivite özetiyle birleşsin. Akış filtreli olsun, başka aktivite
+türleri de süzülebilsin.
+
+**Değişiklik.** Widget 7 (eski adı Son Güncellemeler) Aktivite oldu.
+Geniş bir kart: solda türler, sağda zamana göre akış.
+- Türler ve kaynakları (`pg_dashboard_activity_kinds()`):
+  - İçerik: eski 7.
+  - Formlar: eski 13.
+  - Siparişler: yeni.
+  - Rehber: eski 10.
+  - Yorumlar: yeni.
+  - Kullanıcılar: eski 11.
+  - Kampanyalar: eski 19.
+  - Site Günlükleri: eski 17.
+- Her tür eski kartının kapısını ve kapsamını taşır:
+  - Formlar: rol 3 yalnız erişebildiği klasörlerdeki form sayfaları,
+    `complete = '1'`.
+  - Rehber: rol 3 düzenleyebildiği gruplar.
+  - Kullanıcılar: yönetici kendi rolünün altını görür.
+  - Siparişler: `manage_ecommerce`, sepette kalanlar hariç.
+  - Yorumlar: rol < 3. Rol 3'ün klasör kapsamı Yorum Moderasyonu
+    kartında.
+- Her tür en çok 12 satır getirir. "Tüm Aktivite" aynı satırları zamana göre
+  birleştirir. Aynı saniyedeki satırları kimlik sıralar, yenilemede yer
+  değiştirmezler.
+- Tür düğmesi bugünkü sayıyı ve yedi günlük çubukları gösterir
+  (`pg_activity_daily()`, tür başına tek sorgu). İçerikte günlük seri yok:
+  bir düzine tabloya yayılıyor. Bugünkü sayısı getirilen satırlardan
+  çıkar; bugün 12'den az değişiklik varsa kesindir, yoksa alt sınırdır.
+- Seçilen türün tam listesine bağlantı listenin altına çıkar (gönderilen
+  formlar, siparişler, rehber, yorumlar, kullanıcılar, kampanyalar,
+  günlük). Tür yoksa "Son zamanlarda bu türden bir şey yok." yazar.
+- Ortak parçalar (`includes/dashboard/widgets.php`):
+  - `pg_widget_row()` `data` özelliğiyle `data-*` öznitelikleri yazar.
+    Anahtar `[a-z0-9-]`, değer kaçışlı.
+  - `pg_widget_bars()`: yedi günlük CSS çubukları.
+  - `pg_widget_filter()`: süzgeç düğmesi. Renk düğmede `--pg-k`
+    olarak durur.
+- Sayfa betiği (`welcome.php`) genel bir süzgeç taşır:
+  `[data-pg-filterable]` gövde, `[data-pg-filter]` düğme, `[data-kind]`
+  satır, `.pg-filter-more`, `.pg-filter-none`. Seçim tarayıcıda
+  `localStorage`'da kart başına durur. `try/catch` içinde, yoksa
+  varsayılan. Her yeniden çizimden sonra (`pg:widget-drawn`) geri konur.
+  Operasyon Masası da aynı mekanizmayı kullanacak.
+- Dar kartta (telefon) türler akışın üstünde çip satırı olur. Çubuklar ve
+  ikinci satır gizlenir.
+
+**Hız.** Eski Son Güncellemeler page, files, folder, short_links ve menus
+tablolarını her dakika `LIMIT`'siz okuyordu (staff için her satır). Şimdi
+her tablo en yeniden sınırlı okunur. Rol 3'ün satırları okunduktan sonra
+klasöre göre süzüldüğü için onun tabloları 200 satıra kadar okunur.
+Kampanyalarda ilerleme, listelenen kampanyaların alıcıları üzerinden tek
+`GROUP BY` sorgusuyla gelir. Eskiden kampanya başına iki sorgu vardı:
+yirmi satır için kırk sorgu. Altı kart altı istek yerine tek kart tek
+istek.
+
+**Emekli kimlikler.** 10, 11, 13, 17 ve 19 boş başarı döndüren dosyalar
+olarak kalır. Yükseltme sırasında açık kalan sekme bunları istemeye devam
+eder; boş başarı iskeleti temizler. Kimlikler yeniden kullanılmaz. Kayıtlı
+dizilişte bu kimlikler yok sayılır; 7 yerinde kalır.
+
+**Ödün.** Formlar kartının başlığındaki "bugün N form" çizgisi ve form
+başına sayım yok; sayı tür düğmesinde. Eski Site Günlükleri satırı
+mesajdaki adresi link yapıyordu. Satırın kendisi link olduğu için
+(iç içe `<a>` geçersiz) adres artık düz metin. Rol 3 için form ve rehber
+günlük sayıları eskisi gibi site geneli sayılır, kapsamlı değildir;
+içerik değil yalnız sayı.
+
+**Doğrulama.** `php tools/test.php`: satır `data` öznitelikleri, çubuk
+ölçeği, süzgeç düğmesi. Sandbox + Playwright:
+- 1440 px'te kart 658×316.
+- "Formlar" seçilince 50 satırdan 12'si görünür kaldı.
+- Sayfa yenilenince seçim korundu.
+- 390 px'te çip düzeni ve koyu tema denendi.
+
+---
+
 ## 2026.4.10 — Dış API: OAuth'la bağlanan uygulamalar panelde (operatör kapatır/kaldırır, kişi kendi bağlantılarını sonlandırır) (2026-10-13)
 
 **Neden.** Faz A'dan beri kişi bir bağlantıyı ancak parolasını

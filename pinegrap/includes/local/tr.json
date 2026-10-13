@@ -20240,5 +20240,18 @@
     "{var:1} was turned off. It cannot connect, and its connections are refused until it is turned on again.": "{var:1} kapatıldı. Yeniden açılana kadar bağlanamaz ve bağlantıları reddedilir.",
     "OAuth application ({var:1}) was turned off.": "OAuth uygulaması ({var:1}) kapatıldı.",
     "Connected on {var:1}": "{var:1} tarihinde bağlandı",
-    "Registered on {var:1}": "{var:1} tarihinde kaydoldu"
+    "Registered on {var:1}": "{var:1} tarihinde kaydoldu",
+    "Activity": "Aktivite",
+    "All Activity": "Tüm Aktivite",
+    "Filter activity": "Aktiviteyi süz",
+    "Nothing of this kind lately.": "Son zamanlarda bu türden bir şey yok.",
+    "All submitted forms": "Tüm gönderilen formlar",
+    "All contacts": "Tüm rehber kayıtları",
+    "All comments": "Tüm yorumlar",
+    "All users": "Tüm kullanıcılar",
+    "All campaigns": "Tüm kampanyalar",
+    "All log entries": "Tüm günlük kayıtları",
+    "Awaiting approval": "Onay bekliyor",
+    "{var:1} today": "Bugün {var:1}",
+    "{var:1} recipient{suffix:1}": "{var:1} alıcı"
 }

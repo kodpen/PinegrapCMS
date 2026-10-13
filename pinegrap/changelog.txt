@@ -348,6 +348,23 @@
          Önceden saat dakikada bir sunucudan soruluyor ve bir
          dakikaya kadar geride kalabiliyordu.
 
+  [YENİ] Aktivite kartı: Son Güncellemeler, Formlar, Rehber,
+         Kullanıcılar, Site Günlükleri ve E-posta Kampanyaları
+         kartları tek bir geniş kartta, tek akışta. Solda
+         türler (İçerik, Formlar, Siparişler, Rehber, Yorumlar,
+         Kullanıcılar, Kampanyalar, Site Günlükleri) bugünkü
+         sayılarıyla ve son yedi günün küçük çubuklarıyla
+         duruyor; birine tıklayınca akış o türe süzülüyor ve
+         türün tam listesine bağlantı çıkıyor. Seçilen tür
+         hatırlanıyor. Siparişler ve yorumlar akışa yeni
+         girdi. Her tür, eski kartının yetkisiyle görünür.
+
+  [HIZ] Aktivite kartı sorgularını sınırlı okuyor. Eski Son
+         Güncellemeler kartı sayfa, dosya, klasör, kısa link
+         ve menü tablolarını her dakika baştan sona okuyordu;
+         E-posta Kampanyaları her kampanya için iki ek sorgu
+         atıyordu.
+
 
 
   2026.4.9

@@ -259,6 +259,10 @@ function pg_widget_headline($properties)
 //
 // A row with no 'href' renders as a div and drops the arrow, so a list that
 // leads nowhere does not advertise a click that will not happen.
+//
+// 'data' is a map of data-* attributes for the row's own element -- the kind
+// a filterable list sorts its rows by. Keys are letters, digits and dashes;
+// values are escaped here.
 function pg_widget_row($properties)
 {
     $href   = $properties['href']   ?? '';
@@ -294,16 +298,23 @@ function pg_widget_row($properties)
         : '';
     $output_target = ($target !== '') ? ' target="' . $target . '" rel="noopener"' : '';
 
+    $output_data = '';
+    foreach ((array) ($properties['data'] ?? array()) as $data_key => $data_value) {
+        if (preg_match('/^[a-z0-9-]+$/D', (string) $data_key)) {
+            $output_data .= ' data-' . $data_key . '="' . h((string) $data_value) . '"';
+        }
+    }
+
     // A real link rather than an onclick handler, so the row is reachable by
     // keyboard and opens in a new tab on middle click like any other link.
     $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' opacity-50' : '')
         . ($extra !== '' ? ' ' . $extra : '');
 
     if ($href !== '') {
-        $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . '>';
+        $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . $output_data . '>';
         $close = '<i class="bi bi-arrow-right text-muted pg-row-go"></i></a>';
     } else {
-        $open  = '<div class="' . $class . '">';
+        $open  = '<div class="' . $class . '"' . $output_data . '>';
         $close = '</div>';
     }
 
@@ -365,4 +376,61 @@ function pg_widget_row_heading($label, $aside = '')
     return '<div class="pg-row-heading text-muted">' . $label
         . (($aside !== '') ? '<span class="pg-row-aside">' . $aside . '</span>' : '')
         . '</div>';
+}
+
+// Seven tiny bars for a week of daily counts, drawn in CSS rather than on a
+// canvas. A filter list carries one per entry, and seven Chart.js instances
+// for a few pixels each would cost more to build and tear down on every
+// refresh than the whole card costs to fetch.
+//
+// The tallest day fills the box and the rest are drawn against it; a week
+// with nothing in it draws seven stubs, so the shape is still there to read
+// as "quiet" rather than as missing.
+function pg_widget_bars($series)
+{
+    $series = array_slice(array_map('intval', (array) $series), -7);
+    $top = max(1, max(array_merge(array(0), $series)));
+    $out = '';
+
+    foreach ($series as $value) {
+        $out .= '<i style="height:' . max(8, (int) round(($value / $top) * 100)) . '%"'
+            . (($value > 0) ? '' : ' class="is-zero"') . '></i>';
+    }
+
+    return '<span class="pg-bars" aria-hidden="true">' . $out . '</span>';
+}
+
+// One entry of a filter list or a lane strip: the switch a card's rows are
+// sorted by. The card body marks itself data-pg-filterable and the page
+// script does the rest -- it shows the rows whose data-kind matches the
+// entry's data-pg-filter, remembers the choice per card, and puts it back
+// after every refresh, so a refresh never throws the reader back to "all".
+//
+// $properties: key, label, icon (Bootstrap class), color (CSS colour for the
+// icon tile), count (shown when not ''), count_class, sub (a second line,
+// already escaped), bars (a daily series for pg_widget_bars), title.
+function pg_widget_filter($properties)
+{
+    $key   = (string) ($properties['key'] ?? 'all');
+    $color = (string) ($properties['color'] ?? '');
+    $count = (string) ($properties['count'] ?? '');
+    $sub   = (string) ($properties['sub'] ?? '');
+
+    $output_color = ($color !== '')
+        ? ' style="--pg-k:' . h($color) . ';--pg-k-ink:' . pg_readable_ink($color) . '"'
+        : '';
+
+    // The colour rides the button rather than the tile, so the day bars and
+    // the count beside the label are drawn in the same colour as the tile.
+    return '<button type="button" class="pg-filter" data-pg-filter="' . h($key) . '" aria-pressed="false"'
+        . ((($properties['title'] ?? '') !== '') ? ' title="' . h($properties['title']) . '"' : '')
+        . $output_color . '>'
+        . '<span class="pg-filter-ico"><i class="bi ' . h((string) ($properties['icon'] ?? 'bi-dot')) . '"></i></span>'
+        . '<span class="pg-filter-text">'
+        . '<span class="pg-filter-label">' . h((string) ($properties['label'] ?? '')) . '</span>'
+        . (($sub !== '') ? '<span class="pg-filter-sub">' . $sub . '</span>' : '')
+        . '</span>'
+        . (isset($properties['bars']) ? pg_widget_bars($properties['bars']) : '')
+        . (($count !== '') ? '<span class="pg-filter-count ' . h((string) ($properties['count_class'] ?? '')) . '">' . h($count) . '</span>' : '')
+        . '</button>';
 }
