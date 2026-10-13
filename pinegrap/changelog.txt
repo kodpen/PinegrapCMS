@@ -380,6 +380,19 @@
          ekranında çıkıyor; silme bildirimi de yalnız
          ürün listesine dönülünce gösteriliyor.
 
+  [YENİ] Ürün listesi aynı anda birden çok sütuna göre
+         sıralanıyor, örneğin stok azalan, aynı stokta
+         fiyat artan. Bir sütun başlığına Shift ile
+         tıklamak onu sonraki sıralama düzeyi olarak
+         ekliyor; ikinci Shift+tık yönünü çeviriyor,
+         üçüncüsü düzeyi kaldırıyor. Başlıklarda düzeyin
+         sırası numarayla görünüyor. Telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsünden
+         düzey eklenip yönü çevrilip kaldırılıyor ve
+         varsayılana dönülüyor. Seçim, Dışa Aktar'a da
+         aynı sırayla geçiyor. Başlığa Shift'siz tıklamak
+         eskisi gibi tek sütuna göre sıralıyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 
@@ -695,6 +708,18 @@
 
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
+
+  [YENİ] Başlığına tıklayınca sıralanan ERP tabloları
+         (teklifler, satın alma siparişleri, giderler,
+         çekler, stok, sayımlar, minimum stok, cari
+         fiyatları, kâr ve KDV raporları gibi) ile Search
+         Console tabloları da birden çok sütuna göre
+         sıralanıyor: başlığa Shift ile tıklamak sütunu
+         sonraki düzey olarak ekliyor, ikinci Shift+tık
+         yönünü çeviriyor, üçüncüsü düzeyi kaldırıyor.
+         Seçim bu tarayıcıda hatırlanıyor. Bu tablolarda
+         düzey eklemek için Shift tuşu gerekiyor;
+         telefonda tek sütuna göre sıralanıyor.
 
   [YENİ] Satın alma siparişi: ERP menüsündeki "Satın alma
          siparişleri" ekranında tedarikçiden ne istendiği

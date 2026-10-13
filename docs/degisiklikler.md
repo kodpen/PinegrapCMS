@@ -84,6 +84,99 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Tablolarda çoklu sıralama: ürün listesi ve tarayıcıda sıralanan tablolar (2026-10-13)
+
+**Neden.** Buglar listesinin 4. maddesi: "Tüm tablolar çoklu sıralama
+desteği alacak. Örneğin stok alçalan fiyat yükselen aynı anda." Panelde
+iki ortak sıralama yolu var; ikisi de yalnız tek sütunla sıralıyordu.
+
+**Sunucuda sıralanan liste: ürünler.** `pg_list_state()` artık sıralama
+düzeylerini de okur. Adres düzeyleri sırayla `kod:yön` çiftleri olarak
+taşır (`sort=inventory_quantity:desc,price:asc`, `pg_list_sort_value()`
+yazar). Okuma sırası: değerin tamamı bir kod ya da eski bağlantıdaki bir
+başlıksa tek düzeydir (eski davranış), değilse virgülle bölünür
+(`pg_list_sort_parse()`). Her düzey `pg_list_sort_clean()`'den geçer:
+görünümün sunmadığı sütun ve tekrar düşer, yön `asc`/`desc` dışındaysa
+tek sıralamadaki kuralla başlar (varsayılan sütun kendi yönüyle, diğerleri
+artan), hiçbir düzey kalmazsa varsayılan döner. ORDER BY yalnız
+`pg_list_order_by()` ile, ekranın kod → SQL eşlemesinden yazılır; adresten
+gelen hiçbir şey sorguya girmez. Oturumda ilk düzey eskisi gibi
+`sort`/`order` olarak durur, sonrakiler yalnız varsa `then` altına yazılır;
+böylece daha önce saklanmış tek sıralama aynen okunur ve tek `order`
+parametresi taşıyan eski bağlantı ilk düzeyin yönünü çevirir. Dönüşe
+`sorts` (bütün düzeyler) eklendi, `sort`/`order` ilk düzeydir.
+
+`get_column_heading()` `$sort` olarak düzey listesi alırsa
+`pg_list_sort_heading()`'e devreder; dizge alan 35 ekran eskisi gibi
+çalışır. Başlık bağlantısı: düz tık o sütunla tek başına sıralar (öndeki
+düzeyse yönü çevirir, DataTables'ın alışılmış davranışı);
+`data-pg-sort-add` Shift+tıkın gideceği adresi taşır
+(`pg_list_sort_toggle()`: yeni sütun sona artan eklenir, artan düzey
+azalan olur, azalan düzey çıkar, tek düzeyse artana döner). Birden çok
+düzey varken sıralı başlıkta düzey numarası çıkar. Ok ve numara metin
+değil ikon (`bi-N-circle-fill`), çünkü sütun görünürlüğü listesi başlığın
+metnini okur; ikon başlığın adını kirletmez. Shift+tık tarayıcıda yeni
+pencere açtığı için `backend.src.js` tıklamayı belgeye devredilmiş tek
+dinleyiciyle yakalar (DataTables'ın sabit başlığı başlıkları kopyalar)
+ve Shift+mousedown'da metin seçimini engeller.
+
+Shift dokunmatikte yok; araç çubuğundaki "Sıralama" menüsü
+(`pg_list_sort_menu()`) aynı işi bağlantı ve GET formuyla yapar: düzeyler
+sırayla, her birinin yönünü çevirme ve kaldırma bağlantısı, "Ardından şuna
+göre sırala" listesi (her sütun artan ve azalan, değer düzeylerin tamamı)
+ve varsayılana dönüş. Listenin boş ilk seçeneği `required` ile formun boş
+`sort` göndermesini, yani listeyi sıfırlamasını engeller. Dışa Aktar aynı
+düzeyleri kullanır; dışa aktarma sorgusunda etki puanı olmadığı için o
+düzey eskisi gibi son değişikliğe göre sıralar.
+
+**Tarayıcıda sıralanan tablolar (`data-pg-sort`).** `backend.src.js`
+sıralayıcısı düzey listesiyle çalışır: Shift+tık sunucudakiyle aynı
+adımları uygular, düz tık eskisi gibi tek sütunu artan → azalan → sunucu
+sırası döndürür. Her düzeyin sayı mı metin mi olduğu ayrı belirlenir; boş
+hücreler her düzeyde sona gider, eşitlikte sunucunun sırası korunur.
+`aria-sort` yalnız öndeki başlıkta (bir anda bir başlık), sıralı her
+başlık `data-pg-sort-level` taşır. Saklanan seçim `3:desc,1:asc`
+biçiminde; eski tek `3:asc` bir düzey olarak okunur. Bu yolun Shift'siz
+düzey ekleme yolu yok: telefonda bu tablolar tek sütunla sıralanır.
+
+**Hangi tablolar kazandı.** Sunucu yolu: yalnız `view_products.php`
+(`pg_list_state()`'i kullanan tek ekran). Tarayıcı yolu, değişmeden: 27
+ekran (`edit_erp_account`, `edit_erp_invoice`, `edit_erp_till`,
+`edit_erp_waybill`, `erp_account_prices`, `erp_accountant`,
+`erp_accounts_import`, `erp_audit`, `erp_bank_statement`,
+`erp_bank_statements`, `erp_cashflow`, `erp_cheques`, `erp_dashboard`,
+`erp_expenses`, `erp_export`, `erp_inbox_document`,
+`erp_invoice_recurrences`, `erp_profit`, `erp_purchase_orders`,
+`erp_quotes`, `erp_receipt`, `erp_stock`, `erp_stock_count`,
+`erp_stock_counts`, `erp_stock_minimums`, `erp_vat_report`,
+`search_console`). Dokunulmayanlar: sıralamayı oturumda başlık adıyla
+tutup kendi `switch`'iyle ORDER BY kuran 35 ekran (`view_orders`,
+`view_contacts`, `view_pages`, `view_users`, `view_files`,
+`duplicate_products` gibi; `get_column_heading()`'e dizge veriyorlar),
+`asc_or_desc()` kullanan 8 ekran (`view_countries`, `view_log`,
+`view_zones` gibi) ve hiç sıralaması olmayan DataTables listeleri
+(`erp_invoices`, `erp_accounts`, `erp_waybills` gibi). Bunların her biri
+`pg_list_state()`'e taşınınca aynı yardımcılarla kazanır.
+
+Testler: `tests/list_state_test.php` (adresten düzeyler ve oturumdaki
+`then`, bilinmeyen/tekrar düzeyin düşmesi, saklanan düzeylerin tek
+sıralamayla yer değiştirmesi, Shift+tık adımları, ORDER BY'ın yalnız
+eşlemeden yazılması, başlık bağlantıları ve eski tek sıralama
+bağlantısı). Mevcut altı test değişmeden geçiyor. Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium).** Ürünler
+`sort=inventory_quantity:desc,price:asc` ile stoğu 10 olanlar fiyat artan
+geldi; başlıkta Shift+tık aynı sekmede üçüncü düzeyi ekledi ve oturumda
+kaldı; menüde kaldırma, ekleme formu ve varsayılana dönüş çalıştı; eski
+`sort=price&order=desc` bağlantısı tek sütunla sıraladı; çok düzeyli
+(etki dahil) Dışa Aktar 200 döndü. 390 piksel genişlikte menü dokunuşla
+açıldı. `erp_stock_minimums.php`'de Stok azalan + Ürün artan Shift+tıkla
+kuruldu, sayfa yenilenince geri geldi, ikinci Shift+tık düzeyi kaldırdı,
+eski `2:desc` saklı değeri okundu, Shift+tık metin seçmedi; konsolda hata
+yok. Doğrulanamadı: Safari/iOS'ta menü ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Banka ekstresi `.ods` dosyasını da alıyor (2026-10-13)
 
 **Neden.** ERP Faz 9 (10.61) banka ekstresinde `.ods`'yi adla reddediyordu,
