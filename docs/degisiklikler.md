@@ -84,6 +84,84 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Düğmeler "Kaydediliyor…" yazıp bekletmiyor; çift gönderim formda önleniyor (2026-10-13)
+
+**Sorun.** Ürün sahibinin hata kanalından: panel düğmeleri basılınca
+"Oluşturuluyor", "Kaydediliyor", "Yükleniyor" gibi yazılara dönüyor ve Ajax
+ile çalışan ekranlarda kullanıcıyı boşuna bekletiyordu. İstek: özellik
+kaldırılsın, düğmeler buna göre sadeleşsin.
+
+**Kök sebep.** `backend.src.js`'teki ortak tıklama işleyicisi
+`data-loading-content` taşıyan her bağlantı ve düğmede etiketi bir
+spinner'la o metne çeviriyor, `disabled` sınıfı ekliyor ve **sabit 10
+saniye** sonra geri alıyordu. İstekle hiç bağı yoktu: Ajax ile kaydeden
+ekran (Site Ayarları penceresinin Kaydet'i, `type="button"` düğmeler) cevap
+200 ms'de gelse de 10 saniye "Kaydediliyor" gösteriyordu; tarayıcının
+doğrulaması (`required`) formu durdursa da düğme kilitleniyordu; dosya
+indiren form 10 saniye yeniden gönderilemiyordu. Öznitelik 211 dosyada 530
+öğedeydi (kaydet/oluştur düğmeleri, liste satırı düzenle/sil düğmeleri,
+breadcrumb ve "Oluştur" bağlantıları, toplu işlem düğmeleri). Ayrıca birkaç
+ekran aynı işi kendi koduyla yapıyordu.
+
+**Ne değişti.**
+- `data-loading-content` 530 öğeden kaldırıldı; özniteliği bir değişkende
+  tutan `erp_inbox_document.php` ve `erp_account_sync_item.php`'deki `$wait`
+  ile kurulumdaki `$output_submit_button_process_label` de gitti.
+- `backend.src.js` tıklama işleyicisi yalnız onay (`data-confirm-content`,
+  `data-confirm-action`) ve toplu işlem (`value="Delete Selected"` vb.)
+  mantığını taşıyor; `loading_triggered()` silindi. Onaylı ve toplu
+  işlemlerin akışı aynı.
+- Çift gönderim artık düğmede değil, form ve bağlantıda önleniyor:
+  `window` üzerinde `submit` ve `click` dinleyicileri aynı formun ya da
+  bağlantının 3 saniye içindeki ikinci gönderimini sessizce yutar. Ekranda
+  hiçbir şey değişmez; gönderen düğme `disabled` olmadığı için adı ve değeri
+  (`submit_save=Save` gibi) istekte kalır. Dinleyiciler `window`'da olduğu
+  için formdaki ve `document`'taki her işleyiciden sonra koşar: Ajax ile
+  gönderen ya da bağlantıyı kendisi işleyen ekran olayı zaten iptal etmiştir
+  ve hiç bekletilmez. Hedefi başka sekme/çerçeve olan form ve bağlantı,
+  `#` ve `javascript:` bağlantıları, `download` bağlantıları ve değiştirici
+  tuşlu tıklamalar korunmaz. Tarayıcı geçmişinden (bfcache) dönülünce koruma
+  sıfırlanır. Süre kısa tutuldu: cevabı indirme olan istek sayfayı yerinde
+  bırakır ve hemen tekrarlanabilmeli. Dinleyiciler pencere başına bir kez
+  kurulur (`window.pgSubmitGuard`); ikinci kopya, ilkinin az önce işaretlediği
+  formu görüp gönderimi iptal ederdi.
+- Kendi kopyasını taşıyan ekranlar: sayfa tasarımcısının Kaydet'i
+  (`page_designer.js`) "Kaydediliyor" yazmıyor, kayıt bitince "Kaydedildi"
+  hemen çıkıyor (önceden kayıt hata verirse düğme "Kaydediliyor"da takılı
+  kalıyordu); kullanılmayan `Saving`/`Creating` etiketleri
+  `page_designer.php`'den çıktı. Barkod şablonu kaydet (`backend.src.js`) ve
+  menü sıralama kaydet (`view_menu_items.php`) istek sürdüğü kadar
+  `disabled`, etiket değişmiyor. Dosya yükleme (`add_file.php`,
+  `add_design_file.php`) yükleme sürerken `disabled` kalıyor, "Yükleniyor..."
+  yazmıyor (Dropzone ilerlemeyi dosyaların üstünde gösteriyor); yükleme hata
+  verirse düğme yeniden açılıyor, önceden kalıcı kilitliydi.
+
+**Bilerek yapılmayan.** Etiketi değiştirmeden istek sürdüğü kadar düğmeye
+spinner koyan ve her yolda geri alan ekranlar olduğu gibi kaldı
+(`style_designer.js` şablon oluştur, `view_folders.php` döndür,
+`search_console.php`). Yazılım Güncelleme ekranı (`software_update.php`)
+kendi ilerleme çubuğu ve günlüğüyle çok adımlı bir sunucu işi yürütüyor;
+düğmesi değişmedi. Çalışma Alanı notlarının otomatik kayıt durumu
+("Kaydediliyor…") ve kampanya/ön yüz bildirimleri düğme değil durum
+satırıdır, kapsam dışı. Artık kullanılmayan `tr.json` anahtarları
+(`Creating`, `Duplicating` vb.) ortak dosyada çakışma çıkarmasın diye
+silinmedi. Düğme tasarımı/CSS değişmedi.
+
+**Doğrulama.** `tools/lint.php`, `tools/check_lang.php`,
+`tools/check_bindings.php`, `tools/check_api_schema.php`, `tools/test.php`,
+`tools/check_copies.php`, `tools/build_js.php --check`; `node --check`
+`backend.src.js` ve `page_designer.js`. Başsız Chromium'da gerçek
+`backend.src.js` + jQuery + Bootstrap ile: yavaş cevaplı formda ikinci
+tıklama ikinci POST'u göndermiyor ve istek `submit_save=Save`'i taşıyor
+(eski kodla iki POST); Ajax formunun işleyicisi üç tıklamada üç kez
+çalışıyor, düğme etiketi ve durumu değişmiyor; `required` alanı boş form
+hiç gönderilmiyor ve korumayı kurmuyor; indirme formu aynı anda iki
+tıklamada bir, 3,2 saniye sonra yeniden gönderiliyor; GET bağlantısına
+çift tıklama tek istek (eski kodla iki). Panel ekranları dev ortamda
+elle denenmedi.
+
+---
+
 ## 2026.4.10 — Ürün kaydı bildirimi indiği ekranda; ürün listelerinde görseller büyük açılıyor (2026-10-13)
 
 **Sorun.** Ürün sahibinin hata kanalından iki madde. (1) Ürün kaydedilince

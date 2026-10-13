@@ -80,6 +80,13 @@ satırına açar (`#button_bar .btn { flex: 0 0 auto }`). Sağ küme
 - **Menü satırlarında renk kullanılmaz** (`link-body-emphasis`); tehlikeyi ikon
   ve onay diyaloğu anlatır. Bu kural yalnız menülere aittir — düğme, rozet ve
   uyarı kutusunda renk her zamanki gibi kullanılır.
+- Düğme istek sürerken **etiketini değiştirmez** ("Kaydediliyor…",
+  "Oluşturuluyor…" yazma) ve sabit süreli kilitlenmez; eski
+  `data-loading-content` özniteliği kaldırıldı, geri ekleme. Sayfa gönderen
+  form ve bağlantıdaki çift tıklamayı `backend.src.js`'in `window`
+  dinleyicileri karşılar (3 saniye, ekranda iz bırakmaz). Ajax ile gönderen
+  düğme yalnız istek sürdüğü kadar `disabled` olur ve her yolda — hata ve ağ
+  hatası dahil — geri açılır.
 - Ctrl+S (`backend.src.js`) imlecin içinde olduğu formun `submit_save` adlı
   düğmesine gider ve ipucunu (`(Ctrl+S | ⌘+S)`) her formun o düğmesine koyar;
   imleç bir formda değilse sayfadaki **ilk** forma gider. Yardımcı formlar
