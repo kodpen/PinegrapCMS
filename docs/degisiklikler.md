@@ -232,6 +232,8 @@ yok sayıldı; rol 3 yalnız kendi grubunu gördü, başkasına 404. HTTP
 katmanı (kimlik doğrulama, yönlendirici, OpenAPI) diğer uçlarla ortak,
 ayrıca denenmedi.
 
+---
+
 ## 2026.4.10 — Dış API: e-posta kampanyaları (2026-10-13)
 
 **Sorun.** E-posta kampanyaları API'de yoktu. Bir bülten ya da CRM
