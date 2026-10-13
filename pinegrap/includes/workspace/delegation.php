@@ -9,7 +9,10 @@
  * work it can: it reads the task, its notes, its channel and the records it is
  * about, and reports what it did, what it found, what it proposes and what it
  * needs from the person to go on. It writes nothing itself; whatever it
- * proposes waits for the person who asked to apply it.
+ * proposes - a new state or date for the task, a note on it, a note of the
+ * workspace, a change to a record - waits on the task (ws_ai_changes, by
+ * task_id) for the person who asked to apply it with one click or set it
+ * aside (changes.php).
  *
  * Every run of the assistant on a task is a request in the queue both
  * assistants already work from (ws_ai_requests), tied to the task by task_id
@@ -151,6 +154,24 @@ function ws_assistant_name($key)
     }
 
     return ($key === 'ai') ? 'Pinegrap AI' : (($key === 'claude') ? 'Claude' : (string) $key);
+}
+
+/**
+ * The picture an assistant is shown with, also for one whose connection has
+ * been switched off since.
+ *
+ * @param string $key
+ * @return string
+ */
+function ws_assistant_avatar($key)
+{
+    $assistant = ws_assistant($key);
+
+    if ($assistant) {
+        return $assistant['avatar'];
+    }
+
+    return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . (($key === 'ai') ? 'ws-ai.svg' : 'ws-assistant.svg');
 }
 
 /**
@@ -551,6 +572,22 @@ function ws_task_delegation_detail($viewer, $task)
         WHERE task_id = '" . (int) $task['id'] . "'
         ORDER BY id DESC LIMIT " . WS_DELEGATION_RUNS_SHOWN);
 
+    // An older run whose proposals still wait stays in view, or they could
+    // not be applied.
+    $shown = array_map(function ($row) {
+        return (int) $row['id'];
+    }, $rows);
+
+    $older = (array) db_values("SELECT DISTINCT request_id FROM ws_ai_changes
+        WHERE task_id = '" . (int) $task['id'] . "' AND channel_id = 0 AND status = 'pending'"
+        . (empty($shown) ? '' : " AND request_id NOT IN (" . implode(',', $shown) . ")"));
+
+    if (!empty($older)) {
+        $rows = array_merge($rows, (array) db_items("SELECT * FROM ws_ai_requests
+            WHERE id IN (" . implode(',', array_map('intval', $older)) . ") AND task_id = '" . (int) $task['id'] . "'
+            ORDER BY id DESC"));
+    }
+
     $tokens = array();
     $people_ids = array((int) ($task['delegated_by'] ?? 0));
 
@@ -561,8 +598,12 @@ function ws_task_delegation_detail($viewer, $task)
 
     $refs = ws_refs_resolve($viewer, $tokens);
     $people = ws_people(array_unique(array_filter($people_ids)));
+    $changes = ws_changes_map($viewer, array_map(function ($row) {
+        return (int) $row['id'];
+    }, $rows), 'request_id');
     $runs = array();
     $open = false;
+    $waiting = 0;
 
     foreach ($rows as $row) {
         $key = (string) ($row['agent'] ?? 'claude');
@@ -570,10 +611,16 @@ function ws_task_delegation_detail($viewer, $task)
         $running = ws_delegation_status_open($row['status']);
         $open = $open || $running;
 
+        $proposed = $changes[(int) $row['id']] ?? array();
+
+        foreach ($proposed as $change) {
+            $waiting += ($change['status'] === 'pending') ? 1 : 0;
+        }
+
         $runs[] = array(
             'id'          => (int) $row['id'],
             'agent'       => $key,
-            'assistant'   => array('name' => ws_assistant_name($key), 'avatar' => ws_assistant($key)['avatar'] ?? '', 'app' => true),
+            'assistant'   => array('name' => ws_assistant_name($key), 'avatar' => ws_assistant_avatar($key), 'app' => true),
             'asked_by'    => $people[(int) $row['requested_by']]['name'] ?? ws_person_name($row['requested_by']),
             'asked_at'    => ws_time_label($row['created_at']),
             'instruction' => ((string) $row['note_text'] !== '') ? ws_render_body((string) $row['note_text'], $refs) : '',
@@ -584,6 +631,7 @@ function ws_task_delegation_detail($viewer, $task)
             'icon'        => $state['icon'],
             'open'        => $running,
             'mine'        => ((int) $row['requested_by'] === (int) $viewer['id']),
+            'changes'     => $proposed,
         );
     }
 
@@ -594,7 +642,7 @@ function ws_task_delegation_detail($viewer, $task)
         $with = array(
             'key'    => $delegate,
             'name'   => ws_assistant_name($delegate),
-            'avatar' => ws_assistant($delegate)['avatar'] ?? '',
+            'avatar' => ws_assistant_avatar($delegate),
             'by'     => $people[(int) $task['delegated_by']]['name'] ?? ws_person_name($task['delegated_by']),
             'at'     => ((int) $task['delegated_at'] > 0) ? ws_time_label($task['delegated_at']) : '',
         );
@@ -611,8 +659,35 @@ function ws_task_delegation_detail($viewer, $task)
         'can_hand'   => $can_edit && ws_task_is_open($task['status']) && !empty($assistants),
         'can_stop'   => $open && ($can_edit || ($first && ((int) $first['requested_by'] === (int) $viewer['id']))),
         'can_take'   => $can_edit && ($delegate !== ''),
+        'waiting'    => $waiting,
         'max'        => WS_DELEGATION_INSTRUCTION_MAX,
     );
+}
+
+/**
+ * How many changes the assistants proposed on each of these tasks wait to be
+ * applied or set aside.
+ *
+ * @param int[] $task_ids
+ * @return array task id => count
+ */
+function ws_task_delegation_waiting_map($task_ids)
+{
+    $task_ids = array_values(array_filter(array_map('intval', (array) $task_ids)));
+
+    if (empty($task_ids) || !ws_delegation_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT task_id, COUNT(*) AS waiting FROM ws_ai_changes
+        WHERE task_id IN (" . implode(',', $task_ids) . ") AND channel_id = 0 AND status = 'pending'
+        GROUP BY task_id") as $row) {
+        $out[(int) $row['task_id']] = (int) $row['waiting'];
+    }
+
+    return $out;
 }
 
 /**
@@ -720,6 +795,9 @@ function ws_delegation_js_strings()
         'dg_not_ready'     => lang('not ready'),
         'dg_started'       => lang('The task was handed to the assistant.'),
         'dg_sent'          => lang('Sent to the assistant.'),
+        'dg_change_done'   => lang('The change was applied.'),
+        'dg_waiting'       => ws_js_template('{var:1} proposed change(s) wait for approval', 1),
+        'dg_waiting_short' => ws_js_template('{var:1} awaiting approval', 1),
     );
 }
 

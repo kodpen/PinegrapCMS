@@ -281,6 +281,22 @@
          yeni webhook olayı: workspace.task.delegated ve
          workspace.task.assistant_answered.
 
+  [YENİ] Asistan bir görevde çalışırken değişiklik
+         önerebiliyor: görevin durumu, önceliği, tarihleri
+         ya da açıklaması, göreve bir not, kişiye bir
+         Çalışma Alanı notu ya da başka bir kayıt (ürün,
+         sipariş, müşteri...). Öneriler görev çekmecesinde
+         asistanın cevabının altında "onay bekliyor" olarak
+         durur; isteyen kişi her birini tek tıkla uygular
+         ya da kenara ayırır. Görev listesinde onay bekleyen
+         öneri sayısı görünür. Asistanın önerdiği not,
+         uygulanınca asistanın adıyla yazılır.
+
+  [YENİ] Kanalda da Claude ve Pinegrap AI bir görevin
+         durumunu, önceliğini ve tarihlerini değiştirmeyi,
+         bir göreve not ya da Çalışma Alanı notu eklemeyi
+         önerebiliyor; uygulanınca kanala karar düşer.
+
   [ŞEMA] Görevler tablosuna asistan için üç kolon,
          asistan istekleri ve önerilen değişiklikler
          tablolarına görev kolonu eklenir.
