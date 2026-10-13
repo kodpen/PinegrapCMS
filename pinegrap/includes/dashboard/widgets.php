@@ -77,6 +77,54 @@ function pg_dashboard_widget_run($request, $user)
     return $handler($request, $user);
 }
 
+/**
+ * Several widgets in one request: the batch behind api.php's get_widgets_data.
+ *
+ * The dashboard used to ask for every card on its own, so a screen of twenty
+ * cards cost twenty requests, and each of them paid for the whole bootstrap --
+ * init.php, the firewall, the session, the database connection -- before it
+ * ran a single query of its own. On a server with a handful of PHP workers the
+ * requests also queued behind each other, which is most of what a slow
+ * dashboard was. One request pays the bootstrap once.
+ *
+ * Every id goes through pg_dashboard_widget_run() exactly as a single request
+ * would, so each widget keeps its own access check and its own answer. Ids
+ * are taken as they come, duplicates dropped, and capped so a request cannot
+ * ask for an unbounded amount of work.
+ *
+ * @param array $request the decoded API request; 'widget_ids' is the list
+ * @param array $user
+ * @return array 'status', 'message' and 'widgets' (id => widget response)
+ */
+function pg_dashboard_widgets_run_many($request, $user)
+{
+    $ids = (isset($request['widget_ids']) && is_array($request['widget_ids'])) ? $request['widget_ids'] : array();
+    $answers = array();
+
+    foreach ($ids as $widget_id) {
+
+        if (is_int($widget_id)) {
+            $widget_id = (string) $widget_id;
+        }
+
+        if (!is_string($widget_id) || isset($answers[$widget_id])) {
+            continue;
+        }
+
+        if (count($answers) >= 40) {
+            break;
+        }
+
+        $answers[$widget_id] = pg_dashboard_widget_run(array('widget_id' => $widget_id) + $request, $user);
+    }
+
+    return array(
+        'status' => 'success',
+        'message' => 'Action Success',
+        'widgets' => $answers,
+    );
+}
+
 // Eight daily counts -- seven days ago through today -- for one timestamp
 // column, in ONE query.
 //

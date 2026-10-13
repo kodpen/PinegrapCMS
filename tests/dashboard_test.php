@@ -84,12 +84,20 @@ function test_dashboard_widget_24_answers_empty_success()
 	}
 }
 
-// The clock answers the site time, formatted the way TIME_FORMAT says.
+// The clock answers the site time, formatted the way TIME_FORMAT says, with
+// what the dashboard needs to keep its own clock right: the server time, the
+// site offset from UTC and the date line.
 function test_dashboard_clock_answers_site_time()
 {
 	if (!defined('TIME_FORMAT')) {
 		define('TIME_FORMAT', 'twenty_four_hours');
 	}
+
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	$before = time();
 
 	$had_session = isset($_SESSION);
 	$previous = $had_session ? $_SESSION : null;
@@ -106,6 +114,9 @@ function test_dashboard_clock_answers_site_time()
 	pg_assert_same('success', $response['status'], 'status');
 	pg_assert_true((bool) preg_match('#^<time datetime="[^"]*">([01][0-9]|2[0-3]):[0-5][0-9]</time>$#', $response['data']), 'data: ' . $response['data']);
 	pg_assert_true(substr($response['message'], -1) === 'x', 'message ends with the session name');
+	pg_assert_true(($response['epoch'] >= $before) && ($response['epoch'] <= time()), 'epoch');
+	pg_assert_same((int) date('Z', $response['epoch']), $response['offset'], 'offset');
+	pg_assert_true((bool) preg_match('#^<time datetime="\d{4}-\d{2}-\d{2}">#', $response['date']), 'date: ' . $response['date']);
 }
 
 // Tile ink: near-black on a mid-tone brand colour, white on dark or unreadable
@@ -128,4 +139,36 @@ function test_dashboard_row_heading_aside_is_optional()
 {
 	pg_assert_contains('pg-row-aside', pg_widget_row_heading('L', 'A'), 'with aside');
 	pg_assert_false(strpos(pg_widget_row_heading('L'), 'pg-row-aside') !== false, 'without aside');
+}
+
+// The batch answers each id the way a single request would, keyed by the id as
+// a string: duplicates once, an integer id like its string form, an unknown id
+// with the single request's refusal, and anything that is not an id skipped.
+function test_dashboard_batch_answers_each_id_once()
+{
+	$response = pg_dashboard_widgets_run_many(array('widget_ids' => array('24', 24, '99', array(), null, '24')), array('role' => 0));
+
+	pg_assert_same('success', $response['status'], 'status');
+	pg_assert_same(array('24', '99'), array_map('strval', array_keys($response['widgets'])), 'ids');
+	pg_assert_same('', $response['widgets']['24']['data'], 'retired slot');
+	pg_assert_same('Invalid widget id.', $response['widgets']['99']['message'], 'unknown id');
+}
+
+// No list, or not a list, is an empty batch rather than an error.
+function test_dashboard_batch_without_ids_is_empty()
+{
+	pg_assert_same(array(), pg_dashboard_widgets_run_many(array(), array('role' => 0))['widgets'], 'missing');
+	pg_assert_same(array(), pg_dashboard_widgets_run_many(array('widget_ids' => '24'), array('role' => 0))['widgets'], 'string');
+}
+
+// A batch is capped at forty ids, however many are asked for.
+function test_dashboard_batch_is_capped()
+{
+	$ids = array();
+
+	for ($id = 100; $id < 160; $id++) {
+		$ids[] = (string) $id;
+	}
+
+	pg_assert_same(40, count(pg_dashboard_widgets_run_many(array('widget_ids' => $ids), array('role' => 0))['widgets']));
 }
