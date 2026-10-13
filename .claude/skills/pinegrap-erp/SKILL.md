@@ -402,12 +402,16 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   (`erp_late_fee_draft()`); `erp_invoices.late_fee_through` kesilince sayılır,
   sonraki dönem ertesi günden başlar. Vade farkı faturası (late_fee_through
   dolu) kendisi vade farkı doğurmaz. Yeni bir borç düşüren kaynak eklersen
-  `erp_late_fee_account()` indirimlerine ekle.
+  `erp_late_fee_account()` indirimlerine ekle. API (`api_reports.php`) aynı
+  fonksiyonları çağırır: bekleyen taslak varsa ikincisini yazmaz, onu 200 ile
+  döner; `as_of` bugünü geçemez.
 - Nakit tahmini (`includes/erp/cash_forecast.php`): kaynakları
   `erp_cash_forecast_items()` toplar, saf `erp_cash_forecast_build()` sütunlara
   döker. Yeni bir vadeli para kaynağı (ör. taksit) eklenirse buraya bir tür
-  (`erp_cash_forecast_kinds()`) ve kaynak ekle. Çek kasaları bugünkü nakitten
-  düşülür, çek satırlarda sayılır.
+  (`erp_cash_forecast_kinds()`) ve kaynak ekle; kalem `source`, `source_id`,
+  `account_id` taşır (API `items` bunları verir). Çek kasaları bugünkü nakitten
+  düşülür, çek satırlarda sayılır. API `GET /erp/reports/cash-forecast`
+  `erp_cash:read` ister (ekran kasa hakkı istiyor).
 - Çeviri tuzakları: `'Quote'` "Alıntı", `'By'` "Şuna Göre", `'From'`/`'To'`
   "Şundan"/"Şuna", `'Count'` "Adet", `'Record'` "Kayıt", `'Due'` "Bitiş"
   demek; ERP metninde yeni anahtar kullan (`'Sales quote'`, `'Sent by'`,
@@ -651,7 +655,7 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
 | Kasa akışı | `includes/erp/cashflow.php` |
 | Ön yüz: müşterinin kendi carisi | `includes/erp/storefront.php` (belgeler, bakiye, sahiplik sorusu), `get_account_document.php` (müşterinin PDF ucu: belge ve ekstre; başkasınınki 404), widget `account_invoices` (`includes/fn/widgets_account.php`); oturumdaki üyenin carisi `pg_erp_member_account()` (`includes/fn/ecommerce.php`, ERP'yi yüklemeden) |
 | CSV içe/dışa | `includes/erp/import.php`, `export.php` |
-| API dikişi / olaylar | `includes/erp/api.php` (rota tablosu), `api_resources.php` (okuma, cari, tahsilat, gider), `api_documents.php` (fatura, teklif, tekrarlayan fatura yazma), `api_stock.php` (irsaliye, stok sayımı, minimum stok yazma), `api_cash.php` (virman, çek/senet yazma), `api_reports.php` (kâr, kasa akışı, pano), `events.php` |
+| API dikişi / olaylar | `includes/erp/api.php` (rota tablosu), `api_resources.php` (okuma, cari, tahsilat, gider), `api_documents.php` (fatura, teklif, tekrarlayan fatura yazma), `api_stock.php` (irsaliye, stok sayımı, minimum stok yazma), `api_cash.php` (virman, çek/senet yazma), `api_reports.php` (kâr, kasa akışı, nakit tahmini, vade farkı ve taslağı, pano), `events.php` |
 | e-Belge | `includes/erp/edoc/registry.php`, `service.php`, `<kod>.php` |
 | Gelen e-faturalar, UBL okuma | `includes/erp/edoc/inbox.php`, `ubl.php`, `erp_inbox*.php` |
 | Cari eşitleme (sağlayıcı kartları) | `includes/erp/edoc/account_sync.php`, `erp_account_sync*.php` |
@@ -664,5 +668,4 @@ Otomatik tahsis eşleştirme yok (FIFO yalnız öneri) · e-İrsaliye yok
 akışı türetilmiş durumdur, yeni enum değeri değil · kâr/zarar resmî gelir tablosu değildir (amortisman,
 dönemsellik yok) · siparişi birden çok faturaya bölme yok · faturaya ödeme
 linki yok (müşteri faturasını "Faturalarım" widget'ında görür, ödeyemez) · iyzico ve pazaryeri hakedişi yok
-· bankaya API bağlantısı yok (ekstre dosyayla) · vade farkı ve nakit tahmini
-API'de ve MCP'de yok.
+· bankaya API bağlantısı yok (ekstre dosyayla).

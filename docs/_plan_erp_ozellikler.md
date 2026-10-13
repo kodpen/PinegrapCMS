@@ -275,8 +275,10 @@ yardımcılarıyla (PHPExcel'siz), `.xls` PHPExcel ile biçimleriyle okunur; `.o
 önce reddediliyordu, OOCalc onarılınca (#323) `.xls` yolundan okunur; bankanın
 başlık bloğu atlanır. 9b oran ve KDV
 ERP Ayarları'nda; panel cari kartında ve mutabakat ekranında; tekrar faturalamayı
-`erp_invoices.late_fee_through` önler. 9c `erp_cashflow.php?view=forecast`. API/MCP uçları
-yok. **Faz 9 bitti.**
+`erp_invoices.late_fee_through` önler. 9c `erp_cashflow.php?view=forecast`. **Faz 9 bitti.**
+API/MCP uçları sonradan ayrı PR'da geldi: `GET /erp/accounts/{id}/late-fee`,
+`POST /erp/accounts/{id}/late-fee-invoice` (taslak, X-Dry-Run), `GET
+/erp/reports/cash-forecast` (erp_cash:read); `docs/degisiklikler.md`.
 
 ## 6. Varsayılan kararlar
 

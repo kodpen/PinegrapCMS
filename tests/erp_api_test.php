@@ -6,9 +6,9 @@
  * (includes/erp/api.php) that need no database: every route reaches a
  * handler, no two routes answer the same method on the same path, the writes
  * on invoices, quotes, delivery notes, stock, transfers and cheques can be
- * rehearsed with X-Dry-Run, money moves only with the cash scope, and the
+ * rehearsed with X-Dry-Run, money moves only with the cash scope, the
  * helpers that read a typed document's lines (includes/erp/api_documents.php,
- * api_stock.php).
+ * api_stock.php), and the cash forecast's shape (api_reports.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -177,5 +177,66 @@ function test_erp_api_reports_read_with_their_scope()
 
 	pg_assert_same('erp:read', $scopes['erp.reports.profit'] ?? '', 'the profit report reads the ledger');
 	pg_assert_same('erp_cash:read', $scopes['erp.reports.cashflow'] ?? '', 'the cash flow reads the tills');
+	pg_assert_same('erp_cash:read', $scopes['erp.reports.cash_forecast'] ?? '', 'the cash forecast reads the tills');
 	pg_assert_same('erp:read', $scopes['erp.dashboard'] ?? '', 'the dashboard reads the ledger');
+}
+
+// The late fee is read with the ledger's scope; its invoice draft is written
+// with it and can be tried first, like every other invoice write.
+function test_erp_api_late_fee_routes()
+{
+	$routes = array();
+
+	foreach (erp_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	pg_assert_same('GET /erp/accounts/{id}/late-fee', ($routes['erp.accounts.late_fee']['method'] ?? '') . ' ' . ($routes['erp.accounts.late_fee']['path'] ?? ''), 'the fee is read');
+	pg_assert_same('erp:read', $routes['erp.accounts.late_fee']['scope'] ?? '', 'with erp:read');
+
+	$write = $routes['erp.accounts.late_fee_invoice'] ?? array();
+
+	pg_assert_same('POST /erp/accounts/{id}/late-fee-invoice', ($write['method'] ?? '') . ' ' . ($write['path'] ?? ''), 'the draft is written');
+	pg_assert_same('erp:write', $write['scope'] ?? '', 'with erp:write');
+	pg_assert_true(!empty($write['dry_run']), 'and takes X-Dry-Run');
+	pg_assert_same('ErpInvoice', $write['returns'] ?? '', 'the answer is the draft');
+}
+
+// The forecast in the API: one amount per column for each kind, in the
+// columns' order, and the items cut to the limit while the count says how
+// many there are.
+function test_erp_api_cash_forecast_present()
+{
+	$forecast = erp_cash_forecast_build(array(
+		array('kind' => 'sales_invoice', 'date' => '2026-10-01', 'amount' => 10000, 'title' => 'PGF2026000001', 'party' => 'Acme', 'source' => 'invoice', 'source_id' => 7, 'account_id' => 3),
+		array('kind' => 'expense', 'date' => '2026-11-20', 'amount' => 3000, 'title' => 'Rent', 'party' => '', 'source' => 'expense', 'source_id' => 2, 'account_id' => 0),
+		array('kind' => 'cheque_given', 'date' => '2026-10-20', 'amount' => 4000, 'title' => 'Cheque', 'party' => 'Supplier', 'source' => 'cheque', 'source_id' => 5, 'account_id' => 9),
+	), '2026-10-13', 60, 20000);
+	$forecast['horizon'] = 60;
+	$forecast['today'] = '2026-10-13';
+	$forecast['unpriced'] = 1;
+	$forecast['foreign_tills'] = 0;
+	$forecast['cheque_tills'] = 2;
+
+	$out = erp_api_cash_forecast_present($forecast, 2);
+
+	pg_assert_same(array('overdue', 'd30', 'd60'), array_column($out['columns'], 'key'), 'columns in order');
+	pg_assert_same(null, $out['columns'][0]['start'], 'past due has no first day');
+	pg_assert_same('2026-11-12', $out['columns'][2]['start'], '31-60 starts on its day');
+	pg_assert_same(array(30000, 26000, 23000), array_column($out['columns'], 'position'), 'balance after each column');
+	pg_assert_same(23000, $out['position'], 'expected balance');
+	pg_assert_same(10000, $out['in'], 'money in');
+	pg_assert_same(7000, $out['out'], 'money out');
+
+	$kinds = array_column($out['kinds'], null, 'kind');
+
+	pg_assert_same(count(erp_cash_forecast_kinds()), count($out['kinds']), 'every kind is listed');
+	pg_assert_same(array(10000, 0, 0), $kinds['sales_invoice']['amounts'], 'sales invoices by column');
+	pg_assert_same(array(0, 4000, 0), $kinds['cheque_given']['amounts'], 'cheques given by column');
+	pg_assert_same('out', $kinds['expense']['direction'], 'an expense goes out');
+
+	pg_assert_same(2, count($out['items']), 'items cut to the limit');
+	pg_assert_same(3, $out['items_count'], 'the count says how many there are');
+	pg_assert_same(array('invoice', 7, 3, 'overdue'), array($out['items'][0]['source'], $out['items'][0]['source_id'], $out['items'][0]['account_id'], $out['items'][0]['column']), 'the first item names its record');
+	pg_assert_same(array(1, 2), array($out['unpriced'], $out['cheque_tills']), 'what was left out');
 }

@@ -1238,6 +1238,19 @@
          rakamları (GET /erp/dashboard); kasa rakamları yalnız
          kasayı okuyabilen anahtara gösterilir.
 
+  [YENİ] ERP vade farkı ve nakit tahmini API'de ve MCP'de.
+         GET /erp/accounts/{id}/late-fee carinin işleyen vade
+         farkını fatura fatura verir; POST
+         /erp/accounts/{id}/late-fee-invoice cari kartındaki
+         "Vade farkı faturası" düğmesi gibi tek satırlı satış
+         faturası taslağı yazar (X-Dry-Run ile denenebilir;
+         bekleyen taslak varsa ikincisini yazmaz, onu döner).
+         GET /erp/reports/cash-forecast önümüzdeki 30, 60 ya
+         da 90 günün beklenen giriş, çıkış ve bakiyesini
+         verir (erp_cash:read). Faturalarda late_fee_through
+         alanı vade farkı faturasının hangi güne kadar
+         kestiğini söyler.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün

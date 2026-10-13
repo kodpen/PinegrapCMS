@@ -84,6 +84,92 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API ve MCP: ERP vade farkı ve nakit tahmini (ERP Faz 9'un API parçası) (2026-10-13)
+
+**Neden.** ERP Faz 9 (#319) vade farkını ve nakit tahminini yalnız panele
+koydu; ikisi de API'de ve MCP'de yoktu (Faz 9 devir notunun 1. ve 2.
+maddesi). Bir muhasebe entegrasyonu ya da asistan, carinin işleyen vade
+farkını okuyamıyor, faturasını hazırlatamıyor, önümüzdeki günlerin nakit
+durumunu soramıyordu.
+
+**Ne değişti.** Üç yeni rota `erp_api_routes()`'ta; MCP'de üç yeni araç
+(`erp_accounts_late_fee`, `erp_accounts_late_fee_invoice`,
+`erp_reports_cash_forecast`, rotadan kendiliğinden). İşleyiciler
+`includes/erp/api_reports.php`'de, panelin çağırdığı fonksiyonları
+çağırır. Yeni kapsam, şema adımı ve web kancası olayı yok.
+
+| Rota | Kapsam | Fonksiyon |
+|---|---|---|
+| `GET /erp/accounts/{id}/late-fee` | `erp:read` | `erp_late_fee_account()`, `_charged_through()`, `_open_draft()` |
+| `POST /erp/accounts/{id}/late-fee-invoice` | `erp:write` | `erp_late_fee_draft()` |
+| `GET /erp/reports/cash-forecast` | `erp_cash:read` | `erp_cash_forecast()` |
+
+Ayrıntılar:
+
+- **Vade farkı okuma.** `ErpLateFee`: oran (`rate`, aylık yüzde; 0 =
+  kapalı), KDV oranı (`tax_rate`, `null` = carinin kendi oranı), dönem
+  (`from`, `to`), en son kesilen gün (`charged_through`), toplam ve fatura
+  fatura döküm (gün, ortalama borç, vade farkı), bekleyen vade farkı
+  taslağı (`draft_invoice_id`). `from` verilmezse `as_of` yılının 1 Ocak'ı
+  (mutabakat mektubu gibi). Kesilmiş bir dönem yeniden sayılmaz:
+  `charged_through` istenen başlangıçtan sonraysa `from` ertesi güne
+  kayar ve `to`'yu geçebilir, toplam 0 olur (açıklamada yazıyor).
+- **Vade farkı faturası.** Panel düğmesinin kuralı aynen: tek satırlı
+  satış faturası taslağı, bugünün tarihi, mağaza para birimi, ayardaki KDV
+  oranı, notlarda fatura fatura döküm; taslak `late_fee_through` taşır,
+  kesilince sonraki vade farkı ertesi günden başlar. Hesabın bekleyen vade
+  farkı taslağı varsa ikincisi yazılmaz, o taslak 200 ile döner (panel de
+  onu açar); bu yolda hiçbir şey yazılmadığı için prova da aynı cevabı
+  verir. Oran 0 iken ve dönemde yansıtılacak tutar yokken 422. Prova
+  (`X-Dry-Run`) dönemi, tutarı ve fatura sayısını söyler. Günlüğe panelin
+  satırı ("erp late payment fee draft …") uygulamanın adıyla yazılır.
+- **Tarih kuralı.** İki uçta da `as_of` bugünü geçemez (422): panelin
+  `erp_aging_as_of()`'u ileri bir günü kabul ediyor, ama API'de bu
+  henüz borçlanılmamış günlere vade farkı yazmak olurdu. `from > as_of`
+  422. 10.61 koşmamış sitede iki uç da 503 `service_unavailable`.
+- **Nakit tahmini.** `ErpCashForecast`: `horizon` 30/60/90 (başka değer
+  422), bugünkü kasa (`cash`, çek kasaları hariç), toplam giriş/çıkış/net
+  ve beklenen bakiye; `columns` (vadesi geçmiş + otuzar gün, her birinin
+  giriş/çıkış/net ve sonrasındaki bakiyesi), `kinds` (yedi tür, her
+  sütun için bir tutar, `columns` sırasıyla), `items` (tarih sırasıyla,
+  `limit` kadar, varsayılan 100, en çok 500; `items_count` toplamı).
+  Kalemlere kaynak kaydı eklendi: `erp_cash_forecast_items()` artık
+  `source` (`invoice`, `expense`, `invoice_recurrence`,
+  `expense_recurrence`, `cheque`), `source_id` ve `account_id` de
+  döndürüyor; ekran bunları kullanmıyor. Panelde kasa hakkı isteyen ekran
+  olduğu için kasa akışı gibi `erp_cash:read` ve sahibin kasa hakkı
+  istenir.
+- **ErpInvoice.** `late_fee_through` alanı (vade farkı faturasının
+  kestiği son gün, diğer faturalarda `null`): panelde 10.61 ile gelen bağ
+  API nesnesine de yansıdı.
+- `tools/check_api_schema.php` iki yeni nesnenin sunucu–şema eşlerini de
+  karşılaştırıyor; `tests/erp_api_test.php`'ye rota kapsamı ve nakit
+  tahmini sunumu testleri eklendi.
+
+**Doğrulama.** Sandbox'ta curl: üç faturalı (biri kısmen tahsil edilmiş)
+cari; vade farkı okuma (varsayılan dönem, `from`/`as_of`, ileri `as_of`
+422, ters tarih 422, olmayan cari 404, yalnız okuma anahtarı 200), elle
+hesapla aynı tutar (1.200,00 ₺ × 46 gün + 600,00 ₺ × 29 gün, aylık %3 →
+72,60 ₺);
+fatura: yalnız okuma anahtarı 403, tanınmayan alan 422, prova (başlık ve
+`?dry_run=true`) yazmadı, gerçek 201 taslak (satır, %20 KDV, notlar,
+`late_fee_through`), ikinci çağrı ve provası aynı taslak 200, okumada
+`draft_invoice_id`; taslak kesilince `charged_through` ve `from` kaydı,
+aynı güne ikinci fatura 422; oran 0'da okuma `rate: 0`, yazma 422.
+Nakit tahmini: 30/60/90, `horizon=45` ve `limit=0` 422, yalnız okuma
+anahtarı ve kasa hakkı olmayan sahip 403; alış faturası, gider, alınan
+çek (çek kasası `cheque_tills`), tekrarlayan fatura kalemleri kaynaklarıyla.
+OpenAPI'de üç rota ve iki nesne; MCP `tools/list`'te üç araç,
+`tools/call` ile okuma, tahmin (`horizon` tamsayıyla) ve fatura provası.
+Panelde `erp_cashflow.php?view=forecast` ve cari kartı aynı rakamlarla
+açıldı. `php tools/lint.php`, `check_lang.php`, `check_api_schema.php`,
+`test.php` temiz.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com); döviz açık sitede tahmin
+(kod değişmedi, yalnız kalemlere alan eklendi).
+
+---
+
 ## 2026.4.10 — Tablolarda çoklu sıralama: ürün listesi ve tarayıcıda sıralanan tablolar (2026-10-13)
 
 **Neden.** Buglar listesinin 4. maddesi: "Tüm tablolar çoklu sıralama

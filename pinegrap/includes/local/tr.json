@@ -22821,5 +22821,7 @@
     "Then sort by": "Ardından şuna göre sırala",
     "{var:1}, ascending": "{var:1}, artan",
     "{var:1}, descending": "{var:1}, azalan",
-    "Reset the sort order": "Sıralamayı varsayılana döndür"
+    "Reset the sort order": "Sıralamayı varsayılana döndür",
+    "A late payment fee runs up to today at the latest, so as_of cannot be after today.": "Vade farkı en geç bugüne kadar işler; bu yüzden as_of bugünden sonra olamaz.",
+    "Late payment fees are switched off: set a monthly rate in the ERP settings first.": "Vade farkı kapalı: önce ERP Ayarları'nda aylık oranı girin."
 }
