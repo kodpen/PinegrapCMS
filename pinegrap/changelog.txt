@@ -53,6 +53,32 @@
   [DÜZELTME] Link seçici Geri Dönüşüm Kutusu'ndaki
          sayfaları listelemiyor.
 
+  [DÜZELTME] Düzeni "system" olan klasik blog (form
+         liste görünümü) sayfasında kayıtların güzel
+         adresi (/blog/kayit-adi) 404 veriyordu; kayıt
+         yeniden açılıyor.
+
+  [DÜZELTME] Bir widget'ta yeni açılan sekmeye detay
+         sayfası olarak verilen sayfa, widget'ın durduğu
+         sayfa değişmemiş olsa da kaydediliyor. Önceden
+         link hiçbir sayfaya gitmiyordu.
+
+  [DÜZELTME] Katalog listesindeki "Sepete Ekle"
+         düğmesi, sepet sayfası seçilmemişse ziyaretçiyi
+         ana sayfaya göndermiyor; listede kalıp
+         bildirimi gösteriyor.
+
+  [DÜZELTME] Katalog listesinde "Grup gezinmesi →
+         Hedef sayfa" çalışıyor: gruplar görünüyor ve
+         seçilen katalog sayfasında açılıyor. Önceden
+         hiç grup çıkmıyordu. Hedef olarak katalog
+         listesi olan editör sayfaları da seçilebiliyor.
+
+  [DÜZELTME] Editörde bir sayfaya bir dosyanın, kısa
+         linkin ya da site kökündeki bir klasörün adı
+         verilemiyor; böyle bir sayfa hiç
+         görünmüyordu.
+
   [DÜZELTME] Başlık, altlık, menü gibi ortak bir parçada
          yapılan değişiklik kaydediliyor. Bir kayıttan
          sonra aynı parçada yapılan düzenleme, ya da öğe
