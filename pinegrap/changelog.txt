@@ -611,6 +611,17 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Takvim etkinlikleri API'den eklenip
+         değiştirilebiliyor ve silinebiliyor: ad, açıklamalar,
+         yer, başlangıç ve bitiş (tüm gün dahil), takvimler ve
+         yayın durumu. Saati değişen etkinliğin ayırdığı salon
+         o saatte başka bir etkinliğe ayrılmışsa istek
+         reddedilir. Tekrar, rezervasyon ve salon seçimi
+         etkinlik ekranında kalır. Takvimler izni artık yazmayı
+         da kapsıyor; takvim yetkisi verilmiş bir kullanıcının
+         uygulaması yalnız kendi takvimlerine yazar, yayın
+         yetkisi yoksa yayınlayamaz.
+
   [YENİ] Yorumlar API'de: GET /comments ziyaretçi
          yorumlarını sayfaya, konusuna (form kaydı, ürün,
          etkinlik), duruma (yayında, bekleyen, zamanlanmış) ve
