@@ -526,6 +526,187 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Store set-up ------------------------------------------------- */
+
+		array(
+			'id'      => 'store.shipping_methods',
+			'method'  => 'GET',
+			'path'    => '/store/shipping-methods',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_shipping_methods_list',
+			'returns' => array('list' => 'StoreShippingMethod'),
+			'summary' => 'Shipping methods',
+			'description' => 'Every shipping method, in one page, with what it charges and when it is offered. Money is in minor units. What a recipient pays is the base rate (the tier whose from_subtotal the recipient\'s subtotal has reached), plus for each item primary_weight_rate x the product\'s primary weight points, secondary_weight_rate x its secondary weight points and item_rate, each times the quantity (first_item_excluded leaves the first item out of that charge), plus the same four rates of the zone the address is in, plus a carrier\'s live quote where realtime_rate is on. A method is offered while enabled, inside available_from/available_until, on the days in offered_on until their cut-off time, and for the address types it allows; a protected method is offered to the store\'s staff only.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'store.shipping_method_get',
+			'method'  => 'GET',
+			'path'    => '/store/shipping-methods/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_shipping_methods_get',
+			'returns' => 'StoreShippingMethod',
+			'summary' => 'One shipping method',
+			'description' => 'The same object as in the list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.zones',
+			'method'  => 'GET',
+			'path'    => '/store/zones',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_zones_list',
+			'returns' => array('list' => 'StoreZone'),
+			'summary' => 'Shipping zones',
+			'description' => 'The areas shipping methods ship to (zone_ids on a method), each with the countries (ISO codes) and states it covers and the rates it adds to the method\'s own. One page.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.tax_zones',
+			'method'  => 'GET',
+			'path'    => '/store/tax-zones',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_tax_zones_list',
+			'returns' => array('list' => 'StoreTaxZone'),
+			'summary' => 'Tax zones',
+			'description' => 'The areas tax is charged in, each with its rate as a percentage and the countries and states it covers. An address in no tax zone is charged no tax. GET /meta carries the rate of the store\'s own country. One page.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.countries',
+			'method'  => 'GET',
+			'path'    => '/store/countries',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_countries_list',
+			'returns' => array('list' => 'StoreCountry'),
+			'summary' => 'Countries and their states',
+			'description' => 'The countries an address can name, with their states, as the address forms offer them. default is the country the forms select first. One page.',
+			'params'  => array(
+				array('name' => 'code', 'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Only the country with this code.')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies',
+			'method'  => 'GET',
+			'path'    => '/store/currencies',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_currencies_list',
+			'returns' => array('list' => 'StoreCurrency'),
+			'summary' => 'Currencies',
+			'description' => 'The currencies a visitor can see prices in, the base currency first. exchange_rate is how much of the currency one unit of the base currency buys. Orders are always charged in the base currency. One page.',
+			'params'  => array()
+		),
+
+		/* ----- Gift cards -------------------------------------------------- */
+
+		array(
+			'id'      => 'gift_cards.list',
+			'method'  => 'GET',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_list',
+			'returns' => array('list' => 'GiftCard'),
+			'summary' => 'Gift cards',
+			'description' => 'Newest first, cursor paged. Money is in minor units. status: active (balance left and not expired), used (nothing left) or expired (past expires_on, whatever is left on it). A card bought in an order carries order_id, from_name, recipient_email, message and delivery_date. code is the money itself: whoever holds it can spend the balance at checkout.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'used', 'expired')),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the cards bought in this order.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the code (with or without its dashes), the notes, who it is from or the recipient\'s e-mail address.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.get',
+			'method'  => 'GET',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_get',
+			'returns' => 'GiftCard',
+			'summary' => 'One gift card',
+			'description' => 'With redemptions: each order the card was spent in, how much, and the balance before and after.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.create',
+			'method'  => 'POST',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_create',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Issue a gift card',
+			'description' => 'One card worth amount, with a new sixteen-digit code, as the gift cards screen issues it - for a prize, a refund or a card sold outside the store. The answer carries the code; nothing is mailed to anyone.',
+			'params'  => array(
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero. The balance starts at the same amount.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be spent. Left out, it never expires.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only.')
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_update',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Change a gift card',
+			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'description' => 'Minor units, zero or more.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete',
+			'method'  => 'DELETE',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card',
+			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete_post',
+			'method'  => 'POST',
+			'path'    => '/gift-cards/{id}/delete',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card, addressed as a POST',
+			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Calendars ---------------------------------------------------- */
 
 		array(

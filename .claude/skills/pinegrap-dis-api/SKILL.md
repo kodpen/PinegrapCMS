@@ -197,7 +197,9 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   `'revoke_auth' => 'bearer'` der (Dropbox).
   Yeni özellik = `includes/connect/purposes/<anahtar>.php` (`label`,
   `description`, `owner` site/person/any, `scopes` sağlayıcı başına). Şema
-  ve `connect.php` değişmez.
+  ve `connect.php` değişmez. Yalnız giriş yapan sağlayıcı (Apple)
+  `'accounts' => false` taşır: Bağlı hesaplar ekranı onu listelemez,
+  `pg_connect_start()` reddeder.
 - Bağlan düğmesi: `connect.php`'ye POST eden bir form içine
   `pg_connect_start_fields($sağlayıcı, $amaç, 'ekranım.php')`. Aynı hesap
   yeni amaçla yeniden bağlanırsa kapsamlar birleşir (`connection_id`).

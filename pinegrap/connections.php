@@ -34,7 +34,12 @@ $liveform = new liveform('connections');
 
 $screen_url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/connections.php';
 
-$providers = pg_connect_providers();
+// A provider that only signs people in (accounts => false: Apple) has no
+// account for the site to connect; its application is set up with the
+// sign-in settings instead.
+$providers = array_filter(pg_connect_providers(), function ($provider) {
+	return !(isset($provider['accounts']) && ($provider['accounts'] === false));
+});
 
 /* ---------------------------------------------------------------------------
    Writes

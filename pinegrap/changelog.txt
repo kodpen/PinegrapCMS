@@ -269,6 +269,15 @@
   [DÜZELTME] Kitapçı şablonunun sayfa yolunda "Ev" yerine
          "Ana Sayfa" yazıyor.
 
+  [DÜZELTME] Yayınla yalnız gerçekten düzenlenen sayfaların
+         değişiklik zamanını ve "sayfa düzenlendi" kaydını
+         güncelliyor. Önceden ortak başlıkta yapılan tek bir
+         değişiklik, başlığı gösteren her sayfayı düzenlenmiş
+         sayıyordu: aktivite akışı değişmemiş sayfalarla
+         doluyor, site haritasında her sayfanın tarihi
+         değişiyordu. Başlık değişikliği yine bütün
+         sayfalarda görünür.
+
   SEO
   --------------------------------------------------------
 
@@ -324,6 +333,9 @@
          Aynı asistana yeni talimat yazılabilir, çalışma
          durdurulabilir, görev geri alınabilir. Görev
          listesinde asistandaki görevler işaretli.
+         Kurulu olmayan asistan listede "hazır değil"
+         diye görünür ama seçilemez; hazır asistan yoksa
+         seçim boş açılır.
 
   [YENİ] Görev notunda @ai ya da @Claude yazmak, görevi
          devretmeden asistana o görev hakkında sorar.
@@ -496,6 +508,20 @@
          X-Dry-Run ile denenebilir; erp:write yetkisi
          gerekir.
 
+  [YENİ] Mağazada "Faturalarım": görsel editörde yeni
+         "Faturalarım" sistem widget'ı, oturum açmış
+         müşteriye ERP'de kesilmiş faturalarını ve
+         iadelerini gösteriyor: tutar, vade, kalan,
+         gecikme rozeti, carinin bakiyesi ve vadesi
+         geçen toplam. Her belge PDF olarak açılıyor;
+         "Ekstreyi indir" yılbaşından bugüne mutabakat
+         PDF'ini veriyor. Müşteri yalnız kendi carisinin
+         belgelerini görür; taslak ve iptal edilmiş
+         belge görünmez. ERP kapalıysa ya da müşterinin
+         kişisi bir cariye bağlı değilse widget hiçbir şey
+         göstermez. Hazır şablonların Hesabım sayfasında
+         hesap özetinin altında yer alıyor.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
@@ -652,6 +678,25 @@
          değiştirilebiliyor. Sayfa cevabı bunları ve sayfanın
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
+
+  [YENİ] Hediye kartları API'de, kendi izinleriyle
+         (hediye kartlarını okuma / yazma): kartlar kodu,
+         tutarı, kalan bakiyesi, durumu (geçerli, bitmiş,
+         süresi dolmuş) ve son kullanma tarihiyle listelenir;
+         tek kartta hangi siparişlerde ne kadar harcandığı da
+         görünür. Kart oluşturulur, bakiyesi, son kullanma
+         tarihi ve notu değiştirilir ya da silinir; Hediye
+         Kartları ekranıyla aynı kurallar geçerli. Kod para
+         yerine geçtiği için siparişleri okuma izni kodları
+         göstermez.
+
+  [YENİ] Mağaza kurulumu API'de okunuyor: nakliye
+         yöntemleri (ücretler, kademeli taban ücret, sunulduğu
+         günler ve saatler, adres türleri, bölgeler), nakliye
+         bölgeleri, vergi bölgeleri, ülkeler ve illeri, para
+         birimleri ve kurları. Bir kargo ya da pazaryeri
+         entegrasyonu nakliye ücretini mağazanın hesapladığı
+         gibi hesaplayabilir. Siparişleri okuma izni yeterli.
 
   [YENİ] Kısa linkler API'de: GET /short-links kısa
          linkleri, nereye gittikleriyle (sayfa, ürün grubu,
@@ -989,6 +1034,16 @@
          gelmiyor: sitenin web.config dosyası bunları
          zaten ekliyorsa yazılım kendi kopyasını
          göndermiyor.
+
+  [DÜZELTME] Adresini başka siteye göndermemesi gereken
+         sayfalar (OAuth onay ekranı, API dokümanı,
+         Çalışma Alanı misafir sayfası, takvim aboneliği,
+         süreli kısa linkler) IIS'te de referrer
+         göndermiyor. Yazılımın yazdığı sunucu kuralları
+         Referrer-Policy başlığını artık eklemiyor; başlığı
+         her sayfaya yazılım koyuyor. Mevcut sitelerde
+         web.config'teki (Apache'de .htaccess'teki)
+         Referrer-Policy ekleyen satırı silin.
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.
