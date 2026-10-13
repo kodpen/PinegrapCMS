@@ -1174,6 +1174,8 @@ $(document).ready(function () {
 
     pg_push_init();
 
+    pg_quick_note_init();
+
     check_unread_notifications('onload_check');
     setInterval(function () {
         //this interval is auto check for notifications.
@@ -2085,6 +2087,113 @@ function pg_push_open_requested() {
             clearInterval(timer);
         }
     }, 250);
+}
+
+// The quick note in the header (ws_notes_quick_markup(), includes/workspace/
+// notes.php): what is written in the box becomes one of the person's
+// workspace notes through the same action the notes screen saves with. The
+// texts and addresses come with the form, so a screen without the workspace
+// carries none of this.
+function pg_quick_note_init() {
+
+    var form = document.querySelector('[data-pg-quick-note]');
+
+    if (!form) {
+        return;
+    }
+
+    var text = form.elements.body;
+    var button = form.querySelector('button[type=submit]');
+    var status = form.querySelector('[data-pg-quick-note-status]');
+    var toggle = document.getElementById('pg_quick_note_toggle');
+    var saving = false;
+
+    // Bootstrap fires its dropdown events at the toggle.
+    if (toggle) {
+        toggle.addEventListener('shown.bs.dropdown', function () {
+            text.focus();
+        });
+    }
+
+    function say(message, note_id) {
+
+        status.textContent = '';
+        status.className = 'small ms-auto ' + (note_id ? 'text-success' : 'text-danger');
+        status.appendChild(document.createTextNode(message));
+
+        if (note_id) {
+            var link = document.createElement('a');
+
+            link.href = form.getAttribute('data-note-url') + encodeURIComponent(note_id);
+            link.className = 'ms-1';
+            link.textContent = form.getAttribute('data-open');
+
+            if (window.self !== window.top) {
+                link.target = '_parent';
+            }
+
+            status.appendChild(link);
+        }
+    }
+
+    function save() {
+
+        var body = text.value.replace(/\s+$/, '');
+
+        if (saving) {
+            return;
+        }
+
+        if (body.trim() === '') {
+            text.focus();
+            return;
+        }
+
+        saving = true;
+        button.disabled = true;
+        status.textContent = '';
+
+        fetch(form.getAttribute('data-api'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ws_note_save', token: software_token, title: '', body: body })
+        }).then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            var note = (json && json.status === 'success' && json.data) ? json.data.note : null;
+
+            if (note && note.id) {
+                text.value = '';
+                say(form.getAttribute('data-saved'), note.id);
+            } else {
+                say((json && json.message) ? json.message : form.getAttribute('data-failed'), 0);
+            }
+        }).catch(function () {
+            say(form.getAttribute('data-failed'), 0);
+        }).then(function () {
+            saving = false;
+            button.disabled = false;
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        save();
+    });
+
+    text.addEventListener('keydown', function (event) {
+        if ((event.ctrlKey || event.metaKey) && (event.key === 'Enter')) {
+            event.preventDefault();
+            save();
+        }
+    });
+
+    text.addEventListener('input', function () {
+        if (status.textContent !== '') {
+            status.textContent = '';
+        }
+    });
 }
 
 function pg_push_hint($text) {

@@ -2695,6 +2695,21 @@ table.chart thead th {
   max-width: calc(100% - 57px);
 }
 
+/* Quick note beside the bell (ws_notes_quick_markup()): placed like the
+   notifications, under the header's right edge. */
+#pg_quick_note {
+  width: 350px;
+  right: 2px !important;
+  left: auto;
+  top: calc(var(--pg-navbar-h) + 2px) !important;
+  max-width: calc(100% - 4px);
+}
+
+#pg_quick_note textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
 #notifications .list-group-item .notification-description {
   line-height: 15px;
   font-size: 13px;

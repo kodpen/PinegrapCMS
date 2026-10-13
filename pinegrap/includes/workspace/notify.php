@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - what a person is told: a mention, a task handed to them, a task
- * of theirs finished, an invitation to a channel.
+ * of theirs finished, a note written on it, its reminder or its passing its
+ * due time, an invitation to a channel.
  *
  * Kept in the module's own inbox (ws_inbox), one row per person, rather than
  * in the panel's notification table: that table holds things everyone of a
@@ -33,7 +34,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param string $kind     mention | assigned | completed | invited | note | note_shared | note_updated | note_answer
  *                         | unblocked (a task waited for is done: task_links.php)
  *                         | approval_requested | approval_decided | approval_reminder | ack_reminder
- * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner
+ *                         | task_note (a note on a task one is on: task_work.php)
+ *                         | task_reminder | task_overdue (reminders.php)
+ * @param array  $data     channel_id, message_id, task_id, note_id, actor_id; quiet: no device banner;
+ *                         batch: the device is queued but not woken here - the caller
+ *                         tells many people in a row and calls ws_push_batch_done()
  * @return int the inbox row
  */
 function ws_notify($user_id, $kind, $data)
@@ -90,13 +95,32 @@ function ws_notify($user_id, $kind, $data)
 
             pg_push_enqueue($user_id, 'ws', $inbox_id, $delay);
 
-            if (($delay === 0) && function_exists('pg_push_queue_run')) {
+            if (($delay === 0) && empty($data['batch']) && function_exists('pg_push_queue_run')) {
                 pg_push_queue_run(5);
             }
         }
     }
 
     return $inbox_id;
+}
+
+/**
+ * Wakes the devices a batch of ws_notify(..., batch) calls queued: the queue
+ * is worked once for all of them rather than once per person told.
+ *
+ * @param bool $queued something was queued
+ */
+function ws_push_batch_done($queued)
+{
+    if (!$queued) {
+        return;
+    }
+
+    include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
+
+    if (function_exists('pg_push_queue_run')) {
+        pg_push_queue_run(10);
+    }
 }
 
 /**
@@ -383,13 +407,61 @@ function ws_inbox_describe($viewer, $row)
             $name = function_exists('ws_assistant_name') ? ws_assistant_name($agent) : 'Claude';
             $number = $task ? ws_task_number($task['id']) : '';
 
+            // What it proposed and still waits for the person to apply
+            // (changes.php), counted when the banner is drawn.
+            $waiting = ($task && function_exists('ws_task_delegation_waiting_map')) ? (int) (ws_task_delegation_waiting_map(array($task['id']))[(int) $task['id']] ?? 0) : 0;
+
             return array(
                 'title' => (is_array($run) && ($run['status'] === 'failed'))
                     ? lang(array('string' => '{var:1} could not do what you asked on {var:2}', 'vars' => array($name, $number)))
                     : lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number))),
-                'body'  => $task ? (string) $task['title'] : '',
+                'body'  => ($task ? (string) $task['title'] : '')
+                    . (($waiting > 0) ? ' — ' . lang(array('string' => '{var:1} proposed change(s) wait for approval', 'vars' => $waiting)) : ''),
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
                 'icon'  => ($agent === 'ai') ? 'bi-cpu' : 'bi-stars',
+            );
+
+        // A note on a task one is on, written by somebody else
+        // (task_work.php). The newest note not of the reader's own names who
+        // wrote and what: notes that came while the line was unread share it.
+        case 'task_note':
+            $last = ($task && function_exists('ws_task_work_ready') && ws_task_work_ready())
+                ? db_item("SELECT sender_kind, sender_id, body FROM ws_task_notes
+                    WHERE task_id = '" . (int) $task['id'] . "' AND deleted_at = 0
+                    AND NOT (sender_kind = 'user' AND sender_id = '" . (int) $row['user_id'] . "')
+                    ORDER BY id DESC LIMIT 1")
+                : null;
+            $writer = $actor;
+
+            if (is_array($last)) {
+                $writer = ($last['sender_kind'] === 'app')
+                    ? (string) (ws_app_sender((int) $last['sender_id'])['name'] ?? $actor)
+                    : ws_person_name((int) $last['sender_id']);
+            }
+
+            return array(
+                'title' => lang(array('string' => '{var:1} wrote a note on {var:2}', 'vars' => array($writer, $task ? ws_task_number($task['id']) : ''))),
+                'body'  => is_array($last) ? ws_plain_excerpt($viewer, (string) $last['body'], 140) : ($task ? (string) $task['title'] : ''),
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => 'bi-chat-left-text',
+            );
+
+        // The reminder set on a task, and a task that passed its due time
+        // (reminders.php).
+        case 'task_reminder':
+            return array(
+                'title' => lang(array('string' => 'Reminder: {var:1}', 'vars' => $task ? mb_substr((string) $task['title'], 0, 150) : '')),
+                'body'  => $task ? ws_task_number($task['id']) . ' · ' . lang(array('string' => 'Due: {var:1}', 'vars' => ws_task_due_label($task))) : '',
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => 'bi-alarm',
+            );
+
+        case 'task_overdue':
+            return array(
+                'title' => lang(array('string' => '{var:1} is overdue', 'vars' => $task ? ws_task_number($task['id']) : '')),
+                'body'  => $task ? (string) $task['title'] . ' — ' . lang(array('string' => 'Due: {var:1}', 'vars' => ws_task_due_label($task))) : '',
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => 'bi-calendar-x',
             );
     }
 
@@ -504,6 +576,31 @@ function ws_inbox_mark_read($user_id, $ids)
     db("UPDATE ws_inbox SET read_at = '" . time() . "' WHERE " . $where);
 
     ws_bell_sync_read($user_id);
+}
+
+/**
+ * The person opened a task: what their inbox said about it is read, in the
+ * bell as well, and a banner still queued for it is not sent.
+ *
+ * @param int $user_id
+ * @param int $task_id
+ */
+function ws_inbox_mark_task_read($user_id, $task_id)
+{
+    $user_id = (int) $user_id;
+    $task_id = (int) $task_id;
+
+    if (($user_id <= 0) || ($task_id <= 0)) {
+        return;
+    }
+
+    // The unread rows of one person are few, and idx_user finds them.
+    db("UPDATE ws_inbox SET read_at = '" . time() . "'
+        WHERE user_id = '" . $user_id . "' AND read_at = 0 AND task_id = '" . $task_id . "'");
+
+    if (mysqli_affected_rows(db::$con) > 0) {
+        ws_bell_sync_read($user_id);
+    }
 }
 
 /**

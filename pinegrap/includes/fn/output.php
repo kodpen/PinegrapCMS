@@ -1258,12 +1258,22 @@ function output_header($properties = false)
     // for the calendar on their phone or computer. The module is loaded the
     // way the main menu loads it, and only then.
     $output_calendar_feed_link = '';
+    $output_workspace_rights = null;
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $output_calendar_feed_rights = ws_ready() ? ws_rights($user) : null;
-        if ($output_calendar_feed_rights && $output_calendar_feed_rights['member']) {
+        $output_workspace_rights = ws_ready() ? ws_rights($user) : null;
+        if ($output_workspace_rights && $output_workspace_rights['member']) {
             $output_calendar_feed_link = '<li><a class="calendar_feed_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar_feed.php"' . $output_parent_target . '><i class="bi bi-calendar-plus"></i><span>' . lang('Calendar subscription') . '</span></a></li>';
         }
+    }
+
+    // The quick note beside the bell (ws_notes_quick_markup()), for the same
+    // people while the workspace keeps notes, and the way to My Notes. Not in
+    // the toolbar, for the reason the settings are not: that header is a thin
+    // strip inside the frame of the site being edited.
+    $output_quick_note = '';
+    if (($toolbar != true) && $output_workspace_rights && $output_workspace_rights['member']) {
+        $output_quick_note = ws_notes_quick_markup($output_workspace_rights, $output_parent_target);
     }
 
     $output_home_page_link_url = '';
@@ -1926,6 +1936,7 @@ function output_header($properties = false)
                         <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '"><span class="bi bi-search"></span></button>
                     </li>
                 </ul>
+                ' . $output_quick_note . '
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">

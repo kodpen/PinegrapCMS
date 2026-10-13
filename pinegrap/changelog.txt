@@ -340,6 +340,39 @@
   [ŞEMA] Takvim abonelikleri için yeni bir tablo
          oluşturulur.
 
+  [YENİ] Hızlı not: panelin üst çubuğunda, bildirim
+         zilinin yanında yeni bir düğme. Açılan kutuya
+         yazılan metin Çalışma Alanı notlarınıza
+         kaydediliyor, ilk satırı başlık oluyor
+         (Ctrl+Enter ile de kaydedilir). Kutudan
+         Notlarım'a geçiliyor. Düğme Çalışma Alanı açıkken
+         ve kişi ekipteyken görünüyor.
+
+  [YENİ] Görev hatırlatıcısı artık yalnız e-postayla
+         gelmiyor: görevdeki kişilerin bildirimlerine,
+         telefon ve bilgisayar bildirimlerine de düşüyor.
+         E-posta adresi olmayan kişiye de ulaşıyor.
+
+  [YENİ] Bitiş zamanı geçen açık görev, görevdeki
+         kişilere (görevde kimse yoksa görevi açana) bir
+         kez "gecikti" bildirimi gönderiyor: saatli görevde
+         o saatte, saatsiz görevde ertesi sabah 09:00'da.
+         Bitiş tarihi ileri alınan görev, yeni tarih
+         geçince yeniden bildiriliyor.
+
+  [YENİ] Bir göreve not yazıldığında görevdeki kişiler ve
+         görevi açan kişi bildirim alıyor; notu yazan
+         almıyor, notta anılan kişi zaten kendi
+         bildirimini alıyor. Okunmadan gelen yeni notlar
+         aynı bildirimde toplanıyor.
+
+  [YENİ] Bir görev açıldığında o görevle ilgili gelen
+         kutusu satırları ve zildeki bildirimler okunmuş
+         sayılıyor; bekleyen cihaz bildirimi gitmiyor.
+
+  [YENİ] Asistan cevap verdiğinde gelen bildirim, onay
+         bekleyen öneri varsa sayısını da söylüyor.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
