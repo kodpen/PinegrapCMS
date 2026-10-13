@@ -46,6 +46,10 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Ürün ve ürün grubu silme uçları varsayılan olarak katalog Geri Dönüşüm
   Kutusu'na atar (`permanent` ile kalıcı); listeler kutudaki kaydı göstermez,
   tekil okuma `recycled` alanıyla gösterir.
+- Anahtar kod (`key_codes.code`) bir teklifin koduyla aynı olamaz: ödeme
+  yazılan kodu önce `offers.code`'da arar, anahtar koda ancak teklif yoksa
+  bakar. Kod yazan ya da üreten yer iki tabloyu da denetler
+  (`api_key_code_own_or_fail()`, `api_key_code_generate()`).
 - Yazma provası istiyorsan uca `'dry_run' => true` koy ve **ilk yazmanın hemen
   üstüne** `api_dry_run_stop(...)` çağır; erken koyulan duruş yapılmamış
   doğrulamayı vaat eder. Toplu uçta `api_dry_run_requested()` ile satır satır

@@ -50,6 +50,7 @@ function api_console_endpoints_html($try_hint = '') {
 		'meta'           => lang('Site info'),
 		'products'       => lang('Products'),
 		'product_groups' => lang('Product Groups'),
+		'product_attributes' => lang('Product Attributes'),
 		'inventory'      => lang('Inventory'),
 		'orders'         => lang('Orders'),
 		'customers'      => lang('Customers'),
@@ -70,6 +71,7 @@ function api_console_endpoints_html($try_hint = '') {
 		'system'         => lang('System'),
 		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),
+		'key_codes'      => lang('Key Codes'),
 		'calendars'      => lang('Calendars'),
 		'webhooks'       => lang('Webhooks'),
 		// The groups the later resources and the modules add (includes/api/
