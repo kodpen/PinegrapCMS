@@ -230,6 +230,14 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   (`config.signin_providers`). Kimlik `user_identities`'te; giriş belirteç
   saklamaz. Düğmeler yalnız `pg_signin_buttons()` ile (Google dahil).
   Google kendi yolunda: `google_auth.php`, `user.user_google_id`.
+- Örnek kullanıcı: bulut yedek (`purposes/backup.php`,
+  `includes/fn/backup_cloud.php`). Ayar formunun içindeki bağlan düğmesi
+  `form="..."` ile formun dışındaki gizli formu gönderir
+  (`$pg_settings_modals[]`); dönüş adresi `settings_general.php?backup_connect=<tür>#pgset-backup`
+  olur ve ekran `pg_connect_flash_take()` ile mesajı yalnız o parametre
+  varken alır. Büyük dosya 10 MiB parçalarla, her parça `pg_connect_api()`
+  ile (belirteç arada yenilenir); Graph yükleme oturumunun adresine
+  belirteç gönderilmez, `api_http_request()` doğrudan.
 
 ## Modül dikişi (ERP → API)
 

@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Automatic backups: the weekly archive auto_backup.php writes, how many of
- * them are kept, and the copy sent to a remote store (FTP or an S3-compatible
- * bucket).
+ * them are kept, and the copy sent to a remote store (FTP, an S3-compatible
+ * bucket, or Google Drive, OneDrive or Dropbox through a connected account:
+ * includes/fn/backup_cloud.php).
  *
  * Only names produced by pg_backup_auto_name() are ever deleted here. The
  * install dumps under data/backups (english_default, turkish_default), the
@@ -339,20 +340,34 @@ function pg_backup_settings($reload = false)
  * A remote type from the white list, or '' for none.
  *
  * @param mixed $type
- * @return string '', 'ftp' or 's3'
+ * @return string '', 'ftp', 's3', 'gdrive', 'onedrive' or 'dropbox'
  */
 function pg_backup_remote_type($type)
 {
-    $type = (string) $type;
+    $type = is_scalar($type) ? (string) $type : '';
 
-    return in_array($type, array('ftp', 's3'), true) ? $type : '';
+    return in_array($type, pg_backup_remote_types(), true) ? $type : '';
+}
+
+
+/**
+ * Every remote type, in the order the settings keep them.
+ *
+ * @return array
+ */
+function pg_backup_remote_types()
+{
+    return array('ftp', 's3', 'gdrive', 'onedrive', 'dropbox');
 }
 
 
 /**
  * One remote destination's settings with every key present and typed.
  *
- * @param string $type 'ftp' or 's3'
+ * A cloud destination keeps only which connected account it uses and the
+ * folder; the permission itself stays with the account.
+ *
+ * @param string $type a remote type
  * @param mixed $values
  * @return array
  */
@@ -363,6 +378,17 @@ function pg_backup_remote_normalize($type, $values)
     $text = function ($key) use ($values) {
         return isset($values[$key]) ? trim((string) $values[$key]) : '';
     };
+
+    if (pg_backup_cloud_is_type($type)) {
+
+        $connection_id = isset($values['connection_id']) && is_scalar($values['connection_id']) ? (int) $values['connection_id'] : 0;
+        $folder = isset($values['folder']) ? pg_backup_cloud_folder($values['folder']) : '';
+
+        return array(
+            'connection_id' => max(0, $connection_id),
+            'folder'        => ($folder === null) ? '' : $folder,
+        );
+    }
 
     if ($type === 'ftp') {
 
@@ -393,7 +419,7 @@ function pg_backup_remote_normalize($type, $values)
 /**
  * Encrypt the remote settings for config.backup_remote_settings.
  *
- * @param array $values array('ftp' => array(...), 's3' => array(...))
+ * @param array $values remote type => that destination's settings
  * @return string "<ciphertext>:<iv>"
  */
 function pg_backup_remote_encode(array $values)
@@ -407,11 +433,12 @@ function pg_backup_remote_encode(array $values)
 /**
  * Decrypt config.backup_remote_settings.
  *
- * Both destinations are kept, each under its own key, so switching between
- * them does not lose the other one's password.
+ * Every destination is kept, each under its own key, so switching between
+ * them does not lose the other one's password or account.
  *
  * @param string $stored "<ciphertext>:<iv>"
- * @return array array('ftp' => array(...), 's3' => array(...)), normalised
+ * @return array remote type => that destination's settings, normalised, in
+ *               the order of pg_backup_remote_types()
  */
 function pg_backup_remote_decode($stored)
 {
@@ -427,10 +454,13 @@ function pg_backup_remote_decode($stored)
         }
     }
 
-    return array(
-        'ftp' => pg_backup_remote_normalize('ftp', isset($values['ftp']) ? $values['ftp'] : array()),
-        's3'  => pg_backup_remote_normalize('s3', isset($values['s3']) ? $values['s3'] : array()),
-    );
+    $remote = array();
+
+    foreach (pg_backup_remote_types() as $type) {
+        $remote[$type] = pg_backup_remote_normalize($type, isset($values[$type]) ? $values[$type] : array());
+    }
+
+    return $remote;
 }
 
 
@@ -484,7 +514,25 @@ function pg_backup_run_auto()
     }
 
     if (($zip_path !== '') && ($settings['backup_remote_type'] !== '')) {
-        pg_backup_remote_record(pg_backup_remote_send($zip_path));
+
+        $sent = pg_backup_remote_send($zip_path);
+
+        pg_backup_remote_record($sent);
+
+        // The cloud folder keeps as many weeks as data/backups does.
+        if ($sent['ok'] && pg_backup_cloud_is_type($settings['backup_remote_type'])) {
+
+            list($type, $config) = pg_backup_remote_config();
+            $pruned = pg_backup_cloud_prune($type, $config, $settings['backup_keep']);
+
+            foreach ($pruned['deleted'] as $name) {
+                log_activity(lang(array('string' => 'Old automatic backup {var:1} was deleted from the remote copy.', 'vars' => array($name))), 'SYSTEM');
+            }
+
+            if (!$pruned['ok']) {
+                log_activity(lang(array('string' => 'Old automatic backups could not be deleted from the remote copy: {var:1}', 'vars' => array($pruned['error']))), 'SYSTEM');
+            }
+        }
     }
 
     return true;
@@ -709,7 +757,7 @@ function pg_backup_remote_config()
  * Send one file to the remote destination.
  *
  * @param string $file
- * @param string|null $type '' / 'ftp' / 's3'; null reads the saved settings
+ * @param string|null $type a remote type or ''; null reads the saved settings
  * @param array|null $config that destination's settings; null reads the saved ones
  * @return array array('ok' => bool, 'error' => string)
  */
@@ -731,6 +779,10 @@ function pg_backup_remote_send($file, $type = null, $config = null)
 
     if ($type === 's3') {
         return pg_backup_s3_put($file, pg_backup_remote_normalize('s3', $config));
+    }
+
+    if (pg_backup_cloud_is_type($type)) {
+        return pg_backup_cloud_put($file, $type, pg_backup_remote_normalize($type, $config));
     }
 
     return array('ok' => false, 'error' => lang('No remote backup destination is set.'));

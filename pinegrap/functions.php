@@ -74,6 +74,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/language_redirect.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/errors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup_cloud.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connect.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/signin.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_api.php');

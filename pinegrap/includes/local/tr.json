@@ -22579,5 +22579,21 @@
     "Catering: Packages": "Catering: Paketler",
     "Loyalty: Stamp Card": "Sadakat: Damga Kartı",
     "Events: Cards": "Etkinlikler: Kartlar",
-    "Notice: Announcement": "Bildirim: Duyuru"
+    "Notice: Announcement": "Bildirim: Duyuru",
+    "In the Dropbox App Console, choose Create app, then Scoped access and App folder.": "Dropbox App Console'da Create app'i, ardından Scoped access ve App folder'ı seçin.",
+    "On the Permissions tab, tick files.metadata.read, files.content.write, openid, email and profile, then Submit.": "Permissions sekmesinde files.metadata.read, files.content.write, openid, email ve profile'ı işaretleyip Submit'e basın.",
+    "On the Settings tab, add the redirect address below under Redirect URIs, and copy the App key and the App secret here.": "Settings sekmesinde aşağıdaki yönlendirme adresini Redirect URIs altına ekleyin; App key ve App secret'ı buraya kopyalayın.",
+    "An app in development can connect up to 50 accounts without Dropbox's approval; a site's own accounts stay well below that.": "Geliştirme aşamasındaki bir uygulama Dropbox onayı olmadan 50 hesaba kadar bağlanabilir; bir sitenin kendi hesapları bunun çok altında kalır.",
+    "Sends the automatic backup to this account's cloud storage, into a folder only the site writes to.": "Otomatik yedeği bu hesabın bulut deposuna, yalnız sitenin yazdığı bir klasöre gönderir.",
+    "Save the settings to start sending the backups there.": "Yedeklerin oraya gitmeye başlaması için ayarları kaydedin.",
+    "Choose a connected account": "Bağlı bir hesap seçin",
+    "A folder of this name in My Drive. The site sees only the files it put there itself, so a folder made by hand is not used. Weeks beyond the number kept are deleted there as well.": "Drive'ım'da bu adda bir klasör. Site yalnız kendi koyduğu dosyaları görür; elle açılmış bir klasör kullanılmaz. Saklanan sayıyı aşan haftalar orada da silinir.",
+    "A folder inside the application's own folder under Apps in {var:1}. The site sees nothing else in the account. Weeks beyond the number kept are deleted there as well.": "{var:1} içinde Uygulamalar altındaki uygulama klasöründe bir klasör. Site hesaptaki başka hiçbir şeyi görmez. Saklanan sayıyı aşan haftalar orada da silinir.",
+    "No account is connected for backups yet.": "Yedekler için henüz bağlı hesap yok.",
+    "A folder name may hold letters, digits, spaces, dots, dashes and underscores, up to three levels separated by /.": "Klasör adında harf, rakam, boşluk, nokta, tire ve alt çizgi olabilir; / ile ayrılmış en çok üç düzey.",
+    "Old automatic backup {var:1} was deleted from the remote copy.": "Eski otomatik yedek {var:1} uzak kopyadan silindi.",
+    "Old automatic backups could not be deleted from the remote copy: {var:1}": "Eski otomatik yedekler uzak kopyadan silinemedi: {var:1}",
+    "The storage service did not answer.": "Depolama hizmeti yanıt vermedi.",
+    "The upload did not finish.": "Yükleme tamamlanmadı.",
+    "No {var:1} account is connected for backups. Connect one in the backup settings.": "Yedekler için bağlı bir {var:1} hesabı yok. Yedek ayarlarından bir hesap bağlayın."
 }

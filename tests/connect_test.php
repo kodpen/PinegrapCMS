@@ -50,7 +50,7 @@ function test_connect_account_purpose_serves_both_providers_and_owners()
 	pg_assert_true(is_array($purpose), 'account purpose');
 	pg_assert_true(pg_connect_purpose_allows($purpose, 'google', 'site'), 'Google, the site');
 	pg_assert_true(pg_connect_purpose_allows($purpose, 'microsoft', 'person'), 'Microsoft, a person');
-	pg_assert_false(pg_connect_purpose_allows($purpose, 'dropbox', 'site'), 'a provider it does not list');
+	pg_assert_false(pg_connect_purpose_allows($purpose, 'example', 'site'), 'a provider it does not list');
 
 	$site_only = array('owner' => 'site', 'scopes' => array('google' => array('x')));
 

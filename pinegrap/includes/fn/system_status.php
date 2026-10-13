@@ -2613,10 +2613,11 @@ function get_system_status_checks()
         $backup_message = 'Automatic backup is turned off.';
     }
 
-    // The remote copy of the automatic backup (FTP / S3). A backup that exists
-    // only on the server it protects is lost with that server, so a failed
-    // copy is worth a warning even while the local backup is fresh. It costs
-    // half the weight, never more than the check is worth in total.
+    // The remote copy of the automatic backup (FTP, S3 or a cloud drive). A
+    // backup that exists only on the server it protects is lost with that
+    // server, so a failed copy is worth a warning even while the local backup
+    // is fresh. It costs half the weight, never more than the check is worth
+    // in total.
     $backup_detail = array();
 
     if (pg_backup_settings_ready()) {

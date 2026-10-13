@@ -34,5 +34,6 @@ return array(
     'scopes'      => array(
         'google'    => array(),
         'microsoft' => array(),
+        'dropbox'   => array(),
     ),
 );

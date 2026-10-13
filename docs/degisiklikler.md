@@ -84,6 +84,61 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Yedekler Google Drive, OneDrive ve Dropbox'a (2026-10-13)
+
+**Neden.** `docs/_plan_tersine_oauth.md` §4.4: otomatik yedeğin uzak kopyası
+yalnız FTP ve S3'e gidiyordu; KOBİ'lerin çoğunda ikisi de yok, ama Google,
+Microsoft ya da Dropbox hesabı var. Sunucudan bağımsız, müşterinin kendi
+bulutunda duran bir kopya barındırma işinin parçası.
+
+**Ne değişti.**
+
+- `pg_backup_remote_type()` beş tür tanıyor: `ftp`, `s3`, `gdrive`,
+  `onedrive`, `dropbox` (`pg_backup_remote_types()`, ayar JSON'undaki sıra).
+  Bulut türünün ayarı yalnız `connection_id` ve `folder`; izin bağlı hesapta
+  (`connect_accounts`) kalıyor, ikinci bir belirteç deposu yok. Yeni şema
+  adımı yok: ayar mevcut `config.backup_remote_settings` şifreli JSON'unda.
+- Yeni amaç `includes/connect/purposes/backup.php` (sahibi site). Kapsamlar
+  dar: Drive `drive.file` (hassas değil, Google doğrulaması istemiyor;
+  uygulama yalnız kendi açtığı dosyaları görür), OneDrive
+  `Files.ReadWrite.AppFolder`, Dropbox `files.metadata.read` +
+  `files.content.write` (uygulama klasörü).
+- Yeni sağlayıcı `includes/connect/providers/dropbox.php`: #295'in
+  `'nonce' => false` ve `'revoke_auth' => 'bearer'` bayraklarını kullanıyor,
+  `token_access_type=offline` ile süresiz refresh token alıyor. `account`
+  amacı Dropbox'u da listeliyor, böylece Bağlı hesaplar ekranındaki
+  "Yeniden bağla" Dropbox hesabında da çalışıyor.
+- `includes/fn/backup_cloud.php` (her istekte yüklü; `pg_backup_remote_normalize()`
+  klasör kuralını oradan okuyor): arşiv 10 MiB parçalar hâlinde gider
+  (Drive'ın 256 KiB, Graph'ın 320 KiB katı). Drive: klasör bulunur ya da
+  açılır, sürdürülebilir yükleme, 308 cevabındaki `Range`'e göre kalan
+  yerden devam; yeni kopya yerleşince aynı adlı eski kopyalar silinir (Drive
+  aynı adı yan yana tutar). OneDrive: uygulama klasörü ve alt klasörler
+  açılır, yükleme oturumu `conflictBehavior=replace`; parçalar oturum
+  adresine erişim belirteci olmadan gider (Graph'ın istediği bu). Dropbox:
+  tek parçalık dosya `files/upload`, büyüğü `upload_session` start /
+  append_v2 / finish, `mode=overwrite`. Her parça `pg_connect_api()` ile
+  gittiği için bir saatlik belirteç uzun yüklemenin ortasında yenilenir.
+- Saklama sayısı buluttaki klasöre de uygulanır (`pg_backup_cloud_prune()`,
+  yalnız başarılı otomatik yedekten sonra): klasör listelenir,
+  `pg_backup_prune_list()` ve silme anında yeniden `pg_backup_is_auto_name()`.
+  Elle konan dosyalar silinmez.
+- Ayarlar › Genel › Yedeklemeler: üç yeni seçenek; her biri hesap seçimi,
+  klasör (boşsa sitenin alan adı) ve "X hesabı bağla" düğmesi. Düğme
+  ayar formunun dışındaki gizli bir formu gönderir (`$pg_settings_modals`).
+  Bağlantıdan `?backup_connect=<tür>` ile dönülür: tür ve yeni hesap
+  seçili gösterilir, kaydetmek kullanıcıda. Kaydederken seçili bulut
+  türünün hesabı (doğru sağlayıcı, sitenin kendi hesabı, `backup` amacı)
+  ve klasör adı denetlenir.
+
+**Bilerek yapılmayan.** Drive'da elle açılmış klasör kullanılmıyor:
+`drive.file` onu göstermiyor, daha geniş kapsam Google doğrulaması ister.
+Yedekten geri yükleme buluttan yapılmıyor; arşiv indirilip Yedekleme
+Yöneticisi'nden yüklenir. OneDrive iş hesaplarında uygulama klasörü
+kiracının ayarına bağlı olabilir.
+
+---
+
 ## 2026.4.10 — Google Search Console: arama verileri ve tek tıkla doğrulama (10.73) (2026-10-13)
 
 **Neden.** Tersine OAuth planının ikinci senaryosu (`docs/_plan_tersine_oauth.md`

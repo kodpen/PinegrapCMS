@@ -2130,6 +2130,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $backup_remote_type = '';
     $backup_remote_ftp = pg_backup_remote_normalize('ftp', array());
     $backup_remote_s3 = pg_backup_remote_normalize('s3', array());
+    $backup_remote_cloud = array();
+
+    foreach (array_keys(pg_backup_cloud_types()) as $backup_cloud_type) {
+        $backup_remote_cloud[$backup_cloud_type] = pg_backup_remote_normalize($backup_cloud_type, array());
+    }
+
     $backup_remote_error = '';
     $backup_remote_sent_at = 0;
 
@@ -2139,6 +2145,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $backup_remote_stored = pg_backup_remote_decode($row['backup_remote_settings']);
         $backup_remote_ftp = $backup_remote_stored['ftp'];
         $backup_remote_s3 = $backup_remote_stored['s3'];
+
+        foreach (array_keys($backup_remote_cloud) as $backup_cloud_type) {
+            $backup_remote_cloud[$backup_cloud_type] = $backup_remote_stored[$backup_cloud_type];
+        }
+
         $backup_remote_error = (string) $row['backup_remote_error'];
         $backup_remote_sent_at = (int) $row['backup_remote_sent_at'];
         unset($backup_remote_stored);
