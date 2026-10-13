@@ -16063,6 +16063,24 @@ a.ws-form-card-head:hover span {
     color: rgb(var(--ws-accent-rgb));
     white-space: nowrap;
 }
+.ws-task-delegate-tag-waiting {
+    color: var(--bs-warning-text-emphasis);
+}
+.ws-task-delegate-waiting {
+    margin-bottom: .5rem;
+    padding: .35rem .6rem;
+    border-radius: .5rem;
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+    font-size: .8rem;
+}
+.ws-task-delegate-changes {
+    margin-top: .45rem;
+}
+.ws-change-link {
+    font-weight: 600;
+    text-decoration: none;
+}
 /* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
 .ws-approval {
   max-width: 34rem;

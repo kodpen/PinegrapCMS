@@ -1984,7 +1984,8 @@ function ws_api_change_record_present($row, $entry)
     $id = (int) $row['record_id'];
 
     // A record deleted by the change is gone: no tag points at it any more.
-    $tagged = ($id > 0) && !(($entry['action'] === 'delete') && ($row['status'] === 'applied'));
+    // A note has no tag at all.
+    $tagged = ($id > 0) && ((string) $types[$type]['tag'] !== '') && !(($entry['action'] === 'delete') && ($row['status'] === 'applied'));
 
     return array(
         'type'       => $type,

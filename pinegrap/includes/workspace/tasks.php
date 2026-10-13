@@ -181,6 +181,7 @@ function ws_task_brief($task, $assignees)
     // (task_links.php); a list hands both in, worked out for all its rows.
     $time = array_key_exists('_ws_time', $task) ? (int) $task['_ws_time'] : (int) (ws_task_time_totals(array($task['id']))[(int) $task['id']] ?? 0);
     $blockers = array_key_exists('_ws_blockers', $task) ? (array) $task['_ws_blockers'] : (ws_task_links_open_map(array($task['id']))[(int) $task['id']] ?? array());
+    $waiting = array_key_exists('_ws_waiting', $task) ? (int) $task['_ws_waiting'] : (int) (ws_task_delegation_waiting_map(array($task['id']))[(int) $task['id']] ?? 0);
 
     return array(
         'id'               => (int) $task['id'],
@@ -212,6 +213,8 @@ function ws_task_brief($task, $assignees)
         // The assistant the task is handed to (delegation.php).
         'delegate'         => (string) ($task['delegate'] ?? ''),
         'delegate_name'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_name($task['delegate']) : '',
+        // What the assistants proposed on it and nobody has decided yet.
+        'waiting_changes'  => $waiting,
     );
 }
 
@@ -896,6 +899,7 @@ function ws_tasks_list($viewer, $filters)
     $assignees = ws_task_assignees_map($ids);
     $times = ws_task_time_totals($ids);
     $blockers = ws_task_links_open_map($ids);
+    $waiting = ws_task_delegation_waiting_map($ids);
     $out = array();
 
     foreach ($rows as $row) {
@@ -907,6 +911,7 @@ function ws_tasks_list($viewer, $filters)
 
         $row['_ws_time'] = $times[$task_id] ?? 0;
         $row['_ws_blockers'] = $blockers[$task_id] ?? array();
+        $row['_ws_waiting'] = $waiting[$task_id] ?? 0;
 
         $brief = ws_task_brief($row, $assignees[$task_id] ?? array());
         $brief['can_edit'] = ws_can_edit_task($viewer, $row, $assignees[$task_id] ?? array());

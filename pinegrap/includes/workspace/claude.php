@@ -1197,7 +1197,8 @@ Work through the queue:
       When the request asks to change, add or delete a record - a product, its stock,
       an order, a customer, an ERP account, a product group and the products in it,
       the channel's summary, a person's role, a page's details, a submitted form,
-      a file, an offer, a calendar event - do not write it and do not look for an endpoint that
+      a file, an offer, a calendar event, a task, a note on a task, a note of the
+      Workspace - do not write it and do not look for an endpoint that
       writes it. Read the record first with
       GET /workspace/claude/requests/{id}/records/{type}/{record_id}: it gives
       every field a change may set, with what the record holds now, read with the
@@ -1276,6 +1277,13 @@ Work through the queue:
           location, start_time, end_time (YYYY-MM-DD HH:MM), all_day, published. A
           new one also takes calendar_ids (a list) and needs name, start_time and
           calendar_ids. A deleted event is gone for good.
+        task (update): title, description, status (todo|doing|waiting|done|
+          cancelled), priority (low|normal|high|urgent), start_date, due_date
+          (YYYY-MM-DD) - for whoever may change the task.
+        task_note (create): text, and task_id (a list of one task). Written on the
+          task in your name.
+        note (create): title, body - a note of the Workspace, kept for the person
+          who applies it.
       The person who asked applies it with one click, with their own rights, and it
       is kept among the channel's decisions. Say in the text what you propose. A 422
       answer names what was wrong with a change: fix it or leave it out and send the
@@ -1294,10 +1302,15 @@ Work through the queue:
       description, dates, status, assignees, its notes, and earlier runs on it
       with what was asked and answered - carry on from there. When
       task.channel_id is set, GET /workspace/channels/{task.channel_id}/context
-      gives its channel. Do not change the task and do not write notes to it.
-      Answer with text only - no tasks, no changes: say what you did, what you
-      found, what you propose and what you need from them. The answer is shown
-      on the task, to the person who asked.
+      gives its channel. Do not write to the task or anything else yourself:
+      what should change - the task's status, priority, dates or description, a
+      note on it (task_note; the task is this one when task_id is left out), a
+      note of the Workspace (note) or any other record - goes into "changes" as
+      above. It waits on the task until the person who asked applies it with
+      one click or sets it aside. Propose no "tasks" and no change to a
+      channel's summary or to many records at once. In the text say what you
+      did, what you found, what you propose and what you need from them. The
+      answer is shown on the task, to the person who asked.
       A request about a page of a visual design has design.page_id set. With
       design.from_editor it was asked in the Visual Page Editor: channel.id is 0,
       message.text is what was asked, and design.node_id is the element that was

@@ -340,6 +340,17 @@ function ws_scheduled_webhook_formats()
 }
 
 /**
+ * The kinds of change a scheduled action does not make: a channel's summary,
+ * and the workspace's own tasks and notes, which an assistant proposes.
+ *
+ * @return string[]
+ */
+function ws_scheduled_change_skipped()
+{
+    return array('channel', 'task', 'task_note', 'note');
+}
+
+/**
  * The kinds of record a rule can look at, and a change can be made to: the
  * kinds of change the workspace knows (a channel's summary aside - it is not
  * something to wait for), and tasks, whose state is the usual thing to wait
@@ -352,7 +363,8 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        if ($type === 'channel') {
+        // A task note or a note is only ever added: nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note'), true)) {
             continue;
         }
 
@@ -724,7 +736,7 @@ function ws_scheduled_js_config($viewer)
     $changes = array();
 
     foreach (ws_change_types() as $type => $info) {
-        if (($type === 'channel') || !ws_change_allowed($viewer, $type, 0)) {
+        if (in_array($type, ws_scheduled_change_skipped(), true) || !ws_change_allowed($viewer, $type, 0)) {
             continue;
         }
 
@@ -1574,7 +1586,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
             $verb = (string) ($action['action'] ?? 'update');
             $id = (int) ($action['id'] ?? 0);
 
-            if (!isset($types[$record_type]) || ($record_type === 'channel')) {
+            if (!isset($types[$record_type]) || in_array($record_type, ws_scheduled_change_skipped(), true)) {
                 return $fail(lang('Choose what kind of record to change.'));
             }
 
