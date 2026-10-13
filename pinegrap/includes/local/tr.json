@@ -22808,5 +22808,10 @@
     "workspace approval request \"{var:1}\" was approved by {var:2} ({var:3}) from outside the team, through the link {var:4}…": "Çalışma Alanı onay isteği \"{var:1}\", ekip dışından {var:2} ({var:3}) tarafından {var:4}… bağlantısıyla onaylandı",
     "workspace approval request \"{var:1}\" was rejected by {var:2} ({var:3}) from outside the team, through the link {var:4}…": "Çalışma Alanı onay isteği \"{var:1}\", ekip dışından {var:2} ({var:3}) tarafından {var:4}… bağlantısıyla reddedildi",
     "Left empty, the link works for {var:1} days. The customer gets no reminder.": "Boş bırakılırsa bağlantı {var:1} gün geçerli olur. Müşteriye hatırlatma gönderilmez.",
-    "View images": "Görselleri aç"
+    "View images": "Görselleri aç",
+    "Show the channel list": "Kanal listesini göster",
+    "Copy all": "Tümünü kopyala",
+    "The browser did not let the text be copied. Select it and copy it from here.": "Tarayıcı metnin kopyalanmasına izin vermedi. Metni buradan seçip kopyalayın.",
+    "Press and hold to select the part you need, then copy it.": "İstediğiniz kısmı basılı tutarak seçin, sonra kopyalayın.",
+    "Select the text": "Metni seç"
 }

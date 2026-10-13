@@ -274,33 +274,139 @@
         }
     }
 
+    // The clipboard API needs a secure page; elsewhere, or when the browser
+    // refuses it, the text is copied from a selected field, and when even
+    // that is refused it opens in a box to be copied by hand.
     function copyText(text) {
         var done = function () { toast(t('copied'), 'success'); };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(function () { fallback(); });
+            navigator.clipboard.writeText(text).then(done).catch(fallback);
             return;
         }
 
         fallback();
 
         function fallback() {
-            var area = el('textarea');
-            area.value = text;
-            area.style.position = 'fixed';
-            area.style.left = '-9999px';
-            document.body.appendChild(area);
-            area.select();
-
-            try {
-                document.execCommand('copy');
+            if (copyFromField(text)) {
                 done();
-            } catch (error) {
-                fail(error);
+            } else {
+                textSheet(text, true);
             }
-
-            area.remove();
         }
+    }
+
+    // execCommand('copy') copies the selection, so the text goes into a field
+    // for a moment. iOS selects a field's text only with setSelectionRange
+    // and zooms in on one under 16px. An open modal or drawer takes the focus
+    // back from anything outside it, so the field goes inside that.
+    function copyFromField(text, host) {
+        var area = el('textarea');
+        var copied = false;
+
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.cssText = 'position:fixed;top:0;left:-9999px;font-size:16px;';
+        (host || document.querySelector('.modal.show .modal-content, .offcanvas.show') || document.body).appendChild(area);
+        area.select();
+        area.setSelectionRange(0, text.length);
+
+        try {
+            copied = document.execCommand('copy');
+        } catch (error) {
+            copied = false;
+        }
+
+        area.remove();
+
+        return copied;
+    }
+
+    // What a message says as it reads on the screen: its lines, list items and
+    // table rows each on a line of their own. innerText follows the layout,
+    // so the markup is laid out off screen for a moment.
+    function readableText(markup) {
+        var box = el('div');
+
+        box.innerHTML = markup || '';
+
+        // A form's card under the text is drawn from the submission; it is
+        // not part of what was written.
+        Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card'), function (card) {
+            card.parentNode.removeChild(card);
+        });
+
+        box.style.cssText = 'position:fixed;top:0;left:-9999px;width:40rem;';
+        document.body.appendChild(box);
+
+        var text = box.innerText || box.textContent || '';
+
+        box.remove();
+
+        return text.replace(/[ \t\u00a0]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    var copyModal = null;
+
+    // A text in a box to select and copy by hand. On a phone the long press
+    // on a message opens its menu, so it cannot also select words there; and
+    // a browser that refuses to copy still lets the person copy from here.
+    function textSheet(text, refused) {
+        if (!copyModal) {
+            copyModal = el('div', 'modal fade ws-copy-modal');
+            copyModal.tabIndex = -1;
+            copyModal.innerHTML = '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">'
+                + '<div class="modal-header py-2"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+                + '<div class="modal-body"><p class="small text-body-secondary mb-2" data-ws-copy-note></p><textarea class="form-control ws-copy-area" readonly></textarea></div>'
+                + '<div class="modal-footer py-2"><button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-copy-all></button></div>'
+                + '</div></div>';
+            document.body.appendChild(copyModal);
+        }
+
+        var modal = bootstrap.Modal.getOrCreateInstance(copyModal);
+        var body = copyModal.querySelector('.modal-body');
+        var note = copyModal.querySelector('[data-ws-copy-note]');
+        var area = copyModal.querySelector('.ws-copy-area');
+        var all = clear(copyModal.querySelector('[data-ws-copy-all]'));
+
+        copyModal.querySelector('.modal-title').textContent = t('select_text');
+        copyModal.querySelector('.btn-close').setAttribute('aria-label', t('close'));
+        note.textContent = refused ? t('copy_refused') : t('copy_select_help');
+        area.value = text;
+        area.rows = Math.min(10, Math.max(3, text.split('\n').length + 1));
+        all.appendChild(icon('bi-copy', 'me-1'));
+        all.appendChild(document.createTextNode(t('copy_all')));
+
+        // Everything selected, for the person to copy with the system's own
+        // menu when the browser refuses the button too.
+        function byHand() {
+            note.textContent = t('copy_refused');
+            area.focus();
+            area.setSelectionRange(0, text.length);
+        }
+
+        function copied() {
+            modal.hide();
+            toast(t('copied'), 'success');
+        }
+
+        all.onclick = function () {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(copied, function () {
+                    if (copyFromField(text, body)) {
+                        copied();
+                    } else {
+                        byHand();
+                    }
+                });
+            } else if (copyFromField(text, body)) {
+                copied();
+            } else {
+                byHand();
+            }
+        };
+
+        modal.show();
     }
 
     function addDays(date, days) {
@@ -1397,6 +1503,22 @@
         }
 
         return box;
+    }
+
+    // The way back to the channel list on a phone, where the list and the
+    // channel take turns on the screen. A back arrow with its name, so it is
+    // not read as a second main menu button under the panel's own.
+    function channelsToggle(root) {
+        var toggle = el('button', 'ws-channels-toggle d-md-none');
+
+        toggle.type = 'button';
+        toggle.title = t('channels_show');
+        toggle.setAttribute('aria-label', toggle.title);
+        toggle.appendChild(icon('bi-chevron-left'));
+        toggle.appendChild(el('span', 'ws-channels-toggle-label', t('channels')));
+        toggle.addEventListener('click', function () { root.classList.add('ws-show-side'); });
+
+        return toggle;
     }
 
     // Gives a node its menu: right click, and a long press on a phone. A part
@@ -6055,9 +6177,7 @@
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
-            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
-            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
-            head.appendChild(toggle);
+            head.appendChild(channelsToggle(self.root));
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -6186,9 +6306,7 @@
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
-            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
-            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
-            head.appendChild(toggle);
+            head.appendChild(channelsToggle(self.root));
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -6910,9 +7028,7 @@
 
             // Header: name, topic, the customer, the people, the tools.
             var head = el('div', 'ws-head');
-            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
-            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
-            head.appendChild(toggle);
+            head.appendChild(channelsToggle(self.root));
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -7782,7 +7898,7 @@
             return node;
         },
 
-        plain: function (markup, full) {
+        plain: function (markup) {
             var box = document.createElement('div');
             box.innerHTML = markup || '';
 
@@ -7793,7 +7909,7 @@
             });
 
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
-            return (!full && text.length > 90) ? text.slice(0, 89) + '…' : text;
+            return (text.length > 90) ? text.slice(0, 89) + '…' : text;
         },
 
         findMessage: function (id) {
@@ -7849,6 +7965,22 @@
                         description: message.raw || ''
                     }), function () { self.sync(); });
                 } });
+            }
+
+            // The text as it reads, with its line breaks, to paste elsewhere.
+            // It is a tool so a phone shows it with a tap on the message; a
+            // phone can also open it in a box to select a part of it, since
+            // the long press there opens this menu instead of selecting.
+            if (message.html) {
+                items.push({ icon: 'bi-copy', label: t('copy_text'), tool: true, action: function () {
+                    copyText(readableText(message.html));
+                } });
+
+                if (touchScreen()) {
+                    items.push({ icon: 'bi-cursor-text', label: t('select_text'), action: function () {
+                        textSheet(readableText(message.html), false);
+                    } });
+                }
             }
 
             // A room of its own beside the channel to talk this message over.
@@ -7920,9 +8052,6 @@
             }
 
             items.push('-');
-            items.push({ icon: 'bi-clipboard', label: t('copy_text'), action: function () {
-                copyText(self.plain(message.html, true));
-            } });
             items.push({ icon: 'bi-link-45deg', label: t('copy_link'), action: function () {
                 copyText(absoluteUrl(CFG.urls.workspace + '?channel=' + self.channel.id + '&message=' + message.id));
             } });

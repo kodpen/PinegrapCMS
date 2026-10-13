@@ -84,6 +84,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: telefonda mesaj kopyalama, ayırt edilen kanal listesi düğmesi (2026-10-13)
+
+**Neden.** Ürün sahibi telefonda bir mesajı kopyalayamadı. "Metni kopyala"
+mesaj menüsünün alt bölümündeydi: telefonda ya mesaja dokunup araç
+satırındaki "…" ile ya da basılı tutarak açılan uzun menünün sonundan
+bulunuyordu. Basılı tutma menüyü açtığı için (`onContext()`, Android'in
+`contextmenu` olayı iptal edilir) tarayıcının kendi metin seçimi de
+çalışmıyordu. Kopyalanan metin `plain(html, true)` ile tek satıra
+iniyordu (`\s+` → boşluk), satır sonları ve liste maddeleri birleşiyordu.
+Aynı ekran görüntüsünde ikinci sorun: telefonda Çalışma Alanı başlığındaki
+kanal listesi düğmesi `bi-list` (üç çizgi) simgesiydi ve panelin ana menü
+düğmesinin tam altında duruyordu; ikisi karışıyordu.
+
+**Ne değişti.** Yalnız `assets/js/workspace.js` (+ `workspace.min.js`),
+`assets/css/backend.src.css`, `includes/workspace/screen.php` metinleri.
+- "Metni kopyala" (`bi-copy`) `tool: true` ile araç satırına çıktı ve
+  mesaj menüsünde Yanıtla / Görev yap'ın hemen altına taşındı; metni
+  olmayan (yalnız dosya) mesajda görünmez. Telefonda araç satırı mesaja
+  dokununca açılır; satır sığmazsa artık alta kayar (`flex-wrap`).
+- Yeni `readableText()`: mesajın HTML'i bir an ekran dışına yerleştirilip
+  `innerText` ile okunur; satırlar, liste maddeleri ve tablo satırları
+  kendi satırlarında kalır, form kartı (`.ws-form-card`) çıkarılır.
+- Dokunmatik ekranda (`touchScreen()`) menüye "Metni seç" eklendi:
+  `textSheet()` metni salt okunur bir `textarea` ile kipte açar; basılı
+  tutup istenen kısım seçilir, "Tümünü kopyala" da vardır. Alan 16px
+  (iOS yakınlaştırmasın).
+- `copyText()`: pano API'si reddederse (`catch`) ya da güvenli bağlam
+  yoksa `copyFromField()` denenir; `execCommand('copy')`'nin dönüş değeri
+  artık okunur (önceden false dönse de "Kopyalandı" yazıyordu), iOS için
+  `setSelectionRange()` ve `readonly`, açık bir kip ya da çekmece varsa
+  geçici alan onun içine konur (Bootstrap odak tuzağı seçimi geri
+  alıyordu). İkisi de reddedilirse metin `textSheet()` kipinde seçilmeye
+  hazır açılır. Bu iyileştirme bağlantı/numara kopyalayan bütün menülere
+  de gelir.
+- `plain()`'in yalnız kopyalama için duran `full` bayrağı kaldırıldı.
+- Kanal listesi düğmesi üç yerde (`drawCenter`, ana sayfa, zamanlanmış
+  mesajlar) aynı satırdı; tek `channelsToggle()` yardımcısına indi.
+  Görünüş: `bi-chevron-left` + "Kanallar" yazılı, Çalışma Alanı vurgu
+  renginde yuvarlak düğme (`.ws-channels-toggle`, yalnız `md` altında);
+  360px'ten dar ekranda yalnız ok kalır. `title`/`aria-label` "Kanal
+  listesini göster".
+
+Yeni metinler (tr.json): `Show the channel list`, `Copy all`,
+`The browser did not let the text be copied. Select it and copy it from
+here.`, `Press and hold to select the part you need, then copy it.`,
+`Select the text`.
+
+**Bilerek yapılmayan.** Basılı tutma yine menüyü açar, tarayıcının kendi
+seçimine dönülmedi (menü telefonda tepki ve diğer eylemlerin tek yolu);
+kısmi kopyalama "Metni seç" kutusundan yapılır. Misafir odası
+(`workspace_guest.js`) mesaj menüsü taşımadığı için oradaki seçim zaten
+tarayıcınındır, dokunulmadı.
+
+**Doğrulama.** Sandbox'ta Playwright ile 412×915 dokunmatik görünüm:
+başlıkta "‹ Kanallar" görünür, ana menü düğmesinden ayrı; dokununca liste
+açılır. Çok satırlı mesajda araç satırındaki kopyalama düğmesi panoya
+satır sonlarıyla yazdı; basılı tutma menüsünde "Metni kopyala" ve "Metni
+seç" üst sırada; "Metni seç" kutusu aynı metni gösterdi; pano API'si
+kaldırılıp `execCommand` reddettirildiğinde kutu "Tarayıcı … izin
+vermedi" notuyla açıldı. 1366px masaüstünde düğme gizli, üzerine gelince
+çıkan araç çubuğunda kopyalama düğmesi var, sağ tık menüsünde "Metni seç"
+yok. `php tools/lint.php`, `check_lang.php`, `tools/test.php`,
+`build_js.php --check` temiz.
+
+---
+
 ## 2026.4.10 — Düğmeler "Kaydediliyor…" yazıp bekletmiyor; çift gönderim formda önleniyor (2026-10-13)
 
 **Sorun.** Ürün sahibinin hata kanalından: panel düğmeleri basılınca
