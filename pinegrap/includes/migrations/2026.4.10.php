@@ -31,6 +31,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_delegation();   // 10.80
 	upgrade_2026_4_10_workspace_calendar_feeds(); // 10.81
 	upgrade_2026_4_10_erp_purchase_orders();    // 10.58
+	upgrade_2026_4_10_workspace_mcp();          // 10.82
 
 }
 
@@ -367,5 +368,82 @@ function upgrade_2026_4_10_erp_purchase_orders() {
 	}
 
 	install_note('ERP: purchase orders to suppliers, with their own number, printed and e-mailed, turned into purchase invoice drafts as the goods arrive (in one go or in parts). An order moves no money and no stock; the purchase invoice does.');
+
+}
+
+// MCP servers in the Workspace (2026.4.10, 10.82; includes/mcp/client.php,
+// includes/workspace/mcp.php).
+//
+// An administrator adds another service's MCP server under an alias of its
+// own (@github, @docs); the site then speaks to that server as a client.
+// ws_mcp_servers holds one row per server. alias is what people write and is
+// unique. auth_kind says how the site proves who it is: no credential, a
+// bearer token, a header of the service's own, user name and password, or an
+// OAuth connection; secret is that credential as JSON encrypted with the
+// site's key, "<ciphertext>:<iv>", and never shown again. protocol and
+// session_id are what the last handshake agreed on, so a request does not
+// shake hands again every time (session_id stays '' for a server of the
+// current generation, which has none). tools is the server's tool list as it
+// was last read (JSON), tools_at when, tools_ttl for how long the server said
+// it may be kept. tool_rules is the administrator's word on each tool, by
+// name: a tool left out of it is not used.
+//
+// ws_mcp_calls is the record of every tool called: by whom, for which
+// request or channel, with which arguments, and how it ended. A call that
+// waits for somebody's approval is a row in status pending.
+//
+// ws_ai_requests.mcp_server_id ties a request written to an alias to its
+// server: Pinegrap AI answers it with that server's tools only.
+function upgrade_2026_4_10_workspace_mcp() {
+
+	install_create_table('ws_mcp_servers', "CREATE TABLE ws_mcp_servers (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		alias        VARCHAR(32) NOT NULL,
+		name         VARCHAR(100) NOT NULL DEFAULT '',
+		url          VARCHAR(500) NOT NULL DEFAULT '',
+		auth_kind    ENUM('none','bearer','header','basic','oauth') NOT NULL DEFAULT 'none',
+		secret       TEXT NULL,
+		status       ENUM('active','disabled') NOT NULL DEFAULT 'active',
+		protocol     VARCHAR(20) NOT NULL DEFAULT '',
+		session_id   VARCHAR(255) NOT NULL DEFAULT '',
+		server_info  VARCHAR(200) NOT NULL DEFAULT '',
+		instructions TEXT NULL,
+		tools        MEDIUMTEXT NULL,
+		tools_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		tools_ttl    INT UNSIGNED NOT NULL DEFAULT 0,
+		tool_rules   TEXT NULL,
+		last_error   VARCHAR(255) NOT NULL DEFAULT '',
+		last_used    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_alias (alias)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_mcp_calls', "CREATE TABLE ws_mcp_calls (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		server_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		tool         VARCHAR(128) NOT NULL DEFAULT '',
+		arguments    MEDIUMTEXT NULL,
+		via          ENUM('ai','form') NOT NULL DEFAULT 'ai',
+		requested_by INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		request_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		status       ENUM('pending','done','failed','dismissed') NOT NULL DEFAULT 'done',
+		approved_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		error        VARCHAR(255) NOT NULL DEFAULT '',
+		duration_ms  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		finished_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_server (server_id, id),
+		KEY idx_status (status, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_ai_requests', 'mcp_server_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: an administrator can add other services\' MCP servers under an alias (Workspace Settings › MCP servers) and choose which of their tools may be used.');
 
 }

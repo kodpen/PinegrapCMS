@@ -125,6 +125,11 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             truncating that answer loses which SKU failed.
 //   agent     the word after the version in the user agent, for the receiver's
 //             log
+//   response_headers
+//             true to have the answer's headers back as 'headers', by lower-
+//             case name (the last one of a repeated name wins). An MCP server
+//             says in them which kind of body it sent and which session the
+//             client is in.
 //
 // Everything the webhook client refuses, this refuses: an address inside the
 // network, a redirect to an address nothing checked, an unverified certificate.
@@ -133,6 +138,12 @@ function api_http_request($method, $url, $options = array()) {
 	$started = microtime(true);
 
 	$result = array('ok' => false, 'status' => 0, 'body' => '', 'error' => '', 'duration_ms' => 0);
+
+	if (!empty($options['response_headers'])) {
+
+		$result['headers'] = array();
+
+	}
 
 	$method   = strtoupper((string)$method);
 	$body     = isset($options['body'])     ? $options['body']     : null;
@@ -200,6 +211,32 @@ function api_http_request($method, $url, $options = array()) {
 	// The address that was checked is the address that is called.
 	curl_setopt($handle, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
 
+	$received = array();
+
+	if (!empty($options['response_headers'])) {
+
+		curl_setopt($handle, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$received) {
+
+			// A status line starts the headers over: an interim answer (100
+			// Continue) has headers of its own that are not the answer's.
+			if (stripos($line, 'HTTP/') === 0) {
+
+				$received = array();
+
+			} elseif (strpos($line, ':') !== false) {
+
+				list($name, $value) = explode(':', $line, 2);
+
+				$received[strtolower(trim($name))] = trim($value);
+
+			}
+
+			return strlen($line);
+
+		});
+
+	}
+
 	$response = curl_exec($handle);
 
 	if ($response === false) {
@@ -221,6 +258,12 @@ function api_http_request($method, $url, $options = array()) {
 	}
 
 	curl_close($handle);
+
+	if (!empty($options['response_headers'])) {
+
+		$result['headers'] = $received;
+
+	}
 
 	$result['duration_ms'] = (int)round((microtime(true) - $started) * 1000);
 
