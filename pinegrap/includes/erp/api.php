@@ -13,8 +13,10 @@
  * module has no endpoints, no events and no permission to hand out.
  *
  * The handlers and the presenters are in api_resources.php next to this file,
- * the ones that write invoices and quotes in api_documents.php, and the ones
- * that write delivery notes, stock counts and minimums in api_stock.php; this
+ * the ones that write invoices and quotes in api_documents.php, the ones that
+ * write delivery notes, stock counts and minimums in api_stock.php, transfers
+ * and cheques in api_cash.php, the profit, cash flow and dashboard figures in
+ * api_reports.php, and the purchase orders' in api_purchase_orders.php; this
  * one stays a table, the way schema.php is a table.
  *
  * Two permissions, mirroring the panel: 'erp' is the ledger - accounts,
@@ -44,6 +46,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_documents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_reports.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_purchase_orders.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -140,6 +145,11 @@ function erp_webhook_events()
         'erp.quote.invoiced' => 'An ERP sales quote was turned into an invoice draft at the prices quoted',
         'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on. Also carries signer_name and signed_at',
         'erp.stock_count.applied' => 'An ERP stock count was applied: the store\'s stock of every product on it was set to what was counted. Carries line_count and changed (the products whose stock moved)',
+        'erp.purchase_order.created' => 'An ERP purchase order to a supplier was written and took its number',
+        'erp.purchase_order.sent' => 'An ERP purchase order went to the supplier (e-mailed, or marked sent by hand); only the first time',
+        'erp.purchase_order.received' => 'Everything on an ERP purchase order came in: the purchase invoices made from it carry every line in full',
+        'erp.purchase_order.cancelled' => 'An ERP purchase order was cancelled',
+        'erp.purchase_order.reopened' => 'A cancelled ERP purchase order was opened again; status is what its purchase invoices give it',
     );
 }
 
@@ -164,6 +174,7 @@ function erp_openapi_objects()
         'ErpExpenseCategory' => 'erp_api_expense_category_schema',
         'ErpQuote' => 'erp_api_quote_schema',
         'ErpQuoteSignature' => 'erp_api_quote_signature_schema',
+        'ErpPurchaseOrder' => 'erp_api_purchase_order_schema',
         'ErpCheque' => 'erp_api_cheque_schema',
         'ErpStockLevel' => 'erp_api_stock_level_schema',
         'ErpStockMove' => 'erp_api_stock_move_schema',
@@ -171,6 +182,11 @@ function erp_openapi_objects()
         'ErpStockCountItem' => 'erp_api_stock_count_item_schema',
         'ErpAgingReport' => 'erp_api_aging_report_schema',
         'ErpVatReport' => 'erp_api_vat_report_schema',
+        'ErpCashTransfer' => 'erp_api_cash_transfer_schema',
+        'ErpProfitReport' => 'erp_api_profit_report_schema',
+        'ErpCashflowReport' => 'erp_api_cashflow_report_schema',
+        'ErpDashboard' => 'erp_api_dashboard_schema',
+        'ErpDashboardCash' => 'erp_api_dashboard_cash_schema',
     );
 }
 
@@ -206,6 +222,17 @@ function erp_api_routes()
         'withholding_code' => 'string',
         'withholding_rate' => 'number',
     ), 'description' => 'The lines, in order. unit_price is required: minor units of the document currency, before tax and discount. quantity is a decimal number written with a point (1.5), 1 when left out. discount_rate, tax_rate, tax2_rate and withholding_rate are percentages (20 for 20%). product_id ties the line to a product, whose name and tax rate fill description and tax_rate when they are left out; without a product both are required. unit is the UN/ECE unit code, C62 (piece) when left out. withholding_code is the VAT withholding code (601 and the like); a code on the list carries its own share, withholding_rate is read only for one that is not. tax2_rate only where the store names a second tax. Totals cannot be sent: the answer carries them.');
+
+    // The same lines, tied to a purchase order's lines: an invoice draft made
+    // from an order names the order line each of its lines delivers, and an
+    // order names its own lines, so a line sent back stays the same line.
+    $draft_lines = $lines;
+    $draft_lines['of']['purchase_order_line'] = 'string';
+    $draft_lines['description'] .= ' On a purchase draft made from a purchase order (purchase_order_id), purchase_order_line is the key of the order line the line delivers, as the draft gives it: send it back with each line, or the order no longer counts that line as coming in.';
+
+    $order_lines = $lines;
+    $order_lines['of']['key'] = 'string';
+    $order_lines['description'] .= ' key is the line\'s own key, as the order gives it (lines[].key): send it back with each line that stays, so the purchase invoices and drafts made from the order keep counting against it. A line without one is a new line and is given a key.';
 
     return array(
 
@@ -360,6 +387,7 @@ function erp_api_routes()
             'params' => array_merge(array(
                 array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
                 array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The store order the invoice was written from.'),
+                array('name' => 'purchase_order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The purchase order the purchase invoice was made from. Its drafts too when status=draft is asked for.'),
                 array('name' => 'number', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Exact match on the full document number, PGF2026000000012 for example.'),
                 array('name' => 'direction', 'in' => 'query', 'type' => 'enum', 'values' => array('sales', 'purchase')),
                 array('name' => 'doc_type', 'in' => 'query', 'type' => 'enum', 'values' => array('invoice', 'return')),
@@ -445,7 +473,7 @@ function erp_api_routes()
                 array('name' => 'supplier_invoice_no', 'in' => 'body', 'type' => 'string', 'max_length' => 32),
                 array('name' => 'supplier_invoice_date', 'in' => 'body', 'type' => 'datetime', 'nullable' => true),
                 array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000),
-                $lines,
+                $draft_lines,
             ),
         ),
 
@@ -697,6 +725,26 @@ function erp_api_routes()
             'description' => 'Where money is kept, with the live balance of each. An integration reads this once to learn the cash_account_id it posts receipts to.',
             'params' => array(
                 array('name' => 'active', 'in' => 'query', 'type' => 'bool', 'description' => 'Limit to active or inactive tills. Both when left out.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.cash_transfers.create',
+            'method' => 'POST',
+            'path' => '/erp/cash-transfers',
+            'scope' => 'erp_cash:write',
+            'handler' => 'erp_api_cash_transfers_create',
+            'dry_run' => true,
+            'returns' => 'ErpCashTransfer',
+            'summary' => 'Move money between two tills',
+            'description' => 'Records a transfer the way the Cash and Bank screen does: the amount leaves one till and arrives in the other, dated the same day, and nobody\'s account changes - cash taken to the bank, a card settlement moved to the current account. Both tills must be active and kept in one currency. In a foreign currency the rate recorded for the day is used; exchange_rate stands in only when none is recorded. The day cannot be in a locked period. The application owner must hold the ERP cash right. A transfer cannot be taken back, here or in the panel; a wrong one is put right with a transfer the other way. Send an Idempotency-Key so a retried request does not move the money twice.',
+            'params' => array(
+                array('name' => 'from_cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The till the money leaves.'),
+                array('name' => 'to_cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The till the money arrives in.'),
+                array('name' => 'amount', 'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero, in the tills\' currency.'),
+                array('name' => 'date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day of the transfer. Today when left out.'),
+                array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shows on both tills\' movements.'),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of the tills\' currency, used only when no rate is recorded for the day.'),
             ),
         ),
 
@@ -1128,6 +1176,149 @@ function erp_api_routes()
             ),
         ),
 
+        /* ----- Purchase orders --------------------------------------------- */
+
+        array(
+            'id' => 'erp.purchase_orders.list',
+            'method' => 'GET',
+            'path' => '/erp/purchase-orders',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_purchase_orders_list',
+            'returns' => array('list' => 'ErpPurchaseOrder'),
+            'summary' => 'List purchase orders',
+            'description' => 'What the store ordered from its suppliers, with the lines, the totals and what has come against each line. A purchase order moves no money, no stock and no tax: the goods come in on the purchase invoices made from it, and those move stock and cost. status is open (not sent yet), sent (it went to the supplier), partial (some of the goods came in), received (all of them) or cancelled. partial and received are read from the issued purchase invoices made from the order; a cancelled invoice counts for nothing and a draft counts once it is issued. Per line, received_quantity is what came, drafted_quantity what is on drafts and outstanding_quantity what has not come yet. late is true while goods are still awaited past expected_date. Cursor paged by the moment the record last changed: a purchase invoice issued or cancelled against an order, or a draft made from it, changes it.',
+            'params' => array_merge(array(
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'sent', 'partial', 'received', 'cancelled', 'waiting'), 'description' => 'waiting is open, sent and partial together: the orders whose goods have not all come.'),
+                array('name' => 'late', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the orders still waiting for goods past expected_date (true), or all the others (false).'),
+                array('name' => 'account_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The supplier card.'),
+                array('name' => 'number', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Exact match on the full purchase order number.'),
+                array('name' => 'issued_from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Order date on or after this day.'),
+                array('name' => 'issued_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Order date on or before this day.'),
+                array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders changed at or after this moment.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.get',
+            'method' => 'GET',
+            'path' => '/erp/purchase-orders/{id}',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_purchase_orders_get',
+            'returns' => 'ErpPurchaseOrder',
+            'summary' => 'One purchase order',
+            'description' => 'The order with what has come against each line, and the purchase invoices and drafts made from it (invoices).',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.document',
+            'method' => 'GET',
+            'path' => '/erp/purchase-orders/{id}/document',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_purchase_orders_document',
+            'returns' => 'ErpDocument',
+            'summary' => 'The purchase order as a PDF',
+            'description' => 'The printed order in the store\'s purchase order template, the same file the panel downloads and e-mails, base64 encoded inside the JSON answer.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.create',
+            'method' => 'POST',
+            'path' => '/erp/purchase-orders',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_purchase_orders_create',
+            'dry_run' => true,
+            'returns' => 'ErpPurchaseOrder',
+            'summary' => 'Write a purchase order',
+            'description' => 'Writes an order to a supplier, the way the panel\'s purchase order form does: it takes the next number of the purchase order series and is open until it is sent. A purchase order moves no money, no stock and no tax. The ERP works out every line\'s discount, tax and withholding and the totals; they come back in the answer, and every line is given a key of its own (lines[].key). Announced as erp.purchase_order.created. Send an Idempotency-Key so a retried call does not write two orders.',
+            'params' => array(
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The supplier card, see /erp/accounts.'),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The order date. Today when left out.'),
+                array('name' => 'expected_date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day the goods are expected. None when left out.'),
+                array('name' => 'currency', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The store currency when left out; another one only when the ERP has foreign currency switched on.'),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of currency. The rate recorded for the order date when left out.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'Printed on the order.'),
+                array_merge($lines, array('required' => true)),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.update',
+            'method' => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path' => '/erp/purchase-orders/{id}',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_purchase_orders_update',
+            'dry_run' => true,
+            'returns' => 'ErpPurchaseOrder',
+            'summary' => 'Change a purchase order',
+            'description' => 'Changes only the fields sent; lines, when sent, replace every line: send each line that stays with its key. The number stays. Only an open or sent order can be changed; one whose goods have started to come in, one received in full and a cancelled one answer 409 purchase_order_not_editable. PATCH is accepted beside POST.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+                array('name' => 'issue_date', 'in' => 'body', 'type' => 'datetime'),
+                array('name' => 'expected_date', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string clears it.'),
+                array('name' => 'currency', 'in' => 'body', 'type' => 'string', 'max_length' => 3),
+                array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'description' => 'Store currency per one unit of currency. 0 takes the rate recorded for the order date.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 5000),
+                $order_lines,
+            ),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.status',
+            'method' => 'POST',
+            'path' => '/erp/purchase-orders/{id}/status',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_purchase_orders_status',
+            'dry_run' => true,
+            'returns' => 'ErpPurchaseOrder',
+            'summary' => 'Mark a purchase order sent, cancelled or open again',
+            'description' => 'sent records that the order went to the supplier by phone or on paper (POST /erp/purchase-orders/{id}/email marks it sent by itself); the first time is kept. It is taken from any order but a cancelled one. cancelled is taken from any order but one received in full; the order keeps its number and lines, and what already came in stays on its purchase invoices. open takes back a cancelled order, which goes back to the status its purchase invoices give it. A move the order\'s status does not allow answers 409 purchase_order_status_not_allowed. Announced as erp.purchase_order.sent (the first time only), erp.purchase_order.cancelled or erp.purchase_order.reopened.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('sent', 'cancelled', 'open'), 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.invoice',
+            'method' => 'POST',
+            'path' => '/erp/purchase-orders/{id}/invoice',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_purchase_orders_invoice',
+            'dry_run' => true,
+            'returns' => 'ErpInvoice',
+            'summary' => 'Make a purchase invoice draft from a purchase order',
+            'description' => 'Writes a purchase invoice draft for what has not come yet and is not already on a draft: the order\'s prices, today\'s date, the supplier\'s payment term, the order\'s number in its notes, and on each line the key of the order line it delivers (lines[].purchase_order_line). Repeatable, one draft per delivery. Match it to the supplier\'s bill with POST /erp/invoices/{id} (its number and date, the quantities that came), then POST /erp/invoices/{id}/issue: stock and cost move then, and the order turns partial or received. A cancelled order, one received in full and one whose every line is already on an invoice or a draft answer 409 purchase_order_not_invoiceable. In another currency the rate recorded for today is used, or the one of the day the draft is issued. Deleting the draft gives its quantities back to the order. The answer is the draft.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.purchase_orders.email',
+            'method' => 'POST',
+            'path' => '/erp/purchase-orders/{id}/email',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_purchase_orders_email',
+            'dry_run' => true,
+            'returns' => array('purchase_order_id' => 'integer', 'to' => 'string[]'),
+            'summary' => 'E-mail a purchase order',
+            'description' => 'Sends the order to the supplier with its PDF attached, from the store\'s address, records it with the order the way the panel does and marks the order sent. A cancelled order answers 409 purchase_order_not_sendable. An e-mail cannot be called back: try it with X-Dry-Run first. A send the mail server refuses answers 503 and is recorded as failed.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'to', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'Addresses, separated by commas. The account\'s invoice address, or its main address, when left out.'),
+                array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The store\'s default subject when left out.'),
+                array('name' => 'message', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'The covering text. A request to confirm the order, with the expected date, when left out.'),
+            ),
+        ),
+
         /* ----- Cheques and notes ------------------------------------------- */
 
         array(
@@ -1160,6 +1351,52 @@ function erp_api_routes()
             'summary' => 'One cheque or promissory note',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.cheques.create',
+            'method' => 'POST',
+            'path' => '/erp/cheques',
+            'scope' => 'erp_cash:write',
+            'handler' => 'erp_api_cheques_create',
+            'dry_run' => true,
+            'returns' => 'ErpCheque',
+            'summary' => 'Record a cheque or a promissory note',
+            'description' => 'Records one the way the cheques screen does. A received one is a collection from the account into the till it is kept in (the portfolio), so the customer\'s debt comes down the day it is taken, and it waits there with status portfolio. A given one is a payment to the account out of the till for given cheques, with status given, until the bank pays it. The amount is in the till\'s currency, at the rate of the day. The day cannot be in a locked period. The application owner must hold the ERP cash right. Move it on with POST /erp/cheques/{id}/step. Send an Idempotency-Key: a cheque recorded twice is a debt taken off twice.',
+            'params' => array(
+                array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('received', 'given'), 'required' => true, 'description' => 'received from a customer, or given to a supplier.'),
+                array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('cheque', 'note'), 'description' => 'cheque or promissory note. cheque when left out.'),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The customer it came from, or the supplier it was given to.'),
+                array('name' => 'cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The till it is kept in: the portfolio for a received one, the till for given cheques for a given one.'),
+                array('name' => 'amount', 'in' => 'body', 'type' => 'money', 'required' => true, 'description' => 'Minor units, greater than zero, in the till\'s currency.'),
+                array('name' => 'due_date', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'The day it falls due.'),
+                array('name' => 'date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day it was taken or given. Today when left out.'),
+                array('name' => 'serial_no', 'in' => 'body', 'type' => 'string', 'max_length' => 40),
+                array('name' => 'bank_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'branch', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'drawer', 'in' => 'body', 'type' => 'string', 'max_length' => 150, 'description' => 'Who wrote it, when that is not the account.'),
+                array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.cheques.step',
+            'method' => 'POST',
+            'path' => '/erp/cheques/{id}/step',
+            'scope' => 'erp_cash:write',
+            'handler' => 'erp_api_cheques_step',
+            'dry_run' => true,
+            'returns' => 'ErpCheque',
+            'summary' => 'Take the next step of a cheque or note',
+            'description' => 'The steps of the cheque screen, each dated on its own day; none can be taken back. deposit hands a received one to the bank for collection (portfolio to deposited; no money moves). collect records the bank collecting it: the amount moves from the portfolio to the bank account (portfolio or deposited to collected). endorse passes a received one on to a supplier, account_id: a payment to that account out of the portfolio (portfolio to endorsed). bounce sends a received one back to the customer: a payment back to them out of the portfolio, so they owe it again (portfolio or deposited to bounced). pay records the bank paying a given one: the amount moves from the bank account to the till for given cheques (given to paid). cash_account_id is the bank account for deposit, collect and pay, the one it was handed to when left out. A step the cheque cannot take from where it is answers 409 cheque_step_not_allowed. The day cannot be in a locked period. The application owner must hold the ERP cash right.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'step', 'in' => 'body', 'type' => 'enum', 'values' => array('deposit', 'collect', 'endorse', 'bounce', 'pay'), 'required' => true),
+                array('name' => 'date', 'in' => 'body', 'type' => 'datetime', 'description' => 'The day of the step. Today when left out.'),
+                array('name' => 'cash_account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'deposit, collect and pay only: the bank account. Not the till the cheque is kept in.'),
+                array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'endorse only, and required for it: the active account it is passed on to, not the one it came from.'),
+                array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 150, 'description' => 'Not for deposit. Added to the cheque\'s notes, and for endorse and bounce to the movement\'s description.'),
             ),
         ),
 
@@ -1342,6 +1579,58 @@ function erp_api_routes()
                 array('name' => 'month', 'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'YYYY-MM.'),
                 array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period, with to.'),
                 array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.reports.profit',
+            'method' => 'GET',
+            'path' => '/erp/reports/profit',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_reports_profit',
+            'returns' => 'ErpProfitReport',
+            'summary' => 'Profit and loss of a period',
+            'description' => 'The panel\'s profit report: what was sold (issued sales invoices less the returns issued in the period), what the goods cost (from the stock moves; a line with no move is costed at the product\'s average cost today and counted in cogs_estimated), the costs on purchase invoices without a product, the expenses, and what is left - by month, by product and by account, highest profit first. A management view in the store currency without VAT, not the accountant\'s books. Margins are percentages, null where there was no revenue. Name a month, or from and to; the current month when neither is sent. A period covers at most two years.',
+            'params' => array(
+                array('name' => 'month', 'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'YYYY-MM.'),
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period, with to.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
+                array('name' => 'orders', 'in' => 'query', 'type' => 'bool', 'description' => 'Also count the completed orders no invoice has been raised for yet, by their order date, the goods at today\'s average cost. Off when left out.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 500, 'default' => 50, 'description' => 'How many product and account rows to list; products_count and accounts_count say how many there are.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.reports.cashflow',
+            'method' => 'GET',
+            'path' => '/erp/reports/cashflow',
+            'scope' => 'erp_cash:read',
+            'handler' => 'erp_api_reports_cashflow',
+            'returns' => 'ErpCashflowReport',
+            'summary' => 'Money in and out of the tills over a period',
+            'description' => 'The panel\'s cash flow report: what came in and went out of the tills, in the store currency, by day, week or month with the running position; the same period till by till; and split by payment method. Across all tills a transfer between two of the store\'s own tills is not a flow and is left out; for one till it is money that arrived or left. A till kept in another currency is counted at its booked base value and its opening balance is not added in (foreign_tills says how many). The period ends today at the latest and covers at most 1100 days; this month so far when nothing is sent. The application owner must hold the ERP cash right.',
+            'params' => array(
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day. The first of the end date\'s month when left out.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day, today at the latest. Today when left out.'),
+                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'week', 'month'), 'description' => 'The row size. Picked from the length of the period when left out: days up to two months, weeks up to about a year, months beyond.'),
+                array('name' => 'cash_account_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One till only. All tills when left out.'),
+            ),
+        ),
+
+        /* ----- Dashboard --------------------------------------------------- */
+
+        array(
+            'id' => 'erp.dashboard',
+            'method' => 'GET',
+            'path' => '/erp/dashboard',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_dashboard',
+            'returns' => 'ErpDashboard',
+            'summary' => 'The figures of the ERP dashboard',
+            'description' => 'What the first screen of the module shows, for a morning summary or an assistant\'s question: what customers owe and the store owes, what of it is late and what falls due within seven days, by age, with the accounts owing the oldest money; this month\'s net sales, profit and expenses; expenses still to pay; how many products are at or below their minimum stock; accounts over their credit limit; open quotes; purchase orders still waiting. cash (what the tills hold, and today\'s money in and out) is filled in only when the key holds erp_cash:read and its owner the ERP cash right, and is null otherwise. Amounts are in the store currency.',
+            'params' => array(
+                array('name' => 'top', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 5, 'description' => 'How many overdue accounts to list on each side.'),
+                array('name' => 'orders', 'in' => 'query', 'type' => 'bool', 'description' => 'Count this month\'s completed orders without an invoice in the month\'s figures, as the profit report does. Off when left out.'),
             ),
         ),
 

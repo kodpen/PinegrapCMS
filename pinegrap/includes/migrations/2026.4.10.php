@@ -31,6 +31,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_delegation();   // 10.80
 	upgrade_2026_4_10_workspace_calendar_feeds(); // 10.81
 	upgrade_2026_4_10_erp_purchase_orders();    // 10.58
+	upgrade_2026_4_10_connect();                // 10.72
 	upgrade_2026_4_10_workspace_mcp();          // 10.82
 
 }
@@ -368,6 +369,64 @@ function upgrade_2026_4_10_erp_purchase_orders() {
 	}
 
 	install_note('ERP: purchase orders to suppliers, with their own number, printed and e-mailed, turned into purchase invoice drafts as the goods arrive (in one go or in parts). An order moves no money and no stock; the purchase invoice does.');
+
+}
+
+// Connected accounts (2026.4.10, 10.72; includes/fn/connect.php,
+// connections.php, connect.php).
+//
+// The site as an OAuth client: it signs in to the site owner's or a person's
+// Google or Microsoft account and acts for them there (sending mail, backups,
+// Search Console), each site with an application of its own in the
+// provider's console.
+//
+// connect_apps holds that application per provider: the client ID, the
+// client secret sealed with the site's encryption key (never shown back) and
+// the provider's options (Microsoft's directory).
+//
+// connect_accounts holds the accounts connected through it. user_id 0 is the
+// site's own account, otherwise the person's. external_id is who the account
+// is at the provider (the sub claim), so connecting the same account again
+// updates its row. purposes are the features it was connected for, scopes
+// what the provider granted. secret is the refresh token and the access
+// tokens fetched with it, sealed together. status 'reauth' means the provider
+// refused the refresh token and the account has to be connected again.
+// Tokens a feature fetches by other means (an accounting service's password
+// grant) are rows with provider 'service', keyed by external_id.
+function upgrade_2026_4_10_connect() {
+
+	install_create_table('connect_apps', "CREATE TABLE connect_apps (
+		provider          VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		client_id         VARCHAR(255) NOT NULL DEFAULT '',
+		secret            TEXT NULL,
+		options           TEXT NULL,
+		enabled           TINYINT(1) NOT NULL DEFAULT 1,
+		updated_user_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (provider)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('connect_accounts', "CREATE TABLE connect_accounts (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		provider            VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		user_id             INT UNSIGNED NOT NULL DEFAULT 0,
+		external_id         VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		label               VARCHAR(255) NOT NULL DEFAULT '',
+		purposes            VARCHAR(255) NOT NULL DEFAULT '',
+		scopes              TEXT NULL,
+		secret              MEDIUMTEXT NULL,
+		status              ENUM('active','reauth','disabled') NOT NULL DEFAULT 'active',
+		last_error          VARCHAR(255) NOT NULL DEFAULT '',
+		created_user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_timestamp   INT UNSIGNED NOT NULL DEFAULT 0,
+		refreshed_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		last_used_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_account (provider, user_id, external_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Connected accounts: the site can connect Google and Microsoft accounts with an application of its own (Settings, Connections), keeping their tokens encrypted and renewing them, so that features such as sending mail through them can follow.');
 
 }
 

@@ -5,9 +5,10 @@
  * Tests for the ERP module's route table in the external API
  * (includes/erp/api.php) that need no database: every route reaches a
  * handler, no two routes answer the same method on the same path, the writes
- * on invoices, quotes, delivery notes and stock can be rehearsed with
- * X-Dry-Run, and the helpers that read a typed document's lines
- * (includes/erp/api_documents.php, api_stock.php).
+ * on invoices, quotes, delivery notes, stock, transfers and cheques can be
+ * rehearsed with X-Dry-Run, money moves only with the cash scope, and the
+ * helpers that read a typed document's lines (includes/erp/api_documents.php,
+ * api_stock.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -121,4 +122,60 @@ function test_erp_api_waybill_create_declares_its_header()
 	foreach (array_keys(erp_api_waybill_header_params()) as $name) {
 		pg_assert_true(isset($declared[$name]), $name . ' is a parameter of erp.waybills.create');
 	}
+}
+
+// Every write that moves a till can be tried first, and needs the cash
+// scope rather than the ledger's.
+function test_erp_api_cash_writes_can_be_rehearsed()
+{
+	$found = 0;
+
+	foreach (erp_api_routes() as $route) {
+		if (($route['method'] === 'GET') || !preg_match('/^erp\.(cash_transfers|cheques)\./', $route['id'])) {
+			continue;
+		}
+
+		$found++;
+		pg_assert_true(!empty($route['dry_run']), $route['id'] . ' takes X-Dry-Run');
+		pg_assert_same('erp_cash:write', $route['scope'], $route['id'] . ' writes with erp_cash:write');
+	}
+
+	pg_assert_same(3, $found, 'transfers, cheques and cheque steps are written');
+}
+
+// The steps the endpoint offers are the steps the cheque register knows.
+function test_erp_api_cheque_steps_match_the_register()
+{
+	$offered = array();
+
+	foreach (erp_api_routes() as $route) {
+		if ($route['id'] === 'erp.cheques.step') {
+			foreach ($route['params'] as $param) {
+				if ($param['name'] === 'step') {
+					$offered = $param['values'];
+				}
+			}
+		}
+	}
+
+	$known = array_keys(erp_cheque_step_from());
+	sort($offered);
+	sort($known);
+
+	pg_assert_same($known, $offered, 'erp.cheques.step offers every step and no other');
+}
+
+// The till figures are read with the cash scope, as the panel keeps them
+// behind the cash right; the ledger reports with the ledger's.
+function test_erp_api_reports_read_with_their_scope()
+{
+	$scopes = array();
+
+	foreach (erp_api_routes() as $route) {
+		$scopes[$route['id']] = $route['scope'];
+	}
+
+	pg_assert_same('erp:read', $scopes['erp.reports.profit'] ?? '', 'the profit report reads the ledger');
+	pg_assert_same('erp_cash:read', $scopes['erp.reports.cashflow'] ?? '', 'the cash flow reads the tills');
+	pg_assert_same('erp:read', $scopes['erp.dashboard'] ?? '', 'the dashboard reads the ledger');
 }

@@ -5,9 +5,11 @@
  * Tests for the purchase order line keys: erp_source_line_key()
  * (includes/erp/invoice_manual.php), which cleans the key a line arrives
  * with, and erp_purchase_order_line_keys() (includes/erp/purchase_orders.php),
- * which gives every order line one of its own; and for what is read from
- * them: erp_purchase_order_progress(), erp_purchase_order_receipt_state() and
- * the quantity suggested from the minimum stock.
+ * which gives every order line one of its own; for what is read from them:
+ * erp_purchase_order_progress(), erp_purchase_order_receipt_state() and the
+ * quantity suggested from the minimum stock; for the moves an order allows;
+ * and for the order's routes in the external API (includes/erp/api.php,
+ * api_purchase_orders.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,8 +21,13 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/purchase_orders.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 
 // A plain key passes through as it is.
 function test_erp_purchase_order_source_line_key_keeps_letters_and_digits()
@@ -176,4 +183,122 @@ function test_erp_purchase_order_receipt_state()
 	pg_assert_same('received', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array('aaaa' => 10, 'bbbb' => 2))));
 	pg_assert_same('received', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array('aaaa' => 12, 'bbbb' => 2))));
 	pg_assert_same('none', erp_purchase_order_receipt_state(array()));
+}
+
+// Sent from anything but a cancelled order, cancelled from anything but one
+// that is already over, open again only from cancelled.
+function test_erp_purchase_order_status_refusal()
+{
+	$order = function ($status) {
+		return array('status' => $status);
+	};
+
+	foreach (array('open', 'sent', 'partial', 'received') as $status) {
+		pg_assert_same('', erp_purchase_order_status_refusal($order($status), 'sent'), 'sent from ' . $status);
+		pg_assert_true(erp_purchase_order_status_refusal($order($status), 'open') !== '', 'open from ' . $status);
+	}
+
+	pg_assert_true(erp_purchase_order_status_refusal($order('cancelled'), 'sent') !== '');
+
+	foreach (array('open', 'sent', 'partial') as $status) {
+		pg_assert_same('', erp_purchase_order_status_refusal($order($status), 'cancelled'), 'cancelled from ' . $status);
+	}
+
+	pg_assert_true(erp_purchase_order_status_refusal($order('received'), 'cancelled') !== '');
+	pg_assert_true(erp_purchase_order_status_refusal($order('cancelled'), 'cancelled') !== '');
+	pg_assert_same('', erp_purchase_order_status_refusal($order('cancelled'), 'open'));
+	pg_assert_true(erp_purchase_order_status_refusal($order('open'), 'received') !== '');
+}
+
+// A draft is made only while something is left to put on one.
+function test_erp_purchase_order_invoice_refusal()
+{
+	$lines = array(
+		array('source_line' => 'aaaa', 'quantity' => 10),
+		array('source_line' => 'bbbb', 'quantity' => 2),
+	);
+	$nothing_yet = erp_purchase_order_progress($lines);
+	$all_on_drafts = erp_purchase_order_progress($lines, array('aaaa' => 4), array('aaaa' => 6, 'bbbb' => 2));
+
+	pg_assert_same('', erp_purchase_order_invoice_refusal(array('status' => 'sent'), $nothing_yet));
+	pg_assert_same('', erp_purchase_order_invoice_refusal(array('status' => 'partial'), erp_purchase_order_progress($lines, array('aaaa' => 4))));
+	pg_assert_true(erp_purchase_order_invoice_refusal(array('status' => 'partial'), $all_on_drafts) !== '');
+	pg_assert_true(erp_purchase_order_invoice_refusal(array('status' => 'cancelled'), $nothing_yet) !== '');
+	pg_assert_true(erp_purchase_order_invoice_refusal(array('status' => 'received'), $nothing_yet) !== '');
+}
+
+// Reads with erp:read; every write with erp:write, and each can be tried
+// first with X-Dry-Run, the e-mail above all.
+function test_erp_purchase_order_api_routes()
+{
+	$found = array();
+
+	foreach (erp_api_routes() as $route) {
+		if (strpos($route['id'], 'erp.purchase_orders.') !== 0) {
+			continue;
+		}
+
+		$found[] = substr($route['id'], strlen('erp.purchase_orders.'));
+		pg_assert_same(0, strpos($route['path'], '/erp/purchase-orders'), $route['id'] . ' lives under /erp/purchase-orders');
+
+		if ($route['method'] === 'GET') {
+			pg_assert_same('erp:read', $route['scope'], $route['id'] . ' reads with erp:read');
+		} else {
+			pg_assert_same('erp:write', $route['scope'], $route['id'] . ' writes with erp:write');
+			pg_assert_true(!empty($route['dry_run']), $route['id'] . ' takes X-Dry-Run');
+		}
+	}
+
+	sort($found);
+	pg_assert_same(array('create', 'document', 'email', 'get', 'invoice', 'list', 'status', 'update'), $found);
+}
+
+// A line's key is taken where the line can be tied to an order's line, and
+// only there.
+function test_erp_purchase_order_api_lines_carry_keys()
+{
+	$of = array();
+
+	foreach (erp_api_routes() as $route) {
+		foreach ($route['params'] as $param) {
+			if (($param['name'] ?? '') === 'lines') {
+				$of[$route['id']] = array_keys((array) ($param['of'] ?? array()));
+			}
+		}
+	}
+
+	pg_assert_true(in_array('key', $of['erp.purchase_orders.update'], true));
+	pg_assert_false(in_array('key', $of['erp.purchase_orders.create'], true));
+	pg_assert_true(in_array('purchase_order_line', $of['erp.invoices.update'], true));
+	pg_assert_false(in_array('purchase_order_line', $of['erp.invoices.create'], true));
+	pg_assert_false(in_array('purchase_order_line', $of['erp.quotes.update'], true));
+
+	$lines = erp_api_lines_in(array(
+		array('description' => 'Screw', 'unit_price' => 100, 'tax_rate' => 20, 'key' => 'ab12cd34'),
+		array('description' => 'Nut', 'unit_price' => 50, 'tax_rate' => 20),
+	), 0, 'key');
+
+	pg_assert_same(array('ab12cd34', ''), array_column($lines, 'source_line'));
+
+	$plain = erp_api_lines_in(array(array('description' => 'Screw', 'unit_price' => 100, 'tax_rate' => 20)), 0);
+
+	pg_assert_same('', $plain[0]['source_line']);
+}
+
+// Every event the purchase orders announce is one an application can
+// subscribe to.
+function test_erp_purchase_order_events_are_offered()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/purchase_orders.php');
+	$offered = erp_webhook_events();
+
+	pg_assert_true(preg_match_all("/'(erp\.purchase_order\.[a-z_]+)'/", $source, $found) > 0);
+
+	foreach (array_unique($found[1]) as $event) {
+		pg_assert_true(isset($offered[$event]), $event . ' is in erp_webhook_events()');
+	}
+
+	foreach (array('created', 'sent', 'received', 'cancelled', 'reopened') as $name) {
+		pg_assert_true(isset($offered['erp.purchase_order.' . $name]), 'erp.purchase_order.' . $name);
+	}
 }

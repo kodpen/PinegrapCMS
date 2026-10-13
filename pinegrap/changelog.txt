@@ -454,6 +454,22 @@
          siparişleri" kartı var; teslim günü geçenlerin
          sayısını gösteriyor.
 
+  [YENİ] Satın alma siparişleri API'de ve MCP'de: listeleme
+         (durum, gecikme, tedarikçi, tarih ve değişiklik
+         zamanıyla süzülerek), tek sipariş ve PDF'i, yazma ve
+         değiştirme, gönderildi, iptal ya da yeniden açma,
+         alış faturası taslağına dönüştürme ve tedarikçiye
+         e-postayla gönderme (GET/POST /erp/purchase-orders).
+         Her satırda alınan, taslaktaki ve gelecek miktar
+         yazıyor. Siparişten yapılan taslak API'den
+         düzeltilirken satırlar sipariş satırının anahtarını
+         taşıyor; GET /erp/invoices?purchase_order_id= o
+         siparişin faturalarını veriyor. Web kancası
+         olayları: erp.purchase_order.created, sent,
+         received, cancelled ve reopened. Yazmalar önce
+         X-Dry-Run ile denenebilir; erp:write yetkisi
+         gerekir.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
@@ -611,6 +627,17 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Takvim etkinlikleri API'den eklenip
+         değiştirilebiliyor ve silinebiliyor: ad, açıklamalar,
+         yer, başlangıç ve bitiş (tüm gün dahil), takvimler ve
+         yayın durumu. Saati değişen etkinliğin ayırdığı salon
+         o saatte başka bir etkinliğe ayrılmışsa istek
+         reddedilir. Tekrar, rezervasyon ve salon seçimi
+         etkinlik ekranında kalır. Takvimler izni artık yazmayı
+         da kapsıyor; takvim yetkisi verilmiş bir kullanıcının
+         uygulaması yalnız kendi takvimlerine yazar, yayın
+         yetkisi yoksa yayınlayamaz.
+
   [YENİ] Yorumlar API'de: GET /comments ziyaretçi
          yorumlarını sayfaya, konusuna (form kaydı, ürün,
          etkinlik), duruma (yayında, bekleyen, zamanlanmış) ve
@@ -681,6 +708,20 @@
          da yayılır ve denetim izine düşer. erp:write yetkisi
          gerekir.
 
+  [YENİ] ERP virmanı, çek/senet ve raporlar API'de ve MCP'de.
+         Virman: iki kasa ya da banka hesabı arasında para
+         aktarma (POST /erp/cash-transfers). Çek ve senet:
+         alınan ya da verilen çeki/senedi kaydetme (POST
+         /erp/cheques) ve sonraki adımı; bankaya verme, tahsil,
+         tedarikçiye ciro, karşılıksız, bankanın ödemesi (POST
+         /erp/cheques/{id}/step). Hepsi önce X-Dry-Run ile
+         denenebilir, erp_cash:write yetkisi ve uygulama
+         sahibinin kasa hakkı gerekir. Raporlar: kâr/zarar
+         (GET /erp/reports/profit), kasa akışı (GET
+         /erp/reports/cashflow, erp_cash:read) ve ERP panosunun
+         rakamları (GET /erp/dashboard); kasa rakamları yalnız
+         kasayı okuyabilen anahtara gösterilir.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
@@ -701,6 +742,27 @@
          tablosuna üç kolon eklenir.
          Kimlik adresli uygulamalar için kayıtlı istemci
          tablosu genişler.
+
+  BAĞLI HESAPLAR
+  --------------------------------------------------------
+
+  [YENİ] Ayarlar › Bağlantılar › Bağlı hesaplar: site bir
+         Google ya da Microsoft hesabına bir kez, tarayıcıda
+         bağlanır ve sonra o hesap adına çalışabilir. Her
+         site sağlayıcının konsolunda kendi uygulamasını
+         kaydeder (ekran adımları ve yönlendirme adresini
+         gösterir); izin ekranında sitenin adı görünür.
+         İzinler sitenin şifreleme anahtarıyla şifreli
+         saklanır, süresi dolan erişim kendiliğinden
+         yenilenir; sağlayıcı izni geri alırsa hesap
+         "Yeniden bağla" durumuna düşer ve günlüğe yazılır.
+         Bağlantı Denetle ile denenir, Bağlantıyı kes ile
+         kaldırılır (Google'da izin de geri alınır).
+         Microsoft 365 ve Gmail ile posta gönderme gibi
+         özellikler bu bağlantıyı kullanacak.
+
+  [ŞEMA] Bağlı hesaplar için iki yeni tablo (sağlayıcı
+         uygulamaları ve bağlı hesaplar) eklenir.
 
   PANO
   --------------------------------------------------------

@@ -84,6 +84,227 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP: satın alma siparişleri dış API'de ve MCP'de (2026-10-13)
+
+**Neden.** Faz 7'nin son parçası (`docs/_plan_erp_ozellikler.md` §3, "API
+`GET/POST /erp/purchase-orders…` (Faz 6'nın kuralları)" ve olaylar). Sipariş
+panelde yazılıp faturaya dönüşüyordu ama dışarıdan (muhasebe ya da depo
+entegrasyonu, Claude bağlayıcısı) görünmüyordu. Şema yok.
+
+**Rotalar** (`includes/erp/api.php` tablosu; işleyiciler ve sunucu yeni
+`includes/erp/api_purchase_orders.php`'de, Faz 6'nın `api_stock.php` deseni):
+
+| Rota | Kapsam | Alan fonksiyonu |
+|---|---|---|
+| `GET /erp/purchase-orders` (durum, `waiting`, `late`, tedarikçi, numara, tarih, `updated_since`, imleç) | erp:read | sorgu, `erp_purchase_order_progress()` |
+| `GET /erp/purchase-orders/{id}`, `…/{id}/document` | erp:read | `erp_purchase_order()`, `erp_purchase_order_html()` |
+| `POST /erp/purchase-orders`, `POST /erp/purchase-orders/{id}` (PATCH da) | erp:write | `erp_purchase_order_save()` |
+| `POST /erp/purchase-orders/{id}/status` (`sent`, `cancelled`, `open`) | erp:write | `erp_purchase_order_mark_sent()`, `erp_purchase_order_set_status()` |
+| `POST /erp/purchase-orders/{id}/invoice` | erp:write | `erp_purchase_order_to_invoice()` |
+| `POST /erp/purchase-orders/{id}/email` | erp:write | `erp_purchase_order_mail_send()` |
+
+Her yazma `X-Dry-Run` ile durur (`check_api_schema.php` denetler); 409 kodları
+`purchase_order_not_editable`, `purchase_order_status_not_allowed`,
+`purchase_order_not_invoiceable`, `purchase_order_not_sendable`. MCP araçları
+rotalardan kendiliğinden çıkar (`erp_purchase_orders_list` …).
+
+**Nesne `ErpPurchaseOrder`.** Başlık, toplamlar, `late` (pano kartının
+okuması), satırlar ve her satırda `key`, `received_quantity`,
+`drafted_quantity`, `outstanding_quantity`; siparişten yapılan fatura ve
+taslaklar `invoices`'ta. Liste sayfası tek sorguda miktarları, faturaları ve
+ürün kodlarını okur (`erp_api_purchase_order_context()`), satır başına sorgu
+yok.
+
+**Satır anahtarı API'de.** Panel formu anahtarı gizli alanla geri gönderiyor;
+API'de karşılığı yoktu, bir istemci taslağın satırlarını yeniden yazınca
+anahtar düşer, sipariş o satırı hiç sayamazdı. `erp_api_lines_in()` üçüncü
+parametre aldı: sipariş güncellemesinde `lines[].key`, siparişten yapılmış
+alış taslağının güncellemesinde `lines[].purchase_order_line`. Siparişten
+yapılmamış taslakta anahtar 422, yeni siparişte ve teklifte bilinmeyen alan
+422. `ErpInvoice` artık `purchase_order_id` ve satırlarda
+`purchase_order_line` taşıyor; `GET /erp/invoices?purchase_order_id=` eklendi.
+
+**Olaylar.** `erp_webhook_events()`'e `erp.purchase_order.created|sent|
+received|cancelled|reopened` (paneldeki 1. ve 2. parçadan beri yayılıyordu,
+abone olunamıyordu).
+
+**Alan tarafında küçük değişiklikler.** Durum ve dönüşüm reddi tek yerde:
+`erp_purchase_order_status_refusal()` (gönderildi, iptal, yeniden aç) ve
+`erp_purchase_order_invoice_refusal()`; ekranlar ve API aynı cümleyi verir.
+`erp_purchase_order_refresh()` durum değişmese de `updated_at`'i ilerletir
+(alınan miktar değişti), `erp_purchase_order_to_invoice()` de; böylece
+`updated_since` ile izleyen istemci siparişi yeniden görür.
+
+**Doğrulanan.** Sandbox'ta curl ile: X-Dry-Run (200, `would`), aynı
+Idempotency-Key ile ikinci istek aynı sipariş (`Idempotent-Replay: true`),
+yeni siparişte `key` 422, beklenen tarih sipariş tarihinden önce 422,
+anahtarlı güncelleme satırları korudu ve yeni satıra anahtar verdi, `sent`,
+faturaya dönüşüm (201, taslak satırları anahtarlı), ikinci dönüşüm 409,
+taslak API'den 2 satıra indirilip kesildi → `partial`, kalan taslak kesildi →
+`received` (olay bir kez), iptal → dönüşüm ve e-posta 409, yeniden açma →
+`partial`, kısmi siparişi değiştirme 409, e-posta X-Dry-Run, PDF, `late`,
+`waiting`, imleç ve `updated_since`, OpenAPI'de 6 yol ve nesne.
+`tests/erp_purchase_order_test.php`'ye 5 test (18 test).
+
+**Doğrulanamayan.** dev.pinegrap.com'da Claude bağlayıcısıyla (yeni araçlar
+için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
+
+---
+
+## 2026.4.10 — Bağlı hesaplar: giden OAuth altyapısı (2026-10-13)
+
+**Neden.** Ürün sahibi tersine OAuth planından (`docs/_plan_tersine_oauth.md`)
+model A'yı seçti ve ilk beş senaryonun hemen başlamasını istedi. Beşi de
+(Microsoft 365/Gmail ile posta, Search Console, buluta yedek, Microsoft ile
+giriş, Çalışma Alanı'nda MCP istemcisi) aynı şeye dayanıyor: sitenin bir
+dış hesaba bir kez bağlanıp belirteçlerini güvenle saklaması ve yenilemesi.
+Microsoft parolalı SMTP'yi 2026 sonunda kapatıyor; posta senaryosu bu
+altyapıyı bekliyordu.
+
+**Nasıl.** `includes/fn/connect.php` her istekte yüklü bir modül: sağlayıcı
+ve amaç tanımları klasörden okunur (`includes/connect/providers/*.php`,
+`includes/connect/purposes/*.php`; yeni sağlayıcı ya da özellik bir dosya),
+akış yetkilendirme kodu + PKCE S256, durum ve nonce oturumda, RFC 9207
+`iss` denetimi. id_token imzası doğrulanmaz (OpenID Connect Core 3.1.3.7:
+belirteç TLS üzerinden doğrudan token ucundan, istemci sırrıyla alınan
+yanıtta gelir), ama `iss`, `aud`, `exp`, `nonce` ve `sub` denetlenir;
+id_token yoksa userinfo ucu okunur. Refresh token ve kapsam kümesi başına
+erişim belirteçleri tek bir şifreli alanda (`encrypt_string_with_iv()`,
+site anahtarı) durur. Yenileme `GET_LOCK` altında, satır yeniden okunarak
+yapılır; `invalid_grant` hesabı `reauth` durumuna alır ve günlüğe yazar,
+geçici hatalar yalnız `last_error`'a düşer. Microsoft belirteci kaynak
+başına verdiği için (`token_per_scope`) önbellek anahtarı kapsamların
+özetidir ve yenilemede kapsam gönderilir; Google `access_type=offline` +
+`prompt=consent` ile her bağlantıda refresh token verir. Google
+uygulaması girilmemişse Google ile giriş ayarlarındaki uygulama kullanılır.
+
+**Ne değişti.** Ayarlar › Bağlantılar › Bağlı hesaplar (`connections.php`):
+sağlayıcı başına kart, bağlı hesaplar (amaç, bağlanma ve son kullanım,
+son hata, durum), Denetle / Yeniden bağla / Bağlantıyı kes (Google'da izin
+de geri alınır; Microsoft'un iptal ucu yok), uygulama formu (kurulum adımları, kopyalanabilir yönlendirme
+adresi, istemci kimliği, gizli anahtar — kayıtlıysa geri gösterilmez —,
+Microsoft dizini). Geri dönüş adresi `connect.php`: POST bağlantıyı
+başlatır (site hesabı yönetici yetkisi ister), GET kodu alır ve ekrana
+iletiyle döner; dönüş adresi yalnız panel betiği olabilir. Komut paletinde
+"Bağlı hesaplar". Şema 10.72: `connect_apps`, `connect_accounts`.
+Özelliklerin kullanacağı yüz: `pg_connect_start_fields()`,
+`pg_connect_access_token()`, `pg_connect_api()`,
+`pg_connect_service_get/put/delete()` (sunucudan sunucuya belirteçler).
+`tr.json`'da "Client ID" "Müşteri Kimliği" yerine "İstemci Kimliği",
+"Client Secret" "İstemci Gizli Anahtarı" oldu (Paraşüt ve ClearCommerce
+alanları da aynı anahtarı kullanır).
+
+**Bilerek yapılmayan.** Hiçbir özellik henüz bu bağlantıyı kullanmıyor;
+posta gönderimi, Paraşüt belirteci ve kargo API'leri ayrı PR'lar. Kişinin
+kendi hesabını bağlaması (`owner = person`) kütüphanede var, ekranı onu
+kullanacak özellikle gelecek. Arka planda belirteç tazeleme işi yok:
+belirteç kullanılırken yenilenir, Google'ın altı ay kullanılmayan izni
+düşürmesi `reauth` olarak görünür.
+
+---
+
+## 2026.4.10 — Dış API ve MCP: ERP virmanı, çek/senet, kâr, kasa akışı ve pano (Faz 6, üçüncü parça) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), son parça: kasalar
+arası para aktarma ve çek/senet API'de yoktu, çekler yalnız okunuyordu;
+kâr raporu, kasa akışı ve ERP panosunun rakamları API'den alınamıyordu.
+
+**Ne değişti.** Altı yeni rota `erp_api_routes()`'ta; MCP'de altı yeni
+araç. Yazma işleyicileri yeni `includes/erp/api_cash.php`'de, raporlar
+yeni `includes/erp/api_reports.php`'de; ikisi de panelin kullandığı
+fonksiyonları çağırır. Yeni web kancası olayı yok.
+
+| Rota | Kapsam | Fonksiyon |
+|---|---|---|
+| `POST /erp/cash-transfers` | `erp_cash:write` | `erp_post_transfer()` |
+| `POST /erp/cheques` | `erp_cash:write` | `erp_cheque_create()` |
+| `POST /erp/cheques/{id}/step` | `erp_cash:write` | `erp_cheque_step()` |
+| `GET /erp/reports/profit` | `erp:read` | `erp_profit_report()` |
+| `GET /erp/reports/cashflow` | `erp_cash:read` | `erp_cashflow_report()`, `_by_till()`, `_by_method()` |
+| `GET /erp/dashboard` | `erp:read` | `erp_aging_summary()`, `erp_profit_report()`, pano kartlarının sayımları |
+
+Ayrıntılar:
+
+- **Kasa kapısı.** Kasayı yürüten üç yazma `erp_api_expense_cash_gate()`
+  ile anahtarın `erp_cash:write` kapsamını ve sahibinin kasa hakkını
+  sorar; üçü de `X-Dry-Run` ile denenebilir. Dönem kilidi 422
+  `period_locked` (`date` alanıyla).
+- **Virman.** Ekrandaki gibi: iki kasa da var ve aktif olmalı, aynı olamaz,
+  döviz açıkken aynı para biriminde olmalı. `erp_post_transfer()` kayıtlı
+  kur yoksa sessizce 1 kullanıyordu; API'de kayıtlı kur yoksa ve
+  `exchange_rate` gönderilmediyse 422 `exchange_rate`, kayıtlı kur varsa o
+  kullanılır. Yanıt iki hareketin numarası (`out_id`, `in_id`) ve iki
+  kasanın güncel bakiyesi. Panelde de API'de de virman geri alınmaz; ters
+  virmanla düzeltilir (açıklamada yazıyor).
+- **Çek ve senet.** Kayıt ekrandaki `erp_cheque_create()`: alınan çek
+  portföy kasasına tahsilat, verilen çek verilen çekler kasasından ödeme;
+  kur ve para birimi denetimi provadan önce yapılır. Adımlar
+  (`deposit`, `collect`, `endorse`, `bounce`, `pay`) ekrandaki
+  `erp_cheque_step()`. Hangi adımın hangi durumdan atılabileceği
+  fonksiyonun içindeydi; yeni `erp_cheque_step_from()`'a alındı,
+  `erp_cheque_step()` ve API onu okur. Atılamayan adım 409
+  `cheque_step_not_allowed` (mesajda şu anki durum). Ekranın kısıtları API'de
+  de var: banka hesabı portföy kasası olamaz, ciro edilen cari aktif ve
+  çekin geldiği cariden başka olmalı. Her adım yalnız kullandığı alanı
+  alır (`cash_account_id` yalnız deposit/collect/pay, `account_id` yalnız
+  endorse, `reason` deposit dışında); başka alan 422. Ciro ve karşılıksız
+  `erp_post_receipt()` üzerinden geçtiği için `erp.receipt.created`
+  yayılır (panelde de öyle).
+- **Kâr raporu.** Dönem KDV raporuyla aynı okunur (`month` ya da `from` +
+  `to`, en çok iki yıl): bunun için `erp_api_reports_vat()`'taki okuma
+  `erp_api_report_period()`'a ayrıldı. Ekran siparişleri sayma seçimini
+  çerezde tutuyor; API'de `orders` parametresi. Ürün ve cari satırları
+  `limit` (varsayılan 50, en çok 500) kadar, toplam sayılarıyla.
+- **Kasa akışı.** Panelde kasa hakkı isteyen ekran olduğu için
+  `erp_cash:read` kapsamı ve sahibin kasa hakkı istenir (plan `erp:read`
+  diyordu). Ekran bugünden sonrasını ve 1100 günden uzununu sessizce
+  kırpıyor; API 422 ile söyler, rakamlar istenenden kısa dönemi kapsamasın.
+  Satır etiketleri (yerelleştirilmiş tarih) yerine `start`/`end`.
+- **Pano.** Panelin kartları: alacak ve borç (toplam, vadesi geçen, yedi
+  gün içinde vadesi gelen, yaşlandırma, en eski borçlu cariler), bu ayın
+  satış/kâr/gideri, ödenecek giderler, minimum stoğun altındaki ürün
+  sayısı, kredi limitini aşan cariler, açık teklifler, bekleyen satın alma
+  siparişleri. Ödenecek giderlerin sorgusu `erp_dashboard.php`'den
+  `erp_expense_unpaid_summary()`'ye alındı, ekran da onu çağırır. Kasa
+  kartı (`cash`: bakiyeler ve bugünün giriş/çıkışı) yalnız `erp_cash:read`
+  tutan ve sahibi kasa hakkına sahip anahtara dolu gelir, ötekine `null`
+  (panelin kasa kartını gizlemesi gibi). e-Belge kartı eklenmedi
+  (`includes/erp/edoc/*` Erdal'ın yerel işi).
+- `tools/check_api_schema.php` yeni nesnelerin sunucu–şema eşlerini de
+  karşılaştırıyor.
+
+**Doğrulama.** Sandbox'ta curl: virman (prova, aynı kasa, aktif olmayan,
+olmayan, sıfır tutar, yalnız okuma anahtarı 403, gerçek 201 ve bakiyeler
+100000 → 75000 / 500000 → 525000, aynı `Idempotency-Key` ile
+`Idempotent-Replay: true`); döviz açıkken TRY → USD 422, kayıtsız kurda
+422 `exchange_rate`, gönderilen kurla prova, kayıtlı kurun gönderilene
+üstün gelmesi (41,2); kilitli dönem 422 `period_locked`. Çek: due_date
+eksik, olmayan cari, aktif olmayan kasa, kilitli tarih, geçersiz kind,
+prova, yalnız okuma 403; dört alınan ve bir verilen çek, tekrar istek
+yeni çek açmadı; adımlar: geçersiz adım, 404, alınana pay 409, banka
+yok/portföy kasası/aktif olmayan 422, adımın almadığı alan 422; bankaya
+ver, tahsil (portföy → banka virmanı), aynı adım tekrar 409, ciro (aynı
+cari ve cari yok 422, pasif cari 422), karşılıksız, verilen çekin ödenmesi;
+dört adımın provası hareket yazmadı (15 → 15); döviz açıkken TRY portföy
+→ USD banka 422. Raporlar: kâr (ay, `orders`, `limit`, hatalı ay, iki
+yıldan uzun, `limit=0`), kasa akışı (gün, tek kasa + ay, bugünden sonrası,
+ters tarih, 1100 günden uzun, olmayan kasa, geçersiz group 422; yalnız
+`erp:read` anahtarı 403), pano (tam anahtar `cash` dolu, döviz açıkken USD
+kasalar toplama girmedi; okuma anahtarı `cash: null`; bekleyen ve geciken
+satın alma siparişi 2/1). Sahibinin kasa hakkı yokken kasa akışı ve virman
+403, pano `cash: null`. OpenAPI'de altı rota ve beş nesne; MCP
+`tools/list`'te altı araç (`erp_cheques_step` destructiveHint true),
+`tools/call` ile pano, adım ve virman provası. `php tools/lint.php`,
+`check_lang.php`, `check_api_schema.php`, `test.php` temiz;
+`tests/erp_api_test.php` genişletildi.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com); panel ekranlarının
+(`erp_dashboard.php`, çek ekranı) tarayıcıda görünümü — değişiklik
+ekranın kullandığı fonksiyonu taşımaktan ibaret, CLI'dan aynı değerler
+okundu.
+
+---
+
 ## 2026.4.10 — Tek dilli sitede sayfanın dili: büyük harfte Türkçe İ (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 6. maddesi: "Tasarımın dili `en`
@@ -143,6 +364,51 @@ birlikte geri aldı, 2. geri al kapalıydı. Sonrası: 1. geri al yalnız adresi
 açılır listesi (`_blank`) için de 1. geri al yalnız hedefi geri aldı. Ortak
 başlıktaki linkte (marka linki) metin ve adres ayrı adımlarda geri alındı.
 dev.pinegrap.com'da denenmedi.
+
+---
+
+## 2026.4.10 — Dış API: takvim etkinliği ekleme, değiştirme, silme (2026-10-13)
+
+**Sorun.** Takvimler API'de yalnız okunuyordu. Bir rezervasyon aracı ya da
+asistan etkinlik açamıyor, saatini kaydıramıyor, yayına alamıyordu; Çalışma
+Alanı aynı işi öneri olarak yapabildiği hâlde API yapamıyordu.
+
+**Değişiklik.** `calendars` izin grubuna `calendars:write` eklendi; `calendars:read`
+ile aynı kişilere verilir (rol < 3 ya da takvim yetkisi). Yeni rotalar
+(`includes/api/resources/calendars.php`):
+
+- `POST /calendars/events`: `name`, `start`, `end`, `calendar_ids` zorunlu;
+  `all_day`, `short_description`, `description` (HTML, `pg_sanitize_rich_text`
+  ile temizlenir), `location`, `show_start_time`, `show_end_time`, `published`,
+  `unpublish_days`. Tüm gün etkinlik ilk günün 00:00'ından son günün 23:59'una
+  yazılır; diğerinde bitiş başlangıçtan sonra olmalı (etkinlik ekranının
+  kuralı). Geri kalan sütunlar ekranın başlangıç değerleriyle (yayında değil,
+  45 gün, tekrar ve rezervasyon kapalı).
+- `POST`/`PATCH /calendars/events/{id}`: yalnız gönderilen değişir; `start`,
+  `end` ya da `all_day` gelince saatler saklı olanla birlikte yeniden
+  hesaplanır. Salon ayıran tek seferlik etkinlik `check_calendar_event_location_availability`
+  ile denetlenir (409 `room_taken`); salon ayıran tekrarlanan etkinliğin saati
+  buradan değiştirilmez (409 `repeating_event_books_room`), çünkü ekran her
+  tekrarı ayrı denetler. `calendar_ids` sahibin açabildiği takvimleri
+  değiştirir, göremediği takvimler etkinliği tutar.
+- `DELETE /calendars/events/{id}` (ve `POST …/delete`): ekrandaki gibi
+  istisnalar, takvim ve salon bağları, kalan rezervasyon yerleriyle birlikte.
+
+Yetki ekranlarla aynı: rol 3 sahibi yalnız atanmış takvimlerine yazar;
+yayın yetkisi (`user_publish_calendar_events`) yoksa `published` /
+`unpublish_days` 403, yayındaki etkinliği değiştiremez ve silemez (403).
+Tekrar kuralı, rezervasyon, ürün, salon seçimi ve sonraki sayfa etkinlik
+ekranında kalır. Şema değişikliği yok. Var olan uygulamalar yeni izni
+kendiliğinden almaz; API ayarlarından verilmesi gerekir.
+
+**Doğrulandı (sandbox).** Oluşturma, dry-run, tüm gün (00:00–23:59), bitiş
+başlangıçtan önce 422, olmayan ya da boş takvim 422; açıklamadaki `script`,
+`onclick` ve `javascript:` temizlendi; tüm gün aç/kapat; takvim değiştirme;
+salon çakışması 409 ve bitişik saat kabul; tekrarlanan + salonlu etkinlikte
+saat 409, ad değişikliği geçer; silme bağları temizledi, sonra 404. Rol 3
+(takvim 1 atanmış, yayın yetkisi yok): başka takvim 422, yayınlama 403,
+yayındaki etkinlik 403, göremediği takvim korunur, görünmeyen etkinlik 404.
+`tests/api_calendars_test.php` saat kuralı için yeni test.
 
 ---
 

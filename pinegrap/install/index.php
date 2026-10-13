@@ -8289,6 +8289,8 @@ function get_tables() {
 		'comments',
 		'commissions',
 		'config',
+		'connect_accounts',
+		'connect_apps',
 		'contact_groups',
 		'contact_groups_email_campaigns_xref',
 		'contacts',
