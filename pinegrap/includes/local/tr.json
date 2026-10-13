@@ -20982,5 +20982,12 @@
     "Tick all": "Tümünü işaretle",
     "Waiting purchase orders": "Bekleyen satın alma siparişleri",
     "erp purchase order ({var:1}) was turned into a purchase invoice draft": "erp satın alma siparişi ({var:1}) alış faturası taslağına dönüştürüldü",
-    "{var:1} past the expected day": "{var:1} tanesi beklenen günü geçti"
+    "{var:1} past the expected day": "{var:1} tanesi beklenen günü geçti",
+    "ERP purchase order {var:1} was written through the API.": "ERP satın alma siparişi {var:1} API üzerinden yazıldı.",
+    "ERP purchase order {var:1} was changed through the API.": "ERP satın alma siparişi {var:1} API üzerinden değiştirildi.",
+    "ERP purchase order {var:1} was marked {var:2} through the API.": "ERP satın alma siparişi {var:1} API üzerinden {var:2} olarak işaretlendi.",
+    "ERP purchase order {var:1} was turned into purchase invoice draft #{var:2} through the API.": "ERP satın alma siparişi {var:1} API üzerinden #{var:2} numaralı alış faturası taslağına dönüştürüldü.",
+    "ERP purchase order {var:1} was e-mailed to {var:2} through the API.": "ERP satın alma siparişi {var:1} API üzerinden {var:2} adresine e-postayla gönderildi.",
+    "purchase_order_line is only taken on a purchase invoice draft made from a purchase order.": "purchase_order_line yalnızca satın alma siparişinden oluşturulmuş alış faturası taslağında kabul edilir.",
+    "{var:1} is not the key of a purchase order line.": "{var:1} bir satın alma siparişi satırının anahtarı değil."
 }

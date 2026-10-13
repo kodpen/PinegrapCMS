@@ -84,6 +84,73 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP: satın alma siparişleri dış API'de ve MCP'de (2026-10-13)
+
+**Neden.** Faz 7'nin son parçası (`docs/_plan_erp_ozellikler.md` §3, "API
+`GET/POST /erp/purchase-orders…` (Faz 6'nın kuralları)" ve olaylar). Sipariş
+panelde yazılıp faturaya dönüşüyordu ama dışarıdan (muhasebe ya da depo
+entegrasyonu, Claude bağlayıcısı) görünmüyordu. Şema yok.
+
+**Rotalar** (`includes/erp/api.php` tablosu; işleyiciler ve sunucu yeni
+`includes/erp/api_purchase_orders.php`'de, Faz 6'nın `api_stock.php` deseni):
+
+| Rota | Kapsam | Alan fonksiyonu |
+|---|---|---|
+| `GET /erp/purchase-orders` (durum, `waiting`, `late`, tedarikçi, numara, tarih, `updated_since`, imleç) | erp:read | sorgu, `erp_purchase_order_progress()` |
+| `GET /erp/purchase-orders/{id}`, `…/{id}/document` | erp:read | `erp_purchase_order()`, `erp_purchase_order_html()` |
+| `POST /erp/purchase-orders`, `POST /erp/purchase-orders/{id}` (PATCH da) | erp:write | `erp_purchase_order_save()` |
+| `POST /erp/purchase-orders/{id}/status` (`sent`, `cancelled`, `open`) | erp:write | `erp_purchase_order_mark_sent()`, `erp_purchase_order_set_status()` |
+| `POST /erp/purchase-orders/{id}/invoice` | erp:write | `erp_purchase_order_to_invoice()` |
+| `POST /erp/purchase-orders/{id}/email` | erp:write | `erp_purchase_order_mail_send()` |
+
+Her yazma `X-Dry-Run` ile durur (`check_api_schema.php` denetler); 409 kodları
+`purchase_order_not_editable`, `purchase_order_status_not_allowed`,
+`purchase_order_not_invoiceable`, `purchase_order_not_sendable`. MCP araçları
+rotalardan kendiliğinden çıkar (`erp_purchase_orders_list` …).
+
+**Nesne `ErpPurchaseOrder`.** Başlık, toplamlar, `late` (pano kartının
+okuması), satırlar ve her satırda `key`, `received_quantity`,
+`drafted_quantity`, `outstanding_quantity`; siparişten yapılan fatura ve
+taslaklar `invoices`'ta. Liste sayfası tek sorguda miktarları, faturaları ve
+ürün kodlarını okur (`erp_api_purchase_order_context()`), satır başına sorgu
+yok.
+
+**Satır anahtarı API'de.** Panel formu anahtarı gizli alanla geri gönderiyor;
+API'de karşılığı yoktu, bir istemci taslağın satırlarını yeniden yazınca
+anahtar düşer, sipariş o satırı hiç sayamazdı. `erp_api_lines_in()` üçüncü
+parametre aldı: sipariş güncellemesinde `lines[].key`, siparişten yapılmış
+alış taslağının güncellemesinde `lines[].purchase_order_line`. Siparişten
+yapılmamış taslakta anahtar 422, yeni siparişte ve teklifte bilinmeyen alan
+422. `ErpInvoice` artık `purchase_order_id` ve satırlarda
+`purchase_order_line` taşıyor; `GET /erp/invoices?purchase_order_id=` eklendi.
+
+**Olaylar.** `erp_webhook_events()`'e `erp.purchase_order.created|sent|
+received|cancelled|reopened` (paneldeki 1. ve 2. parçadan beri yayılıyordu,
+abone olunamıyordu).
+
+**Alan tarafında küçük değişiklikler.** Durum ve dönüşüm reddi tek yerde:
+`erp_purchase_order_status_refusal()` (gönderildi, iptal, yeniden aç) ve
+`erp_purchase_order_invoice_refusal()`; ekranlar ve API aynı cümleyi verir.
+`erp_purchase_order_refresh()` durum değişmese de `updated_at`'i ilerletir
+(alınan miktar değişti), `erp_purchase_order_to_invoice()` de; böylece
+`updated_since` ile izleyen istemci siparişi yeniden görür.
+
+**Doğrulanan.** Sandbox'ta curl ile: X-Dry-Run (200, `would`), aynı
+Idempotency-Key ile ikinci istek aynı sipariş (`Idempotent-Replay: true`),
+yeni siparişte `key` 422, beklenen tarih sipariş tarihinden önce 422,
+anahtarlı güncelleme satırları korudu ve yeni satıra anahtar verdi, `sent`,
+faturaya dönüşüm (201, taslak satırları anahtarlı), ikinci dönüşüm 409,
+taslak API'den 2 satıra indirilip kesildi → `partial`, kalan taslak kesildi →
+`received` (olay bir kez), iptal → dönüşüm ve e-posta 409, yeniden açma →
+`partial`, kısmi siparişi değiştirme 409, e-posta X-Dry-Run, PDF, `late`,
+`waiting`, imleç ve `updated_since`, OpenAPI'de 6 yol ve nesne.
+`tests/erp_purchase_order_test.php`'ye 5 test (18 test).
+
+**Doğrulanamayan.** dev.pinegrap.com'da Claude bağlayıcısıyla (yeni araçlar
+için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
+
+---
+
 ## 2026.4.10 — ERP: satın alma siparişinden alış faturası, teslim durumu, minimum stoktan sipariş (2026-10-13)
 
 **Neden.** Faz 7'nin ikinci parçası (`docs/_plan_erp_ozellikler.md` §3, akışın

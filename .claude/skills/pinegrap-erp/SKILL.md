@@ -337,7 +337,13 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   `received` saklanır ama faturalardan türetilir: `erp_purchase_order_refresh()`
   `erp_event_invoice()`'tan (alış faturası kesilince/iptalinde) çağrılır; siparişe
   bağlı faturayı başka yoldan yazan kod da bu olayı çıkarmalı. Dönüşüm yalnız
-  `erp_purchase_order_to_invoice()` ile (taslak, kalan miktarlar).
+  `erp_purchase_order_to_invoice()` ile (taslak, kalan miktarlar). Durum ve
+  dönüşüm reddi ekranla API'de ortak: `erp_purchase_order_status_refusal()`,
+  `erp_purchase_order_invoice_refusal()`. API `/erp/purchase-orders…`
+  `includes/erp/api_purchase_orders.php`'de; satır anahtarı API'de siparişte
+  `lines[].key`, taslakta `lines[].purchase_order_line` (`erp_api_lines_in()`'in
+  üçüncü parametresi). Satırları yeniden yazan her yol anahtarı geri almalı,
+  yoksa sipariş o satırı sayamaz.
 - Teklif imzası (8.58, `includes/erp/signatures.php`): kayıt `erp_signatures`'ta
   (`doc_type`, `doc_id`; belge başına bir), çizim `files`'ta `erp_doc_type =
   'quote_signature'`. İmza **silinmez, yeniden çizilmez**; teklif sonradan

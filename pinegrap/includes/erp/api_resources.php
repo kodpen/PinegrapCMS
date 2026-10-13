@@ -807,6 +807,8 @@ function erp_api_invoice_line_present($row)
         'withholding_amount' => api_money($row['withholding_amount'] ?? 0),
         'line_total' => api_money($row['line_total']),
         'returned_quantity' => (float) $row['returned_qty'],
+        // The key of the purchase order line this line delivers; '' for none.
+        'purchase_order_line' => (string) ($row['source_line'] ?? ''),
     );
 }
 
@@ -875,6 +877,8 @@ function erp_api_invoice_present($row, $lines)
         'parent_invoice_id' => (int) $row['parent_invoice_id'],
         // The quote the invoice was made from (8.58); 0 for none.
         'quote_id' => (int) ($row['quote_id'] ?? 0),
+        // The purchase order a purchase invoice was made from (10.58); 0 for none.
+        'purchase_order_id' => (int) ($row['purchase_order_id'] ?? 0),
         'supplier_invoice_no' => (string) $row['supplier_invoice_no'],
         'issue_date' => erp_api_date($row['issue_date']),
         'due_date' => erp_api_date($row['due_date']),
@@ -936,6 +940,7 @@ function erp_api_invoice_schema()
         'order_id' => 'integer',
         'parent_invoice_id' => 'integer',
         'quote_id' => 'integer',
+        'purchase_order_id' => 'integer',
         'supplier_invoice_no' => 'string',
         'issue_date' => 'string?',
         'due_date' => 'string?',
@@ -997,6 +1002,7 @@ function erp_api_invoice_schema()
             'withholding_amount' => 'integer',
             'line_total' => 'integer',
             'returned_quantity' => 'number',
+            'purchase_order_line' => 'string',
         )),
         'created_at' => 'string?',
         'updated_at' => 'string?',
@@ -1016,6 +1022,10 @@ function erp_api_invoices_list($params)
 
     if (isset($params['order_id'])) {
         $where[] = "i.order_id = '" . (int) $params['order_id'] . "'";
+    }
+
+    if (isset($params['purchase_order_id'])) {
+        $where[] = erp_purchase_orders_ready() ? "i.purchase_order_id = '" . (int) $params['purchase_order_id'] . "'" : '1 = 0';
     }
 
     if (isset($params['number']) && ($params['number'] !== '')) {

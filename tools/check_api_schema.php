@@ -70,6 +70,7 @@ $presenters = array(
 	'ws_api_claude_change_type_schema' => 'ws_api_claude_change_type_present',
 	'ws_api_claude_record_schema'      => 'ws_api_claude_record_present',
 	'erp_api_quote_schema'            => 'erp_api_quote_present',
+	'erp_api_purchase_order_schema'   => 'erp_api_purchase_order_present',
 	'erp_api_cheque_schema'           => 'erp_api_cheque_present',
 	'erp_api_stock_level_schema'      => 'erp_api_stock_level_present',
 	'erp_api_stock_move_schema'       => 'erp_api_stock_move_present',
