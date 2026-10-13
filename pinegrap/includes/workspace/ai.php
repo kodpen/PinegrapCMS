@@ -942,8 +942,10 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
+    // An alias can still be served without Pinegrap AI: its tools that read
+    // run with a form (mcp_form.php).
     if (!ws_ai_ready()) {
-        ws_message_system($channel['id'], ws_ai_setup_hint());
+        ws_message_system($channel['id'], ws_ai_setup_hint() . (($server && function_exists('ws_mcp_form_hint')) ? ws_mcp_form_hint($server, (int) $channel['id']) : ''));
         return false;
     }
 

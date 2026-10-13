@@ -58,6 +58,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/delegation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/tour.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk.php');

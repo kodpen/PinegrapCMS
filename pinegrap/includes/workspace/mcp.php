@@ -1876,6 +1876,7 @@ function ws_mcp_settings_card($self_url, $viewer)
         <div class="card mt-4" id="ws-mcp">
             <div class="card-header d-flex align-items-center gap-2">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</h2>
+                <a class="btn btn-sm btn-ghost" href="workspace_mcp.php" title="' . h(lang('Your own accounts in one place, and the tools that read run with a form')) . '"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>
                 ' . ($admin ? '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</button>' : '') . '
             </div>
             <div class="card-body">

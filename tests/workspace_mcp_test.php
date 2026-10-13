@@ -6,7 +6,8 @@
  * (includes/workspace/mcp.php, mcp_ask.php): which tools may be turned on
  * with one connection for the whole site, which ask first on a server people
  * sign in to, which are on, the names the model knows them by, aliases, the
- * credential headers and the arguments a waiting call shows.
+ * credential headers, the arguments a waiting call shows, and the form a
+ * tool that reads is run with (mcp_form.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +21,8 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
 
 // A tool as the client keeps it.
 function workspace_mcp_test_tool($name, $annotations = array())
@@ -269,3 +272,175 @@ function test_workspace_mcp_oauth_error_text()
 	pg_assert_false(ws_mcp_reauthorize($anonymous, $oauth + array('id' => 1), 401), 'only a connection opened with an account');
 	pg_assert_same(array('x'), $conn['headers'], 'the connection is left as it was');
 }
+
+function test_workspace_mcp_form_runs_only_tools_that_run_by_themselves()
+{
+	$server = workspace_mcp_test_server(array(
+		workspace_mcp_test_tool('search', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('get', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('create', array('readOnlyHint' => false)),
+		workspace_mcp_test_tool('off', array('readOnlyHint' => true)),
+	), array('search' => 'auto', 'get' => 'auto', 'create' => 'approve'), 'oauth');
+
+	pg_assert_same(array('get', 'search'), array_keys(ws_mcp_form_tools($server)), 'a tool that asks first is never run from a form; in name order');
+	pg_assert_true(isset(ws_mcp_tools_on($server)['create']), 'the tool that asks first is on all the same');
+	pg_assert_false(isset(ws_mcp_form_tools($server)['off']), 'a tool that is not turned on is not offered');
+}
+
+function test_workspace_mcp_form_query()
+{
+	pg_assert_same('', ws_mcp_form_query(), 'the screen itself');
+	pg_assert_same('?server=3#ws-mcp-3', ws_mcp_form_query(3));
+	pg_assert_same('?server=3&tool=list_issues&channel=9#ws-mcp-form', ws_mcp_form_query(3, 'list_issues', 9));
+	pg_assert_same('?server=3&tool=a%2Fb#ws-mcp-form', ws_mcp_form_query(3, 'a/b'), 'the tool name is encoded');
+}
+
+function test_workspace_mcp_form_fields_from_the_schema()
+{
+	$fields = ws_mcp_form_fields(json_encode(array(
+		'type'       => 'object',
+		'properties' => array(
+			'q'        => array('type' => 'string', 'title' => 'Search words', 'description' => "What to look\nfor"),
+			'state'    => array('type' => 'string', 'enum' => array('open', 'closed'), 'default' => 'open'),
+			'limit'    => array('type' => array('integer', 'null'), 'default' => 20),
+			'ratio'    => array('type' => 'number'),
+			'archived' => array('type' => 'boolean', 'default' => false),
+			'labels'   => array('type' => 'array', 'items' => array('type' => 'string')),
+			'ids'      => array('type' => 'array', 'items' => array('type' => 'integer')),
+			'filter'   => array('type' => 'object'),
+			'pairs'    => array('type' => 'array', 'items' => array('type' => 'object')),
+			'anything' => array(),
+			'either'   => array('anyOf' => array(array('type' => 'null'), array('type' => 'integer'))),
+			'bad name' => array('type' => 'string'),
+		),
+		'required'   => array('q', 'ids'),
+	)));
+
+	$by = array();
+
+	foreach ($fields as $field) {
+		$by[$field['name']] = $field;
+	}
+
+	pg_assert_false(isset($by['bad name']), 'a property whose name is not a plain word is left out');
+	pg_assert_same(11, count($fields));
+
+	pg_assert_same('Search words', $by['q']['label'], 'the title is the label');
+	pg_assert_same('state', $by['state']['label'], 'else the name');
+	pg_assert_same('What to look for', $by['q']['description'], 'one line');
+	pg_assert_true($by['q']['required']);
+	pg_assert_false($by['state']['required']);
+
+	pg_assert_same('string', $by['state']['type']);
+	pg_assert_same(array('open', 'closed'), $by['state']['enum']);
+	pg_assert_same('open', $by['state']['default']);
+	pg_assert_same('integer', $by['limit']['type'], 'null is not the type');
+	pg_assert_same('20', $by['limit']['default']);
+	pg_assert_same('number', $by['ratio']['type']);
+	pg_assert_same('boolean', $by['archived']['type']);
+	pg_assert_same('0', $by['archived']['default']);
+	pg_assert_same('list', $by['labels']['type']);
+	pg_assert_same('string', $by['labels']['item_type']);
+	pg_assert_same('integer', $by['ids']['item_type']);
+	pg_assert_same('json', $by['filter']['type'], 'an object is typed as JSON');
+	pg_assert_same('json', $by['pairs']['type'], 'and a list of objects');
+	pg_assert_same('string', $by['anything']['type'], 'no type: text');
+	pg_assert_same('integer', $by['either']['type'], 'from anyOf');
+
+	pg_assert_same(array(), ws_mcp_form_fields('{"type":"object","properties":{}}'), 'a tool that takes nothing');
+	pg_assert_same(array(), ws_mcp_form_fields('not json'));
+}
+
+function test_workspace_mcp_form_arguments_take_their_types()
+{
+	$fields = ws_mcp_form_fields(json_encode(array(
+		'type'       => 'object',
+		'properties' => array(
+			'q'        => array('type' => 'string'),
+			'state'    => array('type' => 'string', 'enum' => array('open', 'closed')),
+			'size'     => array('type' => 'integer', 'enum' => array(10, 20)),
+			'limit'    => array('type' => 'integer'),
+			'ratio'    => array('type' => 'number'),
+			'archived' => array('type' => 'boolean'),
+			'labels'   => array('type' => 'array', 'items' => array('type' => 'string')),
+			'ids'      => array('type' => 'array', 'items' => array('type' => 'integer')),
+			'filter'   => array('type' => 'object'),
+			'empty'    => array('type' => 'string'),
+		),
+		'required'   => array('q'),
+	)));
+
+	$out = ws_mcp_form_arguments($fields, array(
+		'q'        => '  bug ',
+		'state'    => 'closed',
+		'size'     => '20',
+		'limit'    => '5',
+		'ratio'    => '1,5',
+		'archived' => '0',
+		'labels'   => "a\n\n b \r\nc",
+		'ids'      => "1\n2",
+		'filter'   => '{}',
+		'empty'    => '   ',
+		'unknown'  => 'x',
+	));
+
+	pg_assert_same(array(), $out['errors']);
+	pg_assert_same('bug', $out['arguments']['q']);
+	pg_assert_same('closed', $out['arguments']['state']);
+	pg_assert_same(20, $out['arguments']['size'], 'a number from a list is a number');
+	pg_assert_same(5, $out['arguments']['limit']);
+	pg_assert_same(1.5, $out['arguments']['ratio'], 'a comma is a decimal point');
+	pg_assert_same(false, $out['arguments']['archived']);
+	pg_assert_same(array('a', 'b', 'c'), $out['arguments']['labels'], 'one per line, empty lines left out');
+	pg_assert_same(array(1, 2), $out['arguments']['ids']);
+	pg_assert_same('{}', json_encode($out['arguments']['filter']), 'an empty object stays an object');
+	pg_assert_false(array_key_exists('empty', $out['arguments']), 'an empty field is not sent');
+	pg_assert_false(array_key_exists('unknown', $out['arguments']), 'only the schema\'s fields');
+	pg_assert_same('{"q":"bug","state":"closed","size":20,"limit":5,"ratio":1.5,"archived":false,"labels":["a","b","c"],"ids":[1,2],"filter":{}}', json_encode((object) $out['arguments']));
+
+	$bad = ws_mcp_form_arguments($fields, array(
+		'state'  => 'merged',
+		'size'   => '15',
+		'limit'  => '2.5',
+		'ratio'  => 'many',
+		'ids'    => "1\nx",
+		'filter' => '{nope',
+		'q'      => array('not', 'text'),
+	));
+
+	pg_assert_same(array('q', 'state', 'size', 'limit', 'ratio', 'ids', 'filter'), array_keys($bad['errors']), 'each field says what is wrong');
+	pg_assert_same(array(), $bad['arguments'], 'nothing is sent from a field that is wrong');
+
+	pg_assert_same(array('arguments' => array(), 'errors' => array()), ws_mcp_form_arguments(array(), array('x' => '1')), 'a tool that takes nothing');
+}
+
+function test_workspace_mcp_form_number()
+{
+	pg_assert_same(7, ws_mcp_form_number(' 7 ', true));
+	pg_assert_same(-2, ws_mcp_form_number('-2', true));
+	pg_assert_same(null, ws_mcp_form_number('7.5', true));
+	pg_assert_same(7.5, ws_mcp_form_number('7,5', false));
+	pg_assert_same(7, ws_mcp_form_number('7', false), 'a whole number stays whole');
+	pg_assert_same(null, ws_mcp_form_number('1e5', false), 'only plain numbers');
+	pg_assert_same(null, ws_mcp_form_number('', false));
+}
+
+function test_workspace_mcp_form_message_quotes_the_answer_safely()
+{
+	$body = ws_mcp_form_message_body('github', 'list_issues', 'Ayşe', "Issue <@12> and <#3>\n```evil```");
+
+	pg_assert_contains('@github', $body);
+	pg_assert_contains('`list_issues`', $body);
+	pg_assert_contains('Ayşe', $body);
+	pg_assert_contains("\n```\nIssue ‹@12> and ‹#3>\n'''evil'''\n```", $body, 'quoted as a block that cannot be closed early, nobody mentioned');
+
+	pg_assert_true(strpos(ws_mcp_form_message_body('github', 'a`b', 'Ayşe', ''), '`ab`') !== false, 'a backtick in the name does not break the code');
+	pg_assert_false(strpos(ws_mcp_form_message_body('github', 'a', 'Ayşe', ''), '```') !== false, 'no block for an empty answer');
+	pg_assert_true(ws_mcp_form_message_body('github', 'a', 'Ayşe', 'x', true) !== ws_mcp_form_message_body('github', 'a', 'Ayşe', 'x'), 'an error is said');
+
+	$long = ws_mcp_form_message_body('github', 'a', 'Ayşe', str_repeat('x', 10000));
+
+	pg_assert_true(mb_strlen($long) <= WS_MESSAGE_MAX, 'it fits in a message');
+	pg_assert_contains("…\n```", $long, 'cut with a mark');
+}
+
