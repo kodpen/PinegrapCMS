@@ -1014,8 +1014,10 @@ function pg_panel_designer($request, $action)
                 'style_head'                        => $src['style_head'],
                 'style_empty_cell_width_percentage' => $src['style_empty_cell_width_percentage'],
                 'user_id'                           => $user['id'],
-                'style_custom_css'                  => isset($src['style_custom_css'])   ? $src['style_custom_css']   : '',
-                'style_custom_js'                   => isset($src['style_custom_js'])    ? $src['style_custom_js']    : '',
+                // What the page loaded: the files kept to other pages of
+                // the design stay behind (pg_design_assets_for_page()).
+                'style_custom_css'                  => isset($src['style_custom_css'])   ? pg_design_assets_for_page($src['style_custom_css'], $page_id) : '',
+                'style_custom_js'                   => isset($src['style_custom_js'])    ? pg_design_assets_for_page($src['style_custom_js'], $page_id)  : '',
                 'style_custom_fonts'                => isset($src['style_custom_fonts']) ? $src['style_custom_fonts'] : '',
                 // The page was drawn on the design's framework, in its
                 // look and colours.

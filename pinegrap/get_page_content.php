@@ -276,7 +276,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // (pg_design_frameworks()); a custom design has none, and its
         // sentinel rows, should it carry any, emit nothing.
         $_bs_css_url   = $pg_design_fw['css'];
-        $_bs_icons_url = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
+        $_bs_icons_url = pg_design_icons_url();
         $_bs_js_url    = $pg_design_fw['js'];
         $_jquery_url   = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
 
@@ -293,13 +293,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // meta:  'bootstrap-css' / 'bootstrap-icons' — framework sentinels.
         //        'user-styles'                       — handwritten Styles panel rules.
         $pg_user_styles_css = '';   // collected separately; emitted as its own <style id="pg-user-styles">
+        // The design links a Bootstrap Icons sheet of its own: the stock one
+        // (the sentinel row, or the fallback below) stands down.
+        $pg_design_own_icons = false;
         if ($page_custom_css !== '') {
             $_css_inline = '';
             $_css_links  = '';
             $_css_arr = json_decode($page_custom_css, true);
             if (is_array($_css_arr)) {
                 foreach ($_css_arr as $_cf) {
+                    if (!is_array($_cf) || (isset($_cf['enabled']) && $_cf['enabled'] === false)) continue;
+                    if (!empty($_cf['meta']) || !isset($_cf['type']) || $_cf['type'] !== 'external-css') continue;
+                    if (!pg_design_asset_on_page($_cf, $page_id)) continue;
+                    if (pg_design_is_icons_url(isset($_cf['content']) ? $_cf['content'] : '')) $pg_design_own_icons = true;
+                }
+                foreach ($_css_arr as $_cf) {
                     if (isset($_cf['enabled']) && $_cf['enabled'] === false) continue;
+                    // A row limited to some pages of the design (a page's own
+                    // stylesheet) is left out everywhere else.
+                    if (!pg_design_asset_on_page($_cf, $page_id)) continue;
                     $_ctype = isset($_cf['type']) ? $_cf['type'] : 'css';
                     $_meta  = isset($_cf['meta']) ? $_cf['meta'] : '';
 
@@ -312,7 +324,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         continue;
                     }
                     if ($_meta === 'bootstrap-icons') {
-                        $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_bs_icons_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                        if (!$pg_design_own_icons) {
+                            $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_bs_icons_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                        }
                         $pg_has_bs_css_sentinel = true;
                         continue;
                     }
@@ -388,6 +402,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (is_array($_js_arr)) {
                 foreach ($_js_arr as $_jf) {
                     if (isset($_jf['enabled']) && $_jf['enabled'] === false) continue;
+                    // A page's own script (an import keeps each page's) runs
+                    // on that page only.
+                    if (!pg_design_asset_on_page($_jf, $page_id)) continue;
                     $_jtype = isset($_jf['type']) ? $_jf['type'] : 'js';
                     $_meta  = isset($_jf['meta']) ? $_jf['meta'] : '';
 
@@ -6006,7 +6023,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $stylesheet =
             '<link rel="stylesheet" href="' . htmlspecialchars($pg_design_fw['css'], ENT_QUOTES, 'UTF-8') . '">'
             . $pg_theme_links
-            . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">'
+            . (empty($pg_design_own_icons) ? '<link rel="stylesheet" href="' . htmlspecialchars(pg_design_icons_url(), ENT_QUOTES, 'UTF-8') . '">' : '')
             . $stylesheet;
     }
 

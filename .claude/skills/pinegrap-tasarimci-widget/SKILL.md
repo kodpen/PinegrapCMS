@@ -347,6 +347,16 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   okur: `get_page_content.php`, `applyAssetsToIframe()`, HTML ağacı,
   önizleme. Kayıt kopyalayan her yer (`parseFiles`, `sdImportAssets`,
   Çoğalt) alanı taşımalı.
+- CSS/JS varlık kaydında `pages` = dosyanın yüklendiği sayfalar (sayfa
+  kimliği; kaydedilmemiş sekme `tab:<anahtar>`, şablon kopyasında
+  `key:<şablon anahtarı>`); yok ya da boşsa her sayfa. Sunucu
+  `pg_design_asset_on_page()`, editör `_sdAssetsInPlay()` ile süzer. Sayfa
+  kimliği doğuran ya da değiştiren her yol (kayıt, şablon kurulumu, ZIP'ten
+  tasarım, tasarım kopyası) başvuruları
+  `pg_designer_resolve_asset_page_refs()` ile çevirmeli; istemcide
+  `window.sdAssetsRemapPages()`.
+- Bootstrap Icons adresi tek yerde: `pg_design_icons_url()` (JS
+  `_sdIconsUrl()`); ikon seçicinin listelediği sürümle aynı kalmalı.
 - Tuvalde her öğe `.sd-wrap` içinde: üst öğeye bağlı ölçüler (`h-100`,
   `> *` seçicileri) kırılır. Çare `display:contents` ya da sarmalayıcıya
   ölçüyü geçiren kural (`.sd-wrap:has(> .h-100)`), ön yüze dokunmadan.

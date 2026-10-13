@@ -1071,7 +1071,7 @@ function pg_seo_renderable_page_types()
 // reason to skip.
 function pg_seo_render_context($page_type, $page_id, $page_name)
 {
-    $context = array('properties' => array(), 'page' => $page_name);
+    $context = array('properties' => array(), 'page' => $page_name, 'query' => array());
 
     if ($page_type == 'calendar event view') {
 
@@ -1171,7 +1171,101 @@ function pg_seo_render_context($page_type, $page_id, $page_name)
         return $context;
     }
 
+    // A page built in the visual editor shows one record through a widget
+    // instead of a page type, and the widget reads the record from the
+    // address (?r= for a submitted form, ?id= for a calendar event). Scored
+    // without one, the widget draws its empty state, and the page is told it
+    // has thin content and no H1 for markup no visitor ever sees.
+    if (($page_type == 'standard') && function_exists('pg_sw_page_widget')) {
+        $query = pg_seo_widget_record_query($page_id);
+
+        if ($query === FALSE) {
+            return FALSE;
+        }
+
+        $context['query'] = $query;
+    }
+
     return $context;
+}
+
+// The address parameters a designed page needs to show the record its
+// widget displays, picked the way pg_seo_render_context() picks one for the
+// legacy page types: the newest record the widget would show an anonymous
+// visitor.
+//
+// Returns array() when the page carries no record widget, FALSE when it
+// carries one and there is nothing to score: no record yet, or a widget
+// that shows its record only to the submitter or to signed-in visitors (the
+// same reason the legacy form item view is skipped when submitter_security
+// is on).
+function pg_seo_widget_record_query($page_id)
+{
+    $widget = pg_sw_page_widget($page_id, 'form_item_view');
+
+    if ($widget) {
+        $cfg = $widget['cfg'];
+        $access = isset($cfg['access_control']) ? (string) $cfg['access_control'] : 'public';
+
+        if (!in_array($access, array('', 'public'), TRUE)) {
+            return FALSE;
+        }
+
+        $custom_form_page_id = (int) (!empty($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id']
+            : (!empty($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+
+        if ($custom_form_page_id <= 0) {
+            return FALSE;
+        }
+
+        $reference_code = db_value(
+            "SELECT reference_code
+            FROM forms
+            WHERE
+                (page_id = '" . $custom_form_page_id . "')
+                AND (reference_code != '')
+            ORDER BY id DESC
+            LIMIT 1");
+
+        if (($reference_code === NULL) || ((string) $reference_code === '')) {
+            return FALSE;
+        }
+
+        return array('r' => (string) $reference_code);
+    }
+
+    $widget = pg_sw_page_widget($page_id, 'calendar_event_view');
+
+    if ($widget && function_exists('_pg_sw_calendars')) {
+        $calendar_ids = array();
+
+        foreach (_pg_sw_calendars($widget['cfg']) as $calendar) {
+            $calendar_ids[] = (int) $calendar['id'];
+        }
+
+        if (!$calendar_ids) {
+            return FALSE;
+        }
+
+        $event_id = db_value(
+            "SELECT calendar_events.id
+            FROM calendar_events
+            INNER JOIN calendar_events_calendars_xref
+                ON calendar_events_calendars_xref.calendar_event_id = calendar_events.id
+            WHERE
+                (calendar_events.published = '1')
+                AND (calendar_events_calendars_xref.calendar_id IN (" . implode(',', $calendar_ids) . "))
+            ORDER BY calendar_events.id DESC
+            LIMIT 1");
+
+        if (!$event_id) {
+            return FALSE;
+        }
+
+        return array('id' => (int) $event_id);
+    }
+
+    return array();
 }
 
 // Drop everything a record was previously told, when it is no longer being
@@ -1296,6 +1390,16 @@ function pg_seo_analyze_page($page_id)
     $previous_page_parameter = $had_page_parameter ? $_GET['page'] : NULL;
     $_GET['page'] = $render_context['page'];
 
+    // The record a designed page's widget shows comes from the address too
+    // (pg_seo_widget_record_query()); the previous values are put back with
+    // the page name.
+    $previous_query = array();
+
+    foreach ($render_context['query'] as $query_key => $query_value) {
+        $previous_query[$query_key] = array_key_exists($query_key, $_GET) ? array(TRUE, $_GET[$query_key]) : array(FALSE, NULL);
+        $_GET[$query_key] = (string) $query_value;
+    }
+
     // The catalog item resolver memoises for the life of the process, which is
     // right for a request and wrong for a pass that renders hundreds of pages:
     // without this every catalog detail page after the first is scored against
@@ -1337,6 +1441,14 @@ function pg_seo_analyze_page($page_id)
             $_GET['page'] = $previous_page_parameter;
         } else {
             unset($_GET['page']);
+        }
+
+        foreach ($previous_query as $query_key => $previous) {
+            if ($previous[0]) {
+                $_GET[$query_key] = $previous[1];
+            } else {
+                unset($_GET[$query_key]);
+            }
         }
 
         if (!$had_token) {

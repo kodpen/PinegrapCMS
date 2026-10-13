@@ -20172,5 +20172,15 @@
     "The nearest card, list item or element with a position class becomes clickable as a whole. With none around it, only the heading or text it sits in does. A box positioned in your own CSS needs the \"position-relative\" class to count.": "En yakın kart, liste öğesi ya da konum sınıfı olan öğe bütünüyle tıklanabilir olur. Çevresinde böyle bir öğe yoksa yalnız içinde durduğu başlık ya da metin tıklanır. Kendi CSS'inizle konumlanan bir kutunun sayılması için ona \"position-relative\" sınıfını ekleyin.",
     "\"{var:1}\" has no {var:2} widget for this yet. Add one to that page, or the links open a page that does not show the record.": "\"{var:1}\" sayfasında bunun için henüz {var:2} widget'ı yok. O sayfaya bir tane ekleyin; yoksa linkler kaydı göstermeyen bir sayfa açar.",
     "No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.": "Bu kayıtları gösteren bir sayfa henüz yok. Bu tasarımdan bir sayfa seçip ona {var} widget'ı ekleyin; linkler o zaman o sayfayı açar.",
-    "Pass the custom form's page ID as form_id or page_id.": "Özel formun sayfa kimliğini form_id ya da page_id olarak gönderin."
+    "Pass the custom form's page ID as form_id or page_id.": "Özel formun sayfa kimliğini form_id ya da page_id olarak gönderin.",
+    "Pages It Loads On…": "Yüklendiği Sayfalar…",
+    "Pages for \"{var}\"": "\"{var}\" hangi sayfalarda yüklensin",
+    "A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.": "Yalnızca bazı sayfaların ihtiyaç duyduğu bir dosyayı (harita, form betiği) o sayfalarla sınırlayın; diğer sayfalar daha hızlı açılır.",
+    "Every page": "Her sayfa",
+    "Only these pages:": "Yalnızca şu sayfalar:",
+    "Choose at least one page, or pick every page.": "En az bir sayfa seçin ya da her sayfayı seçin.",
+    "Loads only on: {var}": "Yalnızca şu sayfalarda yüklenir: {var}",
+    "(deleted page)": "(silinmiş sayfa)",
+    "Find a page…": "Sayfa bul…",
+    "No page matches.": "Eşleşen sayfa yok."
 }
