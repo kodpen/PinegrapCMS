@@ -271,6 +271,22 @@ function erp_invoice_lines_have_offers()
 }
 
 /**
+ * Whether the line table carries the purchase order line key (10.58).
+ *
+ * @return bool
+ */
+function erp_invoice_lines_have_source()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $has = function_exists('waf_table_has_column') && waf_table_has_column('erp_invoice_items', 'source_line');
+    }
+
+    return $has;
+}
+
+/**
  * Read and check the header of a typed invoice.
  *
  * Shared by the draft save and the issue step so the two cannot drift apart
@@ -428,6 +444,13 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
             quote_id = '" . (int) $data['quote_id'] . "'";
     }
 
+    // The purchase order the draft was made from (10.58), the same way: its
+    // lines name the order's lines in source_line.
+    if (array_key_exists('purchase_order_id', $data) && waf_table_has_column('erp_invoices', 'purchase_order_id')) {
+        $header_sql .= ",
+            purchase_order_id = '" . (int) $data['purchase_order_id'] . "'";
+    }
+
     // A withholding makes it a TEVKIFAT document; taking the last one off
     // makes it a sale again. Any other type (a purchase taken in from an
     // incoming e-invoice as IADE, say) is left as it was.
@@ -514,7 +537,9 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
                 withholding_code = '" . escape($line['withholding_code']) . "',
                 withholding_rate = '" . escape(number_format($line['withholding_rate'], 3, '.', '')) . "',"
                 . (erp_invoice_lines_have_withholding() ? "
-                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "") . "
+                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "")
+                . (erp_invoice_lines_have_source() ? "
+                source_line = '" . escape((string) ($line['source_line'] ?? '')) . "'," : "") . "
                 line_total = '" . (int) $line['line_total'] . "'");
 
         if ($ok === false) {

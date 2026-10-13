@@ -576,6 +576,14 @@ $output_quote = ($quote_number !== '')
     ? '<div class="col-12 my-2"><a href="edit_erp_quote.php?id=' . (int) $invoice['quote_id'] . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From quote {var:1}', 'vars' => $quote_number))) . '</a></div>'
     : '';
 
+// The purchase order it was made from (10.58), the same way.
+$purchase_order_number = ((int) ($invoice['purchase_order_id'] ?? 0) > 0)
+    ? (string) db_value("SELECT full_number FROM erp_purchase_orders WHERE id = '" . (int) $invoice['purchase_order_id'] . "' LIMIT 1")
+    : '';
+if ($purchase_order_number !== '') {
+    $output_quote .= '<div class="col-12 my-2"><a href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a></div>';
+}
+
 // The counterparty as it read when the document was issued; the live card
 // only for documents written before the copy existed.
 $has_snapshot = (trim((string) ($invoice['account_title'] ?? '')) !== '');

@@ -149,6 +149,17 @@ if (function_exists('erp_quotes_ready') && erp_quotes_ready()) {
         'bi-file-earmark-text', 'erp_quotes.php?state=open');
 }
 
+// What the store has asked its suppliers for and is still waiting on, and
+// how much of it is past the day it was expected.
+if (function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() && (($waiting_orders = erp_purchase_order_waiting_count()) > 0)) {
+    $late_orders = erp_purchase_order_late_count();
+    $output_cards_month .= $card(lang('Waiting purchase orders'), (string) $waiting_orders,
+        ($late_orders > 0)
+            ? lang(array('string' => '{var:1} past the expected day', 'vars' => $late_orders))
+            : lang('Goods not received in full yet'),
+        'bi-cart-check', 'erp_purchase_orders.php?status=waiting', ($late_orders > 0) ? 'text-danger' : '');
+}
+
 // ------------------------------------------------------------- cash and bank
 $output_tills = '';
 foreach ($cash['tills'] as $till) {

@@ -54,6 +54,10 @@ if (!$ready) {
 $rows = $ready ? erp_stock_minimum_rows(array('search' => $search, 'show' => $show, 'limit' => 500)) : array();
 $low_count = erp_stock_low_count();
 
+// Products ticked here open a new purchase order (includes/erp/
+// purchase_orders.php) with what each needs to get back to its minimum.
+$can_order = !$readonly && function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready();
+
 $output_rows = '';
 
 foreach ($rows as $row) {
@@ -65,6 +69,7 @@ foreach ($rows as $row) {
 
     $output_rows .= '
         <tr' . ($enabled ? '' : ' class="opacity-75"') . '>
+            ' . ($can_order ? '<td class="align-middle" style="width:2.5rem"><input type="checkbox" class="form-check-input" form="erp_order_form" name="products[]" value="' . $product_id . '" aria-label="' . h(lang(array('string' => 'Order {var:1}', 'vars' => erp_stock_product_label($row)))) . '" data-erp-order-pick /></td>' : '') . '
             <td class="align-middle">' . h(erp_stock_product_label($row))
                 . (((trim((string) $row['product_sku']) !== '') && (trim((string) $row['product_sku']) !== trim(erp_stock_product_label($row)))) ? '<div class="small text-body-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
                 . ($enabled ? '' : '<span class="badge text-bg-secondary">' . lang('Not on sale') . '</span>') . '</td>
@@ -80,7 +85,7 @@ foreach ($rows as $row) {
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center text-body-secondary py-4">'
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="' . ($can_order ? 5 : 4) . '" class="text-center text-body-secondary py-4">'
         . (($show === 'low') ? lang('No product on sale is at or below its minimum.') : lang('No product that tracks stock matches.')) . '</td></tr>';
 }
 
@@ -111,6 +116,9 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                ' . ($can_order ? '<form method="get" action="add_erp_purchase_order.php" id="erp_order_form" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3" disabled data-erp-order-submit><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the ticked') . '</button>
+                </form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_stock_minimums.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
                     ' . (($show !== 'all') ? '<input type="hidden" name="show" value="' . h($show) . '" />' : '') . '
@@ -127,6 +135,7 @@ pg_page_shell([
                         <table class="table table-hover align-middle mb-0" data-pg-sort>
                             <thead>
                                 <tr>
+                                    ' . ($can_order ? '<th data-pg-sort="none"><input type="checkbox" class="form-check-input" aria-label="' . h(lang('Tick all')) . '" data-erp-order-all /></th>' : '') . '
                                     <th>' . lang('Product') . '</th>
                                     <th class="text-end">' . lang('Stock') . '</th>
                                     <th>' . lang('Minimum') . '</th>
@@ -148,6 +157,39 @@ pg_page_shell([
     </div>
 </main>
 <script>
+// The order button wakes once a product is ticked.
+(function () {
+    var submit = document.querySelector("[data-erp-order-submit]");
+    var all = document.querySelector("[data-erp-order-all]");
+    if (!submit) {
+        return;
+    }
+    var picks = function () {
+        return document.querySelectorAll("[data-erp-order-pick]");
+    };
+    var sync = function () {
+        var ticked = 0;
+        picks().forEach(function (box) {
+            ticked += box.checked ? 1 : 0;
+        });
+        submit.disabled = (ticked === 0);
+        if (all) {
+            all.checked = (ticked > 0) && (ticked === picks().length);
+        }
+    };
+    document.addEventListener("change", function (event) {
+        if (event.target === all) {
+            picks().forEach(function (box) {
+                box.checked = all.checked;
+            });
+        }
+        if ((event.target === all) || event.target.hasAttribute("data-erp-order-pick")) {
+            sync();
+        }
+    });
+    sync();
+})();
+
 // Only the minimums that changed are sent: a long list would otherwise run
 // into the server\'s limit on the number of fields in one request.
 document.getElementById("erp_minimum_form").addEventListener("submit", function () {
