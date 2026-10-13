@@ -244,3 +244,89 @@ function test_ups_rate_parse_single_object()
 	pg_assert_same(array('ups_3_day_select' => 3000), pg_ups_rate_parse($data, false));
 	pg_assert_same(array(), pg_ups_rate_parse(array('response' => array('errors' => array())), false));
 }
+
+// FedEx takes the credentials in the form, at its sandbox host in the test
+// environment.
+function test_carrier_api_fedex_token_request_uses_form()
+{
+	$request = pg_carrier_api_token_request(pg_carrier_api_definition('fedex'), carrier_api_test_app('test'));
+
+	pg_assert_same('https://apis-sandbox.fedex.com/oauth/token', $request['url']);
+	pg_assert_same('grant_type=client_credentials&client_id=id-123&client_secret=secret%3A456', $request['body']);
+}
+
+function test_fedex_transit_days_words()
+{
+	pg_assert_same(1, pg_fedex_transit_days('ONE_DAY'));
+	pg_assert_same(4, pg_fedex_transit_days('FOUR_DAYS'));
+	pg_assert_same(20, pg_fedex_transit_days('TWENTY_DAYS'));
+	pg_assert_same(0, pg_fedex_transit_days('UNKNOWN'));
+	pg_assert_same(0, pg_fedex_transit_days(''));
+}
+
+// Every service is asked for, with the account, the ship day and the
+// heaviest item's weight; a missing weight is sent as one pound.
+function test_fedex_rate_request_shape()
+{
+	$request = pg_fedex_rate_request(
+		array('zip_code' => '30301'),
+		array('zip_code' => '10001', 'country' => 'USA'),
+		'2026-10-14',
+		0,
+		'740561073');
+
+	pg_assert_same(array('value' => '740561073'), $request['accountNumber']);
+	pg_assert_true($request['rateRequestControlParameters']['returnTransitTimes'], 'transit times');
+	pg_assert_same('2026-10-14', $request['requestedShipment']['shipDateStamp']);
+	pg_assert_same(array('postalCode' => '10001', 'countryCode' => 'US'), $request['requestedShipment']['recipient']['address']);
+	pg_assert_same('30301', $request['requestedShipment']['shipper']['address']['postalCode']);
+	pg_assert_same(1, $request['requestedShipment']['requestedPackageLineItems'][0]['weight']['value']);
+	pg_assert_false(isset($request['requestedShipment']['serviceType']), 'no service type');
+}
+
+// The committed date is read first, then the operational one; FedEx Ground's
+// transit time comes along for the method's own weekend rules.
+function test_fedex_delivery_parse_reads_dates_and_transit()
+{
+	$data = array('output' => array('rateReplyDetails' => array(
+		array(
+			'serviceType' => 'PRIORITY_OVERNIGHT',
+			'commit'      => array('dateDetail' => array('dayOfWeek' => 'Thu', 'dayFormat' => '2026-10-15T10:30:00')),
+		),
+		array(
+			'serviceType'       => 'FEDEX_2_DAY',
+			'operationalDetail' => array('deliveryDate' => '2026-10-16T23:59:00'),
+		),
+		array(
+			'serviceType'       => 'FEDEX_GROUND',
+			'commit'            => array(
+				'dateDetail'  => array('dayFormat' => '2026-10-20T23:59:00'),
+				'transitDays' => array('minimumTransitTime' => 'FOUR_DAYS'),
+			),
+		),
+		// Not a service the shipping methods offer.
+		array(
+			'serviceType' => 'SMART_POST',
+			'commit'      => array('dateDetail' => array('dayFormat' => '2026-10-22T23:59:00')),
+		),
+	)));
+
+	pg_assert_same(array(
+		'fedex_priority_overnight' => array('date' => '2026-10-15', 'transit_days' => 0),
+		'fedex_2_day'              => array('date' => '2026-10-16', 'transit_days' => 0),
+		'fedex_ground'             => array('date' => '2026-10-20', 'transit_days' => 4),
+	), pg_fedex_delivery_parse($data));
+}
+
+function test_fedex_delivery_parse_transit_from_operational_detail()
+{
+	$data = array('output' => array('rateReplyDetails' => array(
+		array(
+			'serviceType'       => 'FEDEX_GROUND',
+			'operationalDetail' => array('transitTime' => 'THREE_DAYS'),
+		),
+	)));
+
+	pg_assert_same(array('fedex_ground' => array('date' => '', 'transit_days' => 3)), pg_fedex_delivery_parse($data));
+	pg_assert_same(array(), pg_fedex_delivery_parse(array('errors' => array())));
+}

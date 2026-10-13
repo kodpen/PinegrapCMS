@@ -344,6 +344,18 @@
          silinmez ama artık kullanılmaz ve kart bunu
          söyler.
 
+  [DÜZELTME] FedEx teslim tarihleri FedEx'in yeni REST
+         API'sinden alınıyor. FedEx eski web servislerini
+         (anahtar, parola ve sayaç numarası) kapattığı için
+         tarih gelmiyordu. Ayarlar › E-Ticaret › Nakliye ›
+         FedEx'e artık FedEx Developer Portal'da açılan
+         projenin API Anahtarı ve Gizli Anahtarı girilir;
+         test ortamı seçilebilir, "Kaydet ve bağlantıyı
+         test et" bağlantıyı dener. Hesap numarası yerinde
+         kalır, sayaç numarası artık istenmiyor; eski
+         bilgiler silinmez ama artık kullanılmaz ve kart
+         bunu söyler.
+
   ÇALIŞMA ALANI
   --------------------------------------------------------
 

@@ -760,32 +760,14 @@ function get_fedex_delivery_date($properties) {
             'message' => $message);
     }
 
-    if (!function_exists('curl_init')) {
-        $message = 'This website cannot communicate with shipping carrier for delivery date, because
-            cURL is not installed. The administrator of this website should install cURL.';
+    // FedEx's Rate API signs in with the API key and secret key of a project
+    // from the FedEx Developer Portal (includes/fn/carrier_api.php). The key,
+    // password and meter number of the retired SOAP web services stay in the
+    // config table, unread.
+    $fedex_account = trim((string) db_value("SELECT fedex_account FROM config"));
 
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    // Get FedEx settings.
-    $config = db_item(
-        "SELECT
-            fedex_key,
-            fedex_password,
-            fedex_account,
-            fedex_meter
-        FROM config");
-
-    // If the FedEx login info is missing from the settings, then log and return false.
-    if (
-        !$config['fedex_key'] or !$config['fedex_password'] or !$config['fedex_account']
-        or !$config['fedex_meter']
-    ) {
-        $message = 'This website cannot communicate with FedEx to get delivery date, because a FedEx Key, Password, Account Number, and/or Meter Number could not be found in the site settings.';
+    if (!pg_carrier_api_ready('fedex') or ($fedex_account === '')) {
+        $message = lang('This website cannot get delivery dates from FedEx, because a FedEx API key, secret key or account number is missing from the site settings.');
 
         log_activity($message);
 
@@ -801,99 +783,22 @@ function get_fedex_delivery_date($properties) {
         $zip_code = mb_substr($zip_code, 0, 5);
     }
 
-    // If no weight was passed, then someone has probably forgotten to enter a weight for a product,
-    // so just set the weight to 1 lb.  We don't believe the weight affects the delivery date in
-    // most circumstances, so this should be fine.
-    if ($weight <= 0) {
-        $weight = 1;
-    }
+    // Every service is asked for at once, so the delivery dates of the other
+    // services land in the cache table from the same answer.
+    $request = pg_fedex_rate_request(
+        array('zip_code' => ORGANIZATION_ZIP_CODE),
+        array('zip_code' => $zip_code, 'country' => $country),
+        $ship_date,
+        $weight,
+        $fedex_account);
 
-    // We send the request below so that FedEx will return info for all services, so we can store
-    // data for all services in cache table.  We do this in order to avoid having to make an API
-    // request for each service, which would cause delays.
-    //
-    // We don't support SmartPost because FedEx does not support returning precise info for the
-    // transit time for SmartPost.  FedEx always returns 2-7 days, no matter what the zip code is.
-    // This is because FedEx SmartPost hands off the shipment to USPS, and USPS is not reliable, or
-    // does not give info to FedEx.  One workaround is to set FedEx Ground instead and add 2 extra
-    // handling days in the method, because SmartPost generally takes 1-2 days more than Ground,
-    // on average.
-    //
-    // Below we set that the package will be shipped at the shipping end of day time, because we
-    // don't currently have a better way of knowing when the package will be shipped.
+    $response = pg_carrier_api_call('fedex', 'POST', '/rate/v1/rates/quotes', $request, array('X-locale: en_US'));
 
-    $request =
-        '<?xml version="1.0"?>
-        <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://fedex.com/ws/rate/v20">
-            <SOAP-ENV:Body>
-                <ns1:RateRequest>
-                    <ns1:WebAuthenticationDetail>
-                        <ns1:UserCredential>
-                            <ns1:Key>' . h($config['fedex_key']) . '</ns1:Key>
-                            <ns1:Password>' . h($config['fedex_password']) . '</ns1:Password>
-                        </ns1:UserCredential>
-                    </ns1:WebAuthenticationDetail>
-                    <ns1:ClientDetail>
-                        <ns1:AccountNumber>' . h($config['fedex_account']) . '</ns1:AccountNumber>
-                        <ns1:MeterNumber>' . h($config['fedex_meter']) . '</ns1:MeterNumber>
-                    </ns1:ClientDetail>
-                    <ns1:Version>
-                        <ns1:ServiceId>crs</ns1:ServiceId>
-                        <ns1:Major>20</ns1:Major>
-                        <ns1:Intermediate>0</ns1:Intermediate>
-                        <ns1:Minor>0</ns1:Minor>
-                    </ns1:Version>
-                    <ns1:ReturnTransitAndCommit>true</ns1:ReturnTransitAndCommit>
-                    <ns1:RequestedShipment>
-                        <ns1:ShipTimestamp>' . h($ship_date) . 'T' . h(ECOMMERCE_END_OF_DAY_TIME) . ':00</ns1:ShipTimestamp>
-                        <ns1:Shipper>
-                            <ns1:Address>
-                                <ns1:PostalCode>' . h(ORGANIZATION_ZIP_CODE) . '</ns1:PostalCode>
-                                <ns1:CountryCode>US</ns1:CountryCode>
-                            </ns1:Address>
-                        </ns1:Shipper>
-                        <ns1:Recipient>
-                            <ns1:Address>
-                                <ns1:PostalCode>' . h($zip_code) . '</ns1:PostalCode>
-                                <ns1:CountryCode>' . h($country) . '</ns1:CountryCode>
-                            </ns1:Address>
-                        </ns1:Recipient>
-                        <ns1:PackageCount>1</ns1:PackageCount>
-                        <ns1:RequestedPackageLineItems>
-                            <ns1:SequenceNumber>1</ns1:SequenceNumber>
-                            <ns1:GroupPackageCount>1</ns1:GroupPackageCount>
-                            <ns1:Weight>
-                                <ns1:Units>LB</ns1:Units>
-                                <ns1:Value>' . h($weight) . '</ns1:Value>
-                            </ns1:Weight>
-                        </ns1:RequestedPackageLineItems>
-                    </ns1:RequestedShipment>
-                </ns1:RateRequest>
-            </SOAP-ENV:Body>
-        </SOAP-ENV:Envelope>';
+    if ($response['error'] !== '') {
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://ws.fedex.com:443/web-services');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    $response = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
-
-    // If there was a cURL problem, then log the error and return false.
-    if (!$response or $curl_errno) {
-
-        $message = 
-            'An error occurred while trying to communicate with FedEx for delivery date. ' .
-            'cURL Error Number: ' . $curl_errno . '. ' .
-            'cURL Error Message: ' . $curl_error . '. Request: ' . shipping_mask_credentials($request);
+        $message = lang(array(
+            'string' => 'An error occurred while trying to get a delivery date from FedEx: {var:1} Request: {var:2}',
+            'vars' => array($response['error'], json_encode($request))));
 
         log_activity($message);
 
@@ -902,40 +807,14 @@ function get_fedex_delivery_date($properties) {
             'message' => $message);
     }
 
-    $response_content = $response;
-
-    if (strpos($response, 'ERROR') !== false) {
-        
-        // Errors are written in SOAP envelop need to clean SOAP tags to read to xml.
-        $response = str_ireplace('SOAP-ENV:', '', $response);
-        $response = str_ireplace('SOAP:', '', $response);
-        $response = str_ireplace('v20:', '', $response);
-        $response  = simplexml_load_string($response);
-
-        $message = 
-            'An error occurred while trying to communicate with FedEx for delivery date: ' .
-            (string) $response->Body->RateReply->Notifications->Message . ' Request: ' . shipping_mask_credentials($request);
-
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    $soap_response = $response;
-
-    // Convert SOAP to xml.
-    $response = simplexml_load_string($response, NULL, NULL, "http://schemas.xmlsoap.org/soap/envelope/");
-    $response = $response->xpath('//SOAP-ENV:Body');
-    $response = $response[0];
+    $dates = pg_fedex_delivery_parse($response['data']);
 
     // If the response is not what we expect, then log and return error.
-    if (!isset($response->RateReply->RateReplyDetails)) {
+    if (!$dates) {
 
-        $message = 
-            'An error occurred while trying to communicate with FedEx for delivery date. ' .
-            $soap_response . ' Request: ' . shipping_mask_credentials($request);
+        $message = lang(array(
+            'string' => 'FedEx answered without delivery dates: {var:1} Request: {var:2}',
+            'vars' => array($response['body'], json_encode($request))));
 
         log_activity($message);
 
@@ -959,88 +838,19 @@ function get_fedex_delivery_date($properties) {
     // request was originally made for.
     $service_delivery_date = '';
 
-    // Loop through the different services to get delivery dates.
-    foreach ($response->RateReply->RateReplyDetails as $rate_reply) {
+    foreach ($dates as $service_value => $date) {
 
-        $service_type = (string) $rate_reply->ServiceType;
-
-        $service_value = '';
-
-        // Convert service type to our service value.
-        switch ($service_type) {
-            
-            case 'FIRST_OVERNIGHT':
-                $service_value = 'fedex_first_overnight';
-                break;
-
-            case 'PRIORITY_OVERNIGHT':
-                $service_value = 'fedex_priority_overnight';
-                break;
-
-            case 'STANDARD_OVERNIGHT':
-                $service_value = 'fedex_standard_overnight';
-                break;
-
-            case 'FEDEX_2_DAY_AM':
-                $service_value = 'fedex_2_day_am';
-                break;
-
-            case 'FEDEX_2_DAY':
-                $service_value = 'fedex_2_day';
-                break;
-
-            case 'FEDEX_EXPRESS_SAVER':
-                $service_value = 'fedex_express_saver';
-                break;
-
-            case 'FEDEX_GROUND':
-                $service_value = 'fedex_ground';
-                break;
-        }
-    
-        // If this is a service that we don't support, or no enabled shipping
-        // methods use this service, then skip to next service.
-        if (!$service_value or !in_array($service_value, $enabled_services)) {
+        // If no enabled shipping methods use this service, then skip to next service.
+        if (!in_array($service_value, $enabled_services)) {
             continue;
         }
 
-        // If this is FedEx Ground, then we have to calculate the delivery date, because FedEx only
-        // returns transit time.
-        if ($service_value == 'fedex_ground') {
-            
-            $transit_time = (string) $rate_reply->TransitTime;
+        $delivery_date = $date['date'];
 
-            // Convert string value ("ONE_DAY") to number (1).
-
-            $transit_days = 0;
-
-            switch ($transit_time) {
-                case 'ONE_DAY': $transit_days = 1; break;
-                case 'TWO_DAYS': $transit_days = 2; break;
-                case 'THREE_DAYS': $transit_days = 3; break;
-                case 'FOUR_DAYS': $transit_days = 4; break;
-                case 'FIVE_DAYS': $transit_days = 5; break;
-                case 'SIX_DAYS': $transit_days = 6; break;
-                case 'SEVEN_DAYS': $transit_days = 7; break;
-                case 'EIGHT_DAYS': $transit_days = 8; break;
-                case 'NINE_DAYS': $transit_days = 9; break;
-                case 'TEN_DAYS': $transit_days = 10; break;
-                case 'ELEVEN_DAYS': $transit_days = 11; break;
-                case 'TWELVE_DAYS': $transit_days = 12; break;
-                case 'THIRTEEN_DAYS': $transit_days = 13; break;
-                case 'FOURTEEN_DAYS': $transit_days = 14; break;
-                case 'FIFTEEN_DAYS': $transit_days = 15; break;
-                case 'SIXTEEN_DAYS': $transit_days = 16; break;
-                case 'SEVENTEEN_DAYS': $transit_days = 17; break;
-                case 'EIGHTEEN_DAYS': $transit_days = 18; break;
-                case 'NINETEEN_DAYS': $transit_days = 19; break;
-                case 'TWENTY_DAYS': $transit_days = 20; break;
-            }
-
-            // If the transit days could not be found, then skip to next service.
-            if (!$transit_days) {
-                continue;
-            }
+        // FedEx Ground's date is counted from its transit time with the
+        // method's own weekend and excluded dates, as it always was; FedEx's
+        // own date is the fallback.
+        if (($service_value == 'fedex_ground') and $date['transit_days']) {
 
             // Get info for the FedEx Ground shipping method, so we know about transit on weekend
             // and excluded dates.  There could be multiple methods, but we will just get info
@@ -1058,27 +868,19 @@ function get_fedex_delivery_date($properties) {
                     AND (end_time >= NOW())
                 LIMIT 1");
 
-            // If a FedEx Ground method could not be found, then skip to next service.
-            if (!$shipping_method) {
-                continue;
+            if ($shipping_method) {
+
+                $excluded_transit_dates = db_values(
+                    "SELECT date FROM excluded_transit_dates
+                    WHERE shipping_method_id = '" . e($shipping_method['id']) . "'");
+
+                $delivery_date = calculate_delivery_date(array(
+                    'ship_date' => $ship_date,
+                    'transit_days' => $date['transit_days'],
+                    'transit_on_sunday' => $shipping_method['transit_on_sunday'],
+                    'transit_on_saturday' => $shipping_method['transit_on_saturday'],
+                    'excluded_transit_dates' => $excluded_transit_dates));
             }
-
-            $excluded_transit_dates = db_values(
-                "SELECT date FROM excluded_transit_dates
-                WHERE shipping_method_id = '" . e($shipping_method['id']) . "'");
-
-            $delivery_date = calculate_delivery_date(array(
-                'ship_date' => $ship_date,
-                'transit_days' => $transit_days,
-                'transit_on_sunday' => $shipping_method['transit_on_sunday'],
-                'transit_on_saturday' => $shipping_method['transit_on_saturday'],
-                'excluded_transit_dates' => $excluded_transit_dates));
-
-        // Otherwise this service is not FedEx Ground, so get delivery date that FedEx returns.
-        } else {
-
-            $delivery_timestamp = (string) $rate_reply->DeliveryTimestamp;
-            $delivery_date = date('Y-m-d', strtotime($delivery_timestamp));
         }
 
         // If a delivery date was not found, then skip to next service.

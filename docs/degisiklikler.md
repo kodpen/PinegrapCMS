@@ -314,6 +314,74 @@ dev.pinegrap.com'da gerçek bir sunucuyla denenmeli.
 
 ---
 
+## 2026.4.10 — FedEx teslim tarihleri REST API ve OAuth ile (2026-10-13)
+
+**Neden.** FedEx eski SOAP web servislerini (`ws.fedex.com`, Rate v20;
+anahtar, parola, hesap ve sayaç numarasıyla giriş) kapattı. FedEx
+API'leri artık yalnız FedEx Developer Portal projesinin API anahtarı ve
+gizli anahtarıyla alınan OAuth 2.0 jetonunu kabul ediyor. Bu yüzden FedEx
+yöntemlerinin teslim tarihi gelmiyordu. UPS ile aynı iş (#302), aynı
+modülde.
+
+**Nasıl.** `includes/fn/carrier_api.php`'ye FedEx eklendi:
+
+- Uygulama `connect_apps` tablosunda `shipping_fedex` anahtarıyla, jeton
+  `pg_connect_service_put('shipping_fedex')` ile; önbellek, kilit ve
+  401'de bir kez yenileme UPS'teki gibi. Hostlar: üretim
+  `https://apis.fedex.com`, test `https://apis-sandbox.fedex.com`.
+- Jeton: `POST {host}/oauth/token`, `client_id` ve `client_secret`
+  form gövdesinde (FedEx'in belgelediği biçim).
+- Tarih: `POST {host}/rate/v1/rates/quotes`, `X-locale: en_US`,
+  `rateRequestControlParameters.returnTransitTimes = true`, hesap numarası
+  `accountNumber.value`'da, `rateRequestType` `ACCOUNT`, paket ağırlığı
+  LB (sıfırsa 1 lb, eskisi gibi). Eskisi gibi tek istekle tüm hizmetler
+  gelir ve hepsi `shipping_delivery_dates` önbelleğine yazılır.
+- Yanıt okuyucu `pg_fedex_delivery_parse()`: tarih sırayla
+  `commit.dateDetail.dayFormat`, `operationalDetail.deliveryDate`,
+  `commitDate`; transit gün sayısı `commit.transitDays.minimumTransitTime`
+  ya da `operationalDetail.transitTime` (`ONE_DAY` … `TWENTY_DAYS`).
+  FedEx Ground için eskisi gibi tarih transit gün sayısından, yöntemin
+  hafta sonu ayarları ve hariç tutulan tarihlerle hesaplanır.
+- `pg_carrier_api_http()` sıkıştırılmış yanıtı açar (FedEx gzip
+  gönderebiliyor).
+
+**Ne değişti.**
+
+- Ayarlar › E-Ticaret › Nakliye › FedEx: Anahtar, Parola ve Sayaç Numarası
+  kutuları kalktı. Yerine API Anahtarı, Gizli Anahtar (kayıtlıysa
+  "Kayıtlı. Korumak için boş bırakın."), Ortam (Üretim / Test ortamı) ve
+  "Kaydet ve bağlantıyı test et". Hesap Numarası aynı ayar anahtarında
+  (`config.fedex_account`) kalır ve gereklidir.
+- Eski bilgiler girili, yenileri yoksa kartta uyarı. Uyarı metni
+  taşıyıcıdan bağımsız hale getirildi ("{taşıyıcı} anlık bilgileri"),
+  UPS kartı da aynı metni kullanıyor.
+- Kaydetme ve test bildirimleri alan adlarından bağımsız: "{taşıyıcı}
+  kimlik bilgilerini kabul etti." / "{taşıyıcı} kimlik bilgileri
+  kaydedilmedi: …".
+- `config.fedex_key`, `fedex_password`, `fedex_meter` silinmedi; artık
+  okunmuyor ve kayıtta yazılmıyor.
+- Günlük satırları `lang()` ile Türkçe.
+
+**Bilerek yapılmayan.** FedEx fiyatı istenmiyor; eski kod da yalnız teslim
+tarihi alıyordu (FedEx yöntemlerinde anlık fiyat sıfır döner, yöntemin
+kendi ücreti geçerli). SmartPost eskisi gibi desteklenmiyor. Gönderim
+saati gönderilmiyor: eski istek mesai bitiş saatini ekliyordu, yeni
+istekte yalnız tarih (`shipDateStamp`) var.
+
+**Doğrulanan.** Uç, gövde ve yanıt alanları karrio-fedex 2026.1.32 ve
+ShippingRates kaynaklarıyla karşılaştırıldı (developer.fedex.com bulut
+ortamından açılmıyor). lint, check_lang, test.php, check_bindings,
+check_api_schema, check_copies, build_js --check temiz.
+
+**Doğrulanamayan.** Gerçek bir FedEx hesabına istek atılmadı. Dev'de:
+FedEx Developer Portal'da "Rates and Transit Times" API'si eklenmiş bir
+proje, test anahtarları ve test hesap numarasıyla Test ortamında
+"Kaydet ve bağlantıyı test et"; sonra FedEx hizmetli bir nakliye
+yönteminde teslim tarihi ve Ayarlar › Günlük'te hata satırı olmaması.
+10.72 adımı ve `ENCRYPTION_KEY` gerekir.
+
+---
+
 ## 2026.4.10 — Dış API: ziyaretçi raporları ve site günlüğü (2026-10-13)
 
 **Sorun.** Trafik ve denetim kaydı API'de yoktu. Bir raporlama aracı ya da
