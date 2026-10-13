@@ -2022,7 +2022,7 @@ const StyleDesigner = (function () {
 
         html += row(_sdT('Field Name'),
             '<input type="text" class="form-control form-control-sm sd-cf-name" maxlength="100" value="' + esc(name) + '" spellcheck="false" placeholder="' + esc(_sdT('field_name')) + '">' +
-            _cfHint(_sdT('The key of the submitted data; <code>^^{var}^^</code> in the notification email.', esc(name || _sdT('field_name'))) + ' ' +
+            _cfHint(_sdT('The key of the submitted data: the submission lists, the e-mail and the Bind Data lists name the field by it.') + ' ' +
                     (c.check && c.fieldset ? _sdT('Every box in the group shares this name.') : '')));
 
         html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
@@ -10372,16 +10372,17 @@ const StyleDesigner = (function () {
                     var bindBtn = doc.createElement('button');
                     bindBtn.type = 'button';
                     bindBtn.className = 'sd-tb-bind-btn bi bi-link-45deg';
-                    // Most bindings resolve to a ^^token^^; field bindings do not
-                    // — they name a form field, and printing them in token syntax
-                    // would send the designer looking for a token that never exists.
+                    // Named as the Bind Data list names the option, the way the
+                    // designer picked it.
+                    var _bindType = _getSystemWidgetRegionType(node);
                     bindBtn.title = _sdT('Data bound') + ': ' + _boundKeys.map(function (k) {
                         var v = node.props._bindings[k];
                         if (k === 'form_field') return _sdT('form field') + ' → ' + v;
                         if (k === 'eo_field')   return _sdT('order field') + ' → ' + v;
                         if (k === 'section')    return _sdT('section') + ' → ' + v;
                         if (k === 'action')     return _sdT('action') + ' → ' + v;
-                        return k + ' → ^^' + v + '^^';
+                        var _ffTip = _sdFormFieldOf(v, node);
+                        return k + ' → ' + (_ffTip ? (_ffTip.label || _ffTip.name) : _swBindLabel(_bindType, v));
                     }).join(', ');
                     bindBtn.addEventListener('click', function (e) {
                         e.stopPropagation();
@@ -10911,14 +10912,14 @@ const StyleDesigner = (function () {
     }
 
     // Read-only stand-in shown in place of a URL input whose href is bound.
-    // Names the token so the designer knows WHICH binding is driving it, and
-    // points at the panel where it can be cleared.
+    // Names the Bind Data option so the designer knows WHICH binding is
+    // driving it, and points at the panel where it can be cleared.
     function _sdBoundHrefNotice(node) {
         var tok = (node && node.props && node.props._bindings && node.props._bindings.href) || '';
         return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
                'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
                '<span class="bi bi-link-45deg me-1"></span>' +
-               _sdT('The URL comes from a data binding: <code>{var}</code>. To type a URL by hand, pick “— No binding —” in the <strong>Bind Data</strong> panel.', esc(tok)) +
+               _sdT('The URL comes from the "{var}" binding. To type a URL by hand, pick “— No binding —” in the <strong>Bind Data</strong> panel.', esc(_swBindLabel(_getSystemWidgetRegionType(node), tok))) +
                // The name alone is no address; the server links the record
                // instead (pg_sw_record_href_bindings()).
                (tok === 'address_name'
@@ -11731,6 +11732,7 @@ const StyleDesigner = (function () {
 
     var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1 };
 
+    var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
@@ -11762,6 +11764,22 @@ const StyleDesigner = (function () {
             // date field reads as a date and a pick list as a short value
             // instead of lorem ipsum.
             var _ffPrev = (fieldName && node) ? _sdFormFieldOf(fieldName, node) : null;
+            // A field's label ("Field labels" in a detail view) reads as itself.
+            if (!_ffPrev && node && /^[^_].*__label$/.test(String(fieldName || ''))) {
+                var _lblForm   = _getSystemWidgetCustomFormPageId(node);
+                var _lblFields = _formFieldsCache[_lblForm];
+                // The fields come with the first panel that asks for them;
+                // ask once from here, and paint again when they arrive.
+                if (_lblForm && !_lblFields && !_sdLabelFieldsAsked[_lblForm]) {
+                    _sdLabelFieldsAsked[_lblForm] = true;
+                    _fetchFormFields(_lblForm, function () { renderCanvas(); });
+                }
+                for (var _lf = 0; Array.isArray(_lblFields) && _lf < _lblFields.length; _lf++) {
+                    if (_swFormFieldToken(_lblFields[_lf]).toLowerCase() + '__label' === fieldName) {
+                        return _lblFields[_lf].label || _lblFields[_lf].name;
+                    }
+                }
+            }
             if (_ffPrev) {
                 if (_ffPrev.type === 'date' || _ffPrev.type === 'date and time') return _sdDatePlaceholder();
                 if (_ffPrev.type === 'time')          return '14:30';
@@ -24675,7 +24693,7 @@ const StyleDesigner = (function () {
               'padding:8px 10px;border-radius:4px;line-height:1.45;border-left:3px solid #6366f1">' +
                   '<strong>🔁 ' + esc(_sdT('This area is repeated for every form record.')) + '</strong><br>' +
                   '<span style="color:#555;font-size:.72rem">' +
-                      _sdT('The design inside it is cloned for every submitted_form record. Data tokens (^^title^^, ^^image^^ etc.) are replaced with the record\'s values.') +
+                      _sdT('The design inside it is repeated for every submitted record. Elements bound in Bind Data show that record\'s values.') +
                   '</span>' +
               '</div>';
 
@@ -24706,7 +24724,8 @@ const StyleDesigner = (function () {
               'padding:8px 10px;border-radius:4px;line-height:1.45;border-left:3px solid #0d9488">' +
                 '<strong><span class="bi bi-people me-1"></span>' + esc(_sdT('This area is shown again for every recipient.')) + '</strong><br>' +
                 '<span style="color:#555;font-size:.72rem">' +
-                    _sdT('The design inside it is cloned for every ship_to (recipient). On the form inputs use the eo_field binding — <code>shipping_first_name</code>, <code>shipping_last_name</code> and so on — and the server renames each one to <code>shipping_&lt;rid&gt;_first_name</code> per recipient. For text you can use the <code>^^__recipient_index^^</code>, <code>^^__recipient_name^^</code> and <code>^^__recipient_id^^</code> tokens.') +
+                    _sdT('The design inside it is cloned for every ship_to (recipient). On the form inputs use the eo_field binding — <code>shipping_first_name</code>, <code>shipping_last_name</code> and so on — and the server renames each one to <code>shipping_&lt;rid&gt;_first_name</code> per recipient.') + ' ' +
+                    esc(_sdT('For text, bind an element to "{var:1}", "{var:2}" or "{var:3}".', [_swBindLabel('express_order', '__recipient_name'), _swBindLabel('express_order', '__recipient_index'), _swBindLabel('express_order', '__recipient_id')])) +
                 '</span>' +
             '</div>';
 
@@ -24818,7 +24837,7 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
                 // No source to pick — the widget reads from the session user automatically.
-                _sourceInfoHtml = _sdT('Design the template on the canvas. Select the elements and bind them to the account fields in the <strong>Bind Data</strong> section. <br><em>When nobody is signed in, the ^^__not_logged_in^^ token arrives filled.</em>');
+                _sourceInfoHtml = _sdT('Design the template on the canvas. Select the elements and bind them to the account fields in the <strong>Bind Data</strong> section.');
             } else if (_isExpressOrder) {
                 // No source to pick — the widget reads from the session cart
                 // automatically. Form layout is currently rendered server-side;
@@ -25325,7 +25344,7 @@ const StyleDesigner = (function () {
                                 '<input type="checkbox" class="sd-sw-inp" id="sd-sw-attr-filter-enabled" data-sw-id="' + sid + '"' + (_attrFilterOn ? ' checked' : '') + '>' +
                                 '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                             '</label>' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('A filter UI built from the product attributes (color, size, brand and so on). Token: <code>^^__attribute_filters_html^^</code>') + '</div>'
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A filter UI built from the product attributes (color, size, brand and so on), drawn in a container whose section is "{var}".', _sdT('Filter Offcanvas'))) + '</div>'
                         ) +
                         (_attrFilterOn ? row(_sdT('Filter style'),
                             '<select class="form-select form-select-sm" id="sd-sw-attr-filter-style" data-sw-id="' + sid + '">' +
@@ -25469,7 +25488,7 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-person-circle', _sdT('My Account Settings'),
                     row(_sdT('Signed-out message'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-ma-not-logged-in" data-sw-id="' + sid + '" value="' + esc(_maNotLoggedIn) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('When nobody is signed in, the ^^__not_logged_in^^ token is filled with this message.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When nobody is signed in, elements bound to "{var}" show this message.', _swBindLabel('my_account', 'not_logged_in'))) + '</div>'
                     ) +
                     row(_sdT('Redirect to the sign-in page'),
                         '<label class="sd-prop-switch">' +
@@ -25498,7 +25517,7 @@ const StyleDesigner = (function () {
                     ) : '') +
                     row(_sdT('Staff page'),
                         '<select class="form-select form-select-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ^^__staff_url^^ link and the "may open the staff page" condition appear only for visitors the page\'s folder lets in.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swStaffHint('my_account')) + '</div>'
                     )
                 );
             }
@@ -25678,12 +25697,12 @@ const StyleDesigner = (function () {
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Visitors without permission see the same screen as an unregistered one.')) + '</div>'
                     ) +
-                    row(_sdT('Field label tokens'),
+                    row(_sdT('Field labels'),
                         '<label class="sd-prop-switch">' +
                             '<input type="checkbox" class="sd-sw-inp" id="sd-sw-fiv-show-labels" data-sw-id="' + sid + '"' + (_fivShowLabels ? ' checked' : '') + '>' +
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                         '</label>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While on, a ^^field_name__label^^ token is offered for every field as well.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While on, Bind Data also offers each field\'s label, under "{var}".', _sdT('Field labels'))) + '</div>'
                     ) +
                     row(_sdT('Question for the AI assistants'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-fiv-ai-prompt" data-sw-id="' + sid + '" value="' + esc(typeof _cfg.ai_prompt_text === 'string' ? _cfg.ai_prompt_text : '') + '" maxlength="500" placeholder="' + esc(_sdT('Summarize the main points of this article: {url}')) + '">' +
@@ -25728,7 +25747,7 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-box-arrow-in-right', _sdT('Login Settings'),
                     row(_sdT('Redirect after a successful sign-in'),
                         '<select class="form-select form-select-sm" id="sd-sw-lf-redirect-page" data-sw-id="' + sid + '">' + _lfPageOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= or ?redirect= on the link is used, and failing that the user\'s home page. Token: ^^__redirect_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= or ?redirect= on the link is used, and failing that the user\'s home page.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
                         '<label class="sd-prop-switch">' +
@@ -25739,11 +25758,11 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Forgot password page'),
                         '<select class="form-select form-select-sm" id="sd-sw-lf-forgot-page" data-sw-id="' + sid + '">' + _lfForgotOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The link is drawn only while the site setting (Forgot Password Link) is on. Token: ^^__forgot_password_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The link is drawn only while the site setting (Forgot Password Link) is on.') + ' ' + _swLinkHint('login_form', '__forgot_password_url')) + '</div>'
                     ) +
                     row(_sdT('Registration page'),
                         '<select class="form-select form-select-sm" id="sd-sw-lf-register-page" data-sw-id="' + sid + '">' + _lfRegisterOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('A page carrying a registration widget, or the legacy registration page. Token: ^^__register_url^^') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A page carrying a registration widget, or the legacy registration page.') + ' ' + _swLinkHint('login_form', '__register_url')) + '</div>'
                     )
                 );
             }
@@ -25755,7 +25774,7 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-bag', _sdT('Cart Link Settings'),
                     row(_sdT('Cart page'),
                         '<select class="form-select form-select-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the cart page the visitor last saw, else the site\'s cart page. Token: ^^__cart_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the cart page the visitor last saw, else the site\'s cart page.') + ' ' + _swLinkHint('cart_link', '__cart_url')) + '</div>'
                     )
                 );
             }
@@ -25768,14 +25787,14 @@ const StyleDesigner = (function () {
                             '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="show_codes" data-sw-cfg-kind="bool"' + (_cfg.show_codes ? ' checked' : '') + '>' +
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                         '</label>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('EN, DE, TR instead of English, Deutsch, Türkçe. Token: ^^__language_label^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('EN, DE, TR instead of English, Deutsch, Türkçe, in elements bound to "{var}".', _swBindLabel('language_switcher', '__language_label'))) + '</div>'
                     ) +
                     row(_sdT('Hide the current language'),
                         '<label class="sd-prop-switch">' +
                             '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="hide_current" data-sw-cfg-kind="bool"' + (_cfg.hide_current ? ' checked' : '') + '>' +
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
                         '</label>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only the other languages are listed; the current one is shown by ^^__current_language_label^^.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only the other languages are listed; an element bound to "{var}" shows the current one.', _swBindLabel('language_switcher', '__current_language_label'))) + '</div>'
                     )
                 );
             }
@@ -25803,19 +25822,19 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-lr-login-page" data-sw-id="' + sid + '">' + _lrLoginOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The visitor comes back to the page they were on. Token: ^^__login_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Registration page'),
                         '<select class="form-select form-select-sm" id="sd-sw-lr-register-page" data-sw-id="' + sid + '">' + _lrRegisterOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Token: ^^__register_url^^ — the link drops when the site has no registration page.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__register_url')) + '</div>'
                     ) +
                     row(_sdT('My account page'),
                         '<select class="form-select form-select-sm" id="sd-sw-lr-account-page" data-sw-id="' + sid + '">' + _lrAccountOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Token: ^^__my_account_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__my_account_url')) + '</div>'
                     ) +
                     row(_sdT('Staff page'),
                         '<select class="form-select form-select-sm" id="sd-sw-lr-staff-page" data-sw-id="' + sid + '">' + _lrStaffOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ^^__staff_url^^ link and the "may open the staff page" condition appear only for visitors the page\'s folder lets in.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swStaffHint('login_region')) + '</div>'
                     )
                 );
             }
@@ -25833,7 +25852,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the "Back to sign-in" link goes. Token: ^^__back_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
                     )
                 );
             }
@@ -25861,7 +25880,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the "Already have an account?" link goes. Token: ^^__login_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
@@ -25978,11 +25997,11 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-cart3', _sdT('Shopping Cart Settings'),
                     row(_sdT('Shopping Cart Label'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-cart-label" data-sw-id="' + sid + '" value="' + esc(_scCartLabel) + '" maxlength="100" placeholder="' + esc(_sdT('My Cart')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__shopping_cart_label^^ token (in the heading and the retrieve_order calls).') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swTextHint('shopping_cart', '__shopping_cart_label')) + '</div>'
                     ) +
                     row(_sdT('Quick Add Label'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-qa-label" data-sw-id="' + sid + '" value="' + esc(_scQuickAddLabel) + '" maxlength="100" placeholder="' + esc(_sdT('Quick Add')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('^^__quick_add_label^^. The heading text of the quick add block.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The heading text of the quick add block.') + ' ' + _swTextHint('shopping_cart', '__quick_add_label')) + '</div>'
                     ) +
                     row(_sdT('Quick Add Product Group'),
                         '<select class="form-select form-select-sm" id="sd-sw-sc-qa-group" data-sw-id="' + sid + '">' + _scGroupOpts + '</select>' +
@@ -25990,19 +26009,19 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Special Offer Code Label'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-offer-label" data-sw-id="' + sid + '" value="' + esc(_scOfferCodeLabel) + '" maxlength="100" placeholder="' + esc(_sdT('Offer Code')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">^^__special_offer_code_label^^.</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swTextHint('shopping_cart', '__special_offer_code_label')) + '</div>'
                     ) +
                     row(_sdT('Special Offer Code Message'),
                         '<textarea class="form-control form-control-sm" id="sd-sw-sc-offer-msg" data-sw-id="' + sid + '" rows="2" maxlength="500" placeholder="' + esc(_sdT('If you have an offer code, enter it here.')) + '">' + esc(_scOfferCodeMsg) + '</textarea>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('^^__special_offer_code_message^^. The description above the offer code input.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The description above the offer code input.') + ' ' + _swTextHint('shopping_cart', '__special_offer_code_message')) + '</div>'
                     ) +
                     row(_sdT('Update Button Label'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-update-btn" data-sw-id="' + sid + '" value="' + esc(_scUpdateBtnLabel) + '" maxlength="100" placeholder="' + esc(_sdT('Update')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('^^__update_button_label^^. The label of the button that saves quantity changes.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The label of the button that saves quantity changes.') + ' ' + _swTextHint('shopping_cart', '__update_button_label')) + '</div>'
                     ) +
                     row(_sdT('Checkout Button Label'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-checkout-btn" data-sw-id="' + sid + '" value="' + esc(_scCheckoutBtnLbl) + '" maxlength="100" placeholder="' + esc(_sdT('Proceed to Checkout')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('^^__checkout_button_label^^. The label of the button that goes to the next page.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The label of the button that goes to the next page.') + ' ' + _swTextHint('shopping_cart', '__checkout_button_label')) + '</div>'
                     ) +
                     row(_sdT('Next Page (with shipping)'),
                         _scBuildPagePicker(_cfg.next_page_id_with_shipping, 'sd-sw-sc-next-with-ship', 'next_page_id_with_shipping') +
@@ -26014,11 +26033,11 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Catalog Detail Page'),
                         '<select class="form-select form-select-sm" id="sd-sw-sc-detail-page" data-sw-id="' + sid + '">' + _scDetailOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The product name link on the cart rows (^^__item_url^^) goes to this detail page. Format: <code>/&lt;detail-page&gt;/&lt;product-slug&gt;</code>. When empty, the first page carrying a Catalog Detail widget is used, or else the site\'s catalog detail page.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Links bound to "{var}" on the cart rows go to this detail page. Format: <code>/&lt;detail-page&gt;/&lt;product-slug&gt;</code>. When empty, the first page carrying a Catalog Detail widget is used, or else the site\'s catalog detail page.', esc(_swBindLabel('shopping_cart', '__item_url'))) + '</div>'
                     ) +
                     row(_sdT('Empty cart message'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-empty-msg" data-sw-id="' + sid + '" value="' + esc(_scEmptyMsg) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__empty_message^^ token.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swTextHint('shopping_cart', '__empty_message')) + '</div>'
                     ) +
                     row(_sdT('Currency symbol'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-currency" data-sw-id="' + sid + '" value="' + esc(_scCurrency) + '" maxlength="10" placeholder="' + esc(_sdT('{var:1} (from the site setting)', [_sdCurrencySymbol()])) + '">' +
@@ -26201,7 +26220,7 @@ const StyleDesigner = (function () {
                     + '<div class="sd-prop-row" style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px"><div class="sd-prop-control">'
                     +   '<div style="font-size:.66rem;color:#6b7280;line-height:1.5">'
                     +     '<i class="bi bi-info-circle me-1"></i>'
-                    +     _sdT('<strong>Every visible element (headings, button texts, the terms modal) is edited by the designer on the canvas.</strong> Single-click an element to change its text; right-click for the advanced options such as text binding (^^token^^).')
+                    +     _sdT('<strong>Every visible element (headings, button texts, the terms modal) is edited by the designer on the canvas.</strong> Single-click an element to change its text; right-click for the advanced options such as Bind Data.')
                     +   '</div>'
                     + '</div></div>';
                 systemSection += sect('bi-bag-check', _sdT('Express Order Settings (#{var})', sid), _eoBody);
@@ -26306,7 +26325,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-palette', _sdT('Status Badge Classes'),
                     '<div style="font-size:.66rem;color:#888;line-height:1.4;padding:2px 0 6px">' +
-                        _sdT('The CSS classes of the ^^__order_status_badge^^ token. The status text comes from the order; you pick its colour here. Left empty, the default is used.') +
+                        esc(_sdT('The CSS classes of the badge in elements bound to "{var}". The status text comes from the order; you pick its colour here. Left empty, the default is used.', _swBindLabel('order_view', '__order_status_badge'))) +
                     '</div>' +
                     _ovBadgeRow('complete',  _sdT('Completed'),  'complete / exported / paid / tamamlandı') +
                     _ovBadgeRow('pending',   _sdT('Pending'),    'incomplete / pending / bekliyor') +
@@ -26338,7 +26357,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the "Already a member?" link goes. Token: ^^__login_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
@@ -26669,7 +26688,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('No events message'),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="empty_message" value="' + esc(_cvNoEvents) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Used as the ^^__empty_message^^ token.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swTextHint('calendar_view', '__empty_message')) + '</div>'
                     )
                 );
             }
@@ -26706,7 +26725,7 @@ const StyleDesigner = (function () {
                     _acRows += _acPage('redirect_page_id', _sdT('After logging out'), null, _sdT('— Back to this page —'),
                         _sdT('Back on this page the signed-out block is shown.'));
                     _acRows += _acPage('login_page_id', _sdT('Sign-in page'), ['login_form'], _acAuto,
-                        _sdT('Token: ^^__login_url^^. Automatic: a page with a login widget, else the legacy sign-in page.'));
+                        _swLinkHint('logout', '__login_url') + ' ' + _sdT('Automatic: a page with a login widget, else the legacy sign-in page.'));
                 }
                 if (_regionType === 'change_password' || _regionType === 'account_profile') {
                     _acRows += _acPage('redirect_page_id', _sdT('After saving'), null, _sdT('— My account page —'),
@@ -26719,18 +26738,18 @@ const StyleDesigner = (function () {
                     _acRows += _acPage('redirect_page_id', _sdT('Continue page (send_to)'), null, _sdT('— Automatic (home page or panel) —'),
                         _sdT('The Continue link in the confirmation. A ?send_to= in the reset link wins.'));
                     _acRows += _acPage('forgot_password_page_id', _sdT('Forgot password page'), ['forgot_password'], _acAuto,
-                        _sdT('Where a used or expired link sends the visitor to ask for a new email. Token: ^^__forgot_password_url^^'));
+                        _sdT('Where a used or expired link sends the visitor to ask for a new email.') + ' ' + _swLinkHint('set_password', '__forgot_password_url'));
                 }
                 if (_regionType !== 'logout' && _regionType !== 'set_password' && _regionType !== 'account_security') {
                     _acRows += _acPage('my_account_page_id', _sdT('My account page'), ['my_account'], _acAuto,
-                        _sdT('Token: ^^__my_account_url^^ — the link drops when there is none.'));
+                        _swLinkHint(_regionType, '__my_account_url'));
                 }
                 if (_regionType === 'account_profile' || _regionType === 'email_preferences' || _regionType === 'address_book' || _regionType === 'account_security') {
                     _acRows += _acPage('login_page_id', _sdT('Sign-in page'), ['login_form'], _acAuto,
-                        _sdT('Linked for a visitor who is not signed in. Token: ^^__login_url^^'));
+                        _sdT('Linked for a visitor who is not signed in.') + ' ' + _swLinkHint(_regionType, '__login_url'));
                     _acRows += row(_sdT('Signed-out message'),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="not_logged_in_message" value="' + esc(_cfg.not_logged_in_message || '') + '" maxlength="255">' +
-                        _acHint(_sdT('Used as the ^^__not_logged_in^^ token.')));
+                        _acHint(esc(_sdT('When nobody is signed in, elements bound to "{var}" show this message.', _swBindLabel(_regionType, '__not_logged_in')))));
                 }
                 if (_regionType === 'address_book') {
                     _acRows += row(_sdT('Address type'),
@@ -26747,7 +26766,7 @@ const StyleDesigner = (function () {
                     change_password:   'email_address, current_password, new_password, new_password_verify, password_hint',
                     set_password:      'new_password, password_hint',
                     account_profile:   'first_name, last_name, title, company, business_address_1, business_address_2, business_city, business_state, business_zip_code, business_country, business_phone, mobile_phone, home_phone, business_fax, salutation, suffix, tax_number, tax_office, timezone',
-                    email_preferences: 'email_address, opt_in, contact_group_^^__group_id^^',
+                    email_preferences: 'email_address, opt_in, contact_group',
                     address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number',
                     account_security:  'code, current_password'
                 }[_regionType];
@@ -28386,7 +28405,7 @@ const StyleDesigner = (function () {
                     createNode('semantic', { tag: 'div', cssClass: 'pg-eo-recipient-block mb-3 p-3 border rounded' }, [
                         createNode('content', {
                             contentType: 'heading', tag: 'h3',
-                            text: '^^__recipient_name^^',
+                            text: _sdT('Recipient name'),
                             cssClass: 'h6 text-muted mb-3',
                             _bindings: { text: '__recipient_name' }
                         }, []),
@@ -29234,7 +29253,7 @@ const StyleDesigner = (function () {
             ['__email_address',     _sdT('Email whose preferences these are')]
         ]},
         { label: _sdT('Mailing List (loop_area)'), tokens: [
-            ['__group_id',          _sdT('List ID (the checkbox is named contact_group_^^__group_id^^)')],
+            ['__group_id',          _sdT('List ID')],
             ['__group_name',        _sdT('List name')],
             ['__group_description', _sdT('List description')]
         ]},
@@ -29952,7 +29971,8 @@ const StyleDesigner = (function () {
             if (cfg && cfg.regionType === 'calendar_event_view') return 'calendar_event_view';
             if (cfg && _SW_ACCOUNT_TYPES[cfg.regionType] === 1) return cfg.regionType;
             if (cfg && cfg.regionType === 'error_page')        return 'error_page';
-            if (cfg && cfg.regionType === 'language_switcher') return 'language_switcher';
+            // login_region, cart_link, language_switcher: a palette of their own.
+            if (cfg && SW_ACCOUNT_TOKEN_PALETTES[cfg.regionType]) return cfg.regionType;
             return 'form_list_view';
         } catch (e) { return 'form_list_view'; }
     }
@@ -30819,7 +30839,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Search Results')) + ' ' + _sdT('You can bind it to the static tokens and to the result tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Search Results')) + ' ' + _sdT('You can bind it to the widget\'s fields, and inside the loop_area to each result\'s fields.') +
                 '</div>' +
                 rowsHtmlSR
             );
@@ -30860,7 +30880,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Registration Entrance')) + ' ' + _sdT('You can bind it to the registration form tokens.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Registration Entrance')) + ' ' + _sdT('You can bind it to the registration form\'s fields.') +
                 '</div>' +
                 rowsHtmlReg
             );
@@ -30901,7 +30921,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Shopping Cart')) + ' ' + _sdT('You can bind it to the static cart tokens and to the product tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Shopping Cart')) + ' ' + _sdT('You can bind it to the cart\'s fields, and inside the loop_area to each product\'s fields.') +
                 '</div>' +
                 rowsHtmlSC
             );
@@ -30942,7 +30962,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('View Order')) + ' ' + _sdT('You can bind it to the static order tokens and to the item tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('View Order')) + ' ' + _sdT('You can bind it to the order\'s fields, and inside the loop_area to each item\'s fields.') +
                 '</div>' +
                 rowsHtmlOV
             );
@@ -30983,7 +31003,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Membership Entrance')) + ' ' + _sdT('You can bind it to the membership tokens.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Membership Entrance')) + ' ' + _sdT('You can bind it to the membership fields.') +
                 '</div>' +
                 rowsHtmlMem
             );
@@ -31029,7 +31049,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Custom Form')) + ' ' + _sdT('Its text can be bound to the form tokens.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Custom Form')) + ' ' + _sdT('Its text can be bound to the form\'s fields.') +
                 '</div>' +
                 rowsHtmlCF
             );
@@ -31070,7 +31090,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Calendar View')) + ' ' + _sdT('You can bind it to the static calendar tokens and to the event tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Calendar View')) + ' ' + _sdT('You can bind it to the calendar\'s fields, and inside the loop_area to each event\'s fields.') +
                 '</div>' +
                 rowsHtmlCV
             );
@@ -31262,7 +31282,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Express Order')) + ' ' + _sdT('Use the tokens for content (text/href), and the <strong>Express Order Field</strong> dropdown below for the form controls (input/select).') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Express Order')) + ' ' + _sdT('Bind the content (text/href) to the order\'s fields, and the form controls (input/select) with the <strong>Express Order Field</strong> dropdown below.') +
                 '</div>' +
                 rowsHtmlEO +
                 _eoFormCtrlEl
@@ -31289,6 +31309,11 @@ const StyleDesigner = (function () {
 
         var formId = _getSystemWidgetCustomFormPageId(node);
         var formFields = formId ? (_formFieldsCache[formId] || null) : null;
+        // A detail view with "Field labels" on fills <field>__label with the
+        // field's label (lower case, as the server keys it).
+        var _swCfg = _isItemView ? _sdSystemWidgetCfgOf(node) : null;
+        var _withLabels = !!(_swCfg && _swCfg.show_field_labels);
+        var _labelToken = function (ff) { return _swFormFieldToken(ff).toLowerCase() + '__label'; };
 
         // No form selected → render guidance instead of empty dropdowns
         if (!formId) {
@@ -31326,6 +31351,14 @@ const StyleDesigner = (function () {
                 });
                 html += '</optgroup>';
             }
+            if (_withLabels && formFields.length) {
+                html += '<optgroup label="' + esc(_sdT('Field labels')) + '">';
+                formFields.forEach(function (ff) {
+                    var token = _labelToken(ff);
+                    html += '<option value="' + esc(token) + '"' + (token === currentVal ? ' selected' : '') + '>' + esc(ff.label || ff.name || ('#' + ff.id)) + '</option>';
+                });
+                html += '</optgroup>';
+            }
             // Built-ins group (always available regardless of form). Token set
             // depends on regionType — see _builtins resolution above.
             html += '<optgroup label="' + esc(_sdT('Built-in fields')) + '">';
@@ -31336,6 +31369,7 @@ const StyleDesigner = (function () {
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
+                              !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
                               !_builtins.some(function (o) { return o[0] === currentVal; }));
             html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
             return { html: html, isCustom: isCustom };
@@ -31362,7 +31396,7 @@ const StyleDesigner = (function () {
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
             '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                 '<span class="bi bi-info-circle me-1"></span>' +
-                _sdT('This element is inside a {var}. Bind it to the chosen form\'s fields or to the built-in tokens.', _hintLabel) +
+                _sdT('This element is inside a {var}. Bind it to the chosen form\'s fields or to the built-in fields.', _hintLabel) +
             '</div>' +
             rowsHtml
         );
@@ -41670,6 +41704,55 @@ const StyleDesigner = (function () {
         return html;
     }
 
+    // The Bind Data option a widget token stands for, named as the binding
+    // dropdown of a `type` widget names it. Panel hints point at the option
+    // the designer picks, not at the token behind it.
+    function _swBindLabel(type, token) {
+        var palettes = {
+            catalog_listing:     SW_CATALOG_TOKEN_GROUPS,
+            catalog_item_view:   SW_CATALOG_ITEM_TOKEN_GROUPS,
+            my_account:          SW_MY_ACCOUNT_TOKEN_GROUPS,
+            login_form:          SW_LOGIN_FORM_TOKEN_GROUPS,
+            forgot_password:     SW_FORGOT_PASSWORD_TOKEN_GROUPS,
+            search_results:      SW_SEARCH_RESULTS_TOKEN_GROUPS,
+            registration:        SW_REGISTRATION_TOKEN_GROUPS,
+            shopping_cart:       SW_SHOPPING_CART_TOKEN_GROUPS,
+            order_view:          SW_ORDER_VIEW_TOKEN_GROUPS,
+            membership:          SW_MEMBERSHIP_TOKEN_GROUPS,
+            custom_form:         SW_CUSTOM_FORM_TOKEN_GROUPS,
+            calendar_view:       SW_CALENDAR_VIEW_TOKEN_GROUPS,
+            error_page:          SW_ERROR_PAGE_TOKEN_GROUPS,
+            calendar_event_view: SW_CALENDAR_EVENT_VIEW_TOKEN_GROUPS,
+            express_order:       SW_EXPRESS_ORDER_TOKEN_GROUPS
+        };
+        if (type === 'form_list_view' || type === 'form_item_view') {
+            // Names the settings once gave these values (see _bindAlias).
+            if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
+            if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
+            if (token === 'form_item_view') return (type === 'form_item_view') ? _sdT('This record\'s address') : _sdT('Detail page address');
+            var opts = (type === 'form_item_view') ? SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS : SW_BUILTIN_FIELD_OPTIONS;
+            for (var k = 0; k < opts.length; k++) if (opts[k][0] === token) return opts[k][1];
+            return token;
+        }
+        var groups = palettes[type] || SW_ACCOUNT_TOKEN_PALETTES[type] || [];
+        for (var i = 0; i < groups.length; i++) {
+            for (var j = 0; j < groups[i].tokens.length; j++) {
+                if (groups[i].tokens[j][0] === token) return groups[i].tokens[j][1];
+            }
+        }
+        return token;
+    }
+    // Plain-text hint lines naming a Bind Data option.
+    function _swLinkHint(type, token) {
+        return _sdT('Links bound to "{var}" open the page chosen here.', _swBindLabel(type, token));
+    }
+    function _swTextHint(type, token) {
+        return _sdT('Elements bound to "{var}" show this text.', _swBindLabel(type, token));
+    }
+    function _swStaffHint(type) {
+        return _sdT('Links bound to "{var}" and the "may open the staff page" condition appear only for visitors the page\'s folder lets in.', _swBindLabel(type, '__staff_url'));
+    }
+
     // The line under a detail page picker: where the links lead, or what is
     // missing for them to work. `types`/`test` say what makes a page a
     // detail page (as for _swPageOptions); `widget` names that widget.
@@ -44622,17 +44705,17 @@ const StyleDesigner = (function () {
 
             case 'email_preferences': {
                 // Posts to email_preferences.php. One loop row per mailing
-                // list the contact may choose; the server checks the row's
-                // checkbox (contact_group_^^__group_id^^) when the contact
-                // is on the list.
+                // list the contact may choose; the server names each row's
+                // checkbox contact_group_<list id> and checks it when the
+                // contact is on the list.
                 var epId = 'f_' + Math.random().toString(36).slice(2, 7);
                 var epLoop = createNode('loop_area', {}, [
                     createNode('semantic', { tag: 'div', cssClass: 'form-check mb-2', customName: _sdT('Mailing List') }, [
-                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: 'contact_group_^^__group_id^^',
-                            _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'name', value: 'contact_group_^^__group_id^^' },
+                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: 'contact_group',
+                            _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'name', value: 'contact_group' },
                                      { name: 'value', value: '1' }] }),
                         createNode('semantic', { tag: 'label', cssClass: 'form-check-label', text: _sdT('List name'), customName: _sdT('Label'),
-                            _attrs: [{ name: 'for', value: 'contact_group_^^__group_id^^' }], _bindings: { text: '__group_name' } }),
+                            _attrs: [{ name: 'for', value: 'contact_group' }], _bindings: { text: '__group_name' } }),
                         createNode('content', { contentType: 'paragraph', text: _sdT('List description'), cssClass: 'small text-muted mb-0',
                             _bindings: { text: '__group_description' } })
                     ])
