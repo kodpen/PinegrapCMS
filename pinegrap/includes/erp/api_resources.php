@@ -3525,7 +3525,14 @@ function erp_api_vat_report_schema()
     );
 }
 
-function erp_api_reports_vat($params)
+/**
+ * The period a report names: a month, or from and to; the current month
+ * when neither is sent. Two years at most.
+ *
+ * @param array $params
+ * @return array ['from' => Y-m-d, 'to' => Y-m-d]
+ */
+function erp_api_report_period($params)
 {
     $month = trim((string) ($params['month'] ?? ''));
     $from = isset($params['from']) ? erp_api_day($params['from']) : '';
@@ -3557,6 +3564,13 @@ function erp_api_reports_vat($params)
     } else {
         $period = erp_profit_period(array('range' => 'month', 'month' => date('Y-m')));
     }
+
+    return array('from' => $period['from'], 'to' => $period['to']);
+}
+
+function erp_api_reports_vat($params)
+{
+    $period = erp_api_report_period($params);
 
     api_ok(erp_api_vat_report_present(erp_vat_report($period['from'], $period['to'])));
 }

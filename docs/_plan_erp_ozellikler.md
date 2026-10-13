@@ -72,7 +72,10 @@ siparişin faturası ve teklifler (işleyiciler `includes/erp/api_documents.php`
 `credit_limit` kodları `check_api_schema.php` gereği `api_error_catalogue()`'a eklendi;
 `schema.php`'de başka değişiklik yok. İkinci parçada irsaliye, sayım ve minimum stok
 (işleyiciler `includes/erp/api_stock.php`'de; `GET /erp/stock/minimums` açılmadı, çünkü
-`GET /erp/stock/levels` minimumu zaten veriyor). Sıradaki: virman + çek/senet + raporlar.
+`GET /erp/stock/levels` minimumu zaten veriyor). Üçüncü parçada virman, çek/senet ve
+raporlar (işleyiciler `includes/erp/api_cash.php` ve `api_reports.php`'de). Plandan sapma:
+kasa akışı, paneldeki ekranı kasa hakkı istediği için `erp_cash:read` ister; panonun kasa
+kartı yalnız kasayı okuyabilen anahtara dolu gelir. **Faz 6 bitti.**
 
 **Rotalar** (kapsam parantezde; her işleyici var olan alan fonksiyonunu çağırır, ikinci bir
 hesap yolu açmaz):
@@ -92,9 +95,9 @@ hesap yolu açmaz):
 | ✓ `POST /erp/waybills` (`invoice_id` ya da `order_id` ya da satırlar), `POST /erp/waybills/{id}/cancel`, `POST /erp/waybills/{id}/invoice` | `erp_waybill_data_from_invoice()` / `_from_order()` + `erp_waybill_create()`, `erp_waybill_cancel()`, `erp_waybill_invoice()` |
 | ✓ `POST /erp/stock-counts`, `POST /erp/stock-counts/{id}/items`, `POST /erp/stock-counts/{id}/apply`, `POST /erp/stock-counts/{id}/cancel` | `includes/erp/stock_counts.php` |
 | ✓ `POST /erp/stock/minimums` (okuma `GET /erp/stock/levels`) | `includes/erp/stock_levels.php` |
-| `POST /erp/cash-transfers` (erp_cash:write) | `erp_post_transfer()` |
-| `POST /erp/cheques`, `POST /erp/cheques/{id}/step` (erp_cash:write) | `erp_cheque_create()`, `erp_cheque_step()` |
-| `GET /erp/reports/profit`, `GET /erp/reports/cashflow`, `GET /erp/dashboard` (erp:read) | `erp_profit_report()`, `includes/erp/cashflow.php`, pano kartlarının hesapları |
+| ✓ `POST /erp/cash-transfers` (erp_cash:write) | `erp_post_transfer()` |
+| ✓ `POST /erp/cheques`, `POST /erp/cheques/{id}/step` (erp_cash:write) | `erp_cheque_create()`, `erp_cheque_step()` |
+| ✓ `GET /erp/reports/profit`, `GET /erp/reports/cashflow`, `GET /erp/dashboard` (erp:read; kasa akışı erp_cash:read) | `erp_profit_report()`, `includes/erp/cashflow.php`, pano kartlarının hesapları |
 
 **Kurallar:**
 

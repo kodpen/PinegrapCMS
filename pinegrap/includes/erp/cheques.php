@@ -304,6 +304,22 @@ function erp_cheque_create($data, $user_id)
 }
 
 /**
+ * Where each step can be taken from.
+ *
+ * @return array  step => statuses it starts from
+ */
+function erp_cheque_step_from()
+{
+    return array(
+        'deposit' => array('portfolio'),
+        'collect' => array('portfolio', 'deposited'),
+        'endorse' => array('portfolio'),
+        'bounce' => array('portfolio', 'deposited'),
+        'pay' => array('given'),
+    );
+}
+
+/**
  * The next step of a cheque or note.
  *
  * @param int    $id
@@ -325,13 +341,7 @@ function erp_cheque_step($id, $step, $options, $user_id)
     }
 
     $status = (string) $cheque['status'];
-    $allowed = array(
-        'deposit' => array('portfolio'),
-        'collect' => array('portfolio', 'deposited'),
-        'endorse' => array('portfolio'),
-        'bounce' => array('portfolio', 'deposited'),
-        'pay' => array('given'),
-    );
+    $allowed = erp_cheque_step_from();
 
     if (!in_array($status, $allowed[$step] ?? array(), true)) {
         return $fail(lang('It cannot take that step from where it is now.'));

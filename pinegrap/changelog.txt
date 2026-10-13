@@ -697,6 +697,20 @@
          da yayılır ve denetim izine düşer. erp:write yetkisi
          gerekir.
 
+  [YENİ] ERP virmanı, çek/senet ve raporlar API'de ve MCP'de.
+         Virman: iki kasa ya da banka hesabı arasında para
+         aktarma (POST /erp/cash-transfers). Çek ve senet:
+         alınan ya da verilen çeki/senedi kaydetme (POST
+         /erp/cheques) ve sonraki adımı; bankaya verme, tahsil,
+         tedarikçiye ciro, karşılıksız, bankanın ödemesi (POST
+         /erp/cheques/{id}/step). Hepsi önce X-Dry-Run ile
+         denenebilir, erp_cash:write yetkisi ve uygulama
+         sahibinin kasa hakkı gerekir. Raporlar: kâr/zarar
+         (GET /erp/reports/profit), kasa akışı (GET
+         /erp/reports/cashflow, erp_cash:read) ve ERP panosunun
+         rakamları (GET /erp/dashboard); kasa rakamları yalnız
+         kasayı okuyabilen anahtara gösterilir.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün
