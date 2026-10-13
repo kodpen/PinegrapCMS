@@ -28,6 +28,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_oauth_metadata();         // 10.71
 	upgrade_2026_4_10_language_redirect();      // 10.1
 	upgrade_2026_4_10_waf_countries();          // 10.2
+	upgrade_2026_4_10_workspace_delegation();   // 10.80
 
 }
 
@@ -205,5 +206,41 @@ function upgrade_2026_4_10_waf_countries() {
 	install_add_column('config', 'waf_country_exempt_bots', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
 
 	install_note('Firewall: requests can be refused by country, or let in only from the countries chosen. It is off until it is set under Site Settings, Firewall.');
+
+}
+
+// A task handed to an assistant (2026.4.10, 10.80; includes/workspace/delegation.php).
+//
+// The people on a task stay the ones who answer for it; an assistant - Pinegrap
+// AI, Claude, and later an MCP server's alias - is the task's delegate and does
+// the work it can. ws_tasks.delegate names the assistant by its key ('' for
+// none), with who handed the task over and when.
+//
+// Every run of the assistant on a task is a request in the queue both
+// assistants already work from, tied to the task by ws_ai_requests.task_id.
+// Like a request from a note or from the page editor it has no message: the
+// instruction is kept in note_text and the answer in note_reply.
+//
+// What the assistant proposes on a task waits in ws_ai_changes like a change
+// proposed in a channel, tied to the task by task_id instead of to a message.
+function upgrade_2026_4_10_workspace_delegation() {
+
+	install_add_column('ws_tasks', 'delegate', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_add_column('ws_tasks', 'delegated_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('ws_tasks', 'delegated_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_index('ws_tasks', 'idx_delegate', "INDEX idx_delegate (delegate, status)");
+
+	install_add_column('ws_ai_requests', 'task_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_index('ws_ai_requests', 'idx_task', "INDEX idx_task (task_id)");
+
+	install_add_column('ws_ai_changes', 'task_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_index('ws_ai_changes', 'idx_task', "INDEX idx_task (task_id)");
+
+	install_note('Workspace: a task can be handed to an assistant (Pinegrap AI or Claude). The people on it stay responsible; what the assistant proposes waits for them to apply it.');
 
 }

@@ -1,0 +1,734 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Workspace - a task handed to an assistant.
+ *
+ * The people on a task stay the ones who answer for it. An assistant - Pinegrap
+ * AI (ai.php) or Claude (claude.php) - becomes the task's delegate and does the
+ * work it can: it reads the task, its notes, its channel and the records it is
+ * about, and reports what it did, what it found, what it proposes and what it
+ * needs from the person to go on. It writes nothing itself; whatever it
+ * proposes waits for the person who asked to apply it.
+ *
+ * Every run of the assistant on a task is a request in the queue both
+ * assistants already work from (ws_ai_requests), tied to the task by task_id
+ * and asked by one person, the way a request written in a note is: the
+ * instruction is kept in note_text, the answer in note_reply, and the request
+ * has no message. So the limits, the watchdog, the daily allowance and the
+ * payload-free fire of the routine are the ones a channel request has. A run
+ * starts when the task is handed over, when the person who handed it writes
+ * to the assistant again, and when a note on the task calls an assistant by
+ * name (@ai, @Claude) - a note asks without handing the task over.
+ *
+ * ws_assistants() is the one list of assistants a task can go to. The task
+ * drawer, the task lists and the API read it, so another kind of assistant
+ * (an MCP server's alias) joins by adding its row there and answering the
+ * same queue.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+/**
+ * The longest instruction a run takes, in characters.
+ */
+define('WS_DELEGATION_INSTRUCTION_MAX', 2000);
+
+/**
+ * How many of a task's runs the drawer shows, newest first.
+ */
+define('WS_DELEGATION_RUNS_SHOWN', 5);
+
+/**
+ * How many earlier runs of a task a new run is told about.
+ */
+define('WS_DELEGATION_EARLIER', 3);
+
+/**
+ * Are the columns there (2026.4.10, 10.80), and the queue the runs wait in?
+ *
+ * @return bool
+ */
+function ws_delegation_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('waf_table_has_column')
+            && waf_table_has_column('ws_tasks', 'delegate')
+            && waf_table_has_column('ws_ai_requests', 'task_id')
+            && waf_table_has_column('ws_ai_changes', 'task_id')
+            && function_exists('ws_ai_schema_ready') && ws_ai_schema_ready()
+            && function_exists('ws_claude_schema_ready') && ws_claude_schema_ready();
+    }
+
+    return $ready;
+}
+
+/**
+ * The assistants a task can be handed to, by key: the ones whose connection
+ * is switched on. Each has the name and picture it is shown with and the
+ * application it writes through.
+ *
+ * @return array key => key, name, handle, icon, avatar, app_id
+ */
+function ws_assistants()
+{
+    static $list = null;
+
+    if ($list !== null) {
+        return $list;
+    }
+
+    $list = array();
+
+    if (!ws_delegation_ready()) {
+        return $list;
+    }
+
+    $ai = ws_ai_config();
+
+    if ($ai['enabled'] && ((int) $ai['app_id'] > 0)) {
+        $list['ai'] = array(
+            'key'    => 'ai',
+            'name'   => 'Pinegrap AI',
+            'handle' => '@ai',
+            'icon'   => 'bi-cpu',
+            'avatar' => PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
+            'app_id' => (int) $ai['app_id'],
+        );
+    }
+
+    $claude = ws_claude_config();
+
+    if ($claude['enabled'] && ((int) $claude['app_id'] > 0)) {
+        $list['claude'] = array(
+            'key'    => 'claude',
+            'name'   => 'Claude',
+            'handle' => '@Claude',
+            'icon'   => 'bi-stars',
+            'avatar' => PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-assistant.svg',
+            'app_id' => (int) $claude['app_id'],
+        );
+    }
+
+    return $list;
+}
+
+/**
+ * One assistant, or null when there is none by that key.
+ *
+ * @param string $key
+ * @return array|null
+ */
+function ws_assistant($key)
+{
+    $list = ws_assistants();
+
+    return $list[(string) $key] ?? null;
+}
+
+/**
+ * The name an assistant is shown with, also for a key whose connection has
+ * been switched off since: the runs it made keep their name.
+ *
+ * @param string $key
+ * @return string
+ */
+function ws_assistant_name($key)
+{
+    $assistant = ws_assistant($key);
+
+    if ($assistant) {
+        return $assistant['name'];
+    }
+
+    return ($key === 'ai') ? 'Pinegrap AI' : (($key === 'claude') ? 'Claude' : (string) $key);
+}
+
+/**
+ * The assistant a text calls by name: its tag, its handle written by hand or
+ * its command. Claude first when both are called, as a note decides it; an
+ * assistant whose connection is off is not called.
+ *
+ * @param string $body
+ * @return string key, or '' for none
+ */
+function ws_assistant_called($body)
+{
+    if (!ws_delegation_ready()) {
+        return '';
+    }
+
+    if (ws_assistant('claude') && ws_claude_asked($body)) {
+        return 'claude';
+    }
+
+    return (ws_assistant('ai') && ws_ai_asked($body)) ? 'ai' : '';
+}
+
+/**
+ * What keeps an assistant from working on a task: it is not connected, or
+ * the task's channel does not let it be asked. A task outside any channel is
+ * sent by the person who hands it over, who can read all of it.
+ *
+ * @param array  $viewer
+ * @param string $key
+ * @param array  $task
+ * @return string a sentence, '' when nothing does
+ */
+function ws_assistant_task_problem($viewer, $key, $task)
+{
+    if (!ws_assistant($key)) {
+        return lang('Invalid request.');
+    }
+
+    if (($key === 'ai') && !ws_ai_ready()) {
+        return ws_plain_text($viewer, ws_ai_setup_hint());
+    }
+
+    if (($key === 'claude') && !ws_claude_ready()) {
+        return ws_plain_text($viewer, ws_claude_setup_hint());
+    }
+
+    $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+
+    if ($channel) {
+        $allowed = ($key === 'ai') ? ws_ai_channel_allowed($channel) : ws_claude_channel_allowed($channel);
+
+        if (!$allowed) {
+            return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name($key)));
+        }
+    }
+
+    return '';
+}
+
+/**
+ * An instruction as it is kept: one block of text, tags as tokens, cut to
+ * the length a run takes.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_delegation_instruction_clean($text)
+{
+    $text = trim(str_replace("\r\n", "\n", (string) $text));
+
+    if (function_exists('ws_tokens_normalise')) {
+        $text = ws_tokens_normalise($text);
+    }
+
+    return trim(mb_substr($text, 0, WS_DELEGATION_INSTRUCTION_MAX));
+}
+
+/**
+ * Is a request status one the assistant is still on?
+ *
+ * @param string $status
+ * @return bool
+ */
+function ws_delegation_status_open($status)
+{
+    return in_array((string) $status, array('queued', 'sent', 'running'), true);
+}
+
+/**
+ * The run of an assistant that is still under way on a task, if any.
+ *
+ * @param int $task_id
+ * @return array|null
+ */
+function ws_task_delegation_open_run($task_id)
+{
+    if (!ws_delegation_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_ai_requests
+        WHERE task_id = '" . (int) $task_id . "' AND status IN ('queued', 'sent', 'running')
+        ORDER BY id DESC LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Starts a run of an assistant on a task: the request waits in the queue
+ * until the assistant takes it. One run at a time on a task, and no more
+ * waiting requests per person than the assistant takes from anybody.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $key
+ * @param string $instruction
+ * @return array ok, error, request_id
+ */
+function ws_task_delegation_run($viewer, $task, $key, $instruction)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'request_id' => 0);
+    };
+
+    if (!ws_delegation_ready() || !ws_can_see_task($viewer, $task)) {
+        return $fail(lang('That task could not be found.'));
+    }
+
+    $problem = ws_assistant_task_problem($viewer, $key, $task);
+
+    if ($problem !== '') {
+        return $fail($problem);
+    }
+
+    if (ws_task_delegation_open_run($task['id'])) {
+        return $fail(lang('An assistant is already working on this task. Wait for its answer or stop it first.'));
+    }
+
+    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($key));
+
+    $limit = ($key === 'ai') ? WS_AI_PER_PERSON : WS_CLAUDE_PER_PERSON;
+
+    if ($waiting >= $limit) {
+        return $fail(lang(array('string' => '{var:1} already has {var:2} requests of yours waiting. Please wait for those to be answered.', 'vars' => array(ws_assistant_name($key), $limit))));
+    }
+
+    // Written with its assistant in one go: a request to Pinegrap AI must
+    // never sit in the table as Claude's, where Claude's run would take it.
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, task_id, note_text, requested_by, status, agent, created_at)
+        VALUES ('0', '0', '" . (int) $task['id'] . "', '" . e(ws_delegation_instruction_clean($instruction)) . "',
+            '" . (int) $viewer['id'] . "', 'queued', '" . e($key) . "', '" . time() . "')");
+
+    $request_id = (int) mysqli_insert_id(db::$con);
+
+    if ($request_id <= 0) {
+        return $fail(lang('Invalid request.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'request_id' => $request_id);
+}
+
+/**
+ * Hands a task to an assistant and starts its first run. The person stays
+ * on the task: a task nobody is on gets the person who hands it over, unless
+ * it waits in a department's pool. Handing it again to the assistant it is
+ * already with is one more run.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $key
+ * @param string $instruction
+ * @return array ok, error, request_id
+ */
+function ws_task_delegate($viewer, $task, $key, $instruction)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'request_id' => 0);
+    };
+
+    if (!ws_delegation_ready()) {
+        return $fail(lang('Invalid request.'));
+    }
+
+    $assignees = ws_task_assignee_ids($task['id']);
+
+    if (!ws_can_edit_task($viewer, $task, $assignees)) {
+        return $fail(lang('You may not hand this task to an assistant.'));
+    }
+
+    if (!ws_task_is_open($task['status'])) {
+        return $fail(lang('Only an open task can be handed to an assistant.'));
+    }
+
+    $current = (string) ($task['delegate'] ?? '');
+
+    if (($current !== '') && ($current !== $key) && ws_task_delegation_open_run($task['id'])) {
+        return $fail(lang(array('string' => 'The task is with {var:1}, which is still working on it. Stop it first.', 'vars' => ws_assistant_name($current))));
+    }
+
+    $run = ws_task_delegation_run($viewer, $task, $key, $instruction);
+
+    if (!$run['ok']) {
+        return $run;
+    }
+
+    if ($current !== $key) {
+        db("UPDATE ws_tasks SET delegate = '" . e($key) . "', delegated_by = '" . (int) $viewer['id'] . "', delegated_at = '" . time() . "', updated_at = '" . time() . "'
+            WHERE id = '" . (int) $task['id'] . "'");
+
+        if (empty($assignees) && ((int) $task['department_id'] === 0)) {
+            ws_task_set_assignees($viewer, $task['id'], array((int) $viewer['id']));
+            $assignees = array((int) $viewer['id']);
+        }
+
+        if (function_exists('pg_announce')) {
+            pg_announce('workspace.task.delegated', ws_task_event_payload(ws_task($task['id']), $assignees) + array(
+                'agent'        => $key,
+                'delegated_by' => (int) $viewer['id'],
+                'request_id'   => (int) $run['request_id'],
+            ));
+        }
+    }
+
+    return $run;
+}
+
+/**
+ * Stops the assistant's run on a task, and with $undelegate takes the task
+ * back from it. The person who asked for the run, or anybody who may change
+ * the task.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @param bool  $undelegate
+ * @return array ok, error
+ */
+function ws_task_delegation_stop($viewer, $task, $undelegate)
+{
+    if (!ws_delegation_ready()) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    $run = ws_task_delegation_open_run($task['id']);
+    $mine = $run && ((int) $run['requested_by'] === (int) $viewer['id']);
+
+    if (!$mine && !ws_can_edit_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('You may not change this task.'));
+    }
+
+    if ($run) {
+        db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name($viewer['id'])))) . "',
+                answered_at = '" . time() . "', ai_state = NULL
+            WHERE task_id = '" . (int) $task['id'] . "' AND status IN ('queued', 'sent', 'running')");
+    }
+
+    if ($undelegate && ((string) ($task['delegate'] ?? '') !== '')) {
+        db("UPDATE ws_tasks SET delegate = '', delegated_by = 0, delegated_at = 0, updated_at = '" . time() . "' WHERE id = '" . (int) $task['id'] . "'");
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Keeps an assistant's answer on its run: shown on the task, and the person
+ * who asked is told. A run that was stopped meanwhile keeps its state.
+ *
+ * @param array  $row  the request
+ * @param string $text
+ * @return bool written
+ */
+function ws_task_delegation_answer($row, $text)
+{
+    $now = time();
+
+    db("UPDATE ws_ai_requests SET status = 'answered', note_reply = '" . e(ws_tokens_normalise(trim((string) $text))) . "',
+            answered_at = '" . $now . "', claimed_at = IF(claimed_at = 0, '" . $now . "', claimed_at), error = '', ai_state = NULL
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    ws_task_delegation_told($row, 'answered');
+
+    return true;
+}
+
+/**
+ * Tells the person who asked that a run ended, answered or not, and
+ * announces it.
+ *
+ * @param array  $row
+ * @param string $status answered | failed
+ */
+function ws_task_delegation_told($row, $status)
+{
+    $task = ws_task((int) $row['task_id']);
+
+    if (!$task) {
+        return;
+    }
+
+    ws_notify((int) $row['requested_by'], 'task_assistant', array('task_id' => (int) $task['id'], 'actor_id' => 0));
+
+    if (function_exists('pg_announce')) {
+        pg_announce('workspace.task.assistant_answered', ws_task_event_payload($task, ws_task_assignee_ids($task['id'])) + array(
+            'agent'        => (string) ($row['agent'] ?? 'claude'),
+            'request_id'   => (int) $row['id'],
+            'requested_by' => (int) $row['requested_by'],
+            'outcome'      => $status,
+        ));
+    }
+}
+
+/**
+ * The runs on a task a new run is told about: what the assistants were
+ * asked and what they answered, oldest first.
+ *
+ * @param array $task
+ * @param int   $before_id only runs before this request
+ * @return array[] agent, instruction, status, answer, error, asked_by, at
+ */
+function ws_task_delegation_earlier($task, $before_id = 0)
+{
+    if (!ws_delegation_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT id, agent, note_text, note_reply, status, error, requested_by, created_at FROM ws_ai_requests
+        WHERE task_id = '" . (int) $task['id'] . "' AND status IN ('answered', 'failed')"
+        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '') . "
+        ORDER BY id DESC LIMIT " . WS_DELEGATION_EARLIER);
+
+    $out = array();
+
+    foreach (array_reverse($rows) as $row) {
+        $out[] = array(
+            'agent'       => (string) $row['agent'],
+            'instruction' => (string) $row['note_text'],
+            'status'      => (string) $row['status'],
+            'answer'      => (string) $row['note_reply'],
+            'error'       => (string) $row['error'],
+            'asked_by'    => (int) $row['requested_by'],
+            'at'          => (int) $row['created_at'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * Where a run stands, as the drawer's line says it.
+ *
+ * @param array $viewer
+ * @param array $row
+ * @return array status, label, icon
+ */
+function ws_task_delegation_state($viewer, $row)
+{
+    if ((string) ($row['agent'] ?? 'claude') === 'ai') {
+        return ws_ai_request_state($viewer, $row);
+    }
+
+    return ws_claude_request_state($viewer, $row);
+}
+
+/**
+ * The assistant part of a task's drawer: who the task is with, the runs on
+ * it with their answers, and what the reader may do.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @return array|null null where the module is not there
+ */
+function ws_task_delegation_detail($viewer, $task)
+{
+    if (!ws_delegation_ready()) {
+        return null;
+    }
+
+    $assignees = ws_task_assignee_ids($task['id']);
+    $can_edit = ws_can_edit_task($viewer, $task, $assignees);
+    $assistants = array();
+
+    foreach (ws_assistants() as $key => $assistant) {
+        $assistants[] = array(
+            'key'    => $key,
+            'name'   => $assistant['name'],
+            'icon'   => $assistant['icon'],
+            'avatar' => $assistant['avatar'],
+            'ready'  => ($key === 'ai') ? ws_ai_ready() : ws_claude_ready(),
+        );
+    }
+
+    $rows = (array) db_items("SELECT * FROM ws_ai_requests
+        WHERE task_id = '" . (int) $task['id'] . "'
+        ORDER BY id DESC LIMIT " . WS_DELEGATION_RUNS_SHOWN);
+
+    $tokens = array();
+    $people_ids = array((int) ($task['delegated_by'] ?? 0));
+
+    foreach ($rows as $row) {
+        $tokens = array_merge($tokens, ws_tokens((string) $row['note_text']), ws_tokens((string) $row['note_reply']));
+        $people_ids[] = (int) $row['requested_by'];
+    }
+
+    $refs = ws_refs_resolve($viewer, $tokens);
+    $people = ws_people(array_unique(array_filter($people_ids)));
+    $runs = array();
+    $open = false;
+
+    foreach ($rows as $row) {
+        $key = (string) ($row['agent'] ?? 'claude');
+        $state = ws_task_delegation_state($viewer, $row);
+        $running = ws_delegation_status_open($row['status']);
+        $open = $open || $running;
+
+        $runs[] = array(
+            'id'          => (int) $row['id'],
+            'agent'       => $key,
+            'assistant'   => array('name' => ws_assistant_name($key), 'avatar' => ws_assistant($key)['avatar'] ?? '', 'app' => true),
+            'asked_by'    => $people[(int) $row['requested_by']]['name'] ?? ws_person_name($row['requested_by']),
+            'asked_at'    => ws_time_label($row['created_at']),
+            'instruction' => ((string) $row['note_text'] !== '') ? ws_render_body((string) $row['note_text'], $refs) : '',
+            'answer'      => (($row['status'] === 'answered') && ((string) $row['note_reply'] !== '')) ? ws_render_body((string) $row['note_reply'], $refs) : '',
+            'answered_at' => ((int) $row['answered_at'] > 0) ? ws_time_label($row['answered_at']) : '',
+            'status'      => (string) $row['status'],
+            'label'       => $state['label'],
+            'icon'        => $state['icon'],
+            'open'        => $running,
+            'mine'        => ((int) $row['requested_by'] === (int) $viewer['id']),
+        );
+    }
+
+    $delegate = (string) ($task['delegate'] ?? '');
+    $with = null;
+
+    if ($delegate !== '') {
+        $with = array(
+            'key'    => $delegate,
+            'name'   => ws_assistant_name($delegate),
+            'avatar' => ws_assistant($delegate)['avatar'] ?? '',
+            'by'     => $people[(int) $task['delegated_by']]['name'] ?? ws_person_name($task['delegated_by']),
+            'at'     => ((int) $task['delegated_at'] > 0) ? ws_time_label($task['delegated_at']) : '',
+        );
+    }
+
+    $first = $rows ? $rows[0] : null;
+
+    return array(
+        'delegate'   => $with,
+        'assistants' => $assistants,
+        'runs'       => $runs,
+        'open'       => $open,
+        'open_agent' => ($open && $first) ? (string) $first['agent'] : '',
+        'can_hand'   => $can_edit && ws_task_is_open($task['status']) && !empty($assistants),
+        'can_stop'   => $open && ($can_edit || ($first && ((int) $first['requested_by'] === (int) $viewer['id']))),
+        'can_take'   => $can_edit && ($delegate !== ''),
+        'max'        => WS_DELEGATION_INSTRUCTION_MAX,
+    );
+}
+
+/**
+ * A run started on the screen goes on at once: Claude's routine is fired,
+ * Pinegrap AI is carried on by the screen that waits (ws_ai_kick).
+ *
+ * @param string $key
+ */
+function ws_task_delegation_start($key)
+{
+    if (($key === 'claude') && function_exists('ws_claude_dispatch')) {
+        ws_claude_dispatch();
+    }
+}
+
+/**
+ * A run of an assistant on a task started by a note that calls it by name.
+ * The note is the instruction; the task is not handed over.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $body the note
+ * @return string a sentence when the assistant could not be asked, '' otherwise
+ */
+function ws_task_delegation_from_note($viewer, $task, $body)
+{
+    $key = ws_assistant_called($body);
+
+    if ($key === '') {
+        return '';
+    }
+
+    $run = ws_task_delegation_run($viewer, $task, $key, $body);
+
+    if (!$run['ok']) {
+        return $run['error'];
+    }
+
+    ws_task_delegation_start($key);
+
+    return '';
+}
+
+/**
+ * The task a run is for, as the assistant reads it: the task, the people,
+ * its notes, and what the assistants were asked and answered on it before.
+ *
+ * @param array $asker
+ * @param array $row the request
+ * @return array|null null when the task is gone or the person who asked may
+ *                    no longer see it
+ */
+function ws_task_delegation_context($asker, $row)
+{
+    $task = ws_task((int) $row['task_id']);
+
+    if (!$task || !ws_can_see_task($asker, $task)) {
+        return null;
+    }
+
+    $earlier = array();
+
+    foreach (ws_task_delegation_earlier($task, (int) $row['id']) as $item) {
+        $earlier[] = array(
+            'agent'       => ws_assistant_name($item['agent']),
+            'asked_by'    => ws_person_name($item['asked_by']),
+            'instruction' => ws_plain_text($asker, $item['instruction']),
+            'answer'      => ($item['status'] === 'answered') ? ws_plain_text($asker, $item['answer']) : '',
+            'error'       => $item['error'],
+        );
+    }
+
+    return array(
+        'task'         => $task,
+        'delegated'    => ((string) ($task['delegate'] ?? '') === (string) ($row['agent'] ?? 'claude')),
+        'delegated_by' => (int) ($task['delegated_by'] ?? 0),
+        'earlier'      => $earlier,
+    );
+}
+
+/**
+ * Every text assets/js/workspace_task_delegate.js shows.
+ *
+ * @return array
+ */
+function ws_delegation_js_strings()
+{
+    return array(
+        'dg_title'         => lang('Assistant'),
+        'dg_hand'          => lang('Hand to an assistant'),
+        'dg_instruction'   => lang('What should it do? Left empty, it works from the task itself.'),
+        'dg_follow'        => lang('Write to the assistant'),
+        'dg_follow_hint'   => lang('Another instruction on the same task; it sees what it answered before.'),
+        'dg_send'          => lang('Send'),
+        'dg_with'          => ws_js_template('Assistant: {var:1}', 1),
+        'dg_with_meta'     => ws_js_template('Handed over by {var:1}, {var:2}', 2),
+        'dg_responsible'   => lang('The people on the task stay responsible. What the assistant proposes waits for the person who asked to apply it.'),
+        'dg_stop'          => lang('Stop'),
+        'dg_stop_confirm'  => lang('Stop the assistant\'s work on this task?'),
+        'dg_take_back'     => lang('Take the task back'),
+        'dg_take_confirm'  => lang('Take the task back from the assistant? A run under way is stopped.'),
+        'dg_asked'         => ws_js_template('{var:1} asked, {var:2}', 2),
+        'dg_no_instruction' => lang('No instruction: the task itself.'),
+        'dg_none'          => lang('No assistant has worked on this task yet. A note that writes @ai or @Claude asks one too.'),
+        'dg_not_ready'     => lang('not ready'),
+        'dg_started'       => lang('The task was handed to the assistant.'),
+        'dg_sent'          => lang('Sent to the assistant.'),
+    );
+}
+
+/**
+ * What the screens are told about delegation when they open.
+ *
+ * @return array
+ */
+function ws_delegation_js_config()
+{
+    return array('ready' => ws_delegation_ready() && !empty(ws_assistants()));
+}

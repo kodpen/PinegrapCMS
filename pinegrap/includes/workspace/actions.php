@@ -2257,7 +2257,43 @@ function ws_handle_action($action, $request)
 
             $result = ws_task_note_add($viewer, $task, (string) ($request['body'] ?? ''));
 
-            return $result['ok'] ? ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])))) : ws_action_error($result['error'], 'body');
+            // notice: the assistant the note called could not be asked.
+            return $result['ok']
+                ? ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])), 'notice' => (string) ($result['notice'] ?? '')))
+                : ws_action_error($result['error'], 'body');
+
+        // A task handed to an assistant or written to again, its part of the
+        // drawer read while a run is under way, a run stopped and the task
+        // taken back (includes/workspace/delegation.php).
+        case 'ws_task_delegate':
+        case 'ws_task_delegation':
+        case 'ws_task_delegation_stop':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task) || !function_exists('ws_delegation_ready') || !ws_delegation_ready()) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            if ($action === 'ws_task_delegation') {
+                return ws_action_ok(array('delegation' => ws_task_delegation_detail($viewer, $task)));
+            }
+
+            if ($action === 'ws_task_delegation_stop') {
+                $result = ws_task_delegation_stop($viewer, $task, !empty($request['undelegate']));
+
+                return $result['ok'] ? ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])))) : ws_action_error($result['error']);
+            }
+
+            $agent = (string) ($request['agent'] ?? '');
+            $result = ws_task_delegate($viewer, $task, $agent, (string) ($request['text'] ?? ''));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], 'text');
+            }
+
+            ws_task_delegation_start($agent);
+
+            return ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])), 'request_id' => (int) $result['request_id']));
 
         case 'ws_task_note_edit':
         case 'ws_task_note_delete':
