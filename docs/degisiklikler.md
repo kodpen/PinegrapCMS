@@ -218,6 +218,9 @@ modülde.
 - Eski bilgiler girili, yenileri yoksa kartta uyarı. Uyarı metni
   taşıyıcıdan bağımsız hale getirildi ("{taşıyıcı} anlık bilgileri"),
   UPS kartı da aynı metni kullanıyor.
+- Kaydetme ve test bildirimleri alan adlarından bağımsız: "{taşıyıcı}
+  kimlik bilgilerini kabul etti." / "{taşıyıcı} kimlik bilgileri
+  kaydedilmedi: …".
 - `config.fedex_key`, `fedex_password`, `fedex_meter` silinmedi; artık
   okunmuyor ve kayıtta yazılmıyor.
 - Günlük satırları `lang()` ile Türkçe.
