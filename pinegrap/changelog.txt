@@ -269,6 +269,31 @@
   [DÜZELTME] Kitapçı şablonunun sayfa yolunda "Ev" yerine
          "Ana Sayfa" yazıyor.
 
+  [DÜZELTME] Sitede iki tasarım varken giriş isteyen bir
+         sayfa, ziyaretçiyi o sayfanın kendi tasarımındaki
+         giriş sayfasına gönderiyor. Önceden alfabede önce
+         gelen giriş sayfası açılıyordu (örneğin şablondan
+         kurulan tasarımın /giris-2 sayfası yerine eski
+         tasarımın /giris sayfası). Yorum yazmak için giriş
+         bağlantısı da aynı.
+
+  [DÜZELTME] Kayıt sayfasındaki Düzenle (ya da "Durumu
+         Değiştir") düğmesiyle açılan kayıt düzenleme
+         ekranı, Kaydet ve İptal'de o sayfaya geri dönüyor;
+         önceden panelin form listesine gidiyordu.
+
+  [DÜZELTME] Giriş yapmış biri formu başka biri adına
+         doldurduğunda (personelin hasta adına randevu
+         alması gibi), formun kişi kaydına bağlı alanları
+         artık oturumdaki kişinin ad, e-posta ve telefonunu
+         ezmiyor. Formdaki kişi e-postası oturumdaki kişinin
+         hiçbir adresi değilse gönderim kendi kişi kaydını
+         alıyor; kendi adına dolduran kişinin kaydı eskisi
+         gibi güncelleniyor.
+
+  [GÜVENLİK] Panel ekranlarındaki İptal düğmesi, adresten
+         gelen dönüş adresini betik olarak çalıştırmıyor.
+
   [DÜZELTME] Yayınla yalnız gerçekten düzenlenen sayfaların
          değişiklik zamanını ve "sayfa düzenlendi" kaydını
          güncelliyor. Önceden ortak başlıkta yapılan tek bir
