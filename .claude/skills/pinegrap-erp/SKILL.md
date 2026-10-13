@@ -333,7 +333,11 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   `erp_invoice_items.source_line`'a, siparişi `erp_invoices.purchase_order_id`'ye
   yazar. Editör ortak: `erp_invoice_form_cards($liveform, ['purchase_order'
   => true])`; boş beklenen teslim için ekran yazılanı `erp_invoice_form_read()`
-  öncesi okur (vadeyi carinin ödeme vadesiyle doldurur).
+  öncesi okur (vadeyi carinin ödeme vadesiyle doldurur). Durum `partial` /
+  `received` saklanır ama faturalardan türetilir: `erp_purchase_order_refresh()`
+  `erp_event_invoice()`'tan (alış faturası kesilince/iptalinde) çağrılır; siparişe
+  bağlı faturayı başka yoldan yazan kod da bu olayı çıkarmalı. Dönüşüm yalnız
+  `erp_purchase_order_to_invoice()` ile (taslak, kalan miktarlar).
 - Teklif imzası (8.58, `includes/erp/signatures.php`): kayıt `erp_signatures`'ta
   (`doc_type`, `doc_id`; belge başına bir), çizim `files`'ta `erp_doc_type =
   'quote_signature'`. İmza **silinmez, yeniden çizilmez**; teklif sonradan
