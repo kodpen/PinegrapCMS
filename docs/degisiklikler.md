@@ -84,6 +84,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kullanıcılar listesi ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar). `view_users.php`
+sıralamayı `$_SESSION['software']['view_users']` altında çevrilmiş başlık
+adıyla tutup kendi `switch`'iyle tek sütunluk ORDER BY kuruyordu. Bu PR
+yalnız Kullanıcılar'ı taşır.
+
+**Ne değişti.** Sıralanabilen sütunlar kodla tanımlandı: her görünümde
+`username` ve `last_online`; varsayılan görünümde (Tüm Kullanıcılarım,
+filtresiz) `role`, `member_user`, `site_manager`, `site_designer`; diğer
+görünümlerde `email`, `start_page`, `last_modified`. Varsayılan eskisi
+gibi son değişiklik azalan; varsayılan görünüm Son Düzenleme sütununu
+göstermediği halde satırları ona göre dizdiği için `last_modified`
+o görünümün listesinde de var (başlığı yok, menüde en sonda). Sıra
+`pg_list_state('view_users', …)` ile okunur, ORDER BY `pg_list_order_by()`
+ile yalnız ekranın kod → SQL eşlemesinden yazılır (Üye Kullanıcı artık
+`contacts.member_id`, eskiden aynı sütunun `user_member_id` takma adıydı;
+Site Yöneticisi ve Site Tasarımcısı eskisi gibi role göre). Başlıklar
+`get_column_heading()`'e düzey listesi verir; Shift+tık ve düzey numarası
+ürünlerdeki gibi çalışır. Araç çubuğunda görünüm seçiminin soluna
+`pg_list_sort_menu()` eklendi; görünüm (`filter`) #335'teki `$query`
+parametresiyle bağlantılarda ve formda taşınır. Ortak yardımcıya,
+`backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan metinler zaten
+vardı.
+
+Rol tabanlı görünürlük değişmedi: WHERE (görünümün filtresi ve
+`user_role` koşulu — yönetici hepsini, diğerleri yalnız kendinden düşük
+rolleri görür) sıralamadan ayrı kuruluyor, ona dokunulmadı. Bir görünümün
+göstermediği sütundaki düzey düşer, hiç düzey kalmazsa varsayılan döner.
+Eski kod varsayılan görünümde E-posta, Başlangıç Sayfası ve Son Düzenleme
+sıralarını İngilizce adla karşılaştırıyordu; Türkçe panelde eşleşmediği
+için başka görünümde e-postaya göre sıralayıp Tüm Kullanıcılarım'a dönünce
+satırlar görünmeyen e-posta sütununa göre diziliyordu, başlıkta ok
+yoktu. Artık o düzey düşüyor. Varsayılan görünüm dışındaki görünümlerde
+tanımsız kalan sütun başlığı değişkenleri (rol, yönetici sütunları vb.)
+başta boş tanımlandı; her açılışta PHP günlüğüne düşen "Undefined
+variable" uyarıları kalktı, çıktı aynı.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Sütunlar, görünüm seçimi, tarayıcıdaki arama ve
+sayfalama, Seçilenleri Sil, oturum kilidi ve giriş sağlayıcısı rozetleri
+değişmedi. Satır içi hızlı güncelleme bu PR'ın kapsamında değil. Şema
+değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium, 21 kullanıcı, dört rol).** Eski
+ve yeni kod aynı 26 adreste (her görünüm, her sıralanabilir sütun, Türkçe
+başlıklı eski bağlantılar, yönetici ve menajer hesabı) aynı satır sırasını
+ve aynı başlıkları verdi; tek fark iki ölçüm arasında oturum açılınca
+değişen "son çevrimiçi" zamanıydı. Çok düzeyli sıralar (rol + ad, site
+tasarımcısı + üye + ad, başlangıç sayfası + e-posta, DISTINCT kullanan Özel
+Kullanıcılarım'da e-posta + başlangıç sayfası) aynı ORDER BY'lı SQL ile
+karşılaştırıldı. Sayfa yenilenince sıra korundu; Tüm Kullanıcılarım'dan
+başka görünüme geçince rol düzeyi düştü, ad kaldı; panel dili İngilizceye
+alınıp geri getirilince sıra korundu; bozuk düzey (`user.user_id;drop`,
+`role:sideways`) varsayılana düştü. Menajer hesabı çok düzeyli sırayla
+yine yalnız Kullanıcı rolündekileri gördü. Tarayıcıda başlığa Shift+tık
+aynı sekmede düzey ekledi, Shift'siz tık tek sütuna çevirdi; menünün formu
+görünümü taşıdı; 390 piksel genişlikte menü ekrana sığdı, yatay kaydırma
+yok; sunucu günlüğünde `view_users.php` uyarısı kalmadı. Doğrulanamadı:
+dev.pinegrap.com'daki gerçek hesaplar ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Akrilik efekt hafifledi: Site Ayarları penceresi ve pano (2026-10-13)
 
 **Neden.** Şeffaf Akrilik Efekt (`.advanced-visuals`) açıkken Site
