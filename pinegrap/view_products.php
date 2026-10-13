@@ -412,6 +412,7 @@ $list_state = pg_list_state('view_products', $sort_columns, array('sort' => $sor
 
 $sort = $list_state['sort'];
 $asc_desc = $list_state['order'];
+$sort_levels = $list_state['sorts'];
 $screen = $list_state['screen'];
 
 // duplicate_products.php still keeps the sort as a heading under the old key,
@@ -419,7 +420,9 @@ $screen = $list_state['screen'];
 $_SESSION['software']['ecommerce']['view_products']['sort'] = $sort_columns[$sort];
 $_SESSION['software']['ecommerce']['view_products']['order'] = $asc_desc;
 
-$sort_column = array(
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$sort_sql = array(
     'id'                    => 'products.name',
     'short_description'     => 'products.short_description',
     'enabled'               => 'products.enabled',
@@ -459,7 +462,9 @@ $sort_column = array(
     'inventory_quantity'    => 'products.inventory_quantity',
     'last_modified'         => 'products.timestamp',
     'out_of_stock_date'     => 'products.out_of_stock_timestamp',
-)[$sort];
+);
+
+$order_by = pg_list_order_by($sort_levels, $sort_sql);
 
 
 // if user requested to export products, then export them
@@ -473,9 +478,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     // same products cannot disagree.
     require_once(dirname(__FILE__) . '/export_products_f.php');
 
+    // The export's query has no impact score, so that level sorts by
+    // the last change instead.
     $export_table = pg_products_export_table(
         $where,
-        (($sort_column == 'seo_impact') ? 'products.timestamp' : $sort_column) . ' ' . $asc_desc);
+        pg_list_order_by($sort_levels, array('impact' => 'products.timestamp') + $sort_sql));
 
     pg_products_export_csv($export_table);
 
@@ -590,7 +597,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     /* Build filter specific table headers, sql joins and columns */
     if ((ECOMMERCE_TAX == true) && ($filter != 'all_product_actions')) {
         $output_tax_header =
-            '<th>' . get_column_heading(lang(array('string'=>'Taxable') ), $sort, $asc_desc, '', 'taxable') . '</th>';
+            '<th>' . get_column_heading(lang(array('string'=>'Taxable') ), $sort_levels, $asc_desc, '', 'taxable') . '</th>';
     }
 
     if (($filter == 'all_products') || ($filter == 'out_of_stock_products') || ($filter == 'seo_weak_products') || ($filter == 'seo_struct_error_products')) {
@@ -609,34 +616,34 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 
         // If the first custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-            $output_custom_field_1_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL, $sort, $asc_desc, '', 'custom_field_1') . '</th>';
+            $output_custom_field_1_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL, $sort_levels, $asc_desc, '', 'custom_field_1') . '</th>';
         }
 
         $output_custom_field_2_heading = '';
 
         // If the second custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-            $output_custom_field_2_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL, $sort, $asc_desc, '', 'custom_field_2') . '</th>';
+            $output_custom_field_2_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL, $sort_levels, $asc_desc, '', 'custom_field_2') . '</th>';
         }
 
         $output_custom_field_3_heading = '';
 
         // If the third custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-            $output_custom_field_3_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL, $sort, $asc_desc, '', 'custom_field_3') . '</th>';
+            $output_custom_field_3_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL, $sort_levels, $asc_desc, '', 'custom_field_3') . '</th>';
         }
 
         $output_custom_field_4_heading = '';
 
         // If the fourth custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-            $output_custom_field_4_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL, $sort, $asc_desc, '', 'custom_field_4') . '</th>';
+            $output_custom_field_4_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL, $sort_levels, $asc_desc, '', 'custom_field_4') . '</th>';
         }
         
         $output_all_products_headers = 
-            '<th>' . get_column_heading(lang(array('string'=>'Selection Type') ), $sort, $asc_desc, '', 'selection_type') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Default Quantity') ), $sort, $asc_desc, '', 'default_quantity') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Shippable') ), $sort, $asc_desc, '', 'shippable') . '</th>
+            '<th>' . get_column_heading(lang(array('string'=>'Selection Type') ), $sort_levels, $asc_desc, '', 'selection_type') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Default Quantity') ), $sort_levels, $asc_desc, '', 'default_quantity') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Shippable') ), $sort_levels, $asc_desc, '', 'shippable') . '</th>
             ' . $output_custom_field_1_heading . '
             ' . $output_custom_field_2_heading . '
             ' . $output_custom_field_3_heading . '
@@ -667,7 +674,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $filter_specific_columns .= 
         "products.recurring as recurring,";
         
-        $output_recurring_header = '<th>' . get_column_heading(lang(array('string'=>'Recurring Payment') ), $sort, $asc_desc, '', 'recurring_payment') . '</th>';   
+        $output_recurring_header = '<th>' . get_column_heading(lang(array('string'=>'Recurring Payment') ), $sort_levels, $asc_desc, '', 'recurring_payment') . '</th>';   
     }
 
     if ($filter == 'all_product_actions') {
@@ -684,15 +691,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $filter_specific_join .= "LEFT JOIN page AS email_page ON email_page.page_id = products.email_page ";
         
         $output_all_product_actions_headers = 
-            '<th>' . get_column_heading(lang(array('string'=>'Order Receipt Message') ), $sort, $asc_desc, '', 'order_receipt_message') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Order Receipt BCC') ), $sort, $asc_desc, '', 'order_receipt_bcc') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'E-mail Page') ), $sort, $asc_desc, '', 'email_page') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'E-mail Page BCC') ), $sort, $asc_desc, '', 'email_page_bcc') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Contact Group') ), $sort, $asc_desc, '', 'contact_group') . '</th>';
+            '<th>' . get_column_heading(lang(array('string'=>'Order Receipt Message') ), $sort_levels, $asc_desc, '', 'order_receipt_message') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Order Receipt BCC') ), $sort_levels, $asc_desc, '', 'order_receipt_bcc') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'E-mail Page') ), $sort_levels, $asc_desc, '', 'email_page') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'E-mail Page BCC') ), $sort_levels, $asc_desc, '', 'email_page_bcc') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Contact Group') ), $sort_levels, $asc_desc, '', 'contact_group') . '</th>';
         
     // else output product form header
     } else {
-        $output_product_form_header = '<th>' . get_column_heading(lang(array('string'=>'Product Form') ), $sort, $asc_desc, '', 'product_form') . '</th>';
+        $output_product_form_header = '<th>' . get_column_heading(lang(array('string'=>'Product Form') ), $sort_levels, $asc_desc, '', 'product_form') . '</th>';
     }
 
     if ($filter == 'shippable_products') {
@@ -711,14 +718,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             products.extra_shipping_cost,";
             
         $output_shipping_headers =
-            '<th>' . get_column_heading(lang(array('string'=>'Weight') ), $sort, $asc_desc, '', 'weight') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'PWP') ), $sort, $asc_desc, '', 'pwp') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'SWP') ), $sort, $asc_desc, '', 'swp') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Dim') ), $sort, $asc_desc, '', 'dim') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Cont Req') ), $sort, $asc_desc, '', 'cont_req') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Prep') ), $sort, $asc_desc, '', 'prep') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Free Ship') ), $sort, $asc_desc, '', 'free_ship') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Extra Ship') ), $sort, $asc_desc, '', 'extra_ship') . '</th>
+            '<th>' . get_column_heading(lang(array('string'=>'Weight') ), $sort_levels, $asc_desc, '', 'weight') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'PWP') ), $sort_levels, $asc_desc, '', 'pwp') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'SWP') ), $sort_levels, $asc_desc, '', 'swp') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Dim') ), $sort_levels, $asc_desc, '', 'dim') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Cont Req') ), $sort_levels, $asc_desc, '', 'cont_req') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Prep') ), $sort_levels, $asc_desc, '', 'prep') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Free Ship') ), $sort_levels, $asc_desc, '', 'free_ship') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Extra Ship') ), $sort_levels, $asc_desc, '', 'extra_ship') . '</th>
             <th>' . lang(array('string'=>'Allowed Zones') ) . '</th>
             <th>' . lang(array('string'=>'Disallowed Zones') ) . '</th>';
     }
@@ -733,21 +740,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             products.recurring_schedule_editable_by_customer as recurring_schedule_editable_by_customer,";
         
         $output_recurring_option_headers = 
-            '<th>' . get_column_heading(lang(array('string'=>'Start') ), $sort, $asc_desc, '', 'start') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Number of Payments') ), $sort, $asc_desc, '', 'number_of_payments') . '</th>
-            <th>' . get_column_heading(lang(array('string'=>'Payment Period') ), $sort, $asc_desc, '', 'payment_period') . '</th>';
+            '<th>' . get_column_heading(lang(array('string'=>'Start') ), $sort_levels, $asc_desc, '', 'start') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Number of Payments') ), $sort_levels, $asc_desc, '', 'number_of_payments') . '</th>
+            <th>' . get_column_heading(lang(array('string'=>'Payment Period') ), $sort_levels, $asc_desc, '', 'payment_period') . '</th>';
     }
 
     if ($filter == 'donation_products') {
         
         // Output dontaine price header
-        $output_price_header = '<th>' . get_column_heading(lang(array('string'=>'Default Amount (Price)') ), $sort, $asc_desc, '', 'price') . '</th>';
+        $output_price_header = '<th>' . get_column_heading(lang(array('string'=>'Default Amount (Price)') ), $sort_levels, $asc_desc, '', 'price') . '</th>';
         
-        $output_recurring_set_schedule_header = '<th>' . get_column_heading(lang(array('string'=>'Allow to Schedule') ), $sort, $asc_desc, '', 'allow_to_schedule') . '</th>';
+        $output_recurring_set_schedule_header = '<th>' . get_column_heading(lang(array('string'=>'Allow to Schedule') ), $sort_levels, $asc_desc, '', 'allow_to_schedule') . '</th>';
 
     // else output the default price header
     } else {
-        $output_price_header = '<th>' . get_column_heading(lang(array('string'=>'Price') ), $sort, $asc_desc, '', 'price') . '</th>';
+        $output_price_header = '<th>' . get_column_heading(lang(array('string'=>'Price') ), $sort_levels, $asc_desc, '', 'price') . '</th>';
     }
 
     if (($filter == 'grant_access_products') || 
@@ -760,7 +767,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         // Set filter specific sql joins
         $filter_specific_join .= "LEFT JOIN page ON page.page_id = products.send_to_page ";
 
-        $output_start_page_header = '<th>' . get_column_heading(lang(array('string'=>'Set Start Page') ), $sort, $asc_desc, '', 'set_start_page') . '</th>';
+        $output_start_page_header = '<th>' . get_column_heading(lang(array('string'=>'Set Start Page') ), $sort_levels, $asc_desc, '', 'set_start_page') . '</th>';
     }
 
     if (($filter == 'grant_access_products') || ($filter == 'all_product_actions')) {
@@ -771,16 +778,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         // Set filter specific sql joins
         $filter_specific_join .= "LEFT JOIN folder ON folder.folder_id = products.private_folder ";
         
-        $output_private_folder_access_headers = '<th>' . get_column_heading(lang(array('string'=>'Grant Private Access') ), $sort, $asc_desc, '', 'grant_private_access') . '</th>';
+        $output_private_folder_access_headers = '<th>' . get_column_heading(lang(array('string'=>'Grant Private Access') ), $sort_levels, $asc_desc, '', 'grant_private_access') . '</th>';
     }
 
     if (($filter == 'membership_products') || ($filter == 'all_product_actions')) {
         
-        $output_add_membership_header = '<th>' . get_column_heading(lang(array('string'=>'Membership Renewal') ), $sort, $asc_desc, '', 'membership_renewal') . '</th>';
+        $output_add_membership_header = '<th>' . get_column_heading(lang(array('string'=>'Membership Renewal') ), $sort_levels, $asc_desc, '', 'membership_renewal') . '</th>';
     }
     if ($filter == 'out_of_stock_products') {
         
-        $output_out_of_stock_timestamp_header = '<th>' . get_column_heading(lang(array('string'=>'Out of Stock Date') ), $sort, $asc_desc, '', 'out_of_stock_date') . '</th>';
+        $output_out_of_stock_timestamp_header = '<th>' . get_column_heading(lang(array('string'=>'Out of Stock Date') ), $sort_levels, $asc_desc, '', 'out_of_stock_date') . '</th>';
     }
     // Refresh stale SEO scores before the list is fetched - newest records
     // first, since those are the likeliest to be on the first screen - capped
@@ -832,7 +839,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
              $filter_specific_join
              $barcode_join
              $where
-             ORDER BY $sort_column $asc_desc";
+             ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // Determine whether to show product images based on config setting (default: show).
@@ -1277,7 +1284,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             $output_out_of_stock_timestamp_column = '<td class="align-middle">' . get_relative_time(array('timestamp' => $row['out_of_stock_timestamp'])) . '</td>';
         }else{
 
-            $output_inventory_headers ='<th>' . get_column_heading(lang(array('string'=>'Inventory Quantity') ), $sort, $asc_desc, '', 'inventory_quantity') . '</th>';
+            $output_inventory_headers ='<th>' . get_column_heading(lang(array('string'=>'Inventory Quantity') ), $sort_levels, $asc_desc, '', 'inventory_quantity') . '</th>';
             $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
             if ($inventory == 1){
                 if ($inventory_quantity >= 10){
@@ -1348,6 +1355,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                 </div>
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_products.php', $sort_columns, $sort_levels, array('sort' => $sort_default, 'order' => 'desc')) . '
                             <form id="search_form" action="view_products.php" method="get" class="search_form">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
@@ -1380,9 +1388,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
                                         ' . $output_image_header . ' 
-                                        <th>' . get_column_heading(lang(array('string'=>'ID') ), $sort, $asc_desc, '', 'id') . '</th>
-                                        <th>' . get_column_heading(lang(array('string'=>'Short Description') ), $sort, $asc_desc, '', 'short_description') . '</th>
-                                        <th>' . get_column_heading(lang(array('string'=>'Enabled') ), $sort, $asc_desc, '', 'enabled') . '</th> 
+                                        <th>' . get_column_heading(lang(array('string'=>'ID') ), $sort_levels, $asc_desc, '', 'id') . '</th>
+                                        <th>' . get_column_heading(lang(array('string'=>'Short Description') ), $sort_levels, $asc_desc, '', 'short_description') . '</th>
+                                        <th>' . get_column_heading(lang(array('string'=>'Enabled') ), $sort_levels, $asc_desc, '', 'enabled') . '</th> 
                                         ' . $output_price_header . ' 
                                         ' . $output_inventory_headers . '
                                         ' . $output_tax_header . '  
@@ -1396,8 +1404,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                         ' . $output_private_folder_access_headers . ' 
                                         ' . $output_add_membership_header . ' 
                                         ' . $output_all_product_actions_headers . ' 
-                                        <th style="text-align: center;" title="' . h(lang('How much a weak score costs, weighed against how many people see the page')) . '">' . get_column_heading(lang(array('string'=>'Impact') ), $sort, $asc_desc, '', 'impact') . '</th>
-                                        <th>' . get_column_heading(lang(array('string'=>'Last Modified') ), $sort, $asc_desc, '', 'last_modified') . '</th> 
+                                        <th style="text-align: center;" title="' . h(lang('How much a weak score costs, weighed against how many people see the page')) . '">' . get_column_heading(lang(array('string'=>'Impact') ), $sort_levels, $asc_desc, '', 'impact') . '</th>
+                                        <th>' . get_column_heading(lang(array('string'=>'Last Modified') ), $sort_levels, $asc_desc, '', 'last_modified') . '</th> 
                                         ' . $output_out_of_stock_timestamp_header . ' 
                                     </tr>
                                 </thead>

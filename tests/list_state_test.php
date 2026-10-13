@@ -4,7 +4,9 @@
  *
  * Tests for pg_list_state() in includes/fn/output.php: the sort and direction
  * a list screen keeps in the session, and the page number it reads from the
- * address.
+ * address. Also the sort levels of a list sorted by more than one column:
+ * reading them from the address, the Shift+click step, the ORDER BY they
+ * become and the heading links that carry them.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -103,4 +105,89 @@ function test_list_state_screen_is_a_positive_whole_number()
 
 	list($state) = list_state_run(array());
 	pg_assert_same(1, $state['screen'], 'no screen');
+}
+
+function test_list_state_reads_several_levels_from_the_address()
+{
+	list($state, $kept) = list_state_run(array('sort' => 'price:desc,name:asc'));
+
+	pg_assert_same(array(array('sort' => 'price', 'order' => 'desc'), array('sort' => 'name', 'order' => 'asc')), $state['sorts'], 'both levels in order');
+	pg_assert_same(array('price', 'desc'), array($state['sort'], $state['order']), 'the first level is the sort');
+	pg_assert_same(array('sort' => 'price', 'order' => 'desc', 'then' => array(array('sort' => 'name', 'order' => 'asc'))), $kept, 'the rest kept under then');
+}
+
+function test_list_state_drops_unknown_and_repeated_levels()
+{
+	list($state) = list_state_run(array('sort' => 'price:desc,password:asc,price:asc,name:DESC,modified:drop'));
+	pg_assert_same(
+		array(array('sort' => 'price', 'order' => 'desc'), array('sort' => 'name', 'order' => 'desc'), array('sort' => 'modified', 'order' => 'desc')),
+		$state['sorts'], 'unknown column and repeat gone, direction cleaned');
+
+	list($state, $kept) = list_state_run(array('sort' => 'password:asc,1 OR 1=1:desc'));
+	pg_assert_same(array(array('sort' => 'modified', 'order' => 'desc')), $state['sorts'], 'nothing left is the default');
+	pg_assert_same(array('sort' => 'modified', 'order' => 'desc'), $kept, 'a single level is kept as before');
+}
+
+function test_list_state_keeps_stored_levels_until_a_single_sort_replaces_them()
+{
+	$stored = array('sort' => 'price', 'order' => 'desc', 'then' => array(array('sort' => 'name', 'order' => 'asc')));
+
+	list($state) = list_state_run(array(), $stored);
+	pg_assert_same(array('price', 'name'), array_column($state['sorts'], 'sort'), 'stored levels');
+
+	list($state) = list_state_run(array('order' => 'asc'), $stored);
+	pg_assert_same(array(array('sort' => 'price', 'order' => 'asc'), array('sort' => 'name', 'order' => 'asc')), $state['sorts'], 'a direction alone turns the first level');
+
+	list($state, $kept) = list_state_run(array('sort' => 'name', 'order' => 'desc'), $stored);
+	pg_assert_same(array(array('sort' => 'name', 'order' => 'desc')), $state['sorts'], 'an older single-sort link');
+	pg_assert_false(isset($kept['then']), 'no levels left behind');
+}
+
+function test_list_sort_toggle_adds_turns_and_drops_a_level()
+{
+	$one = array(array('sort' => 'price', 'order' => 'desc'));
+	$two = array(array('sort' => 'price', 'order' => 'desc'), array('sort' => 'name', 'order' => 'asc'));
+
+	pg_assert_same($two, pg_list_sort_toggle($one, 'name'), 'a new column joins ascending');
+	pg_assert_same(array(array('sort' => 'price', 'order' => 'desc'), array('sort' => 'name', 'order' => 'desc')), pg_list_sort_toggle($two, 'name'), 'ascending turns descending');
+	pg_assert_same(array(array('sort' => 'name', 'order' => 'asc')), pg_list_sort_toggle($two, 'price'), 'descending leaves');
+	pg_assert_same(array(array('sort' => 'price', 'order' => 'asc')), pg_list_sort_toggle($one, 'price'), 'the only level turns ascending');
+}
+
+function test_list_order_by_writes_only_the_mapped_columns()
+{
+	$map = array('price' => 'products.price', 'name' => 'products.name');
+	$levels = array(array('sort' => 'price', 'order' => 'desc'), array('sort' => 'name; DROP TABLE x', 'order' => 'asc'), array('sort' => 'name', 'order' => 'x'));
+
+	pg_assert_same('products.price desc, products.name asc', pg_list_order_by($levels, $map), 'unmapped code skipped, odd direction ascending');
+	pg_assert_same('price:desc,name:asc', pg_list_sort_value(array(array('sort' => 'price', 'order' => 'desc'), array('sort' => 'name', 'order' => 'asc'))), 'address value');
+}
+
+function test_list_sort_heading_links_keep_or_replace_the_levels()
+{
+	$saved = $_SERVER['PHP_SELF'] ?? null;
+	$_SERVER['PHP_SELF'] = '/pinegrap/view_products.php';
+
+	$levels = array(array('sort' => 'price', 'order' => 'asc'), array('sort' => 'name', 'order' => 'desc'));
+
+	$price = get_column_heading('Price', $levels, 'asc', '', 'price');
+	pg_assert_contains('href="/pinegrap/view_products.php?sort=price:desc"', $price, 'a click reverses the leading level alone');
+	pg_assert_contains('data-pg-sort-add="/pinegrap/view_products.php?sort=price:desc,name:desc"', $price, 'Shift+click keeps the rest');
+	pg_assert_contains('bi-1-circle-fill', $price, 'its number');
+
+	$stock = get_column_heading('Stock', $levels, 'asc', '', 'stock');
+	pg_assert_contains('href="/pinegrap/view_products.php?sort=stock:asc"', $stock, 'another column starts ascending');
+	pg_assert_contains('sort=price:asc,name:desc,stock:asc"', $stock, 'Shift+click adds it last');
+	pg_assert_false(strpos($stock, '-circle-fill') !== false, 'no number when not sorted by');
+
+	$single = get_column_heading('Price', array(array('sort' => 'price', 'order' => 'asc')), 'asc', '', 'price');
+	pg_assert_false(strpos($single, '-circle-fill') !== false, 'no number with one level');
+
+	pg_assert_contains('?sort=price&order=desc', get_column_heading('Price', 'price', 'asc', '', 'price'), 'a single sort keeps the old links');
+
+	if ($saved === null) {
+		unset($_SERVER['PHP_SELF']);
+	} else {
+		$_SERVER['PHP_SELF'] = $saved;
+	}
 }

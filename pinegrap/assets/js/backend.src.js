@@ -11024,6 +11024,12 @@ $(function () {
  * third puts the rows back in the order the server sent them. DataTables
  * tables (table.chart) sort themselves and are not touched here.
  *
+ * Shift+click sorts by more than one column: it adds the column as the next
+ * level, ascending, and on a column already sorted by turns ascending into
+ * descending and descending into gone, leaving the other levels as they
+ * are. Each level orders the rows the one before it leaves equal, and once
+ * there is more than one, every sorted heading shows its number.
+ *
  * A cell sorts by its data-sort value when it has one (a date as Ymd, an
  * amount in minor units), else by data-order, else by its text. A column whose
  * values are all numbers sorts as numbers, anything else as text in the page's
@@ -11032,8 +11038,13 @@ $(function () {
  *
  * A row marked data-pg-sort-fixed ("nothing here yet", a subtotal) stays at
  * the end - at the top with data-pg-sort-fixed="top", for an opening balance
- * - and a row marked data-pg-sort-with-prev moves with the row above it. The last choice is remembered per page and table for this viewer when
- * the browser lets the page keep it.
+ * - and a row marked data-pg-sort-with-prev moves with the row above it. The
+ * last choice is remembered per page and table for this viewer when the
+ * browser lets the page keep it.
+ *
+ * Lists the server sorts (pg_list_sort_heading()) take Shift+click the same
+ * way; their headings are links, and the one Shift+click follows is in
+ * data-pg-sort-add.
  * ------------------------------------------------------------------------- */
 (function () {
     'use strict';
@@ -11058,8 +11069,9 @@ $(function () {
             + 'gap:.3em;cursor:pointer;white-space:nowrap}'
             + '.pg-sort-btn:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px;border-radius:2px}'
             + '.pg-sort-btn .pg-sort-icon{opacity:.35;font-size:.8em}'
-            + 'th[aria-sort] .pg-sort-btn .pg-sort-icon{opacity:1}'
-            + '@media print{.pg-sort-btn .pg-sort-icon{display:none}}';
+            + '.pg-sort-btn .pg-sort-rank{font-size:.8em}'
+            + 'th[data-pg-sort-level] .pg-sort-btn .pg-sort-icon{opacity:1}'
+            + '@media print{.pg-sort-btn .pg-sort-icon,.pg-sort-btn .pg-sort-rank{display:none}}';
         document.head.appendChild(style);
     }
 
@@ -11070,10 +11082,45 @@ $(function () {
         return 'pgSort:' + window.location.pathname + ':' + (table.id || ('t' + position));
     }
 
-    function remember(table, column, direction) {
+    // Levels as text, "3:desc,1:asc": what the table carries in
+    // data-pg-sort-state and what is remembered. A single "3:asc" kept
+    // before there were levels reads as one level.
+    function serialize(levels) {
+        return levels.map(function (level) {
+            return level.column + ':' + level.direction;
+        }).join(',');
+    }
+
+    function parse(text) {
+        var levels = [];
+        var seen = {};
+
+        String(text || '').split(',').forEach(function (pair) {
+            var parts = pair.split(':');
+
+            if ((parts.length === 2) && /^\d+$/.test(parts[0]) && ((parts[1] === 'asc') || (parts[1] === 'desc')) && !seen[parts[0]]) {
+                seen[parts[0]] = true;
+                levels.push({ column: parseInt(parts[0], 10), direction: parts[1] });
+            }
+        });
+
+        return levels;
+    }
+
+    function rankOf(levels, column) {
+        for (var i = 0; i < levels.length; i++) {
+            if (levels[i].column === column) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function remember(table, levels) {
         try {
-            if (direction) {
-                window.localStorage.setItem(storageKey(table), column + ':' + direction);
+            if (levels.length) {
+                window.localStorage.setItem(storageKey(table), serialize(levels));
             } else {
                 window.localStorage.removeItem(storageKey(table));
             }
@@ -11085,17 +11132,12 @@ $(function () {
 
     function recalled(table) {
         try {
-            var kept = window.localStorage.getItem(storageKey(table));
-            var parts = kept ? kept.split(':') : [];
-
-            if ((parts.length === 2) && /^\d+$/.test(parts[0]) && ((parts[1] === 'asc') || (parts[1] === 'desc'))) {
-                return { column: parseInt(parts[0], 10), direction: parts[1] };
-            }
+            return parse(window.localStorage.getItem(storageKey(table)));
         } catch (error) {
             // Nothing kept, or nothing can be.
         }
 
-        return null;
+        return [];
     }
 
     // The cell under a column, counting the columns a wider cell spans.
@@ -11153,43 +11195,57 @@ $(function () {
         return { groups: groups, fixed: fixed, top: top };
     }
 
-    function sortBody(body, column, direction) {
+    // No levels puts the rows back in the order the server sent them.
+    function sortBody(body, levels) {
         var split = groupsOf(body);
-        var numeric = true;
-
-        split.groups.forEach(function (group) {
-            group.value = rawValue(cellAt(group.lead, column));
-            group.order = parseInt(group.lead.getAttribute('data-pg-sort-index') || '0', 10);
-
-            if ((group.value !== '') && !isFinite(Number(group.value))) {
-                numeric = false;
-            }
+        var numeric = levels.map(function () {
+            return true;
         });
 
-        split.groups.sort(function (a, b) {
-            if (!direction) {
-                return a.order - b.order;
-            }
+        split.groups.forEach(function (group) {
+            group.order = parseInt(group.lead.getAttribute('data-pg-sort-index') || '0', 10);
+            group.values = levels.map(function (level, index) {
+                var value = rawValue(cellAt(group.lead, level.column));
 
-            if ((a.value === '') !== (b.value === '')) {
-                return (a.value === '') ? 1 : -1;
+                if ((value !== '') && !isFinite(Number(value))) {
+                    numeric[index] = false;
+                }
+
+                return value;
+            });
+        });
+
+        function compare(a, b, index) {
+            var x = a.values[index];
+            var y = b.values[index];
+
+            if ((x === '') !== (y === '')) {
+                return (x === '') ? 1 : -1;
             }
 
             var result;
 
-            if (numeric) {
-                result = Number(a.value) - Number(b.value);
+            if (numeric[index]) {
+                result = Number(x) - Number(y);
             } else if (collator) {
-                result = collator.compare(a.value, b.value);
+                result = collator.compare(x, y);
             } else {
-                result = (a.value < b.value) ? -1 : ((a.value > b.value) ? 1 : 0);
+                result = (x < y) ? -1 : ((x > y) ? 1 : 0);
             }
 
-            if (result === 0) {
-                return a.order - b.order;
+            return (levels[index].direction === 'desc') ? -result : result;
+        }
+
+        split.groups.sort(function (a, b) {
+            for (var i = 0; i < levels.length; i++) {
+                var result = compare(a, b, i);
+
+                if (result !== 0) {
+                    return result;
+                }
             }
 
-            return (direction === 'desc') ? -result : result;
+            return a.order - b.order;
         });
 
         var fragment = document.createDocumentFragment();
@@ -11209,35 +11265,48 @@ $(function () {
         body.appendChild(fragment);
     }
 
-    function show(table, column, direction) {
+    function show(table, levels) {
         Array.prototype.forEach.call(table.querySelectorAll('th[data-pg-sort-column]'), function (heading) {
-            var mine = (parseInt(heading.getAttribute('data-pg-sort-column'), 10) === column) && direction;
+            var rank = rankOf(levels, parseInt(heading.getAttribute('data-pg-sort-column'), 10));
+            var direction = (rank >= 0) ? levels[rank].direction : '';
             var icon = heading.querySelector('.pg-sort-icon');
+            var number = heading.querySelector('.pg-sort-rank');
             var button = heading.querySelector('.pg-sort-btn');
 
-            if (mine) {
+            // aria-sort goes on one heading at a time: the leading level's.
+            if (rank === 0) {
                 heading.setAttribute('aria-sort', (direction === 'asc') ? 'ascending' : 'descending');
             } else {
                 heading.removeAttribute('aria-sort');
             }
 
+            if (direction) {
+                heading.setAttribute('data-pg-sort-level', String(rank + 1));
+            } else {
+                heading.removeAttribute('data-pg-sort-level');
+            }
+
             if (icon) {
-                icon.className = 'pg-sort-icon bi ' + (mine ? ((direction === 'asc') ? 'bi-caret-up-fill' : 'bi-caret-down-fill') : 'bi-arrow-down-up');
+                icon.className = 'pg-sort-icon bi ' + (direction ? ((direction === 'asc') ? 'bi-caret-up-fill' : 'bi-caret-down-fill') : 'bi-arrow-down-up');
+            }
+
+            if (number) {
+                number.className = 'pg-sort-rank bi ' + (((levels.length > 1) && (rank >= 0) && (rank < 9)) ? ('bi-' + (rank + 1) + '-circle-fill') : 'd-none');
             }
 
             if (button) {
-                button.title = mine ? say((direction === 'asc') ? 'Ascending' : 'Descending') : say('Sort');
+                button.title = direction ? say((direction === 'asc') ? 'Ascending' : 'Descending') : say('Sort (Shift+click adds a level)');
             }
         });
     }
 
-    function apply(table, column, direction) {
+    function apply(table, levels) {
         Array.prototype.forEach.call(table.tBodies, function (body) {
-            sortBody(body, column, direction);
+            sortBody(body, levels);
         });
 
-        table.setAttribute('data-pg-sort-state', direction ? (column + ':' + direction) : '');
-        show(table, column, direction);
+        table.setAttribute('data-pg-sort-state', serialize(levels));
+        show(table, levels);
     }
 
     function prepare(table) {
@@ -11277,10 +11346,11 @@ $(function () {
 
             var button = document.createElement('button');
             var icon = document.createElement('i');
+            var number = document.createElement('i');
 
             button.type = 'button';
             button.className = 'pg-sort-btn';
-            button.title = say('Sort');
+            button.title = say('Sort (Shift+click adds a level)');
 
             while (heading.firstChild) {
                 button.appendChild(heading.firstChild);
@@ -11288,26 +11358,64 @@ $(function () {
 
             icon.className = 'pg-sort-icon bi bi-arrow-down-up';
             icon.setAttribute('aria-hidden', 'true');
+            number.className = 'pg-sort-rank bi d-none';
+            number.setAttribute('aria-hidden', 'true');
             button.appendChild(icon);
+            button.appendChild(number);
             heading.appendChild(button);
             heading.setAttribute('data-pg-sort-column', String(column));
 
-            button.addEventListener('click', function () {
-                var state = (table.getAttribute('data-pg-sort-state') || '').split(':');
-                var current = (parseInt(state[0], 10) === column) ? state[1] : '';
-                var next = (current === 'asc') ? 'desc' : ((current === 'desc') ? '' : 'asc');
+            button.addEventListener('click', function (event) {
+                var levels = parse(table.getAttribute('data-pg-sort-state'));
+                var rank = rankOf(levels, column);
 
-                apply(table, column, next);
-                remember(table, column, next);
+                if (event.shiftKey) {
+                    if (rank < 0) {
+                        levels.push({ column: column, direction: 'asc' });
+                    } else if (levels[rank].direction === 'asc') {
+                        levels[rank].direction = 'desc';
+                    } else {
+                        levels.splice(rank, 1);
+                    }
+                } else {
+                    var current = (rank === 0) ? levels[0].direction : '';
+                    var next = (current === 'asc') ? 'desc' : ((current === 'desc') ? '' : 'asc');
+
+                    levels = next ? [{ column: column, direction: next }] : [];
+                }
+
+                apply(table, levels);
+                remember(table, levels);
             });
         });
 
-        var kept = recalled(table);
+        var kept = recalled(table).filter(function (level) {
+            return table.querySelector('th[data-pg-sort-column="' + level.column + '"]');
+        });
 
-        if (kept && table.querySelector('th[data-pg-sort-column="' + kept.column + '"]')) {
-            apply(table, kept.column, kept.direction);
+        if (kept.length) {
+            apply(table, kept);
         }
     }
+
+    // Shift+click on a heading of a list the server sorts follows the
+    // address that keeps the other levels. DataTables' fixed header copies
+    // the headings, so this listens on the document, not on each link.
+    document.addEventListener('click', function (event) {
+        var link = (event.shiftKey && event.target.closest) ? event.target.closest('a[data-pg-sort-add]') : null;
+
+        if (link) {
+            event.preventDefault();
+            window.location.href = link.getAttribute('data-pg-sort-add');
+        }
+    });
+
+    // Shift+mousedown would otherwise select the heading's text.
+    document.addEventListener('mousedown', function (event) {
+        if (event.shiftKey && event.target.closest && event.target.closest('a[data-pg-sort-add], .pg-sort-btn')) {
+            event.preventDefault();
+        }
+    });
 
     window.pgSortTables = function (root) {
         Array.prototype.forEach.call((root || document).querySelectorAll('table[data-pg-sort]'), prepare);

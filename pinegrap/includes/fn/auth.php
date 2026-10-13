@@ -2763,10 +2763,16 @@ function asc_or_desc($column, $type, $extras = '')
 // return content for column heading
 // $key is the value the link sorts by and $sort is compared with; it defaults
 // to the heading, for screens that still keep the heading as their sort.
+// $sort may instead be the list of sort levels pg_list_state() returns, for a
+// screen that sorts by more than one column; pg_list_sort_heading() draws it.
 function get_column_heading($column, $sort, $order, $extras = '', $key = null)
 {
     if ($key === null) {
         $key = $column;
+    }
+
+    if (is_array($sort)) {
+        return pg_list_sort_heading($column, $key, $sort, $extras);
     }
 
     if ($key == $sort) {
