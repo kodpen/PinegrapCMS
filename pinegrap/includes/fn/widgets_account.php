@@ -720,9 +720,10 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
 //
 // Controls by name: email_address, opt_in. loop_area: one row per mailing
 // list the contact may see (open lists, and closed ones the contact is on);
-// the row's checkbox is named contact_group_^^__group_id^^ and is checked by
-// the server. Row tokens: ^^__group_id^^, ^^__group_name^^,
-// ^^__group_description^^.
+// the row's checkbox, named contact_group, becomes contact_group_<list id>
+// and is checked by the server. Trees saved before that carry the name
+// contact_group_^^__group_id^^, read the same way. Row tokens:
+// ^^__group_id^^, ^^__group_name^^, ^^__group_description^^.
 //
 // Visibility flags: show_form (whose preferences is known), is_signed_in,
 // is_signed_out, has_contact_groups, no_contact_groups. Tokens:
@@ -820,10 +821,11 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
             $gid = (int)$g['id'];
             $checked = $submitted ? (bool)$lf->get_field_value('contact_group_' . $gid) : $g['on'];
             $t = $row_tree;
-            _pg_member_fill_control($t, 'contact_group_^^__group_id^^', '1', $checked);
+            _pg_email_preferences_name_box($t, 'contact_group_' . $gid);
+            _pg_member_fill_control($t, 'contact_group_' . $gid, '1', $checked);
             if (!$has_box) {
                 foreach (_pg_member_controls($t) as $c) {
-                    if ($c['name'] === 'contact_group_^^__group_id^^') { $has_box = true; break; }
+                    if ($c['name'] === 'contact_group_' . $gid) { $has_box = true; break; }
                 }
             }
             $html = '';
@@ -851,6 +853,21 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
         '__email_address'  => h($email),
         '__my_account_url' => h($account_url),
     ));
+}
+
+// Give a mailing list row's checkbox the list's own name: `contact_group`,
+// or the older contact_group_^^__group_id^^, becomes $name.
+function _pg_email_preferences_name_box(&$tree, $name)
+{
+    if (!is_array($tree)) return;
+    $own = _pg_member_control_name($tree);
+    if ($own === 'contact_group' || $own === 'contact_group_^^__group_id^^') {
+        _pg_member_set_attr($tree, 'name', $name);
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as &$c) _pg_email_preferences_name_box($c, $name);
+        unset($c);
+    }
 }
 
 // ============================================================================
