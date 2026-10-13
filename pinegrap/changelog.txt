@@ -314,6 +314,27 @@
          Kimlik adresli uygulamalar için kayıtlı istemci
          tablosu genişler.
 
+  PANO
+  --------------------------------------------------------
+
+  [HIZ] Pano kartları tek istekte geliyor. Yavaş olan birkaç
+         kart (Satış Haritası, Sistem Durumu, Ziyaretçi
+         Özetleri, Güvenlik Duvarı, Performans) ayrı yüklenip
+         diğerlerini bekletmiyor. Önceden her kart ayrı bir
+         istekti; yirmi kartlık bir pano yirmi istek
+         demekti.
+
+  [HIZ] Kartlar yalnız sekme açıkken ve ekranda görünürken
+         yenileniyor. Aşağıda kalan kart, kaydırınca
+         tazeleniyor. İçeriği değişmeyen kart yeniden
+         çizilmiyor; grafikleri baştan kurulmuyor, listedeki
+         kaydırma yeri korunuyor.
+
+  [YENİ] Pano saati tarayıcıda işliyor: dakika tam vaktinde
+         değişiyor, gece yarısı tarih satırı da yenileniyor.
+         Önceden saat dakikada bir sunucudan soruluyor ve bir
+         dakikaya kadar geride kalabiliyordu.
+
 
 
   2026.4.9

@@ -191,6 +191,79 @@ geçmişi denenmedi; ölçüm sandbox'ın boş veritabanında.
 
 ---
 
+## 2026.4.10 — Pano: kartlar tek istekte, yalnız görünürken yenileniyor; saat tarayıcıda (2026-10-13)
+
+**Belirti.** Erdal: "Welcome ekranı çok kasmaya başladı." Pano yavaş
+açılıyor, açık bırakıldığında tarayıcıyı yoruyordu.
+
+**Kök sebep (koddan).** İlk açılışta her kart kendi `get_widget_data`
+isteğini atıyordu: yirmi küsur istek, her biri `init.php`, WAF, oturum ve
+veritabanı bağlantısını baştan kuruyor. Az PHP işçisi olan sunucuda istekler
+birbirini bekliyordu. Sonra her dakika on üç kart daha isteniyordu. Bu,
+sekme arka plandayken de, kart ekranın dışındayken de oluyordu. Gelen içerik
+öncekiyle aynı olsa bile kart silinip yeniden çiziliyordu. Grafikler baştan
+kuruluyor, liste en üste dönüyordu. Saat de dakikada bir ayrı istekti ve
+istek zamanına göre bir dakikaya kadar geride kalıyordu.
+
+**Değişiklik.**
+- Yeni panel eylemi `get_widgets_data` (`includes/panel/dashboard.php`,
+  `actions.php` tablosunda `get_widget_data` ile aynı satır: muaf, token
+  yok, yazmaz). `pg_dashboard_widgets_run_many()`
+  (`includes/dashboard/widgets.php`) her kimliği
+  `pg_dashboard_widget_run()`'dan geçirir. Kartın erişim denetimi ve
+  cevabı tek istektekiyle aynıdır. Tekrar eden kimlik bir kez, en çok 40
+  kimlik.
+- `welcome.php` sayfa betiği yeniden yazıldı:
+  - Hafif kartlar tek toplu istekte gelir. Yavaşlar (1, 2, 5, 21, 23) ayrı
+    istekle yanında gelir, ötekileri bekletmez.
+  - Toplu istek bütünüyle düşerse kartlar eski yoldan tek tek istenir.
+    Ölen bir kart yalnız kendini götürür. Yükseltmenin ortasında, eylemi
+    bilmeyen bir kurulumda da pano çalışır.
+  - Yenileme sekme gizliyken (`document.visibilityState`) atlanır. Sekmeye
+    dönünce kaçan yenileme hemen koşar.
+  - Ekranın dışındaki kart (`IntersectionObserver`, 200 px pay) bayat
+    işaretlenir. Görünüme girince istenir. Art arda girenler 250 ms içinde
+    tek isteğe toplanır.
+  - Kartın HTML'i öncekiyle aynıysa DOM'a dokunulmaz. Değiştiyse
+    grafikler yok edilir (`destroy_widget_charts`) ve kaydırma yerleri
+    (sınıf adı ve aynı sınıftaki sırası) geri konur. Çizilen karta
+    `pg:widget-drawn` olayı gönderilir.
+  - Eski ilk koşu dalındaki `#system_status_widget` isteği kaldırıldı.
+    Böyle bir öğe sayfada yoktu.
+- Saat (`widget_clock.php`) cevabına `epoch`, `offset` (sitenin UTC farkı,
+  saniye) ve `date` (uzun tarih satırı) eklendi. Sayfa sunucu saatini ve
+  farkı bir kez alır, dakikayı kendi zamanlayıcısıyla tam vaktinde
+  değiştirir. 12 saat biçiminde ÖÖ/ÖS etiketlerini `get_absolute_time()`
+  verir. Her yenileme saati de getirir. Bilgisayar saatinin kayması ve yaz
+  saati geçişi böyle düzelir. Gün dönünce tarih satırı sunucudan istenir.
+
+**Ölçüm (sandbox, Playwright).** İlk açılışta 23 kart için 23 widget
+isteği yerine 6 istek gitti (bir toplu, beş ayrı). Sayfanın üstündeyken
+dakikalık yenileme yalnız görünen üç yenilenen kartı ve saati istedi.
+Sekme gizliyken hiç widget isteği gitmedi. Dönüşte bir istek gitti.
+Aşağı kaydırınca bayat kartlar iki istekte geldi. Kartlar ve iskelet
+yerleşimi değişmedi. Sandbox verisi az olduğu için süre ölçümü anlamlı
+değil; canlıda (dev.pinegrap.com) bakılmalı.
+
+**Ödün.** Toplu istek en yavaş hafif kart kadar sürer. Bu yüzden ağır
+olduğu bilinen beş kart ayrıdır. Liste kodda sabittir; yeni ağır bir kart
+eklenirse oraya da yazılmalı. Görünürlük `IntersectionObserver` ister. Yoksa
+(çok eski tarayıcı) her yenilemede tüm yenilenen kartlar istenir, yani eski
+davranış.
+
+**Belgeler.** Biten iki plan silindi:
+- `docs/_plan_panel_api_widget.md`: panel API taşıması bitti (son adım
+  #239). `_panel_api_eylemler.md`'deki gönderme not edildi.
+  `CLAUDE.md`'deki plan satırı kalan planlara (`_plan_kargo`,
+  `_plan_csrf_2fa`) indirildi.
+- `docs/calisma-alani-kanal-pano-plani.md`: kanal panosunun 1–4.
+  aşamaları 2026.4.8'de yapıldı (aşağıda "Çalışma Alanı: tek arama
+  kutusu (Ctrl+K) ve kanal panosu"). Yapılmayan tek madde isteğe bağlı 5.
+  aşama: elle sıralama (`ws_tasks.board_rank`, şema ister) ve kişiye
+  özel varsayılan görünüm.
+
+---
+
 ## 2026.4.10 — Dış API: OAuth ve MCP, Claude dışındaki istemcilerle de bağlanıyor (Cursor, VS Code, Gemini CLI, Codex, Windsurf, ChatGPT, mcp-remote) (2026-10-13)
 
 **Neden.** OAuth sunucusu ve `mcp.php` yalnız Claude'la denenmişti. Diğer
@@ -415,6 +488,8 @@ editör kayıtları için `?r=` kalır (çalışır, yalnız kanonik değil). Bu
 oturumu dev.pinegrap.com'a erişemediği için canlıda denenmedi.
 
 - `tests/designer_pretty_url_test.php`.
+
+---
 
 ## 2026.4.10 — Görsel editör: ortak bileşende yapılan düzenleme kayıtta kaybolmuyor (2026-10-13)
 

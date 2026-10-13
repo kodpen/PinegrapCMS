@@ -2720,7 +2720,7 @@ $output_header_includes .
                 'type' => 'time',
                 'timezone_type' => 'site'
             )) . '</span>
-            <span class="pg-clockbar-date">' . get_absolute_time(array(
+            <span id="welcome_time_date" class="pg-clockbar-date">' . get_absolute_time(array(
                 'timestamp' => time() ,
                 'type' => 'date',
                 'size' => 'long',
@@ -2749,14 +2749,31 @@ $output_header_includes .
     // this is required for chart js animations.
     let delayed;
     ' . $output_widget_controls . '
-    var widget_refresh_time = "' . $widget_refresh_time . '";
-    $( document ).ready(function() {
-        get_widgets_data();
-        window.setInterval(function(){
-            get_widgets_data();
-          }, widget_refresh_time*1000);
-    });
-    let $get_widgets_data_firstrun = true;
+
+    // ── Loading and refreshing the cards ────────────────────────────────────
+    //
+    // The cards arrive in one batch (get_widgets_data) rather than one request
+    // each: every request pays for the whole bootstrap before it runs a query
+    // of its own, and twenty of them at once queued on the server. The slow
+    // cards are asked for on their own beside the batch, so the rest are not
+    // held back behind them.
+    //
+    // After that only the cards whose content moves minute to minute are
+    // asked for again, and only while somebody can see them: nothing while
+    // the tab is hidden, and nothing for a card scrolled out of view. A card
+    // skipped that way is marked stale and fetched as it comes back into
+    // view. A card whose markup comes back unchanged is left alone -- its
+    // charts are not rebuilt and its list keeps its scroll position.
+    var pg_widgets = {
+        refresh: ["4","6","7","8","10","11","12","13","16","17","19","25","26"],
+        solo: ["1","2","5","21","23"],
+        interval: Math.max(10, parseInt("' . (int) $widget_refresh_time . '", 10) || 60) * 1000,
+        html: {},
+        seen: {},
+        stale: {},
+        observer: null,
+        missed: false
+    };
 
     // Charts have to be destroyed before the markup holding them is replaced.
     // Chart.js keeps every chart it builds in a registry of its own, keyed by
@@ -2778,103 +2795,265 @@ $output_header_includes .
         });
     }
 
-    function update_clock(){
+    // Scroll positions inside a card, keyed by class and by position among
+    // the elements with that class, so a list that gained a row at the top
+    // still finds its own scroller after the redraw.
+    function pg_widget_scroll_save(card) {
+        var saved = [];
+        var count = {};
+        card.querySelectorAll("*").forEach(function(el){
+            var key = el.getAttribute("class") || "";
+            count[key] = (count[key] || 0) + 1;
+            if (el.scrollTop > 0) {
+                saved.push({key: key, nth: count[key], top: el.scrollTop});
+            }
+        });
+        return saved;
+    }
+
+    function pg_widget_scroll_restore(card, saved) {
+        if (!saved.length) {
+            return;
+        }
+        var count = {};
+        card.querySelectorAll("*").forEach(function(el){
+            var key = el.getAttribute("class") || "";
+            count[key] = (count[key] || 0) + 1;
+            saved.forEach(function(item){
+                if ((item.key === key) && (item.nth === count[key])) {
+                    el.scrollTop = item.top;
+                }
+            });
+        });
+    }
+
+    function pg_widget_apply(widget_id, response) {
+        if (widget_id === "clock") {
+            pg_clock_apply(response);
+            return;
+        }
+        if (!response || (response.status !== "success")) {
+            return;
+        }
+        var $widget = $(".card[widget-id=" + widget_id + "]");
+        if (!$widget.length) {
+            return;
+        }
+        var html = (typeof response.data === "string") ? response.data : "";
+        if (pg_widgets.html[widget_id] === html) {
+            return;
+        }
+        pg_widgets.html[widget_id] = html;
+        var scroll = pg_widget_scroll_save($widget[0]);
+        destroy_widget_charts($widget);
+        $widget.find(".card-body-placeholder,.card-body,.card-footer").remove();
+        $widget.append(html);
+        pg_widget_scroll_restore($widget[0], scroll);
+        $widget.trigger("pg:widget-drawn", [widget_id]);
+    }
+
+    // One card at a time, the way the dashboard always asked. Used when the
+    // batch fails as a whole -- one card that dies takes the batch response
+    // with it, and here it takes only itself -- and by an installation part
+    // way through an upgrade that does not know the batch action yet.
+    function pg_widgets_one_by_one(ids) {
+        ids.forEach(function(widget_id){
+            $.ajax({
+                contentType: "application/json",
+                url: "api.php",
+                data: JSON.stringify({
+                    action: "get_widget_data",
+                    token: software_token,
+                    widget_id: widget_id
+                }),
+                type: "POST",
+                success: function(response) {
+                    pg_widget_apply(widget_id, response);
+                }
+            });
+        });
+    }
+
+    function pg_widgets_request(ids) {
+        if (!ids.length) {
+            return;
+        }
         $.ajax({
             contentType: "application/json",
             url: "api.php",
             data: JSON.stringify({
-                action: "get_widget_data",
+                action: "get_widgets_data",
                 token: software_token,
-                widget_id: "clock"
+                widget_ids: ids
             }),
             type: "POST",
             success: function(response) {
-                if(response.status == "success"){
-                    $("#welcome_time_clock").html("");
-                    $("#welcome_time_clock").html(response.data);
+                if (!response || (response.status !== "success") || !response.widgets) {
+                    pg_widgets_one_by_one(ids);
+                    return;
                 }
+                ids.forEach(function(widget_id){
+                    if (response.widgets[widget_id]) {
+                        pg_widget_apply(widget_id, response.widgets[widget_id]);
+                    }
+                });
+            },
+            error: function() {
+                pg_widgets_one_by_one(ids);
             }
         });
     }
 
-function get_widgets_data(){
-        update_clock();
-        if($get_widgets_data_firstrun == true){
-            // load system status asynchronously to avoid blocking page render
-            if($("#system_status_widget").length > 0){
-                $.ajax({
-                    contentType: "application/json",
-                    url: "api.php",
-                    data: JSON.stringify({
-                        action: "get_widget_data",
-                        token: software_token,
-                        widget_id: "system_status"
-                    }),
-                    type: "POST",
-                    success: function(response) {
-                        if(response.status == "success"){
-                            var $status_body = $("#system_status_widget .card-body");
-                            destroy_widget_charts($status_body);
-                            $status_body.html(response.data);
-                        }
-                    }
-                });
+    // The light cards go in one batch, sent first so they land first; each
+    // slow one goes on its own.
+    function pg_widgets_load(ids) {
+        var batch = [];
+        var alone = [];
+        ids.forEach(function(widget_id){
+            if (pg_widgets.solo.indexOf(widget_id) !== -1) {
+                alone.push(widget_id);
+            } else {
+                batch.push(widget_id);
             }
-            // this is first run we update all widgets
-            if($(".card[widget-id]").length > 0){
-                $(".card[widget-id]").each(function(){
-                    var widget_id = $(this).attr("widget-id");
-                    $.ajax({
-                        contentType: "application/json",
-                        url: "api.php",
-                        data: JSON.stringify({
-                            action: "get_widget_data",
-                            token: software_token,
-                            widget_id: widget_id
-                        }),
-                        type: "POST",
-                        success: function(response) {
-                            if(response.status == "success"){
-                                var $widget = $(".card[widget-id="+ widget_id +"]");
-                                destroy_widget_charts($widget);
-                                $widget.find(".card-body-placeholder,.card-body,.card-footer").remove();
-                                $widget.append(response.data);
-                            }
-                        }
-                    });
-                });
-            }
-            $get_widgets_data_firstrun = false;
-        }else{
-            // Not first run we dont need update all widgets
-            if($(".card[widget-id]").length > 0){
-                $(".card[widget-id]").each(function(){
-                    var widget_id = $(this).attr("widget-id");
-                    //ids of refresh required widgets
-                    if (["4","6","7","8","10","11","12","13","16","17","19","25","26"].includes(widget_id)) {
-                        $.ajax({
-                            contentType: "application/json",
-                            url: "api.php",
-                            data: JSON.stringify({
-                                action: "get_widget_data",
-                                token: software_token,
-                                widget_id: widget_id
-                            }),
-                            type: "POST",
-                            success: function(response) {
-                                if(response.status == "success"){
-                                    var $widget = $(".card[widget-id="+ widget_id +"]");
-                                    destroy_widget_charts($widget);
-                                    $widget.find(".card-body-placeholder,.card-body,.card-footer").remove();
-                                    $widget.append(response.data);
-                                }
-                            }
-                        });
-                    }
-                });
-            }
+        });
+        pg_widgets_request(batch);
+        alone.forEach(function(widget_id){
+            pg_widgets_request([widget_id]);
+        });
+    }
+
+    function pg_widgets_on_page() {
+        return $(".card[widget-id]").map(function(){
+            return $(this).attr("widget-id");
+        }).get();
+    }
+
+    function pg_widgets_tick() {
+        if (document.visibilityState === "hidden") {
+            pg_widgets.missed = true;
+            return;
         }
-    };
+        pg_widgets.missed = false;
+        var due = ["clock"];
+        pg_widgets_on_page().forEach(function(widget_id){
+            if (pg_widgets.refresh.indexOf(widget_id) === -1) {
+                return;
+            }
+            if (pg_widgets.observer && !pg_widgets.seen[widget_id]) {
+                pg_widgets.stale[widget_id] = true;
+                return;
+            }
+            due.push(widget_id);
+        });
+        pg_widgets_load(due);
+    }
+
+    // ── The clock ───────────────────────────────────────────────────────────
+    //
+    // Drawn here rather than fetched every minute. The page is handed the
+    // server time and the site offset from UTC once, and a timer in the
+    // browser turns the minute over as it happens rather than up to a minute
+    // later. Every refresh brings the server reading along, which corrects a
+    // drifting computer clock and a change of daylight saving time. A new day
+    // asks the server for the date line, which is written in the site
+    // language.
+    var pg_clock = ' . json_encode(array(
+        'skew'   => time(),
+        'offset' => (int) date('Z'),
+        'h12'    => (TIME_FORMAT == 'twelve_hours'),
+        'am'     => trim(preg_replace('/^[0-9:\s]+/', '', get_absolute_time(array('timestamp' => mktime(9, 0, 0), 'type' => 'time', 'timezone_type' => 'site', 'format' => 'plain_text')))),
+        'pm'     => trim(preg_replace('/^[0-9:\s]+/', '', get_absolute_time(array('timestamp' => mktime(21, 0, 0), 'type' => 'time', 'timezone_type' => 'site', 'format' => 'plain_text')))),
+    ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';
+    pg_clock.skew = (pg_clock.skew * 1000) - Date.now();
+    pg_clock.day = null;
+    pg_clock.timer = null;
+
+    function pg_clock_draw() {
+        var now = Date.now() + pg_clock.skew;
+        var site = new Date(now + (pg_clock.offset * 1000));
+        var h = site.getUTCHours();
+        var m = site.getUTCMinutes();
+        var s = site.getUTCSeconds();
+        var pad = function(n){ return ((n < 10) ? "0" : "") + n; };
+        var day = site.getUTCFullYear() + "-" + pad(site.getUTCMonth() + 1) + "-" + pad(site.getUTCDate());
+        var text = pg_clock.h12
+            ? (((h % 12) || 12) + ":" + pad(m) + " " + ((h < 12) ? pg_clock.am : pg_clock.pm))
+            : (pad(h) + ":" + pad(m));
+        var box = document.getElementById("welcome_time_clock");
+        if (box) {
+            var time = document.createElement("time");
+            time.setAttribute("datetime", "T" + pad(h) + ":" + pad(m) + ":" + pad(s) + "Z");
+            time.textContent = text.trim();
+            box.replaceChildren(time);
+        }
+        if ((pg_clock.day !== null) && (pg_clock.day !== day)) {
+            pg_widgets_request(["clock"]);
+        }
+        pg_clock.day = day;
+        window.clearTimeout(pg_clock.timer);
+        pg_clock.timer = window.setTimeout(pg_clock_draw, 60000 - (now % 60000) + 50);
+    }
+
+    function pg_clock_apply(response) {
+        if (!response || (response.status !== "success") || (typeof response.epoch !== "number")) {
+            return;
+        }
+        pg_clock.skew = (response.epoch * 1000) - Date.now();
+        pg_clock.offset = response.offset;
+        if (typeof response.date === "string") {
+            $("#welcome_time_date").html(response.date);
+        }
+        pg_clock_draw();
+    }
+
+    $(function() {
+        pg_clock_draw();
+
+        if ("IntersectionObserver" in window) {
+            // A scroll brings cards into view a few at a time; the ones that
+            // arrive close together are gathered into one request.
+            var back = [];
+            var back_timer = null;
+
+            pg_widgets.observer = new IntersectionObserver(function(entries){
+                entries.forEach(function(entry){
+                    var widget_id = entry.target.getAttribute("widget-id");
+                    pg_widgets.seen[widget_id] = entry.isIntersecting;
+                    if (entry.isIntersecting && pg_widgets.stale[widget_id] && (document.visibilityState !== "hidden")) {
+                        delete pg_widgets.stale[widget_id];
+                        back.push(widget_id);
+                    }
+                });
+                if (back.length && !back_timer) {
+                    back_timer = window.setTimeout(function(){
+                        pg_widgets_load(back);
+                        back = [];
+                        back_timer = null;
+                    }, 250);
+                }
+            }, {rootMargin: "200px 0px"});
+
+            $(".card[widget-id]").each(function(){
+                pg_widgets.observer.observe(this);
+            });
+        }
+
+        pg_widgets_load(pg_widgets_on_page());
+
+        window.setInterval(pg_widgets_tick, pg_widgets.interval);
+
+        // Back to the tab: the clock catches up at once, and a refresh that
+        // fell due while it was hidden runs now rather than at the next tick.
+        document.addEventListener("visibilitychange", function(){
+            if (document.visibilityState !== "visible") {
+                return;
+            }
+            pg_clock_draw();
+            if (pg_widgets.missed) {
+                pg_widgets_tick();
+            }
+        });
+    });
 </script>
 </main>' . 
 output_footer();

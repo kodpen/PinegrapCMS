@@ -10,6 +10,7 @@
  *                                search engines when it is due
  *   get_widget_data              one dashboard widget's data
  *                                (includes/dashboard/widgets.php)
+ *   get_widgets_data             several dashboard widgets in one request
  *   user_pinned_app_update       the apps pinned to the caller's own menu
  *   update_dashboard_widgets     the caller's dashboard widget layout
  *   update_dashboard_appearance  the dashboard's backdrop and look
@@ -102,6 +103,19 @@ function pg_panel_get_widget_data($request, $action)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
 
     respond(pg_dashboard_widget_run($request, $user));
+}
+
+function pg_panel_get_widgets_data($request, $action)
+{
+    // Kept global for the same reason as get_widget_data above.
+    global $user;
+
+    $user = validate_user();
+    session_write_close();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+
+    respond(pg_dashboard_widgets_run_many($request, $user));
 }
 
 function pg_panel_user_pinned_app_update($request, $action)
