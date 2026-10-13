@@ -54,7 +54,34 @@ function pg_carrier_api_definitions()
             'portal'     => 'https://developer.ups.com/',
             'products'   => 'Rating',
         ),
+        'fedex' => array(
+            'label'      => 'FedEx',
+            'hosts'      => array(
+                'production' => 'https://apis.fedex.com',
+                'test'       => 'https://apis-sandbox.fedex.com',
+            ),
+            'token_path' => '/oauth/token',
+            'token_auth' => 'form',
+            'portal'     => 'https://developer.fedex.com/',
+            'products'   => 'Rates and Transit Times',
+        ),
     );
+}
+
+/**
+ * What the carrier's portal calls the two halves of the credentials, so the
+ * operator finds them under the same names.
+ *
+ * @param string $carrier
+ * @return array id, secret
+ */
+function pg_carrier_api_labels($carrier)
+{
+    if ($carrier === 'fedex') {
+        return array('id' => lang('API Key'), 'secret' => lang('Secret Key'));
+    }
+
+    return array('id' => lang('Client ID'), 'secret' => lang('Client Secret'));
 }
 
 /**
@@ -359,6 +386,8 @@ function pg_carrier_api_http($method, $url, $headers, $body = '')
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
+    // FedEx may compress its answers; curl inflates whatever it offered.
+    curl_setopt($ch, CURLOPT_ENCODING, '');
     pg_curl_tls($ch);
 
     if ($body !== '') {
@@ -381,6 +410,16 @@ function pg_carrier_api_http($method, $url, $headers, $body = '')
     }
 
     $response = (string) $response;
+
+    // A gzip body sent without saying so.
+    if ((strncmp($response, "\x1f\x8b", 2) === 0) && function_exists('gzdecode')) {
+        $inflated = @gzdecode($response);
+
+        if ($inflated !== false) {
+            $response = $inflated;
+        }
+    }
+
     $data = json_decode($response, true);
 
     return array(
@@ -509,6 +548,7 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
 {
     $definition = pg_carrier_api_definition($carrier);
     $app = pg_carrier_api_app($carrier);
+    $labels = pg_carrier_api_labels($carrier);
     $name = $carrier . '_';
     $html = '';
 
@@ -521,7 +561,7 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
     } elseif ($legacy_set && !pg_carrier_api_ready($carrier)) {
         $html .= '
             <div class="col-12"><div class="alert alert-warning mb-0">' . lang(array(
-                'string' => '{var:1} retired the sign-in with the old credentials. Real-time {var:1} rates stay off until a client ID and client secret are entered here. The old values are kept but no longer used.',
+                'string' => '{var:1} retired the sign-in with the old credentials. Real-time {var:1} information stays off until the new credentials are entered here. The old values are kept but no longer used.',
                 'vars'   => array(h($definition['label'])))) . '</div></div>';
     }
 
@@ -532,11 +572,11 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
                     '<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h(preg_replace('#^https://|/$#', '', $definition['portal'])) . '</a>',
                     h($definition['products'])))) . '</div>
             <div class="pg-f-md">
-                <label for="' . h($name) . 'client_id" class="form-label">' . lang('Client ID') . '</label>
+                <label for="' . h($name) . 'client_id" class="form-label">' . h($labels['id']) . '</label>
                 <input type="text" name="' . h($name) . 'client_id" id="' . h($name) . 'client_id" class="form-control" value="' . h($app['client_id']) . '" maxlength="255" autocomplete="off"/>
             </div>
             <div class="pg-f-md">
-                <label for="' . h($name) . 'client_secret" class="form-label">' . lang('Client Secret') . '</label>
+                <label for="' . h($name) . 'client_secret" class="form-label">' . h($labels['secret']) . '</label>
                 <input type="password" name="' . h($name) . 'client_secret" id="' . h($name) . 'client_secret" class="form-control" value="" maxlength="255" autocomplete="new-password"' . ($app['secret_stored'] ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '/>
             </div>
             <div class="pg-f-md">
@@ -593,7 +633,7 @@ function pg_carrier_api_settings_save($post, $user_id, $liveform)
 
         if (!pg_carrier_api_save($carrier, $client_id, $client_secret, $environment, $user_id)) {
             $liveform->add_notice(lang(array(
-                'string' => 'The {var:1} client ID and client secret were not saved: {var:2}',
+                'string' => 'The {var:1} credentials were not saved: {var:2}',
                 'vars'   => array(
                     pg_carrier_api_definition($carrier)['label'],
                     !pg_connect_schema_ready()
@@ -612,7 +652,7 @@ function pg_carrier_api_settings_save($post, $user_id, $liveform)
     $token = pg_carrier_api_token($test, true);
 
     if ($token['token'] !== '') {
-        $liveform->add_notice(lang(array('string' => '{var:1} accepted the client ID and client secret.', 'vars' => array($definition['label']))));
+        $liveform->add_notice(lang(array('string' => '{var:1} accepted the credentials.', 'vars' => array($definition['label']))));
     } else {
         $liveform->add_notice(lang(array('string' => '{var:1} refused the connection: {var:2}', 'vars' => array($definition['label'], h($token['error'])))));
     }
@@ -811,4 +851,154 @@ function pg_ups_rate_parse($data, $negotiated)
     }
 
     return $rates;
+}
+
+
+/* ---------------------------------------------------------------------------
+   FedEx
+   --------------------------------------------------------------------------- */
+
+/**
+ * The service types FedEx's Rate API answers with, for the domestic services
+ * the shipping methods can be set to. SmartPost is not among them: FedEx gives
+ * no transit time for it that depends on the address.
+ *
+ * @return array type => service
+ */
+function pg_fedex_services()
+{
+    return array(
+        'FIRST_OVERNIGHT'     => 'fedex_first_overnight',
+        'PRIORITY_OVERNIGHT'  => 'fedex_priority_overnight',
+        'STANDARD_OVERNIGHT'  => 'fedex_standard_overnight',
+        'FEDEX_2_DAY_AM'      => 'fedex_2_day_am',
+        'FEDEX_2_DAY'         => 'fedex_2_day',
+        'FEDEX_EXPRESS_SAVER' => 'fedex_express_saver',
+        'FEDEX_GROUND'        => 'fedex_ground',
+    );
+}
+
+/**
+ * A transit time as FedEx words it ("FOUR_DAYS") in days.
+ *
+ * @param string $words
+ * @return int 0 when it is not one FedEx uses
+ */
+function pg_fedex_transit_days($words)
+{
+    $numbers = array(
+        'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
+        'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN',
+        'EIGHTEEN', 'NINETEEN', 'TWENTY',
+    );
+
+    $words = strtoupper(trim((string) $words));
+
+    foreach ($numbers as $index => $number) {
+        if (($words === $number . '_DAY') || ($words === $number . '_DAYS')) {
+            return $index + 1;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * The Rate API body asking every service for its transit time, for one
+ * package of the given weight shipped on the given day.
+ *
+ * @param array  $shipper zip_code
+ * @param array  $recipient zip_code, country (two letters)
+ * @param string $ship_date Y-m-d
+ * @param float  $weight pounds
+ * @param string $account FedEx account number
+ * @return array
+ */
+function pg_fedex_rate_request($shipper, $recipient, $ship_date, $weight, $account)
+{
+    $country = strtoupper((string) $recipient['country']);
+
+    if ($country === 'USA') {
+        $country = 'US';
+    }
+
+    return array(
+        'accountNumber'                => array('value' => (string) $account),
+        'rateRequestControlParameters' => array('returnTransitTimes' => true),
+        'requestedShipment'            => array(
+            'shipper'                   => array('address' => array(
+                'postalCode'  => (string) $shipper['zip_code'],
+                'countryCode' => 'US',
+            )),
+            'recipient'                 => array('address' => array(
+                'postalCode'  => (string) $recipient['zip_code'],
+                'countryCode' => $country,
+            )),
+            'shipDateStamp'             => (string) $ship_date,
+            'pickupType'                => 'DROPOFF_AT_FEDEX_LOCATION',
+            'rateRequestType'           => array('ACCOUNT'),
+            'requestedPackageLineItems' => array(
+                array('weight' => array(
+                    'units' => 'LB',
+                    // A product without a weight would be refused; the weight
+                    // hardly moves the transit time.
+                    'value' => ($weight > 0) ? round((float) $weight, 2) : 1,
+                )),
+            ),
+        ),
+    );
+}
+
+/**
+ * The delivery dates and transit times in a Rate API answer.
+ *
+ * @param array|null $data
+ * @return array service => date (Y-m-d, '' when FedEx gave none),
+ *               transit_days (0 when FedEx gave none)
+ */
+function pg_fedex_delivery_parse($data)
+{
+    $result = array();
+
+    if (!is_array($data) || !isset($data['output']['rateReplyDetails']) || !is_array($data['output']['rateReplyDetails'])) {
+        return $result;
+    }
+
+    $services = pg_fedex_services();
+
+    foreach ($data['output']['rateReplyDetails'] as $detail) {
+        if (!is_array($detail) || !isset($detail['serviceType']) || !isset($services[(string) $detail['serviceType']])) {
+            continue;
+        }
+
+        $date = '';
+
+        foreach (array(
+            isset($detail['commit']['dateDetail']['dayFormat']) ? $detail['commit']['dateDetail']['dayFormat'] : '',
+            isset($detail['operationalDetail']['deliveryDate']) ? $detail['operationalDetail']['deliveryDate'] : '',
+            isset($detail['operationalDetail']['commitDate']) ? $detail['operationalDetail']['commitDate'] : '',
+        ) as $candidate) {
+            if (is_string($candidate) && preg_match('/^(\d{4}-\d{2}-\d{2})/', $candidate, $match)) {
+                $date = $match[1];
+                break;
+            }
+        }
+
+        $transit = 0;
+
+        if (isset($detail['commit']['transitDays']['minimumTransitTime'])) {
+            $transit = pg_fedex_transit_days($detail['commit']['transitDays']['minimumTransitTime']);
+        }
+
+        if (!$transit && isset($detail['operationalDetail']['transitTime'])) {
+            $transit = pg_fedex_transit_days($detail['operationalDetail']['transitTime']);
+        }
+
+        $result[$services[(string) $detail['serviceType']]] = array(
+            'date'         => $date,
+            'transit_days' => $transit,
+        );
+    }
+
+    return $result;
 }
