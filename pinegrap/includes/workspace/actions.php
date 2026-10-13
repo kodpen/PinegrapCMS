@@ -2007,7 +2007,8 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // A person's own account on an MCP server (mcp.php): connecting one
-        // sends them to the service and back to the channel they were in.
+        // sends them to the service and back to the channel they were in, or
+        // to the task whose drawer offered it.
         case 'ws_mcp_connect':
         case 'ws_mcp_disconnect_me':
             $server = ws_mcp_ready() ? ws_mcp_server((int) ($request['server_id'] ?? 0)) : null;
@@ -2022,9 +2023,17 @@ function ws_handle_action($action, $request)
                 return ws_action_ok();
             }
 
-            $channel = ws_channel((int) ($request['channel_id'] ?? 0));
-            $channel_id = ($channel && ws_can_read_channel($viewer, $channel)) ? (int) $channel['id'] : 0;
-            $start = ws_mcp_person_connect_start($viewer, $server, 'workspace.php?' . (($channel_id > 0) ? 'channel=' . $channel_id . '&' : '') . 'mcp_connected=' . (int) $server['id']);
+            $task = ((int) ($request['task_id'] ?? 0) > 0) ? ws_task((int) $request['task_id']) : null;
+
+            if ($task && ws_can_see_task($viewer, $task)) {
+                $return = 'workspace_tasks.php?task=' . (int) $task['id'] . '&mcp_connected=' . (int) $server['id'];
+            } else {
+                $channel = ws_channel((int) ($request['channel_id'] ?? 0));
+                $channel_id = ($channel && ws_can_read_channel($viewer, $channel)) ? (int) $channel['id'] : 0;
+                $return = 'workspace.php?' . (($channel_id > 0) ? 'channel=' . $channel_id . '&' : '') . 'mcp_connected=' . (int) $server['id'];
+            }
+
+            $start = ws_mcp_person_connect_start($viewer, $server, $return);
 
             return $start['ok'] ? ws_action_ok(array('url' => $start['url'])) : ws_action_error($start['error']);
 

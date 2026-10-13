@@ -4,8 +4,9 @@
  *
  * Tests for the pure parts of a task handed to an assistant
  * (includes/workspace/delegation.php: the instruction as it is kept, the
- * request statuses a run is still under way in). Which assistants are
- * connected is read from the database: a sandbox check.
+ * request statuses a run is still under way in, the keys of an MCP server's
+ * alias). Which assistants are connected is read from the database: a
+ * sandbox check.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -43,4 +44,34 @@ function test_delegation_open_statuses()
 	pg_assert_false(ws_delegation_status_open('failed'));
 	pg_assert_false(ws_delegation_status_open('cancelled'));
 	pg_assert_false(ws_delegation_status_open(''));
+}
+
+function test_delegation_alias_key_names_its_server()
+{
+	pg_assert_same(7, ws_assistant_mcp_id('mcp:7'));
+	pg_assert_same(1234, ws_assistant_mcp_id('mcp:1234'));
+	pg_assert_same(0, ws_assistant_mcp_id('ai'));
+	pg_assert_same(0, ws_assistant_mcp_id('claude'));
+	pg_assert_same(0, ws_assistant_mcp_id('mcp:0'), 'no server 0');
+	pg_assert_same(0, ws_assistant_mcp_id('mcp:07'), 'one spelling per server');
+	pg_assert_same(0, ws_assistant_mcp_id('mcp:github'), 'the id, not the alias');
+	pg_assert_same(0, ws_assistant_mcp_id(' mcp:7'));
+	pg_assert_same(0, ws_assistant_mcp_id('mcp:7 '));
+	pg_assert_same(0, ws_assistant_mcp_id(null));
+}
+
+function test_delegation_alias_runs_go_by_pinegrap_ai()
+{
+	pg_assert_same('ai', ws_assistant_agent('mcp:7'), 'its queue and limits are Pinegrap AI\'s');
+	pg_assert_same('ai', ws_assistant_agent('ai'));
+	pg_assert_same('claude', ws_assistant_agent('claude'));
+}
+
+function test_delegation_run_key_of_a_request()
+{
+	pg_assert_same('mcp:3', ws_task_run_key(array('agent' => 'ai', 'mcp_server_id' => '3')));
+	pg_assert_same('ai', ws_task_run_key(array('agent' => 'ai', 'mcp_server_id' => '0')));
+	pg_assert_same('ai', ws_task_run_key(array('agent' => 'ai')), 'before the MCP step there is no column');
+	pg_assert_same('claude', ws_task_run_key(array('agent' => 'claude', 'mcp_server_id' => '3')), 'only Pinegrap AI answers with a server');
+	pg_assert_same('claude', ws_task_run_key(array()), 'before the agent column every request is Claude\'s');
 }

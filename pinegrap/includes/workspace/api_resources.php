@@ -1205,7 +1205,13 @@ function ws_api_tasks_list($params)
     }
 
     if (!empty($params['delegate'])) {
-        $filters['delegate'] = (string) $params['delegate'];
+        $delegate = (string) $params['delegate'];
+
+        if (!in_array($delegate, array('any', 'none', 'ai', 'claude'), true) && (ws_assistant_mcp_id($delegate) <= 0)) {
+            api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('delegate', 'any, none, ai, claude, mcp:<id>'))), 'delegate');
+        }
+
+        $filters['delegate'] = $delegate;
     }
 
     $briefs = ws_tasks_list($viewer, $filters);

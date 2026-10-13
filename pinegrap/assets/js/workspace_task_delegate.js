@@ -17,6 +17,12 @@
  * is carried on by the screens waiting for it (ws_ai_kick), one call at a
  * time and not more often than every few seconds, as the channel screen does.
  *
+ * An MCP server's alias is one of the assistants (key mcp:<server id>), run
+ * by Pinegrap AI. A call of its tools that writes waits on the task as a
+ * card of type mcp_call that only the person who asked can run, with their
+ * own account; the card and the picker offer to connect that account, and
+ * the service's sign-in comes back to the task.
+ *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
  *
@@ -50,7 +56,7 @@
     // (changesNode in assets/js/workspace.js), with the decision taken on
     // the task instead of in a channel. done(change) runs after it is
     // applied or set aside.
-    function changeCard(change, agent, h, done) {
+    function changeCard(change, agent, h, done, taskId) {
         var card = h.el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
         var head = h.el('div', 'ws-draft-head');
         var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right' };
@@ -160,12 +166,49 @@
             actions.appendChild(dismiss);
         }
 
+        // A call of an MCP server's tool runs with the asker's own account,
+        // connected from here; the sign-in comes back to this task.
+        if (change.connect) {
+            var connect = h.button('btn btn-sm btn-outline-primary rounded-pill px-3', h.t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
+
+            connect.addEventListener('click', function () {
+                connect.disabled = true;
+                h.mcpConnect(change.connect.server_id, 0, function () {
+                    connect.disabled = false;
+                }, taskId);
+            });
+
+            actions.appendChild(connect);
+        }
+
         if (actions.childNodes.length) {
             card.appendChild(actions);
         }
 
         if ((change.status === 'pending') && !change.can_apply) {
-            card.appendChild(h.el('div', 'ws-draft-done', change.no_right ? h.t('change_no_right') : h.t('change_waiting', change.asker)));
+            card.appendChild(h.el('div', 'ws-draft-done', change.blocked || (change.no_right ? h.t('change_no_right') : h.t('change_waiting', change.asker))));
+        } else if ((change.status === 'pending') && change.account) {
+            var account = h.el('div', 'ws-draft-done', h.t('mcp_account', change.account.alias) + ' ');
+            var off = h.el('a', '', h.t('mcp_disconnect_me'));
+
+            off.href = '#';
+            off.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                h.ask(h.t('mcp_disconnect_ask', change.account.alias), h.t('mcp_disconnect_me'), true).then(function (yes) {
+                    if (!yes) {
+                        return;
+                    }
+
+                    h.api('ws_mcp_disconnect_me', { server_id: change.account.server_id }).then(function () {
+                        h.toast(h.t('mcp_disconnected'), 'success');
+                        done(change);
+                    }).catch(h.fail);
+                });
+            });
+
+            account.appendChild(off);
+            card.appendChild(account);
         } else if (change.status === 'applied') {
             card.appendChild(h.el('div', 'ws-draft-done', h.t('change_applied', change.decided_by, change.decided)));
         } else if (change.status === 'dismissed') {
@@ -179,13 +222,13 @@
         return card;
     }
 
-    function changesBox(item, h, done) {
+    function changesBox(item, h, done, taskId) {
         var box = h.el('div', 'ws-drafts ws-changes ws-task-delegate-changes');
 
         box.appendChild(h.el('div', 'ws-drafts-title', h.t((item.agent === 'ai') ? 'ai_changes' : 'claude_changes')));
 
         item.changes.forEach(function (change) {
-            box.appendChild(changeCard(change, item.agent, h, done));
+            box.appendChild(changeCard(change, item.agent, h, done, taskId));
         });
 
         return box;
@@ -295,13 +338,14 @@
         }
 
         // A proposal applied or set aside: the task drawn again when it was
-        // the task or its notes that changed, the runs read again otherwise.
+        // the task or its notes that changed (a call of an MCP server's tool
+        // leaves its decision as a note), the runs read again otherwise.
         function decided(change) {
             if (onChange) {
                 onChange();
             }
 
-            if ((change.type === 'task') || (change.type === 'task_note')) {
+            if ((change.type === 'task') || (change.type === 'task_note') || (change.type === 'mcp_call')) {
                 h.openTask(task.id);
                 return;
             }
@@ -338,7 +382,7 @@
             }
 
             if (item.changes && item.changes.length) {
-                main.appendChild(changesBox(item, h, decided));
+                main.appendChild(changesBox(item, h, decided, task.id));
             }
 
             if (!item.answer || item.open) {
@@ -363,12 +407,16 @@
             if (withKey === '') {
                 var ready = state.assistants.filter(function (item) { return item.ready; });
                 var options = state.assistants.map(function (item) {
-                    return [item.key, item.ready ? item.name : (item.name + ' (' + h.t('dg_not_ready') + ')')];
+                    var name = item.title ? (item.name + ' · ' + item.title) : item.name;
+
+                    return [item.key, (item.ready || item.connect) ? name : (name + ' (' + h.t('dg_not_ready') + ')')];
                 });
 
                 // An assistant that is not set up stays in the list, so the
                 // reader sees it exists, but cannot be chosen: the server
-                // would only refuse it. With none ready the picker opens on
+                // would only refuse it. An MCP server's alias that only
+                // waits for the reader's own account can be chosen, and
+                // offers to connect it. With none ready the picker opens on
                 // nothing rather than on one that cannot work.
                 if (!ready.length) {
                     options.unshift(['', h.t('dg_not_chosen')]);
@@ -377,8 +425,8 @@
                 picker = h.select(options, ready.length ? ready[0].key : '');
 
                 Array.prototype.forEach.call(picker.options, function (option) {
-                    option.disabled = (option.value !== '') && !ready.some(function (item) {
-                        return item.key === option.value;
+                    option.disabled = (option.value !== '') && !state.assistants.some(function (item) {
+                        return (item.key === option.value) && (item.ready || item.connect);
                     });
                 });
 
@@ -394,6 +442,27 @@
             form.appendChild(text);
 
             var send = h.button('btn btn-sm btn-outline-primary rounded-pill px-3', (withKey === '') ? h.t('dg_hand') : h.t('dg_send'), (withKey === '') ? 'bi-stars' : 'bi-send');
+            var connect = h.button('btn btn-sm btn-outline-primary rounded-pill px-3 d-none', h.t('mcp_connect_me'), 'bi-box-arrow-in-right');
+            var hint = h.el('div', 'form-text mt-0 d-none');
+
+            function chosen() {
+                var key = withKey || (picker ? picker.value : '');
+
+                return state.assistants.filter(function (item) { return item.key === key; })[0] || null;
+            }
+
+            // An alias whose sign-in waits for the reader's own account:
+            // connect it first, then hand the task over.
+            function refresh() {
+                var item = chosen();
+                var waits = !!(item && !item.ready && item.connect);
+
+                send.classList.toggle('d-none', waits);
+                connect.classList.toggle('d-none', !waits);
+                hint.classList.toggle('d-none', !waits);
+                hint.textContent = waits ? h.t('dg_connect_first', item.connect.alias) : '';
+                send.disabled = !item;
+            }
 
             send.addEventListener('click', function () {
                 var agent = withKey || picker.value;
@@ -405,8 +474,21 @@
                 act('ws_task_delegate', { agent: agent, text: text.value }, send, (withKey === '') ? h.t('dg_started') : h.t('dg_sent'));
             });
 
+            connect.addEventListener('click', function () {
+                var item = chosen();
+
+                if (!item || !item.connect) {
+                    return;
+                }
+
+                connect.disabled = true;
+                h.mcpConnect(item.connect.server_id, 0, function () {
+                    connect.disabled = false;
+                }, task.id);
+            });
+
             if (picker) {
-                send.disabled = (picker.value === '');
+                picker.addEventListener('change', refresh);
             }
 
             text.addEventListener('keydown', function (event) {
@@ -418,7 +500,10 @@
 
             var actions = h.el('div', 'ws-task-delegate-actions');
             actions.appendChild(send);
+            actions.appendChild(connect);
+            form.appendChild(hint);
             form.appendChild(actions);
+            refresh();
 
             return form;
         }
@@ -516,7 +601,7 @@
     function rowTag(container, task, h) {
         if (task.delegate_name) {
             var tag = h.el('span', 'ws-task-delegate-tag ms-2');
-            tag.appendChild(h.icon((task.delegate === 'ai') ? 'bi-cpu' : 'bi-stars', 'me-1'));
+            tag.appendChild(h.icon((task.delegate === 'ai') ? 'bi-cpu' : ((String(task.delegate).indexOf('mcp:') === 0) ? 'bi-plug' : 'bi-stars'), 'me-1'));
             tag.appendChild(document.createTextNode(task.delegate_name));
             tag.title = h.t('dg_with', task.delegate_name);
             container.appendChild(tag);
