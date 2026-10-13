@@ -144,8 +144,13 @@ if (!$_POST) {
     $order_cancelled_at        = isset($row['cancelled_at']) ? (int) $row['cancelled_at'] : 0;
     $order_cancellation_reason = isset($row['cancellation_reason']) ? trim((string) $row['cancellation_reason']) : '';
 
+    // An order put on the customer's account (ERP, 10.60) is an offline
+    // payment too, but no transfer is coming: the account pays it by its due
+    // date, once it is invoiced.
+    $order_on_account = !empty($row['erp_on_account']);
+
     $output_awaiting_badge = $order_awaiting_payment
-        ? ' <span class="badge bg-warning text-dark">' . lang('Awaiting bank transfer') . '</span>'
+        ? ' <span class="badge bg-warning text-dark">' . ($order_on_account ? lang('On account') : lang('Awaiting bank transfer')) . '</span>'
         : '';
 
     // The reason is typed when the order is cancelled and was stored without
@@ -555,7 +560,7 @@ if (!$_POST) {
                        <div class="card-body">
                            <div class="row" >
                                <span class="translateable col text-muted">' . lang('Payment Method') . ':</span>
-                               <span class="col translateable text-end">' . lang($payment_method) . '</span>
+                               <span class="col translateable text-end">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
                            </div>
                            ' . $output_credit_debit_card_information . '
                            ' . $transaction_id_row . '

@@ -1750,6 +1750,14 @@ function get_order_preview($properties) {
                 $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_offline_payment', 'value'=>'Offline Payment', 'checked'=>$offline_payment_checked, 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="payment_method_offline_payment"> ' . h($offline_payment_label) . '</label></div>';
             }
             
+            // "Put it on my account" (ERP, 10.60): only for a member whose account
+            // has a credit limit; submit_order.php weighs the order against it.
+            $on_account_option = pg_erp_open_account_option();
+
+            if ($on_account_option !== null) {
+                $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_on_account', 'value'=>'On Account', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="payment_method_on_account"> ' . h($on_account_option['label']) . ' <span class="software_note">(' . h($on_account_option['note']) . ')</span></label></div>';
+            }
+
             // output the payment information
             $output_payment_information =
                 '<div class="payment heading">Payment Information</div>

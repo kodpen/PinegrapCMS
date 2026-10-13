@@ -7356,6 +7356,126 @@ function pg_erp_member_prices()
 }
 
 /**
+ * The ERP account the signed-in member may put an order on at checkout
+ * (config.erp_open_account_payment, off by default), and where it stands
+ * against its credit limit: the member's account (pg_erp_member_account())
+ * when it is active, a customer's and has a limit. pending is what the
+ * account's orders on account that have no invoice yet come to; the ledger
+ * holds an order only once it is invoiced, so the balance alone would let a
+ * customer place one order after another, each inside the limit.
+ *
+ * Null with the setting off, for anyone not signed in, for a member without
+ * such an account, and while staff place an order for someone else (a ghost
+ * session: the order is not theirs). Read once per request; the ERP is loaded
+ * only for a member who has such an account.
+ *
+ * Checkout posts the choice as payment_method 'On Account'; submit_order.php
+ * stores it as an offline payment with orders.erp_on_account = 1.
+ *
+ * @return array|null  id, limit, balance, pending, available (kurus, base
+ *                     currency; available as erp_storefront_on_account() has it)
+ */
+function pg_erp_open_account()
+{
+    static $open = false;
+
+    if ($open !== false) {
+        return $open;
+    }
+
+    $open = null;
+
+    if (!defined('ERP_OPEN_ACCOUNT_PAYMENT') || !ERP_OPEN_ACCOUNT_PAYMENT || !empty($_SESSION['software']['ghost'])) {
+        return $open;
+    }
+
+    $account = pg_erp_member_account();
+
+    if (($account === null) || ($account['status'] !== 'active') || !in_array($account['kind'], array('customer', 'both'), true)) {
+        return $open;
+    }
+
+    if (!function_exists('waf_table_has_column') || !waf_table_has_column('orders', 'erp_on_account') || !waf_table_has_column('erp_accounts', 'credit_limit')) {
+        return $open;
+    }
+
+    $row = db_item("SELECT credit_limit, balance FROM erp_accounts WHERE id = '" . (int) $account['id'] . "' LIMIT 1");
+
+    if (!is_array($row) || ((int) $row['credit_limit'] <= 0)) {
+        return $open;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    $pending = (int) db_value("SELECT COALESCE(SUM(total), 0) FROM orders
+        WHERE erp_on_account = 1
+          AND erp_account_id = '" . (int) $account['id'] . "'
+          AND erp_invoice_id = 0
+          AND status IN ('complete', 'exported')");
+
+    $standing = erp_storefront_on_account((int) $row['credit_limit'], (int) $row['balance'], $pending, 0);
+
+    $open = array(
+        'id' => (int) $account['id'],
+        'limit' => (int) $row['credit_limit'],
+        'balance' => (int) $row['balance'],
+        'pending' => $pending,
+        'available' => $standing['available'],
+    );
+
+    return $open;
+}
+
+/**
+ * Why an order of this total cannot go on the member's account, or '' when
+ * it can (pg_erp_open_account(), erp_storefront_on_account()).
+ *
+ * @param int $total  The order's total (kurus)
+ * @return string
+ */
+function pg_erp_open_account_refusal($total)
+{
+    $open = pg_erp_open_account();
+
+    if ($open === null) {
+        return lang('The selected payment method is not available.');
+    }
+
+    $check = erp_storefront_on_account($open['limit'], $open['balance'], $open['pending'], (int) $total);
+
+    if ($check['allowed']) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'This order would take your account past its credit limit; {var:1} of it is available. Please choose another payment method.',
+        'vars' => erp_money_out($check['available']),
+    ));
+}
+
+/**
+ * The "Put it on my account" choice as checkout shows it, or null when the
+ * member has no account to put an order on (pg_erp_open_account()).
+ *
+ * @return array|null  value (what the radio posts), label, note (the credit
+ *                     left on the account)
+ */
+function pg_erp_open_account_option()
+{
+    $open = pg_erp_open_account();
+
+    if ($open === null) {
+        return null;
+    }
+
+    return array(
+        'value' => 'On Account',
+        'label' => lang('Put it on my account'),
+        'note' => lang(array('string' => 'Available credit: {var:1}', 'vars' => erp_money_out($open['available']))),
+    );
+}
+
+/**
  * The name of the ERP's tax report as the menu shows it on every panel page,
  * the ERP loaded or not: "VAT report", or the report of the tax name set in
  * the ERP settings. Inside the ERP it is erp_tax_label('report').

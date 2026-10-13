@@ -252,6 +252,12 @@ function pg_parasut_credentials_for_save()
             erp_storefront_account_prices = '" . ((post_value('erp_storefront_account_prices') == 1) ? 1 : 0) . "',";
     }
 
+    // Putting an order on the account at checkout (10.60).
+    if (waf_table_has_column('config', 'erp_open_account_payment')) {
+        $sql_erp_due .= "
+            erp_open_account_payment = '" . ((post_value('erp_open_account_payment') == 1) ? 1 : 0) . "',";
+    }
+
     // Notices on the bell and the devices (4.91); the amount arrives in whole
     // units of the base currency and is kept in kurus.
     if (waf_table_has_column('config', 'erp_notify_collections')) {

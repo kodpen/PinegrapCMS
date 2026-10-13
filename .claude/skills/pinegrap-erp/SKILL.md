@@ -367,6 +367,17 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   `get_best_offer_id()`) girer; kampanyayla kural `erp_storefront_price()`
   (düşük olan geçer, eşitlikte kampanya). Mağaza fiyatına yeni bir yol
   eklersen bu fonksiyondan geçir; beslemeler `get_discounted_product_prices(false)`.
+- Cari hesaba yaz (10.60, ayar `erp_open_account_payment`): ödemede
+  `payment_method` 'On Account' gelir, `submit_order.php` onu 'Offline
+  Payment'a çevirir (enum'a yeni değer yok) ve `orders.erp_on_account = 1`,
+  `erp_account_id` yazar. Uygunluk `pg_erp_open_account()` (aktif müşteri
+  carisi, kredi limiti > 0, ghost değil), limit kuralı
+  `erp_storefront_on_account()`: bakiye + faturalanmamış cari siparişleri +
+  bu sipariş ≤ limit, `erp_credit_mode()`'dan bağımsız. Havale iptal işi
+  (`job.php`) bu siparişlere dokunmaz; faturası `DIGER` ödeme şekliyle,
+  cari vadesiyle kesilir. Bekleyen ödeme sorgusu (`payment_method = 'Offline
+  Payment' AND paid_at = 0`) bu siparişleri de kapsar; ayırmak gerekirse
+  `erp_on_account`'a bak.
 - Stok sayımı (`includes/erp/stock_counts.php`): uygulama tek işlemde
   `products.inventory_quantity` + `out_of_stock` yazar, `erp_stock_moves`'a
   dokunmaz (düzeltmenin maliyeti yok), önceki stok `system_before`'da kalır.
@@ -606,6 +617,7 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
 | Belge imzası (teklif) | `includes/erp/signatures.php` |
 | Tekrarlayan faturalar | `includes/erp/invoice_recurring.php`, `erp_invoice_recurrences.php`, `erp_invoice_recurring_job.php` |
 | Cari fiyatları | `includes/erp/price_lists.php`, `erp_account_prices.php`; mağazada (ayar `erp_storefront_account_prices`): kural `erp_storefront_price()` (`storefront.php`), uygulama `pg_erp_member_prices()` (`includes/fn/ecommerce.php`) |
+| Cari hesaba yaz (ödeme) | ayar `erp_open_account_payment`; kural `erp_storefront_on_account()` (`storefront.php`), uygunluk ve neden `pg_erp_open_account()`, `pg_erp_open_account_refusal()`, `pg_erp_open_account_option()` (`includes/fn/ecommerce.php`); doğrulama ve yazma `submit_order.php`; `orders.erp_on_account` |
 | Stok sayımı | `includes/erp/stock_counts.php`, `erp_stock_counts.php`, `erp_stock_count.php` |
 | Çek ve senetler | `includes/erp/cheques.php`, `erp_cheques.php`, `erp_cheque.php` |
 | Banka ekstresi | `includes/erp/bank_import.php`, `erp_bank_statements.php`, `erp_bank_statement.php` |

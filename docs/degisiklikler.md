@@ -84,6 +84,79 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ödemede "Cari hesabıma yaz" (ERP Faz 8c, 10.60) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 8c: kredi limiti tanımlı bir
+cariye bağlı müşteri mağazadan ödeme yapmadan, cari hesabına yazdırarak
+sipariş verebilsin.
+
+**Ne değişti.** Ayar `config.erp_open_account_payment` (varsayılan kapalı,
+Ayarlar › E-Ticaret › ERP). Seçenek ancak şu üyeye çıkar:
+`pg_erp_open_account()`. Üyenin kişisine bağlı cari aktif ve müşteri ya da
+her ikisi türünde olmalı, `credit_limit > 0` olmalı ve oturum ghost
+olmamalı. Tasarımcının ödeme widget'ı (`_eo_render_payment_methods()`,
+`_eo_render_payment_methods_only()`) ve eski yerleşik ekranlar
+(`get_express_order.php`, `get_order_preview.php`) "Cari hesabıma yaz"
+radyosunu `value="On Account"` ile, altında "Kullanılabilir limit" yazarak
+basar. `submit_order.php` değeri `Offline Payment`'a çevirir; yeni enum
+değeri açılmadı. Ödeme denetiminde limit sorulur: `pg_erp_open_account_refusal()`
+→ `erp_storefront_on_account()`. Reddedilirse alan hatası nedeni ve
+kullanılabilir tutarı söyler, sayfa "Cari hesabıma yaz" seçili döner.
+Kabulde `orders.erp_on_account = 1` ve `erp_account_id` yazılır, makbuzda
+ödeme yöntemi "Cari hesabıma yaz" görünür. Genel çevrimdışı ödeme
+kapalıyken de çalışır. Abonelik (recurring) siparişi cariye yazılmaz.
+
+**Okumalar.** Plan `erp_credit_refusal()` diyordu; o yalnız engelleme
+modunda (`block`) reddeder, varsayılan uyarı modunda boş döner ve cümlesi
+operatöre fatura dilinde konuşur. Mağazada uyarıyı okuyacak kimse yok. Bu
+yüzden aynı kural (`erp_credit_state()`: sonrası > limit ise aşım) moddan
+bağımsız uygulanır. Defter siparişi ancak faturalanınca tutar, bu yüzden
+faturalanmamış cari siparişleri de sayılır (`erp_invoice_id = 0`, durum
+complete/exported). Limitin tam dolması kabul edilir.
+
+"Otomatik fatura ayarı" için kod yok: `ERP_AUTO_INVOICE_ON` tanımlı ama hiçbir
+yerde okunmuyor. Fatura her sipariş gibi sipariş ekranındaki akıştan kesilir.
+`erp_invoice_from_order()` `orders.erp_account_id`'yi okur, vade
+`erp_account_due_date()`'ten gelir. Fatura ödenince `settlement.php` siparişi
+ödendi işaretler; bu var olan yol.
+
+**Aynı akışta.** `job.php` havale iptali `erp_on_account = 0` ister: cari
+siparişine havale gelmez. `view_order.php` "Havale bekleniyor" yerine "Cari
+hesapta" rozeti, ödeme yöntemi satırında "Cari hesaba yazıldı" gösterir.
+Sipariş görüntüleme widget'ı `^^__payment_method_pretty^^` da aynı.
+e-Arşiv ödeme şekli `erp_order_payment_method_code()` ile `DIGER`; havale
+yapılmadığı için `EFT/HAVALE` değil.
+
+**Bilerek yapılmayan.** Kendi yerleşim dosyası olan eski ödeme sayfaları
+(`data/layouts/*.php`) radyoyu kendiliğinden göstermez. Yerleşime
+`<input type="radio" name="payment_method" value="On Account">` eklenirse
+sunucu tarafı aynı çalışır. Aynı anda verilen iki siparişin limit kontrolü
+kilitsizdir. Toplamı 0 olan siparişte ödeme adımı yoktur, cariye bir şey
+yazılmaz.
+
+**Doğrulama.** Sandbox'ta adım 10.60 iki kez koşturuldu. İlkinde üç işlem
+yapıldı, ikincisinde üçü de "zaten var" diye atlandı. Eski ödeme sayfası
+(`/express-order`) üzerinden gerçek POST'larla denendi; limit 600, bakiye 372.
+
+- 2 × 122,55 reddedildi: "limitin ₺228,00 kadarı kullanılabilir".
+- 1 × 122,55 kabul edildi: Offline Payment, `erp_on_account` 1, cari 1. Genel
+  çevrimdışı ödeme kapalıydı.
+- İkinci 122,55 bekleyen siparişle reddedildi (₺105,45).
+- Düz `Offline Payment` "mevcut değil" dedi.
+- "Mevcut değil" dönenler: limitsiz Bob, carisiz Carol, ghost oturum, ayar
+  kapalı.
+- Tasarımcı widget'ı seçeneği yalnız Alice'e gösterdi ("Kullanılabilir
+  limit: ₺105,45").
+- `job.php` 30 günlük düz havaleyi iptal etti, cari siparişini bıraktı.
+- Fatura PGF2026000000007 cari 1'e, vade +30 gün, `DIGER` ile kesildi.
+  Bakiye 49.455'e çıktı, kullanılabilir tutar aynı kaldı (çift sayım yok).
+  Tahsilatla fatura ödendi, sipariş `paid_at` aldı.
+- Panelde "Cari hesapta" rozeti ve "Cari hesaba yazıldı" göründü.
+- `tests/erp_storefront_test.php`'de limit kuralı ve ayar kapalı golden
+  testi var.
+
+---
+
 ## 2026.4.10 — Yedekler Google Drive, OneDrive ve Dropbox'a (2026-10-13)
 
 **Neden.** `docs/_plan_tersine_oauth.md` §4.4: otomatik yedeğin uzak kopyası

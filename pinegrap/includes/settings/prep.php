@@ -537,6 +537,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The prices agreed with an account, in the store (10.59).
     $erp_storefront_prices_ready = array_key_exists('erp_storefront_account_prices', $row);
     $erp_storefront_account_prices_checked = ((int) ($row['erp_storefront_account_prices'] ?? 0) === 1) ? ' checked' : '';
+    // Putting an order on the account at checkout (10.60).
+    $erp_open_account_ready = array_key_exists('erp_open_account_payment', $row);
+    $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in
     // kurus and shown in whole units of the base currency.
