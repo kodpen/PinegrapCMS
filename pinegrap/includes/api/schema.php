@@ -905,6 +905,44 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Commissions -------------------------------------------------- */
+
+		array(
+			'id'      => 'commissions.list',
+			'method'  => 'GET',
+			'path'    => '/commissions',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commissions_list',
+			'returns' => array('list' => 'Commission'),
+			'summary' => 'Affiliate commissions',
+			'description' => 'What the affiliate program owes, cursor paged and ordered by when each commission last changed, so updated_since picks up the ones whose status moved since the last sync. Money is in minor units. status: pending, payable, ineligible or paid, set on the commissions screen; paying the affiliate happens outside the site. A commission on an order carries order_id; a recurring one is written once a period from its recurring profile and carries period and product_name. affiliate_contact_id is the affiliate\'s record under GET /customers/{id}. Read only.',
+			'params'  => array(
+				array('name' => 'status',         'in' => 'query', 'type' => 'enum', 'values' => array('pending', 'payable', 'ineligible', 'paid')),
+				array('name' => 'affiliate_code', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the commissions of this affiliate.'),
+				array('name' => 'reference_code', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The commission with this reference code.'),
+				array('name' => 'order_id',       'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the commissions on this order.'),
+				array('name' => 'created_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written at or after this moment.'),
+				array('name' => 'created_before', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written before this moment.'),
+				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written or changed at or after this moment.'),
+				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'commissions.get',
+			'method'  => 'GET',
+			'path'    => '/commissions/{id}',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commissions_get',
+			'returns' => 'Commission',
+			'summary' => 'One affiliate commission',
+			'description' => 'The same fields as the list, for one commission.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Calendars ---------------------------------------------------- */
 
 		array(

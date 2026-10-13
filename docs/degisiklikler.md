@@ -160,6 +160,88 @@ yeni bağlantı (eskisi geçersiz), bildirim ve görev notu denendi.
 
 ---
 
+## 2026.4.10 — Dış API: ortaklık komisyonları (salt okuma) ve `?dry_run=true` (2026-10-13)
+
+**Sorun.** İki ayrı eksik (`api-genisletme-devir.md` 5. ve 7. madde).
+Ortaklık programının komisyonları API'de yoktu: bir ödeme ya da muhasebe
+aracı "hangi ortağa ne kadar ödenecek" sorusunu soramıyor, Komisyonlar
+ekranını elle okumak gerekiyordu. İkincisi, yazma provası yalnız
+`X-Dry-Run` başlığıyla isteniyordu; sorgu dizesi denetlenmediği için
+başlık gönderemeyen bir araç (webhook test aracı, kodsuz otomasyon,
+tarayıcıdan denenen adres) `?dry_run=true` eklediğinde parametre sessizce
+yok sayılıyor ve yazma **gerçekten yapılıyordu**.
+
+**Değişiklik 1: komisyonlar.** Yeni `includes/api/resources/commissions.php`
+ve yeni izin grubu `commissions` (yalnız `commissions:read`, yazma yok).
+Komisyonlar ekranının kapısı `validate_ecommerce_access()` olduğu için izin
+mağaza açıkken rol < 3 ya da mağaza yetkisi (`manage_ecommerce`) taşıyan
+sahibe açılır (`gift_cards:*` ile aynı koşul). Ortaklık programının açık
+olması aranmaz: ekran da aramıyor ve program kapatılsa da geçmiş
+komisyonlar ödenmeyi bekleyebilir.
+
+- `GET /commissions` (`status`, `affiliate_code`, `reference_code`,
+  `order_id`, `created_since`, `created_before`, `updated_since`;
+  imleçli): son değişme anı + id sırasıyla, böylece `updated_since` ile
+  eşitleme durumu değişen komisyonu yeniden yakalar (ürün listesinin
+  deseni). Bütün yazarlar (sipariş, yinelenen profil, düzenleme ekranı)
+  `last_modified_timestamp`'i günceller.
+- `GET /commissions/{id}`: aynı alanlar, tek komisyon.
+- Alanlar: referans kodu, durum (`pending`/`payable`/`ineligible`/`paid`),
+  tutar (kuruş), ortak kodu, ortağın adı ve kişi kimliği
+  (`affiliate_contact_id`, `GET /customers/{id}` için), sipariş kimliği ve
+  numarası, yinelenen komisyonda profil kimliği, dönem (`monthly`/`yearly`),
+  ürün adı ve açıklaması, oluşturan/değiştiren.
+- Ortak, liste başına tek sorguyla koddan bulunur
+  (`api_commission_affiliates()`); ekranın `LEFT JOIN contacts`'ı aynı
+  kodu taşıyan iki kişi olduğunda satırı çiftlediği için birleştirme
+  yerine ayrı sorgu, en eski kişi ortak sayılır. Kolon büyük-küçük harf
+  ayırmadan karşılaştırdığı için eşleme de ayırmaz.
+- Yinelenen komisyonların vadesi gelen taksitleri ekran ya da Hesabım
+  açılınca, günde en çok bir kez yazılıyor (`update_recurring_commissions()`).
+  API de okumadan önce aynı fonksiyonu çağırır; yoksa API aynı anda
+  ekranın göstereceğinden az komisyon bildirebilirdi.
+
+**Değişiklik 2: `?dry_run=true`.** `api_dry_run_requested()` artık başlığa
+ek olarak sorgu dizesindeki `dry_run`'ı okur, aynı değerlerle (`true/1/yes/on`,
+`false/0/no/off`); ikisinden biri prova isterse prova yapılır. Geçersiz
+değer 400 `invalid_dry_run` (`field: dry_run`), dizi de geçersiz. Değer
+`$_GET`'ten değil `api_request_input()`'tan okunur ve gövde anahtarıysa
+sayılmaz: MCP aracı süreç içinde çalışırken kendi girdisini kurar ve
+`dry_run`'ı başlık olarak verir, `mcp.php` isteğinin sorgu dizesi araca
+geçmez (sandbox'ta denendi). Gövdede `dry_run` alanı eskisi gibi 422
+(tanınmayan alan). Provası olmayan uca `?dry_run=true` 400
+`dry_run_unsupported` alır; mesaj iki yolu da anıyor. OpenAPI provalı her
+yazma ucunda `X-Dry-Run` başlığının yanına `dry_run` sorgu parametresini
+yazar. Bilinmeyen sorgu parametresine 422 vermek seçilmedi: önbellek
+kırıcı, analiz etiketi gibi uçla ilgisiz değerleri reddetmek çağıranları
+boşuna kırardı (`api_request_body_keys()` notu).
+
+Yeni izin mevcut uygulamalara verilmez; operatör Uygulama Erişimi'nde
+"Komisyonlar"ı işaretler. MCP araçları (`commissions_list`,
+`commissions_get`) rotalardan kendiliğinden gelir. Şema değişikliği yok.
+
+Testler: `tests/api_commissions_test.php` (sipariş komisyonu ve yinelenen
+komisyon alanları, ortak/sipariş yokken `null`, şemaya uyma, kod
+eşlemesinin büyük-küçük harfi yok sayması, süzgeç koşulları, rotalar ve
+kapsamları, durum listesinin ekranla aynı olması, kapsamın salt okuma
+olması, mağaza yetkisi kapısı ve mevcut anahtarlara verilmemesi).
+
+**Doğrulandı (sandbox, MariaDB, gerçek HTTP).** `GET /commissions`
+imleçle iki sayfa, `status`/`affiliate_code` süzgeci, okunamayan imleç
+400, bilinmeyen `status` 422, `GET /commissions/{id}` ve 404; izni olmayan
+anahtar 403 `insufficient_scope`. Yinelenen profil (iki ay önce başlayan,
+aylık) okumada üç taksit yazdı; aynı kodu küçük harfle taşıyan ikinci
+kişi ortak sayılmadı. `?dry_run=true`, `?dry_run=1`, `?dry_run=on` hediye
+kartı oluşturma/güncelleme/silmede hiçbir şey yazmadı; başlık `false` +
+sorgu `true` prova yaptı; `?dry_run=maybe` ve `?dry_run[]=1` 400;
+`?dry_run=false` gerçekten yazdı; gövdede `dry_run` 422; provasız uçta
+400 `dry_run_unsupported`. OpenAPI'de `/commissions` yolları, `Commission`
+nesnesi ve `dry_run` sorgu parametresi; MCP `tools/list`'te iki komisyon
+aracı (salt okuma ipucuyla), `commissions_get` çağrısı ve `dry_run`
+argümanıyla prova çalıştı, `mcp.php?dry_run=true` araca geçmedi.
+
+---
+
 ## 2026.4.10 — Banka ekstresi Excel'den, vade farkı, nakit tahmini (ERP Faz 9, 10.61) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 9: bankalar ekstreyi çoğunlukla

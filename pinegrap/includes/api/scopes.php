@@ -61,6 +61,11 @@ function api_scope_groups() {
 		// removes it.
 		'gift_cards' => array('label' => 'Gift Cards', 'read' => 'gift_cards:read', 'write' => 'gift_cards:write'),
 
+		// What the affiliate program owes its affiliates. Read only: the
+		// status is moved on the commissions screen, and the paying happens
+		// outside the site.
+		'commissions' => array('label' => 'Commissions', 'read' => 'commissions:read', 'write' => ''),
+
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
 		// Writing is an event's words, times, calendars and publishing. Its
@@ -261,6 +266,9 @@ function api_owner_scopes($owner) {
 		// The gift cards screen opens to the same people.
 		$scopes[] = 'gift_cards:read';
 		$scopes[] = 'gift_cards:write';
+
+		// The commissions screen opens to the same people.
+		$scopes[] = 'commissions:read';
 
 	}
 
