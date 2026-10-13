@@ -594,6 +594,19 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Menüler API'de: GET /menus ve GET /menus/{id}
+         menüleri ve öğelerini sitenin çizdiği sırayla (alt
+         öğeler, bağlantı, yeni pencere, güvenlik) verir. Menü
+         öğesi eklenir, değiştirilir, başka bir öğenin altına
+         ya da başka bir sıraya taşınır, altındakilerle
+         birlikte silinir. Yeni menü açmak ve menünün
+         görünüşünü (efekt, açılır konumlar, sınıflar)
+         değiştirmek tasarımcı hakkı ister. Menünün adı
+         tasarımlarda menüyü yerleştiren addır, API'den
+         değiştirilmez; menü de API'den silinmez. Geri dönüşüm
+         kutusundaki ya da taslak bir sayfaya ve javascript:
+         gibi adreslere bağlantı verilmez.
+
   [YENİ] Görsel tasarımlar API'de: GET /design/designs
          tasarımları sayfa, taslak sayısı ve durumlarıyla
          listeler. POST /design/pages bir tasarıma yeni sayfa

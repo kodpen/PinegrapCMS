@@ -196,6 +196,51 @@ başlığı okuyor, `my_notes`'u okuyan yok (menü `nav_notes`'u kullanır). Di�
 
 ---
 
+## 2026.4.10 — Dış API: menüler ve menü öğeleri (2026-10-13)
+
+**Sorun.** Siteyi API ya da MCP üzerinden kuran bir asistan sayfa açıp
+içeriğini önerebiliyordu ama sitenin menüsüne bağlantı ekleyemiyordu; menü
+yalnız panelden düzenleniyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/menus.php`, kapsam
+`pages:read` / `pages:write` (menü sitenin kendisidir, sayfalarla aynı
+karar: rol ≤ 2):
+
+- `GET /menus`, `GET /menus/{id}`: menü ayarları (efekt, açılır konumlar,
+  sınıflar) ve öğeler, sitenin çizdiği sırayla düz liste (`parent_id`,
+  `level`, `order`); `url` sayfanın adresi ya da `link_url`. Üstü silinmiş
+  öğe sitede çizilmediği için listede de yok.
+- `POST /menus`, `POST /menus/{id}`: menü açma ve görünüş ayarları; panelde
+  olduğu gibi (`view_menus.php` designer kapısı) sahibin rolü 0–1 olmalı,
+  yoksa 403. Ad kuralı menü ekranınınki (harf, rakam, tire; benzersiz, 409
+  `name_taken`).
+- `POST /menus/{id}/items`, `POST /menus/{id}/items/{item_id}`, `DELETE`
+  (ve `POST …/delete`): öğe ekleme, değiştirme, taşıma (`parent_id`,
+  `after`: 0 ilk, kardeş kimliği ardına; kendi altına taşıma 422), alt
+  öğeleriyle silme (`removed` sayısı, dry-run ile önce görülebilir). Sıra
+  her yazımda o seviye için 1, 2, 3… diye yeniden yazılır.
+
+**Kararlar.** Menünün adı tasarımlarda menüyü yerleştiren addır
+(`<menu>ad</menu>`, editörün menü öğesi); API'den değiştirilmez ve menü
+API'den silinmez, ikisi de menüyü kullanan her tasarımda boş bir yer
+bırakırdı. Bağlantı ya sayfa ya adres: sayfa verilince adres, adres
+verilince sayfa temizlenir (menü öğesi ekranı gibi). Geri Dönüşüm
+Kutusu'ndaki ve taslak sayfaya bağlantı verilmez; adres yalnız http, https,
+mailto, tel ya da bu sitede bir yol (`//` ile başlayan ve `\` içeren
+reddedilir). Günlüğe uygulama adıyla yazılır.
+
+**Doğrulandı (sandbox).** Liste ve tekil; menü açma (geçersiz ad, ad
+çakışması, dry-run), ayar değiştirme, `name` gönderilince 422, rolü 2 olan
+sahibe 403 (öğe yazımı açık); öğe ekleme (sayfa, adres, mailto, yeni
+pencere, güvenlik, `after: 0`), taslak sayfa, `javascript:`, `//evil.com`,
+sayfa ve adres birlikte reddi; iç içe ekleme, döngü reddi, üst değiştirme
+ve sıra, başka üstün öğesinin `after` olarak reddi, alt öğeleriyle silme
+(dry-run sayısı), olmayan menü ve öğe 404; MCP araçları ve OpenAPI
+(`Menu`, `MenuItem`). Denenmeyen: sitede menünün çizimi (veri panelin
+yazdığıyla aynı sütunlara yazılıyor).
+
+---
+
 ## 2026.4.10 — Dış API ve MCP: ERP irsaliyeleri, stok sayımları ve minimum stok yazılıyor (Faz 6, ikinci parça) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), ikinci parça:
