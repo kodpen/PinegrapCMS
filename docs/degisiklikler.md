@@ -178,6 +178,102 @@ Sandbox'ta 34 sekmeyle 360–1400px arası ölçüldü.
 
 - `tests/designer_asset_scope_test.php`.
 
+## 2026.4.10 — Dış API: ürün güncellemede grup, varyant, görsel ve barkod; yazımdan sonra SEO puanı (2026-10-13)
+
+**Neden.** Erdal, Claude bağlayıcısıyla bir ürünün "tüm alanlarını" doldurttu
+(ürün 227, dev.pinegrap.com). Claude'un raporundaki eksikler:
+
+- `group_ids` ve `attributes` yalnız oluştururken veriliyordu; güncellemede
+  yoktu. Grup üyeliği `POST /product-groups/{id}/products` ile zaten
+  değişebiliyordu ama ürün güncelleme ucunun tarifi bunu anmıyordu ve model onu
+  bulamadı.
+- Görsel bağlayan bir alan hiçbir uçta yoktu.
+- `barcode` cevapta dönüyordu ama yazılamıyordu.
+- Güncelleme cevabındaki SEO bloğu `stale.meta: true` ve eski puanla
+  dönüyordu: ürün güncelleme `seo_analysis_current = 0` yazıp bırakıyordu,
+  sayfa ve ürün grubu güncellemesi ise `pg_seo_recalculate()` çağırıyor.
+
+**Ne değişti.**
+
+- `POST /products/{id}`: `group_ids`, `attributes`, `images` ve `barcode`
+  eklendi. İlk üçü gönderildiğinde ürünün mevcut bağlarının **yerine geçer**,
+  boş liste hepsini kaldırır (ürün ekranı da bu bağları baştan yazar). Tarif
+  grup üyeliğinin grup tarafından da değişebileceğini anıyor.
+- `POST /products`: `images` ve `barcode` eklendi. Görseller
+  `pg_pb_create_product()`'ın mevcut `images` ilişkisiyle yazılır.
+- `images`: Dosya kitaplığındaki dosya adları ya da API'nin verdiği adresler
+  (sitenin kendi kökündeyse ad olarak okunur). Dosya `files` tablosunda olmalı
+  ve uzantısı görsel olmalı (jpg, jpeg, png, gif, webp, avif, svg). İlki
+  `products.image_name`, kalanı sırayla `products_images_xref`.
+- `barcode`: `BARCODE_ENABLED` kapalıysa 422. Biçim
+  `pg_barcode_matches_format()` ile, başka üründeki kod 422. Ürünün zaten
+  barkodu varsa: aynısıysa yazma yok, farklıysa 422. Gerekçe: ürün ekranı da
+  (`pg_assign_product_barcode()`) yalnız ekler, çünkü basılmış etiket aynı
+  ürünü okutmaya devam etmeli.
+- Ekleme ve güncellemeden sonra `api_products_rescore()` meta yarısını
+  `pg_seo_recalculate('product', ...)` ile hemen hesaplar; cevap güncel puanı
+  ve `stale.meta: false` taşır. Yapı yarısı gece işinde kalır.
+- Doğrulama yazmadan önce yapılır; `X-Dry-Run` her şeyi denetler, hiçbir şey
+  yazmaz.
+
+**Doğrulama.** Sandbox'ta sunucu anahtarıyla `integration.php` üzerinden:
+
+- İki PNG yüklendi. Ürün görsel, barkod (EAN-13) ve grupla oluşturuldu.
+- Güncellemede görsel (biri adres, biri adla), iki grup ve bir varyant
+  özelliği yazıldı; SEO puanı 46'dan 62'ye çıktı ve `stale.meta` false döndü.
+- Hata yolları: farklı barkod, olmayan dosya ve olmayan grup 422 döndü. Aynı
+  barkod 200 döndü. Boş listeler görselleri ve grupları temizledi.
+- Dry run hiçbir şey yazmadı.
+
+MCP aracı şemadan kendiliğinden genişler, ayrıca denenmedi. Barkod
+değiştirme ve sürüm/varyant matrisi kurmak kapsam dışında kaldı.
+
+---
+
+## 2026.4.10 — Uygulama Erişimi: OAuth uygulamasında MCP adresleri ve bağlantı rehberi (2026-10-13)
+
+**Neden.** Erdal Claude'u `https://dev.pinegrap.com/pinegrap/mcp.php` ile
+bağladı; ekran ise yalnız kök adresi (`site.com/mcp.php`) gösteriyordu ve
+"OAuth ile uygulama bağlama açıldı" penceresiyle çekmecenin OAuth bölümü
+neredeyse boştu. Hangi adresin verileceği ve bağlantının nasıl yapılacağı
+ekrandan anlaşılmıyordu.
+
+**Ne değişti.** `api_settings.php` içinde ekrana özgü
+`api_settings_oauth_guide($id_prefix, $button_class)` eklendi; hem oluşturma
+sonrası pencere hem çekmecenin Genel sekmesi onu basıyor:
+
+- **MCP sunucu adresi:** yazılım klasöründeki dosya
+  (`pg_oauth_resource_addresses()['mcp'][1]`, ör. `site.com/pinegrap/mcp.php`).
+  Gerçek dosya olduğu için her sunucuda, yeniden yazma kuralına bakmadan
+  çalışır; bu yüzden birinci sırada.
+- **Kısa adres:** sitenin kendi adresi (`['mcp'][0]`, `site.com/mcp.php`);
+  sayfa adresleri nerede çalışıyorsa orada çalışır. Sunucu tarafında iki adres
+  de aynı kaynak sayılır (#246), hangisiyle bağlanıldığı fark etmez.
+- **Keşif adresi:** kontrol için; uygulamalar onu MCP adresinden kendileri
+  bulur.
+- **Nasıl bağlanır:** Claude (Ayarlar › Bağlayıcılar › Özel bağlayıcı ekle),
+  ChatGPT (Uygulamalar ve Bağlayıcılar, geliştirici modu, OAuth), giriş ve onay
+  adımları, Bağlantılar sekmesi.
+- **Uygulama neler yapabilir:** her izin alanı bir araç grubudur (Okuma →
+  listeleme/görüntüleme, Yazma → oluşturma/değiştirme/silme); kişi kendi panel
+  hesabının yetkisini aşamaz; daraltma hemen geçerli, genişletmeden sonra
+  uygulamada yeniden bağlanmak gerekir (onaylanan kapsamlar saklanıyor,
+  `pg_oauth_effective_scopes()` yalnız kesişimi alır).
+
+Pencereden "Site adresi" (issuer) kutusu kaldırıldı: istemciye verilmesi
+gereken bir değer değil, MCP adresinin yanında karışıklık yaratıyordu.
+Sunucu tarafı (`pg_oauth_resources()` sırası, PRM, token kontrolü)
+değişmedi. Eski metinlerin `tr.json` karşılıkları başka yerlerde
+kullanılmadığı hâlde silinmedi (ortak dosyada yalnız ekleme).
+
+**Doğrulama.** Sandbox'ta OAuth uygulaması oluşturulup pencere ve çekmece
+ekran görüntüsüyle kontrol edildi: adresler `http://127.0.0.1:8000/pinegrap/mcp.php`,
+`/mcp.php` ve `/.well-known/oauth-authorization-server`, Kopyala düğmeleri her
+kutuda. Claude ve ChatGPT menü adları üçüncü taraf arayüzlerinden; değişirlerse
+yalnız metin güncellenir.
+
+---
+
 ## 2026.4.10 — WAF: bot politikası kimlikle girilen uçlarda uygulanmaz (Claude-User engeli) (2026-10-13)
 
 **Neden.** dev.pinegrap.com'da Claude bağlayıcısı OAuth onayını ve token'ı
