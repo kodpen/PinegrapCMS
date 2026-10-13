@@ -84,6 +84,39 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görsel editör: özellikler panelindeki değişiklik kendi geri alma adımını açıyor (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel test raporunun 1. maddesi: link adresi seçiciyle ya
+da URL kutusuyla değişince ayrı geri alma adımı açılmıyor. Başlık metni →
+link URL'si → Ctrl+Z yapılınca başlık metni de geri dönüyor.
+
+**Neden.** Geçmiş, değişiklikten ÖNCEKİ hâlin anlık görüntüsüyle çalışıyor
+(`saveState()`). Özellikler panelinin ortak `[data-prop]` işleyicisi metin
+kutularında hiç anlık görüntü almıyordu: URL kutusuna yazılan ya da seçicinin
+doldurduğu adres, bir önceki adımın içine düşüyordu. Açılır liste ve onay
+kutusunda görüntüyü değişiklikten SONRA alıyordu: ilk Ctrl+Z aynı hâle
+dönüp hiçbir şey yapmıyor, ikincisi iki düzenlemeyi birden geri alıyordu.
+Erişilebilirlik alanlarının `[data-nodeattr]` işleyicisi de görüntüyü
+değişiklikten sonra (`change`) alıyordu.
+
+**Düzeltme** (`style_designer.js`). İki işleyici de görüntüyü değişiklikten
+önce alıyor. Metin kutusunda yazma bir adım sayılıyor:
+`saveState(_sdEditRun('prop:' + prop))` aynı alandaki kesintisiz yazmayı tek
+adımda topluyor (`SAVE_STATE_RUN_MS`), başka alana ya da başka öğeye geçince
+yeni adım açılıyor. Seçici `input` + `change` olaylarını birlikte gönderiyor;
+işleyici yalnız `input`'u dinlediği için tek adım oluşuyor.
+
+**Doğrulama (sandbox, Playwright).** Hakkımızda sekmesinde h1 satır içi
+"BASLIK DEGISTI" yapıldı, ardından "Bize Yazın" linkinin adresi değişti.
+Öncesi (yazarak da, seçicinin olaylarıyla da): 1. geri al başlığı ve adresi
+birlikte geri aldı, 2. geri al kapalıydı. Sonrası: 1. geri al yalnız adresi
+(`/iletisim`), 2. geri al başlığı geri aldı; yinele başlığı getirdi. Hedef
+açılır listesi (`_blank`) için de 1. geri al yalnız hedefi geri aldı. Ortak
+başlıktaki linkte (marka linki) metin ve adres ayrı adımlarda geri alındı.
+dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Görsel editör: olmayan kayıt, ürün ve kategoride 404 + noindex (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 2. maddesi:

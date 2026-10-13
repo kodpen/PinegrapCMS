@@ -235,6 +235,14 @@
          listesi, sayfa üstüne acil durum şeridi, profil
          kartlı ekip ve puan özetli yorumlar.
 
+  [DÜZELTME] Özellikler panelinde yapılan değişiklik (link
+         adresi, link seçiciden gelen sayfa, metin kutuları,
+         açılır listeler, erişilebilirlik alanları) kendi
+         geri alma adımını açıyor. Önceden Ctrl+Z onu bir
+         önceki düzenlemeyle (örneğin başlık metni) birlikte
+         geri alıyor, açılır listede ilk Ctrl+Z hiçbir şey
+         yapmıyordu.
+
   SEO
   --------------------------------------------------------
 

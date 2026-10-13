@@ -36492,6 +36492,12 @@ const StyleDesigner = (function () {
             el.addEventListener(eventName, function () {
                 if (!selectedNode) return;
                 var prop = this.dataset.prop;
+                // Before the change, so undo returns to the value it had.
+                // Typing into a field (or a picker filling it) is one edit:
+                // one undo step per run, not one per key, and not folded
+                // into the edit made before it.
+                if (el.tagName === 'SELECT' || isCb) saveState();
+                else saveState(_sdEditRun('prop:' + prop));
                 if (this.type === 'checkbox') {
                     selectedNode.props[prop] = this.checked;
                 } else if (this.type === 'number') {
@@ -36559,9 +36565,8 @@ const StyleDesigner = (function () {
                         _rewriteCssClassFromColProps(selectedNode);
                     }
                 }
-                // For selects and checkboxes/switches, save state and full re-render
+                // For selects and checkboxes/switches, a full re-render
                 if (el.tagName === 'SELECT' || isCb) {
-                    saveState();
                     render();
                 } else {
                     // For text/textarea, just update canvas (don't re-render props to keep focus)
@@ -36570,7 +36575,7 @@ const StyleDesigner = (function () {
                     renderStatusBar();
                     renderAttrsPanel();
                     renderHtmlTree();
-                    // Neither render() nor saveState() runs on a keystroke here.
+                    // render() does not run on a keystroke here.
                     _sdLivePreviewSchedule();
                 }
             });
@@ -36617,16 +36622,13 @@ const StyleDesigner = (function () {
                 if (!selectedNode) return;
                 var name = this.dataset.nodeattr;
                 if (!name) return;
+                // Before the change, one undo step per run of typing.
+                saveState((el.tagName === 'SELECT') ? undefined : _sdEditRun('nodeattr:' + name));
                 setNodeAttr(selectedNode, name, this.value);
                 renderCanvas();
                 renderAttrsPanel();
                 renderHtmlTree();
             });
-            if (el.tagName !== 'SELECT') {
-                el.addEventListener('change', function() { saveState(); });
-            } else {
-                el.addEventListener('change', function() { saveState(); });
-            }
         });
 
         // ── Comments settings controls (data-cmt-prop / data-cmt-txt) ──────────
