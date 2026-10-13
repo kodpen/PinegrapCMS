@@ -84,6 +84,96 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: ham kalan çekirdek uçlar olgunlaştı (webhook yönetimi, ürün/grup/müşteri silme, grup oluşturma, dosya ve kampanya güncelleme, form gönderimi yazma, takvimler) (2026-10-13)
+
+**Sorun.** Modül uçları (ERP, Çalışma Alanı, çeviri) olgunken çekirdek
+kaynakların çoğu yalnız okunuyor ya da yarım kalmıştı. Webhook "failing"
+durumuna düşünce API'den geri açılamıyordu (panelde Durdur/Sürdür/Yeniden
+dene vardı); ürün, ürün grubu ve müşteri silinemiyor, grup
+oluşturulamıyordu; dosya ve kampanya güncellenemiyor, form gönderimi tek
+okunamıyor ve yazılamıyordu; takvimler API'de hiç yoktu. Çalışma Alanı'nın
+Claude önerileri (`includes/workspace/changes.php`) bunların çoğunu panel
+yoluyla zaten yapıyordu; dış API geride kalmıştı.
+
+**Çözüm** (kimlik doğrulama ve token tasarımına dokunulmadı; OAuth ayrı
+iş).
+
+- **Webhook** (`resources/webhooks.php`): `GET /webhooks/{id}`,
+  `PATCH /webhooks/{id}` + `POST /webhooks/{id}/update` (url, events,
+  status `active|disabled`), `POST /webhooks/{id}/retry` (panelin
+  `webhook_retry`'ı: durum active, kuyruk satırlarının denemesi sıfır),
+  `POST /webhooks/{id}/test` (yalnız bu aboneliğe `webhook.test` kuyruk
+  satırı; istek akışında ağ çağrısı yok, kapalı abonelikte 409
+  `webhook_disabled`), `POST /webhooks/{id}/rotate-secret`.
+  **Tuzak:** `POST /webhooks/{id}` ilk sürümden beri *silme*dir
+  (`webhooks.delete` `also_accepts POST`); güncelleme bu yüzden ayrı
+  adreste. Başka uygulamanın aboneliği 404.
+- **Ürün silme** (`products.php`): `DELETE /products/{id}` +
+  `POST /products/{id}/delete`. Varsayılan katalog kutusu
+  (`explorer_catalog_recycle`'ın aynısı: `recycled=1`,
+  `recycled_enabled=enabled`, `enabled=0`, `recycle_bin` satırı);
+  `permanent=true` → `pg_pb_delete_product()`. İkisi de `product.deleted`
+  duyurur, `recycled` alanıyla. Kutu yoksa 409 `recycle_bin_unavailable`.
+- **Ürün grupları** (`product_groups.php`): `POST /product-groups`
+  (`add_product_group.php`'nin satırı: browse, attributes 1, adres adı
+  kısa açıklama → ad; üst grup verilmezse kök; varsayılan kapalı; alınmış
+  ad 409 `name_taken`), `POST /product-groups/{id}/products` (`add` /
+  `remove` tek istekte; zaten olan/olmayan hata değil),
+  `DELETE /product-groups/{id}` + `POST …/delete` (kutu ya da kalıcı;
+  kök 409 `root_group_protected`, içinde grup olan 409
+  `group_not_empty` — katalog ekranı alt ağacı birlikte kutuya atar, API
+  dal silmez). Ağaç (üst grup değiştirme, sıralama) hâlâ yazılmaz.
+  Etiket bulutu yeniden kurulumu `api_product_group_clouds()`'a alındı,
+  güncelleme de onu kullanıyor.
+- **Liste davranışı değişti:** `GET /products` ve `GET /product-groups`
+  kutudaki kayıtları listelemiyor (önceden kapalı kayıt gibi
+  listeleniyordu); kimlikle okumada `recycled: true`. Grubun
+  `child_ids`'i de kutudakileri saymıyor. Sütun yoksa (2026.4.9 öncesi)
+  süzgeç eklenmez (`api_catalog_bin_columns()`).
+- **Müşteri silme** (`customers.php`): `DELETE /customers/{id}` +
+  `POST …/delete`; kişi ekranının üç silmesi (contacts, grup bağları,
+  opt_in). Kullanıcı hesabına bağlı kişi 409 `customer_has_account`,
+  ERP carisine bağlı kişi 409 `customer_has_erp_account` (panel bu iki
+  reddi yapmaz). `customer.deleted` olayı.
+- **Dosya** (`files.php`): `POST /files/{id}` yalnız `description`
+  (alternatif metin). Ad (adres) ve klasör yazılmaz; yalnız okunabilen
+  (herkese açık klasördeki) dosya.
+- **Kampanya** (`offers.php`): `POST /offers/{id}` — `enabled`,
+  `description`, `start_date`, `end_date` (boş/null = bitişsiz,
+  `PG_OFFER_OPEN_END_DATE`). Koşullar ve sonuçlar editörde; eksik
+  kampanya açılsa da eksik kalır.
+- **Form gönderimi** (`forms.php`): `GET /forms/{id}/submissions/{submission_id}`,
+  `POST`/`PATCH` aynı adres — `complete` ve `values: [{name, value}]`;
+  yalnız text box / text area / email address (Çalışma Alanı'nın
+  kuralı), e-posta doğrulanır, 10000 karakter. Yeni kapsam
+  `forms:write` (rol < 3 ya da manage_forms). Değer okuma
+  `api_form_submission_values()`'a alındı.
+- **Takvimler** (yeni `resources/calendars.php`): `GET /calendars`,
+  `GET /calendars/events` (calendar_id, published, upcoming,
+  starts_after/before, updated_since, search; başlangıç sırasıyla imleç),
+  `GET /calendars/events/{id}`. Tekrar eden etkinlik bir kez, kuralıyla
+  (`unit`, `times`, `days`, `month_by`) ve iptal edilen tekrarlarla
+  (`skipped_occurrences`); tekrarlar açılmaz. Saatler sitenin duvar saati
+  + ofset (`date('c')`). Yeni kapsam `calendars:read` (rol < 3 ya da
+  manage_calendars; rol 3 yalnız `users_calendars_xref`'teki takvimleri
+  görür); takvimler kapalıysa 503.
+- Olay kataloğu: `customer.deleted`, `product_group.created`,
+  `product_group.deleted`; `product.deleted` açıklaması kutuyu da anıyor.
+- Panel: API ayarlarındaki kaynak açıklamaları güncellendi, `calendars`
+  satırı eklendi; konsolda Takvimler grubu.
+- `tools/check_api_schema.php` sunucu eşlemesine takvim etkinliği ve form
+  gönderimi eklendi; `tests/api_calendars_test.php`.
+
+**Doğrulama.** Sandbox'ta (`tools/setup_sandbox.sh`) sunucu uygulaması
+anahtarıyla gerçek isteklerle: her yeni uç başarı, dry-run, 404, 409 ve
+422 yollarıyla; webhook kuyruk satırları ve olay yükleri, katalog kutusu
+ve `recycle_bin` satırları, form_data satırları veritabanından okundu;
+takvimde rol 3 + manage_calendars sahibiyle yalnız atanmış takvimin
+göründüğü ve hak kaldırılınca 403 döndüğü denendi. Webhook oluşturma ve
+adres değiştirme sandbox'ta DNS çözülmediği için yalnız ret yolundan
+denendi; `/test` ile kuyruğa giren satırın gerçek alıcıya gönderimi
+denenmedi.
+
 ## 2026.4.10 — Ürün listesi sıralamayı kolon koduyla tutuyor: `pg_list_state()` (2026-10-13)
 
 **Sorun** (Plan 1 Faz 5). `view_products.php` sıralamayı oturumda

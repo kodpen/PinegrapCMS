@@ -80,6 +80,9 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 			'quantity'     => (int)$row['inventory_quantity'],
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 		),
+		// In the catalogue's Recycle Bin: off the shop and out of the listing,
+		// but still readable by id until the bin is emptied.
+		'recycled'        => (isset($row['recycled']) && ((int)$row['recycled'] === 1)),
 		'updated_at'      => api_time($row['timestamp']),
 		'updated_at_unix' => (int)$row['timestamp'],
 		// What the site already knows about how this product reads to a search
@@ -208,6 +211,7 @@ function api_product_select() {
 			products.shippable, products.free_shipping, products.weight,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
+			" . (api_catalog_bin_columns() ? "products.recycled," : "0 AS recycled,") . "
 			products.timestamp,
 			" . api_seo_columns('products.') . "
 			(SELECT barcode FROM product_barcodes
@@ -220,6 +224,15 @@ function api_product_select() {
 function api_products_list($params) {
 
 	$where = array();
+
+	// A product in the Recycle Bin is deleted as far as the shop is concerned.
+	// It stays readable by id, so a sync that still holds it can see why it
+	// went, but it is not listed as part of the catalogue.
+	if (api_catalog_bin_columns()) {
+
+		$where[] = "products.recycled = '0'";
+
+	}
 
 	// The incremental sync filter. Everything else on this endpoint is a
 	// convenience; this is the one an integration actually runs on a schedule.
@@ -875,6 +888,137 @@ function api_products_update($params) {
 
 }
 
+// Whether the catalogue has its Recycle Bin columns. They arrive with the
+// 2026.4.9 upgrade; before it a deleted product is simply gone and nothing here
+// pretends otherwise. Asked once per request.
+function api_catalog_bin_columns() {
+
+	static $ready = null;
+
+	if ($ready === null) {
+
+		$ready = (api_row("SHOW COLUMNS FROM products LIKE 'recycled'") !== null)
+			&& (api_row("SHOW COLUMNS FROM product_groups LIKE 'recycled'") !== null);
+
+	}
+
+	return $ready;
+
+}
+
+// The catalogue's Recycle Bin, as the file manager decides it: the columns, and
+// the bin table that holds the restore records.
+function api_catalog_bin_ready() {
+
+	$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
+
+	require_once($directory . '/view_folder_and_files_f.php');
+
+	return (pg_catalog_recycle_ready() == true);
+
+}
+
+// Taking a product off the shop.
+//
+// The Recycle Bin is the default, the same move the catalogue's own Delete
+// makes: the product is switched off and flagged, what it was is kept so that
+// restoring puts it back as it was, and an operator can undo an application's
+// mistake. permanent=true deletes it outright with the whole cleanup the
+// product screen performs - images, group links, attributes, barcodes, form
+// fields, keywords and the stored findings - which cannot be undone.
+//
+// Either way the product.deleted event goes out, carrying recycled so a
+// receiver can tell the two apart: a binned product is no longer listed, and an
+// integration that only learned of it through the listing would never hear
+// that it went.
+function api_products_delete($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$permanent = !empty($params['permanent']);
+
+	$product = api_row("SELECT id, name, " . (api_catalog_bin_columns() ? "recycled" : "0 AS recycled") . "
+		FROM products WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($product === null) {
+
+		api_fail_not_found(lang('Product'));
+
+	}
+
+	if (!$permanent) {
+
+		if (!api_catalog_bin_ready()) {
+
+			api_fail(409, 'recycle_bin_unavailable', lang('This site has no catalogue Recycle Bin. Send permanent=true to delete the product outright.'));
+
+		}
+
+		if ((int)$product['recycled'] === 1) {
+
+			api_fail(409, 'already_recycled', lang('This product is already in the Recycle Bin.'));
+
+		}
+
+		api_dry_run_stop('recycled', 'product', array('id' => $id, 'name' => $product['name']));
+
+		// "AND recycled = '0'" keeps a second request that raced this one from
+		// writing recycled_enabled from an enabled that is already forced to 0,
+		// which would bring the product back out of the bin unpublished.
+		api_exec("UPDATE products
+			SET recycled = '1', recycled_enabled = enabled, enabled = '0'
+			WHERE id = '" . $id . "' AND recycled = '0'
+			LIMIT 1");
+
+		api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
+
+		api_exec("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+			VALUES ('product', '" . $id . "', '0', UNIX_TIMESTAMP(), '" . (int)$app['owner']['id'] . "')");
+
+		log_activity(lang(array(
+			'string' => 'Product ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
+			'vars'   => array($product['name'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+		api_webhook_enqueue('product.deleted', array('id' => $id, 'name' => $product['name'], 'recycled' => true));
+
+		if (function_exists('pg_marketplace_product_changed')) {
+
+			pg_marketplace_product_changed($id);
+
+		}
+
+		api_ok(array('id' => $id, 'deleted' => false, 'recycled' => true));
+
+	}
+
+	api_dry_run_stop('deleted', 'product', array('id' => $id, 'name' => $product['name']));
+
+	if (!function_exists('pg_pb_delete_product')) {
+
+		$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
+
+		require_once($directory . '/product_builder.php');
+
+	}
+
+	// The product screen's own deletion. It queues product.deleted itself,
+	// because every path that removes a product ends on that function.
+	pg_pb_delete_product($id);
+
+	api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
+
+	log_activity(lang(array(
+		'string' => 'Product ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($product['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true, 'recycled' => false));
+
+}
+
 // Prices in a batch.
 //
 // The twin of the stock endpoint, and it exists for the same reason: a
@@ -1085,6 +1229,7 @@ function api_product_schema() {
 			'quantity'     => 'integer',
 			'out_of_stock' => 'boolean'
 		),
+		'recycled'        => 'boolean',
 		'updated_at'      => 'string?',
 		'updated_at_unix' => 'integer',
 		'seo'             => 'Seo'

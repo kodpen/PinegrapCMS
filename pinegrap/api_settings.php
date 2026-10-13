@@ -482,17 +482,18 @@ if (is_array($recent)) {
 function api_settings_group_text($key, $group = array()) {
 
 	$text = array(
-		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing name, price and description'), 'bi-box-seam'),
+		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products and product groups, and deleting them'), 'bi-box-seam'),
 		'inventory' => array(lang('Inventory'),  lang('Setting a quantity and adjusting it - reading is under Products'), 'bi-grid-3x3-gap'),
 		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines; writing status and notes'), 'bi-cart3'),
-		'customers' => array(lang('Customers'),  lang('The people who buy (address book records)'), 'bi-person-lines-fill'),
+		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
 		'pages'     => array(lang('Pages'),      lang('Page title and meta fields'), 'bi-file-earmark'),
 		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies'), 'bi-palette'),
-		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means removing one, not creating it'), 'bi-file-earmark-text'),
-		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder'), 'bi-folder'),
-		'forms'     => array(lang('Forms'),      lang('Which forms the site has, and what visitors filled in on them'), 'bi-ui-checks'),
+		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
+		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder and describing them'), 'bi-folder'),
+		'forms'     => array(lang('Forms'),      lang('Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers'), 'bi-ui-checks'),
+		'calendars' => array(lang('Calendars'),  lang('The calendars and the events on them - read only'), 'bi-calendar-event'),
 		'seo'       => array(lang('SEO'),        lang('What the analysis found across the site, as a list to work through'), 'bi-graph-up-arrow'),
-		'webhooks'  => array(lang('Webhooks'),   lang('Registering an address for event notifications'), 'bi-megaphone'),
+		'webhooks'  => array(lang('Webhooks'),   lang('Registering, changing and testing an address for event notifications'), 'bi-megaphone'),
 		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle'),
 		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring'), 'bi-activity'),
 		'account'   => array(lang('Own account'), lang('Notifications, signed-in devices and push registration of the account the calls act for'), 'bi-person-badge')

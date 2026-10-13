@@ -34,6 +34,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   ikinci bir INSERT yazma; alınmış ad 409 döner.
 - **IIS'te PATCH ve DELETE gönderilmez** (WebDAV 405; PATCH ayrıca sonraki
   POST'u 404'e düşürür): `'method' => 'POST', 'also_accepts' => array('PATCH')`.
+  Silme için `POST /x/{id}/delete` takma adı ekle. İstisna: `POST /webhooks/{id}`
+  ilk sürümden beri **silmedir**; webhook güncellemesi `PATCH /webhooks/{id}` ve
+  `POST /webhooks/{id}/update`'tedir. Yönlendirici ilk eşleşeni aldığı için
+  yeni rotanın yolunu eski bir `also_accepts` ile çakıştırma.
+- Ürün ve ürün grubu silme uçları varsayılan olarak katalog Geri Dönüşüm
+  Kutusu'na atar (`permanent` ile kalıcı); listeler kutudaki kaydı göstermez,
+  tekil okuma `recycled` alanıyla gösterir.
 - Yazma provası istiyorsan uca `'dry_run' => true` koy ve **ilk yazmanın hemen
   üstüne** `api_dry_run_stop(...)` çağır; erken koyulan duruş yapılmamış
   doğrulamayı vaat eder. Toplu uçta `api_dry_run_requested()` ile satır satır

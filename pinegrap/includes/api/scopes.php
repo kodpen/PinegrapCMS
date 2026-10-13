@@ -24,13 +24,12 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 // Resource groups, in the order the permission screen shows them. 'read' or
 // 'write' set to '' means the resource does not offer that half at all:
-// inventory is write-only (stock is read through products), meta is read-only,
-// forms are read-only.
-// Offers are read and delete: a campaign that has run its course can be taken
-// off the shop from outside, but writing one cannot: an offer is a rule with a
-// condition tree and a result set behind it, and the editor that builds those
-// is where the rules live. offers:write therefore means "may remove", which the
-// endpoint's description says in as many words.
+// inventory is write-only (stock is read through products), meta is read-only.
+// offers:write covers the offer's own row - switched on or off, its message,
+// its dates - and its removal; building one cannot be done from outside: an
+// offer is a rule with a condition tree and a result set behind it, and the
+// editor that builds those is where the rules live. The endpoint descriptions
+// say so in as many words.
 function api_scope_groups() {
 
 	$groups = array(
@@ -54,10 +53,15 @@ function api_scope_groups() {
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
-		// Read only: a form is drawn in the page designer, with its validation,
-		// upload folders and contact mapping. What an integration needs is what
-		// came in on it.
-		'forms'     => array('label' => 'Forms',      'read' => 'forms:read',     'write' => ''),
+		// Read only: an event is built on its own screen with repeats,
+		// reservation spots and the product they are sold through.
+		'calendars' => array('label' => 'Calendars',  'read' => 'calendars:read', 'write' => ''),
+
+		// A form is drawn in the page designer, with its validation, upload
+		// folders and contact mapping, and that stays there. What an
+		// integration needs is what came in on it; writing means what the
+		// submitted-form screen writes - complete or not, and the text answers.
+		'forms'     => array('label' => 'Forms',      'read' => 'forms:read',     'write' => 'forms:write'),
 
 		// Read only: a finding is produced by the analyser, and the way to clear
 		// one is to fix what it is about through the record's own endpoint.
@@ -244,6 +248,22 @@ function api_owner_scopes($owner) {
 	if (($role < 3) || ($owner['manage_forms'] == true)) {
 
 		$scopes[] = 'forms:read';
+
+		// The submitted-form screen opens its edit to the same right.
+		$scopes[] = 'forms:write';
+
+	}
+
+	// The calendars, to whoever the calendar screens open them to: roles 0 to
+	// 2, or a user given the calendars right - who then reads only the
+	// calendars assigned to them, which the endpoints filter for. Not offered
+	// where the site does not run its calendars.
+	$manages_calendars = ($role < 3)
+		|| (isset($owner['manage_calendars']) && in_array(strtolower(trim((string)$owner['manage_calendars'])), array('yes', '1', 'true'), true));
+
+	if ((!defined('CALENDARS') || CALENDARS === true) && $manages_calendars) {
+
+		$scopes[] = 'calendars:read';
 
 	}
 
