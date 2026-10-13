@@ -5106,21 +5106,9 @@ button.pg-job-open {
   background: var(--pg-tint-soft);
 }
 
-/* Pending shipments widget (widget-id 9) keeps a headline block above its
-   list: the package count, the value beside it, and a twelve-slot meter. Its
-   rows are plain .pg-row, except that the tile colour comes from the carrier
-   rather than the card, so two carriers stay tellable apart at a glance. */
-.pg-ship-head {
-  padding: 0.5rem 1rem 0;
-}
-.pg-ship-count {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1;
-}
-.pg-ship-summary {
-  font-size: 12px;
-}
+/* Twelve-slot meter under the Operations Desk shipping lane (widget-id 9): one
+   dot per parcel waiting, lit amber, so a glance tells a quiet day from a
+   backlog before the rows are read. */
 .pg-ship-meter {
   display: flex;
   align-items: center;
@@ -5138,10 +5126,6 @@ button.pg-job-open {
 .pg-ship-meter span.is-on {
   background: #f59e0b;
   opacity: 1;
-}
-.pg-ship-more {
-  padding: 0.25rem 0 0.5rem;
-  text-align: center;
 }
 
 /* ── Widget empty state ───────────────────────────────────────────────────
@@ -5964,6 +5948,127 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   .pg-act > .pg-filters .pg-filter-sub {
     display: block;
   }
+}
+
+/* Operations Desk (widget 9): what the shop owes, as three lanes -- to ship,
+   to refund, out of stock. The lanes are .pg-filter buttons laid out as
+   tiles across the top, each with its count large enough to read from the
+   other side of the desk; the pressed lane's list fills the rest of the
+   card. In a one-track card the tiles keep their row and drop the second
+   line, so the list still starts within the first third of the card. */
+.pg-ops {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pg-lanes {
+  flex: 0 0 auto;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.5rem 0.35rem;
+}
+.pg-lanes .pg-filter {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "ico text count";
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border: var(--bs-border-width) solid var(--pg-rule);
+  background: var(--pg-tint);
+}
+.pg-lanes .pg-filter[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 12%, transparent);
+  box-shadow: inset 0 -3px 0 var(--pg-k, var(--pg-accent));
+}
+.pg-lanes .pg-filter-ico {
+  grid-area: ico;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+.pg-lanes .pg-filter-text {
+  grid-area: text;
+}
+.pg-lanes .pg-filter-count {
+  grid-area: count;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.pg-lanes .pg-filter-count.is-urgent {
+  background: none;
+  color: var(--bs-danger);
+}
+.pg-lanes .pg-filter-count.is-clear {
+  background: none;
+  color: #10b981;
+}
+@container pgwidget (max-width: 30rem) {
+  .pg-lanes .pg-filter {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "ico count" "text text";
+    row-gap: 0.25rem;
+    padding: 0.4rem;
+  }
+  .pg-lanes .pg-filter-ico {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  .pg-lanes .pg-filter-count {
+    justify-self: end;
+    font-size: 1.15rem;
+  }
+  .pg-lanes .pg-filter-sub {
+    display: none;
+  }
+}
+.pg-ops-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.pg-ops-meter {
+  padding: 0.15rem 1rem 0.1rem;
+}
+
+/* Best sellers in the Ecommerce Summary (widget 3): units sold as a quiet
+   pill, then what they took. A product without a photo carries its rank on
+   the tile instead. */
+.pg-ec-qty {
+  background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
+  color: var(--bs-body-color);
+  font-size: 10px;
+  font-weight: 600;
+}
+.pg-rank {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Top pages in Visitor Summaries (widget 5): the list takes the chart's
+   place from the strip's last cell, at the same size, so the card does not
+   move when it opens. */
+.pg-vs-pages {
+  flex: 1 1 auto;
+  min-height: 4rem;
+  margin: 2px -8px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.pg-vs-pages .pg-list {
+  padding-top: 0;
+}
+.pg-vs-top .pg-vs-cell-label .bi {
+  margin-left: 0.15rem;
+  opacity: 0.8;
 }
 
 /* ══ Dashboard clock ═══════════════════════════════════════════════════════

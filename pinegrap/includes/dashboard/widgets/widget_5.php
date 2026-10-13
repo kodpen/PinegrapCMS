@@ -360,6 +360,55 @@ function pg_dashboard_widget_5($request, $user)
             </div>';
         }
 
+        // ── Top pages ─────────────────────────────────────────────────────────
+        //
+        // The list the Trending Content card used to carry, which is retired:
+        // the week's most visited content, with today's busiest one marked.
+        // It opens in place of the chart from the strip's last cell, so the
+        // card keeps its size and the chart keeps its width.
+        $vs5_week_from = date('Y-m-d', $now - 6 * 86400);
+        $vs5_top_pages = pg_visitor_top_content($vs5_week_from, $today_date, 8);
+        $vs5_trend = pg_visitor_top_content($today_date, $today_date, 1);
+        $vs5_trend_label = !empty($vs5_trend) ? (string) $vs5_trend[0]['label'] : '';
+        $vs5_trend_found = false;
+
+        $vs5_pages_rows = '';
+
+        foreach ($vs5_top_pages as $vs5_page) {
+            $vs5_is_trend = ($vs5_trend_label !== '') && ((string) $vs5_page['label'] === $vs5_trend_label);
+            $vs5_trend_found = $vs5_trend_found || $vs5_is_trend;
+
+            $vs5_pages_rows .= pg_widget_row(array(
+                'small'  => true,
+                'href'   => h($vs5_page['url']),
+                'target' => '_blank',
+                'badge'  => '<i class="bi bi-window"></i>',
+                'name'   => h($vs5_page['label']) . ($vs5_is_trend
+                    ? ' <i class="bi bi-fire text-danger ms-1" title="' . h(lang('Trending Page')) . '"></i>'
+                    : ''),
+                'aside'  => pg_format_number((int) $vs5_page['views'], 0),
+            ));
+        }
+
+        // Today's busiest page is worth a line of its own when it is not in
+        // the week's list yet -- that is what a page taking off looks like.
+        if (!$vs5_trend_found && !empty($vs5_trend)) {
+            $vs5_pages_rows .= pg_widget_row_heading(lang('Trending Today'))
+                . pg_widget_row(array(
+                    'small'  => true,
+                    'href'   => h($vs5_trend[0]['url']),
+                    'target' => '_blank',
+                    'badge'  => '<i class="bi bi-fire"></i>',
+                    'color'  => '#ef4444',
+                    'name'   => h($vs5_trend[0]['label']),
+                    'aside'  => pg_format_number((int) $vs5_trend[0]['views'], 0),
+                ));
+        }
+
+        if ($vs5_pages_rows === '') {
+            $vs5_pages_rows = pg_widget_empty('bi-window', lang('There is not enough data yet.'));
+        }
+
         // ── Assemble output ───────────────────────────────────────────────────
         //
         // One chart, not three. The three panels each got a third
@@ -436,22 +485,28 @@ function pg_dashboard_widget_5($request, $user)
               </div>
             </div>
 
-            <div class="pg-vs-chart">
+            <div class="pg-vs-chart" id="vs5_chart">
               ' . (($kpi_today > 0 || $kpi_yesterday > 0 || $has_tw || $has_tm) ? '<canvas id="vs5_canvas"></canvas>' : $vs5_no_data) . '
+            </div>
+            <div class="pg-vs-pages d-none" id="vs5_pages">
+              <div class="pg-list">
+                ' . pg_widget_row_heading(lang('Top Pages'), lang('page views')) . '
+                ' . $vs5_pages_rows . '
+              </div>
             </div>
 
             <div class="pg-vs-strip">
               ' . $vs5_cell('w', lang('This Week'), pg_format_number($kpi_tw, 0), $vs5_badge($vs5_week_pct)) . '
               ' . $vs5_cell('m', lang('This Month'), pg_format_number($kpi_tm, 0), $vs5_badge($vs5_month_pct)) . '
               ' . $vs5_cell('y', lang('Last 12 Months'), pg_format_number($kpi_pm, 0), '') . '
-              <div class="pg-vs-cell pg-vs-top">
-                <span class="pg-vs-cell-label">' . lang('Most Visited') . '</span>
+              <button type="button" class="pg-vs-cell pg-vs-top" data-vs5="p" title="' . h(lang('Top Pages')) . '">
+                <span class="pg-vs-cell-label">' . lang('Most Visited') . ' <i class="bi bi-list-ol"></i></span>
                 ' . ($tp_tm
                     ? '<span class="pg-vs-page">' . $tp_tm['name'] . '</span>'
                       . '<span class="pg-vs-views">' . pg_format_number($tp_tm['cnt'], 0) . ' ' . h($vs5_views_label) . '</span>'
                     : '<span class="pg-vs-views">&mdash;</span>') . '
                 ' . $vs5_today_top . '
-              </div>
+              </button>
             </div>
 
           </div>
@@ -485,7 +540,8 @@ function pg_dashboard_widget_5($request, $user)
           // translation impossible to word naturally.
           var T = {
             byThisTime:   ' . json_encode(lang(array('string' => 'by this time yesterday {var:1}', 'vars' => '%N%'))) . ',
-            allYesterday: ' . json_encode(lang(array('string' => 'all of yesterday {var:1}', 'vars' => '%N%'))) . '
+            allYesterday: ' . json_encode(lang(array('string' => 'all of yesterday {var:1}', 'vars' => '%N%'))) . ',
+            topPages:     ' . json_encode(lang('Top Pages · Last 7 Days')) . '
           };
 
           // Each period carries both series against one label set,
@@ -672,6 +728,23 @@ function pg_dashboard_widget_5($request, $user)
             });
           }
 
+          // The top pages list takes the place of the chart rather than a
+          // chart of its own; the head says which list it is.
+          var pagesBox = document.getElementById("vs5_pages");
+          var chartBox = document.getElementById("vs5_chart");
+          function pages(on) {
+            if (pagesBox) { pagesBox.classList.toggle("d-none", !on); }
+            if (chartBox) { chartBox.classList.toggle("d-none", on); }
+            if (on) {
+              document.getElementById("vs5_eyebrow").textContent = T.topPages;
+              document.getElementById("vs5_kpi").textContent = fmtN(P.w.kpi);
+              document.getElementById("vs5_legend").classList.add("no-prev");
+              document.getElementById("vs5_leg_now").textContent = P.w.now.label;
+              document.getElementById("vs5_compare").innerHTML = "";
+              document.getElementById("vs5_sub").textContent = "";
+            }
+          }
+
           document.querySelectorAll("[data-vs5]").forEach(function(btn){
             btn.addEventListener("click", function(){
               var next = btn.getAttribute("data-vs5");
@@ -682,7 +755,8 @@ function pg_dashboard_widget_5($request, $user)
               document.querySelectorAll("[data-vs5]").forEach(function(b){
                 b.classList.toggle("is-active", b.getAttribute("data-vs5") === mode);
               });
-              build(); head();
+              pages(mode === "p");
+              if (mode !== "p") { build(); head(); }
             });
           });
 

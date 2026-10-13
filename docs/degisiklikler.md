@@ -84,6 +84,77 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Pano: Operasyon Masası; en çok satanlar E-ticaret Özeti'nde, en çok ziyaret edilenler Ziyaretçi Özetleri'nde; panoda CodeMirror yok (2026-10-13)
+
+**İstenen.** Erdal: bekleyen sevkiyat, bekleyen iade ve stokta tükenen
+kartları güzel bir başlık ve kurguyla tek geniş karta insin. En çok
+satanlar E-ticaret Özeti'ne, en çok ziyaret edilen sayfalar Ziyaretçi
+Özetleri'ne girsin.
+
+**Operasyon Masası (widget 9, eski Bekleyen Sevkiyatlar).**
+- Üç şerit:
+  - `pg_dashboard_ops_shipping()`: eski 9'un sorgusu aynen. 30 günlük
+    pencere, `ship_tos.complete`, `saved_for_later` yoklaması. Özet
+    satırı sipariş, paket, tutar ve en eski tarih; liste en çok 10 alıcı.
+  - `pg_dashboard_ops_refunds()`: eski 26. `refund_status` kolonu yoksa
+    şerit yok. Para birimine göre gruplu toplam: tek para biriminde
+    tutar, birden çoksa "Birden çok para biriminde".
+  - `pg_dashboard_ops_stock()`: eski 12'nin 8 satırı ve toplam sayı.
+    `ECOMMERCE_LOW_STOCK_THRESHOLD` elle ayarlıysa eşiğin altına inen
+    stoklu, ön siparişsiz ürünler "Azalıyor" başlığıyla. Eşik yoksa
+    uydurma bir eşik konmaz.
+- Şerit düğmeleri Aktivite'nin süzgeç düğmesi (`pg_widget_filter()`).
+  Gövde `data-pg-filterable="ops"`, şerit gövdeleri `data-kind`. Seçim
+  aynı mekanizmayla hatırlanır. `data-pg-default` en acil şerittir:
+  - Ödenmemiş iade varsa iade.
+  - Yoksa iki günü geçmiş sevkiyat.
+  - Yoksa sayısı sıfırdan büyük ilk şerit.
+- Sıfır olan şerit yeşil onay simgesi ve "Hepsi gönderildi" / "Bekleyen
+  iade yok" / "Hepsi stokta" alt satırıyla durur. İki günü geçen sevkiyat
+  ya da iade sayıyı kırmızı yapar.
+- Kart artık `ECOMMERCE_SHIPPING`'e bağlı değil. Kargo kapalıysa yalnız
+  gönderim şeridi çıkmaz. 12 ve 26 emekli (boş başarı, yeniden
+  kullanılmaz).
+
+**En çok satanlar (widget 3).** `pg_dashboard_best_sellers($since,
+$limit)`: `complete` / `exported` siparişlerin satırlarından ürün başına
+adet ve tutar. Eşit adette ürün kimliği sıralar. Eski Trend İçerik tüm
+zamanları okuyordu. Şimdi son 30 gün okunur, o ay satış yoksa tüm
+zamanlar. Başlık hangisi olduğunu söyler. Kart geniş oldu: solda özet,
+sağda liste.
+
+**En çok ziyaret edilenler (widget 5).** Şeridin dördüncü hücresi ("En Çok
+Ziyaret Edilen") düğme oldu (`data-vs5="p"`). Tıklanınca grafiğin
+yerinde `#vs5_pages` açılır:
+- Son 7 günün en çok görüntülenen 8 içeriği
+  (`pg_visitor_top_content()`).
+- Bugünün en çok görüntüleneni listede alevle işaretli. Listede değilse
+  "Bugün Yükselen" başlığıyla altta.
+- Aynı hücreye ya da başka bir döneme tıklayınca grafik döner.
+- Kart boyu değişmez.
+
+Trend İçerik (6) emekli.
+
+**CodeMirror.** `pg_page_shell()`'e `'code_editor' => false` (#254'teki
+seçenek). Hiçbir pano kartı kod alanı çizmiyor. Site Ayarları diyaloğu
+CodeMirror'ı gerektiğinde `window.pgCodeEditorReady()` ile yükler.
+Sandbox'ta panoda yüklenen betik dosyası 47'den 14'e, betik baytı
+1,48 MB'tan 0,68 MB'a indi (sıkıştırmasız).
+
+**Doğrulama.** Sandbox + Playwright:
+- 1440 px'te Operasyon Masası 658×316. Tükenen şeridi varsayılan açıldı,
+  iki ürün listelendi. Seçim yenilemeden sonra korundu.
+- 390 px'te şeritler ikinci satırsız sığdı.
+- E-ticaret Özeti'nde en çok satanlar "Tüm Zamanlar"la geldi (sandbox
+  siparişleri eski).
+- Ziyaretçi Özetleri'nde liste grafiğin yerinde açıldı (veri yok
+  durumu).
+
+Bekleyen sevkiyat ve iade satırları sandbox'ta yoktu. Sorguları eski
+kartlardan aynen taşındı, canlıda bakılmalı.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı API ve MCP: not yazma, plan kayıtları, arama, "benim günüm" (2026-10-13)
 
 **Neden.** Çalışma Alanı araştırmasının P1 1.3 maddesi: dış API (ve ondan

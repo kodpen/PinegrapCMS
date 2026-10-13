@@ -20304,5 +20304,20 @@
     "{var:1} today": "Bugün {var:1}",
     "{var:1} recipient{suffix:1}": "{var:1} alıcı",
     "This note was shared with you to read only.": "Bu not sizinle yalnız okumanız için paylaşıldı.",
-    "Only the one who wrote a note can pin it.": "Notu yalnız yazan sabitleyebilir."
+    "Only the one who wrote a note can pin it.": "Notu yalnız yazan sabitleyebilir.",
+    "Operations Desk": "Operasyon Masası",
+    "To ship": "Gönderilecek",
+    "To refund": "İade edilecek",
+    "All sent": "Hepsi gönderildi",
+    "Nothing owed": "Bekleyen iade yok",
+    "In several currencies": "Birden çok para biriminde",
+    "Not selling": "Satılamıyor",
+    "All in stock": "Hepsi stokta",
+    "Running low": "Azalıyor",
+    "{var:1} running low": "{var:1} ürün azalıyor",
+    "{var:1} more out of stock": "{var:1} ürün daha tükendi",
+    "{var:1} left": "{var:1} kaldı",
+    "Best Sellers": "En Çok Satanlar",
+    "Top Pages · Last 7 Days": "En Çok Ziyaret Edilenler · Son 7 Gün",
+    "Trending Today": "Bugün Yükselen"
 }

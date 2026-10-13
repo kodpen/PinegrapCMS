@@ -184,8 +184,49 @@ function pg_dashboard_widget_3($request, $user)
             ));
         }
 
+        // ── Best sellers ─────────────────────────────────────────
+        //
+        // Moved here from the Trending Content card, which is retired:
+        // what sold is a question about the shop, and it belongs beside
+        // the shop's totals rather than beside the page views.
+        //
+        // The last thirty days rather than all time. All time is the
+        // same five products for a year on any established shop, and it
+        // is an aggregate over every order line ever written; thirty
+        // days says what is selling now and reads a month of lines.
+        // A shop with no sales in the month falls back to all time, so
+        // a quiet season still shows what the shop is known for.
+        $best_since = $midnight - (29 * 86400);
+        $best_sellers = pg_dashboard_best_sellers($best_since, 6);
+        $best_window = lang('Last 30 days');
+
+        if (empty($best_sellers)) {
+            $best_sellers = pg_dashboard_best_sellers(0, 6);
+            $best_window = lang('All Time');
+        }
+
+        $output_best = '';
+
+        foreach ($best_sellers as $rank => $best) {
+            $output_best .= pg_widget_row(array(
+                'small' => true,
+                'href'  => 'edit_product.php?id=' . (int) $best['id'],
+                'badge' => ($best['image_name'] != '')
+                    ? '<img src="' . PATH . h($best['image_name']) . '" alt="">'
+                    : '<span class="pg-rank">' . ($rank + 1) . '</span>',
+                'name'  => h($best['name']),
+                'aside' => '<span class="badge rounded-pill pg-ec-qty">' . $pg_count($best['qty']) . '</span> '
+                    . '<span class="fw-semibold">' . $pg_money($best['revenue']) . '</span>',
+            ));
+        }
+
+        if ($output_best === '') {
+            $output_best = pg_widget_empty('bi-bag', lang('There is not enough data yet.'));
+        }
+
         $output_data = '
-        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+        <div class="card-body p-0 pg-split">
+          <div class="pg-split-half">
             <div class="pg-ec-head">
                 <div class="pg-ec-line">
                     <span class="pg-ec-val">' . $pg_money($stock_value) . '</span>
@@ -205,6 +246,13 @@ function pg_dashboard_widget_3($request, $user)
             </div>
             <div class="border-top mx-2 mb-1"></div>
             <div class="pg-list">' . $output_period_rows . '</div>
+          </div>
+          <div class="pg-split-half">
+            <div class="pg-list">
+              ' . pg_widget_row_heading(lang('Best Sellers'), h($best_window)) . '
+              ' . $output_best . '
+            </div>
+          </div>
         </div>';
 
         //return success json output
@@ -221,4 +269,45 @@ function pg_dashboard_widget_3($request, $user)
         );
         return $response;
     }
+}
+
+/**
+ * The products that sold the most units since a moment, with what they took.
+ *
+ * Rows with equal quantities come back in no defined order, so the product id
+ * breaks the tie; without it the list could reorder itself on every load.
+ *
+ * @param int $since a timestamp, or 0 for all time
+ * @param int $limit
+ * @return array[] id, name, image_name, qty, revenue (minor units)
+ */
+function pg_dashboard_best_sellers($since, $limit)
+{
+    $out = array();
+
+    foreach (db_items("SELECT
+            p.id,
+            MAX(COALESCE(NULLIF(p.short_description, ''), p.name)) AS product_name,
+            MAX(p.image_name) AS image_name,
+            SUM(oi.quantity) AS total_qty,
+            SUM(oi.price * oi.quantity) AS total_revenue
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.status IN ('complete', 'exported')
+        " . (((int) $since > 0) ? "AND o.order_date >= " . (int) $since : '') . "
+        GROUP BY p.id
+        ORDER BY total_qty DESC, p.id ASC
+        LIMIT " . (int) $limit) as $row) {
+
+        $out[] = array(
+            'id'         => (int) $row['id'],
+            'name'       => (string) $row['product_name'],
+            'image_name' => (string) $row['image_name'],
+            'qty'        => (int) $row['total_qty'],
+            'revenue'    => (float) $row['total_revenue'],
+        );
+    }
+
+    return $out;
 }
