@@ -244,7 +244,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_tax_exempt_label = $row['ecommerce_tax_exempt_label'];
     $ecommerce_shipping = $row['ecommerce_shipping'];
     $ecommerce_recipient_mode = $row['ecommerce_recipient_mode'];
-    $usps_user_id = $row['usps_user_id'];
+    // The Web Tools user ID USPS retired, kept on file but no longer used:
+    // the Shipping card says why rates stopped.
+    $usps_legacy_set = ($row['usps_user_id'] != '');
     $ecommerce_address_verification = $row['ecommerce_address_verification'];
     $ecommerce_address_verification_enforcement_type = $row['ecommerce_address_verification_enforcement_type'];
     $ups = $row['ups'];

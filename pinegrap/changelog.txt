@@ -382,6 +382,19 @@
          bilgiler silinmez ama artık kullanılmaz ve kart
          bunu söyler.
 
+  [DÜZELTME] USPS anlık fiyatları, teslim tarihleri ve ABD
+         adres doğrulaması USPS'in yeni REST API'lerinden
+         alınıyor. USPS Web Tools'u kapattığı için eski
+         Kullanıcı Kimliğiyle hiçbiri çalışmıyordu. Ayarlar
+         › E-Ticaret › Nakliye › USPS'e artık USPS
+         Developer Portal'da açılan uygulamanın Tüketici
+         Anahtarı ve Tüketici Gizli Anahtarı girilir; test
+         ortamı seçilebilir, "Kaydet ve bağlantıyı test et"
+         bağlantıyı dener. Eski kimlik silinmez ama artık
+         kullanılmaz ve kart bunu söyler. "USPS Retail
+         Ground" hizmetinin adı, USPS'in verdiği yeni adla
+         "USPS Ground Advantage" oldu.
+
   ÇALIŞMA ALANI
   --------------------------------------------------------
 

@@ -6642,7 +6642,7 @@ function get_shipping_service_name($service)
             return 'USPS Priority Mail';
             break;
         case 'usps_ground':
-            return 'USPS Retail Ground';
+            return 'USPS Ground Advantage';
             break;
         case 'ups_next_day_air':
             return 'UPS Next Day Air';
