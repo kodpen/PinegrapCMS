@@ -155,6 +155,9 @@ olması, kapat/aç/kaldır, etkinlik kaydı. Şema adımı üç kez koşturuldu.
 
 **Doğrulanamayan.** Sandbox dış adresleri çözemediği için gerçek bir uzak
 sunucu (GitHub MCP gibi) denenemedi; dev.pinegrap.com'da denenmeli.
+
+---
+
 ## 2026.4.10 — E-posta bağlı Google ya da Microsoft hesabından (2026-10-13)
 
 **Neden.** Tersine OAuth planının birinci senaryosu (§4.1). Microsoft,
