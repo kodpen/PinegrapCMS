@@ -1043,6 +1043,17 @@ function output_header_secure($properties = false)
 }
 
 
+// The handler of a button that goes to $url (pgSettingsGo()), ready for an
+// attribute. The address is a JSON string first and HTML second: the
+// attribute's entities are decoded before the script runs, so an apostrophe
+// escaped for HTML alone would close a quoted string, and a send_to read
+// from the request would run as script.
+function pg_output_go_script($url)
+{
+    $json = json_encode((string)$url, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    return htmlspecialchars('pgSettingsGo(' . ($json === false ? '""' : $json) . ');', ENT_QUOTES, 'UTF-8');
+}
+
 function output_header($properties = false)
 {
     //output
@@ -1114,7 +1125,7 @@ function output_header($properties = false)
             // a link: a cancel that points at the settings has to open the
             // dialog over this screen rather than walk to a page, and the
             // delegated handler that does that for links never sees a button.
-            $output_cancel_button_action = 'OnClick="pgSettingsGo(\'' . htmlspecialchars($cancel['url'], ENT_QUOTES, 'UTF-8') . '\');"';
+            $output_cancel_button_action = 'OnClick="' . pg_output_go_script($cancel['url']) . '"';
             if (isset($cancel['title'])) {
                 $output_cancel_button_title = $cancel['title'];
             }
