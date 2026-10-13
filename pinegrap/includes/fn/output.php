@@ -1258,12 +1258,22 @@ function output_header($properties = false)
     // for the calendar on their phone or computer. The module is loaded the
     // way the main menu loads it, and only then.
     $output_calendar_feed_link = '';
+    $output_workspace_rights = null;
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $output_calendar_feed_rights = ws_ready() ? ws_rights($user) : null;
-        if ($output_calendar_feed_rights && $output_calendar_feed_rights['member']) {
+        $output_workspace_rights = ws_ready() ? ws_rights($user) : null;
+        if ($output_workspace_rights && $output_workspace_rights['member']) {
             $output_calendar_feed_link = '<li><a class="calendar_feed_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar_feed.php"' . $output_parent_target . '><i class="bi bi-calendar-plus"></i><span>' . lang('Calendar subscription') . '</span></a></li>';
         }
+    }
+
+    // The quick note beside the bell (ws_notes_quick_markup()), for the same
+    // people while the workspace keeps notes, and the way to My Notes. Not in
+    // the toolbar, for the reason the settings are not: that header is a thin
+    // strip inside the frame of the site being edited.
+    $output_quick_note = '';
+    if (($toolbar != true) && $output_workspace_rights && $output_workspace_rights['member']) {
+        $output_quick_note = ws_notes_quick_markup($output_workspace_rights, $output_parent_target);
     }
 
     $output_home_page_link_url = '';
@@ -1926,6 +1936,7 @@ function output_header($properties = false)
                         <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '"><span class="bi bi-search"></span></button>
                     </li>
                 </ul>
+                ' . $output_quick_note . '
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
@@ -3085,6 +3096,7 @@ function output_menu($properties = false)
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-building bi-me-2\'>' . lang('Accounts') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Invoices') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-text bi-me-2\'>' . lang('Quotes') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-check bi-me-2\'>' . lang('Purchase orders') . '</a>';
         // Screens only an e-document provider can fill; a store without one
         // (or with one that does not hand these over) is not shown them.
         if (pg_erp_provider_offers('inbox')) {
@@ -3281,6 +3293,9 @@ function output_menu($properties = false)
         case 'erp_quotes.php':
         case 'add_erp_quote.php':
         case 'edit_erp_quote.php':
+        case 'erp_purchase_orders.php':
+        case 'add_erp_purchase_order.php':
+        case 'edit_erp_purchase_order.php':
         case 'erp_inbox.php':
         case 'erp_inbox_document.php':
         case 'erp_account_sync.php':

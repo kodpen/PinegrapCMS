@@ -200,9 +200,14 @@ function ws_handle_action($action, $request)
                 ws_scheduled_run();
             }
 
-            // Task reminders whose time has come (reminders.php).
+            // Task reminders whose time has come, and the tasks that went
+            // overdue since the last look (reminders.php).
             if (function_exists('ws_task_reminders_run')) {
                 ws_task_reminders_run();
+            }
+
+            if (function_exists('ws_task_overdue_run')) {
+                ws_task_overdue_run();
             }
 
             // Concluded discussions whose time is up (threads.php).
@@ -956,7 +961,8 @@ function ws_handle_action($action, $request)
             // A scheduled action is due: the screen starts a run (ws_tick)
             // rather than this answer waiting for an e-mail to go out.
             $out['scheduled_due'] = (function_exists('ws_scheduled_due') && ws_scheduled_due())
-                || (function_exists('ws_task_reminders_due') && ws_task_reminders_due());
+                || (function_exists('ws_task_reminders_due') && ws_task_reminders_due())
+                || (function_exists('ws_task_overdue_due') && ws_task_overdue_due());
 
             return ws_action_ok($out);
 
@@ -2083,6 +2089,9 @@ function ws_handle_action($action, $request)
             if (!$task || !ws_can_see_task($viewer, $task)) {
                 return ws_action_error(lang('That task could not be found.'));
             }
+
+            // Open in front of the person: what the inbox said about it is read.
+            ws_inbox_mark_task_read($viewer['id'], $task['id']);
 
             return ws_action_ok(array('task' => ws_task_detail($viewer, $task)));
 

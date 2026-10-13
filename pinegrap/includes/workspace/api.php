@@ -101,7 +101,7 @@ function ws_webhook_events()
         'workspace.template.applied'    => 'A channel template was applied to a channel, when the channel was made from it or later: the template, the tasks made and how many could not be assigned',
         'workspace.task.time_logged'    => 'Time spent on a workspace task was written: a stopped timer or minutes written by hand (minutes, worked_on, billable, user_id)',
         'workspace.task.delegated'      => 'A workspace task was handed to an assistant (agent: ai or claude); the people on it stay responsible (delegated_by, request_id)',
-        'workspace.task.assistant_answered' => 'An assistant finished a run on a workspace task (outcome: answered or failed; agent, request_id, requested_by). The answer itself is read from the site',
+        'workspace.task.assistant_answered' => 'An assistant finished a run on a workspace task (outcome: answered or failed; agent, request_id, requested_by). The answer itself, and what it proposed, are read with GET /workspace/assistant-requests and GET /workspace/changes by task_id',
         'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked and the record it is about',
         'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer',
     );
@@ -526,13 +526,42 @@ function ws_api_routes()
             'handler'     => 'ws_api_changes_list',
             'returns'     => array('list' => 'WorkspaceChange'),
             'summary'     => 'Record changes the assistants proposed',
-            'description' => 'The record changes Claude (agent claude) or Pinegrap AI (agent ai) proposed under their answers, in the channels the owner of the application may read, newest first. Nothing is applied here: only the person who asked applies a change, in its channel and with their own rights. status pending is waiting, applying is being written at this moment, applied was written (decision_message_id is the locked decision it left), dismissed was set aside, stale was not applied because the record changed after the proposal, failed could not be written (error says why). fields and reason are shown only when the owner may see records of that kind; hidden says when they are not. from_shown and to_shown are the values as the card in the channel prints them. Page with next_cursor.',
+            'description' => 'The record changes Claude (agent claude) or Pinegrap AI (agent ai) proposed, newest first: under their answers in the channels the owner of the application may read, and on the tasks the owner may see, where an assistant the task was handed to proposes them (task_id is set, channel_id and message_id are 0). Only the person who asked applies a change, with their own rights: on its card, or with POST /workspace/changes/{id}/apply from a device session. status pending is waiting, applying is being written at this moment, applied was written (decision_message_id is the locked decision it left in a channel; a change on a task leaves none), dismissed was set aside, stale was not applied because the record changed after the proposal, failed could not be written (error says why). fields and reason are shown only when the owner may see records of that kind; hidden says when they are not. from_shown and to_shown are the values as the card prints them. can_apply and can_dismiss say what the owner may do with it now. Page with next_cursor.',
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('pending', 'applying', 'applied', 'dismissed', 'stale', 'failed')),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
-                array('name' => 'type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A kind of record: product, stock, order, contact, erp_account, product_group, channel, user, page, form, file, offer or calendar_event, of the ones this site runs.'),
+                array('name' => 'task_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the changes proposed on this task.'),
+                array('name' => 'type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A kind of record: product, stock, order, contact, erp_account, product_group, channel, user, page, form, file, offer, calendar_event, task, task_note or note, of the ones this site runs.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.changes.apply',
+            'method'      => 'POST',
+            'path'        => '/workspace/changes/{id}/apply',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_changes_apply',
+            'returns'     => 'WorkspaceChange',
+            'summary'     => 'Apply a change an assistant proposed',
+            'description' => 'Writes a pending change, as Apply on its card does: only the person who asked the assistant, with their own rights to that record, signed in on a device (a Bearer token from POST /auth/login or a connection they made); an application key is refused with 403 forbidden, so an assistant never applies what it proposed. Applied in a channel, it leaves a locked decision under the answer; on a task, the task\'s activity keeps it. A record that changed after the proposal is not written over: 409 stale. A change somebody already decided about is 409 already_decided. A change to many records at once starts here and goes on a slice at a time; its status stays applying until it is done.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.changes.dismiss',
+            'method'      => 'POST',
+            'path'        => '/workspace/changes/{id}/dismiss',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_changes_dismiss',
+            'returns'     => 'WorkspaceChange',
+            'summary'     => 'Set aside a change an assistant proposed',
+            'description' => 'Sets a pending change aside, as on its card: the person who asked, or staff, signed in on a device; an application key is refused with 403 forbidden. Nothing is written to the record.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -544,9 +573,10 @@ function ws_api_routes()
             'handler'     => 'ws_api_assistant_requests_list',
             'returns'     => array('list' => 'WorkspaceAssistantRequest'),
             'summary'     => 'What Claude and Pinegrap AI were asked',
-            'description' => 'The requests to Claude (agent claude) and to Pinegrap AI (agent ai), newest first: those asked in the channels the owner of the application may read, and the owner\'s own requests written in a note or in the Visual Page Editor (origin says where). status queued and sent are waiting, running is being worked on, answered has its answer (reply_message_id in a channel), failed and cancelled ended without one (error says why). The words of a request are read where it was asked. Page with next_cursor.',
+            'description' => 'The requests to Claude (agent claude) and to Pinegrap AI (agent ai), newest first: those asked in the channels the owner of the application may read, the runs on the tasks the owner may see, and the owner\'s own requests written in a note or in the Visual Page Editor (origin says where). status queued and sent are waiting, running is being worked on, answered has its answer (reply_message_id in a channel), failed and cancelled ended without one (error says why). A run on a task (origin task) carries what the assistant was told (instruction, empty when it worked from the task itself) and what it answered (answer); the changes it proposed are listed by GET /workspace/changes with the same task_id. The words of any other request are read where it was asked. Page with next_cursor.',
             'params'      => array(
                 array('name' => 'agent', 'in' => 'query', 'type' => 'enum', 'values' => array('claude', 'ai')),
+                array('name' => 'task_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the runs on this task.'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('queued', 'sent', 'running', 'answered', 'failed', 'cancelled')),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
@@ -655,7 +685,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_tasks_list',
             'returns'     => array('list' => 'WorkspaceTask'),
             'summary'     => 'List tasks',
-            'description' => 'Tasks the owner of the application may see. scope mine is the owner\'s own tasks, created those they gave out, department the tasks of a department, channel those of a channel, all every task (only for an owner who holds the team board). Pass ref_type and ref_id to find the tasks about one record, updated_since to fetch only what changed.',
+            'description' => 'Tasks the owner of the application may see. scope mine is the owner\'s own tasks, created those they gave out, department the tasks of a department, channel those of a channel, all every task (only for an owner who holds the team board). Pass ref_type and ref_id to find the tasks about one record, updated_since to fetch only what changed, delegate to find the tasks handed to an assistant (any, or ai or claude) or to none.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('mine', 'created', 'department', 'channel', 'all'), 'default' => 'mine'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all', 'todo', 'doing', 'waiting', 'done', 'cancelled'), 'default' => 'open'),
@@ -664,6 +694,7 @@ function ws_api_routes()
                 array('name' => 'ref_type', 'in' => 'query', 'type' => 'enum', 'values' => ws_record_type_keys()),
                 array('name' => 'ref_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime'),
+                array('name' => 'delegate', 'in' => 'query', 'type' => 'enum', 'values' => array('any', 'none', 'ai', 'claude')),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 100),
             ),
         ),
@@ -676,6 +707,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_tasks_get',
             'returns'     => 'WorkspaceTask',
             'summary'     => 'One task',
+            'description' => 'delegate is the assistant the task was handed to (ai or claude; the people on it stay responsible), assistant_working the one on a run on it now, and waiting_changes how many changes the assistants proposed on it wait to be applied or set aside.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -721,6 +753,37 @@ function ws_api_routes()
             'description' => 'The same as setting status to done: the creator is told and the task\'s channel gets a line.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.tasks.delegate',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/delegate',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_tasks_delegate',
+            'returns'     => 'WorkspaceAssistantRequest',
+            'summary'     => 'Hand a task to an assistant',
+            'description' => 'Hands an open task to Pinegrap AI (agent ai) or Claude (agent claude), as the task drawer does, and starts a run: the assistant reads the task, its notes, its channel and the records it is about, answers, and proposes what it would change. It writes nothing itself; its proposals wait on the task for the owner to apply (GET /workspace/changes?task_id=). The people on the task stay responsible; a task nobody is on gets the owner. For a task already with that assistant, the call is one more run with a new instruction. Only for an owner who may change the task, and never from an application an assistant works through. One run at a time on a task: 409 assistant_busy while one is under way. The answer is the run; follow it with GET /workspace/assistant-requests?task_id=, or the workspace.task.assistant_answered event. Claude is started at once; Pinegrap AI is carried on by the screens that are open and by the hourly job.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'agent', 'in' => 'body', 'type' => 'enum', 'values' => array('ai', 'claude'), 'required' => true),
+                array('name' => 'instruction', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'What it should do. Left out, it works from the task itself. Tags such as <#order:1045> are kept as tags.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.tasks.delegate_stop',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/delegate/stop',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_tasks_delegate_stop',
+            'returns'     => 'WorkspaceTask',
+            'summary'     => 'Stop an assistant\'s run on a task',
+            'description' => 'Stops the run under way on the task, if any; take_back also takes the task back from the assistant (delegate becomes null). For the person who started the run, or an owner who may change the task. What the assistant proposed before stays on the task to be applied or set aside.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'take_back', 'in' => 'body', 'type' => 'bool', 'description' => 'Take the task back from the assistant as well.'),
             ),
         ),
 
@@ -1008,7 +1071,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_my_day_get',
             'returns'     => 'WorkspaceMyDay',
             'summary'     => 'The owner\'s day',
-            'description' => 'What the owner of the application has on their plate today, in one call: their open tasks due today or overdue, the timer they have running, today\'s plan items about them, the approval requests and read receipts waiting for their answer, and what was written to them lately (replies to their messages and mentions of them, read or not). The tasks, the timer and the plan items need tasks:read; without it they are empty and left_out names the scope.',
+            'description' => 'What the owner of the application has on their plate today, in one call: their open tasks due today or overdue, the timer they have running, today\'s plan items about them, the approval requests and read receipts waiting for their answer, the changes the assistants proposed at their request that wait for them to apply or set aside (proposed_changes, in channels and on tasks), and what was written to them lately (replies to their messages and mentions of them, read or not). The tasks, the timer and the plan items need tasks:read; without it they are empty and left_out names the scope.',
             'params'      => array(),
         ),
 
