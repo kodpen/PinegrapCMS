@@ -2159,3 +2159,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $translation_attribution = isset($row['translation_attribution']) ? (int) $row['translation_attribution'] : 1;
     // The key itself is never drawn back; the screen only says whether one is stored.
     $translation_google_key_stored = ((string) ($row['translation_google_key'] ?? '') !== '');
+
+    // Automatic language redirect (2026.4.10, 10.1). Off, and the step's
+    // defaults, until the columns are there.
+    $language_redirect_ready = array_key_exists('language_redirect', $row);
+    $language_redirect = !empty($row['language_redirect']) ? 1 : 0;
+    $language_redirect_mode = in_array(($row['language_redirect_mode'] ?? ''), array('language', 'country', 'both'), true) ? (string) $row['language_redirect_mode'] : 'both';
+    $language_redirect_scope = (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home';
+    $language_redirect_fallback = (string) ($row['language_redirect_fallback'] ?? '');

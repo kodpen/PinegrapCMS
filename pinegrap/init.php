@@ -746,6 +746,12 @@ define('TRANSLATION_PREFIXES', (string) ($row['translation_prefixes'] ?? ''));
 define('TRANSLATION_GOOGLE_KEY_ENC', (string) ($row['translation_google_key'] ?? ''));
 define('TRANSLATION_STYLE_NOTE', (string) ($row['translation_style_note'] ?? ''));
 define('TRANSLATION_ATTRIBUTION', isset($row['translation_attribution']) ? (int) $row['translation_attribution'] : 1);
+// Automatic language redirect (2026.4.10, 10.1; includes/fn/language_redirect.php).
+// Off, and the defaults of its schema step, while the columns are not there.
+define('LANGUAGE_REDIRECT', !empty($row['language_redirect']));
+define('LANGUAGE_REDIRECT_MODE', in_array(($row['language_redirect_mode'] ?? ''), array('language', 'country', 'both'), true) ? (string) $row['language_redirect_mode'] : 'both');
+define('LANGUAGE_REDIRECT_SCOPE', (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home');
+define('LANGUAGE_REDIRECT_FALLBACK', (string) ($row['language_redirect_fallback'] ?? ''));
 
 
 if (!defined('SOFTWARE_LANGUAGE')) {

@@ -148,10 +148,12 @@ function pg_settings_categories()
             'description' => lang('The language the pages are written in, the languages they are served in, and the engines that translate them.'),
             'sections' => array(
                 'pgset-languages' => lang('Site Languages'),
+                'pgset-language-redirect' => lang('Automatic Language Redirect'),
                 'pgset-translation-engines' => lang('Translation Engines'),
             ),
             'keywords' => array(
                 'pgset-languages' => pg_settings_keywords(lang('language, languages, translation, translate, multilingual, prefix, hreflang, locale, source language')),
+                'pgset-language-redirect' => pg_settings_keywords(lang('redirect, automatic, browser language, accept-language, location, country, geolocation, geo ip, visitor language')),
                 'pgset-translation-engines' => pg_settings_keywords(lang('google translate, google cloud, api key, chrome, translator, engine, machine translation, attribution, style note')),
             ),
         ),
