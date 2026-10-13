@@ -244,10 +244,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ups_legacy_set = (($row['ups_key'] != '') || ($row['ups_user_id'] != '') || ($row['ups_password'] != ''));
     $ups_account = $row['ups_account'];
     $fedex = $row['fedex'];
-    $fedex_key = $row['fedex_key'];
-    $fedex_password = $row['fedex_password'];
+    // The sign-in of the SOAP web services FedEx retired, kept on file but
+    // no longer used: the Shipping card says why delivery dates stopped.
+    $fedex_legacy_set = (($row['fedex_key'] != '') || ($row['fedex_password'] != '') || ($row['fedex_meter'] != ''));
     $fedex_account = $row['fedex_account'];
-    $fedex_meter = $row['fedex_meter'];
     $ecommerce_product_restriction_message = $row['ecommerce_product_restriction_message'];
     $ecommerce_no_shipping_methods_message = $row['ecommerce_no_shipping_methods_message'];
     $ecommerce_end_of_day_time = $row['ecommerce_end_of_day_time'];

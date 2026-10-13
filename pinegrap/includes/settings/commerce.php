@@ -210,22 +210,12 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-3">
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_key" class="form-label">' . lang('Key') . '</label>
-                                                                                            <input type="text" name="fedex_key" id="fedex_key" class="form-control" value="' . h($fedex_key) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="password" name="fedex_password" id="fedex_password" class="form-control" value="' . h($fedex_password) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        ' . pg_carrier_api_settings_fields('fedex', $fedex_legacy_set) . '
                                                                                         <div class="pg-f-md">
                                                                                             <label for="fedex_account" class="form-label">' . lang('Account Number') . '</label>
                                                                                             <input type="text" name="fedex_account" id="fedex_account" class="form-control" value="' . h($fedex_account) . '" maxlength="100"/>
                                                                                         </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_meter" class="form-label">' . lang('Meter Number') . '</label>
-                                                                                            <input type="text" name="fedex_meter" id="fedex_meter" class="form-control" value="' . h($fedex_meter) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        ' . pg_carrier_api_test_button('fedex') . '
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
