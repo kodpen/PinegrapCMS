@@ -428,6 +428,17 @@
          dosya) artık yüklemiyor; Site Ayarları'nda kod alanı
          olan bir bölüm açılınca geliyor.
 
+  [YENİ] Pano üst alanı: karşılama kartı ile saat geniş
+         ekranda tek satırda; kart solda, saat sağda. Saatin
+         altında bugünün sıradaki toplantısı ya da ziyareti
+         saatiyle ve geri sayımla ("25 dk sonra") duruyor;
+         başlayınca "Şimdi" oluyor, bitince sıradaki geliyor.
+         Kartın sağındaki düğme ("Başka bir şey söyle")
+         sayfayı yenilemeden yeni bir cümle getiriyor.
+         Çalışma Alanı şeridinde çalışan sayaç (süresi
+         dakikada bir ilerliyor) ve onayını bekleyen istekler
+         de görünüyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
