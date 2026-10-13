@@ -862,6 +862,20 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] İletişim grupları API'de, kendi izinleriyle
+         (iletişim gruplarını okuma / yazma): gruplar adı,
+         açıklaması, e-posta aboneliği ve üye sayısıyla;
+         grubun üyeleri, her birinin bütün kampanyalar için
+         ve bu grubun e-postası için tercihiyle. Yazma
+         kişileri gruba ekler ya da gruptan çıkarır ve
+         isterseniz grubun e-postası için tercihlerini
+         kaydeder; bir bülten aracında abonelikten çıkan
+         kişi sitede de çıkmış görünür. Daha önce çıkmış
+         kişi gruba yeniden eklenince, açıkça abone olduğu
+         gönderilmedikçe çıkmış kalır. Grup oluşturma ve
+         silme kendi ekranında kalır. Kullanıcı rolündeki
+         hesap yalnız kendisine verilen grupları görür.
+
   [YENİ] E-posta kampanyaları API'de, kendi izinleriyle
          (kampanyaları okuma / yazma): kampanyalar konusu,
          durumu, türü (elle ya da otomatik), gönderim

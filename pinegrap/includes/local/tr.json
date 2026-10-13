@@ -1,5 +1,10 @@
 {
     "Card Style": "Kart Tarzı",
+    "The lists campaigns go to and who is on them; writing puts contacts in or takes them out and records their e-mail choice, not making or removing a group": "Kampanyaların gönderildiği listeler ve içlerindeki kişiler; yazma kişileri gruba ekler ya da gruptan çıkarır ve e-posta tercihlerini kaydeder, grup oluşturmaz ya da silmez",
+    "Send the contact ids to add, to remove, or both.": "Eklenecek, çıkarılacak ya da her iki türden kişi kimliklerini gönderin.",
+    "A contact cannot be added to and removed from a group in the same call.": "Bir kişi aynı istekte hem gruba eklenip hem gruptan çıkarılamaz.",
+    "There is no contact with the id {var:1}.": "{var:1} kimlikli bir kişi yok.",
+    "Members of contact group ({var:1}) were changed through the API by the application {var:2} (key {var:3}).": "İletişim grubunun ({var:1}) üyeleri, {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
     "This campaign has been sent, so it can no longer be changed.": "Bu kampanya gönderildi, artık değiştirilemez.",
     "An HTML campaign sends the page as it was when the campaign was made, so its message cannot be changed.": "HTML kampanya, sayfayı kampanyanın oluşturulduğu andaki haliyle gönderir; bu yüzden mesajı değiştirilemez.",
     "Only an automatic campaign takes a blind copy address.": "Gizli kopya (BCC) adresi yalnız otomatik kampanyada olur.",
