@@ -20418,6 +20418,7 @@
     "Assistant: {var:1}": "Asistan: {var:1}",
     "Handed over by {var:1}, {var:2}": "Devreden: {var:1}, {var:2}",
     "{var:1} asked, {var:2}": "{var:1} istedi, {var:2}",
+    "(deleted)": "(silinmiş)",
     "A coming copy of a repeating task: it is made on its start day.": "Tekrarlayan bir görevin gelecek kopyası: başlangıç gününde oluşturulur.",
     "A new address ends the old one at once: every calendar that reads it stops updating until the new one is added.": "Yeni adres eskisini hemen geçersiz kılar: o adresi okuyan her takvim, yeni adres eklenene kadar güncellenmez.",
     "A new address was made and the old one no longer works. Add the new one to your calendars again.": "Yeni adres oluşturuldu, eskisi artık çalışmıyor. Yeni adresi takvimlerinize yeniden ekleyin.",

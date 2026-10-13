@@ -1239,8 +1239,18 @@ const StyleDesigner = (function () {
     // Fetch all pages (any page_type) for the my_account login page picker.
     // Sorted by page_title then page_name. Cached for the session.
     var _allPagesCache = null;
+    var _allPagesWaiting = null;
     function _fetchAllPages(cb, force) {
         if (_allPagesCache && !force) { if (cb) cb(_allPagesCache); return; }
+        // One request at a time: a panel draws several pickers, each asking
+        // for the list until it arrives.
+        if (_allPagesWaiting) { if (cb) _allPagesWaiting.push(cb); return; }
+        _allPagesWaiting = cb ? [cb] : [];
+        var done = function () {
+            var waiting = _allPagesWaiting || [];
+            _allPagesWaiting = null;
+            waiting.forEach(function (fn) { fn(_allPagesCache); });
+        };
         var apiBase = (typeof path !== 'undefined' ? path : '') +
                       (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
         var token   = (typeof software_token !== 'undefined') ? software_token : '';
@@ -1253,9 +1263,9 @@ const StyleDesigner = (function () {
                 var resp = JSON.parse(xhr.responseText);
                 _allPagesCache = (resp && resp.status === 'success' && Array.isArray(resp.pages)) ? resp.pages : [];
             } catch (e) { _allPagesCache = []; }
-            if (cb) cb(_allPagesCache);
+            done();
         };
-        xhr.onerror = function () { _allPagesCache = []; if (cb) cb(_allPagesCache); };
+        xhr.onerror = function () { _allPagesCache = []; done(); };
         xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_all_pages', token: token }));
     }
 
@@ -24191,12 +24201,7 @@ const StyleDesigner = (function () {
                 // differs (multiple records iterated vs. single record by ?r=).
                 var _formOptions = '<option value="">' + esc(_sdT('— Choose a form —')) + '</option>';
                 if (_customFormsCache) {
-                    _formOptions += _customFormsCache.map(function (f) {
-                        var fid = parseInt(f.page_id, 10);
-                        var fname = (f.form_name && ('' + f.form_name).trim())
-                                    || f.page_title || f.page_name || ('#' + fid);
-                        return '<option value="' + fid + '"' + (fid === _curFormId ? ' selected' : '') + '>' + esc(fname) + '</option>';
-                    }).join('');
+                    _formOptions += _swFormOptions(_curFormId);
                 } else {
                     _formOptions = '<option>' + esc(_sdT('Loading...')) + '</option>';
                     _fetchCustomForms(function () { renderProperties(); });
@@ -24366,11 +24371,6 @@ const StyleDesigner = (function () {
                 var _order2Field = (typeof _cfg.order_by_2_field === 'string') ? _cfg.order_by_2_field : '';
                 var _order2Dir   = (_cfg.order_by_2_direction === 'ASC') ? 'ASC' : 'DESC';
 
-                // detail_page_id: the form_item_view page each row's ^^__detail_url^^
-                // token will link to. Empty / 0 means tokens render as empty strings.
-                var _detailPid  = (_cfg.detail_page_id != null && _cfg.detail_page_id !== '') ? parseInt(_cfg.detail_page_id, 10) : 0;
-                if (!(_detailPid > 0)) _detailPid = 0;
-
                 // viewer_filter: parent toggle plus 3 sub-toggles. Sub-toggles default
                 // to true on a fresh widget — matching the legacy form-list-view behavior.
                 var _vfOn       = !!_cfg.viewer_filter;
@@ -24486,18 +24486,10 @@ const StyleDesigner = (function () {
                         ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Links bound to "{var}" open the page chosen here.', _sdT('Detail URL'))) + '</div>'
                         : _swDetailPageHint(_detailRaw, _detailCache, _detailTypes, _detailTest, _sdT('Catalog Detail'), _sdT('Detail URL')))
                     : _swDetailPageHint(_detailRaw, _detailCache, _detailTypes, _detailTest, _sdT('Form Item View'), _sdT('Detail page address'));
-                if (_detailCache) {
-                    // A saved detail page that is no longer in the (newly
-                    // filtered) list: surface it so the user can reselect —
-                    // better than silently producing 404 links.
-                    var _detailListed = _detailCache.some(function (p) { return parseInt(p.page_id, 10) === _detailPid; }) ||
-                                        _pages.some(function (p) { return p.page_id === _detailPid; });
-                    if (_detailPid > 0 && !_detailListed) {
-                        _detailOpts += '<option value="' + _detailPid + '" selected disabled>#' + _detailPid + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
-                    }
-                } else {
-                    _detailFetcher(function () { renderProperties(); });
-                }
+                // A saved detail page the (form-filtered) list no longer holds
+                // stays selected and marked (_swPageOptions), so the user can
+                // reselect rather than ship links to a page that 404s.
+                if (!_detailCache) _detailFetcher(function () { renderProperties(); });
 
                 systemSection += sect('bi-list-ul', _sdT('List Settings'),
                     row(_sdT('Records per page'),
@@ -24830,11 +24822,7 @@ const StyleDesigner = (function () {
                 // Filter form dropdown (0 = show submissions from all forms)
                 var _maFormOpts = '<option value="0"' + (_maFilterFormId === 0 ? ' selected' : '') + '>' + esc(_sdT('— All forms —')) + '</option>';
                 if (_customFormsCache) {
-                    _customFormsCache.forEach(function (f) {
-                        var fid = parseInt(f.page_id, 10);
-                        var fname = (f.form_name && ('' + f.form_name).trim()) || f.page_title || f.page_name || ('#' + fid);
-                        _maFormOpts += '<option value="' + fid + '"' + (fid === _maFilterFormId ? ' selected' : '') + '>' + esc(fname) + '</option>';
-                    });
+                    _maFormOpts += _swFormOptions(_maFilterFormId);
                 } else {
                     _maFormOpts = '<option>' + esc(_sdT('Loading...')) + '</option>';
                     _fetchCustomForms(function () { renderProperties(); });
@@ -25929,12 +25917,8 @@ const StyleDesigner = (function () {
                 if (!_cfOwnsPage) {
                     var _cfFormOpts = '<option value="0"' + (_cfFormId === 0 ? ' selected' : '') + '>' + esc(_sdT('— Choose a form —')) + '</option>';
                     if (_customFormsCache) {
-                        _customFormsCache.forEach(function (f) {
-                            var fid = parseInt(f.page_id, 10);
-                            if (_cfActive && fid === _cfActive.page_id) return;   // that is "this page's form", the other option
-                            var fname = (f.form_name && ('' + f.form_name).trim()) || f.page_title || f.page_name || ('#' + fid);
-                            _cfFormOpts += '<option value="' + fid + '"' + (fid === _cfFormId ? ' selected' : '') + '>' + esc(fname) + '</option>';
-                        });
+                        // The active page's own form is "this page's form", the other option.
+                        _cfFormOpts += _swFormOptions(_cfFormId, _cfActive ? _cfActive.page_id : 0);
                     } else {
                         _cfFormOpts = '<option>' + esc(_sdT('Loading...')) + '</option>';
                         _fetchCustomForms(function () { renderProperties(); });
@@ -41110,9 +41094,15 @@ const StyleDesigner = (function () {
                 // when the list says what each page holds (list_all_pages);
                 // the page already chosen stays whatever it is.
                 if (o.types && Array.isArray(p.widgets) && String(pid) !== cur && !_swServerPageFits(p, o.types)) return;
+                // A page in the Recycle Bin is not offered (it is not served);
+                // only the one already chosen stays, marked as deleted.
+                var binned = _swPageBinned(p);
+                if (binned && String(pid) !== cur) return;
+                listed[String(pid)] = true;
                 var lbl = p.page_name || ('#' + pid);
                 var pt  = (p.page_title && ('' + p.page_title).trim()) ? ('' + p.page_title).trim() : '';
                 if (pt && pt !== lbl) lbl += ' — ' + pt;
+                if (binned) lbl += ' ' + _sdT('(deleted)');
                 rest += '<option value="' + pid + '"' + (String(pid) === cur ? ' selected' : '') + '>' + esc(lbl) + '</option>';
             });
             if (rest) html += '<optgroup label="' + esc(_sdT('Other pages')) + '">' + rest + '</optgroup>';
@@ -41124,7 +41114,56 @@ const StyleDesigner = (function () {
         if (/^tab:/.test(cur) && !listed[cur]) {
             html += '<option value="' + esc(cur) + '" selected>' + esc(_sdT('(closed tab)')) + '</option>';
         }
+        // A chosen page the list no longer holds (in the Recycle Bin,
+        // deleted, or without the widget this picker asks for) stays
+        // selected under a label that says so. Without an option for it
+        // the select reads "not selected" while the setting still points
+        // at the page.
+        if (!isNone && serverPages && /^\d+$/.test(cur) && !listed[cur]) {
+            html += _swMissingPageOption(cur);
+        }
         return html;
+    }
+
+    function _swPageBinned(p) { return !!(p && parseInt(p.binned || 0, 10)); }
+
+    // <option>s of the custom forms (_customFormsCache), `cur` selected and
+    // `skip` left out. A form whose page is in the Recycle Bin is offered
+    // only when it is the one chosen, marked as deleted.
+    function _swFormOptions(cur, skip) {
+        cur  = parseInt(cur || 0, 10) || 0;
+        skip = parseInt(skip || 0, 10) || 0;
+        return (_customFormsCache || []).map(function (f) {
+            var fid = parseInt(f.page_id, 10);
+            if (skip && fid === skip) return '';
+            var binned = _swPageBinned(f);
+            if (binned && fid !== cur) return '';
+            var fname = (f.form_name && ('' + f.form_name).trim()) || f.page_title || f.page_name || ('#' + fid);
+            if (binned) fname += ' ' + _sdT('(deleted)');
+            return '<option value="' + fid + '"' + (fid === cur ? ' selected' : '') + '>' + esc(fname) + '</option>';
+        }).join('');
+    }
+
+    // The <option> of a chosen page id that no picker list holds. A tab of
+    // this design is live (the picker left it out for lacking the widget);
+    // any other page is named from the full page list (list_all_pages,
+    // which keeps binned pages flagged), fetched on first need.
+    function _swMissingPageOption(cur) {
+        var tab = null, hit = null;
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (String(p.page_id) === cur) tab = p; });
+        if (tab) {
+            return '<option value="' + esc(cur) + '" selected>' + esc((tab.page_name || ('#' + cur)) + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+        }
+        if (_allPagesCache) {
+            _allPagesCache.forEach(function (p) { if (String(parseInt(p.page_id, 10)) === cur) hit = p; });
+        } else {
+            _fetchAllPages(function () { renderProperties(); });
+        }
+        var lbl = (hit && hit.page_name) ? hit.page_name : ('#' + cur);
+        if (_allPagesCache) {
+            lbl += ' ' + ((!hit || _swPageBinned(hit)) ? _sdT('(deleted)') : _sdT('(incompatible — choose again)'));
+        }
+        return '<option value="' + esc(cur) + '" selected>' + esc(lbl) + '</option>';
     }
 
     // After a save: every `tab:<key>` in a cached widget config, and in the

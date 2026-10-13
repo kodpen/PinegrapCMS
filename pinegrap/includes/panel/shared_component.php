@@ -304,13 +304,14 @@ function pg_panel_shared_component($request, $action)
                         page.page_id,
                         page.page_name,
                         page.page_title,
+                        page.page_folder,
                         custom_form_pages.form_name
                      FROM page
                      LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id
                      WHERE " . pg_form_page_sql('page') . "
                      ORDER BY custom_form_pages.form_name ASC, page.page_name ASC"
             );
-            respond(array('status' => 'success', 'forms' => $sc_form_rows));
+            respond(array('status' => 'success', 'forms' => _sc_flag_binned_pages($sc_form_rows)));
             break;
 
         // ── LIST FORM ITEM VIEW PAGES ───────────────────────────────────
@@ -340,14 +341,14 @@ function pg_panel_shared_component($request, $action)
                                  ON form_item_view_pages.page_id = page.page_id
                                 AND form_item_view_pages.collection = 'a'
                                 AND form_item_view_pages.custom_form_page_id = '$sc_iv_form_id'
-                         WHERE page.page_type = 'form item view'
+                         WHERE page.page_type = 'form item view'" . pg_designer_not_binned_sql('page.page_folder') . "
                          ORDER BY page.page_title ASC, page.page_name ASC"
                 );
             } else {
                 $sc_iv_rows = db_items(
                     "SELECT page_id, page_name, page_title
                          FROM page
-                         WHERE page_type = 'form item view'
+                         WHERE page_type = 'form item view'" . pg_designer_not_binned_sql('page.page_folder') . "
                          ORDER BY page_title ASC, page_name ASC"
                 );
             }
@@ -376,7 +377,7 @@ function pg_panel_shared_component($request, $action)
             $sc_ce_merged = array();
             foreach ((array)db_items(
                 "SELECT page_id, page_name, page_title FROM page
-                     WHERE page_type = 'calendar event view'
+                     WHERE page_type = 'calendar event view'" . pg_designer_not_binned_sql('page.page_folder') . "
                      ORDER BY page_title ASC, page_name ASC") as $sc_ce_p) {
                 $sc_ce_merged[(int)$sc_ce_p['page_id']] = $sc_ce_p;
             }
@@ -405,7 +406,7 @@ function pg_panel_shared_component($request, $action)
             $sc_cp_rows = db_items(
                 "SELECT page_id, page_name, page_title
                      FROM page
-                     WHERE page_type = 'catalog'
+                     WHERE page_type = 'catalog'" . pg_designer_not_binned_sql('page.page_folder') . "
                      ORDER BY page_title ASC, page_name ASC"
             );
             respond(array('status' => 'success', 'pages' => $sc_cp_rows));
@@ -427,7 +428,7 @@ function pg_panel_shared_component($request, $action)
             $sc_cl_legacy = db_items(
                 "SELECT page_id, page_name, page_title
                      FROM page
-                     WHERE page_type = 'catalog'"
+                     WHERE page_type = 'catalog'" . pg_designer_not_binned_sql('page.page_folder')
             );
             $sc_cl_civ_ids = db_items(
                 "SELECT id FROM shared_components
@@ -449,7 +450,7 @@ function pg_panel_shared_component($request, $action)
                              FROM page
                              INNER JOIN style ON page.page_style = style.style_id
                              WHERE page.layout_type = 'system'
-                               AND $sc_cl_where"
+                               AND $sc_cl_where" . pg_designer_not_binned_sql('page.page_folder')
                     );
                 }
             }
@@ -484,7 +485,7 @@ function pg_panel_shared_component($request, $action)
             $sc_cd_legacy = db_items(
                 "SELECT page_id, page_name, page_title
                      FROM page
-                     WHERE page_type = 'catalog detail'"
+                     WHERE page_type = 'catalog detail'" . pg_designer_not_binned_sql('page.page_folder')
             );
 
             // Step 1: ids of shared_components that ARE catalog_item_view widgets.
@@ -513,7 +514,7 @@ function pg_panel_shared_component($request, $action)
                              FROM page
                              INNER JOIN style ON page.page_style = style.style_id
                              WHERE page.layout_type = 'system'
-                               AND $sc_cd_where"
+                               AND $sc_cd_where" . pg_designer_not_binned_sql('page.page_folder')
                     );
                 }
             }
@@ -550,7 +551,7 @@ function pg_panel_shared_component($request, $action)
             $sc_sc_legacy = db_items(
                 "SELECT page_id, page_name, page_title
                      FROM page
-                     WHERE page_type = 'shopping cart'"
+                     WHERE page_type = 'shopping cart'" . pg_designer_not_binned_sql('page.page_folder')
             );
 
             // Step 1: ids of shared_components that ARE shopping_cart widgets.
@@ -579,7 +580,7 @@ function pg_panel_shared_component($request, $action)
                              FROM page
                              INNER JOIN style ON page.page_style = style.style_id
                              WHERE page.layout_type = 'system'
-                               AND $sc_sc_where"
+                               AND $sc_sc_where" . pg_designer_not_binned_sql('page.page_folder')
                     );
                 }
             }
@@ -603,7 +604,7 @@ function pg_panel_shared_component($request, $action)
         // Returns every page row (page_id, page_name, page_title) sorted by
         // title then name. Used by the my_account widget's login-page picker so
         // the designer can select any page as the login redirect target.
-        // Response shape: { status:'success', pages:[{page_id,page_name,page_title},...] }
+        // Response shape: { status:'success', pages:[{page_id,page_name,page_title,page_type,binned,widgets},...] }
         case 'list_all_pages':
             // Each page also carries its page_type and the system widgets
             // its tree holds, so a picker that asks for a sign-in page
@@ -615,12 +616,15 @@ function pg_panel_shared_component($request, $action)
                     $sc_ap_types[(int) $sc_ap_w['id']] = (string) $sc_ap_cfg['regionType'];
                 }
             }
-            $sc_ap_rows = db_items(
-                "SELECT page_id, page_name, page_title, page_type,
+            // Pages in the Recycle Bin come flagged (binned) rather than
+            // left out: the pickers drop them, except the one a setting
+            // still names, which they show as deleted instead of "none".
+            $sc_ap_rows = _sc_flag_binned_pages(db_items(
+                "SELECT page_id, page_name, page_title, page_type, page_folder,
                             IF(page_tree_json LIKE '%sharedId%', page_tree_json, '') AS page_tree_json
                      FROM page
                      ORDER BY page_title ASC, page_name ASC"
-            );
+            ));
             foreach ($sc_ap_rows as &$sc_ap_row) {
                 $sc_ap_found = array();
                 if ($sc_ap_types && $sc_ap_row['page_tree_json'] !== '') {
@@ -673,6 +677,28 @@ function _sc_custom_form_page_id($request)
         if (isset($request[$key]) && is_scalar($request[$key]) && (int)$request[$key] > 0) return (int)$request[$key];
     }
     return 0;
+}
+
+// Marks the rows (each with page_folder) whose page is in the Recycle Bin
+// with binned = 1 and drops page_folder. The typed page lists above leave
+// binned pages out; the full page list and the form list keep them flagged,
+// so a picker can still name the page a saved setting points at. A binned
+// page carries the name it had before the bin parked it.
+function _sc_flag_binned_pages($rows)
+{
+    $bin = array_flip(array_map('intval', (array)pg_recycle_bin_folder_ids()));
+    if ($bin) require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $rows = is_array($rows) ? $rows : array();
+    foreach ($rows as &$row) {
+        $row['binned'] = isset($bin[(int)$row['page_folder']]) ? 1 : 0;
+        unset($row['page_folder']);
+        if ($row['binned'] && isset($row['page_name'])) {
+            $original = pg_recycle_parked_original($row['page_name'], (int)$row['page_id']);
+            if ($original !== '') $row['page_name'] = $original;
+        }
+    }
+    unset($row);
+    return $rows;
 }
 
 // Returns a name that does not yet exist in shared_components.
