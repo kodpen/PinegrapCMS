@@ -934,7 +934,11 @@ function ws_ai_setup_hint()
  */
 function ws_ai_after_send($viewer, $channel, $message_id, $body)
 {
-    if (!ws_ai_schema_ready() || !(ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
+    // Written to an MCP server's alias, or a reply to an answer given with
+    // one: Pinegrap AI answers with that server's tools (mcp_ask.php).
+    $server = (ws_ai_schema_ready() && function_exists('ws_mcp_ask_server')) ? ws_mcp_ask_server($body, $message_id) : null;
+
+    if (!ws_ai_schema_ready() || !($server || ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
         return false;
     }
 
@@ -956,8 +960,14 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, created_at)
-        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', 'ai', '" . time() . "')");
+    if ($server && (ws_mcp_ask_problem($server) !== '')) {
+        ws_message_system($channel['id'], ws_mcp_ask_problem($server));
+        return false;
+    }
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, created_at" . ($server ? ', mcp_server_id' : '') . ")
+        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', 'ai', '" . time() . "'"
+            . ($server ? ", '" . (int) $server['id'] . "'" : '') . ")");
 
     ws_message_touch($message_id);
 
@@ -1611,7 +1621,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
 
     // A request that asks for a task, answered without proposing one: sent
     // back once, since a task written only in the words cannot be opened.
-    if (!empty($state['design']) && empty($state['proposals']['pages']) && empty($state['page_nudged']) && ($steps < WS_AI_MAX_STEPS - 2)) {
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        // Written to an MCP server's alias: nothing is proposed there, the
+        // words are the answer.
+        $result = ws_ai_deliver($row, $text, array());
+    } elseif (!empty($state['design']) && empty($state['proposals']['pages']) && empty($state['page_nudged']) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // Asked from the editor and answered without a proposal: the words
         // alone change nothing on the page.
         $result = array('ok' => false, 'error' => 'Nothing was proposed, so the page would not change. Change it with the page tools first (page_set, page_css, page_replace, page_insert, page_remove, page_rewrite), then call answer again. If the request cannot be done, call fail.');
@@ -2164,9 +2178,14 @@ function ws_ai_deliver($row, $text, $proposals)
         return array('ok' => false, 'error' => 'text is empty: write the answer in text.');
     }
 
-    if (mb_strlen($text) > 3900) {
-        $text = rtrim(mb_substr($text, 0, 3890)) . '…';
+    // An answer given with an MCP server's tools says which ones it used.
+    $signature = (((int) ($row['mcp_server_id'] ?? 0) > 0) && function_exists('ws_mcp_ask_signature')) ? ws_mcp_ask_signature($row) : '';
+
+    if (mb_strlen($text) > 3900 - mb_strlen($signature)) {
+        $text = rtrim(mb_substr($text, 0, 3890 - mb_strlen($signature))) . '…';
     }
+
+    $text .= $signature;
 
     $now = time();
 
@@ -3020,6 +3039,14 @@ function ws_ai_start($row)
         return pg_design_ai_start($row, $asker);
     }
 
+    // Written to an MCP server's alias: the request and what it answers,
+    // with that server's tools (mcp_ask.php).
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        return function_exists('ws_mcp_ask_start')
+            ? ws_mcp_ask_start($row, $asker)
+            : array('ok' => false, 'error' => lang('That MCP server could not be found.'), 'state' => null);
+    }
+
     $readable = ws_ai_readable_types($asker);
     $parts = array();
 
@@ -3229,6 +3256,16 @@ function ws_ai_tools($row)
         return array_merge($tools, pg_design_ai_tools());
     }
 
+    // Written to an MCP server's alias: that server's tools, and none of the
+    // site's (mcp_ask.php).
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        $tools[0] = $tool('answer', 'Write your answer under the request. Call it once, at the end.', array(
+            'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown.'),
+        ), array('text'));
+
+        return array_merge($tools, function_exists('ws_mcp_ask_tools') ? ws_mcp_ask_tools($row) : array());
+    }
+
     if (!$note && (!$task || ws_ai_request_channel($row, $asker))) {
         $tools[] = $tool('read_channel', $task ? 'Read more of the task\'s channel: its summary, decisions, latest messages and open tasks.' : 'Read more of the channel the request came from: its summary, decisions, latest messages and open tasks.', array(
             'limit' => array('type' => 'integer', 'description' => 'How many of the latest messages, 1 to 100.'),
@@ -3321,6 +3358,10 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
     if (!$asker) {
         return array('error' => 'The person who asked is no longer a member of the workspace.');
+    }
+
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        return function_exists('ws_mcp_ask_tool_run') ? ws_mcp_ask_tool_run($row, $state, $name, $args) : array('error' => 'The service cannot be reached.');
     }
 
     if (($name === 'read_page') || (strpos($name, 'page_') === 0)) {

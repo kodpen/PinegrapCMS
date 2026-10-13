@@ -54,4 +54,18 @@ return array(
         lang('Under Certificates & secrets, create a client secret and copy its value here together with the Application (client) ID.'),
         lang('A client secret expires: before it does, create a new one there and enter it here.'),
     ),
+    // Sign in with Microsoft (includes/fn/signin.php). The person is the
+    // directory ID and object ID together, which stay the same if the site
+    // registers a new application. The e-mail claim of a work or school
+    // account is whatever the directory's administrator typed, so it only
+    // counts as verified for personal accounts (their own directory) or when
+    // the directory says it owns the domain (the optional xms_edov claim).
+    'signin'           => array(
+        'order'            => 20,
+        'scopes'           => array('openid', 'email', 'profile'),
+        'pkce'             => true,
+        'subject_claims'   => array('tid', 'oid'),
+        'verified_tenants' => array('9188040d-6c67-4c5b-b112-36a304b66dad'),
+        'verified_claims'  => array('xms_edov'),
+    ),
 );

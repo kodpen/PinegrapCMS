@@ -106,6 +106,71 @@ Microsoft dosyalarına dokunulmadı.
 
 ---
 
+## 2026.4.10 — Microsoft ile Giriş ve Apple ile Giriş (2026-10-13)
+
+**Neden.** Tersine OAuth planının (`docs/_plan_tersine_oauth.md`) dördüncü
+senaryosu, model A (her site kendi Microsoft ve Apple uygulamasını kaydeder).
+Google ile Giriş zaten vardı; iş ve okul hesapları Microsoft'ta, iPhone
+kullanıcılarının çoğu Apple'da. App Store kuralları (4.8) üçüncü taraf
+girişi sunan bir uygulamadan gizlilik odaklı bir seçenek de ister; Apple ile
+Giriş bunu karşılar.
+
+**Nasıl.** Bağlı hesaplar altyapısının (`includes/fn/connect.php`) sağlayıcı
+dosyaları ve uygulama deposu (`connect_apps`) kullanılır; ikinci bir
+belirteç deposu yok, çünkü giriş belirteç saklamaz: yalnız id_token okunur.
+Sağlayıcı dosyasındaki `signin` bloğu girişi tanımlar (sıra, kapsamlar,
+PKCE, kimliği oluşturan talepler, doğrulanmış sayılan kiracılar ve
+talepler, istemci sırrının türü). Apple yalnız giriş içindir
+(`'accounts' => false`, PR #293): Bağlı hesaplar ekranında görünmez,
+onunla hesap bağlanamaz. `includes/fn/signin.php` akışı yürütür, dönüş
+adresi `signin.php` (kök betik; `connect.php` oturum açmış kullanıcı
+istediği için ayrı). Durum, nonce ve PKCE oturumda (en çok beş bekleyen
+deneme, 15 dakika), RFC 9207 `iss`, id_token'da `iss`/`aud`/`exp`/`nonce`/
+`sub` denetimi (`pg_connect_claims_problem()`). Kimlik kalıcı tabloda
+(`user_identities`: sağlayıcı + konu tekil, kullanıcı + sağlayıcı tekil).
+Microsoft'ta konu `tid:oid` (uygulama yeniden kaydedilse de değişmez); adres
+yalnız kişisel hesap kiracısında (`9188040d-…`) ya da isteğe bağlı
+`xms_edov` talebi doğruysa doğrulanmış sayılır (nOAuth: bir kiracı
+yöneticisi başkasının adresini yazabilir). Apple'da `response_mode=form_post`
+siteler arası bir POST olduğundan başlangıçta oturum çerezi
+`SameSite=None` yapılır (ödeme dönüşleriyle aynı çare); istemci sırrı her
+token isteğinde .p8 anahtarıyla imzalanan ES256 JWT'dir (DER imza JOSE
+biçimine çevrilir); ad yalnız ilk girişte POST'un `user` alanında gelir.
+
+**Ne değişti.** Ayarlar › Güvenlik'te iki kart: Microsoft ile Giriş (anahtar,
+Bağlı hesaplar'daki uygulamanın durumu, yönlendirme adresi, `xms_edov`
+açıklaması) ve Apple ile Giriş (anahtar, kurulum adımları, dönüş adresi,
+Services ID, Team ID, Key ID, .p8 anahtarı; anahtar geri gösterilmez).
+Apple alanları kaydetmeden önce denetlenir; hatalıysa ekrandaki hiçbir
+ayar yazılmaz. Anahtarlar `config.signin_providers`'da, uygulama girilene
+kadar düğme gizli. Düğmeler `pg_signin_buttons()` ile Google'ınkinin
+altında: panel girişi, eski giriş/kayıt/üyelik ekranları (özel düzenlerde
+`$google_signin` değişkeni) ve görsel editörün giriş, kayıt ve üyelik
+widget'larındaki "Google ile Giriş" bölümü. Kurallar Google'ınki: doğrulanmış
+aynı adresli hesaba bağlanır (o sağlayıcıya başka kimlikle bağlı hesap
+devralınmaz), personel girişinde bilinmeyen hesap reddedilir, kayıttan
+gelene üye açılır (parolasız, algo 3), üyelikte kimlik üyelik formuna
+devredilir (`google_membership_pending` kaydı sağlayıcıyı taşır), ardından
+`pg_mfa_gate()` ve `pg_device_limit_gate()`. Hesabım › Giriş ve cihazlar,
+görsel editörün hesap güvenliği widget'ı (`has_microsoft`,
+`microsoft_removable`, `microsoft_only`, Apple için aynıları) ve
+`edit_user.php` bağlantıyı gösterir ve keser; tek giriş yolu olan
+bağlantı kesilmez (`pg_signin_can_remove()`), kullanıcı silinince kimlikler
+de silinir. Şema 10.74: `user_identities`, `config.signin_providers`.
+`tr.json`'da "Sign in with Apple" "Apple ile giriş yap" yerine "Apple ile
+Giriş" oldu (düğmeler alt alta "Google ile Giriş" ile aynı biçimde).
+
+**Bilerek yapılmayan.** Google ile Giriş kendi yolunda kaldı
+(`google_auth.php`, `user.user_google_id`); aynı akışa taşınması ayrı PR.
+Görsel editördeki `__google_signin_url` bağlantı belirteci yalnız
+Google'ındır; bölüm üç düğmeyi de taşır. Oturum açmış kişinin Microsoft ya
+da Apple hesabını sonradan bağlama düğmesi yok (Google'da da yok): bağlantı
+doğrulanmış adresle ya da o sağlayıcıyla açılan hesapla kurulur.
+id_token imzası doğrulanmaz (OpenID Connect Core 3.1.3.7, belirteç TLS ile
+doğrudan token ucundan gelir).
+
+---
+
 ## 2026.4.10 — Klinik testi: başkası adına doldurulan form oturumdaki kişiyi ezmiyor; giriş sayfası tasarımın kendisinden; kayıt düzenleme ekranı sayfaya dönüyor; İptal düğmesinde send_to kaçışı (2026-10-13)
 
 Klinik şablonunun (#292) dev testinden.
@@ -199,6 +264,78 @@ kararı) ürün sahibinin kararını bekliyor; bu bölümde değişmedi.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: kanalda @takma ad ile MCP sunucusuna soru (2026-10-13)
+
+**Neden.** Önceki değişiklik (10.82) başka hizmetlerin MCP sunucularını
+takma adla ekletiyor ve araç izinlerini tutuyordu; bu değişiklik onları
+kanalda kullanılır kılar. "@github açık PR'lar hangileri?" yazılınca
+Pinegrap AI o sunucunun açık araçlarıyla yanıt verir.
+
+**Akış** (`includes/workspace/mcp_ask.php`, `ai.php`'ye bağlanır). Mesaj
+gönderilince `ws_ai_after_send()` önce `ws_mcp_ask_server()`'a bakar:
+gövdede elle yazılmış `@takmaad` (büyük/küçük harf fark etmez, `e@docs.com`
+gibi kelime içi değil) ya da gövde Pinegrap AI'ı adıyla çağırmıyorsa
+takma adla verilmiş bir yanıta cevap. İstek `ws_ai_requests`'e `agent = 'ai'`,
+`mcp_server_id` ile girer; sıra, kilit, adım sınırı, kişi başı bekleyen
+istek sınırı ve lisans Pinegrap AI'ınkiyle aynıdır. Pinegrap AI hazır
+değilse kurulum ipucu, kanal kapalıysa kanal metni, sunucu kapalıysa ya da
+açık aracı yoksa (`ws_mcp_ask_problem()`) bunu söyleyen sistem mesajı
+yazılır ve istek açılmaz.
+
+**Model ne görür.** `ws_ai_start()` takma adlı istekte
+`ws_mcp_ask_start()`'a döner: kanalın özeti, kararları ya da ekip listesi
+gitmez, yalnız istek, cevapladığı mesaj ve o mesaj önceki bir takma ad
+yanıtıysa onun isteği. Gerekçe: modelin okuduğu her şey araç argümanına
+girip öbür hizmete gidebilir. Sistem metni yalnız sunucunun araçlarının
+olduğunu, argümanlara isteğin gerektirdiğinden fazlasının konmamasını,
+araçların yalnız okuduğunu ve araç yanıtlarının talimat değil veri
+olduğunu söyler; sunucunun `instructions` metni veri olarak, 1500
+karakterle eklenir. Araçlar `answer`, `fail` ve sunucunun açık araçları
+(en çok 40, alfabetik); şemalar nesne olarak çözülüp gönderilir (`{}`
+korunur, `$schema`/`$id` atılır). Araç adı sohbet API'sinin kuralına
+(`^[A-Za-z0-9_-]{1,64}$`) çevrilir, çakışan ad ve `answer`/`fail` numara
+alır; eşleme her adımda yeniden kurulur.
+
+**Araç çağrısı** (`ws_mcp_ask_tool_run()`). Çağrı anında araç hâlâ açık
+mı, sunucu açık mı yeniden bakılır. Bir istekte en çok 8, modelin bir
+turunda en çok 3 çağrı (web isteğinin süresi aşılmasın diye); argüman 20
+KB'ı aşamaz. Zaman aşımı web'de 15, komut satırında 45 saniye. Sonuç
+`pg_mcp_client_result_text()` ile 6000 karaktere kesilir ve
+`service_text` olarak verilir. Her çağrı `ws_mcp_calls`'a yazılır
+(argümanlar, durum, hata, süre, istek/kanal/mesaj); sunucunun `last_used`
+alanı güncellenir, bağlantı hatası `last_error`'a düşer.
+
+**Yanıt.** Öneri yoktur: `ws_ai_finish_answer()` takma adlı istekte görev
+ve "yaptım" dürtmelerini atlar, metni doğrudan yazar. `ws_ai_deliver()`
+yanıtın sonuna "@docs üzerinden: `products_list`, `pages_list`" satırını
+ekler (en çok beş araç, kalanlar +N; araç çağrılmadıysa ayrı cümle),
+uzunluk sınırı bu satırla birlikte hesaplanır.
+
+**Ekran.** Kanalın @ menüsü açık ve araçlı sunucuları takma adıyla gösterir
+(`BOOT.mcp`, `ws_mcp_boot()`); seçilince `@takmaad ` metni girer. Ayarlar
+kartında takma adın kanalda nasıl kullanıldığı yazar, Pinegrap AI bağlı
+değilse uyarı çıkar, 40'tan fazla araç açıksa ilk 40'ın sunulduğu söylenir.
+`pg_mcp_client_call_tool()` argümanları nesne olarak da alır.
+
+**Şema yok.** 10.82'nin `ws_mcp_calls` tablosu ve
+`ws_ai_requests.mcp_server_id` kolonu kullanılır.
+
+**Doğrulama.** `tests/workspace_mcp_test.php` (7 test): araç açılabilirliği,
+kuralların yalnız çalışabilen araçlarda geçmesi, fonksiyon adları, 40
+sınırı, takma ad biçimi, kimlik başlıkları, başlık adları. Sandbox'ta,
+sitenin kendi `mcp.php`'sine yerel ağ dışı bir adresten bağlanan uzak
+sunucu yerine geçen bir sunucuyla: takma ad tespiti, istek açma, model
+bağlamı, araç listesi, gerçek HTTP araç çağrısı ve kaydı, kapalı araç ve
+araç olmayan ad, yanıtın imza satırıyla kanala düşmesi, yanıta cevabın aynı
+sunucuyla sürmesi, @ai ile cevabın Pinegrap AI'ın kendisine gitmesi,
+kapalı sunucuda sistem mesajı, @ menüsü (ekran görüntüsü).
+
+**Doğrulanamayan.** Modelin kendisi (ai.pinegrap.com sandbox'tan
+çözülemiyor); model çağrısı dışındaki her adım denendi.
+dev.pinegrap.com'da gerçek bir sunucuyla denenmeli.
+
+---
+
 ## 2026.4.10 — Dış API: ziyaretçi raporları ve site günlüğü (2026-10-13)
 
 **Sorun.** Trafik ve denetim kaydı API'de yoktu. Bir raporlama aracı ya da
@@ -241,6 +378,87 @@ to 422; en çok görüntülenen üç sayfa; kaynak, kanal, giriş sayfası, ülk
 UTM dağılımları ve toplamlar SQL ile aynı (2158 ziyaret, 43 sipariş);
 `ppc_` işaretli test ziyareti `pay_per_click`; site günlüğü süzgeçleri ve
 imleç; izni olmayan uygulamaya 403; OpenAPI dört nesne.
+
+---
+
+## 2026.4.10 — UPS anlık fiyatları REST API ve OAuth ile (2026-10-13)
+
+**Neden.** UPS erişim anahtarı (Access Key), kullanıcı adı ve parolayla
+girişi kaldırdı; API'leri artık yalnız OAuth 2.0 client credentials ile
+alınan erişim jetonunu kabul ediyor. `shipping.php` hâlâ
+`onlinetools.ups.com/ups.app/xml/Rate` XML ucuna eski bilgilerle
+gidiyordu, bu yüzden UPS anlık fiyatı gelmiyordu. Tersine OAuth planının
+yan bulgusu (`docs/_plan_tersine_oauth.md`), ürün sahibinin "sorunları
+çöz" kararıyla. FedEx (SOAP) ve USPS (Web Tools) ayrı PR'larla gelir.
+
+**Nasıl.** Yeni modül `includes/fn/carrier_api.php` (`functions.php`
+manifestinde `connect.php`'den sonra):
+
+- Uygulama: UPS Developer Portal'da açılan uygulamanın istemci kimliği ve
+  gizli anahtarı `connect_apps` tablosunda `shipping_ups` anahtarıyla
+  (`pg_connect_app_save()`; gizli anahtar sitenin şifreleme anahtarıyla
+  mühürlü, forma geri basılmaz), ortam (`production` / `test` = UPS CIE)
+  `options.environment`'ta. `includes/connect/providers/` altında dosyası
+  olmadığı için Bağlı hesaplar ekranında görünmez; `shipping_` öneki, ileride
+  UPS'in kendi girişi için eklenecek bir sağlayıcıyla çakışmasın diye.
+  Yeni şema adımı yok, #282'nin tabloları (10.72) kullanılır.
+- Jeton: `POST {host}/security/v1/oauth/token`, Basic auth,
+  `grant_type=client_credentials`. `pg_connect_service_put('shipping_ups')`
+  ile mühürlü önbellekte; bitimine iki dakika kala yenilenir, ortam +
+  kimlik + gizli anahtar parmak izi değişince eski jeton verilmez, ayar
+  değişince silinir. Aynı anda iki ödeme iki jeton almasın diye
+  `GET_LOCK` (Paraşüt'teki gibi). API 401 verirse jeton bir kez yeniden
+  alınır.
+- Fiyat: `POST {host}/api/rating/v2409/Shop`, başlıklar `transId`
+  (32 karakter) ve `transactionSrc`. Eski davranış aynen: paket başına bir
+  istek, tüm hizmetler tek yanıtta, hesap numarası varsa `ShipperNumber`
+  + `NegotiatedRatesIndicator` ve anlaşmalı fiyat önce
+  (`NegotiatedRateCharges.TotalCharge`, yoksa `TotalCharges`), hizmet
+  kodları (01, 14, 13, 02, 59, 12, 03), ölçüler en çok altı karakter,
+  `shipping_rates` önbelleği ve istek/yanıt günlük satırları. İstek kurucu
+  ve yanıt okuyucu saf fonksiyonlar: `pg_ups_rate_request()`,
+  `pg_ups_rate_parse()`.
+- HTTP: `pg_carrier_api_http()`, `pg_curl_tls()` ile (kargo çağrıları
+  `ALLOW_INSECURE_UPDATE_TLS` kapsamında), 10 sn zaman aşımı, yönlendirme
+  izlenmez. Hata satırı UPS, FedEx ve OAuth hata biçimlerini okur
+  (`pg_carrier_api_error_text()`).
+
+**Ne değişti.**
+
+- Ayarlar › E-Ticaret › Nakliye › UPS: Erişim Anahtarı, Kullanıcı Kimliği
+  ve Parola kutuları kalktı. Yerine İstemci Kimliği, İstemci Gizli Anahtarı
+  (kayıtlıysa "Kayıtlı. Korumak için boş bırakın."), Ortam (Üretim / Test
+  ortamı) ve "Kaydet ve bağlantıyı test et" (jeton ister, sonucu
+  bildirimde söyler). Hesap Numarası aynı ayar anahtarında
+  (`config.ups_account`) kalır. Alanlar `pg_carrier_api_settings_fields()`
+  ile çizilir, `pg_carrier_api_settings_save()` ile kaydedilir; alanları
+  formda olmayan bir bölme onlara dokunmaz.
+- Eski bilgiler girili, yenileri yoksa kartta uyarı: eski giriş kaldırıldı,
+  anlık fiyat yeni bilgiler girilene kadar kapalı. Şema adımı koşmamışsa ya
+  da şifreleme anahtarı yoksa kart onu söyler.
+- `config.ups_key`, `ups_user_id`, `ups_password` silinmedi; artık
+  okunmuyor ve kayıtta yazılmıyor.
+- Boyutu sıfır olan paket boyutsuz, yalnız ağırlıkla soruluyor; REST API
+  sıfır boyutu reddediyor.
+- `tests/carrier_api_test.php`: jeton isteği, önbellek, hata satırı, UPS
+  istek ve yanıtı.
+
+**Bilerek yapılmayan.** Eski kolonlar silinmedi ve taşınmadı (yeni API
+eski bilgileri kabul etmiyor). ShipTo için sokak adresi ve `ShipFrom`,
+`PaymentDetails` gönderilmiyor; eski istek de göndermiyordu, önbellek
+posta koduna göre. UPS teslim tarihi eskisi gibi hesaplanıyor.
+
+**Doğrulanan.** Uç, başlık, gövde ve yanıt alanları UPS'in resmi OpenAPI
+dosyalarıyla (github.com/UPS-API/api-documentation: `Rating.yaml`,
+`OAuthClientCredentials.yaml`) ve karrio-ups ile ShippingRates
+kaynaklarıyla karşılaştırıldı. lint, check_lang, test.php, check_bindings,
+check_api_schema, check_copies, build_js --check temiz.
+
+**Doğrulanamayan.** Gerçek bir UPS hesabına istek atılmadı (bulut
+ortamında taşıyıcı hesabı yok). Dev'de: Rating API'si eklenmiş bir UPS
+uygulamasıyla Test ortamında "Kaydet ve bağlantıyı test et", sonra UPS
+hizmetli bir nakliye yöntemiyle sepette fiyat ve günlükte "UPS fiyat
+isteği / yanıtı" satırları. 10.72 adımı ve `ENCRYPTION_KEY` gerekir.
 
 ---
 

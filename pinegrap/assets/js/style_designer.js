@@ -30284,6 +30284,12 @@ const StyleDesigner = (function () {
             ['is_signed_out',       _sdT('The visitor is signed out')],
             ['is_impersonated',     _sdT('Signed in as this member by an operator (two-step verification is read only)')],
             ['has_google',          _sdT('The account is connected to Google')],
+            ['has_microsoft',       _sdT('The account is connected to Microsoft')],
+            ['microsoft_removable', _sdT('Microsoft can be disconnected (another way to sign in remains)')],
+            ['microsoft_only',      _sdT('Microsoft is the only way this account signs in')],
+            ['has_apple',           _sdT('The account is connected to Apple')],
+            ['apple_removable',     _sdT('Apple can be disconnected (another way to sign in remains)')],
+            ['apple_only',          _sdT('Apple is the only way this account signs in')],
             ['has_password',        _sdT('The account has a password')],
             ['password_not_set',    _sdT('The account has no password yet (signs in with Google)')],
             ['has_devices',         _sdT('There are remembered devices')],
@@ -30403,6 +30409,8 @@ const StyleDesigner = (function () {
             }
             if (region === 'account_security') {
                 aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
+                aOpts.push(['unlink_microsoft',        _sdT('Disconnect Microsoft')]);
+                aOpts.push(['unlink_apple',            _sdT('Disconnect Apple')]);
                 aOpts.push(['revoke_device',           _sdT('Sign out this device (loop_area)')]);
                 aOpts.push(['logout_all',              _sdT('Sign out of all devices')]);
                 aOpts.push(['mfa_begin',               _sdT('Turn on two-step verification')]);
@@ -44950,6 +44958,28 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mb-0',
                                 text: _sdT('This account signs in with Google. To disconnect Google, set a password first with Forgot Password, otherwise you would lose access.'),
                                 _bindings: { eo_visible_if: 'password_not_set' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Sign in with Microsoft'),
+                            _bindings: { eo_visible_if: 'has_microsoft' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Sign in with Microsoft'), cssClass: 'mb-2' }),
+                            asForm(_sdT('Microsoft Form'), 'microsoft_removable', 'd-flex flex-wrap align-items-center gap-3', [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('This account is connected to Microsoft.'), cssClass: 'mb-0' }),
+                                asButton(_sdT('Disconnect Microsoft'), 'unlink_microsoft', 'btn btn-sm btn-outline-secondary', _sdT('Disconnect Button'))
+                            ]),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mb-0',
+                                text: _sdT('This account signs in with Microsoft. To disconnect Microsoft, set a password first with Forgot Password, otherwise you would lose access.'),
+                                _bindings: { eo_visible_if: 'microsoft_only' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Sign in with Apple'),
+                            _bindings: { eo_visible_if: 'has_apple' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Sign in with Apple'), cssClass: 'mb-2' }),
+                            asForm(_sdT('Apple Form'), 'apple_removable', 'd-flex flex-wrap align-items-center gap-3', [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('This account is connected to Apple.'), cssClass: 'mb-0' }),
+                                asButton(_sdT('Disconnect Apple'), 'unlink_apple', 'btn btn-sm btn-outline-secondary', _sdT('Disconnect Button'))
+                            ]),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mb-0',
+                                text: _sdT('This account signs in with Apple. To disconnect Apple, set a password first with Forgot Password, otherwise you would lose access.'),
+                                _bindings: { eo_visible_if: 'apple_only' } })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Devices') }, [
                             createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Remembered devices'), cssClass: 'mb-2' }),
