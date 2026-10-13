@@ -538,6 +538,18 @@ function pg_connect_clip($text)
    --------------------------------------------------------------------------- */
 
 /**
+ * Whether the tables are there: code can arrive before the database upgrade
+ * (10.72) has run, and every feature asking about connections then hears
+ * "none" instead of failing on a missing table.
+ *
+ * @return bool
+ */
+function pg_connect_schema_ready()
+{
+    return pg_schema_has('connect_accounts') && pg_schema_has('connect_apps');
+}
+
+/**
  * Whether tokens can be kept: the site has an encryption key.
  *
  * @return bool
@@ -619,7 +631,7 @@ function pg_connect_redirect_uri()
  */
 function pg_connect_app($provider_key)
 {
-    $row = db_item(
+    $row = !pg_connect_schema_ready() ? null : db_item(
         "SELECT client_id, secret, options, enabled
         FROM connect_apps
         WHERE provider = '" . e($provider_key) . "'");
@@ -751,6 +763,10 @@ function pg_connect_account_public($row)
  */
 function pg_connect_accounts($filter = array())
 {
+    if (!pg_connect_schema_ready()) {
+        return array();
+    }
+
     $where = array("provider <> 'service'");
 
     if (isset($filter['provider'])) {
@@ -789,6 +805,10 @@ function pg_connect_accounts($filter = array())
  */
 function pg_connect_account($id)
 {
+    if (!pg_connect_schema_ready()) {
+        return null;
+    }
+
     $row = db_item(
         "SELECT id, provider, user_id, external_id, label, purposes, scopes, status, last_error,
             created_user_id, created_timestamp, refreshed_timestamp, last_used_timestamp
@@ -928,6 +948,10 @@ function pg_connect_access_token($connection_id, $scopes = array(), $force = fal
     $fail = function ($error) {
         return array('ok' => false, 'token' => '', 'error' => $error);
     };
+
+    if (!pg_connect_schema_ready()) {
+        return $fail(lang('The connected account was not found.'));
+    }
 
     $read = function () use ($connection_id) {
         return db_item("SELECT * FROM connect_accounts WHERE id = '" . (int) $connection_id . "' AND provider <> 'service'");
@@ -1373,7 +1397,18 @@ function pg_connect_finish($query, $user)
         $secret = pg_connect_store_access($secret, 'default', $tokens['access_token'], $tokens['expires_at'], $now);
     }
 
-    $granted = $tokens['scopes'] ? $tokens['scopes'] : pg_connect_request_scopes($provider, $purpose);
+    // What the account now allows. A provider with one token per resource
+    // lists only that token's resource in its answer, though the person
+    // agreed to everything asked for on one screen, so the request counts.
+    $requested = pg_connect_request_scopes($provider, $purpose);
+
+    if (!$tokens['scopes']) {
+        $granted = $requested;
+    } elseif (!empty($provider['token_per_scope'])) {
+        $granted = pg_connect_scope_list(array_merge($requested, $tokens['scopes']));
+    } else {
+        $granted = $tokens['scopes'];
+    }
 
     $purposes = (isset($pending['purposes']) && is_array($pending['purposes'])) ? $pending['purposes'] : array($purpose['key']);
     $scopes = $granted;
@@ -1481,6 +1516,10 @@ function pg_connect_start_fields($provider_key, $purpose_key, $return, $owner = 
  */
 function pg_connect_service_get($key)
 {
+    if (!pg_connect_schema_ready()) {
+        return array();
+    }
+
     $stored = db_value(
         "SELECT secret FROM connect_accounts
         WHERE provider = 'service' AND user_id = '0' AND external_id = '" . e($key) . "'");
@@ -1492,11 +1531,12 @@ function pg_connect_service_get($key)
  * @param string $key
  * @param string $label what the screens may show about it
  * @param array  $data
- * @return bool false when the site has no encryption key
+ * @return bool false when the site has no encryption key or the tables are
+ *              not there yet
  */
 function pg_connect_service_put($key, $label, $data)
 {
-    $sealed = pg_connect_seal($data);
+    $sealed = pg_connect_schema_ready() ? pg_connect_seal($data) : '';
 
     if ($sealed === '') {
         return false;
@@ -1532,5 +1572,9 @@ function pg_connect_service_put($key, $label, $data)
  */
 function pg_connect_service_delete($key)
 {
+    if (!pg_connect_schema_ready()) {
+        return;
+    }
+
     db("DELETE FROM connect_accounts WHERE provider = 'service' AND user_id = '0' AND external_id = '" . e($key) . "'");
 }

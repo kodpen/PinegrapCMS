@@ -26,6 +26,10 @@ if (pg_post_body_discarded()) {
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+if (!pg_connect_schema_ready()) {
+	output_error(lang('The database has not been upgraded yet. Run the software update first.'));
+}
+
 $liveform = new liveform('connections');
 
 $screen_url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/connections.php';
