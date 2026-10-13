@@ -237,6 +237,26 @@
          veriyor; alanlarına kendiniz rol verdiyseniz formunuza
          dokunulmuyor.
 
+  YÖNETİM PANELİ
+  --------------------------------------------------------
+
+  [YENİ] Her ekranın üst çubuğunda bir "?" düğmesi var: o
+         ekranın belgesini pinegrap.com'da yeni sekmede açıyor.
+         Kişiler ekranında kişiler bölümüne, bir faturada
+         ERP belgesinin fatura bölümüne gidiyor; listelerde
+         seçili süzgecin başlığına iniyor. Panel Türkçe ise
+         belge de Türkçe açılıyor. Aynı bağlantı hesap
+         menüsündeki Yardım satırında ve F1 tuşunda. Site
+         Ayarları penceresinde başlıktaki "?" açık olan bölümün
+         belgesini açıyor. Önceden her ekranın yardımı aynı PDF
+         dosyasına gidiyordu.
+
+  [DÜZELTME] Bildirimlerdeki "Tüm Bildirimleri Sil" çalışma
+         alanı bildirimlerini (anmalar, görev atamaları, kanal
+         davetleri) silmiyordu; bu bildirimler tek tek de
+         silinemiyordu. Artık siliniyor. Başka bir kişiye
+         gönderilmiş bildirimlere dokunulmuyor.
+
 
 
   2026.4.8

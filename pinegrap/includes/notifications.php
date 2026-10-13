@@ -248,6 +248,17 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 		ORDER BY notifications.timestamp DESC");
 }
 
+// The columns the visibility ladder reads, for the endpoints that act on a
+// notification without drawing it: removing one, removing them all, marking
+// one unread. target_user_id is among them once the schema has it. Without it
+// every addressed row looks unaddressed to the ladder, so a workspace
+// notification - always addressed - fails it and can never be removed, while a
+// row addressed to somebody else passes it.
+function pg_notification_ladder_columns()
+{
+	return 'id, action, comment_id' . (pg_notification_targets_available() ? ', target_user_id' : '');
+}
+
 // What a notification says and where it points.
 //
 // The wording is not a property of the row - the row carries an order number or

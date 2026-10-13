@@ -78,6 +78,101 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.9 — Ekrana özgü yardım pinegrap.com belgelerine gidiyor; "Tüm Bildirimleri Sil" çalışma alanı bildirimlerini siliyor (2026-10-13)
+
+**İstek (ürün sahibi).** pinegrap.com yayında ve belgeler orada: İngilizce
+kökte (`/introduction`), Türkçe `/tr/` altında (`/tr/introduction`); sayfa
+adları ve sayfa içi çapalar her dilde aynı. Bir süredir bütün yardım
+bağlantıları tek bir OneDrive PDF'ine gidiyordu; LiveSite'ın ekrana özgü
+yardım düğmesi (eski alt gezinme çubuğunun sağ üstü) bu yüzden kapatılmıştı.
+`get_help_url()` belgelere göre yeniden kurulsun ve ekrana özgü yardıma
+uygun yer bulunsun. Yer kararı: üst çubuğun sağ kümesi (arama ile ayarlar
+çarkı arasında "?"); hesap menüsündeki Yardım satırı kalıyor ve o da
+ekranın belgesine gidiyor. Aynı turda: bildirim menüsündeki "Tüm Bildirimleri
+Sil" çalışmıyor.
+
+**Yardım (`get_help_url.php`, `includes/fn/output.php`).**
+- `get_help_url()` artık bir tablo okuyor: ekran (betik adı) → `sayfa#çapa`;
+  süzgeçli listeler (`view_pages`, `view_files`, `view_contacts`,
+  `view_users`, `view_regions`, `view_products`) süzgeç başına çapaya gider.
+  Süzgeç önce `$_GET['filter']`'dan, yoksa `$_SESSION['software'][ekran]
+  ['filter']`'dan okunur (ürün listesi son süzgeci oturumda tutuyor). Ekran
+  `SCRIPT_NAME`'den bulunur (`PHP_SELF` yol bilgisi taşıyabilir).
+- Dil öneki: `en` → kök, `tr` → `tr/`; belgesi olmayan panel dili İngilizce
+  sayfaları alır. Taban adres sabit `https://pinegrap.com/`.
+- Tabloda olmayan ekran `introduction`'a gider (yeni ekran yardımsız
+  kalmasın); yeni ekran tabloya satır olarak eklenmeli. Konu
+  `^[a-z0-9_-]+(#[a-z0-9_-]+)?$` dışındaysa yine `introduction` — konu
+  hem href'e hem JS dizgisine girdiği için kaçış gerektirmeyen biçimde
+  tutulur.
+- Ekran kendi konusunu `output_header()`/`pg_page_shell()`'e `'help' =>
+  'sayfa#çapa'` ile verebilir (konusu betik adından fazlasına bağlı ekranlar
+  için); şimdilik kullanan ekran yok.
+- `pg_help_url($properties)` (output.php): `PRIVATE_LABEL` açıkken `''`,
+  değilse `get_help_url.php`'yi `require_once` ile yükleyip panel dilini
+  ekler. Eskiden dosya `require` ile yükleniyordu (aynı istekte ikinci
+  çağrı fonksiyonu yeniden tanımlardı); tablo yalnız başlık çizilen
+  isteklerde okunur. `output_control_panel_header_includes()` ikinci
+  parametre olarak konuyu alır; `help_url` JS değişkeni artık
+  `escape_javascript()`'ten geçiyor.
+- Tablo 272 ekranı kapsıyor; eski eşlemedeki var olmayan ekranlar
+  (`settings`, `mailchimp_settings`, `view_offer_rules` …) ve artık olmayan
+  çapalar (`files#documents`, `#media` …) çıkarıldı. Yeni bölümler: Site
+  Ayarları'nın sekiz kategori ekranı ve yanındaki araçlar, ERP (iki sayfa),
+  Çalışma Alanı (iki sayfa), Oturumlar, Görsel Sayfa Editörü, Çeviriler,
+  API, Sistem, Güvenlik. Çapalar pinegrap.com'daki sayfaların içindekiler
+  listesinden alındı; TR sayfaların çapaları EN ile aynı (üç sayfada
+  karşılaştırıldı).
+
+**Yerleşim.**
+- Üst çubuk: sağ kümede `#help_button` (`bi-question-circle`), ayarlar
+  çarkının solunda; araç çubuğunda (`toolbar`) ve telefonda (`< sm`)
+  çizilmez — araç çubuğu ön yüz çerçevesindeki ince şerit, telefonda satırda
+  yer yok; ikisinde de hesap menüsündeki Yardım aynı bağlantıyı taşıyor.
+- Hesap menüsü Yardım satırı ve düğme düz `<a href target="_blank"
+  rel="noopener">`: orta tık, yeni sekme, adres kopyalama çalışıyor.
+  `backend.src.js`'teki iki popup bağlaması (`window.open(..., 'help',
+  'location=1, ...')`, biri `typeof help_url` korumasız) ve hiç basılmayan
+  `.green_help_button` / `.white_help_button` seçicileri kaldırıldı.
+- F1: `$(document).on('keydown')` — ayarlar penceresi açıksa onun yardım
+  bağlantısını, değilse `#help_button`'u (gizli olsa da), o da yoksa hesap
+  menüsündekini açar; bağlantı yoksa (private label) hiçbir şey yapmaz.
+  Klavye kısayolları listesine eklendi.
+- Site Ayarları penceresi (`includes/settings/modal.php`): başlıkta kapatma
+  düğmesinin solunda `#pg_settings_modal_help`; kategori → `site-settings#…`
+  haritası `data-pghelp` olarak basılır, `paint()` bölme değişince href'i
+  günceller (`contact` → `#communication`). Bölme seçilmeden önce
+  `#site-settings-intro`.
+- `router.php` hata ekranındaki "Belgeler" bağlantısı OneDrive yerine
+  `installation` sayfasına gidiyor (yapılandırma ve sunucu kuralları
+  orada); private label'da basılmıyor.
+
+**Bildirimler (`api.php`, `includes/notifications.php`).** Kök sebep:
+`remove_notifications` ve `edit_notifications` satırı `SELECT id, action,
+comment_id` ile okuyordu; `target_user_id` (4.83) yoktu. Görünürlük
+merdiveni (`pg_notification_visible()`) `workspace` türünü yalnız
+`target > 0` ise gösteriyor; sütun gelmeyince hedef 0 sayıldı ve çalışma
+alanı bildirimleri — dev'deki 77 bildirimin neredeyse hepsi — ne toplu ne
+tek tek silinebildi; düğme başarı dönüp listeyi aynen yeniden çiziyordu.
+Ters yönde de açık vardı: başka birine adreslenmiş, `workspace` dışı bir
+satır hedef denetiminden geçip silinebiliyordu. `pg_notification_ladder_columns()`
+merdivenin okuduğu sütunları verir (şema varsa `target_user_id` dahil);
+iki uç onu kullanıyor. Rozet yolu (`pg_notification_unread_rows()`) sütunu
+zaten seçiyordu, o yüzden sayaç doğruydu.
+
+**Doğrulama.** `php -l` (değişen PHP dosyaları), `node --check
+backend.src.js`; tablo betikle denetlendi: 349 konu, 272 ekran, hepsinin
+dosyası var, her çapa belge envanterinde, başlık çizen her ekran tabloda.
+dev.pinegrap.com'da (TR panel): Kişiler/Müşterilerim → `tr/contacts#customers`;
+`erp_invoices`, `workspace_tasks`, `view_products`, `view_sessions`,
+`view_system_styles`, `settings_firewall`, `view_pages?filter=seo_weak`
+beklenen çapalara gidiyor; ayarlar penceresinde Genel → İletişim geçişinde
+yardım `#general` → `#communication`; F1 pencere açıkken bölümü, kapalıyken
+ekranı açıyor; konsol temiz. Bildirimler: tek silme (77 → 76) ve menüden
+"Tüm Bildirimleri Sil" (76 → 0, boş mesajı ve rozet temiz). Denenmedi:
+İngilizce panel (yalnız birim denemesiyle: kök adres, `de` → İngilizce),
+private label, telefon genişliğinde görünüm (ekran görüntüsü alınamadı).
+
 ## 2026.4.9 — Görsel editör: bileşen kartı ve İngilizce arama, loop alanını içine bırakma, form listesi düzeni, tireli alan bağlaması (2026-10-13)
 
 **İstek (ürün sahibi).** kodpen.com blog sayfası tasarlanırken: loop alanı

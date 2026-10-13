@@ -21,6 +21,12 @@ Referans uygulama: `view_folders.php` (araç çubuğu), `product_builder.php`
   yazma.
 - Yönetim ekranına `max-width` koyma — ekranlar `container-fluid` genişliğindedir;
   alan genişliğini `col-*` ızgarasından al.
+- Yeni ekran `get_help_url.php` tablosuna bir satır alır: betik adı →
+  pinegrap.com belgesindeki `sayfa#çapa` (çapa sayfanın içindekiler
+  listesinden). Tabloda olmayan ekranın yardımı `introduction`'a düşer.
+  Konusu betik adından fazlasına bağlı ekran `output_header()` /
+  `pg_page_shell()`'e `'help' => 'sayfa#çapa'` verir. Yardım düğmesi,
+  hesap menüsü ve F1 aynı adresi kullanır; ayrı yardım bağlantısı yazma.
 
 ## İkon
 

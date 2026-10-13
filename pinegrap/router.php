@@ -870,7 +870,12 @@ function router_output_error($error_message) {
    
 
     $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/pi.php" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">help</span>' . lang('PHP Check') . '</a></div>';
-    $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="https://1drv.ms/b/s!AtFjifE5cgNcgqsMUui6rjx8v6_q7A?e=DrbNvb" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
+    // The installation guide covers the configuration file and the web
+    // server rules, which is what this screen is usually about.
+    $output_documents_url = function_exists('pg_help_url') ? pg_help_url(array('topic' => 'installation')) : '';
+    if ($output_documents_url !== '') {
+        $output_other_help_buttons .='<div class="col-12"><a target="_blank" rel="noopener" href="' . h($output_documents_url) . '" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
+    }
 
     function get_header($output_page_title) {
     	return output_header_secure(array(

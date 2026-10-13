@@ -637,7 +637,7 @@ switch ($action) {
         $user = validate_user();
         include_once(dirname(__FILE__) . '/includes/notifications.php');
 
-        $notification = db_item("SELECT id, action, comment_id FROM notifications WHERE id = '" . $id . "'");
+        $notification = db_item("SELECT " . pg_notification_ladder_columns() . " FROM notifications WHERE id = '" . $id . "'");
 
         // Acting on a notification requires being allowed to see it. The
         // branches this replaced agreed on that everywhere except comments,
@@ -724,7 +724,7 @@ switch ($action) {
         $array = array();
         $i = 0;
 
-        $notifications = db_items("SELECT id, action, comment_id FROM notifications ORDER BY timestamp DESC");
+        $notifications = db_items("SELECT " . pg_notification_ladder_columns() . " FROM notifications ORDER BY timestamp DESC");
 
         foreach ($notifications as $notification) {
 
