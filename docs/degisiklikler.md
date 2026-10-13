@@ -165,6 +165,45 @@ isteği / yanıtı" satırları. 10.72 adımı ve `ENCRYPTION_KEY` gerekir.
 
 ---
 
+## 2026.4.10 — Dış API: hediye kartları (2026-10-13)
+
+**Sorun.** Hediye kartları API'de yoktu. Ödül, iade ya da mağaza dışında
+satılan kart için kod üretmek, bir kartın kalan bakiyesine bakmak ya da
+sadakat sisteminden bakiye düzeltmek için Hediye Kartları ekranına girmek
+gerekiyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/gift_cards.php` ve yeni izin
+grubu `gift_cards` (`gift_cards:read`, `gift_cards:write`); ekranın kapısı
+`validate_ecommerce_access()` olduğu için e-ticaret açıkken rol < 3 ya da
+e-ticaret yetkisi. Kod harcanabilir para olduğu için `orders:read`'e
+katılmadı: satış raporlayan bir entegrasyon kodları görmemeli.
+
+- `GET /gift-cards` (`status` active/used/expired, `order_id`, `q` kod
+  tireli ya da tiresiz, not, gönderen, alıcı e-postası; `created_since`;
+  imleçli, yeniden eskiye) ve `GET /gift-cards/{id}` (`redemptions`:
+  `applied_gift_cards`'tan sipariş, tutar, önceki ve sonraki bakiye,
+  sipariş tarihi).
+- `POST /gift-cards`: tek kart, `generate_gift_card_code()`, bakiye =
+  tutar, isteğe bağlı `expires_on` ve `notes`; e-posta gönderilmez.
+- `POST|PATCH /gift-cards/{id}`: `balance`, `expires_on` (boş dize süreyi
+  kaldırır), `notes`; tutar ve kod değişmez.
+- `DELETE /gift-cards/{id}` ve `POST /gift-cards/{id}/delete`: ekrandaki
+  gibi satırı siler; siparişlerdeki harcama kaydı kalır.
+
+Durum ekranın mantığıyla hesaplanır: son kullanma tarihi geçmişse
+`expired` (bakiye ne olursa olsun), bakiye 0 ise `used`, değilse `active`.
+Router `money` türüne sınır uygulamadığı için tutar (> 0) ve bakiye (≥ 0)
+ile sütunun üst sınırı işleyicide denetlenir. Yazmalar `dry_run`
+destekler, günlüğe uygulama ve anahtarla yazılır. Şema değişikliği yok.
+
+**Doğrulandı (sandbox).** Liste, durum/sipariş/arama süzgeçleri, imleç;
+oluşturma (201), 0 / ondalık / çok büyük tutar 422; bakiye ve süre
+değiştirme, süreyi kaldırma, geçmiş tarih `expired`; -1 bakiye ve boş
+istek 422; `X-Dry-Run` üç yazmada; iki silme yolu, 404; harcama satırı
+tek kartta; izni olmayan uygulamaya 403 `insufficient_scope`; OpenAPI.
+
+---
+
 ## 2026.4.10 — Yayınla: yalnız düzenlenen sayfanın zamanı ve kaydı (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel testinin ikinci raporu (koordinatör üzerinden): tek
