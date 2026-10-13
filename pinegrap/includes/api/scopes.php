@@ -49,6 +49,10 @@ function api_scope_groups() {
 		// rewrites a page by itself.
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
+		// What visitors wrote under pages, records, products and events.
+		// Writing is moderation: publishing, holding, featuring, removing.
+		'comments'  => array('label' => 'Comments',   'read' => 'comments:read',  'write' => 'comments:write'),
+
 		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => 'offers:write'),
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
@@ -284,6 +288,11 @@ function api_owner_scopes($owner) {
 		// The SEO findings are about those same pages and the catalogue beside
 		// them, so they are the same decision.
 		$scopes[] = 'seo:read';
+
+		// Moderating what visitors wrote under those pages is the comments
+		// screen's work, which the same people do.
+		$scopes[] = 'comments:read';
+		$scopes[] = 'comments:write';
 
 	}
 

@@ -603,6 +603,16 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Yorumlar API'de: GET /comments ziyaretçi
+         yorumlarını sayfaya, konusuna (form kaydı, ürün,
+         etkinlik), duruma (yayında, bekleyen, zamanlanmış) ve
+         öne çıkarılmaya göre listeler. Bir yorum yayınlanır ya
+         da bekletilir, öne çıkarılır ya da kaldırılır; yayına
+         alınınca izleyenlere ve form kaydının sahibine yorumlar
+         ekranındaki e-posta gider. Yeni "Yorumlar" izni
+         yöneticiye kadar olan rollere verilir; ziyaretçinin
+         yazdığı metin API'den değiştirilmez.
+
   [YENİ] Menüler API'de: GET /menus ve GET /menus/{id}
          menüleri ve öğelerini sitenin çizdiği sırayla (alt
          öğeler, bağlantı, yeni pencere, güvenlik) verir. Menü

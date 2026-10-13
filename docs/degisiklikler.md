@@ -124,6 +124,40 @@ değiştirirse (httpErrors), hata sayfası widget'ının 404'ünde de aynısı o
 
 ---
 
+## 2026.4.10 — Dış API: yorum moderasyonu (2026-10-13)
+
+**Sorun.** Ziyaretçi yorumları yalnız yorumlar ekranından yönetiliyordu; bir
+entegrasyon ya da asistan bekleyen yorumları göremiyor, yayınlayamıyordu.
+
+**Değişiklik.** Yeni `includes/api/resources/comments.php` ve yeni izin
+grubu `comments` (`comments:read`, `comments:write`; rol ≤ 2, yorumlar
+ekranının kapısı). İzin ayrı tutuldu: SEO için `pages:read` verilmiş bir
+uygulama bekleyen yorumları ve ziyaretçi adlarını okumamalı.
+
+- `GET /comments`, `GET /comments/{id}`: en yeni önce; süzgeçler sayfa,
+  konu (`item_type`: page, submitted_form, calendar_event, product_group,
+  product; `item_id`), durum (published / pending / scheduled), öne çıkan,
+  metin, tarih. Zamanlanmış yorumda `publish_at` ve `cancel_if_newer`.
+- `POST /comments/{id}`: `published`, `featured`. İki `published` değeri de
+  zamanlamayı bitirir. Yayında olmayan bir yorum yayınlanınca yorumlar
+  ekranının gönderdiği e-postalar gider (sayfayı izleyenler; form kaydında
+  kaydı gönderen); dry-run `emails` ile söyler. Form kaydı sayfasında
+  `submitted_form_info` sayacı yorumlar ekranındaki gibi yeniden yazılır.
+- `DELETE /comments/{id}` (ve `POST …/delete`): ekli dosya başka yorum
+  paylaşmıyorsa onunla, paneldeki bildirimiyle birlikte.
+
+Ziyaretçinin adı ve metni API'den değiştirilmez (alan gönderilirse 422).
+
+**Doğrulandı (sandbox).** Liste süzgeçleri ve imleç; bekleyeni yayınlama ve
+öne çıkarma, zamanlanmışı bekletme (`publish_at` temizlendi), boş istek ve
+`message` 422; form kaydındaki yorumu bekletince sayaç 1→0, yayınlayınca
+0→1 (dry-run `emails: true`); silme ve sonra 404; günlük satırları.
+Denenmeyen: gönderilen e-postanın kendisi (sandbox'ta posta sunucusu yok;
+örnek verideki form kaydı silinmiş olduğundan eski e-posta fonksiyonu uyarı
+yazdı, yorumlar ekranında da aynısı olur).
+
+---
+
 ## 2026.4.10 — Yerel test bulguları: ülke kısıtında panel girişi, IIS'te çift başlık, MCP 401 metni, Bağlı uygulamalar, iki PHP uyarısı, çekmecede not başlığı (2026-10-13)
 
 **Neden.** dev.pinegrap.com'daki yerel test turunun ikinci raporu (OAuth/MCP,
