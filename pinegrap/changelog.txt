@@ -221,6 +221,33 @@
          düğmesine ilk basıldığında geliyor ve çekmece
          hemen açılıyor.
 
+  [YENİ] Görev asistana verilebiliyor: görev çekmecesinin
+         yeni Asistan bölümünden Pinegrap AI'a ya da
+         Claude'a, isteğe bağlı bir talimatla. Görevin
+         sorumluları değişmez; görevde kimse yoksa devreden
+         kişi göreve eklenir. Asistan görevi, notlarını,
+         kanalını (isteyen kişi okuyabiliyorsa) ve önceki
+         çalışmalarını okur; ne yaptığını, ne bulduğunu, ne
+         önerdiğini ve neye ihtiyacı olduğunu görevin
+         üzerine yazar. Kendisi hiçbir şeyi değiştirmez.
+         Aynı asistana yeni talimat yazılabilir, çalışma
+         durdurulabilir, görev geri alınabilir. Görev
+         listesinde asistandaki görevler işaretli.
+
+  [YENİ] Görev notunda @ai ya da @Claude yazmak, görevi
+         devretmeden asistana o görev hakkında sorar.
+         Cevap görevin Asistan bölümünde görünür.
+
+  [YENİ] Asistan cevap verdiğinde ya da isteneni
+         yapamadığında isteyen kişinin gelen kutusuna ve
+         bildirimlerine düşer. Dış uygulamalar için iki
+         yeni webhook olayı: workspace.task.delegated ve
+         workspace.task.assistant_answered.
+
+  [ŞEMA] Görevler tablosuna asistan için üç kolon,
+         asistan istekleri ve önerilen değişiklikler
+         tablolarına görev kolonu eklenir.
+
   DIŞ API
   --------------------------------------------------------
 
