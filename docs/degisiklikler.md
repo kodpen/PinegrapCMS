@@ -84,6 +84,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — E-posta kampanya listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar, #338 Kullanıcılar,
+#340 e-ticaret ayar listeleri). Aynı yapıdaki üç e-posta kampanyası
+listesi tek PR'da taşındı: Kampanyalarım (`view_email_campaigns.php`),
+Kampanya Geçmişim (`view_email_campaign_history.php`) ve Kampanya
+Profillerim (`view_email_campaign_profiles.php`). Üçü de istekteki her
+değeri `$_SESSION['software'][<liste>]` altına kopyalayan bir döngüyle
+sıralamayı çevrilmiş başlık adıyla tutup kendi `switch`'iyle tek sütunluk
+ORDER BY kuruyordu.
+
+Yön (`order`) ORDER BY'a yalnız `escape()` ile yazılıyordu; tırnak
+içermeyen bir değer sorguya olduğu gibi giriyordu. Sandbox'ta eski kodla
+`?order=asc, (SELECT SLEEP(0.5))` üç listede de satır başına yarım saniye
+bekletti (4 satırda 2 s, 6 satırda 3 s) ve değer oturumda kaldığı için
+sonraki açılışlarda da koştu. E-posta yetkisi olan, oturum açmış her
+kullanıcı (rolü Kullanıcı olanlar dahil) sorguya kendi SQL'ini
+ekleyebiliyordu. 2026.4.9'da da var.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Kampanyalarım ve Kampanya Geçmişim `profile`, `subject`, `page_to_send`,
+`scheduled_time` (yalnız kampanya işi açıkken, sütun da yalnız o zaman
+görünüyor), `status`, `purpose`, `created`, `last_modified`; Kampanya
+Profillerim `name`, `enabled`, `action`, `subject`, `page_to_send`,
+`purpose`, `created`, `last_modified`. Varsayılanlar eskisi gibi:
+kampanya işi açıkken iki kampanya listesi zamanlanmış saate göre artan,
+kapalıyken son değişiklik azalan; profiller son değişiklik azalan. Sıra
+`pg_list_state('<liste>', …)` ile okunur, ORDER BY `pg_list_order_by()`
+ile yalnız ekranın kod → SQL eşlemesinden yazılır (sütunlar eskisiyle
+aynı). Başlıklar `get_column_heading()`'e düzey listesi verir; Shift+tık
+ve düzey numarası ürünlerdeki gibi çalışır. Araç çubuğunun sağına
+`pg_list_sort_menu()` eklendi (`pg-toolbar-grow` boşluğuyla). İstekteki
+her değeri oturuma kopyalayan döngü yalnız sıralama için vardı (başka
+okuyanı yok), üç dosyadan da kaldırıldı. Profillerin CSV dışa aktarımı
+listeyle aynı sırayı kullanmaya devam ediyor. Ortak yardımcıya,
+`backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan metinler zaten
+vardı.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor; kampanya işi
+kapalıyken oturumda kalmış "Zamanlanmış Saat" sırası artık görünmeyen
+sütuna göre dizmiyor, varsayılana düşüyor. Eski `sort=<başlık>&order=desc`
+bağlantıları `pg_list_sort_parse()` ile tek düzey olarak okunur. Sütunlar,
+Oluştur, Kampanya Geçmişim / Kampanyalarım geçişi, İçe/Dışa Aktar,
+tarayıcıdaki arama ve sayfa başına kayıt seçimi, Seçilenleri Sil ve
+düzenleme düğmeleri değişmedi; bu listelerde durum filtresi yok (durumlar
+sorguda sabit). Satır içi hızlı güncelleme bu PR'ın kapsamında değil.
+Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 4 hazır/duraklatılmış, 4
+tamamlanmış/iptal kampanya, 6 profil).** Kampanya işi kapalı ve açıkken
+üç listede her sütun iki yönde ve birer iki düzeyli sıra, aynı ORDER BY'lı
+SQL'in satır sırasını verdi; varsayılanlar yukarıdaki gibi; sayfa
+yenilenince sıra korundu; bozuk değer (`id;drop table x:desc`)
+varsayılana düştü; Türkçe başlıklı eski bağlantı (`sort=Konu&order=desc`)
+sıraladı; iş kapalıyken `scheduled_time` reddedildi ve menüde çıkmadı;
+profil CSV'si iki düzeyli sırayla geldi (222 denetim, hepsi geçti). Yeni
+kodla `order`/`sort` içine konan `SLEEP` hiç koşmadı. Tarayıcıda başlığa
+tık tek sütuna, Shift+tık aynı sekmede ikinci düzeye çevirdi; menü iki
+düzeyi gösterdi; 390 piksel genişlikte yatay kaydırma yok. Sunucu
+günlüğünde bu üç dosyadan uyarı yok. Doğrulanamadı: dev.pinegrap.com'daki
+gerçek kampanyalar ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — E-ticaret ayar listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-13)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

@@ -23,16 +23,6 @@ validate_email_access($user);
 
 $liveform = new liveform('view_email_campaigns');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['view_email_campaigns'][$key] = trim($value);
-    }
-}
-
 if (email_campaign_job_enabled()) {
     $output_subheading_ready_status = lang('scheduled');
 } else {
@@ -40,69 +30,52 @@ if (email_campaign_job_enabled()) {
 }
 
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['view_email_campaigns']['sort']) == false) {
-    $_SESSION['software']['view_email_campaigns']['sort'] = '';
-}
-
-switch (($_SESSION['software']['view_email_campaigns']['sort'] ?? '')) {
-    case lang('Profile'):
-        $sort_column = 'email_campaign_profiles.name';
-        break;
-
-    case lang('Subject'):
-        $sort_column = 'email_campaigns.subject';
-        break;
-
-    case lang('Page to Send'):
-        $sort_column = 'page.page_name';
-        break;
-
-    case lang('Scheduled Time'):
-        $sort_column = 'email_campaigns.start_time';
-        break;
-
-    case lang('Status'):
-        $sort_column = 'email_campaigns.status';
-        break;
-
-    case lang('Purpose'):
-        $sort_column = 'email_campaigns.purpose';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'email_campaigns.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'email_campaigns.last_modified_timestamp';
-        break;
-
-    default:
-        // If the email campaign job is enabled, then set the default sort column to Scheduled Time
-        if (email_campaign_job_enabled()) {
-            $sort_column = 'email_campaigns.start_time';
-            $_SESSION['software']['view_email_campaigns']['sort'] = lang('Scheduled Time');
-            $_SESSION['software']['view_email_campaigns']['order'] = 'asc';
-
-        // Otherwise set the default sort column to Last Modified
-        } else {
-            $sort_column = 'email_campaigns.last_modified_timestamp';
-            $_SESSION['software']['view_email_campaigns']['sort'] = lang('Last Modified');
-            $_SESSION['software']['view_email_campaigns']['order'] = 'desc';
-        }
-
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['view_email_campaigns']['order']) == false) {
-    $_SESSION['software']['view_email_campaigns']['order'] = 'asc';
-}
+// The columns this list sorts by, in the order the table shows them. The
+// Scheduled Time column is shown only while the e-mail campaign job is on,
+// so only then is it offered; pg_list_state() falls back to the default for
+// anything else and keeps the choice in the session as a code, so it
+// survives a language change.
+$sort_columns = array(
+    'profile'      => lang('Profile'),
+    'subject'      => lang('Subject'),
+    'page_to_send' => lang('Page to Send'),
+);
 
 if (email_campaign_job_enabled()) {
-    $output_start_time_heading = '<th>' . get_column_heading(lang('Scheduled Time'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>';
+    $sort_columns['scheduled_time'] = lang('Scheduled Time');
+}
+
+$sort_columns['status'] = lang('Status');
+$sort_columns['purpose'] = lang('Purpose');
+$sort_columns['created'] = lang('Created');
+$sort_columns['last_modified'] = lang('Last Modified');
+
+// With the job on, campaigns are listed by scheduled time, earliest first;
+// otherwise by the last change, newest first.
+if (email_campaign_job_enabled()) {
+    $sort_default = array('sort' => 'scheduled_time', 'order' => 'asc');
+} else {
+    $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+}
+
+$list_state = pg_list_state('view_email_campaigns', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'profile'        => 'email_campaign_profiles.name',
+    'subject'        => 'email_campaigns.subject',
+    'page_to_send'   => 'page.page_name',
+    'scheduled_time' => 'email_campaigns.start_time',
+    'status'         => 'email_campaigns.status',
+    'purpose'        => 'email_campaigns.purpose',
+    'created'        => 'email_campaigns.created_timestamp',
+    'last_modified'  => 'email_campaigns.last_modified_timestamp',
+));
+
+if (email_campaign_job_enabled()) {
+    $output_start_time_heading = '<th>' . get_column_heading(lang('Scheduled Time'), $sort_levels, '', '', 'scheduled_time') . '</th>';
 } else {
     $output_start_time_heading = '';
 }
@@ -134,7 +107,7 @@ $query =
      WHERE
         (email_campaigns.status = 'ready')
         OR (email_campaigns.status = 'paused')
-     ORDER BY $sort_column " . escape(($_SESSION['software']['view_email_campaigns']['order'] ?? ''));
+     ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $email_campaigns = array();
@@ -276,6 +249,8 @@ pg_page_shell(
                                 <a class="btn btn-link link-secondary py-0 m-1" href="view_email_campaign_history.php"><span class="material-icons me-1">history</span>' . lang(array('string'=>'My Campaign History') ) . '</a>
                             </div>
                         </div>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_email_campaigns.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -294,15 +269,15 @@ pg_page_shell(
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                     <th>' . lang('To') . '</th>
-                                    <th>' . get_column_heading(lang('Profile'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Subject'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Page to Send'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Profile'), $sort_levels, '', '', 'profile') . '</th>
+                                    <th>' . get_column_heading(lang('Subject'), $sort_levels, '', '', 'subject') . '</th>
+                                    <th>' . get_column_heading(lang('Page to Send'), $sort_levels, '', '', 'page_to_send') . '</th>
                                     ' . $output_start_time_heading . '
-                                    <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
                                     <th>' . lang('Progress (Subscribers)') . '</th>
-                                    <th>' . get_column_heading(lang('Purpose'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Purpose'), $sort_levels, '', '', 'purpose') . '</th>
+                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
