@@ -84,6 +84,42 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Yayınla: yalnız düzenlenen sayfanın zamanı ve kaydı (2026-10-13)
+
+**Kaynak.** Erdal'ın yerel testinin ikinci raporu (koordinatör üzerinden): tek
+Yayınla tasarımdaki bütün sayfaları "düzenlendi" diye kaydediyor. Ortak
+başlıktaki tek değişiklik log tablosuna 1 stil ve 31 sayfa satırı yazdı, 35
+sayfanın değişiklik zamanı aynı ana çekildi. Welcome'daki Aktivite kartının
+İçerik filtresi değişmemiş sayfalarla doluyor, sitemap lastmod her sayfada
+değişiyor.
+
+**Neden.** Editör, gösterdiği ortak bileşen değişen sayfayı da gönderiyor
+(`_pgPageUnchanged()`): sunucu o sayfayı yeniden puanlıyor ve çeviri işine
+alıyor, bu doğru. Ama `pg_designer_save_page()` gönderilen her sayfada
+`page_timestamp` ve `page_user`'ı güncelliyor ve "sayfa düzenlendi" yazıyordu.
+
+**Düzeltme.** Sunucu, güncellenen sayfanın kendi kolonlarını (ad, tasarım,
+klasör, başlık, açıklama, arama, site haritası, noindex/nofollow, ana sayfa,
+yorum ayarları ve `page_tree_json`) kayıtlı satırla karşılaştırıyor. Hepsi
+aynıysa sayfa yalnız ortak bileşen yüzünden gelmiştir: satır yine yazılıyor ama
+değişiklik zamanına ve yazarına dokunulmuyor, log satırı yazılmıyor. Karar
+istekteki bir bayraktan değil, kayıtlı satırdan çıkıyor; elle hazırlanmış bir
+istek gerçek bir düzenlemeyi kayıttan saklayamaz. Ortak bileşen sayfa ağacında
+yalnız kimliğiyle durduğu için başlık değişikliği sayfa ağacını değiştirmiyor.
+Yeniden puanlama (`$written`) ve çeviri işi aynen sürüyor. Stil satırı ("stil
+düzenlendi") yerinde duruyor: ortak bileşen tasarımın parçası. Editör
+değişmedi.
+
+**Doğrulama (sandbox, Playwright).** Hakkımızda sekmesinde ortak başlıktaki
+marka linkinin metni değişip Yayınla'ya basıldı. Öncesi: 29 sayfanın zamanı
+değişti, 29 "sayfa düzenlendi" satırı yazıldı. Sonrası: hiçbir sayfanın zamanı
+değişmedi, yalnız "stil düzenlendi" satırı yazıldı, yeni metin sayfada
+görünüyor. Aynı sekmede h1 değişince yalnız `hakkimizda`'nın zamanı ve satırı
+yazıldı. Sandbox metinleri eski hâline getirildi. dev.pinegrap.com'da
+denenmedi.
+
+---
+
 ## 2026.4.10 — Referrer-Policy sunucu kuralından çıktı; görev çekmecesinde hazır olmayan asistan seçilemiyor (2026-10-13)
 
 ### 1. `no-referrer` sayfaları IIS'te de referrer göndermiyor
