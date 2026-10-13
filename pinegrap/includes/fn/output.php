@@ -3650,6 +3650,7 @@ function output_menu($properties = false)
         case 'workspace_board.php':
         case 'workspace_calendar.php':
         case 'workspace_timeline.php':
+        case 'workspace_mcp.php':
         case 'workspace_settings.php':
             $active_menu = 23;
             break;
