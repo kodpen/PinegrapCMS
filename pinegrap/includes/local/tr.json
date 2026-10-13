@@ -21689,5 +21689,17 @@
     "the MCP server @{var:1} was turned off": "@{var:1} MCP sunucusu kapatıldı",
     "the tools of the MCP server @{var:1} were changed": "@{var:1} MCP sunucusunun araçları değiştirildi",
     "{var:1} of {var:2} tools on": "{var:2} araçtan {var:1} açık",
-    "{var:1} tools of @{var:2} can be used.": "@{var:2} sunucusunun {var:1} aracı kullanılabilir."
+    "{var:1} tools of @{var:2} can be used.": "@{var:2} sunucusunun {var:1} aracı kullanılabilir.",
+    "This website cannot get real-time rates from UPS, because no UPS client ID and client secret are set in the site settings.": "Site ayarlarında UPS istemci kimliği ve istemci gizli anahtarı girilmediği için bu site UPS'ten anlık fiyat alamıyor.",
+    "UPS rate request: {var:1}": "UPS fiyat isteği: {var:1}",
+    "UPS rate response: {var:1}": "UPS fiyat yanıtı: {var:1}",
+    "An error occurred while trying to get real-time rates from UPS: {var:1}": "UPS'ten anlık fiyat alınırken hata oluştu: {var:1}",
+    "No {var:1} client ID and client secret are set.": "{var:1} istemci kimliği ve istemci gizli anahtarı girilmemiş.",
+    "This site has no encryption key, so it cannot keep the client secret of a carrier.": "Bu sitenin şifreleme anahtarı olmadığı için kargo firmasının istemci gizli anahtarı saklanamaz.",
+    "{var:1} retired the sign-in with the old credentials. Real-time {var:1} rates stay off until a client ID and client secret are entered here. The old values are kept but no longer used.": "{var:1}, eski kimlik bilgileriyle girişi kullanımdan kaldırdı. Buraya istemci kimliği ve istemci gizli anahtarı girilene kadar {var:1} anlık fiyatları kapalı kalır. Eski değerler saklanır ama artık kullanılmaz.",
+    "Create an application at {var:1}, add the {var:2} API to it, and enter its client ID and client secret here.": "{var:1} adresinde bir uygulama oluşturun, ona {var:2} API'sini ekleyin ve istemci kimliğiyle istemci gizli anahtarını buraya girin.",
+    "The {var:1} client ID and client secret were not saved: {var:2}": "{var:1} istemci kimliği ve istemci gizli anahtarı kaydedilmedi: {var:2}",
+    "{var:1} accepted the client ID and client secret.": "{var:1} istemci kimliğini ve istemci gizli anahtarını kabul etti.",
+    "{var:1} refused the connection: {var:2}": "{var:1} bağlantıyı reddetti: {var:2}",
+    "For negotiated rates. Leave empty for published rates.": "Anlaşmalı fiyatlar için. Liste fiyatları için boş bırakın."
 }

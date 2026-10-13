@@ -75,5 +75,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/errors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connect.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/innodb.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/db_maintenance.php');
