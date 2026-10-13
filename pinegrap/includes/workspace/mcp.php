@@ -20,6 +20,15 @@
  * The credential is kept encrypted with the site's key and is never shown
  * again; the screen offers an empty field that keeps it when left empty.
  *
+ * A server that signs in with OAuth (auth_kind 'oauth') has no credential
+ * here: the site is a client of the service's authorization server, found by
+ * discovery when the server is saved (pg_mcp_client_discover_auth()), and an
+ * administrator connects the site's account with the card's Connect button.
+ * The tokens are a connected account (includes/fn/connect.php) under the
+ * provider key mcp_<server id>, which ws_mcp_connect_provider() builds from
+ * what discovery found; every request carries the account's access token,
+ * renewed there.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -42,6 +51,19 @@ define('WS_MCP_MAX_SERVERS', 20);
  * seconds.
  */
 define('WS_MCP_SCREEN_TIMEOUT', 20);
+
+/**
+ * How long an access token is taken to last when the service's answer does
+ * not say (a GitHub token does not end), in seconds. The server's 401 says
+ * when it stopped working.
+ */
+define('WS_MCP_TOKEN_TTL', 157680000);
+
+// The sign-in of a server that uses OAuth is a connected account whose
+// provider is built from the server (includes/fn/connect.php).
+if (function_exists('pg_connect_provider_builders')) {
+    pg_connect_provider_builders('mcp_', 'ws_mcp_connect_provider');
+}
 
 /**
  * Has the schema step that brought MCP servers in (2026.4.10, 10.82) run?
@@ -74,6 +96,7 @@ function ws_mcp_auth_kinds()
         'bearer' => lang('Access token (Bearer)'),
         'header' => lang('A header of the service\'s own'),
         'basic'  => lang('User name and password'),
+        'oauth'  => lang('Sign in to the service (OAuth)'),
     );
 }
 
@@ -377,11 +400,332 @@ function ws_mcp_connection($server, $timeout = WS_MCP_SCREEN_TIMEOUT)
 {
     return pg_mcp_client_connection(
         (string) $server['url'],
-        ws_mcp_auth_headers((string) $server['auth_kind'], ws_mcp_secret_decode($server['secret'] ?? '')),
+        ((string) $server['auth_kind'] === 'oauth')
+            ? ws_mcp_oauth_headers($server)
+            : ws_mcp_auth_headers((string) $server['auth_kind'], ws_mcp_secret_decode($server['secret'] ?? '')),
         (string) $server['protocol'],
         (string) $server['session_id'],
         $timeout
     );
+}
+
+/* ---------------------------------------------------------------------------
+   Signing in with OAuth
+   --------------------------------------------------------------------------- */
+
+/**
+ * The connected-accounts key of a server's sign-in (includes/fn/connect.php).
+ *
+ * @param array $server
+ * @return string mcp_<server id>
+ */
+function ws_mcp_connect_key($server)
+{
+    return 'mcp_' . (int) $server['id'];
+}
+
+/**
+ * The provider of a server that signs in with OAuth, for
+ * includes/fn/connect.php: built from the server's row and from what its
+ * discovery found, kept with its application (connect_apps.options).
+ *
+ * @param string $key mcp_<server id>
+ * @return array|null
+ */
+function ws_mcp_connect_provider($key)
+{
+    if (!preg_match('/^mcp_([1-9][0-9]{0,9})$/', (string) $key, $match)) {
+        return null;
+    }
+
+    $server = ws_mcp_server((int) $match[1]);
+
+    if (!$server || ($server['auth_kind'] !== 'oauth')) {
+        return null;
+    }
+
+    $app = pg_connect_app($key);
+
+    return ws_mcp_connect_definition($server, is_array($app) ? $app['options'] : array());
+}
+
+/**
+ * A provider definition from a server and what its discovery found.
+ *
+ * The service names no account, may hand out no refresh token and may give
+ * tokens that do not end; every authorization and token request names the
+ * server as the resource the token is for (RFC 8707), so a token for this
+ * server is not good for another.
+ *
+ * @param array $server
+ * @param array $options connect_apps.options: authorize_url, token_url,
+ *                       revoke_url, issuer, iss_param, resource, scopes,
+ *                       client_auth
+ * @return array|null null when discovery has not found the endpoints
+ */
+function ws_mcp_connect_definition($server, $options)
+{
+    if (empty($options['authorize_url']) || empty($options['token_url'])) {
+        return null;
+    }
+
+    $resource = (string) ($options['resource'] ?? '');
+    $params = ($resource !== '') ? array('resource' => $resource) : array();
+    $issuer = (string) ($options['issuer'] ?? '');
+
+    return array(
+        'label'              => '@' . $server['alias'],
+        'account_label'      => '@' . $server['alias'],
+        'authorize_url'      => (string) $options['authorize_url'],
+        'token_url'          => (string) $options['token_url'],
+        'revoke_url'         => (string) ($options['revoke_url'] ?? ''),
+        'issuers'            => ($issuer !== '') ? array($issuer) : array(),
+        'iss_required'       => !empty($options['iss_param']),
+        'identity'           => false,
+        'identity_scopes'    => pg_connect_scope_list(isset($options['scopes']) && is_array($options['scopes']) ? $options['scopes'] : array()),
+        'refresh_optional'   => true,
+        'default_ttl'        => WS_MCP_TOKEN_TTL,
+        'nonce'              => false,
+        'authorize_params'   => $params,
+        'token_params'       => $params,
+        'client_auth'        => (($options['client_auth'] ?? '') === 'basic') ? 'basic' : 'post',
+        'revoke_client_auth' => true,
+    );
+}
+
+/**
+ * How the site becomes a client of a server's authorization server: the
+ * administrator's own application when a client ID was entered, else the
+ * site's client ID metadata document when the server reads those (and the
+ * site is on https, so the server can fetch it), else a dynamic registration.
+ *
+ * @param array  $found     pg_mcp_client_discover_auth()
+ * @param string $client_id entered by the administrator, '' for none
+ * @param bool   $https     the site's own address is https
+ * @return string manual | cimd | dcr | '' when there is no way
+ */
+function ws_mcp_oauth_registration($found, $client_id, $https)
+{
+    if (trim((string) $client_id) !== '') {
+        return 'manual';
+    }
+
+    if (!empty($found['cimd']) && $https) {
+        return 'cimd';
+    }
+
+    return ((string) ($found['registration_url'] ?? '') !== '') ? 'dcr' : '';
+}
+
+/**
+ * Finds out how to sign in to a server and makes the site a client there
+ * (ws_mcp_oauth_registration()). What was found is kept with the application
+ * (connect_apps, provider mcp_<id>). A different client than before ends the
+ * connections made with the old one.
+ *
+ * @param array       $server
+ * @param string      $client_id     entered by the administrator, '' for none
+ * @param string|null $client_secret entered, null keeps the stored one
+ * @param int         $user_id
+ * @return array ok, error
+ */
+function ws_mcp_oauth_setup($server, $client_id, $client_secret, $user_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error);
+    };
+
+    if (!pg_connect_schema_ready()) {
+        return $fail(lang('The database has not been upgraded yet.'));
+    }
+
+    if (!pg_connect_can_seal()) {
+        return $fail(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
+    }
+
+    $found = pg_mcp_client_discover_auth((string) $server['url'], null, WS_MCP_SCREEN_TIMEOUT);
+
+    if (!$found['ok']) {
+        return $fail($found['error']);
+    }
+
+    $key = ws_mcp_connect_key($server);
+    $app = pg_connect_app($key);
+    $client_id = trim((string) $client_id);
+    $mode = ws_mcp_oauth_registration($found, $client_id, (URL_SCHEME === 'https://'));
+    $secret = '';
+    $auth = in_array('client_secret_post', $found['auth_methods'], true) ? 'post' : 'basic';
+
+    switch ($mode) {
+        case 'manual':
+            $kept = is_array($app) && ($app['client_id'] === $client_id) && (($app['options']['registered'] ?? '') === 'manual');
+            $secret = (($client_secret !== null) && ((string) $client_secret !== '')) ? (string) $client_secret : ($kept ? $app['client_secret'] : '');
+            break;
+
+        case 'cimd':
+            $client_id = pg_connect_client_metadata_url();
+            break;
+
+        case 'dcr':
+            // A registration this server already made is kept: registering
+            // again on every save would leave clients behind there.
+            if (is_array($app) && (($app['options']['registered'] ?? '') === 'dcr') && (($app['options']['token_url'] ?? '') === $found['token_url'])) {
+                $client_id = $app['client_id'];
+                $secret = $app['client_secret'];
+                $auth = (($app['options']['client_auth'] ?? '') === 'basic') ? 'basic' : 'post';
+                break;
+            }
+
+            $registered = pg_mcp_client_register(
+                $found['registration_url'],
+                pg_mcp_client_client_metadata(pg_connect_redirect_uri(), URL_SCHEME . HOSTNAME_SETTING . PATH),
+                $found['scopes']
+            );
+
+            if (!$registered['ok']) {
+                return $fail($registered['error']);
+            }
+
+            $client_id = $registered['client_id'];
+            $secret = $registered['client_secret'];
+            $auth = ($registered['auth_method'] === 'client_secret_post') ? 'post' : 'basic';
+            break;
+
+        default:
+            return $fail(lang(array(
+                'string' => 'The service does not register the site on its own. Register an application in its developer settings with the redirect address {var:1}, then enter its client ID here.',
+                'vars'   => pg_connect_redirect_uri())));
+    }
+
+    if (strlen($client_id) > 255) {
+        return $fail(lang('The client ID is too long.'));
+    }
+
+    // A new client cannot renew what the old one was given.
+    if (is_array($app) && ($app['client_id'] !== $client_id)) {
+        ws_mcp_oauth_forget($server);
+    }
+
+    $saved = pg_connect_app_save($key, $client_id, ($secret !== '') ? $secret : null, array(
+        'public'        => ($secret === ''),
+        'registered'    => $mode,
+        'authorize_url' => $found['authorize_url'],
+        'token_url'     => $found['token_url'],
+        'revoke_url'    => $found['revoke_url'],
+        'issuer'        => $found['issuer'],
+        'iss_param'     => $found['iss_param'],
+        'resource'      => $found['resource'],
+        'scopes'        => $found['scopes'],
+        'client_auth'   => $auth,
+    ), true, (int) $user_id);
+
+    return $saved ? array('ok' => true, 'error' => '') : $fail(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
+}
+
+/**
+ * Ends a server's sign-in: its connections (the service is told where it can
+ * be) and its application. Called while the row still says oauth, so the
+ * provider can still be built for the revocation.
+ *
+ * @param array $server
+ */
+function ws_mcp_oauth_forget($server)
+{
+    if (!pg_connect_schema_ready()) {
+        return;
+    }
+
+    $key = ws_mcp_connect_key($server);
+
+    foreach (pg_connect_accounts(array('provider' => $key)) as $account) {
+        pg_connect_disconnect($account['id']);
+    }
+
+    db("DELETE FROM connect_apps WHERE provider = '" . e($key) . "'");
+}
+
+/**
+ * The site's connection to a server that signs in with OAuth.
+ *
+ * @param array $server
+ * @return array|null pg_connect_account_public(), null when there is none
+ */
+function ws_mcp_site_account($server)
+{
+    if ((($server['auth_kind'] ?? '') !== 'oauth') || !pg_connect_schema_ready()) {
+        return null;
+    }
+
+    $accounts = pg_connect_accounts(array('provider' => ws_mcp_connect_key($server), 'user_id' => 0));
+
+    return $accounts ? $accounts[0] : null;
+}
+
+/**
+ * The Authorization header of a server that signs in with OAuth: the site
+ * connection's access token.
+ *
+ * @param array $server
+ * @param bool  $force  renew the token even when it looks valid
+ * @return string[] empty when the site is not connected or no token could be
+ *                  had
+ */
+function ws_mcp_oauth_headers($server, $force = false)
+{
+    $account = ws_mcp_site_account($server);
+
+    if (!$account || ($account['status'] !== 'active')) {
+        return array();
+    }
+
+    $token = pg_connect_access_token($account['id'], array(), $force);
+
+    return $token['ok'] ? array('Authorization: Bearer ' . $token['token']) : array();
+}
+
+/**
+ * After a 401 from a server that signs in with OAuth: the token is renewed
+ * once and the connection carries the new one. A service that gave no refresh
+ * token marks the connection to be connected again (pg_connect_refresh()).
+ *
+ * @param array $conn   the connection, changed in place
+ * @param array $server
+ * @param int   $status the HTTP status the request ended with
+ * @return bool whether to send the request again
+ */
+function ws_mcp_reauthorize(&$conn, $server, $status)
+{
+    if (((int) $status !== 401) || ((string) $server['auth_kind'] !== 'oauth')) {
+        return false;
+    }
+
+    $headers = ws_mcp_oauth_headers($server, true);
+
+    if (!$headers) {
+        return false;
+    }
+
+    $conn['headers'] = $headers;
+
+    return true;
+}
+
+/**
+ * What a failed request says: for a server that signs in with OAuth and
+ * refused the token, that the site has to connect again.
+ *
+ * @param array  $server
+ * @param int    $status
+ * @param string $error
+ * @return string
+ */
+function ws_mcp_error_text($server, $status, $error)
+{
+    if (((string) ($server['auth_kind'] ?? '') === 'oauth') && ((int) $status === 401)) {
+        return lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.', 'vars' => $server['alias']));
+    }
+
+    return (string) $error;
 }
 
 /**
@@ -423,24 +767,38 @@ function ws_mcp_refresh_tools($server)
         return array('ok' => false, 'error' => lang('This server cannot make outgoing HTTPS requests (cURL is missing).'), 'count' => 0);
     }
 
+    if (((string) $server['auth_kind'] === 'oauth') && !ws_mcp_oauth_headers($server)) {
+        return array('ok' => false, 'error' => lang(array('string' => 'Connect @{var:1} first: the site signs in to the service before its tools can be read.', 'vars' => $server['alias'])), 'count' => 0);
+    }
+
     $conn = ws_mcp_connection($server);
     $conn['protocol'] = '';
     $conn['session'] = '';
 
     $open = pg_mcp_client_negotiate($conn);
 
-    if (!$open['ok']) {
-        ws_mcp_remember($server, $conn, $open['error']);
+    if (!$open['ok'] && ws_mcp_reauthorize($conn, $server, $open['status'])) {
+        $open = pg_mcp_client_negotiate($conn);
+    }
 
-        return array('ok' => false, 'error' => $open['error'], 'count' => 0);
+    if (!$open['ok']) {
+        $error = ws_mcp_error_text($server, $open['status'], $open['error']);
+        ws_mcp_remember($server, $conn, $error);
+
+        return array('ok' => false, 'error' => $error, 'count' => 0);
     }
 
     $list = pg_mcp_client_list_tools($conn);
 
-    if (!$list['ok']) {
-        ws_mcp_remember($server, $conn, $list['error']);
+    if (!$list['ok'] && ws_mcp_reauthorize($conn, $server, $list['status'])) {
+        $list = pg_mcp_client_list_tools($conn);
+    }
 
-        return array('ok' => false, 'error' => $list['error'], 'count' => 0);
+    if (!$list['ok']) {
+        $error = ws_mcp_error_text($server, $list['status'], $list['error']);
+        ws_mcp_remember($server, $conn, $error);
+
+        return array('ok' => false, 'error' => $error, 'count' => 0);
     }
 
     $tools = array();
@@ -496,10 +854,12 @@ function ws_mcp_host($url)
 
 /**
  * A form on the settings screen: a server added, changed, asked for its tools
- * again, turned off or on, removed, or its tools turned on and off.
+ * again, turned off or on, removed, its tools turned on and off, or the
+ * site's sign-in to it connected or ended.
  *
  * @param array    $viewer
- * @param string   $action mcp_save | mcp_refresh | mcp_toggle | mcp_delete | mcp_tools
+ * @param string   $action mcp_save | mcp_refresh | mcp_toggle | mcp_delete |
+ *                         mcp_tools | mcp_connect | mcp_disconnect
  * @param liveform $liveform
  * @return string the anchor to go back to
  */
@@ -571,6 +931,7 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
                 break;
             }
 
+            ws_mcp_oauth_forget($server);
             db("DELETE FROM ws_mcp_servers WHERE id = '" . (int) $server['id'] . "'");
             ws_mcp_servers(true);
 
@@ -609,6 +970,29 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
 
             log_activity(lang(array('string' => 'the tools of the MCP server @{var:1} were changed', 'vars' => $server['alias'])), $username);
             $liveform->add_notice(lang(array('string' => '{var:1} tools of @{var:2} can be used.', 'vars' => array(count($rules), $server['alias']))));
+
+            return $anchor;
+
+        case 'mcp_connect':
+            if (!$server || ($server['auth_kind'] !== 'oauth')) {
+                break;
+            }
+
+            ws_mcp_settings_connect($viewer, $server, $liveform);
+
+            return $anchor;
+
+        case 'mcp_disconnect':
+            $account = $server ? ws_mcp_site_account($server) : null;
+
+            if (!$account) {
+                break;
+            }
+
+            pg_connect_disconnect($account['id']);
+
+            log_activity(lang(array('string' => 'the site\'s connection to the MCP server @{var:1} was ended', 'vars' => $server['alias'])), $username);
+            $liveform->add_notice(lang(array('string' => '@{var:1} is disconnected. Nothing is sent to it until it is connected again.', 'vars' => $server['alias'])));
 
             return $anchor;
     }
@@ -653,6 +1037,8 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
     // left empty and the kind did not change.
     $kept = ($server && ($server['auth_kind'] === $kind)) ? ws_mcp_secret_decode($server['secret'] ?? '') : array();
     $secret = array();
+    $oauth_client_id = '';
+    $oauth_client_secret = '';
 
     if ($problem === '') {
         switch ($kind) {
@@ -685,6 +1071,21 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
                     $problem = lang('Enter the user name (without a colon).');
                 }
                 break;
+
+            // Nothing is kept on the row: the application goes to connect_apps
+            // once the server is saved (ws_mcp_oauth_setup()).
+            case 'oauth':
+                $oauth_client_id = trim((string) ($_POST['mcp_client_id'] ?? ''));
+                $oauth_client_secret = trim((string) ($_POST['mcp_client_secret'] ?? ''));
+
+                if (preg_match('/[\r\n]/', $oauth_client_id . $oauth_client_secret)) {
+                    $problem = lang('A credential cannot hold a line break.');
+                } elseif ((strlen($oauth_client_id) > 255) || (strlen($oauth_client_secret) > 1000)) {
+                    $problem = lang('The client ID is too long.');
+                } elseif (!function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+                    $problem = lang('The database has not been upgraded yet.');
+                }
+                break;
         }
     }
 
@@ -700,6 +1101,12 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
     $now = time();
     $stored = ws_mcp_secret_encode($secret);
     $changed = !$server || ($server['url'] !== $url) || ($server['auth_kind'] !== $kind) || ($stored !== '' && ws_mcp_secret_decode($server['secret'] ?? '') !== $secret);
+
+    // A sign-in made for another address, or no longer wanted, ends first,
+    // while the row still says how to tell the service.
+    if ($server && ($server['auth_kind'] === 'oauth') && (($kind !== 'oauth') || ($server['url'] !== $url))) {
+        ws_mcp_oauth_forget($server);
+    }
 
     if (!$server) {
         db("INSERT INTO ws_mcp_servers (alias, name, url, auth_kind, secret, status, tool_rules, created_by, created_at, updated_at)
@@ -734,6 +1141,25 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
         return '#ws-mcp';
     }
 
+    if ($kind === 'oauth') {
+        $app = pg_connect_app(ws_mcp_connect_key($saved));
+        $manual = (is_array($app) && (($app['options']['registered'] ?? '') === 'manual')) ? $app['client_id'] : '';
+
+        if ($changed || !pg_connect_app_ready($app) || ($oauth_client_id !== $manual) || ($oauth_client_secret !== '')) {
+            $setup = ws_mcp_oauth_setup($saved, $oauth_client_id, ($oauth_client_secret !== '') ? $oauth_client_secret : null, (int) $viewer['id']);
+
+            if (!$setup['ok']) {
+                $liveform->add_error(lang(array('string' => '@{var:1} was saved, but the sign-in to it could not be set up: {var:2}', 'vars' => array($alias, $setup['error']))));
+                return '#ws-mcp-' . $id;
+            }
+        }
+
+        if (!ws_mcp_oauth_headers($saved)) {
+            $liveform->add_notice(lang(array('string' => '@{var:1} was saved. Connect the site to it with the Connect button; its tools are read once it is connected.', 'vars' => $alias)));
+            return '#ws-mcp-' . $id;
+        }
+    }
+
     if (!$changed) {
         $liveform->add_notice(lang(array('string' => '@{var:1} was saved.', 'vars' => $alias)));
         return '#ws-mcp-' . $id;
@@ -748,6 +1174,83 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
     }
 
     return '#ws-mcp-' . $id;
+}
+
+/**
+ * Sends the administrator to the service to connect the site's account: the
+ * sign-in is set up again first when it is not ready (the service could not
+ * be reached when the server was saved). Leaves the page when it can; a
+ * problem is left on the form.
+ *
+ * @param array    $viewer
+ * @param array    $server
+ * @param liveform $liveform
+ */
+function ws_mcp_settings_connect($viewer, $server, $liveform)
+{
+    $key = ws_mcp_connect_key($server);
+    $app = pg_connect_app($key);
+
+    if (!pg_connect_app_ready($app) || !ws_mcp_connect_provider($key)) {
+        $manual = (is_array($app) && (($app['options']['registered'] ?? '') === 'manual')) ? $app['client_id'] : '';
+        $setup = ws_mcp_oauth_setup($server, $manual, null, (int) $viewer['id']);
+
+        if (!$setup['ok']) {
+            $liveform->add_error(lang(array('string' => 'The sign-in to @{var:1} could not be set up: {var:2}', 'vars' => array($server['alias'], $setup['error']))));
+            return;
+        }
+    }
+
+    $account = ws_mcp_site_account($server);
+    $start = pg_connect_start($key, 'mcp', 'site', $viewer,
+        'workspace_settings.php?mcp_connected=' . (int) $server['id'] . '#ws-mcp-' . (int) $server['id'],
+        $account ? (int) $account['id'] : 0);
+
+    if (!$start['ok']) {
+        $liveform->add_error($start['error']);
+        return;
+    }
+
+    header('Location: ' . $start['url']);
+    exit();
+}
+
+/**
+ * Back on the settings screen from the service (connect.php): its message,
+ * and the server's tools read at once when the site is now connected.
+ *
+ * @param array    $viewer
+ * @param liveform $liveform
+ */
+function ws_mcp_settings_returned($viewer, $liveform)
+{
+    $id = (int) ($_GET['mcp_connected'] ?? 0);
+    $flash = ($id > 0) ? pg_connect_flash_take() : null;
+
+    if (!$flash) {
+        return;
+    }
+
+    if ($flash['kind'] === 'error') {
+        $liveform->add_error($flash['text']);
+        return;
+    }
+
+    $liveform->add_notice($flash['text']);
+
+    $server = ws_mcp_server($id);
+
+    if (!$server || ((int) $viewer['role'] !== 0) || ($server['auth_kind'] !== 'oauth')) {
+        return;
+    }
+
+    $refresh = ws_mcp_refresh_tools($server);
+
+    if ($refresh['ok']) {
+        $liveform->add_notice(lang(array('string' => '@{var:1} answered with {var:2} tools. Turn on the ones that may be used.', 'vars' => array($server['alias'], $refresh['count']))));
+    } else {
+        $liveform->add_error(lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], $refresh['error']))));
+    }
 }
 
 /**
@@ -766,6 +1269,8 @@ function ws_mcp_settings_form($self_url, $server, $admin)
     $secret = $server ? ws_mcp_secret_decode($server['secret'] ?? '') : array();
     $disabled = $admin ? '' : ' disabled';
     $kept = $server ? ' placeholder="' . h(lang('Kept: leave empty to keep it')) . '"' : '';
+    $app = ($server && ($kind === 'oauth') && function_exists('pg_connect_app')) ? pg_connect_app(ws_mcp_connect_key($server)) : null;
+    $manual = is_array($app) && (($app['options']['registered'] ?? '') === 'manual');
 
     $options = '';
 
@@ -826,6 +1331,19 @@ function ws_mcp_settings_form($self_url, $server, $admin)
                             <input class="form-control form-control-sm" type="password" name="mcp_password" id="' . $prefix . 'password" autocomplete="new-password"' . (($kind === 'basic') ? $kept : '') . $disabled . '>
                         </div>
                     </div>
+                </div>
+                <div class="col-sm-7' . (($kind === 'oauth') ? '' : ' d-none') . '" data-ws-mcp-auth-for="oauth">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small" for="' . $prefix . 'client_id">' . h(lang('Client ID (if the service needs one)')) . '</label>
+                            <input class="form-control form-control-sm" type="text" name="mcp_client_id" id="' . $prefix . 'client_id" value="' . h($manual ? $app['client_id'] : '') . '" maxlength="255" autocomplete="off"' . $disabled . '>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small" for="' . $prefix . 'client_secret">' . h(lang('Client secret')) . '</label>
+                            <input class="form-control form-control-sm" type="password" name="mcp_client_secret" id="' . $prefix . 'client_secret" autocomplete="new-password"' . (($manual && $app['secret_stored']) ? $kept : '') . $disabled . '>
+                        </div>
+                    </div>
+                    <div class="form-text">' . h(lang(array('string' => 'Most services register the site on their own when it connects. A service that wants an application of its own: register one in its developer settings with the redirect address {var:1} and enter its client ID here, and its secret if it gave one.', 'vars' => function_exists('pg_connect_redirect_uri') ? pg_connect_redirect_uri() : ''))) . '</div>
                 </div>
                 <div class="col-12">
                     <div class="form-text">' . h(lang('The credential is kept encrypted with the site\'s key and is never shown again. Everybody who may ask the alias works with this one account on the other service, so give it the least it needs, read-only where the service offers that.')) . '</div>
@@ -929,9 +1447,16 @@ function ws_mcp_settings_card($self_url, $viewer)
         $id = (int) $server['id'];
         $on = ws_mcp_tools_on($server);
         $tools = ws_mcp_tools($server);
+        $oauth = ($server['auth_kind'] === 'oauth');
+        $account = $oauth ? ws_mcp_site_account($server) : null;
+        $connected = $account && ($account['status'] === 'active');
 
         if ($server['status'] !== 'active') {
             $state = '<span class="badge text-bg-secondary">' . h(lang('Off')) . '</span>';
+        } elseif ($oauth && $account && !$connected) {
+            $state = '<span class="badge text-bg-danger">' . h(lang('Connect again')) . '</span>';
+        } elseif ($oauth && !$account) {
+            $state = '<span class="badge text-bg-warning">' . h(lang('Not connected')) . '</span>';
         } elseif ($server['last_error'] !== '') {
             $state = '<span class="badge text-bg-danger">' . h(lang('Cannot be reached')) . '</span>';
         } elseif (empty($on)) {
@@ -946,7 +1471,33 @@ function ws_mcp_settings_card($self_url, $viewer)
             $details[] = $server['server_info'];
         }
 
+        if ($connected) {
+            $details[] = lang(array('string' => 'connected {var:1}', 'vars' => ws_time_label($account['refreshed_timestamp'] ?: $account['created_timestamp'])));
+        }
+
         $details[] = lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(count($on), count($tools))));
+
+        // The site's sign-in: Connect while it has none or it stopped working,
+        // Disconnect while it works.
+        $sign_in = '';
+
+        if ($admin && $oauth && !$connected) {
+            $sign_in = '
+                <form method="post" action="' . h($self_url) . '" class="d-inline">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="ws_action" value="mcp_connect">
+                    <input type="hidden" name="mcp_id" value="' . $id . '">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>' . h($account ? lang('Connect again') : lang('Connect')) . '</button>
+                </form>';
+        } elseif ($admin && $account) {
+            $sign_in = '
+                <form method="post" action="' . h($self_url) . '" class="d-inline" onsubmit="return confirm(' . h(json_encode(lang('End the site\'s connection to this server? Its tools cannot be used until it is connected again.'))) . ');">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="ws_action" value="mcp_disconnect">
+                    <input type="hidden" name="mcp_id" value="' . $id . '">
+                    <button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Disconnect')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+                </form>';
+        }
 
         if ((int) $server['tools_at'] > 0) {
             $details[] = lang(array('string' => 'read {var:1}', 'vars' => ws_time_label($server['tools_at'])));
@@ -960,6 +1511,7 @@ function ws_mcp_settings_card($self_url, $viewer)
                     <div class="small text-body-secondary">' . h(implode(' · ', $details)) . '</div>
                     ' . (($server['last_error'] !== '') ? '<div class="small text-danger">' . h($server['last_error']) . '</div>' : '') . '
                 </div>
+                ' . $sign_in . '
                 <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="collapse" data-bs-target="#ws-mcp-edit-' . $id . '" aria-expanded="false"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Tools and settings')) . '</button>
                 ' . ($admin ? '
                 <form method="post" action="' . h($self_url) . '" class="d-inline">

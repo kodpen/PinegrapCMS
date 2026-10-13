@@ -26,6 +26,10 @@ if (pg_post_body_discarded()) {
 
 $user = validate_user();
 
+// A provider built at run time is known once its feature has registered its
+// builder: a Workspace MCP server's sign-in (mcp_<server id>).
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+
 if (!pg_connect_schema_ready()) {
 	output_error(lang('The database has not been upgraded yet. Run the software update first.'));
 }
@@ -48,6 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 
 	$return = isset($_POST['return']) ? (string) $_POST['return'] : '';
+
+	// A provider built at run time (an MCP server's) is connected from its
+	// feature's own screen, under that screen's rules (the Workspace's: an
+	// administrator), never through this form.
+	$requested = pg_connect_provider(isset($_POST['provider']) ? (string) $_POST['provider'] : '');
+
+	if (is_array($requested) && !empty($requested['built'])) {
+		pg_connect_flash('error', lang('This kind of connection is not available.'));
+		$back($return);
+	}
 
 	$start = pg_connect_start(
 		isset($_POST['provider']) ? (string) $_POST['provider'] : '',

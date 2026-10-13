@@ -512,6 +512,8 @@ function api_openapi_objects()
         'SiteLogEntry' => 'api_site_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',
+        'ContactGroup' => 'api_contact_group_schema',
+        'ContactGroupMember' => 'api_contact_group_member_schema',
         'File'         => 'api_file_schema',
         'Offer'        => 'api_offer_schema',
         'Webhook'      => 'api_webhook_schema',
