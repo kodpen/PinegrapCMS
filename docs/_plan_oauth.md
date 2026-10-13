@@ -1,9 +1,10 @@
 # OAuth 2.1 yetkilendirme sunucusu — MCP hazırlığı (2026.4.10)
 
 Durum: Faz A birleşti (PR #244, 2026-10-13). Faz C + D (MCP sunucusu ve
-istemci kimlik belgesi) yazıldı ve sandbox'ta denendi (2026-10-13, Erdal
-"önce MCP sunucusu" dedi); gerçek Claude bağlayıcısıyla deneme https'li
-sitede. Sahibi: API
+istemci kimlik belgesi) birleşti (PR #245; kök adres ve WAF düzeltmesi
+PR #246). Gerçek Claude bağlayıcısıyla doğrulandı (2026-10-13,
+dev.pinegrap.com, IIS + cloudflared): Claude kimlik belgesiyle tanındı, onay
+ve jeton alındı, araç listesi geldi. Sahibi: API
 (`includes/api/**`, `api_settings.php`) + yeni `oauth.php`, `includes/oauth/`.
 Ayrıntı: `docs/degisiklikler.md` → "OAuth 2.1 yetkilendirme sunucusu".
 
@@ -23,8 +24,8 @@ seçmeli ve istediği an geri alabilmeli.
 |---|---|---|
 | A | Yetkilendirme sunucusu: keşif belgeleri, dinamik istemci kaydı, yetkilendirme kodu + PKCE, jeton/yenileme, geri alma; jetonun `integration.php`'de geçmesi; panelde "Bağlı uygulamalar (OAuth)" türü | Birleşti (#244) |
 | B | Panelde kayıtlı istemci listesi (kapatma, silme), kişinin kendi "bağlı uygulamalarım" ekranı | Sonra |
-| C | MCP sunucusu (`mcp.php`): araçlar dış API kaynaklarının üstüne kurulur, jetonu bu sunucu verir | Bu PR (aşağıda) |
-| D | İstemci kimlik belgesi (Client ID Metadata Document): `client_id` bir https adresi olur, sunucu belgeyi çeker. Dışarıya istek attığı için SSRF koruması ister. MCP 2026-07-28 dinamik kaydı eskimiş saydı, istemciler önce bunu dener | Bu PR (aşağıda) |
+| C | MCP sunucusu (`mcp.php`): araçlar dış API kaynaklarının üstüne kurulur, jetonu bu sunucu verir | Birleşti (#245, #246); Claude ile doğrulandı |
+| D | İstemci kimlik belgesi (Client ID Metadata Document): `client_id` bir https adresi olur, sunucu belgeyi çeker. Dışarıya istek attığı için SSRF koruması ister. MCP 2026-07-28 dinamik kaydı eskimiş saydı, istemciler önce bunu dener | Birleşti (#245); Claude ile doğrulandı |
 | F | Çalışma Alanı'nda MCP istemcisi: dış sunucular `@takma ad` ile, dizin mekaniği (araştırma: `/mnt/project-files/notes/mcp-arastirma.md`) | Sonra |
 | E | "Pinegrap ile giriş" (OpenID Connect, `id_token`) — başka yazılımlarda oturum açmak için | Karar bekliyor |
 

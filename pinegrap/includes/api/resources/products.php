@@ -578,9 +578,14 @@ function api_products_create($params) {
 
 	}
 
+	$images = api_products_images($params);
+
+	$barcode = api_products_barcode($params);
+
 	$relations = array(
 		'group_ids'   => api_products_create_group_ids($params),
 		'attributes'  => api_products_create_attributes($params),
+		'images'      => ($images === null) ? array() : $images,
 		// No form behind this request, so the builder is told not to look for
 		// one rather than left to read whatever $_POST happens to hold.
 		'submit_form' => array()
@@ -597,6 +602,14 @@ function api_products_create($params) {
 		api_fail_server(lang('The product could not be created.'));
 
 	}
+
+	if ($barcode !== null) {
+
+		pg_assign_product_barcode($id, $barcode);
+
+	}
+
+	api_products_rescore($id);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
@@ -721,6 +734,151 @@ function api_products_create_attributes($params) {
 
 }
 
+// The images a product is given, as file names from the Files library.
+//
+// The product row and the gallery store file names, not addresses, because
+// files are served from the site root by name. An address is accepted as well,
+// as long as it is one of this site's own: the API hands images out as
+// addresses, and a client that reads a product and writes it back should not
+// have to know the difference. Answers null when the request did not mention
+// images, so an update leaves them alone.
+function api_products_images($params) {
+
+	if (!array_key_exists('images', $params)) {
+
+		return null;
+
+	}
+
+	$base = URL_SCHEME . HOSTNAME_SETTING . PATH;
+
+	$names = array();
+
+	foreach ($params['images'] as $raw) {
+
+		$name = trim((string)$raw);
+
+		if (strpos($name, $base) === 0) {
+
+			$name = rawurldecode(substr($name, strlen($base)));
+
+		}
+
+		if (($name === '') || in_array($name, $names, true)) {
+
+			continue;
+
+		}
+
+		$file = api_row("SELECT id, type FROM files WHERE name = '" . escape($name) . "' LIMIT 1");
+
+		if ($file === null) {
+
+			api_fail_validation(lang(array(
+				'string' => 'There is no file named {var:1} in the Files library.',
+				'vars'   => array($name)
+			)), 'images');
+
+		}
+
+		if (!in_array(strtolower((string)$file['type']), array('jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg'), true)) {
+
+			api_fail_validation(lang(array(
+				'string' => 'The file {var:1} is not an image.',
+				'vars'   => array($name)
+			)), 'images');
+
+		}
+
+		$names[] = $name;
+
+	}
+
+	return $names;
+
+}
+
+// The barcode a request gives a product, checked before anything is written.
+//
+// Answers null when there is nothing to write: the request did not mention a
+// barcode, or the product already carries the same one. A barcode is only ever
+// added, never swapped, which is what the product screen does too: a code that
+// is already on a printed label has to keep scanning as this product.
+function api_products_barcode($params, $product_id = 0) {
+
+	if (!array_key_exists('barcode', $params) || (trim((string)$params['barcode']) === '')) {
+
+		return null;
+
+	}
+
+	$barcode = trim((string)$params['barcode']);
+
+	if (!defined('BARCODE_ENABLED') || !BARCODE_ENABLED) {
+
+		api_fail_validation(lang('Barcodes are switched off on this site.'), 'barcode');
+
+	}
+
+	if ($product_id) {
+
+		$current = api_value("SELECT barcode FROM product_barcodes
+			WHERE product_id = '" . (int)$product_id . "' ORDER BY id ASC LIMIT 1");
+
+		if ($current !== null && $current !== false && (string)$current !== '') {
+
+			if ((string)$current === $barcode) {
+
+				return null;
+
+			}
+
+			api_fail_validation(lang(array(
+				'string' => 'This product already has the barcode {var:1}. A barcode is not replaced through the API, because labels may already carry it.',
+				'vars'   => array((string)$current)
+			)), 'barcode');
+
+		}
+
+	}
+
+	$type = defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128';
+
+	if (!pg_barcode_matches_format($barcode, $type)) {
+
+		api_fail_validation(lang(array(
+			'string' => 'The barcode does not match the site\'s barcode format ({var:1}).',
+			'vars'   => array($type)
+		)), 'barcode');
+
+	}
+
+	if (api_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($barcode) . "' LIMIT 1")) {
+
+		api_fail_validation(lang('Another product already carries this barcode.'), 'barcode');
+
+	}
+
+	return $barcode;
+
+}
+
+// Scores the product's meta half now rather than leaving it to the product
+// list or the nightly job: every column it reads may just have changed, and a
+// client that reads the product back in the next call should see the score its
+// own change produced.
+function api_products_rescore($product_id) {
+
+	api_seo_library();
+
+	if (pg_seo_schema_ready()) {
+
+		pg_seo_recalculate('product', array((int)$product_id));
+
+	}
+
+}
+
 function api_products_update($params) {
 
 	$id = (int)$params['id'];
@@ -823,7 +981,24 @@ function api_products_update($params) {
 
 	}
 
-	if (empty($set)) {
+	$group_ids = array_key_exists('group_ids', $params) ? api_products_create_group_ids($params) : null;
+
+	$attributes = array_key_exists('attributes', $params) ? api_products_create_attributes($params) : null;
+
+	$images = api_products_images($params);
+
+	$barcode = api_products_barcode($params, $id);
+
+	// The main photo is a column on the row; the gallery is rewritten below.
+	if ($images !== null) {
+
+		$set[] = "image_name = '" . escape($images ? $images[0] : '') . "'";
+
+	}
+
+	// A barcode the product already carries is a field that was sent and
+	// needs no write, not an empty request.
+	if (empty($set) && ($group_ids === null) && ($attributes === null) && !array_key_exists('barcode', $params)) {
 
 		api_fail_validation(lang('No writable field was sent.'));
 
@@ -845,6 +1020,57 @@ function api_products_update($params) {
 			timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . $id . "'
 		LIMIT 1");
+
+	// The links are rewritten, not appended, as the product screen rewrites
+	// them: a list sent here is the whole answer, and an empty one clears it.
+	if ($images !== null) {
+
+		api_exec("DELETE FROM products_images_xref WHERE product = '" . $id . "'");
+
+		foreach (array_slice($images, 1) as $image) {
+
+			api_exec("INSERT INTO products_images_xref (product, file_name)
+				VALUES ('" . $id . "', '" . escape($image) . "')");
+
+		}
+
+	}
+
+	if ($group_ids !== null) {
+
+		api_exec("DELETE FROM products_groups_xref WHERE product = '" . $id . "'");
+
+		foreach ($group_ids as $group_id) {
+
+			api_exec("INSERT INTO products_groups_xref (product, product_group)
+				VALUES ('" . $id . "', '" . (int)$group_id . "')");
+
+		}
+
+	}
+
+	if ($attributes !== null) {
+
+		api_exec("DELETE FROM products_attributes_xref WHERE product_id = '" . $id . "'");
+
+		$sort_order = 0;
+
+		foreach ($attributes as $attribute) {
+
+			$sort_order++;
+
+			api_exec("INSERT INTO products_attributes_xref (product_id, attribute_id, option_id, sort_order)
+				VALUES ('" . $id . "', '" . (int)$attribute['attribute_id'] . "', '" . (int)$attribute['option_id'] . "', '" . $sort_order . "')");
+
+		}
+
+	}
+
+	if ($barcode !== null) {
+
+		pg_assign_product_barcode($id, $barcode);
+
+	}
 
 	// Site search keeps its own index of the promoted keywords. The panel syncs
 	// it on every save and the values are read back rather than taken from the
@@ -868,6 +1094,8 @@ function api_products_update($params) {
 		pg_pb_sync_tag_cloud_keywords($id, $indexed['keywords'], ((int)$indexed['enabled'] === 1));
 
 	}
+
+	api_products_rescore($id);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
