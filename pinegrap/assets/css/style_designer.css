@@ -6011,3 +6011,46 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 @media (max-width: 991.98px) {
     .sd-publish-more { margin-left: -2px; }
 }
+
+/* ── Palette hover card (_sdPalTipShow): what an item is, with a drawing
+   of the grid and Bootstrap items. It never takes the pointer, so a drag
+   starts exactly as it did without it. */
+.sd-pal-tip {
+    position: fixed; z-index: 1090; width: 264px; padding: 10px;
+    background: #2b3036; color: var(--sd-text);
+    border: 1px solid var(--sd-panel-border); border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+    font-size: 12px; line-height: 1.45; pointer-events: none;
+    opacity: 0; transform: translateX(-4px); transition: opacity .12s ease, transform .12s ease;
+}
+.sd-pal-tip.is-on { opacity: 1; transform: none; }
+.sd-pal-tip[hidden] { display: none; }
+.sd-pal-tip-preview { margin-bottom: 8px; border-radius: 5px; overflow: hidden; background: #fff; line-height: 0; }
+.sd-pal-tip-svg { display: block; width: 100%; height: auto; aspect-ratio: 200 / 110; }
+.sd-pal-tip-svg text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-weight: 600; }
+.sd-pal-tip-head { display: flex; align-items: baseline; gap: 6px; font-weight: 600; font-size: 12.5px; }
+.sd-pal-tip-head .bi { opacity: .7; font-size: 11px; }
+.sd-pal-tip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-pal-tip-en { color: var(--sd-text-muted); font-weight: 400; white-space: nowrap; }
+.sd-pal-tip-en::before { content: '\00b7'; margin-right: 6px; }
+.sd-pal-tip-code {
+    display: inline-block; max-width: 100%; margin-top: 5px; padding: 1px 6px; border-radius: 3px;
+    background: rgba(255,255,255,.07); color: #9ec5fe;
+    font: 11px/1.5 SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sd-pal-tip-desc { margin-top: 5px; color: #c6ccd2; }
+@media (prefers-reduced-motion: reduce) { .sd-pal-tip { transition: none; } }
+
+/* Links written inside a text, listed under it in the overview
+   (_sdIlTreeRows). Not nodes: muted, and the take-out button shows on hover. */
+.sd-tree-list li.sd-tree-il { color: var(--sd-text-muted); font-style: italic; }
+.sd-tree-list li.sd-tree-il .sd-tree-il-out {
+    background: none; border: 0; padding: 0 .2rem; margin: 0 0 0 auto; cursor: pointer;
+    color: var(--sd-text-muted); font-size: .72rem; line-height: 1; flex-shrink: 0;
+    opacity: 0; transition: opacity .15s;
+}
+.sd-tree-list li.sd-tree-il:hover .sd-tree-il-out,
+.sd-tree-list li.sd-tree-il .sd-tree-il-out:focus-visible { opacity: 1; }
+.sd-tree-list li.sd-tree-il .sd-tree-il-out:hover { color: var(--sd-accent); }
+.sd-il-link.sd-il-flash { animation: sd-il-flash 1.2s ease; border-radius: 4px; }
+@keyframes sd-il-flash { from { background: rgba(var(--sd-accent-rgb), .28); } to { background: transparent; } }

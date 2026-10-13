@@ -25,6 +25,45 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Bileşen panelinde bir öğenin üstüne gelince ne
+         olduğunu anlatan bir kart açılıyor: ne işe yaradığı,
+         yazdığı HTML ve İngilizce adı. Izgara öğelerinde ve
+         Bootstrap bileşenlerinde kartta küçük bir çizim de var.
+         Panel araması İngilizce ve HTML adlarını da tanıyor:
+         "link", "button", "a", "div" yazınca Bağlantı, Düğme ve
+         Div bulunuyor; Türkçe harfsiz yazılan "baglanti" da.
+
+  [YENİ] Katmanlar paneli paragraf ve başlıkların içindeki
+         bağlantıları da altlarında listeliyor. Tıklanınca
+         bağlantı Seçenekler panelinde açılıyor; yanındaki
+         düğmeyle metinden çıkarılıp ayrı bir öğe yapılıyor.
+
+  [DÜZELTME] Loop alanı bir div'in, bölümün ya da listenin
+         (ul, ol, tbody) içine sürüklenemiyordu; yalnız üstüne
+         ya da altına bırakılabiliyordu. Artık içine
+         bırakılıyor. Loop alanını kendi içindeki bir öğeye
+         sürüklemek de artık geçerli bir hedef gibi
+         vurgulanmıyor; önceden vurgulanıp hiçbir şey olmuyordu.
+
+  [DÜZELTME] Bir widget'ın içindeki öğenin üstüne ya da altına
+         bırakılan öğe kimi zaman o öğenin içine ya da
+         kapsayıcının sonuna düşüyordu. Artık işaretlenen yere
+         iniyor. Katmanlar panelinde widget içindeki bir öğenin
+         üstüne ya da altına paletten bırakmak da çalışıyor.
+
+  [DÜZELTME] Form liste görünümü widget'ının varsayılan düzeni
+         her kaydı ayrı bir satıra sarıyordu; kartlar yan yana
+         dizilemiyordu. Artık satır loop alanının dışında,
+         kayıtlar onun sütunları: varsayılan olarak geniş
+         ekranda üç, orta ekranda iki kart yan yana. Sütunun
+         genişliği değiştirilince bütün kayıtlar ona uyuyor.
+
+  [DÜZELTME] Adında tire olan bir form alanına (örneğin
+         publish-date) yapılan bağlama form liste ve form öğesi
+         görünümünde boş çıkıyordu: tire bağlamadan siliniyordu.
+         Artık alan adı olduğu gibi kullanılıyor; tiresiz
+         yazılmış eski bağlamalar da çalışıyor.
+
   [HIZ] Kendi CSS'iyle kurulan (özel) tasarımlarda görsel
          editör takılmıyor. Fareyi tuvalde gezdirmek, öğe
          sürüklemek ve bırakmak artık beklemiyor: editörün

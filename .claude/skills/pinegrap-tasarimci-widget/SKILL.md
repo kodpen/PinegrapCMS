@@ -21,6 +21,10 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   bağlama yapıldığında sistem çalışmaya devam etmeli.
 - Binding türleri: `_bindings.text`, `src`, `href`, `action`, `eo_field`,
   `value`, `section`, `eo_visible_if`.
+- Bağlanan alan adı `[a-z0-9_-]`'dir (`_apply_bindings()`, editörün "Özel…"
+  kutusu): form alanları tireli ad taşıyabilir (`publish-date`). Tireyi
+  silen yeni bir süzgeç yazma; `pg_sw_index_form_data()` tiresiz eski
+  yazımı da karşılar.
 - `href` bağlıysa URL alanını gizle (`_sdHrefIsBound()` +
   `_sdBoundHrefNotice()`) — sunucu href'i render'da yeniden yazar, kutuya
   yazılan URL işlevsizdir ("görünür ama işlevsiz" yasağı).
@@ -94,6 +98,11 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `_SD_BLOCK_CSS_NEEDS`'e yaz (sınıf `pg-` önekli). `!important` kullanma.
 - Yeni bloğu `_sdBlockPaletteItems()`'a yaz ve `componentType` önekini
   `_sdBlockPaletteGroups()` tablosuna ekle; öneksiz blok "Diğer"e düşer.
+- Bileşenler sekmesine yeni öğe ekleyince `_sdPalInfo()`'ya da girdi yaz
+  (`_sdPalKey()` anahtarıyla): `d` açıklama (`_sdT()`), `k` İngilizce/HTML
+  arama sözcükleri, `h` yazdığı işaretleme, Bootstrap/ızgara öğesinde `v`
+  (`_sdPalDrawing()`'e çizim). Girdisi olmayan öğe hover kartı açmaz ve
+  yalnız etiketi + çevrildiği İngilizce metinle aranır.
 - Örnek içerik kanondan seçilir (ACME / Vertex / Jane Cooper / example.com /
   picsum.photos / placehold.co); Lorem ipsum yazma, sitenin kendi markasını
   müşteri olarak kullanma. Örnek metinler `_sdT()`'den geçer

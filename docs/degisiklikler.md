@@ -78,6 +78,111 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.9 — Görsel editör: bileşen kartı ve İngilizce arama, loop alanını içine bırakma, form listesi düzeni, tireli alan bağlaması (2026-10-13)
+
+**İstek (ürün sahibi).** kodpen.com blog sayfası tasarlanırken: loop alanı
+bir div'in ya da satırın içine taşınamıyordu (üstüne/altına gidiyor, içine
+girmiyor); form listesinin varsayılan düzeni `loop > row > col` olduğu için
+her kayıt ayrı satır oluyordu; bileşen panelinde "link", "button" diye
+arayınca hiçbir şey çıkmıyordu (panel yalnız "Bağlantı", "Düğme" diye
+arıyor; HTML yazanlar İngilizce düşünüyor) ve öğelerin ne olduğunu anlatan
+bir ipucu yoktu; Bootstrap bileşenlerine ertelenmiş "küçük önizleme" isteği.
+Sonradan iki madde daha: başlık içindeki bağlantı (zaten var olan "Metindeki
+bağlantılar" bölümü) Katmanlar panelinden de yönetilsin; form liste ve form
+öğesi görünümlerinde tarih hep 16.06.2022 10:00 çıkıyor.
+
+**Loop alanı (kök sebepler).**
+- `canDrop()`'un izin tablosunda `semantic` satırı `loop_area` içermiyordu:
+  div/section/article içine bırakmak reddediliyordu, yalnız kardeş
+  bölgeleri (üst/alt) kabul ediliyordu. Eklendi. `ul/ol` (yalnız `li`) ve
+  `thead/tbody/tfoot` (yalnız `tr`) kuralları loop alanını da geçirir:
+  loop ön yüzde hiçbir şey çizmez, kayıtları listenin/grubun kendi
+  çocukları olur (tbody'de tuval `buildTableLoopAreaEl()` ile zaten
+  çiziyordu).
+- Satır durumu başka: varsayılan form listesinde satır loop'un *içindeydi*;
+  loop'u o satıra sürüklemek kendi çocuğuna bırakmaktır. `handleDrop()`
+  bunu sessizce reddediyordu ama `canDrop()` kabul ettiği için satır
+  vurgulanıyor, bırakınca hiçbir şey olmuyordu. Loop içeren bir düğümün
+  kendi alt ağacına bırakılması artık `canDrop()`'ta reddedilir (yalnız
+  loop içeren sürüklemede; Alt+sürükle kopyası genel olarak etkilenmez).
+- Tuvaldeki `drop` işleyicisi üst/alt bölgesinde ebeveyni yalnız ana ağaçta
+  arıyordu (`findParent(node, tree)`); `dragover` ise widget önbelleğine de
+  bakıyordu (`_findParentInShared`). Widget içindeki bir öğenin üstüne
+  bırakılan şey o öğenin içine ya da (ret gelirse) bir atanın sonuna
+  düşüyordu. İki taraf aynı ebeveyni soruyor.
+- Katmanlar panelinde paletten üst/alt bırakma da yalnız ana ağaçta
+  ebeveyn arıyordu (widget içinde hiçbir şey olmuyordu) ve kirli işareti,
+  form alanı benimseme gibi `handleDrop()` adımlarını atlıyordu; artık
+  `_findParentAnywhere()` + `handleDrop(parent, false, {sibling, after})`.
+
+**Form liste görünümü varsayılan ağacı.** `_buildStarterTree('form_list_view')`
+artık `container.py-4 > row(g-4) > loop_area > col(12 / md-6 / lg-4) >
+card.h-100 > card-body`, katalog listesinin deseni. Arama kutusu, boş
+mesajı ve sayfalama yuvaya (`<!--pg-loop-slot-->`) basıldığı için satırın
+çocukları olur; Bootstrap'in `.row > *` kuralı onlara tam genişlik verir,
+ayrı satır gibi durur. PHP'de bu tür için ikiz bir başlangıç ağacı yok
+(şablonlar kendi ağacını taşır, `'tree' => 'starter'` editöre bırakır);
+şablon dosyalarındaki form listeleri değiştirilmedi.
+
+**Bileşen paneli: bilgi kartı ve arama.**
+- `_sdPalInfo()`: palet öğesi başına açıklama (`_sdT()`, 114 yeni anahtar),
+  yazdığı işaretleme (kod çipi) ve arama sözcükleri (İngilizce / HTML /
+  Bootstrap adları; gösterilmez, çeviriye girmez). Anahtar `_sdPalKey()`:
+  tür + `componentType` / `contentType` / `tag` / `cfType` / `regionType`
+  (input'ta tip de: `s:input:checkbox`).
+- Arama: satırın `data-search`'ü etiket + etiketin çevrildiği İngilizce
+  kaynak (`_sdEnglishOf()`, `sdDesign.i18n` tersten okunur; İngilizce
+  sitede boş) + sözcükler. `_sdFold()` küçük harf, Türkçe harfleri ve
+  aksanları ASCII'ye indirir, `-`/`_` boşluk sayılır; sorgunun her
+  sözcüğü (sırasız) eşleşmeli. Bloklar sekmesi de İngilizce kaynağıyla
+  bulunur ("hero", "pricing").
+- Kart (`#sd-pal-tip`, `_sdPalTipShow()`): 450 ms gecikmeyle, liste
+  okunurken 60 ms; listenin sağına (yer yoksa soluna) konur,
+  `pointer-events: none`; basma, sürükleme, kaydırma ve arama kapatır —
+  sürükleme eskisi gibi başlar. Başlıkta etiket + İngilizce adı, kod çipi,
+  açıklama.
+- Çizimler (`_sdPalDrawing()`): ızgara (4) ve Bootstrap bileşenleri (38)
+  için 200×110 satır içi SVG; açık sayfa, Bootstrap renkleri, metin gri
+  çubuk — çeviri gerektirmez (yalnız @, /, 1 2 3, 16:9, dil kodları gibi
+  semboller). Bloklar sekmesine çizim ve açıklama girmedi (etiketleri
+  zaten tarif ediyor); ileride `_sdPalInfo()`'ya `v` eklenerek girer.
+
+**Katmanlar: metindeki bağlantılar.** `_sdIlTreeLinks()` yalnız `<a`
+içeren paragraf/başlık metnini ayrıştırır; `buildTreeItems()` bu düğümü
+çocuklu sayar ve altına düğüm olmayan satırlar (`li.sd-tree-il`) çizer.
+Tıklama metni seçer ve Seçenekler'de o bağlantıyı açıp vurgular
+(`_sdIlFocus()`); düğme (yalnız düzenleyebilen, kilitsiz) "metinden çıkar"
+(`_sdIlTakeOut()`, panelin "out" eylemiyle tek kod).
+
+**Tarih (kök sebep).** Yerleşik `submitted_date_and_time` doğruydu:
+kodpen.com'daki blog kayıtlarının gönderilme zamanı gerçekten 16.06.2022
+10:00 (toplu içe aktarma; kayıt 791'in ekranında da öyle). Asıl tarih
+"Yayınlanma Tarihi" alanında, alanın adı `publish-date`. `_apply_bindings()`
+alan adını `[a-z0-9_]`'ye süzüyordu: `^^publishdate^^` hiçbir alana
+denk gelmiyor, süpürülüp boş çıkıyordu. Süzgeç `[a-z0-9_-]` oldu; editörün
+"Özel…" kutusu ve tuval yedeği de tireyi tutar. Eskiden tiresiz yazılmış
+bağlamalar için `pg_sw_index_form_data()` alan adının tiresiz biçimini de
+anahtar yapar. Test: `tests/designer_bindings_test.php` (önce kırmızı).
+
+**Doğrulama.** Bulut sandbox'ında (`tools/setup_sandbox.sh`, "Pinegrap'a
+merhaba deyin" şablonuyla açılan editör, kaydetmeden) Playwright ile:
+palet araması (`link` → Bağlantı/Düğme/Web adresi, `button` → 8 düğme
+türü, `baglanti` / `BAĞLANTI` → Bağlantı, `a` 103 yerine 32 satır, `ul` →
+Sırasız Liste; Bloklar'da `pricing`, `hero`, `footer news`), kartın
+gecikmesi, konumu, basınca/ayrılınca kapanması ve çizimi; Katmanlar'da
+paletten Div'i widget içindeki satırın üstüne bırakma (önceden hiçbir şey
+olmuyordu), loop alanını o Div'in içine taşıma; tuvalde widget içindeki
+kartın alt bandına bırakılan paragrafın işaretlenen yere (kart gövdesinin
+arkasına) inmesi; paragraf metnine iki bağlantı yazınca Katmanlar'da iki
+satır, tıklayınca Seçenekler'de o bağlantının vurgulanması, düğmeyle ilkinin
+ayrı öğe olması; `StyleDesigner.starterTree('form_list_view')` ağacı.
+Çizimler ayrıca tek sayfada gözle kontrol edildi. kodpen.com'da (salt
+okuma) tarih kök sebebi: kayıt 791'in gönderilme zamanı ve
+`publish-date` alanı, editörün bağlama listesi. Denenmedi: canlıda
+`publish-date` bağlamasının çıktısı (düzeltme henüz yayında değil),
+tbody/ul içine loop bırakma tarayıcıda. lint, check_lang, check_bindings,
+testler (264/264) ve `node --check` temiz.
+
 ## 2026.4.9 — sitemap.xml tarayıcıda CSS ile okunur görünüyor (2026-10-12)
 
 **İstek (ürün sahibi).** Beta'yla güncellenen pinegrap.com'da sitemap.xml
