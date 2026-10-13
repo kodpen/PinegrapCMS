@@ -48,7 +48,61 @@ $smtp_ready = (
     defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '' &&
     defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '' &&
     defined('SYSTEM_SMTP_PASSWORD') && SYSTEM_SMTP_PASSWORD !== ''
-);
+) || (pg_mail_connection('system') !== null);
+
+// The site's accounts connected for sending e-mail (Connected accounts), and
+// the providers one can be connected with from here.
+$mail_accounts = pg_connect_accounts(array('user_id' => 0, 'purpose' => 'mail'));
+$mail_providers = array();
+
+if (pg_connect_schema_ready() && pg_connect_can_seal()) {
+    foreach (pg_connect_providers() as $mail_provider_key => $mail_provider) {
+        if (pg_connect_purpose_allows(pg_connect_purpose('mail'), $mail_provider_key, 'site') && pg_connect_app_ready(pg_connect_app($mail_provider_key))) {
+            $mail_providers[$mail_provider_key] = $mail_provider;
+        }
+    }
+}
+
+// What a kind of mail is sent through: this server (SMTP or mail()) or one
+// of the connected accounts.
+function smtp_settings_connection_field($name, $current, $mail_accounts) {
+
+    $options = '<option value="">' . h(lang('This server: the SMTP account below, or PHP mail() without one')) . '</option>';
+
+    foreach ($mail_accounts as $mail_account) {
+        $provider = pg_connect_provider($mail_account['provider']);
+
+        $options .= '<option value="' . (int) $mail_account['id'] . '"' . (((int) $current === (int) $mail_account['id']) ? ' selected' : '') . '>'
+            . h($mail_account['label'] . ' (' . (is_array($provider) ? $provider['label'] : $mail_account['provider']) . ')'
+                . (($mail_account['status'] !== 'active') ? ' - ' . lang('Connect again') : ''))
+            . '</option>';
+    }
+
+    return '
+        <label for="' . h($name) . '" class="form-label">' . h(lang('Send through')) . '</label>
+        <select name="' . h($name) . '" id="' . h($name) . '" class="form-select">' . $options . '</select>';
+}
+
+function smtp_settings_connect_buttons($mail_providers, $mail_accounts) {
+
+    $buttons = '';
+
+    foreach ($mail_providers as $provider_key => $provider) {
+        $buttons .= '
+            <button type="submit" form="smtp_connect_' . h($provider_key) . '" class="btn btn-sm btn-outline-primary rounded-pill me-1 mt-1">
+                <i class="bi ' . h($provider['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>';
+    }
+
+    $text = $mail_accounts
+        ? lang('A connected account sends without an SMTP password; the message is from that account and replies go to the address it was meant to come from.')
+        : lang('Or send from a Google or Microsoft account, without an SMTP password.');
+
+    $link = $mail_providers
+        ? ''
+        : ' <a href="connections.php">' . h(lang('Set up the application on Connected accounts first.')) . '</a>';
+
+    return '<div class="form-text">' . h($text) . $link . '</div>' . (($buttons !== '') ? '<div>' . $buttons . '</div>' : '');
+}
 
 // if the form has not been submitted
 if (!$_POST) {
@@ -63,6 +117,31 @@ if (!$_POST) {
     foreach ($config_keys as $key) {
         $field = strtolower($key);
         $liveform->assign_field_value($field, defined($key) ? constant($key) : '');
+    }
+
+    $system_connection_field = smtp_settings_connection_field('system_mail_connection', defined('SYSTEM_MAIL_CONNECTION') ? SYSTEM_MAIL_CONNECTION : 0, $mail_accounts);
+    $campaign_connection_field = smtp_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts);
+    $connect_buttons = smtp_settings_connect_buttons($mail_providers, $mail_accounts);
+
+    // The buttons above sit inside the settings form and submit these forms
+    // by their form attribute; forms cannot be nested.
+    $connect_forms = '';
+
+    foreach ($mail_providers as $mail_provider_key => $mail_provider) {
+        $connect_forms .= '
+            <form method="post" action="connect.php" id="smtp_connect_' . h($mail_provider_key) . '" class="disable_shortcut d-none">
+                ' . pg_connect_start_fields($mail_provider_key, 'mail', 'smtp_settings.php') . '
+            </form>';
+    }
+
+    $connect_flash = pg_connect_flash_take();
+
+    if ($connect_flash) {
+        if ($connect_flash['kind'] === 'error') {
+            $liveform->add_error($connect_flash['text']);
+        } else {
+            $liveform->add_notice($connect_flash['text']);
+        }
     }
 
     // Buttons
@@ -180,6 +259,10 @@ if (!$_POST) {
                             <div class="card my-4">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('System') . '</div>
                                 <div class="card-body">
+                                    <div class="my-2">
+                                        ' . $system_connection_field . '
+                                        ' . $connect_buttons . '
+                                    </div>
                                     <div class="row">
                                         <div class="col-12 col-md-8 my-2">
                                             <label for="system_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
@@ -221,6 +304,9 @@ if (!$_POST) {
                                         <label class="form-check-label" for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
                                     </div>
                                     <div class="collapse" id="email_campaign_job_row">
+                                        <div class="my-2">
+                                            ' . $campaign_connection_field . '
+                                        </div>
                                         <div class="row">
                                             <div class="col-12 col-lg-6 my-2">
                                                 <label for="campaign_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
@@ -262,6 +348,7 @@ if (!$_POST) {
                         </div>
                     </nav>
                 </form>
+                ' . $connect_forms . '
             </div>
         </div>
     
@@ -398,12 +485,20 @@ if (!$_POST) {
             'SYSTEM_SMTP_HOSTNAME','SYSTEM_SMTP_USERNAME','SYSTEM_SMTP_PASSWORD','SYSTEM_SMTP_PORT',
             'EMAIL_CAMPAIGN_JOB','EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',
             'CAMPAIGN_SMTP_HOSTNAME','CAMPAIGN_SMTP_USERNAME','CAMPAIGN_SMTP_PASSWORD','CAMPAIGN_SMTP_PORT',
-            'DKIM_DOMAIN','DKIM_SELECTOR'
+            'DKIM_DOMAIN','DKIM_SELECTOR',
+            'SYSTEM_MAIL_CONNECTION','CAMPAIGN_MAIL_CONNECTION'
         ];
 
         foreach ($config_keys as $key) {
             $field = strtolower($key);
             $value = isset($_POST[$field]) ? trim(str_replace("'", '', $_POST[$field])) : '';
+
+            // A connected account is named by its number, and only one that
+            // was connected for sending e-mail can be chosen.
+            if (($key === 'SYSTEM_MAIL_CONNECTION') || ($key === 'CAMPAIGN_MAIL_CONNECTION')) {
+                $chosen = pg_connect_account((int) $value);
+                $value = (is_array($chosen) && ($chosen['user_id'] === 0) && in_array('mail', $chosen['purposes'], true)) ? (string) (int) $chosen['id'] : '';
+            }
 
             // The job switch is stored as a real boolean. The quoted forms
             // 'true' / 'false' written by older versions are removed first,

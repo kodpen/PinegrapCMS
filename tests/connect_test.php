@@ -284,3 +284,94 @@ function test_connect_clip()
 	pg_assert_same('a b c', pg_connect_clip("  a\n b <b>c</b> "), 'one line, no markup');
 	pg_assert_same(250, strlen(pg_connect_clip(str_repeat('x', 400))), 'fits the column');
 }
+
+// Sending e-mail from a connected account (includes/fn/mail.php).
+
+function test_connect_mail_purpose_sends_through_both_providers()
+{
+	$purpose = pg_connect_purpose('mail');
+
+	pg_assert_true(is_array($purpose), 'mail purpose');
+	pg_assert_same('site', $purpose['owner'], 'the site sends');
+
+	foreach (array('google', 'microsoft') as $provider_key) {
+		pg_assert_true(pg_connect_purpose_allows($purpose, $provider_key, 'site'), $provider_key);
+		pg_assert_same(0, strpos($purpose['send'][$provider_key]['url'], 'https://'), $provider_key . ': https');
+	}
+
+	pg_assert_same(array('https://www.googleapis.com/auth/gmail.send'), $purpose['scopes']['google'], 'Gmail: sending only, not the mailbox');
+	pg_assert_same($purpose['scopes']['microsoft'], $purpose['send']['microsoft']['scopes'], 'Microsoft: the Graph token asks for what was granted');
+}
+
+function test_connect_mail_from_is_the_account()
+{
+	pg_assert_same(
+		array('from' => 'shop@gmail.com', 'reply_to' => 'info@example.com'),
+		pg_mail_connection_from('shop@gmail.com', 'info@example.com', ''),
+		'from the account, replies to the address it was meant to come from');
+
+	pg_assert_same(
+		array('from' => 'shop@gmail.com', 'reply_to' => 'customer@example.org'),
+		pg_mail_connection_from('shop@gmail.com', 'info@example.com', 'customer@example.org'),
+		'a Reply-To given is kept');
+
+	pg_assert_same(
+		array('from' => 'Info@Example.com', 'reply_to' => ''),
+		pg_mail_connection_from('info@example.com', 'Info@Example.com', ''),
+		'the same address: nothing changes');
+
+	pg_assert_same(
+		array('from' => 'info@example.com', 'reply_to' => ''),
+		pg_mail_connection_from('Erdal', 'info@example.com', ''),
+		'an account label that is not an address changes nothing');
+}
+
+function test_connect_mail_mime_carries_bcc_and_crlf()
+{
+	$mail = new PHPMailer\PHPMailer\PHPMailer(true);
+	$mail->isSMTP();
+	$mail->CharSet = 'utf-8';
+	$mail->setFrom('shop@gmail.com', 'Mağaza');
+	$mail->addAddress('customer@example.org');
+	$mail->addBCC('owner@example.com');
+	$mail->Subject = 'Siparişiniz';
+	$mail->Body = "Merhaba\nTeşekkürler";
+
+	$mime = pg_mail_connection_mime($mail);
+
+	pg_assert_same(0, strpos($mime, 'Bcc: owner@example.com' . "\r\n"), 'Bcc first, for the provider to read');
+	pg_assert_contains("To: customer@example.org\r\n", $mime, 'To');
+	pg_assert_contains('Subject: =?utf-8?', $mime, 'encoded subject');
+	pg_assert_false(preg_match("/[^\r]\n/", $mime) === 1, 'every line ends in CRLF');
+
+	$plain = new PHPMailer\PHPMailer\PHPMailer(true);
+	$plain->isSMTP();
+	$plain->setFrom('shop@gmail.com');
+	$plain->addAddress('customer@example.org');
+	$plain->Subject = 'x';
+	$plain->Body = 'y';
+
+	pg_assert_false(strpos(pg_mail_connection_mime($plain), 'Bcc:') !== false, 'no Bcc, no header');
+}
+
+function test_connect_mail_request_per_provider()
+{
+	$purpose = pg_connect_purpose('mail');
+	$mime = "To: a@example.org\r\n\r\nHello";
+
+	$google = pg_mail_connection_request($purpose['send']['google'], $mime);
+
+	pg_assert_true($google['ok'], 'Gmail');
+	pg_assert_same($mime, $google['body'], 'Gmail takes the message itself');
+	pg_assert_true(in_array('Content-Type: message/rfc822', $google['headers'], true), 'as a message');
+
+	$microsoft = pg_mail_connection_request($purpose['send']['microsoft'], $mime);
+
+	pg_assert_same(base64_encode($mime), $microsoft['body'], 'Graph takes it in base64');
+	pg_assert_true(in_array('Content-Type: text/plain', $microsoft['headers'], true), 'as text/plain');
+
+	$too_big = pg_mail_connection_request($purpose['send']['microsoft'], str_repeat('x', 3200000));
+
+	pg_assert_false($too_big['ok'], 'over 4 MB once encoded');
+	pg_assert_true($too_big['error'] !== '', 'says why');
+}
