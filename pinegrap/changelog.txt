@@ -436,6 +436,23 @@
          yetiyor. Arama, uygulamaya izin verilmeyen kayıt
          türlerini (sipariş, müşteri, fatura…) göstermez.
 
+  [YENİ] ERP faturaları ve teklifleri API'den ve MCP'den
+         yazılıyor. Faturada: taslak yazma, değiştirme ve
+         silme (POST /erp/invoices), kesme, iptal, iade
+         faturası, müşteriye e-postayla gönderme, tamamlanmış
+         siparişin faturasını kesme (POST
+         /erp/orders/{id}/invoice), tekrarlayan fatura başlatma
+         ve durdurma. Teklifte: yazma ve değiştirme, kabul,
+         ret, iptal ya da yeniden açma, faturaya dönüştürme,
+         e-postayla gönderme ve PDF'i. Vergiyi, iskontoyu,
+         tevkifatı ve toplamları ERP hesaplar; geri alınamayan
+         adımlar önce X-Dry-Run ile denenebilir. Taslaklar GET
+         /erp/invoices?status=draft ile listelenir. Kilitli
+         döneme düşen tarih period_locked, kredi limitini aşan
+         satış credit_limit koduyla reddedilir. erp:write
+         yetkisi gerekir; e-Belge sağlayıcısına gönderim
+         paneldeki fatura ekranında kalır.
+
   [DÜZELTME] GET /products ve GET /product-groups, katalogda
          Geri Dönüşüm Kutusuna taşınmış kayıtları artık
          listelemiyor. Önceden kutudaki ürün kapalı bir ürün

@@ -84,6 +84,103 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API ve MCP: ERP faturaları ve teklifleri yazılıyor (Faz 6, birinci parça) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27): API'de ve MCP'de
+fatura ve teklif yalnız okunuyordu; yazılanlar cari, tahsilat ve giderdi.
+Bu parça faturaları, tekrarlayan faturaları, siparişin faturasını ve
+teklifleri açar. İrsaliye, sayım, stok alt sınırları, virman, çek/senet ve
+raporlar sonraki iki parçada.
+
+**Ne değişti.** On sekiz yeni rota `erp_api_routes()`'ta
+(`includes/erp/api.php`); MCP'de her biri kendiliğinden araç olur
+(`delete_post` hariç). İşleyiciler yeni `includes/erp/api_documents.php`'de
+(`api_resources.php` 3500 satırı geçtiği için ayrıldı) ve panelin kendi alan
+fonksiyonlarını çağırır; ikinci bir hesap yolu yok.
+
+| Rota | Fonksiyon |
+|---|---|
+| `POST /erp/invoices`, `POST`/`PATCH /erp/invoices/{id}` | `erp_invoice_draft_save()`; yalnız taslak, kesilmişte 409 `invoice_not_draft` |
+| `DELETE /erp/invoices/{id}`, `POST …/{id}/delete` | `erp_invoice_draft_delete()` |
+| `POST /erp/invoices/{id}/issue` | `erp_invoice_issue()` |
+| `POST /erp/invoices/{id}/cancel` | `erp_invoice_cancel()` |
+| `POST /erp/invoices/{id}/returns` | `erp_returnable_lines()` + `erp_return_build()` + `erp_invoice_return()` |
+| `POST /erp/invoices/{id}/email` | `erp_mail_invoice_send()` |
+| `POST /erp/orders/{order_id}/invoice` | `erp_invoice_from_order()` |
+| `GET /erp/invoice-recurrences`, `POST /erp/invoices/{id}/recurrence`, `POST /erp/invoice-recurrences/{id}/stop` | `invoice_recurring.php` |
+| `POST /erp/quotes`, `POST`/`PATCH /erp/quotes/{id}`, `POST …/status`, `POST …/invoice`, `POST …/email`, `GET …/document` | `erp_quote_save()`, `erp_quote_set_status()`, `erp_quote_to_invoice()`, `erp_quote_mail_send()`, `erp_quote_html()` |
+
+Ayrıntılar:
+
+- **Satırlar.** `erp_api_lines_in()` her satırı denetler: nesne olmalı,
+  bilinmeyen alan 422 (`lines[0].total` gibi alan adıyla), `unit_price`
+  zorunlu ve kuruş (ondalık 422), oranlar 0–100, ürün var olmalı. Ürüne
+  bağlı satırda ad ve KDV oranı gönderilmezse ürünün adı ve satır
+  editörünün vereceği oran (`erp_product_for_line()`) kullanılır; ürünsüz
+  satırda ikisi zorunlu. Mağazada ikinci vergi yokken `tax2_rate` 422.
+  Vergi, iskonto, tevkifat ve toplamlar yalnız `erp_manual_lines_build()`
+  ile hesaplanır, istemci toplam gönderemez. ERP'nin `lines[0][unit_code]`
+  biçimli alan adları API'de `lines[0].unit` olarak döner
+  (`erp_api_document_field()`).
+- **Taslak görünürlüğü.** `GET /erp/invoices` taslakları yalnız
+  `status=draft` ile listeler; `GET /erp/invoices/{id}` taslağı da döndürür
+  (`erp_api_invoice_row($id, true)`), PDF'i taslakta 404. Taslağın
+  `totals.open` değeri 0.
+- **Prova (X-Dry-Run).** Her yazma rotası prova edilebilir; işleyici alan
+  fonksiyonunun reddedeceği her şeyi yazmadan önce sorar: kesimde cari
+  pasif, e-Belge alıcı eksikleri, ikinci vergi + e-Belge, dönem kilidi
+  (422 `period_locked`), kurun bulunmaması, satışta kredi limiti (422
+  `credit_limit`); sipariş faturasında kalem yokluğu, kişi kaydının
+  silinmesi ve toplam uyuşmazlığı. Bu iki kod `api_error_catalogue()`'a
+  eklendi (`includes/api/schema.php`'de yalnız bu iki satır; plan dosyası
+  schema.php'yi dokunulmaz sayıyordu, ama 422 kodları katalogda olmadan
+  `check_api_schema.php` geçmiyor).
+- **İptal.** Taslak 409 `invoice_is_draft` (silinir), tahsilat bağlıysa 409
+  `invoice_has_payments`, iade varsa 409 `invoice_has_returns`. e-Belge
+  sağlayıcısının elindeki belge 409 `invoice_at_provider`: sağlayıcıdan
+  geri alma bir sürücü çağrısı ve operatör onayı (panelde
+  `erp_edoc_invoice_provider_cancel()`), API sağlayıcıya gitmez.
+- **İade.** `lines` (`{line_id, quantity}`) ya da `all: true`; ikisi
+  birden ya da hiçbiri 422. Faturaya ait olmayan satır, aynı satırın iki
+  kez geçmesi 422.
+- **Teklif.** Kur ve tarih kuralları taslakla aynı (`erp_api_document_header()`);
+  `valid_until` boş gönderilirse tarihten 30 gün. Durum geçişleri yeni saf
+  `erp_quote_status_refusal()`'dan okunur (panelin düğmeleri de aynı
+  kuralı `erp_quote_set_status()` içinden sorar); izin verilmeyen geçiş
+  409 `quote_status_not_allowed`.
+- **E-posta.** Fatura ve teklif e-postası prova edilince alıcı listesi
+  döner, gönderilmez. Posta sunucusunun reddi 503 ve gönderim kaydında
+  başarısız görünür.
+- **Kur.** Yabancı para biriminde gönderilen kur `exchange_rate_source =
+  'api'` ile yazılır (giderdeki gibi); gönderilmezse tarihin kayıtlı kuru,
+  o da yoksa kesimde bakılır. Para birimi, kur ve tarih gönderilmeyen
+  güncellemede taslağın kuru korunur.
+- Yeni nesne `ErpInvoiceRecurrence`. Etkinlik günlüğüne her yazma
+  `erp_api_log()` ile uygulama adıyla düşer; olaylar alan
+  fonksiyonlarından (`erp.invoice.created`, `erp.quote.*`) bugünkü gibi.
+- Kesim sonrası mağazanın otomatik e-posta ayarı paneldeki gibi çalışır
+  (`erp_event_invoice()` → `erp_mail_auto_consider()`); e-Belge'ye
+  gönderim panelde fatura ekranında bir adım olarak kalır.
+
+**Doğrulama.** Sandbox'ta iki uygulamayla (tam ERP ve yalnız `erp:read`)
+curl: taslak yaz → değiştir (PATCH ve POST) → kes → PDF → kısmi iade →
+iadeli faturayı iptal 409 → iadeyi iptal → faturayı iptal; aynı
+`Idempotency-Key` ile ikinci istek `Idempotent-Replay: true` ve tek kayıt;
+yalnız okuma anahtarı 403 `insufficient_scope`; dönem kilidi 422
+`period_locked`, kredi limiti (block) 422 `credit_limit`; taslakta iptal,
+iade, e-posta, tekrar reddi; tekrarlayan fatura başlat → listele → durdur;
+teklif yaz → değiştir → reddet → yeniden aç → kabul → faturaya dönüştür →
+taslağı sil (teklif yeniden kabul); tamamlanmış siparişin faturası ve
+ikinci deneme 409. MCP `tools/list`'te yeni 17 araç (`delete_post` yok),
+`tools/call` ile `erp_invoices_issue` (dry_run) ve `erp_quotes_create`.
+`tests/erp_api_test.php` (rota–işleyici, yöntem+yol çakışması, prova,
+satır yardımcıları) ve `erp_quote_test.php`'ye durum geçişi testi.
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com), gerçek e-posta gönderimi ve
+e-Belge sağlayıcısı olan bir mağaza.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: asistanın görevdeki önerileri için onay kuyruğu (2026-10-13)
 
 **Neden.** Görevi asistana verme işinin ikinci PR'ı (araştırmanın P1 1.2
