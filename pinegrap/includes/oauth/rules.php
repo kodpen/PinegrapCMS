@@ -35,12 +35,26 @@ function pg_oauth_is_loopback_host($host) {
 
 }
 
+// Schemes a redirect address may never use. Each would hand the code to
+// something other than the application that asked for it: a script run in the
+// page, a file or a blob on the machine, or another kind of program - mail,
+// telephone, a socket, an Android intent.
+function pg_oauth_forbidden_redirect_schemes() {
+
+	return array('javascript', 'vbscript', 'data', 'file', 'blob', 'about', 'filesystem',
+		'view-source', 'jar', 'ftp', 'ws', 'wss', 'mailto', 'tel', 'sms', 'intent');
+
+}
+
 // Whether an address may be registered as a redirect target.
 //
 // https to any host; plain http only to the machine the client runs on; and a
-// private-use scheme for a native app, which RFC 8252 7.1 asks to be a
-// reversed domain name - the dot is what tells com.example.app:/cb apart from
-// javascript: or data:, which must never be a place a code is sent. No
+// private-use scheme for an application on the person's own device. RFC 8252
+// 7.1 asks for that scheme to be a reversed domain name (com.example.app:/cb),
+// but the desktop applications people connect use their product's name -
+// cursor://, vscode://, kiro:// - so a single word is accepted too. What
+// keeps the code safe either way is PKCE: another program that claimed the
+// same scheme did not start the request and does not hold the verifier. No
 // fragment (RFC 6749 3.1.2) and no user name in front of the host, which is
 // how https://site.com@evil.com/ reads as the site at a glance.
 function pg_oauth_redirect_uri_is_acceptable($uri) {
@@ -91,7 +105,41 @@ function pg_oauth_redirect_uri_is_acceptable($uri) {
 
 	}
 
-	return (preg_match('/^[a-z][a-z0-9+\-]*(\.[a-z0-9+\-]+)+$/', $scheme) === 1);
+	if ((preg_match('/^[a-z][a-z0-9+.\-]*$/', $scheme) !== 1)
+		|| in_array($scheme, pg_oauth_forbidden_redirect_schemes(), true)
+		|| isset($parts['user']) || isset($parts['pass'])) {
+
+		return false;
+
+	}
+
+	// Something after the colon: a scheme on its own names no place.
+	return (trim((string)substr($uri, strlen($parts['scheme']) + 1), '/') !== '');
+
+}
+
+// What is left of a loopback http address once the parts that do not matter
+// are taken away - the port, which the application picks when it signs in
+// (RFC 8252 7.3), and which of the three loopback names it was written with,
+// all of which reach the same machine: a client that registered 127.0.0.1
+// and listens on localhost is the same client. An empty path is the root
+// (RFC 3986 6.2.3). Null for any other address.
+function pg_oauth_loopback_rest($uri) {
+
+	$parts = is_string($uri) ? parse_url($uri) : false;
+
+	if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])
+		|| (strtolower($parts['scheme']) !== 'http')
+		|| !pg_oauth_is_loopback_host($parts['host'])
+		|| isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
+
+		return null;
+
+	}
+
+	$path = isset($parts['path']) ? $parts['path'] : '';
+
+	return (($path === '') ? '/' : $path) . (isset($parts['query']) ? '?' . $parts['query'] : '');
 
 }
 
@@ -99,8 +147,8 @@ function pg_oauth_redirect_uri_is_acceptable($uri) {
 //
 // Compared as strings, exactly (OAuth 2.1 section 2.3.1): no prefix matching,
 // no normalising, nothing that would let a path or a query string the client
-// never registered through. The one exception is the port of a loopback http
-// address, for the reason given above.
+// never registered through. The one exception is a loopback http address,
+// compared by its path and query alone (pg_oauth_loopback_rest()).
 function pg_oauth_redirect_uri_matches($registered, $presented) {
 
 	if (!is_array($registered) || !is_string($presented) || ($presented === '')) {
@@ -119,36 +167,17 @@ function pg_oauth_redirect_uri_matches($registered, $presented) {
 
 	}
 
-	$presented_parts = parse_url($presented);
+	$presented_rest = pg_oauth_loopback_rest($presented);
 
-	if (!is_array($presented_parts)
-		|| (strtolower(isset($presented_parts['scheme']) ? $presented_parts['scheme'] : '') !== 'http')
-		|| !isset($presented_parts['host'])
-		|| !pg_oauth_is_loopback_host($presented_parts['host'])) {
+	if ($presented_rest === null) {
 
 		return false;
 
 	}
 
-	$strip_port = function ($parts) {
-
-		return strtolower($parts['scheme']) . '://' . strtolower($parts['host'])
-			. (isset($parts['path']) ? $parts['path'] : '')
-			. (isset($parts['query']) ? '?' . $parts['query'] : '');
-
-	};
-
-	$presented_bare = $strip_port($presented_parts);
-
 	foreach ($registered as $uri) {
 
-		$parts = is_string($uri) ? parse_url($uri) : false;
-
-		if (is_array($parts)
-			&& isset($parts['scheme'], $parts['host'])
-			&& (strtolower($parts['scheme']) === 'http')
-			&& pg_oauth_is_loopback_host($parts['host'])
-			&& ($strip_port($parts) === $presented_bare)) {
+		if (pg_oauth_loopback_rest($uri) === $presented_rest) {
 
 			return true;
 
@@ -157,6 +186,47 @@ function pg_oauth_redirect_uri_matches($registered, $presented) {
 	}
 
 	return false;
+
+}
+
+// Where an authorization answer goes, as the consent screen names it:
+// array('kind' => ..., 'text' => ...). 'web' is an https address, named by its
+// host. 'device' is a loopback address - a program on the person's own
+// computer - named by its host and port. 'app' is a private-use scheme, named
+// by the scheme and host, because the scheme is what says which application
+// receives it.
+function pg_oauth_redirect_destination($uri) {
+
+	$parts = is_string($uri) ? parse_url($uri) : false;
+
+	if (!is_array($parts) || !isset($parts['scheme'])) {
+
+		return array('kind' => 'web', 'text' => (string)$uri);
+
+	}
+
+	$scheme = strtolower($parts['scheme']);
+
+	$host = isset($parts['host']) ? strtolower($parts['host']) : '';
+
+	if (pg_oauth_loopback_rest($uri) !== null) {
+
+		return array('kind' => 'device', 'text' => $host . (isset($parts['port']) ? ':' . (int)$parts['port'] : ''));
+
+	}
+
+	if (($scheme === 'https') || ($scheme === 'http')) {
+
+		return array('kind' => 'web', 'text' => $host);
+
+	}
+
+	return array(
+		'kind' => 'app',
+		'text' => ($host !== '')
+			? $scheme . '://' . $host
+			: mb_substr($scheme . ':' . (isset($parts['path']) ? $parts['path'] : ''), 0, 80)
+	);
 
 }
 
@@ -220,6 +290,31 @@ function pg_oauth_scope_parse($scope) {
 function pg_oauth_scope_string($scopes) {
 
 	return is_array($scopes) ? implode(' ', array_values($scopes)) : '';
+
+}
+
+// The scopes an authorization request asks for, as the consent screen offers
+// them: $known is every scope the site has, $available what this person may
+// hand over. Values the site has no scope of - openid, offline_access, a
+// client's own word for "everything" - are passed over (RFC 6749 3.3 lets the
+// server ignore part of a request), so a client that adds them to real ones
+// connects with the real ones, and one that asks for nothing this site knows
+// is treated like one that asked for nothing: everything available is listed
+// and the person chooses. Empty when every real scope asked for is out of
+// this person's reach.
+function pg_oauth_scope_requested($scope, $known, $available) {
+
+	$available = is_array($available) ? array_values($available) : array();
+
+	$asked = array_intersect(pg_oauth_scope_parse($scope), is_array($known) ? $known : array());
+
+	if (empty($asked)) {
+
+		return $available;
+
+	}
+
+	return array_values(array_intersect($available, $asked));
 
 }
 

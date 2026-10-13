@@ -937,6 +937,77 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 			<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id . '">' . lang('Copy') . '</button></div>';
 	};
 
+	// Each application is set up its own way: a menu, a command or a
+	// configuration file. The steps and the text to paste, with this site's
+	// address already in it, one folded entry per application. Product names
+	// are names and are not translated; the configuration keys are what each
+	// application reads and are written exactly.
+	$json_address = json_encode($mcp_file, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+	$clients = array(
+		'claude' => array(
+			'name'    => lang('Claude (web, desktop and mobile)'),
+			'steps'   => lang('Settings > Connectors > Add custom connector. Paste the address, then press Connect.'),
+			'snippet' => ''
+		),
+		'claude_code' => array(
+			'name'    => 'Claude Code',
+			'steps'   => lang('Run this in a terminal, then type /mcp in Claude Code and choose the server to sign in.'),
+			'snippet' => 'claude mcp add --transport http pinegrap ' . $mcp_file
+		),
+		'chatgpt' => array(
+			'name'    => 'ChatGPT',
+			'steps'   => lang('Settings > Apps & Connectors > Advanced settings: switch developer mode on. Then press Create, paste the address as the MCP server URL and choose OAuth as the authentication.'),
+			'snippet' => ''
+		),
+		'vscode' => array(
+			'name'    => 'VS Code (GitHub Copilot)',
+			'steps'   => lang('Command Palette > MCP: Add Server > HTTP, then paste the address; or put this in .vscode/mcp.json. VS Code asks you to sign in the first time the server starts.'),
+			'snippet' => "{\n  \"servers\": {\n    \"pinegrap\": {\n      \"type\": \"http\",\n      \"url\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'cursor' => array(
+			'name'    => 'Cursor',
+			'steps'   => lang('Add a new MCP server in Cursor\'s settings, or put this in ~/.cursor/mcp.json. Then press Connect next to the server.'),
+			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"url\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'windsurf' => array(
+			'name'    => 'Windsurf',
+			'steps'   => lang('Put this in ~/.codeium/windsurf/mcp_config.json, refresh the MCP servers and sign in when asked.'),
+			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"serverUrl\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'gemini' => array(
+			'name'    => 'Gemini CLI',
+			'steps'   => lang('Put this in ~/.gemini/settings.json, then run /mcp auth pinegrap in Gemini CLI.'),
+			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"httpUrl\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'codex' => array(
+			'name'    => 'Codex',
+			'steps'   => lang('Run these in a terminal. The second opens the sign-in in your browser.'),
+			'snippet' => 'codex mcp add pinegrap --url ' . $mcp_file . "\n" . 'codex mcp login pinegrap'
+		),
+		'other' => array(
+			'name'    => lang('Other applications'),
+			'steps'   => lang('An application that asks for a server address works with the address above. One that can only start a program on the computer reaches the server through the mcp-remote bridge, which needs Node.js and opens the sign-in in the browser: give it this as the command.'),
+			'snippet' => 'npx -y mcp-remote ' . $mcp_file
+		)
+	);
+
+	$client_rows = '';
+
+	foreach ($clients as $key => $client) {
+
+		$client_rows .= '
+			<details class="api-client">
+				<summary>' . h($client['name']) . '</summary>
+				<p class="mb-1">' . h($client['steps']) . '</p>'
+				. (($client['snippet'] !== '')
+					? '<div class="api-secret-box api-snippet mb-1"><code id="' . $id_prefix . '_c_' . $key . '">' . h($client['snippet']) . '</code>
+						<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id_prefix . '_c_' . $key . '">' . lang('Copy') . '</button></div>'
+					: '') . '
+			</details>';
+
+	}
+
 	return '
 	<label class="form-label small">' . lang('MCP server address') . '</label>
 	' . $box($id_prefix . '_mcp', $mcp_file) . '
@@ -953,11 +1024,16 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	<div class="api-guide">
 		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
 		<ol class="mb-0">
-			<li>' . lang('Add the MCP server address in the application. In Claude: Settings > Connectors > Add custom connector. In ChatGPT: Settings > Apps & Connectors, with developer mode on, create a connector and choose OAuth as its authentication.') . '</li>
+			<li>' . lang('Add the MCP server address in the application, exactly as shown: the steps for each application are below. The application compares it with the address the site names in its answers, so another spelling of the host, with or without www, does not connect.') . '</li>
 			<li>' . lang('The application opens this site\'s sign-in page. The person signs in with their own panel account; the application never sees the password.') . '</li>
 			<li>' . lang('The site lists what the application asks for, and the person agrees or refuses.') . '</li>
 			<li>' . lang('The tools appear in the application, and the connection is listed on this application\'s Connections tab, where it can be ended.') . '</li>
 		</ol>
+	</div>
+
+	<div class="api-guide">
+		<div class="api-guide-title"><i class="bi bi-window-stack me-1"></i>' . lang('Steps for each application') . '</div>
+		' . $client_rows . '
 	</div>
 
 	<div class="api-guide">
@@ -966,6 +1042,7 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 			<li>' . lang('Every permission area becomes a set of tools. Read gives the list and view tools; Write also gives the tools that create, change and delete.') . '</li>
 			<li>' . lang('A person gets at most what their own panel account may do, and never more than the permissions chosen here.') . '</li>
 			<li>' . lang('Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.') . '</li>
+			<li>' . lang('Some applications use only a limited number of tools at a time, VS Code and Cursor among them. If one warns about too many tools, untick the areas you do not need on the consent screen, or switch tools off in the application.') . '</li>
 		</ul>
 	</div>';
 
@@ -1249,6 +1326,10 @@ echo pg_page_shell(array(
 .api-guide-title { font-weight: 600; margin-bottom: 6px; }
 .api-guide ol, .api-guide ul { padding-left: 18px; }
 .api-guide li + li { margin-top: 4px; }
+.api-client + .api-client { margin-top: 4px; }
+.api-client summary { cursor: pointer; font-weight: 500; }
+.api-client[open] summary { margin-bottom: 4px; }
+.api-snippet code { white-space: pre; overflow-x: auto; word-break: normal; }
 .api-danger-zone { border-top: 1px solid var(--bs-border-color); margin-top: 18px; padding-top: 14px; }
 /* The site chat launcher is fixed at z-index 1080, an offcanvas is 1045, so the
    bubble sits on top of whatever the drawer puts in its bottom right corner -

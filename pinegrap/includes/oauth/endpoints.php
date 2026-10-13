@@ -125,7 +125,8 @@ function pg_oauth_gate() {
 }
 
 // A browser's preflight, answered for the endpoints a browser-based client
-// calls with a body.
+// calls with a body, and for the discovery documents, which MCP clients read
+// with their protocol version in a header of its own.
 function pg_oauth_preflight() {
 
 	while (ob_get_level() > 0) {
@@ -140,7 +141,7 @@ function pg_oauth_preflight() {
 
 	header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
-	header('Access-Control-Allow-Headers: Authorization, Content-Type');
+	header('Access-Control-Allow-Headers: Authorization, Content-Type, MCP-Protocol-Version');
 
 	header('Access-Control-Max-Age: 86400');
 
@@ -384,8 +385,16 @@ function pg_oauth_token_from_code($client) {
 	}
 
 	// OAuth 2.1 asks for the redirect address again when one was sent with
-	// the authorization request; every request here sends one.
-	if (!hash_equals((string)$row['redirect_uri'], $redirect)) {
+	// the authorization request, and compared the way it was matched there: a
+	// loopback address by its path and query. A request that sent none was
+	// answered at the client's only address and may send none here either.
+	$stored = (string)$row['redirect_uri'];
+
+	$same = ($stored === '')
+		? (($redirect === '') || pg_oauth_redirect_uri_matches(pg_oauth_client_redirect_uris($client), $redirect))
+		: pg_oauth_redirect_uri_matches(array($stored), $redirect);
+
+	if (!$same) {
 
 		pg_oauth_fail(400, 'invalid_grant', 'The redirect address does not match the authorization request.');
 
@@ -468,10 +477,13 @@ function pg_oauth_token_from_refresh($client) {
 
 	// A refresh may ask for less than was granted, never more (RFC 6749 6).
 	// The connection keeps what the person agreed to; the narrower set is not
-	// stored, because the next refresh may ask for all of it again.
+	// stored, because the next refresh may ask for all of it again. Values the
+	// site has no scope of are passed over, as on the consent screen: a
+	// client sending its first request's scope string again, offline_access
+	// and all, asks for nothing new.
 	if (isset($_POST['scope']) && ((string)$_POST['scope'] !== '')) {
 
-		$asked = pg_oauth_scope_parse((string)$_POST['scope']);
+		$asked = array_intersect(pg_oauth_scope_parse((string)$_POST['scope']), api_scopes_all());
 
 		if (count(array_diff($asked, api_scopes_expand($consented))) > 0) {
 
@@ -709,20 +721,26 @@ function pg_oauth_registration_validate($body) {
 
 	}
 
+	// A client is registered for what this server has - the code grant, with
+	// the refresh tokens every connection gets, and response type code -
+	// whatever else it lists: one that also names the device code grant or
+	// client credentials is not refused for it (RFC 7591 2 lets the server
+	// replace what it does not support, and the answer says what was
+	// registered). One that does not list the code grant at all cannot
+	// connect here.
 	$grant_types = isset($body['grant_types']) ? $body['grant_types'] : array('authorization_code');
 
-	if (!is_array($grant_types) || !in_array('authorization_code', $grant_types, true)
-		|| (count(array_diff($grant_types, array('authorization_code', 'refresh_token'))) > 0)) {
+	if (!is_array($grant_types) || !in_array('authorization_code', $grant_types, true)) {
 
-		return array('error' => 'invalid_client_metadata', 'description' => 'grant_types may hold authorization_code and refresh_token only.');
+		return array('error' => 'invalid_client_metadata', 'description' => 'grant_types must include authorization_code.');
 
 	}
 
 	$response_types = isset($body['response_types']) ? $body['response_types'] : array('code');
 
-	if (!is_array($response_types) || (array_values(array_unique($response_types)) !== array('code'))) {
+	if (!is_array($response_types) || !in_array('code', $response_types, true)) {
 
-		return array('error' => 'invalid_client_metadata', 'description' => 'response_types may hold code only.');
+		return array('error' => 'invalid_client_metadata', 'description' => 'response_types must include code.');
 
 	}
 
@@ -737,7 +755,7 @@ function pg_oauth_registration_validate($body) {
 	return array(
 		'redirect_uris'              => $clean,
 		'token_endpoint_auth_method' => $method,
-		'grant_types'                => array_values(array_unique($grant_types)),
+		'grant_types'                => array('authorization_code', 'refresh_token'),
 		'client_name'                => $text(isset($body['client_name']) ? $body['client_name'] : '', 100),
 		'client_uri'                 => $client_uri,
 		'software_id'                => $text(isset($body['software_id']) ? $body['software_id'] : '', 100),

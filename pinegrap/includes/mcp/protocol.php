@@ -9,7 +9,7 @@
  * has no session and no handshake: every request carries its version, in the
  * MCP-Protocol-Version header and in _meta, and names its method and tool in
  * the Mcp-Method and Mcp-Name headers, which must agree with the body. The
- * earlier ones (2025-03-26 to 2025-11-25) open with initialize; no session id
+ * earlier ones (2024-11-05 to 2025-11-25) open with initialize; no session id
  * is handed out, which they allow, so each of their requests stands alone as
  * well. Nothing is streamed: every answer is complete when it is sent.
  *
@@ -28,10 +28,13 @@ if (!defined('PG_MCP_ENTRY')) {
 }
 
 // The protocol versions answered, newest first. The first is the current
-// generation; the rest open with initialize.
+// generation; the rest open with initialize. 2024-11-05 is still what some
+// clients built on an older SDK ask for, and the messages this server
+// exchanges - tools/list and tools/call - read the same in it: a client
+// answered with a version it does not know gives up instead.
 function pg_mcp_versions() {
 
-	return array('2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26');
+	return array('2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05');
 
 }
 
@@ -283,7 +286,18 @@ function pg_mcp_run() {
 
 	// Nothing is streamed and no session is kept, so there is no stream to
 	// open with GET and no session to end with DELETE (Streamable HTTP 2.2).
+	// A GET or HEAD is still asked for credentials first: some clients probe
+	// the address that way, before they send anything, to find out whether
+	// and where to sign in, and the 401's challenge is what tells them.
 	if ($http_method !== 'POST') {
+
+		if (($http_method === 'GET') || ($http_method === 'HEAD')) {
+
+			pg_mcp_gate();
+
+			api_authenticate(array());
+
+		}
 
 		api_extra_headers('Allow', 'POST, OPTIONS');
 
@@ -445,6 +459,21 @@ function pg_mcp_run() {
 		case 'tools/call':
 
 			pg_mcp_tool_call($id, $params, $modern);
+
+		// Asked by some clients whatever the capabilities say. The server
+		// offers no resources and no prompts, and an empty list says so
+		// without the client reporting a failed server.
+		case 'resources/list':
+
+			pg_mcp_result($id, array('resources' => array()), $modern);
+
+		case 'resources/templates/list':
+
+			pg_mcp_result($id, array('resourceTemplates' => array()), $modern);
+
+		case 'prompts/list':
+
+			pg_mcp_result($id, array('prompts' => array()), $modern);
 
 	}
 

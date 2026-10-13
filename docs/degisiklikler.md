@@ -84,6 +84,147 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: OAuth ve MCP, Claude dışındaki istemcilerle de bağlanıyor (Cursor, VS Code, Gemini CLI, Codex, Windsurf, ChatGPT, mcp-remote) (2026-10-13)
+
+**Neden.** OAuth sunucusu ve `mcp.php` yalnız Claude'la denenmişti. Diğer
+MCP istemcilerinin kayıt gövdeleri, dönüş adresleri ve keşif sırası
+kaynak kodlarından okundu: VS Code (`extHostMcp`, `oauth.ts`), MCP SDK,
+mcp-remote, gemini-cli-core, Codex. Kodla karşılaştırınca şunlar bağlantıyı
+kesiyordu:
+
+- **Cursor** kayıtta `cursor://anysphere.cursor-mcp/oauth/callback`
+  gönderiyor. Uygulama şeması için ters alan adı (noktalı şema) şartı
+  vardı, kayıt `invalid_redirect_uri` ile reddediliyordu. Windsurf ve
+  Kiro gibi tek kelimelik şemalı istemciler de aynı durumdaydı.
+- **VS Code** `grant_types`'a `urn:ietf:params:oauth:grant-type:device_code`
+  ekleyebiliyor. Bazı istemciler `response_types`'a fazladan değer
+  koyuyor. Kayıt yalnız `authorization_code`/`refresh_token` ve yalnız
+  `code` kabul ettiği için `invalid_client_metadata` dönüyordu.
+- Loopback adresi kayıtta `http://127.0.0.1/` iken istemci
+  `http://localhost:PORT/` ile gelebiliyor (ya da tersi). Yalnız port
+  serbestti, ad farkı ve sondaki eğik çizgi farkı eşleşmiyordu.
+- **Gemini CLI** ve SDK tabanlı istemciler `scope`'a `openid` ve
+  `offline_access` koyuyor. Authorize'da yalnız bunlar istendiğinde
+  `invalid_scope` dönüyordu. Yenilemede aynı dize tekrar gelince
+  `invalid_scope` dönüyordu.
+- Tek dönüş adresli istemci authorize'da `redirect_uri` göndermezse token
+  ucu boş adresi kayıttakiyle karşılaştırıp reddediyordu.
+- **Gemini CLI** önce MCP adresine HEAD atıp 401'deki
+  `WWW-Authenticate`'ten keşif adresini arıyor. GET/HEAD doğrudan 405
+  dönüyordu, meydan okuma yoktu.
+- Eski SDK'lar `initialize`'da `2024-11-05` istiyor. Sürüm listesinde
+  yoktu, istemci bilinmeyen sürüm cevabıyla vazgeçiyordu.
+- Bazı istemciler yetenekten bağımsız `resources/list` ve `prompts/list`
+  soruyor. `-32601` dönüyordu ve sunucu hatalı görünüyordu.
+- Tarayıcı içi istemciler keşif belgelerini `MCP-Protocol-Version`
+  başlığıyla okuyor. OAuth uçlarının CORS önuçuşunda bu başlık yoktu.
+
+**Düzeltme.**
+
+- `rules.php`
+  - `pg_oauth_redirect_uri_is_acceptable()`: uygulama şeması artık
+    noktasız da olabiliyor (`cursor://…`, `vscode://…`, `myapp:/cb`).
+    Reddedilenler `pg_oauth_forbidden_redirect_schemes()`'de: javascript,
+    vbscript, data, file, blob, about, filesystem, view-source, jar, ftp,
+    ws, wss, mailto, tel, sms, intent. Kullanıcı adı/parola taşıyan ve
+    iki noktadan sonrası boş adres (`cursor:`, `cursor://`) de
+    reddediliyor. Kodu çalınan bir adresi PKCE koruyor (doğrulayıcı
+    istemcide). RFC 8252 7.1 de ters alan adını öneri olarak bırakıyor.
+  - `pg_oauth_loopback_rest()` ve `pg_oauth_redirect_uri_matches()`:
+    loopback http adresi (127.0.0.1, localhost, ::1) yalnız yol ve
+    sorgusuyla karşılaştırılıyor. Port ve loopback adı yok sayılıyor, boş
+    yol `/` sayılıyor.
+  - `pg_oauth_scope_requested()`: tanınmayan değerler atlanıyor. Tanınan
+    hiçbir şey istenmediyse istemciye açık olan her şey öneriliyor
+    (kapsamsız istek gibi). Kişi yine onay ekranında daraltıyor.
+  - `pg_oauth_redirect_destination()`: onay ekranı için hedefin türü.
+    `web` https sitesi, `device` bu bilgisayardaki program (loopback),
+    `app` bu cihazdaki uygulama (şema).
+- `endpoints.php`
+  - Kayıt: `grant_types` `authorization_code` **içermeli**, `response_types`
+    `code` **içermeli**. Fazlası reddedilmiyor, kayıtta ve cevapta her
+    zaman `["authorization_code","refresh_token"]` / `["code"]` yazıyor
+    (RFC 7591 2: sunucu desteklemediğini değiştirebilir, cevap neyin
+    kaydedildiğini söyler).
+  - Token: dönüş adresi authorize'daki gibi eşleştiriliyor. Authorize'da
+    adres gönderilmediyse token'da da gönderilmeyebilir, gönderilirse
+    istemcinin kayıtlı adreslerinden biri olmalı.
+  - Yenileme: `scope`'taki tanınmayan değerler atlanıyor.
+  - Önuçuş `MCP-Protocol-Version` başlığına izin veriyor.
+- `authorize.php`: etkin dönüş adresi istemcinin gönderdiği (yoksa tek
+  kayıtlı adres). Kod gönderilen adresle saklanıyor. Onay ekranı "Yanıtın
+  gideceği yer" altında hedefin türünü ve adını gösteriyor. Bilinmeyen
+  istemci sayfası (ör. sitede silinmiş dinamik istemci) kişiye
+  uygulamadan yeniden başlamasını, olmazsa sunucuyu orada kaldırıp
+  eklemesini söylüyor.
+- `protocol.php`
+  - `2024-11-05` sürüm listesine girdi. Bu sunucunun kullandığı
+    `tools/list` ve `tools/call` o sürümde de aynı.
+  - GET/HEAD önce kimlik soruyor: kimliksizse 401 ve meydan okuma, kimlikli
+    ise 405 `Allow: POST, OPTIONS`.
+  - `resources/list`, `resources/templates/list`, `prompts/list` boş liste
+    dönüyor.
+- `api_settings.php` (OAuth uygulamasının rehberi, çekmece ve sayfa):
+  "Uygulamaya göre adımlar" kutusu eklendi. Claude (web/masaüstü/mobil),
+  Claude Code, ChatGPT, VS Code (Copilot), Cursor, Windsurf, Gemini CLI,
+  Codex ve diğerleri (mcp-remote) için açılır bölümler var. Her birinde
+  kısa adımlar ve kopyalanabilir ayar ya da komut bulunuyor: `.vscode/mcp.json`
+  `servers…type: http`, Cursor `mcpServers…url`, Windsurf `serverUrl`,
+  Gemini `httpUrl` + `/mcp auth`, `codex mcp add … --url` + `codex mcp
+  login`, `npx -y mcp-remote`. Rehberdeki adres `pinegrap/mcp.php`. 1. adım
+  adresin aynen yazılmasını söylüyor: `www`'li/`www`'siz ya da sorgu dizeli
+  adres, korumalı kaynak belgesindeki `resource` ile uyuşmuyor ve VS Code
+  gibi istemciler bağlanmıyor. "Uygulama ne yapabilir" kutusuna araç
+  sınırı eklendi: VS Code ve Cursor gibi uygulamalar aynı anda sınırlı
+  sayıda araç kullanıyor (VS Code'da 128). Uyarı çıkarsa kişi onay
+  ekranında gereksiz alanları kaldırmalı ya da araçları uygulamada
+  kapatmalı. Türkçe metinler `tr.json`'da.
+
+**Bilinen sınırlar (düzeltilmedi).**
+
+- Alt klasöre kurulumda (`PATH !== '/'`) istemcinin bulabildiği tek ad
+  `openid-configuration`. MCP SDK bu belgeyi OIDC şemasıyla doğruluyor ve
+  `jwks_uri` gibi alanlar arıyor. Bu, Faz E (OIDC) ile çözülür.
+- Kök `/.well-known/oauth-protected-resource` (yolsuz) `integration`
+  kaynağını tanıtıyor. VS Code'un yolsuz yedek araması MCP adresiyle
+  uyuşmuyor. VS Code önce 401'deki `resource_metadata`'yı ve yollu adresi
+  denediği için bu yedeğe düşmemesi beklenir (VS Code kaynağından okundu,
+  canlı denenmedi).
+- Yöneticinin istemci listesi / izin verilen istemciler (allowlist) bu PR'da
+  yok, Faz B'ye kaldı.
+
+**Doğrulama.** `tests/oauth_test.php` (16 test, 114 doğrulama) ve
+`tests/mcp_test.php` geçiyor. Yeni testler: VS Code, Cursor, Gemini ve
+çıplak kayıt gövdeleri, reddedilen kayıtlar, VS Code ve uygulama şeması
+eşleşmesi, hedef türü, kapsam seçimi. Sandbox'ta (PHP yerleşik sunucu,
+IIS kuralını taklit eden yönlendirici) uçtan uca denendi:
+- Keşif belgeleri ve 204 önuçuşu.
+- `HEAD`/`GET` `/mcp.php` ve `/pinegrap/mcp.php` için 401 ve doğru
+  `resource_metadata`, `DELETE` için 405.
+- VS Code (device_code'lu, dört adresli), Cursor (`cursor://`) ve Gemini
+  (`openid offline_access`) kayıtları 201. `JavaScript://` ve `implicit`
+  400.
+- VS Code: `127.0.0.1:54321` ile onay ("Bu bilgisayardaki bir program"),
+  `localhost:54321` ile token 200, `offline_access`'lı yenileme 200.
+- Cursor: kapsamsız ve kaynaksız onay ("Bu cihazdaki bir uygulama
+  cursor://anysphere.cursor-mcp"), `cursor://…?code=…&iss=…` dönüşü,
+  token 200.
+- Gemini: `redirect_uri`'siz authorize ve token 200. Yanlış adresle token
+  `invalid_grant`, kayıtsız adresle authorize 400. Bilinmeyen istemci
+  sayfası Türkçe.
+- Jetonla `initialize` (`2024-11-05`), `resources/list`,
+  `resources/templates/list`, `prompts/list` ve `tools/list` (yalnız
+  products:read verilince 4 araç).
+- Panel rehberinin dokuz bölümü ve kopyalanacak ayarlar render ediliyor.
+  Sunucu logunda uyarı yok.
+
+**Doğrulanmayan.** Gerçek istemcilerle (Cursor, VS Code, Gemini CLI, Codex,
+ChatGPT geliştirici modu) canlı bağlantı denenmedi. Cloud oturumu
+dev.pinegrap.com'a ulaşamıyor. Erdal'ın dev.pinegrap.com'da denemesi
+gerekiyor.
+
+---
+
 ## 2026.4.10 — Görsel editör: formlarda güzel URL, Adres Adı'na bağlı linkler, link seçicide Geri Dönüşüm Kutusu (2026-10-13)
 
 **Kaynak.** Ürün sahibinin görsel editörde bulduğu üç sorun: formlarda güzel

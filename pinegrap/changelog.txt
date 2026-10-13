@@ -211,6 +211,24 @@
          (istemci kimlik belgesi) tanıtabiliyor; onay ekranı
          uygulamanın hangi alan adından geldiğini gösterir.
 
+  [YENİ] MCP sunucusuna Claude ve ChatGPT dışındaki
+         uygulamalar da bağlanıyor: VS Code (GitHub Copilot),
+         Cursor, Windsurf, Gemini CLI, Codex ve mcp-remote ile
+         çalışan diğerleri. Uygulama Erişimi'ndeki rehber her
+         uygulama için adımları ve kopyalanacak ayarı ya da
+         komutu gösteriyor.
+
+  [DÜZELTME] Cursor gibi kendi adres şemasıyla (cursor://)
+         dönen uygulamaların kaydı reddedilmiyor. Bilgisayarda
+         çalışan programların döndüğü yerel adreste localhost
+         ile 127.0.0.1 farkı bağlantıyı bozmuyor. Uygulamanın
+         istediği ama sitede olmayan izinler (openid,
+         offline_access) bağlantıyı durdurmuyor.
+
+  [YENİ] Onay ekranı yanıtın nereye gideceğini türüyle
+         söylüyor: bir web sitesi, bu bilgisayardaki bir program
+         ya da bu cihazdaki bir uygulama.
+
   [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
          okuma (GET /webhooks/{id}), adres, olay listesi ve
          durum değiştirme (PATCH /webhooks/{id} ya da POST
