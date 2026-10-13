@@ -324,6 +324,9 @@
          Aynı asistana yeni talimat yazılabilir, çalışma
          durdurulabilir, görev geri alınabilir. Görev
          listesinde asistandaki görevler işaretli.
+         Kurulu olmayan asistan listede "hazır değil"
+         diye görünür ama seçilemez; hazır asistan yoksa
+         seçim boş açılır.
 
   [YENİ] Görev notunda @ai ya da @Claude yazmak, görevi
          devretmeden asistana o görev hakkında sorar.
@@ -1011,6 +1014,16 @@
          gelmiyor: sitenin web.config dosyası bunları
          zaten ekliyorsa yazılım kendi kopyasını
          göndermiyor.
+
+  [DÜZELTME] Adresini başka siteye göndermemesi gereken
+         sayfalar (OAuth onay ekranı, API dokümanı,
+         Çalışma Alanı misafir sayfası, takvim aboneliği,
+         süreli kısa linkler) IIS'te de referrer
+         göndermiyor. Yazılımın yazdığı sunucu kuralları
+         Referrer-Policy başlığını artık eklemiyor; başlığı
+         her sayfaya yazılım koyuyor. Mevcut sitelerde
+         web.config'teki (Apache'de .htaccess'teki)
+         Referrer-Policy ekleyen satırı silin.
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.
