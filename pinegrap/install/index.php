@@ -8523,6 +8523,7 @@ function get_tables() {
 		'ws_approval_people',
 		'ws_ack_requests',
 		'ws_acks',
+		'ws_calendar_feeds',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',

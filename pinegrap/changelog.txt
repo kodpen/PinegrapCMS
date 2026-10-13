@@ -259,6 +259,32 @@
          asistan istekleri ve önerilen değişiklikler
          tablolarına görev kolonu eklenir.
 
+  [YENİ] Takvim aboneliği: herkes Çalışma Alanı'ndaki
+         işlerini telefonundaki ya da bilgisayarındaki
+         takvimde (Google, Apple, Outlook) görebiliyor.
+         Hesap menüsündeki "Takvim aboneliği" ekranından
+         kişiye özel bir adres oluşturuluyor; takvim bu
+         adresi kendisi okuyup güncel tutuyor. Takvimde
+         tarihli görevler (son gününde, saatliyse
+         saatinde), tekrarlayan görevlerin gelecek
+         kopyaları, kişiyi ilgilendiren toplantı, ziyaret
+         ve izin gibi plan kayıtları, tatil günleri ve
+         cevap bekleyen onay isteklerinin kapanış saati
+         yer alıyor. Hangilerinin görüneceği seçiliyor;
+         açıklama ve notlar varsayılan olarak gitmiyor.
+         Takvim yalnız okur, değişiklikler sitede yapılır.
+
+  [YENİ] Adres sızarsa yenisi oluşturuluyor ve eski adres
+         hemen çalışmayı bırakıyor; abonelik tamamen de
+         sonlandırılabiliyor. Ekran, adresi en son hangi
+         takvimin, ne zaman ve hangi IP'den okuduğunu
+         gösteriyor. Ekipten çıkarılan ya da Çalışma
+         Alanı'na erişimi kalmayan kişinin adresi hiçbir
+         şey göstermiyor.
+
+  [ŞEMA] Takvim abonelikleri için yeni bir tablo
+         oluşturulur.
+
   DIŞ API
   --------------------------------------------------------
 
@@ -545,6 +571,13 @@
          alınıp alınmadığını gösteriyor. Panel kısıtlama
          dışında değilken kendi ülkesini kapatan ayar,
          adresi izin listesinde değilse kaydedilmiyor.
+
+  [YENİ] Takvim aboneliği adresi, API gibi kendi kimlik
+         bilgisini taşıyan bir adres sayılıyor: Google,
+         Microsoft ve Apple'ın takvim sunucuları bot
+         kuralına takılmadan okuyabiliyor; ülke
+         kısıtlamasında "API, MCP ve OAuth uçları"
+         seçeneği bu adresi de kapsıyor.
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.
