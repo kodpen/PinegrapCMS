@@ -13726,6 +13726,11 @@ a.ws-chip:hover {
   max-height: 18rem;
   overflow-y: auto;
 }
+/* An MCP server's tools: a code host lists a hundred of them. */
+.ws-mcp-tools {
+  max-height: 28rem;
+  overflow-y: auto;
+}
 .ws-days .btn {
   padding: .1rem .35rem;
   font-size: .72rem;
