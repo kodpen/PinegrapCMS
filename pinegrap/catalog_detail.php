@@ -235,7 +235,7 @@ if ($next_page_id <= 0) {
     $query = "SELECT next_page_id FROM catalog_detail_pages WHERE page_id = '" . escape($liveform->get_field_value('page_id')) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $next_page_id = $row['next_page_id'];
+    $next_page_id = is_array($row) ? $row['next_page_id'] : 0;
 }
 
 // send user to next page

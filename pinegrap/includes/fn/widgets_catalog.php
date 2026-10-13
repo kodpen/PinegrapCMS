@@ -1137,6 +1137,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // happened to use.
     $atc_next_pid    = (int)(isset($cfg['add_to_cart_next_page_id']) ? $cfg['add_to_cart_next_page_id'] : 0);
     $atc_stay        = !empty($cfg['add_to_cart_stay_on_page']);
+    // No cart page chosen: back to this listing with the toast, as the
+    // product page does. catalog_detail.php would otherwise look for a
+    // catalog_detail_pages row a designed page does not have and send the
+    // visitor to the home page.
+    $atc_back        = $atc_stay || $atc_next_pid <= 0;
     $atc_software_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
     $atc_action_url   = $base_path . $atc_software_dir . '/catalog_detail.php';
     $atc_request_uri  = function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
@@ -1415,7 +1420,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 . '<input type="hidden" name="quantity" value="1">'
                 . '<input type="hidden" name="page_id" value="' . (int)$atc_current_page_id . '">'
                 . '<input type="hidden" name="current_url" value="' . h($atc_request_uri) . '">'
-                . ($atc_stay
+                . ($atc_back
                     ? ('<input type="hidden" name="next_url" value="' . h(_pg_sw_append_query($atc_request_uri, 'cart_added', (string)$pid)) . '">')
                     : ('<input type="hidden" name="next_page_id" value="' . (int)$atc_next_pid . '">'));
             // Use HTML5 `form` attribute on the bindable button so the
@@ -2304,7 +2309,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Bootstrap 5 Toast if available, otherwise a minimal inline fallback.
     // After firing, the cart_added param is stripped from the URL via
     // history.replaceState so a refresh doesn't re-fire the toast.
-    $toast_html = $atc_stay
+    $toast_html = $atc_back
         ? pg_sw_cart_toast_script(isset($cfg['add_to_cart_toast_message']) ? $cfg['add_to_cart_toast_message'] : '',
                                   function_exists('pg_sw_cart_url') ? pg_sw_cart_url($atc_next_pid) : '')
         : '';
