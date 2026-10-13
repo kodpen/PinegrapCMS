@@ -10381,7 +10381,8 @@ const StyleDesigner = (function () {
                         if (k === 'eo_field')   return _sdT('order field') + ' → ' + v;
                         if (k === 'section')    return _sdT('section') + ' → ' + v;
                         if (k === 'action')     return _sdT('action') + ' → ' + v;
-                        return k + ' → ' + _swBindLabel(_bindType, v);
+                        var _ffTip = _sdFormFieldOf(v, node);
+                        return k + ' → ' + (_ffTip ? (_ffTip.label || _ffTip.name) : _swBindLabel(_bindType, v));
                     }).join(', ');
                     bindBtn.addEventListener('click', function (e) {
                         e.stopPropagation();
@@ -30205,7 +30206,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Search Results')) + ' ' + _sdT('You can bind it to the static tokens and to the result tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Search Results')) + ' ' + _sdT('You can bind it to the widget\'s fields, and inside the loop_area to each result\'s fields.') +
                 '</div>' +
                 rowsHtmlSR
             );
@@ -30246,7 +30247,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Registration Entrance')) + ' ' + _sdT('You can bind it to the registration form tokens.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Registration Entrance')) + ' ' + _sdT('You can bind it to the registration form\'s fields.') +
                 '</div>' +
                 rowsHtmlReg
             );
@@ -30287,7 +30288,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Shopping Cart')) + ' ' + _sdT('You can bind it to the static cart tokens and to the product tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Shopping Cart')) + ' ' + _sdT('You can bind it to the cart\'s fields, and inside the loop_area to each product\'s fields.') +
                 '</div>' +
                 rowsHtmlSC
             );
@@ -30328,7 +30329,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('View Order')) + ' ' + _sdT('You can bind it to the static order tokens and to the item tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('View Order')) + ' ' + _sdT('You can bind it to the order\'s fields, and inside the loop_area to each item\'s fields.') +
                 '</div>' +
                 rowsHtmlOV
             );
@@ -30369,7 +30370,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Membership Entrance')) + ' ' + _sdT('You can bind it to the membership tokens.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Membership Entrance')) + ' ' + _sdT('You can bind it to the membership fields.') +
                 '</div>' +
                 rowsHtmlMem
             );
@@ -30415,7 +30416,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Custom Form')) + ' ' + _sdT('Its text can be bound to the form tokens.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Custom Form')) + ' ' + _sdT('Its text can be bound to the form\'s fields.') +
                 '</div>' +
                 rowsHtmlCF
             );
@@ -30456,7 +30457,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Calendar View')) + ' ' + _sdT('You can bind it to the static calendar tokens and to the event tokens inside the loop_area.') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Calendar View')) + ' ' + _sdT('You can bind it to the calendar\'s fields, and inside the loop_area to each event\'s fields.') +
                 '</div>' +
                 rowsHtmlCV
             );
@@ -30648,7 +30649,7 @@ const StyleDesigner = (function () {
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                     '<span class="bi bi-info-circle me-1"></span>' +
-                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Express Order')) + ' ' + _sdT('Use the tokens for content (text/href), and the <strong>Express Order Field</strong> dropdown below for the form controls (input/select).') +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Express Order')) + ' ' + _sdT('Bind the content (text/href) to the order\'s fields, and the form controls (input/select) with the <strong>Express Order Field</strong> dropdown below.') +
                 '</div>' +
                 rowsHtmlEO +
                 _eoFormCtrlEl
@@ -30762,7 +30763,7 @@ const StyleDesigner = (function () {
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
             '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
                 '<span class="bi bi-info-circle me-1"></span>' +
-                _sdT('This element is inside a {var}. Bind it to the chosen form\'s fields or to the built-in tokens.', _hintLabel) +
+                _sdT('This element is inside a {var}. Bind it to the chosen form\'s fields or to the built-in fields.', _hintLabel) +
             '</div>' +
             rowsHtml
         );

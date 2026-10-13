@@ -100,7 +100,10 @@ kalmıştı. Kural: sayfa içeriği ve tasarımcının gördüğü yönlendirme
   `_swBindLabel(tür, token)` seçeneği widget'ın kendi token paletinden
   okur; `_swLinkHint()`, `_swTextHint()`, `_swStaffHint()` ortak
   cümleleri kurar. Bağlı öğenin araç çubuğu ipucu da (`Veri bağlı: href
-  → …`) seçenek adını gösterir.
+  → …`) seçenek adını gösterir. Veri Bağla panelinin giriş cümleleri
+  "tokenler" yerine "alanlar" der. Yerel test raporu (madde 3): href'i
+  bağlı linkteki not `form_item_view` yerine "Detay sayfası adresi"
+  yazıyor.
 - **Giriş bölgesi ve sepet bağlantısında Veri Bağla paneli yanlış
   widget'ı görüyordu.** `_getSystemWidgetRegionType()` bu iki türü
   tanımıyor, `form_list_view` dönüyordu: içlerindeki bir öğe seçilince

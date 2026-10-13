@@ -20499,5 +20499,14 @@
     "Linked for a visitor who is not signed in.": "Oturum açmamış ziyaretçiye bağlanır.",
     "Elements bound to \"{var}\" show this text.": "\"{var}\" alanına bağlanan öğeler bu metni gösterir.",
     "Links bound to \"{var}\" and the \"may open the staff page\" condition appear only for visitors the page's folder lets in.": "\"{var}\" alanına bağlanan linkler ve \"personel sayfasını açabilir\" koşulu yalnız sayfanın klasörünün içeri aldığı ziyaretçilerde görünür.",
-    "The URL comes from the \"{var}\" binding. To type a URL by hand, pick “— No binding —” in the <strong>Bind Data</strong> panel.": "URL \"{var}\" bağlamasından geliyor. Elle URL girmek için <strong>Veri Bağla</strong> panelinden “— Bağlama yok —” seç."
+    "The URL comes from the \"{var}\" binding. To type a URL by hand, pick “— No binding —” in the <strong>Bind Data</strong> panel.": "URL \"{var}\" bağlamasından geliyor. Elle URL girmek için <strong>Veri Bağla</strong> panelinden “— Bağlama yok —” seç.",
+    "This element is inside a {var}. Bind it to the chosen form's fields or to the built-in fields.": "Bu element bir {var} içinde. Seçilen formun alanlarına ya da yerleşik alanlara bağlayın.",
+    "You can bind it to the widget's fields, and inside the loop_area to each result's fields.": "Widget'ın alanlarına, loop_area içinde her sonucun alanlarına bağlayabilirsin.",
+    "You can bind it to the registration form's fields.": "Kayıt formunun alanlarına bağlayabilirsin.",
+    "You can bind it to the cart's fields, and inside the loop_area to each product's fields.": "Sepetin alanlarına, loop_area içinde her ürünün alanlarına bağlayabilirsin.",
+    "You can bind it to the order's fields, and inside the loop_area to each item's fields.": "Siparişin alanlarına, loop_area içinde her kalemin alanlarına bağlayabilirsin.",
+    "You can bind it to the membership fields.": "Üyelik alanlarına bağlayabilirsin.",
+    "Its text can be bound to the form's fields.": "Metni formun alanlarına bağlanabilir.",
+    "You can bind it to the calendar's fields, and inside the loop_area to each event's fields.": "Takvimin alanlarına, loop_area içinde her etkinliğin alanlarına bağlayabilirsin.",
+    "Bind the content (text/href) to the order's fields, and the form controls (input/select) with the <strong>Express Order Field</strong> dropdown below.": "İçeriği (metin/href) siparişin alanlarına, form kontrollerini (input/select) alttaki <strong>Hızlı Sipariş Alanı</strong> listesiyle bağlayın."
 }
