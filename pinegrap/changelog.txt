@@ -248,6 +248,19 @@
          söylüyor: bir web sitesi, bu bilgisayardaki bir program
          ya da bu cihazdaki bir uygulama.
 
+  [YENİ] Bağlı uygulamalar ekranı: panel kullanıcıları hesap
+         menüsündeki "Bağlı uygulamalar"dan siteye kendi
+         adlarına bağladıkları uygulamaları (Claude, Cursor gibi)
+         görür; her birinin neyi okuyup yazabildiğini ve ne
+         zaman kullanıldığını görür, bağlantıyı tek başına
+         sonlandırabilir. Diğer oturumlar kapanmaz.
+
+  [YENİ] Uygulama Erişimi'nde "Bağlı uygulamalar" kartı:
+         siteye OAuth ile bağlanan uygulamalar, bağlantı sayısı
+         ve son kullanımıyla listelenir. Bir uygulama
+         kapatılabilir (hemen durur, bağlantıları açılınca geri
+         gelir) ya da bütün bağlantılarıyla kaldırılabilir.
+
   [YENİ] Webhook aboneliği API'den yönetiliyor: tek abonelik
          okuma (GET /webhooks/{id}), adres, olay listesi ve
          durum değiştirme (PATCH /webhooks/{id} ya da POST

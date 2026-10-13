@@ -353,6 +353,68 @@ if ($_POST) {
 
 		exit();
 
+	} elseif (in_array($action, array('oauth_client_status', 'oauth_client_delete'), true) && pg_oauth_ready()) {
+
+		// An application that connects with OAuth, as opposed to the operator's
+		// OAuth application above it: turned off, it can neither start a
+		// connection nor use the ones it has; removed, its connections go with
+		// it.
+		$client_row_id = isset($_POST['oauth_client_row']) ? (int)$_POST['oauth_client_row'] : 0;
+
+		$client = db_item("SELECT id, name, status FROM oauth_clients WHERE id = '" . $client_row_id . "' LIMIT 1");
+
+		if ($client) {
+
+			$client_name = ((string)$client['name'] !== '') ? (string)$client['name'] : lang('Unnamed application');
+
+			if ($action === 'oauth_client_delete') {
+
+				pg_oauth_client_delete((int)$client['id']);
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was removed, and its connections were ended.', 'vars' => $client_name)));
+
+				log_activity(lang(array(
+					'string' => 'OAuth application ({var:1}) was removed.',
+					'vars'   => $client_name
+				)), $_SESSION['sessionusername']);
+
+			} else {
+
+				$turn_on = ($client['status'] !== 'active');
+
+				pg_oauth_client_set_status((int)$client['id'], $turn_on);
+
+				if ($turn_on) {
+
+					$liveform->add_notice(lang(array('string' => '{var:1} was turned on again.', 'vars' => $client_name)));
+
+					log_activity(lang(array(
+						'string' => 'OAuth application ({var:1}) was turned on.',
+						'vars'   => $client_name
+					)), $_SESSION['sessionusername']);
+
+				} else {
+
+					$liveform->add_notice(lang(array(
+						'string' => '{var:1} was turned off. It cannot connect, and its connections are refused until it is turned on again.',
+						'vars'   => $client_name
+					)));
+
+					log_activity(lang(array(
+						'string' => 'OAuth application ({var:1}) was turned off.',
+						'vars'   => $client_name
+					)), $_SESSION['sessionusername']);
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '#oauth_clients');
+
+		exit();
+
 	} elseif ($action === 'delete' && $app_id > 0) {
 
 		$existing = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
@@ -1218,6 +1280,128 @@ if (!empty($webhook_all)) {
 
 }
 
+// The applications that connect through OAuth: the clients that registered
+// themselves or named themselves with a metadata document. Drawn on the
+// screen like the event card, because they belong to the site's OAuth server
+// rather than to one application row, and drawn only once OAuth is in use - an
+// OAuth application exists, or a client is still on record from when one did.
+$oauth_clients_card = '';
+
+$oauth_in_use = false;
+
+foreach ($apps as $listed_app) {
+
+	if (isset($listed_app['kind']) && ($listed_app['kind'] === 'oauth')) {
+
+		$oauth_in_use = true;
+
+	}
+
+}
+
+$oauth_clients = pg_oauth_clients_overview();
+
+if ($oauth_in_use || !empty($oauth_clients)) {
+
+	// A loopback address is a program on the person's own computer whatever
+	// port it names; an app scheme and a web address read for themselves.
+	$on_this_computer = lang('A program on this computer');
+
+	$client_blocks = '';
+
+	foreach ($oauth_clients as $client) {
+
+		$client_on = ($client['status'] === 'active');
+
+		$identity = pg_oauth_client_identity_host($client);
+
+		if ($identity !== '') {
+
+			$origin = lang('Identified by') . ' <code>' . h($identity) . '</code>';
+
+		} elseif ($client['registered_by'] === 'dynamic') {
+
+			$origin = h(lang('Registered itself'));
+
+		} else {
+
+			$origin = h(lang('Added by the site'));
+
+		}
+
+		// Where its answers go, each place once: a client registers several
+		// addresses of the same kind (VS Code lists four).
+		$places = array();
+
+		foreach (pg_oauth_client_redirect_uris($client) as $uri) {
+
+			$destination = pg_oauth_redirect_destination($uri);
+
+			$place = ($destination['kind'] === 'device') ? $on_this_computer : $destination['text'];
+
+			$places[$place] = '<span class="api-chip">' . h($place) . '</span>';
+
+		}
+
+		$meta = array(
+			pg_format_number((int)$client['connections'], 0) . ' ' . lang('connections'),
+			lang('Last used') . ' ' . api_settings_ago($client['last_used_timestamp']),
+			lang(array('string' => 'Registered on {var:1}', 'vars' => date('d.m.Y', (int)$client['created_timestamp'])))
+		);
+
+		if ((string)$client['software_version'] !== '') {
+
+			$meta[] = (string)$client['software_version'];
+
+		}
+
+		$client_blocks .= '
+			<div class="api-hook">
+				<div class="api-hook-top">
+					<span class="api-hook-url"><b>' . h(pg_oauth_client_name($client)) . '</b>
+						<span class="small opacity-75 ms-1">' . $origin . '</span></span>
+					<span class="api-status ' . ($client_on ? 'on' : 'off') . '">'
+						. h($client_on ? lang('Active') : lang('Turned off')) . '</span>
+				</div>
+				' . (!empty($places) ? '<div class="api-hook-events">' . implode('', $places) . '</div>' : '') . '
+				<div class="api-hook-meta">' . h(implode(' · ', $meta)) . '</div>
+				<form method="post" action="api_settings.php" class="api-hook-acts disable_shortcut">
+					' . get_token_field() . '
+					<input type="hidden" name="oauth_client_row" value="' . (int)$client['id'] . '">
+					<button type="submit" name="api_action" value="oauth_client_status"
+						class="btn btn-sm btn-outline-secondary">' . h($client_on ? lang('Turn off') : lang('Turn on')) . '</button>
+					<button type="submit" name="api_action" value="oauth_client_delete"
+						class="btn btn-sm btn-outline-danger api-confirm"
+						data-confirm="' . h(lang('The application will be removed and every connection it has will be ended. If it registered itself, it can register again.')) . '">'
+						. h(lang('Remove')) . '</button>
+				</form>
+			</div>';
+
+	}
+
+	if ($client_blocks === '') {
+
+		$client_blocks = '<p class="small opacity-50 py-3 mb-0">' . h(lang('No application has connected yet.')) . '</p>';
+
+	}
+
+	$oauth_clients_card = '
+	<div class="card mt-3" id="oauth_clients">
+		<div class="card-header d-flex align-items-center">
+			<i class="bi bi-plug me-2"></i><b>' . lang('Connected applications') . '</b>
+			<span class="ms-auto small opacity-75 d-none d-lg-inline">'
+				. lang('Applications people connected with OAuth, and where each sends its answers.') . '</span>
+		</div>
+		<div class="card-body px-3 py-2">' . $client_blocks . '
+			<div class="alert alert-primary py-2 px-3 small mt-2 mb-1">
+				<i class="bi bi-info-circle me-1"></i>'
+				. lang('Turning an application off stops it at once and keeps its connections for when it is turned on again. Removing it ends its connections. An application that registered itself can register again, and each person is then asked again on the consent screen.') . '
+			</div>
+		</div>
+	</div>';
+
+}
+
 /* ---------------------------------------------------------------------------
    The screen
    --------------------------------------------------------------------------- */
@@ -1375,6 +1559,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 		</div>
 	</div>
+
+	' . $oauth_clients_card . '
 
 	' . $webhook_card . '
 
