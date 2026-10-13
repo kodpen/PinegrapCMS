@@ -1008,6 +1008,19 @@
          eskisi gibi. Microsoft, parolayla SMTP girişini
          2026 sonunda kapatıyor.
 
+  [YENİ] Otomatik yedeğin uzak kopyası FTP ve S3'ün yanında
+         Google Drive, OneDrive ya da Dropbox'a da
+         gidebiliyor (Ayarlar › Genel › Yedeklemeler). Hesap
+         kartın içindeki düğmeyle bağlanıyor; parola ya da
+         anahtar girilmiyor. Site yalnız kendi klasörünü
+         görüyor: Drive'da kendi açtığı dosyaları,
+         OneDrive ve Dropbox'ta Uygulamalar altındaki
+         uygulama klasörünü. Büyük arşiv 10 MB'lık parçalar
+         hâlinde gidiyor; saklanacak hafta sayısı buluttaki
+         klasöre de uygulanıyor. Bağlı hesaplara Dropbox
+         sağlayıcısı eklendi. Hesap seçilip kaydedilene
+         kadar kapalı.
+
   [GÜVENLİK] Paraşüt'ün erişim ve yenileme jetonu artık
          sitenin şifreleme anahtarıyla şifreli saklanıyor.
          Önceden data klasöründe düz metin bir dosyadaydı;
