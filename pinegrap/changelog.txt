@@ -790,6 +790,39 @@
          düğme artık geri oku ve "Kanallar" yazısı
          taşıyor.
 
+  [YENİ] Plandaki bir toplantıya görüntülü görüşme
+         bağlantısı eklenebiliyor: "Jitsi odası oluştur"
+         tek tıkla tahmin edilemeyen bir oda adresi yazıyor
+         ya da Google Meet, Teams, Zoom bağlantısı
+         yapıştırılıyor. Plan öğesi formunda, takvimin gün
+         listesinde ve gelen kutusunda "Katıl" düğmesi
+         görüşmeyi yeni sekmede açıyor; takvimde ve
+         planlama panosunda bağlantılı öğeler kamera
+         simgesi taşıyor.
+
+  [YENİ] Bağlantılı bir toplantı başlamadan on dakika
+         önce katılanların gelen kutusuna ve
+         bildirimlerine "Birazdan başlıyor" düşüyor;
+         dokununca toplantı "Katıl" düğmesiyle açılıyor.
+
+  [YENİ] Plan öğesinden "Toplantı notu": katılımcılar
+         (gelenler işaretlenir), gündem, kararlar ve
+         aksiyonlar başlıklı bir not açılıyor. Notun
+         "Kanala aktar" düğmesi kararları seçilen kanala
+         karar olarak yazıyor, aksiyonları görev yapıyor
+         (kişi @ ile, gün, ~süre, !öncelik); önce liste
+         gösteriliyor, seçilenler aktarılıyor. Görev olan
+         satır notta görevin etiketini taşıyor ve ikinci
+         kez aktarılmıyor.
+
+  [YENİ] Dış API ve MCP: plan öğelerinde meeting_url
+         alanı. Takvim aboneliğinde (iCal) toplantının
+         bağlantısı yer (LOCATION) olarak geliyor.
+
+  [ŞEMA] Plan öğelerine toplantı bağlantısı ve
+         hatırlatma sütunları, gelen kutusuna plan öğesi
+         sütunu eklenir.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

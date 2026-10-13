@@ -676,6 +676,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // A task handed to an assistant (delegation.php,
     // assets/js/workspace_task_delegate.js).
     $strings = array_merge($strings, ws_delegation_js_strings());
+    // Meetings on the plan: the call, the meeting note (meetings.php).
+    $strings = array_merge($strings, ws_meetings_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -689,6 +691,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'today'        => date('Y-m-d'),
         'board_from'   => ws_screen_board_from(),
         'event_kinds'  => ws_event_kinds(),
+        'meetings'     => ws_meetings_ready(),
         'poll'         => array('active' => 4),
         'open_channel' => 0,
         'urls'         => array(

@@ -179,6 +179,7 @@ function ws_api_routes()
         array('name' => 'scope', 'in' => 'body', 'type' => 'enum', 'values' => array('people', 'department', 'company'), 'description' => 'Who the item is about; people when left out on a new item.'),
         array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For scope department. See GET /workspace/departments.'),
         array('name' => 'people', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'User ids, for scope people; ids of people outside the team are left out.'),
+        array('name' => 'meeting_url', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'The video call: a Google Meet, Teams, Zoom, Jitsi or other http(s) address. Empty clears it. A timed item with one tells its people ten minutes before it starts.'),
     );
 
     $routes = array(

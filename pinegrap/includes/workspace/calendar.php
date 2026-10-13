@@ -290,6 +290,7 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
                 'time'   => ((int) $event['all_day'] === 1) ? '' : date('H:i', max((int) $event['starts_at'], $day_start)),
                 'scope'  => (string) $event['scope'],
                 'people' => array_values($event['people']),
+                'meeting_url' => (string) ($event['meeting_url'] ?? ''),
             );
         }
     }

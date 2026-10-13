@@ -2697,6 +2697,36 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // A plan item's meeting note, found or written from the template
+        // (meetings.php).
+        case 'ws_meeting_note':
+            $result = ws_meeting_note_open($viewer, (int) ($request['event_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('note_id' => $result['note_id'], 'created' => $result['created'])) : ws_action_error($result['error']);
+
+        // A meeting note's decisions and action items: shown first, brought
+        // into the channel on confirmation (meetings.php).
+        case 'ws_meeting_transfer':
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'edit');
+
+            if (!$note) {
+                return ws_action_error(lang('That note could not be found.'));
+            }
+
+            $channel = ((int) ($request['channel_id'] ?? 0) > 0) ? ws_action_channel($viewer, $request, 'post') : null;
+
+            if (is_string($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (empty($request['confirm']) || ($channel === null)) {
+                return ws_action_ok(ws_meeting_note_preview(ws_meeting_note_read($viewer, $note, $channel)));
+            }
+
+            $result = ws_meeting_note_transfer($viewer, $note, $channel, (array) ($request['decisions'] ?? array()), (array) ($request['actions'] ?? array()));
+
+            return $result['ok'] ? ws_action_ok($result) : ws_action_error($result['error']);
+
         case 'ws_inbox':
             return ws_action_ok(array('items' => ws_inbox_list($viewer), 'unread' => ws_inbox_unread_count($viewer['id'])));
 

@@ -386,6 +386,7 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
                     'title' => (string) $event['title'],
                     'time'  => ((int) $event['all_day'] === 1) ? '' : date('H:i', max((int) $event['starts_at'], strtotime($date . ' 00:00:00'))),
                     'minutes' => $minutes,
+                    'meeting_url' => (string) ($event['meeting_url'] ?? ''),
                 );
             }
         }
@@ -666,7 +667,8 @@ function ws_conflicts($viewer, $from, $to)
  *
  * @param array $viewer
  * @param array $data id, kind, scope, department_id, people, title, note,
- *                    start (Y-m-d), end (Y-m-d), start_time, end_time, all_day
+ *                    start (Y-m-d), end (Y-m-d), start_time, end_time, all_day,
+ *                    meeting_url (left as it is when not sent)
  * @return array ok, error, field, event_id
  */
 function ws_event_save($viewer, $data)
@@ -739,7 +741,19 @@ function ws_event_save($viewer, $data)
         return array('ok' => false, 'error' => lang('The end has to come after the start.'), 'field' => 'end', 'event_id' => 0);
     }
 
+    // The video call (2026.4.10, 10.86): checked before anything is written.
+    $meeting_url = null;
+
+    if (array_key_exists('meeting_url', $data) && ws_meetings_ready()) {
+        $meeting_url = ws_meeting_url_clean($data['meeting_url']);
+
+        if ($meeting_url === false) {
+            return array('ok' => false, 'error' => lang('The meeting link is not a web address.'), 'field' => 'meeting_url', 'event_id' => 0);
+        }
+    }
+
     $event_id = (int) ($data['id'] ?? 0);
+    $current = null;
 
     if ($event_id > 0) {
         $current = db_item("SELECT * FROM ws_events WHERE id = '" . $event_id . "'");
@@ -767,6 +781,10 @@ function ws_event_save($viewer, $data)
 
     foreach ($people as $user_id) {
         db("INSERT IGNORE INTO ws_event_people (event_id, user_id) VALUES ('" . $event_id . "', '" . (int) $user_id . "')");
+    }
+
+    if (ws_meetings_ready() && ($event_id > 0)) {
+        ws_meeting_link_set($event_id, $current, ($meeting_url !== null) ? $meeting_url : (string) ($current['meeting_url'] ?? ''), $all_day ? 0 : $starts_at);
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'event_id' => $event_id);
