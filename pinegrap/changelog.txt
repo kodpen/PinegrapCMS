@@ -423,6 +423,26 @@
          panel dili değişince ve masaüstü/mobil stil
          geçişinde kaybolmuyor.
 
+  KULLANICILAR
+  --------------------------------------------------------
+
+  [YENİ] Kullanıcılar listesi de aynı anda birden çok
+         sütuna göre sıralanıyor, örneğin rol artan,
+         aynı rolde kullanıcı adı artan. Başlığa Shift
+         ile tıklamak sonraki düzeyi ekliyor; telefonda
+         ya da klavyeyle görünüm seçiminin yanındaki
+         "Sıralama" menüsü kullanılıyor. Seçilen görünüm
+         sıralama değişince korunuyor. Seçilen sıralama
+         panel dili değişince kaybolmuyor. Kimin hangi
+         kullanıcıyı gördüğü değişmedi.
+
+  [DÜZELTME] Başka bir görünümde e-postaya göre
+         sıralayıp Tüm Kullanıcılarım'a dönünce liste
+         artık görünmeyen e-posta sütununa göre değil,
+         son değişikliğe göre diziliyor. Kullanıcılar
+         listesi açıldıkça PHP hata günlüğüne düşen
+         "Undefined variable" uyarıları kalktı.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 

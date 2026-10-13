@@ -50,6 +50,18 @@ $output_email_address_column_header = '';
 $output_user_start_page_column_heading = '';
 $output_user_contact_column_header = '';
 $output_last_modified_column_header = '';
+$output_user_role_column_heading = '';
+$output_private_folder_access_column_heading = '';
+$output_member_user_column_heading = '';
+$output_manage_content_column_heading = '';
+$output_manage_calendars_column_heading = '';
+$output_manage_forms_column_header = '';
+$output_view_visitors_column_header = '';
+$output_manage_contacts_column_header = '';
+$output_manage_email_column_header = '';
+$output_manage_ecommerce_column_header = '';
+$output_manage_users_column_header = '';
+$output_edit_design_column_header = '';
 
 // If there is a filter set.
 if (isset($_GET['filter']) == true) {
@@ -89,43 +101,58 @@ if ($user['role'] < 2) {
     $filters_in_array['all_site_managers'] = lang('All Site Managers');
 }
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['view_users']['sort'] = $_REQUEST['sort'];
+// The columns this view sorts by, in the order the table shows them. The
+// default view shows the role and privilege columns, every other view the
+// e-mail, start page and last modified ones; pg_list_state() falls back to
+// the default for any column the view does not show. The default view has no
+// Last Modified column, but its rows are listed by it until another sort is
+// picked, so it stays in that view's list (last, as it has no heading) for
+// the sort menu to name it.
+$sort_columns = array('username' => lang('Username'));
 
-    // clear order
-    $_SESSION['software']['view_users']['order'] = '';
+if ($filter == 'default') {
+    $sort_columns['role'] = lang('Role');
+    $sort_columns['member_user'] = lang('Member User');
+    $sort_columns['site_manager'] = lang('Site Manager');
+    $sort_columns['site_designer'] = lang('Site Designer');
+    $sort_columns['last_online'] = lang('Last Online');
+    $sort_columns['last_modified'] = lang('Last Modified');
+} else {
+    $sort_columns['email'] = lang('E-mail Address');
+    $sort_columns['start_page'] = lang('Start Page');
+    $sort_columns['last_modified'] = lang('Last Modified');
+    $sort_columns['last_online'] = lang('Last Online');
 }
 
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    $_SESSION['software']['view_users']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+$list_state = pg_list_state('view_users', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these. Site Manager and
+// Site Designer follow the role, the way their check marks do.
+$sort_sql = array(
+    'username'      => 'user.user_username',
+    'email'         => 'user.user_email',
+    'role'          => 'user.user_role',
+    'member_user'   => 'contacts.member_id',
+    'site_manager'  => 'user.user_role',
+    'site_designer' => 'user.user_role',
+    'start_page'    => 'user.user_home',
+    'last_modified' => 'user.user_timestamp',
+    'last_online'   => 'user.user_online_timestamp',
+);
+
+$order_by = pg_list_order_by($sort_levels, $sort_sql);
 
 // If the filter is not default or all my users view.
 if ($filter == 'default') {
-    
-    // If sort value is one of the following set sort value to default.
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['view_users']['sort']) == false) {
-        $_SESSION['software']['view_users']['sort'] = '';
-    }
 
-    switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
-        case 'E-mail Address':
-        case 'Start Page':
-        case 'Last Modified':
-            $_SESSION['software']['view_users']['sort'] = 'Last Modified';
-            $_SESSION['software']['view_users']['order'] = 'desc';
-            break;
-    }
-    
     // Output column headers.
-    $output_user_role_column_heading = '<th>' . get_column_heading(lang('Role'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_user_role_column_heading = '<th>' . get_column_heading(lang('Role'), $sort_levels, '', $output_filter_for_links, 'role') . '</th>';
     $output_private_folder_access_column_heading = '<th style="text-align: center">' . lang('Private User') . '</th>';
-    $output_member_user_column_heading = '<th style="text-align: center">' . get_column_heading(lang('Member User'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_member_user_column_heading = '<th style="text-align: center">' . get_column_heading(lang('Member User'), $sort_levels, '', $output_filter_for_links, 'member_user') . '</th>';
     $output_manage_content_column_heading = '<th style="text-align: center">' . lang('Content Manager') . '</th>';
     $output_manage_calendars_column_heading = '<th style="text-align: center">' . lang('Calendar Manager') . '</th>';
    
@@ -143,37 +170,20 @@ if ($filter == 'default') {
         $output_manage_ecommerce_column_header = '<th style="text-align: center">' . lang('Commerce Manager') . '</th>';
     }
     
-    $output_manage_users_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Manager'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    $output_edit_design_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Designer'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    
+    $output_manage_users_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Manager'), $sort_levels, '', $output_filter_for_links, 'site_manager') . '</th>';
+    $output_edit_design_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Designer'), $sort_levels, '', $output_filter_for_links, 'site_designer') . '</th>';
+
 // Else if the user is not on the all users view.
 } else {
-    
-    // If sort value is one of the following set sort value to default.
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['view_users']['sort']) == false) {
-        $_SESSION['software']['view_users']['sort'] = '';
-    }
 
-    switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
-        case lang('Role'):
-        case lang('Member User'):
-        case lang('Site Manager'):
-        case lang('Site Designer'):
-            $_SESSION['software']['view_users']['sort'] = lang('Last Modified');
-            $_SESSION['software']['view_users']['order'] = 'desc';
-            break;
-    }
-    
     // Select table column
     $sql_select_column .= ',
         user.user_home';
-    
+
     // Output column headers
-    $output_email_address_column_header = '<th>' . get_column_heading(lang('E-mail Address'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    $output_user_start_page_column_heading = '<th>' . get_column_heading(lang('Start Page'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    $output_last_modified_column_header = '<th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_email_address_column_header = '<th>' . get_column_heading(lang('E-mail Address'), $sort_levels, '', $output_filter_for_links, 'email') . '</th>';
+    $output_user_start_page_column_heading = '<th>' . get_column_heading(lang('Start Page'), $sort_levels, '', $output_filter_for_links, 'start_page') . '</th>';
+    $output_last_modified_column_header = '<th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>';
 }
 
 // If the user is not viewing the my manager, administrators, designers or content managers
@@ -244,56 +254,6 @@ switch ($filter) {
         $output_manage_contacts_column_header = '<th>' . lang('Contact Groups') . '</th>';
         $output_manage_email_column_header = '<th class="text-center">' . lang('Send Campaigns Only') . '</th>';
         break;
-}
-
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['view_users']['sort']) == false) {
-    $_SESSION['software']['view_users']['sort'] = '';
-}
-
-switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
-    case lang('Username'):
-        $sort_column = 'user.user_username';
-        break;
-
-    case lang('E-mail Address'):
-        $sort_column = 'user.user_email';
-        break;
-
-    case lang('Role'):
-        $sort_column = 'user.user_role';
-        break;
-        
-    case lang('Member User'):
-        $sort_column = 'user_member_id';
-        break;
-        
-    case lang('Start Page'):
-        $sort_column = 'user.user_home';
-        break;
-        
-    case lang('Site Manager'):
-    case lang('Site Designer'):
-        $sort_column = 'user.user_role';
-        break;
-    case lang('Last Online'):
-        $sort_column = 'user.user_online_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'user.user_timestamp';
-        break;
-
-    default:
-        $sort_column = 'user.user_timestamp';
-        $_SESSION['software']['view_users']['sort'] = lang('Last Modified');
-        $_SESSION['software']['view_users']['order'] = 'desc';
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['view_users']['order']) == false) {
-    $_SESSION['software']['view_users']['order'] = 'asc';
 }
 
 // assume that the id does not need to be distinct, until we find out otherwise
@@ -676,7 +636,7 @@ $query =
     LEFT JOIN user as user_2 ON user.user_user = user_2.user_id
     $sql_join_contacts_table
     $where
-    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_users']['order'] ?? '') . " ";
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $user_rows = array();
 while ($row = mysqli_fetch_assoc($result)) {
@@ -1294,6 +1254,7 @@ echo
                                 </div>
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_users.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '
                             <form id="search_form" action="view_users.php" method="get" class="search_form">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
@@ -1316,7 +1277,7 @@ echo
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                        <th>' . get_column_heading(lang('Username'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Username'), $sort_levels, '', $output_filter_for_links, 'username') . '</th>
                                         ' . $output_email_address_column_header . '
                                         ' . $output_user_role_column_heading . '
                                         ' . $output_user_start_page_column_heading . '
@@ -1333,7 +1294,7 @@ echo
                                         ' . $output_edit_design_column_header . '
                                         ' . $output_user_contact_column_header . '
                                         ' . $output_last_modified_column_header . '
-                                        <th>' . get_column_heading(lang('Last Online'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Last Online'), $sort_levels, '', $output_filter_for_links, 'last_online') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>
