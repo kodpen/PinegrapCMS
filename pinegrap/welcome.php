@@ -259,7 +259,7 @@ $output_widget_controls = '';
 //
 // One case cannot be solved from here: a widget with nothing to show renders a
 // centred "none yet" panel, and no skeleton can know that before the data
-// arrives. Widgets 19, 25 and 26 will always shift when they come back empty.
+// arrives. Widgets 25 and 26 will always shift when they come back empty.
 
 $pg_ph_card = function ($inner) {
     return '<div class="card-body card-body-placeholder p-0 overflow-hidden placeholder-glow">' . $inner . '</div>';
@@ -368,8 +368,6 @@ $pg_ph_ec = '
 // Default: the plain list, which is what most widgets render.
 $placeholder = $pg_ph_card('<div class="pg-list">' . str_repeat($pg_ph_row, 5) . '</div>');
 
-$placeholder_w10 = $pg_ph_card($pg_ph_head . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
-
 // Sales map: the period head over the outline on the left, the ranked regions
 // on the right. Uses the widget's own .pg-split, so a card too narrow for two
 // panels stacks here exactly as it will once the data lands.
@@ -382,12 +380,24 @@ $placeholder_w1 = $pg_ph_card(
     . '<div class="pg-split-half"><div class="pg-list">' . str_repeat($pg_ph_row, 5) . '</div></div>'
     . '</div>');
 
+// A filter button as the Activity card draws them: a tile and a label, with
+// the count left to arrive with the data.
+$pg_ph_filter = '
+<div class="pg-filter">
+    <span class="placeholder rounded flex-shrink-0" style="width:28px;height:28px"></span>
+    <span class="pg-filter-text"><span class="placeholder col-7 d-block" style="height:12px"></span></span>
+</div>';
+
+$placeholder_w7  = $pg_ph_card(
+    '<div class="pg-split pg-act">'
+    . '<div class="pg-split-half pg-filters">' . str_repeat($pg_ph_filter, 6) . '</div>'
+    . '<div class="pg-split-half"><div class="pg-list">' . str_repeat($pg_ph_row, 6) . '</div></div>'
+    . '</div>');
 $placeholder_w3  = $pg_ph_card($pg_ph_ec . '<div class="border-top mx-2 mb-1"></div><div class="pg-list">' . str_repeat($pg_ph_row_sm, 4) . '</div>');
 $placeholder_w4  = $pg_ph_card($pg_ph_tiles(126, true)  . $pg_ph_blocks(array(133)));
 $placeholder_w5  = $pg_ph_card($pg_ph_blocks(array(277)));
 $placeholder_w6  = $pg_ph_card('<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 8) . '</div>');
 $placeholder_w8  = $pg_ph_card($pg_ph_head . $pg_ph_blocks(array(27)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 3) . '</div>');
-$placeholder_w13 = $pg_ph_card($pg_ph_head . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
 $placeholder_w15 = $pg_ph_card('<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row, 4) . '</div>');
 $placeholder_w18 = $pg_ph_card($pg_ph_blocks(array(29, 91, 29, 110)));
 $placeholder_w20 = $pg_ph_card($pg_ph_blocks(array(231)));
@@ -502,8 +512,8 @@ $placeholder_shipments = '
 // Reset Widgets.
 //
 // Ids are permanent: api.php answers get_widget_data on the same number and
-// dashboards in the field have it stored. 22 and 24 are retired and are not
-// reused.
+// dashboards in the field have it stored. 10, 11, 13, 17, 19, 22 and 24 are
+// retired and are not reused: their content lives on in 7 and 21.
 //
 // 1 is the exception, and it is a deliberate one: the slot answered with an
 // empty string for long enough that no dashboard can be showing anything under
@@ -590,12 +600,17 @@ $widget_registry[6] = array(
     'body'  => $placeholder_w6,
     'show'  => (($user['role'] < 3) || ($user['manage_visitors'] == true)));
 
-// The one card with no condition at all: everyone who reaches this screen has
-// something they last edited.
+// Activity: what happened lately, in one feed with a filter per kind. It took
+// over the cards that each listed one kind of recent thing -- content changes
+// (this id, formerly Recent Updates), forms (13), contacts (10), users (11),
+// the site log (17) and email campaigns (19) -- which are retired. No condition
+// of its own: everyone who reaches this screen has something they last edited,
+// and each kind inside keeps the gate of the card it came from.
 $widget_registry[7] = array(
-    'title' => lang('Recent Updates'),
-    'icon'  => 'bi-clock-history',
-    'body'  => $placeholder,
+    'title' => lang('Activity'),
+    'icon'  => 'bi-activity',
+    'body'  => $placeholder_w7,
+    'wide'  => true,
     'show'  => true);
 
 // Orders. The tab strip is gone: both lists are on screen at once, so the
@@ -613,29 +628,11 @@ $widget_registry[9] = array(
     'body'  => $placeholder_shipments,
     'show'  => ((ECOMMERCE === true) && (ECOMMERCE_SHIPPING === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
 
-$widget_registry[10] = array(
-    'title' => lang('Contacts'),
-    'icon'  => 'bi-person-lines-fill',
-    'body'  => $placeholder_w10,
-    'show'  => (($user['role'] < 3) || ($user['manage_contacts'] == true)));
-
-$widget_registry[11] = array(
-    'title' => lang('Users'),
-    'icon'  => 'bi-people',
-    'body'  => $placeholder,
-    'show'  => ($user['role'] < 3));
-
 $widget_registry[12] = array(
     'title' => lang('Out of Stock Products'),
     'icon'  => 'bi-exclamation-diamond',
     'body'  => $placeholder,
     'show'  => ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
-
-$widget_registry[13] = array(
-    'title' => lang('Forms'),
-    'icon'  => 'bi-file-earmark-text',
-    'body'  => $placeholder_w13,
-    'show'  => (($user['role'] < 3) || ($user['manage_forms'] == true)));
 
 // Subscriptions. Administrator only, and only where the installation has a
 // subscription key to report on. Carries no icon, as it always has.
@@ -656,12 +653,6 @@ $widget_registry[16] = array(
     'body'  => $placeholder,
     'show'  => ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))));
 
-$widget_registry[17] = array(
-    'title' => lang('Site Logs'),
-    'icon'  => 'bi-journal-text',
-    'body'  => $placeholder,
-    'show'  => ($user['role'] < 3));
-
 // File management. Replaced the old Admin Notes widget and deliberately kept
 // its id, so dashboards that already stored "18" picked the new widget up in
 // the same slot.
@@ -676,12 +667,6 @@ $widget_registry[18] = array(
     'icon'  => 'bi-hdd-stack',
     'body'  => $placeholder_w18,
     'show'  => (($user['role'] < 3) || no_acl_check($user['id'])));
-
-$widget_registry[19] = array(
-    'title' => lang('Email Campaigns'),
-    'icon'  => 'bi-megaphone',
-    'body'  => $placeholder,
-    'show'  => ($user['role'] < 3));
 
 $widget_registry[20] = array(
     'title' => lang('Calendars'),
@@ -2765,7 +2750,7 @@ $output_header_includes .
     // view. A card whose markup comes back unchanged is left alone -- its
     // charts are not rebuilt and its list keeps its scroll position.
     var pg_widgets = {
-        refresh: ["4","6","7","8","10","11","12","13","16","17","19","25","26"],
+        refresh: ["4","6","7","8","12","16","25","26"],
         solo: ["1","2","5","21","23"],
         interval: Math.max(10, parseInt("' . (int) $widget_refresh_time . '", 10) || 60) * 1000,
         html: {},
@@ -2848,8 +2833,10 @@ $output_header_includes .
         destroy_widget_charts($widget);
         $widget.find(".card-body-placeholder,.card-body,.card-footer").remove();
         $widget.append(html);
-        pg_widget_scroll_restore($widget[0], scroll);
+        // Listeners finish the card first (a filter hides the rows it does
+        // not show), so the scroll goes back onto the list as it will stay.
         $widget.trigger("pg:widget-drawn", [widget_id]);
+        pg_widget_scroll_restore($widget[0], scroll);
     }
 
     // One card at a time, the way the dashboard always asked. Used when the
@@ -2947,6 +2934,77 @@ $output_header_includes .
         });
         pg_widgets_load(due);
     }
+
+    // ── Filters inside a card ───────────────────────────────────────────────
+    //
+    // A card body marked data-pg-filterable holds buttons (data-pg-filter) and
+    // the things they choose between (data-kind). Pressing a button shows the
+    // things of its kind -- "all" shows every row -- with the link to the full
+    // list of that kind, or the empty note when there is nothing of it. The
+    // choice is kept per card in this browser and put back after every
+    // redraw, so a refresh never throws the reader back to the first view.
+    function pg_filter_store(body) {
+        return "pg-dashboard-filter:" + body.getAttribute("data-pg-filterable");
+    }
+
+    function pg_filter_read(body) {
+        try {
+            return window.localStorage.getItem(pg_filter_store(body));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function pg_filter_write(body, value) {
+        try {
+            window.localStorage.setItem(pg_filter_store(body), value);
+        } catch (e) {}
+    }
+
+    function pg_filter_apply(body, value) {
+        var buttons = body.querySelectorAll("[data-pg-filter]");
+        var known = false;
+        buttons.forEach(function(button){
+            known = known || (button.getAttribute("data-pg-filter") === value);
+        });
+        // A kind that is not on the card any more -- a permission taken away,
+        // a lane switched off -- falls back to the default the card names.
+        if (!known) {
+            value = body.getAttribute("data-pg-default") || "all";
+        }
+        buttons.forEach(function(button){
+            button.setAttribute("aria-pressed", (button.getAttribute("data-pg-filter") === value) ? "true" : "false");
+        });
+        var shown = 0;
+        body.querySelectorAll("[data-kind]").forEach(function(el){
+            var kind = el.getAttribute("data-kind");
+            var more = el.classList.contains("pg-filter-more");
+            var on = more ? (kind === value) : ((value === "all") || (kind === value));
+            el.classList.toggle("d-none", !on);
+            if (on && !more) {
+                shown++;
+            }
+        });
+        body.querySelectorAll(".pg-filter-none").forEach(function(el){
+            el.classList.toggle("d-none", shown > 0);
+        });
+    }
+
+    $(document).on("pg:widget-drawn", function(event){
+        $(event.target).find("[data-pg-filterable]").each(function(){
+            pg_filter_apply(this, pg_filter_read(this));
+        });
+    });
+
+    $(document).on("click", "[data-pg-filterable] [data-pg-filter]", function(){
+        var body = $(this).closest("[data-pg-filterable]")[0];
+        var value = this.getAttribute("data-pg-filter");
+        pg_filter_write(body, value);
+        pg_filter_apply(body, value);
+        body.querySelectorAll(".pg-filter-scroll").forEach(function(el){
+            el.scrollTop = 0;
+        });
+    });
 
     // ── The clock ───────────────────────────────────────────────────────────
     //

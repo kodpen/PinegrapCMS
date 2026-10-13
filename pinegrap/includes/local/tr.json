@@ -20206,5 +20206,18 @@
     "Pretty URLs are on: a record opens at its detail page followed by its title.": "Güzel URL'ler açık: kayıt, detay sayfasının adresinin ardından başlığıyla açılır.",
     "Pretty URLs are off: a record opens by its reference code (?r=…). They are turned on on the form's own page.": "Güzel URL'ler kapalı: kayıt referans koduyla (?r=…) açılır. Formun kendi sayfasından açılabilir.",
     "A link bound to the address name opens the record on its detail page, by its name when the form has pretty URLs on.": "Adres adına bağlı bir link kaydı detay sayfasında açar; formda güzel URL'ler açıksa kaydın adıyla.",
-    "{var:1} record{suffix:1} of the form now open at their own address.": "Formun {var:1} kaydı artık kendi adresinde açılıyor."
+    "{var:1} record{suffix:1} of the form now open at their own address.": "Formun {var:1} kaydı artık kendi adresinde açılıyor.",
+    "Activity": "Aktivite",
+    "All Activity": "Tüm Aktivite",
+    "Filter activity": "Aktiviteyi süz",
+    "Nothing of this kind lately.": "Son zamanlarda bu türden bir şey yok.",
+    "All submitted forms": "Tüm gönderilen formlar",
+    "All contacts": "Tüm rehber kayıtları",
+    "All comments": "Tüm yorumlar",
+    "All users": "Tüm kullanıcılar",
+    "All campaigns": "Tüm kampanyalar",
+    "All log entries": "Tüm günlük kayıtları",
+    "Awaiting approval": "Onay bekliyor",
+    "{var:1} today": "Bugün {var:1}",
+    "{var:1} recipient{suffix:1}": "{var:1} alıcı"
 }

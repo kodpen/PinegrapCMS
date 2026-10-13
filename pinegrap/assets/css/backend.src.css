@@ -5778,6 +5778,194 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
     radial-gradient(54% 46% at 0% 82%, rgba(251, 113, 133, 0.11), transparent 64%);
 }
 
+/* ══ Card filters ══════════════════════════════════════════════════════════
+   A card body marked data-pg-filterable carries a column of .pg-filter
+   buttons and rows tagged data-kind; the page script shows the rows of the
+   pressed button's kind (welcome.php). Each button names its kind, says how
+   many came in today and, where there is a daily series, draws the week as
+   seven bars. Its colour arrives inline as --pg-k (tile) and --pg-k-ink
+   (glyph), so one card can carry eight kinds without eight rules here. */
+.pg-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+.pg-filter:hover,
+.pg-filter:focus-visible {
+  background: var(--pg-tint);
+}
+/* The pressed kind: a tint of its own colour and a short bar on the edge
+   facing the list, so it reads as the thing the list is showing. */
+.pg-filter[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 14%, transparent);
+  box-shadow: inset -3px 0 0 var(--pg-k, var(--pg-accent));
+}
+.pg-filter-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--bs-border-radius);
+  background: var(--pg-k, var(--pg-accent, #64748b));
+  color: var(--pg-k-ink, var(--pg-accent-ink, #fff));
+  font-size: 14px;
+}
+.pg-filter-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-filter-label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-filter-sub {
+  overflow: hidden;
+  color: var(--bs-secondary-color);
+  font-size: 0.6875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-filter-count {
+  flex: 0 0 auto;
+  min-width: 1.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 18%, transparent);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+.pg-filter-count.is-urgent {
+  background: var(--bs-danger);
+  color: #fff;
+}
+.pg-filter-count.is-clear {
+  background: color-mix(in srgb, #10b981 18%, transparent);
+}
+
+/* A week of daily counts in seven bars (pg_widget_bars). Plain boxes rather
+   than a canvas: a filter column holds up to eight of them and they are
+   redrawn with the card. */
+.pg-bars {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.pg-bars > i {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--pg-k, var(--pg-accent));
+  opacity: 0.8;
+}
+.pg-bars > i.is-zero {
+  opacity: 0.25;
+}
+
+/* The way to the full list of the kind that is showing, under its rows. */
+.pg-filter-more {
+  display: block;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.35rem;
+  border-radius: var(--bs-border-radius-lg);
+  color: var(--pg-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.pg-filter-more:hover,
+.pg-filter-more:focus-visible {
+  background: var(--pg-tint);
+  color: var(--pg-accent);
+}
+.pg-filter-none .pg-widget-empty {
+  padding: 2rem 0.5rem;
+}
+
+/* Activity (widget 7): the kinds down the left, the feed on the right. Stacked
+   in a narrow card the kinds wrap into a row of chips above the feed, with the
+   bars and the second line left out -- a column of eight full-width buttons
+   would push the feed below the fold of a phone-width card. */
+.pg-act > .pg-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+}
+.pg-act > .pg-filters .pg-filter {
+  width: auto;
+  padding: 0.2rem 0.45rem 0.2rem 0.2rem;
+  border: var(--bs-border-width) solid var(--pg-rule);
+  border-radius: 999px;
+}
+.pg-act > .pg-filters .pg-filter[aria-pressed="true"] {
+  box-shadow: none;
+  border-color: var(--pg-k, var(--pg-accent));
+}
+.pg-act > .pg-filters .pg-filter-ico {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+}
+.pg-act > .pg-filters .pg-bars,
+.pg-act > .pg-filters .pg-filter-sub {
+  display: none;
+}
+@container pgwidget (min-width: 30rem) {
+  .pg-split.pg-act > .pg-filters {
+    flex: 0 0 36%;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    max-width: 15rem;
+    padding: 0.25rem 0.35rem;
+  }
+  /* 24px tiles and tight padding: eight kinds fit the height of a card
+     without the column scrolling. */
+  .pg-act > .pg-filters .pg-filter {
+    width: 100%;
+    padding: 0.25rem 0.45rem;
+    border: 0;
+    border-radius: var(--bs-border-radius-lg);
+  }
+  .pg-act > .pg-filters .pg-filter[aria-pressed="true"] {
+    box-shadow: inset -3px 0 0 var(--pg-k, var(--pg-accent));
+  }
+  .pg-act > .pg-filters .pg-filter-ico {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--bs-border-radius);
+    font-size: 12px;
+  }
+  .pg-act > .pg-filters .pg-bars {
+    display: inline-flex;
+  }
+  .pg-act > .pg-filters .pg-filter-sub {
+    display: block;
+  }
+}
+
 /* ══ Dashboard clock ═══════════════════════════════════════════════════════
    Was a centred display-3 stack that ate a fifth of the fold before the first
    widget appeared. Left aligned with the grid and set on one baseline, the same
