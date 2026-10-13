@@ -367,6 +367,51 @@ dev.pinegrap.com'da denenmedi.
 
 ---
 
+## 2026.4.10 — Dış API: takvim etkinliği ekleme, değiştirme, silme (2026-10-13)
+
+**Sorun.** Takvimler API'de yalnız okunuyordu. Bir rezervasyon aracı ya da
+asistan etkinlik açamıyor, saatini kaydıramıyor, yayına alamıyordu; Çalışma
+Alanı aynı işi öneri olarak yapabildiği hâlde API yapamıyordu.
+
+**Değişiklik.** `calendars` izin grubuna `calendars:write` eklendi; `calendars:read`
+ile aynı kişilere verilir (rol < 3 ya da takvim yetkisi). Yeni rotalar
+(`includes/api/resources/calendars.php`):
+
+- `POST /calendars/events`: `name`, `start`, `end`, `calendar_ids` zorunlu;
+  `all_day`, `short_description`, `description` (HTML, `pg_sanitize_rich_text`
+  ile temizlenir), `location`, `show_start_time`, `show_end_time`, `published`,
+  `unpublish_days`. Tüm gün etkinlik ilk günün 00:00'ından son günün 23:59'una
+  yazılır; diğerinde bitiş başlangıçtan sonra olmalı (etkinlik ekranının
+  kuralı). Geri kalan sütunlar ekranın başlangıç değerleriyle (yayında değil,
+  45 gün, tekrar ve rezervasyon kapalı).
+- `POST`/`PATCH /calendars/events/{id}`: yalnız gönderilen değişir; `start`,
+  `end` ya da `all_day` gelince saatler saklı olanla birlikte yeniden
+  hesaplanır. Salon ayıran tek seferlik etkinlik `check_calendar_event_location_availability`
+  ile denetlenir (409 `room_taken`); salon ayıran tekrarlanan etkinliğin saati
+  buradan değiştirilmez (409 `repeating_event_books_room`), çünkü ekran her
+  tekrarı ayrı denetler. `calendar_ids` sahibin açabildiği takvimleri
+  değiştirir, göremediği takvimler etkinliği tutar.
+- `DELETE /calendars/events/{id}` (ve `POST …/delete`): ekrandaki gibi
+  istisnalar, takvim ve salon bağları, kalan rezervasyon yerleriyle birlikte.
+
+Yetki ekranlarla aynı: rol 3 sahibi yalnız atanmış takvimlerine yazar;
+yayın yetkisi (`user_publish_calendar_events`) yoksa `published` /
+`unpublish_days` 403, yayındaki etkinliği değiştiremez ve silemez (403).
+Tekrar kuralı, rezervasyon, ürün, salon seçimi ve sonraki sayfa etkinlik
+ekranında kalır. Şema değişikliği yok. Var olan uygulamalar yeni izni
+kendiliğinden almaz; API ayarlarından verilmesi gerekir.
+
+**Doğrulandı (sandbox).** Oluşturma, dry-run, tüm gün (00:00–23:59), bitiş
+başlangıçtan önce 422, olmayan ya da boş takvim 422; açıklamadaki `script`,
+`onclick` ve `javascript:` temizlendi; tüm gün aç/kapat; takvim değiştirme;
+salon çakışması 409 ve bitişik saat kabul; tekrarlanan + salonlu etkinlikte
+saat 409, ad değişikliği geçer; silme bağları temizledi, sonra 404. Rol 3
+(takvim 1 atanmış, yayın yetkisi yok): başka takvim 422, yayınlama 403,
+yayındaki etkinlik 403, göremediği takvim korunur, görünmeyen etkinlik 404.
+`tests/api_calendars_test.php` saat kuralı için yeni test.
+
+---
+
 ## 2026.4.10 — Görsel editör: olmayan kayıt, ürün ve kategoride 404 + noindex (2026-10-13)
 
 **Kaynak.** Erdal'ın yerel test raporunun 2. maddesi:

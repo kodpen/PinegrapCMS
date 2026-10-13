@@ -80,3 +80,21 @@ function test_api_calendars_time_carries_the_site_offset()
 
 	date_default_timezone_set($zone);
 }
+
+function test_api_calendars_written_times_follow_the_event_screen()
+{
+	$zone = date_default_timezone_get();
+
+	date_default_timezone_set('Europe/Istanbul');
+
+	$start = strtotime('2026-11-01 10:00:00');
+	$end = strtotime('2026-11-01 12:00:00');
+
+	pg_assert_same(array('2026-11-01 10:00:00', '2026-11-01 12:00:00'), api_calendar_event_times($start, $end, false), 'timed event as sent');
+	pg_assert_same(null, api_calendar_event_times($start, $start, false), 'a timed event ends after it starts');
+	pg_assert_same(array('2026-11-01 00:00:00', '2026-11-01 23:59:00'), api_calendar_event_times($start, $end, true), 'all day covers the whole day');
+	pg_assert_same(array('2026-11-01 00:00:00', '2026-11-03 23:59:00'), api_calendar_event_times($start, strtotime('2026-11-03'), true), 'all day runs to the end of its last day');
+	pg_assert_same(null, api_calendar_event_times($start, strtotime('2026-10-31 23:00:00'), true), 'an all-day event cannot end the day before');
+
+	date_default_timezone_set($zone);
+}

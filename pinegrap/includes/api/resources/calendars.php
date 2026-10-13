@@ -11,9 +11,11 @@
 // The site's calendars and their events.
 //
 // What a booking tool, a newsletter or a mobile app asks of a calendar: which
-// calendars there are, and what is on them. Read only. An event is built on its
-// own screen with repeats, reservation spots, a product to sell them through
-// and the page a visitor goes to next, and that screen is where it is written.
+// calendars there are, and what is on them. An event can be added, changed and
+// removed here as far as its words, its times, its calendars and whether it is
+// published. Repeats, reservation spots, the product they are sold through,
+// the rooms it books and the page a visitor goes to next are built on the
+// event's own screen, and are left as they are by a write here.
 //
 // A repeating event is one row with a rule, and it is answered that way: once,
 // with its first start and end and the rule that repeats it. The occurrences are
@@ -519,5 +521,553 @@ function api_calendar_schema() {
 		'event_count' => 'integer',
 		'updated_at'  => 'string?'
 	);
+
+}
+
+/* ----- Writes ------------------------------------------------------------- */
+
+// Whether the account behind the application may publish events. Roles 0 to 2
+// always may; a user with the calendars right only when publishing was given
+// to them as well, and without it the event screens neither publish an event
+// nor open a published one for editing.
+function api_calendar_owner_publishes() {
+
+	$app = api_current_app();
+
+	if ((int)$app['owner']['role'] < 3) {
+
+		return true;
+
+	}
+
+	$value = api_value("SELECT user_publish_calendar_events FROM user WHERE user_id = '" . (int)$app['owner']['id'] . "' LIMIT 1");
+
+	return in_array(strtolower(trim((string)$value)), array('yes', '1', 'true'), true);
+
+}
+
+function api_calendar_publish_refused() {
+
+	api_fail(403, 'forbidden', lang('The account that owns this application may not publish calendar events.'));
+
+}
+
+// The calendars a write names. Each one has to exist and be one the owner may
+// open, and an event is always on at least one.
+function api_calendar_ids_in($raw) {
+
+	$ids = array();
+
+	foreach ((array)$raw as $value) {
+
+		$calendar_id = (int)$value;
+
+		if (($calendar_id > 0) && !in_array($calendar_id, $ids, true)) {
+
+			$ids[] = $calendar_id;
+
+		}
+
+	}
+
+	if (empty($ids)) {
+
+		api_fail_validation(lang('Please select at least one calendar.'), 'calendar_ids');
+
+	}
+
+	$found = array();
+
+	foreach (api_rows("SELECT id FROM calendars WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+
+		$found[] = (int)$row['id'];
+
+	}
+
+	$visible = api_calendar_ids_visible();
+
+	foreach ($ids as $calendar_id) {
+
+		if (!in_array($calendar_id, $found, true) || (($visible !== null) && !in_array($calendar_id, $visible, true))) {
+
+			api_fail_validation(lang(array(
+				'string' => 'There is no calendar with the id {var:1} that this application may use.',
+				'vars'   => array($calendar_id)
+			)), 'calendar_ids');
+
+		}
+
+	}
+
+	return $ids;
+
+}
+
+// The start and end an event is stored with, from two moments, the way the
+// event screens store them: an all-day event runs from 00:00 on its first day
+// to 23:59 on its last, and any other event ends after it starts. Returns the
+// two wall-clock times, or null when the end comes too early.
+function api_calendar_event_times($start, $end, $all_day) {
+
+	if ($all_day) {
+
+		$first = date('Y-m-d', (int)$start);
+
+		$last = date('Y-m-d', (int)$end);
+
+		if ($last < $first) {
+
+			return null;
+
+		}
+
+		return array($first . ' 00:00:00', $last . ' 23:59:00');
+
+	}
+
+	if ((int)$end <= (int)$start) {
+
+		return null;
+
+	}
+
+	return array(date('Y-m-d H:i:s', (int)$start), date('Y-m-d H:i:s', (int)$end));
+
+}
+
+function api_calendar_event_times_refused($all_day) {
+
+	api_fail_validation($all_day
+		? lang('Please enter an end date that is on or after the start date.')
+		: lang('Please enter an end date & time that is after the start date & time.'), 'end');
+
+}
+
+// The event a write is about, answered like one that does not exist when it is
+// on none of the owner's calendars, and closed to an owner who may not
+// publish once it is published, as its screen is.
+function api_calendar_event_writable_or_fail($id) {
+
+	$id = (int)$id;
+
+	$row = api_row(api_calendar_event_select() . " WHERE calendar_events.id = '" . $id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Calendar event'));
+
+	}
+
+	$extras = api_calendar_event_extras(array($id));
+
+	$on = isset($extras['calendars'][$id]) ? $extras['calendars'][$id] : array();
+
+	$visible = api_calendar_ids_visible();
+
+	if (($visible !== null) && !array_intersect($on, $visible)) {
+
+		api_fail_not_found(lang('Calendar event'));
+
+	}
+
+	if (((int)$row['published'] === 1) && !api_calendar_owner_publishes()) {
+
+		api_fail(403, 'forbidden', lang('This event is published, and the account that owns this application may not publish calendar events, so it cannot change or remove it.'));
+
+	}
+
+	$row['calendar_ids'] = $on;
+
+	return $row;
+
+}
+
+// The rooms an event books (the locations on its screen) are kept free of
+// double bookings by that screen, and a one-off event moved here is checked
+// the same way. A repeating event is checked repeat by repeat on its own
+// screen, so its times are not moved from here while it books a room.
+function api_calendar_event_rooms_or_fail($row, $times) {
+
+	$rooms = api_rows("SELECT calendar_event_locations.id, calendar_event_locations.name
+		FROM calendar_events_calendar_event_locations_xref
+		INNER JOIN calendar_event_locations
+			ON calendar_event_locations.id = calendar_events_calendar_event_locations_xref.calendar_event_location_id
+		WHERE calendar_events_calendar_event_locations_xref.calendar_event_id = '" . (int)$row['id'] . "'");
+
+	if (empty($rooms)) {
+
+		return;
+
+	}
+
+	if ((int)$row['recurrence'] === 1) {
+
+		api_fail(409, 'repeating_event_books_room', lang('This repeating event books a room. Move it on its own screen, which checks every repeat against the room\'s other bookings.'), 'start');
+
+	}
+
+	foreach ($rooms as $room) {
+
+		if (check_calendar_event_location_availability($room['id'], $times[0], $times[1], (string)(int)$row['id']) !== 'available') {
+
+			api_fail(409, 'room_taken', lang(array(
+				'string' => 'The room {var:1} is booked by another event at that time.',
+				'vars'   => array((string)$room['name'])
+			)), 'start');
+
+		}
+
+	}
+
+}
+
+// The words and switches a write sends, as columns. Publishing is refused to
+// an owner who may not publish.
+function api_calendar_event_fields_in($params) {
+
+	$set = array();
+
+	if (isset($params['name'])) {
+
+		if (trim((string)$params['name']) === '') {
+
+			api_fail_validation(lang('Name is required.'), 'name');
+
+		}
+
+		$set['name'] = trim((string)$params['name']);
+
+	}
+
+	foreach (array('short_description' => 'short_description', 'location' => 'location') as $param => $column) {
+
+		if (isset($params[$param])) {
+
+			$set[$column] = (string)$params[$param];
+
+		}
+
+	}
+
+	// The long description is printed as it is on the public calendar, so what
+	// arrives from outside is cut down to the formatting the editor makes.
+	if (isset($params['description'])) {
+
+		$set['full_description'] = prepare_rich_text_editor_content_for_input(pg_sanitize_rich_text((string)$params['description']));
+
+	}
+
+	foreach (array('show_start_time', 'show_end_time') as $switch) {
+
+		if (isset($params[$switch])) {
+
+			$set[$switch] = $params[$switch] ? '1' : '0';
+
+		}
+
+	}
+
+	if (isset($params['published']) || isset($params['unpublish_days'])) {
+
+		if (!api_calendar_owner_publishes()) {
+
+			api_calendar_publish_refused();
+
+		}
+
+		if (isset($params['published'])) {
+
+			$set['published'] = $params['published'] ? '1' : '0';
+
+		}
+
+		if (isset($params['unpublish_days'])) {
+
+			$set['unpublish_days'] = (string)(int)$params['unpublish_days'];
+
+		}
+
+	}
+
+	return $set;
+
+}
+
+function api_calendar_event_answer($id, $status = 200) {
+
+	$id = (int)$id;
+
+	$row = api_row(api_calendar_event_select() . " WHERE calendar_events.id = '" . $id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Calendar event'));
+
+	}
+
+	api_ok(api_calendar_event_present($row, api_calendar_event_extras(array($id)), true), $status);
+
+}
+
+function api_calendar_events_create($params) {
+
+	api_calendars_require();
+
+	$app = api_current_app();
+
+	$set = api_calendar_event_fields_in($params);
+
+	if (!isset($set['name'])) {
+
+		api_fail_validation(lang('Name is required.'), 'name');
+
+	}
+
+	$calendar_ids = api_calendar_ids_in(isset($params['calendar_ids']) ? $params['calendar_ids'] : array());
+
+	$all_day = !empty($params['all_day']);
+
+	$times = api_calendar_event_times($params['start'], $params['end'], $all_day);
+
+	if ($times === null) {
+
+		api_calendar_event_times_refused($all_day);
+
+	}
+
+	// The event screen's starting values for everything not sent: shown with
+	// its times, unpublished, gone from the published calendar 45 days after
+	// it ends, and no repeat, reservation or room.
+	$set += array(
+		'published'         => '0',
+		'unpublish_days'    => '45',
+		'short_description' => '',
+		'full_description'  => '',
+		'location'          => '',
+		'show_start_time'   => '1',
+		'show_end_time'     => '1'
+	);
+
+	$set += array(
+		'all_day'                    => $all_day ? '1' : '0',
+		'start_time'                 => $times[0],
+		'end_time'                   => $times[1],
+		'notes'                      => '',
+		'recurrence'                 => '0',
+		'recurrence_number'          => '0',
+		'recurrence_type'            => 'day',
+		'recurrence_day_sun'         => '1',
+		'recurrence_day_mon'         => '1',
+		'recurrence_day_tue'         => '1',
+		'recurrence_day_wed'         => '1',
+		'recurrence_day_thu'         => '1',
+		'recurrence_day_fri'         => '1',
+		'recurrence_day_sat'         => '1',
+		'recurrence_month_type'      => 'day_of_the_month',
+		'reservations'               => '0',
+		'separate_reservations'      => '1',
+		'limit_reservations'         => '1',
+		'number_of_initial_spots'    => '1',
+		'no_remaining_spots_message' => '<p>' . lang('Sorry, we are not accepting any more reservations at this time.') . '</p>',
+		'reserve_button_label'       => lang('Reserve'),
+		'product_id'                 => '0',
+		'next_page_id'               => '0'
+	);
+
+	api_dry_run_stop('created', 'calendar_event', array(
+		'name'         => $set['name'],
+		'start'        => api_calendar_time($times[0]),
+		'end'          => api_calendar_time($times[1]),
+		'calendar_ids' => $calendar_ids,
+		'published'    => ($set['published'] === '1')
+	));
+
+	$owner_id = (int)$app['owner']['id'];
+
+	$columns = array();
+
+	foreach ($set as $column => $value) {
+
+		$columns[] = $column . " = '" . escape((string)$value) . "'";
+
+	}
+
+	api_exec("INSERT INTO calendar_events SET " . implode(', ', $columns) . ",
+		created_user_id = '" . $owner_id . "', created_timestamp = UNIX_TIMESTAMP(),
+		last_modified_user_id = '" . $owner_id . "', last_modified_timestamp = UNIX_TIMESTAMP()");
+
+	$id = api_insert_id();
+
+	if ($id <= 0) {
+
+		api_fail_server();
+
+	}
+
+	foreach ($calendar_ids as $calendar_id) {
+
+		api_exec("INSERT INTO calendar_events_calendars_xref (calendar_event_id, calendar_id)
+			VALUES ('" . $id . "', '" . (int)$calendar_id . "')");
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Calendar event ({var:1}) was created through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($set['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_calendar_event_answer($id, 201);
+
+}
+
+function api_calendar_events_update($params) {
+
+	api_calendars_require();
+
+	$app = api_current_app();
+
+	$row = api_calendar_event_writable_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	$set = api_calendar_event_fields_in($params);
+
+	// The times are worked out again from what is sent and what is stored
+	// whenever one of the three changes, so switching all_day alone turns the
+	// stored times into whole days and back.
+	if (isset($params['start']) || isset($params['end']) || isset($params['all_day'])) {
+
+		$all_day = isset($params['all_day']) ? (bool)$params['all_day'] : ((int)$row['all_day'] === 1);
+
+		$start = isset($params['start']) ? (int)$params['start'] : (int)strtotime($row['start_time']);
+
+		$end = isset($params['end']) ? (int)$params['end'] : (int)strtotime($row['end_time']);
+
+		$times = api_calendar_event_times($start, $end, $all_day);
+
+		if ($times === null) {
+
+			api_calendar_event_times_refused($all_day);
+
+		}
+
+		if (($times[0] !== date('Y-m-d H:i:s', strtotime($row['start_time']))) || ($times[1] !== date('Y-m-d H:i:s', strtotime($row['end_time'])))) {
+
+			api_calendar_event_rooms_or_fail($row, $times);
+
+		}
+
+		$set['all_day'] = $all_day ? '1' : '0';
+		$set['start_time'] = $times[0];
+		$set['end_time'] = $times[1];
+
+	}
+
+	// The calendars sent replace the ones the owner may open; a calendar the
+	// owner cannot see keeps the event, as on the event screen.
+	$calendars = null;
+
+	if (isset($params['calendar_ids'])) {
+
+		$calendars = api_calendar_ids_in($params['calendar_ids']);
+
+	}
+
+	if (empty($set) && ($calendars === null)) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	api_dry_run_stop('updated', 'calendar_event', array(
+		'id'      => $id,
+		'changes' => array_merge(array_keys($set), ($calendars === null) ? array() : array('calendar_ids'))
+	));
+
+	if (!empty($set)) {
+
+		$columns = array();
+
+		foreach ($set as $column => $value) {
+
+			$columns[] = $column . " = '" . escape((string)$value) . "'";
+
+		}
+
+		api_exec("UPDATE calendar_events SET " . implode(', ', $columns) . ",
+				last_modified_user_id = '" . (int)$app['owner']['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . $id . "'");
+
+	} else {
+
+		api_exec("UPDATE calendar_events SET last_modified_user_id = '" . (int)$app['owner']['id'] . "',
+				last_modified_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . $id . "'");
+
+	}
+
+	if ($calendars !== null) {
+
+		$visible = api_calendar_ids_visible();
+
+		foreach (array_diff($row['calendar_ids'], $calendars) as $calendar_id) {
+
+			if (($visible === null) || in_array((int)$calendar_id, $visible, true)) {
+
+				api_exec("DELETE FROM calendar_events_calendars_xref
+					WHERE calendar_event_id = '" . $id . "' AND calendar_id = '" . (int)$calendar_id . "'");
+
+			}
+
+		}
+
+		foreach (array_diff($calendars, $row['calendar_ids']) as $calendar_id) {
+
+			api_exec("INSERT INTO calendar_events_calendars_xref (calendar_event_id, calendar_id)
+				VALUES ('" . $id . "', '" . (int)$calendar_id . "')");
+
+		}
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Calendar event ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array(isset($set['name']) ? $set['name'] : (string)$row['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_calendar_event_answer($id);
+
+}
+
+// With what goes with it, as on the event screen: the cancelled repeats, its
+// calendars and rooms, and the spots left for reservations.
+function api_calendar_events_delete($params) {
+
+	api_calendars_require();
+
+	$app = api_current_app();
+
+	$row = api_calendar_event_writable_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	api_dry_run_stop('deleted', 'calendar_event', array('id' => $id, 'name' => (string)$row['name']));
+
+	api_exec("DELETE FROM calendar_events WHERE id = '" . $id . "'");
+
+	api_exec("DELETE FROM calendar_event_exceptions WHERE calendar_event_id = '" . $id . "'");
+
+	api_exec("DELETE FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . $id . "'");
+
+	api_exec("DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = '" . $id . "'");
+
+	api_exec("DELETE FROM remaining_reservation_spots WHERE calendar_event_id = '" . $id . "'");
+
+	log_activity(lang(array(
+		'string' => 'Calendar event ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
 
 }
