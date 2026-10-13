@@ -84,6 +84,73 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP: satın alma siparişinden alış faturası, teslim durumu, minimum stoktan sipariş (2026-10-13)
+
+**Neden.** Faz 7'nin ikinci parçası (`docs/_plan_erp_ozellikler.md` §3, akışın
+3–4. adımı, minimum stok bağlantısı ve pano kartı). İlk parça (10.58) siparişi
+yazdırıp gönderiyordu; mal geldiğinde siparişle fatura arasında bağ yoktu.
+Şema yok: kolonlar 10.58'de açılmıştı.
+
+**Faturaya dönüşüm.** `erp_purchase_order_to_invoice()` siparişin her satırı
+için *kalan* miktarı (sipariş − kesilmiş faturalarda alınan − taslaklarda
+olan) alış faturası **taslağına** yazar: siparişin fiyatı, iskonto oranı,
+vergi ve tevkifatı; bugünün tarihi, vade carinin ödeme vadesi, döviz
+siparişte yabancıysa bugünün kayıtlı kuru (yoksa taslak kursuz kaydedilir,
+kesilirken sorar). Not siparişin notu + "Satın alma siparişi <no>".
+`erp_invoice_draft_save()` artık `purchase_order_id`'yi (yalnız
+`array_key_exists` ise, `quote_id` gibi; formdan yeniden kaydetmek bağı
+korur) ve satır başına `source_line`'ı yazar (`erp_invoice_lines_have_source()`
+ile kolon varsa). Taslak editörü anahtarı gizli alanda taşır; kesme adımı
+satırları `UPDATE` ettiği için anahtar korunur. İptal edilmiş ya da tamamı
+gelmiş siparişten ve kalanı olmayan siparişten taslak açılmaz. Fatura
+kopyalanırken (`add_erp_manual_invoice.php?copy=`) anahtarlar boşaltılır:
+kopya siparişe bağlı değildir.
+
+**Türetilen durum.** `erp_purchase_order_quantities()` siparişe bağlı
+(`purchase_order_id`), alış yönlü, `doc_type = 'invoice'` faturaların
+satırlarını `source_line`'a göre toplar: taslak dışı ve iptal dışı olanlar
+"alınan", taslaklar "taslakta". İade faturası sayılmaz (iade ayrı belge,
+siparişe bağlanmaz). `erp_purchase_order_progress()` /
+`erp_purchase_order_receipt_state()` saf fonksiyonlar: her satır tamamen
+geldiyse `received`, bir şey geldiyse `partial`, yoksa `sent_at`'e göre
+`sent`/`open`; fazla gelen tam sayılır. `erp_purchase_order_refresh()` bunu
+`erp_event_invoice()`'tan çağrılır: alış faturası kesilince
+(`erp.invoice.created`) ya da iptal edilince (`erp.invoice.cancelled`),
+işlem commit'inden sonra. Güncelleme okunan duruma koşullu `UPDATE`; son
+mal geldiği anda `erp.purchase_order.received` bir kez çıkar. İptal edilmiş
+sipariş yenilenmez; "Yeniden aç" yeniler (iptal → yeniden aç → `partial`
+sandbox'ta denendi).
+
+**Ekranlar.** Sipariş ekranında "Teslim alınanlar" kartı (satır başına
+sipariş edilen / alınan / taslakta / gelecek; bağlı faturalar ve taslaklar
+durumlarıyla) ve "Alış faturası taslağı oluştur" (açık, gönderilmiş ya da
+kısmi siparişte, kalan varsa). Fatura ekranında ve taslak ekranında
+"<no> numaralı satın alma siparişinden" bağlantısı. `erp_stock_minimums.php`'de
+işaret kutuları ve "İşaretlenenler için satın alma siparişi" (ayrı GET formu,
+`form=` özniteliğiyle; minimum kaydetme formuna karışmaz):
+`add_erp_purchase_order.php?products[]=` satırları
+`erp_purchase_order_rows_for_products()` ile doldurur — miktar
+`max(1, ⌈minimum − mevcut⌉)` (`erp_purchase_order_suggested_quantity()`),
+fiyat son alış maliyeti (yoksa 0), vergi ürünün oranı ya da varsayılan oran;
+tedarikçiyi operatör seçer. ERP panosunda "Bekleyen satın alma siparişleri"
+kartı (açık + gönderilmiş + kısmi; teslim günü geçen varsa kırmızı ve
+sayısı), `erp_purchase_orders.php?status=waiting`'e gider.
+
+**Doğrulama.** Sandbox'ta planın kanıtı: minimum stoktan iki ürün (2 adet,
+minimum 10 ve 5 → 8 ve 3 öneriliyor) + kargo satırıyla 3 satırlı sipariş →
+taslak (3 satır, anahtarlar dolu) → ikinci dönüşüm "her satır zaten bir
+faturada ya da taslakta" → taslak 2 satıra indirilip kesildi → sipariş
+`partial`, stok 2→7 → kalan (A 3, B 3) yeni taslak → kesildi → `received`,
+olay bir kez, stok 7→10 ve 2→5 → ikinci fatura iptal → `partial`, stok geri
+→ sipariş iptal, dönüşüm reddi, yeniden aç → `partial`; taslak silinince
+kalan geri geliyor; fatura kopyasında anahtarlar boş; pano kartı ve geç
+teslim sayısı. `tests/erp_purchase_order_test.php`'ye 5 test (13 test).
+
+**Doğrulanamayan.** IIS (dev.pinegrap.com) ve e-Belge sağlayıcısı açık
+mağazada alış faturası kesme.
+
+---
+
 ## 2026.4.10 — Dış API: klasörler ve sayfa güncellemesinde yorum ayarları, meta anahtar kelimeler, klasör taşıma (2026-10-13)
 
 **Sorun.** Dış API sayfanın `folder_id`'sini veriyordu ama klasörün kendisini

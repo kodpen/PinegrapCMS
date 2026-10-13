@@ -5,7 +5,9 @@
  * Tests for the purchase order line keys: erp_source_line_key()
  * (includes/erp/invoice_manual.php), which cleans the key a line arrives
  * with, and erp_purchase_order_line_keys() (includes/erp/purchase_orders.php),
- * which gives every order line one of its own.
+ * which gives every order line one of its own; and for what is read from
+ * them: erp_purchase_order_progress(), erp_purchase_order_receipt_state() and
+ * the quantity suggested from the minimum stock.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -111,4 +113,67 @@ function test_erp_purchase_order_line_keys_default_random()
 	foreach ($keys as $key) {
 		pg_assert_true(preg_match('/^[0-9a-f]{8}$/', $key) === 1);
 	}
+}
+
+// Back up to the minimum, at least one, whatever the count on hand.
+function test_erp_purchase_order_suggested_quantity()
+{
+	pg_assert_same(7, erp_purchase_order_suggested_quantity(10, 3));
+	pg_assert_same(1, erp_purchase_order_suggested_quantity(10, 10));
+	pg_assert_same(1, erp_purchase_order_suggested_quantity(5, 12));
+	pg_assert_same(12, erp_purchase_order_suggested_quantity(10, -2));
+	pg_assert_same(1, erp_purchase_order_suggested_quantity(0, 0));
+}
+
+// Per line: what was ordered, received, on drafts, still to draft and still to come.
+function test_erp_purchase_order_progress_per_line()
+{
+	$lines = array(
+		array('source_line' => 'aaaa', 'description' => 'Screw', 'quantity' => 10),
+		array('source_line' => 'BBBB', 'description' => 'Nut', 'quantity' => 100),
+		array('source_line' => 'cccc', 'description' => 'Washer', 'quantity' => 5),
+	);
+	$progress = erp_purchase_order_progress($lines, array('aaaa' => 4, 'bbbb' => 100), array('aaaa' => 3, 'cccc' => 5));
+
+	pg_assert_same(array(1, 2, 3), array_column($progress, 'line_no'));
+	pg_assert_same(array(4.0, 100.0, 0.0), array_column($progress, 'received'));
+	pg_assert_same(array(3.0, 0.0, 5.0), array_column($progress, 'drafted'));
+	pg_assert_same(array(3.0, 0.0, 0.0), array_column($progress, 'remaining'));
+	pg_assert_same(array(6.0, 0.0, 5.0), array_column($progress, 'open'));
+	pg_assert_same('bbbb', $progress[1]['source_line']);
+}
+
+// More than was ordered leaves nothing to come, never less than nothing.
+function test_erp_purchase_order_progress_over_delivery()
+{
+	$progress = erp_purchase_order_progress(array(array('source_line' => 'aaaa', 'quantity' => 2.5)), array('aaaa' => 3), array('aaaa' => 1));
+
+	pg_assert_same(0.0, $progress[0]['remaining']);
+	pg_assert_same(0.0, $progress[0]['open']);
+}
+
+// A line without a key has nothing come against it.
+function test_erp_purchase_order_progress_line_without_key()
+{
+	$progress = erp_purchase_order_progress(array(array('quantity' => 4)), array('' => 4));
+
+	pg_assert_same(0.0, $progress[0]['received']);
+	pg_assert_same(4.0, $progress[0]['remaining']);
+}
+
+// Nothing, part or all of the goods.
+function test_erp_purchase_order_receipt_state()
+{
+	$lines = array(
+		array('source_line' => 'aaaa', 'quantity' => 10),
+		array('source_line' => 'bbbb', 'quantity' => 2),
+	);
+
+	pg_assert_same('none', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines)));
+	pg_assert_same('none', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array(), array('aaaa' => 10, 'bbbb' => 2))));
+	pg_assert_same('partial', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array('aaaa' => 10))));
+	pg_assert_same('partial', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array('aaaa' => 0.5, 'bbbb' => 2))));
+	pg_assert_same('received', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array('aaaa' => 10, 'bbbb' => 2))));
+	pg_assert_same('received', erp_purchase_order_receipt_state(erp_purchase_order_progress($lines, array('aaaa' => 12, 'bbbb' => 2))));
+	pg_assert_same('none', erp_purchase_order_receipt_state(array()));
 }

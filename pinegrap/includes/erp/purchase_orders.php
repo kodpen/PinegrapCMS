@@ -778,3 +778,387 @@ function erp_purchase_order_waiting_count($account_id = 0)
     return (int) db_value("SELECT COUNT(*) FROM erp_purchase_orders WHERE status IN ('open', 'sent', 'partial')"
         . (((int) $account_id > 0) ? " AND account_id = '" . (int) $account_id . "'" : ''));
 }
+
+/**
+ * How much the store asks a supplier for, for a product at or below its
+ * minimum: back up to the minimum, and at least one.
+ *
+ * @param int|float $minimum
+ * @param int|float $current  The count on hand; may be below zero
+ * @return int
+ */
+function erp_purchase_order_suggested_quantity($minimum, $current)
+{
+    return max(1, (int) ceil((float) $minimum - (float) $current));
+}
+
+/**
+ * Editor rows for a new order from products (the minimum stock screen): the
+ * suggested quantity, the last purchase price and the product's own tax
+ * rate, or the store's default. The operator picks the supplier and checks
+ * the figures before saving.
+ *
+ * @param array $product_ids
+ * @return array  Rows shaped like erp_purchase_order_editor_rows()
+ */
+function erp_purchase_order_rows_for_products($product_ids)
+{
+    $ids = array();
+    foreach ((array) $product_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    $ids = array_slice($ids, 0, ERP_MANUAL_MAX_LINES);
+    $minimums = (function_exists('erp_stock_minimums_ready') && erp_stock_minimums_ready())
+        ? "COALESCE((SELECT m.min_quantity FROM erp_stock_minimums m WHERE m.product_id = p.id), 0)"
+        : "0";
+
+    $found = array();
+    foreach ((array) db_items("SELECT p.*, " . $minimums . " AS min_quantity FROM products p WHERE p.id IN (" . implode(', ', $ids) . ")") as $row) {
+        $found[(int) $row['id']] = $row;
+    }
+
+    $rows = array();
+    foreach ($ids as $id) {
+        if (!isset($found[$id])) {
+            continue;
+        }
+
+        $product = erp_product_for_line($found[$id]);
+        $current = ((int) ($found[$id]['inventory'] ?? 0) === 1) ? (int) $found[$id]['inventory_quantity'] : 0;
+
+        $rows[] = array(
+            'product_id' => $id,
+            'product_name' => (string) $product['name'],
+            'description' => (string) $product['name'],
+            'quantity' => erp_purchase_order_suggested_quantity((int) $found[$id]['min_quantity'], $current),
+            'unit_code' => 'C62',
+            'unit_price' => is_array($product['cost']) ? (int) $product['cost']['last'] : 0,
+            'tax_rate' => (float) $product['tax_rate'],
+            'source_line' => '',
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * The order's lines against what has come: per line what was ordered, what
+ * the issued purchase invoices brought, what is on drafts made from the
+ * order, and what a new draft would ask for.
+ *
+ * @param array $lines     erp_purchase_order_lines()
+ * @param array $received  key => quantity, from erp_purchase_order_quantities()
+ * @param array $drafted   key => quantity, the same
+ * @return array  One row per line, in order: source_line, line_no,
+ *                description, product_id, ordered, received, drafted,
+ *                remaining (not received and not on a draft), open (not
+ *                received)
+ */
+function erp_purchase_order_progress($lines, $received = array(), $drafted = array())
+{
+    $rows = array();
+
+    foreach (array_values((array) $lines) as $index => $line) {
+        $key = strtolower(erp_source_line_key($line['source_line'] ?? ''));
+        $ordered = round((float) ($line['quantity'] ?? 0), 4);
+        $in = ($key !== '') ? round((float) ($received[$key] ?? 0), 4) : 0.0;
+        $on_drafts = ($key !== '') ? round((float) ($drafted[$key] ?? 0), 4) : 0.0;
+
+        $rows[] = array(
+            'source_line' => $key,
+            'line_no' => (int) ($line['line_no'] ?? ($index + 1)),
+            'description' => (string) ($line['description'] ?? ''),
+            'product_id' => (int) ($line['product_id'] ?? 0),
+            'ordered' => $ordered,
+            'received' => $in,
+            'drafted' => $on_drafts,
+            'remaining' => max(0.0, round($ordered - $in - $on_drafts, 4)),
+            'open' => max(0.0, round($ordered - $in, 4)),
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * Where the goods stand: 'none' before anything has come, 'partial' once
+ * something has, 'received' when every line has come in full (more than was
+ * ordered counts as in full).
+ *
+ * @param array $progress  erp_purchase_order_progress()
+ * @return string  none | partial | received
+ */
+function erp_purchase_order_receipt_state($progress)
+{
+    $counted = 0;
+    $any = false;
+    $all = true;
+
+    foreach ((array) $progress as $row) {
+        if ((float) $row['ordered'] <= 0) {
+            continue;
+        }
+
+        $counted++;
+
+        if ((float) $row['received'] > 0) {
+            $any = true;
+        }
+        if ((float) $row['received'] < (float) $row['ordered']) {
+            $all = false;
+        }
+    }
+
+    if ($counted === 0) {
+        return 'none';
+    }
+
+    return $all ? 'received' : ($any ? 'partial' : 'none');
+}
+
+/**
+ * The quantities the purchase invoices made from the order carry, per order
+ * line. Received: issued purchase invoices (paid or not); a cancelled one
+ * counts for nothing and a return is not looked at. On drafts: the drafts
+ * made from the order, not yet issued.
+ *
+ * @param int $order_id
+ * @return array ['received' => key => quantity, 'drafted' => key => quantity]
+ */
+function erp_purchase_order_quantities($order_id)
+{
+    $quantities = array('received' => array(), 'drafted' => array());
+
+    if (!erp_purchase_orders_ready() || !erp_invoice_lines_have_source() || ((int) $order_id <= 0)) {
+        return $quantities;
+    }
+
+    $rows = (array) db_items("SELECT it.source_line, IF(i.status = 'draft', 1, 0) AS is_draft, SUM(it.quantity) AS quantity
+        FROM erp_invoices i
+        INNER JOIN erp_invoice_items it ON it.invoice_id = i.id
+        WHERE i.purchase_order_id = '" . (int) $order_id . "'
+            AND i.direction = 'purchase'
+            AND i.doc_type = 'invoice'
+            AND i.status <> 'cancelled'
+            AND it.source_line <> ''
+        GROUP BY it.source_line, is_draft");
+
+    foreach ($rows as $row) {
+        $key = strtolower((string) $row['source_line']);
+        $bucket = ((int) $row['is_draft'] === 1) ? 'drafted' : 'received';
+        $quantities[$bucket][$key] = round(($quantities[$bucket][$key] ?? 0) + (float) $row['quantity'], 4);
+    }
+
+    return $quantities;
+}
+
+/**
+ * The order's lines with what has come against each of them.
+ *
+ * @param array $order  From erp_purchase_order()
+ * @return array  erp_purchase_order_progress()
+ */
+function erp_purchase_order_order_progress($order)
+{
+    $quantities = erp_purchase_order_quantities((int) $order['id']);
+
+    return erp_purchase_order_progress(erp_purchase_order_lines($order), $quantities['received'], $quantities['drafted']);
+}
+
+/**
+ * The purchase invoices and drafts made from the order, newest first.
+ *
+ * @param int $order_id
+ * @return array
+ */
+function erp_purchase_order_invoices($order_id)
+{
+    if (!erp_purchase_orders_ready() || ((int) $order_id <= 0)) {
+        return array();
+    }
+
+    return (array) db_items("SELECT id, full_number, status, issue_date, supplier_invoice_no, currency, grand_total
+        FROM erp_invoices
+        WHERE purchase_order_id = '" . (int) $order_id . "' AND direction = 'purchase' AND doc_type = 'invoice'
+        ORDER BY id DESC
+        LIMIT 200");
+}
+
+/**
+ * Read the order's status again from its purchase invoices: received in
+ * full, partly, or nothing yet (open, or sent once it went). A cancelled
+ * order stays cancelled. Announces erp.purchase_order.received the moment
+ * the last of the goods comes in.
+ *
+ * @param int $order_id
+ * @return string  The status now, '' when there is no such order
+ */
+function erp_purchase_order_refresh($order_id)
+{
+    $order = erp_purchase_order($order_id);
+
+    if ($order === null) {
+        return '';
+    }
+
+    $status = (string) $order['status'];
+
+    if ($status === 'cancelled') {
+        return $status;
+    }
+
+    $state = erp_purchase_order_receipt_state(erp_purchase_order_order_progress($order));
+    $to = ($state === 'none') ? (((int) $order['sent_at'] > 0) ? 'sent' : 'open') : $state;
+
+    if ($to === $status) {
+        return $status;
+    }
+
+    // Guarded on the status read above: of two requests that both see the
+    // last goods come in, one moves the order and announces it.
+    db("UPDATE erp_purchase_orders SET status = '" . escape($to) . "', updated_at = UNIX_TIMESTAMP()
+        WHERE id = '" . (int) $order['id'] . "' AND status = '" . escape($status) . "'");
+
+    if (($to === 'received') && (mysqli_affected_rows(db::$con) > 0)) {
+        erp_event_purchase_order((int) $order['id'], 'erp.purchase_order.received');
+    }
+
+    return $to;
+}
+
+/**
+ * After a purchase invoice was issued or cancelled (erp_event_invoice()):
+ * the order it was made from, if any, reads its status again.
+ *
+ * @param int $invoice_id
+ * @return void
+ */
+function erp_purchase_order_refresh_for_invoice($invoice_id)
+{
+    if (!erp_purchase_orders_ready()) {
+        return;
+    }
+
+    $order_id = (int) db_value("SELECT purchase_order_id FROM erp_invoices WHERE id = '" . (int) $invoice_id . "' LIMIT 1");
+
+    if ($order_id > 0) {
+        erp_purchase_order_refresh($order_id);
+    }
+}
+
+/**
+ * Make a purchase invoice draft from the order, for what has not come yet
+ * and is not already on a draft: the order's prices, today's date, the
+ * account's payment term. Repeatable, one draft per delivery. Stock and cost
+ * move when the draft is issued, as with any purchase invoice.
+ *
+ * @param int $order_id
+ * @param int $user_id
+ * @return array ['success' => bool, 'invoice_id' => int, 'error' => string]
+ */
+function erp_purchase_order_to_invoice($order_id, $user_id)
+{
+    $fail = function ($message) {
+        return array('success' => false, 'invoice_id' => 0, 'error' => $message);
+    };
+
+    $order = erp_purchase_order($order_id);
+
+    if ($order === null) {
+        return $fail(lang('The purchase order could not be found.'));
+    }
+
+    if ((string) $order['status'] === 'cancelled') {
+        return $fail(lang('A cancelled purchase order is not invoiced. Open it again first.'));
+    }
+
+    if ((string) $order['status'] === 'received') {
+        return $fail(lang('Everything on the purchase order has come in.'));
+    }
+
+    $progress = erp_purchase_order_order_progress($order);
+    $lines = array();
+
+    foreach (array_values(erp_purchase_order_lines($order)) as $index => $line) {
+        $remaining = (float) ($progress[$index]['remaining'] ?? 0);
+
+        if ($remaining <= 0) {
+            continue;
+        }
+
+        $lines[] = array(
+            'product_id' => (int) ($line['product_id'] ?? 0),
+            'description' => (string) ($line['description'] ?? ''),
+            'quantity' => $remaining,
+            'unit_code' => (string) ($line['unit_code'] ?? 'C62'),
+            'unit_price' => (int) ($line['unit_price'] ?? 0),
+            'discount_rate' => (float) ($line['discount_rate'] ?? 0),
+            'tax_rate' => (float) ($line['tax_rate'] ?? 0),
+            'tax2_rate' => (float) ($line['tax2_rate'] ?? 0),
+            'withholding_code' => (string) ($line['withholding_code'] ?? ''),
+            'withholding_rate' => (float) ($line['withholding_rate'] ?? 0),
+            'source_line' => (string) ($line['source_line'] ?? ''),
+        );
+    }
+
+    if (empty($lines)) {
+        return $fail(lang('Every line of the purchase order is already on a purchase invoice or a draft.'));
+    }
+
+    $data = array(
+        'direction' => 'purchase',
+        'account_id' => (int) $order['account_id'],
+        'issue_date' => date('Y-m-d'),
+        'due_date' => '',
+        'currency' => (string) $order['currency'],
+        'supplier_invoice_no' => '',
+        'supplier_invoice_date' => '',
+        'series' => defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF',
+        'created_by' => (int) $user_id,
+        'lines' => $lines,
+        'purchase_order_id' => (int) $order['id'],
+    );
+
+    // A foreign-currency bill at today's recorded rate; without one the
+    // draft is saved with none and asks for it when issued.
+    if (strtoupper((string) $order['currency']) !== erp_base_currency()) {
+        $recorded = erp_fx_rate_for((string) $order['currency'], date('Y-m-d'));
+        $data['exchange_rate'] = is_array($recorded) ? $recorded['rate'] : 0;
+        $data['exchange_rate_date'] = is_array($recorded) ? $recorded['rate_date'] : date('Y-m-d');
+        $data['exchange_rate_source'] = is_array($recorded) ? $recorded['source'] : '';
+    }
+
+    $reference = lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']));
+    $data['notes'] = trim(trim((string) $order['notes']) . "\n" . $reference);
+
+    $saved = erp_invoice_draft_save($data, 0);
+
+    if (empty($saved['success'])) {
+        return $fail((string) $saved['error']);
+    }
+
+    return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'error' => '');
+}
+
+/**
+ * How many orders still waiting for goods are past the day they were
+ * expected.
+ *
+ * @return int
+ */
+function erp_purchase_order_late_count()
+{
+    if (!erp_purchase_orders_ready()) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT COUNT(*) FROM erp_purchase_orders
+        WHERE status IN ('open', 'sent', 'partial') AND expected_date > '0000-00-00' AND expected_date < '" . escape(date('Y-m-d')) . "'");
+}

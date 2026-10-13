@@ -12,6 +12,9 @@
  * ?copy=<id> opens the editor filled from another order (supplier, currency,
  * notes and lines), dated today; it is a new open order and takes its own
  * number when saved. ?account_id=<id> opens it on that supplier.
+ * ?products[]=<id> (the minimum stock screen) opens it with a line for each
+ * product: what it needs to get back to its minimum, at its last purchase
+ * price.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -65,6 +68,17 @@ if (!$_POST) {
                 $liveform->assign_field_value('notes', (string) $source['notes']);
                 $liveform->add_notice(h(lang(array('string' => 'Copied from purchase order {var:1}', 'vars' => (string) $source['full_number']))));
             }
+        }
+    }
+
+    // Products picked on the minimum stock screen, one line each.
+    $product_ids = (isset($_GET['products']) && is_array($_GET['products'])) ? $_GET['products'] : array();
+
+    if (($copy_id === 0) && !empty($product_ids)) {
+        $card_options['lines'] = erp_invoice_form_lines($liveform, erp_purchase_order_rows_for_products($product_ids));
+
+        if ($fresh) {
+            $liveform->add_notice(h(lang('The lines are what each product needs to get back to its minimum, at its last purchase price. Pick the supplier and check them.')));
         }
     }
 
