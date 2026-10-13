@@ -61,6 +61,7 @@ $presenters = array(
 	'api_menu_schema'          => 'api_menu_present',
 	'api_menu_item_schema'     => 'api_menu_item_present',
 	'api_comment_schema'       => 'api_comment_present',
+	'api_short_link_schema'    => 'api_short_link_present',
 	'api_file_schema'          => 'api_file_present',
 	'api_offer_schema'         => 'api_offer_present',
 	'api_webhook_schema'       => 'api_webhook_present',

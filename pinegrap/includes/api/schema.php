@@ -1456,6 +1456,123 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Short links -------------------------------------------------- */
+
+		array(
+			'id'      => 'short_links.list',
+			'method'  => 'GET',
+			'path'    => '/short-links',
+			'scope'   => 'pages:read',
+			'handler' => 'api_short_links_list',
+			'returns' => array('list' => 'ShortLink'),
+			'summary' => 'Short links',
+			'description' => 'Newest first, cursor paged. mode: permanent (opens for good under its name), timed (under its name until expires_at) or once (a generated address, spent by the first visit). status: open, used or expired. address is the link a visitor opens; a one-time link\'s address is not kept and only token_hint shows how it starts. target is where it leads. recycled=true lists the ones in the recycle bin instead.',
+			'params'  => array(
+				array('name' => 'destination_type', 'in' => 'query', 'type' => 'enum', 'values' => array('page', 'product_group', 'product', 'url', 'file')),
+				array('name' => 'page_id',          'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'mode',             'in' => 'query', 'type' => 'enum', 'values' => array('permanent', 'timed', 'once')),
+				array('name' => 'q',                'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name, the address it leads to or the tracking code.'),
+				array('name' => 'recycled',         'in' => 'query', 'type' => 'bool'),
+				array('name' => 'limit',            'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',           'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'short_links.get',
+			'method'  => 'GET',
+			'path'    => '/short-links/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_short_links_get',
+			'returns' => 'ShortLink',
+			'summary' => 'One short link',
+			'description' => 'With how often it was opened (use_count and last_used_at count the visits of timed and one-time links).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'short_links.create',
+			'method'  => 'POST',
+			'path'    => '/short-links',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_create',
+			'dry_run' => true,
+			'returns' => 'ShortLink',
+			'summary' => 'Add a short link',
+			'description' => 'A name a visitor types (letters, numbers, . _ - / [ ]; spaces become _) that leads to a page, a product group or product on a catalog page, a file or another address. The name is refused with 409 name_taken when a page, file, folder or other short link already answers at it. mode=timed needs duration, one of 3600, 86400, 259200, 604800, 2592000 or 7776000 seconds. mode=once takes no name: the answer carries token_url, the generated address, which is shown this once and kept nowhere.',
+			'params'  => array(
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Required unless mode is once.'),
+				array('name' => 'mode',             'in' => 'body', 'type' => 'enum', 'values' => array('permanent', 'timed', 'once'), 'default' => 'permanent'),
+				array('name' => 'duration',         'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For timed: how long it opens, in seconds, counted from now.'),
+				array('name' => 'destination_type', 'in' => 'body', 'type' => 'enum', 'values' => array('page', 'product_group', 'product', 'url', 'file'), 'required' => true),
+				array('name' => 'page_id',          'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The page it opens: the page itself, or the catalog (or catalog detail) page a product group or product is shown on.'),
+				array('name' => 'product_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'product_id',       'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'url',              'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'For url: a web address (http or https) or a path on this site.'),
+				array('name' => 'file_id',          'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'tracking_code',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Added as ?t= when the link opens a page, unless the visitor already brings one.'),
+			)
+		),
+
+		array(
+			'id'      => 'short_links.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/short-links/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_update',
+			'dry_run' => true,
+			'returns' => 'ShortLink',
+			'summary' => 'Change a short link',
+			'description' => 'Only what is sent is changed. A new name is the new address and the old one stops answering; a one-time link has no name to change. Any destination field sent re-reads the destination with the stored values for what is not sent, and empties the columns the type does not use. renew gives a timed link a new time, counted from now. A link in the recycle bin is restored in the file manager first (409 already_recycled). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'renew',            'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For a timed link: a new duration in seconds, as for duration on create.'),
+				array('name' => 'destination_type', 'in' => 'body', 'type' => 'enum', 'values' => array('page', 'product_group', 'product', 'url', 'file')),
+				array('name' => 'page_id',          'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The page it opens: the page itself, or the catalog (or catalog detail) page a product group or product is shown on.'),
+				array('name' => 'product_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'product_id',       'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'url',              'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'For url: a web address (http or https) or a path on this site.'),
+				array('name' => 'file_id',          'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'tracking_code',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Added as ?t= when the link opens a page, unless the visitor already brings one.'),
+			)
+		),
+
+		array(
+			'id'      => 'short_links.delete',
+			'method'  => 'DELETE',
+			'path'    => '/short-links/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a short link',
+			'description' => 'Moves it to the recycle bin, where an operator can put it back; its address stops answering at once. Send permanent=true to delete it outright, which cannot be undone.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
+			)
+		),
+
+		array(
+			'id'      => 'short_links.delete_post',
+			'method'  => 'POST',
+			'path'    => '/short-links/{id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a short link, addressed as a POST',
+			'description' => 'The same delete as DELETE /short-links/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'body',  'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
+			)
+		),
+
 		/* ----- Files -------------------------------------------------------- */
 
 		array(
