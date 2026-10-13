@@ -450,6 +450,18 @@
          dakikada bir ilerliyor) ve onayını bekleyen istekler
          de görünüyor.
 
+  [YENİ] Panoya dört Çalışma Alanı kartı. Görevlerim:
+         gecikmiş, bugün teslim ve tüm açık görevler üç
+         şeritte. Beni Bekleyenler: yanıt bekleyen onay
+         istekleri, okundu onayı istenen mesajlar, seni anan
+         ve sana yanıt veren mesajlar. Haftam: önümüzdeki yedi
+         günün toplantıları, ziyaretleri, izin ve tatilleri ile
+         o günlere düşen görevler, gün gün. Ekip Nabzı (ekibi
+         olan ya da plan panosunu gören kişiye): bugün izinde
+         ya da ziyarette olanlar, günü aşan iş planlananlar ve
+         şu an görev sayacı çalışanlar. Kartlar yalnız Çalışma
+         Alanı üyelerine görünüyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
@@ -477,6 +489,37 @@
          adresi hiçbir dış servise sorulmuyor.
 
   [ŞEMA] Ayarlar tablosuna dil yönlendirmesi için dört
+         kolon eklenir.
+
+  GÜVENLİK DUVARI
+  --------------------------------------------------------
+
+  [YENİ] Ülke kısıtlaması: Ayarlar › Güvenlik Duvarı'nda
+         seçilen ülkelerden gelen istekler reddediliyor,
+         ya da yalnız seçilen ülkeler içeri alınıyor
+         (varsayılan kapalı). Ülke, dil yönlendirmesiyle
+         aynı kaynaktan okunuyor: Cloudflare, yoksa
+         sitenin IP-ülke veritabanı. Tor ağı (T1) ayrıca
+         seçilebiliyor. Ülkesi bilinmeyen istek isteğe
+         bağlı olarak reddediliyor; varsayılan olarak
+         içeri alınıyor, böylece veritabanı eksik olsa da
+         site kapanmıyor.
+
+  [YENİ] Kısıtlama dışında tutulabilenler ayrı ayrı
+         seçiliyor: yönetim paneli ve giriş sayfası
+         (yurt dışındaki personel giriş yapabiliyor),
+         API, MCP ve OAuth uçları, adresi adını doğrulayan
+         arama motoru botları. İzin verilen IP adresleri,
+         robots.txt ve sertifika yenilemesi (.well-known)
+         her zaman açık. İzleme modunda istek reddedilmiyor,
+         yalnız güvenlik duvarı kaydına yazılıyor.
+
+  [YENİ] Ekran, kaydeden kişinin bulunduğu ülkenin içeri
+         alınıp alınmadığını gösteriyor. Panel kısıtlama
+         dışında değilken kendi ülkesini kapatan ayar,
+         adresi izin listesinde değilse kaydedilmiyor.
+
+  [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.
 
 

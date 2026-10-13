@@ -204,6 +204,7 @@ $category_options = array(
     'rate'     => lang('Rate Limit'),
     'login'    => lang('Sign-in Lockouts'),
     'iplist'   => lang('IP List'),
+    'country'  => lang('Country Restriction'),
     'ban'      => lang('Bans'),
 );
 

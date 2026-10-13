@@ -27,6 +27,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_oauth();                  // 10.70
 	upgrade_2026_4_10_oauth_metadata();         // 10.71
 	upgrade_2026_4_10_language_redirect();      // 10.1
+	upgrade_2026_4_10_waf_countries();          // 10.2
 
 }
 
@@ -177,5 +178,32 @@ function upgrade_2026_4_10_language_redirect() {
 	install_add_column('config', 'language_redirect_fallback', "TEXT NULL");
 
 	install_note('Languages: visitors can be sent to the language they read automatically, by their browser\'s language or their location. It is off until it is switched on under Site Settings, Languages and Translation.');
+
+}
+
+// Firewall country restriction (2026.4.10, 10.2; waf_handle_country() in
+// waf.php, the country from includes/geo.php).
+//
+// Off by default. The mode - refuse the listed countries, or every country but
+// the listed ones - the list of two-letter codes, whether a request no source
+// can place is refused (no: a site without a location database must not shut
+// out everyone), and three exemptions that are on: the control panel, the
+// external API with the MCP and OAuth endpoints, and search engine crawlers
+// whose address proves their name.
+function upgrade_2026_4_10_waf_countries() {
+
+	install_add_column('config', 'waf_country_mode', "ENUM('off','allow','block') NOT NULL DEFAULT 'off'");
+
+	install_add_column('config', 'waf_country_list', "TEXT NULL");
+
+	install_add_column('config', 'waf_country_unknown', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'waf_country_exempt_panel', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_add_column('config', 'waf_country_exempt_api', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_add_column('config', 'waf_country_exempt_bots', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Firewall: requests can be refused by country, or let in only from the countries chosen. It is off until it is set under Site Settings, Firewall.');
 
 }

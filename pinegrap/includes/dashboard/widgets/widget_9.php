@@ -67,40 +67,10 @@ function pg_dashboard_widget_9($request, $user)
         }
     }
 
-    if ($default === '') {
-        $default = key($lanes);
-    }
-
-    $output_tiles = '';
-    $output_bodies = '';
-
-    foreach ($lanes as $key => $lane) {
-
-        $clear = ($lane['count'] === 0);
-
-        $output_tiles .= pg_widget_filter(array(
-            'key'         => $key,
-            'label'       => $lane['label'],
-            'icon'        => $clear ? 'bi-check2-circle' : $lane['icon'],
-            'color'       => $clear ? '#10b981' : $lane['color'],
-            'count'       => pg_format_number($lane['count'], 0),
-            'count_class' => $clear ? 'is-clear' : (!empty($lane['urgent']) ? 'is-urgent' : ''),
-            'sub'         => $lane['sub'],
-        ));
-
-        $output_bodies .= '<div class="pg-ops-lane d-none" data-kind="' . h($key) . '">' . $lane['body'] . '</div>';
-    }
-
-    $output_data = '
-    <div class="card-body p-0 pg-ops" data-pg-filterable="ops" data-pg-default="' . h($default) . '">
-        <div class="pg-lanes" role="group" aria-label="' . h(lang('Operations Desk')) . '">' . $output_tiles . '</div>
-        <div class="pg-ops-body">' . $output_bodies . '</div>
-    </div>';
-
     return array(
         'status' => 'success',
         'message' => lang('Data Received successfully.'),
-        'data' => $output_data,
+        'data' => pg_widget_lanes('ops', lang('Operations Desk'), $lanes, $default),
     );
 }
 

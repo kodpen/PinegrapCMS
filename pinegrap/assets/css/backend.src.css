@@ -5445,6 +5445,29 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 .widget[widget-id="26"] { --bs-card-border-color: rgba(236,72,153,.30);  background: #fdf2f8; --pg-accent: #ec4899; --pg-accent-ink: #18181b; }
 .widget[widget-id="26"] .card-header i { color: #ec4899; }
 
+/* The workspace cards: My Tasks, Waiting on Me, My Week, Team Pulse. */
+.widget[widget-id="27"] { --bs-card-border-color: rgba(99,102,241,.30);  background: #eef2ff; --pg-accent: #6366f1; --pg-accent-ink: #fff; }
+.widget[widget-id="27"] .card-header i { color: #6366f1; }
+.widget[widget-id="28"] { --bs-card-border-color: rgba(225,29,72,.30);   background: #fff1f2; --pg-accent: #e11d48; --pg-accent-ink: #fff; }
+.widget[widget-id="28"] .card-header i { color: #e11d48; }
+.widget[widget-id="29"] { --bs-card-border-color: rgba(2,132,199,.30);   background: #f0f9ff; --pg-accent: #0284c7; --pg-accent-ink: #fff; }
+.widget[widget-id="29"] .card-header i { color: #0284c7; }
+.widget[widget-id="30"] { --bs-card-border-color: rgba(101,163,13,.30);  background: #f7fee7; --pg-accent: #65a30d; --pg-accent-ink: #fff; }
+.widget[widget-id="30"] .card-header i { color: #65a30d; }
+
+/* Waiting on Me: a mention or reply not read yet carries a dot after the
+   sender's name; read ones stay in the list without it. */
+.pg-row.is-unread .pg-row-name::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  background: var(--pg-accent);
+  vertical-align: 0.15em;
+}
+
 /* ── Dark theme ──────────────────────────────────────────────────── */
 
 html[data-bs-theme="dark"] .widget[widget-id="1"]  { --bs-card-border-color: rgba(13,148,136,.28); background: #0a1413; --pg-accent: #14b8a6; }
@@ -5496,6 +5519,14 @@ html[data-bs-theme="dark"] .widget[widget-id="25"] { --bs-card-border-color: rgb
 html[data-bs-theme="dark"] .widget[widget-id="25"] .card-header i { color: #38bdf8; }
 html[data-bs-theme="dark"] .widget[widget-id="26"] { --bs-card-border-color: rgba(236,72,153,.28); background: #170d13; }
 html[data-bs-theme="dark"] .widget[widget-id="26"] .card-header i { color: #f472b6; }
+html[data-bs-theme="dark"] .widget[widget-id="27"] { --bs-card-border-color: rgba(99,102,241,.28); background: #0e1020; --pg-accent: #818cf8; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="27"] .card-header i { color: #818cf8; }
+html[data-bs-theme="dark"] .widget[widget-id="28"] { --bs-card-border-color: rgba(225,29,72,.28);  background: #160c10; --pg-accent: #fb7185; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="28"] .card-header i { color: #fb7185; }
+html[data-bs-theme="dark"] .widget[widget-id="29"] { --bs-card-border-color: rgba(2,132,199,.28);  background: #0d141c; --pg-accent: #38bdf8; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="29"] .card-header i { color: #38bdf8; }
+html[data-bs-theme="dark"] .widget[widget-id="30"] { --bs-card-border-color: rgba(101,163,13,.28); background: #11150b; --pg-accent: #a3e635; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="30"] .card-header i { color: #a3e635; }
 
 
 
